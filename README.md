@@ -1,5 +1,7 @@
 # KrakenOS
 
+[![CI](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml/badge.svg)](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml)
+
 Plataforma de gestión de red doméstica e IoT. Corre en un servidor local y se
 accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 
@@ -87,6 +89,27 @@ pnpm preview                   # servidor local en :4173 (para probar)
 # en producción: servir web/dist/ con nginx o similar
 ```
 
+## Tests y CI
+
+Suite con **Vitest** en ambos paquetes (`pnpm test` en la raíz corre todo):
+
+- **Agente** (`apps/agent`) — funciones puras, driver `mock`, factory de drivers,
+  servicios (`AuthService`/`InventoryService`), rutas HTTP vía `app.inject()`
+  (guards, roles, validación, rate-limit) y eventos WebSocket reales. Las pruebas
+  usan una base SQLite **aislada** (`prisma/test.db`), nunca `dev.db`.
+- **Web** (`apps/web`) — libs puras, cliente API (refresh automático en 401),
+  stores Zustand, componentes y páginas (jsdom + Testing Library).
+
+```bash
+pnpm test                              # toda la suite
+pnpm --filter @krakenos/agent test     # solo el agente
+pnpm --filter @krakenos/web test:watch # web en modo watch
+```
+
+**CI** (GitHub Actions, `.github/workflows/ci.yml`): en cada push a `main` y en
+cada PR ejecuta install → genera claves JWT y el Prisma Client → `lint` →
+`typecheck` → `test`.
+
 ## Scripts raíz
 
 | Script           | Acción                                  |
@@ -95,6 +118,7 @@ pnpm preview                   # servidor local en :4173 (para probar)
 | `pnpm dev:agent` | solo agente en watch mode               |
 | `pnpm dev:web`   | solo web en dev server (requiere agente) |
 | `pnpm build`     | compilar/bundlear todos los paquetes    |
+| `pnpm test`      | tests (Vitest) de agente y web          |
 | `pnpm typecheck` | typecheck de todo el monorepo           |
 | `pnpm lint`      | ESLint                                  |
 | `pnpm format`    | Prettier (formatea en lugar)            |
