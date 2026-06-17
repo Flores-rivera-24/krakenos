@@ -15,6 +15,7 @@ const InventoryPage = lazy(() =>
   import('@/pages/InventoryPage').then((m) => ({ default: m.InventoryPage })),
 );
 const WifiPage = lazy(() => import('@/pages/WifiPage').then((m) => ({ default: m.WifiPage })));
+const VpnPage = lazy(() => import('@/pages/VpnPage').then((m) => ({ default: m.VpnPage })));
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -56,6 +57,7 @@ export function App() {
             <Route index element={<DashboardPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="wifi" element={<WifiPage />} />
+            <Route path="vpn" element={<VpnPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

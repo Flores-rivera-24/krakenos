@@ -54,6 +54,12 @@ export const env = {
     host: process.env.DRIVER_HOST || undefined,
   },
 
+  vpn: {
+    kind: (process.env.VPN_KIND ?? 'mock') as 'mock' | 'wireguard',
+    endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
+    listenPort: int('VPN_LISTEN_PORT', 51820),
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;
