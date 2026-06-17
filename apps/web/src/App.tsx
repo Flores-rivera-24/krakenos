@@ -4,6 +4,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
+import { WifiPage } from '@/pages/WifiPage';
 import { useAuthStore } from '@/store/auth.store';
 
 /** Protege rutas: redirige a /login si no hay sesión. */
@@ -20,15 +21,7 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<DashboardPage />} />
           <Route path="inventory" element={<InventoryPage />} />
-          <Route
-            path="wifi"
-            element={
-              <PlaceholderPage
-                title="Red WiFi"
-                description="Gestión de SSID, contraseña y red de invitados. Próximamente."
-              />
-            }
-          />
+          <Route path="wifi" element={<WifiPage />} />
           <Route
             path="settings"
             element={
