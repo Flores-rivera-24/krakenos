@@ -26,6 +26,18 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+/// Registro de auditoría de acciones relevantes.
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String          // p. ej. 'auth.login', 'wifi.update', 'device.block'
+  userId    String?
+  detail    String?         // texto/JSON con contexto adicional
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 /// Refresh tokens persistidos para permitir rotación y revocación.
 model RefreshToken {
   id        String   @id @default(cuid())
