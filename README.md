@@ -65,8 +65,26 @@ Red avanzada, también **mock-first**:
 - Las integraciones de Fase 2/3 siguen el mismo patrón: cada una (`VpnManager`,
   `IotManager`, `CameraManager`, `FirewallManager`, `VlanManager`, `QosManager`,
   `DnsManager`) se construye con una factory e inyecta su mock en desarrollo.
-- Las operaciones privilegiadas (WireGuard, iptables, tc) se delegarán a un helper
-  separado vía sudoers (pendiente de implementar).
+- Las operaciones privilegiadas (WireGuard, iptables, tc) se delegan a un **helper
+  separado** (`apps/agent/scripts/krakenos-helper.sh`, con allowlist estricta) invocado
+  con `sudo -n` desde `SudoHelperRunner`. El agente nunca llama esos binarios directamente.
+
+## Producción (integraciones reales)
+
+Sustitución incremental de los mocks por integraciones reales, seleccionadas por
+variable de entorno (`VPN_KIND`, `DRIVER_KIND`, …). El gestor **WireGuard real**
+(`VPN_KIND=wireguard`) ya está implementado: aplica peers con `wg`/`wg-quick` a través
+del helper sudoers y persiste su registro en un fichero JSON. Para usarlo en un servidor:
+
+```bash
+sudo install -m 0755 apps/agent/scripts/krakenos-helper.sh /usr/local/bin/krakenos-helper
+sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/krakenos
+# en apps/agent/.env: VPN_KIND=wireguard + WG_INTERFACE/WG_SUBNET/...
+```
+
+> El resto de integraciones reales (driver OpenWrt/pfSense, firewall iptables, QoS tc,
+> DNS Pi-hole, VLANs por switch) están en el backlog y reutilizan el mismo patrón de
+> helper + transporte inyectable.
 
 ## Puesta en marcha
 

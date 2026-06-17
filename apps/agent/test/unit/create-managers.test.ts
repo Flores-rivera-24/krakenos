@@ -5,7 +5,7 @@ import { MockFirewallManager, createFirewallManager } from '../../src/firewall/i
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
-import { MockVpnManager, createVpnManager } from '../../src/vpn/index.js';
+import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
 const VPN_CONFIG = { endpoint: 'vpn.test', listenPort: 51820 } as const;
 
@@ -15,8 +15,23 @@ describe('createVpnManager', () => {
     expect(vpn).toBeInstanceOf(MockVpnManager);
   });
 
-  it('lanza para el gestor wireguard real (pendiente)', () => {
+  it('lanza si falta la configuración WireGuard', () => {
     expect(() => createVpnManager({ kind: 'wireguard', ...VPN_CONFIG })).toThrow(/WireGuard/i);
+  });
+
+  it('devuelve un WireguardVpnManager con su configuración', () => {
+    const vpn = createVpnManager({
+      kind: 'wireguard',
+      ...VPN_CONFIG,
+      wireguard: {
+        interface: 'wg0',
+        subnet: '10.8.0.0/24',
+        dns: '10.8.0.1',
+        helperPath: '/usr/local/bin/krakenos-helper',
+        peerStorePath: '/tmp/krakenos-peers.json',
+      },
+    });
+    expect(vpn).toBeInstanceOf(WireguardVpnManager);
   });
 
   it('lanza para un kind desconocido', () => {
