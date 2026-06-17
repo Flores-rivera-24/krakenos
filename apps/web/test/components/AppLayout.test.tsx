@@ -33,17 +33,28 @@ describe('AppLayout', () => {
 
   it('renderiza todas las secciones navegables', () => {
     renderLayout();
-    for (const label of ['Dashboard', 'Dispositivos', 'Red WiFi', 'VPN', 'Tráfico', 'IoT', 'Cámaras', 'Ajustes']) {
+    for (const label of [
+      'Dashboard',
+      'Dispositivos',
+      'Red WiFi',
+      'VPN',
+      'Tráfico',
+      'IoT',
+      'Cámaras',
+      'Firewall',
+      'Ajustes',
+    ]) {
       // Cada sección aparece en el sidebar y en la bottom-nav.
       expect(screen.getAllByText(label).length).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('muestra las secciones de fases futuras deshabilitadas', () => {
+  it('Firewall enlaza a su ruta (ya no es una sección futura)', () => {
     renderLayout();
-    expect(screen.getByText('Próximamente')).toBeInTheDocument();
-    expect(screen.getByText('Firewall')).toBeInTheDocument();
-    expect(screen.getByText('F3')).toBeInTheDocument();
+    const links = screen.getAllByRole('link', { name: /Firewall/ });
+    expect(links.length).toBeGreaterThanOrEqual(1);
+    expect(links[0]).toHaveAttribute('href', '/firewall');
+    expect(screen.queryByText('Próximamente')).not.toBeInTheDocument();
   });
 
   it('el botón Salir invoca logout', async () => {

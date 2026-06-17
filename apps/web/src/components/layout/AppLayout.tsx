@@ -31,13 +31,12 @@ const SECTIONS: NavItem[] = [
   { to: '/traffic', label: 'Tráfico', icon: Activity },
   { to: '/iot', label: 'IoT', icon: Cpu },
   { to: '/cameras', label: 'Cámaras', icon: Video },
+  { to: '/firewall', label: 'Firewall', icon: ShieldAlert },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
 /** Secciones de fases futuras, mostradas pero deshabilitadas. */
-const FUTURE: { label: string; icon: LucideIcon; phase: string }[] = [
-  { label: 'Firewall', icon: ShieldAlert, phase: 'F3' },
-];
+const FUTURE: { label: string; icon: LucideIcon; phase: string }[] = [];
 
 function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
   return (
@@ -72,21 +71,25 @@ export function AppLayout() {
           {SECTIONS.map((item) => (
             <SidebarLink key={item.to} {...item} />
           ))}
-          <div className="px-3 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-            Próximamente
-          </div>
-          {FUTURE.map(({ label, icon: Icon, phase }) => (
-            <div
-              key={label}
-              className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground/50"
-            >
-              <span className="flex items-center gap-3">
-                <Icon className="h-4 w-4" />
-                {label}
-              </span>
-              <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px]">{phase}</span>
-            </div>
-          ))}
+          {FUTURE.length > 0 && (
+            <>
+              <div className="px-3 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
+                Próximamente
+              </div>
+              {FUTURE.map(({ label, icon: Icon, phase }) => (
+                <div
+                  key={label}
+                  className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground/50"
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    {label}
+                  </span>
+                  <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px]">{phase}</span>
+                </div>
+              ))}
+            </>
+          )}
         </nav>
         <div className="border-t border-border p-3">
           <div className="mb-2 truncate px-2 text-sm text-muted-foreground">{user?.displayName}</div>

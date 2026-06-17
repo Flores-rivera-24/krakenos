@@ -11,3 +11,4 @@ export * from './vpn.js';
 export * from './traffic.js';
 export * from './iot.js';
 export * from './camera.js';
+export * from './firewall.js';

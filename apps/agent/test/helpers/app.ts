@@ -7,6 +7,7 @@ import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
+import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
@@ -16,6 +17,7 @@ import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
+import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
@@ -64,6 +66,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
     await app.register(camerasRoutes, { prefix: '/api/cameras', cameras: new MockCameraManager() });
+    await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
   }
 
   await app.ready();
