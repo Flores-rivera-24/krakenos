@@ -76,6 +76,10 @@ export const env = {
     kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
   },
 
+  qos: {
+    kind: (process.env.QOS_KIND ?? 'mock') as 'mock' | 'tc',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;

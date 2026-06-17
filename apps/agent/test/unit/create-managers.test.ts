@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
 import { MockFirewallManager, createFirewallManager } from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
+import { MockQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
@@ -78,5 +79,19 @@ describe('createVlanManager', () => {
 
   it('lanza para un kind desconocido', () => {
     expect(() => createVlanManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
+  });
+});
+
+describe('createQosManager', () => {
+  it('devuelve un MockQosManager para kind "mock"', () => {
+    expect(createQosManager({ kind: 'mock' })).toBeInstanceOf(MockQosManager);
+  });
+
+  it('lanza para el gestor tc real (pendiente)', () => {
+    expect(() => createQosManager({ kind: 'tc' })).toThrow(/tc|QoS/i);
+  });
+
+  it('lanza para un kind desconocido', () => {
+    expect(() => createQosManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
   });
 });

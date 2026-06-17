@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   Cpu,
+  Gauge,
   KeyRound,
   LayoutDashboard,
   Layers,
@@ -34,6 +35,7 @@ const SECTIONS: NavItem[] = [
   { to: '/cameras', label: 'Cámaras', icon: Video },
   { to: '/firewall', label: 'Firewall', icon: ShieldAlert },
   { to: '/vlans', label: 'VLANs', icon: Layers },
+  { to: '/qos', label: 'QoS', icon: Gauge },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
