@@ -1,12 +1,13 @@
 import type {
   Device,
   DeviceType,
-  DiscoveredDevice,
   DiscoverySource,
   HardwareDriver,
   UpdateDeviceRequest,
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { inferDeviceType } from './identify.js';
+import { lookupVendor } from './oui.js';
 
 interface DbDevice {
   id: string;
@@ -77,18 +78,29 @@ export class InventoryService {
     return device;
   }
 
-  /** Ejecuta un barrido, persiste cambios y emite eventos en tiempo real. */
+  /** Ejecuta un barrido (ARP + mDNS), persiste cambios y emite eventos en tiempo real. */
   async scan(): Promise<Device[]> {
-    const discovered = await this.driver.scanArp();
-    const seenMacs = new Set(discovered.map((d) => d.mac.toLowerCase()));
+    const [arp, mdns] = await Promise.all([this.driver.scanArp(), this.driver.scanMdns()]);
 
-    for (const found of discovered) {
-      await this.upsertDiscovered(found);
+    // Combina ambas fuentes por MAC: une hostname, vendor y orígenes.
+    const merged = new Map<string, MergedDevice>();
+    for (const d of [...arp, ...mdns]) {
+      const mac = d.mac.toLowerCase();
+      const cur = merged.get(mac) ?? { mac, ip: d.ip, hostname: null, vendor: null, sources: new Set() };
+      cur.ip = d.ip || cur.ip;
+      cur.hostname = d.hostname ?? cur.hostname;
+      cur.vendor = d.vendor ?? cur.vendor;
+      cur.sources.add(d.source);
+      merged.set(mac, cur);
+    }
+
+    for (const device of merged.values()) {
+      await this.upsertDiscovered(device);
     }
 
     // Marca como offline lo que no apareció en este barrido.
     const stale = (await this.app.prisma.device.findMany({
-      where: { online: true, mac: { notIn: [...seenMacs] } },
+      where: { online: true, mac: { notIn: [...merged.keys()] } },
     })) as DbDevice[];
     for (const row of stale) {
       await this.app.prisma.device.update({ where: { id: row.id }, data: { online: false } });
@@ -98,29 +110,38 @@ export class InventoryService {
     return this.list();
   }
 
-  private async upsertDiscovered(found: DiscoveredDevice): Promise<void> {
-    const mac = found.mac.toLowerCase();
+  private async upsertDiscovered(found: MergedDevice): Promise<void> {
+    const { mac } = found;
     const existing = (await this.app.prisma.device.findUnique({ where: { mac } })) as DbDevice | null;
 
     const sources = new Set<DiscoverySource>(
       existing ? (JSON.parse(existing.sources) as DiscoverySource[]) : [],
     );
-    sources.add(found.source);
+    for (const s of found.sources) sources.add(s);
+
+    const hostname = found.hostname ?? existing?.hostname ?? null;
+    // Fabricante: el provisto por el driver tiene prioridad; si no, lookup OUI.
+    const vendor = existing?.vendor ?? found.vendor ?? lookupVendor(mac);
+    // Tipo: respeta el que haya fijado el usuario; sólo autoinfiere si es 'unknown'.
+    const type =
+      existing && existing.type !== 'unknown' ? existing.type : inferDeviceType(vendor, hostname);
 
     const row = (await this.app.prisma.device.upsert({
       where: { mac },
       create: {
         mac,
         ip: found.ip,
-        hostname: found.hostname ?? null,
-        vendor: found.vendor ?? null,
+        hostname,
+        vendor,
+        type,
         online: true,
         sources: JSON.stringify([...sources]),
       },
       update: {
         ip: found.ip,
-        hostname: found.hostname ?? existing?.hostname ?? null,
-        vendor: found.vendor ?? existing?.vendor ?? null,
+        hostname,
+        vendor,
+        type,
         online: true,
         lastSeen: new Date(),
         sources: JSON.stringify([...sources]),
@@ -129,4 +150,13 @@ export class InventoryService {
 
     this.app.io.emit('inventory:device-updated', toDevice(row));
   }
+}
+
+/** Dispositivo descubierto tras fusionar ARP + mDNS por MAC. */
+interface MergedDevice {
+  mac: string;
+  ip: string;
+  hostname: string | null;
+  vendor: string | null;
+  sources: Set<DiscoverySource>;
 }
