@@ -27,7 +27,9 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
     '/',
     { schema: updateWifiSchema, preHandler: adminOnly },
     async (req) => {
-      return driver.updateWifi(req.body);
+      const result = await driver.updateWifi(req.body);
+      app.audit({ action: 'wifi.update', userId: req.user.sub, ip: req.ip });
+      return result;
     },
   );
 
@@ -39,7 +41,9 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
     '/guest',
     { schema: updateGuestSchema, preHandler: adminOnly },
     async (req) => {
-      return driver.updateGuestNetwork(req.body);
+      const result = await driver.updateGuestNetwork(req.body);
+      app.audit({ action: 'wifi.guest.update', userId: req.user.sub, ip: req.ip });
+      return result;
     },
   );
 };

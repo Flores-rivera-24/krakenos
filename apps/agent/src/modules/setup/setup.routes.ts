@@ -36,6 +36,7 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
 
     // Inicia sesión inmediatamente devolviendo user + tokens.
     const result = await auth.login(email, password);
+    app.audit({ action: 'setup.init', userId: result.user.id, ip: req.ip });
     return reply.send(result);
   });
 };

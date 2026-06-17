@@ -14,9 +14,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(user);
   });
 
-  app.post<{ Body: LoginRequest }>('/login', { schema: loginSchema }, async (req, reply) => {
+  app.post<{ Body: LoginRequest }>(
+    '/login',
+    { schema: loginSchema, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    async (req, reply) => {
     try {
       const result = await service.login(req.body.email, req.body.password);
+      app.audit({ action: 'auth.login', userId: result.user.id, ip: req.ip });
       return reply.send(result);
     } catch (err) {
       if (err instanceof AuthError) {

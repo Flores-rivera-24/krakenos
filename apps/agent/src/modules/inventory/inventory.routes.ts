@@ -50,6 +50,7 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
       if (!device) {
         return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
+      app.audit({ action: 'device.block', userId: req.user.sub, detail: device.mac, ip: req.ip });
       return reply.send(device);
     },
   );
@@ -62,6 +63,7 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
       if (!device) {
         return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
+      app.audit({ action: 'device.unblock', userId: req.user.sub, detail: device.mac, ip: req.ip });
       return reply.send(device);
     },
   );
