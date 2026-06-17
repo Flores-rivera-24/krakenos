@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
+import { MockFirewallManager, createFirewallManager } from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
@@ -48,5 +49,19 @@ describe('createCameraManager', () => {
 
   it('lanza para un kind desconocido', () => {
     expect(() => createCameraManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocida/i);
+  });
+});
+
+describe('createFirewallManager', () => {
+  it('devuelve un MockFirewallManager para kind "mock"', () => {
+    expect(createFirewallManager({ kind: 'mock' })).toBeInstanceOf(MockFirewallManager);
+  });
+
+  it('lanza para el gestor iptables real (pendiente)', () => {
+    expect(() => createFirewallManager({ kind: 'iptables' })).toThrow(/iptables/i);
+  });
+
+  it('lanza para un kind desconocido', () => {
+    expect(() => createFirewallManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
   });
 });

@@ -68,6 +68,10 @@ export const env = {
     kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp',
   },
 
+  firewall: {
+    kind: (process.env.FIREWALL_KIND ?? 'mock') as 'mock' | 'iptables',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;
