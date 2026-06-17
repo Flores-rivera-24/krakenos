@@ -15,9 +15,12 @@ packages/
 
 ## Módulos del MVP
 
-- **Auth** — JWT RS256 + bcrypt + refresh tokens con rotación/revocación.
+- **Auth** — JWT RS256 + bcrypt + refresh tokens con rotación/revocación. Wizard de
+  primer arranque para crear el administrador.
 - **Inventario** — barrido ARP/mDNS vía driver + actualizaciones en tiempo real (Socket.io).
 - **WiFi** — SSID, contraseña y red de invitados vía drivers de hardware.
+- **Dashboard** — resumen de la red, estado del sistema (uptime/CPU/RAM) y actividad
+  en tiempo real.
 
 ## Arquitectura del agente
 
@@ -31,28 +34,60 @@ packages/
 
 Requisitos: Node.js ≥ 20, pnpm ≥ 9.
 
+### Setup inicial (una sola vez)
+
 ```bash
 pnpm install
 
-# Agente
+# Agente: generar claves RS256 y base de datos
 cd apps/agent
 cp .env.example .env
 ./scripts/gen-keys.sh          # genera el par RS256 en ./keys
 pnpm prisma:generate
 pnpm prisma:migrate            # crea la base SQLite
-pnpm db:seed                   # usuario admin@krakenos.local / changeme123
+pnpm db:seed                   # opcional: admin@krakenos.local / changeme123
 cd ../..
+```
 
-# Levantar todo en paralelo
-pnpm dev                       # agente en :3001, web en :5173
+> Si omites `db:seed`, al abrir la web por primera vez aparece el **wizard de
+> configuración** (`/setup`) para crear el administrador.
+
+### Desarrollo
+
+```bash
+# Levantar agente (:3001) y web (:5173) en paralelo, con hot-reload
+pnpm dev
+
+# O arrancar solo uno
+pnpm dev:agent                 # solo agente
+pnpm dev:web                   # solo web (requiere agente en :3001)
+```
+
+### Producción
+
+```bash
+# Build de todos los paquetes (crea dist/)
+pnpm build
+
+# Arrancar agente desde el bundle
+cd apps/agent
+node dist/index.js             # requiere .env y keys/ en el directorio
+
+# Servir frontend en producción
+cd ../web
+pnpm preview                   # servidor local en :4173 (para probar)
+# en producción: servir web/dist/ con nginx o similar
 ```
 
 ## Scripts raíz
 
 | Script           | Acción                                  |
 | ---------------- | --------------------------------------- |
-| `pnpm dev`       | agent + web en paralelo                 |
-| `pnpm build`     | build de todos los paquetes             |
+| `pnpm dev`       | agent + web en paralelo (dev, hot-reload) |
+| `pnpm dev:agent` | solo agente en watch mode               |
+| `pnpm dev:web`   | solo web en dev server (requiere agente) |
+| `pnpm build`     | compilar/bundlear todos los paquetes    |
 | `pnpm typecheck` | typecheck de todo el monorepo           |
 | `pnpm lint`      | ESLint                                  |
-| `pnpm format`    | Prettier                                |
+| `pnpm format`    | Prettier (formatea en lugar)            |
+| `pnpm clean`     | limpiar dist/, node_modules             |
