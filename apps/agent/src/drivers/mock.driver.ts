@@ -2,6 +2,7 @@ import type {
   DiscoveredDevice,
   GuestNetwork,
   HardwareDriver,
+  TrafficSample,
   UpdateGuestNetworkRequest,
   UpdateWifiRequest,
   WifiNetwork,
@@ -64,6 +65,24 @@ export class MockDriver implements HardwareDriver {
 
   async unblockDevice(mac: string): Promise<void> {
     this.blocked.delete(mac.toLowerCase());
+  }
+
+  // Estado para un random-walk suave de ancho de banda (bytes/seg).
+  private rx = 1_500_000;
+  private tx = 300_000;
+
+  async getTrafficSample(): Promise<TrafficSample> {
+    const walk = (v: number, max: number) => {
+      const next = v + (Math.random() - 0.5) * max * 0.3;
+      return Math.max(0, Math.min(max, next));
+    };
+    this.rx = walk(this.rx, 12_000_000); // ~100 Mbps de descarga máx
+    this.tx = walk(this.tx, 3_000_000); // ~24 Mbps de subida máx
+    return {
+      timestamp: new Date().toISOString(),
+      rxBytesPerSec: Math.round(this.rx),
+      txBytesPerSec: Math.round(this.tx),
+    };
   }
 
   async getWifi(): Promise<WifiNetwork> {

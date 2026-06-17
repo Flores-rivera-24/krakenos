@@ -14,6 +14,14 @@ export function formatUptime(seconds: number): string {
   return parts.join(' ');
 }
 
+/** Formatea bytes/seg como tasa de red en bits ("12.3 Mbps", "850 Kbps"). */
+export function formatRate(bytesPerSec: number): string {
+  const bits = bytesPerSec * 8;
+  if (bits >= 1_000_000) return `${(bits / 1_000_000).toFixed(1)} Mbps`;
+  if (bits >= 1_000) return `${(bits / 1_000).toFixed(0)} Kbps`;
+  return `${Math.round(bits)} bps`;
+}
+
 /** Tiempo relativo corto en español ("hace 3m", "hace 2h"). */
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();

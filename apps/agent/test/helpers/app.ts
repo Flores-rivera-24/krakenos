@@ -9,6 +9,8 @@ import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
+import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
+import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
@@ -54,6 +56,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });
+    // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
+    await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
   }
 
   await app.ready();

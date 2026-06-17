@@ -1,4 +1,5 @@
 import type { DiscoveredDevice } from './inventory.js';
+import type { TrafficSample } from './traffic.js';
 import type {
   GuestNetwork,
   UpdateGuestNetworkRequest,
@@ -36,6 +37,9 @@ export interface HardwareDriver {
 
   /** Descubrimiento mDNS (aporta hostnames y, a veces, dispositivos extra). */
   scanMdns(): Promise<DiscoveredDevice[]>;
+
+  /** Muestra puntual de ancho de banda (rx/tx en bytes/seg) de la WAN. */
+  getTrafficSample(): Promise<TrafficSample>;
 
   /** Bloquea el acceso a la red del dispositivo con esa MAC. */
   blockDevice(mac: string): Promise<void>;
