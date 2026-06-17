@@ -7,8 +7,8 @@ accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 
 > **Estado:** MVP funcional — auth con wizard de primer arranque, inventario en
 > tiempo real con identificación automática y bloqueo, gestión de WiFi, dashboard
-> y ajustes con auditoría. HTTPS opcional para la LAN. **Fase 2 en curso:** VPN
-> WireGuard (gestión de peers + QR).
+> y ajustes con auditoría. HTTPS opcional para la LAN. **Fase 2 completa:** VPN
+> WireGuard, control IoT, cámaras, monitor de tráfico y WiFi multi-AP.
 
 ## Estructura (monorepo pnpm)
 
@@ -29,11 +29,19 @@ packages/
 - **Dashboard** — resumen de la red, estado del sistema (uptime/CPU/RAM) y actividad
   en tiempo real.
 
-## Fase 2 (en curso)
+## Fase 2
 
-- **VPN WireGuard** — el agente gestiona peers y genera el QR/config del cliente. En
-  desarrollo usa un gestor `mock` (claves X25519 reales, sin `wg` instalado); en
-  producción las operaciones privilegiadas van en un helper vía sudoers.
+Implementada con el patrón **mock-first** (abstracción intercambiable + mock en memoria),
+de modo que todo funciona en desarrollo sin hardware real:
+
+- **VPN WireGuard** — gestión de peers + QR/config del cliente (claves X25519 reales).
+- **Control IoT** — luces, enchufes y sensores desde la UI.
+- **Cámaras** — inventario y snapshots de cámaras IP.
+- **Monitor de tráfico** — uso de la WAN en tiempo real.
+- **WiFi multi-AP** — access points, redes por AP y clientes conectados.
+
+> En producción, las integraciones reales sustituyen a los mocks: WireGuard/iptables vía
+> helper con sudoers, IoT (Zigbee/Matter), y RTSP transcodificado (HLS/WebRTC) para cámaras.
 
 ## Arquitectura del agente
 
