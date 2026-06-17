@@ -1,0 +1,102 @@
+import type { Device } from '@krakenos/types';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock del cliente API: capturamos las llamadas sin tocar la red.
+const apiMock = vi.hoisted(() => ({
+  patch: vi.fn(),
+  post: vi.fn(),
+  del: vi.fn(),
+}));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
+
+import { DeviceDetailModal } from '@/components/inventory/DeviceDetailModal';
+import { useAuthStore } from '@/store/auth.store';
+
+function device(over: Partial<Device> = {}): Device {
+  return {
+    id: 'dev-1',
+    mac: 'aa:bb:cc:dd:ee:01',
+    ip: '192.168.1.10',
+    hostname: 'macbook',
+    label: null,
+    notes: null,
+    vendor: 'Apple',
+    type: 'computer',
+    isBlocked: false,
+    online: true,
+    sources: ['arp', 'mdns'],
+    firstSeen: '2026-01-01T00:00:00.000Z',
+    lastSeen: '2026-01-01T00:00:00.000Z',
+    ...over,
+  };
+}
+
+function asRole(role: 'admin' | 'viewer') {
+  useAuthStore.setState({
+    user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
+    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+  });
+}
+
+describe('DeviceDetailModal', () => {
+  beforeEach(() => {
+    apiMock.patch.mockReset().mockResolvedValue(device());
+    apiMock.post.mockReset().mockResolvedValue(device({ isBlocked: true }));
+    apiMock.del.mockReset().mockResolvedValue(undefined);
+  });
+
+  it('muestra los datos del dispositivo', () => {
+    asRole('viewer');
+    render(<DeviceDetailModal device={device()} onClose={() => {}} />);
+    expect(screen.getByText('192.168.1.10')).toBeInTheDocument();
+    expect(screen.getByText('aa:bb:cc:dd:ee:01')).toBeInTheDocument();
+    expect(screen.getByText('arp, mdns')).toBeInTheDocument();
+  });
+
+  it('guarda los cambios: PATCH con el body normalizado y cierra', async () => {
+    asRole('viewer');
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<DeviceDetailModal device={device()} onClose={onClose} />);
+
+    await user.type(screen.getByLabelText('Nombre'), 'Mi portátil');
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+    expect(apiMock.patch).toHaveBeenCalledWith('/inventory/devices/dev-1', {
+      label: 'Mi portátil',
+      type: 'computer',
+      notes: null,
+    });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('un viewer no ve el botón de bloqueo', () => {
+    asRole('viewer');
+    render(<DeviceDetailModal device={device()} onClose={() => {}} />);
+    expect(screen.queryByRole('button', { name: /bloquear/i })).not.toBeInTheDocument();
+  });
+
+  it('un admin puede bloquear: llama a POST /block', async () => {
+    asRole('admin');
+    const user = userEvent.setup();
+    render(<DeviceDetailModal device={device({ isBlocked: false })} onClose={() => {}} />);
+
+    await user.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
+  });
+
+  it('un admin puede desbloquear un dispositivo bloqueado: llama a DELETE /block', async () => {
+    asRole('admin');
+    const user = userEvent.setup();
+    render(<DeviceDetailModal device={device({ isBlocked: true })} onClose={() => {}} />);
+
+    await user.click(screen.getByRole('button', { name: 'Desbloquear acceso a la red' }));
+    await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
+  });
+});
