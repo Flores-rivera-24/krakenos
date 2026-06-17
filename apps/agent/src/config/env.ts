@@ -80,6 +80,10 @@ export const env = {
     kind: (process.env.QOS_KIND ?? 'mock') as 'mock' | 'tc',
   },
 
+  dns: {
+    kind: (process.env.DNS_KIND ?? 'mock') as 'mock' | 'pihole',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;

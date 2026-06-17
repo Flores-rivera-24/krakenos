@@ -14,3 +14,4 @@ export * from './camera.js';
 export * from './firewall.js';
 export * from './vlan.js';
 export * from './qos.js';
+export * from './dns.js';
