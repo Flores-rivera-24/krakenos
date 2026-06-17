@@ -1,0 +1,51 @@
+// KrakenOS — esquema de datos del agente local (SQLite).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  displayName  String
+  passwordHash String
+  role         String         @default("viewer") // 'admin' | 'viewer'
+  refreshTokens RefreshToken[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+/// Refresh tokens persistidos para permitir rotación y revocación.
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Hash del token (nunca el token en claro).
+  tokenHash String   @unique
+  revoked   Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  mac       String   @unique
+  ip        String
+  hostname  String?
+  label     String?
+  vendor    String?
+  type      String   @default("unknown")
+  online    Boolean  @default(true)
+  /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
+  sources   String   @default("[]")
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  @@index([online])
+}

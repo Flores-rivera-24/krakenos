@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm install *)",
+      "Bash(pnpm prisma:generate)",
+      "Bash(pnpm -r typecheck)",
+      "Bash(pnpm lint *)",
+      "Bash(cp -n .env.example .env)",
+      "Bash(bash scripts/gen-keys.sh)",
+      "Bash(pnpm exec *)",
+      "Bash(pnpm db:seed)",
+      "Bash(curl -s http://localhost:3001/health)",
+      "Bash(break)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@krakenos.local\",\"password\":\"changeme123\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:3001/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"admin@krakenos.local\",\"password\":\"wrongpass\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3001/api/inventory/devices)",
+      "Bash(pkill -f \"tsx src/index.ts\")"
+    ]
+  }
+}
