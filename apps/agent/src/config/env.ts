@@ -64,6 +64,10 @@ export const env = {
     kind: (process.env.IOT_KIND ?? 'mock') as 'mock' | 'zigbee' | 'matter',
   },
 
+  cameras: {
+    kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;
