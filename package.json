@@ -15,6 +15,7 @@
     "dev:agent": "pnpm --filter @krakenos/agent dev",
     "dev:web": "pnpm --filter @krakenos/web dev",
     "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "clean": "pnpm -r exec rm -rf dist node_modules .turbo && rm -rf node_modules"

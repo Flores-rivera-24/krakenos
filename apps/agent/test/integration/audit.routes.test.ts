@@ -1,0 +1,69 @@
+import type { FastifyInstance } from 'fastify';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+
+describe('rutas de auditoría', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp({ routes: true });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(async () => {
+    await resetDb(app);
+  });
+
+  it('un login queda reflejado en el audit log (admin lo consulta)', async () => {
+    const admin = await seedUser(app, { email: 'adm@krakenos.test', password: 'password123', role: 'admin' });
+
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'adm@krakenos.test', password: 'password123' },
+    });
+
+    await eventually(async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/audit',
+        headers: authHeader(signAccess(app, admin)),
+      });
+      const actions = (res.json() as { action: string }[]).map((e) => e.action);
+      expect(actions).toContain('auth.login');
+    });
+  });
+
+  it('devuelve las entradas ordenadas por fecha descendente y respeta limit', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+
+    // Inserta varias entradas con timestamps crecientes y conocidos.
+    for (let i = 0; i < 5; i++) {
+      await app.prisma.auditLog.create({
+        data: { action: `test.event.${i}`, createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, i)) },
+      });
+    }
+
+    const token = signAccess(app, admin);
+
+    const all = await app.inject({ method: 'GET', url: '/api/audit', headers: authHeader(token) });
+    const entries = all.json() as { action: string; createdAt: string }[];
+    expect(entries.length).toBeGreaterThanOrEqual(5);
+    const times = entries.map((e) => Date.parse(e.createdAt));
+    expect(times).toEqual([...times].sort((a, b) => b - a)); // desc
+
+    const limited = await app.inject({
+      method: 'GET',
+      url: '/api/audit?limit=2',
+      headers: authHeader(token),
+    });
+    expect(limited.json()).toHaveLength(2);
+  });
+
+  it('sin token devuelve 401', async () => {
+    expect((await app.inject({ method: 'GET', url: '/api/audit' })).statusCode).toBe(401);
+  });
+});

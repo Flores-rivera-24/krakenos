@@ -3,6 +3,10 @@
 Plataforma de gestión de red doméstica e IoT. Corre en un servidor local y se
 accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 
+> **Estado:** MVP funcional — auth con wizard de primer arranque, inventario en
+> tiempo real con identificación automática y bloqueo, gestión de WiFi, dashboard
+> y ajustes con auditoría. HTTPS opcional para la LAN.
+
 ## Estructura (monorepo pnpm)
 
 ```
