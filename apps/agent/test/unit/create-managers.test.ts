@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
 import { MockFirewallManager, createFirewallManager } from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
+import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
 const VPN_CONFIG = { endpoint: 'vpn.test', listenPort: 51820 } as const;
@@ -63,5 +64,19 @@ describe('createFirewallManager', () => {
 
   it('lanza para un kind desconocido', () => {
     expect(() => createFirewallManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
+  });
+});
+
+describe('createVlanManager', () => {
+  it('devuelve un MockVlanManager para kind "mock"', () => {
+    expect(createVlanManager({ kind: 'mock' })).toBeInstanceOf(MockVlanManager);
+  });
+
+  it('lanza para el gestor de switch real (pendiente)', () => {
+    expect(() => createVlanManager({ kind: 'switch' })).toThrow(/switch|VLAN/i);
+  });
+
+  it('lanza para un kind desconocido', () => {
+    expect(() => createVlanManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
   });
 });

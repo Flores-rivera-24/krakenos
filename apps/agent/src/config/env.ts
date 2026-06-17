@@ -72,6 +72,10 @@ export const env = {
     kind: (process.env.FIREWALL_KIND ?? 'mock') as 'mock' | 'iptables',
   },
 
+  vlan: {
+    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;

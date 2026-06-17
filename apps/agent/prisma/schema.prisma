@@ -76,6 +76,8 @@ model Device {
   notes     String?
   isBlocked Boolean  @default(false)
   online    Boolean  @default(true)
+  /// VLAN (tag 802.1Q) asignada, o null si ninguna (US-15).
+  vlanTag   Int?
   /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
   sources   String   @default("[]")
   firstSeen DateTime @default(now())

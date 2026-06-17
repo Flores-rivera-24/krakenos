@@ -4,6 +4,7 @@ import {
   Cpu,
   KeyRound,
   LayoutDashboard,
+  Layers,
   Network,
   Settings,
   ShieldAlert,
@@ -32,6 +33,7 @@ const SECTIONS: NavItem[] = [
   { to: '/iot', label: 'IoT', icon: Cpu },
   { to: '/cameras', label: 'Cámaras', icon: Video },
   { to: '/firewall', label: 'Firewall', icon: ShieldAlert },
+  { to: '/vlans', label: 'VLANs', icon: Layers },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 

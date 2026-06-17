@@ -13,6 +13,7 @@ const deviceResponse = {
     type: { type: 'string', enum: deviceTypeEnum },
     isBlocked: { type: 'boolean' },
     online: { type: 'boolean' },
+    vlanTag: { type: ['integer', 'null'] },
     sources: { type: 'array', items: { type: 'string', enum: ['arp', 'mdns', 'manual'] } },
     firstSeen: { type: 'string', format: 'date-time' },
     lastSeen: { type: 'string', format: 'date-time' },
@@ -61,5 +62,24 @@ export const updateDeviceSchema = {
 export const rescanSchema = {
   response: {
     200: { type: 'array', items: deviceResponse },
+  },
+} as const;
+
+export const setVlanSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: { id: { type: 'string', minLength: 1 } },
+  },
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['tag'],
+    properties: {
+      tag: { type: ['integer', 'null'], minimum: 1, maximum: 4094 },
+    },
+  },
+  response: {
+    200: deviceResponse,
   },
 } as const;

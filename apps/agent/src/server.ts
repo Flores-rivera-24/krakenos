@@ -8,6 +8,7 @@ import { createCameraManager } from './cameras/index.js';
 import { createDriver } from './drivers/index.js';
 import { createFirewallManager } from './firewall/index.js';
 import { createIotManager } from './iot/index.js';
+import { createVlanManager } from './vlan/index.js';
 import { createVpnManager } from './vpn/index.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
@@ -20,6 +21,7 @@ import { setupRoutes } from './modules/setup/setup.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
 import { iotRoutes } from './modules/iot/iot.routes.js';
+import { vlanRoutes } from './modules/vlan/vlan.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
 import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
@@ -57,6 +59,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const iot = createIotManager({ kind: env.iot.kind });
   const cameras = createCameraManager({ kind: env.cameras.kind });
   const firewall = createFirewallManager({ kind: env.firewall.kind });
+  const vlan = createVlanManager({ kind: env.vlan.kind });
 
   // Healthcheck público.
   app.get('/health', async () => ({
@@ -75,6 +78,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   await app.register(camerasRoutes, { prefix: '/api/cameras', cameras });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
+  await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(auditRoutes, { prefix: '/api/audit' });
 
   // Monitor de tráfico: muestrea vía driver y emite por Socket.io.

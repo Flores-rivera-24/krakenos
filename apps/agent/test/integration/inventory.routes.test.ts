@@ -147,4 +147,67 @@ describe('rutas de inventario', () => {
       expect(res.statusCode).toBe(404);
     });
   });
+
+  describe('PUT /devices/:id/vlan', () => {
+    it('asigna y quita la VLAN de un dispositivo (admin), y lo audita', async () => {
+      const admin = await seedUser(app);
+      const id = await seedDevice(app);
+
+      const assigned = await app.inject({
+        method: 'PUT',
+        url: `/api/inventory/devices/${id}/vlan`,
+        headers: authHeader(signAccess(app, admin)),
+        payload: { tag: 30 },
+      });
+      expect(assigned.statusCode).toBe(200);
+      expect(assigned.json().vlanTag).toBe(30);
+
+      const cleared = await app.inject({
+        method: 'PUT',
+        url: `/api/inventory/devices/${id}/vlan`,
+        headers: authHeader(signAccess(app, admin)),
+        payload: { tag: null },
+      });
+      expect(cleared.statusCode).toBe(200);
+      expect(cleared.json().vlanTag).toBeNull();
+
+      await eventually(async () => {
+        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'device.vlan' } });
+        expect(entry).not.toBeNull();
+      });
+    });
+
+    it('viewer recibe 403', async () => {
+      const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
+      const id = await seedDevice(app);
+      const res = await app.inject({
+        method: 'PUT',
+        url: `/api/inventory/devices/${id}/vlan`,
+        headers: authHeader(signAccess(app, viewer)),
+        payload: { tag: 30 },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('rechaza un tag fuera de rango (400) y 404 si el dispositivo no existe', async () => {
+      const admin = await seedUser(app);
+      const token = signAccess(app, admin);
+
+      const bad = await app.inject({
+        method: 'PUT',
+        url: `/api/inventory/devices/${await seedDevice(app)}/vlan`,
+        headers: authHeader(token),
+        payload: { tag: 9999 },
+      });
+      expect(bad.statusCode).toBe(400);
+
+      const missing = await app.inject({
+        method: 'PUT',
+        url: '/api/inventory/devices/inexistente/vlan',
+        headers: authHeader(token),
+        payload: { tag: 30 },
+      });
+      expect(missing.statusCode).toBe(404);
+    });
+  });
 });
