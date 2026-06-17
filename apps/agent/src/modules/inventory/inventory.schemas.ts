@@ -11,12 +11,24 @@ const deviceResponse = {
     notes: { type: ['string', 'null'] },
     vendor: { type: ['string', 'null'] },
     type: { type: 'string', enum: deviceTypeEnum },
+    isBlocked: { type: 'boolean' },
     online: { type: 'boolean' },
     sources: { type: 'array', items: { type: 'string', enum: ['arp', 'mdns', 'manual'] } },
     firstSeen: { type: 'string', format: 'date-time' },
     lastSeen: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'mac', 'ip', 'type', 'online', 'sources', 'firstSeen', 'lastSeen'],
+  required: ['id', 'mac', 'ip', 'type', 'isBlocked', 'online', 'sources', 'firstSeen', 'lastSeen'],
+} as const;
+
+export const blockDeviceSchema = {
+  params: {
+    type: 'object',
+    required: ['id'],
+    properties: { id: { type: 'string', minLength: 1 } },
+  },
+  response: {
+    200: deviceResponse,
+  },
 } as const;
 
 export const listDevicesSchema = {

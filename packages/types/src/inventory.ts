@@ -30,6 +30,8 @@ export interface Device {
   /** Fabricante derivado del OUI de la MAC. */
   vendor: string | null;
   type: DeviceType;
+  /** `true` si el dispositivo está bloqueado (sin acceso a la red). */
+  isBlocked: boolean;
   /** `true` si se vio en el último barrido. */
   online: boolean;
   sources: DiscoverySource[];
