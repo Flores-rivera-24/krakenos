@@ -8,6 +8,7 @@ const deviceResponse = {
     ip: { type: 'string' },
     hostname: { type: ['string', 'null'] },
     label: { type: ['string', 'null'] },
+    notes: { type: ['string', 'null'] },
     vendor: { type: ['string', 'null'] },
     type: { type: 'string', enum: deviceTypeEnum },
     online: { type: 'boolean' },
@@ -37,6 +38,7 @@ export const updateDeviceSchema = {
     properties: {
       label: { type: ['string', 'null'], maxLength: 64 },
       type: { type: 'string', enum: deviceTypeEnum },
+      notes: { type: ['string', 'null'], maxLength: 500 },
     },
   },
   response: {

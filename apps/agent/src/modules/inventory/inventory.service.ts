@@ -16,6 +16,7 @@ interface DbDevice {
   label: string | null;
   vendor: string | null;
   type: string;
+  notes: string | null;
   online: boolean;
   sources: string;
   firstSeen: Date;
@@ -35,6 +36,7 @@ function toDevice(row: DbDevice): Device {
     ip: row.ip,
     hostname: row.hostname,
     label: row.label,
+    notes: row.notes,
     vendor: row.vendor,
     type: row.type as DeviceType,
     online: row.online,
@@ -66,6 +68,7 @@ export class InventoryService {
       data: {
         ...(input.label !== undefined ? { label: input.label } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes } : {}),
       },
     })) as DbDevice;
 

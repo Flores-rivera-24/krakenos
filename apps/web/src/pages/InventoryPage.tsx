@@ -1,5 +1,7 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { DeviceDetailModal } from '@/components/inventory/DeviceDetailModal';
 import { Button } from '@/components/ui/button';
+import { TYPE_LABELS } from '@/lib/devices';
 import { useInventoryStore } from '@/store/inventory.store';
 
 export function InventoryPage() {
@@ -7,6 +9,7 @@ export function InventoryPage() {
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
   const rescan = useInventoryStore((s) => s.rescan);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => subscribe(), [subscribe]);
 
@@ -14,6 +17,9 @@ export function InventoryPage() {
     () => Object.values(devices).sort((a, b) => b.lastSeen.localeCompare(a.lastSeen)),
     [devices],
   );
+
+  // El dispositivo seleccionado se lee del store para reflejar cambios en vivo.
+  const selected = selectedId ? (devices[selectedId] ?? null) : null;
 
   return (
     <div className="space-y-4 p-6">
@@ -36,21 +42,25 @@ export function InventoryPage() {
               <th className="px-4 py-2 text-left">Dispositivo</th>
               <th className="px-4 py-2 text-left">IP</th>
               <th className="px-4 py-2 text-left">MAC</th>
+              <th className="px-4 py-2 text-left">Tipo</th>
               <th className="px-4 py-2 text-left">Fabricante</th>
               <th className="px-4 py-2 text-left">Estado</th>
             </tr>
           </thead>
           <tbody>
             {list.map((d) => (
-              <tr key={d.id} className="border-t border-border">
+              <tr
+                key={d.id}
+                onClick={() => setSelectedId(d.id)}
+                className="cursor-pointer border-t border-border hover:bg-secondary/40"
+              >
                 <td className="px-4 py-2">{d.label ?? d.hostname ?? '—'}</td>
                 <td className="px-4 py-2 font-mono text-xs">{d.ip}</td>
                 <td className="px-4 py-2 font-mono text-xs">{d.mac}</td>
+                <td className="px-4 py-2">{TYPE_LABELS[d.type]}</td>
                 <td className="px-4 py-2">{d.vendor ?? '—'}</td>
                 <td className="px-4 py-2">
-                  <span
-                    className={d.online ? 'text-primary' : 'text-muted-foreground'}
-                  >
+                  <span className={d.online ? 'text-primary' : 'text-muted-foreground'}>
                     {d.online ? 'online' : 'offline'}
                   </span>
                 </td>
@@ -58,7 +68,7 @@ export function InventoryPage() {
             ))}
             {list.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   Sin dispositivos todavía. Pulsa «Re-escanear».
                 </td>
               </tr>
@@ -66,6 +76,8 @@ export function InventoryPage() {
           </tbody>
         </table>
       </div>
+
+      {selected && <DeviceDetailModal device={selected} onClose={() => setSelectedId(null)} />}
     </div>
   );
 }
