@@ -23,6 +23,18 @@ function int(name: string, fallback: number): number {
 
 const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
 
+/**
+ * TLS opcional. Si `HTTPS_ENABLED=true`, lee el cert/clave (genera con
+ * scripts/gen-cert.sh). En desarrollo se deja en HTTP.
+ */
+const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
+const https = httpsEnabled
+  ? {
+      key: readFileSync(resolve(required('TLS_KEY_PATH')), 'utf8'),
+      cert: readFileSync(resolve(required('TLS_CERT_PATH')), 'utf8'),
+    }
+  : null;
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -41,4 +53,7 @@ export const env = {
     kind: driverKind,
     host: process.env.DRIVER_HOST || undefined,
   },
+
+  /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
+  https,
 } as const;

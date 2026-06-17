@@ -18,12 +18,15 @@ import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
 export async function buildServer(): Promise<FastifyInstance> {
-  const app = Fastify({
-    logger: {
-      level: env.isProd ? 'info' : 'debug',
-      transport: env.isProd ? undefined : { target: 'pino-pretty' },
-    },
-  });
+  const logger = {
+    level: env.isProd ? 'info' : 'debug',
+    transport: env.isProd ? undefined : { target: 'pino-pretty' },
+  };
+
+  // TLS opcional: si hay cert/clave, el agente sirve HTTPS.
+  const app: FastifyInstance = env.https
+    ? (Fastify({ logger, https: env.https }) as unknown as FastifyInstance)
+    : Fastify({ logger });
 
   // Infra
   await app.register(cors, { origin: env.webOrigin, credentials: true });

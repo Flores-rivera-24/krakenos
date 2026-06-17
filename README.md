@@ -73,6 +73,10 @@ pnpm build
 cd apps/agent
 node dist/index.js             # requiere .env y keys/ en el directorio
 
+# (Opcional) Servir el agente por HTTPS en la LAN:
+./scripts/gen-cert.sh          # cert autofirmado en ./certs (SAN: localhost + IP de LAN)
+# luego en .env: HTTPS_ENABLED=true   (en desarrollo se deja en HTTP)
+
 # Servir frontend en producción
 cd ../web
 pnpm preview                   # servidor local en :4173 (para probar)
