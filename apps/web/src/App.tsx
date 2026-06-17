@@ -5,7 +5,7 @@ import { verifySession } from '@/lib/session';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LoginPage } from '@/pages/LoginPage';
-import { PlaceholderPage } from '@/pages/PlaceholderPage';
+import { SettingsPage } from '@/pages/SettingsPage';
 import { SetupPage } from '@/pages/SetupPage';
 import { WifiPage } from '@/pages/WifiPage';
 import { useAuthStore } from '@/store/auth.store';
@@ -44,15 +44,7 @@ export function App() {
           <Route index element={<DashboardPage />} />
           <Route path="inventory" element={<InventoryPage />} />
           <Route path="wifi" element={<WifiPage />} />
-          <Route
-            path="settings"
-            element={
-              <PlaceholderPage
-                title="Ajustes"
-                description="Configuración del sistema y del hogar. Próximamente."
-              />
-            }
-          />
+          <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
