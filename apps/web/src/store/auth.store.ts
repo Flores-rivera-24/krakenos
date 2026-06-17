@@ -6,6 +6,8 @@ interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
   login: (email: string, password: string) => Promise<void>;
+  /** Establece la sesión a partir de una respuesta de login (p. ej. tras el wizard). */
+  setSession: (data: LoginResponse) => void;
   /** Intenta refrescar el access token. Devuelve `true` si lo consigue. */
   refresh: () => Promise<boolean>;
   logout: () => Promise<void>;
@@ -32,6 +34,8 @@ export const useAuthStore = create<AuthState>()(
         const data = await postJson<LoginResponse>('/auth/login', { email, password });
         set({ user: data.user, tokens: data.tokens });
       },
+
+      setSession: (data) => set({ user: data.user, tokens: data.tokens }),
 
       refresh: async () => {
         const current = get().tokens?.refreshToken;
