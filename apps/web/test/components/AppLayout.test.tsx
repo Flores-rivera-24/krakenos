@@ -42,6 +42,7 @@ describe('AppLayout', () => {
       'IoT',
       'Cámaras',
       'Firewall',
+      'VLANs',
       'Ajustes',
     ]) {
       // Cada sección aparece en el sidebar y en la bottom-nav.

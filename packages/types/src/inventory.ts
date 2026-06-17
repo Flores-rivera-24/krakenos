@@ -34,6 +34,8 @@ export interface Device {
   isBlocked: boolean;
   /** `true` si se vio en el último barrido. */
   online: boolean;
+  /** VLAN (tag 802.1Q) a la que está asignado, o `null` si ninguna. */
+  vlanTag: number | null;
   sources: DiscoverySource[];
   firstSeen: IsoDateTime;
   lastSeen: IsoDateTime;

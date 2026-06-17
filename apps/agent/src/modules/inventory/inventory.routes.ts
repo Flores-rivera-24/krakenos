@@ -6,6 +6,7 @@ import {
   blockDeviceSchema,
   listDevicesSchema,
   rescanSchema,
+  setVlanSchema,
   updateDeviceSchema,
 } from './inventory.schemas.js';
 
@@ -64,6 +65,25 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
         return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.unblock', userId: req.user.sub, detail: device.mac, ip: req.ip });
+      return reply.send(device);
+    },
+  );
+
+  // Asignación de VLAN — operación privilegiada (solo admin).
+  app.put<{ Params: { id: string }; Body: { tag: number | null } }>(
+    '/devices/:id/vlan',
+    { schema: setVlanSchema, preHandler: adminOnly },
+    async (req, reply) => {
+      const device = await service.setVlan(req.params.id, req.body.tag);
+      if (!device) {
+        return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
+      }
+      app.audit({
+        action: 'device.vlan',
+        userId: req.user.sub,
+        detail: `${device.mac} → ${req.body.tag ?? 'sin VLAN'}`,
+        ip: req.ip,
+      });
       return reply.send(device);
     },
   );

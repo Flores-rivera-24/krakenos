@@ -20,6 +20,7 @@ interface DbDevice {
   notes: string | null;
   isBlocked: boolean;
   online: boolean;
+  vlanTag: number | null;
   sources: string;
   firstSeen: Date;
   lastSeen: Date;
@@ -43,6 +44,7 @@ function toDevice(row: DbDevice): Device {
     type: row.type as DeviceType,
     isBlocked: row.isBlocked,
     online: row.online,
+    vlanTag: row.vlanTag,
     sources,
     firstSeen: row.firstSeen.toISOString(),
     lastSeen: row.lastSeen.toISOString(),
@@ -91,6 +93,21 @@ export class InventoryService {
     const row = (await this.app.prisma.device.update({
       where: { id },
       data: { isBlocked: blocked },
+    })) as DbDevice;
+
+    const device = toDevice(row);
+    this.app.io.emit('inventory:device-updated', device);
+    return device;
+  }
+
+  /** Asigna (o quita, con `null`) la VLAN de un dispositivo y emite el cambio. */
+  async setVlan(id: string, vlanTag: number | null): Promise<Device | null> {
+    const existing = await this.app.prisma.device.findUnique({ where: { id } });
+    if (!existing) return null;
+
+    const row = (await this.app.prisma.device.update({
+      where: { id },
+      data: { vlanTag },
     })) as DbDevice;
 
     const device = toDevice(row);

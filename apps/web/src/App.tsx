@@ -26,6 +26,7 @@ const CamerasPage = lazy(() =>
 const FirewallPage = lazy(() =>
   import('@/pages/FirewallPage').then((m) => ({ default: m.FirewallPage })),
 );
+const VlanPage = lazy(() => import('@/pages/VlanPage').then((m) => ({ default: m.VlanPage })));
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -72,6 +73,7 @@ export function App() {
             <Route path="iot" element={<IotPage />} />
             <Route path="cameras" element={<CamerasPage />} />
             <Route path="firewall" element={<FirewallPage />} />
+            <Route path="vlans" element={<VlanPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

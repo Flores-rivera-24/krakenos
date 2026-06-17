@@ -8,6 +8,7 @@ import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
 import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
+import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
@@ -19,6 +20,7 @@ import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
+import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
@@ -67,6 +69,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
     await app.register(camerasRoutes, { prefix: '/api/cameras', cameras: new MockCameraManager() });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
+    await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
   }
 
   await app.ready();
