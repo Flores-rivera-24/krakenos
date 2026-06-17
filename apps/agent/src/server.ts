@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { env } from './config/env.js';
 import { createDriver } from './drivers/index.js';
+import { createVpnManager } from './vpn/index.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { prismaPlugin } from './plugins/prisma.js';
@@ -14,6 +15,7 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
+import { vpnRoutes } from './modules/vpn/vpn.routes.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
@@ -39,6 +41,11 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // Driver de hardware compartido por los módulos que lo necesitan.
   const driver = createDriver({ kind: env.driver.kind, host: env.driver.host });
+  const vpn = createVpnManager({
+    kind: env.vpn.kind,
+    endpoint: env.vpn.endpoint,
+    listenPort: env.vpn.listenPort,
+  });
 
   // Healthcheck público.
   app.get('/health', async () => ({
@@ -53,6 +60,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   await app.register(systemRoutes, { prefix: '/api/system' });
+  await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(auditRoutes, { prefix: '/api/audit' });
 
   return app;

@@ -1,5 +1,5 @@
 import rateLimit from '@fastify/rate-limit';
-import type { UserRole } from '@krakenos/types';
+import type { UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -9,7 +9,9 @@ import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
+import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
+import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
@@ -20,6 +22,8 @@ export interface BuildTestAppOptions {
   routes?: boolean;
   /** Driver a inyectar en las rutas; por defecto un `MockDriver` nuevo. */
   driver?: MockDriver;
+  /** Gestor de VPN a inyectar; por defecto un `MockVpnManager` nuevo. */
+  vpn?: VpnManager;
   /** Registra `@fastify/rate-limit` (global:false) como en producción. */
   rateLimit?: boolean;
 }
@@ -47,6 +51,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(systemRoutes, { prefix: '/api/system' });
+    const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
+    await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });
   }
 

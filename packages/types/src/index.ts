@@ -7,3 +7,4 @@ export * from './socket.js';
 export * from './system.js';
 export * from './setup.js';
 export * from './audit.js';
+export * from './vpn.js';
