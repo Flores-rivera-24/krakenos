@@ -1,4 +1,4 @@
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import type {
   CreatePeerRequest,
   CreatePeerResult,
@@ -7,19 +7,11 @@ import type {
   VpnStatus,
 } from '@krakenos/types';
 import QRCode from 'qrcode';
+import { buildClientConfig, wireguardKeypair } from './wireguard.helpers.js';
 
 interface MockVpnOptions {
   endpoint: string;
   listenPort: number;
-}
-
-/** Genera un par de claves X25519 en formato WireGuard (base64 de 32 bytes raw). */
-function wireguardKeypair(): { publicKey: string; privateKey: string } {
-  const { publicKey, privateKey } = generateKeyPairSync('x25519');
-  return {
-    publicKey: publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('base64'),
-    privateKey: privateKey.export({ type: 'pkcs8', format: 'der' }).subarray(-32).toString('base64'),
-  };
 }
 
 /**
@@ -63,19 +55,13 @@ export class MockVpnManager implements VpnManager {
     };
     this.peers.set(peer.id, peer);
 
-    const config = [
-      '[Interface]',
-      `PrivateKey = ${keys.privateKey}`,
-      `Address = ${address}/32`,
-      'DNS = 10.8.0.1',
-      '',
-      '[Peer]',
-      `PublicKey = ${this.server.publicKey}`,
-      `Endpoint = ${this.opts.endpoint}:${this.opts.listenPort}`,
-      'AllowedIPs = 0.0.0.0/0',
-      'PersistentKeepalive = 25',
-      '',
-    ].join('\n');
+    const config = buildClientConfig({
+      clientPrivateKey: keys.privateKey,
+      address,
+      dns: '10.8.0.1',
+      serverPublicKey: this.server.publicKey,
+      endpoint: `${this.opts.endpoint}:${this.opts.listenPort}`,
+    });
 
     const qr = await QRCode.toDataURL(config);
     return { peer, config: { config, qr } };

@@ -58,6 +58,16 @@ export const env = {
     kind: (process.env.VPN_KIND ?? 'mock') as 'mock' | 'wireguard',
     endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
     listenPort: int('VPN_LISTEN_PORT', 51820),
+    // Solo se usa cuando VPN_KIND=wireguard (gestor real).
+    wireguard: {
+      interface: process.env.WG_INTERFACE ?? 'wg0',
+      subnet: process.env.WG_SUBNET ?? '10.8.0.0/24',
+      dns: process.env.WG_DNS ?? '10.8.0.1',
+      helperPath: process.env.WG_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+      useSudo: (process.env.WG_USE_SUDO ?? 'true') !== 'false',
+      peerStorePath: process.env.WG_PEER_STORE ?? resolve('data/wg-peers.json'),
+      serverPublicKey: process.env.WG_SERVER_PUBLIC_KEY || undefined,
+    },
   },
 
   iot: {

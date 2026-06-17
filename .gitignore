@@ -15,6 +15,9 @@ build/
 keys/
 certs/
 
+# Estado en runtime del agente (registro de peers WireGuard, etc.)
+data/
+
 # Database
 *.db
 *.db-journal

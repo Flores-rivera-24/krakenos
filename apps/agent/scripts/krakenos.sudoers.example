@@ -1,0 +1,13 @@
+# KrakenOS — regla sudoers para el helper privilegiado.
+#
+# Permite que el usuario del agente ejecute ÚNICAMENTE el helper como root, sin
+# contraseña. El helper aplica su propia allowlist (wg show/set, wg-quick save),
+# así que esta regla no concede acceso libre a wg/iptables/tc.
+#
+# Instalar (validando la sintaxis con visudo):
+#   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
+#   sudo visudo -cf /etc/sudoers.d/krakenos
+#
+# Sustituye `krakenos` por el usuario con el que corre el servicio del agente.
+
+krakenos ALL=(root) NOPASSWD: /usr/local/bin/krakenos-helper
