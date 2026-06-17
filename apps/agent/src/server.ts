@@ -15,6 +15,8 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
+import { TrafficService } from './modules/traffic/traffic.service.js';
+import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 
@@ -62,6 +64,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(systemRoutes, { prefix: '/api/system' });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(auditRoutes, { prefix: '/api/audit' });
+
+  // Monitor de tráfico: muestrea vía driver y emite por Socket.io.
+  const trafficService = new TrafficService(app, driver);
+  await app.register(trafficRoutes, { prefix: '/api/traffic', service: trafficService });
+  trafficService.start();
+  app.addHook('onClose', async () => trafficService.stop());
 
   return app;
 }
