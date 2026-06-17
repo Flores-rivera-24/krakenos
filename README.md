@@ -9,6 +9,8 @@ accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 > tiempo real con identificación automática y bloqueo, gestión de WiFi, dashboard
 > y ajustes con auditoría. HTTPS opcional para la LAN. **Fase 2 completa:** VPN
 > WireGuard, control IoT, cámaras, monitor de tráfico y WiFi multi-AP.
+> **Fase 3 completa:** estadísticas históricas de tráfico, firewall, VLANs, QoS y
+> DNS/bloqueo. Todo con el patrón **mock-first**.
 
 ## Estructura (monorepo pnpm)
 
@@ -40,15 +42,30 @@ de modo que todo funciona en desarrollo sin hardware real:
 - **Monitor de tráfico** — uso de la WAN en tiempo real.
 - **WiFi multi-AP** — access points, redes por AP y clientes conectados.
 
-> En producción, las integraciones reales sustituyen a los mocks: WireGuard/iptables vía
-> helper con sudoers, IoT (Zigbee/Matter), y RTSP transcodificado (HLS/WebRTC) para cámaras.
+## Fase 3
+
+Red avanzada, también **mock-first**:
+
+- **Estadísticas históricas** — rollups periódicos del tráfico WAN persistidos en SQLite,
+  con consultas por rango (1h/24h/7d) y total de datos consumidos.
+- **Firewall** — reglas allow/deny por origen, destino, protocolo y puerto.
+- **VLANs** — segmentación 802.1Q y asignación de dispositivos a cada segmento.
+- **QoS** — prioridad (alta/normal/baja) y límites de ancho de banda por dispositivo o servicio.
+- **DNS / Pi-hole** — bloqueo de dominios (anuncios/rastreadores) y estadísticas de consultas.
+
+> En producción, las integraciones reales sustituyen a los mocks: WireGuard/iptables/tc vía
+> helper con sudoers, switch gestionado para VLANs, Pi-hole para DNS, IoT (Zigbee/Matter) y
+> RTSP transcodificado (HLS/WebRTC) para cámaras.
 
 ## Arquitectura del agente
 
 - Los **drivers de hardware** (`apps/agent/src/drivers`) son adaptadores
   intercambiables (`mock`, `openwrt`, `pfsense`). El resto del agente sólo
   depende de la interfaz `HardwareDriver` de `@krakenos/types`.
-- Las operaciones privilegiadas (WireGuard, iptables) se delegarán a un helper
+- Las integraciones de Fase 2/3 siguen el mismo patrón: cada una (`VpnManager`,
+  `IotManager`, `CameraManager`, `FirewallManager`, `VlanManager`, `QosManager`,
+  `DnsManager`) se construye con una factory e inyecta su mock en desarrollo.
+- Las operaciones privilegiadas (WireGuard, iptables, tc) se delegarán a un helper
   separado vía sudoers (pendiente de implementar).
 
 ## Puesta en marcha
