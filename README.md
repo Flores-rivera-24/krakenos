@@ -7,7 +7,8 @@ accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 
 > **Estado:** MVP funcional — auth con wizard de primer arranque, inventario en
 > tiempo real con identificación automática y bloqueo, gestión de WiFi, dashboard
-> y ajustes con auditoría. HTTPS opcional para la LAN.
+> y ajustes con auditoría. HTTPS opcional para la LAN. **Fase 2 en curso:** VPN
+> WireGuard (gestión de peers + QR).
 
 ## Estructura (monorepo pnpm)
 
@@ -27,6 +28,12 @@ packages/
 - **WiFi** — SSID, contraseña y red de invitados vía drivers de hardware.
 - **Dashboard** — resumen de la red, estado del sistema (uptime/CPU/RAM) y actividad
   en tiempo real.
+
+## Fase 2 (en curso)
+
+- **VPN WireGuard** — el agente gestiona peers y genera el QR/config del cliente. En
+  desarrollo usa un gestor `mock` (claves X25519 reales, sin `wg` instalado); en
+  producción las operaciones privilegiadas van en un helper vía sudoers.
 
 ## Arquitectura del agente
 
