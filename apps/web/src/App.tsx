@@ -19,6 +19,7 @@ const VpnPage = lazy(() => import('@/pages/VpnPage').then((m) => ({ default: m.V
 const TrafficPage = lazy(() =>
   import('@/pages/TrafficPage').then((m) => ({ default: m.TrafficPage })),
 );
+const IotPage = lazy(() => import('@/pages/IotPage').then((m) => ({ default: m.IotPage })));
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -62,6 +63,7 @@ export function App() {
             <Route path="wifi" element={<WifiPage />} />
             <Route path="vpn" element={<VpnPage />} />
             <Route path="traffic" element={<TrafficPage />} />
+            <Route path="iot" element={<IotPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

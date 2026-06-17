@@ -28,12 +28,12 @@ const SECTIONS: NavItem[] = [
   { to: '/wifi', label: 'Red WiFi', icon: Wifi },
   { to: '/vpn', label: 'VPN', icon: KeyRound },
   { to: '/traffic', label: 'Tráfico', icon: Activity },
+  { to: '/iot', label: 'IoT', icon: Cpu },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
 /** Secciones de fases futuras, mostradas pero deshabilitadas. */
 const FUTURE: { label: string; icon: LucideIcon; phase: string }[] = [
-  { label: 'IoT', icon: Cpu, phase: 'F2' },
   { label: 'Firewall', icon: ShieldAlert, phase: 'F3' },
 ];
 
