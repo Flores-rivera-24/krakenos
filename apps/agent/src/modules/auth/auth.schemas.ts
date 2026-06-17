@@ -59,6 +59,12 @@ export const refreshSchema = {
   },
 } as const;
 
+export const statusSchema = {
+  response: {
+    200: userResponse,
+  },
+} as const;
+
 export const logoutSchema = {
   body: {
     type: 'object',

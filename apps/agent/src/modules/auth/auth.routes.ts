@@ -1,10 +1,18 @@
 import type { LoginRequest, RefreshRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { AuthError, AuthService } from './auth.service.js';
-import { loginSchema, logoutSchema, refreshSchema } from './auth.schemas.js';
+import { loginSchema, logoutSchema, refreshSchema, statusSchema } from './auth.schemas.js';
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const service = new AuthService(app);
+
+  app.get('/status', { schema: statusSchema, preHandler: app.authenticate }, async (req, reply) => {
+    const user = await service.getById(req.user.sub);
+    if (!user) {
+      return reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
+    }
+    return reply.send(user);
+  });
 
   app.post<{ Body: LoginRequest }>('/login', { schema: loginSchema }, async (req, reply) => {
     try {
