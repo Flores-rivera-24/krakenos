@@ -38,3 +38,7 @@ apps/web/.vite/
 
 # Test coverage
 coverage/
+
+# Documentos Word: la fuente versionada es SPECS.md
+~$*
+*.docx
