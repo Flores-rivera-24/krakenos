@@ -52,6 +52,19 @@ model RefreshToken {
   @@index([userId])
 }
 
+/// Rollup periódico (p. ej. 1/min) del uso de ancho de banda para estadísticas
+/// históricas. Cada fila es la media de las muestras del intervalo de rollup.
+model TrafficSample {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  /// Media de bytes/seg de descarga (entrada) en el intervalo.
+  rxBytesPerSec Float
+  /// Media de bytes/seg de subida (salida) en el intervalo.
+  txBytesPerSec Float
+
+  @@index([timestamp])
+}
+
 model Device {
   id        String   @id @default(cuid())
   mac       String   @unique
