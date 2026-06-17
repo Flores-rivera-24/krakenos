@@ -1,4 +1,5 @@
 import type { Device } from './inventory.js';
+import type { IotDevice } from './iot.js';
 import type { TrafficSample } from './traffic.js';
 
 /**
@@ -16,6 +17,10 @@ export interface ServerToClientEvents {
   'traffic:history': (samples: TrafficSample[]) => void;
   /** Nueva muestra de tráfico en tiempo real. */
   'traffic:sample': (sample: TrafficSample) => void;
+  /** Estado completo de dispositivos IoT tras (re)conexión. */
+  'iot:snapshot': (devices: IotDevice[]) => void;
+  /** Un dispositivo IoT cambió de estado. */
+  'iot:device-updated': (device: IotDevice) => void;
 }
 
 /** Eventos emitidos por el cliente hacia el agente. */
@@ -29,3 +34,6 @@ export const INVENTORY_ROOM = 'inventory';
 
 /** Nombre del room de Socket.io que recibe muestras de tráfico. */
 export const TRAFFIC_ROOM = 'traffic';
+
+/** Nombre del room de Socket.io que recibe cambios de dispositivos IoT. */
+export const IOT_ROOM = 'iot';

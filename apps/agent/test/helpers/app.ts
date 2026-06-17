@@ -7,12 +7,14 @@ import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
+import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
+import { MockIotManager } from '../../src/iot/mock.iot.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
@@ -58,6 +60,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(auditRoutes, { prefix: '/api/audit' });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
+    await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
   }
 
   await app.ready();

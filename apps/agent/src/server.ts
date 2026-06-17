@@ -5,6 +5,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { env } from './config/env.js';
 import { createDriver } from './drivers/index.js';
+import { createIotManager } from './iot/index.js';
 import { createVpnManager } from './vpn/index.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
@@ -14,6 +15,7 @@ import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
+import { iotRoutes } from './modules/iot/iot.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
 import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
@@ -48,6 +50,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     endpoint: env.vpn.endpoint,
     listenPort: env.vpn.listenPort,
   });
+  const iot = createIotManager({ kind: env.iot.kind });
 
   // Healthcheck público.
   app.get('/health', async () => ({
@@ -63,6 +66,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   await app.register(systemRoutes, { prefix: '/api/system' });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
+  await app.register(iotRoutes, { prefix: '/api/iot', iot });
   await app.register(auditRoutes, { prefix: '/api/audit' });
 
   // Monitor de tráfico: muestrea vía driver y emite por Socket.io.

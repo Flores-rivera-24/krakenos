@@ -60,6 +60,10 @@ export const env = {
     listenPort: int('VPN_LISTEN_PORT', 51820),
   },
 
+  iot: {
+    kind: (process.env.IOT_KIND ?? 'mock') as 'mock' | 'zigbee' | 'matter',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;
