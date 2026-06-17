@@ -39,6 +39,10 @@ apps/web/.vite/
 # Test coverage
 coverage/
 
-# Documentos Word: la fuente versionada es SPECS.md
+# Documentos Word
 ~$*
 *.docx
+
+# Documentación interna — no se publica en GitHub
+/SPECS.md
+/CLAUDE.md
