@@ -34,6 +34,9 @@ export interface HardwareDriver {
   /** Barrido ARP de la red local. */
   scanArp(): Promise<DiscoveredDevice[]>;
 
+  /** Descubrimiento mDNS (aporta hostnames y, a veces, dispositivos extra). */
+  scanMdns(): Promise<DiscoveredDevice[]>;
+
   /** Estado actual de la red WiFi principal. */
   getWifi(): Promise<WifiNetwork>;
 

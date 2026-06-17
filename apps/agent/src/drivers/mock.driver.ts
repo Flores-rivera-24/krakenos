@@ -36,10 +36,22 @@ export class MockDriver implements HardwareDriver {
   }
 
   async scanArp(): Promise<DiscoveredDevice[]> {
+    // MACs con OUIs reales; el fabricante lo resuelve el lookup OUI del agente.
     return [
-      { mac: 'aa:bb:cc:00:11:22', ip: '192.168.1.1', hostname: 'gateway', vendor: 'Ubiquiti', source: 'arp' },
-      { mac: 'de:ad:be:ef:00:01', ip: '192.168.1.42', hostname: 'desktop', vendor: 'Intel', source: 'arp' },
-      { mac: 'de:ad:be:ef:00:02', ip: '192.168.1.77', hostname: null, vendor: 'Espressif', source: 'arp' },
+      { mac: '24:5a:4c:11:22:33', ip: '192.168.1.1', source: 'arp' },
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', source: 'arp' },
+      { mac: '24:0a:c4:de:ad:01', ip: '192.168.1.77', source: 'arp' },
+      { mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50', source: 'arp' },
+    ];
+  }
+
+  async scanMdns(): Promise<DiscoveredDevice[]> {
+    // mDNS aporta hostnames y, a veces, un dispositivo extra (p. ej. un Chromecast).
+    return [
+      { mac: '24:5a:4c:11:22:33', ip: '192.168.1.1', hostname: 'gateway', source: 'mdns' },
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', hostname: 'macbook-emilio', source: 'mdns' },
+      { mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50', hostname: 'raspberrypi', source: 'mdns' },
+      { mac: 'd8:3a:dd:00:cc:01', ip: '192.168.1.90', hostname: 'chromecast-tv', source: 'mdns' },
     ];
   }
 
