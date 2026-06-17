@@ -13,7 +13,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { AlertsCard } from '@/components/dashboard/AlertsCard';
+import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { SystemCard } from '@/components/dashboard/SystemCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -42,6 +45,7 @@ export function DashboardPage() {
   const devices = useInventoryStore((s) => s.devices);
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
+  const recentEvents = useInventoryStore((s) => s.recentEvents);
 
   const [wifi, setWifi] = useState<WifiNetwork | null>(null);
   const [guest, setGuest] = useState<GuestNetwork | null>(null);
@@ -84,6 +88,8 @@ export function DashboardPage() {
       ],
     };
   }, [devices]);
+
+  const deviceList = useMemo(() => Object.values(devices), [devices]);
 
   return (
     <div className="space-y-6 p-6">
@@ -174,6 +180,12 @@ export function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <AlertsCard devices={deviceList} />
+        <SystemCard />
+        <RecentActivityCard events={recentEvents} />
       </div>
     </div>
   );
