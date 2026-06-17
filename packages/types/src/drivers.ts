@@ -1,10 +1,14 @@
 import type { DiscoveredDevice } from './inventory.js';
 import type { TrafficSample } from './traffic.js';
 import type {
+  AccessPoint,
   GuestNetwork,
   UpdateGuestNetworkRequest,
+  UpdateWifiNetworkRequest,
   UpdateWifiRequest,
+  WifiClient,
   WifiNetwork,
+  WifiNetworkInfo,
 } from './wifi.js';
 
 /** Implementaciones de driver de hardware disponibles. */
@@ -58,4 +62,21 @@ export interface HardwareDriver {
 
   /** Aplica cambios a la red de invitados. */
   updateGuestNetwork(input: UpdateGuestNetworkRequest): Promise<GuestNetwork>;
+
+  // ---- Multi-AP (Fase 2) ----
+
+  /** Lista los access points gestionados. */
+  listAccessPoints(): Promise<AccessPoint[]>;
+
+  /** Lista todas las redes (SSID) a través de los access points. */
+  listWifiNetworks(): Promise<WifiNetworkInfo[]>;
+
+  /** Devuelve una red por id, o `null` si no existe. */
+  getWifiNetwork(id: string): Promise<WifiNetworkInfo | null>;
+
+  /** Aplica cambios a una red concreta; `null` si no existe. */
+  updateWifiNetwork(id: string, input: UpdateWifiNetworkRequest): Promise<WifiNetworkInfo | null>;
+
+  /** Clientes conectados a una red; `null` si la red no existe. */
+  listNetworkClients(id: string): Promise<WifiClient[] | null>;
 }

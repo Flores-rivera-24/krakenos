@@ -2,6 +2,7 @@ import type { GuestNetwork, WifiNetwork } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { GuestNetworkCard } from '@/components/wifi/GuestNetworkCard';
 import { MainNetworkCard } from '@/components/wifi/MainNetworkCard';
+import { NetworksCard } from '@/components/wifi/NetworksCard';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -46,6 +47,8 @@ export function WifiPage() {
           <GuestNetworkCard network={guest} isAdmin={isAdmin} onUpdated={setGuest} />
         </div>
       )}
+
+      <NetworksCard />
     </div>
   );
 }
