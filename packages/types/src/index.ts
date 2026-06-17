@@ -13,3 +13,4 @@ export * from './iot.js';
 export * from './camera.js';
 export * from './firewall.js';
 export * from './vlan.js';
+export * from './qos.js';
