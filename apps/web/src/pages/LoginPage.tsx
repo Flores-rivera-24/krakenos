@@ -1,6 +1,8 @@
-import { useState, type FormEvent } from 'react';
+import type { SetupStatus } from '@krakenos/types';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
 export function LoginPage() {
@@ -10,6 +12,20 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Instalación nueva (sin usuarios) → al wizard de configuración.
+  useEffect(() => {
+    let active = true;
+    void api
+      .get<SetupStatus>('/setup/status')
+      .then((s) => {
+        if (active && s.needsSetup) navigate('/setup', { replace: true });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();

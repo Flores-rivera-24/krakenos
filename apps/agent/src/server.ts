@@ -9,6 +9,7 @@ import { prismaPlugin } from './plugins/prisma.js';
 import { socketioPlugin } from './plugins/socketio.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
+import { setupRoutes } from './modules/setup/setup.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 
@@ -39,6 +40,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   }));
 
   // Módulos del MVP.
+  await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });

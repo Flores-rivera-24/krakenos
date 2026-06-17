@@ -4,6 +4,7 @@ import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { PlaceholderPage } from '@/pages/PlaceholderPage';
+import { SetupPage } from '@/pages/SetupPage';
 import { WifiPage } from '@/pages/WifiPage';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -16,6 +17,7 @@ function RequireAuth() {
 export function App() {
   return (
     <Routes>
+      <Route path="/setup" element={<SetupPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppLayout />}>

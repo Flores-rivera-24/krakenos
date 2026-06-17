@@ -19,6 +19,13 @@ model User {
   updatedAt    DateTime       @updatedAt
 }
 
+/// Ajustes clave/valor del sistema (p. ej. nombre del hogar).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 /// Refresh tokens persistidos para permitir rotación y revocación.
 model RefreshToken {
   id        String   @id @default(cuid())
