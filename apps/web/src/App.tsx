@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { verifySession } from '@/lib/session';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -15,6 +17,24 @@ function RequireAuth() {
 }
 
 export function App() {
+  // Al recargar, valida la sesión persistida antes de renderizar las rutas.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    if (useAuthStore.getState().tokens) {
+      void verifySession().finally(() => setReady(true));
+    } else {
+      setReady(true);
+    }
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Cargando…</p>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       <Route path="/setup" element={<SetupPage />} />

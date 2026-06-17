@@ -79,6 +79,12 @@ export class AuthService {
     return { accessToken, refreshToken, expiresIn: env.accessTokenTtl };
   }
 
+  /** Devuelve el usuario actual por id (para verificar la sesión). */
+  async getById(id: string): Promise<User | null> {
+    const row = (await this.app.prisma.user.findUnique({ where: { id } })) as DbUser | null;
+    return row ? toUser(row) : null;
+  }
+
   async login(email: string, password: string): Promise<LoginResponse> {
     const user = (await this.app.prisma.user.findUnique({
       where: { email },
