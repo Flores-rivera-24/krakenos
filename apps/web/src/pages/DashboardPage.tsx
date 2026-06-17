@@ -19,18 +19,8 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { SystemCard } from '@/components/dashboard/SystemCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
+import { TYPE_LABELS } from '@/lib/devices';
 import { useInventoryStore } from '@/store/inventory.store';
-
-const TYPE_LABELS: Record<DeviceType, string> = {
-  router: 'Router',
-  computer: 'Ordenador',
-  phone: 'Móvil',
-  tablet: 'Tablet',
-  iot: 'IoT',
-  tv: 'TV',
-  printer: 'Impresora',
-  unknown: 'Desconocido',
-};
 
 /** Paleta consistente con el tema (HSL de las variables CSS). */
 const CHART_COLORS = ['#0ea5e9', '#22c55e', '#f59e0b', '#a855f7', '#ec4899', '#14b8a6', '#ef4444', '#64748b'];

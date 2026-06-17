@@ -25,6 +25,8 @@ export interface Device {
   hostname: string | null;
   /** Nombre asignado por el usuario (tiene prioridad en la UI). */
   label: string | null;
+  /** Notas libres del usuario sobre el dispositivo. */
+  notes: string | null;
   /** Fabricante derivado del OUI de la MAC. */
   vendor: string | null;
   type: DeviceType;
@@ -48,4 +50,5 @@ export interface DiscoveredDevice {
 export interface UpdateDeviceRequest {
   label?: string | null;
   type?: DeviceType;
+  notes?: string | null;
 }
