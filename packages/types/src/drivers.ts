@@ -37,6 +37,12 @@ export interface HardwareDriver {
   /** Descubrimiento mDNS (aporta hostnames y, a veces, dispositivos extra). */
   scanMdns(): Promise<DiscoveredDevice[]>;
 
+  /** Bloquea el acceso a la red del dispositivo con esa MAC. */
+  blockDevice(mac: string): Promise<void>;
+
+  /** Restaura el acceso a la red del dispositivo con esa MAC. */
+  unblockDevice(mac: string): Promise<void>;
+
   /** Estado actual de la red WiFi principal. */
   getWifi(): Promise<WifiNetwork>;
 

@@ -55,6 +55,17 @@ export class MockDriver implements HardwareDriver {
     ];
   }
 
+  /** Conjunto en memoria de MACs bloqueadas (el hardware real enviaría reglas al router). */
+  private readonly blocked = new Set<string>();
+
+  async blockDevice(mac: string): Promise<void> {
+    this.blocked.add(mac.toLowerCase());
+  }
+
+  async unblockDevice(mac: string): Promise<void> {
+    this.blocked.delete(mac.toLowerCase());
+  }
+
   async getWifi(): Promise<WifiNetwork> {
     return this.wifi;
   }

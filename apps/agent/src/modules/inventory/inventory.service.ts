@@ -18,6 +18,7 @@ interface DbDevice {
   vendor: string | null;
   type: string;
   notes: string | null;
+  isBlocked: boolean;
   online: boolean;
   sources: string;
   firstSeen: Date;
@@ -40,6 +41,7 @@ function toDevice(row: DbDevice): Device {
     notes: row.notes,
     vendor: row.vendor,
     type: row.type as DeviceType,
+    isBlocked: row.isBlocked,
     online: row.online,
     sources,
     firstSeen: row.firstSeen.toISOString(),
@@ -71,6 +73,24 @@ export class InventoryService {
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
       },
+    })) as DbDevice;
+
+    const device = toDevice(row);
+    this.app.io.emit('inventory:device-updated', device);
+    return device;
+  }
+
+  /** Bloquea o desbloquea el acceso a la red de un dispositivo (vía driver). */
+  async setBlocked(id: string, blocked: boolean): Promise<Device | null> {
+    const existing = (await this.app.prisma.device.findUnique({ where: { id } })) as DbDevice | null;
+    if (!existing) return null;
+
+    if (blocked) await this.driver.blockDevice(existing.mac);
+    else await this.driver.unblockDevice(existing.mac);
+
+    const row = (await this.app.prisma.device.update({
+      where: { id },
+      data: { isBlocked: blocked },
     })) as DbDevice;
 
     const device = toDevice(row);

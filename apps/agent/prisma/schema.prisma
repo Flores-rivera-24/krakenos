@@ -49,6 +49,7 @@ model Device {
   vendor    String?
   type      String   @default("unknown")
   notes     String?
+  isBlocked Boolean  @default(false)
   online    Boolean  @default(true)
   /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
   sources   String   @default("[]")

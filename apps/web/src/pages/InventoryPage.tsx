@@ -60,9 +60,13 @@ export function InventoryPage() {
                 <td className="px-4 py-2">{TYPE_LABELS[d.type]}</td>
                 <td className="px-4 py-2">{d.vendor ?? '—'}</td>
                 <td className="px-4 py-2">
-                  <span className={d.online ? 'text-primary' : 'text-muted-foreground'}>
-                    {d.online ? 'online' : 'offline'}
-                  </span>
+                  {d.isBlocked ? (
+                    <span className="text-destructive">bloqueado</span>
+                  ) : (
+                    <span className={d.online ? 'text-primary' : 'text-muted-foreground'}>
+                      {d.online ? 'online' : 'offline'}
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}
