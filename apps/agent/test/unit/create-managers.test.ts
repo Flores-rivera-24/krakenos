@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
+import { MockDnsManager, createDnsManager } from '../../src/dns/index.js';
 import { MockFirewallManager, createFirewallManager } from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, createQosManager } from '../../src/qos/index.js';
@@ -93,5 +94,19 @@ describe('createQosManager', () => {
 
   it('lanza para un kind desconocido', () => {
     expect(() => createQosManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
+  });
+});
+
+describe('createDnsManager', () => {
+  it('devuelve un MockDnsManager para kind "mock"', () => {
+    expect(createDnsManager({ kind: 'mock' })).toBeInstanceOf(MockDnsManager);
+  });
+
+  it('lanza para el gestor Pi-hole real (pendiente)', () => {
+    expect(() => createDnsManager({ kind: 'pihole' })).toThrow(/pi-?hole/i);
+  });
+
+  it('lanza para un kind desconocido', () => {
+    expect(() => createDnsManager({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
   });
 });

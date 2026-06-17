@@ -28,6 +28,7 @@ const FirewallPage = lazy(() =>
 );
 const VlanPage = lazy(() => import('@/pages/VlanPage').then((m) => ({ default: m.VlanPage })));
 const QosPage = lazy(() => import('@/pages/QosPage').then((m) => ({ default: m.QosPage })));
+const DnsPage = lazy(() => import('@/pages/DnsPage').then((m) => ({ default: m.DnsPage })));
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
@@ -76,6 +77,7 @@ export function App() {
             <Route path="firewall" element={<FirewallPage />} />
             <Route path="vlans" element={<VlanPage />} />
             <Route path="qos" element={<QosPage />} />
+            <Route path="dns" element={<DnsPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>

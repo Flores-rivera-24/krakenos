@@ -7,6 +7,7 @@ import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
+import { dnsRoutes } from '../../src/modules/dns/dns.routes.js';
 import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
 import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
 import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
@@ -19,6 +20,7 @@ import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
+import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
 import { MockQosManager } from '../../src/qos/mock.qos.js';
@@ -73,6 +75,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
+    await app.register(dnsRoutes, { prefix: '/api/dns', dns: new MockDnsManager() });
   }
 
   await app.ready();

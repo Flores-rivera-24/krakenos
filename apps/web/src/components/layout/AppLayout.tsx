@@ -3,6 +3,7 @@ import {
   Activity,
   Cpu,
   Gauge,
+  Globe,
   KeyRound,
   LayoutDashboard,
   Layers,
@@ -36,6 +37,7 @@ const SECTIONS: NavItem[] = [
   { to: '/firewall', label: 'Firewall', icon: ShieldAlert },
   { to: '/vlans', label: 'VLANs', icon: Layers },
   { to: '/qos', label: 'QoS', icon: Gauge },
+  { to: '/dns', label: 'DNS', icon: Globe },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 
