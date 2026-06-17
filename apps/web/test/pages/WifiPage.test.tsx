@@ -24,9 +24,11 @@ function setRole(role: 'admin' | 'viewer') {
 
 describe('WifiPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      Promise.resolve(path === '/wifi' ? WIFI : GUEST),
-    );
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/wifi') return Promise.resolve(WIFI);
+      if (path === '/wifi/guest') return Promise.resolve(GUEST);
+      return Promise.resolve([]); // /wifi/access-points, /wifi/networks
+    });
   });
 
   it('carga ambas redes y muestra las dos tarjetas', async () => {

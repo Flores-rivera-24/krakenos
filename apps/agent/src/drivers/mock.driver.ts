@@ -1,11 +1,15 @@
 import type {
+  AccessPoint,
   DiscoveredDevice,
   GuestNetwork,
   HardwareDriver,
   TrafficSample,
   UpdateGuestNetworkRequest,
+  UpdateWifiNetworkRequest,
   UpdateWifiRequest,
+  WifiClient,
   WifiNetwork,
+  WifiNetworkInfo,
 } from '@krakenos/types';
 
 /**
@@ -103,5 +107,58 @@ export class MockDriver implements HardwareDriver {
     const { password: _password, ...rest } = input;
     this.guest = { ...this.guest, ...rest, updatedAt: new Date().toISOString() };
     return this.guest;
+  }
+
+  // ---- Multi-AP (Fase 2) ----
+
+  private accessPoints: AccessPoint[] = [
+    { id: 'ap-salon', name: 'AP Salón', model: 'KrakenAP Pro', ip: '192.168.1.2', online: true, networkCount: 3 },
+    { id: 'ap-planta1', name: 'AP Planta 1', model: 'KrakenAP Lite', ip: '192.168.1.3', online: true, networkCount: 1 },
+  ];
+
+  private networks: WifiNetworkInfo[] = [
+    { id: 'net-salon-5', apId: 'ap-salon', ssid: 'KrakenOS', band: '5GHz', security: 'wpa2/wpa3', enabled: true, hidden: false, isGuest: false, clientCount: 4 },
+    { id: 'net-salon-24', apId: 'ap-salon', ssid: 'KrakenOS', band: '2.4GHz', security: 'wpa2/wpa3', enabled: true, hidden: false, isGuest: false, clientCount: 2 },
+    { id: 'net-salon-guest', apId: 'ap-salon', ssid: 'KrakenOS-Invitados', band: '2.4GHz', security: 'wpa2', enabled: false, hidden: false, isGuest: true, clientCount: 0 },
+    { id: 'net-planta1-5', apId: 'ap-planta1', ssid: 'KrakenOS', band: '5GHz', security: 'wpa2/wpa3', enabled: true, hidden: false, isGuest: false, clientCount: 1 },
+  ];
+
+  private clientsByNetwork: Record<string, WifiClient[]> = {
+    'net-salon-5': [
+      { mac: 'f0:18:98:aa:bb:cc', hostname: 'macbook-emilio', ip: '192.168.1.42', signalDbm: -48 },
+      { mac: 'dc:a6:32:de:ad:02', hostname: 'raspberrypi', ip: '192.168.1.50', signalDbm: -61 },
+    ],
+    'net-salon-24': [{ mac: '24:0a:c4:de:ad:01', hostname: null, ip: '192.168.1.77', signalDbm: -70 }],
+    'net-planta1-5': [{ mac: 'd8:3a:dd:00:cc:01', hostname: 'chromecast-tv', ip: '192.168.1.90', signalDbm: -55 }],
+  };
+
+  async listAccessPoints(): Promise<AccessPoint[]> {
+    return this.accessPoints;
+  }
+
+  async listWifiNetworks(): Promise<WifiNetworkInfo[]> {
+    return this.networks;
+  }
+
+  async getWifiNetwork(id: string): Promise<WifiNetworkInfo | null> {
+    return this.networks.find((n) => n.id === id) ?? null;
+  }
+
+  async updateWifiNetwork(
+    id: string,
+    input: UpdateWifiNetworkRequest,
+  ): Promise<WifiNetworkInfo | null> {
+    const idx = this.networks.findIndex((n) => n.id === id);
+    if (idx === -1) return null;
+    const { password: _password, ...rest } = input;
+    const current = this.networks[idx]!;
+    const updated: WifiNetworkInfo = { ...current, ...rest };
+    this.networks[idx] = updated;
+    return updated;
+  }
+
+  async listNetworkClients(id: string): Promise<WifiClient[] | null> {
+    if (!this.networks.some((n) => n.id === id)) return null;
+    return this.clientsByNetwork[id] ?? [];
   }
 }
