@@ -66,7 +66,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     listenPort: env.vpn.listenPort,
     wireguard: env.vpn.wireguard,
   });
-  const iot = createIotManager({ kind: env.iot.kind });
+  const iot = createIotManager({ kind: env.iot.kind, zigbee: env.iot.zigbee });
   const cameras = createCameraManager({ kind: env.cameras.kind });
   const firewall = createFirewallManager({
     kind: env.firewall.kind,
