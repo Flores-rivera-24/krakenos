@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MockDriver, OpenWrtDriver, createDriver } from '../../src/drivers/index.js';
+import { MockDriver, OpenWrtDriver, PfSenseDriver, createDriver } from '../../src/drivers/index.js';
 
 const OPENWRT = {
   wanInterface: 'wan',
@@ -26,8 +26,23 @@ describe('createDriver', () => {
     ).toThrow(/DRIVER_HOST/);
   });
 
-  it('lanza para el driver pfSense (pendiente)', () => {
+  it('construye un PfSenseDriver con su configuración REST', () => {
+    const driver = createDriver({
+      kind: 'pfsense',
+      pfsense: { baseUrl: 'https://192.168.1.1', apiKey: 'KEY' },
+    });
+    expect(driver).toBeInstanceOf(PfSenseDriver);
+    expect(driver.kind).toBe('pfsense');
+  });
+
+  it('lanza si falta la configuración pfSense, el host o la API key', () => {
     expect(() => createDriver({ kind: 'pfsense' })).toThrow(/pfSense/);
+    expect(() => createDriver({ kind: 'pfsense', pfsense: { baseUrl: '', apiKey: 'K' } })).toThrow(
+      /DRIVER_HOST/,
+    );
+    expect(() =>
+      createDriver({ kind: 'pfsense', pfsense: { baseUrl: 'https://x', apiKey: '' } }),
+    ).toThrow(/PFSENSE_API_KEY/);
   });
 
   it('lanza para un kind desconocido', () => {

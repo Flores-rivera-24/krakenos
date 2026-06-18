@@ -85,6 +85,9 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
 - **Driver OpenWrt real** (`DRIVER_KIND=openwrt`) — inventario, tráfico, bloqueo y WiFi reales contra
   un router OpenWrt vía **SSH+UCI** (`node-ssh`). Descubre por ARP/mDNS/leases, muestrea
   `/proc/net/dev`, bloquea por regla `iptables` de MAC y opera la WiFi con `uci`/`iwinfo`.
+- **Driver pfSense real** (`DRIVER_KIND=pfsense`) — inventario, tráfico y bloqueo reales contra un
+  pfSense vía su **REST API v2** (paquete pfSense API). Descubre por ARP + leases DHCP, muestrea los
+  contadores de la WAN y bloquea creando una regla de firewall. El WiFi se gestiona en los AP aparte.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -94,10 +97,11 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables / QOS_KIND=tc + sus variables WG_*/FW_*/TC_*
 # DNS Pi-hole (sin helper): DNS_KIND=pihole + PIHOLE_URL/PIHOLE_PASSWORD
 # Driver OpenWrt (sin helper, vía SSH): DRIVER_KIND=openwrt + DRIVER_HOST/OPENWRT_* (requiere node-ssh)
+# Driver pfSense (sin helper, vía REST): DRIVER_KIND=pfsense + DRIVER_HOST/PFSENSE_API_KEY
 ```
 
-> El resto de integraciones reales (driver pfSense, VLANs por switch, contadores WAN) están
-> en el backlog y reutilizan el mismo patrón de transporte inyectable.
+> El resto de integraciones reales (VLANs por switch, contadores WAN, IoT, cámaras) están en el
+> backlog y reutilizan el mismo patrón de transporte inyectable.
 
 ## Puesta en marcha
 

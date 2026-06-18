@@ -2,6 +2,8 @@ import type { DriverKind, HardwareDriver } from '@krakenos/types';
 import { MockDriver } from './mock.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
+import { PfSenseDriver } from './pfsense.driver.js';
+import { PfSenseClient } from './pfsense.transport.js';
 
 /** Config SSH+UCI para el driver OpenWrt real (`kind: 'openwrt'`). */
 export interface OpenWrtDriverConfig {
@@ -18,12 +20,26 @@ export interface OpenWrtDriverConfig {
   };
 }
 
+/** Config para el driver pfSense real (`kind: 'pfsense'`, REST API v2). */
+export interface PfSenseDriverConfig {
+  /** URL base, p. ej. `https://192.168.1.1`. */
+  baseUrl: string;
+  /** API key del paquete REST API de pfSense. */
+  apiKey: string;
+  /** Interfaz WAN para el muestreo de tráfico (por defecto `wan`). */
+  wanInterface?: string;
+  /** Interfaz donde se crean las reglas de bloqueo (por defecto `lan`). */
+  lanInterface?: string;
+}
+
 export interface CreateDriverConfig {
   kind: DriverKind;
   /** Host/IP del dispositivo (display + SSH). */
   host?: string;
   /** Requerido cuando `kind === 'openwrt'`. */
   openwrt?: OpenWrtDriverConfig;
+  /** Requerido cuando `kind === 'pfsense'`. */
+  pfsense?: PfSenseDriverConfig;
 }
 
 /**
@@ -46,8 +62,17 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? ow.ssh.host,
       });
     }
-    case 'pfsense':
-      throw new Error('Driver pfSense aún no implementado');
+    case 'pfsense': {
+      const pf = config.pfsense;
+      if (!pf) throw new Error('Falta la configuración pfSense (CreateDriverConfig.pfsense)');
+      if (!pf.baseUrl) throw new Error('El driver pfSense requiere DRIVER_HOST (URL/host del router)');
+      if (!pf.apiKey) throw new Error('El driver pfSense requiere PFSENSE_API_KEY');
+      return new PfSenseDriver({
+        client: new PfSenseClient({ baseUrl: pf.baseUrl, apiKey: pf.apiKey }),
+        wanInterface: pf.wanInterface,
+        lanInterface: pf.lanInterface,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -58,3 +83,5 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
 export { MockDriver } from './mock.driver.js';
 export { OpenWrtDriver } from './openwrt.driver.js';
 export { SshTransport } from './openwrt.transport.js';
+export { PfSenseDriver } from './pfsense.driver.js';
+export { PfSenseClient } from './pfsense.transport.js';

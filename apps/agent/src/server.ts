@@ -58,6 +58,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     kind: env.driver.kind,
     host: env.driver.host,
     openwrt: env.driver.openwrt,
+    pfsense: env.driver.pfsense,
   });
   const vpn = createVpnManager({
     kind: env.vpn.kind,
