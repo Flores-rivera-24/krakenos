@@ -7,7 +7,7 @@ import {
   createFirewallManager,
 } from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
-import { MockQosManager, createQosManager } from '../../src/qos/index.js';
+import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
@@ -119,8 +119,21 @@ describe('createQosManager', () => {
     expect(createQosManager({ kind: 'mock' })).toBeInstanceOf(MockQosManager);
   });
 
-  it('lanza para el gestor tc real (pendiente)', () => {
+  it('lanza si falta la configuración tc', () => {
     expect(() => createQosManager({ kind: 'tc' })).toThrow(/tc|QoS/i);
+  });
+
+  it('devuelve un TcQosManager con su configuración', () => {
+    const qos = createQosManager({
+      kind: 'tc',
+      tc: {
+        interface: 'eth0',
+        linkKbit: 1_000_000,
+        helperPath: '/usr/local/bin/krakenos-helper',
+        ruleStorePath: '/tmp/krakenos-qos.json',
+      },
+    });
+    expect(qos).toBeInstanceOf(TcQosManager);
   });
 
   it('lanza para un kind desconocido', () => {

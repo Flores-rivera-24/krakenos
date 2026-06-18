@@ -36,6 +36,11 @@ describe('krakenos-helper allowlist', () => {
     expect(code).toBe(64);
   });
 
+  it('rechaza un objeto tc fuera de la allowlist', async () => {
+    const { code } = await runHelper(['tc', '-help']);
+    expect(code).toBe(64);
+  });
+
   it('rechaza una invocación sin argumentos', async () => {
     const { code } = await runHelper([]);
     expect(code).toBe(64);

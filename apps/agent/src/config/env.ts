@@ -95,6 +95,14 @@ export const env = {
 
   qos: {
     kind: (process.env.QOS_KIND ?? 'mock') as 'mock' | 'tc',
+    // Solo se usa cuando QOS_KIND=tc (gestor real).
+    tc: {
+      interface: process.env.TC_INTERFACE ?? 'eth0',
+      linkKbit: int('TC_LINK_KBIT', 1_000_000),
+      helperPath: process.env.TC_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+      useSudo: (process.env.TC_USE_SUDO ?? 'true') !== 'false',
+      ruleStorePath: process.env.TC_RULE_STORE ?? resolve('data/qos-rules.json'),
+    },
   },
 
   dns: {

@@ -2,8 +2,8 @@
 #
 # Permite que el usuario del agente ejecute ÚNICAMENTE el helper como root, sin
 # contraseña. El helper aplica su propia allowlist (wg show/set, wg-quick save,
-# iptables sobre la cadena dedicada), así que esta regla no concede acceso libre
-# a wg/iptables/tc.
+# iptables sobre la cadena dedicada, tc qdisc/class/filter), así que esta regla
+# no concede acceso libre a wg/iptables/tc.
 #
 # Instalar (validando la sintaxis con visudo):
 #   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
