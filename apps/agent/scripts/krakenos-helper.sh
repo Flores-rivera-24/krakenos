@@ -36,6 +36,14 @@ case "$cmd" in
       *) deny "wg-quick $sub" ;;
     esac
     ;;
+  iptables)
+    # Solo operaciones de cadena/regla usadas por el firewall (US-19).
+    op="${1:-}"
+    case "$op" in
+      -N|-F|-A|-D|-C|-L) exec iptables "$@" ;;
+      *) deny "iptables $op" ;;
+    esac
+    ;;
   *)
     deny "$cmd"
     ;;
