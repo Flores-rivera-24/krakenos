@@ -107,6 +107,11 @@ export const env = {
 
   dns: {
     kind: (process.env.DNS_KIND ?? 'mock') as 'mock' | 'pihole',
+    // Solo se usa cuando DNS_KIND=pihole (gestor real, API REST de Pi-hole v6).
+    pihole: {
+      baseUrl: process.env.PIHOLE_URL ?? 'http://pi.hole',
+      password: process.env.PIHOLE_PASSWORD || undefined,
+    },
   },
 
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */

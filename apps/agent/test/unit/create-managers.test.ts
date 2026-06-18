@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
-import { MockDnsManager, createDnsManager } from '../../src/dns/index.js';
+import { MockDnsManager, PiholeDnsManager, createDnsManager } from '../../src/dns/index.js';
 import {
   IptablesFirewallManager,
   MockFirewallManager,
@@ -146,8 +146,16 @@ describe('createDnsManager', () => {
     expect(createDnsManager({ kind: 'mock' })).toBeInstanceOf(MockDnsManager);
   });
 
-  it('lanza para el gestor Pi-hole real (pendiente)', () => {
+  it('lanza si falta la configuración Pi-hole', () => {
     expect(() => createDnsManager({ kind: 'pihole' })).toThrow(/pi-?hole/i);
+  });
+
+  it('devuelve un PiholeDnsManager con su configuración', () => {
+    const dns = createDnsManager({
+      kind: 'pihole',
+      pihole: { baseUrl: 'http://pi.hole', password: 'secret' },
+    });
+    expect(dns).toBeInstanceOf(PiholeDnsManager);
   });
 
   it('lanza para un kind desconocido', () => {
