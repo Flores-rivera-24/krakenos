@@ -125,6 +125,13 @@ export const env = {
 
   vlan: {
     kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
+    // Solo se usa cuando VLAN_KIND=switch (switch gestionado vía SNMP).
+    switch: {
+      host: process.env.VLAN_SWITCH_HOST ?? '',
+      community: process.env.VLAN_SWITCH_COMMUNITY ?? 'private',
+      port: int('VLAN_SWITCH_SNMP_PORT', 161),
+      storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
+    },
   },
 
   qos: {
