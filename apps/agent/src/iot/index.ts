@@ -45,8 +45,12 @@ export function createIotManager(config: IotConfig): IotManager {
         transport: new MqttClientTransport({ url: zb.url, username: zb.username, password: zb.password }),
         baseTopic: zb.baseTopic,
       });
-      // Suscripción en segundo plano; los errores de conexión se reflejan en `reachable`.
-      void manager.start();
+      // Suscripción en segundo plano; un fallo de conexión no debe tumbar el
+      // proceso (queda como lista vacía / dispositivos no reachable), así que se
+      // captura el rechazo en lugar de dejarlo como unhandled rejection.
+      manager.start().catch((err: unknown) => {
+        console.error('[iot:zigbee] no se pudo conectar a MQTT:', (err as Error).message);
+      });
       return manager;
     }
     case 'matter': {

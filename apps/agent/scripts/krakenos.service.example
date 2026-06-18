@@ -1,0 +1,38 @@
+# Unidad systemd para correr KrakenOS como servicio persistente.
+#
+# Instalación (una vez):
+#   1. Despliega el repo en /opt/krakenos y deja listo el build + .env + keys:
+#        cd /opt/krakenos && ./scripts/prod.sh      # Ctrl-C tras el primer arranque OK
+#      (o ejecuta los pasos de prod.sh hasta el build; el ExecStart de abajo arranca el agente ya construido)
+#   2. Crea el usuario de servicio:  sudo useradd --system --home /opt/krakenos krakenos
+#      y dale permiso de lectura/escritura sobre /opt/krakenos (DB, keys, data/).
+#   3. Copia esta unidad y arráncala:
+#        sudo cp apps/agent/scripts/krakenos.service.example /etc/systemd/system/krakenos.service
+#        sudo systemctl daemon-reload
+#        sudo systemctl enable --now krakenos
+#   4. Logs:  journalctl -u krakenos -f
+#
+# El agente lee su .env desde WorkingDirectory (dotenv) y sirve API + UI en un
+# único puerto (PORT del .env, por defecto 3001). Las operaciones privilegiadas
+# (WireGuard/iptables/tc) NO corren como root: van por el helper vía sudoers (US-18..20).
+
+[Unit]
+Description=KrakenOS — Home Control
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=krakenos
+WorkingDirectory=/opt/krakenos/apps/agent
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node /opt/krakenos/apps/agent/dist/index.js
+Restart=on-failure
+RestartSec=5
+# Endurecimiento básico (ajusta si usas integraciones que tocan el sistema):
+NoNewPrivileges=false
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

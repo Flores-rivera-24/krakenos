@@ -159,6 +159,16 @@ export const env = {
     },
   },
 
+  /**
+   * Servido del frontend compilado desde el propio agente (API + UI en un único
+   * puerto). Activo por defecto; en desarrollo (Vite en :5173) se desactiva con
+   * `SERVE_WEB=false`. La ruta por defecto asume cwd = `apps/agent`.
+   */
+  web: {
+    serve: process.env.SERVE_WEB !== 'false',
+    distPath: process.env.WEB_DIST_PATH ?? resolve('../web/dist'),
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 } as const;
