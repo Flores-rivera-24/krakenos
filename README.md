@@ -82,6 +82,9 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   registro de reglas. Esquema baseline (egress, objetivos por IP) que se afina en el despliegue.
 - **DNS Pi-hole real** (`DNS_KIND=pihole`) — gestiona la blocklist y lee las estadísticas/consultas
   contra la **API REST de Pi-hole (v6)**, autenticando por sesión. Es HTTP, así que no usa el helper.
+- **Driver OpenWrt real** (`DRIVER_KIND=openwrt`) — inventario, tráfico, bloqueo y WiFi reales contra
+  un router OpenWrt vía **SSH+UCI** (`node-ssh`). Descubre por ARP/mDNS/leases, muestrea
+  `/proc/net/dev`, bloquea por regla `iptables` de MAC y opera la WiFi con `uci`/`iwinfo`.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -90,9 +93,10 @@ sudo install -m 0755 apps/agent/scripts/krakenos-helper.sh /usr/local/bin/kraken
 sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/krakenos
 # en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables / QOS_KIND=tc + sus variables WG_*/FW_*/TC_*
 # DNS Pi-hole (sin helper): DNS_KIND=pihole + PIHOLE_URL/PIHOLE_PASSWORD
+# Driver OpenWrt (sin helper, vía SSH): DRIVER_KIND=openwrt + DRIVER_HOST/OPENWRT_* (requiere node-ssh)
 ```
 
-> El resto de integraciones reales (driver OpenWrt/pfSense, VLANs por switch, contadores WAN) están
+> El resto de integraciones reales (driver pfSense, VLANs por switch, contadores WAN) están
 > en el backlog y reutilizan el mismo patrón de transporte inyectable.
 
 ## Puesta en marcha

@@ -54,7 +54,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(socketioPlugin);
 
   // Driver de hardware compartido por los módulos que lo necesitan.
-  const driver = createDriver({ kind: env.driver.kind, host: env.driver.host });
+  const driver = createDriver({
+    kind: env.driver.kind,
+    host: env.driver.host,
+    openwrt: env.driver.openwrt,
+  });
   const vpn = createVpnManager({
     kind: env.vpn.kind,
     endpoint: env.vpn.endpoint,

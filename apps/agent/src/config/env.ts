@@ -52,6 +52,20 @@ export const env = {
   driver: {
     kind: driverKind,
     host: process.env.DRIVER_HOST || undefined,
+    // Solo se usa cuando DRIVER_KIND=openwrt (driver real vía SSH+UCI).
+    openwrt: {
+      wanInterface: process.env.OPENWRT_WAN_IFACE ?? 'wan',
+      guestNetwork: process.env.OPENWRT_GUEST_NETWORK ?? 'guest',
+      ssh: {
+        host: process.env.DRIVER_HOST ?? '',
+        port: int('OPENWRT_SSH_PORT', 22),
+        username: process.env.OPENWRT_SSH_USER ?? 'root',
+        password: process.env.OPENWRT_SSH_PASSWORD || undefined,
+        privateKey: process.env.OPENWRT_SSH_KEY_PATH
+          ? readFileSync(resolve(process.env.OPENWRT_SSH_KEY_PATH), 'utf8')
+          : undefined,
+      },
+    },
   },
 
   vpn: {
