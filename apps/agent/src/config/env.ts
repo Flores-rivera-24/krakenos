@@ -104,6 +104,12 @@ export const env = {
 
   cameras: {
     kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp',
+    // Solo se usa cuando CAMERAS_KIND=rtsp (snapshot vía ffmpeg).
+    rtsp: {
+      configPath: process.env.CAMERAS_CONFIG ?? resolve('data/cameras.json'),
+      ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
+      transport: process.env.CAMERAS_RTSP_TRANSPORT ?? 'tcp',
+    },
   },
 
   firewall: {

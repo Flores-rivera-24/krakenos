@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
+import { MockCameraManager, RtspCameraManager, createCameraManager } from '../../src/cameras/index.js';
 import { MockDnsManager, PiholeDnsManager, createDnsManager } from '../../src/dns/index.js';
 import {
   IptablesFirewallManager,
@@ -70,7 +70,15 @@ describe('createCameraManager', () => {
     expect(createCameraManager({ kind: 'mock' })).toBeInstanceOf(MockCameraManager);
   });
 
-  it('lanza para la fuente RTSP real (pendiente)', () => {
+  it('construye un RtspCameraManager con su configuración', () => {
+    const cameras = createCameraManager({
+      kind: 'rtsp',
+      rtsp: { configPath: '/tmp/krakenos-cameras-inexistente.json' },
+    });
+    expect(cameras).toBeInstanceOf(RtspCameraManager);
+  });
+
+  it('lanza si falta la configuración RTSP', () => {
     expect(() => createCameraManager({ kind: 'rtsp' })).toThrow(/RTSP/i);
   });
 
