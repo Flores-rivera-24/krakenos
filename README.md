@@ -95,6 +95,8 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   la URL RTSP) y snapshot capturando un fotograma del stream con **ffmpeg**.
 - **VLANs por switch reales** (`VLAN_KIND=switch`) — crea/borra VLANs 802.1Q en un switch gestionado vía
   **SNMP** (Q-BRIDGE-MIB), con los metadatos (nombre/subred/aislamiento) persistidos en un fichero.
+- **IoT Matter real** (`IOT_KIND=matter`) — controla dispositivos Matter vía la API WebSocket de
+  **python-matter-server**: lista nodos, enciende/apaga y atenúa por los clusters OnOff/LevelControl.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -108,10 +110,12 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # IoT Zigbee (vía MQTT): IOT_KIND=zigbee + ZIGBEE2MQTT_URL (requiere mqtt y un zigbee2mqtt)
 # Cámaras RTSP (vía ffmpeg): CAMERAS_KIND=rtsp + CAMERAS_CONFIG (requiere el binario ffmpeg)
 # VLANs por switch (vía SNMP): VLAN_KIND=switch + VLAN_SWITCH_HOST (requiere net-snmp)
+# IoT Matter (vía WebSocket): IOT_KIND=matter + MATTER_SERVER_URL (requiere ws y python-matter-server)
 ```
 
-> El resto de integraciones reales (IoT Matter) están en el backlog y reutilizan el mismo patrón
-> de transporte inyectable.
+> Todas las integraciones reales del backlog (US-18…US-27) están entregadas como código + unit tests
+> del contrato; la verificación end-to-end se hace en el despliegue con hardware. Lo único fuera del
+> contrato actual es el streaming continuo de cámaras (HLS/WebRTC).
 
 ## Puesta en marcha
 
