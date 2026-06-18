@@ -66,6 +66,13 @@ export const env = {
           : undefined,
       },
     },
+    // Solo se usa cuando DRIVER_KIND=pfsense (driver real vía REST API v2).
+    pfsense: {
+      baseUrl: process.env.PFSENSE_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      apiKey: process.env.PFSENSE_API_KEY ?? '',
+      wanInterface: process.env.PFSENSE_WAN_IFACE ?? 'wan',
+      lanInterface: process.env.PFSENSE_LAN_IFACE ?? 'lan',
+    },
   },
 
   vpn: {
