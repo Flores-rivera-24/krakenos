@@ -100,6 +100,10 @@ export const env = {
       username: process.env.ZIGBEE2MQTT_USERNAME || undefined,
       password: process.env.ZIGBEE2MQTT_PASSWORD || undefined,
     },
+    // Solo se usa cuando IOT_KIND=matter (python-matter-server, API WebSocket).
+    matter: {
+      url: process.env.MATTER_SERVER_URL ?? 'ws://localhost:5580/ws',
+    },
   },
 
   cameras: {

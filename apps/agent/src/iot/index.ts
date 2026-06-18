@@ -1,4 +1,6 @@
 import type { IotKind, IotManager } from '@krakenos/types';
+import { MatterIotManager } from './matter.iot.js';
+import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
 import { MqttClientTransport } from './mqtt.transport.js';
 import { ZigbeeIotManager } from './zigbee.iot.js';
@@ -13,10 +15,18 @@ export interface ZigbeeIotConfig {
   password?: string;
 }
 
+/** Config para la integración Matter real (`kind: 'matter'`, vía matter-server). */
+export interface MatterIotConfig {
+  /** URL WebSocket de python-matter-server, p. ej. `ws://localhost:5580/ws`. */
+  url: string;
+}
+
 export interface IotConfig {
   kind: IotKind;
   /** Requerido cuando `kind === 'zigbee'`. */
   zigbee?: ZigbeeIotConfig;
+  /** Requerido cuando `kind === 'matter'`. */
+  matter?: MatterIotConfig;
 }
 
 /**
@@ -39,8 +49,11 @@ export function createIotManager(config: IotConfig): IotManager {
       void manager.start();
       return manager;
     }
-    case 'matter':
-      throw new Error('Integración Matter aún no implementada');
+    case 'matter': {
+      const mt = config.matter;
+      if (!mt) throw new Error('Falta la configuración Matter (IotConfig.matter)');
+      return new MatterIotManager({ transport: new WebSocketTransport({ url: mt.url }) });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -50,3 +63,4 @@ export function createIotManager(config: IotConfig): IotManager {
 
 export { MockIotManager, IotError } from './mock.iot.js';
 export { ZigbeeIotManager } from './zigbee.iot.js';
+export { MatterIotManager } from './matter.iot.js';
