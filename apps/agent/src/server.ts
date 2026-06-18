@@ -68,7 +68,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     iptables: env.firewall.iptables,
   });
   const vlan = createVlanManager({ kind: env.vlan.kind });
-  const qos = createQosManager({ kind: env.qos.kind });
+  const qos = createQosManager({ kind: env.qos.kind, tc: env.qos.tc });
   const dns = createDnsManager({ kind: env.dns.kind });
 
   // Healthcheck público.

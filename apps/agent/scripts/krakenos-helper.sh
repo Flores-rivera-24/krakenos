@@ -44,6 +44,14 @@ case "$cmd" in
       *) deny "iptables $op" ;;
     esac
     ;;
+  tc)
+    # Solo objetos qdisc/class/filter usados por el QoS (US-20).
+    obj="${1:-}"
+    case "$obj" in
+      qdisc|class|filter) exec tc "$@" ;;
+      *) deny "tc $obj" ;;
+    esac
+    ;;
   *)
     deny "$cmd"
     ;;

@@ -78,17 +78,19 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   helper sudoers y persiste su registro en un fichero JSON.
 - **Firewall iptables real** (`FIREWALL_KIND=iptables`) — reconstruye una cadena dedicada
   (`KRAKENOS`) desde el registro de reglas en cada cambio, también vía el helper.
+- **QoS tc real** (`QOS_KIND=tc`) — moldea el tráfico (jerarquía HTB) de una interfaz desde el
+  registro de reglas. Esquema baseline (egress, objetivos por IP) que se afina en el despliegue.
 
 Para habilitarlos en un servidor real:
 
 ```bash
 sudo install -m 0755 apps/agent/scripts/krakenos-helper.sh /usr/local/bin/krakenos-helper
 sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/krakenos
-# en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables + sus variables WG_*/FW_*
+# en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables / QOS_KIND=tc + sus variables WG_*/FW_*/TC_*
 ```
 
-> El resto de integraciones reales (QoS tc, driver OpenWrt/pfSense, DNS Pi-hole, VLANs por
-> switch) están en el backlog y reutilizan el mismo patrón de helper + transporte inyectable.
+> El resto de integraciones reales (driver OpenWrt/pfSense, DNS Pi-hole, VLANs por switch) están
+> en el backlog y reutilizan el mismo patrón de helper + transporte inyectable.
 
 ## Puesta en marcha
 
