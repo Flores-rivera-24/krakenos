@@ -72,7 +72,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     kind: env.firewall.kind,
     iptables: env.firewall.iptables,
   });
-  const vlan = createVlanManager({ kind: env.vlan.kind });
+  const vlan = createVlanManager({ kind: env.vlan.kind, switch: env.vlan.switch });
   const qos = createQosManager({ kind: env.qos.kind, tc: env.qos.tc });
   const dns = createDnsManager({ kind: env.dns.kind, pihole: env.dns.pihole });
 

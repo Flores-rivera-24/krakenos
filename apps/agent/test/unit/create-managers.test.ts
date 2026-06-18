@@ -8,7 +8,7 @@ import {
 } from '../../src/firewall/index.js';
 import { MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
-import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
+import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
 
 const VPN_CONFIG = { endpoint: 'vpn.test', listenPort: 51820 } as const;
@@ -118,8 +118,19 @@ describe('createVlanManager', () => {
     expect(createVlanManager({ kind: 'mock' })).toBeInstanceOf(MockVlanManager);
   });
 
-  it('lanza para el gestor de switch real (pendiente)', () => {
+  it('construye un SwitchVlanManager con su configuración SNMP', () => {
+    const vlan = createVlanManager({
+      kind: 'switch',
+      switch: { host: '192.168.1.2', storePath: '/tmp/krakenos-vlans.json' },
+    });
+    expect(vlan).toBeInstanceOf(SwitchVlanManager);
+  });
+
+  it('lanza si falta la configuración del switch o el host', () => {
     expect(() => createVlanManager({ kind: 'switch' })).toThrow(/switch|VLAN/i);
+    expect(() =>
+      createVlanManager({ kind: 'switch', switch: { host: '', storePath: '/tmp/x.json' } }),
+    ).toThrow(/VLAN_SWITCH_HOST/);
   });
 
   it('lanza para un kind desconocido', () => {

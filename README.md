@@ -93,6 +93,8 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   publicando en `<base>/<id>/set`. El monitor de tráfico usa contadores WAN reales con un driver real.
 - **Cámaras RTSP reales** (`CAMERAS_KIND=rtsp`) — inventario por config (`CAMERAS_CONFIG`, sin exponer
   la URL RTSP) y snapshot capturando un fotograma del stream con **ffmpeg**.
+- **VLANs por switch reales** (`VLAN_KIND=switch`) — crea/borra VLANs 802.1Q en un switch gestionado vía
+  **SNMP** (Q-BRIDGE-MIB), con los metadatos (nombre/subred/aislamiento) persistidos en un fichero.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -105,10 +107,11 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # Driver pfSense (sin helper, vía REST): DRIVER_KIND=pfsense + DRIVER_HOST/PFSENSE_API_KEY
 # IoT Zigbee (vía MQTT): IOT_KIND=zigbee + ZIGBEE2MQTT_URL (requiere mqtt y un zigbee2mqtt)
 # Cámaras RTSP (vía ffmpeg): CAMERAS_KIND=rtsp + CAMERAS_CONFIG (requiere el binario ffmpeg)
+# VLANs por switch (vía SNMP): VLAN_KIND=switch + VLAN_SWITCH_HOST (requiere net-snmp)
 ```
 
-> El resto de integraciones reales (VLANs por switch, IoT Matter) están en el backlog y reutilizan
-> el mismo patrón de transporte inyectable.
+> El resto de integraciones reales (IoT Matter) están en el backlog y reutilizan el mismo patrón
+> de transporte inyectable.
 
 ## Puesta en marcha
 
