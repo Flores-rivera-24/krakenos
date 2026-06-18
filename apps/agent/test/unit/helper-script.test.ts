@@ -31,6 +31,11 @@ describe('krakenos-helper allowlist', () => {
     expect(code).toBe(64);
   });
 
+  it('rechaza una operación iptables fuera de la allowlist', async () => {
+    const { code } = await runHelper(['iptables', '--version']);
+    expect(code).toBe(64);
+  });
+
   it('rechaza una invocación sin argumentos', async () => {
     const { code } = await runHelper([]);
     expect(code).toBe(64);

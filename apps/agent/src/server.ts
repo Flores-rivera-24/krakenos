@@ -63,7 +63,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
   const iot = createIotManager({ kind: env.iot.kind });
   const cameras = createCameraManager({ kind: env.cameras.kind });
-  const firewall = createFirewallManager({ kind: env.firewall.kind });
+  const firewall = createFirewallManager({
+    kind: env.firewall.kind,
+    iptables: env.firewall.iptables,
+  });
   const vlan = createVlanManager({ kind: env.vlan.kind });
   const qos = createQosManager({ kind: env.qos.kind });
   const dns = createDnsManager({ kind: env.dns.kind });

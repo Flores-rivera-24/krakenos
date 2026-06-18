@@ -72,19 +72,23 @@ Red avanzada, también **mock-first**:
 ## Producción (integraciones reales)
 
 Sustitución incremental de los mocks por integraciones reales, seleccionadas por
-variable de entorno (`VPN_KIND`, `DRIVER_KIND`, …). El gestor **WireGuard real**
-(`VPN_KIND=wireguard`) ya está implementado: aplica peers con `wg`/`wg-quick` a través
-del helper sudoers y persiste su registro en un fichero JSON. Para usarlo en un servidor:
+variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implementados:
+
+- **WireGuard real** (`VPN_KIND=wireguard`) — aplica peers con `wg`/`wg-quick` vía el
+  helper sudoers y persiste su registro en un fichero JSON.
+- **Firewall iptables real** (`FIREWALL_KIND=iptables`) — reconstruye una cadena dedicada
+  (`KRAKENOS`) desde el registro de reglas en cada cambio, también vía el helper.
+
+Para habilitarlos en un servidor real:
 
 ```bash
 sudo install -m 0755 apps/agent/scripts/krakenos-helper.sh /usr/local/bin/krakenos-helper
 sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/krakenos
-# en apps/agent/.env: VPN_KIND=wireguard + WG_INTERFACE/WG_SUBNET/...
+# en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables + sus variables WG_*/FW_*
 ```
 
-> El resto de integraciones reales (driver OpenWrt/pfSense, firewall iptables, QoS tc,
-> DNS Pi-hole, VLANs por switch) están en el backlog y reutilizan el mismo patrón de
-> helper + transporte inyectable.
+> El resto de integraciones reales (QoS tc, driver OpenWrt/pfSense, DNS Pi-hole, VLANs por
+> switch) están en el backlog y reutilizan el mismo patrón de helper + transporte inyectable.
 
 ## Puesta en marcha
 

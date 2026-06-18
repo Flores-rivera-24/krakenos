@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MockCameraManager, createCameraManager } from '../../src/cameras/index.js';
 import { MockDnsManager, createDnsManager } from '../../src/dns/index.js';
-import { MockFirewallManager, createFirewallManager } from '../../src/firewall/index.js';
+import {
+  IptablesFirewallManager,
+  MockFirewallManager,
+  createFirewallManager,
+} from '../../src/firewall/index.js';
 import { MockIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
@@ -75,8 +79,20 @@ describe('createFirewallManager', () => {
     expect(createFirewallManager({ kind: 'mock' })).toBeInstanceOf(MockFirewallManager);
   });
 
-  it('lanza para el gestor iptables real (pendiente)', () => {
+  it('lanza si falta la configuración iptables', () => {
     expect(() => createFirewallManager({ kind: 'iptables' })).toThrow(/iptables/i);
+  });
+
+  it('devuelve un IptablesFirewallManager con su configuración', () => {
+    const fw = createFirewallManager({
+      kind: 'iptables',
+      iptables: {
+        chain: 'KRAKENOS',
+        helperPath: '/usr/local/bin/krakenos-helper',
+        ruleStorePath: '/tmp/krakenos-fw.json',
+      },
+    });
+    expect(fw).toBeInstanceOf(IptablesFirewallManager);
   });
 
   it('lanza para un kind desconocido', () => {

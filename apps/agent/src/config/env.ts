@@ -80,6 +80,13 @@ export const env = {
 
   firewall: {
     kind: (process.env.FIREWALL_KIND ?? 'mock') as 'mock' | 'iptables',
+    // Solo se usa cuando FIREWALL_KIND=iptables (gestor real).
+    iptables: {
+      chain: process.env.FW_CHAIN ?? 'KRAKENOS',
+      helperPath: process.env.FW_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+      useSudo: (process.env.FW_USE_SUDO ?? 'true') !== 'false',
+      ruleStorePath: process.env.FW_RULE_STORE ?? resolve('data/firewall-rules.json'),
+    },
   },
 
   vlan: {
