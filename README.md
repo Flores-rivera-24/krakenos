@@ -150,25 +150,38 @@ pnpm dev:agent                 # solo agente
 pnpm dev:web                   # solo web (requiere agente en :3001)
 ```
 
-### Producción
+### Producción — un solo comando
+
+En producción **el agente sirve también el frontend** (API + UI en un único
+puerto), así que todo el flujo cabe en un comando:
 
 ```bash
-# Build de todos los paquetes (crea dist/)
-pnpm build
-
-# Arrancar agente desde el bundle
-cd apps/agent
-node dist/index.js             # requiere .env y keys/ en el directorio
-
-# (Opcional) Servir el agente por HTTPS en la LAN:
-./scripts/gen-cert.sh          # cert autofirmado en ./certs (SAN: localhost + IP de LAN)
-# luego en .env: HTTPS_ENABLED=true   (en desarrollo se deja en HTTP)
-
-# Servir frontend en producción
-cd ../web
-pnpm preview                   # servidor local en :4173 (para probar)
-# en producción: servir web/dist/ con nginx o similar
+pnpm prod        # = ./scripts/prod.sh
 ```
+
+`scripts/prod.sh` encadena: instalar dependencias → generar claves JWT (si
+faltan) → crear `.env` desde `.env.example` (si falta) → `prisma migrate deploy`
+→ `pnpm build` (agente + web) → arrancar el agente en `NODE_ENV=production`
+sirviendo API y UI en `PORT` (por defecto `:3001`). En el primer arranque, la UI
+muestra el **wizard `/setup`** para crear el administrador (no hace falta seed).
+
+> Las integraciones reales se activan por variables de entorno en `.env` (ver
+> [Producción (integraciones reales)](#producción-integraciones-reales)); por
+> defecto todo arranca en modo `mock`, así que `pnpm prod` funciona sin hardware.
+
+**Servicio persistente (systemd).** Para que arranque solo y se reinicie, usa la
+unidad de ejemplo `apps/agent/scripts/krakenos.service.example` (instrucciones en
+su cabecera): build una vez y luego `systemctl enable --now krakenos`.
+
+**HTTPS opcional en la LAN:**
+
+```bash
+cd apps/agent && ./scripts/gen-cert.sh   # cert autofirmado en ./certs
+# luego en .env: HTTPS_ENABLED=true
+```
+
+> En **desarrollo** el frontend lo sirve Vite (`:5173`); pon `SERVE_WEB=false` en
+> el `.env` del agente para que no intente servir el build.
 
 ## Tests y CI
 
@@ -199,6 +212,7 @@ cada PR ejecuta install → genera claves JWT y el Prisma Client → `lint` →
 | `pnpm dev:agent` | solo agente en watch mode               |
 | `pnpm dev:web`   | solo web en dev server (requiere agente) |
 | `pnpm build`     | compilar/bundlear todos los paquetes    |
+| `pnpm prod`      | producción en un comando (build + migrar + arrancar API+UI) |
 | `pnpm test`      | tests (Vitest) de agente y web          |
 | `pnpm typecheck` | typecheck de todo el monorepo           |
 | `pnpm lint`      | ESLint                                  |

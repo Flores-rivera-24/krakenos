@@ -11,6 +11,7 @@
   "packageManager": "pnpm@9.12.0",
   "scripts": {
     "build": "pnpm -r build",
+    "prod": "bash scripts/prod.sh",
     "dev": "pnpm -r --parallel dev",
     "dev:agent": "pnpm --filter @krakenos/agent dev",
     "dev:web": "pnpm --filter @krakenos/web dev",

@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
@@ -16,6 +18,7 @@ import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { socketioPlugin } from './plugins/socketio.js';
+import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
@@ -103,6 +106,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(trafficRoutes, { prefix: '/api/traffic', service: trafficService });
   trafficService.start();
   app.addHook('onClose', async () => trafficService.stop());
+
+  // Sirve el frontend compilado en el mismo puerto (si está activado y construido).
+  if (env.web.serve && existsSync(resolve(env.web.distPath, 'index.html'))) {
+    registerWebStatic(app, env.web.distPath);
+    app.log.info(`Sirviendo frontend desde ${env.web.distPath}`);
+  } else if (env.web.serve) {
+    app.log.warn(`SERVE_WEB activo pero no hay build en ${env.web.distPath} (ejecuta "pnpm build")`);
+  }
 
   return app;
 }
