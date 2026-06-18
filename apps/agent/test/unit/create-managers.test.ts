@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { MockIotManager, createIotManager } from '../../src/iot/index.js';
+import { MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -50,7 +50,12 @@ describe('createIotManager', () => {
     expect(createIotManager({ kind: 'mock' })).toBeInstanceOf(MockIotManager);
   });
 
-  it('lanza para integraciones reales aún no implementadas', () => {
+  it('construye un ZigbeeIotManager con su configuración MQTT', () => {
+    const iot = createIotManager({ kind: 'zigbee', zigbee: { url: 'mqtt://localhost:1883' } });
+    expect(iot).toBeInstanceOf(ZigbeeIotManager);
+  });
+
+  it('lanza si falta la configuración Zigbee y para Matter (pendiente)', () => {
     expect(() => createIotManager({ kind: 'zigbee' })).toThrow(/Zigbee/i);
     expect(() => createIotManager({ kind: 'matter' })).toThrow(/Matter/i);
   });

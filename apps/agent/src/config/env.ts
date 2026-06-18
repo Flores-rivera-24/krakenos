@@ -93,6 +93,13 @@ export const env = {
 
   iot: {
     kind: (process.env.IOT_KIND ?? 'mock') as 'mock' | 'zigbee' | 'matter',
+    // Solo se usa cuando IOT_KIND=zigbee (zigbee2mqtt vía MQTT).
+    zigbee: {
+      url: process.env.ZIGBEE2MQTT_URL ?? 'mqtt://localhost:1883',
+      baseTopic: process.env.ZIGBEE2MQTT_BASE_TOPIC ?? 'zigbee2mqtt',
+      username: process.env.ZIGBEE2MQTT_USERNAME || undefined,
+      password: process.env.ZIGBEE2MQTT_PASSWORD || undefined,
+    },
   },
 
   cameras: {
