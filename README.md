@@ -80,17 +80,20 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   (`KRAKENOS`) desde el registro de reglas en cada cambio, también vía el helper.
 - **QoS tc real** (`QOS_KIND=tc`) — moldea el tráfico (jerarquía HTB) de una interfaz desde el
   registro de reglas. Esquema baseline (egress, objetivos por IP) que se afina en el despliegue.
+- **DNS Pi-hole real** (`DNS_KIND=pihole`) — gestiona la blocklist y lee las estadísticas/consultas
+  contra la **API REST de Pi-hole (v6)**, autenticando por sesión. Es HTTP, así que no usa el helper.
 
-Para habilitarlos en un servidor real:
+Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
 ```bash
 sudo install -m 0755 apps/agent/scripts/krakenos-helper.sh /usr/local/bin/krakenos-helper
 sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/krakenos
 # en apps/agent/.env: VPN_KIND=wireguard / FIREWALL_KIND=iptables / QOS_KIND=tc + sus variables WG_*/FW_*/TC_*
+# DNS Pi-hole (sin helper): DNS_KIND=pihole + PIHOLE_URL/PIHOLE_PASSWORD
 ```
 
-> El resto de integraciones reales (driver OpenWrt/pfSense, DNS Pi-hole, VLANs por switch) están
-> en el backlog y reutilizan el mismo patrón de helper + transporte inyectable.
+> El resto de integraciones reales (driver OpenWrt/pfSense, VLANs por switch, contadores WAN) están
+> en el backlog y reutilizan el mismo patrón de transporte inyectable.
 
 ## Puesta en marcha
 
