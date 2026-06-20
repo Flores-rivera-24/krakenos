@@ -51,6 +51,7 @@ describe('nodeToIotDevice', () => {
       reachable: true,
       on: true,
       brightness: 100,
+      color: null,
       reading: null,
     });
   });

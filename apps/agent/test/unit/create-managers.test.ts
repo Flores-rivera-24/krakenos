@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { HueIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -60,9 +60,15 @@ describe('createIotManager', () => {
     expect(iot).toBeInstanceOf(MatterIotManager);
   });
 
-  it('lanza si falta la configuración Zigbee o Matter', () => {
+  it('construye un HueIotManager con su configuración', () => {
+    const iot = createIotManager({ kind: 'hue', hue: { url: 'https://192.168.1.50', appKey: 'k' } });
+    expect(iot).toBeInstanceOf(HueIotManager);
+  });
+
+  it('lanza si falta la configuración Zigbee/Matter/Hue', () => {
     expect(() => createIotManager({ kind: 'zigbee' })).toThrow(/Zigbee/i);
     expect(() => createIotManager({ kind: 'matter' })).toThrow(/Matter/i);
+    expect(() => createIotManager({ kind: 'hue' })).toThrow(/Hue/i);
   });
 
   it('lanza para un kind desconocido', () => {

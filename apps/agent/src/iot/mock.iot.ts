@@ -17,12 +17,12 @@ export class MockIotManager implements IotManager {
 
   constructor() {
     const seed: IotDevice[] = [
-      { id: 'light-salon', name: 'Luz salón', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, reading: null },
-      { id: 'light-dormitorio', name: 'Luz dormitorio', kind: 'light', room: 'Dormitorio', reachable: true, on: false, brightness: 50, reading: null },
-      { id: 'plug-cafetera', name: 'Cafetera', kind: 'plug', room: 'Cocina', reachable: true, on: false, brightness: null, reading: null },
-      { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, reading: null },
-      { id: 'sensor-temp', name: 'Temperatura salón', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
-      { id: 'sensor-hum', name: 'Humedad', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, reading: { metric: 'humedad', value: 45, unit: '%' } },
+      { id: 'light-salon', name: 'Luz salón', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, color: { hex: '#ffae42', temperatureK: null }, reading: null },
+      { id: 'light-dormitorio', name: 'Luz dormitorio', kind: 'light', room: 'Dormitorio', reachable: true, on: false, brightness: 50, color: { hex: null, temperatureK: 2700 }, reading: null },
+      { id: 'plug-cafetera', name: 'Cafetera', kind: 'plug', room: 'Cocina', reachable: true, on: false, brightness: null, color: null, reading: null },
+      { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, color: null, reading: null },
+      { id: 'sensor-temp', name: 'Temperatura salón', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
+      { id: 'sensor-hum', name: 'Humedad', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'humedad', value: 45, unit: '%' } },
     ];
     for (const d of seed) this.devices.set(d.id, d);
   }
@@ -48,6 +48,13 @@ export class MockIotManager implements IotManager {
       next.brightness = input.brightness;
       // Ajustar brillo enciende la luz.
       if (input.on === undefined) next.on = input.brightness > 0;
+    }
+    // Color solo en luces con color (color !== null).
+    if (input.color !== undefined && device.kind === 'light' && device.color !== null) {
+      if (input.color.hex !== undefined) next.color = { hex: input.color.hex, temperatureK: null };
+      else if (input.color.temperatureK !== undefined) {
+        next.color = { hex: null, temperatureK: input.color.temperatureK };
+      }
     }
     this.devices.set(id, next);
     return next;

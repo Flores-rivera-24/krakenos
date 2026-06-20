@@ -92,7 +92,7 @@ export const env = {
   },
 
   iot: {
-    kind: (process.env.IOT_KIND ?? 'mock') as 'mock' | 'zigbee' | 'matter',
+    kind: (process.env.IOT_KIND ?? 'mock') as 'mock' | 'zigbee' | 'matter' | 'hue' | 'govee',
     // Solo se usa cuando IOT_KIND=zigbee (zigbee2mqtt vía MQTT).
     zigbee: {
       url: process.env.ZIGBEE2MQTT_URL ?? 'mqtt://localhost:1883',
@@ -103,6 +103,11 @@ export const env = {
     // Solo se usa cuando IOT_KIND=matter (python-matter-server, API WebSocket).
     matter: {
       url: process.env.MATTER_SERVER_URL ?? 'ws://localhost:5580/ws',
+    },
+    // Solo se usa cuando IOT_KIND=hue (Philips Hue bridge, CLIP API v2 local).
+    hue: {
+      url: process.env.HUE_BRIDGE_URL ?? '',
+      appKey: process.env.HUE_APP_KEY ?? '',
     },
   },
 

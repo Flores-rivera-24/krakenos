@@ -20,6 +20,8 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
       setDraft(null);
     }
   };
+  const commitColor = (hex: string) =>
+    void api.patch(`/iot/devices/${device.id}`, { color: { hex } });
 
   return (
     <Card>
@@ -68,6 +70,20 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
               onPointerUp={commitBrightness}
               onKeyUp={commitBrightness}
               className="w-full accent-primary disabled:opacity-50"
+            />
+          </div>
+        )}
+
+        {device.kind === 'light' && device.color !== null && (
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">Color</span>
+            <input
+              type="color"
+              aria-label="Color"
+              value={device.color.hex ?? '#ffffff'}
+              disabled={!isAdmin}
+              onChange={(e) => commitColor(e.target.value)}
+              className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent disabled:opacity-50"
             />
           </div>
         )}

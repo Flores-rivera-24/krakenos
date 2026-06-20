@@ -1,4 +1,6 @@
 import type { IotKind, IotManager } from '@krakenos/types';
+import { HueIotManager } from './hue.iot.js';
+import { HueClient } from './hue.transport.js';
 import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
@@ -21,12 +23,22 @@ export interface MatterIotConfig {
   url: string;
 }
 
+/** Config para la integración Philips Hue real (`kind: 'hue'`, CLIP API v2). */
+export interface HueIotConfig {
+  /** URL base del bridge, p. ej. `https://192.168.1.50`. */
+  url: string;
+  /** Application key (header `hue-application-key`). */
+  appKey: string;
+}
+
 export interface IotConfig {
   kind: IotKind;
   /** Requerido cuando `kind === 'zigbee'`. */
   zigbee?: ZigbeeIotConfig;
   /** Requerido cuando `kind === 'matter'`. */
   matter?: MatterIotConfig;
+  /** Requerido cuando `kind === 'hue'`. */
+  hue?: HueIotConfig;
 }
 
 /**
@@ -58,6 +70,15 @@ export function createIotManager(config: IotConfig): IotManager {
       if (!mt) throw new Error('Falta la configuración Matter (IotConfig.matter)');
       return new MatterIotManager({ transport: new WebSocketTransport({ url: mt.url }) });
     }
+    case 'hue': {
+      const hue = config.hue;
+      if (!hue) throw new Error('Falta la configuración Hue (IotConfig.hue)');
+      if (!hue.url) throw new Error('La integración Hue requiere HUE_BRIDGE_URL');
+      if (!hue.appKey) throw new Error('La integración Hue requiere HUE_APP_KEY');
+      return new HueIotManager({ client: new HueClient({ baseUrl: hue.url, appKey: hue.appKey }) });
+    }
+    case 'govee':
+      throw new Error('Integración Govee aún no implementada');
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -68,3 +89,4 @@ export function createIotManager(config: IotConfig): IotManager {
 export { MockIotManager, IotError } from './mock.iot.js';
 export { ZigbeeIotManager } from './zigbee.iot.js';
 export { MatterIotManager } from './matter.iot.js';
+export { HueIotManager } from './hue.iot.js';

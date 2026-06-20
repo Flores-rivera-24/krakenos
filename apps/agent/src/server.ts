@@ -69,7 +69,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     listenPort: env.vpn.listenPort,
     wireguard: env.vpn.wireguard,
   });
-  const iot = createIotManager({ kind: env.iot.kind, zigbee: env.iot.zigbee, matter: env.iot.matter });
+  const iot = createIotManager({
+    kind: env.iot.kind,
+    zigbee: env.iot.zigbee,
+    matter: env.iot.matter,
+    hue: env.iot.hue,
+  });
   const cameras = createCameraManager({ kind: env.cameras.kind, rtsp: env.cameras.rtsp });
   const firewall = createFirewallManager({
     kind: env.firewall.kind,
