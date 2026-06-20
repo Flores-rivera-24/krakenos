@@ -7,6 +7,8 @@ import { io as ioClient, type Socket } from 'socket.io-client';
 import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
+import { webauthnRoutes } from '../../src/modules/webauthn/webauthn.routes.js';
+import { WebAuthnService } from '../../src/webauthn/webauthn.service.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
 import { dnsRoutes } from '../../src/modules/dns/dns.routes.js';
 import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
@@ -76,6 +78,14 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     app.decorate('push', pushService);
     await app.register(setupRoutes, { prefix: '/api/setup' });
     await app.register(authRoutes, { prefix: '/api/auth' });
+    await app.register(webauthnRoutes, {
+      prefix: '/api/webauthn',
+      service: new WebAuthnService(app.prisma, {
+        rpName: 'KrakenOS',
+        rpID: 'localhost',
+        origin: 'http://localhost:5173',
+      }),
+    });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
@@ -108,6 +118,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.trafficSample.deleteMany();
   await app.prisma.deviceTrafficSample.deleteMany();
   await app.prisma.pushSubscription.deleteMany();
+  await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();

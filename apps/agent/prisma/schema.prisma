@@ -15,8 +15,30 @@ model User {
   passwordHash String
   role         String         @default("viewer") // 'admin' | 'viewer'
   refreshTokens RefreshToken[]
+  webAuthnCredentials WebAuthnCredential[]
+  /// Desafío WebAuthn temporal (base64url) durante registro/autenticación (US-50).
+  webAuthnChallenge    String?
+  /// Expiración del desafío WebAuthn (5 min); se invalida al completar.
+  webAuthnChallengeExp DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+}
+
+/// Passkey WebAuthn registrada por un usuario (2FA opcional, US-50).
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique // base64url
+  publicKey    Bytes             // clave pública del dispositivo
+  counter      Int      @default(0)
+  deviceType   String            // 'singleDevice' | 'multiDevice'
+  backedUp     Boolean  @default(false)
+  name         String            // nombre dado por el usuario: "iPhone", "YubiKey"
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
 }
 
 /// Ajustes clave/valor del sistema (p. ej. nombre del hogar).

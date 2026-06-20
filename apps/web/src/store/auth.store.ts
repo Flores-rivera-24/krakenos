@@ -1,12 +1,17 @@
-import type { AuthTokens, LoginResponse, User } from '@krakenos/types';
+import type { AuthTokens, LoginResponse, LoginResult, User } from '@krakenos/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
-  login: (email: string, password: string) => Promise<void>;
-  /** Establece la sesión a partir de una respuesta de login (p. ej. tras el wizard). */
+  /**
+   * Inicia sesión con email + contraseña. Si el usuario tiene passkey, devuelve
+   * `{ requiresWebAuthn: true }` sin establecer la sesión (el 2FA se completa
+   * aparte); en otro caso establece la sesión y devuelve `{ user, tokens }`.
+   */
+  login: (email: string, password: string) => Promise<LoginResult>;
+  /** Establece la sesión a partir de una respuesta de login (wizard o 2FA WebAuthn). */
   setSession: (data: LoginResponse) => void;
   /** Intenta refrescar el access token. Devuelve `true` si lo consigue. */
   refresh: () => Promise<boolean>;
@@ -31,8 +36,11 @@ export const useAuthStore = create<AuthState>()(
       tokens: null,
 
       login: async (email, password) => {
-        const data = await postJson<LoginResponse>('/auth/login', { email, password });
-        set({ user: data.user, tokens: data.tokens });
+        const data = await postJson<LoginResult>('/auth/login', { email, password });
+        if (!('requiresWebAuthn' in data)) {
+          set({ user: data.user, tokens: data.tokens });
+        }
+        return data;
       },
 
       setSession: (data) => set({ user: data.user, tokens: data.tokens }),

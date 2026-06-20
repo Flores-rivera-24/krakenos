@@ -1,15 +1,18 @@
-import type { AuthSession, SystemSettingKey } from '@krakenos/types';
+import type { AuthSession, SystemSettingKey, WebAuthnCredentialInfo } from '@krakenos/types';
+import { KeyRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { applyTheme, type Theme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
+import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
 
 const SELECT_CLASS =
@@ -27,6 +30,156 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <Label className="text-kr-secondary">{label}</Label>
       {children}
     </div>
+  );
+}
+
+/**
+ * Gestión de passkeys WebAuthn (2FA, US-50): listar, registrar y eliminar las
+ * passkeys del usuario actual. Las passkeys son un segundo factor; la contraseña
+ * sigue siendo el primer factor, así que se pueden eliminar sin restricción.
+ */
+function PasskeysCard() {
+  const supported = isWebAuthnSupported();
+  const [passkeys, setPasskeys] = useState<WebAuthnCredentialInfo[] | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+
+  const load = () => {
+    void api
+      .get<WebAuthnCredentialInfo[]>('/webauthn/credentials')
+      .then(setPasskeys)
+      .catch(() => setPasskeys([]));
+  };
+  useEffect(() => {
+    if (supported) load();
+  }, [supported]);
+
+  const register = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const options = await api.post<Parameters<typeof startRegistration>[0]>(
+        '/webauthn/register/options',
+      );
+      const attestation = await startRegistration(options);
+      await api.post('/webauthn/register/verify', {
+        response: attestation,
+        name: name.trim() || 'Passkey',
+      });
+      setName('');
+      setAdding(false);
+      load();
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'webauthn_cancelled'
+          ? 'Registro cancelado.'
+          : 'No se pudo registrar la passkey.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    setConfirmId(null);
+    await api.del(`/webauthn/credentials/${id}`);
+    load();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center gap-2 space-y-0">
+        <KeyRound className="h-5 w-5 text-kr-accent" />
+        <CardTitle>Passkeys</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!supported ? (
+          <p className="text-kr-sm text-kr-muted">Tu navegador no soporta passkeys.</p>
+        ) : (
+          <>
+            {passkeys === null ? (
+              <p className="py-2 text-kr-sm text-kr-muted">Cargando…</p>
+            ) : passkeys.length === 0 ? (
+              <p className="text-kr-sm text-kr-muted">
+                Sin passkeys registradas. Añade una para activar verificación en dos pasos al iniciar
+                sesión.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {passkeys.map((pk) => (
+                  <li
+                    key={pk.id}
+                    className="flex items-center justify-between rounded-md border border-kr px-3 py-2 text-kr-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-kr-primary">{pk.name}</span>
+                      <span className="text-kr-xs text-kr-muted">
+                        {pk.deviceType} · creada {new Date(pk.createdAt).toLocaleDateString()}
+                        {pk.lastUsedAt
+                          ? ` · usada ${new Date(pk.lastUsedAt).toLocaleDateString()}`
+                          : ' · sin uso'}
+                      </span>
+                    </span>
+                    {confirmId === pk.id ? (
+                      <span className="flex items-center gap-1">
+                        <Button variant="destructive" size="sm" onClick={() => void remove(pk.id)}>
+                          Confirmar
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
+                          Cancelar
+                        </Button>
+                      </span>
+                    ) : (
+                      <Button variant="ghost" size="sm" onClick={() => setConfirmId(pk.id)}>
+                        Eliminar
+                      </Button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {adding ? (
+              <div className="space-y-2 rounded-md border border-kr p-3">
+                <Label htmlFor="passkey-name" className="text-kr-secondary">
+                  Nombre para esta passkey
+                </Label>
+                <Input
+                  id="passkey-name"
+                  placeholder="MacBook, iPhone, YubiKey…"
+                  value={name}
+                  maxLength={64}
+                  onChange={(e) => setName(e.target.value)}
+                />
+                {error && <p className="text-kr-sm text-danger">{error}</p>}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setAdding(false);
+                      setError(null);
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button size="sm" disabled={busy} onClick={() => void register()}>
+                    {busy ? 'Registrando…' : 'Registrar'}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
+                Añadir passkey
+              </Button>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -140,6 +293,8 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           )}
         </CardContent>
       </Card>
+
+      <PasskeysCard />
 
       {isAdmin && (
         <Card className={cn('border-danger')}>

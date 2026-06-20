@@ -7,6 +7,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const apiMock = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), del: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+const webauthnMock = vi.hoisted(() => ({
+  isWebAuthnSupported: vi.fn(() => true),
+  startRegistration: vi.fn(),
+}));
+vi.mock('@/lib/webauthn', () => webauthnMock);
+
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -36,9 +42,14 @@ function renderSection(isAdmin = true) {
 
 describe('SecuritySection', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue(SESSIONS);
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        Promise.resolve(path === '/webauthn/credentials' ? [] : SESSIONS),
+      );
     apiMock.post.mockReset().mockResolvedValue(undefined);
     apiMock.del.mockReset().mockResolvedValue(undefined);
+    webauthnMock.isWebAuthnSupported.mockReset().mockReturnValue(true);
     useAuthStore.setState({
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
       tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
@@ -77,5 +88,20 @@ describe('SecuritySection', () => {
   it('un viewer no ve la zona de peligro', () => {
     renderSection(false);
     expect(screen.queryByText('Zona de peligro')).not.toBeInTheDocument();
+  });
+
+  it('la subsección "Passkeys" renderiza con lista vacía', async () => {
+    renderSection();
+    expect(screen.getByText('Passkeys')).toBeInTheDocument();
+    expect(await screen.findByText(/Sin passkeys registradas/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Añadir passkey' })).toBeInTheDocument();
+  });
+
+  it('el botón "Añadir passkey" no aparece si isWebAuthnSupported() es false', () => {
+    webauthnMock.isWebAuthnSupported.mockReturnValue(false);
+    renderSection();
+    expect(screen.getByText('Passkeys')).toBeInTheDocument();
+    expect(screen.getByText('Tu navegador no soporta passkeys.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Añadir passkey' })).not.toBeInTheDocument();
   });
 });

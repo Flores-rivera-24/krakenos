@@ -102,6 +102,43 @@ describe('rutas de autenticación', () => {
     expect(body).not.toHaveProperty('userId');
   });
 
+  it('login de usuario sin passkeys sigue emitiendo tokens (US-50)', async () => {
+    await seedUser(app, { email: 'nopk@krakenos.test', password: 'password123' });
+    const { status, body } = await login(app, 'nopk@krakenos.test', 'password123');
+    expect(status).toBe(200);
+    expect(body.tokens.accessToken).toBeTruthy();
+    expect(body.tokens.refreshToken).toBeTruthy();
+  });
+
+  it('login de usuario con passkeys devuelve { requiresWebAuthn } sin tokens (US-50)', async () => {
+    const user = await seedUser(app, { email: 'pk@krakenos.test', password: 'password123' });
+    await app.prisma.webAuthnCredential.create({
+      data: {
+        userId: user.id,
+        credentialId: 'cred-xyz',
+        publicKey: Buffer.from([9, 9, 9]),
+        counter: 0,
+        deviceType: 'singleDevice',
+        backedUp: false,
+        name: 'YubiKey',
+      },
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'pk@krakenos.test', password: 'password123' },
+    });
+    expect(res.statusCode).toBe(200);
+    const json = res.json() as { requiresWebAuthn?: boolean; email?: string; tokens?: unknown };
+    expect(json.requiresWebAuthn).toBe(true);
+    expect(json.email).toBe('pk@krakenos.test');
+    expect(json.tokens).toBeUndefined();
+
+    // No se debe haber emitido ningún refresh token todavía.
+    const issued = await app.prisma.refreshToken.count({ where: { userId: user.id } });
+    expect(issued).toBe(0);
+  });
+
   it('rechaza un refresh token usado como access (Bearer)', async () => {
     const refreshLike = app.jwt.sign({ sub: 'x', type: 'refresh', jti: 'abc' });
     const res = await app.inject({

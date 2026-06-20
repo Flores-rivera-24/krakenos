@@ -16,3 +16,4 @@ export * from './vlan.js';
 export * from './qos.js';
 export * from './dns.js';
 export * from './push.js';
+export * from './webauthn.js';
