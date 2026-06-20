@@ -77,6 +77,20 @@ export const updateSettingSchema = {
   response: { 200: updateSettingResponse },
 } as const;
 
+/** `GET /api/system/info` — info pública para la pantalla de login (US-49). */
+export const systemInfoSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        homeName: { type: 'string' },
+        version: { type: 'string' },
+      },
+      required: ['homeName', 'version'],
+    },
+  },
+} as const;
+
 export const connectivityTestSchema = {
   response: {
     200: {

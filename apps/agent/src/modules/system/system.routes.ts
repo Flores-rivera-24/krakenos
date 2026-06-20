@@ -1,7 +1,10 @@
+import { readFileSync } from 'node:fs';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import type {
   ConnectivityTestResult,
   HardwareDriver,
+  SystemPublicInfo,
   SystemSettingKey,
   SystemSettingsResponse,
   SystemStats,
@@ -15,6 +18,7 @@ import type { InventoryService } from '../inventory/inventory.service.js';
 import {
   connectivityTestSchema,
   getSettingsSchema,
+  systemInfoSchema,
   systemStatsSchema,
   updateSettingSchema,
 } from './system.schemas.js';
@@ -36,6 +40,25 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   loginRateLimit: '10',
   theme: 'dark',
 };
+
+/**
+ * Lee la versión del agente desde su `package.json`. Prueba varias rutas
+ * candidatas para funcionar tanto en dev/test (fuente) como en el bundle (`dist/`).
+ */
+function readAgentVersion(): string {
+  for (const rel of ['../../../package.json', '../package.json', '../../package.json']) {
+    try {
+      const path = fileURLToPath(new URL(rel, import.meta.url));
+      const pkg = JSON.parse(readFileSync(path, 'utf8')) as { version?: string };
+      if (pkg.version) return pkg.version;
+    } catch {
+      // siguiente candidato
+    }
+  }
+  return '0.0.0';
+}
+
+const AGENT_VERSION = readAgentVersion();
 
 function readStats(): SystemStats {
   const cores = os.cpus().length || 1;
@@ -79,6 +102,13 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       },
     };
   }
+
+  // Info pública para la pantalla de login (US-49): nombre del hogar + versión.
+  // Sin autenticación; no expone nada sensible.
+  app.get('/info', { schema: systemInfoSchema }, async (): Promise<SystemPublicInfo> => {
+    const row = await app.prisma.setting.findUnique({ where: { key: 'homeName' } });
+    return { homeName: row?.value || 'Mi hogar', version: AGENT_VERSION };
+  });
 
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
     readStats(),

@@ -19,6 +19,20 @@ describe('rutas de sistema', () => {
     await resetDb(app);
   });
 
+  it('GET /api/system/info devuelve homeName y version sin token (US-49)', async () => {
+    await app.prisma.setting.upsert({
+      where: { key: 'homeName' },
+      create: { key: 'homeName', value: 'Casa Kraken' },
+      update: { value: 'Casa Kraken' },
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/system/info' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.homeName).toBe('Casa Kraken');
+    expect(typeof body.version).toBe('string');
+    expect(body.version.length).toBeGreaterThan(0);
+  });
+
   it('GET /api/system/stats exige autenticación (401)', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/system/stats' });
     expect(res.statusCode).toBe(401);

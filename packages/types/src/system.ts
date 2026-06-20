@@ -41,6 +41,17 @@ export interface SystemInfo {
   httpsEnabled: boolean;
 }
 
+/**
+ * Info pública del sistema para la pantalla de login (US-49).
+ * Endpoint `GET /api/system/info` — sin autenticación.
+ */
+export interface SystemPublicInfo {
+  /** Nombre del hogar (`Setting` `homeName`, default 'Mi hogar'). */
+  homeName: string;
+  /** Versión del agente (`package.json`). */
+  version: string;
+}
+
 /** Respuesta de `GET /api/system/settings`: ajustes editables + info. */
 export interface SystemSettingsResponse {
   settings: Record<SystemSettingKey, string>;

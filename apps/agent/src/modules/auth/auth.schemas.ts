@@ -76,6 +76,20 @@ export const logoutSchema = {
   },
 } as const;
 
+/** `GET /api/auth/last-session` — último login exitoso (público, US-49). */
+export const lastSessionSchema = {
+  response: {
+    200: {
+      type: ['object', 'null'],
+      properties: {
+        timestamp: { type: 'string', format: 'date-time' },
+        ip: { type: 'string' },
+      },
+      required: ['timestamp', 'ip'],
+    },
+  },
+} as const;
+
 const sessionItem = {
   type: 'object',
   properties: {
