@@ -1,4 +1,6 @@
 import type { DriverKind, HardwareDriver } from '@krakenos/types';
+import { CiscoIosDriver } from './cisco-ios.driver.js';
+import { SshCiscoTransport } from './cisco-ios.transport.js';
 import { MockDriver } from './mock.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
@@ -32,6 +34,22 @@ export interface PfSenseDriverConfig {
   lanInterface?: string;
 }
 
+/** Config SSH+CLI para el driver Cisco IOS real (`kind: 'cisco-ios'`). */
+export interface CiscoIosDriverConfig {
+  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet0/0`. */
+  interface: string;
+  /** VLAN por defecto para las entradas de bloqueo (por defecto `1`). */
+  vlan?: string;
+  ssh: {
+    host: string;
+    port?: number;
+    username: string;
+    password?: string;
+    /** Contraseña de `enable` (modo privilegiado), si aplica. */
+    enablePassword?: string;
+  };
+}
+
 export interface CreateDriverConfig {
   kind: DriverKind;
   /** Host/IP del dispositivo (display + SSH). */
@@ -40,6 +58,8 @@ export interface CreateDriverConfig {
   openwrt?: OpenWrtDriverConfig;
   /** Requerido cuando `kind === 'pfsense'`. */
   pfsense?: PfSenseDriverConfig;
+  /** Requerido cuando `kind === 'cisco-ios'`. */
+  ciscoIos?: CiscoIosDriverConfig;
 }
 
 /**
@@ -73,6 +93,17 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         lanInterface: pf.lanInterface,
       });
     }
+    case 'cisco-ios': {
+      const ci = config.ciscoIos;
+      if (!ci) throw new Error('Falta la configuración Cisco IOS (CreateDriverConfig.ciscoIos)');
+      if (!ci.ssh.host) throw new Error('El driver Cisco IOS requiere DRIVER_HOST (host SSH del switch)');
+      return new CiscoIosDriver({
+        transport: new SshCiscoTransport(ci.ssh),
+        interface: ci.interface,
+        vlan: ci.vlan,
+        host: config.host ?? ci.ssh.host,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -85,3 +116,5 @@ export { OpenWrtDriver } from './openwrt.driver.js';
 export { SshTransport } from './openwrt.transport.js';
 export { PfSenseDriver } from './pfsense.driver.js';
 export { PfSenseClient } from './pfsense.transport.js';
+export { CiscoIosDriver } from './cisco-ios.driver.js';
+export { SshCiscoTransport, MockCiscoTransport } from './cisco-ios.transport.js';
