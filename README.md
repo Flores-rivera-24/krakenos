@@ -97,6 +97,9 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   **SNMP** (Q-BRIDGE-MIB), con los metadatos (nombre/subred/aislamiento) persistidos en un fichero.
 - **IoT Matter real** (`IOT_KIND=matter`) — controla dispositivos Matter vía la API WebSocket de
   **python-matter-server**: lista nodos, enciende/apaga y atenúa por los clusters OnOff/LevelControl.
+- **IoT Philips Hue real** (`IOT_KIND=hue`) — controla los focos Hue (on/off, brillo y **color**) vía
+  la **CLIP API v2 local** del bridge. El contrato IoT incluye color (RGB hex o temperatura en Kelvin),
+  con color-picker en la UI.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -111,6 +114,7 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # Cámaras RTSP (vía ffmpeg): CAMERAS_KIND=rtsp + CAMERAS_CONFIG (requiere el binario ffmpeg)
 # VLANs por switch (vía SNMP): VLAN_KIND=switch + VLAN_SWITCH_HOST (requiere net-snmp)
 # IoT Matter (vía WebSocket): IOT_KIND=matter + MATTER_SERVER_URL (requiere ws y python-matter-server)
+# IoT Philips Hue (vía REST local): IOT_KIND=hue + HUE_BRIDGE_URL/HUE_APP_KEY
 ```
 
 > Todas las integraciones reales del backlog (US-18…US-27) están entregadas como código + unit tests

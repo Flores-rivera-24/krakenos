@@ -87,6 +87,8 @@ export class ZigbeeIotManager implements IotManager {
       reachable,
       on: kind === 'sensor' ? null : state.on,
       brightness: kind === 'light' ? state.brightness : null,
+      // El color de zigbee2mqtt no se mapea aún (baseline); las luces Hue van por IOT_KIND=hue.
+      color: null,
       reading: kind === 'sensor' ? state.reading : null,
     };
   }

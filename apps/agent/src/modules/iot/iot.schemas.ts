@@ -8,6 +8,14 @@ const deviceResponse = {
     reachable: { type: 'boolean' },
     on: { type: ['boolean', 'null'] },
     brightness: { type: ['integer', 'null'] },
+    color: {
+      type: ['object', 'null'],
+      properties: {
+        hex: { type: ['string', 'null'] },
+        temperatureK: { type: ['integer', 'null'] },
+      },
+      required: ['hex', 'temperatureK'],
+    },
     reading: {
       type: ['object', 'null'],
       properties: {
@@ -18,7 +26,7 @@ const deviceResponse = {
       required: ['metric', 'value', 'unit'],
     },
   },
-  required: ['id', 'name', 'kind', 'room', 'reachable', 'on', 'brightness', 'reading'],
+  required: ['id', 'name', 'kind', 'room', 'reachable', 'on', 'brightness', 'color', 'reading'],
 } as const;
 
 export const listIotSchema = {
@@ -40,6 +48,15 @@ export const updateIotSchema = {
     properties: {
       on: { type: 'boolean' },
       brightness: { type: 'integer', minimum: 0, maximum: 100 },
+      color: {
+        type: 'object',
+        additionalProperties: false,
+        minProperties: 1,
+        properties: {
+          hex: { type: 'string', pattern: '^#[0-9a-fA-F]{6}$' },
+          temperatureK: { type: 'integer', minimum: 1000, maximum: 10000 },
+        },
+      },
     },
   },
   response: {

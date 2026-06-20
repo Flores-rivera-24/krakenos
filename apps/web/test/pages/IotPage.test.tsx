@@ -12,8 +12,9 @@ import { IotPage } from '@/pages/IotPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const DEVICES: IotDevice[] = [
-  { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, reading: null },
-  { id: 'sensor-temp', name: 'Temperatura', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
+  { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, color: null, reading: null },
+  { id: 'sensor-temp', name: 'Temperatura', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
+  { id: 'light-hue', name: 'Foco Hue', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, color: { hex: '#ff8800', temperatureK: null }, reading: null },
 ];
 
 function setRole(role: 'admin' | 'viewer') {
@@ -44,8 +45,19 @@ describe('IotPage', () => {
     render(<IotPage />);
     await screen.findByText('TV');
 
-    fireEvent.click(screen.getByRole('switch'));
+    // TV es el primer dispositivo, así que su switch es el primero.
+    fireEvent.click(screen.getAllByRole('switch')[0]!);
     expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-tv', { on: false });
+  });
+
+  it('un admin puede cambiar el color de una luz con color (PATCH)', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Foco Hue');
+
+    const picker = screen.getByLabelText('Color') as HTMLInputElement;
+    fireEvent.input(picker, { target: { value: '#00ff00' } });
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/light-hue', { color: { hex: '#00ff00' } });
   });
 
   it('un viewer ve el aviso de solo lectura', async () => {

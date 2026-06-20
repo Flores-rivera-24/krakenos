@@ -109,6 +109,8 @@ export function nodeToIotDevice(node: MatterNode): IotDevice {
     reachable: node.available !== false,
     on: kind === 'sensor' ? null : typeof onValue === 'boolean' ? onValue : null,
     brightness: kind === 'light' && typeof levelValue === 'number' ? levelToPercent(levelValue) : null,
+    // El color de Matter (cluster Color Control) no se mapea aún (baseline).
+    color: null,
     reading: kind === 'sensor' ? reading : null,
   };
 }
