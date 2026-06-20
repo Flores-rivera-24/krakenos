@@ -12,7 +12,7 @@ import type {
 } from './wifi.js';
 
 /** Implementaciones de driver de hardware disponibles. */
-export type DriverKind = 'mock' | 'openwrt' | 'pfsense';
+export type DriverKind = 'mock' | 'openwrt' | 'pfsense' | 'cisco-ios';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {

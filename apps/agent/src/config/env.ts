@@ -73,6 +73,18 @@ export const env = {
       wanInterface: process.env.PFSENSE_WAN_IFACE ?? 'wan',
       lanInterface: process.env.PFSENSE_LAN_IFACE ?? 'lan',
     },
+    // Solo se usa cuando DRIVER_KIND=cisco-ios (driver real vía SSH+CLI de IOS).
+    ciscoIos: {
+      interface: process.env.CISCO_INTERFACE ?? 'GigabitEthernet0/0',
+      vlan: process.env.CISCO_BLOCK_VLAN ?? '1',
+      ssh: {
+        host: process.env.DRIVER_HOST ?? '',
+        port: int('CISCO_SSH_PORT', 22),
+        username: process.env.CISCO_USER ?? 'admin',
+        password: process.env.CISCO_PASSWORD || undefined,
+        enablePassword: process.env.CISCO_ENABLE_PASSWORD || undefined,
+      },
+    },
   },
 
   vpn: {
