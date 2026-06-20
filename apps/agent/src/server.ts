@@ -111,7 +111,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
-  await app.register(systemRoutes, { prefix: '/api/system' });
+  await app.register(systemRoutes, { prefix: '/api/system', driver });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
