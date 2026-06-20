@@ -26,6 +26,10 @@ export const SYSTEM_SETTING_KEYS = [
   'scanIntervalSec',
   'trafficRetentionDays',
   'auditRetentionDays',
+  // Seguridad (US-41)
+  'accessTokenTtl',
+  'loginRateLimit',
+  'theme',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];

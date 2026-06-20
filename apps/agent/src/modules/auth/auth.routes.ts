@@ -1,10 +1,21 @@
-import type { LoginRequest, RefreshRequest } from '@krakenos/types';
+import type { LoginRequest, RefreshRequest, RevokeSessionsRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { AuthError, AuthService } from './auth.service.js';
-import { loginSchema, logoutSchema, refreshSchema, statusSchema } from './auth.schemas.js';
+import {
+  listSessionsSchema,
+  loginSchema,
+  logoutSchema,
+  refreshSchema,
+  revokeSessionsSchema,
+  statusSchema,
+} from './auth.schemas.js';
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const service = new AuthService(app);
+
+  // Límite de intentos de login configurable (ajuste `loginRateLimit`, US-41).
+  const rateRow = await app.prisma.setting.findUnique({ where: { key: 'loginRateLimit' } });
+  const loginMax = Number(rateRow?.value) > 0 ? Number(rateRow!.value) : 10;
 
   app.get('/status', { schema: statusSchema, preHandler: app.authenticate }, async (req, reply) => {
     const user = await service.getById(req.user.sub);
@@ -16,7 +27,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Body: LoginRequest }>(
     '/login',
-    { schema: loginSchema, config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
+    { schema: loginSchema, config: { rateLimit: { max: loginMax, timeWindow: '1 minute' } } },
     async (req, reply) => {
     try {
       const result = await service.login(req.body.email, req.body.password);
@@ -51,6 +62,44 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     { schema: logoutSchema },
     async (req, reply) => {
       await service.logout(req.body.refreshToken);
+      return reply.code(204).send();
+    },
+  );
+
+  // ---- Sesiones (US-41) ----
+
+  app.get<{ Querystring: { userId?: string } }>(
+    '/sessions',
+    { schema: listSessionsSchema, preHandler: app.authenticate },
+    async (req) => {
+      // Solo un admin puede inspeccionar las sesiones de otro usuario.
+      const target =
+        req.query.userId && req.user.role === 'admin' ? req.query.userId : req.user.sub;
+      return service.listSessions(target);
+    },
+  );
+
+  app.delete<{ Params: { id: string } }>(
+    '/sessions/:id',
+    { preHandler: app.authenticate },
+    async (req, reply) => {
+      const ok = await service.revokeSession(
+        req.params.id,
+        req.user.sub,
+        req.user.role === 'admin',
+      );
+      if (!ok) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Sesión no encontrada' });
+      app.audit({ action: 'auth.session.revoke', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      return reply.code(204).send();
+    },
+  );
+
+  app.delete<{ Body: RevokeSessionsRequest }>(
+    '/sessions',
+    { schema: revokeSessionsSchema, preHandler: app.authenticate },
+    async (req, reply) => {
+      await service.revokeOtherSessions(req.user.sub, req.body?.keepRefreshToken);
+      app.audit({ action: 'auth.sessions.revoke-others', userId: req.user.sub, ip: req.ip });
       return reply.code(204).send();
     },
   );
