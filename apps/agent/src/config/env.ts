@@ -154,12 +154,21 @@ export const env = {
   },
 
   vlan: {
-    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
+    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch' | 'cisco',
     // Solo se usa cuando VLAN_KIND=switch (switch gestionado vía SNMP).
     switch: {
       host: process.env.VLAN_SWITCH_HOST ?? '',
       community: process.env.VLAN_SWITCH_COMMUNITY ?? 'private',
       port: int('VLAN_SWITCH_SNMP_PORT', 161),
+      storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
+    },
+    // Solo se usa cuando VLAN_KIND=cisco (switch Cisco IOS vía SSH+CLI, reusa CISCO_*).
+    cisco: {
+      host: process.env.DRIVER_HOST ?? '',
+      port: int('CISCO_SSH_PORT', 22),
+      username: process.env.CISCO_USER ?? 'admin',
+      password: process.env.CISCO_PASSWORD || undefined,
+      enablePassword: process.env.CISCO_ENABLE_PASSWORD || undefined,
       storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
     },
   },

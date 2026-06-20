@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  assignPortToVlanCommand,
   configureBlockMacCommand,
+  createVlanCommand,
+  deleteVlanCommand,
   removeBlockMacCommand,
   showArpCommand,
   showInterfacesCommand,
@@ -50,5 +53,22 @@ describe('cisco-ios.commands', () => {
       'end',
     ]);
     expect(toCiscoMac('aabbccddeeff')).toBe('aabb.ccdd.eeff');
+  });
+
+  it('createVlanCommand / deleteVlanCommand / assignPortToVlanCommand (US-38)', () => {
+    expect(createVlanCommand(30, 'IoT')).toEqual([
+      'configure terminal',
+      'vlan 30',
+      'name IoT',
+      'exit',
+      'end',
+    ]);
+    expect(deleteVlanCommand(30)).toEqual(['configure terminal', 'no vlan 30', 'end']);
+    expect(assignPortToVlanCommand('GigabitEthernet0/5', 30)).toEqual([
+      'configure terminal',
+      'interface GigabitEthernet0/5',
+      'switchport access vlan 30',
+      'end',
+    ]);
   });
 });

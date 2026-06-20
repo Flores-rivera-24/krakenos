@@ -1,7 +1,7 @@
 import type { Id, IsoDateTime } from './common.js';
 
 /** Implementaciones de gestor de VLANs disponibles. */
-export type VlanKind = 'mock' | 'switch';
+export type VlanKind = 'mock' | 'switch' | 'cisco';
 
 /**
  * VLAN (segmento de red 802.1Q). El `tag` (1-4094) es la clave natural por la

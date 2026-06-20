@@ -67,6 +67,28 @@ CISCO_BLOCK_VLAN=1                   # VLAN de las entradas de bloqueo estática
 **No soportado:** WiFi (los switches Cisco gestionados no tienen radio → los métodos WiFi lanzan
 un error claro y multi-AP devuelve vacío) y descubrimiento por hostname/mDNS (`scanMdns` vacío).
 
+## VLANs en el switch Cisco (US-38)
+
+Con `VLAN_KIND=cisco`, KrakenOS gestiona las VLANs del switch desde `/api/vlans` (módulo US-15),
+reusando el mismo transporte SSH (`DRIVER_HOST`/`CISCO_*`):
+
+```env
+VLAN_KIND=cisco
+# Reusa DRIVER_HOST, CISCO_USER, CISCO_PASSWORD, CISCO_SSH_PORT, CISCO_ENABLE_PASSWORD.
+VLAN_STORE=data/vlans.json   # metadatos (nombre/subred/aislamiento) — fuente de verdad
+```
+
+| Acción | Comando IOS |
+|---|---|
+| Crear/renombrar | `configure terminal` · `vlan <tag>` · `name <nombre>` · `exit` · `end` |
+| Eliminar | `configure terminal` · `no vlan <tag>` · `end` |
+| Puerto → VLAN | `configure terminal` · `interface <port>` · `switchport access vlan <tag>` · `end` |
+
+`listVlans` cruza el store con `show vlan brief`: solo muestra las VLANs que el switch confirma.
+`subnet`/`isolated` son conceptos L3/firewall de KrakenOS (no se empujan al switch). La asignación
+de un puerto físico a una VLAN existe como builder, pero KrakenOS aún no rastrea el puerto de cada
+dispositivo (baseline).
+
 ## IOS vs IOS-XE
 
 - **IOS** (clásico): solo CLI por SSH → este driver (`cisco-ios`).

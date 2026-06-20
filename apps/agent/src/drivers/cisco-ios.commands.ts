@@ -56,3 +56,18 @@ export function removeBlockMacCommand(mac: string, vlan: string): string[] {
     'end',
   ];
 }
+
+/** Secuencia para crear (o renombrar) una VLAN con su nombre. */
+export function createVlanCommand(tag: number, name: string): string[] {
+  return ['configure terminal', `vlan ${tag}`, `name ${name}`, 'exit', 'end'];
+}
+
+/** Secuencia para eliminar una VLAN. */
+export function deleteVlanCommand(tag: number): string[] {
+  return ['configure terminal', `no vlan ${tag}`, 'end'];
+}
+
+/** Secuencia para asignar un puerto de acceso a una VLAN. */
+export function assignPortToVlanCommand(port: string, tag: number): string[] {
+  return ['configure terminal', `interface ${port}`, `switchport access vlan ${tag}`, 'end'];
+}
