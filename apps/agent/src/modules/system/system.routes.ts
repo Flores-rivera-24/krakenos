@@ -10,6 +10,8 @@ import type {
 import { SYSTEM_SETTING_KEYS } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { env } from '../../config/env.js';
+import { rateLimitStore } from '../../plugins/rate-limit-store.js';
+import type { InventoryService } from '../inventory/inventory.service.js';
 import {
   connectivityTestSchema,
   getSettingsSchema,
@@ -19,6 +21,8 @@ import {
 
 interface SystemRoutesOpts {
   driver: HardwareDriver;
+  /** Servicio de inventario compartido, para reprogramar el barrido en caliente. */
+  inventoryService?: InventoryService;
 }
 
 /** Valores por defecto de los ajustes editables (cuando no hay fila en `Setting`). */
@@ -95,7 +99,19 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         update: { value },
       });
       app.audit({ action: 'system.settings.update', userId: req.user.sub, detail: key, ip: req.ip });
-      return readSettings();
+
+      // Ajustes que se aplican en caliente, sin reiniciar el agente (US-47).
+      let appliedImmediately = false;
+      if (key === 'scanIntervalSec') {
+        const sec = Number(value);
+        opts.inventoryService?.setScanInterval(sec > 0 ? sec * 1000 : 0);
+        appliedImmediately = true;
+      } else if (key === 'loginRateLimit') {
+        rateLimitStore.update(Number(value));
+        appliedImmediately = true;
+      }
+
+      return { ...(await readSettings()), appliedImmediately };
     },
   );
 

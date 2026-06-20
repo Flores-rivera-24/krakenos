@@ -54,6 +54,16 @@ export const getSettingsSchema = {
   response: { 200: settingsResponse },
 } as const;
 
+/** Igual que `settingsResponse` pero con el flag de aplicación en caliente (US-47). */
+const updateSettingResponse = {
+  type: 'object',
+  properties: {
+    ...settingsResponse.properties,
+    appliedImmediately: { type: 'boolean' },
+  },
+  required: [...settingsResponse.required],
+} as const;
+
 export const updateSettingSchema = {
   body: {
     type: 'object',
@@ -64,7 +74,7 @@ export const updateSettingSchema = {
       value: { type: 'string', maxLength: 200 },
     },
   },
-  response: { 200: settingsResponse },
+  response: { 200: updateSettingResponse },
 } as const;
 
 export const connectivityTestSchema = {
