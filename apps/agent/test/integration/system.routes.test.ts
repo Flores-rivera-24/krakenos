@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
+import { rateLimitStore } from '../../src/plugins/rate-limit-store.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 describe('rutas de sistema', () => {
@@ -67,6 +69,49 @@ describe('rutas de sistema', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(res.json().settings.timezone).toBe('Europe/Madrid');
+  });
+
+  it('PATCH scanIntervalSec reprograma el barrido en caliente (US-47)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const spy = vi.spyOn(InventoryService.prototype, 'setScanInterval');
+    try {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: '/api/system/settings',
+        headers: authHeader(signAccess(app, admin)),
+        payload: { key: 'scanIntervalSec', value: '30' },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(spy).toHaveBeenCalledWith(30_000); // 30 s → ms
+      expect(res.json().appliedImmediately).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('PATCH loginRateLimit actualiza el rate-limit-store en caliente (US-47)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'loginRateLimit', value: '20' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(rateLimitStore.getCurrent()).toBe(20);
+    expect(res.json().appliedImmediately).toBe(true);
+  });
+
+  it('PATCH marca appliedImmediately solo para ajustes en caliente (US-47)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'timezone', value: 'UTC' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().appliedImmediately).toBe(false);
   });
 
   it('PATCH /api/system/settings rechaza claves fuera de la allowlist (400)', async () => {

@@ -12,6 +12,7 @@ import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
 import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
 import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
+import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
@@ -65,11 +66,13 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
 
   if (opts.routes) {
     const driver = opts.driver ?? new MockDriver();
+    // Instancia compartida (no arrancamos su barrido en tests: sin timers).
+    const inventoryService = new InventoryService(app, driver);
     await app.register(setupRoutes, { prefix: '/api/setup' });
     await app.register(authRoutes, { prefix: '/api/auth' });
-    await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
+    await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
-    await app.register(systemRoutes, { prefix: '/api/system', driver });
+    await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });

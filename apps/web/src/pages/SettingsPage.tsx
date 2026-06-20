@@ -58,6 +58,8 @@ export function SettingsPage() {
   const [test, setTest] = useState<ConnectivityTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
+  const [applied, setApplied] = useState(false);
+  const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -87,9 +89,20 @@ export function SettingsPage() {
     };
   }, [isAdmin, section]);
 
+  // Limpia el temporizador del aviso "aplicado al instante" al desmontar.
+  useEffect(() => () => {
+    if (appliedTimer.current) clearTimeout(appliedTimer.current);
+  }, []);
+
   const patch = async (key: SystemSettingKey, value: string) => {
     const next = await api.patch<SystemSettingsResponse>('/system/settings', { key, value });
     setData(next);
+    // Ajustes en caliente (US-47): confirmar que el cambio ya tiene efecto.
+    if (next.appliedImmediately) {
+      setApplied(true);
+      if (appliedTimer.current) clearTimeout(appliedTimer.current);
+      appliedTimer.current = setTimeout(() => setApplied(false), 2500);
+    }
   };
 
   const setting = (key: SystemSettingKey): string => data?.settings[key] ?? '';
@@ -151,6 +164,15 @@ export function SettingsPage() {
 
         {/* Contenido */}
         <div className="space-y-6">
+          {applied && (
+            <div
+              role="status"
+              className="flex items-center gap-2 rounded-md border border-success bg-kr-elevated px-3 py-2 text-kr-sm text-success"
+            >
+              <StatusDot status="online" />
+              Cambio aplicado al instante (sin reiniciar).
+            </div>
+          )}
           {section === 'sistema' && (
             <>
               <Card>

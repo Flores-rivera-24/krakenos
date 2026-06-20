@@ -45,6 +45,11 @@ export interface SystemInfo {
 export interface SystemSettingsResponse {
   settings: Record<SystemSettingKey, string>;
   info: SystemInfo;
+  /**
+   * Presente solo en la respuesta de `PATCH`: `true` cuando el ajuste cambiado
+   * tiene efecto sin reiniciar el agente (intervalo de escaneo, rate-limit; US-47).
+   */
+  appliedImmediately?: boolean;
 }
 
 /** Cuerpo de `PATCH /api/system/settings`. */

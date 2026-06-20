@@ -12,10 +12,12 @@ import {
 
 interface InventoryRoutesOpts {
   driver: HardwareDriver;
+  /** Instancia compartida (la crea `server.ts` para reusarla en otros módulos). */
+  service?: InventoryService;
 }
 
 export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (app, opts) => {
-  const service = new InventoryService(app, opts.driver);
+  const service = opts.service ?? new InventoryService(app, opts.driver);
 
   // Todas las rutas de inventario requieren autenticación.
   app.addHook('preHandler', app.authenticate);

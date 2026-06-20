@@ -52,10 +52,38 @@ function toDevice(row: DbDevice): Device {
 }
 
 export class InventoryService {
+  private scanTimer: NodeJS.Timeout | null = null;
+
   constructor(
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
   ) {}
+
+  /**
+   * (Re)programa el barrido periódico de inventario. Se llama al arrancar con el
+   * intervalo persistido (`scanIntervalSec`) y de nuevo cuando cambia el ajuste,
+   * de modo que el nuevo intervalo tiene efecto **en caliente** (US-47). Un
+   * `ms <= 0` detiene el barrido automático.
+   */
+  setScanInterval(ms: number): void {
+    if (this.scanTimer) {
+      clearInterval(this.scanTimer);
+      this.scanTimer = null;
+    }
+    if (ms > 0) {
+      this.scanTimer = setInterval(() => void this.scan(), ms);
+      // No mantener vivo el proceso solo por este intervalo.
+      this.scanTimer.unref();
+    }
+  }
+
+  /** Detiene el barrido periódico (al cerrar el servidor). */
+  stopScan(): void {
+    if (this.scanTimer) {
+      clearInterval(this.scanTimer);
+      this.scanTimer = null;
+    }
+  }
 
   async list(): Promise<Device[]> {
     const rows = (await this.app.prisma.device.findMany({

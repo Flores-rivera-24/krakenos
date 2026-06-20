@@ -24,6 +24,7 @@ import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
+import { InventoryService } from './modules/inventory/inventory.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
@@ -106,12 +107,16 @@ export async function buildServer(): Promise<FastifyInstance> {
     uptime: process.uptime(),
   }));
 
+  // Servicio de inventario compartido: lo usan las rutas de inventario y las de
+  // sistema (para reprogramar el barrido en caliente al cambiar `scanIntervalSec`).
+  const inventoryService = new InventoryService(app, driver);
+
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
-  await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
+  await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
-  await app.register(systemRoutes, { prefix: '/api/system', driver });
+  await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
@@ -127,6 +132,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(trafficRoutes, { prefix: '/api/traffic', service: trafficService });
   trafficService.start();
   app.addHook('onClose', async () => trafficService.stop());
+
+  // Barrido periódico de inventario: usa el intervalo persistido (`scanIntervalSec`,
+  // por defecto 60 s) y se reprograma en caliente desde Ajustes (US-47).
+  const scanRow = await app.prisma.setting.findUnique({ where: { key: 'scanIntervalSec' } });
+  const scanSec = Number(scanRow?.value) > 0 ? Number(scanRow!.value) : 60;
+  inventoryService.setScanInterval(scanSec * 1000);
+  app.addHook('onClose', async () => inventoryService.stopScan());
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).
   if (env.web.serve && existsSync(resolve(env.web.distPath, 'index.html'))) {

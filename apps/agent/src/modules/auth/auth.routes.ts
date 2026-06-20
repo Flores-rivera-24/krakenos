@@ -1,5 +1,6 @@
 import type { LoginRequest, RefreshRequest, RevokeSessionsRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
+import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
   listSessionsSchema,
@@ -13,9 +14,11 @@ import {
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const service = new AuthService(app);
 
-  // Límite de intentos de login configurable (ajuste `loginRateLimit`, US-41).
+  // Límite de intentos de login configurable y **en caliente** (US-41/US-47):
+  // se inicializa desde la setting `loginRateLimit` y la ruta lo lee del store en
+  // cada petición, de modo que un cambio de ajuste tiene efecto sin reiniciar.
   const rateRow = await app.prisma.setting.findUnique({ where: { key: 'loginRateLimit' } });
-  const loginMax = Number(rateRow?.value) > 0 ? Number(rateRow!.value) : 10;
+  if (Number(rateRow?.value) > 0) rateLimitStore.update(Number(rateRow!.value));
 
   app.get('/status', { schema: statusSchema, preHandler: app.authenticate }, async (req, reply) => {
     const user = await service.getById(req.user.sub);
@@ -27,7 +30,10 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Body: LoginRequest }>(
     '/login',
-    { schema: loginSchema, config: { rateLimit: { max: loginMax, timeWindow: '1 minute' } } },
+    {
+      schema: loginSchema,
+      config: { rateLimit: { max: () => rateLimitStore.getCurrent(), timeWindow: '1 minute' } },
+    },
     async (req, reply) => {
     try {
       const result = await service.login(req.body.email, req.body.password);
