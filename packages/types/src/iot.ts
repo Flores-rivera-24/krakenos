@@ -61,3 +61,30 @@ export interface IotManager {
   /** Aplica el cambio de estado a un dispositivo controlable. */
   setState(id: Id, input: UpdateIotStateRequest): Promise<IotDevice>;
 }
+
+/** Versiones del protocolo local Tuya soportadas. */
+export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4';
+
+/** Vista pública de un foco Tuya registrado: **nunca** incluye `localKey` (US-32/42). */
+export interface TuyaDeviceView {
+  deviceId: string;
+  ip: string;
+  name: string;
+  version?: TuyaProtocolVersion;
+}
+
+/** Alta de un foco Tuya (`POST /api/iot/tuya/devices`). */
+export interface CreateTuyaDeviceRequest {
+  deviceId: string;
+  localKey: string;
+  ip: string;
+  name: string;
+  version?: TuyaProtocolVersion;
+}
+
+/** Cambios parciales de un foco Tuya (`PATCH /api/iot/tuya/devices/:deviceId`). */
+export interface UpdateTuyaDeviceRequest {
+  ip?: string;
+  localKey?: string;
+  name?: string;
+}
