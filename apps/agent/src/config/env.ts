@@ -109,6 +109,10 @@ export const env = {
       url: process.env.HUE_BRIDGE_URL ?? '',
       appKey: process.env.HUE_APP_KEY ?? '',
     },
+    // Solo se usa cuando IOT_KIND=govee (API LAN UDP, local-first).
+    govee: {
+      listenPort: int('GOVEE_LISTEN_PORT', 4002),
+    },
   },
 
   cameras: {
