@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { GoveeIotManager, HueIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -67,6 +67,11 @@ describe('createIotManager', () => {
 
   it('construye un GoveeIotManager (config opcional)', () => {
     expect(createIotManager({ kind: 'govee' })).toBeInstanceOf(GoveeIotManager);
+  });
+
+  it('con varios kinds (lista) devuelve un CompositeIotManager', () => {
+    const iot = createIotManager({ kind: 'hue,govee', hue: { url: 'https://x', appKey: 'k' } });
+    expect(iot).toBeInstanceOf(CompositeIotManager);
   });
 
   it('lanza si falta la configuración Zigbee/Matter/Hue', () => {

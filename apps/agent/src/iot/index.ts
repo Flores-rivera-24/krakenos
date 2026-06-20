@@ -1,4 +1,5 @@
 import type { IotKind, IotManager } from '@krakenos/types';
+import { CompositeIotManager } from './composite.iot.js';
 import { GoveeIotManager } from './govee.iot.js';
 import { DgramUdpTransport } from './govee.transport.js';
 import { HueIotManager } from './hue.iot.js';
@@ -40,7 +41,8 @@ export interface GoveeIotConfig {
 }
 
 export interface IotConfig {
-  kind: IotKind;
+  /** `IotKind`, o una lista separada por comas para varios a la vez (`hue,govee`). */
+  kind: string;
   /** Requerido cuando `kind === 'zigbee'`. */
   zigbee?: ZigbeeIotConfig;
   /** Requerido cuando `kind === 'matter'`. */
@@ -52,12 +54,27 @@ export interface IotConfig {
 }
 
 /**
- * Construye la integración IoT según la configuración. El resto del agente
- * solo conoce la interfaz `IotManager`. `mock` simula en memoria; `zigbee`
- * habla con zigbee2mqtt vía MQTT. `matter` queda pendiente.
+ * Construye la integración IoT. `kind` puede ser un único valor o una **lista
+ * separada por comas** (`hue,govee`): con varios, se envuelven en un
+ * `CompositeIotManager` que enruta por prefijo de id. El resto del agente solo
+ * conoce la interfaz `IotManager`.
  */
 export function createIotManager(config: IotConfig): IotManager {
-  switch (config.kind) {
+  const kinds = config.kind
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean) as IotKind[];
+  if (kinds.length <= 1) {
+    return buildIotManager(kinds[0] ?? 'mock', config);
+  }
+  return new CompositeIotManager(
+    kinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config) })),
+  );
+}
+
+/** Construye un único manager para un `kind` concreto. */
+function buildIotManager(kind: IotKind, config: IotConfig): IotManager {
+  switch (kind) {
     case 'mock':
       return new MockIotManager();
     case 'zigbee': {
@@ -87,7 +104,7 @@ export function createIotManager(config: IotConfig): IotManager {
         transport: new DgramUdpTransport({ listenPort: config.govee?.listenPort }),
       });
     default: {
-      const exhaustive: never = config.kind;
+      const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
     }
   }
@@ -110,3 +127,4 @@ export { ZigbeeIotManager } from './zigbee.iot.js';
 export { MatterIotManager } from './matter.iot.js';
 export { HueIotManager } from './hue.iot.js';
 export { GoveeIotManager } from './govee.iot.js';
+export { CompositeIotManager } from './composite.iot.js';

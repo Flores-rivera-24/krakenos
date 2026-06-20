@@ -102,6 +102,8 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   con color-picker en la UI.
 - **IoT Govee real** (`IOT_KIND=govee`) — controla las luces Govee por su **API LAN** (UDP local, sin
   nube): discovery, on/off, brillo y color. Requiere activar "LAN Control" en la app Govee.
+- **Varios backends IoT a la vez** — `IOT_KIND` admite una lista (`hue,govee`): se agregan en un
+  `CompositeIotManager` que enruta por prefijo de id, para gestionar varios ecosistemas en una vista.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
