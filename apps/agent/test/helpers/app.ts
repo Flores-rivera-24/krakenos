@@ -13,6 +13,7 @@ import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
 import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
+import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
@@ -23,6 +24,8 @@ import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
 import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
+import type { TuyaDeviceRecord } from '../../src/iot/tuya.store.js';
+import { MemoryJsonStore, type JsonStore } from '../../src/store/json-store.js';
 import { MockQosManager } from '../../src/qos/mock.qos.js';
 import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
@@ -40,6 +43,8 @@ export interface BuildTestAppOptions {
   vpn?: VpnManager;
   /** Registra `@fastify/rate-limit` (global:false) como en producción. */
   rateLimit?: boolean;
+  /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
+  tuyaStore?: JsonStore<TuyaDeviceRecord>;
 }
 
 /**
@@ -71,6 +76,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
+    await app.register(tuyaConfigRoutes, {
+      prefix: '/api/iot/tuya',
+      store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
+    });
     await app.register(camerasRoutes, { prefix: '/api/cameras', cameras: new MockCameraManager() });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
