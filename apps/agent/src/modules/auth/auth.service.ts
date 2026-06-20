@@ -144,7 +144,12 @@ export class AuthService {
     return row ? toUser(row) : null;
   }
 
-  async login(email: string, password: string): Promise<LoginResponse> {
+  /**
+   * Verifica email + contraseña sin emitir tokens. Lo usa el login para decidir si
+   * exigir 2FA WebAuthn antes de emitir la sesión (US-50). Lanza `AuthError` si
+   * las credenciales no son válidas.
+   */
+  async verifyCredentials(email: string, password: string): Promise<User> {
     const user = (await this.app.prisma.user.findUnique({
       where: { email },
     })) as DbUser | null;
@@ -156,8 +161,24 @@ export class AuthService {
     if (!user || !valid) {
       throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Credenciales inválidas');
     }
+    return toUser(user);
+  }
 
-    return { user: toUser(user), tokens: await this.issueTokens(user) };
+  /**
+   * Emite una sesión (user + tokens) para un usuario ya autenticado por otro medio
+   * (contraseña verificada, o passkey WebAuthn tras el 2FA).
+   */
+  async issueSessionForUserId(userId: string): Promise<LoginResponse> {
+    const row = (await this.app.prisma.user.findUnique({ where: { id: userId } })) as DbUser | null;
+    if (!row) {
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
+    }
+    return { user: toUser(row), tokens: await this.issueTokens(row) };
+  }
+
+  async login(email: string, password: string): Promise<LoginResponse> {
+    const user = await this.verifyCredentials(email, password);
+    return this.issueSessionForUserId(user.id);
   }
 
   /** Rota el refresh token: revoca el actual y emite uno nuevo. */

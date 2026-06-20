@@ -58,6 +58,18 @@ export interface LoginResponse {
 }
 
 /**
+ * Respuesta de `POST /api/auth/login` cuando el usuario tiene passkeys: aún no se
+ * emiten tokens; el cliente debe completar el 2FA WebAuthn (US-50).
+ */
+export interface WebAuthnRequiredResponse {
+  requiresWebAuthn: true;
+  email: string;
+}
+
+/** Resultado del login: o sesión emitida, o requerimiento de 2FA WebAuthn. */
+export type LoginResult = LoginResponse | WebAuthnRequiredResponse;
+
+/**
  * Última sesión registrada, para la pantalla de login (US-49).
  * Endpoint público `GET /api/auth/last-session`; nunca expone email ni userId.
  */

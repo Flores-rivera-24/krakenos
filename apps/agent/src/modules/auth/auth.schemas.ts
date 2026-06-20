@@ -37,10 +37,20 @@ export const loginSchema = {
     },
   },
   response: {
+    // O sesión emitida ({ user, tokens }) o requerimiento de 2FA WebAuthn (US-50).
     200: {
-      type: 'object',
-      properties: { user: userResponse, tokens: tokensResponse },
-      required: ['user', 'tokens'],
+      oneOf: [
+        {
+          type: 'object',
+          properties: { user: userResponse, tokens: tokensResponse },
+          required: ['user', 'tokens'],
+        },
+        {
+          type: 'object',
+          properties: { requiresWebAuthn: { type: 'boolean' }, email: { type: 'string' } },
+          required: ['requiresWebAuthn', 'email'],
+        },
+      ],
     },
   },
 } as const;

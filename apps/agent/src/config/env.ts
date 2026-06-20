@@ -214,6 +214,18 @@ export const env = {
     distPath: process.env.WEB_DIST_PATH ?? resolve('../web/dist'),
   },
 
+  /**
+   * WebAuthn / passkey (2FA opcional, US-50). `rpID` es el dominio (sin protocolo)
+   * desde el que se accede a la app; `origin` la URL completa. Deben coincidir con
+   * el origen real del navegador o el navegador rechazará la passkey. Ver
+   * `docs/webauthn-setup.md`.
+   */
+  webauthn: {
+    rpName: process.env.WEBAUTHN_RP_NAME ?? 'KrakenOS',
+    rpID: process.env.WEBAUTHN_RP_ID ?? 'localhost',
+    origin: process.env.WEBAUTHN_ORIGIN ?? 'http://localhost:5173',
+  },
+
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
 

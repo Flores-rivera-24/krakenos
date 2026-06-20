@@ -24,6 +24,8 @@ import { socketioPlugin } from './plugins/socketio.js';
 import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
+import { WebAuthnService } from './webauthn/webauthn.service.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { pushRoutes } from './modules/push/push.routes.js';
@@ -123,6 +125,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
+  const webAuthnService = new WebAuthnService(app.prisma, {
+    rpName: env.webauthn.rpName,
+    rpID: env.webauthn.rpID,
+    origin: env.webauthn.origin,
+  });
+  await app.register(webauthnRoutes, { prefix: '/api/webauthn', service: webAuthnService });
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });

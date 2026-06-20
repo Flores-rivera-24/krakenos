@@ -53,7 +53,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
     try {
-      const result = await service.login(req.body.email, req.body.password);
+      const user = await service.verifyCredentials(req.body.email, req.body.password);
+
+      // 2FA WebAuthn (US-50): si el usuario tiene passkeys, no se emiten tokens
+      // todavía; el cliente debe completar la verificación con su dispositivo.
+      const passkeys = await app.prisma.webAuthnCredential.count({ where: { userId: user.id } });
+      if (passkeys > 0) {
+        return reply.send({ requiresWebAuthn: true, email: user.email });
+      }
+
+      const result = await service.issueSessionForUserId(user.id);
       app.audit({ action: 'auth.login', userId: result.user.id, ip: req.ip });
       return reply.send(result);
     } catch (err) {
