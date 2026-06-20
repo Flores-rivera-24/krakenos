@@ -1,4 +1,6 @@
-import { generateVAPIDKeys } from 'web-push';
+// `web-push` es CommonJS: import por defecto (los named imports rompen en ESM en
+// producción, donde el bundle corre como módulo ES y Node no resuelve los exports).
+import webpush from 'web-push';
 
 export interface VapidKeys {
   publicKey: string;
@@ -11,5 +13,5 @@ export interface VapidKeys {
  * delega en `web-push` y no toca disco ni base de datos.
  */
 export function generateVapidKeys(): VapidKeys {
-  return generateVAPIDKeys();
+  return webpush.generateVAPIDKeys();
 }

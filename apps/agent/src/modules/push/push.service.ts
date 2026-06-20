@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { sendNotification, setVapidDetails } from 'web-push';
+// `web-push` es CommonJS: import por defecto (los named imports rompen en ESM en
+// producción, donde el bundle corre como módulo ES).
+import webpush from 'web-push';
 import { generateVapidKeys, type VapidKeys } from '../../push/vapid.js';
 
 const VAPID_PUBLIC_KEY = 'vapid.publicKey';
@@ -112,12 +114,12 @@ export class PushService {
   ): Promise<void> {
     if (subs.length === 0) return;
     const { publicKey, privateKey } = await this.ensureKeys();
-    setVapidDetails(VAPID_SUBJECT, publicKey, privateKey);
+    webpush.setVapidDetails(VAPID_SUBJECT, publicKey, privateKey);
     const payload = JSON.stringify({ title, body, url });
 
     for (const sub of subs) {
       try {
-        await sendNotification(
+        await webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload,
         );
