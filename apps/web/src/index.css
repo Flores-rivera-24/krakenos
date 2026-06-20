@@ -102,6 +102,6 @@
   }
   body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    @apply bg-kr-base text-kr-primary;
+    @apply bg-kr-base text-kr-primary transition-colors duration-200;
   }
 }

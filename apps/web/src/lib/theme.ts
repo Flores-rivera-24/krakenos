@@ -20,3 +20,10 @@ export function applyTheme(theme: Theme): void {
     // almacenamiento no disponible: el tema queda aplicado solo en memoria
   }
 }
+
+/** Alterna entre claro/oscuro, lo aplica y persiste; devuelve el tema resultante. */
+export function toggleTheme(): Theme {
+  const next: Theme = getTheme() === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  return next;
+}
