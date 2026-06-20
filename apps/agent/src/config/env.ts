@@ -114,6 +114,10 @@ export const env = {
     govee: {
       listenPort: int('GOVEE_LISTEN_PORT', 4002),
     },
+    // Solo se usa cuando IOT_KIND=tuya (protocolo Tuya local, focos genéricos).
+    tuya: {
+      configPath: process.env.TUYA_CONFIG_PATH ?? resolve('data/tuya-devices.json'),
+    },
   },
 
   cameras: {

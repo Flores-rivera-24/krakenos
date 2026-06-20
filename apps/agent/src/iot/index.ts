@@ -1,4 +1,5 @@
 import type { IotKind, IotManager } from '@krakenos/types';
+import { FileJsonStore } from '../store/json-store.js';
 import { CompositeIotManager } from './composite.iot.js';
 import { GoveeIotManager } from './govee.iot.js';
 import { DgramUdpTransport } from './govee.transport.js';
@@ -8,6 +9,9 @@ import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
 import { MqttClientTransport } from './mqtt.transport.js';
+import { TuyaIotManager } from './tuya.iot.js';
+import type { TuyaDeviceRecord } from './tuya.store.js';
+import { TuyapiTransport } from './tuya.transport.js';
 import { ZigbeeIotManager } from './zigbee.iot.js';
 
 /** Config para la integración Zigbee real (`kind: 'zigbee'`, vía zigbee2mqtt). */
@@ -40,6 +44,12 @@ export interface GoveeIotConfig {
   listenPort?: number;
 }
 
+/** Config para la integración Tuya real (`kind: 'tuya'`, protocolo local). */
+export interface TuyaIotConfig {
+  /** Ruta al fichero de config de dispositivos (id/localKey/ip por dispositivo). */
+  configPath: string;
+}
+
 export interface IotConfig {
   /** `IotKind`, o una lista separada por comas para varios a la vez (`hue,govee`). */
   kind: string;
@@ -51,6 +61,8 @@ export interface IotConfig {
   hue?: HueIotConfig;
   /** Opcional cuando `kind === 'govee'`. */
   govee?: GoveeIotConfig;
+  /** Requerido cuando `kind === 'tuya'`. */
+  tuya?: TuyaIotConfig;
 }
 
 /**
@@ -103,6 +115,16 @@ function buildIotManager(kind: IotKind, config: IotConfig): IotManager {
       return new GoveeIotManager({
         transport: new DgramUdpTransport({ listenPort: config.govee?.listenPort }),
       });
+    case 'tuya': {
+      const tuya = config.tuya;
+      if (!tuya) throw new Error('Falta la configuración Tuya (IotConfig.tuya)');
+      // El store de config (id/localKey/ip por dispositivo) es la fuente de verdad;
+      // se comparte por fichero con las rutas de gestión `/api/iot/tuya`.
+      return new TuyaIotManager({
+        store: new FileJsonStore<TuyaDeviceRecord>(tuya.configPath),
+        transport: new TuyapiTransport(),
+      });
+    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -127,4 +149,5 @@ export { ZigbeeIotManager } from './zigbee.iot.js';
 export { MatterIotManager } from './matter.iot.js';
 export { HueIotManager } from './hue.iot.js';
 export { GoveeIotManager } from './govee.iot.js';
+export { TuyaIotManager } from './tuya.iot.js';
 export { CompositeIotManager } from './composite.iot.js';

@@ -14,6 +14,8 @@ import { createIotManager, startIotManager } from './iot/index.js';
 import { createQosManager } from './qos/index.js';
 import { createVlanManager } from './vlan/index.js';
 import { createVpnManager } from './vpn/index.js';
+import { FileJsonStore } from './store/json-store.js';
+import type { TuyaDeviceRecord } from './iot/tuya.store.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { prismaPlugin } from './plugins/prisma.js';
@@ -27,6 +29,7 @@ import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
 import { iotRoutes } from './modules/iot/iot.routes.js';
+import { tuyaConfigRoutes } from './modules/iot/tuya-config.routes.js';
 import { qosRoutes } from './modules/qos/qos.routes.js';
 import { vlanRoutes } from './modules/vlan/vlan.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
@@ -75,7 +78,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     matter: env.iot.matter,
     hue: env.iot.hue,
     govee: env.iot.govee,
+    tuya: env.iot.tuya,
   });
+  // Store de config de dispositivos Tuya: compartido por fichero con el manager `tuya`.
+  const tuyaStore = new FileJsonStore<TuyaDeviceRecord>(env.iot.tuya.configPath);
   // Arranca la conexión en segundo plano de los managers que la necesiten (zigbee/govee).
   startIotManager(iot, (msg) => app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`));
   const cameras = createCameraManager({ kind: env.cameras.kind, rtsp: env.cameras.rtsp });
@@ -102,6 +108,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(systemRoutes, { prefix: '/api/system' });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
+  await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
   await app.register(camerasRoutes, { prefix: '/api/cameras', cameras });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
