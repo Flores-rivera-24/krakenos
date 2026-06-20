@@ -15,3 +15,4 @@ export * from './firewall.js';
 export * from './vlan.js';
 export * from './qos.js';
 export * from './dns.js';
+export * from './push.js';

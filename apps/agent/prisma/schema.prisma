@@ -65,6 +65,18 @@ model TrafficSample {
   @@index([timestamp])
 }
 
+/// Suscripción Web Push de un usuario para notificaciones (US-45).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
 /// Rollup periódico (1/min) del uso de ancho de banda por dispositivo (US-46).
 /// Cada fila es la media de las muestras del intervalo para una MAC concreta.
 model DeviceTrafficSample {

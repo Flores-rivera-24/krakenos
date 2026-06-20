@@ -41,6 +41,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.send(result);
     } catch (err) {
       if (err instanceof AuthError) {
+        // Login fallido: evento de seguridad (auditoría + push, US-45).
+        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
         return reply.code(401).send({ code: err.code, message: err.message });
       }
       throw err;

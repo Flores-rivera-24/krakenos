@@ -30,6 +30,11 @@ export const auditPlugin = fp(async (app: FastifyInstance) => {
           ip: input.ip ?? null,
         },
       })
+      .then(() => {
+        // Tras registrar la acción, notifica los eventos de alta prioridad (US-45).
+        // Fire-and-forget: no bloquea ni afecta a la respuesta HTTP.
+        app.push?.notifyForAudit(input.action, input.detail, input.ip);
+      })
       .catch((err: unknown) => app.log.warn({ err }, 'No se pudo registrar auditoría'));
   });
 });

@@ -13,6 +13,8 @@ import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
 import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
+import { pushRoutes } from '../../src/modules/push/push.routes.js';
+import { PushService } from '../../src/modules/push/push.service.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
@@ -68,6 +70,9 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     const driver = opts.driver ?? new MockDriver();
     // Instancia compartida (no arrancamos su barrido en tests: sin timers).
     const inventoryService = new InventoryService(app, driver);
+    // Push: decorado como en producción (las claves VAPID se generan al vuelo).
+    const pushService = new PushService(app);
+    app.decorate('push', pushService);
     await app.register(setupRoutes, { prefix: '/api/setup' });
     await app.register(authRoutes, { prefix: '/api/auth' });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
@@ -76,6 +81,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });
+    await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
@@ -100,6 +106,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.auditLog.deleteMany();
   await app.prisma.trafficSample.deleteMany();
   await app.prisma.deviceTrafficSample.deleteMany();
+  await app.prisma.pushSubscription.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();
