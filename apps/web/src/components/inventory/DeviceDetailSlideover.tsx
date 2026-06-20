@@ -1,16 +1,17 @@
-import type { Device, DeviceType, UpdateDeviceRequest } from '@krakenos/types';
-import { useState } from 'react';
+import type { Device, DeviceType, UpdateDeviceRequest, VlanWithCount } from '@krakenos/types';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Slideover } from '@/components/ui/slideover';
+import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_TYPES, TYPE_LABELS } from '@/lib/devices';
 import { useAuthStore } from '@/store/auth.store';
 
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
 
 interface Props {
   device: Device;
@@ -20,32 +21,55 @@ interface Props {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="font-mono text-sm">{value}</dd>
+      <dt className="text-kr-xs text-kr-muted">{label}</dt>
+      <dd className="font-mono text-kr-sm text-kr-primary">{value}</dd>
     </div>
   );
 }
 
-export function DeviceDetailModal({ device, onClose }: Props) {
+export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [label, setLabel] = useState(device.label ?? '');
   const [type, setType] = useState<DeviceType>(device.type);
   const [notes, setNotes] = useState(device.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [vlans, setVlans] = useState<VlanWithCount[]>([]);
+  const [vlanTag, setVlanTag] = useState<number | null>(device.vlanTag);
+  const [vlanBusy, setVlanBusy] = useState(false);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+
+  // Carga las VLANs disponibles para el selector (best-effort).
+  useEffect(() => {
+    void api
+      .get<VlanWithCount[]>('/vlans')
+      .then(setVlans)
+      .catch(() => setVlans([]));
+  }, []);
 
   const toggleBlock = async () => {
     setBlocking(true);
     setError(null);
     try {
-      // El agente emite inventory:device-updated → el store (y este modal) se actualizan.
       if (device.isBlocked) await api.del(`/inventory/devices/${device.id}/block`);
       else await api.post(`/inventory/devices/${device.id}/block`);
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo cambiar el bloqueo');
     } finally {
       setBlocking(false);
+    }
+  };
+
+  const assignVlan = async (tag: number | null) => {
+    setVlanTag(tag);
+    setVlanBusy(true);
+    setError(null);
+    try {
+      await api.put(`/inventory/devices/${device.id}/vlan`, { tag });
+    } catch (err) {
+      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo asignar la VLAN');
+    } finally {
+      setVlanBusy(false);
     }
   };
 
@@ -58,7 +82,6 @@ export function DeviceDetailModal({ device, onClose }: Props) {
       notes: notes.trim() === '' ? null : notes.trim(),
     };
     try {
-      // El agente emite inventory:device-updated → el store se actualiza solo.
       await api.patch<Device>(`/inventory/devices/${device.id}`, body);
       onClose();
     } catch (err) {
@@ -68,26 +91,46 @@ export function DeviceDetailModal({ device, onClose }: Props) {
     }
   };
 
-  return (
-    <Dialog open onClose={onClose}>
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h3 className="text-lg font-semibold">{device.label ?? device.hostname ?? device.mac}</h3>
-          <p className="flex items-center gap-2 text-xs">
-            <span className={device.online ? 'text-green-500' : 'text-muted-foreground'}>
-              {device.online ? 'online' : 'offline'}
-            </span>
-            {device.isBlocked && (
-              <span className="rounded bg-destructive/20 px-1.5 py-0.5 text-destructive">bloqueado</span>
-            )}
-          </p>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          Cerrar
-        </Button>
-      </div>
+  const subtitle = (
+    <span className="flex items-center gap-2">
+      <StatusDot status={device.online ? 'online' : 'offline'} />
+      {device.online ? 'online' : 'offline'}
+      {device.isBlocked && <span className="text-danger">· bloqueado</span>}
+    </span>
+  );
 
-      <dl className="mb-4 grid grid-cols-2 gap-3 rounded-md bg-secondary/40 p-3">
+  const footer = (
+    <div className="space-y-2">
+      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      <Button onClick={() => void save()} disabled={saving} className="w-full">
+        {saving ? 'Guardando…' : 'Guardar cambios'}
+      </Button>
+      {isAdmin && (
+        <Button
+          variant={device.isBlocked ? 'outline' : 'destructive'}
+          onClick={() => void toggleBlock()}
+          disabled={blocking}
+          className="w-full"
+        >
+          {blocking
+            ? 'Aplicando…'
+            : device.isBlocked
+              ? 'Desbloquear acceso a la red'
+              : 'Bloquear acceso a la red'}
+        </Button>
+      )}
+    </div>
+  );
+
+  return (
+    <Slideover
+      open
+      onClose={onClose}
+      title={device.label ?? device.hostname ?? device.mac}
+      subtitle={subtitle}
+      footer={footer}
+    >
+      <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
         <Field label="IP" value={device.ip} />
         <Field label="MAC" value={device.mac} />
         <Field label="Hostname" value={device.hostname ?? '—'} />
@@ -95,6 +138,11 @@ export function DeviceDetailModal({ device, onClose }: Props) {
         <Field label="Fuentes" value={device.sources.join(', ') || '—'} />
         <Field label="Última vez" value={new Date(device.lastSeen).toLocaleString()} />
       </dl>
+
+      {/* Sparkline de tráfico por dispositivo: aún no hay histórico por host. */}
+      <p className="mb-4 text-kr-xs text-kr-muted">
+        Sin histórico de tráfico por dispositivo todavía.
+      </p>
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -133,27 +181,26 @@ export function DeviceDetailModal({ device, onClose }: Props) {
           />
         </div>
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
-
-        <Button onClick={() => void save()} disabled={saving} className="w-full">
-          {saving ? 'Guardando…' : 'Guardar cambios'}
-        </Button>
-
         {isAdmin && (
-          <Button
-            variant={device.isBlocked ? 'outline' : 'destructive'}
-            onClick={() => void toggleBlock()}
-            disabled={blocking}
-            className="w-full"
-          >
-            {blocking
-              ? 'Aplicando…'
-              : device.isBlocked
-                ? 'Desbloquear acceso a la red'
-                : 'Bloquear acceso a la red'}
-          </Button>
+          <div className="space-y-2">
+            <Label htmlFor="d-vlan">VLAN</Label>
+            <select
+              id="d-vlan"
+              className={SELECT_CLASS}
+              value={vlanTag ?? ''}
+              disabled={vlanBusy}
+              onChange={(e) => void assignVlan(e.target.value === '' ? null : Number(e.target.value))}
+            >
+              <option value="">Sin VLAN</option>
+              {vlans.map((v) => (
+                <option key={v.id} value={v.tag}>
+                  {v.name} (tag {v.tag})
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
-    </Dialog>
+    </Slideover>
   );
 }
