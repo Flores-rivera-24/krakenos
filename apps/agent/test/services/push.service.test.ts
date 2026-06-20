@@ -3,12 +3,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { buildTestApp, resetDb, seedUser } from '../helpers/app.js';
 
 // Mock de web-push: capturamos los envíos sin contactar ningún endpoint real.
+// El código lo importa por defecto (`import webpush from 'web-push'`), así que el
+// mock expone esos métodos en el export `default`.
 const webpushMock = vi.hoisted(() => ({
   generateVAPIDKeys: vi.fn(() => ({ publicKey: 'PUB_KEY', privateKey: 'PRIV_KEY' })),
   setVapidDetails: vi.fn(),
   sendNotification: vi.fn(() => Promise.resolve()),
 }));
-vi.mock('web-push', () => webpushMock);
+vi.mock('web-push', () => ({ default: webpushMock }));
 
 import { PushService } from '../../src/modules/push/push.service.js';
 
