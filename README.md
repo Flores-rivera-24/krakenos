@@ -10,7 +10,11 @@ accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 > y ajustes con auditoría. HTTPS opcional para la LAN. **Fase 2 completa:** VPN
 > WireGuard, control IoT, cámaras, monitor de tráfico y WiFi multi-AP.
 > **Fase 3 completa:** estadísticas históricas de tráfico, firewall, VLANs, QoS y
-> DNS/bloqueo. Todo con el patrón **mock-first**.
+> DNS/bloqueo. Todo con el patrón **mock-first**. **Producción:** integraciones reales
+> seleccionables por entorno (WireGuard, iptables, tc, Pi-hole, OpenWrt, pfSense, **Cisco
+> IOS/NETCONF**, zigbee2mqtt, Matter, Hue, Govee, Tuya, RTSP). **UI estilo UniFi** (tema
+> oscuro, sidebar colapsable, paneles slideover, dashboard de widgets reorganizables) y
+> **Ajustes avanzados** (sistema/red, seguridad con sesiones/tokens/tema, integraciones).
 
 ## Estructura (monorepo pnpm)
 
@@ -60,8 +64,8 @@ Red avanzada, también **mock-first**:
 ## Arquitectura del agente
 
 - Los **drivers de hardware** (`apps/agent/src/drivers`) son adaptadores
-  intercambiables (`mock`, `openwrt`, `pfsense`). El resto del agente sólo
-  depende de la interfaz `HardwareDriver` de `@krakenos/types`.
+  intercambiables (`mock`, `openwrt`, `pfsense`, `cisco-ios`, `cisco-netconf`). El resto
+  del agente sólo depende de la interfaz `HardwareDriver` de `@krakenos/types`.
 - Las integraciones de Fase 2/3 siguen el mismo patrón: cada una (`VpnManager`,
   `IotManager`, `CameraManager`, `FirewallManager`, `VlanManager`, `QosManager`,
   `DnsManager`) se construye con una factory e inyecta su mock en desarrollo.
@@ -104,6 +108,12 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   nube): discovery, on/off, brillo y color. Requiere activar "LAN Control" en la app Govee.
 - **Varios backends IoT a la vez** — `IOT_KIND` admite una lista (`hue,govee`): se agregan en un
   `CompositeIotManager` que enruta por prefijo de id, para gestionar varios ecosistemas en una vista.
+- **IoT Tuya local** (`IOT_KIND=tuya`) — controla focos genéricos de Amazon (EASYTAO y similares) por el
+  protocolo **Tuya local** (TCP+AES, `tuyapi`). Cada foco se registra con su `deviceId`/`localKey` desde
+  **Ajustes → Integraciones** (el `localKey` nunca se devuelve en GET).
+- **Driver Cisco IOS** (`DRIVER_KIND=cisco-ios`) — switches/routers Catalyst vía **SSH + CLI de IOS**:
+  inventario (`show arp`), tráfico (`show interfaces`), bloqueo (entrada estática `drop`) y VLANs
+  (`VLAN_KIND=cisco`). Para IOS-XE 16.6+, `DRIVER_KIND=cisco-netconf` usa **NETCONF/YANG** (XML sobre SSH).
 - **Vista de compatibilidad** — la app incluye un mapa (`/compatibility`) con la topología del hogar y
   el nivel de control de KrakenOS por dispositivo.
 
@@ -122,11 +132,15 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # IoT Matter (vía WebSocket): IOT_KIND=matter + MATTER_SERVER_URL (requiere ws y python-matter-server)
 # IoT Philips Hue (vía REST local): IOT_KIND=hue + HUE_BRIDGE_URL/HUE_APP_KEY
 # IoT Govee (vía API LAN UDP): IOT_KIND=govee (activa "LAN Control" en la app Govee)
+# IoT Tuya (vía protocolo local): IOT_KIND=tuya + TUYA_CONFIG_PATH (requiere tuyapi; gestión en Ajustes)
+# Driver Cisco IOS (vía SSH+CLI): DRIVER_KIND=cisco-ios + DRIVER_HOST/CISCO_* (requiere node-ssh)
+# Driver Cisco NETCONF (IOS-XE 16.6+): DRIVER_KIND=cisco-netconf + CISCO_NETCONF_* (requiere node-ssh)
+# VLANs en switch Cisco: VLAN_KIND=cisco (reusa DRIVER_HOST/CISCO_*)
 ```
 
-> Todas las integraciones reales del backlog (US-18…US-27) están entregadas como código + unit tests
-> del contrato; la verificación end-to-end se hace en el despliegue con hardware. Lo único fuera del
-> contrato actual es el streaming continuo de cámaras (HLS/WebRTC).
+> Las integraciones reales del backlog (US-18…US-27, +US-28…US-32 hardware del hogar, +US-37…US-39 Cisco)
+> están entregadas como código + unit tests del contrato; la verificación end-to-end se hace en el
+> despliegue con hardware. Lo único fuera del contrato actual es el streaming continuo de cámaras (HLS/WebRTC).
 
 ## Puesta en marcha
 
