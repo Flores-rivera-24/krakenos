@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 /** Hace login por HTTP y devuelve los tokens. */
 async function login(app: FastifyInstance, email: string, password: string) {
@@ -73,6 +73,33 @@ describe('rutas de autenticación', () => {
       payload: { refreshToken: rotated.refreshToken },
     });
     expect(afterLogout.statusCode).toBe(401);
+  });
+
+  it('GET /api/auth/last-session devuelve null si no hay logins (US-49)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/auth/last-session' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toBeNull();
+  });
+
+  it('GET /api/auth/last-session devuelve { timestamp, ip } tras un login (US-49)', async () => {
+    await seedUser(app, { email: 'last@krakenos.test', password: 'password123' });
+    const ok = await login(app, 'last@krakenos.test', 'password123');
+    expect(ok.status).toBe(200);
+
+    // El audit log se escribe sin await (best-effort) → reintentar.
+    const body = await eventually(async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/auth/last-session' });
+      expect(res.statusCode).toBe(200);
+      const json = res.json() as { timestamp: string; ip: string } | null;
+      if (!json) throw new Error('aún sin sesión registrada');
+      return json;
+    });
+    expect(typeof body.timestamp).toBe('string');
+    expect(Number.isNaN(Date.parse(body.timestamp))).toBe(false);
+    expect(typeof body.ip).toBe('string');
+    // No debe exponer datos del usuario.
+    expect(body).not.toHaveProperty('email');
+    expect(body).not.toHaveProperty('userId');
   });
 
   it('rechaza un refresh token usado como access (Bearer)', async () => {

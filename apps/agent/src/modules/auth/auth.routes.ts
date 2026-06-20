@@ -1,8 +1,14 @@
-import type { LoginRequest, RefreshRequest, RevokeSessionsRequest } from '@krakenos/types';
+import type {
+  LastSession,
+  LoginRequest,
+  RefreshRequest,
+  RevokeSessionsRequest,
+} from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
+  lastSessionSchema,
   listSessionsSchema,
   loginSchema,
   logoutSchema,
@@ -26,6 +32,17 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
     }
     return reply.send(user);
+  });
+
+  // Última sesión para la pantalla de login (US-49). Público: solo devuelve
+  // timestamp + IP del último login exitoso, nunca email ni userId.
+  app.get('/last-session', { schema: lastSessionSchema }, async (): Promise<LastSession | null> => {
+    const entry = await app.prisma.auditLog.findFirst({
+      where: { action: 'auth.login' },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!entry) return null;
+    return { timestamp: entry.createdAt.toISOString(), ip: entry.ip ?? '' };
   });
 
   app.post<{ Body: LoginRequest }>(

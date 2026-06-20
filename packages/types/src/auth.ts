@@ -57,6 +57,15 @@ export interface LoginResponse {
   tokens: AuthTokens;
 }
 
+/**
+ * Última sesión registrada, para la pantalla de login (US-49).
+ * Endpoint público `GET /api/auth/last-session`; nunca expone email ni userId.
+ */
+export interface LastSession {
+  timestamp: IsoDateTime;
+  ip: string;
+}
+
 /** Sesión activa (refresh token no revocado ni expirado) mostrada en Ajustes. */
 export interface AuthSession {
   id: string;

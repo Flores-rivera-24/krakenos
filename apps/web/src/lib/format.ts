@@ -22,6 +22,22 @@ export function formatRate(bytesPerSec: number): string {
   return `${Math.round(bits)} bps`;
 }
 
+/** Tiempo relativo en español con unidades completas ("hace 3 días", "hace 2 horas"). */
+export function formatRelative(date: Date): string {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return 'hace un momento';
+  const units: [number, string, string][] = [
+    [86400, 'día', 'días'],
+    [3600, 'hora', 'horas'],
+    [60, 'minuto', 'minutos'],
+  ];
+  for (const [secs, sing, plur] of units) {
+    const n = Math.floor(s / secs);
+    if (n >= 1) return `hace ${n} ${n === 1 ? sing : plur}`;
+  }
+  return 'hace un momento';
+}
+
 /** Tiempo relativo corto en español ("hace 3m", "hace 2h"). */
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
