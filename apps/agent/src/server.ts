@@ -10,7 +10,7 @@ import { createCameraManager } from './cameras/index.js';
 import { createDnsManager } from './dns/index.js';
 import { createDriver } from './drivers/index.js';
 import { createFirewallManager } from './firewall/index.js';
-import { createIotManager } from './iot/index.js';
+import { createIotManager, startIotManager } from './iot/index.js';
 import { createQosManager } from './qos/index.js';
 import { createVlanManager } from './vlan/index.js';
 import { createVpnManager } from './vpn/index.js';
@@ -74,7 +74,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     zigbee: env.iot.zigbee,
     matter: env.iot.matter,
     hue: env.iot.hue,
+    govee: env.iot.govee,
   });
+  // Arranca la conexión en segundo plano de los managers que la necesiten (zigbee/govee).
+  startIotManager(iot, (msg) => app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`));
   const cameras = createCameraManager({ kind: env.cameras.kind, rtsp: env.cameras.rtsp });
   const firewall = createFirewallManager({
     kind: env.firewall.kind,

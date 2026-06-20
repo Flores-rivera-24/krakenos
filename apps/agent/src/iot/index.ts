@@ -1,4 +1,6 @@
 import type { IotKind, IotManager } from '@krakenos/types';
+import { GoveeIotManager } from './govee.iot.js';
+import { DgramUdpTransport } from './govee.transport.js';
 import { HueIotManager } from './hue.iot.js';
 import { HueClient } from './hue.transport.js';
 import { MatterIotManager } from './matter.iot.js';
@@ -31,6 +33,12 @@ export interface HueIotConfig {
   appKey: string;
 }
 
+/** Config para la integración Govee real (`kind: 'govee'`, API LAN). */
+export interface GoveeIotConfig {
+  /** Puerto de recepción UDP (por defecto 4002). */
+  listenPort?: number;
+}
+
 export interface IotConfig {
   kind: IotKind;
   /** Requerido cuando `kind === 'zigbee'`. */
@@ -39,6 +47,8 @@ export interface IotConfig {
   matter?: MatterIotConfig;
   /** Requerido cuando `kind === 'hue'`. */
   hue?: HueIotConfig;
+  /** Opcional cuando `kind === 'govee'`. */
+  govee?: GoveeIotConfig;
 }
 
 /**
@@ -53,17 +63,11 @@ export function createIotManager(config: IotConfig): IotManager {
     case 'zigbee': {
       const zb = config.zigbee;
       if (!zb) throw new Error('Falta la configuración Zigbee (IotConfig.zigbee)');
-      const manager = new ZigbeeIotManager({
+      // La conexión MQTT la arranca `startIotManager` (lifecycle en server.ts).
+      return new ZigbeeIotManager({
         transport: new MqttClientTransport({ url: zb.url, username: zb.username, password: zb.password }),
         baseTopic: zb.baseTopic,
       });
-      // Suscripción en segundo plano; un fallo de conexión no debe tumbar el
-      // proceso (queda como lista vacía / dispositivos no reachable), así que se
-      // captura el rechazo en lugar de dejarlo como unhandled rejection.
-      manager.start().catch((err: unknown) => {
-        console.error('[iot:zigbee] no se pudo conectar a MQTT:', (err as Error).message);
-      });
-      return manager;
     }
     case 'matter': {
       const mt = config.matter;
@@ -78,7 +82,10 @@ export function createIotManager(config: IotConfig): IotManager {
       return new HueIotManager({ client: new HueClient({ baseUrl: hue.url, appKey: hue.appKey }) });
     }
     case 'govee':
-      throw new Error('Integración Govee aún no implementada');
+      // El discovery LAN lo arranca `startIotManager` (lifecycle en server.ts).
+      return new GoveeIotManager({
+        transport: new DgramUdpTransport({ listenPort: config.govee?.listenPort }),
+      });
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -86,7 +93,20 @@ export function createIotManager(config: IotConfig): IotManager {
   }
 }
 
+/**
+ * Arranca el manager si expone `start()` (zigbee/govee mantienen una conexión
+ * en segundo plano). Captura el fallo para no tumbar el proceso ni dejar un
+ * unhandled rejection; el manager queda funcional (lista vacía hasta conectar).
+ */
+export function startIotManager(manager: IotManager, onError: (message: string) => void): void {
+  const startable = manager as { start?: () => Promise<void> };
+  if (typeof startable.start === 'function') {
+    startable.start().catch((err: unknown) => onError((err as Error).message));
+  }
+}
+
 export { MockIotManager, IotError } from './mock.iot.js';
 export { ZigbeeIotManager } from './zigbee.iot.js';
 export { MatterIotManager } from './matter.iot.js';
 export { HueIotManager } from './hue.iot.js';
+export { GoveeIotManager } from './govee.iot.js';

@@ -100,6 +100,8 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
 - **IoT Philips Hue real** (`IOT_KIND=hue`) — controla los focos Hue (on/off, brillo y **color**) vía
   la **CLIP API v2 local** del bridge. El contrato IoT incluye color (RGB hex o temperatura en Kelvin),
   con color-picker en la UI.
+- **IoT Govee real** (`IOT_KIND=govee`) — controla las luces Govee por su **API LAN** (UDP local, sin
+  nube): discovery, on/off, brillo y color. Requiere activar "LAN Control" en la app Govee.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 
@@ -115,6 +117,7 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # VLANs por switch (vía SNMP): VLAN_KIND=switch + VLAN_SWITCH_HOST (requiere net-snmp)
 # IoT Matter (vía WebSocket): IOT_KIND=matter + MATTER_SERVER_URL (requiere ws y python-matter-server)
 # IoT Philips Hue (vía REST local): IOT_KIND=hue + HUE_BRIDGE_URL/HUE_APP_KEY
+# IoT Govee (vía API LAN UDP): IOT_KIND=govee (activa "LAN Control" en la app Govee)
 ```
 
 > Todas las integraciones reales del backlog (US-18…US-27) están entregadas como código + unit tests
