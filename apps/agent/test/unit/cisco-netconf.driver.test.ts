@@ -45,9 +45,9 @@ describe('CiscoNetconfDriver', () => {
     };
     let clock = 1000;
     const driver = makeDriver(() => clock);
-    expect(await driver.getTrafficSample()).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
+    expect((await driver.getTrafficSample()).wan).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
     clock = 3000; // +2 s
-    expect(await driver.getTrafficSample()).toMatchObject({
+    expect((await driver.getTrafficSample()).wan).toMatchObject({
       rxBytesPerSec: 1_000_000,
       txBytesPerSec: 200_000,
     });

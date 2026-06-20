@@ -99,6 +99,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.refreshToken.deleteMany();
   await app.prisma.auditLog.deleteMany();
   await app.prisma.trafficSample.deleteMany();
+  await app.prisma.deviceTrafficSample.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();

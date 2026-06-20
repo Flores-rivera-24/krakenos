@@ -97,11 +97,11 @@ describe('PfSenseDriver', () => {
     let clock = 1_000_000;
     const driver = makeDriver(fake, () => clock);
 
-    expect(await driver.getTrafficSample()).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
+    expect((await driver.getTrafficSample()).wan).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
     rx = 3_000_000;
     tx = 600_000;
     clock += 2_000;
-    expect(await driver.getTrafficSample()).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
+    expect((await driver.getTrafficSample()).wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
   });
 
   it('blockDevice resuelve la IP por ARP, crea la regla y aplica', async () => {

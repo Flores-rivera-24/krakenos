@@ -48,11 +48,11 @@ describe('CiscoIosDriver', () => {
     let clock = 1000;
     const driver = makeDriver(() => clock);
     const first = await driver.getTrafficSample();
-    expect(first).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
+    expect(first.wan).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
     clock = 3000; // +2 s
     const second = await driver.getTrafficSample();
     // rx: (3000000-1000000)/2 = 1_000_000 ; tx: (600000-200000)/2 = 200_000
-    expect(second).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
+    expect(second.wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
   });
 
   it('blockDevice/unblockDevice emiten la secuencia privilegiada con la MAC Cisco', async () => {

@@ -117,12 +117,12 @@ describe('OpenWrtDriver', () => {
     const driver = makeDriver(() => clock);
 
     const first = await driver.getTrafficSample();
-    expect(first).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
+    expect(first.wan).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
 
     clock += 2_000; // +2 s
     const second = await driver.getTrafficSample();
     // rx: (3_000_000 - 1_000_000)/2 = 1_000_000 ; tx: (600_000 - 200_000)/2 = 200_000
-    expect(second).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
+    expect(second.wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
   });
 
   it('blockDevice ejecuta la regla iptables de la MAC', async () => {
