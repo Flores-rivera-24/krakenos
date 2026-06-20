@@ -31,14 +31,23 @@ declare module 'fastify' {
  * Configura @fastify/jwt con RS256 (clave privada para firmar, pública para
  * verificar) y registra los preHandlers de autorización.
  */
+/** Emisor/audiencia de los JWT: acota dónde son válidos los tokens de KrakenOS. */
+const JWT_ISSUER = 'krakenos';
+const JWT_AUDIENCE = 'krakenos';
+
 export const authPlugin = fp(async (app: FastifyInstance) => {
   await app.register(fastifyJwt, {
     secret: {
       private: env.jwtPrivateKey,
       public: env.jwtPublicKey,
     },
-    sign: { algorithm: 'RS256', expiresIn: env.accessTokenTtl },
-    verify: { algorithms: ['RS256'] },
+    sign: {
+      algorithm: 'RS256',
+      expiresIn: env.accessTokenTtl,
+      iss: JWT_ISSUER,
+      aud: JWT_AUDIENCE,
+    },
+    verify: { algorithms: ['RS256'], allowedIss: JWT_ISSUER, allowedAud: JWT_AUDIENCE },
   });
 
   app.decorate('authenticate', async (req: FastifyRequest, reply: FastifyReply) => {

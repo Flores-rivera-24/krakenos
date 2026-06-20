@@ -1,10 +1,10 @@
 import type { TrafficSample } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
-import { type Socket, io as ioClient } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
-import { buildTestApp, listenOnEphemeralPort } from '../helpers/app.js';
+import { buildTestApp, connectSocket, listenOnEphemeralPort } from '../helpers/app.js';
 
 /** Resuelve con el primer payload del evento, o rechaza al agotar el timeout. */
 function waitForEvent<T>(socket: Socket, event: string, timeoutMs = 3000): Promise<T> {
@@ -36,13 +36,13 @@ describe('eventos WebSocket de tráfico', () => {
   });
 
   it('entrega el histórico al conectar', async () => {
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     const history = await waitForEvent<TrafficSample[]>(client, 'traffic:history');
     expect(Array.isArray(history)).toBe(true);
   });
 
   it('emite traffic:sample al room cuando el servicio muestrea', async () => {
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     await waitForEvent<TrafficSample[]>(client, 'traffic:history');
 
     // Otro servicio sobre el mismo io emite al room TRAFFIC_ROOM que el cliente ya unió.

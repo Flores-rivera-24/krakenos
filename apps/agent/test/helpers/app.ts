@@ -3,6 +3,7 @@ import type { UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import { io as ioClient, type Socket } from 'socket.io-client';
 import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
@@ -145,6 +146,28 @@ export function signAccess(
 /** Header de autorización `Bearer` listo para inject. */
 export function authHeader(token: string): { authorization: string } {
   return { authorization: `Bearer ${token}` };
+}
+
+/**
+ * Conecta un cliente Socket.io **autenticado**: firma un access token al vuelo y
+ * lo envía en el handshake (`auth.token`), como exige el middleware del agente.
+ * El middleware solo valida la firma/tipo del JWT, así que no hace falta que el
+ * usuario exista en la DB.
+ */
+export function connectSocket(
+  app: FastifyInstance,
+  baseUrl: string,
+  user: { id: string; email: string; role: UserRole } = {
+    id: 'sock-user',
+    email: 'sock@krakenos.test',
+    role: 'admin',
+  },
+): Socket {
+  return ioClient(baseUrl, {
+    transports: ['websocket'],
+    forceNew: true,
+    auth: { token: signAccess(app, user) },
+  });
 }
 
 /** Pausa `ms` milisegundos. */

@@ -1,8 +1,16 @@
 import type { IotDevice } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
-import { type Socket, io as ioClient } from 'socket.io-client';
+import { type Socket } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { authHeader, buildTestApp, listenOnEphemeralPort, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import {
+  authHeader,
+  buildTestApp,
+  connectSocket,
+  listenOnEphemeralPort,
+  resetDb,
+  seedUser,
+  signAccess,
+} from '../helpers/app.js';
 
 /** Resuelve con el primer payload del evento, o rechaza al agotar el timeout. */
 function waitForEvent<T>(socket: Socket, event: string, timeoutMs = 3000): Promise<T> {
@@ -38,7 +46,7 @@ describe('eventos WebSocket de IoT', () => {
   });
 
   it('entrega un snapshot al conectar', async () => {
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     const snapshot = await waitForEvent<IotDevice[]>(client, 'iot:snapshot');
     expect(Array.isArray(snapshot)).toBe(true);
     expect(snapshot.length).toBeGreaterThan(0);
@@ -46,7 +54,7 @@ describe('eventos WebSocket de IoT', () => {
 
   it('emite iot:device-updated al room tras un PATCH de admin', async () => {
     const admin = await seedUser(app, { role: 'admin' });
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     await waitForEvent<IotDevice[]>(client, 'iot:snapshot');
 
     const received = waitForEvent<IotDevice>(client, 'iot:device-updated');

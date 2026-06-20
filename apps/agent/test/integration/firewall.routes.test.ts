@@ -52,6 +52,29 @@ describe('rutas de firewall', () => {
     expect(rules.length).toBeGreaterThanOrEqual(1);
   });
 
+  it('rechaza un source que no es IP/CIDR válido (400)', async () => {
+    const admin = await seedUser(app);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/firewall/rules',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { name: 'Inyección', action: 'deny', source: '1.2.3.4 -j ACCEPT' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('acepta un source IP/CIDR válido (201)', async () => {
+    const admin = await seedUser(app);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/firewall/rules',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { name: 'LAN', action: 'allow', source: '192.168.1.0/24' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().source).toBe('192.168.1.0/24');
+  });
+
   it('crea una regla (201), la audita y aparece en el listado', async () => {
     const admin = await seedUser(app);
     const token = signAccess(app, admin);

@@ -216,4 +216,19 @@ export const env = {
 
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
+
+  /**
+   * `trustProxy` de Fastify. Actívalo (`TRUST_PROXY=true`) si el agente corre
+   * tras un proxy inverso (nginx) para que `req.ip` —usado en auditoría y rate
+   * limit— refleje la IP real del cliente vía `X-Forwarded-For`.
+   */
+  trustProxy: process.env.TRUST_PROXY === 'true',
+
+  /** Cabeceras de seguridad servidas en todas las respuestas. */
+  security: {
+    /** CSP servida en cada respuesta; `CONTENT_SECURITY_POLICY` la sobreescribe entera. */
+    csp: process.env.CONTENT_SECURITY_POLICY || undefined,
+    /** HSTS: por defecto ligado a TLS; `HSTS_ENABLED` lo fuerza on/off (tras proxy HTTPS). */
+    hsts: process.env.HSTS_ENABLED ? process.env.HSTS_ENABLED === 'true' : httpsEnabled,
+  },
 } as const;
