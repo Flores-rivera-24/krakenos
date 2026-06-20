@@ -51,7 +51,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.post<{ Body: RefreshRequest }>(
     '/refresh',
-    { schema: refreshSchema },
+    {
+      schema: refreshSchema,
+      // Limita el abuso de refresco/rotación desde una misma IP (defensa en
+      // profundidad; el token sigue validándose criptográficamente).
+      config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
+    },
     async (req, reply) => {
       try {
         const tokens = await service.refresh(req.body.refreshToken);

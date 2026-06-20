@@ -19,6 +19,7 @@ import type { TuyaDeviceRecord } from './iot/tuya.store.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { prismaPlugin } from './plugins/prisma.js';
+import { securityHeadersPlugin } from './plugins/security-headers.js';
 import { socketioPlugin } from './plugins/socketio.js';
 import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
@@ -50,10 +51,11 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // TLS opcional: si hay cert/clave, el agente sirve HTTPS.
   const app: FastifyInstance = env.https
-    ? (Fastify({ logger, https: env.https }) as unknown as FastifyInstance)
-    : Fastify({ logger });
+    ? (Fastify({ logger, https: env.https, trustProxy: env.trustProxy }) as unknown as FastifyInstance)
+    : Fastify({ logger, trustProxy: env.trustProxy });
 
   // Infra
+  await app.register(securityHeadersPlugin, { csp: env.security.csp, hsts: env.security.hsts });
   await app.register(cors, { origin: env.webOrigin, credentials: true });
   await app.register(cookie);
   await app.register(rateLimit, { global: false });

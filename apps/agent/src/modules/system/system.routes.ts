@@ -131,8 +131,10 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     },
   );
 
-  // Zona de peligro: invalida todas las sesiones (todos los usuarios). La rotación
-  // real del par RS256 en disco es un paso de despliegue (gen-keys.sh + reinicio).
+  // Zona de peligro: revoca todos los refresh tokens (cierra todas las sesiones de
+  // todos los usuarios). OJO: no rota el par RS256 en disco, así que los **access
+  // tokens** ya emitidos siguen siendo válidos hasta su `exp` (≤ accessTokenTtl);
+  // la rotación real de claves es un paso de despliegue (gen-keys.sh + reinicio).
   app.post('/regen-keys', { preHandler: app.requireRole('admin') }, async (req, reply) => {
     await app.prisma.refreshToken.updateMany({ where: { revoked: false }, data: { revoked: true } });
     app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });

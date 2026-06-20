@@ -4,7 +4,14 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/*.config.js', '**/prisma/**'],
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/*.config.js',
+      '**/prisma/**',
+      // Assets estáticos servidos tal cual (script anti-flash de tema, sw.js, etc.).
+      'apps/web/public/**',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

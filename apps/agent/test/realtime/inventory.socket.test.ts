@@ -2,7 +2,13 @@ import type { Device } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { type Socket, io as ioClient } from 'socket.io-client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { buildTestApp, eventually, listenOnEphemeralPort, resetDb } from '../helpers/app.js';
+import {
+  buildTestApp,
+  connectSocket,
+  eventually,
+  listenOnEphemeralPort,
+  resetDb,
+} from '../helpers/app.js';
 
 /** Resuelve con el primer payload del evento, o rechaza al agotar el timeout. */
 function waitForEvent<T>(socket: Socket, event: string, timeoutMs = 3000): Promise<T> {
@@ -38,14 +44,38 @@ describe('eventos WebSocket de inventario', () => {
   });
 
   it('entrega un snapshot al conectar', async () => {
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     const snapshot = await waitForEvent<Device[]>(client, 'inventory:snapshot');
     expect(Array.isArray(snapshot)).toBe(true);
     expect(snapshot).toHaveLength(0); // DB vacía tras el reset
   });
 
+  it('rechaza la conexión sin access token', async () => {
+    const anon = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(() => reject(new Error('esperaba connect_error')), 3000);
+        anon.on('connect', () => {
+          clearTimeout(timer);
+          reject(new Error('no debía conectar sin token'));
+        });
+        anon.on('connect_error', (err: Error) => {
+          clearTimeout(timer);
+          try {
+            expect(err.message).toMatch(/AUTH_/);
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+        });
+      });
+    } finally {
+      anon.close();
+    }
+  });
+
   it('inventory:rescan dispara un barrido y emite device-updated', async () => {
-    client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true });
+    client = connectSocket(app, baseUrl);
     await waitForEvent<Device[]>(client, 'inventory:snapshot');
 
     const updates: Device[] = [];

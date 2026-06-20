@@ -40,7 +40,13 @@ export const setupInitSchema = {
       homeName: { type: 'string', minLength: 1, maxLength: 64 },
       email: { type: 'string', format: 'email', maxLength: 254 },
       displayName: { type: 'string', minLength: 1, maxLength: 80 },
-      password: { type: 'string', minLength: 8, maxLength: 128 },
+      // Cuenta admin de un controlador de red: mínimo 10 y al menos una letra y un dígito.
+      password: {
+        type: 'string',
+        minLength: 10,
+        maxLength: 128,
+        pattern: '(?=.*[A-Za-z])(?=.*\\d)',
+      },
     },
   },
   response: {
