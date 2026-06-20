@@ -18,3 +18,40 @@ export interface SystemStats {
   };
   timestamp: IsoDateTime;
 }
+
+/** Claves de ajuste editables desde la UI (allowlist). */
+export const SYSTEM_SETTING_KEYS = [
+  'homeName',
+  'timezone',
+  'scanIntervalSec',
+  'trafficRetentionDays',
+  'auditRetentionDays',
+] as const;
+
+export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
+
+/** Info de solo lectura del sistema mostrada en Ajustes. */
+export interface SystemInfo {
+  driver: string;
+  host: string | null;
+  httpsEnabled: boolean;
+}
+
+/** Respuesta de `GET /api/system/settings`: ajustes editables + info. */
+export interface SystemSettingsResponse {
+  settings: Record<SystemSettingKey, string>;
+  info: SystemInfo;
+}
+
+/** Cuerpo de `PATCH /api/system/settings`. */
+export interface UpdateSettingRequest {
+  key: SystemSettingKey;
+  value: string;
+}
+
+/** Resultado de `POST /api/system/connectivity-test`. */
+export interface ConnectivityTestResult {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
+}

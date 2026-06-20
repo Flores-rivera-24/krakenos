@@ -1,3 +1,5 @@
+import { SYSTEM_SETTING_KEYS } from '@krakenos/types';
+
 export const systemStatsSchema = {
   response: {
     200: {
@@ -24,6 +26,57 @@ export const systemStatsSchema = {
         timestamp: { type: 'string', format: 'date-time' },
       },
       required: ['uptimeSeconds', 'cpu', 'memory', 'timestamp'],
+    },
+  },
+} as const;
+
+const settingsResponse = {
+  type: 'object',
+  properties: {
+    settings: {
+      type: 'object',
+      additionalProperties: { type: 'string' },
+    },
+    info: {
+      type: 'object',
+      properties: {
+        driver: { type: 'string' },
+        host: { type: ['string', 'null'] },
+        httpsEnabled: { type: 'boolean' },
+      },
+      required: ['driver', 'host', 'httpsEnabled'],
+    },
+  },
+  required: ['settings', 'info'],
+} as const;
+
+export const getSettingsSchema = {
+  response: { 200: settingsResponse },
+} as const;
+
+export const updateSettingSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['key', 'value'],
+    properties: {
+      key: { type: 'string', enum: [...SYSTEM_SETTING_KEYS] },
+      value: { type: 'string', maxLength: 200 },
+    },
+  },
+  response: { 200: settingsResponse },
+} as const;
+
+export const connectivityTestSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        ok: { type: 'boolean' },
+        latencyMs: { type: 'number' },
+        error: { type: 'string' },
+      },
+      required: ['ok'],
     },
   },
 } as const;

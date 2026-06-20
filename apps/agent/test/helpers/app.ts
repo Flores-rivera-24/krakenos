@@ -69,7 +69,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(authRoutes, { prefix: '/api/auth' });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
-    await app.register(systemRoutes, { prefix: '/api/system' });
+    await app.register(systemRoutes, { prefix: '/api/system', driver });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });
