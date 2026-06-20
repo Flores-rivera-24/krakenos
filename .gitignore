@@ -47,8 +47,8 @@ coverage/
 ~$*
 *.docx
 
-# Claude Code — ajustes locales por máquina (no se comparten)
-.claude/settings.local.json
+# Claude Code — config local del proyecto (no se comparte)
+.claude/
 
 # Documentación interna — no se publica en GitHub
 /SPECS.md
