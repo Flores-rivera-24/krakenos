@@ -213,6 +213,11 @@ export class InventoryService {
       },
     })) as DbDevice;
 
+    // Dispositivo nuevo (MAC nunca vista): evento de seguridad (auditoría + push, US-45).
+    if (!existing) {
+      this.app.audit({ action: 'inventory.unknown_device', detail: mac });
+    }
+
     this.app.io.emit('inventory:device-updated', toDevice(row));
   }
 }

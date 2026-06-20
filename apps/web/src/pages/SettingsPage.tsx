@@ -13,8 +13,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
+import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
+import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { useAuthStore } from '@/store/auth.store';
 
 type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'cuenta';
@@ -61,6 +63,33 @@ export function SettingsPage() {
   const [applied, setApplied] = useState(false);
   const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // Notificaciones push (US-45): estado reflejado desde localStorage.
+  const pushSupported = isPushSupported();
+  const [pushEnabled, setPushEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('kr-push-enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [pushBusy, setPushBusy] = useState(false);
+
+  const togglePush = async (next: boolean) => {
+    setPushBusy(true);
+    try {
+      if (next) await subscribeToPush();
+      else await unsubscribeFromPush();
+      setPushEnabled(next);
+      localStorage.setItem('kr-push-enabled', String(next));
+    } catch {
+      // Permiso denegado u otro error: el toggle queda desactivado.
+      setPushEnabled(false);
+      localStorage.setItem('kr-push-enabled', 'false');
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -227,6 +256,37 @@ export function SettingsPage() {
                       {data?.info.httpsEnabled ? 'Activado (certificado en LAN)' : 'Desactivado (HTTP)'}
                     </span>
                   </Setting>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Notificaciones</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {!pushSupported ? (
+                    <p className="text-kr-sm text-kr-muted">
+                      Tu navegador no soporta notificaciones push.
+                    </p>
+                  ) : (
+                    <Setting label="Notificaciones push">
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={pushEnabled}
+                          disabled={pushBusy}
+                          onCheckedChange={(v) => void togglePush(v)}
+                          aria-label="Notificaciones push"
+                        />
+                        <span
+                          className={
+                            pushEnabled ? 'text-kr-sm text-success' : 'text-kr-sm text-kr-muted'
+                          }
+                        >
+                          {pushEnabled ? 'Activadas' : 'Desactivadas'}
+                        </span>
+                      </div>
+                    </Setting>
+                  )}
                 </CardContent>
               </Card>
 

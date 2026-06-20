@@ -25,6 +25,8 @@ import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
+import { pushRoutes } from './modules/push/push.routes.js';
+import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
@@ -111,6 +113,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   // sistema (para reprogramar el barrido en caliente al cambiar `scanIntervalSec`).
   const inventoryService = new InventoryService(app, driver);
 
+  // Notificaciones push (US-45): decorado en `app.push` para que el plugin de
+  // auditoría dispare avisos de eventos de alta prioridad.
+  const pushService = new PushService(app);
+  app.decorate('push', pushService);
+
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
@@ -126,6 +133,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(qosRoutes, { prefix: '/api/qos', qos });
   await app.register(dnsRoutes, { prefix: '/api/dns', dns });
   await app.register(auditRoutes, { prefix: '/api/audit' });
+  await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
 
   // Monitor de tráfico: muestrea vía driver y emite por Socket.io.
   const trafficService = new TrafficService(app, driver);
@@ -139,6 +147,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   const scanSec = Number(scanRow?.value) > 0 ? Number(scanRow!.value) : 60;
   inventoryService.setScanInterval(scanSec * 1000);
   app.addHook('onClose', async () => inventoryService.stopScan());
+
+  // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
+  await pushService.ensureKeys();
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).
   if (env.web.serve && existsSync(resolve(env.web.distPath, 'index.html'))) {
