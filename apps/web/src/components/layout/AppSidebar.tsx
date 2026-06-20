@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { NAV_GROUPS, type NavBadgeKey, type NavItem } from './nav';
+import { ThemeToggle } from './ThemeToggle';
 
 /** Cuenta de dispositivos desconocidos o bloqueados (badge de "Dispositivos"). */
 function unknownOrBlockedCount(devices: Record<string, Device>): number {
@@ -138,6 +139,8 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
             </div>
           )}
         </div>
+
+        <ThemeToggle collapsed={collapsed} />
 
         <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-kr-elevated text-kr-sm font-semibold text-kr-primary">

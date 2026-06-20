@@ -1,7 +1,17 @@
 import type { Device } from '@krakenos/types';
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// `ThemeToggle` (US-44) usa lib/theme; lo mockeamos para aislar el sidebar.
+const themeMock = vi.hoisted(() => ({
+  getTheme: vi.fn(() => 'dark'),
+  toggleTheme: vi.fn(() => 'light'),
+  applyTheme: vi.fn(),
+}));
+vi.mock('@/lib/theme', () => themeMock);
+
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import type { SidebarStats } from '@/lib/sidebar-stats';
 import { useAuthStore } from '@/store/auth.store';
@@ -101,5 +111,18 @@ describe('AppSidebar', () => {
   it('refleja el estado offline del driver con un dot de peligro', () => {
     renderSidebar({ collapsed: false, stats: { ...STATS, online: false } });
     expect(screen.getByLabelText('Error')).toBeInTheDocument();
+  });
+
+  it('renderiza el botón ThemeToggle en la sidebar', () => {
+    renderSidebar({ collapsed: false });
+    expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
+  });
+
+  it('al hacer clic en el ThemeToggle llama a toggleTheme', async () => {
+    themeMock.toggleTheme.mockClear();
+    const user = userEvent.setup();
+    renderSidebar({ collapsed: false });
+    await user.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    expect(themeMock.toggleTheme).toHaveBeenCalled();
   });
 });
