@@ -5,6 +5,7 @@ import type {
   FirewallRule,
 } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
+import { FirewallRuleSlideover } from '@/components/firewall/FirewallRuleSlideover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,6 +32,7 @@ export function FirewallPage() {
   const [portText, setPortText] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<FirewallRule | null>(null);
 
   const load = () => {
     void api
@@ -202,8 +204,12 @@ export function FirewallPage() {
               </thead>
               <tbody>
                 {rules.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="px-3 py-2">
+                  <tr
+                    key={r.id}
+                    className="cursor-pointer border-t border-border hover:bg-secondary/40"
+                    onClick={() => setSelected(r)}
+                  >
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={r.enabled}
                         onCheckedChange={() => void toggleRule(r)}
@@ -225,7 +231,7 @@ export function FirewallPage() {
                     <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
                     <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
                     {isAdmin && (
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="sm" onClick={() => void removeRule(r.id)}>
                           Eliminar
                         </Button>
@@ -245,6 +251,15 @@ export function FirewallPage() {
           </div>
         </CardContent>
       </Card>
+
+      {selected && (
+        <FirewallRuleSlideover
+          rule={selected}
+          canEdit={isAdmin}
+          onClose={() => setSelected(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }

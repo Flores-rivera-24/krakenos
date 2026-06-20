@@ -1,10 +1,10 @@
-import type { CreatePeerResult, VpnPeer, VpnStatus } from '@krakenos/types';
+import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatus } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { ApiRequestError, api } from '@/lib/api';
 
 export function VpnPage() {
@@ -13,7 +13,8 @@ export function VpnPage() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [created, setCreated] = useState<CreatePeerResult | null>(null);
+  // Peer abierto en el slideover; `config` solo está presente al recién crearlo.
+  const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
   const load = () => {
     void Promise.all([api.get<VpnStatus>('/vpn/status'), api.get<VpnPeer[]>('/vpn/peers')])
@@ -33,7 +34,7 @@ export function VpnPage() {
     setError(null);
     try {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
-      setCreated(result); // muestra QR + config una sola vez
+      setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
       load();
     } catch (err) {
@@ -134,14 +135,25 @@ export function VpnPage() {
               </thead>
               <tbody>
                 {peers.map((p) => (
-                  <tr key={p.id} className="border-t border-border">
+                  <tr
+                    key={p.id}
+                    className="cursor-pointer border-t border-border hover:bg-secondary/40"
+                    onClick={() => setSelected({ peer: p })}
+                  >
                     <td className="px-3 py-2">{p.name}</td>
                     <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
                     <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
                       {p.publicKey.slice(0, 16)}…
                     </td>
                     <td className="px-3 py-2 text-right">
-                      <Button variant="ghost" size="sm" onClick={() => void removePeer(p.id)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void removePeer(p.id);
+                        }}
+                      >
                         Eliminar
                       </Button>
                     </td>
@@ -160,29 +172,13 @@ export function VpnPage() {
         </CardContent>
       </Card>
 
-      {created && (
-        <Dialog open onClose={() => setCreated(null)}>
-          <div className="mb-3 flex items-start justify-between">
-            <div>
-              <h3 className="text-lg font-semibold">{created.peer.name}</h3>
-              <p className="text-xs text-muted-foreground">{created.peer.allowedIps}</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => setCreated(null)}>
-              Cerrar
-            </Button>
-          </div>
-          <p className="mb-3 text-sm text-amber-500">
-            Escanea el QR en la app de WireGuard. Esta config solo se muestra una vez.
-          </p>
-          <img
-            src={created.config.qr}
-            alt="QR de configuración WireGuard"
-            className="mx-auto h-56 w-56 rounded bg-white p-2"
-          />
-          <pre className="mt-3 max-h-48 overflow-auto rounded-md bg-secondary/40 p-3 text-xs">
-            {created.config.config}
-          </pre>
-        </Dialog>
+      {selected && (
+        <VpnPeerSlideover
+          peer={selected.peer}
+          config={selected.config}
+          onClose={() => setSelected(null)}
+          onDelete={(id) => void removePeer(id)}
+        />
       )}
     </div>
   );

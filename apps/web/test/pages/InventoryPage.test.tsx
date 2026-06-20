@@ -11,7 +11,10 @@ const fakeSocket = vi.hoisted(() => ({
   emit: vi.fn(),
 }));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
-vi.mock('@/lib/api', () => ({ api: { patch: vi.fn(), post: vi.fn(), del: vi.fn() }, ApiRequestError: class extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: { get: () => Promise.resolve([]), patch: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() },
+  ApiRequestError: class extends Error {},
+}));
 
 import { InventoryPage } from '@/pages/InventoryPage';
 import { useAuthStore } from '@/store/auth.store';

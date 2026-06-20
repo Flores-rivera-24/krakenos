@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { DeviceDetailModal } from '@/components/inventory/DeviceDetailModal';
+import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Button } from '@/components/ui/button';
 import { TYPE_LABELS } from '@/lib/devices';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -81,7 +81,7 @@ export function InventoryPage() {
         </table>
       </div>
 
-      {selected && <DeviceDetailModal device={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <DeviceDetailSlideover device={selected} onClose={() => setSelectedId(null)} />}
     </div>
   );
 }

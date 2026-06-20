@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock del cliente API: capturamos las llamadas sin tocar la red.
 const apiMock = vi.hoisted(() => ({
+  get: vi.fn(),
   patch: vi.fn(),
   post: vi.fn(),
+  put: vi.fn(),
   del: vi.fn(),
 }));
 vi.mock('@/lib/api', () => ({
@@ -14,7 +16,7 @@ vi.mock('@/lib/api', () => ({
   ApiRequestError: class ApiRequestError extends Error {},
 }));
 
-import { DeviceDetailModal } from '@/components/inventory/DeviceDetailModal';
+import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { useAuthStore } from '@/store/auth.store';
 
 function device(over: Partial<Device> = {}): Device {
@@ -29,6 +31,7 @@ function device(over: Partial<Device> = {}): Device {
     type: 'computer',
     isBlocked: false,
     online: true,
+    vlanTag: null,
     sources: ['arp', 'mdns'],
     firstSeen: '2026-01-01T00:00:00.000Z',
     lastSeen: '2026-01-01T00:00:00.000Z',
@@ -43,16 +46,18 @@ function asRole(role: 'admin' | 'viewer') {
   });
 }
 
-describe('DeviceDetailModal', () => {
+describe('DeviceDetailSlideover', () => {
   beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([]); // GET /vlans
     apiMock.patch.mockReset().mockResolvedValue(device());
     apiMock.post.mockReset().mockResolvedValue(device({ isBlocked: true }));
+    apiMock.put.mockReset().mockResolvedValue(undefined);
     apiMock.del.mockReset().mockResolvedValue(undefined);
   });
 
   it('muestra los datos del dispositivo', () => {
     asRole('viewer');
-    render(<DeviceDetailModal device={device()} onClose={() => {}} />);
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
     expect(screen.getByText('192.168.1.10')).toBeInTheDocument();
     expect(screen.getByText('aa:bb:cc:dd:ee:01')).toBeInTheDocument();
     expect(screen.getByText('arp, mdns')).toBeInTheDocument();
@@ -62,7 +67,7 @@ describe('DeviceDetailModal', () => {
     asRole('viewer');
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<DeviceDetailModal device={device()} onClose={onClose} />);
+    render(<DeviceDetailSlideover device={device()} onClose={onClose} />);
 
     await user.type(screen.getByLabelText('Nombre'), 'Mi portátil');
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
@@ -78,25 +83,31 @@ describe('DeviceDetailModal', () => {
 
   it('un viewer no ve el botón de bloqueo', () => {
     asRole('viewer');
-    render(<DeviceDetailModal device={device()} onClose={() => {}} />);
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
     expect(screen.queryByRole('button', { name: /bloquear/i })).not.toBeInTheDocument();
   });
 
   it('un admin puede bloquear: llama a POST /block', async () => {
     asRole('admin');
     const user = userEvent.setup();
-    render(<DeviceDetailModal device={device({ isBlocked: false })} onClose={() => {}} />);
+    render(<DeviceDetailSlideover device={device({ isBlocked: false })} onClose={() => {}} />);
 
     await user.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
   });
 
-  it('un admin puede desbloquear un dispositivo bloqueado: llama a DELETE /block', async () => {
+  it('un admin asigna una VLAN: PUT con el tag', async () => {
     asRole('admin');
+    apiMock.get.mockResolvedValue([
+      { id: 'v1', tag: 30, name: 'IoT', subnet: null, isolated: true, createdAt: '', deviceCount: 0 },
+    ]);
     const user = userEvent.setup();
-    render(<DeviceDetailModal device={device({ isBlocked: true })} onClose={() => {}} />);
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
 
-    await user.click(screen.getByRole('button', { name: 'Desbloquear acceso a la red' }));
-    await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
+    await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/vlans'));
+    await user.selectOptions(screen.getByLabelText('VLAN'), '30');
+    await waitFor(() =>
+      expect(apiMock.put).toHaveBeenCalledWith('/inventory/devices/dev-1/vlan', { tag: 30 }),
+    );
   });
 });
