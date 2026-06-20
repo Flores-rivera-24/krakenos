@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import { Cpu, Lock, Plug, Server, User } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { SecuritySection } from '@/components/settings/SecuritySection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -302,17 +303,8 @@ export function SettingsPage() {
             </>
           )}
 
-          {section === 'seguridad' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Seguridad</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-kr-sm text-kr-muted">
-                  Sesiones, tokens y zona de peligro — próximamente (US-41).
-                </p>
-              </CardContent>
-            </Card>
+          {section === 'seguridad' && data && (
+            <SecuritySection settings={data.settings} patch={patch} isAdmin={isAdmin} />
           )}
 
           {section === 'integraciones' && (

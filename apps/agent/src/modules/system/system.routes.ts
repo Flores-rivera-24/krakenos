@@ -28,6 +28,9 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   scanIntervalSec: '60',
   trafficRetentionDays: '7',
   auditRetentionDays: '90',
+  accessTokenTtl: '900',
+  loginRateLimit: '10',
+  theme: 'dark',
 };
 
 function readStats(): SystemStats {
@@ -111,4 +114,12 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       }
     },
   );
+
+  // Zona de peligro: invalida todas las sesiones (todos los usuarios). La rotación
+  // real del par RS256 en disco es un paso de despliegue (gen-keys.sh + reinicio).
+  app.post('/regen-keys', { preHandler: app.requireRole('admin') }, async (req, reply) => {
+    await app.prisma.refreshToken.updateMany({ where: { revoked: false }, data: { revoked: true } });
+    app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });
+    return reply.code(204).send();
+  });
 };

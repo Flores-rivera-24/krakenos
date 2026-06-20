@@ -75,3 +75,30 @@ export const logoutSchema = {
     },
   },
 } as const;
+
+const sessionItem = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    createdAt: { type: 'string' },
+    expiresAt: { type: 'string' },
+  },
+  required: ['id', 'createdAt', 'expiresAt'],
+} as const;
+
+export const listSessionsSchema = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: { userId: { type: 'string' } },
+  },
+  response: { 200: { type: 'array', items: sessionItem } },
+} as const;
+
+export const revokeSessionsSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: { keepRefreshToken: { type: 'string', minLength: 1 } },
+  },
+} as const;

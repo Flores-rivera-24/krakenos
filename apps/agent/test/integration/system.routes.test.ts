@@ -103,4 +103,19 @@ describe('rutas de sistema', () => {
     expect(body.ok).toBe(true);
     expect(typeof body.latencyMs).toBe('number');
   });
+
+  it('POST /api/system/regen-keys revoca todas las sesiones (admin)', async () => {
+    const admin = await seedUser(app, { email: 'rk@krakenos.test', password: 'password123', role: 'admin' });
+    await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'rk@krakenos.test', password: 'password123' } });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/regen-keys',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    expect(res.statusCode).toBe(204);
+
+    const active = await app.prisma.refreshToken.count({ where: { revoked: false } });
+    expect(active).toBe(0);
+  });
 });

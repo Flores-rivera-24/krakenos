@@ -56,3 +56,16 @@ export interface LoginResponse {
   user: User;
   tokens: AuthTokens;
 }
+
+/** Sesión activa (refresh token no revocado ni expirado) mostrada en Ajustes. */
+export interface AuthSession {
+  id: string;
+  createdAt: IsoDateTime;
+  expiresAt: IsoDateTime;
+}
+
+/** Cuerpo opcional de `DELETE /api/auth/sessions` (cerrar todas menos la actual). */
+export interface RevokeSessionsRequest {
+  /** Refresh token de la sesión a conservar (no se revoca). */
+  keepRefreshToken?: string;
+}

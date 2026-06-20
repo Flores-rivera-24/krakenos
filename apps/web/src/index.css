@@ -79,6 +79,24 @@
     --kr-offline: #484f58;
   }
 
+  /* Tema claro (US-41): se aplica cuando el <html> NO lleva la clase `dark`.
+     Mayor especificidad que :root, así sobreescribe los valores oscuros por defecto. */
+  html:not(.dark) {
+    --kr-bg-base: #f6f8fa;
+    --kr-bg-surface: #ffffff;
+    --kr-bg-elevated: #eef1f4;
+    --kr-border: rgba(0, 0, 0, 0.1);
+    --kr-border-muted: rgba(0, 0, 0, 0.06);
+    --kr-text-primary: #1f2328;
+    --kr-text-secondary: #57606a;
+    --kr-text-muted: #8c959f;
+    --kr-success: #1a7f37;
+    --kr-warning: #9a6700;
+    --kr-danger: #cf222e;
+    --kr-online: #1a7f37;
+    --kr-offline: #8c959f;
+  }
+
   * {
     @apply border-border;
   }

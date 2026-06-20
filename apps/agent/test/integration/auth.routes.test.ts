@@ -109,4 +109,67 @@ describe('rutas de autenticación', () => {
     expect(res.statusCode).toBe(401);
     expect(res.json().code).toBe('AUTH_UNAUTHORIZED');
   });
+
+  // ---- Sesiones (US-41) ----
+
+  async function loginOk(app: FastifyInstance, email: string, password: string) {
+    const { body } = await login(app, email, password);
+    return body.tokens;
+  }
+
+  it('GET /api/auth/sessions lista solo las sesiones activas del usuario', async () => {
+    await seedUser(app, { email: 's@krakenos.test', password: 'password123' });
+    const a = await loginOk(app, 's@krakenos.test', 'password123');
+    await loginOk(app, 's@krakenos.test', 'password123'); // segunda sesión
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/auth/sessions',
+      headers: authHeader(a.accessToken),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toHaveLength(2);
+  });
+
+  it('DELETE /api/auth/sessions/:id revoca esa sesión', async () => {
+    await seedUser(app, { email: 's2@krakenos.test', password: 'password123' });
+    const a = await loginOk(app, 's2@krakenos.test', 'password123');
+    const list = (
+      await app.inject({ method: 'GET', url: '/api/auth/sessions', headers: authHeader(a.accessToken) })
+    ).json() as { id: string }[];
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/auth/sessions/${list[0]!.id}`,
+      headers: authHeader(a.accessToken),
+    });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/auth/sessions',
+      headers: authHeader(a.accessToken),
+    });
+    expect(after.json()).toHaveLength(0);
+  });
+
+  it('DELETE /api/auth/sessions revoca todas menos la actual', async () => {
+    await seedUser(app, { email: 's3@krakenos.test', password: 'password123' });
+    const a = await loginOk(app, 's3@krakenos.test', 'password123');
+    await loginOk(app, 's3@krakenos.test', 'password123');
+    await loginOk(app, 's3@krakenos.test', 'password123'); // 3 sesiones
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: '/api/auth/sessions',
+      headers: authHeader(a.accessToken),
+      payload: { keepRefreshToken: a.refreshToken },
+    });
+    expect(del.statusCode).toBe(204);
+
+    const after = (
+      await app.inject({ method: 'GET', url: '/api/auth/sessions', headers: authHeader(a.accessToken) })
+    ).json() as unknown[];
+    expect(after).toHaveLength(1); // solo la actual sobrevive
+  });
 });
