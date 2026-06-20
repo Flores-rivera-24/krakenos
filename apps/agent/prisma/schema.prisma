@@ -65,6 +65,20 @@ model TrafficSample {
   @@index([timestamp])
 }
 
+/// Rollup periódico (1/min) del uso de ancho de banda por dispositivo (US-46).
+/// Cada fila es la media de las muestras del intervalo para una MAC concreta.
+model DeviceTrafficSample {
+  id            String   @id @default(cuid())
+  mac           String
+  timestamp     DateTime @default(now())
+  /// Media de bytes/seg de descarga (entrada) en el intervalo.
+  rxBytesPerSec Float
+  /// Media de bytes/seg de subida (salida) en el intervalo.
+  txBytesPerSec Float
+
+  @@index([mac, timestamp])
+}
+
 model Device {
   id        String   @id @default(cuid())
   mac       String   @unique

@@ -1,4 +1,5 @@
 import type {
+  DeviceTrafficStats,
   HardwareDriver,
   TrafficBucket,
   TrafficRange,
@@ -44,6 +45,9 @@ export class TrafficService {
   private sumTx = 0;
   private count = 0;
 
+  // Acumulador del rollup por dispositivo: mac → sumas + IP más reciente (US-46).
+  private deviceAcc = new Map<string, { ip: string; sumRx: number; sumTx: number; count: number }>();
+
   constructor(
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
@@ -57,13 +61,29 @@ export class TrafficService {
 
   /** Toma una muestra, la guarda en el histórico/acumulador y la emite. */
   async sampleOnce(): Promise<TrafficSample> {
-    const sample = await this.driver.getTrafficSample();
+    const result = await this.driver.getTrafficSample();
+    const sample: TrafficSample = {
+      timestamp: new Date().toISOString(),
+      rxBytesPerSec: result.wan.rxBytesPerSec,
+      txBytesPerSec: result.wan.txBytesPerSec,
+    };
     this.history.push(sample);
     if (this.history.length > MAX_HISTORY) this.history.shift();
 
     this.sumRx += sample.rxBytesPerSec;
     this.sumTx += sample.txBytesPerSec;
     this.count += 1;
+
+    // Acumula el desglose por dispositivo, si el driver lo reporta (US-46).
+    for (const d of result.devices ?? []) {
+      const mac = d.mac.toLowerCase();
+      const cur = this.deviceAcc.get(mac) ?? { ip: d.ip, sumRx: 0, sumTx: 0, count: 0 };
+      cur.ip = d.ip || cur.ip;
+      cur.sumRx += d.rxBytesPerSec;
+      cur.sumTx += d.txBytesPerSec;
+      cur.count += 1;
+      this.deviceAcc.set(mac, cur);
+    }
 
     this.app.io.to(TRAFFIC_ROOM).emit('traffic:sample', sample);
     return sample;
@@ -85,6 +105,19 @@ export class TrafficService {
       data: { rxBytesPerSec, txBytesPerSec },
     });
     await this.app.prisma.trafficSample.deleteMany({
+      where: { timestamp: { lt: new Date(Date.now() - RETENTION_MS) } },
+    });
+
+    // Rollup por dispositivo (US-46): una fila por MAC con su media del intervalo.
+    const devices = [...this.deviceAcc.entries()];
+    this.deviceAcc.clear();
+    for (const [mac, acc] of devices) {
+      if (acc.count === 0) continue;
+      await this.app.prisma.deviceTrafficSample.create({
+        data: { mac, rxBytesPerSec: acc.sumRx / acc.count, txBytesPerSec: acc.sumTx / acc.count },
+      });
+    }
+    await this.app.prisma.deviceTrafficSample.deleteMany({
       where: { timestamp: { lt: new Date(Date.now() - RETENTION_MS) } },
     });
   }
@@ -128,6 +161,72 @@ export class TrafficService {
       }));
 
     return { range, buckets, totalRxBytes, totalTxBytes };
+  }
+
+  /**
+   * Tráfico histórico agregado por dispositivo en la ventana dada: serie en
+   * buckets + totales estimados, combinado con `Device.label`/`ip` de Prisma.
+   * Ordenado por descarga total descendente. (US-46)
+   */
+  async getDeviceStats(range: TrafficRange): Promise<DeviceTrafficStats[]> {
+    const since = new Date(Date.now() - RANGE_MS[range]);
+    const rows = await this.app.prisma.deviceTrafficSample.findMany({
+      where: { timestamp: { gte: since } },
+      orderBy: { timestamp: 'asc' },
+    });
+    if (rows.length === 0) return [];
+
+    const byMac = new Map<string, typeof rows>();
+    for (const row of rows) {
+      const arr = byMac.get(row.mac) ?? [];
+      arr.push(row);
+      byMac.set(row.mac, arr);
+    }
+
+    // Nombre/IP del dispositivo desde el inventario (puede no existir la fila).
+    const devices = await this.app.prisma.device.findMany({
+      where: { mac: { in: [...byMac.keys()] } },
+    });
+    const deviceByMac = new Map(devices.map((d) => [d.mac, d]));
+
+    const bucketMs = BUCKET_MS[range];
+    const rollupSeconds = this.rollupMs / 1000;
+
+    const stats: DeviceTrafficStats[] = [...byMac.entries()].map(([mac, samples]) => {
+      const acc = new Map<number, { rx: number; tx: number; n: number }>();
+      let rxTotal = 0;
+      let txTotal = 0;
+      for (const s of samples) {
+        const bucketStart = Math.floor(s.timestamp.getTime() / bucketMs) * bucketMs;
+        const cur = acc.get(bucketStart) ?? { rx: 0, tx: 0, n: 0 };
+        cur.rx += s.rxBytesPerSec;
+        cur.tx += s.txBytesPerSec;
+        cur.n += 1;
+        acc.set(bucketStart, cur);
+        // Cada rollup representa ~rollupSeconds de tráfico a su tasa media.
+        rxTotal += s.rxBytesPerSec * rollupSeconds;
+        txTotal += s.txBytesPerSec * rollupSeconds;
+      }
+      const buckets: TrafficBucket[] = [...acc.entries()]
+        .sort(([a], [b]) => a - b)
+        .map(([start, { rx, tx, n }]) => ({
+          timestamp: new Date(start).toISOString(),
+          rxBytesPerSec: rx / n,
+          txBytesPerSec: tx / n,
+        }));
+      const dev = deviceByMac.get(mac);
+      return {
+        mac,
+        ip: dev?.ip ?? '',
+        label: dev?.label ?? null,
+        rxTotal,
+        txTotal,
+        samples: buckets,
+      };
+    });
+
+    stats.sort((a, b) => b.rxTotal - a.rxTotal);
+    return stats;
   }
 
   start(): void {

@@ -1,9 +1,16 @@
-import type { Device, DeviceType, UpdateDeviceRequest, VlanWithCount } from '@krakenos/types';
+import type {
+  Device,
+  DeviceTrafficStats,
+  DeviceType,
+  UpdateDeviceRequest,
+  VlanWithCount,
+} from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
+import { Sparkline } from '@/components/ui/sparkline';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
@@ -37,6 +44,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [vlans, setVlans] = useState<VlanWithCount[]>([]);
   const [vlanTag, setVlanTag] = useState<number | null>(device.vlanTag);
   const [vlanBusy, setVlanBusy] = useState(false);
+  const [traffic, setTraffic] = useState<DeviceTrafficStats | null>(null);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   // Carga las VLANs disponibles para el selector (best-effort).
@@ -46,6 +54,17 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       .then(setVlans)
       .catch(() => setVlans([]));
   }, []);
+
+  // Histórico de tráfico de la última hora para este dispositivo (US-46).
+  useEffect(() => {
+    void api
+      .get<DeviceTrafficStats[]>('/traffic/devices?range=hour')
+      .then((rows) => {
+        const found = rows.find((r) => r.mac.toLowerCase() === device.mac.toLowerCase());
+        setTraffic(found ?? null);
+      })
+      .catch(() => setTraffic(null));
+  }, [device.mac]);
 
   const toggleBlock = async () => {
     setBlocking(true);
@@ -139,10 +158,27 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         <Field label="Última vez" value={new Date(device.lastSeen).toLocaleString()} />
       </dl>
 
-      {/* Sparkline de tráfico por dispositivo: aún no hay histórico por host. */}
-      <p className="mb-4 text-kr-xs text-kr-muted">
-        Sin histórico de tráfico por dispositivo todavía.
-      </p>
+      {/* Histórico de tráfico de la última hora (US-46). */}
+      {traffic && traffic.samples.length >= 2 ? (
+        <div className="mb-4 rounded-lg border border-kr bg-kr-elevated p-3">
+          <p className="mb-2 text-kr-xs text-kr-muted">Tráfico (última hora)</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="mb-1 text-kr-xs text-kr-secondary">↓ Descarga</p>
+              <Sparkline
+                points={traffic.samples.map((s) => s.rxBytesPerSec)}
+                className="w-full text-success"
+              />
+            </div>
+            <div>
+              <p className="mb-1 text-kr-xs text-kr-secondary">↑ Subida</p>
+              <Sparkline points={traffic.samples.map((s) => s.txBytesPerSec)} className="w-full" />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
+      )}
 
       <div className="space-y-4">
         <div className="space-y-2">

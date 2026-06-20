@@ -3,7 +3,7 @@ import type {
   DiscoveredDevice,
   GuestNetwork,
   HardwareDriver,
-  TrafficSample,
+  TrafficSampleResult,
   UpdateGuestNetworkRequest,
   UpdateWifiNetworkRequest,
   UpdateWifiRequest,
@@ -90,7 +90,7 @@ export class CiscoIosDriver implements HardwareDriver {
     return [];
   }
 
-  async getTrafficSample(): Promise<TrafficSample> {
+  async getTrafficSample(): Promise<TrafficSampleResult> {
     const counters = parseInterfaces(
       await this.opts.transport.execute(showInterfacesCommand(this.opts.interface)),
     );
@@ -101,9 +101,11 @@ export class CiscoIosDriver implements HardwareDriver {
     const rate = (curr: number, before: number) =>
       dt > 0 && curr >= before ? Math.round((curr - before) / dt) : 0;
     return {
-      timestamp: new Date(t).toISOString(),
-      rxBytesPerSec: prev ? rate(counters.rxBytes, prev.rxBytes) : 0,
-      txBytesPerSec: prev ? rate(counters.txBytes, prev.txBytes) : 0,
+      wan: {
+        rxBytesPerSec: prev ? rate(counters.rxBytes, prev.rxBytes) : 0,
+        txBytesPerSec: prev ? rate(counters.txBytes, prev.txBytes) : 0,
+      },
+      devices: [], // este driver no reporta tráfico por dispositivo
     };
   }
 

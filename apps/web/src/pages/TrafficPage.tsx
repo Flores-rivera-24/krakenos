@@ -1,12 +1,19 @@
-import type { TrafficRange, TrafficSample, TrafficStats } from '@krakenos/types';
+import type {
+  DeviceTrafficStats,
+  TrafficRange,
+  TrafficSample,
+  TrafficStats,
+} from '@krakenos/types';
 import { ArrowDownToLine, ArrowUpFromLine } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatBytes, formatRate } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
+import { useInventoryStore } from '@/store/inventory.store';
 
 const MAX_POINTS = 60;
 
@@ -26,6 +33,43 @@ export function TrafficPage() {
   const [samples, setSamples] = useState<TrafficSample[]>([]);
   const [range, setRange] = useState<TrafficRange>('day');
   const [stats, setStats] = useState<TrafficStats | null>(null);
+
+  // Tráfico por dispositivo (US-46): rango propio + orden + slideover de detalle.
+  const [devStats, setDevStats] = useState<DeviceTrafficStats[] | null>(null);
+  const [devRange, setDevRange] = useState<TrafficRange>('hour');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [selectedMac, setSelectedMac] = useState<string | null>(null);
+  const devices = useInventoryStore((s) => s.devices);
+  const subscribe = useInventoryStore((s) => s.subscribe);
+
+  useEffect(() => subscribe(), [subscribe]);
+
+  useEffect(() => {
+    let active = true;
+    setDevStats(null);
+    void api
+      .get<DeviceTrafficStats[]>(`/traffic/devices?range=${devRange}`)
+      .then((s) => active && setDevStats(s))
+      .catch(() => active && setDevStats([]));
+    return () => {
+      active = false;
+    };
+  }, [devRange]);
+
+  const deviceByMac = useMemo(() => {
+    const map: Record<string, (typeof devices)[string]> = {};
+    for (const d of Object.values(devices)) map[d.mac.toLowerCase()] = d;
+    return map;
+  }, [devices]);
+
+  const sortedDev = useMemo(() => {
+    if (!devStats) return [];
+    return [...devStats].sort((a, b) =>
+      sortDir === 'desc' ? b.rxTotal - a.rxTotal : a.rxTotal - b.rxTotal,
+    );
+  }, [devStats, sortDir]);
+
+  const selectedDevice = selectedMac ? (deviceByMac[selectedMac.toLowerCase()] ?? null) : null;
 
   useEffect(() => {
     let active = true;
@@ -205,6 +249,75 @@ export function TrafficPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Tráfico por dispositivo (US-46): solo si el driver lo reporta. */}
+      {sortedDev.length > 0 && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between space-y-0">
+            <CardTitle>Por dispositivo</CardTitle>
+            <div className="flex gap-1" role="group" aria-label="Rango por dispositivo">
+              {RANGES.map((r) => (
+                <button
+                  key={r.value}
+                  type="button"
+                  onClick={() => setDevRange(r.value)}
+                  aria-pressed={devRange === r.value}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    devRange === r.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-muted-foreground">
+                  <th className="py-2 font-medium">Dispositivo</th>
+                  <th className="py-2 font-medium">IP</th>
+                  <th className="py-2 font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                      className="inline-flex items-center gap-1 hover:text-foreground"
+                      aria-label="Ordenar por descarga total"
+                    >
+                      ↓ Descarga {sortDir === 'desc' ? '▾' : '▴'}
+                    </button>
+                  </th>
+                  <th className="py-2 font-medium">↑ Subida</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedDev.map((d) => {
+                  const dev = deviceByMac[d.mac.toLowerCase()];
+                  const name = d.label ?? dev?.hostname ?? d.mac;
+                  return (
+                    <tr
+                      key={d.mac}
+                      onClick={() => setSelectedMac(d.mac)}
+                      className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
+                    >
+                      <td className="py-2 text-foreground">{name}</td>
+                      <td className="py-2 font-mono text-xs text-muted-foreground">{d.ip || '—'}</td>
+                      <td className="py-2 text-green-500">{formatBytes(d.rxTotal)}</td>
+                      <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedDevice && (
+        <DeviceDetailSlideover device={selectedDevice} onClose={() => setSelectedMac(null)} />
+      )}
     </div>
   );
 }

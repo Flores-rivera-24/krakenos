@@ -96,6 +96,35 @@ describe('DeviceDetailSlideover', () => {
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
   });
 
+  it('renderiza el sparkline cuando hay datos de tráfico (US-46)', async () => {
+    asRole('viewer');
+    apiMock.get.mockImplementation((url: string) => {
+      if (url.startsWith('/traffic/devices')) {
+        return Promise.resolve([
+          {
+            mac: 'aa:bb:cc:dd:ee:01',
+            ip: '192.168.1.10',
+            label: null,
+            rxTotal: 100,
+            txTotal: 50,
+            samples: [
+              { timestamp: '2026-01-01T00:00:00.000Z', rxBytesPerSec: 10, txBytesPerSec: 5 },
+              { timestamp: '2026-01-01T00:01:00.000Z', rxBytesPerSec: 20, txBytesPerSec: 8 },
+            ],
+          },
+        ]);
+      }
+      return Promise.resolve([]); // GET /vlans
+    });
+
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+
+    // Cada Sparkline es un <svg role="img" aria-label="Tendencia">: rx y tx → 2.
+    await waitFor(() =>
+      expect(screen.getAllByRole('img', { name: 'Tendencia' })).toHaveLength(2),
+    );
+  });
+
   it('un admin asigna una VLAN: PUT con el tag', async () => {
     asRole('admin');
     apiMock.get.mockResolvedValue([

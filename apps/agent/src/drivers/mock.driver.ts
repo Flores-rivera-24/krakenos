@@ -3,7 +3,7 @@ import type {
   DiscoveredDevice,
   GuestNetwork,
   HardwareDriver,
-  TrafficSample,
+  TrafficSampleResult,
   UpdateGuestNetworkRequest,
   UpdateWifiNetworkRequest,
   UpdateWifiRequest,
@@ -75,7 +75,14 @@ export class MockDriver implements HardwareDriver {
   private rx = 1_500_000;
   private tx = 300_000;
 
-  async getTrafficSample(): Promise<TrafficSample> {
+  /** MACs de ejemplo con desglose de tráfico (coinciden con las del barrido). */
+  private readonly trafficDevices = [
+    { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42' },
+    { mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50' },
+    { mac: 'd8:3a:dd:00:cc:01', ip: '192.168.1.90' },
+  ];
+
+  async getTrafficSample(): Promise<TrafficSampleResult> {
     const walk = (v: number, max: number) => {
       const next = v + (Math.random() - 0.5) * max * 0.3;
       return Math.max(0, Math.min(max, next));
@@ -83,9 +90,16 @@ export class MockDriver implements HardwareDriver {
     this.rx = walk(this.rx, 12_000_000); // ~100 Mbps de descarga máx
     this.tx = walk(this.tx, 3_000_000); // ~24 Mbps de subida máx
     return {
-      timestamp: new Date().toISOString(),
-      rxBytesPerSec: Math.round(this.rx),
-      txBytesPerSec: Math.round(this.tx),
+      wan: {
+        rxBytesPerSec: Math.round(this.rx),
+        txBytesPerSec: Math.round(this.tx),
+      },
+      // Desglose ficticio: cada dispositivo consume una fracción aleatoria.
+      devices: this.trafficDevices.map((d) => ({
+        ...d,
+        rxBytesPerSec: Math.round(this.rx * (0.1 + Math.random() * 0.4)),
+        txBytesPerSec: Math.round(this.tx * (0.1 + Math.random() * 0.4)),
+      })),
     };
   }
 

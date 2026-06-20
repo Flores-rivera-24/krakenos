@@ -1,4 +1,4 @@
-import type { TrafficSample, TrafficStats } from '@krakenos/types';
+import type { DeviceTrafficStats, TrafficSample, TrafficStats } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -24,11 +24,21 @@ const EMPTY_STATS: TrafficStats = {
   totalTxBytes: 0,
 };
 
-/** Mock que distingue entre `/traffic/history` (array) y `/traffic/stats` (objeto). */
-function mockApi({ history = [], stats = EMPTY_STATS }: { history?: TrafficSample[]; stats?: TrafficStats } = {}) {
-  apiMock.get.mockImplementation((url: string) =>
-    Promise.resolve(url.startsWith('/traffic/stats') ? stats : history),
-  );
+/** Mock que distingue `/traffic/stats` (objeto), `/traffic/devices` (array) y `/traffic/history` (array). */
+function mockApi({
+  history = [],
+  stats = EMPTY_STATS,
+  devices = [],
+}: {
+  history?: TrafficSample[];
+  stats?: TrafficStats;
+  devices?: DeviceTrafficStats[];
+} = {}) {
+  apiMock.get.mockImplementation((url: string) => {
+    if (url.startsWith('/traffic/stats')) return Promise.resolve(stats);
+    if (url.startsWith('/traffic/devices')) return Promise.resolve(devices);
+    return Promise.resolve(history);
+  });
 }
 
 describe('TrafficPage', () => {
@@ -69,6 +79,26 @@ describe('TrafficPage', () => {
     await waitFor(() => expect(screen.getByText('2.0 GB')).toBeInTheDocument());
     expect(screen.getByText('512 MB')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/traffic/stats?range=day');
+  });
+
+  it('muestra la tabla "Por dispositivo" cuando el driver reporta datos (US-46)', async () => {
+    mockApi({
+      devices: [
+        {
+          mac: 'aa:bb:cc:00:00:09',
+          ip: '192.168.1.9',
+          label: 'TV',
+          rxTotal: 2 * 1024 ** 2,
+          txTotal: 1024 ** 2,
+          samples: [],
+        },
+      ],
+    });
+    render(<TrafficPage />);
+
+    expect(await screen.findByText('Por dispositivo')).toBeInTheDocument();
+    expect(screen.getByText('TV')).toBeInTheDocument();
+    expect(screen.getByText('192.168.1.9')).toBeInTheDocument();
   });
 
   it('al cambiar de rango vuelve a pedir las estadísticas', async () => {

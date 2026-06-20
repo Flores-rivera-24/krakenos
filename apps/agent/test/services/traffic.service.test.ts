@@ -74,4 +74,49 @@ describe('TrafficService', () => {
       expect(stats.totalRxBytes).toBe(2000 * 60);
     });
   });
+
+  describe('rollups por dispositivo (US-46)', () => {
+    beforeEach(async () => {
+      await app.prisma.deviceTrafficSample.deleteMany();
+      await app.prisma.device.deleteMany();
+    });
+
+    it('flushRollup persiste un rollup por dispositivo cuando la muestra trae devices', async () => {
+      const svc = new TrafficService(app, new MockDriver());
+      await svc.sampleOnce();
+      await svc.sampleOnce();
+      await svc.flushRollup();
+
+      // El driver mock reporta 3 MACs en cada muestra.
+      expect(await app.prisma.deviceTrafficSample.count()).toBe(3);
+
+      // Sin muestras nuevas, un segundo flush no crea más filas.
+      await svc.flushRollup();
+      expect(await app.prisma.deviceTrafficSample.count()).toBe(3);
+    });
+
+    it('getDeviceStats agrega por dispositivo y combina label/ip del inventario', async () => {
+      const svc = new TrafficService(app, new MockDriver());
+      await app.prisma.device.create({
+        data: { mac: 'aa:bb:cc:00:00:01', ip: '192.168.1.5', label: 'NAS' },
+      });
+      await app.prisma.deviceTrafficSample.create({
+        data: { mac: 'aa:bb:cc:00:00:01', rxBytesPerSec: 1000, txBytesPerSec: 500 },
+      });
+      await app.prisma.deviceTrafficSample.create({
+        data: { mac: 'aa:bb:cc:00:00:01', rxBytesPerSec: 3000, txBytesPerSec: 1500 },
+      });
+
+      const stats = await svc.getDeviceStats('day');
+      expect(stats).toHaveLength(1);
+      const [first] = stats;
+      expect(first?.mac).toBe('aa:bb:cc:00:00:01');
+      expect(first?.label).toBe('NAS');
+      expect(first?.ip).toBe('192.168.1.5');
+      // Cada rollup ~60 s a su tasa media: total = Σ tasa × 60.
+      expect(first?.rxTotal).toBe((1000 + 3000) * 60);
+      expect(first?.txTotal).toBe((500 + 1500) * 60);
+      expect((first?.samples.length ?? 0) >= 1).toBe(true);
+    });
+  });
 });
