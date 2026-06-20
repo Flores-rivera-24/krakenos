@@ -1,145 +1,126 @@
-import type { LucideIcon } from 'lucide-react';
-import {
-  Activity,
-  Cpu,
-  Gauge,
-  Globe,
-  KeyRound,
-  LayoutDashboard,
-  Layers,
-  Map,
-  Network,
-  Settings,
-  ShieldAlert,
-  Video,
-  Wifi,
-} from 'lucide-react';
+import { MoreHorizontal, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { AppSidebar } from './AppSidebar';
+import { MOBILE_PRIMARY, MOBILE_SECONDARY, type NavItem } from './nav';
 
-interface NavItem {
-  to: string;
-  label: string;
-  icon: LucideIcon;
-  end?: boolean;
+const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
+
+function bottomLinkClass({ isActive }: { isActive: boolean }): string {
+  return cn(
+    'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
+    isActive ? 'text-kr-accent' : 'text-kr-secondary',
+  );
 }
 
-/** Secciones del MVP, navegables. */
-const SECTIONS: NavItem[] = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/inventory', label: 'Dispositivos', icon: Network },
-  { to: '/wifi', label: 'Red WiFi', icon: Wifi },
-  { to: '/vpn', label: 'VPN', icon: KeyRound },
-  { to: '/traffic', label: 'Tráfico', icon: Activity },
-  { to: '/iot', label: 'IoT', icon: Cpu },
-  { to: '/cameras', label: 'Cámaras', icon: Video },
-  { to: '/firewall', label: 'Firewall', icon: ShieldAlert },
-  { to: '/vlans', label: 'VLANs', icon: Layers },
-  { to: '/qos', label: 'QoS', icon: Gauge },
-  { to: '/dns', label: 'DNS', icon: Globe },
-  { to: '/compatibility', label: 'Compatibilidad', icon: Map },
-  { to: '/settings', label: 'Ajustes', icon: Settings },
-];
-
-/** Secciones de fases futuras, mostradas pero deshabilitadas. */
-const FUTURE: { label: string; icon: LucideIcon; phase: string }[] = [];
-
-function SidebarLink({ to, label, icon: Icon, end }: NavItem) {
+function MobileBottomNav() {
+  const [moreOpen, setMoreOpen] = useState(false);
   return (
-    <NavLink
-      to={to}
-      end={end}
-      className={({ isActive }) =>
-        cn(
-          'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
-          isActive
-            ? 'bg-secondary text-secondary-foreground'
-            : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground',
-        )
-      }
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </NavLink>
+    <>
+      {/* Panel "Más" — resto de secciones */}
+      {moreOpen && (
+        <div className="fixed inset-0 z-20 md:hidden" onClick={() => setMoreOpen(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="absolute inset-x-0 bottom-14 rounded-t-xl border-t border-kr bg-kr-elevated p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-kr-base font-semibold text-kr-primary">Más secciones</span>
+              <button
+                type="button"
+                aria-label="Cerrar"
+                onClick={() => setMoreOpen(false)}
+                className="text-kr-secondary"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {MOBILE_SECONDARY.map(({ to, label, icon: Icon, end }: NavItem) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex flex-col items-center gap-1 rounded-lg p-3 text-kr-xs',
+                      isActive
+                        ? 'bg-kr-surface text-kr-accent'
+                        : 'text-kr-secondary hover:bg-kr-surface',
+                    )
+                  }
+                >
+                  <Icon className="h-5 w-5" />
+                  {label}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface md:hidden">
+        {MOBILE_PRIMARY.map(({ to, label, icon: Icon, end }) => (
+          <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
+            <Icon className="h-5 w-5" />
+            {label}
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          onClick={() => setMoreOpen((v) => !v)}
+          aria-label="Más"
+          className={cn(
+            'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
+            moreOpen ? 'text-kr-accent' : 'text-kr-secondary',
+          )}
+        >
+          <MoreHorizontal className="h-5 w-5" />
+          Más
+        </button>
+      </nav>
+    </>
   );
 }
 
 export function AppLayout() {
-  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const stats = useSidebarStats();
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+
+  useEffect(() => {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
+  }, [collapsed]);
 
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar — solo desktop */}
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-card md:flex">
-        <div className="px-5 py-4 text-lg font-semibold text-primary">KrakenOS</div>
-        <nav className="flex-1 space-y-1 px-3">
-          {SECTIONS.map((item) => (
-            <SidebarLink key={item.to} {...item} />
-          ))}
-          {FUTURE.length > 0 && (
-            <>
-              <div className="px-3 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-                Próximamente
-              </div>
-              {FUTURE.map(({ label, icon: Icon, phase }) => (
-                <div
-                  key={label}
-                  className="flex cursor-not-allowed items-center justify-between rounded-md px-3 py-2 text-sm text-muted-foreground/50"
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon className="h-4 w-4" />
-                    {label}
-                  </span>
-                  <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px]">{phase}</span>
-                </div>
-              ))}
-            </>
-          )}
-        </nav>
-        <div className="border-t border-border p-3">
-          <div className="mb-2 truncate px-2 text-sm text-muted-foreground">{user?.displayName}</div>
-          <Button variant="outline" size="sm" className="w-full" onClick={() => void logout()}>
-            Salir
-          </Button>
-        </div>
-      </aside>
+    <div className="flex min-h-screen bg-kr-base text-kr-primary">
+      <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} stats={stats} />
 
       {/* Columna principal */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — solo móvil */}
-        <header className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
-          <span className="text-lg font-semibold text-primary">KrakenOS</span>
-          <Button variant="ghost" size="sm" onClick={() => void logout()}>
+        <header className="flex items-center justify-between border-b border-kr bg-kr-surface px-4 py-3 md:hidden">
+          <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>
+          <button
+            type="button"
+            onClick={() => void logout()}
+            aria-label="Salir"
+            className="text-kr-sm text-kr-secondary hover:text-kr-primary"
+          >
             Salir
-          </Button>
+          </button>
         </header>
 
         <main className="flex-1 pb-20 md:pb-0">
           <Outlet />
         </main>
 
-        {/* Bottom nav — solo móvil (desplazable si hay muchas secciones) */}
-        <nav className="fixed inset-x-0 bottom-0 z-10 flex overflow-x-auto border-t border-border bg-card md:hidden">
-          {SECTIONS.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              className={({ isActive }) =>
-                cn(
-                  'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-[11px]',
-                  isActive ? 'text-primary' : 'text-muted-foreground',
-                )
-              }
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </NavLink>
-          ))}
-        </nav>
+        <MobileBottomNav />
       </div>
     </div>
   );
