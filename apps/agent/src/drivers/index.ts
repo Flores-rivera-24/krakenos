@@ -1,6 +1,8 @@
 import type { DriverKind, HardwareDriver } from '@krakenos/types';
 import { CiscoIosDriver } from './cisco-ios.driver.js';
 import { SshCiscoTransport } from './cisco-ios.transport.js';
+import { CiscoNetconfDriver } from './cisco-netconf.driver.js';
+import { SshNetconfTransport } from './cisco-netconf.transport.js';
 import { MockDriver } from './mock.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
@@ -50,6 +52,18 @@ export interface CiscoIosDriverConfig {
   };
 }
 
+/** Config NETCONF para el driver Cisco IOS-XE real (`kind: 'cisco-netconf'`). */
+export interface CiscoNetconfDriverConfig {
+  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet1`. */
+  interface: string;
+  netconf: {
+    host: string;
+    port?: number;
+    username: string;
+    password?: string;
+  };
+}
+
 export interface CreateDriverConfig {
   kind: DriverKind;
   /** Host/IP del dispositivo (display + SSH). */
@@ -60,6 +74,8 @@ export interface CreateDriverConfig {
   pfsense?: PfSenseDriverConfig;
   /** Requerido cuando `kind === 'cisco-ios'`. */
   ciscoIos?: CiscoIosDriverConfig;
+  /** Requerido cuando `kind === 'cisco-netconf'`. */
+  ciscoNetconf?: CiscoNetconfDriverConfig;
 }
 
 /**
@@ -104,6 +120,16 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? ci.ssh.host,
       });
     }
+    case 'cisco-netconf': {
+      const cn = config.ciscoNetconf;
+      if (!cn) throw new Error('Falta la configuración Cisco NETCONF (CreateDriverConfig.ciscoNetconf)');
+      if (!cn.netconf.host) throw new Error('El driver Cisco NETCONF requiere CISCO_NETCONF_HOST');
+      return new CiscoNetconfDriver({
+        transport: new SshNetconfTransport(cn.netconf),
+        interface: cn.interface,
+        host: config.host ?? cn.netconf.host,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -118,3 +144,5 @@ export { PfSenseDriver } from './pfsense.driver.js';
 export { PfSenseClient } from './pfsense.transport.js';
 export { CiscoIosDriver } from './cisco-ios.driver.js';
 export { SshCiscoTransport, MockCiscoTransport } from './cisco-ios.transport.js';
+export { CiscoNetconfDriver } from './cisco-netconf.driver.js';
+export { SshNetconfTransport, MockNetconfTransport } from './cisco-netconf.transport.js';

@@ -85,6 +85,16 @@ export const env = {
         enablePassword: process.env.CISCO_ENABLE_PASSWORD || undefined,
       },
     },
+    // Solo se usa cuando DRIVER_KIND=cisco-netconf (IOS-XE 16.6+ vía NETCONF, puerto 830).
+    ciscoNetconf: {
+      interface: process.env.CISCO_INTERFACE ?? 'GigabitEthernet1',
+      netconf: {
+        host: process.env.CISCO_NETCONF_HOST ?? process.env.DRIVER_HOST ?? '',
+        port: int('CISCO_NETCONF_PORT', 830),
+        username: process.env.CISCO_NETCONF_USER ?? process.env.CISCO_USER ?? 'admin',
+        password: process.env.CISCO_NETCONF_PASSWORD || process.env.CISCO_PASSWORD || undefined,
+      },
+    },
   },
 
   vpn: {
