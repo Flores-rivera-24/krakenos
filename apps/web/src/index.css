@@ -1,9 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   :root {
+    /* shadcn/ui — mapeados a los tokens kr (ver abajo) */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -20,6 +23,25 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 199 89% 48%;
     --radius: 0.5rem;
+
+    /* === Sistema de diseño KrakenOS (US-33) — paleta semántica ===
+       El tema oscuro es el default; estos son los valores oscuros.
+       El tema claro (US-41) los sobreescribe en :root:not(.dark). */
+    --kr-bg-base: #0d1117;
+    --kr-bg-surface: #161b22;
+    --kr-bg-elevated: #1c2230;
+    --kr-border: rgba(255, 255, 255, 0.08);
+    --kr-border-muted: rgba(255, 255, 255, 0.04);
+    --kr-text-primary: #e6edf3;
+    --kr-text-secondary: #8b949e;
+    --kr-text-muted: #484f58;
+    --kr-accent: #2563eb;
+    --kr-accent-hover: #1d4ed8;
+    --kr-success: #3fb950;
+    --kr-warning: #d29922;
+    --kr-danger: #f85149;
+    --kr-online: #3fb950;
+    --kr-offline: #484f58;
   }
 
   .dark {
@@ -38,12 +60,30 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 199 89% 48%;
+
+    /* Los tokens kr-* ya tienen valores oscuros en :root; .dark los confirma. */
+    --kr-bg-base: #0d1117;
+    --kr-bg-surface: #161b22;
+    --kr-bg-elevated: #1c2230;
+    --kr-border: rgba(255, 255, 255, 0.08);
+    --kr-border-muted: rgba(255, 255, 255, 0.04);
+    --kr-text-primary: #e6edf3;
+    --kr-text-secondary: #8b949e;
+    --kr-text-muted: #484f58;
+    --kr-accent: #2563eb;
+    --kr-accent-hover: #1d4ed8;
+    --kr-success: #3fb950;
+    --kr-warning: #d29922;
+    --kr-danger: #f85149;
+    --kr-online: #3fb950;
+    --kr-offline: #484f58;
   }
 
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    @apply bg-kr-base text-kr-primary;
   }
 }
