@@ -7,6 +7,7 @@ import {
   KeyRound,
   LayoutDashboard,
   Layers,
+  Map,
   Network,
   Settings,
   ShieldAlert,
@@ -38,6 +39,7 @@ const SECTIONS: NavItem[] = [
   { to: '/vlans', label: 'VLANs', icon: Layers },
   { to: '/qos', label: 'QoS', icon: Gauge },
   { to: '/dns', label: 'DNS', icon: Globe },
+  { to: '/compatibility', label: 'Compatibilidad', icon: Map },
   { to: '/settings', label: 'Ajustes', icon: Settings },
 ];
 

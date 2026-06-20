@@ -104,6 +104,8 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
   nube): discovery, on/off, brillo y color. Requiere activar "LAN Control" en la app Govee.
 - **Varios backends IoT a la vez** — `IOT_KIND` admite una lista (`hue,govee`): se agregan en un
   `CompositeIotManager` que enruta por prefijo de id, para gestionar varios ecosistemas en una vista.
+- **Vista de compatibilidad** — la app incluye un mapa (`/compatibility`) con la topología del hogar y
+  el nivel de control de KrakenOS por dispositivo.
 
 Para habilitar las integraciones por helper (WireGuard/iptables/tc) en un servidor real:
 

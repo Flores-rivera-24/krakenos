@@ -32,6 +32,9 @@ const DnsPage = lazy(() => import('@/pages/DnsPage').then((m) => ({ default: m.D
 const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
+const CompatibilityPage = lazy(() =>
+  import('@/pages/CompatibilityPage').then((m) => ({ default: m.CompatibilityPage })),
+);
 
 function FullScreenLoader() {
   return (
@@ -78,6 +81,7 @@ export function App() {
             <Route path="vlans" element={<VlanPage />} />
             <Route path="qos" element={<QosPage />} />
             <Route path="dns" element={<DnsPage />} />
+            <Route path="compatibility" element={<CompatibilityPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Route>
