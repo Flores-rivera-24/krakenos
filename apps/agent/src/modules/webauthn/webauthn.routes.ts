@@ -54,27 +54,51 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     },
   );
 
-  // ---- Autenticación con passkey (flujo de login 2FA, público) ----
+  // ---- Autenticación con passkey (segundo factor del login, público) ----
+  //
+  // US-51: ambos pasos exigen el token efímero `mfa-pending` emitido por `/auth/login`
+  // tras verificar la contraseña. El `sub` del token debe coincidir con el usuario del
+  // `email`, de modo que la passkey **suma** un factor en vez de **reemplazar** la
+  // contraseña. Sin ese token (o con uno inválido/expirado/de otro usuario) → 401.
 
-  app.post<{ Body: { email: string } }>(
+  /** Valida el `mfaToken` y que su `sub` sea el usuario del `email`; `null` si no. */
+  async function resolveMfaUser(email: string, mfaToken: string) {
+    let sub: string;
+    try {
+      sub = auth.verifyMfaPendingToken(mfaToken);
+    } catch {
+      return null;
+    }
+    const user = await app.prisma.user.findUnique({ where: { email } });
+    return user && user.id === sub ? user : null;
+  }
+
+  app.post<{ Body: { email: string; mfaToken: string } }>(
     '/authenticate/options',
     { schema: authenticateOptionsSchema },
-    async (req) => {
-      const user = await app.prisma.user.findUnique({ where: { email: req.body.email } });
-      if (!user) return { available: false };
+    async (req, reply) => {
+      const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
+      if (!user) {
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_INVALID_TOKEN', message: 'Verificación de 2FA no válida' });
+      }
       const options = await service.generateAuthenticationOptions(user);
       if (!options) return { available: false };
       return { available: true, options };
     },
   );
 
-  app.post<{ Body: { email: string; response: AuthenticationResponseJSON } }>(
+  app.post<{ Body: { email: string; mfaToken: string; response: AuthenticationResponseJSON } }>(
     '/authenticate/verify',
     { schema: authenticateVerifySchema },
     async (req, reply) => {
-      const user = await app.prisma.user.findUnique({ where: { email: req.body.email } });
+      const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
       if (!user) {
-        return reply.code(401).send({ code: 'WEBAUTHN_ERROR', message: 'Credenciales inválidas' });
+        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_INVALID_TOKEN', message: 'Verificación de 2FA no válida' });
       }
       try {
         await service.verifyAuthentication(user, req.body.response);

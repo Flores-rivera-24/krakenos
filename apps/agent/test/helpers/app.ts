@@ -154,6 +154,22 @@ export function signAccess(
   return app.jwt.sign({ sub: user.id, email: user.email, role: user.role, type: 'access' });
 }
 
+/**
+ * Firma un token efímero `mfa-pending` (US-51) para un usuario. Con `expired: true`
+ * usa `clockTimestamp` (una hora en el pasado) para situar `iat`/`exp` en el pasado y
+ * producir un token ya expirado, sin esperas reales en el test.
+ */
+export function signMfaPending(
+  app: FastifyInstance,
+  userId: string,
+  opts: { expired?: boolean } = {},
+): string {
+  const signOptions = opts.expired
+    ? { expiresIn: 120, clockTimestamp: Date.now() - 60 * 60 * 1000 }
+    : { expiresIn: 120 };
+  return app.jwt.sign({ sub: userId, type: 'mfa-pending' }, signOptions);
+}
+
 /** Header de autorización `Bearer` listo para inject. */
 export function authHeader(token: string): { authorization: string } {
   return { authorization: `Bearer ${token}` };

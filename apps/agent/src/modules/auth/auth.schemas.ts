@@ -47,8 +47,12 @@ export const loginSchema = {
         },
         {
           type: 'object',
-          properties: { requiresWebAuthn: { type: 'boolean' }, email: { type: 'string' } },
-          required: ['requiresWebAuthn', 'email'],
+          properties: {
+            requiresWebAuthn: { type: 'boolean' },
+            email: { type: 'string' },
+            mfaToken: { type: 'string' },
+          },
+          required: ['requiresWebAuthn', 'email', 'mfaToken'],
         },
       ],
     },

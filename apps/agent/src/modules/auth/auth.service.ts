@@ -3,6 +3,7 @@ import type {
   AuthSession,
   AuthTokens,
   LoginResponse,
+  MfaPendingTokenClaims,
   RefreshTokenClaims,
   User,
   UserRole,
@@ -10,6 +11,9 @@ import type {
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import { env } from '../../config/env.js';
+
+/** Validez del token efímero de 2FA pendiente (US-51): 2 minutos. */
+const MFA_PENDING_TTL_SEC = 2 * 60;
 
 /** Error de dominio de autenticación con código estable. */
 export class AuthError extends Error {
@@ -162,6 +166,32 @@ export class AuthService {
       throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Credenciales inválidas');
     }
     return toUser(user);
+  }
+
+  /**
+   * Firma un token efímero `mfa-pending` (US-51): acredita que el usuario superó el
+   * primer factor (contraseña) y liga el paso de login con la verificación de passkey.
+   * No es un access token (su `type` no es `'access'`), así que `authenticate` lo rechaza.
+   */
+  issueMfaPendingToken(userId: string): string {
+    return this.app.jwt.sign({ sub: userId, type: 'mfa-pending' }, { expiresIn: MFA_PENDING_TTL_SEC });
+  }
+
+  /**
+   * Verifica un token `mfa-pending` y devuelve el `sub` (id del usuario). Lanza
+   * `AuthError` si la firma es inválida, expiró o el tipo no es `mfa-pending`.
+   */
+  verifyMfaPendingToken(token: string): string {
+    let claims: MfaPendingTokenClaims;
+    try {
+      claims = this.app.jwt.verify<MfaPendingTokenClaims>(token);
+    } catch {
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Token de 2FA inválido o expirado');
+    }
+    if (claims.type !== 'mfa-pending') {
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Tipo de token incorrecto');
+    }
+    return claims.sub;
   }
 
   /**

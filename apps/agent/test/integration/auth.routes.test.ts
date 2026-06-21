@@ -129,14 +129,52 @@ describe('rutas de autenticación', () => {
       payload: { email: 'pk@krakenos.test', password: 'password123' },
     });
     expect(res.statusCode).toBe(200);
-    const json = res.json() as { requiresWebAuthn?: boolean; email?: string; tokens?: unknown };
+    const json = res.json() as {
+      requiresWebAuthn?: boolean;
+      email?: string;
+      mfaToken?: string;
+      tokens?: unknown;
+    };
     expect(json.requiresWebAuthn).toBe(true);
     expect(json.email).toBe('pk@krakenos.test');
     expect(json.tokens).toBeUndefined();
+    // US-51: emite un token efímero `mfa-pending` que ata la contraseña al paso WebAuthn.
+    expect(typeof json.mfaToken).toBe('string');
+    expect(json.mfaToken!.length).toBeGreaterThan(0);
 
     // No se debe haber emitido ningún refresh token todavía.
     const issued = await app.prisma.refreshToken.count({ where: { userId: user.id } });
     expect(issued).toBe(0);
+  });
+
+  it('el token mfa-pending no sirve como access token (US-51)', async () => {
+    const user = await seedUser(app, { email: 'mfa@krakenos.test', password: 'password123' });
+    await app.prisma.webAuthnCredential.create({
+      data: {
+        userId: user.id,
+        credentialId: 'cred-mfa',
+        publicKey: Buffer.from([7, 7, 7]),
+        counter: 0,
+        deviceType: 'singleDevice',
+        backedUp: false,
+        name: 'YubiKey',
+      },
+    });
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'mfa@krakenos.test', password: 'password123' },
+    });
+    const { mfaToken } = login.json() as { mfaToken: string };
+
+    // Usar el mfaToken como Bearer en una ruta autenticada → rechazado.
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/auth/status',
+      headers: authHeader(mfaToken),
+    });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe('AUTH_INVALID_TOKEN');
   });
 
   it('rechaza un refresh token usado como access (Bearer)', async () => {

@@ -1,3 +1,4 @@
+import type { LoginResponse } from '@krakenos/types';
 import {
   startAuthentication as browserStartAuthentication,
   startRegistration as browserStartRegistration,
@@ -9,6 +10,7 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
+import { api } from '@/lib/api';
 
 /** `true` si el navegador soporta la API WebAuthn (passkeys). */
 export function isWebAuthnSupported(): boolean {
@@ -47,4 +49,29 @@ export async function startAuthentication(
     if (isCancellation(err)) throw new Error('webauthn_cancelled');
     throw err;
   }
+}
+
+/**
+ * Completa el segundo factor del login (US-51): pide las opciones presentando el
+ * token efímero `mfaToken` (que acredita la contraseña ya superada), firma el
+ * challenge con la passkey y verifica para obtener la sesión. El `mfaToken` se
+ * propaga a ambos pasos, atando primer y segundo factor.
+ */
+export async function completePasskeyLogin(
+  email: string,
+  mfaToken: string,
+): Promise<LoginResponse> {
+  const res = await api.post<{
+    available: boolean;
+    options?: PublicKeyCredentialRequestOptionsJSON;
+  }>('/webauthn/authenticate/options', { email, mfaToken });
+  if (!res.available || !res.options) {
+    throw new Error('webauthn_unavailable');
+  }
+  const assertion = await startAuthentication(res.options);
+  return api.post<LoginResponse>('/webauthn/authenticate/verify', {
+    email,
+    mfaToken,
+    response: assertion,
+  });
 }
