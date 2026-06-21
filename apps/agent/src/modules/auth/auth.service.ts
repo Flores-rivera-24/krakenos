@@ -184,7 +184,7 @@ export class AuthService {
   verifyMfaPendingToken(token: string): string {
     let claims: MfaPendingTokenClaims;
     try {
-      claims = this.app.jwt.verify<MfaPendingTokenClaims>(token);
+      claims = this.app.verifyToken<MfaPendingTokenClaims>(token);
     } catch {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Token de 2FA inválido o expirado');
     }
@@ -215,7 +215,9 @@ export class AuthService {
   async refresh(refreshToken: string): Promise<AuthTokens> {
     let claims: RefreshTokenClaims;
     try {
-      claims = this.app.jwt.verify<RefreshTokenClaims>(refreshToken);
+      // `verifyToken` resuelve la clave por `kid` (rotación RS256, US-64): un
+      // refresh firmado con la clave previa sigue válido durante el solape.
+      claims = this.app.verifyToken<RefreshTokenClaims>(refreshToken);
     } catch {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Refresh token inválido');
     }

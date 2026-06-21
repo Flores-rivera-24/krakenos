@@ -21,6 +21,22 @@ function int(name: string, fallback: number): number {
   return parsed;
 }
 
+/**
+ * Lee una lista de rutas (separadas por comas) de claves públicas y devuelve su
+ * contenido PEM. Vacío si la variable no está definida. Se usa para las claves
+ * **previas** durante la rotación RS256 (US-64): verifican tokens aún válidos
+ * firmados con la clave anterior mientras dura el solape.
+ */
+function pemList(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => readFileSync(resolve(p), 'utf8'));
+}
+
 const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
 
 /**
@@ -48,6 +64,13 @@ export const env = {
   /** Claves RS256 leídas desde disco al arrancar. */
   jwtPrivateKey: readFileSync(resolve(required('JWT_PRIVATE_KEY_PATH')), 'utf8'),
   jwtPublicKey: readFileSync(resolve(required('JWT_PUBLIC_KEY_PATH')), 'utf8'),
+  /**
+   * Claves públicas **anteriores** (rotación RS256, US-64). Durante el solape se
+   * usan solo para verificar tokens firmados con la clave previa; nunca firman.
+   * `JWT_PREVIOUS_PUBLIC_KEY_PATHS` = rutas separadas por comas. Ver
+   * `docs/jwt-key-rotation.md`.
+   */
+  jwtPreviousPublicKeys: pemList('JWT_PREVIOUS_PUBLIC_KEY_PATHS'),
 
   driver: {
     kind: driverKind,
