@@ -16,6 +16,7 @@ model User {
   role         String         @default("viewer") // 'admin' | 'viewer'
   refreshTokens RefreshToken[]
   webAuthnCredentials WebAuthnCredential[]
+  backupCodes  BackupCode[]
   /// Desafío WebAuthn temporal (base64url) durante registro/autenticación (US-50).
   webAuthnChallenge    String?
   /// Expiración del desafío WebAuthn (5 min); se invalida al completar.
@@ -37,6 +38,19 @@ model WebAuthnCredential {
   name         String            // nombre dado por el usuario: "iPhone", "YubiKey"
   createdAt    DateTime @default(now())
   lastUsedAt   DateTime?
+
+  @@index([userId])
+}
+
+/// Código de recuperación 2FA (US-59). Solo se persiste el hash sha256; el texto
+/// plano se muestra una sola vez al generarlo. `usedAt` marca el consumo (un solo uso).
+model BackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String // sha256 hex del código
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
 
   @@index([userId])
 }

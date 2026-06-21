@@ -48,6 +48,8 @@ export const registerOptionsSchema = {
   response: { 200: opaqueObject },
 } as const;
 
+const backupCodesArray = { type: 'array', items: { type: 'string' } } as const;
+
 export const registerVerifySchema = {
   body: {
     type: 'object',
@@ -58,7 +60,14 @@ export const registerVerifySchema = {
       name: { type: 'string', minLength: 1, maxLength: 64 },
     },
   },
-  response: { 200: credentialInfo },
+  // Al registrar la primera passkey se devuelven códigos de recuperación (US-59).
+  response: {
+    200: {
+      type: 'object',
+      properties: { credential: credentialInfo, backupCodes: backupCodesArray },
+      required: ['credential'],
+    },
+  },
 } as const;
 
 export const authenticateOptionsSchema = {
@@ -128,5 +137,42 @@ export const deleteCredentialSchema = {
     additionalProperties: false,
     required: ['id'],
     properties: { id: { type: 'string' } },
+  },
+} as const;
+
+// ---- Códigos de recuperación 2FA (US-59) ----
+
+/** `POST /api/webauthn/backup-codes` — (re)genera el lote, devuelto una sola vez. */
+export const regenerateBackupCodesSchema = {
+  response: {
+    200: { type: 'object', properties: { codes: backupCodesArray }, required: ['codes'] },
+  },
+} as const;
+
+/** `GET /api/webauthn/backup-codes` — cuántos códigos sin usar quedan. */
+export const backupCodesStatusSchema = {
+  response: {
+    200: { type: 'object', properties: { remaining: { type: 'integer' } }, required: ['remaining'] },
+  },
+} as const;
+
+/** `POST /api/webauthn/backup-codes/verify` — completa el 2FA con un código (público). */
+export const backupCodeVerifySchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['email', 'mfaToken', 'code'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 254 },
+      mfaToken: { type: 'string', minLength: 1 },
+      code: { type: 'string', minLength: 1, maxLength: 64 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: { user: userResponse, tokens: tokensResponse },
+      required: ['user', 'tokens'],
+    },
   },
 } as const;

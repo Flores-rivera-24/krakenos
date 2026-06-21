@@ -13,6 +13,12 @@ vi.mock('react-router-dom', async (orig) => {
 const apiMock = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: apiMock }));
 
+const webauthnMock = vi.hoisted(() => ({
+  completePasskeyLogin: vi.fn(),
+  verifyBackupCode: vi.fn(),
+}));
+vi.mock('@/lib/webauthn', () => webauthnMock);
+
 import { LoginPage } from '@/pages/LoginPage';
 import { HttpError, useAuthStore } from '@/store/auth.store';
 
@@ -89,6 +95,34 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
     expect(screen.queryByText('Correo o contraseña incorrectos.')).not.toBeInTheDocument();
+  });
+
+  it('permite entrar con un código de recuperación en el paso 2FA (US-59)', async () => {
+    const session = {
+      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      tokens: { accessToken: 'a', refreshToken: 'r', expiresIn: 900 },
+    };
+    const login = vi.fn().mockResolvedValue({ requiresWebAuthn: true, email: 'a@b.c', mfaToken: 'mt' });
+    const setSession = vi.fn();
+    useAuthStore.setState({ login, setSession });
+    webauthnMock.verifyBackupCode.mockResolvedValue(session);
+
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText('Contraseña'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+
+    // Paso 2FA: pasar a código de recuperación, introducirlo y verificar.
+    await user.click(await screen.findByText(/Usar un código de recuperación/));
+    await user.type(screen.getByLabelText('Código de recuperación'), 'aaaa-bbbb-cccc');
+    await user.click(screen.getByRole('button', { name: 'Verificar código' }));
+
+    await waitFor(() =>
+      expect(webauthnMock.verifyBackupCode).toHaveBeenCalledWith('a@b.c', 'mt', 'aaaa-bbbb-cccc'),
+    );
+    expect(setSession).toHaveBeenCalledWith(session);
+    expect(navigate).toHaveBeenCalledWith('/');
   });
 
   it('muestra el nombre del hogar de system/info', async () => {

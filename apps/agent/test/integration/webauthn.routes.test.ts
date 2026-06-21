@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { BackupCodeService } from '../../src/webauthn/backup-codes.service.js';
 import {
   authHeader,
   buildTestApp,
@@ -204,5 +205,75 @@ describe('rutas WebAuthn', () => {
     expect(body[0]!.name).toBe('iPhone');
     expect(body[0]).not.toHaveProperty('publicKey');
     expect(body[0]).not.toHaveProperty('counter');
+  });
+
+  // ---- Códigos de recuperación 2FA (US-59) ----
+
+  it('POST /backup-codes (auth) genera 10 códigos y GET informa cuántos quedan', async () => {
+    const user = await seedUser(app, { email: 'gen@krakenos.test' });
+    const token = signAccess(app, user);
+
+    const gen = await app.inject({
+      method: 'POST',
+      url: '/api/webauthn/backup-codes',
+      headers: authHeader(token),
+    });
+    expect(gen.statusCode).toBe(200);
+    expect((gen.json() as { codes: string[] }).codes).toHaveLength(10);
+
+    const status = await app.inject({
+      method: 'GET',
+      url: '/api/webauthn/backup-codes',
+      headers: authHeader(token),
+    });
+    expect(status.json()).toEqual({ remaining: 10 });
+  });
+
+  it('POST /backup-codes/verify con código válido emite sesión y lo invalida (un solo uso)', async () => {
+    const user = await seedUser(app, { email: 'bcv@krakenos.test' });
+    const codes = await new BackupCodeService(app.prisma).generate(user.id);
+    const code = codes[0]!;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/webauthn/backup-codes/verify',
+      payload: { email: 'bcv@krakenos.test', mfaToken: signMfaPending(app, user.id), code },
+    });
+    expect(res.statusCode).toBe(200);
+    expect((res.json() as { tokens: { accessToken: string } }).tokens.accessToken).toBeTruthy();
+
+    // El mismo código ya no vale (consumido).
+    const reuse = await app.inject({
+      method: 'POST',
+      url: '/api/webauthn/backup-codes/verify',
+      payload: { email: 'bcv@krakenos.test', mfaToken: signMfaPending(app, user.id), code },
+    });
+    expect(reuse.statusCode).toBe(401);
+    expect(reuse.json().code).toBe('WEBAUTHN_ERROR');
+  });
+
+  it('POST /backup-codes/verify rechaza código inexistente y mfaToken de otro usuario', async () => {
+    const user = await seedUser(app, { email: 'bcx@krakenos.test' });
+    await new BackupCodeService(app.prisma).generate(user.id);
+
+    // Código inexistente (mfaToken correcto) → 401 WEBAUTHN_ERROR.
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/webauthn/backup-codes/verify',
+      payload: { email: 'bcx@krakenos.test', mfaToken: signMfaPending(app, user.id), code: 'no-existe' },
+    });
+    expect(bad.statusCode).toBe(401);
+    expect(bad.json().code).toBe('WEBAUTHN_ERROR');
+
+    // Token de otro usuario → 401 AUTH_INVALID_TOKEN (no llega a consumir).
+    const other = await seedUser(app, { email: 'bco@krakenos.test' });
+    const otherCodes = await new BackupCodeService(app.prisma).generate(other.id);
+    const cross = await app.inject({
+      method: 'POST',
+      url: '/api/webauthn/backup-codes/verify',
+      payload: { email: 'bcx@krakenos.test', mfaToken: signMfaPending(app, other.id), code: otherCodes[0]! },
+    });
+    expect(cross.statusCode).toBe(401);
+    expect(cross.json().code).toBe('AUTH_INVALID_TOKEN');
   });
 });
