@@ -22,11 +22,23 @@ const RANGES: { value: TrafficRange; label: string }[] = [
   { value: 'day', label: '24h' },
   { value: 'week', label: '7d' },
 ];
-const TOOLTIP_STYLE = {
-  backgroundColor: 'hsl(222.2 84% 4.9%)',
-  border: '1px solid hsl(217.2 32.6% 17.5%)',
+/**
+ * Colores de las gráficas leídos de los tokens del tema (US-57): al ser
+ * `var(--kr-*)`, cambian automáticamente al togglear claro/oscuro en vez de
+ * hardcodear hex/HSL. `rx`=descarga (success), `tx`=subida (info).
+ */
+export const TRAFFIC_CHART_COLORS = {
+  rx: 'var(--kr-success)',
+  tx: 'var(--kr-info)',
+  axis: 'var(--kr-text-secondary)',
+} as const;
+
+export const TOOLTIP_STYLE = {
+  backgroundColor: 'var(--kr-bg-surface)',
+  border: '1px solid var(--kr-border)',
   borderRadius: '0.5rem',
   fontSize: '0.8rem',
+  color: 'var(--kr-text-primary)',
 } as const;
 
 export function TrafficPage() {
@@ -168,19 +180,19 @@ export function TrafficPage() {
               <AreaChart data={data}>
                 <defs>
                   <linearGradient id="rx" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor={TRAFFIC_CHART_COLORS.rx} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.rx} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="tx" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                    <stop offset="5%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="t" stroke="hsl(215 20.2% 65.1%)" fontSize={11} minTickGap={40} />
-                <YAxis stroke="hsl(215 20.2% 65.1%)" fontSize={11} width={40} />
+                <XAxis dataKey="t" stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} minTickGap={40} />
+                <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v.toFixed(1)} Mbps`} />
-                <Area type="monotone" dataKey="rx" name="Descarga" stroke="#22c55e" fill="url(#rx)" />
-                <Area type="monotone" dataKey="tx" name="Subida" stroke="#0ea5e9" fill="url(#tx)" />
+                <Area type="monotone" dataKey="rx" name="Descarga" stroke={TRAFFIC_CHART_COLORS.rx} fill="url(#rx)" />
+                <Area type="monotone" dataKey="tx" name="Subida" stroke={TRAFFIC_CHART_COLORS.tx} fill="url(#tx)" />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -231,19 +243,19 @@ export function TrafficPage() {
               <AreaChart data={history}>
                 <defs>
                   <linearGradient id="hrx" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                    <stop offset="5%" stopColor={TRAFFIC_CHART_COLORS.rx} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.rx} stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="htx" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.6} />
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                    <stop offset="5%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0.6} />
+                    <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="t" stroke="hsl(215 20.2% 65.1%)" fontSize={11} minTickGap={40} />
-                <YAxis stroke="hsl(215 20.2% 65.1%)" fontSize={11} width={40} />
+                <XAxis dataKey="t" stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} minTickGap={40} />
+                <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v.toFixed(1)} Mbps`} />
-                <Area type="monotone" dataKey="rx" name="Descarga" stroke="#22c55e" fill="url(#hrx)" />
-                <Area type="monotone" dataKey="tx" name="Subida" stroke="#0ea5e9" fill="url(#htx)" />
+                <Area type="monotone" dataKey="rx" name="Descarga" stroke={TRAFFIC_CHART_COLORS.rx} fill="url(#hrx)" />
+                <Area type="monotone" dataKey="tx" name="Subida" stroke={TRAFFIC_CHART_COLORS.tx} fill="url(#htx)" />
               </AreaChart>
             </ResponsiveContainer>
           )}

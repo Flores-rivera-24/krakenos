@@ -9,7 +9,7 @@ vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error
 const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() }));
 vi.mock('@/lib/socket', () => ({ getSocket: () => socketMock }));
 
-import { TrafficPage } from '@/pages/TrafficPage';
+import { TOOLTIP_STYLE, TRAFFIC_CHART_COLORS, TrafficPage } from '@/pages/TrafficPage';
 
 const SAMPLE: TrafficSample = {
   timestamp: '2026-06-17T00:00:00.000Z',
@@ -99,6 +99,21 @@ describe('TrafficPage', () => {
     expect(await screen.findByText('Por dispositivo')).toBeInTheDocument();
     expect(screen.getByText('TV')).toBeInTheDocument();
     expect(screen.getByText('192.168.1.9')).toBeInTheDocument();
+  });
+
+  it('las gráficas usan tokens de tema, no colores hardcodeados (US-57)', () => {
+    const values = [
+      ...Object.values(TRAFFIC_CHART_COLORS),
+      TOOLTIP_STYLE.backgroundColor,
+      TOOLTIP_STYLE.border,
+      TOOLTIP_STYLE.color,
+    ];
+    for (const v of values) {
+      // Lee la custom property del tema → cambia al togglear claro/oscuro.
+      expect(v).toContain('var(--kr-');
+      // Sin hex ni HSL hardcodeados (regla del sistema de diseño).
+      expect(v).not.toMatch(/#[0-9a-f]{3,6}|hsl\(/i);
+    }
   });
 
   it('al cambiar de rango vuelve a pedir las estadísticas', async () => {
