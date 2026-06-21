@@ -68,6 +68,10 @@ Escala utilitaria (`text-kr-*`):
   sin sombra (bordes muy sutiles, estilo UniFi).
 - **`Button`** (`components/ui/button.tsx`) — variant `default` = `bg-kr-accent` +
   hover `bg-kr-accent-hover`; `outline`/`ghost` sobre `bg-kr-elevated`.
+- **`LogoMark`** (`components/ui/logo.tsx`) — isotipo "Orbital" de marca (cabeza de kraken +
+  nodos de red en simetría hexagonal), 100% geométrico. SVG inline con `currentColor`, así que
+  el color se controla con `text-*` (normalmente `text-kr-accent`) y se adapta al tema. Decorativo
+  (`aria-hidden`). Usado en sidebar, header móvil, login y setup. Fuente: `Icons/` (gitignored).
 
 ## Reglas
 

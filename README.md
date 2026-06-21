@@ -15,6 +15,9 @@ accede remotamente vía VPN WireGuard gestionada por el propio sistema.
 > IOS/NETCONF**, zigbee2mqtt, Matter, Hue, Govee, Tuya, RTSP). **UI estilo UniFi** (tema
 > oscuro, sidebar colapsable, paneles slideover, dashboard de widgets reorganizables) y
 > **Ajustes avanzados** (sistema/red, seguridad con sesiones/tokens/tema, integraciones).
+> **Seguridad y experiencia:** notificaciones **push** + **PWA instalable**, endurecimiento de
+> seguridad (CSP/HSTS, WebSocket autenticado), ajustes en caliente, historial de tráfico por
+> dispositivo, **rediseño del login**, **2FA con passkeys (WebAuthn)** e identidad de marca.
 
 ## Estructura (monorepo pnpm)
 
@@ -60,6 +63,26 @@ Red avanzada, también **mock-first**:
 > En producción, las integraciones reales sustituyen a los mocks: WireGuard/iptables/tc vía
 > helper con sudoers, switch gestionado para VLANs, Pi-hole para DNS, IoT (Zigbee/Matter) y
 > RTSP transcodificado (HLS/WebRTC) para cámaras.
+
+## Seguridad y experiencia
+
+Sobre las tres fases, una capa de seguridad y de experiencia de usuario:
+
+- **Notificaciones push (PWA)** — Web Push nativa (sin FCM): avisos de eventos de alta prioridad
+  (login fallido, dispositivo bloqueado, dispositivo desconocido) con claves VAPID autogeneradas.
+- **App instalable (PWA)** — `manifest.json` con iconos, `theme-color` y service worker: KrakenOS
+  se instala en escritorio/móvil como aplicación.
+- **Endurecimiento de seguridad** — CSP/HSTS y cabeceras de seguridad, handshake de Socket.io
+  autenticado (los streams en tiempo real exigen access token), validación de IP/CIDR en firewall,
+  política de contraseña y claims `iss`/`aud` en los JWT.
+- **Ajustes en caliente** — intervalo de escaneo y límite de login se reprograman al instante, sin
+  reiniciar el agente.
+- **Historial de tráfico por dispositivo** — rollups por MAC con consultas por rango y sparklines.
+- **Rediseño del login** — pantalla con estado del hogar/sistema en vivo y última sesión.
+- **2FA con passkeys (WebAuthn)** — segundo factor opcional con huella, Face ID, Windows Hello o
+  llaves de hardware; la contraseña sigue siendo el primer factor. Guía: `docs/webauthn-setup.md`.
+- **Identidad de marca** — isotipo "Orbital" (kraken + nodos de red) en login, sidebar y setup;
+  favicon e iconos PWA.
 
 ## Arquitectura del agente
 
