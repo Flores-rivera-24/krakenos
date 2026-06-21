@@ -198,4 +198,30 @@ describe('InventoryService', () => {
       expect(times).toEqual(sorted);
     });
   });
+
+  describe('sources corrupto (US-63)', () => {
+    it('avisa por el log y trata el JSON corrupto como vacío (no lo silencia)', async () => {
+      const warn = vi.spyOn(app.log, 'warn');
+      await app.prisma.device.create({
+        data: {
+          mac: 'aa:bb:cc:00:00:99',
+          ip: '192.168.1.99',
+          online: true,
+          type: 'unknown',
+          sources: 'no-es-json{', // JSON inválido en el campo serializado
+        },
+      });
+
+      const list = await service.list();
+      const dev = byMac(list, 'aa:bb:cc:00:00:99');
+
+      // Degrada con gracia: el dispositivo sigue siendo usable.
+      expect(dev.sources).toEqual([]);
+      // Pero no en silencio: queda registrado el aviso con la MAC afectada.
+      expect(warn).toHaveBeenCalledWith(
+        expect.objectContaining({ mac: 'aa:bb:cc:00:00:99' }),
+        expect.stringMatching(/corrupto/i),
+      );
+    });
+  });
 });
