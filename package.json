@@ -17,6 +17,7 @@
     "dev:web": "pnpm --filter @krakenos/web dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "test:coverage": "pnpm -r test:coverage",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "clean": "pnpm -r exec rm -rf dist node_modules .turbo && rm -rf node_modules"

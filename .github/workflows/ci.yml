@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   build-test:
-    name: Lint · Typecheck · Test
+    name: Lint · Typecheck · Build · Test
     runs-on: ubuntu-latest
 
     steps:
@@ -47,5 +47,15 @@ jobs:
       - name: Typecheck
         run: pnpm -r typecheck
 
-      - name: Test
-        run: pnpm test
+      # Detecta fallos de bundling (tsup del agente / Vite de la web) antes de prod.
+      - name: Build
+        run: pnpm build
+
+      - name: Test (con coverage informativo)
+        run: pnpm test:coverage
+
+      # Auditoría de dependencias: informativa de momento (no bloquea el pipeline;
+      # los hallazgos aparecen en el log para revisarlos). US-60.
+      - name: Audit dependencies
+        run: pnpm audit --audit-level high
+        continue-on-error: true

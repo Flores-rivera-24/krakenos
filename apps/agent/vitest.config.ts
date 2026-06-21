@@ -26,5 +26,12 @@ export default defineConfig({
       ACCESS_TOKEN_TTL: '900',
       REFRESH_TOKEN_TTL: '2592000',
     },
+    // Coverage informativo (US-60): sin umbrales que bloqueen. `all: false` mide solo
+    // lo que tocan los tests, evitando importar entrypoints con efectos secundarios.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary'],
+      all: false,
+    },
   },
 });
