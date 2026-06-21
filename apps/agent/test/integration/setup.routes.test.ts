@@ -67,6 +67,28 @@ describe('rutas de setup', () => {
     expect(second.json().code).toBe('SETUP_ALREADY_DONE');
   });
 
+  it('dos init concurrentes crean exactamente un admin y devuelven un 409 (US-53)', async () => {
+    const [a, b] = await Promise.all([
+      app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody }),
+      // Segundo correo distinto: aun así no debe poder crearse un segundo admin.
+      app.inject({
+        method: 'POST',
+        url: '/api/setup/init',
+        payload: { ...initBody, email: 'otro@krakenos.test' },
+      }),
+    ]);
+
+    // Exactamente uno gana (200) y el otro recibe 409 determinista.
+    expect([a.statusCode, b.statusCode].sort()).toEqual([200, 409]);
+    const conflict = a.statusCode === 409 ? a : b;
+    expect(conflict.json().code).toBe('SETUP_ALREADY_DONE');
+
+    // No quedó un segundo admin ni un homeName a medias.
+    expect(await app.prisma.user.count()).toBe(1);
+    const settings = await app.prisma.setting.findMany({ where: { key: 'homeName' } });
+    expect(settings).toHaveLength(1);
+  });
+
   it('400 con payload incompleto o contraseña corta', async () => {
     const short = await app.inject({
       method: 'POST',
