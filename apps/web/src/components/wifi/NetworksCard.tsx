@@ -108,9 +108,11 @@ export function NetworksCard() {
       </CardContent>
 
       {clientsOf && (
-        <Dialog open onClose={() => setClientsOf(null)}>
+        <Dialog open onClose={() => setClientsOf(null)} aria-labelledby="dialog-clients-title">
           <div className="mb-3 flex items-start justify-between">
-            <h3 className="text-lg font-semibold">Clientes · {clientsOf.net.ssid}</h3>
+            <h3 id="dialog-clients-title" className="text-lg font-semibold">
+              Clientes · {clientsOf.net.ssid}
+            </h3>
             <Button variant="ghost" size="sm" onClick={() => setClientsOf(null)}>
               Cerrar
             </Button>

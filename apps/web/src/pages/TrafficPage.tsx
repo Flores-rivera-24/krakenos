@@ -287,11 +287,20 @@ export function TrafficPage() {
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
+              <caption className="sr-only">Tráfico de red por dispositivo</caption>
               <thead>
                 <tr className="text-left text-muted-foreground">
-                  <th className="py-2 font-medium">Dispositivo</th>
-                  <th className="py-2 font-medium">IP</th>
-                  <th className="py-2 font-medium">
+                  <th scope="col" className="py-2 font-medium">
+                    Dispositivo
+                  </th>
+                  <th scope="col" className="py-2 font-medium">
+                    IP
+                  </th>
+                  <th
+                    scope="col"
+                    aria-sort={sortDir === 'desc' ? 'descending' : 'ascending'}
+                    className="py-2 font-medium"
+                  >
                     <button
                       type="button"
                       onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
@@ -301,7 +310,9 @@ export function TrafficPage() {
                       ↓ Descarga {sortDir === 'desc' ? '▾' : '▴'}
                     </button>
                   </th>
-                  <th className="py-2 font-medium">↑ Subida</th>
+                  <th scope="col" className="py-2 font-medium">
+                    ↑ Subida
+                  </th>
                 </tr>
               </thead>
               <tbody>

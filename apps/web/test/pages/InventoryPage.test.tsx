@@ -123,4 +123,17 @@ describe('InventoryPage', () => {
     await user.click(screen.getByRole('button', { name: 'List view' }));
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
+
+  it('la tabla en vista lista es accesible: caption + cabeceras con scope (US-62)', async () => {
+    useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
+    const user = userEvent.setup();
+    render(<InventoryPage />);
+    await user.click(screen.getByRole('button', { name: 'List view' }));
+
+    expect(
+      screen.getByRole('table', { name: 'Dispositivos detectados en la red' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Device' })).toHaveAttribute('scope', 'col');
+    expect(screen.getByRole('columnheader', { name: 'Status' })).toHaveAttribute('scope', 'col');
+  });
 });

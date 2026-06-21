@@ -101,6 +101,34 @@ describe('TrafficPage', () => {
     expect(screen.getByText('192.168.1.9')).toBeInTheDocument();
   });
 
+  it('la tabla "Por dispositivo" es accesible: caption + cabeceras con scope (US-62)', async () => {
+    mockApi({
+      devices: [
+        {
+          mac: 'aa:bb:cc:00:00:09',
+          ip: '192.168.1.9',
+          label: 'TV',
+          rxTotal: 2 * 1024 ** 2,
+          txTotal: 1024 ** 2,
+          samples: [],
+        },
+      ],
+    });
+    render(<TrafficPage />);
+
+    // El <caption> sr-only da nombre accesible a la tabla.
+    const table = await screen.findByRole('table', { name: 'Tráfico de red por dispositivo' });
+    expect(table).toBeInTheDocument();
+    // Cabeceras de columna expuestas como columnheader (th scope="col").
+    expect(screen.getByRole('columnheader', { name: 'Dispositivo' })).toHaveAttribute('scope', 'col');
+    expect(screen.getByRole('columnheader', { name: /Descarga/ })).toHaveAttribute('scope', 'col');
+    // La cabecera ordenable anuncia su orden con aria-sort.
+    expect(screen.getByRole('columnheader', { name: /Descarga/ })).toHaveAttribute(
+      'aria-sort',
+      'descending',
+    );
+  });
+
   it('las gráficas usan tokens de tema, no colores hardcodeados (US-57)', () => {
     const values = [
       ...Object.values(TRAFFIC_CHART_COLORS),
