@@ -46,6 +46,7 @@ const config: Config = {
         },
         // Colores semánticos KrakenOS — usables también como text-/border-/ring-.
         success: 'var(--kr-success)',
+        info: 'var(--kr-info)',
         warning: 'var(--kr-warning)',
         danger: 'var(--kr-danger)',
         online: 'var(--kr-online)',
@@ -59,6 +60,7 @@ const config: Config = {
         'kr-accent': 'var(--kr-accent)',
         'kr-accent-hover': 'var(--kr-accent-hover)',
         success: 'var(--kr-success)',
+        info: 'var(--kr-info)',
         warning: 'var(--kr-warning)',
         danger: 'var(--kr-danger)',
         online: 'var(--kr-online)',
@@ -71,6 +73,7 @@ const config: Config = {
         'kr-muted': 'var(--kr-text-muted)',
         'kr-accent': 'var(--kr-accent)',
         success: 'var(--kr-success)',
+        info: 'var(--kr-info)',
         warning: 'var(--kr-warning)',
         danger: 'var(--kr-danger)',
       },

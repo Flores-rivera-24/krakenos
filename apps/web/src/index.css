@@ -38,6 +38,7 @@
     --kr-accent: #2563eb;
     --kr-accent-hover: #1d4ed8;
     --kr-success: #3fb950;
+    --kr-info: #0ea5e9;
     --kr-warning: #d29922;
     --kr-danger: #f85149;
     --kr-online: #3fb950;
@@ -73,6 +74,7 @@
     --kr-accent: #2563eb;
     --kr-accent-hover: #1d4ed8;
     --kr-success: #3fb950;
+    --kr-info: #0ea5e9;
     --kr-warning: #d29922;
     --kr-danger: #f85149;
     --kr-online: #3fb950;
@@ -91,6 +93,7 @@
     --kr-text-secondary: #57606a;
     --kr-text-muted: #8c959f;
     --kr-success: #1a7f37;
+    --kr-info: #0969da;
     --kr-warning: #9a6700;
     --kr-danger: #cf222e;
     --kr-online: #1a7f37;
