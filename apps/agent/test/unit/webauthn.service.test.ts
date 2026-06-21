@@ -153,6 +153,27 @@ describe('WebAuthnService', () => {
       }),
     );
   });
+
+  it('consume el challenge ANTES de verificar, aunque la verificación falle (US-58)', async () => {
+    const prisma = makePrisma();
+    prisma.user.findUnique.mockResolvedValue({
+      webAuthnChallenge: 'X',
+      webAuthnChallengeExp: new Date(Date.now() + 60_000),
+    });
+    // Credencial no reconocida → la verificación fallará tras consumir el challenge.
+    prisma.webAuthnCredential.findUnique.mockResolvedValue(null);
+
+    await expect(
+      makeService(prisma).verifyAuthentication(USER, { id: 'cred-x' } as never),
+    ).rejects.toBeInstanceOf(WebAuthnError);
+
+    // El challenge se invalidó pese al fallo → de un solo uso, no replayable.
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { webAuthnChallenge: null, webAuthnChallengeExp: null } }),
+    );
+    // Y nunca se llegó a verificar la aserción con un challenge ya consumido.
+    expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+  });
 });
 
 describe('webauthnConfigWarnings', () => {

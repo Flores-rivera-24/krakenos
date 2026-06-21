@@ -66,4 +66,16 @@ describe('rutas de auditoría', () => {
   it('sin token devuelve 401', async () => {
     expect((await app.inject({ method: 'GET', url: '/api/audit' })).statusCode).toBe(401);
   });
+
+  it('trunca audit.detail a 1 KB antes de persistir (US-58)', async () => {
+    app.audit({ action: 'test.big', detail: 'x'.repeat(5000) });
+
+    const row = await eventually(async () => {
+      const r = await app.prisma.auditLog.findFirst({ where: { action: 'test.big' } });
+      if (!r) throw new Error('aún sin escribir');
+      return r;
+    });
+    expect(row.detail).toHaveLength(1024);
+    expect(row.detail).toBe('x'.repeat(1024));
+  });
 });

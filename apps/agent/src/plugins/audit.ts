@@ -15,18 +15,24 @@ declare module 'fastify' {
   }
 }
 
+/** Máximo de caracteres persistidos en `detail` (US-58): acota el tamaño del log. */
+const MAX_DETAIL_LEN = 1024;
+
 /**
  * Decora `app.audit` para registrar acciones relevantes. Escribe de forma
  * best-effort: un fallo de auditoría nunca debe tumbar la petición.
  */
 export const auditPlugin = fp(async (app: FastifyInstance) => {
   app.decorate('audit', (input: AuditInput) => {
+    // `detail` puede venir de entrada del usuario (email, etc.): se trunca para
+    // que un valor enorme no infle el log ni la base de datos (US-58).
+    const detail = input.detail != null ? input.detail.slice(0, MAX_DETAIL_LEN) : null;
     void app.prisma.auditLog
       .create({
         data: {
           action: input.action,
           userId: input.userId ?? null,
-          detail: input.detail ?? null,
+          detail,
           ip: input.ip ?? null,
         },
       })

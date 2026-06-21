@@ -179,7 +179,6 @@ export class WebAuthnService {
         name,
       },
     });
-    await this.clearChallenge(user.id);
     return toInfo(created);
   }
 
@@ -226,7 +225,6 @@ export class WebAuthnService {
       where: { id: credential.id },
       data: { counter: verification.authenticationInfo.newCounter, lastUsedAt: new Date() },
     });
-    await this.clearChallenge(user.id);
   }
 
   private async saveChallenge(userId: string, challenge: string): Promise<void> {
@@ -239,7 +237,11 @@ export class WebAuthnService {
     });
   }
 
-  /** Lee el desafío vigente o lanza si falta/expiró. No lo borra (eso al verificar OK). */
+  /**
+   * Lee y **consume** (invalida) el desafío vigente; lanza si falta o expiró. Se borra
+   * ANTES de verificar (US-58): de un solo uso, así un desafío no puede reutilizarse ni
+   * reproducirse aunque la verificación posterior falle.
+   */
   private async consumeChallengeOrThrow(userId: string): Promise<string> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (
@@ -249,6 +251,7 @@ export class WebAuthnService {
     ) {
       throw new WebAuthnError('El desafío ha expirado o no existe');
     }
+    await this.clearChallenge(userId);
     return user.webAuthnChallenge;
   }
 
