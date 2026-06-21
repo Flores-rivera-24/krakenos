@@ -56,5 +56,8 @@ coverage/
 /BACKLOG.md
 /docs/history.md
 
+# Material de marca — fuente local. Los assets que usa la web viven en apps/web/public/.
+/Icons/
+
 # Metadatos de descarga de Windows (Alternate Data Stream)
 *:Zone.Identifier

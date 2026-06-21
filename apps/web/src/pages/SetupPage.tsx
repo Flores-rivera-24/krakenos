@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LogoMark } from '@/components/ui/logo';
 import { ApiRequestError, api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -65,9 +66,12 @@ export function SetupPage() {
         onSubmit={onSubmit}
         className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg"
       >
-        <div>
-          <h1 className="text-2xl font-semibold text-primary">Bienvenido a KrakenOS</h1>
-          <p className="text-sm text-muted-foreground">Configura tu administrador para empezar.</p>
+        <div className="flex items-center gap-3">
+          <LogoMark className="h-9 w-9 text-kr-accent" />
+          <div>
+            <h1 className="text-2xl font-semibold text-primary">Bienvenido a KrakenOS</h1>
+            <p className="text-sm text-muted-foreground">Configura tu administrador para empezar.</p>
+          </div>
         </div>
 
         <div className="space-y-2">

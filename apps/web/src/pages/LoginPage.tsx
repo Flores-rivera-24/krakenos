@@ -1,10 +1,11 @@
 import type { LastSession, LoginResponse, SetupStatus, SystemPublicInfo } from '@krakenos/types';
 import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
-import { Clock, Eye, EyeOff, Fingerprint, Home, Lock } from 'lucide-react';
+import { Clock, Eye, EyeOff, Fingerprint, Lock } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LogoMark } from '@/components/ui/logo';
 import { Label } from '@/components/ui/label';
 import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
@@ -152,7 +153,7 @@ export function LoginPage() {
           style={{ borderBottom: '0.5px solid var(--kr-border)' }}
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-kr-elevated">
-            <Home size={18} className="text-kr-accent" />
+            <LogoMark className="h-5 w-5 text-kr-accent" />
           </span>
           <div className="min-w-0 flex-1">
             {homeName === null ? (

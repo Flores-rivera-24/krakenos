@@ -1,6 +1,7 @@
 import { MoreHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
+import { LogoMark } from '@/components/ui/logo';
 import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -105,7 +106,10 @@ export function AppLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — solo móvil */}
         <header className="flex items-center justify-between border-b border-kr bg-kr-surface px-4 py-3 md:hidden">
-          <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>
+          <span className="flex items-center gap-2">
+            <LogoMark className="h-6 w-6 text-kr-accent" />
+            <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>
+          </span>
           <button
             type="button"
             onClick={() => void logout()}

@@ -1,7 +1,8 @@
 import type { Device } from '@krakenos/types';
-import { ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { ChevronLeft, LogOut } from 'lucide-react';
 import { Fragment } from 'react';
 import { NavLink } from 'react-router-dom';
+import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
 import { formatUptime } from '@/lib/format';
 import type { SidebarStats } from '@/lib/sidebar-stats';
@@ -93,15 +94,32 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
     >
       {/* Marca + toggle de colapso */}
       <div className="flex h-14 items-center justify-between px-4">
-        {!collapsed && <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>}
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
-        >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-        </button>
+        {collapsed ? (
+          // Colapsada: el isotipo actúa como botón para expandir.
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-label="Expandir menú"
+            className="mx-auto flex h-8 w-8 items-center justify-center rounded-md text-kr-accent hover:bg-kr-elevated"
+          >
+            <LogoMark className="h-6 w-6" />
+          </button>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <LogoMark className="h-6 w-6 text-kr-accent" />
+              <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>
+            </div>
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-label="Colapsar menú"
+              className="flex h-7 w-7 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Navegación por grupos */}
