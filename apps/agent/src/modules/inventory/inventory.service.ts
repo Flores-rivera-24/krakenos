@@ -163,13 +163,17 @@ export class InventoryService {
       await this.upsertDiscovered(device);
     }
 
-    // Marca como offline lo que no apareció en este barrido.
-    const stale = (await this.app.prisma.device.findMany({
-      where: { online: true, mac: { notIn: [...merged.keys()] } },
-    })) as DbDevice[];
-    for (const row of stale) {
-      await this.app.prisma.device.update({ where: { id: row.id }, data: { online: false } });
-      this.app.io.emit('inventory:device-updated', toDevice({ ...row, online: false }));
+    // Marca como offline lo que no apareció en este barrido. Una sola escritura
+    // (`updateMany`) en vez de un `update` por dispositivo (evita el N+1, US-54);
+    // se leen primero las filas afectadas para poder emitir el evento de cada una.
+    const onlineMacs = [...merged.keys()];
+    const staleWhere = { online: true, mac: { notIn: onlineMacs } } as const;
+    const stale = (await this.app.prisma.device.findMany({ where: staleWhere })) as DbDevice[];
+    if (stale.length > 0) {
+      await this.app.prisma.device.updateMany({ where: staleWhere, data: { online: false } });
+      for (const row of stale) {
+        this.app.io.emit('inventory:device-updated', toDevice({ ...row, online: false }));
+      }
     }
 
     return this.list();
