@@ -61,7 +61,9 @@ export const socketioPlugin = fp(async (app: FastifyInstance) => {
       if (!token) {
         return next(new Error('AUTH_REQUIRED'));
       }
-      const claims = app.jwt.verify<AccessTokenClaims>(token);
+      // `verifyToken` elige la clave por `kid`: acepta también la clave previa
+      // durante el solape de una rotación RS256 (US-64).
+      const claims = app.verifyToken<AccessTokenClaims>(token);
       if (claims.type !== 'access') {
         return next(new Error('AUTH_INVALID_TOKEN'));
       }
