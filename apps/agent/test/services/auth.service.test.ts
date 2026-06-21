@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AuthError, AuthService } from '../../src/modules/auth/auth.service.js';
-import { buildTestApp, resetDb, seedUser } from '../helpers/app.js';
+import { buildTestApp, resetDb, seedUser, signMfaPending } from '../helpers/app.js';
 
 describe('AuthService', () => {
   let app: FastifyInstance;
@@ -120,6 +120,37 @@ describe('AuthService', () => {
       await expect(service.refresh(tokens.refreshToken)).rejects.toMatchObject({
         code: 'AUTH_INVALID_TOKEN',
       });
+    });
+  });
+
+  describe('token mfa-pending (US-51)', () => {
+    it('round-trip: el token emitido verifica al mismo sub', () => {
+      const token = service.issueMfaPendingToken('user-123');
+      expect(typeof token).toBe('string');
+      expect(service.verifyMfaPendingToken(token)).toBe('user-123');
+    });
+
+    it('rechaza un token de tipo incorrecto (access usado como mfa-pending)', () => {
+      const access = app.jwt.sign({
+        sub: 'x',
+        email: 'a@krakenos.test',
+        role: 'admin',
+        type: 'access',
+      });
+      expect(() => service.verifyMfaPendingToken(access)).toThrow(AuthError);
+    });
+
+    it('rechaza un token con firma inválida', () => {
+      expect(() => service.verifyMfaPendingToken('no-es-un-jwt')).toThrowError(
+        expect.objectContaining({ code: 'AUTH_INVALID_TOKEN' }),
+      );
+    });
+
+    it('rechaza un token expirado', () => {
+      const expired = signMfaPending(app, 'user-123', { expired: true });
+      expect(() => service.verifyMfaPendingToken(expired)).toThrowError(
+        expect.objectContaining({ code: 'AUTH_INVALID_TOKEN' }),
+      );
     });
   });
 

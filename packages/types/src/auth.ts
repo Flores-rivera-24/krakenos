@@ -35,6 +35,19 @@ export interface RefreshTokenClaims {
   exp: number;
 }
 
+/**
+ * Claims del token efímero de 2FA pendiente (US-51). Prueba que el primer factor
+ * (contraseña) ya se superó y liga el paso de login con el de verificación de
+ * passkey. Vive ~2 min y **no** sirve como access token (`authenticate` lo rechaza
+ * porque su `type` no es `'access'`).
+ */
+export interface MfaPendingTokenClaims {
+  sub: Id;
+  type: 'mfa-pending';
+  iat: number;
+  exp: number;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;
@@ -64,6 +77,11 @@ export interface LoginResponse {
 export interface WebAuthnRequiredResponse {
   requiresWebAuthn: true;
   email: string;
+  /**
+   * Token efímero que acredita el primer factor (contraseña) ya superado (US-51).
+   * El cliente lo reenvía en `authenticate/options` y `authenticate/verify`.
+   */
+  mfaToken: string;
 }
 
 /** Resultado del login: o sesión emitida, o requerimiento de 2FA WebAuthn. */

@@ -1,5 +1,4 @@
-import type { LastSession, LoginResponse, SetupStatus, SystemPublicInfo } from '@krakenos/types';
-import type { PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
+import type { LastSession, SetupStatus, SystemPublicInfo } from '@krakenos/types';
 import { Clock, Eye, EyeOff, Fingerprint, Lock } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
-import { startAuthentication } from '@/lib/webauthn';
+import { completePasskeyLogin } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
 
 type HealthState = 'loading' | 'online' | 'offline';
@@ -35,10 +34,12 @@ export function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 2FA WebAuthn (US-50): tras un login con passkey, el formulario da paso a la
-  // verificación con el dispositivo.
+  // 2FA WebAuthn (US-50/US-51): tras un login con passkey, el formulario da paso a la
+  // verificación con el dispositivo. Se guarda el token efímero `mfa-pending` que
+  // acredita la contraseña ya superada para reenviarlo al paso de passkey.
   const [stage, setStage] = useState<'form' | 'webauthn'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingMfaToken, setPendingMfaToken] = useState('');
   const [passkeyStatus, setPasskeyStatus] = useState<PasskeyStatus>('idle');
 
   // Datos públicos del card (cargan en paralelo, no bloquean el formulario).
@@ -95,6 +96,7 @@ export function LoginPage() {
       const result = await login(email, password);
       if (result && 'requiresWebAuthn' in result) {
         setPendingEmail(result.email);
+        setPendingMfaToken(result.mfaToken);
         setPasskeyStatus('idle');
         setStage('webauthn');
       } else {
@@ -110,19 +112,7 @@ export function LoginPage() {
   const runPasskey = async () => {
     setPasskeyStatus('verifying');
     try {
-      const res = await api.post<{
-        available: boolean;
-        options?: PublicKeyCredentialRequestOptionsJSON;
-      }>('/webauthn/authenticate/options', { email: pendingEmail });
-      if (!res.available || !res.options) {
-        setPasskeyStatus('error');
-        return;
-      }
-      const assertion = await startAuthentication(res.options);
-      const session = await api.post<LoginResponse>('/webauthn/authenticate/verify', {
-        email: pendingEmail,
-        response: assertion,
-      });
+      const session = await completePasskeyLogin(pendingEmail, pendingMfaToken);
       setSession(session);
       navigate('/');
     } catch (err) {

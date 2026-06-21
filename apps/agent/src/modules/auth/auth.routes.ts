@@ -55,11 +55,16 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     try {
       const user = await service.verifyCredentials(req.body.email, req.body.password);
 
-      // 2FA WebAuthn (US-50): si el usuario tiene passkeys, no se emiten tokens
-      // todavía; el cliente debe completar la verificación con su dispositivo.
+      // 2FA WebAuthn (US-50/US-51): si el usuario tiene passkeys, no se emiten tokens
+      // todavía. Se devuelve un token efímero `mfa-pending` que acredita la contraseña
+      // ya superada y que el paso de passkey debe presentar (atando ambos factores).
       const passkeys = await app.prisma.webAuthnCredential.count({ where: { userId: user.id } });
       if (passkeys > 0) {
-        return reply.send({ requiresWebAuthn: true, email: user.email });
+        return reply.send({
+          requiresWebAuthn: true,
+          email: user.email,
+          mfaToken: service.issueMfaPendingToken(user.id),
+        });
       }
 
       const result = await service.issueSessionForUserId(user.id);

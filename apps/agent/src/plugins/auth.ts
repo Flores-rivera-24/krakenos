@@ -1,5 +1,10 @@
 import fastifyJwt from '@fastify/jwt';
-import type { AccessTokenClaims, RefreshTokenClaims, UserRole } from '@krakenos/types';
+import type {
+  AccessTokenClaims,
+  MfaPendingTokenClaims,
+  RefreshTokenClaims,
+  UserRole,
+} from '@krakenos/types';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { env } from '../config/env.js';
@@ -7,7 +12,8 @@ import { env } from '../config/env.js';
 /** Cargas firmables: `iat`/`exp` los añade la librería al firmar. */
 type SignablePayload =
   | Omit<AccessTokenClaims, 'iat' | 'exp'>
-  | Omit<RefreshTokenClaims, 'iat' | 'exp'>;
+  | Omit<RefreshTokenClaims, 'iat' | 'exp'>
+  | Omit<MfaPendingTokenClaims, 'iat' | 'exp'>;
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {

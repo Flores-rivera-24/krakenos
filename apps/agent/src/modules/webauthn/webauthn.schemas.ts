@@ -65,8 +65,12 @@ export const authenticateOptionsSchema = {
   body: {
     type: 'object',
     additionalProperties: false,
-    required: ['email'],
-    properties: { email: { type: 'string', format: 'email', maxLength: 254 } },
+    required: ['email', 'mfaToken'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 254 },
+      // Token efímero `mfa-pending` emitido por `/auth/login` (US-51).
+      mfaToken: { type: 'string', minLength: 1 },
+    },
   },
   response: {
     200: {
@@ -81,9 +85,11 @@ export const authenticateVerifySchema = {
   body: {
     type: 'object',
     additionalProperties: false,
-    required: ['email', 'response'],
+    required: ['email', 'mfaToken', 'response'],
     properties: {
       email: { type: 'string', format: 'email', maxLength: 254 },
+      // Token efímero `mfa-pending` emitido por `/auth/login` (US-51).
+      mfaToken: { type: 'string', minLength: 1 },
       response: opaqueObject,
     },
   },
