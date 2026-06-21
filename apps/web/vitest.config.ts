@@ -19,5 +19,12 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     css: false,
     restoreMocks: true,
+    // Coverage informativo (US-60): sin umbrales que bloqueen. `all: false` mide solo
+    // lo que tocan los tests.
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary'],
+      all: false,
+    },
   },
 });
