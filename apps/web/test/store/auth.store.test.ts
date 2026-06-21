@@ -59,6 +59,27 @@ describe('useAuthStore', () => {
     expect(useAuthStore.getState().tokens).toEqual(nuevos);
   });
 
+  it('refresh concurrente hace un solo POST (single-flight, US-56)', async () => {
+    useAuthStore.setState({ user: USER, tokens: TOKENS });
+    const nuevos = { accessToken: 'acc2', refreshToken: 'ref2', expiresIn: 900 };
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, nuevos));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const [a, b] = await Promise.all([
+      useAuthStore.getState().refresh(),
+      useAuthStore.getState().refresh(),
+    ]);
+
+    expect(a).toBe(true);
+    expect(b).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // un solo /auth/refresh para ambos
+    expect(useAuthStore.getState().tokens).toEqual(nuevos);
+
+    // Tras resolverse, un nuevo refresh vuelve a disparar su propio POST.
+    await useAuthStore.getState().refresh();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('refresh fallido limpia la sesión', async () => {
     useAuthStore.setState({ user: USER, tokens: TOKENS });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })));

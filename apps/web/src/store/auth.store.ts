@@ -34,6 +34,14 @@ export class HttpError extends Error {
   }
 }
 
+/**
+ * Refresco en vuelo (single-flight, US-56): si hay uno en curso, los siguientes
+ * `refresh()` reutilizan su promesa en vez de disparar otro POST `/auth/refresh`.
+ * Evita que varios 401 simultáneos (api + socket) roten el refresh token dos veces
+ * y se invaliden entre sí. Es a nivel de módulo (el store es singleton).
+ */
+let refreshInFlight: Promise<boolean> | null = null;
+
 /** Petición directa con fetch para evitar dependencia circular con `lib/api`. */
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
@@ -68,16 +76,23 @@ export const useAuthStore = create<AuthState>()(
       setSession: (data) => set({ user: data.user, tokens: data.tokens }),
 
       refresh: async () => {
+        // Si ya hay un refresco en vuelo, reutiliza su promesa (single-flight, US-56).
+        if (refreshInFlight) return refreshInFlight;
         const current = get().tokens?.refreshToken;
         if (!current) return false;
-        try {
-          const tokens = await postJson<AuthTokens>('/auth/refresh', { refreshToken: current });
-          set({ tokens });
-          return true;
-        } catch {
-          set({ user: null, tokens: null });
-          return false;
-        }
+        refreshInFlight = (async () => {
+          try {
+            const tokens = await postJson<AuthTokens>('/auth/refresh', { refreshToken: current });
+            set({ tokens });
+            return true;
+          } catch {
+            set({ user: null, tokens: null });
+            return false;
+          } finally {
+            refreshInFlight = null;
+          }
+        })();
+        return refreshInFlight;
       },
 
       logout: async () => {
