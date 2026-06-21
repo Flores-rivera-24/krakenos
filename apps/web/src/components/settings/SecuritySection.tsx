@@ -394,8 +394,10 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
       )}
 
       {confirmRegen && (
-        <Dialog open onClose={() => setConfirmRegen(false)}>
-          <h3 className="text-kr-lg font-semibold text-kr-primary">¿Regenerar las claves RS256?</h3>
+        <Dialog open onClose={() => setConfirmRegen(false)} aria-labelledby="dialog-regen-title">
+          <h3 id="dialog-regen-title" className="text-kr-lg font-semibold text-kr-primary">
+            ¿Regenerar las claves RS256?
+          </h3>
           <p className="mt-2 text-kr-sm text-kr-secondary">
             Esto cerrará todas las sesiones activas (incluida la tuya) y tendrás que volver a iniciar
             sesión. Esta acción no se puede deshacer.

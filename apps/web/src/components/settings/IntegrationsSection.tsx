@@ -157,8 +157,13 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
       )}
 
       {addOpen && (
-        <Dialog open onClose={() => setAddOpen(false)}>
-          <h3 className="text-kr-lg font-semibold text-kr-primary">Añadir integración</h3>
+        <Dialog open onClose={() => setAddOpen(false)} aria-labelledby="dialog-add-integration-title">
+          <h3
+            id="dialog-add-integration-title"
+            className="text-kr-lg font-semibold text-kr-primary"
+          >
+            Añadir integración
+          </h3>
           <p className="mt-1 text-kr-sm text-kr-secondary">
             Configura cada integración con su variable de entorno y consulta su guía en `docs/`.
           </p>

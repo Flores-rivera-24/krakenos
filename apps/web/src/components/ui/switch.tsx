@@ -5,16 +5,28 @@ interface SwitchProps {
   onCheckedChange: (checked: boolean) => void;
   disabled?: boolean;
   id?: string;
+  /** Etiqueta accesible cuando el switch no va acompañado de un `<label htmlFor>`. */
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
 }
 
 /** Toggle accesible sin dependencias externas. */
-export function Switch({ checked, onCheckedChange, disabled, id }: SwitchProps) {
+export function Switch({
+  checked,
+  onCheckedChange,
+  disabled,
+  id,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledby,
+}: SwitchProps) {
   return (
     <button
       type="button"
       role="switch"
       id={id}
       aria-checked={checked}
+      aria-label={ariaLabel}
+      aria-labelledby={ariaLabelledby}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(

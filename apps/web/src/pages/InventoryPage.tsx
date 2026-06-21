@@ -61,15 +61,30 @@ function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: 
   return (
     <div className="overflow-x-auto rounded-xl border border-kr">
       <table className="w-full text-kr-sm">
+        <caption className="sr-only">Dispositivos detectados en la red</caption>
         <thead className="bg-kr-elevated text-kr-secondary">
           <tr>
-            <th className="px-3 py-2 text-left font-medium">Device</th>
-            <th className="px-3 py-2 text-left font-medium">IP</th>
-            <th className="px-3 py-2 text-left font-medium">MAC</th>
-            <th className="px-3 py-2 text-left font-medium">Vendor</th>
-            <th className="px-3 py-2 text-left font-medium">Type</th>
-            <th className="px-3 py-2 text-left font-medium">Status</th>
-            <th className="px-3 py-2 text-right font-medium">Last seen</th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              Device
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              IP
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              MAC
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              Vendor
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              Type
+            </th>
+            <th scope="col" className="px-3 py-2 text-left font-medium">
+              Status
+            </th>
+            <th scope="col" className="px-3 py-2 text-right font-medium">
+              Last seen
+            </th>
           </tr>
         </thead>
         <tbody>

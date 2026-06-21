@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useFocusTrap } from '@/lib/use-focus-trap';
 import { cn } from '@/lib/utils';
 
 interface SlideoverProps {
@@ -32,6 +33,9 @@ export function Slideover({
   children,
   className,
 }: SlideoverProps) {
+  const titleId = useId();
+  const panelRef = useFocusTrap<HTMLDivElement>(open);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -44,21 +48,28 @@ export function Slideover({
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop sutil */}
       <div className="absolute inset-0 bg-black/30" onClick={onClose} aria-hidden />
 
       {/* Panel */}
       <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         className={cn(
-          'absolute inset-y-0 right-0 flex w-full flex-col border-l border-kr bg-kr-surface shadow-xl md:w-[480px]',
+          'absolute inset-y-0 right-0 flex w-full flex-col border-l border-kr bg-kr-surface shadow-xl outline-none md:w-[480px]',
           'motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-200',
           className,
         )}
       >
         <header className="flex items-start justify-between gap-3 border-b border-kr px-5 py-4">
           <div className="min-w-0">
-            <h2 className="truncate text-kr-lg font-semibold text-kr-primary">{title}</h2>
+            <h2 id={titleId} className="truncate text-kr-lg font-semibold text-kr-primary">
+              {title}
+            </h2>
             {subtitle && <div className="mt-0.5 text-kr-sm text-kr-secondary">{subtitle}</div>}
           </div>
           <button
