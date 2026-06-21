@@ -66,26 +66,54 @@ export interface IotConfig {
 }
 
 /**
+ * Resultado de `createIotManager`: el manager IoT y, si la config Tuya está
+ * presente, **la misma instancia** de `tuyaStore` que usa el manager `tuya`.
+ * Las rutas `/api/iot/tuya` reciben este store para compartir la cola de
+ * serialización (US-52) con el manager — antes había dos instancias distintas
+ * apuntando al mismo fichero (fuga de la factory, US-63).
+ */
+export interface IotManagerBundle {
+  manager: IotManager;
+  tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
+}
+
+/**
  * Construye la integración IoT. `kind` puede ser un único valor o una **lista
  * separada por comas** (`hue,govee`): con varios, se envuelven en un
  * `CompositeIotManager` que enruta por prefijo de id. El resto del agente solo
  * conoce la interfaz `IotManager`.
+ *
+ * El `tuyaStore` (fuente de verdad de la config Tuya) se crea aquí una sola vez
+ * y se inyecta tanto en el manager `tuya` como, vía el bundle, en sus rutas de
+ * gestión: una única instancia, sin fugas.
  */
-export function createIotManager(config: IotConfig): IotManager {
+export function createIotManager(config: IotConfig): IotManagerBundle {
   const kinds = config.kind
     .split(',')
     .map((k) => k.trim())
     .filter(Boolean) as IotKind[];
-  if (kinds.length <= 1) {
-    return buildIotManager(kinds[0] ?? 'mock', config);
-  }
-  return new CompositeIotManager(
-    kinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config) })),
-  );
+
+  // Store Tuya único: lo comparten el manager `tuya` y las rutas `/api/iot/tuya`.
+  const tuyaStore = config.tuya
+    ? new FileJsonStore<TuyaDeviceRecord>(config.tuya.configPath)
+    : undefined;
+
+  const manager =
+    kinds.length <= 1
+      ? buildIotManager(kinds[0] ?? 'mock', config, tuyaStore)
+      : new CompositeIotManager(
+          kinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config, tuyaStore) })),
+        );
+
+  return { manager, tuyaStore };
 }
 
 /** Construye un único manager para un `kind` concreto. */
-function buildIotManager(kind: IotKind, config: IotConfig): IotManager {
+function buildIotManager(
+  kind: IotKind,
+  config: IotConfig,
+  tuyaStore?: FileJsonStore<TuyaDeviceRecord>,
+): IotManager {
   switch (kind) {
     case 'mock':
       return new MockIotManager();
@@ -119,9 +147,11 @@ function buildIotManager(kind: IotKind, config: IotConfig): IotManager {
       const tuya = config.tuya;
       if (!tuya) throw new Error('Falta la configuración Tuya (IotConfig.tuya)');
       // El store de config (id/localKey/ip por dispositivo) es la fuente de verdad;
-      // se comparte por fichero con las rutas de gestión `/api/iot/tuya`.
+      // lo crea `createIotManager` y lo comparte (misma instancia) con las rutas
+      // de gestión `/api/iot/tuya`. El fallback solo aplica si se construye este
+      // manager de forma aislada (p. ej. en tests del propio manager).
       return new TuyaIotManager({
-        store: new FileJsonStore<TuyaDeviceRecord>(tuya.configPath),
+        store: tuyaStore ?? new FileJsonStore<TuyaDeviceRecord>(tuya.configPath),
         transport: new TuyapiTransport(),
       });
     }

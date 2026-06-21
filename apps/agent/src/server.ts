@@ -14,8 +14,6 @@ import { createIotManager, startIotManager } from './iot/index.js';
 import { createQosManager } from './qos/index.js';
 import { createVlanManager } from './vlan/index.js';
 import { createVpnManager } from './vpn/index.js';
-import { FileJsonStore } from './store/json-store.js';
-import type { TuyaDeviceRecord } from './iot/tuya.store.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
@@ -83,7 +81,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     listenPort: env.vpn.listenPort,
     wireguard: env.vpn.wireguard,
   });
-  const iot = createIotManager({
+  // El store de config Tuya lo crea la factory (única instancia, compartida con
+  // las rutas `/api/iot/tuya` vía el bundle) — sin duplicar la instancia (US-63).
+  const { manager: iot, tuyaStore } = createIotManager({
     kind: env.iot.kind,
     zigbee: env.iot.zigbee,
     matter: env.iot.matter,
@@ -91,8 +91,6 @@ export async function buildServer(): Promise<FastifyInstance> {
     govee: env.iot.govee,
     tuya: env.iot.tuya,
   });
-  // Store de config de dispositivos Tuya: compartido por fichero con el manager `tuya`.
-  const tuyaStore = new FileJsonStore<TuyaDeviceRecord>(env.iot.tuya.configPath);
   // Arranca la conexión en segundo plano de los managers que la necesiten (zigbee/govee).
   startIotManager(iot, (msg) => app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`));
   const cameras = createCameraManager({ kind: env.cameras.kind, rtsp: env.cameras.rtsp });
@@ -148,7 +146,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
-  await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
+  // Solo si hay store Tuya (config presente); con `env.iot.tuya` siempre lo hay.
+  if (tuyaStore) {
+    await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
+  }
   await app.register(camerasRoutes, { prefix: '/api/cameras', cameras });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });

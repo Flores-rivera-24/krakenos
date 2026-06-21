@@ -5,51 +5,13 @@ import type {
   HardwareDriver,
   UpdateDeviceRequest,
 } from '@krakenos/types';
+// Tipo de fila derivado del schema Prisma: si el modelo `Device` cambia, el
+// mapeo `toDevice` deja de compilar (detecta derivas de schema, US-63) en vez de
+// confiar en un `as DbDevice` ciego.
+import type { Device as DbDevice } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { inferDeviceType } from './identify.js';
 import { lookupVendor } from './oui.js';
-
-interface DbDevice {
-  id: string;
-  mac: string;
-  ip: string;
-  hostname: string | null;
-  label: string | null;
-  vendor: string | null;
-  type: string;
-  notes: string | null;
-  isBlocked: boolean;
-  online: boolean;
-  vlanTag: number | null;
-  sources: string;
-  firstSeen: Date;
-  lastSeen: Date;
-}
-
-function toDevice(row: DbDevice): Device {
-  let sources: DiscoverySource[] = [];
-  try {
-    sources = JSON.parse(row.sources) as DiscoverySource[];
-  } catch {
-    sources = [];
-  }
-  return {
-    id: row.id,
-    mac: row.mac,
-    ip: row.ip,
-    hostname: row.hostname,
-    label: row.label,
-    notes: row.notes,
-    vendor: row.vendor,
-    type: row.type as DeviceType,
-    isBlocked: row.isBlocked,
-    online: row.online,
-    vlanTag: row.vlanTag,
-    sources,
-    firstSeen: row.firstSeen.toISOString(),
-    lastSeen: row.lastSeen.toISOString(),
-  };
-}
 
 export class InventoryService {
   private scanTimer: NodeJS.Timeout | null = null;
@@ -58,6 +20,43 @@ export class InventoryService {
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
   ) {}
+
+  /** Mapea una fila Prisma al DTO `Device` del contrato compartido. */
+  private toDevice(row: DbDevice): Device {
+    return {
+      id: row.id,
+      mac: row.mac,
+      ip: row.ip,
+      hostname: row.hostname,
+      label: row.label,
+      notes: row.notes,
+      vendor: row.vendor,
+      type: row.type as DeviceType,
+      isBlocked: row.isBlocked,
+      online: row.online,
+      vlanTag: row.vlanTag,
+      sources: this.parseSources(row.sources, row.mac),
+      firstSeen: row.firstSeen.toISOString(),
+      lastSeen: row.lastSeen.toISOString(),
+    };
+  }
+
+  /**
+   * Parsea el JSON de `sources`. Si está corrupto **avisa por el log** (no lo
+   * silencia, US-63) y devuelve `[]` para no tumbar el barrido: el dispositivo
+   * sigue siendo usable y un re-descubrimiento reescribe el campo.
+   */
+  private parseSources(raw: string, mac: string): DiscoverySource[] {
+    try {
+      return JSON.parse(raw) as DiscoverySource[];
+    } catch (err) {
+      this.app.log.warn(
+        { mac, err, raw },
+        '[inventory] sources con JSON corrupto; se trata como vacío',
+      );
+      return [];
+    }
+  }
 
   /**
    * (Re)programa el barrido periódico de inventario. Se llama al arrancar con el
@@ -86,44 +85,44 @@ export class InventoryService {
   }
 
   async list(): Promise<Device[]> {
-    const rows = (await this.app.prisma.device.findMany({
+    const rows = await this.app.prisma.device.findMany({
       orderBy: { lastSeen: 'desc' },
-    })) as DbDevice[];
-    return rows.map(toDevice);
+    });
+    return rows.map((row) => this.toDevice(row));
   }
 
   async updateMetadata(id: string, input: UpdateDeviceRequest): Promise<Device | null> {
     const existing = await this.app.prisma.device.findUnique({ where: { id } });
     if (!existing) return null;
 
-    const row = (await this.app.prisma.device.update({
+    const row = await this.app.prisma.device.update({
       where: { id },
       data: {
         ...(input.label !== undefined ? { label: input.label } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
       },
-    })) as DbDevice;
+    });
 
-    const device = toDevice(row);
+    const device = this.toDevice(row);
     this.app.io.emit('inventory:device-updated', device);
     return device;
   }
 
   /** Bloquea o desbloquea el acceso a la red de un dispositivo (vía driver). */
   async setBlocked(id: string, blocked: boolean): Promise<Device | null> {
-    const existing = (await this.app.prisma.device.findUnique({ where: { id } })) as DbDevice | null;
+    const existing = await this.app.prisma.device.findUnique({ where: { id } });
     if (!existing) return null;
 
     if (blocked) await this.driver.blockDevice(existing.mac);
     else await this.driver.unblockDevice(existing.mac);
 
-    const row = (await this.app.prisma.device.update({
+    const row = await this.app.prisma.device.update({
       where: { id },
       data: { isBlocked: blocked },
-    })) as DbDevice;
+    });
 
-    const device = toDevice(row);
+    const device = this.toDevice(row);
     this.app.io.emit('inventory:device-updated', device);
     return device;
   }
@@ -133,12 +132,12 @@ export class InventoryService {
     const existing = await this.app.prisma.device.findUnique({ where: { id } });
     if (!existing) return null;
 
-    const row = (await this.app.prisma.device.update({
+    const row = await this.app.prisma.device.update({
       where: { id },
       data: { vlanTag },
-    })) as DbDevice;
+    });
 
-    const device = toDevice(row);
+    const device = this.toDevice(row);
     this.app.io.emit('inventory:device-updated', device);
     return device;
   }
@@ -168,11 +167,11 @@ export class InventoryService {
     // se leen primero las filas afectadas para poder emitir el evento de cada una.
     const onlineMacs = [...merged.keys()];
     const staleWhere = { online: true, mac: { notIn: onlineMacs } } as const;
-    const stale = (await this.app.prisma.device.findMany({ where: staleWhere })) as DbDevice[];
+    const stale = await this.app.prisma.device.findMany({ where: staleWhere });
     if (stale.length > 0) {
       await this.app.prisma.device.updateMany({ where: staleWhere, data: { online: false } });
       for (const row of stale) {
-        this.app.io.emit('inventory:device-updated', toDevice({ ...row, online: false }));
+        this.app.io.emit('inventory:device-updated', this.toDevice({ ...row, online: false }));
       }
     }
 
@@ -181,10 +180,10 @@ export class InventoryService {
 
   private async upsertDiscovered(found: MergedDevice): Promise<void> {
     const { mac } = found;
-    const existing = (await this.app.prisma.device.findUnique({ where: { mac } })) as DbDevice | null;
+    const existing = await this.app.prisma.device.findUnique({ where: { mac } });
 
     const sources = new Set<DiscoverySource>(
-      existing ? (JSON.parse(existing.sources) as DiscoverySource[]) : [],
+      existing ? this.parseSources(existing.sources, mac) : [],
     );
     for (const s of found.sources) sources.add(s);
 
@@ -195,7 +194,7 @@ export class InventoryService {
     const type =
       existing && existing.type !== 'unknown' ? existing.type : inferDeviceType(vendor, hostname);
 
-    const row = (await this.app.prisma.device.upsert({
+    const row = await this.app.prisma.device.upsert({
       where: { mac },
       create: {
         mac,
@@ -215,14 +214,14 @@ export class InventoryService {
         lastSeen: new Date(),
         sources: JSON.stringify([...sources]),
       },
-    })) as DbDevice;
+    });
 
     // Dispositivo nuevo (MAC nunca vista): evento de seguridad (auditoría + push, US-45).
     if (!existing) {
       this.app.audit({ action: 'inventory.unknown_device', detail: mac });
     }
 
-    this.app.io.emit('inventory:device-updated', toDevice(row));
+    this.app.io.emit('inventory:device-updated', this.toDevice(row));
   }
 }
 

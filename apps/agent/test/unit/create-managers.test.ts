@@ -47,31 +47,31 @@ describe('createVpnManager', () => {
 
 describe('createIotManager', () => {
   it('devuelve un MockIotManager para kind "mock"', () => {
-    expect(createIotManager({ kind: 'mock' })).toBeInstanceOf(MockIotManager);
+    expect(createIotManager({ kind: 'mock' }).manager).toBeInstanceOf(MockIotManager);
   });
 
   it('construye un ZigbeeIotManager con su configuración MQTT', () => {
     const iot = createIotManager({ kind: 'zigbee', zigbee: { url: 'mqtt://localhost:1883' } });
-    expect(iot).toBeInstanceOf(ZigbeeIotManager);
+    expect(iot.manager).toBeInstanceOf(ZigbeeIotManager);
   });
 
   it('construye un MatterIotManager con su configuración WebSocket', () => {
     const iot = createIotManager({ kind: 'matter', matter: { url: 'ws://localhost:5580/ws' } });
-    expect(iot).toBeInstanceOf(MatterIotManager);
+    expect(iot.manager).toBeInstanceOf(MatterIotManager);
   });
 
   it('construye un HueIotManager con su configuración', () => {
     const iot = createIotManager({ kind: 'hue', hue: { url: 'https://192.168.1.50', appKey: 'k' } });
-    expect(iot).toBeInstanceOf(HueIotManager);
+    expect(iot.manager).toBeInstanceOf(HueIotManager);
   });
 
   it('construye un GoveeIotManager (config opcional)', () => {
-    expect(createIotManager({ kind: 'govee' })).toBeInstanceOf(GoveeIotManager);
+    expect(createIotManager({ kind: 'govee' }).manager).toBeInstanceOf(GoveeIotManager);
   });
 
   it('con varios kinds (lista) devuelve un CompositeIotManager', () => {
     const iot = createIotManager({ kind: 'hue,govee', hue: { url: 'https://x', appKey: 'k' } });
-    expect(iot).toBeInstanceOf(CompositeIotManager);
+    expect(iot.manager).toBeInstanceOf(CompositeIotManager);
   });
 
   it('lanza si falta la configuración Zigbee/Matter/Hue', () => {
