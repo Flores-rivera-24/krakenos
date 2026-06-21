@@ -104,4 +104,37 @@ describe('SecuritySection', () => {
     expect(screen.getByText('Tu navegador no soporta passkeys.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Añadir passkey' })).not.toBeInTheDocument();
   });
+
+  it('regenera los códigos de recuperación y los muestra una sola vez (US-59)', async () => {
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/webauthn/credentials')
+        return Promise.resolve([
+          {
+            id: 'k1',
+            name: 'iPhone',
+            deviceType: 'singleDevice',
+            backedUp: false,
+            createdAt: new Date().toISOString(),
+            lastUsedAt: null,
+          },
+        ]);
+      if (path === '/webauthn/backup-codes') return Promise.resolve({ remaining: 3 });
+      return Promise.resolve(SESSIONS);
+    });
+    apiMock.post.mockImplementation((path: string) =>
+      path === '/webauthn/backup-codes'
+        ? Promise.resolve({ codes: ['aaaa-bbbb-cccc', 'dddd-eeee-ffff'] })
+        : Promise.resolve(undefined),
+    );
+
+    const user = userEvent.setup();
+    renderSection();
+
+    const regen = await screen.findByRole('button', { name: 'Regenerar códigos' });
+    await user.click(regen);
+
+    expect(await screen.findByText('aaaa-bbbb-cccc')).toBeInTheDocument();
+    expect(screen.getByText('dddd-eeee-ffff')).toBeInTheDocument();
+    expect(apiMock.post).toHaveBeenCalledWith('/webauthn/backup-codes');
+  });
 });

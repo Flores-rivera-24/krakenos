@@ -8,6 +8,7 @@ import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { webauthnRoutes } from '../../src/modules/webauthn/webauthn.routes.js';
+import { BackupCodeService } from '../../src/webauthn/backup-codes.service.js';
 import { WebAuthnService } from '../../src/webauthn/webauthn.service.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
 import { dnsRoutes } from '../../src/modules/dns/dns.routes.js';
@@ -87,6 +88,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
         rpID: 'localhost',
         origin: 'http://localhost:5173',
       }),
+      backupCodes: new BackupCodeService(app.prisma),
     });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
@@ -121,6 +123,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.deviceTrafficSample.deleteMany();
   await app.prisma.pushSubscription.deleteMany();
   await app.prisma.webAuthnCredential.deleteMany();
+  await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();

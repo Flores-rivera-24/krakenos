@@ -1,4 +1,11 @@
-import type { AuthSession, SystemSettingKey, WebAuthnCredentialInfo } from '@krakenos/types';
+import type {
+  AuthSession,
+  BackupCodesResult,
+  BackupCodesStatus,
+  RegisterPasskeyResult,
+  SystemSettingKey,
+  WebAuthnCredentialInfo,
+} from '@krakenos/types';
 import { KeyRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -34,9 +41,37 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 /**
- * Gestión de passkeys WebAuthn (2FA, US-50): listar, registrar y eliminar las
- * passkeys del usuario actual. Las passkeys son un segundo factor; la contraseña
- * sigue siendo el primer factor, así que se pueden eliminar sin restricción.
+ * Muestra los códigos de recuperación recién generados (US-59) una sola vez. El
+ * usuario debe guardarlos: el servidor solo almacena su hash y no puede volver a
+ * mostrarlos.
+ */
+function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => void }) {
+  return (
+    <div className="space-y-3 rounded-md border border-warning bg-kr-elevated p-3">
+      <p className="text-kr-sm text-kr-primary">
+        Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez para entrar
+        si pierdes tu passkey. <strong>No se volverán a mostrar.</strong>
+      </p>
+      <ul className="grid grid-cols-2 gap-1.5 font-mono text-kr-sm text-kr-primary">
+        {codes.map((c) => (
+          <li key={c} className="rounded bg-kr-surface px-2 py-1 text-center">
+            {c}
+          </li>
+        ))}
+      </ul>
+      <div className="flex justify-end">
+        <Button size="sm" onClick={onDismiss}>
+          Los he guardado
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Gestión de passkeys WebAuthn (2FA, US-50) y códigos de recuperación (US-59):
+ * listar, registrar y eliminar passkeys, y regenerar los códigos de recuperación.
+ * Las passkeys son un segundo factor; la contraseña sigue siendo el primero.
  */
 function PasskeysCard() {
   const supported = isWebAuthnSupported();
@@ -47,11 +82,20 @@ function PasskeysCard() {
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
+  // Códigos de recuperación (US-59): cuántos quedan y los recién generados (una vez).
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [newCodes, setNewCodes] = useState<string[] | null>(null);
+  const [regenBusy, setRegenBusy] = useState(false);
+
   const load = () => {
     void api
       .get<WebAuthnCredentialInfo[]>('/webauthn/credentials')
       .then(setPasskeys)
       .catch(() => setPasskeys([]));
+    void api
+      .get<BackupCodesStatus>('/webauthn/backup-codes')
+      .then((s) => setRemaining(s.remaining))
+      .catch(() => setRemaining(null));
   };
   useEffect(() => {
     if (supported) load();
@@ -65,12 +109,14 @@ function PasskeysCard() {
         '/webauthn/register/options',
       );
       const attestation = await startRegistration(options);
-      await api.post('/webauthn/register/verify', {
+      const result = await api.post<RegisterPasskeyResult>('/webauthn/register/verify', {
         response: attestation,
         name: name.trim() || 'Passkey',
       });
       setName('');
       setAdding(false);
+      // Al registrar la primera passkey llegan los códigos de recuperación (una vez).
+      if (result.backupCodes) setNewCodes(result.backupCodes);
       load();
     } catch (err) {
       setError(
@@ -80,6 +126,17 @@ function PasskeysCard() {
       );
     } finally {
       setBusy(false);
+    }
+  };
+
+  const regenerate = async () => {
+    setRegenBusy(true);
+    try {
+      const { codes } = await api.post<BackupCodesResult>('/webauthn/backup-codes');
+      setNewCodes(codes);
+      load();
+    } finally {
+      setRegenBusy(false);
     }
   };
 
@@ -175,6 +232,30 @@ function PasskeysCard() {
               <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
                 Añadir passkey
               </Button>
+            )}
+
+            {newCodes && <CodesReveal codes={newCodes} onDismiss={() => setNewCodes(null)} />}
+
+            {!newCodes && passkeys && passkeys.length > 0 && (
+              <div className="space-y-2 rounded-md border border-kr p-3">
+                <p className="text-kr-sm text-kr-secondary">
+                  Códigos de recuperación
+                  {remaining !== null && (
+                    <span className="text-kr-muted"> · te quedan {remaining}</span>
+                  )}
+                </p>
+                <p className="text-kr-xs text-kr-muted">
+                  Permiten entrar si pierdes tu passkey. Regenerar invalida los anteriores.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={regenBusy}
+                  onClick={() => void regenerate()}
+                >
+                  {regenBusy ? 'Generando…' : 'Regenerar códigos'}
+                </Button>
+              </div>
             )}
           </>
         )}

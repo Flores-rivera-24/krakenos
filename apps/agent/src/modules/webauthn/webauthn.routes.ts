@@ -4,12 +4,16 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 import { AuthService } from '../auth/auth.service.js';
+import type { BackupCodeService } from '../../webauthn/backup-codes.service.js';
 import { WebAuthnError, type WebAuthnService } from '../../webauthn/webauthn.service.js';
 import {
   authenticateOptionsSchema,
   authenticateVerifySchema,
+  backupCodeVerifySchema,
+  backupCodesStatusSchema,
   deleteCredentialSchema,
   listCredentialsSchema,
+  regenerateBackupCodesSchema,
   registerOptionsSchema,
   registerVerifySchema,
   renameCredentialSchema,
@@ -17,10 +21,11 @@ import {
 
 interface WebAuthnRoutesOpts {
   service: WebAuthnService;
+  backupCodes: BackupCodeService;
 }
 
 export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app, opts) => {
-  const { service } = opts;
+  const { service, backupCodes } = opts;
   const auth = new AuthService(app);
 
   // ---- Registro de passkey (usuario autenticado) ----
@@ -42,9 +47,12 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       const user = await app.prisma.user.findUnique({ where: { id: req.user.sub } });
       if (!user) return reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
       try {
-        const info = await service.verifyRegistration(user, req.body.response, req.body.name);
+        const credential = await service.verifyRegistration(user, req.body.response, req.body.name);
         app.audit({ action: 'webauthn.register', userId: user.id, detail: req.body.name, ip: req.ip });
-        return reply.send(info);
+        // Al registrar la PRIMERA passkey se generan códigos de recuperación (US-59),
+        // que se muestran una sola vez en la respuesta.
+        const codes = await backupCodes.generateIfNone(user.id);
+        return reply.send(codes ? { credential, backupCodes: codes } : { credential });
       } catch (err) {
         if (err instanceof WebAuthnError) {
           return reply.code(400).send({ code: 'WEBAUTHN_ERROR', message: err.message });
@@ -108,6 +116,53 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
           return reply.code(401).send({ code: 'WEBAUTHN_ERROR', message: err.message });
         }
         throw err;
+      }
+      const session = await auth.issueSessionForUserId(user.id);
+      app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });
+      return reply.send(session);
+    },
+  );
+
+  // ---- Códigos de recuperación 2FA (US-59) ----
+
+  // (Re)genera el lote (usuario autenticado): Ajustes → Seguridad. Se muestran una vez.
+  app.post(
+    '/backup-codes',
+    { preHandler: app.authenticate, schema: regenerateBackupCodesSchema },
+    async (req) => {
+      const codes = await backupCodes.generate(req.user.sub);
+      app.audit({ action: 'webauthn.backup-codes.regenerate', userId: req.user.sub, ip: req.ip });
+      return { codes };
+    },
+  );
+
+  // Cuántos códigos sin usar quedan (para la UI; nunca expone los códigos).
+  app.get(
+    '/backup-codes',
+    { preHandler: app.authenticate, schema: backupCodesStatusSchema },
+    async (req) => ({ remaining: await backupCodes.remaining(req.user.sub) }),
+  );
+
+  // Completa el 2FA con un código en vez de la passkey (público). Exige el mismo
+  // `mfaToken` que la verificación con passkey (US-51): el primer factor (contraseña)
+  // ya debe estar superado y el `sub` del token debe coincidir con el usuario.
+  app.post<{ Body: { email: string; mfaToken: string; code: string } }>(
+    '/backup-codes/verify',
+    { schema: backupCodeVerifySchema },
+    async (req, reply) => {
+      const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
+      if (!user) {
+        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_INVALID_TOKEN', message: 'Verificación de 2FA no válida' });
+      }
+      const ok = await backupCodes.consume(user.id, req.body.code);
+      if (!ok) {
+        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        return reply
+          .code(401)
+          .send({ code: 'WEBAUTHN_ERROR', message: 'Código de recuperación inválido' });
       }
       const session = await auth.issueSessionForUserId(user.id);
       app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });

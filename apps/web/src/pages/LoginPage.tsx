@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
-import { completePasskeyLogin } from '@/lib/webauthn';
+import { completePasskeyLogin, verifyBackupCode } from '@/lib/webauthn';
 import { HttpError, useAuthStore } from '@/store/auth.store';
 
 type HealthState = 'loading' | 'online' | 'offline';
@@ -41,6 +41,12 @@ export function LoginPage() {
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingMfaToken, setPendingMfaToken] = useState('');
   const [passkeyStatus, setPasskeyStatus] = useState<PasskeyStatus>('idle');
+
+  // Recuperación con código (US-59): alternativa a la passkey si se perdió el dispositivo.
+  const [backupMode, setBackupMode] = useState(false);
+  const [backupCode, setBackupCode] = useState('');
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupError, setBackupError] = useState<string | null>(null);
 
   // Datos públicos del card (cargan en paralelo, no bloquean el formulario).
   const [homeName, setHomeName] = useState<string | null>(null);
@@ -127,6 +133,20 @@ export function LoginPage() {
     }
   };
 
+  const runBackupCode = async () => {
+    setBackupBusy(true);
+    setBackupError(null);
+    try {
+      const session = await verifyBackupCode(pendingEmail, pendingMfaToken, backupCode);
+      setSession(session);
+      navigate('/');
+    } catch {
+      setBackupError('Código inválido o ya usado.');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
   const healthUi = HEALTH_UI[health];
 
   return (
@@ -191,6 +211,41 @@ export function LoginPage() {
                   ? 'Usar passkey'
                   : 'Reintentar'}
             </Button>
+
+            {/* Recuperación con código (US-59) */}
+            {backupMode ? (
+              <div className="space-y-2 text-left">
+                <Label htmlFor="backup-code" className="text-kr-secondary">
+                  Código de recuperación
+                </Label>
+                <Input
+                  id="backup-code"
+                  value={backupCode}
+                  onChange={(e) => setBackupCode(e.target.value)}
+                  placeholder="xxxx-xxxx-xxxx"
+                  autoComplete="one-time-code"
+                  autoCapitalize="none"
+                />
+                {backupError && <p className="text-[13px] text-danger">{backupError}</p>}
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => void runBackupCode()}
+                  disabled={backupBusy || backupCode.trim() === ''}
+                >
+                  {backupBusy ? 'Verificando…' : 'Verificar código'}
+                </Button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setBackupMode(true)}
+                className="text-kr-xs text-kr-secondary underline hover:text-kr-primary"
+              >
+                ¿Perdiste tu dispositivo? Usar un código de recuperación
+              </button>
+            )}
           </div>
         ) : (
           /* Cuerpo: formulario */

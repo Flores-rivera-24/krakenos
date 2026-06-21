@@ -75,3 +75,16 @@ export async function completePasskeyLogin(
     response: assertion,
   });
 }
+
+/**
+ * Completa el 2FA con un código de recuperación en lugar de la passkey (US-59).
+ * Reenvía el `mfaToken` del primer factor; el agente consume el código (un solo uso)
+ * y emite la sesión.
+ */
+export async function verifyBackupCode(
+  email: string,
+  mfaToken: string,
+  code: string,
+): Promise<LoginResponse> {
+  return api.post<LoginResponse>('/webauthn/backup-codes/verify', { email, mfaToken, code });
+}

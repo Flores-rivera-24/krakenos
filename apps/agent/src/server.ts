@@ -26,6 +26,7 @@ import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
+import { BackupCodeService } from './webauthn/backup-codes.service.js';
 import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
@@ -127,7 +128,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     rpID: env.webauthn.rpID,
     origin: env.webauthn.origin,
   });
-  await app.register(webauthnRoutes, { prefix: '/api/webauthn', service: webAuthnService });
+  await app.register(webauthnRoutes, {
+    prefix: '/api/webauthn',
+    service: webAuthnService,
+    backupCodes: new BackupCodeService(app.prisma),
+  });
   // Aviso temprano si la config de passkeys no cumple los requisitos (Escenario A:
   // TLS nativo + hostname). No bloquea el arranque; el resto del agente funciona igual.
   for (const w of webauthnConfigWarnings({
