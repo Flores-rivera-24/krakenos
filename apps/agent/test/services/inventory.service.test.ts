@@ -79,6 +79,43 @@ describe('InventoryService', () => {
       expect(stale.online).toBe(false);
     });
 
+    it('marca offline en una sola escritura (updateMany), no N updates (US-54)', async () => {
+      // Varios dispositivos previos que no aparecerán en el barrido del mock.
+      const staleMacs = ['aa:bb:cc:dd:ee:01', 'aa:bb:cc:dd:ee:02', 'aa:bb:cc:dd:ee:03'];
+      for (const [i, mac] of staleMacs.entries()) {
+        await app.prisma.device.create({
+          data: { mac, ip: `192.168.1.${200 + i}`, online: true, type: 'unknown', sources: '["arp"]' },
+        });
+      }
+
+      // Cuenta las escrituras sobre Device durante el barrido vía middleware de
+      // Prisma (espiar el delegate de Prisma no es fiable: rompe el call-through).
+      const writes: string[] = [];
+      let counting = true;
+      app.prisma.$use(async (params, next) => {
+        if (
+          counting &&
+          params.model === 'Device' &&
+          (params.action === 'update' || params.action === 'updateMany')
+        ) {
+          writes.push(params.action);
+        }
+        return next(params);
+      });
+
+      try {
+        const devices = await service.scan();
+
+        // Una sola escritura (updateMany) para todos los stale, ningún update por dispositivo.
+        expect(writes).toEqual(['updateMany']);
+        for (const mac of staleMacs) {
+          expect(byMac(devices, mac).online).toBe(false);
+        }
+      } finally {
+        counting = false;
+      }
+    });
+
     it('respeta el tipo fijado por el usuario en barridos posteriores', async () => {
       await service.scan();
       // El usuario reclasifica el MacBook (vendor Apple) como 'tablet'.
