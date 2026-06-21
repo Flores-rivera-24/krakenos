@@ -25,7 +25,7 @@ import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
 import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
-import { WebAuthnService } from './webauthn/webauthn.service.js';
+import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { pushRoutes } from './modules/push/push.routes.js';
@@ -131,6 +131,16 @@ export async function buildServer(): Promise<FastifyInstance> {
     origin: env.webauthn.origin,
   });
   await app.register(webauthnRoutes, { prefix: '/api/webauthn', service: webAuthnService });
+  // Aviso temprano si la config de passkeys no cumple los requisitos (Escenario A:
+  // TLS nativo + hostname). No bloquea el arranque; el resto del agente funciona igual.
+  for (const w of webauthnConfigWarnings({
+    rpID: env.webauthn.rpID,
+    origin: env.webauthn.origin,
+    isProd: env.isProd,
+    secureContext: env.https !== null || env.trustProxy,
+  })) {
+    app.log.warn(`[webauthn] ${w}`);
+  }
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });

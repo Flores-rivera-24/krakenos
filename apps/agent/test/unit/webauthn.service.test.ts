@@ -6,7 +6,11 @@ import {
   verifyRegistrationResponse,
 } from '@simplewebauthn/server';
 import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
-import { WebAuthnError, WebAuthnService } from '../../src/webauthn/webauthn.service.js';
+import {
+  WebAuthnError,
+  WebAuthnService,
+  webauthnConfigWarnings,
+} from '../../src/webauthn/webauthn.service.js';
 
 vi.mock('@simplewebauthn/server', () => ({
   generateRegistrationOptions: vi.fn(),
@@ -148,5 +152,59 @@ describe('WebAuthnService', () => {
         data: expect.objectContaining({ counter: 5, lastUsedAt: expect.any(Date) }),
       }),
     );
+  });
+});
+
+describe('webauthnConfigWarnings', () => {
+  it('no avisa en dev (localhost, sin HTTPS)', () => {
+    expect(
+      webauthnConfigWarnings({
+        rpID: 'localhost',
+        origin: 'http://localhost:5173',
+        isProd: false,
+        secureContext: false,
+      }),
+    ).toEqual([]);
+  });
+
+  it('no avisa con el Escenario A bien configurado', () => {
+    expect(
+      webauthnConfigWarnings({
+        rpID: 'krakenos.local',
+        origin: 'https://krakenos.local:3001',
+        isProd: true,
+        secureContext: true,
+      }),
+    ).toEqual([]);
+  });
+
+  it('avisa si RP_ID es una IP', () => {
+    const warnings = webauthnConfigWarnings({
+      rpID: '192.168.1.10',
+      origin: 'https://192.168.1.10:3001',
+      isProd: true,
+      secureContext: true,
+    });
+    expect(warnings.some((w) => w.includes('IP'))).toBe(true);
+  });
+
+  it('avisa si no hay contexto seguro fuera de localhost', () => {
+    const warnings = webauthnConfigWarnings({
+      rpID: 'krakenos.local',
+      origin: 'http://krakenos.local:3001',
+      isProd: true,
+      secureContext: false,
+    });
+    expect(warnings.some((w) => w.includes('HTTPS'))).toBe(true);
+  });
+
+  it('avisa si en producción sigue en localhost', () => {
+    const warnings = webauthnConfigWarnings({
+      rpID: 'localhost',
+      origin: 'http://localhost:5173',
+      isProd: true,
+      secureContext: false,
+    });
+    expect(warnings.some((w) => w.includes('localhost'))).toBe(true);
   });
 });

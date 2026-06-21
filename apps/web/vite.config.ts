@@ -15,6 +15,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': { target: AGENT_URL, changeOrigin: true },
+      '/health': { target: AGENT_URL, changeOrigin: true },
       '/socket.io': { target: AGENT_URL, ws: true, changeOrigin: true },
     },
   },

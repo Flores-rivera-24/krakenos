@@ -29,6 +29,46 @@ export interface WebAuthnConfig {
   origin: string;
 }
 
+/** ¿`host` es una dirección IPv4? (no válida como RP ID en los navegadores). */
+function isIpv4(host: string): boolean {
+  return /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+}
+
+/**
+ * Avisos de configuración de WebAuthn al arrancar (despliegue recomendado:
+ * **Escenario A** — TLS nativo del agente + hostname). Devuelve la lista de
+ * problemas que impedirían usar passkeys; vacía si la config es correcta.
+ * `localhost` es la única excepción al requisito de contexto seguro (HTTPS).
+ */
+export function webauthnConfigWarnings(cfg: {
+  rpID: string;
+  origin: string;
+  isProd: boolean;
+  /** El agente sirve TLS directamente, o lo termina un proxy de confianza. */
+  secureContext: boolean;
+}): string[] {
+  const warnings: string[] = [];
+  const isLocalhost = cfg.rpID === 'localhost';
+  const secure = isLocalhost || cfg.origin.startsWith('https://') || cfg.secureContext;
+
+  if (isIpv4(cfg.rpID)) {
+    warnings.push(
+      `WEBAUTHN_RP_ID="${cfg.rpID}" es una IP: los navegadores rechazan passkeys por IP. Usa un hostname (p. ej. krakenos.local).`,
+    );
+  }
+  if (!secure) {
+    warnings.push(
+      'WebAuthn exige contexto seguro (HTTPS) salvo en localhost. Activa HTTPS_ENABLED (Escenario A) o termina TLS en un proxy de confianza (TRUST_PROXY).',
+    );
+  }
+  if (cfg.isProd && isLocalhost) {
+    warnings.push(
+      'WEBAUTHN_RP_ID sigue en "localhost" en producción: ajústalo al hostname real (WEBAUTHN_RP_ID/WEBAUTHN_ORIGIN) para poder usar passkeys.',
+    );
+  }
+  return warnings;
+}
+
 /** Usuario mínimo necesario para las ceremonias WebAuthn. */
 interface WebAuthnUser {
   id: string;

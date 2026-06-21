@@ -34,6 +34,50 @@ Las passkeys se gestionan (añadir / eliminar) desde **Ajustes → Seguridad →
 
 Por defecto (dev): `WEBAUTHN_RP_ID=localhost` y `WEBAUTHN_ORIGIN=http://localhost:5173`.
 
+### ⚠️ Requisito: contexto seguro (HTTPS)
+
+El navegador **solo permite WebAuthn sobre HTTPS**, con la única excepción de `localhost`.
+Por HTTP plano fuera de localhost, las passkeys **no funcionan**. Un certificado
+**autofirmado es suficiente** (el objetivo es satisfacer el *secure context*, no la
+confianza de una CA pública).
+
+## Despliegue recomendado en KrakenOS (Escenario A)
+
+KrakenOS sirve API + UI en un solo puerto y gestiona su propia VPN y su propio DNS, así
+que el encaje natural es **TLS nativo del agente + hostname resuelto por el propio
+Pi-hole**, sin proxy inverso:
+
+1. **Genera el certificado** (incluye `krakenos.local` en el SAN):
+   ```bash
+   ./scripts/gen-cert.sh
+   ```
+2. **Activa HTTPS y configura el RP** en el `.env` del servidor:
+   ```bash
+   HTTPS_ENABLED=true
+   TLS_CERT_PATH=./certs/agent-cert.pem
+   TLS_KEY_PATH=./certs/agent-key.pem
+   WEBAUTHN_RP_ID=krakenos.local            # dominio, sin puerto
+   WEBAUTHN_ORIGIN=https://krakenos.local:3001
+   ```
+3. **Resuelve el hostname** sin tocar cada cliente: añade en el Pi-hole que reparte la
+   VPN (`WG_DNS`) un registro local `krakenos.local` → IP del agente en el túnel. Los
+   clientes del VPN lo resuelven automáticamente.
+4. Accede por **`https://krakenos.local:3001`** (a través del VPN). Por IP nunca.
+
+> El túnel WireGuard ya cifra el tráfico; el HTTPS aquí existe únicamente para el
+> *secure context* que exige el navegador. Para evitar la advertencia de certificado,
+> usa `mkcert` y confía la CA local en tus dispositivos (con `.local` no hay CA pública
+> posible). Apunte fino: `.local` está reservado a mDNS y puede competir con la
+> resolución del Pi-hole; `home.arpa` (RFC 8375) o `krakenos.lan` lo evitan.
+
+**Alternativa (Escenario B):** si ya tienes un proxy inverso (nginx) terminando TLS,
+pon `TRUST_PROXY=true`, `WEBAUTHN_ORIGIN=https://krakenos.local` (sin puerto, 443) y deja
+el agente en HTTP detrás del proxy.
+
+> El agente valida esta configuración al arrancar y registra un `WARN [webauthn]` si
+> detecta una IP como RP_ID, falta de HTTPS fuera de localhost, o `localhost` en
+> producción.
+
 ### ⚠️ Importante: RP_ID debe coincidir con el hostname del navegador
 
 `WEBAUTHN_RP_ID` **tiene que coincidir** con el dominio desde el que se accede a la app.
