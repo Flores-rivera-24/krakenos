@@ -18,6 +18,7 @@ import { FileJsonStore } from './store/json-store.js';
 import type { TuyaDeviceRecord } from './iot/tuya.store.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
+import { healthRoutes } from './plugins/health.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { securityHeadersPlugin } from './plugins/security-headers.js';
 import { socketioPlugin } from './plugins/socketio.js';
@@ -106,12 +107,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const qos = createQosManager({ kind: env.qos.kind, tc: env.qos.tc });
   const dns = createDnsManager({ kind: env.dns.kind, pihole: env.dns.pihole });
 
-  // Healthcheck público.
-  app.get('/health', async () => ({
-    status: 'ok',
-    driver: driver.kind,
-    uptime: process.uptime(),
-  }));
+  // Healthcheck público y mínimo (US-58): solo `{ status: 'ok' }`.
+  await app.register(healthRoutes);
 
   // Servicio de inventario compartido: lo usan las rutas de inventario y las de
   // sistema (para reprogramar el barrido en caliente al cambiar `scanIntervalSec`).

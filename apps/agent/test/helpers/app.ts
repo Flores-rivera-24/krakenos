@@ -37,6 +37,7 @@ import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
+import { healthRoutes } from '../../src/plugins/health.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
 import { socketioPlugin } from '../../src/plugins/socketio.js';
 
@@ -68,6 +69,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   await app.register(auditPlugin);
   await app.register(authPlugin);
   await app.register(socketioPlugin);
+  await app.register(healthRoutes);
 
   if (opts.routes) {
     const driver = opts.driver ?? new MockDriver();
