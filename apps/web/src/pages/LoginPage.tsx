@@ -10,7 +10,7 @@ import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { completePasskeyLogin } from '@/lib/webauthn';
-import { useAuthStore } from '@/store/auth.store';
+import { HttpError, useAuthStore } from '@/store/auth.store';
 
 type HealthState = 'loading' | 'online' | 'offline';
 
@@ -102,8 +102,13 @@ export function LoginPage() {
       } else {
         navigate('/');
       }
-    } catch {
-      setError('Correo o contraseña incorrectos.');
+    } catch (err) {
+      // US-55: un 401 es credenciales; cualquier otro fallo (red, 5xx) es de conexión.
+      setError(
+        err instanceof HttpError && err.status === 401
+          ? 'Correo o contraseña incorrectos.'
+          : 'No se pudo conectar con el servidor. Inténtalo de nuevo.',
+      );
     } finally {
       setLoading(false);
     }

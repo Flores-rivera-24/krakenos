@@ -66,6 +66,21 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('muestra un error y no falla en silencio si el PATCH falla (US-55)', async () => {
+    setUser('admin');
+    apiMock.patch.mockRejectedValue(new Error('500'));
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await screen.findByDisplayValue('Casa Flores');
+
+    await user.selectOptions(screen.getByDisplayValue('Europe/Madrid'), 'UTC');
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/no se pudo guardar/i);
+    // Reversión visual: el select vuelve a mostrar el valor guardado.
+    expect(screen.getByDisplayValue('Europe/Madrid')).toBeInTheDocument();
+  });
+
   it('la sección Red prueba la conexión vía connectivity-test', async () => {
     setUser('admin');
     const user = userEvent.setup();

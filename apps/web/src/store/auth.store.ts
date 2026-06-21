@@ -18,14 +18,36 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+/**
+ * Error de una petición de autenticación con el status HTTP. `status === 0` indica
+ * un fallo de red / servidor inaccesible (la `fetch` rechazó sin respuesta), lo que
+ * permite al login distinguir "credenciales incorrectas" (401) de "no se pudo
+ * conectar" (US-55).
+ */
+export class HttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'HttpError';
+  }
+}
+
 /** Petición directa con fetch para evitar dependencia circular con `lib/api`. */
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`/api${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Petición ${path} falló: ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`/api${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    // `fetch` sólo rechaza ante un fallo de red / servidor inaccesible.
+    throw new HttpError(0, `No se pudo conectar con ${path}`);
+  }
+  if (!res.ok) throw new HttpError(res.status, `Petición ${path} falló: ${res.status}`);
   return res.json() as Promise<T>;
 }
 

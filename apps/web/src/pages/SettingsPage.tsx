@@ -61,6 +61,7 @@ export function SettingsPage() {
   const [testing, setTesting] = useState(false);
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
   const [applied, setApplied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -124,13 +125,22 @@ export function SettingsPage() {
   }, []);
 
   const patch = async (key: SystemSettingKey, value: string) => {
-    const next = await api.patch<SystemSettingsResponse>('/system/settings', { key, value });
-    setData(next);
-    // Ajustes en caliente (US-47): confirmar que el cambio ya tiene efecto.
-    if (next.appliedImmediately) {
-      setApplied(true);
-      if (appliedTimer.current) clearTimeout(appliedTimer.current);
-      appliedTimer.current = setTimeout(() => setApplied(false), 2500);
+    setError(null);
+    try {
+      const next = await api.patch<SystemSettingsResponse>('/system/settings', { key, value });
+      setData(next);
+      // Ajustes en caliente (US-47): confirmar que el cambio ya tiene efecto.
+      if (next.appliedImmediately) {
+        setApplied(true);
+        if (appliedTimer.current) clearTimeout(appliedTimer.current);
+        appliedTimer.current = setTimeout(() => setApplied(false), 2500);
+      }
+    } catch {
+      // US-55: no fallar en silencio. Avisa y revierte visualmente el control. Los
+      // selects ya muestran el valor guardado (controlados por `data`); el input de
+      // nombre del hogar tiene estado propio, así que se restaura a mano.
+      setError('No se pudo guardar el cambio. Revisa la conexión e inténtalo de nuevo.');
+      if (key === 'homeName' && data) setHomeName(data.settings.homeName);
     }
   };
 
@@ -200,6 +210,15 @@ export function SettingsPage() {
             >
               <StatusDot status="online" />
               Cambio aplicado al instante (sin reiniciar).
+            </div>
+          )}
+          {error && (
+            <div
+              role="alert"
+              className="flex items-center gap-2 rounded-md border border-danger bg-kr-elevated px-3 py-2 text-kr-sm text-danger"
+            >
+              <StatusDot status="danger" />
+              {error}
             </div>
           )}
           {section === 'sistema' && (

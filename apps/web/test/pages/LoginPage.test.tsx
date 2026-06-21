@@ -14,7 +14,7 @@ const apiMock = vi.hoisted(() => ({ get: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: apiMock }));
 
 import { LoginPage } from '@/pages/LoginPage';
-import { useAuthStore } from '@/store/auth.store';
+import { HttpError, useAuthStore } from '@/store/auth.store';
 
 /** Respuestas por defecto de los endpoints públicos del card. */
 function defaultApi(path: string): Promise<unknown> {
@@ -67,8 +67,8 @@ describe('LoginPage', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
-  it('muestra el mensaje de error tras un intento fallido', async () => {
-    useAuthStore.setState({ login: vi.fn().mockRejectedValue(new Error('nope')) });
+  it('muestra el mensaje de credenciales ante un 401', async () => {
+    useAuthStore.setState({ login: vi.fn().mockRejectedValue(new HttpError(401, 'no')) });
     const user = userEvent.setup();
     renderPage();
 
@@ -77,6 +77,18 @@ describe('LoginPage', () => {
 
     expect(await screen.findByText('Correo o contraseña incorrectos.')).toBeInTheDocument();
     expect(navigate).not.toHaveBeenCalledWith('/');
+  });
+
+  it('distingue un error de red del de credenciales (US-55)', async () => {
+    useAuthStore.setState({ login: vi.fn().mockRejectedValue(new HttpError(0, 'network')) });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(screen.getByLabelText('Contraseña'), 'password123');
+    await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
+
+    expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
+    expect(screen.queryByText('Correo o contraseña incorrectos.')).not.toBeInTheDocument();
   });
 
   it('muestra el nombre del hogar de system/info', async () => {
