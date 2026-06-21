@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,9 @@ import {
   FileJsonStore,
   MemoryJsonStore,
 } from '../../src/store/json-store.js';
+
+/** root ignora los bits de permiso → el test de permisos no aplica. */
+const isRoot = typeof process.getuid === 'function' && process.getuid() === 0;
 
 interface Item {
   id: string;
@@ -68,6 +71,17 @@ describe('FileJsonStore', () => {
     // upsert tampoco pisa el fichero dañado con datos parciales.
     await expect(store.upsert({ id: 'a', v: 1 })).rejects.toBeInstanceOf(CorruptJsonStoreError);
     expect(await readFile(path, 'utf8')).toBe(corrupt);
+  });
+
+  it.skipIf(isRoot)('read() propaga un error de permisos, no lo traga como vacío (US-61)', async () => {
+    await writeFile(path, '[{"id":"a","v":1}]', 'utf8');
+    await chmod(path, 0o000); // sin permiso de lectura
+    try {
+      // No debe devolver [] en silencio: el error de E/S se propaga.
+      await expect(new FileJsonStore<Item>(path).list()).rejects.toThrow();
+    } finally {
+      await chmod(path, 0o600); // restaura para que afterEach pueda borrar
+    }
   });
 
   it('escritura atómica: no deja temporales y el contenido es JSON válido (US-52)', async () => {
