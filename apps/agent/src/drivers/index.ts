@@ -8,6 +8,8 @@ import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
 import { PfSenseDriver } from './pfsense.driver.js';
 import { PfSenseClient } from './pfsense.transport.js';
+import { UnifiDriver } from './unifi.driver.js';
+import { UnifiClient } from './unifi.transport.js';
 
 /** Config SSH+UCI para el driver OpenWrt real (`kind: 'openwrt'`). */
 export interface OpenWrtDriverConfig {
@@ -64,6 +66,16 @@ export interface CiscoNetconfDriverConfig {
   };
 }
 
+/** Config para el driver UniFi Network real (`kind: 'unifi'`, API local). */
+export interface UnifiDriverConfig {
+  /** URL base del controller, p. ej. `https://192.168.1.1`. */
+  url: string;
+  username: string;
+  password: string;
+  /** Site de UniFi (por defecto `default`). */
+  site?: string;
+}
+
 export interface CreateDriverConfig {
   kind: DriverKind;
   /** Host/IP del dispositivo (display + SSH). */
@@ -76,6 +88,8 @@ export interface CreateDriverConfig {
   ciscoIos?: CiscoIosDriverConfig;
   /** Requerido cuando `kind === 'cisco-netconf'`. */
   ciscoNetconf?: CiscoNetconfDriverConfig;
+  /** Requerido cuando `kind === 'unifi'`. */
+  unifi?: UnifiDriverConfig;
 }
 
 /**
@@ -130,6 +144,23 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? cn.netconf.host,
       });
     }
+    case 'unifi': {
+      const un = config.unifi;
+      if (!un) throw new Error('Falta la configuración UniFi (CreateDriverConfig.unifi)');
+      if (!un.url) throw new Error('El driver UniFi requiere UNIFI_URL (URL del controller)');
+      if (!un.username || !un.password) {
+        throw new Error('El driver UniFi requiere UNIFI_USERNAME y UNIFI_PASSWORD');
+      }
+      return new UnifiDriver({
+        client: new UnifiClient({
+          url: un.url,
+          username: un.username,
+          password: un.password,
+        }),
+        site: un.site,
+        host: config.host ?? un.url,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -146,3 +177,5 @@ export { CiscoIosDriver } from './cisco-ios.driver.js';
 export { SshCiscoTransport, MockCiscoTransport } from './cisco-ios.transport.js';
 export { CiscoNetconfDriver } from './cisco-netconf.driver.js';
 export { SshNetconfTransport, MockNetconfTransport } from './cisco-netconf.transport.js';
+export { UnifiDriver } from './unifi.driver.js';
+export { UnifiClient } from './unifi.transport.js';

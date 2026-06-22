@@ -118,6 +118,13 @@ export const env = {
         password: process.env.CISCO_NETCONF_PASSWORD || process.env.CISCO_PASSWORD || undefined,
       },
     },
+    // Solo se usa cuando DRIVER_KIND=unifi (API local del controller UniFi Network).
+    unifi: {
+      url: process.env.UNIFI_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      username: process.env.UNIFI_USERNAME ?? 'admin',
+      password: process.env.UNIFI_PASSWORD ?? '',
+      site: process.env.UNIFI_SITE ?? 'default',
+    },
   },
 
   vpn: {

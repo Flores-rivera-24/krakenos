@@ -74,6 +74,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     pfsense: env.driver.pfsense,
     ciscoIos: env.driver.ciscoIos,
     ciscoNetconf: env.driver.ciscoNetconf,
+    unifi: env.driver.unifi,
   });
   const vpn = createVpnManager({
     kind: env.vpn.kind,
