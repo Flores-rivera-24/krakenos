@@ -1,0 +1,234 @@
+# Modelo de amenazas y auditoría de seguridad (US-73)
+
+> Auditoría de seguridad de KrakenOS — junio 2026. Revisa el código real de
+> autenticación, autorización, criptografía de sesión y el límite de privilegios
+> (helper sudoers). **No modifica código de producción**: identifica la postura
+> actual, dónde un control está sólo respaldado por *código + unit test* (nunca
+> ejercido contra un atacante real ni hardware real) y propone US de remediación.
+>
+> Alcance leído: `src/plugins/auth.ts`, `security-headers.ts`, `rate-limit-store.ts`,
+> `socketio.ts`, `audit.ts`, `src/auth/keyring.ts`, `modules/auth/`, `modules/setup/`,
+> `modules/webauthn/`, `src/webauthn/`, `src/privileged/runner.ts`,
+> `scripts/krakenos-helper.sh` + `.sudoers.example`, `firewall/iptables.*`, `config/env.ts`,
+> `server.ts`. Referencia de diseño: `SPECS.md §9`, `CLAUDE.md`, `BACKLOG.md`.
+
+---
+
+## 1. Resumen ejecutivo
+
+KrakenOS tiene una postura de seguridad **deliberada y por encima de la media** para
+una herramienta doméstica: JWT RS256 con rotación de claves por `kid`, refresh tokens
+persistidos sólo como hash y rotatorios, bcrypt cost 12, 2FA WebAuthn atado al primer
+factor, cabeceras de seguridad estrictas, validación JSON Schema en el borde, WebSocket
+autenticado en el handshake y un proceso no-root que delega lo privilegiado en un helper
+con allowlist. La comparación *afirmado vs. real* confirma que casi todo lo que `SPECS §9`
+promete **está implementado de verdad**.
+
+Los hallazgos no son agujeros abiertos sino **límites de defensa en profundidad** y
+**controles sin verificar contra un adversario o hardware real**. Los tres más relevantes:
+
+1. **El helper privilegiado acota el *verbo*, no el *ámbito*** (🟠): permite `iptables`
+   sobre cualquier cadena, `tc` sobre cualquier interfaz y `wg set` arbitrario. Es el
+   último muro antes de root y hoy un agente comprometido lo atraviesa casi por completo.
+2. **Ajustes "en caliente" sin cota superior** (🟠): `accessTokenTtl` y `loginRateLimit`
+   se leen de `Setting` sin máximo; un valor enorme degrada silenciosamente la sesión corta
+   o el rate limit.
+3. **`TRUST_PROXY` es un booleano sin lista de proxies de confianza** (🟠): mal configurado,
+   permite falsificar `X-Forwarded-For` y burlar el rate limit y la auditoría por IP.
+
+Y un meta-hallazgo honesto: **todo el límite de privilegios (helper, sudoers, iptables/tc/wg)
+es mock-first y nunca se ha ejercido con root ni hardware real** (este entorno no los tiene;
+ver `BACKLOG.md → Checklist`). Su corrección está respaldada por unit tests al contrato, no
+por una verificación e2e.
+
+---
+
+## 2. Fronteras de confianza (trust boundaries)
+
+```
+   Internet
+      │  (sin puertos de UI expuestos — sólo el endpoint WireGuard UDP)
+      ▼
+┌───────────────────────────────────────────────┐  ── Frontera A: VPN ──
+│  WireGuard (10.8.0.0/24)                        │  Internet ↔ red interna
+└───────────────────────────────────────────────┘
+      │  HTTPS/WS sobre la VPN o LAN
+      ▼
+┌───────────────────────────────────────────────┐  ── Frontera B: API/Auth ──
+│  Agente Fastify (proceso NO root)              │  cliente ↔ agente
+│   · JWT RS256 + Keyring (kid)                  │  (pre-auth vs. autenticado vs. admin)
+│   · Socket.io (auth en handshake)             │
+└───────┬───────────────────────┬───────────────┘
+        │                       │
+        │ sudo -n               │ Prisma / fs
+        ▼                       ▼
+┌──────────────────┐   ┌────────────────────────┐  ── Frontera C: privilegio ──
+│ krakenos-helper  │   │ SQLite (dev.db) + keys/ │  agente(no-root) ↔ root
+│  (root, allowlist)│   │  + data/*.json + .env  │  ── Frontera D: datos en disco ──
+└────────┬─────────┘   └────────────────────────┘
+         │ wg / iptables / tc (root)
+         ▼
+┌───────────────────────────────────────────────┐  ── Frontera E: integración ──
+│ Hardware: routers (SSH/REST), switches (SNMP), │  agente ↔ dispositivos
+│ IoT (MQTT/HTTP/UDP), cámaras (RTSP)            │  (credenciales en .env)
+└───────────────────────────────────────────────┘
+```
+
+| Frontera | Cruce | Control principal | Estado |
+|---|---|---|---|
+| **A — VPN** | Internet → red interna | WireGuard; ningún puerto de UI expuesto | Diseño correcto; **sin verificar con túnel real** |
+| **B — API/Auth** | Cliente → agente | JWT RS256 (`authenticate`/`requireRole`), rate limit, WS auth en handshake | Implementado y unit-tested |
+| **C — Privilegio** | Agente (no-root) → root | `SudoHelperRunner` + `krakenos-helper.sh` (allowlist) + sudoers `NOPASSWD` acotado a un binario | Implementado; **allowlist sólo por verbo** (§5, F1) · **sin ejercer con root real** |
+| **D — Datos en disco** | Proceso → SQLite/`keys/`/`.env`/`data/` | Permisos de fichero del SO; `keys/`,`*.db`,`.env` gitignored | Depende del despliegue; secretos en claro (F8) |
+| **E — Integración** | Agente → hardware | Transporte inyectable; credenciales por `env` | Mock-first; **sin verificar con hardware** |
+
+---
+
+## 3. Activos
+
+| Activo | Dónde vive | Protección actual | Impacto si se compromete |
+|---|---|---|---|
+| **Clave privada RS256** | `keys/*.pem` (disco, gitignored) | Permisos de fichero; cargada en memoria al arrancar (`env.ts:140`) | Falsificar **cualquier** sesión (access/refresh/mfa) |
+| **Access token** | Cliente (memoria/localStorage) | Firmado RS256, `iss`/`aud`, `exp` 900 s, `type:'access'` | Acceso de lectura/escritura hasta `exp`; **no revocable** (F9) |
+| **Refresh token** | Cliente + **hash sha256** en `RefreshToken` | Rotatorio, revocable, sólo hash en DB | Renovar sesión hasta revocación; sin detección de reuso (F4) |
+| **Token `mfa-pending`** | Cliente, 120 s | Firmado, `type:'mfa-pending'`, `sub` cruzado con email | Reintentos de 2FA durante 120 s (no es access token) |
+| **Hash de contraseña** | `User.passwordHash` | bcrypt cost 12 | Crackeo offline (mitigado por coste) |
+| **Hash de backup codes** | `BackupCode.codeHash` | sha256 de 48 bits aleatorios | Bypass de 2FA si se filtra DB **y** se invierte (alta entropía) |
+| **Clave pública WebAuthn** | `WebAuthnCredential.publicKey` | No es secreta; nunca expuesta por la API | Bajo |
+| **Credenciales de hardware** | `.env` / `process.env` en claro | Permisos de fichero | SSH/REST/MQTT a routers, IoT y cámaras (F8) |
+| **Helper sudo (root)** | `/usr/local/bin/krakenos-helper` | sudoers `NOPASSWD` + allowlist por verbo | Control de iptables/tc/wg como root (F1) |
+| **Claves VAPID** | `Setting` (DB) | Sólo envío push; no es factor de auth | Bajo |
+| **Contraseñas WiFi** | Sólo en memoria, delegadas al driver | Nunca devueltas en GET | No persistidas |
+| **Log de auditoría** | `AuditLog` | `detail` truncado a 1 KB; best-effort | Pérdida silenciosa bajo carga (F11); PII de emails fallidos |
+
+---
+
+## 4. STRIDE por punto de entrada
+
+### 4.1 `POST /api/auth/login` (público)
+| Amenaza | Análisis |
+|---|---|
+| **S**poofing | Anti-enumeración con `bcrypt.compare` de tiempo constante incluso si el usuario no existe (`auth.service.ts:161-167`). ✔ |
+| **T**ampering | JSON Schema estricto (`additionalProperties:false`, email/longitud). ✔ |
+| **R**epudiation | `auth.login` / `auth.login_failed` auditados con IP. ✔ (best-effort, F11) |
+| **I**nfo disclosure | Mensaje genérico "Credenciales inválidas"; sin distinguir usuario inexistente. ✔ |
+| **D**oS | Rate limit por IP (`max=rateLimitStore.getCurrent()`, def. 10/min). Parcial: **sin lockout por cuenta** (F3) y burlable con XFF si `TRUST_PROXY` mal puesto (F2). |
+| **E**oP | Sin passkey → emite sesión; con passkey → sólo `mfaToken` (no tokens). Atadura de factores correcta. ✔ |
+
+### 4.2 `POST /api/auth/refresh` (token de refresco)
+- **T/E**: verifica firma por `kid`, exige `type:'refresh'`, comprueba hash en DB, revocado/expirado (`auth.service.ts:214-248`). ✔
+- **R/Replay**: rota (revoca el actual, emite nuevo). **Sin detección de reuso** → un refresh robado y usado sólo provoca cierre de sesión del legítimo, sin revocar la familia ni alertar (F4).
+- **D**: rate limit 60/min por IP. ✔
+
+### 4.3 `POST /api/setup/init` (público sólo si `user.count()==0`)
+- **E**: transacción atómica `user + homeName`; el segundo `/init` en carrera recibe 409 (US-53). ✔
+- **Spoofing de identidad inicial**: en una instalación recién arrancada, **el primer cliente que llega gana el admin** (sin token out-of-band). Ventana de "first-boot" en LAN/VPN (F10).
+
+### 4.4 `POST /api/webauthn/authenticate/{options,verify}` y `/backup-codes/verify` (públicos)
+- **E**: exigen `mfaToken` válido y `token.sub === user(email).id` (US-51, `webauthn.routes.ts:73-82`). La passkey **suma** factor, no reemplaza. ✔
+- **R/Replay**: challenge consumido **antes** de verificar (de un solo uso, US-58, `webauthn.service.ts:245-256`). ✔
+- **Concurrencia**: el challenge es **un único campo en `User`**; dos ceremonias simultáneas (dos pestañas, registro+login) se pisan (F6, usabilidad/DoS suave).
+- **R**: fallos auditados como `auth.login_failed`. ✔
+
+### 4.5 API autenticada (lectura) / admin (escritura)
+- **E**: `authenticate` exige `type:'access'`; `requireRole('admin')` para escritura (`auth.ts:111-143`). Cobertura parametrizada por módulo (US-61: viewer→403, sin token→401). ✔
+- **T**: JSON Schema por ruta con `additionalProperties:false` y `response` (US-61 valida bordes). ✔
+
+### 4.6 Handshake de Socket.io (`io.use`)
+- **S/E**: exige access token válido (`type:'access'`) en `auth.token` o `Bearer` (`socketio.ts:58-75`). ✔
+- **Revocación**: auth **sólo en el handshake**; la conexión sigue viva tras expirar/revocarse el token (F7).
+
+### 4.7 Invocación del helper privilegiado (`SudoHelperRunner` → `sudo -n helper`)
+- **T/E**: `execFile` (sin shell) → no hay inyección de shell; argv pasa literal (`runner.ts:29-40`). ✔
+- **E (ámbito)**: la allowlist del helper filtra **el verbo** (`iptables -A`, `tc qdisc`, `wg set`…) pero **no la cadena/interfaz/peer** (F1). Defensa en profundidad incompleta.
+
+### 4.8 Endpoints públicos de la pantalla de login
+- `GET /api/system/info` → `{homeName, version}`; `GET /api/auth/last-session` → `{timestamp, ip}`.
+- **I**: divulgación pre-auth de versión (apoyo a fingerprinting/CVE) e IP+hora del último login admin (F5). Por diseño (US-49), pero sin autenticar.
+
+---
+
+## 5. Tabla de hallazgos (afirmado vs. real)
+
+> Severidad: 🔴 alta · 🟠 media · 🟡 baja. Ninguno es un agujero explotable de forma
+> trivial desde fuera de la VPN; todos son **endurecimientos** o **controles sin verificar**.
+
+| # | Sev | Hallazgo | Ubicación | Afirmado | Real |
+|---|---|---|---|---|---|
+| **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permite `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh:39-54`, `:24-38` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | El verbo está acotado; el **objetivo no**. Un agente comprometido obtiene control casi total de iptables/tc/wg como root. |
+| **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts:393`, `server.ts:56-57` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | No hay guarda ni lista de hops de confianza; la mala config habilita el spoofing en silencio. |
+| **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. Sin contador por cuenta; **nunca probado contra un atacante distribuido real**. |
+| **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
+| **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leen de `Setting` con sólo `n>0`; un admin (o quien escriba ajustes) puede fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `auth.service.ts:57-62`, `rate-limit-store.ts:23-27` | "access de vida corta (default 900 s)" (SPECS §9) | El default es 900 s, pero **no hay máximo**; el valor caliente puede desactivar la garantía. |
+| **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
+| **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar o revocarse el token, la conexión sigue recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts:58-75` | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | Igual que la API **en el momento de conectar**; sin re-verificación periódica ni corte por revocación. |
+| **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts` (driver/iot/vlan/dns) | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | Por diseño de electrodoméstico, pero sin almacén de secretos ni cifrado en reposo. |
+| **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto — depende de F5. |
+| **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
+| **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
+| **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | Defensa real (sin shell + sin `-` inicial) ✔; el patrón en sí es flojo. **Nunca fuzzeado.** |
+
+### Controles verificados como correctos (no son hallazgos)
+- **Sin `alg:none`**: la verificación fija `algorithms:['RS256']` y `allowedIss`/`allowedAud` (`auth.ts:89,103-108`); el `kid` sólo elige clave pública, nunca el algoritmo. ✔
+- **Rotación RS256 por `kid`** derivado del PEM; tokens previos siguen válidos en el solape (US-64, `keyring.ts`). ✔
+- **Anti-enumeración** en login con compare de tiempo constante (`auth.service.ts:161-167`). ✔
+- **Atadura de factores 2FA**: `mfaToken` cruza `sub`↔email; `mfa-pending` no sirve como access (US-51). ✔
+- **Challenge de un solo uso** consumido antes de verificar (US-58). ✔
+- **Cabeceras de seguridad** estrictas (CSP sin inline, `frame-ancestors 'none'`, COOP/CORP, HSTS con TLS). ✔
+- **Sin inyección de shell** en el camino privilegiado (`execFile`, no `exec`). ✔
+- **Refresh sólo como hash sha256**; contraseñas con bcrypt 12. ✔
+
+> **Honestidad sobre la verificación:** todos los controles del **límite de privilegios y de
+> integración** (helper, sudoers, iptables/tc/wg, SSH/MQTT/SNMP) están respaldados por
+> *código + unit tests al contrato*, pero **nunca se han ejercido con root ni con hardware/
+> servicios reales** en este entorno (ver `BACKLOG.md → Checklist`). La frontera A (túnel
+> WireGuard) y la E (dispositivos) son, a día de hoy, **garantías de diseño no probadas e2e**.
+
+---
+
+## 6. Lista priorizada de remediación
+
+> Mapeada a US de seguimiento (la última historia cerrada es US-72; esta auditoría es US-73).
+> Atacar **una a una** (1 historia → 1 branch → 1 merge), por severidad.
+
+### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
+1. **US-74 · Allowlist del helper por ámbito (F1).** Que `krakenos-helper.sh` exija que `iptables`
+   opere sólo sobre la cadena `KRAKENOS` (y su enlace en `FORWARD -j KRAKENOS`), `tc` sólo sobre la
+   interfaz configurada y `wg`/`wg-quick` sólo sobre `wg0`. Rechazar el resto. Tests del helper por
+   caso permitido/denegado.
+2. **US-75 · Cotas en ajustes en caliente (F5).** Máximo duro a `accessTokenTtl` (p. ej. ≤ 3600 s) y
+   rango válido a `loginRateLimit`; ignorar/clamp fuera de rango. Test de borde.
+3. **US-76 · `TRUST_PROXY` seguro (F2).** Sustituir el booleano por número de hops o lista de proxies
+   de confianza de Fastify; documentar el riesgo de XFF. Test de `req.ip` con/ sin proxy.
+4. **US-77 · Lockout por cuenta + backoff en login (F3).** Contador por email (además del límite por
+   IP) con backoff exponencial y desbloqueo temporal; auditar el lockout.
+5. **US-78 · Detección de reuso de refresh (F4).** Al detectar un hash ya rotado/usado, revocar toda
+   la familia del usuario y emitir evento de seguridad (push/auditoría).
+6. **US-79 · Gestión de secretos de integración (F8).** Sacar credenciales de hardware del `.env`
+   plano (fichero con permisos `0600` mínimo verificado al arrancar, o integración con un secret store);
+   avisar si `.env`/`keys/` son legibles por otros.
+
+### Prioridad media (🟡) — reducir ventana y superficie
+7. **US-80 · Re-verificación de sesión en Socket.io (F7).** Re-validar el token periódicamente (o por
+   TTL) y cortar conexiones cuya sesión se revocó.
+8. **US-81 · Cierre de la ventana de primer admin (F10).** Token de setup out-of-band (impreso en el
+   log/CLI al primer arranque) exigido por `/setup/init`.
+9. **US-82 · Endurecer challenge WebAuthn (F6).** Challenge por ceremonia (tabla propia o campo con
+   discriminador registro/login) para soportar concurrencia.
+10. **US-83 · Reducir divulgación pre-auth (F5).** Evaluar gating o reducción de `system/info`
+    (omitir `version`) y `last-session` (sólo tras primer login, o detrás de un flag).
+11. **US-84 · Validación IP/CIDR estricta + fuzz (F12).** Acotar octetos/IPv6 y añadir un test
+    property-based/fuzz al builder de `iptables`.
+12. **US-85 · Auditoría de eventos de seguridad robusta (F11).** Cola/reintento para `login_failed`/
+    `block` y minimizar PII (hash del email en `detail`).
+
+### Riesgo conocido (no es código)
+13. **US-86 · Verificación e2e del límite de privilegios con hardware/root real.** Ejercer el helper,
+    sudoers e iptables/tc/wg en un despliegue real (frontera C/E) — hoy sólo mock + unit test.
+    Enlaza con `BACKLOG.md → Checklist de verificación con hardware real`.
+
+---
+
+> _Este documento es interno a la auditoría de seguridad; describe la postura a junio de 2026
+> sobre el código de las US-01…US-72. Cualquier remediación se implementa en su propia US y se
+> reconcilia con `SPECS §9` y `CLAUDE.md` al cerrarse._
