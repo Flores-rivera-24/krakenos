@@ -10,6 +10,8 @@ import { PfSenseDriver } from './pfsense.driver.js';
 import { PfSenseClient } from './pfsense.transport.js';
 import { MikrotikDriver } from './mikrotik.driver.js';
 import { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';
+import { AsusDriver } from './asus.driver.js';
+import { AsusClient } from './asus.transport.js';
 import { OmadaDriver } from './omada.driver.js';
 import { OmadaClient } from './omada.transport.js';
 import { UnifiDriver } from './unifi.driver.js';
@@ -98,6 +100,15 @@ export interface UnifiDriverConfig {
   site?: string;
 }
 
+/** Config para el driver ASUS/Merlin real (`kind: 'asus'`, appGet.cgi). */
+export interface AsusDriverConfig {
+  host: string;
+  username: string;
+  password: string;
+  /** Usar HTTPS (por defecto `false`). */
+  https?: boolean;
+}
+
 /** Config para el driver TP-Link Omada real (`kind: 'omada'`, API local). */
 export interface OmadaDriverConfig {
   /** URL base del controller, p. ej. `https://192.168.1.10:8043`. */
@@ -128,6 +139,8 @@ export interface CreateDriverConfig {
   mikrotik?: MikrotikDriverConfig;
   /** Requerido cuando `kind === 'omada'`. */
   omada?: OmadaDriverConfig;
+  /** Requerido cuando `kind === 'asus'`. */
+  asus?: AsusDriverConfig;
 }
 
 /**
@@ -239,6 +252,22 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? om.url,
       });
     }
+    case 'asus': {
+      const as = config.asus;
+      if (!as) throw new Error('Falta la configuración ASUS (CreateDriverConfig.asus)');
+      if (!as.host) throw new Error('El driver ASUS requiere ASUS_HOST');
+      if (!as.username || !as.password) {
+        throw new Error('El driver ASUS requiere ASUS_USERNAME y ASUS_PASSWORD');
+      }
+      return new AsusDriver({
+        client: new AsusClient({
+          baseUrl: `${as.https ? 'https' : 'http'}://${as.host}`,
+          username: as.username,
+          password: as.password,
+        }),
+        host: config.host ?? as.host,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -261,3 +290,5 @@ export { MikrotikDriver, FeatureNotSupportedError } from './mikrotik.driver.js';
 export { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';
 export { OmadaDriver } from './omada.driver.js';
 export { OmadaClient } from './omada.transport.js';
+export { AsusDriver } from './asus.driver.js';
+export { AsusClient } from './asus.transport.js';

@@ -20,7 +20,8 @@ export type DriverKind =
   | 'cisco-netconf'
   | 'unifi'
   | 'mikrotik'
-  | 'omada';
+  | 'omada'
+  | 'asus';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {

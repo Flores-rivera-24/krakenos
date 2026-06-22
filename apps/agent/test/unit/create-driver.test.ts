@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AsusDriver,
   MikrotikDriver,
   MockDriver,
   OmadaDriver,
@@ -113,6 +114,25 @@ describe('createDriver', () => {
     expect(() =>
       createDriver({ kind: 'omada', omada: { url: 'https://x', username: '', password: '' } }),
     ).toThrow(/OMADA_USERNAME/);
+  });
+
+  it('construye un AsusDriver con su configuración', () => {
+    const driver = createDriver({
+      kind: 'asus',
+      asus: { host: '192.168.1.1', username: 'admin', password: 'pw' },
+    });
+    expect(driver).toBeInstanceOf(AsusDriver);
+    expect(driver.kind).toBe('asus');
+  });
+
+  it('lanza si falta la configuración ASUS, el host o las credenciales', () => {
+    expect(() => createDriver({ kind: 'asus' })).toThrow(/ASUS/);
+    expect(() =>
+      createDriver({ kind: 'asus', asus: { host: '', username: 'a', password: 'b' } }),
+    ).toThrow(/ASUS_HOST/);
+    expect(() =>
+      createDriver({ kind: 'asus', asus: { host: 'h', username: '', password: '' } }),
+    ).toThrow(/ASUS_USERNAME/);
   });
 
   it('lanza para un kind desconocido', () => {
