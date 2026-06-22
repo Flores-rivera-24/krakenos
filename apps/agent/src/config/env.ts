@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { DriverKind } from '@krakenos/types';
+import type { MerossDeviceConfig } from '../iot/meross.parsers.js';
 import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
 
 /** Lee una variable obligatoria o lanza al arrancar. */
@@ -69,6 +70,33 @@ function shellyDevices(): ShellyDeviceConfig[] {
         }),
       )
       .filter((d) => d.ip.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Lee `MEROSS_DEVICES` (JSON `[{uuid, name?, channels?, key}]`) y devuelve la
+ * lista validada (descarta entradas sin `uuid` o sin `key`). Vacío si la variable
+ * no está o el JSON es inválido (US-71).
+ */
+function merossDevices(): MerossDeviceConfig[] {
+  const raw = process.env.MEROSS_DEVICES;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === 'object')
+      .map(
+        (d): MerossDeviceConfig => ({
+          uuid: String(d.uuid ?? ''),
+          name: typeof d.name === 'string' ? d.name : undefined,
+          channels: typeof d.channels === 'number' ? d.channels : undefined,
+          key: String(d.key ?? ''),
+        }),
+      )
+      .filter((d) => d.uuid.length > 0 && d.key.length > 0);
   } catch {
     return [];
   }
@@ -255,6 +283,12 @@ export const env = {
       auth: process.env.SHELLY_AUTH === 'true',
       username: process.env.SHELLY_USER || undefined,
       password: process.env.SHELLY_PASSWORD || undefined,
+    },
+    // Solo se usa cuando IOT_KIND=meross (broker MQTT local). Requiere el paquete mqtt.
+    meross: {
+      brokerHost: process.env.MEROSS_BROKER_HOST ?? '',
+      brokerPort: int('MEROSS_BROKER_PORT', 1883),
+      devices: merossDevices(),
     },
   },
 

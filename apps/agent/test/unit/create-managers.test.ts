@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -75,6 +75,17 @@ describe('createIotManager', () => {
 
   it('construye un ShellyIotManager (config opcional)', () => {
     expect(createIotManager({ kind: 'shelly' }).manager).toBeInstanceOf(ShellyIotManager);
+  });
+
+  it('construye un MerossIotManager con su configuración', () => {
+    const iot = createIotManager({ kind: 'meross', meross: { brokerHost: '192.168.1.5', devices: [] } });
+    expect(iot.manager).toBeInstanceOf(MerossIotManager);
+  });
+
+  it('lanza si falta el broker Meross', () => {
+    expect(() => createIotManager({ kind: 'meross', meross: { brokerHost: '', devices: [] } })).toThrow(
+      /MEROSS_BROKER_HOST/,
+    );
   });
 
   it('con varios kinds (lista) devuelve un CompositeIotManager', () => {
