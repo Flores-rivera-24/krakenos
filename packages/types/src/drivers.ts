@@ -18,7 +18,8 @@ export type DriverKind =
   | 'pfsense'
   | 'cisco-ios'
   | 'cisco-netconf'
-  | 'unifi';
+  | 'unifi'
+  | 'mikrotik';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {
