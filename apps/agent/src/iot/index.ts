@@ -7,6 +7,9 @@ import { HueIotManager } from './hue.iot.js';
 import { HueClient } from './hue.transport.js';
 import { KasaIotManager } from './kasa.iot.js';
 import { KlapTapoTransport, NetKasaTransport } from './kasa.transport.js';
+import { MerossIotManager } from './meross.iot.js';
+import type { MerossDeviceConfig } from './meross.parsers.js';
+import { createMerossTransport } from './meross.transport.js';
 import { ShellyIotManager } from './shelly.iot.js';
 import type { ShellyDeviceConfig } from './shelly.parsers.js';
 import { FetchShellyTransport } from './shelly.transport.js';
@@ -55,6 +58,18 @@ export interface TuyaIotConfig {
   configPath: string;
 }
 
+/** Config para la integración Meross (`kind: 'meross'`, MQTT local). */
+export interface MerossIotConfig {
+  /** Host del broker MQTT local (Mosquitto). */
+  brokerHost: string;
+  /** Puerto del broker (por defecto 1883). */
+  brokerPort?: number;
+  username?: string;
+  password?: string;
+  /** Dispositivos configurados (`MEROSS_DEVICES`). */
+  devices: MerossDeviceConfig[];
+}
+
 /** Config para la integración Shelly (`kind: 'shelly'`, REST/JSON-RPC local). */
 export interface ShellyIotConfig {
   /** Dispositivos configurados (`SHELLY_DEVICES`). */
@@ -94,6 +109,8 @@ export interface IotConfig {
   kasa?: KasaIotConfig;
   /** Opcional cuando `kind === 'shelly'`. */
   shelly?: ShellyIotConfig;
+  /** Requerido cuando `kind === 'meross'`. */
+  meross?: MerossIotConfig;
 }
 
 /**
@@ -214,6 +231,21 @@ function buildIotManager(
         devices: shelly.devices,
       });
     }
+    case 'meross': {
+      const meross = config.meross;
+      if (!meross) throw new Error('Falta la configuración Meross (IotConfig.meross)');
+      if (!meross.brokerHost) throw new Error('La integración Meross requiere MEROSS_BROKER_HOST');
+      // La conexión MQTT la arranca `startIotManager` (lifecycle en server.ts).
+      return new MerossIotManager({
+        transport: createMerossTransport({
+          host: meross.brokerHost,
+          port: meross.brokerPort,
+          username: meross.username,
+          password: meross.password,
+        }),
+        devices: meross.devices,
+      });
+    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -243,4 +275,6 @@ export { KasaIotManager } from './kasa.iot.js';
 export { NetKasaTransport, KlapTapoTransport } from './kasa.transport.js';
 export { ShellyIotManager } from './shelly.iot.js';
 export { FetchShellyTransport } from './shelly.transport.js';
+export { MerossIotManager } from './meross.iot.js';
+export { createMerossTransport } from './meross.transport.js';
 export { CompositeIotManager } from './composite.iot.js';
