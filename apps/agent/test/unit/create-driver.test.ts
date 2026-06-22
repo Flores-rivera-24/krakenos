@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { MockDriver, OpenWrtDriver, PfSenseDriver, createDriver } from '../../src/drivers/index.js';
+import {
+  MockDriver,
+  OpenWrtDriver,
+  PfSenseDriver,
+  UnifiDriver,
+  createDriver,
+} from '../../src/drivers/index.js';
 
 const OPENWRT = {
   wanInterface: 'wan',
@@ -43,6 +49,25 @@ describe('createDriver', () => {
     expect(() =>
       createDriver({ kind: 'pfsense', pfsense: { baseUrl: 'https://x', apiKey: '' } }),
     ).toThrow(/PFSENSE_API_KEY/);
+  });
+
+  it('construye un UnifiDriver con su configuración REST', () => {
+    const driver = createDriver({
+      kind: 'unifi',
+      unifi: { url: 'https://192.168.1.1', username: 'admin', password: 'pw' },
+    });
+    expect(driver).toBeInstanceOf(UnifiDriver);
+    expect(driver.kind).toBe('unifi');
+  });
+
+  it('lanza si falta la configuración UniFi, la URL o las credenciales', () => {
+    expect(() => createDriver({ kind: 'unifi' })).toThrow(/UniFi/);
+    expect(() =>
+      createDriver({ kind: 'unifi', unifi: { url: '', username: 'a', password: 'b' } }),
+    ).toThrow(/UNIFI_URL/);
+    expect(() =>
+      createDriver({ kind: 'unifi', unifi: { url: 'https://x', username: '', password: '' } }),
+    ).toThrow(/UNIFI_USERNAME/);
   });
 
   it('lanza para un kind desconocido', () => {
