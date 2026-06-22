@@ -14,6 +14,18 @@ const vlanResponse = {
 
 const tag = { type: 'integer', minimum: 1, maximum: 4094 } as const;
 const subnet = { type: ['string', 'null'], maxLength: 64 } as const;
+/**
+ * Nombre de VLAN: el valor se interpola en CLI IOS (`name <x>`) y en un
+ * OctetString SNMP. Allowlist estricta (`A-Za-z0-9 _ . -`, máx. 32 = límite de
+ * IOS) que rechaza espacios, saltos de línea y metacaracteres → cierra la
+ * inyección de comandos IOS por salto de línea.
+ */
+const name = {
+  type: 'string',
+  minLength: 1,
+  maxLength: 32,
+  pattern: '^[A-Za-z0-9_.][A-Za-z0-9_.-]*$',
+} as const;
 
 export const listVlansSchema = {
   response: {
@@ -28,7 +40,7 @@ export const createVlanSchema = {
     required: ['tag', 'name'],
     properties: {
       tag,
-      name: { type: 'string', minLength: 1, maxLength: 60 },
+      name,
       subnet,
       isolated: { type: 'boolean' },
     },
@@ -47,7 +59,7 @@ export const updateVlanSchema = {
     additionalProperties: false,
     minProperties: 1,
     properties: {
-      name: { type: 'string', minLength: 1, maxLength: 60 },
+      name,
       subnet,
       isolated: { type: 'boolean' },
     },

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { InvalidArgumentError } from '../../src/privileged/validators.js';
 import {
   assignPortToVlanCommand,
   configureBlockMacCommand,
@@ -70,5 +71,35 @@ describe('cisco-ios.commands', () => {
       'switchport access vlan 30',
       'end',
     ]);
+  });
+
+  // --- Anti-inyección de CLI IOS: tag/nombre/puerto/VLAN se validan (US-73) ---
+  describe('rechazo anti-inyección', () => {
+    it('rechaza un nombre de VLAN con salto de línea (inyección de comando IOS)', () => {
+      expect(() => createVlanCommand(30, 'IoT\nno vlan 1')).toThrow(InvalidArgumentError);
+      expect(() => createVlanCommand(30, 'IoT\r\nshutdown')).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza un nombre de VLAN con espacios o metacaracteres', () => {
+      expect(() => createVlanCommand(30, 'mi vlan')).toThrow(InvalidArgumentError);
+      expect(() => createVlanCommand(30, 'IoT; reload')).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza un tag de VLAN fuera de rango', () => {
+      expect(() => createVlanCommand(0, 'IoT')).toThrow(InvalidArgumentError);
+      expect(() => deleteVlanCommand(5000)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza un puerto Cisco con inyección de bandera o salto de línea', () => {
+      expect(() => assignPortToVlanCommand('-x', 30)).toThrow(InvalidArgumentError);
+      expect(() => assignPortToVlanCommand('Gi0/1\nshutdown', 30)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza una VLAN de bloqueo no numérica (inyección en mac address-table)', () => {
+      expect(() => configureBlockMacCommand('aa:bb:cc:dd:ee:ff', '1 drop\nreload')).toThrow(
+        InvalidArgumentError,
+      );
+      expect(() => removeBlockMacCommand('aa:bb:cc:dd:ee:ff', 'abc')).toThrow(InvalidArgumentError);
+    });
   });
 });

@@ -18,6 +18,17 @@ deny() {
   exit 64
 }
 
+# Los argumentos se pasan SIEMPRE como argv separado (`exec wg "$@"`, sin `eval`
+# ni shell), así que no hay inyección de shell. Defensa en profundidad extra:
+# ningún argumento legítimo de wg/iptables/tc contiene saltos de línea, retornos
+# de carro, tabuladores u otros caracteres de control, así que se rechazan de
+# entrada (un valor con `\n` solo tendría sentido como intento de inyección).
+for arg in "$@"; do
+  case "$arg" in
+    *[$'\n\r\t\v\f']*) deny "argumento con caracteres de control" ;;
+  esac
+done
+
 cmd="${1:-}"
 shift || true
 

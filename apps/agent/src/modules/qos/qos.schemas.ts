@@ -27,6 +27,19 @@ const ruleResponse = {
 // Tope alto pero finito (10 Gbps) para evitar valores absurdos.
 const kbps = { type: 'integer', minimum: 0, maximum: 10_000_000 } as const;
 
+/**
+ * Objetivo de la regla: una IP/CIDR (`10.0.0.5`, `192.168.1.0/24`) o un objetivo
+ * por servicio (`service:zoom`). Empieza por alfanumérico y solo admite
+ * `A-Za-z0-9 . : / _ -`: rechaza espacios, metacaracteres de shell y el `-`
+ * inicial (inyección de bandera) antes de que un objetivo-IP llegue a `tc`.
+ */
+const target = {
+  type: 'string',
+  minLength: 1,
+  maxLength: 64,
+  pattern: '^[A-Za-z0-9][A-Za-z0-9._:/-]*$',
+} as const;
+
 export const listRulesSchema = {
   response: {
     200: { type: 'array', items: ruleResponse },
@@ -40,7 +53,7 @@ export const createRuleSchema = {
     required: ['name', 'target'],
     properties: {
       name: { type: 'string', minLength: 1, maxLength: 60 },
-      target: { type: 'string', minLength: 1, maxLength: 64 },
+      target,
       priority: { type: 'string', enum: PRIORITIES },
       downloadKbps: kbps,
       uploadKbps: kbps,
@@ -62,7 +75,7 @@ export const updateRuleSchema = {
     minProperties: 1,
     properties: {
       name: { type: 'string', minLength: 1, maxLength: 60 },
-      target: { type: 'string', minLength: 1, maxLength: 64 },
+      target,
       priority: { type: 'string', enum: PRIORITIES },
       downloadKbps: kbps,
       uploadKbps: kbps,

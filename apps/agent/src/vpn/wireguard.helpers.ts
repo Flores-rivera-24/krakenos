@@ -1,4 +1,9 @@
 import { generateKeyPairSync } from 'node:crypto';
+import {
+  assertInterfaceName,
+  assertIpv4,
+  assertWireguardKey,
+} from '../privileged/validators.js';
 
 /** Genera un par de claves X25519 en formato WireGuard (base64 de 32 bytes raw). */
 export function wireguardKeypair(): { publicKey: string; privateKey: string } {
@@ -96,28 +101,39 @@ export function nextAddress(subnetCidr: string, usedIps: string[]): string {
 }
 
 // --- Constructores de argv (puros) para el helper privilegiado ---
+//
+// Cada constructor **valida y rechaza** sus argumentos (interfaz, clave del peer,
+// IP asignada) antes de devolver el argv: aunque hoy la clave y la IP las genera
+// el servidor, así ningún valor sin verificar (p. ej. del peer-store en disco o de
+// una variable de entorno) puede llegar a `wg`/`wg-quick` con una bandera inyectada.
 
-export const wgShowDumpArgs = (iface: string): string[] => ['wg', 'show', iface, 'dump'];
+export const wgShowDumpArgs = (iface: string): string[] => [
+  'wg', 'show', assertInterfaceName(iface), 'dump',
+];
 
-export const wgShowPublicKeyArgs = (iface: string): string[] => ['wg', 'show', iface, 'public-key'];
+export const wgShowPublicKeyArgs = (iface: string): string[] => [
+  'wg', 'show', assertInterfaceName(iface), 'public-key',
+];
 
 export const wgSetAddPeerArgs = (iface: string, publicKey: string, address: string): string[] => [
   'wg',
   'set',
-  iface,
+  assertInterfaceName(iface),
   'peer',
-  publicKey,
+  assertWireguardKey(publicKey),
   'allowed-ips',
-  `${address}/32`,
+  `${assertIpv4(address)}/32`,
 ];
 
 export const wgSetRemovePeerArgs = (iface: string, publicKey: string): string[] => [
   'wg',
   'set',
-  iface,
+  assertInterfaceName(iface),
   'peer',
-  publicKey,
+  assertWireguardKey(publicKey),
   'remove',
 ];
 
-export const wgQuickSaveArgs = (iface: string): string[] => ['wg-quick', 'save', iface];
+export const wgQuickSaveArgs = (iface: string): string[] => [
+  'wg-quick', 'save', assertInterfaceName(iface),
+];
