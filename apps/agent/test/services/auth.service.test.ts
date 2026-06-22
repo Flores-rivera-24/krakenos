@@ -152,6 +152,25 @@ describe('AuthService', () => {
         expect.objectContaining({ code: 'AUTH_INVALID_TOKEN' }),
       );
     });
+
+    it('consumeMfaPendingToken es de un solo uso: el replay del mismo token se rechaza (US-88)', () => {
+      const token = service.issueMfaPendingToken('user-123');
+      // Primer uso: consume y devuelve el sub.
+      expect(service.consumeMfaPendingToken(token)).toBe('user-123');
+      // Segundo uso del MISMO token (replay dentro de la ventana) → rechazado.
+      expect(() => service.consumeMfaPendingToken(token)).toThrowError(
+        expect.objectContaining({ code: 'AUTH_INVALID_TOKEN' }),
+      );
+    });
+
+    it('verifyMfaPendingToken NO consume: sirve para el paso options sin gastar el token (US-88)', () => {
+      const token = service.issueMfaPendingToken('user-123');
+      // Verificar varias veces no lo invalida...
+      expect(service.verifyMfaPendingToken(token)).toBe('user-123');
+      expect(service.verifyMfaPendingToken(token)).toBe('user-123');
+      // ...y aún se puede consumir una vez después.
+      expect(service.consumeMfaPendingToken(token)).toBe('user-123');
+    });
   });
 
   describe('getById', () => {
