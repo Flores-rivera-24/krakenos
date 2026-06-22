@@ -45,4 +45,16 @@ describe('krakenos-helper allowlist', () => {
     const { code } = await runHelper([]);
     expect(code).toBe(64);
   });
+
+  // --- Anti-inyección: caracteres de control en cualquier argumento (US-73) ---
+  it('rechaza un argumento con salto de línea aunque el verbo sea válido', async () => {
+    const { code, stderr } = await runHelper(['wg', 'show', 'wg0\nlisten-port 1', 'dump']);
+    expect(code).toBe(64);
+    expect(stderr).toMatch(/caracteres de control/);
+  });
+
+  it('rechaza un argumento con retorno de carro o tabulador', async () => {
+    expect((await runHelper(['iptables', '-L', 'KRAKENOS\rDROP'])).code).toBe(64);
+    expect((await runHelper(['tc', 'qdisc', 'show', 'dev', 'eth0\tfoo'])).code).toBe(64);
+  });
 });

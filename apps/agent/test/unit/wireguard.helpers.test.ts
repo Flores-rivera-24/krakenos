@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { InvalidArgumentError } from '../../src/privileged/validators.js';
 import {
   buildClientConfig,
   nextAddress,
@@ -8,6 +9,9 @@ import {
   wgShowDumpArgs,
   wireguardKeypair,
 } from '../../src/vpn/wireguard.helpers.js';
+
+/** Clave pública WireGuard válida (base64 de 32 bytes) para los casos felices. */
+const PUBKEY = wireguardKeypair().publicKey;
 
 describe('wireguard helpers', () => {
   it('genera claves X25519 base64 distintas', () => {
@@ -65,9 +69,35 @@ describe('wireguard helpers', () => {
 
   it('construye los argv de wg', () => {
     expect(wgShowDumpArgs('wg0')).toEqual(['wg', 'show', 'wg0', 'dump']);
-    expect(wgSetAddPeerArgs('wg0', 'PK', '10.8.0.7')).toEqual([
-      'wg', 'set', 'wg0', 'peer', 'PK', 'allowed-ips', '10.8.0.7/32',
+    expect(wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.7')).toEqual([
+      'wg', 'set', 'wg0', 'peer', PUBKEY, 'allowed-ips', '10.8.0.7/32',
     ]);
-    expect(wgSetRemovePeerArgs('wg0', 'PK')).toEqual(['wg', 'set', 'wg0', 'peer', 'PK', 'remove']);
+    expect(wgSetRemovePeerArgs('wg0', PUBKEY)).toEqual(['wg', 'set', 'wg0', 'peer', PUBKEY, 'remove']);
+  });
+
+  // --- Anti-inyección: cada argumento se valida antes de devolver el argv (US-73) ---
+  describe('rechazo anti-inyección', () => {
+    it('rechaza una interfaz con inyección de bandera o metacaracteres', () => {
+      expect(() => wgShowDumpArgs('-i')).toThrow(InvalidArgumentError);
+      expect(() => wgShowDumpArgs('wg0; rm -rf /')).toThrow(InvalidArgumentError);
+      expect(() => wgShowDumpArgs('wg0 --config')).toThrow(InvalidArgumentError);
+      expect(() => wgSetRemovePeerArgs('wg0\nlisten-port 1', PUBKEY)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza una clave de peer que no sea WireGuard base64', () => {
+      expect(() => wgSetAddPeerArgs('wg0', '--remove', '10.8.0.7')).toThrow(InvalidArgumentError);
+      expect(() => wgSetAddPeerArgs('wg0', 'no-es-una-clave', '10.8.0.7')).toThrow(
+        InvalidArgumentError,
+      );
+      expect(() => wgSetRemovePeerArgs('wg0', `${PUBKEY} extra`)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza una IP asignada malformada o con inyección', () => {
+      expect(() => wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.7 fwmark 1')).toThrow(
+        InvalidArgumentError,
+      );
+      expect(() => wgSetAddPeerArgs('wg0', PUBKEY, '999.0.0.1')).toThrow(InvalidArgumentError);
+      expect(() => wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.0/24')).toThrow(InvalidArgumentError);
+    });
   });
 });

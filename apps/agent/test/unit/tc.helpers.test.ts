@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { InvalidArgumentError } from '../../src/privileged/validators.js';
 import {
   isIpTarget,
   priorityToPrio,
   tcFilterIpArgs,
   tcLeafClassArgs,
   tcQdiscAddRootArgs,
+  tcQdiscDelRootArgs,
   tcRootClassArgs,
 } from '../../src/qos/tc.helpers.js';
 
@@ -42,5 +44,29 @@ describe('tc helpers', () => {
       'tc', 'filter', 'add', 'dev', 'eth0', 'protocol', 'ip', 'parent', '1:', 'prio', '7',
       'u32', 'match', 'ip', 'dst', '10.0.0.50', 'flowid', '1:10',
     ]);
+  });
+
+  // --- Anti-inyección: interfaz, enteros y objetivo IP se validan (US-73) ---
+  describe('rechazo anti-inyección', () => {
+    it('rechaza una interfaz con bandera o metacaracteres en cualquier builder', () => {
+      expect(() => tcQdiscDelRootArgs('-d')).toThrow(InvalidArgumentError);
+      expect(() => tcQdiscAddRootArgs('eth0; reboot', 9999)).toThrow(InvalidArgumentError);
+      expect(() => tcRootClassArgs('eth0 root', 1000)).toThrow(InvalidArgumentError);
+      expect(() => tcLeafClassArgs('eth0\n', 10, 20000, 7)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza un objetivo del filtro que no sea IPv4/CIDR', () => {
+      expect(() => tcFilterIpArgs('eth0', 7, '10.0.0.50 flowid 1:1', 10)).toThrow(
+        InvalidArgumentError,
+      );
+      expect(() => tcFilterIpArgs('eth0', 7, '--match', 10)).toThrow(InvalidArgumentError);
+      expect(() => tcFilterIpArgs('eth0', 7, '999.999.0.0', 10)).toThrow(InvalidArgumentError);
+    });
+
+    it('rechaza enteros negativos o no enteros (rate/classid/prio)', () => {
+      expect(() => tcLeafClassArgs('eth0', -1, 20000, 7)).toThrow(InvalidArgumentError);
+      expect(() => tcLeafClassArgs('eth0', 10, 1.5, 7)).toThrow(InvalidArgumentError);
+      expect(() => tcRootClassArgs('eth0', Number.NaN)).toThrow(InvalidArgumentError);
+    });
   });
 });

@@ -2,7 +2,18 @@
  * Builders de comandos **puros** para Cisco IOS / IOS-XE. No ejecutan nada:
  * devuelven la cadena (o secuencia) de CLI que el `CiscoTransport` correrá en el
  * switch/router. Aislarlos así los hace testeables sin hardware.
+ *
+ * La secuencia se envía como **CLI multi-línea sobre SSH**, así que un salto de
+ * línea dentro de un valor (tag, nombre, puerto, VLAN de bloqueo) inyectaría
+ * comandos IOS adicionales en la sesión privilegiada. Por eso cada valor
+ * interpolado se **valida y rechaza** (anti-inyección) antes de construir la CLI.
  */
+import {
+  assertCiscoInterface,
+  assertVlanName,
+  assertVlanTag,
+  assertVlanTagString,
+} from '../privileged/validators.js';
 
 /** Normaliza una MAC estándar (`xx:xx:xx:xx:xx:xx`) al formato Cisco `xxxx.xxxx.xxxx`. */
 export function toCiscoMac(mac: string): string {
@@ -43,7 +54,7 @@ export function showVlanCommand(): string {
 export function configureBlockMacCommand(mac: string, vlan: string): string[] {
   return [
     'configure terminal',
-    `mac address-table static ${toCiscoMac(mac)} vlan ${vlan} drop`,
+    `mac address-table static ${toCiscoMac(mac)} vlan ${assertVlanTagString(vlan)} drop`,
     'end',
   ];
 }
@@ -52,22 +63,33 @@ export function configureBlockMacCommand(mac: string, vlan: string): string[] {
 export function removeBlockMacCommand(mac: string, vlan: string): string[] {
   return [
     'configure terminal',
-    `no mac address-table static ${toCiscoMac(mac)} vlan ${vlan} drop`,
+    `no mac address-table static ${toCiscoMac(mac)} vlan ${assertVlanTagString(vlan)} drop`,
     'end',
   ];
 }
 
 /** Secuencia para crear (o renombrar) una VLAN con su nombre. */
 export function createVlanCommand(tag: number, name: string): string[] {
-  return ['configure terminal', `vlan ${tag}`, `name ${name}`, 'exit', 'end'];
+  return [
+    'configure terminal',
+    `vlan ${assertVlanTag(tag)}`,
+    `name ${assertVlanName(name)}`,
+    'exit',
+    'end',
+  ];
 }
 
 /** Secuencia para eliminar una VLAN. */
 export function deleteVlanCommand(tag: number): string[] {
-  return ['configure terminal', `no vlan ${tag}`, 'end'];
+  return ['configure terminal', `no vlan ${assertVlanTag(tag)}`, 'end'];
 }
 
 /** Secuencia para asignar un puerto de acceso a una VLAN. */
 export function assignPortToVlanCommand(port: string, tag: number): string[] {
-  return ['configure terminal', `interface ${port}`, `switchport access vlan ${tag}`, 'end'];
+  return [
+    'configure terminal',
+    `interface ${assertCiscoInterface(port)}`,
+    `switchport access vlan ${assertVlanTag(tag)}`,
+    'end',
+  ];
 }

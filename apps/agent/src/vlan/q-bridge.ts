@@ -1,3 +1,4 @@
+import { assertVlanName, assertVlanTag } from '../privileged/validators.js';
 import type { SnmpVarbind } from './snmp.transport.js';
 
 /**
@@ -20,24 +21,24 @@ export const RowStatus = {
 } as const;
 
 export function vlanNameOid(tag: number): string {
-  return `${DOT1Q_VLAN_STATIC_NAME}.${tag}`;
+  return `${DOT1Q_VLAN_STATIC_NAME}.${assertVlanTag(tag)}`;
 }
 
 export function vlanRowStatusOid(tag: number): string {
-  return `${DOT1Q_VLAN_STATIC_ROW_STATUS}.${tag}`;
+  return `${DOT1Q_VLAN_STATIC_ROW_STATUS}.${assertVlanTag(tag)}`;
 }
 
 /** Varbinds para crear una VLAN (createAndGo) y fijar su nombre. */
 export function createVlanVarbinds(tag: number, name: string): SnmpVarbind[] {
   return [
     { oid: vlanRowStatusOid(tag), type: 'Integer', value: RowStatus.createAndGo },
-    { oid: vlanNameOid(tag), type: 'OctetString', value: name },
+    { oid: vlanNameOid(tag), type: 'OctetString', value: assertVlanName(name) },
   ];
 }
 
 /** Varbinds para renombrar una VLAN existente. */
 export function renameVlanVarbinds(tag: number, name: string): SnmpVarbind[] {
-  return [{ oid: vlanNameOid(tag), type: 'OctetString', value: name }];
+  return [{ oid: vlanNameOid(tag), type: 'OctetString', value: assertVlanName(name) }];
 }
 
 /** Varbinds para destruir una VLAN (destroy). */

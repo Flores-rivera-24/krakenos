@@ -41,6 +41,32 @@ const INVALID_CASES: InvalidCase[] = [
     payload: { name: 'Regla', target: 'x', uploadKbps: 20_000_000 },
   },
   { name: 'vlan: tag fuera de rango', method: 'POST', url: '/api/vlans', payload: { tag: 5000, name: 'V' } },
+  // Anti-inyección en argumentos que alcanzan operaciones privilegiadas (US-73):
+  // el schema rechaza con 400 ANTES de llegar al servicio / a cualquier exec.
+  {
+    name: 'qos: objetivo con metacaracteres de shell',
+    method: 'POST',
+    url: '/api/qos/rules',
+    payload: { name: 'Regla', target: '10.0.0.5; reboot' },
+  },
+  {
+    name: 'qos: objetivo con inyección de bandera',
+    method: 'POST',
+    url: '/api/qos/rules',
+    payload: { name: 'Regla', target: '--match' },
+  },
+  {
+    name: 'vlan: nombre con salto de línea (inyección de comando IOS)',
+    method: 'POST',
+    url: '/api/vlans',
+    payload: { tag: 50, name: 'IoT\nno vlan 1' },
+  },
+  {
+    name: 'vlan: nombre con espacios/metacaracteres',
+    method: 'POST',
+    url: '/api/vlans',
+    payload: { tag: 51, name: 'mi vlan; reload' },
+  },
   {
     name: 'dns: dominio inválido (sin TLD)',
     method: 'POST',
