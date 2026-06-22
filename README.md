@@ -137,6 +137,14 @@ variable de entorno (`VPN_KIND`, `FIREWALL_KIND`, `DRIVER_KIND`, …). Ya implem
 - **Driver Cisco IOS** (`DRIVER_KIND=cisco-ios`) — switches/routers Catalyst vía **SSH + CLI de IOS**:
   inventario (`show arp`), tráfico (`show interfaces`), bloqueo (entrada estática `drop`) y VLANs
   (`VLAN_KIND=cisco`). Para IOS-XE 16.6+, `DRIVER_KIND=cisco-netconf` usa **NETCONF/YANG** (XML sobre SSH).
+- **Drivers de red domésticos/prosumer** — **Ubiquiti UniFi** (`DRIVER_KIND=unifi`, API local del
+  controller), **MikroTik RouterOS** (`DRIVER_KIND=mikrotik`, REST en RouterOS 7 o SSH), **TP-Link
+  Omada** (`DRIVER_KIND=omada`, controller local) y **ASUS / Asuswrt-Merlin** (`DRIVER_KIND=asus`,
+  `appGet.cgi`): inventario, tráfico, bloqueo y WiFi sin CLI.
+- **IoT de las marcas más comunes** — **TP-Link Kasa/Tapo** (`IOT_KIND=kasa`, XOR local + KLAP),
+  **Shelly** (`IOT_KIND=shelly`, REST Gen1 / JSON-RPC Gen2), **Meross** (`IOT_KIND=meross`, MQTT
+  local) y **SwitchBot Hub Mini/Hub 2** (`IOT_KIND=switchbot`, API REST local): on/off, brillo y
+  color, todo local y combinable en lista (`IOT_KIND=hue,govee,kasa,…`).
 - **Vista de compatibilidad** — la app incluye un mapa (`/compatibility`) con la topología del hogar y
   el nivel de control de KrakenOS por dispositivo.
 
@@ -159,6 +167,14 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 # Driver Cisco IOS (vía SSH+CLI): DRIVER_KIND=cisco-ios + DRIVER_HOST/CISCO_* (requiere node-ssh)
 # Driver Cisco NETCONF (IOS-XE 16.6+): DRIVER_KIND=cisco-netconf + CISCO_NETCONF_* (requiere node-ssh)
 # VLANs en switch Cisco: VLAN_KIND=cisco (reusa DRIVER_HOST/CISCO_*)
+# Driver Ubiquiti UniFi (REST local): DRIVER_KIND=unifi + UNIFI_URL/UNIFI_USERNAME/UNIFI_PASSWORD
+# Driver MikroTik RouterOS (REST o SSH): DRIVER_KIND=mikrotik + MIKROTIK_HOST/MIKROTIK_USER/MIKROTIK_PASSWORD
+# Driver TP-Link Omada (REST Controller): DRIVER_KIND=omada + OMADA_URL/OMADA_USERNAME/OMADA_PASSWORD
+# IoT TP-Link Kasa/Tapo (protocolo local): IOT_KIND=kasa + KASA_DEVICES/TAPO_EMAIL/TAPO_PASSWORD
+# IoT Shelly (REST local Gen1/Gen2 RPC): IOT_KIND=shelly + SHELLY_DEVICES
+# Driver ASUS/Merlin (appGet.cgi): DRIVER_KIND=asus + ASUS_HOST/ASUS_USERNAME/ASUS_PASSWORD
+# IoT Meross (MQTT local): IOT_KIND=meross + MEROSS_BROKER_HOST/MEROSS_DEVICES
+# IoT SwitchBot Hub Mini (REST local): IOT_KIND=switchbot + SWITCHBOT_HUB_HOST/SWITCHBOT_TOKEN
 ```
 
 > Las integraciones reales del backlog (US-18…US-27, +US-28…US-32 hardware del hogar, +US-37…US-39 Cisco)

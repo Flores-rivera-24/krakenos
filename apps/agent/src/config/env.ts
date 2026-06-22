@@ -290,6 +290,12 @@ export const env = {
       brokerPort: int('MEROSS_BROKER_PORT', 1883),
       devices: merossDevices(),
     },
+    // Solo se usa cuando IOT_KIND=switchbot (API REST local del Hub Mini/Hub 2).
+    switchbot: {
+      host: process.env.SWITCHBOT_HUB_HOST ?? '',
+      port: int('SWITCHBOT_HUB_PORT', 8123),
+      token: process.env.SWITCHBOT_TOKEN || undefined,
+    },
   },
 
   cameras: {
