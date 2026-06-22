@@ -7,6 +7,9 @@ import { HueIotManager } from './hue.iot.js';
 import { HueClient } from './hue.transport.js';
 import { KasaIotManager } from './kasa.iot.js';
 import { KlapTapoTransport, NetKasaTransport } from './kasa.transport.js';
+import { ShellyIotManager } from './shelly.iot.js';
+import type { ShellyDeviceConfig } from './shelly.parsers.js';
+import { FetchShellyTransport } from './shelly.transport.js';
 import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
@@ -52,6 +55,16 @@ export interface TuyaIotConfig {
   configPath: string;
 }
 
+/** Config para la integración Shelly (`kind: 'shelly'`, REST/JSON-RPC local). */
+export interface ShellyIotConfig {
+  /** Dispositivos configurados (`SHELLY_DEVICES`). */
+  devices: ShellyDeviceConfig[];
+  /** Basic Auth (Gen1 con contraseña). */
+  auth?: boolean;
+  username?: string;
+  password?: string;
+}
+
 /** Config para la integración TP-Link Kasa/Tapo (`kind: 'kasa'`, protocolo local). */
 export interface KasaIotConfig {
   /** IPs Kasa configuradas (Gen1/2). */
@@ -79,6 +92,8 @@ export interface IotConfig {
   tuya?: TuyaIotConfig;
   /** Opcional cuando `kind === 'kasa'`. */
   kasa?: KasaIotConfig;
+  /** Opcional cuando `kind === 'shelly'`. */
+  shelly?: ShellyIotConfig;
 }
 
 /**
@@ -188,6 +203,17 @@ function buildIotManager(
         tapoIps: kasa.tapoIps,
       });
     }
+    case 'shelly': {
+      const shelly = config.shelly ?? { devices: [] };
+      return new ShellyIotManager({
+        transport: new FetchShellyTransport({
+          auth: shelly.auth,
+          username: shelly.username,
+          password: shelly.password,
+        }),
+        devices: shelly.devices,
+      });
+    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -215,4 +241,6 @@ export { GoveeIotManager } from './govee.iot.js';
 export { TuyaIotManager } from './tuya.iot.js';
 export { KasaIotManager } from './kasa.iot.js';
 export { NetKasaTransport, KlapTapoTransport } from './kasa.transport.js';
+export { ShellyIotManager } from './shelly.iot.js';
+export { FetchShellyTransport } from './shelly.transport.js';
 export { CompositeIotManager } from './composite.iot.js';
