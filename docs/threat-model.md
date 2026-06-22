@@ -157,7 +157,7 @@ por una verificación e2e.
 |---|---|---|---|---|---|
 | **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permite `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh:39-54`, `:24-38` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | El verbo está acotado; el **objetivo no**. Un agente comprometido obtiene control casi total de iptables/tc/wg como root. |
 | **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts:393`, `server.ts:56-57` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | No hay guarda ni lista de hops de confianza; la mala config habilita el spoofing en silencio. |
-| **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. Sin contador por cuenta; **nunca probado contra un atacante distribuido real**. |
+| **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. 🟡 **Parcial (US-88):** rate-limit extendido a los endpoints públicos de 2FA + `mfaToken` de un solo uso (anti-replay/brute-force de códigos). **Falta** el lockout por cuenta (US-77). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leen de `Setting` con sólo `n>0`; un admin (o quien escriba ajustes) puede fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `auth.service.ts:57-62`, `rate-limit-store.ts:23-27` | "access de vida corta (default 900 s)" (SPECS §9) | El default es 900 s, pero **no hay máximo**; el valor caliente puede desactivar la garantía. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
@@ -166,7 +166,7 @@ por una verificación e2e.
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto — depende de F5. |
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
-| **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | Defensa real (sin shell + sin `-` inicial) ✔; el patrón en sí es flojo. **Nunca fuzzeado.** |
+| **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87):** validadores anti-inyección puros (`privileged/validators.ts`) en los builders de wg/qos/vlan (iface, clave WG, IPv4/CIDR con octetos acotados, tag/nombre de VLAN) + rechazo de caracteres de control en el helper. Tests adversarios por argumento. |
 | **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usa `zustand/persist({name:'krakenos-auth'})` → ambos tokens quedan en `localStorage`. Un XSS lee el refresh (30 días) → **toma de cuenta persistente**. Mitigado parcialmente en US-90 (CSP); el arreglo real (cookie httpOnly) queda en US-91. | `web/src/store/auth.store.ts:62-107` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | En el **cliente** ambos tokens son legibles por JS. Ver Anexo (§7). |
 
 ### Controles verificados como correctos (no son hallazgos)
@@ -191,6 +191,25 @@ por una verificación e2e.
 
 > Mapeada a US de seguimiento (la última historia cerrada es US-72; esta auditoría es US-73).
 > Atacar **una a una** (1 historia → 1 branch → 1 merge), por severidad.
+
+### Estado de implementación (actualización)
+
+> La numeración de implementación divergió de la planificada (US-74…US-86): las historias de
+> seguridad reales se cerraron como **US-87…US-92**. Resumen:
+
+| US | Tema | Hallazgos | Estado |
+|---|---|---|---|
+| **US-87** | Validación anti-inyección en el helper privilegiado | F12 (+ refuerza F1 con control-chars) | ✅ hecho |
+| **US-88** | Rate-limit + anti-replay en endpoints públicos de auth | F3 (parcial), ventana de replay del `mfaToken` | ✅ hecho |
+| **US-89** | Cobertura exhaustiva de authz + validación; fix 🔴 (viewer podía `PATCH` metadatos de dispositivo) | nuevo hallazgo de authz, no en F1-F13 | ✅ hecho |
+| **US-90** | Reducir radio de impacto de XSS en tokens (CSP `connect-src 'self'`) | F13 (parcial) | ✅ hecho |
+| **US-92** | Secret scanning (gitleaks, bloqueante) + SAST (semgrep) en CI | endurece F8 (detecta secretos commiteados) | ✅ hecho |
+| **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
+| **US-74…US-86** | Resto de la remediación de abajo | F1/F2/F4/F5/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+
+**Pendientes destacados:** F1 (allowlist del helper por ámbito), F4 (reuso de refresh), F2
+(`TRUST_PROXY`), F5 (cotas en ajustes), F8 (secret store real — US-92 sólo detecta, no cifra),
+y F13 completo (US-91).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
 1. **US-74 · Allowlist del helper por ámbito (F1).** Que `krakenos-helper.sh` exija que `iptables`

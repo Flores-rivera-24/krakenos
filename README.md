@@ -113,9 +113,9 @@ Gobiernan inventario, tráfico, bloqueo y WiFi del router/switch.
 |---|---|---|---|---|
 | `mock` | — (desarrollo) | — | — | — |
 | `openwrt` | OpenWrt (SSH+UCI) | `DRIVER_HOST`, `OPENWRT_*` | `node-ssh` | `docs/openwrt-ax21-setup.md` |
-| `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | `docs/pfsense-setup.md` |
-| `cisco-ios` | Catalyst (SSH+CLI) | `DRIVER_HOST`, `CISCO_*` | `node-ssh` | `docs/cisco-setup.md` |
-| `cisco-netconf` | IOS-XE 16.6+ (NETCONF) | `CISCO_NETCONF_*` | `node-ssh` | `docs/cisco-setup.md` |
+| `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | — |
+| `cisco-ios` | Catalyst (SSH+CLI) | `DRIVER_HOST`, `CISCO_*` | `node-ssh` | `docs/cisco-ios-setup.md` |
+| `cisco-netconf` | IOS-XE 16.6+ (NETCONF) | `CISCO_NETCONF_*` | `node-ssh` | `docs/cisco-netconf-setup.md` |
 | `unifi` | Ubiquiti UniFi (REST local) | `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD` | — | `docs/unifi-setup.md` |
 | `mikrotik` | RouterOS 7 (REST o SSH) | `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD` | `node-ssh` (SSH) | `docs/mikrotik-setup.md` |
 | `omada` | TP-Link Omada (Controller local) | `OMADA_URL`, `OMADA_USERNAME`, `OMADA_PASSWORD` | — | `docs/omada-setup.md` |
@@ -192,8 +192,13 @@ pnpm --filter @krakenos/agent test     # solo el agente
 pnpm --filter @krakenos/web test:watch # web en watch
 ```
 
-**CI** (GitHub Actions): en cada push a `main` y cada PR → install → claves JWT + Prisma
-Client → `lint` → `typecheck` → `build` → `test` (coverage) → `audit`.
+**CI** (GitHub Actions): en cada push a `main` y cada PR, dos jobs en paralelo:
+
+- **build-test** → install → claves JWT + Prisma Client → `lint` → `typecheck` → `build` →
+  `test` (coverage) → `audit` de dependencias (informativo, no bloquea).
+- **security** → **secret scanning con gitleaks** (escanea todo el historial; **bloquea** el
+  build ante un secreto o un fichero sensible commiteado: `keys/`, `.env`, `*.db`) + **SAST con
+  semgrep** (reglas por defecto + JS/TS, acotado a `src/`; **bloquea** ante hallazgos).
 
 ---
 
