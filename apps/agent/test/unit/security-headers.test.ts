@@ -23,6 +23,19 @@ describe('securityHeadersPlugin', () => {
     await app.close();
   });
 
+  it('connect-src se restringe al mismo origen, sin comodín ws:/wss: (anti-exfil, US-90)', () => {
+    expect(DEFAULT_CSP).toContain("connect-src 'self'");
+    // El comodín de esquema permitía exfiltrar el token a cualquier host por WebSocket.
+    expect(DEFAULT_CSP).not.toMatch(/connect-src[^;]*\bws:/);
+    expect(DEFAULT_CSP).not.toMatch(/connect-src[^;]*\bwss:/);
+  });
+
+  it('no permite scripts inline ni eval (script-src acotado a self)', () => {
+    expect(DEFAULT_CSP).toContain("script-src 'self'");
+    expect(DEFAULT_CSP).not.toContain("script-src 'unsafe-inline'");
+    expect(DEFAULT_CSP).not.toContain('unsafe-eval');
+  });
+
   it('no envía HSTS salvo que se active', async () => {
     const app = await appWith();
     const res = await app.inject({ method: 'GET', url: '/x' });

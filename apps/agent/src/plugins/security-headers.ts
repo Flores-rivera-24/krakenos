@@ -5,21 +5,28 @@ import fp from 'fastify-plugin';
  * Política de seguridad de contenido por defecto. Estricta pero compatible con
  * la SPA que sirve el agente:
  * - `script-src 'self'`: no se admite JS inline (el anti-flash de tema se sirve
- *   como `/theme-init.js`, externo).
+ *   como `/theme-init.js`, externo) ni `eval`; corta el vector principal de XSS.
  * - `style-src 'unsafe-inline'`: React/Recharts aplican estilos inline.
  * - `img-src data:`: snapshots de cámara y QR de VPN viajan como data URLs.
- * - `connect-src ws:/wss:`: WebSocket de Socket.io en el mismo origen.
+ * - `connect-src 'self'`: fetch/XHR/WebSocket/beacon **solo al mismo origen**.
+ *   En CSP3 `'self'` cubre el WebSocket de Socket.io del mismo host (`ws://`/`wss://`),
+ *   así que NO hace falta el comodín `ws: wss:` — y quitarlo cierra un canal de
+ *   exfiltración: con tokens legibles por JS (localStorage, ver F13/US-90), el
+ *   comodín dejaba que un XSS enviara el token a `wss://atacante`. La app es
+ *   local-first (cero telemetría), así que no hay destinos externos legítimos.
+ * - `frame-src 'none'` + `frame-ancestors 'none'`: ni embebe ni se deja embeber.
  */
 export const DEFAULT_CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
+  "frame-src 'none'",
   "form-action 'self'",
   "object-src 'none'",
   "img-src 'self' data: blob:",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self' ws: wss:",
+  "connect-src 'self'",
   "font-src 'self'",
   "manifest-src 'self'",
   "worker-src 'self'",
