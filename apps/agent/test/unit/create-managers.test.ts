@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -69,8 +69,17 @@ describe('createIotManager', () => {
     expect(createIotManager({ kind: 'govee' }).manager).toBeInstanceOf(GoveeIotManager);
   });
 
+  it('construye un KasaIotManager (config opcional)', () => {
+    expect(createIotManager({ kind: 'kasa' }).manager).toBeInstanceOf(KasaIotManager);
+  });
+
   it('con varios kinds (lista) devuelve un CompositeIotManager', () => {
     const iot = createIotManager({ kind: 'hue,govee', hue: { url: 'https://x', appKey: 'k' } });
+    expect(iot.manager).toBeInstanceOf(CompositeIotManager);
+  });
+
+  it('admite kasa en una lista multi-IoT (hue,govee,kasa)', () => {
+    const iot = createIotManager({ kind: 'hue,govee,kasa', hue: { url: 'https://x', appKey: 'k' } });
     expect(iot.manager).toBeInstanceOf(CompositeIotManager);
   });
 

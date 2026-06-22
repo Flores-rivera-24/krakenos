@@ -5,6 +5,8 @@ import { GoveeIotManager } from './govee.iot.js';
 import { DgramUdpTransport } from './govee.transport.js';
 import { HueIotManager } from './hue.iot.js';
 import { HueClient } from './hue.transport.js';
+import { KasaIotManager } from './kasa.iot.js';
+import { KlapTapoTransport, NetKasaTransport } from './kasa.transport.js';
 import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
@@ -50,6 +52,18 @@ export interface TuyaIotConfig {
   configPath: string;
 }
 
+/** Config para la integración TP-Link Kasa/Tapo (`kind: 'kasa'`, protocolo local). */
+export interface KasaIotConfig {
+  /** IPs Kasa configuradas (Gen1/2). */
+  kasaIps?: string[];
+  /** IPs Tapo configuradas (Gen3+). */
+  tapoIps?: string[];
+  /** Email de la cuenta Tapo (credencial local KLAP). */
+  tapoEmail?: string;
+  /** Contraseña de la cuenta Tapo. */
+  tapoPassword?: string;
+}
+
 export interface IotConfig {
   /** `IotKind`, o una lista separada por comas para varios a la vez (`hue,govee`). */
   kind: string;
@@ -63,6 +77,8 @@ export interface IotConfig {
   govee?: GoveeIotConfig;
   /** Requerido cuando `kind === 'tuya'`. */
   tuya?: TuyaIotConfig;
+  /** Opcional cuando `kind === 'kasa'`. */
+  kasa?: KasaIotConfig;
 }
 
 /**
@@ -155,6 +171,23 @@ function buildIotManager(
         transport: new TuyapiTransport(),
       });
     }
+    case 'kasa': {
+      const kasa = config.kasa ?? {};
+      const hasTapo =
+        Boolean(kasa.tapoEmail && kasa.tapoPassword) || (kasa.tapoIps?.length ?? 0) > 0;
+      return new KasaIotManager({
+        kasa: new NetKasaTransport({ configuredIps: kasa.kasaIps }),
+        tapo: hasTapo
+          ? new KlapTapoTransport({
+              email: kasa.tapoEmail ?? '',
+              password: kasa.tapoPassword ?? '',
+              configuredIps: kasa.tapoIps,
+            })
+          : undefined,
+        kasaIps: kasa.kasaIps,
+        tapoIps: kasa.tapoIps,
+      });
+    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -180,4 +213,6 @@ export { MatterIotManager } from './matter.iot.js';
 export { HueIotManager } from './hue.iot.js';
 export { GoveeIotManager } from './govee.iot.js';
 export { TuyaIotManager } from './tuya.iot.js';
+export { KasaIotManager } from './kasa.iot.js';
+export { NetKasaTransport, KlapTapoTransport } from './kasa.transport.js';
 export { CompositeIotManager } from './composite.iot.js';

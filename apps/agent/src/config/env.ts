@@ -27,6 +27,25 @@ function int(name: string, fallback: number): number {
  * **previas** durante la rotación RS256 (US-64): verifican tokens aún válidos
  * firmados con la clave anterior mientras dura el solape.
  */
+/**
+ * Lee una variable JSON con una lista de dispositivos (`[{ip, …}]`) y devuelve
+ * las IPs. Vacío si la variable no está, no es un array o el JSON es inválido.
+ * Se usa para `KASA_DEVICES`/`TAPO_DEVICES` (US-68).
+ */
+function jsonDeviceIps(name: string): string[] {
+  const raw = process.env[name];
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((d) => (d && typeof d === 'object' ? (d as { ip?: unknown }).ip : undefined))
+      .filter((ip): ip is string => typeof ip === 'string' && ip.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 function pemList(name: string): string[] {
   const raw = process.env[name];
   if (!raw) return [];
@@ -187,6 +206,13 @@ export const env = {
     // Solo se usa cuando IOT_KIND=tuya (protocolo Tuya local, focos genéricos).
     tuya: {
       configPath: process.env.TUYA_CONFIG_PATH ?? resolve('data/tuya-devices.json'),
+    },
+    // Solo se usa cuando IOT_KIND=kasa (TP-Link Kasa/Tapo, protocolo local).
+    kasa: {
+      kasaIps: jsonDeviceIps('KASA_DEVICES'),
+      tapoIps: jsonDeviceIps('TAPO_DEVICES'),
+      tapoEmail: process.env.TAPO_EMAIL || undefined,
+      tapoPassword: process.env.TAPO_PASSWORD || undefined,
     },
   },
 
