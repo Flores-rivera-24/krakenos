@@ -125,6 +125,16 @@ export const env = {
       password: process.env.UNIFI_PASSWORD ?? '',
       site: process.env.UNIFI_SITE ?? 'default',
     },
+    // Solo se usa cuando DRIVER_KIND=mikrotik (RouterOS, REST o SSH).
+    mikrotik: {
+      mode: (process.env.MIKROTIK_MODE ?? 'rest') as 'rest' | 'ssh',
+      host: process.env.MIKROTIK_HOST ?? process.env.DRIVER_HOST ?? '',
+      username: process.env.MIKROTIK_USER ?? 'admin',
+      password: process.env.MIKROTIK_PASSWORD ?? '',
+      wanInterface: process.env.MIKROTIK_WAN_IFACE ?? 'ether1',
+      https: process.env.MIKROTIK_HTTPS !== 'false',
+      sshPort: int('MIKROTIK_SSH_PORT', 22),
+    },
   },
 
   vpn: {

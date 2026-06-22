@@ -8,6 +8,8 @@ import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
 import { PfSenseDriver } from './pfsense.driver.js';
 import { PfSenseClient } from './pfsense.transport.js';
+import { MikrotikDriver } from './mikrotik.driver.js';
+import { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';
 import { UnifiDriver } from './unifi.driver.js';
 import { UnifiClient } from './unifi.transport.js';
 
@@ -66,6 +68,24 @@ export interface CiscoNetconfDriverConfig {
   };
 }
 
+/** Modo de transporte del driver MikroTik. */
+export type MikrotikMode = 'rest' | 'ssh';
+
+/** Config para el driver MikroTik real (`kind: 'mikrotik'`, REST o SSH). */
+export interface MikrotikDriverConfig {
+  /** `rest` (RouterOS 7, por defecto) o `ssh` (fallback CLI). */
+  mode: MikrotikMode;
+  host: string;
+  username: string;
+  password: string;
+  /** Interfaz WAN para el muestreo de tráfico (por defecto `ether1`). */
+  wanInterface?: string;
+  /** Modo REST: usar HTTPS (por defecto `true`). */
+  https?: boolean;
+  /** Modo SSH: puerto (por defecto 22). */
+  sshPort?: number;
+}
+
 /** Config para el driver UniFi Network real (`kind: 'unifi'`, API local). */
 export interface UnifiDriverConfig {
   /** URL base del controller, p. ej. `https://192.168.1.1`. */
@@ -90,6 +110,8 @@ export interface CreateDriverConfig {
   ciscoNetconf?: CiscoNetconfDriverConfig;
   /** Requerido cuando `kind === 'unifi'`. */
   unifi?: UnifiDriverConfig;
+  /** Requerido cuando `kind === 'mikrotik'`. */
+  mikrotik?: MikrotikDriverConfig;
 }
 
 /**
@@ -161,6 +183,32 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? un.url,
       });
     }
+    case 'mikrotik': {
+      const mt = config.mikrotik;
+      if (!mt) throw new Error('Falta la configuración MikroTik (CreateDriverConfig.mikrotik)');
+      if (!mt.host) throw new Error('El driver MikroTik requiere MIKROTIK_HOST');
+      if (!mt.username || !mt.password) {
+        throw new Error('El driver MikroTik requiere MIKROTIK_USER y MIKROTIK_PASSWORD');
+      }
+      const transport =
+        mt.mode === 'ssh'
+          ? new SshMikrotikTransport({
+              host: mt.host,
+              port: mt.sshPort,
+              username: mt.username,
+              password: mt.password,
+            })
+          : new RestMikrotikTransport({
+              baseUrl: `${mt.https === false ? 'http' : 'https'}://${mt.host}`,
+              username: mt.username,
+              password: mt.password,
+            });
+      return new MikrotikDriver({
+        transport,
+        wanInterface: mt.wanInterface,
+        host: config.host ?? mt.host,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -179,3 +227,5 @@ export { CiscoNetconfDriver } from './cisco-netconf.driver.js';
 export { SshNetconfTransport, MockNetconfTransport } from './cisco-netconf.transport.js';
 export { UnifiDriver } from './unifi.driver.js';
 export { UnifiClient } from './unifi.transport.js';
+export { MikrotikDriver, FeatureNotSupportedError } from './mikrotik.driver.js';
+export { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';

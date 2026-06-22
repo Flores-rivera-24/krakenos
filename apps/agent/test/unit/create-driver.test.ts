@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MikrotikDriver,
   MockDriver,
   OpenWrtDriver,
   PfSenseDriver,
@@ -68,6 +69,30 @@ describe('createDriver', () => {
     expect(() =>
       createDriver({ kind: 'unifi', unifi: { url: 'https://x', username: '', password: '' } }),
     ).toThrow(/UNIFI_USERNAME/);
+  });
+
+  it('construye un MikrotikDriver en modo rest y en modo ssh', () => {
+    const rest = createDriver({
+      kind: 'mikrotik',
+      mikrotik: { mode: 'rest', host: '192.168.88.1', username: 'admin', password: 'pw' },
+    });
+    expect(rest).toBeInstanceOf(MikrotikDriver);
+    expect(rest.kind).toBe('mikrotik');
+    const ssh = createDriver({
+      kind: 'mikrotik',
+      mikrotik: { mode: 'ssh', host: '192.168.88.1', username: 'admin', password: 'pw' },
+    });
+    expect(ssh).toBeInstanceOf(MikrotikDriver);
+  });
+
+  it('lanza si falta la configuración MikroTik, el host o las credenciales', () => {
+    expect(() => createDriver({ kind: 'mikrotik' })).toThrow(/MikroTik/);
+    expect(() =>
+      createDriver({ kind: 'mikrotik', mikrotik: { mode: 'rest', host: '', username: 'a', password: 'b' } }),
+    ).toThrow(/MIKROTIK_HOST/);
+    expect(() =>
+      createDriver({ kind: 'mikrotik', mikrotik: { mode: 'rest', host: 'h', username: '', password: '' } }),
+    ).toThrow(/MIKROTIK_USER/);
   });
 
   it('lanza para un kind desconocido', () => {
