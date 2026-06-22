@@ -104,3 +104,8 @@ export const connectivityTestSchema = {
     },
   },
 } as const;
+
+/** `POST /api/system/regen-keys` — revoca todos los refresh tokens (204, sin cuerpo). */
+export const regenKeysSchema = {
+  response: { 204: { type: 'null' } },
+} as const;

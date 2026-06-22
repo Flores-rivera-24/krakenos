@@ -27,6 +27,7 @@ export const subscribeSchema = {
       },
     },
   },
+  response: { 204: { type: 'null' } },
 } as const;
 
 export const unsubscribeSchema = {
@@ -38,4 +39,5 @@ export const unsubscribeSchema = {
       endpoint: { type: 'string', minLength: 1, maxLength: 1024 },
     },
   },
+  response: { 204: { type: 'null' } },
 } as const;

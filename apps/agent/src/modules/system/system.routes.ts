@@ -18,6 +18,7 @@ import type { InventoryService } from '../inventory/inventory.service.js';
 import {
   connectivityTestSchema,
   getSettingsSchema,
+  regenKeysSchema,
   systemInfoSchema,
   systemStatsSchema,
   updateSettingSchema,
@@ -167,7 +168,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // La rotación real de claves es un procedimiento de despliegue con solape
   // (scripts/rotate-keys.sh + reinicio); ver docs/jwt-key-rotation.md. Combina
   // ambos para responder a una clave comprometida (rotar + revocar refresh).
-  app.post('/regen-keys', { preHandler: app.requireRole('admin') }, async (req, reply) => {
+  app.post('/regen-keys', { preHandler: app.requireRole('admin'), schema: regenKeysSchema }, async (req, reply) => {
     await app.prisma.refreshToken.updateMany({ where: { revoked: false }, data: { revoked: true } });
     app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });
     return reply.code(204).send();
