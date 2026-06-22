@@ -59,3 +59,54 @@ jobs:
       - name: Audit dependencies
         run: pnpm audit --audit-level high
         continue-on-error: true
+
+  # Escaneo de secretos (gitleaks, BLOQUEANTE) + SAST (semgrep). US-92.
+  # Job aparte para que corra en paralelo a build-test y falle de forma aislada.
+  security:
+    name: Secret scan · SAST
+    runs-on: ubuntu-latest
+
+    steps:
+      # `fetch-depth: 0` para que gitleaks escanee TODO el historial, no solo HEAD.
+      - name: Checkout (historial completo)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # (1) Secretos: BLOQUEA el build. Las joyas de la corona (keys/, .env, *.db)
+      # están gitignored; gitleaks es la red de seguridad si alguien las commitea,
+      # además de detectar claves privadas/tokens en cualquier fichero del historial.
+      # Binario pin-eado a una versión exacta (sin "latest") → reproducible.
+      - name: Secret scan (gitleaks)
+        env:
+          GITLEAKS_VERSION: '8.21.2'
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --redact \
+            --no-banner \
+            --exit-code 1 \
+            --verbose
+
+      # (2) SAST: semgrep con engine pin-eado (imagen Docker por versión exacta) y
+      # acotado al código fuente (src/), no a node_modules/tests/build. Reglas por
+      # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
+      # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
+      # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
+      - name: SAST (semgrep)
+        env:
+          SEMGREP_VERSION: '1.95.0'
+        run: |
+          docker run --rm -v "$GITHUB_WORKSPACE:/src" -w /src \
+            "semgrep/semgrep:${SEMGREP_VERSION}" \
+            semgrep scan \
+              --config p/default \
+              --config p/javascript \
+              --config p/typescript \
+              --error \
+              --metrics off \
+              --disable-version-check \
+              apps/agent/src apps/web/src packages/types/src

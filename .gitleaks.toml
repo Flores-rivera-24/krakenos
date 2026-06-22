@@ -1,0 +1,36 @@
+# Configuración de gitleaks para KrakenOS (US-92).
+#
+# Escaneo de secretos que **bloquea** el build en CI. Extiende el conjunto de
+# reglas por defecto de gitleaks (claves privadas, tokens de proveedores, claves
+# genéricas de alta entropía…) y añade una regla por ruta para las "joyas de la
+# corona" de este repo: `keys/`, `.env`, bases de datos y material PEM/clave.
+# Estos ficheros están en .gitignore; esta regla es la red de seguridad por si
+# alguien quita el ignore y los commitea.
+
+title = "KrakenOS gitleaks"
+
+[extend]
+# Mantiene TODAS las reglas por defecto de gitleaks y añade las de abajo.
+useDefault = true
+
+[[rules]]
+id = "krakenos-sensitive-file"
+description = "Fichero sensible commiteado (keys/, .env, *.db/.sqlite, *.pem/.key)"
+# Cualquier contenido no vacío…
+regex = '''(?s).+'''
+# …en una de las rutas sensibles. `.env` ancla al final, así NO matchea
+# `.env.example`/`.env.openwrt.example` (plantillas sin secretos reales).
+path = '''(?:^|/)keys/|(?:^|/)\.env(?:\.local)?$|\.(?:db|sqlite|sqlite3|pem|key)$'''
+
+[allowlist]
+description = "No son secretos reales: plantillas, y valores de ejemplo/fixture."
+# Las plantillas .env.example no llevan secretos reales.
+paths = [
+  '''(?:^|/)\.env(?:\.[a-z]+)?\.example$''',
+]
+# `localKey` de ejemplo (hex dummy) usada en fixtures de tests y en docs/tuya-setup.md.
+# Son valores ficticios obvios, no credenciales. Cualquier otra cosa sigue bloqueando.
+regexes = [
+  '''abcdef0123456789''',
+  '''0123456789abcdef''',
+]
