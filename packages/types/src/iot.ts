@@ -13,7 +13,8 @@ export type IotKind =
   | 'tuya'
   | 'kasa'
   | 'shelly'
-  | 'meross';
+  | 'meross'
+  | 'switchbot';
 
 /** Lectura de un sensor (temperatura, humedad…). */
 export interface IotReading {

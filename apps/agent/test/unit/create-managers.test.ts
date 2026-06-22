@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, SwitchBotIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -85,6 +85,17 @@ describe('createIotManager', () => {
   it('lanza si falta el broker Meross', () => {
     expect(() => createIotManager({ kind: 'meross', meross: { brokerHost: '', devices: [] } })).toThrow(
       /MEROSS_BROKER_HOST/,
+    );
+  });
+
+  it('construye un SwitchBotIotManager con su configuración', () => {
+    const iot = createIotManager({ kind: 'switchbot', switchbot: { host: '192.168.1.90', port: 8123 } });
+    expect(iot.manager).toBeInstanceOf(SwitchBotIotManager);
+  });
+
+  it('lanza si falta el host del Hub SwitchBot', () => {
+    expect(() => createIotManager({ kind: 'switchbot', switchbot: { host: '' } })).toThrow(
+      /SWITCHBOT_HUB_HOST/,
     );
   });
 

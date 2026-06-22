@@ -13,6 +13,8 @@ import { createMerossTransport } from './meross.transport.js';
 import { ShellyIotManager } from './shelly.iot.js';
 import type { ShellyDeviceConfig } from './shelly.parsers.js';
 import { FetchShellyTransport } from './shelly.transport.js';
+import { SwitchBotIotManager } from './switchbot.iot.js';
+import { FetchSwitchBotTransport } from './switchbot.transport.js';
 import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
@@ -56,6 +58,16 @@ export interface GoveeIotConfig {
 export interface TuyaIotConfig {
   /** Ruta al fichero de config de dispositivos (id/localKey/ip por dispositivo). */
   configPath: string;
+}
+
+/** Config para la integración SwitchBot (`kind: 'switchbot'`, API local del Hub). */
+export interface SwitchBotIotConfig {
+  /** Host del Hub Mini/Hub 2. */
+  host: string;
+  /** Puerto de la API local (por defecto 8123). */
+  port?: number;
+  /** Token de autorización (header `Authorization`). */
+  token?: string;
 }
 
 /** Config para la integración Meross (`kind: 'meross'`, MQTT local). */
@@ -111,6 +123,8 @@ export interface IotConfig {
   shelly?: ShellyIotConfig;
   /** Requerido cuando `kind === 'meross'`. */
   meross?: MerossIotConfig;
+  /** Requerido cuando `kind === 'switchbot'`. */
+  switchbot?: SwitchBotIotConfig;
 }
 
 /**
@@ -246,6 +260,17 @@ function buildIotManager(
         devices: meross.devices,
       });
     }
+    case 'switchbot': {
+      const sb = config.switchbot;
+      if (!sb) throw new Error('Falta la configuración SwitchBot (IotConfig.switchbot)');
+      if (!sb.host) throw new Error('La integración SwitchBot requiere SWITCHBOT_HUB_HOST');
+      return new SwitchBotIotManager({
+        transport: new FetchSwitchBotTransport({
+          baseUrl: `http://${sb.host}:${sb.port ?? 8123}`,
+          token: sb.token,
+        }),
+      });
+    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -277,4 +302,6 @@ export { ShellyIotManager } from './shelly.iot.js';
 export { FetchShellyTransport } from './shelly.transport.js';
 export { MerossIotManager } from './meross.iot.js';
 export { createMerossTransport } from './meross.transport.js';
+export { SwitchBotIotManager } from './switchbot.iot.js';
+export { FetchSwitchBotTransport } from './switchbot.transport.js';
 export { CompositeIotManager } from './composite.iot.js';
