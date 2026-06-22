@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MikrotikDriver,
   MockDriver,
+  OmadaDriver,
   OpenWrtDriver,
   PfSenseDriver,
   UnifiDriver,
@@ -93,6 +94,25 @@ describe('createDriver', () => {
     expect(() =>
       createDriver({ kind: 'mikrotik', mikrotik: { mode: 'rest', host: 'h', username: '', password: '' } }),
     ).toThrow(/MIKROTIK_USER/);
+  });
+
+  it('construye un OmadaDriver con su configuración REST', () => {
+    const driver = createDriver({
+      kind: 'omada',
+      omada: { url: 'https://192.168.1.10:8043', username: 'admin', password: 'pw' },
+    });
+    expect(driver).toBeInstanceOf(OmadaDriver);
+    expect(driver.kind).toBe('omada');
+  });
+
+  it('lanza si falta la configuración Omada, la URL o las credenciales', () => {
+    expect(() => createDriver({ kind: 'omada' })).toThrow(/Omada/);
+    expect(() =>
+      createDriver({ kind: 'omada', omada: { url: '', username: 'a', password: 'b' } }),
+    ).toThrow(/OMADA_URL/);
+    expect(() =>
+      createDriver({ kind: 'omada', omada: { url: 'https://x', username: '', password: '' } }),
+    ).toThrow(/OMADA_USERNAME/);
   });
 
   it('lanza para un kind desconocido', () => {

@@ -76,6 +76,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     ciscoNetconf: env.driver.ciscoNetconf,
     unifi: env.driver.unifi,
     mikrotik: env.driver.mikrotik,
+    omada: env.driver.omada,
   });
   const vpn = createVpnManager({
     kind: env.vpn.kind,

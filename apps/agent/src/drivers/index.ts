@@ -10,6 +10,8 @@ import { PfSenseDriver } from './pfsense.driver.js';
 import { PfSenseClient } from './pfsense.transport.js';
 import { MikrotikDriver } from './mikrotik.driver.js';
 import { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';
+import { OmadaDriver } from './omada.driver.js';
+import { OmadaClient } from './omada.transport.js';
 import { UnifiDriver } from './unifi.driver.js';
 import { UnifiClient } from './unifi.transport.js';
 
@@ -96,6 +98,18 @@ export interface UnifiDriverConfig {
   site?: string;
 }
 
+/** Config para el driver TP-Link Omada real (`kind: 'omada'`, API local). */
+export interface OmadaDriverConfig {
+  /** URL base del controller, p. ej. `https://192.168.1.10:8043`. */
+  url: string;
+  username: string;
+  password: string;
+  /** Nombre del site (por defecto `Default`). */
+  siteName?: string;
+  /** `omadacId` del controller; vacío → autodetección vía `/api/info`. */
+  omadacId?: string;
+}
+
 export interface CreateDriverConfig {
   kind: DriverKind;
   /** Host/IP del dispositivo (display + SSH). */
@@ -112,6 +126,8 @@ export interface CreateDriverConfig {
   unifi?: UnifiDriverConfig;
   /** Requerido cuando `kind === 'mikrotik'`. */
   mikrotik?: MikrotikDriverConfig;
+  /** Requerido cuando `kind === 'omada'`. */
+  omada?: OmadaDriverConfig;
 }
 
 /**
@@ -209,6 +225,20 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         host: config.host ?? mt.host,
       });
     }
+    case 'omada': {
+      const om = config.omada;
+      if (!om) throw new Error('Falta la configuración Omada (CreateDriverConfig.omada)');
+      if (!om.url) throw new Error('El driver Omada requiere OMADA_URL (URL del controller)');
+      if (!om.username || !om.password) {
+        throw new Error('El driver Omada requiere OMADA_USERNAME y OMADA_PASSWORD');
+      }
+      return new OmadaDriver({
+        client: new OmadaClient({ url: om.url, username: om.username, password: om.password }),
+        siteName: om.siteName,
+        omadacId: om.omadacId,
+        host: config.host ?? om.url,
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Driver desconocido: ${String(exhaustive)}`);
@@ -229,3 +259,5 @@ export { UnifiDriver } from './unifi.driver.js';
 export { UnifiClient } from './unifi.transport.js';
 export { MikrotikDriver, FeatureNotSupportedError } from './mikrotik.driver.js';
 export { RestMikrotikTransport, SshMikrotikTransport } from './mikrotik.transport.js';
+export { OmadaDriver } from './omada.driver.js';
+export { OmadaClient } from './omada.transport.js';

@@ -135,6 +135,14 @@ export const env = {
       https: process.env.MIKROTIK_HTTPS !== 'false',
       sshPort: int('MIKROTIK_SSH_PORT', 22),
     },
+    // Solo se usa cuando DRIVER_KIND=omada (TP-Link Omada Controller, API local).
+    omada: {
+      url: process.env.OMADA_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      username: process.env.OMADA_USERNAME ?? 'admin',
+      password: process.env.OMADA_PASSWORD ?? '',
+      siteName: process.env.OMADA_SITE_NAME ?? 'Default',
+      omadacId: process.env.OMADA_OMADAC_ID || undefined,
+    },
   },
 
   vpn: {

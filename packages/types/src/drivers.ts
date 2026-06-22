@@ -19,7 +19,8 @@ export type DriverKind =
   | 'cisco-ios'
   | 'cisco-netconf'
   | 'unifi'
-  | 'mikrotik';
+  | 'mikrotik'
+  | 'omada';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {
