@@ -4,6 +4,7 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 import { AuthService } from '../auth/auth.service.js';
+import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import type { BackupCodeService } from '../../webauthn/backup-codes.service.js';
 import { WebAuthnError, type WebAuthnService } from '../../webauthn/webauthn.service.js';
 import {
@@ -27,6 +28,16 @@ interface WebAuthnRoutesOpts {
 export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app, opts) => {
   const { service, backupCodes } = opts;
   const auth = new AuthService(app);
+
+  /**
+   * Límite por IP para los endpoints **públicos** de 2FA (continuación del login):
+   * comparte en caliente el mismo presupuesto que `/auth/login` (`loginRateLimit`,
+   * US-47), leído en cada petición. Frena la fuerza bruta de códigos de
+   * recuperación y el abuso del paso de passkey (US-88).
+   */
+  const publicMfaRateLimit = {
+    rateLimit: { max: () => rateLimitStore.getCurrent(), timeWindow: '1 minute' },
+  };
 
   // ---- Registro de passkey (usuario autenticado) ----
 
@@ -69,11 +80,16 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
   // `email`, de modo que la passkey **suma** un factor en vez de **reemplazar** la
   // contraseña. Sin ese token (o con uno inválido/expirado/de otro usuario) → 401.
 
-  /** Valida el `mfaToken` y que su `sub` sea el usuario del `email`; `null` si no. */
-  async function resolveMfaUser(email: string, mfaToken: string) {
+  /**
+   * Valida el `mfaToken` y que su `sub` sea el usuario del `email`; `null` si no.
+   * Con `consume: true` además marca el token de un solo uso (anti-replay): lo usan
+   * los pasos que **emiten sesión**; `authenticate/options` no consume (no emite
+   * tokens y el mismo `mfaToken` se reutiliza luego en `authenticate/verify`).
+   */
+  async function resolveMfaUser(email: string, mfaToken: string, consume = false) {
     let sub: string;
     try {
-      sub = auth.verifyMfaPendingToken(mfaToken);
+      sub = consume ? auth.consumeMfaPendingToken(mfaToken) : auth.verifyMfaPendingToken(mfaToken);
     } catch {
       return null;
     }
@@ -83,7 +99,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.post<{ Body: { email: string; mfaToken: string } }>(
     '/authenticate/options',
-    { schema: authenticateOptionsSchema },
+    { schema: authenticateOptionsSchema, config: publicMfaRateLimit },
     async (req, reply) => {
       const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
       if (!user) {
@@ -99,9 +115,11 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.post<{ Body: { email: string; mfaToken: string; response: AuthenticationResponseJSON } }>(
     '/authenticate/verify',
-    { schema: authenticateVerifySchema },
+    { schema: authenticateVerifySchema, config: publicMfaRateLimit },
     async (req, reply) => {
-      const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
+      // `consume: true` → el mfaToken queda de un solo uso: un intento de segundo
+      // factor por token (anti-replay). Un fallo de passkey exige re-login (US-88).
+      const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
       if (!user) {
         app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
         return reply
@@ -148,9 +166,11 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
   // ya debe estar superado y el `sub` del token debe coincidir con el usuario.
   app.post<{ Body: { email: string; mfaToken: string; code: string } }>(
     '/backup-codes/verify',
-    { schema: backupCodeVerifySchema },
+    { schema: backupCodeVerifySchema, config: publicMfaRateLimit },
     async (req, reply) => {
-      const user = await resolveMfaUser(req.body.email, req.body.mfaToken);
+      // `consume: true` → un código adivinado por token: junto al rate limit por IP,
+      // hace inviable la fuerza bruta de los códigos de recuperación (US-88).
+      const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
       if (!user) {
         app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
         return reply

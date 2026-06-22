@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import rateLimit from '@fastify/rate-limit';
 import type { UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
@@ -167,12 +168,13 @@ export function signAccess(
 export function signMfaPending(
   app: FastifyInstance,
   userId: string,
-  opts: { expired?: boolean } = {},
+  opts: { expired?: boolean; jti?: string } = {},
 ): string {
   const signOptions = opts.expired
     ? { expiresIn: 120, clockTimestamp: Date.now() - 60 * 60 * 1000 }
     : { expiresIn: 120 };
-  return app.jwt.sign({ sub: userId, type: 'mfa-pending' }, signOptions);
+  // `jti` único (anti-replay, US-88); se puede fijar para tests de replay.
+  return app.jwt.sign({ sub: userId, type: 'mfa-pending', jti: opts.jti ?? randomUUID() }, signOptions);
 }
 
 /** Header de autorización `Bearer` listo para inject. */

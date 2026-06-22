@@ -44,6 +44,12 @@ export interface RefreshTokenClaims {
 export interface MfaPendingTokenClaims {
   sub: Id;
   type: 'mfa-pending';
+  /**
+   * Identificador único del token. Permite hacerlo **de un solo uso**
+   * (anti-replay dentro de su ventana de validez): al completar el 2FA el `jti`
+   * se marca como consumido y un segundo intento con el mismo token se rechaza.
+   */
+  jti: Id;
   iat: number;
   exp: number;
 }
