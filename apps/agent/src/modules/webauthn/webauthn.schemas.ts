@@ -138,6 +138,7 @@ export const deleteCredentialSchema = {
     required: ['id'],
     properties: { id: { type: 'string' } },
   },
+  response: { 204: { type: 'null' } },
 } as const;
 
 // ---- Códigos de recuperación 2FA (US-59) ----

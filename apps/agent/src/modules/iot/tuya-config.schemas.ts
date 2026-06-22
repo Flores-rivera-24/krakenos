@@ -63,4 +63,5 @@ export const removeTuyaSchema = {
     required: ['deviceId'],
     properties: { deviceId: { type: 'string', minLength: 1 } },
   },
+  response: { 204: { type: 'null' } },
 } as const;

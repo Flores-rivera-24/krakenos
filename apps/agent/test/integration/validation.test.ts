@@ -15,13 +15,31 @@ interface InvalidCase {
  * que el schema atajó la entrada inválida (no un 403/401).
  */
 const INVALID_CASES: InvalidCase[] = [
-  { name: 'wifi: contraseña demasiado corta', method: 'PUT', url: '/api/wifi', payload: { password: 'short' } },
+  // inventory
+  {
+    name: 'inventory: tipo de dispositivo fuera del enum',
+    method: 'PATCH',
+    url: '/api/inventory/devices/x',
+    payload: { type: 'no-existe' },
+  },
   {
     name: 'inventory: VLAN tag fuera de rango',
     method: 'PUT',
     url: '/api/inventory/devices/x/vlan',
     payload: { tag: 0 },
   },
+  // wifi
+  { name: 'wifi: contraseña demasiado corta', method: 'PUT', url: '/api/wifi', payload: { password: 'short' } },
+  {
+    name: 'wifi guest: ancho de banda fuera de rango',
+    method: 'PUT',
+    url: '/api/wifi/guest',
+    payload: { bandwidthLimitMbps: 0 },
+  },
+  { name: 'wifi network: SSID vacío', method: 'PUT', url: '/api/wifi/networks/x', payload: { ssid: '' } },
+  // vpn
+  { name: 'vpn: nombre de peer vacío', method: 'POST', url: '/api/vpn/peers', payload: { name: '' } },
+  // firewall
   {
     name: 'firewall: puerto fuera de rango',
     method: 'POST',
@@ -35,12 +53,32 @@ const INVALID_CASES: InvalidCase[] = [
     payload: { name: 'Regla', action: 'deny', source: 'no-es-ip' },
   },
   {
+    name: 'firewall (patch): source con inyección',
+    method: 'PATCH',
+    url: '/api/firewall/rules/x',
+    payload: { source: '1.2.3.4; rm' },
+  },
+  // qos
+  {
     name: 'qos: ancho de banda fuera de rango',
     method: 'POST',
     url: '/api/qos/rules',
     payload: { name: 'Regla', target: 'x', uploadKbps: 20_000_000 },
   },
+  {
+    name: 'qos (patch): ancho de banda negativo',
+    method: 'PATCH',
+    url: '/api/qos/rules/x',
+    payload: { downloadKbps: -1 },
+  },
+  // vlan
   { name: 'vlan: tag fuera de rango', method: 'POST', url: '/api/vlans', payload: { tag: 5000, name: 'V' } },
+  {
+    name: 'vlan (patch): nombre con espacios/metacaracteres',
+    method: 'PATCH',
+    url: '/api/vlans/x',
+    payload: { name: 'mi vlan' },
+  },
   // Anti-inyección en argumentos que alcanzan operaciones privilegiadas (US-73):
   // el schema rechaza con 400 ANTES de llegar al servicio / a cualquier exec.
   {
@@ -84,6 +122,40 @@ const INVALID_CASES: InvalidCase[] = [
     method: 'POST',
     url: '/api/iot/tuya/devices',
     payload: { deviceId: '', localKey: 'k', ip: '1.2.3.4', name: 'D' },
+  },
+  {
+    name: 'tuya (patch): IP vacía',
+    method: 'PATCH',
+    url: '/api/iot/tuya/devices/d1',
+    payload: { ip: '' },
+  },
+  // system
+  {
+    name: 'system: clave de ajuste fuera del enum',
+    method: 'PATCH',
+    url: '/api/system/settings',
+    payload: { key: 'no-existe', value: 'x' },
+  },
+  // push (auto-servicio)
+  {
+    name: 'push: suscripción sin keys',
+    method: 'POST',
+    url: '/api/push/subscribe',
+    payload: { endpoint: 'https://push.example/abc' },
+  },
+  { name: 'push: baja sin endpoint', method: 'DELETE', url: '/api/push/subscribe', payload: {} },
+  // webauthn (auto-servicio)
+  {
+    name: 'webauthn: register/verify sin response',
+    method: 'POST',
+    url: '/api/webauthn/register/verify',
+    payload: { name: 'Llave' },
+  },
+  {
+    name: 'webauthn: renombrar credencial sin nombre',
+    method: 'PATCH',
+    url: '/api/webauthn/credentials/x',
+    payload: {},
   },
 ];
 

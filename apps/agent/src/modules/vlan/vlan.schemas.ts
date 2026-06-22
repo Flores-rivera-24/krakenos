@@ -72,4 +72,5 @@ export const removeVlanSchema = {
     required: ['id'],
     properties: { id: { type: 'string', minLength: 1 } },
   },
+  response: { 204: { type: 'null' } },
 } as const;
