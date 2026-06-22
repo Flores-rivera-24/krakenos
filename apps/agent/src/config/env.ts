@@ -190,6 +190,13 @@ export const env = {
       siteName: process.env.OMADA_SITE_NAME ?? 'Default',
       omadacId: process.env.OMADA_OMADAC_ID || undefined,
     },
+    // Solo se usa cuando DRIVER_KIND=asus (ASUS/Asuswrt-Merlin, appGet.cgi).
+    asus: {
+      host: process.env.ASUS_HOST ?? process.env.DRIVER_HOST ?? '',
+      username: process.env.ASUS_USERNAME ?? 'admin',
+      password: process.env.ASUS_PASSWORD ?? '',
+      https: process.env.ASUS_HTTPS === 'true',
+    },
   },
 
   vpn: {
