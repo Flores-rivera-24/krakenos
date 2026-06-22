@@ -93,6 +93,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     hue: env.iot.hue,
     govee: env.iot.govee,
     tuya: env.iot.tuya,
+    kasa: env.iot.kasa,
   });
   // Arranca la conexión en segundo plano de los managers que la necesiten (zigbee/govee).
   startIotManager(iot, (msg) => app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`));

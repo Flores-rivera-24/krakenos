@@ -4,7 +4,7 @@ import type { Id } from './common.js';
 export type IotDeviceKind = 'light' | 'plug' | 'sensor';
 
 /** Implementaciones de integración IoT disponibles. */
-export type IotKind = 'mock' | 'zigbee' | 'matter' | 'hue' | 'govee' | 'tuya';
+export type IotKind = 'mock' | 'zigbee' | 'matter' | 'hue' | 'govee' | 'tuya' | 'kasa';
 
 /** Lectura de un sensor (temperatura, humedad…). */
 export interface IotReading {
