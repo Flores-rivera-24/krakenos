@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { DriverKind } from '@krakenos/types';
+import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
 
 /** Lee una variable obligatoria o lanza al arrancar. */
 function required(name: string): string {
@@ -41,6 +42,33 @@ function jsonDeviceIps(name: string): string[] {
     return parsed
       .map((d) => (d && typeof d === 'object' ? (d as { ip?: unknown }).ip : undefined))
       .filter((ip): ip is string => typeof ip === 'string' && ip.length > 0);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Lee `SHELLY_DEVICES` (JSON `[{ip, name?, gen, channels?, type?}]`) y devuelve
+ * la lista validada. Vacío si la variable no está o el JSON es inválido (US-69).
+ */
+function shellyDevices(): ShellyDeviceConfig[] {
+  const raw = process.env.SHELLY_DEVICES;
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === 'object')
+      .map(
+        (d): ShellyDeviceConfig => ({
+          ip: String(d.ip ?? ''),
+          name: typeof d.name === 'string' ? d.name : undefined,
+          gen: d.gen === 2 ? 2 : 1,
+          channels: typeof d.channels === 'number' ? d.channels : undefined,
+          type: d.type === 'light' ? 'light' : 'relay',
+        }),
+      )
+      .filter((d) => d.ip.length > 0);
   } catch {
     return [];
   }
@@ -213,6 +241,13 @@ export const env = {
       tapoIps: jsonDeviceIps('TAPO_DEVICES'),
       tapoEmail: process.env.TAPO_EMAIL || undefined,
       tapoPassword: process.env.TAPO_PASSWORD || undefined,
+    },
+    // Solo se usa cuando IOT_KIND=shelly (Gen1 REST / Gen2 JSON-RPC, local).
+    shelly: {
+      devices: shellyDevices(),
+      auth: process.env.SHELLY_AUTH === 'true',
+      username: process.env.SHELLY_USER || undefined,
+      password: process.env.SHELLY_PASSWORD || undefined,
     },
   },
 

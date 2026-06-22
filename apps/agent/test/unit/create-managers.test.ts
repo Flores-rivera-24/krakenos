@@ -6,7 +6,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MockIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -71,6 +71,10 @@ describe('createIotManager', () => {
 
   it('construye un KasaIotManager (config opcional)', () => {
     expect(createIotManager({ kind: 'kasa' }).manager).toBeInstanceOf(KasaIotManager);
+  });
+
+  it('construye un ShellyIotManager (config opcional)', () => {
+    expect(createIotManager({ kind: 'shelly' }).manager).toBeInstanceOf(ShellyIotManager);
   });
 
   it('con varios kinds (lista) devuelve un CompositeIotManager', () => {
