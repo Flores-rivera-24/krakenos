@@ -74,7 +74,7 @@ export function IotStatusWidget() {
                 </span>
               </div>
             ))}
-            <Link to="/iot" className="inline-block text-kr-sm text-kr-accent hover:underline">
+            <Link to="/iot" className="inline-block text-kr-sm text-kr-link hover:underline">
               Controlar IoT →
             </Link>
           </>

@@ -42,7 +42,7 @@ export function WifiStatusWidget() {
                 <span className="shrink-0 text-kr-secondary">{n.clientCount} clientes</span>
               </div>
             ))}
-            <Link to="/wifi" className="inline-block text-kr-sm text-kr-accent hover:underline">
+            <Link to="/wifi" className="inline-block text-kr-sm text-kr-link hover:underline">
               Gestionar WiFi →
             </Link>
           </>

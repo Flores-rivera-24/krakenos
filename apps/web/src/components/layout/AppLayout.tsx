@@ -14,7 +14,7 @@ const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 function bottomLinkClass({ isActive }: { isActive: boolean }): string {
   return cn(
     'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
-    isActive ? 'text-kr-accent' : 'text-kr-secondary',
+    isActive ? 'text-kr-link' : 'text-kr-secondary',
   );
 }
 
@@ -52,7 +52,7 @@ function MobileBottomNav() {
                     cn(
                       'flex flex-col items-center gap-1 rounded-lg p-3 text-kr-xs',
                       isActive
-                        ? 'bg-kr-surface text-kr-accent'
+                        ? 'bg-kr-surface text-kr-link'
                         : 'text-kr-secondary hover:bg-kr-surface',
                     )
                   }
@@ -79,7 +79,7 @@ function MobileBottomNav() {
           aria-label="Más"
           className={cn(
             'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
-            moreOpen ? 'text-kr-accent' : 'text-kr-secondary',
+            moreOpen ? 'text-kr-link' : 'text-kr-secondary',
           )}
         >
           <MoreHorizontal className="h-5 w-5" />

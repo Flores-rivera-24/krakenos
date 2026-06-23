@@ -34,9 +34,13 @@
     --kr-border-muted: rgba(255, 255, 255, 0.04);
     --kr-text-primary: #e6edf3;
     --kr-text-secondary: #8b949e;
-    --kr-text-muted: #484f58;
+    /* US-95: subido de #484f58 (1.9–2.3:1, fallaba AA) a #868f9a (≥4.5:1 sobre todos los fondos). */
+    --kr-text-muted: #868f9a;
     --kr-accent: #2563eb;
     --kr-accent-hover: #1d4ed8;
+    /* US-95: el acento (#2563eb) sirve de fondo de botón (texto blanco 5.17:1) pero como TEXTO
+       sobre superficies oscuras solo llega a 3.35:1. Token aparte para enlaces/texto de acento. */
+    --kr-link: #58a6ff;
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;
@@ -70,9 +74,10 @@
     --kr-border-muted: rgba(255, 255, 255, 0.04);
     --kr-text-primary: #e6edf3;
     --kr-text-secondary: #8b949e;
-    --kr-text-muted: #484f58;
+    --kr-text-muted: #7d8590;
     --kr-accent: #2563eb;
     --kr-accent-hover: #1d4ed8;
+    --kr-link: #58a6ff;
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;
@@ -91,7 +96,10 @@
     --kr-border-muted: rgba(0, 0, 0, 0.06);
     --kr-text-primary: #1f2328;
     --kr-text-secondary: #57606a;
-    --kr-text-muted: #8c959f;
+    /* US-95: bajado de #8c959f (2.7–3.0:1, fallaba AA) a #5f6670 (≥4.7:1 sobre todos los fondos). */
+    --kr-text-muted: #5f6670;
+    /* El acento como texto sí cumple en claro (5.17:1); el enlace iguala al acento. */
+    --kr-link: #2563eb;
     --kr-success: #1a7f37;
     --kr-info: #0969da;
     --kr-warning: #9a6700;
@@ -104,7 +112,11 @@
     @apply border-border;
   }
   body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      sans-serif;
     @apply bg-kr-base text-kr-primary transition-colors duration-200;
   }
 }

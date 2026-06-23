@@ -56,7 +56,12 @@ function DeviceCard({
           <CardTitle className="text-sm text-foreground">{device.name}</CardTitle>
         </div>
         {device.kind !== 'sensor' && (
-          <Switch checked={device.on ?? false} onCheckedChange={toggle} disabled={!isAdmin} />
+          <Switch
+            checked={device.on ?? false}
+            onCheckedChange={toggle}
+            disabled={!isAdmin}
+            aria-label={`Encender ${device.name}`}
+          />
         )}
       </CardHeader>
       <CardContent>
@@ -83,6 +88,7 @@ function DeviceCard({
               max={100}
               value={draft ?? device.brightness ?? 0}
               disabled={!isAdmin}
+              aria-label={`Brillo de ${device.name}`}
               onChange={(e) => setDraft(Number(e.target.value))}
               onPointerUp={commitBrightness}
               onKeyUp={commitBrightness}

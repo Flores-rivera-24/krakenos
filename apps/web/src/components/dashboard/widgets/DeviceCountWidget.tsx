@@ -38,7 +38,7 @@ export function DeviceCountWidget() {
         <Stat status="offline" label="total" value={devices.length} />
         <Stat status="warning" label="desconocidos" value={unknown} />
         <Stat status="danger" label="bloqueados" value={blocked} />
-        <Link to="/inventory" className="col-span-2 text-kr-sm text-kr-accent hover:underline">
+        <Link to="/inventory" className="col-span-2 text-kr-sm text-kr-link hover:underline">
           Ver inventario →
         </Link>
       </CardContent>

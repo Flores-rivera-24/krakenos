@@ -215,6 +215,7 @@ export function QosPage() {
                           checked={r.enabled}
                           onCheckedChange={() => void toggleRule(r)}
                           disabled={!isAdmin}
+                          aria-label={`Activar regla ${r.name}`}
                         />
                       </td>
                       <td className="px-3 py-2">{r.name}</td>
