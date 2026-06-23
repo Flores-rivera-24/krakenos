@@ -79,6 +79,29 @@ interface WebAuthnUser {
 /** Validez del desafío temporal: 5 minutos. */
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 
+/** Tipo de ceremonia al que pertenece un desafío. */
+type ChallengeType = 'register' | 'authenticate';
+
+/**
+ * Extrae el `challenge` (base64url) del `clientDataJSON` de una respuesta WebAuthn.
+ * Permite identificar a qué desafío en curso corresponde la respuesta cuando hay
+ * varios concurrentes (US-82). Devuelve `null` si no se puede leer.
+ */
+function challengeFromResponse(response: {
+  response?: { clientDataJSON?: string };
+}): string | null {
+  const clientDataJSON = response.response?.clientDataJSON;
+  if (!clientDataJSON) return null;
+  try {
+    const data = JSON.parse(Buffer.from(clientDataJSON, 'base64url').toString('utf8')) as {
+      challenge?: unknown;
+    };
+    return typeof data.challenge === 'string' ? data.challenge : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Proyecta la fila de la DB al DTO público (sin clave pública ni counter). */
 function toInfo(c: WebAuthnCredential): WebAuthnCredentialInfo {
   return {
@@ -148,7 +171,7 @@ export class WebAuthnService {
       excludeCredentials: existing.map((c) => ({ id: c.credentialId })),
       authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
     });
-    await this.saveChallenge(user.id, options.challenge);
+    await this.saveChallenge(user.id, 'register', options.challenge);
     return options;
   }
 
@@ -157,7 +180,7 @@ export class WebAuthnService {
     response: RegistrationResponseJSON,
     name: string,
   ): Promise<WebAuthnCredentialInfo> {
-    const challenge = await this.consumeChallengeOrThrow(user.id);
+    const challenge = await this.consumeChallengeOrThrow(user.id, 'register', response);
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge: challenge,
@@ -193,12 +216,12 @@ export class WebAuthnService {
       allowCredentials: existing.map((c) => ({ id: c.credentialId })),
       userVerification: 'preferred',
     });
-    await this.saveChallenge(user.id, options.challenge);
+    await this.saveChallenge(user.id, 'authenticate', options.challenge);
     return options;
   }
 
   async verifyAuthentication(user: WebAuthnUser, response: AuthenticationResponseJSON): Promise<void> {
-    const challenge = await this.consumeChallengeOrThrow(user.id);
+    const challenge = await this.consumeChallengeOrThrow(user.id, 'authenticate', response);
     const credential = await this.prisma.webAuthnCredential.findUnique({
       where: { credentialId: response.id },
     });
@@ -227,38 +250,46 @@ export class WebAuthnService {
     });
   }
 
-  private async saveChallenge(userId: string, challenge: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        webAuthnChallenge: challenge,
-        webAuthnChallengeExp: new Date(Date.now() + CHALLENGE_TTL_MS),
-      },
+  /**
+   * Persiste un desafío para una ceremonia (US-82): una fila por ceremonia, de modo
+   * que registros/logins concurrentes no se pisen. De paso purga los caducados del
+   * usuario para acotar la tabla.
+   */
+  private async saveChallenge(
+    userId: string,
+    type: ChallengeType,
+    challenge: string,
+  ): Promise<void> {
+    await this.prisma.webAuthnChallenge.deleteMany({
+      where: { userId, expiresAt: { lt: new Date() } },
+    });
+    await this.prisma.webAuthnChallenge.create({
+      data: { userId, type, challenge, expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS) },
     });
   }
 
   /**
-   * Lee y **consume** (invalida) el desafío vigente; lanza si falta o expiró. Se borra
-   * ANTES de verificar (US-58): de un solo uso, así un desafío no puede reutilizarse ni
-   * reproducirse aunque la verificación posterior falle.
+   * Localiza el desafío **concreto** que la respuesta usó (por `clientDataJSON`),
+   * lo **consume** (borra) y lo devuelve; lanza si falta o expiró. Se borra ANTES de
+   * verificar (US-58): de un solo uso, no replayable aunque la verificación falle.
+   * Al buscar por el valor presentado, ceremonias concurrentes no se interfieren (US-82).
    */
-  private async consumeChallengeOrThrow(userId: string): Promise<string> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (
-      !user?.webAuthnChallenge ||
-      !user.webAuthnChallengeExp ||
-      user.webAuthnChallengeExp < new Date()
-    ) {
+  private async consumeChallengeOrThrow(
+    userId: string,
+    type: ChallengeType,
+    response: { response?: { clientDataJSON?: string } },
+  ): Promise<string> {
+    const presented = challengeFromResponse(response);
+    if (!presented) {
       throw new WebAuthnError('El desafío ha expirado o no existe');
     }
-    await this.clearChallenge(userId);
-    return user.webAuthnChallenge;
-  }
-
-  private async clearChallenge(userId: string): Promise<void> {
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { webAuthnChallenge: null, webAuthnChallengeExp: null },
+    const row = await this.prisma.webAuthnChallenge.findFirst({
+      where: { userId, type, challenge: presented, expiresAt: { gt: new Date() } },
     });
+    if (!row) {
+      throw new WebAuthnError('El desafío ha expirado o no existe');
+    }
+    await this.prisma.webAuthnChallenge.delete({ where: { id: row.id } });
+    return row.challenge;
   }
 }

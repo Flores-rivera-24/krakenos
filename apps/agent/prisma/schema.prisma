@@ -16,13 +16,26 @@ model User {
   role         String         @default("viewer") // 'admin' | 'viewer'
   refreshTokens RefreshToken[]
   webAuthnCredentials WebAuthnCredential[]
+  webAuthnChallenges  WebAuthnChallenge[]
   backupCodes  BackupCode[]
-  /// Desafío WebAuthn temporal (base64url) durante registro/autenticación (US-50).
-  webAuthnChallenge    String?
-  /// Expiración del desafío WebAuthn (5 min); se invalida al completar.
-  webAuthnChallengeExp DateTime?
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+}
+
+/// Desafío WebAuthn temporal por ceremonia (US-82). Una fila por ceremonia
+/// (registro/autenticación) en curso, de modo que ceremonias concurrentes (dos
+/// pestañas, registro+login) no se pisen un único campo en `User` (F6). Se
+/// consume (borra) de un solo uso al verificar; caduca a los 5 min.
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // 'register' | 'authenticate'
+  challenge String // base64url
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /// Passkey WebAuthn registrada por un usuario (2FA opcional, US-50).

@@ -31,7 +31,12 @@ interface PrismaMock {
     update: Mock;
     delete: Mock;
   };
-  user: { findUnique: Mock; update: Mock };
+  webAuthnChallenge: {
+    create: Mock;
+    findFirst: Mock;
+    delete: Mock;
+    deleteMany: Mock;
+  };
 }
 
 function makePrisma(): PrismaMock {
@@ -44,7 +49,12 @@ function makePrisma(): PrismaMock {
       update: vi.fn().mockResolvedValue({}),
       delete: vi.fn(),
     },
-    user: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}) },
+    webAuthnChallenge: {
+      create: vi.fn().mockResolvedValue({}),
+      findFirst: vi.fn(),
+      delete: vi.fn().mockResolvedValue({}),
+      deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
   };
 }
 
@@ -52,43 +62,47 @@ function makeService(prisma: PrismaMock): WebAuthnService {
   return new WebAuthnService(prisma as unknown as PrismaClient, CONFIG);
 }
 
+/** Respuesta WebAuthn cuyo clientDataJSON codifica `challenge` (base64url). */
+function responseWith(challenge: string, extra: Record<string, unknown> = {}): never {
+  const clientDataJSON = Buffer.from(JSON.stringify({ challenge })).toString('base64url');
+  return { response: { clientDataJSON }, ...extra } as never;
+}
+
+/** Fila de desafío activa para el mock de `findFirst`. */
+function challengeRow(challenge: string, type: string) {
+  return { id: 'ch1', userId: 'u1', type, challenge, expiresAt: new Date(Date.now() + 60_000) };
+}
+
 describe('WebAuthnService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('generateRegistrationOptions guarda el challenge en el User', async () => {
+  it('generateRegistrationOptions guarda el challenge en una fila de ceremonia', async () => {
     (generateRegistrationOptions as Mock).mockResolvedValue({ challenge: 'CHAL', rp: {} });
     const prisma = makePrisma();
     await makeService(prisma).generateRegistrationOptions(USER);
 
-    expect(prisma.user.update).toHaveBeenCalledWith(
+    expect(prisma.webAuthnChallenge.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'u1' },
-        data: expect.objectContaining({ webAuthnChallenge: 'CHAL' }),
+        data: expect.objectContaining({ userId: 'u1', type: 'register', challenge: 'CHAL' }),
       }),
     );
   });
 
-  it('verifyRegistration rechaza si el challenge expiró', async () => {
+  it('verifyRegistration rechaza si el challenge no existe o expiró', async () => {
     const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      webAuthnChallenge: 'X',
-      webAuthnChallengeExp: new Date(Date.now() - 1000),
-    });
+    prisma.webAuthnChallenge.findFirst.mockResolvedValue(null);
 
     await expect(
-      makeService(prisma).verifyRegistration(USER, {} as never, 'iPhone'),
+      makeService(prisma).verifyRegistration(USER, responseWith('X'), 'iPhone'),
     ).rejects.toBeInstanceOf(WebAuthnError);
     expect(verifyRegistrationResponse).not.toHaveBeenCalled();
   });
 
-  it('verifyRegistration crea la credencial y limpia el challenge si verifica', async () => {
+  it('verifyRegistration crea la credencial y consume el challenge si verifica', async () => {
     const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      webAuthnChallenge: 'X',
-      webAuthnChallengeExp: new Date(Date.now() + 60_000),
-    });
+    prisma.webAuthnChallenge.findFirst.mockResolvedValue(challengeRow('X', 'register'));
     (verifyRegistrationResponse as Mock).mockResolvedValue({
       verified: true,
       registrationInfo: {
@@ -106,16 +120,14 @@ describe('WebAuthnService', () => {
       lastUsedAt: null,
     });
 
-    const info = await makeService(prisma).verifyRegistration(USER, {} as never, 'iPhone');
+    const info = await makeService(prisma).verifyRegistration(USER, responseWith('X'), 'iPhone');
 
     expect(prisma.webAuthnCredential.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ credentialId: 'cred1', name: 'iPhone' }),
       }),
     );
-    expect(prisma.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { webAuthnChallenge: null, webAuthnChallengeExp: null } }),
-    );
+    expect(prisma.webAuthnChallenge.delete).toHaveBeenCalledWith({ where: { id: 'ch1' } });
     expect(info.name).toBe('iPhone');
   });
 
@@ -128,10 +140,7 @@ describe('WebAuthnService', () => {
 
   it('verifyAuthentication actualiza counter y lastUsedAt', async () => {
     const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      webAuthnChallenge: 'X',
-      webAuthnChallengeExp: new Date(Date.now() + 60_000),
-    });
+    prisma.webAuthnChallenge.findFirst.mockResolvedValue(challengeRow('X', 'authenticate'));
     prisma.webAuthnCredential.findUnique.mockResolvedValue({
       id: 'k1',
       userId: 'u1',
@@ -144,7 +153,7 @@ describe('WebAuthnService', () => {
       authenticationInfo: { newCounter: 5 },
     });
 
-    await makeService(prisma).verifyAuthentication(USER, { id: 'cred1' } as never);
+    await makeService(prisma).verifyAuthentication(USER, responseWith('X', { id: 'cred1' }));
 
     expect(prisma.webAuthnCredential.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -156,23 +165,42 @@ describe('WebAuthnService', () => {
 
   it('consume el challenge ANTES de verificar, aunque la verificación falle (US-58)', async () => {
     const prisma = makePrisma();
-    prisma.user.findUnique.mockResolvedValue({
-      webAuthnChallenge: 'X',
-      webAuthnChallengeExp: new Date(Date.now() + 60_000),
-    });
+    prisma.webAuthnChallenge.findFirst.mockResolvedValue(challengeRow('X', 'authenticate'));
     // Credencial no reconocida → la verificación fallará tras consumir el challenge.
     prisma.webAuthnCredential.findUnique.mockResolvedValue(null);
 
     await expect(
-      makeService(prisma).verifyAuthentication(USER, { id: 'cred-x' } as never),
+      makeService(prisma).verifyAuthentication(USER, responseWith('X', { id: 'cred-x' })),
     ).rejects.toBeInstanceOf(WebAuthnError);
 
     // El challenge se invalidó pese al fallo → de un solo uso, no replayable.
-    expect(prisma.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { webAuthnChallenge: null, webAuthnChallengeExp: null } }),
-    );
+    expect(prisma.webAuthnChallenge.delete).toHaveBeenCalledWith({ where: { id: 'ch1' } });
     // Y nunca se llegó a verificar la aserción con un challenge ya consumido.
     expect(verifyAuthenticationResponse).not.toHaveBeenCalled();
+  });
+
+  it('soporta ceremonias concurrentes: consume el desafío concreto que presenta la respuesta (US-82)', async () => {
+    const prisma = makePrisma();
+    // Dos ceremonias en curso; la respuesta presenta el challenge "B".
+    prisma.webAuthnChallenge.findFirst.mockImplementation(({ where }: { where: { challenge: string } }) =>
+      where.challenge === 'B' ? Promise.resolve({ ...challengeRow('B', 'authenticate'), id: 'chB' }) : Promise.resolve(null),
+    );
+    prisma.webAuthnCredential.findUnique.mockResolvedValue({
+      id: 'k1',
+      userId: 'u1',
+      credentialId: 'cred1',
+      publicKey: Buffer.from([1, 2, 3]),
+      counter: 0,
+    });
+    (verifyAuthenticationResponse as Mock).mockResolvedValue({
+      verified: true,
+      authenticationInfo: { newCounter: 1 },
+    });
+
+    await makeService(prisma).verifyAuthentication(USER, responseWith('B', { id: 'cred1' }));
+
+    // Se consumió exactamente la fila del challenge presentado, no otra.
+    expect(prisma.webAuthnChallenge.delete).toHaveBeenCalledWith({ where: { id: 'chB' } });
   });
 });
 

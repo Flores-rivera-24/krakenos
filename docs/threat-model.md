@@ -129,7 +129,7 @@ por una verificación e2e.
 ### 4.4 `POST /api/webauthn/authenticate/{options,verify}` y `/backup-codes/verify` (públicos)
 - **E**: exigen `mfaToken` válido y `token.sub === user(email).id` (US-51, `webauthn.routes.ts:73-82`). La passkey **suma** factor, no reemplaza. ✔
 - **R/Replay**: challenge consumido **antes** de verificar (de un solo uso, US-58, `webauthn.service.ts:245-256`). ✔
-- **Concurrencia**: el challenge es **un único campo en `User`**; dos ceremonias simultáneas (dos pestañas, registro+login) se pisan (F6, usabilidad/DoS suave).
+- **Concurrencia**: ✅ challenge **por ceremonia** en la tabla `WebAuthnChallenge` (US-82); dos ceremonias simultáneas (dos pestañas, registro+login) ya no se pisan (F6).
 - **R**: fallos auditados como `auth.login_failed`. ✔
 
 ### 4.5 API autenticada (lectura) / admin (escritura)
@@ -162,7 +162,7 @@ por una verificación e2e.
 | **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frenaba por usuario. | `auth/login-lockout.ts`, `auth.routes.ts` | "Rate limiting en /auth/login" (SPECS §9) | ✅ **Mitigado (US-88 + US-77):** US-88 extendió el rate-limit a los endpoints públicos de 2FA + `mfaToken` de un solo uso; US-77 añade **lockout por cuenta** (`auth/login-lockout.ts`): tras 5 fallos consecutivos la cuenta se bloquea con **backoff exponencial** (30 s → tope 1 h), se limpia al primer login correcto y audita `auth.login_locked` (+ push). Se aplica a cualquier email (no enumera). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revocaba el del legítimo pero no revocaba la familia ni alertaba; el atacante se quedaba con la sesión rotada. | `auth.service.ts` (`refresh`), `schema.prisma` (`RefreshToken.rotatedAt`) | "refresh tokens rotatorios" (SPECS §9) | ✅ **Mitigado (US-78):** reuse-detection estilo OAuth — al rotar se marca `rotatedAt`; si llega un token **ya rotado** se revoca **toda la familia** del usuario y se audita `auth.refresh_reuse` (+ push). Un token revocado por logout/admin (sin `rotatedAt`) no dispara el nuke: rechazo simple. |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
-| **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
+| **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisaban el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts`, `schema.prisma` (`WebAuthnChallenge`) | (no afirmado) | ✅ **Mitigado (US-82):** tabla `WebAuthnChallenge` (una fila por ceremonia, con `type` register/authenticate). Al verificar se localiza el desafío **concreto** que presenta la respuesta (challenge del `clientDataJSON`) y se consume de un solo uso → ceremonias concurrentes no se interfieren. Mantiene el "consumir antes de verificar" (US-58). |
 | **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar el token, la conexión seguía recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts` (`sweepStaleSockets`) | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | ✅ **Mitigado (US-80):** barrido periódico (cada 30 s) re-verifica el token de cada socket (firma + `exp` + `type`); si ya no es válido (expirado o clave retirada en rotación) emite `auth:expired` y corta la conexión → acota la ventana de sesión obsoleta al TTL + 30 s. El cliente refresca y reconecta. (Nota: el access stateless no es revocable antes de `exp`, F9; el corte por expiración es la garantía.) |
 | **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts`, `config/secret-permissions.ts` | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | 🟡 **Parcial:** US-92 detecta secretos commiteados; **US-79** verifica los permisos al arrancar y **avisa** si `.env` o la clave privada RS256 son legibles por grupo/otros (`chmod 600`). **Sigue sin** almacén de secretos ni cifrado en reposo (queda como mejora futura). |
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
@@ -215,7 +215,8 @@ por una verificación e2e.
 | **US-79** | Verificación de permisos de ficheros con secretos al arrancar | F8 (parcial) | ✅ hecho |
 | **US-80** | Re-verificación periódica de sesión en Socket.io | F7 (arreglo) | ✅ hecho |
 | **US-81** | Cierre de la ventana de primer admin (token out-of-band) | F10 (arreglo) | ✅ hecho |
-| **US-82…US-86** | Resto de la remediación de abajo | F6/F9/F11 + e2e | ⏳ pendiente |
+| **US-82** | Challenge WebAuthn por ceremonia (tabla propia) | F6 (arreglo) | ✅ hecho |
+| **US-83…US-86** | Resto de la remediación de abajo | F9/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
@@ -253,8 +254,9 @@ cifra), y F13 completo (US-91).
 8. **US-81 · Cierre de la ventana de primer admin (F10).** ✅ **Hecho.** `setup/setup-token.ts`: al
    arrancar sin usuarios se genera un token impreso en el log/CLI y exigido por `/setup/init` (se invalida
    tras crear el admin). El wizard web lo pide cuando `requiresToken`.
-9. **US-82 · Endurecer challenge WebAuthn (F6).** Challenge por ceremonia (tabla propia o campo con
-   discriminador registro/login) para soportar concurrencia.
+9. **US-82 · Endurecer challenge WebAuthn (F6).** ✅ **Hecho.** Tabla `WebAuthnChallenge` (una fila por
+   ceremonia, `type` register/authenticate); al verificar se consume el desafío concreto que presenta la
+   respuesta (challenge del `clientDataJSON`), soportando ceremonias concurrentes.
 10. **US-83 · Reducir divulgación pre-auth (F5).** Evaluar gating o reducción de `system/info`
     (omitir `version`) y `last-session` (sólo tras primer login, o detrás de un flag).
 11. **US-84 · Validación IP/CIDR estricta + fuzz (F12).** Acotar octetos/IPv6 y añadir un test
