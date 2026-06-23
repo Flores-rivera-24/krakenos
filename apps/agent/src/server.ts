@@ -5,7 +5,7 @@ import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
-import { env } from './config/env.js';
+import { env, trustProxyWarnings } from './config/env.js';
 import { createCameraManager } from './cameras/index.js';
 import { createDnsManager } from './dns/index.js';
 import { createDriver } from './drivers/index.js';
@@ -55,6 +55,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   const app: FastifyInstance = env.https
     ? (Fastify({ logger, https: env.https, trustProxy: env.trustProxy }) as unknown as FastifyInstance)
     : Fastify({ logger, trustProxy: env.trustProxy });
+
+  // Aviso si TRUST_PROXY confía en XFF de cualquier origen (US-76, F2).
+  for (const w of trustProxyWarnings(env.trustProxy)) {
+    app.log.warn(`[config] ${w}`);
+  }
 
   // Infra
   await app.register(securityHeadersPlugin, { csp: env.security.csp, hsts: env.security.hsts });
@@ -145,7 +150,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     rpID: env.webauthn.rpID,
     origin: env.webauthn.origin,
     isProd: env.isProd,
-    secureContext: env.https !== null || env.trustProxy,
+    secureContext: env.https !== null || env.behindProxy,
   })) {
     app.log.warn(`[webauthn] ${w}`);
   }
