@@ -17,6 +17,7 @@ describe('rutas de sistema', () => {
 
   beforeEach(async () => {
     await resetDb(app);
+    rateLimitStore.reset();
   });
 
   it('GET /api/system/info devuelve homeName y version sin token (US-49)', async () => {
@@ -114,6 +115,61 @@ describe('rutas de sistema', () => {
     expect(res.statusCode).toBe(200);
     expect(rateLimitStore.getCurrent()).toBe(20);
     expect(res.json().appliedImmediately).toBe(true);
+  });
+
+  it('PATCH acota accessTokenTtl a su rango permitido (US-75, F5)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const huge = await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'accessTokenTtl', value: '100000' },
+    });
+    expect(huge.statusCode).toBe(200);
+    expect(huge.json().settings.accessTokenTtl).toBe('3600'); // máx 1 h
+
+    const tiny = await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'accessTokenTtl', value: '5' },
+    });
+    expect(tiny.json().settings.accessTokenTtl).toBe('60'); // mín
+  });
+
+  it('PATCH acota loginRateLimit y aplica el valor acotado en caliente (US-75, F5)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'loginRateLimit', value: '99999' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().settings.loginRateLimit).toBe('1000'); // máx
+    expect(rateLimitStore.getCurrent()).toBe(1000); // el caliente también acotado
+  });
+
+  it('el TTL del access token emitido en login respeta la cota aunque la setting sea enorme', async () => {
+    const admin = await seedUser(app, {
+      email: 'ttl@krakenos.test',
+      password: 'password123',
+      role: 'admin',
+    });
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/system/settings',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { key: 'accessTokenTtl', value: '999999' },
+    });
+
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'ttl@krakenos.test', password: 'password123' },
+    });
+    expect(login.statusCode).toBe(200);
+    expect(login.json().tokens.expiresIn).toBe(3600); // acotado, no 999999
   });
 
   it('PATCH marca appliedImmediately solo para ajustes en caliente (US-47)', async () => {

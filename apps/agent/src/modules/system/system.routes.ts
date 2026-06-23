@@ -13,6 +13,7 @@ import type {
 import { SYSTEM_SETTING_KEYS } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { env } from '../../config/env.js';
+import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import {
@@ -123,7 +124,19 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     '/settings',
     { preHandler: app.requireRole('admin'), schema: updateSettingSchema },
     async (req) => {
-      const { key, value } = req.body;
+      const { key } = req.body;
+      let { value } = req.body;
+
+      // Acota los ajustes numéricos sensibles a su rango permitido antes de
+      // persistir (US-75, F5): así el valor guardado y el devuelto reflejan el
+      // clamp, y el admin ve el valor efectivo. Si no es numérico se deja igual
+      // (el lado lector recurre a su fallback).
+      const bound = boundFor(key);
+      if (bound) {
+        const clamped = clampToBound(Number(value), bound);
+        if (clamped !== null) value = String(clamped);
+      }
+
       await app.prisma.setting.upsert({
         where: { key },
         create: { key, value },

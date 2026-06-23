@@ -13,11 +13,19 @@ describe('rate-limit-store (US-47)', () => {
     expect(rateLimitStore.getCurrent()).toBe(25);
   });
 
-  it('ignora valores no positivos o no finitos', () => {
+  it('ignora valores no finitos (conserva el anterior)', () => {
     rateLimitStore.update(25);
-    rateLimitStore.update(0);
-    rateLimitStore.update(-5);
     rateLimitStore.update(Number.NaN);
+    rateLimitStore.update(Number.POSITIVE_INFINITY);
     expect(rateLimitStore.getCurrent()).toBe(25);
+  });
+
+  it('acota fuera de rango al mín/máx permitido (US-75, F5)', () => {
+    rateLimitStore.update(99_999);
+    expect(rateLimitStore.getCurrent()).toBe(1000); // máx
+    rateLimitStore.update(0);
+    expect(rateLimitStore.getCurrent()).toBe(1); // 0 → mín (nunca lockout total)
+    rateLimitStore.update(-5);
+    expect(rateLimitStore.getCurrent()).toBe(1); // negativo → mín
   });
 });
