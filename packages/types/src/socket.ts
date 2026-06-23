@@ -21,6 +21,11 @@ export interface ServerToClientEvents {
   'iot:snapshot': (devices: IotDevice[]) => void;
   /** Un dispositivo IoT cambió de estado. */
   'iot:device-updated': (device: IotDevice) => void;
+  /**
+   * La sesión del socket dejó de ser válida (access token expirado o firmado con
+   * una clave ya retirada). El cliente debe refrescar y reconectar (US-80, F7).
+   */
+  'auth:expired': () => void;
 }
 
 /** Eventos emitidos por el cliente hacia el agente. */

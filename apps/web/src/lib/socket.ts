@@ -39,6 +39,18 @@ export function getSocket(): AppSocket {
       }
     });
 
+    // El agente re-verifica la sesión periódicamente (US-80): si el token expiró
+    // o su clave se retiró, emite `auth:expired` y corta la conexión. Un disconnect
+    // iniciado por el servidor no auto-reconecta, así que refrescamos y reconectamos.
+    s.on('auth:expired', () => {
+      void useAuthStore
+        .getState()
+        .refresh()
+        .then((ok) => {
+          if (ok) s.connect();
+        });
+    });
+
     socket = s;
   }
   return socket;
