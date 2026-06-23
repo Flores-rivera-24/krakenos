@@ -6,6 +6,7 @@ import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
+import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { createCameraManager } from './cameras/index.js';
 import { createDnsManager } from './dns/index.js';
 import { createDriver } from './drivers/index.js';
@@ -59,6 +60,19 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Aviso si TRUST_PROXY confía en XFF de cualquier origen (US-76, F2).
   for (const w of trustProxyWarnings(env.trustProxy)) {
     app.log.warn(`[config] ${w}`);
+  }
+
+  // Aviso si los ficheros con secretos (.env, clave privada RS256) son legibles
+  // por grupo u otros (US-79, F8): la única protección es el permiso del SO.
+  const secretPaths = [
+    resolve('.env'),
+    ...(process.env.JWT_PRIVATE_KEY_PATH ? [resolve(process.env.JWT_PRIVATE_KEY_PATH)] : []),
+  ];
+  for (const w of checkSecretFilePermissions(secretPaths)) {
+    app.log.warn(
+      `[config] El fichero con secretos ${w.path} es legible por grupo/otros (modo ${w.mode}); ` +
+        'restríngelo con `chmod 600`.',
+    );
   }
 
   // Infra

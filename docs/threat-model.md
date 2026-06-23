@@ -81,7 +81,7 @@ por una verificación e2e.
 | **A — VPN** | Internet → red interna | WireGuard; ningún puerto de UI expuesto | Diseño correcto; **sin verificar con túnel real** |
 | **B — API/Auth** | Cliente → agente | JWT RS256 (`authenticate`/`requireRole`), rate limit, WS auth en handshake | Implementado y unit-tested |
 | **C — Privilegio** | Agente (no-root) → root | `SudoHelperRunner` + `krakenos-helper.sh` (allowlist) + sudoers `NOPASSWD` acotado a un binario | Implementado; allowlist por **verbo + ámbito** (cadena/interfaz, US-74 ✔) · **sin ejercer con root real** |
-| **D — Datos en disco** | Proceso → SQLite/`keys/`/`.env`/`data/` | Permisos de fichero del SO; `keys/`,`*.db`,`.env` gitignored | Depende del despliegue; secretos en claro (F8) |
+| **D — Datos en disco** | Proceso → SQLite/`keys/`/`.env`/`data/` | Permisos de fichero del SO (verificados al arrancar, US-79); `keys/`,`*.db`,`.env` gitignored | Depende del despliegue; secretos en claro pero con aviso de permisos (F8 parcial) |
 | **E — Integración** | Agente → hardware | Transporte inyectable; credenciales por `env` | Mock-first; **sin verificar con hardware** |
 
 ---
@@ -97,7 +97,7 @@ por una verificación e2e.
 | **Hash de contraseña** | `User.passwordHash` | bcrypt cost 12 | Crackeo offline (mitigado por coste) |
 | **Hash de backup codes** | `BackupCode.codeHash` | sha256 de 48 bits aleatorios | Bypass de 2FA si se filtra DB **y** se invierte (alta entropía) |
 | **Clave pública WebAuthn** | `WebAuthnCredential.publicKey` | No es secreta; nunca expuesta por la API | Bajo |
-| **Credenciales de hardware** | `.env` / `process.env` en claro | Permisos de fichero | SSH/REST/MQTT a routers, IoT y cámaras (F8) |
+| **Credenciales de hardware** | `.env` / `process.env` en claro | Permisos de fichero (verificados al arrancar, US-79) | SSH/REST/MQTT a routers, IoT y cámaras (F8, parcial) |
 | **Helper sudo (root)** | `/usr/local/bin/krakenos-helper` | sudoers `NOPASSWD` + allowlist por verbo y ámbito (US-74) | Acotado a la cadena/interfaz dedicadas (F1 ✔) |
 | **Claves VAPID** | `Setting` (DB) | Sólo envío push; no es factor de auth | Bajo |
 | **Contraseñas WiFi** | Sólo en memoria, delegadas al driver | Nunca devueltas en GET | No persistidas |
@@ -164,7 +164,7 @@ por una verificación e2e.
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
 | **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar o revocarse el token, la conexión sigue recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts:58-75` | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | Igual que la API **en el momento de conectar**; sin re-verificación periódica ni corte por revocación. |
-| **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts` (driver/iot/vlan/dns) | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | Por diseño de electrodoméstico, pero sin almacén de secretos ni cifrado en reposo. |
+| **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts`, `config/secret-permissions.ts` | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | 🟡 **Parcial:** US-92 detecta secretos commiteados; **US-79** verifica los permisos al arrancar y **avisa** si `.env` o la clave privada RS256 son legibles por grupo/otros (`chmod 600`). **Sigue sin** almacén de secretos ni cifrado en reposo (queda como mejora futura). |
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
@@ -212,9 +212,10 @@ por una verificación e2e.
 | **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
 | **US-77** | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
 | **US-78** | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
-| **US-79…US-86** | Resto de la remediación de abajo | F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-79** | Verificación de permisos de ficheros con secretos al arrancar | F8 (parcial) | ✅ hecho |
+| **US-80…US-86** | Resto de la remediación de abajo | F6/F7/F9/F10/F11 + e2e | ⏳ pendiente |
 
-**Pendientes destacados:** F8 (secret store real — US-92 sólo detecta, no
+**Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
@@ -239,9 +240,9 @@ cifra), y F13 completo (US-91).
    rotados; reusar un token rotado revoca toda la familia del usuario y audita `auth.refresh_reuse`
    (+ push). Original: al detectar un hash ya rotado/usado, revocar toda
    la familia del usuario y emitir evento de seguridad (push/auditoría).
-6. **US-79 · Gestión de secretos de integración (F8).** Sacar credenciales de hardware del `.env`
-   plano (fichero con permisos `0600` mínimo verificado al arrancar, o integración con un secret store);
-   avisar si `.env`/`keys/` son legibles por otros.
+6. **US-79 · Gestión de secretos de integración (F8).** ✅ **Hecho (parcial).** `config/secret-permissions.ts`
+   verifica al arrancar los permisos de `.env` y de la clave privada RS256 y **avisa** si son legibles por
+   grupo/otros (recomienda `chmod 600`). **Pendiente como mejora futura:** almacén de secretos / cifrado en reposo.
 
 ### Prioridad media (🟡) — reducir ventana y superficie
 7. **US-80 · Re-verificación de sesión en Socket.io (F7).** Re-validar el token periódicamente (o por
