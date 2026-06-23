@@ -124,7 +124,7 @@ por una verificación e2e.
 
 ### 4.3 `POST /api/setup/init` (público sólo si `user.count()==0`)
 - **E**: transacción atómica `user + homeName`; el segundo `/init` en carrera recibe 409 (US-53). ✔
-- **Spoofing de identidad inicial**: en una instalación recién arrancada, **el primer cliente que llega gana el admin** (sin token out-of-band). Ventana de "first-boot" en LAN/VPN (F10).
+- **Spoofing de identidad inicial**: ✅ cerrado en US-81 — `/setup/init` exige el **token de configuración** que el agente imprime en su log/CLI al primer arranque (out-of-band), así el primer cliente ya no reclama el admin sin acceso al servidor (F10).
 
 ### 4.4 `POST /api/webauthn/authenticate/{options,verify}` y `/backup-codes/verify` (públicos)
 - **E**: exigen `mfaToken` válido y `token.sub === user(email).id` (US-51, `webauthn.routes.ts:73-82`). La passkey **suma** factor, no reemplaza. ✔
@@ -166,7 +166,7 @@ por una verificación e2e.
 | **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar el token, la conexión seguía recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts` (`sweepStaleSockets`) | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | ✅ **Mitigado (US-80):** barrido periódico (cada 30 s) re-verifica el token de cada socket (firma + `exp` + `type`); si ya no es válido (expirado o clave retirada en rotación) emite `auth:expired` y corta la conexión → acota la ventana de sesión obsoleta al TTL + 30 s. El cliente refresca y reconecta. (Nota: el access stateless no es revocable antes de `exp`, F9; el corte por expiración es la garantía.) |
 | **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts`, `config/secret-permissions.ts` | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | 🟡 **Parcial:** US-92 detecta secretos commiteados; **US-79** verifica los permisos al arrancar y **avisa** si `.env` o la clave privada RS256 son legibles por grupo/otros (`chmod 600`). **Sigue sin** almacén de secretos ni cifrado en reposo (queda como mejora futura). |
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
-| **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
+| **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcanzaba el agente recién instalado reclamaba el admin (sin token out-of-band). | `setup.routes.ts`, `setup/setup-token.ts` | "Admin por el wizard /setup" (CLAUDE.md) | ✅ **Mitigado (US-81):** al arrancar sin usuarios el agente genera un token de configuración y lo **imprime en el log/CLI** (out-of-band); `/setup/init` lo exige (`SETUP_TOKEN_INVALID` si falta/erróneo, intento auditado) y lo invalida al crear el admin. Solo quien tiene acceso al servidor completa el setup. Sigue atómico contra carreras (US-53). |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
 | **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87):** validadores anti-inyección puros (`privileged/validators.ts`) en los builders de wg/qos/vlan (iface, clave WG, IPv4/CIDR con octetos acotados, tag/nombre de VLAN) + rechazo de caracteres de control en el helper. Tests adversarios por argumento. |
 | **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usa `zustand/persist({name:'krakenos-auth'})` → ambos tokens quedan en `localStorage`. Un XSS lee el refresh (30 días) → **toma de cuenta persistente**. Mitigado parcialmente en US-90 (CSP); el arreglo real (cookie httpOnly) queda en US-91. | `web/src/store/auth.store.ts:62-107` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | En el **cliente** ambos tokens son legibles por JS. Ver Anexo (§7). |
@@ -214,7 +214,8 @@ por una verificación e2e.
 | **US-78** | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
 | **US-79** | Verificación de permisos de ficheros con secretos al arrancar | F8 (parcial) | ✅ hecho |
 | **US-80** | Re-verificación periódica de sesión en Socket.io | F7 (arreglo) | ✅ hecho |
-| **US-81…US-86** | Resto de la remediación de abajo | F6/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-81** | Cierre de la ventana de primer admin (token out-of-band) | F10 (arreglo) | ✅ hecho |
+| **US-82…US-86** | Resto de la remediación de abajo | F6/F9/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
@@ -249,8 +250,9 @@ cifra), y F13 completo (US-91).
 7. **US-80 · Re-verificación de sesión en Socket.io (F7).** ✅ **Hecho.** Barrido cada 30 s
    (`sweepStaleSockets`) re-verifica el token de cada socket y corta (`auth:expired` + disconnect) los
    expirados o firmados con clave retirada; el cliente refresca y reconecta.
-8. **US-81 · Cierre de la ventana de primer admin (F10).** Token de setup out-of-band (impreso en el
-   log/CLI al primer arranque) exigido por `/setup/init`.
+8. **US-81 · Cierre de la ventana de primer admin (F10).** ✅ **Hecho.** `setup/setup-token.ts`: al
+   arrancar sin usuarios se genera un token impreso en el log/CLI y exigido por `/setup/init` (se invalida
+   tras crear el admin). El wizard web lo pide cuando `requiresToken`.
 9. **US-82 · Endurecer challenge WebAuthn (F6).** Challenge por ceremonia (tabla propia o campo con
    discriminador registro/login) para soportar concurrencia.
 10. **US-83 · Reducir divulgación pre-auth (F5).** Evaluar gating o reducción de `system/info`

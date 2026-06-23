@@ -25,8 +25,8 @@ export const setupStatusSchema = {
   response: {
     200: {
       type: 'object',
-      properties: { needsSetup: { type: 'boolean' } },
-      required: ['needsSetup'],
+      properties: { needsSetup: { type: 'boolean' }, requiresToken: { type: 'boolean' } },
+      required: ['needsSetup', 'requiresToken'],
     },
   },
 } as const;
@@ -47,6 +47,9 @@ export const setupInitSchema = {
         maxLength: 128,
         pattern: '(?=.*[A-Za-z])(?=.*\\d)',
       },
+      // Token de configuración out-of-band, impreso en el log al primer arranque
+      // (US-81). Opcional en el schema; el handler lo exige si hay token activo.
+      setupToken: { type: 'string', maxLength: 128 },
     },
   },
   response: {

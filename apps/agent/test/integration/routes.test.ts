@@ -21,7 +21,7 @@ describe('rutas HTTP (integración)', () => {
     it('status indica needsSetup cuando no hay usuarios', async () => {
       const res = await app.inject({ method: 'GET', url: '/api/setup/status' });
       expect(res.statusCode).toBe(200);
-      expect(res.json()).toEqual({ needsSetup: true });
+      expect(res.json()).toEqual({ needsSetup: true, requiresToken: false });
     });
 
     it('init crea el admin y luego responde 409', async () => {

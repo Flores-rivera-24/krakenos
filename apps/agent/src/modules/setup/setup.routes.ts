@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import type { FastifyPluginAsync } from 'fastify';
 import { AuthService } from '../auth/auth.service.js';
+import { setupToken } from './setup-token.js';
 import { setupInitSchema, setupStatusSchema } from './setup.schemas.js';
 
 /** ¿El error es una violación de unicidad de Prisma (P2002)? */
@@ -18,7 +19,7 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/status', { schema: setupStatusSchema }, async () => {
     const count = await app.prisma.user.count();
-    return { needsSetup: count === 0 };
+    return { needsSetup: count === 0, requiresToken: setupToken.isActive() };
   });
 
   // `/init` es público mientras no haya admin: se limita por IP para que nadie
@@ -37,6 +38,18 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(409).send({
           code: 'SETUP_ALREADY_DONE',
           message: 'El sistema ya está configurado',
+        });
+      }
+
+      // Token de configuración out-of-band (US-81, F10): si el agente generó un
+      // token al arrancar (impreso en el log), `/init` lo exige. Cierra la ventana
+      // de "first-boot" en la que el primer cliente reclamaba el admin sin prueba
+      // de acceso al servidor.
+      if (setupToken.isActive() && !setupToken.verify(req.body.setupToken ?? '')) {
+        app.audit({ action: 'setup.init_denied', ip: req.ip });
+        return reply.code(401).send({
+          code: 'SETUP_TOKEN_INVALID',
+          message: 'Token de configuración inválido o ausente',
         });
       }
 
@@ -61,6 +74,9 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
         }
         throw err;
       }
+
+      // Admin creado: el token de setup ya no sirve (de un solo uso).
+      setupToken.clear();
 
       // Inicia sesión inmediatamente devolviendo user + tokens.
       const result = await auth.login(email, password);
