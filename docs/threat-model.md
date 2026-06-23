@@ -27,9 +27,10 @@ promete **está implementado de verdad**.
 Los hallazgos no son agujeros abiertos sino **límites de defensa en profundidad** y
 **controles sin verificar contra un adversario o hardware real**. Los tres más relevantes:
 
-1. **El helper privilegiado acota el *verbo*, no el *ámbito*** (🟠): permite `iptables`
+1. **El helper privilegiado acota el *verbo*, no el *ámbito*** (🟠): permitía `iptables`
    sobre cualquier cadena, `tc` sobre cualquier interfaz y `wg set` arbitrario. Es el
-   último muro antes de root y hoy un agente comprometido lo atraviesa casi por completo.
+   último muro antes de root. ✅ **Resuelto en US-74**: el helper acota ahora también el
+   ámbito (cadena/interfaz); ver F1.
 2. **Ajustes "en caliente" sin cota superior** (🟠): `accessTokenTtl` y `loginRateLimit`
    se leen de `Setting` sin máximo; un valor enorme degrada silenciosamente la sesión corta
    o el rate limit.
@@ -78,7 +79,7 @@ por una verificación e2e.
 |---|---|---|---|
 | **A — VPN** | Internet → red interna | WireGuard; ningún puerto de UI expuesto | Diseño correcto; **sin verificar con túnel real** |
 | **B — API/Auth** | Cliente → agente | JWT RS256 (`authenticate`/`requireRole`), rate limit, WS auth en handshake | Implementado y unit-tested |
-| **C — Privilegio** | Agente (no-root) → root | `SudoHelperRunner` + `krakenos-helper.sh` (allowlist) + sudoers `NOPASSWD` acotado a un binario | Implementado; **allowlist sólo por verbo** (§5, F1) · **sin ejercer con root real** |
+| **C — Privilegio** | Agente (no-root) → root | `SudoHelperRunner` + `krakenos-helper.sh` (allowlist) + sudoers `NOPASSWD` acotado a un binario | Implementado; allowlist por **verbo + ámbito** (cadena/interfaz, US-74 ✔) · **sin ejercer con root real** |
 | **D — Datos en disco** | Proceso → SQLite/`keys/`/`.env`/`data/` | Permisos de fichero del SO; `keys/`,`*.db`,`.env` gitignored | Depende del despliegue; secretos en claro (F8) |
 | **E — Integración** | Agente → hardware | Transporte inyectable; credenciales por `env` | Mock-first; **sin verificar con hardware** |
 
@@ -96,7 +97,7 @@ por una verificación e2e.
 | **Hash de backup codes** | `BackupCode.codeHash` | sha256 de 48 bits aleatorios | Bypass de 2FA si se filtra DB **y** se invierte (alta entropía) |
 | **Clave pública WebAuthn** | `WebAuthnCredential.publicKey` | No es secreta; nunca expuesta por la API | Bajo |
 | **Credenciales de hardware** | `.env` / `process.env` en claro | Permisos de fichero | SSH/REST/MQTT a routers, IoT y cámaras (F8) |
-| **Helper sudo (root)** | `/usr/local/bin/krakenos-helper` | sudoers `NOPASSWD` + allowlist por verbo | Control de iptables/tc/wg como root (F1) |
+| **Helper sudo (root)** | `/usr/local/bin/krakenos-helper` | sudoers `NOPASSWD` + allowlist por verbo y ámbito (US-74) | Acotado a la cadena/interfaz dedicadas (F1 ✔) |
 | **Claves VAPID** | `Setting` (DB) | Sólo envío push; no es factor de auth | Bajo |
 | **Contraseñas WiFi** | Sólo en memoria, delegadas al driver | Nunca devueltas en GET | No persistidas |
 | **Log de auditoría** | `AuditLog` | `detail` truncado a 1 KB; best-effort | Pérdida silenciosa bajo carga (F11); PII de emails fallidos |
@@ -140,7 +141,7 @@ por una verificación e2e.
 
 ### 4.7 Invocación del helper privilegiado (`SudoHelperRunner` → `sudo -n helper`)
 - **T/E**: `execFile` (sin shell) → no hay inyección de shell; argv pasa literal (`runner.ts:29-40`). ✔
-- **E (ámbito)**: la allowlist del helper filtra **el verbo** (`iptables -A`, `tc qdisc`, `wg set`…) pero **no la cadena/interfaz/peer** (F1). Defensa en profundidad incompleta.
+- **E (ámbito)**: ✅ la allowlist del helper filtra **el verbo** (`iptables -A`, `tc qdisc`, `wg set`…) **y el ámbito** — cadena/interfaz (US-74, F1). Defensa en profundidad completada en el camino privilegiado.
 
 ### 4.8 Endpoints públicos de la pantalla de login
 - `GET /api/system/info` → `{homeName, version}`; `GET /api/auth/last-session` → `{timestamp, ip}`.
@@ -155,7 +156,7 @@ por una verificación e2e.
 
 | # | Sev | Hallazgo | Ubicación | Afirmado | Real |
 |---|---|---|---|---|---|
-| **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permite `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh:39-54`, `:24-38` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | El verbo está acotado; el **objetivo no**. Un agente comprometido obtiene control casi total de iptables/tc/wg como root. |
+| **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permitía `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | ✅ **Mitigado (US-74):** el helper acota ahora también el **ámbito** — `iptables` solo sobre la cadena `KRAKENOS` (+ enlace `FORWARD -j KRAKENOS`, sin reglas extra, sin otra tabla que `filter`), `tc` solo sobre la interfaz de QoS (`dev <iface>`) y `wg`/`wg-quick` solo sobre la interfaz WireGuard. El ámbito lo fija root (defaults del script + `/etc/krakenos/helper.conf`); `sudo` (env_reset) impide que el agente lo amplíe. Tests por caso permitido/denegado. |
 | **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts:393`, `server.ts:56-57` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | No hay guarda ni lista de hops de confianza; la mala config habilita el spoofing en silencio. |
 | **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. 🟡 **Parcial (US-88):** rate-limit extendido a los endpoints públicos de 2FA + `mfaToken` de un solo uso (anti-replay/brute-force de códigos). **Falta** el lockout por cuenta (US-77). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
@@ -204,18 +205,20 @@ por una verificación e2e.
 | **US-89** | Cobertura exhaustiva de authz + validación; fix 🔴 (viewer podía `PATCH` metadatos de dispositivo) | nuevo hallazgo de authz, no en F1-F13 | ✅ hecho |
 | **US-90** | Reducir radio de impacto de XSS en tokens (CSP `connect-src 'self'`) | F13 (parcial) | ✅ hecho |
 | **US-92** | Secret scanning (gitleaks, bloqueante) + SAST (semgrep) en CI | endurece F8 (detecta secretos commiteados) | ✅ hecho |
+| **US-74** | Allowlist del helper por ámbito (cadena/interfaz) | F1 (arreglo) | ✅ hecho |
 | **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
-| **US-74…US-86** | Resto de la remediación de abajo | F1/F2/F4/F5/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-75…US-86** | Resto de la remediación de abajo | F2/F4/F5/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
 
-**Pendientes destacados:** F1 (allowlist del helper por ámbito), F4 (reuso de refresh), F2
-(`TRUST_PROXY`), F5 (cotas en ajustes), F8 (secret store real — US-92 sólo detecta, no cifra),
-y F13 completo (US-91).
+**Pendientes destacados:** F4 (reuso de refresh), F2 (`TRUST_PROXY`), F5 (cotas en ajustes),
+F8 (secret store real — US-92 sólo detecta, no cifra), y F13 completo (US-91).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
-1. **US-74 · Allowlist del helper por ámbito (F1).** Que `krakenos-helper.sh` exija que `iptables`
-   opere sólo sobre la cadena `KRAKENOS` (y su enlace en `FORWARD -j KRAKENOS`), `tc` sólo sobre la
-   interfaz configurada y `wg`/`wg-quick` sólo sobre `wg0`. Rechazar el resto. Tests del helper por
-   caso permitido/denegado.
+1. **US-74 · Allowlist del helper por ámbito (F1).** ✅ **Hecho.** `krakenos-helper.sh` exige que
+   `iptables` opere sólo sobre la cadena `KRAKENOS` (y su enlace `FORWARD -j KRAKENOS`, sin reglas
+   extra ni otra tabla que `filter`), `tc` sólo sobre la interfaz configurada (`dev <iface>`) y
+   `wg`/`wg-quick` sólo sobre `wg0`. Resto rechazado (64). Ámbito configurable por root (defaults +
+   `/etc/krakenos/helper.conf`); `sudo`/`env_reset` impide que el agente lo amplíe. Tests del helper
+   por caso permitido/denegado (incl. ámbito a medida).
 2. **US-75 · Cotas en ajustes en caliente (F5).** Máximo duro a `accessTokenTtl` (p. ej. ≤ 3600 s) y
    rango válido a `loginRateLimit`; ignorar/clamp fuera de rango. Test de borde.
 3. **US-76 · `TRUST_PROXY` seguro (F2).** Sustituir el booleano por número de hops o lista de proxies

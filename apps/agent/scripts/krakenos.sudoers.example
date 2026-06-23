@@ -1,9 +1,16 @@
 # KrakenOS — regla sudoers para el helper privilegiado.
 #
 # Permite que el usuario del agente ejecute ÚNICAMENTE el helper como root, sin
-# contraseña. El helper aplica su propia allowlist (wg show/set, wg-quick save,
-# iptables sobre la cadena dedicada, tc qdisc/class/filter), así que esta regla
-# no concede acceso libre a wg/iptables/tc.
+# contraseña. El helper aplica su propia allowlist por VERBO y por ÁMBITO (US-74):
+# wg show/set y wg-quick save solo sobre la interfaz WireGuard (wg0), iptables solo
+# sobre la cadena dedicada (KRAKENOS) y su enlace en FORWARD, y tc qdisc/class/filter
+# solo sobre la interfaz de QoS configurada. Esta regla NO concede acceso libre a
+# wg/iptables/tc.
+#
+# `env_reset` (el default de sudo) descarta el entorno, así que el agente NO puede
+# ampliar el ámbito del helper por variables de entorno: el ámbito se fija en el
+# propio script (root-owned) o en /etc/krakenos/helper.conf (root-owned). Si usas
+# valores no-default (FW_CHAIN/TC_INTERFACE/WG_INTERFACE), ajústalos también ahí.
 #
 # Instalar (validando la sintaxis con visudo):
 #   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
