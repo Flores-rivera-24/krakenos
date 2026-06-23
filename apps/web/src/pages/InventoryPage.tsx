@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { DeviceCard } from '@/components/inventory/DeviceCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Button } from '@/components/ui/button';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { StatusDot } from '@/components/ui/status-dot';
 import {
   type ActiveFilter,
@@ -48,7 +49,11 @@ function loadGroupsOpen(): Record<string, boolean> {
   }
 }
 
-function statusOf(d: Device): { dot: 'online' | 'offline' | 'danger'; text: string; danger: boolean } {
+function statusOf(d: Device): {
+  dot: 'online' | 'offline' | 'danger';
+  text: string;
+  danger: boolean;
+} {
   if (d.isBlocked) return { dot: 'danger', text: 'Blocked', danger: true };
   return d.online
     ? { dot: 'online', text: 'Online', danger: false }
@@ -151,10 +156,7 @@ export function InventoryPage() {
   );
   const filtered = useMemo(() => filterDevices(list, query, filters), [list, query, filters]);
   // La pestaña "Groups" ignora los chips de estado: solo aplica el buscador.
-  const grouped = useMemo(
-    () => groupDevicesByType(filterDevices(list, query, [])),
-    [list, query],
-  );
+  const grouped = useMemo(() => groupDevicesByType(filterDevices(list, query, [])), [list, query]);
 
   const selected = selectedId ? (devices[selectedId] ?? null) : null;
   const loading = !connected && list.length === 0;
@@ -203,7 +205,10 @@ export function InventoryPage() {
               type="button"
               aria-label="Grid view"
               onClick={() => setView('grid')}
-              className={cn('rounded p-1.5', view === 'grid' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted')}
+              className={cn(
+                'rounded p-1.5',
+                view === 'grid' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
+              )}
             >
               <LayoutGrid className="h-5 w-5" />
             </button>
@@ -211,7 +216,10 @@ export function InventoryPage() {
               type="button"
               aria-label="List view"
               onClick={() => setView('list')}
-              className={cn('rounded p-1.5', view === 'list' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted')}
+              className={cn(
+                'rounded p-1.5',
+                view === 'list' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
+              )}
             >
               <List className="h-5 w-5" />
             </button>
@@ -247,6 +255,9 @@ export function InventoryPage() {
           })}
         </div>
       )}
+
+      {/* Conexión en tiempo real caída: el inventario llega por Socket.io (US-93). */}
+      {!connected && <ErrorBanner>Sin conexión en tiempo real — reintentando…</ErrorBanner>}
 
       {/* Contenido */}
       {loading ? (

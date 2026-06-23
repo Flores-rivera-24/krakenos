@@ -36,4 +36,17 @@ describe('CamerasPage', () => {
     await waitFor(() => expect(screen.getByAltText('Cámara Entrada')).toBeInTheDocument());
     expect(screen.getByText('Sin señal')).toBeInTheDocument();
   });
+
+  it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<CamerasPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra el estado vacío honesto sin cámaras (US-93)', async () => {
+    apiMock.get.mockReset().mockResolvedValue([]);
+    render(<CamerasPage />);
+    expect(await screen.findByText(/Aún no hay cámaras configuradas/)).toBeInTheDocument();
+  });
 });

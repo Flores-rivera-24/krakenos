@@ -4,28 +4,33 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 
 export function VpnPage() {
   const [status, setStatus] = useState<VpnStatus | null>(null);
   const [peers, setPeers] = useState<VpnPeer[]>([]);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   // Peer abierto en el slideover; `config` solo está presente al recién crearlo.
   const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
-  const load = () => {
-    void Promise.all([api.get<VpnStatus>('/vpn/status'), api.get<VpnPeer[]>('/vpn/peers')])
+  const load = () =>
+    Promise.all([api.get<VpnStatus>('/vpn/status'), api.get<VpnPeer[]>('/vpn/peers')])
       .then(([s, p]) => {
         setStatus(s);
         setPeers(p);
       })
-      .catch(() => setError('No se pudo cargar la VPN'));
-  };
+      .catch((err) => setError(describeError(err, 'No se pudo cargar la VPN')));
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load().finally(() => setLoading(false));
+  }, []);
 
   const addPeer = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,9 +41,9 @@ export function VpnPage() {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
       setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo crear el peer');
+      setError(describeError(err, 'No se pudo crear el peer'));
     } finally {
       setBusy(false);
     }
@@ -48,9 +53,9 @@ export function VpnPage() {
     setError(null);
     try {
       await api.del(`/vpn/peers/${id}`);
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo eliminar');
+      setError(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -63,7 +68,7 @@ export function VpnPage() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -71,7 +76,13 @@ export function VpnPage() {
             <CardTitle className="text-base text-foreground">Servidor</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {status ? (
+            {loading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+              </div>
+            ) : status ? (
               <>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Estado</span>
@@ -89,7 +100,7 @@ export function VpnPage() {
                 </div>
               </>
             ) : (
-              <p className="text-muted-foreground">Cargando…</p>
+              <p className="text-kr-muted">No disponible.</p>
             )}
           </CardContent>
         </Card>
@@ -134,37 +145,40 @@ export function VpnPage() {
                 </tr>
               </thead>
               <tbody>
-                {peers.map((p) => (
-                  <tr
-                    key={p.id}
-                    className="cursor-pointer border-t border-border hover:bg-secondary/40"
-                    onClick={() => setSelected({ peer: p })}
-                  >
-                    <td className="px-3 py-2">{p.name}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
-                    <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                      {p.publicKey.slice(0, 16)}…
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void removePeer(p.id);
-                        }}
-                      >
-                        Eliminar
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {peers.length === 0 && (
+                {loading ? (
+                  <SkeletonRows cols={4} />
+                ) : peers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-muted-foreground">
+                    <td colSpan={4} className="px-3 py-8 text-center text-kr-muted">
                       Sin dispositivos. Crea el primero arriba.
                     </td>
                   </tr>
+                ) : (
+                  peers.map((p) => (
+                    <tr
+                      key={p.id}
+                      className="cursor-pointer border-t border-border hover:bg-secondary/40"
+                      onClick={() => setSelected({ peer: p })}
+                    >
+                      <td className="px-3 py-2">{p.name}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                        {p.publicKey.slice(0, 16)}…
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void removePeer(p.id);
+                          }}
+                        >
+                          Eliminar
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

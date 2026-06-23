@@ -2,7 +2,10 @@ import type { Camera, CameraSnapshot } from '@krakenos/types';
 import { VideoOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 
 function CameraTile({ camera }: { camera: Camera }) {
   const [image, setImage] = useState<string | null>(null);
@@ -50,13 +53,16 @@ function CameraTile({ camera }: { camera: Camera }) {
 
 export function CamerasPage() {
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
     void api
       .get<Camera[]>('/cameras')
       .then((list) => active && setCameras(list))
-      .catch(() => undefined);
+      .catch((err) => active && setError(describeError(err, 'No se pudieron cargar las cámaras')))
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
@@ -69,8 +75,20 @@ export function CamerasPage() {
         <p className="text-sm text-muted-foreground">Vista de las cámaras IP del hogar.</p>
       </div>
 
-      {cameras.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">Sin cámaras configuradas.</p>
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-video w-full rounded-xl" />
+          ))}
+        </div>
+      ) : cameras.length === 0 ? (
+        !error && (
+          <p className="py-12 text-center text-sm text-kr-muted">
+            Aún no hay cámaras configuradas.
+          </p>
+        )
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {cameras.map((c) => (
