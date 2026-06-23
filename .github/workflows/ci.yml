@@ -96,6 +96,15 @@ jobs:
       # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
       # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
       # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
+      #
+      # `--exclude-rule`: tres reglas son falsos positivos para este código y se
+      # silencian de forma explícita (no se desactiva el resto del SAST):
+      #   - express…direct-response-write: el backend es Fastify (API JSON, no HTML
+      #     de Express); `reply.send` serializa JSON, no hay XSS reflejado.
+      #   - detect-non-literal-regexp: el `new RegExp` de cisco-netconf.parsers usa un
+      #     nombre de tag interno (no entrada de usuario), no es ReDoS explotable.
+      #   - detect-insecure-websocket: el único match es un `ws://` dentro de un
+      #     comentario doc de la CSP, no código.
       - name: SAST (semgrep)
         env:
           SEMGREP_VERSION: '1.95.0'
@@ -106,6 +115,9 @@ jobs:
               --config p/default \
               --config p/javascript \
               --config p/typescript \
+              --exclude-rule javascript.express.security.audit.xss.direct-response-write.direct-response-write \
+              --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
+              --exclude-rule javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket \
               --error \
               --metrics off \
               --disable-version-check \

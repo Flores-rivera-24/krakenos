@@ -92,8 +92,12 @@ describe('rutas de firewall', () => {
     expect(rule.enabled).toBe(true);
 
     await eventually(async () => {
-      const log = await app.prisma.auditLog.findFirst({ where: { action: 'firewall.rule.add' } });
-      expect(log?.detail).toBe('Bloquear cámara');
+      // Filtra por detail: la auditoría es fire-and-forget y otra prueba del fichero
+      // también crea 'firewall.rule.add', cuya escritura podría caer tras el resetDb.
+      const log = await app.prisma.auditLog.findFirst({
+        where: { action: 'firewall.rule.add', detail: 'Bloquear cámara' },
+      });
+      expect(log).not.toBeNull();
     });
   });
 
