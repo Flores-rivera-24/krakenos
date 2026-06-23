@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { hashEmail } from '../../src/plugins/audit.js';
 import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 describe('rutas de auditoría', () => {
@@ -65,6 +66,22 @@ describe('rutas de auditoría', () => {
 
   it('sin token devuelve 401', async () => {
     expect((await app.inject({ method: 'GET', url: '/api/audit' })).statusCode).toBe(401);
+  });
+
+  it('un login fallido audita el email HASHEADO, no en claro (US-85, F11)', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'victima@krakenos.test', password: 'incorrecta' },
+    });
+
+    const row = await eventually(async () => {
+      const r = await app.prisma.auditLog.findFirst({ where: { action: 'auth.login_failed' } });
+      if (!r) throw new Error('aún sin escribir');
+      return r;
+    });
+    expect(row.detail).toBe(hashEmail('victima@krakenos.test'));
+    expect(row.detail).not.toContain('victima@krakenos.test'); // sin PII en claro
   });
 
   it('trunca audit.detail a 1 KB antes de persistir (US-58)', async () => {

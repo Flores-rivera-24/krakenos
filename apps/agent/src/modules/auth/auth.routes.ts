@@ -7,6 +7,7 @@ import type {
 import type { FastifyPluginAsync } from 'fastify';
 import { loginLockout } from '../../auth/login-lockout.js';
 import { publicDisclosure } from '../../config/env.js';
+import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
@@ -64,7 +65,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     // comprueba para cualquier email (exista o no) → no enumera cuentas.
     const retryAfter = loginLockout.retryAfterSec(email);
     if (retryAfter > 0) {
-      app.audit({ action: 'auth.login_locked', detail: email, ip: req.ip });
+      app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
       return reply
         .code(429)
         .header('retry-after', String(retryAfter))
@@ -100,8 +101,8 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         // Login fallido: evento de seguridad (auditoría + push, US-45) y suma al
         // contador de lockout por cuenta (US-77).
         const lockedSec = loginLockout.recordFailure(email);
-        app.audit({ action: 'auth.login_failed', detail: email, ip: req.ip });
-        if (lockedSec > 0) app.audit({ action: 'auth.login_locked', detail: email, ip: req.ip });
+        app.audit({ action: 'auth.login_failed', detail: hashEmail(email), ip: req.ip });
+        if (lockedSec > 0) app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
         return reply.code(401).send({ code: err.code, message: err.message });
       }
       throw err;
