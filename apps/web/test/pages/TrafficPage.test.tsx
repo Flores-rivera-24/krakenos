@@ -10,6 +10,7 @@ const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() 
 vi.mock('@/lib/socket', () => ({ getSocket: () => socketMock }));
 
 import { TOOLTIP_STYLE, TRAFFIC_CHART_COLORS, TrafficPage } from '@/pages/TrafficPage';
+import { useConnectionStore } from '@/store/connection.store';
 
 const SAMPLE: TrafficSample = {
   timestamp: '2026-06-17T00:00:00.000Z',
@@ -69,7 +70,9 @@ describe('TrafficPage', () => {
   it('muestra el total de datos del histórico y pide el rango por defecto', async () => {
     const stats: TrafficStats = {
       range: 'day',
-      buckets: [{ timestamp: '2026-06-17T00:00:00.000Z', rxBytesPerSec: 1_000_000, txBytesPerSec: 500_000 }],
+      buckets: [
+        { timestamp: '2026-06-17T00:00:00.000Z', rxBytesPerSec: 1_000_000, txBytesPerSec: 500_000 },
+      ],
       totalRxBytes: 2 * 1024 ** 3, // 2.0 GB
       totalTxBytes: 512 * 1024 ** 2, // 512 MB
     };
@@ -120,7 +123,10 @@ describe('TrafficPage', () => {
     const table = await screen.findByRole('table', { name: 'Tráfico de red por dispositivo' });
     expect(table).toBeInTheDocument();
     // Cabeceras de columna expuestas como columnheader (th scope="col").
-    expect(screen.getByRole('columnheader', { name: 'Dispositivo' })).toHaveAttribute('scope', 'col');
+    expect(screen.getByRole('columnheader', { name: 'Dispositivo' })).toHaveAttribute(
+      'scope',
+      'col',
+    );
     expect(screen.getByRole('columnheader', { name: /Descarga/ })).toHaveAttribute('scope', 'col');
     // La cabecera ordenable anuncia su orden con aria-sort.
     expect(screen.getByRole('columnheader', { name: /Descarga/ })).toHaveAttribute(
@@ -161,5 +167,14 @@ describe('TrafficPage', () => {
     expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
     // El estado vacío honesto de la gráfica sigue presente.
     expect(screen.getByText(/Esperando muestras/)).toBeInTheDocument();
+  });
+
+  it('marca el panel en vivo como obsoleto cuando la última muestra es vieja (US-94)', async () => {
+    useConnectionStore.setState({ status: 'connected' });
+    mockApi({ history: [SAMPLE] }); // SAMPLE es de hace días → muestra no reciente
+    render(<TrafficPage />);
+    // Las tasas se siguen mostrando, pero marcadas como obsoletas (no congeladas como actuales).
+    await waitFor(() => expect(screen.getByText('10.0 Mbps')).toBeInTheDocument());
+    expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
   });
 });

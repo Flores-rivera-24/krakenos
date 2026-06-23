@@ -2,6 +2,19 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// El layout cablea el indicador de conexión (US-94) → socket falso para evitar
+// abrir un socket real en jsdom.
+const fakeSocket = vi.hoisted(() => ({
+  connected: true,
+  active: true,
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+  io: { on: vi.fn(), off: vi.fn() },
+}));
+vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
+
 import { AppLayout } from '@/components/layout/AppLayout';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -19,7 +32,14 @@ describe('AppLayout', () => {
   beforeEach(() => {
     logout.mockReset();
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'Emilio',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
       logout,
     });

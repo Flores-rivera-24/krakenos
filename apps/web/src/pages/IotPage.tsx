@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/auth.store';
+import { useConnectionStore } from '@/store/connection.store';
 
 const ICONS = { light: Lightbulb, plug: PlugZap, sensor: Thermometer } as const;
 
@@ -139,14 +141,21 @@ export function IotPage() {
   }, []);
 
   const list = useMemo(() => Object.values(devices), [devices]);
+  // Stream caído/reconectando: los estados mostrados pueden estar congelados (US-94).
+  const stale = useConnectionStore((s) => s.status) !== 'connected';
 
   return (
     <div className="space-y-6 p-6">
-      <div>
-        <h2 className="text-xl font-semibold">Dispositivos IoT</h2>
-        <p className="text-sm text-muted-foreground">
-          {isAdmin ? 'Controla luces, enchufes y sensores.' : 'Solo lectura — requiere rol admin.'}
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Dispositivos IoT</h2>
+          <p className="text-sm text-muted-foreground">
+            {isAdmin
+              ? 'Controla luces, enchufes y sensores.'
+              : 'Solo lectura — requiere rol admin.'}
+          </p>
+        </div>
+        {stale && list.length > 0 && <StaleBadge className="mt-1" />}
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}

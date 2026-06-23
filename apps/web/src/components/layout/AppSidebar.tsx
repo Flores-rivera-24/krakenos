@@ -4,6 +4,7 @@ import { Fragment } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
+import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 import { formatUptime } from '@/lib/format';
 import type { SidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
@@ -140,8 +141,11 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
         ))}
       </nav>
 
-      {/* Zona inferior: driver, uptime, usuario, logout */}
+      {/* Zona inferior: conexión en vivo, driver, uptime, usuario, logout */}
       <div className="space-y-3 border-t border-kr p-3">
+        {/* Estado real del stream en tiempo real (US-94). */}
+        <ConnectionStatus collapsed={collapsed} />
+
         <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
           <StatusDot status={stats.online ? 'online' : 'danger'} />
           {!collapsed && (
