@@ -75,31 +75,41 @@ describe('rutas de autenticación', () => {
     expect(afterLogout.statusCode).toBe(401);
   });
 
-  it('GET /api/auth/last-session devuelve null si no hay logins (US-49)', async () => {
+  it('GET /api/auth/last-session devuelve null por defecto (US-83, divulgación off)', async () => {
+    await seedUser(app, { email: 'off@krakenos.test', password: 'password123' });
+    await login(app, 'off@krakenos.test', 'password123');
     const res = await app.inject({ method: 'GET', url: '/api/auth/last-session' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toBeNull();
+    expect(res.json()).toBeNull(); // aunque haya un login, no se expone sin el flag
   });
 
-  it('GET /api/auth/last-session devuelve { timestamp, ip } tras un login (US-49)', async () => {
-    await seedUser(app, { email: 'last@krakenos.test', password: 'password123' });
-    const ok = await login(app, 'last@krakenos.test', 'password123');
-    expect(ok.status).toBe(200);
+  it('GET /api/auth/last-session expone { timestamp, ip } solo con PUBLIC_LAST_SESSION (US-49/US-83)', async () => {
+    process.env.PUBLIC_LAST_SESSION = 'true';
+    try {
+      // Sin logins: null aunque el flag esté on.
+      expect((await app.inject({ method: 'GET', url: '/api/auth/last-session' })).json()).toBeNull();
 
-    // El audit log se escribe sin await (best-effort) → reintentar.
-    const body = await eventually(async () => {
-      const res = await app.inject({ method: 'GET', url: '/api/auth/last-session' });
-      expect(res.statusCode).toBe(200);
-      const json = res.json() as { timestamp: string; ip: string } | null;
-      if (!json) throw new Error('aún sin sesión registrada');
-      return json;
-    });
-    expect(typeof body.timestamp).toBe('string');
-    expect(Number.isNaN(Date.parse(body.timestamp))).toBe(false);
-    expect(typeof body.ip).toBe('string');
-    // No debe exponer datos del usuario.
-    expect(body).not.toHaveProperty('email');
-    expect(body).not.toHaveProperty('userId');
+      await seedUser(app, { email: 'last@krakenos.test', password: 'password123' });
+      const ok = await login(app, 'last@krakenos.test', 'password123');
+      expect(ok.status).toBe(200);
+
+      // El audit log se escribe sin await (best-effort) → reintentar.
+      const body = await eventually(async () => {
+        const res = await app.inject({ method: 'GET', url: '/api/auth/last-session' });
+        expect(res.statusCode).toBe(200);
+        const json = res.json() as { timestamp: string; ip: string } | null;
+        if (!json) throw new Error('aún sin sesión registrada');
+        return json;
+      });
+      expect(typeof body.timestamp).toBe('string');
+      expect(Number.isNaN(Date.parse(body.timestamp))).toBe(false);
+      expect(typeof body.ip).toBe('string');
+      // No debe exponer datos del usuario.
+      expect(body).not.toHaveProperty('email');
+      expect(body).not.toHaveProperty('userId');
+    } finally {
+      delete process.env.PUBLIC_LAST_SESSION;
+    }
   });
 
   it('login de usuario sin passkeys sigue emitiendo tokens (US-50)', async () => {

@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { loginLockout } from '../../auth/login-lockout.js';
+import { publicDisclosure } from '../../config/env.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
@@ -35,9 +36,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     return reply.send(user);
   });
 
-  // Última sesión para la pantalla de login (US-49). Público: solo devuelve
-  // timestamp + IP del último login exitoso, nunca email ni userId.
+  // Última sesión para la pantalla de login (US-49). Público pero **off por
+  // defecto** (US-83, F5): exponer IP+hora del último login admin sin autenticar
+  // filtra actividad del admin. Se activa con PUBLIC_LAST_SESSION=true. Nunca
+  // devuelve email ni userId.
   app.get('/last-session', { schema: lastSessionSchema }, async (): Promise<LastSession | null> => {
+    if (!publicDisclosure.lastSession()) return null;
     const entry = await app.prisma.auditLog.findFirst({
       where: { action: 'auth.login' },
       orderBy: { createdAt: 'desc' },

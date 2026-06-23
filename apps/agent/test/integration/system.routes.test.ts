@@ -20,7 +20,7 @@ describe('rutas de sistema', () => {
     rateLimitStore.reset();
   });
 
-  it('GET /api/system/info devuelve homeName y version sin token (US-49)', async () => {
+  it('GET /api/system/info devuelve homeName sin token y OMITE version por defecto (US-83)', async () => {
     await app.prisma.setting.upsert({
       where: { key: 'homeName' },
       create: { key: 'homeName', value: 'Casa Kraken' },
@@ -30,8 +30,20 @@ describe('rutas de sistema', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.homeName).toBe('Casa Kraken');
-    expect(typeof body.version).toBe('string');
-    expect(body.version.length).toBeGreaterThan(0);
+    expect(body).not.toHaveProperty('version'); // no se filtra la versión pre-auth
+  });
+
+  it('GET /api/system/info expone version solo con PUBLIC_VERSION (US-83)', async () => {
+    process.env.PUBLIC_VERSION = 'true';
+    try {
+      const res = await app.inject({ method: 'GET', url: '/api/system/info' });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(typeof body.version).toBe('string');
+      expect(body.version.length).toBeGreaterThan(0);
+    } finally {
+      delete process.env.PUBLIC_VERSION;
+    }
   });
 
   it('GET /api/system/stats exige autenticación (401)', async () => {

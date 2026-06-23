@@ -82,11 +82,13 @@ export const systemInfoSchema = {
   response: {
     200: {
       type: 'object',
+      additionalProperties: false,
       properties: {
         homeName: { type: 'string' },
+        // Opcional: solo presente si PUBLIC_VERSION=true (US-83).
         version: { type: 'string' },
       },
-      required: ['homeName', 'version'],
+      required: ['homeName'],
     },
   },
 } as const;

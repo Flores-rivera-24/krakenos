@@ -48,8 +48,11 @@ export interface SystemInfo {
 export interface SystemPublicInfo {
   /** Nombre del hogar (`Setting` `homeName`, default 'Mi hogar'). */
   homeName: string;
-  /** Versión del agente (`package.json`). */
-  version: string;
+  /**
+   * Versión del agente (`package.json`). Solo se expone si `PUBLIC_VERSION=true`
+   * (off por defecto, US-83): omitirla evita el fingerprinting pre-auth.
+   */
+  version?: string;
 }
 
 /** Respuesta de `GET /api/system/settings`: ajustes editables + info. */
