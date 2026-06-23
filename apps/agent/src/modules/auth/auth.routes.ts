@@ -114,7 +114,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
       try {
-        const tokens = await service.refresh(req.body.refreshToken);
+        const tokens = await service.refresh(req.body.refreshToken, req.ip);
         return reply.send(tokens);
       } catch (err) {
         if (err instanceof AuthError) {

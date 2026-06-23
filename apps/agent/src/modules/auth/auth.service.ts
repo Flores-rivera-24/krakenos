@@ -139,6 +139,15 @@ export class AuthService {
     return result.count;
   }
 
+  /** Revoca todas las sesiones (refresh tokens no revocados) de un usuario. */
+  async revokeAllForUser(userId: string): Promise<number> {
+    const result = await this.app.prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    });
+    return result.count;
+  }
+
   /** Revoca **todas** las sesiones (todos los usuarios) — p. ej. tras regenerar claves. */
   async revokeAllSessions(): Promise<number> {
     const result = await this.app.prisma.refreshToken.updateMany({
@@ -246,8 +255,13 @@ export class AuthService {
     return this.issueSessionForUserId(user.id);
   }
 
-  /** Rota el refresh token: revoca el actual y emite uno nuevo. */
-  async refresh(refreshToken: string): Promise<AuthTokens> {
+  /**
+   * Rota el refresh token: revoca el actual (marcándolo como **rotado**) y emite
+   * uno nuevo. Detección de reuso (US-78, F4): si llega un token que ya fue rotado,
+   * es señal de robo (el legítimo y el atacante comparten el mismo padre) → se
+   * revoca **toda la familia** del usuario y se registra un evento de seguridad.
+   */
+  async refresh(refreshToken: string, ip?: string | null): Promise<AuthTokens> {
     let claims: RefreshTokenClaims;
     try {
       // `verifyToken` resuelve la clave por `kid` (rotación RS256, US-64): un
@@ -263,7 +277,27 @@ export class AuthService {
     const stored = await this.app.prisma.refreshToken.findUnique({
       where: { tokenHash: hashToken(refreshToken) },
     });
-    if (!stored || stored.revoked || stored.expiresAt < new Date()) {
+    if (!stored) {
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Refresh token inválido');
+    }
+
+    // Reuso de un token ya ROTADO → posible robo (el padre se presenta tras haber
+    // emitido un hijo). Revoca toda la familia del usuario y alerta. Un token
+    // revocado por logout/admin (sin `rotatedAt`) no dispara esto: rechazo simple.
+    if (stored.revoked) {
+      if (stored.rotatedAt) {
+        const revoked = await this.revokeAllForUser(stored.userId);
+        this.app.audit({
+          action: 'auth.refresh_reuse',
+          userId: stored.userId,
+          detail: `sesiones revocadas: ${revoked}`,
+          ip,
+        });
+        throw new AuthError('AUTH_REFRESH_REUSE', 'Refresh token reutilizado; sesiones revocadas');
+      }
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Refresh token revocado o expirado');
+    }
+    if (stored.expiresAt < new Date()) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Refresh token revocado o expirado');
     }
 
@@ -276,7 +310,7 @@ export class AuthService {
 
     await this.app.prisma.refreshToken.update({
       where: { id: stored.id },
-      data: { revoked: true },
+      data: { revoked: true, rotatedAt: new Date() },
     });
 
     return this.issueTokens(user);

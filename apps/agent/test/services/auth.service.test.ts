@@ -66,12 +66,13 @@ describe('AuthService', () => {
       expect(rotated.refreshToken).toBeTruthy();
       expect(rotated.refreshToken).not.toBe(tokens.refreshToken);
 
-      // El refresh original ya no sirve (revocado).
-      await expect(service.refresh(tokens.refreshToken)).rejects.toMatchObject({
-        code: 'AUTH_INVALID_TOKEN',
-      });
-      // El nuevo sí.
+      // El nuevo token sí sirve para volver a rotar.
       await expect(service.refresh(rotated.refreshToken)).resolves.toBeTruthy();
+
+      // Reusar el original ya ROTADO dispara la detección de reuso (US-78, F4).
+      await expect(service.refresh(tokens.refreshToken)).rejects.toMatchObject({
+        code: 'AUTH_REFRESH_REUSE',
+      });
     });
 
     it('rechaza un refresh token con firma inválida', async () => {

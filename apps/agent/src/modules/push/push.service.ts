@@ -13,6 +13,7 @@ const VAPID_SUBJECT = 'mailto:admin@krakenos.local';
 export const HIGH_PRIORITY_AUDIT_ACTIONS = [
   'auth.login_failed',
   'auth.login_locked',
+  'auth.refresh_reuse',
   'device.block',
   'inventory.unknown_device',
 ] as const;
@@ -31,6 +32,8 @@ export function pushNotificationForAudit(
       return { title: 'Login fallido', body: `Intento desde ${ip ?? 'IP desconocida'}`, url: '/settings' };
     case 'auth.login_locked':
       return { title: 'Cuenta bloqueada', body: 'Demasiados intentos de login fallidos', url: '/settings' };
+    case 'auth.refresh_reuse':
+      return { title: 'Posible robo de sesión', body: 'Refresh token reutilizado; sesiones revocadas', url: '/settings' };
     case 'device.block':
       return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory' };
     case 'inventory.unknown_device':

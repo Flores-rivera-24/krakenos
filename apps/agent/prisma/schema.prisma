@@ -82,6 +82,10 @@ model RefreshToken {
   /// Hash del token (nunca el token en claro).
   tokenHash String   @unique
   revoked   Boolean  @default(false)
+  /// Fecha en que el token fue ROTADO (sustituido por uno nuevo en /auth/refresh).
+  /// Distingue un token revocado por rotación de uno revocado por logout/admin:
+  /// solo el reuso de un token rotado dispara la detección de reuso (US-78, F4).
+  rotatedAt DateTime?
   expiresAt DateTime
   createdAt DateTime @default(now())
 
