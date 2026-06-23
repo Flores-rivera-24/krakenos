@@ -24,6 +24,42 @@ function int(name: string, fallback: number): number {
 }
 
 /**
+ * Parsea `TRUST_PROXY` al valor que espera `trustProxy` de Fastify (US-76, F2).
+ * Sustituye el antiguo booleano por una configuración **acotada**:
+ *   - vacío / `false`            → `false` (no se confía en `X-Forwarded-For`)
+ *   - un entero `n`              → confía en `n` saltos (hops) de proxy
+ *   - lista `ip[,cidr,keyword]`  → confía solo en esas IPs/CIDRs/preset de proxy
+ *   - `true`                     → confía en XFF de CUALQUIER origen (inseguro;
+ *                                  se mantiene por compat pero se avisa al arrancar)
+ * Confiar en XFF sin un proxy real que lo reescriba permite **falsificar `req.ip`**
+ * y burlar el rate limit de login y la auditoría por IP.
+ */
+export function parseTrustProxy(raw: string | undefined): boolean | number | string[] {
+  const v = (raw ?? '').trim();
+  if (v === '' || v.toLowerCase() === 'false') return false;
+  if (v.toLowerCase() === 'true') return true;
+  if (/^\d+$/.test(v)) return Number(v);
+  const list = v
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return list.length > 0 ? list : false;
+}
+
+/** Avisos de configuración de `TRUST_PROXY` (no bloquean el arranque). */
+export function trustProxyWarnings(value: boolean | number | string[]): string[] {
+  if (value === true) {
+    return [
+      'TRUST_PROXY=true confía en X-Forwarded-For de CUALQUIER origen: si no hay un ' +
+        'proxy inverso que reescriba la cabecera, un cliente puede falsificar su IP y burlar ' +
+        'el rate limit de login y la auditoría. Usa un nº de hops (p. ej. TRUST_PROXY=1) o una ' +
+        'lista de IPs/CIDRs de proxies de confianza.',
+    ];
+  }
+  return [];
+}
+
+/**
  * Lee una lista de rutas (separadas por comas) de claves públicas y devuelve su
  * contenido PEM. Vacío si la variable no está definida. Se usa para las claves
  * **previas** durante la rotación RS256 (US-64): verifican tokens aún válidos
@@ -386,11 +422,17 @@ export const env = {
   https,
 
   /**
-   * `trustProxy` de Fastify. Actívalo (`TRUST_PROXY=true`) si el agente corre
-   * tras un proxy inverso (nginx) para que `req.ip` —usado en auditoría y rate
-   * limit— refleje la IP real del cliente vía `X-Forwarded-For`.
+   * `trustProxy` de Fastify (US-76, F2). Configúralo si el agente corre tras un
+   * proxy inverso (nginx) para que `req.ip` —usado en auditoría y rate limit—
+   * refleje la IP real del cliente vía `X-Forwarded-For`. En vez de un booleano,
+   * acepta un **nº de hops** (`TRUST_PROXY=1`) o una **lista de IPs/CIDRs** de
+   * proxies de confianza (`TRUST_PROXY=10.0.0.1,10.0.0.0/8`). `true` (confiar en
+   * cualquiera) sigue admitido pero se desaconseja (ver `trustProxyWarnings`).
    */
-  trustProxy: process.env.TRUST_PROXY === 'true',
+  trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+
+  /** ¿Hay algún proxy de confianza configurado delante del agente? */
+  behindProxy: parseTrustProxy(process.env.TRUST_PROXY) !== false,
 
   /** Cabeceras de seguridad servidas en todas las respuestas. */
   security: {
