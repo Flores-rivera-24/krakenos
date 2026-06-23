@@ -92,7 +92,7 @@ por una verificación e2e.
 |---|---|---|---|
 | **Clave privada RS256** | `keys/*.pem` (disco, gitignored) | Permisos de fichero; cargada en memoria al arrancar (`env.ts:140`) | Falsificar **cualquier** sesión (access/refresh/mfa) |
 | **Access token** | Cliente (memoria/localStorage) | Firmado RS256, `iss`/`aud`, `exp` 900 s, `type:'access'` | Acceso de lectura/escritura hasta `exp`; **no revocable** (F9) |
-| **Refresh token** | Cliente + **hash sha256** en `RefreshToken` | Rotatorio, revocable, sólo hash en DB | Renovar sesión hasta revocación; sin detección de reuso (F4) |
+| **Refresh token** | Cliente + **hash sha256** en `RefreshToken` | Rotatorio, revocable, sólo hash en DB, **detección de reuso** (US-78) | Renovar sesión hasta revocación; un token robado y reusado revoca la familia (F4 ✔) |
 | **Token `mfa-pending`** | Cliente, 120 s | Firmado, `type:'mfa-pending'`, `sub` cruzado con email | Reintentos de 2FA durante 120 s (no es access token) |
 | **Hash de contraseña** | `User.passwordHash` | bcrypt cost 12 | Crackeo offline (mitigado por coste) |
 | **Hash de backup codes** | `BackupCode.codeHash` | sha256 de 48 bits aleatorios | Bypass de 2FA si se filtra DB **y** se invierte (alta entropía) |
@@ -119,7 +119,7 @@ por una verificación e2e.
 
 ### 4.2 `POST /api/auth/refresh` (token de refresco)
 - **T/E**: verifica firma por `kid`, exige `type:'refresh'`, comprueba hash en DB, revocado/expirado (`auth.service.ts:214-248`). ✔
-- **R/Replay**: rota (revoca el actual, emite nuevo). **Sin detección de reuso** → un refresh robado y usado sólo provoca cierre de sesión del legítimo, sin revocar la familia ni alertar (F4).
+- **R/Replay**: rota (revoca el actual, emite nuevo) **con detección de reuso** (US-78): reusar un token ya rotado revoca la familia del usuario y emite evento de seguridad (`auth.refresh_reuse`). ✔ (F4)
 - **D**: rate limit 60/min por IP. ✔
 
 ### 4.3 `POST /api/setup/init` (público sólo si `user.count()==0`)
@@ -160,7 +160,7 @@ por una verificación e2e.
 | **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permitía `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | ✅ **Mitigado (US-74):** el helper acota ahora también el **ámbito** — `iptables` solo sobre la cadena `KRAKENOS` (+ enlace `FORWARD -j KRAKENOS`, sin reglas extra, sin otra tabla que `filter`), `tc` solo sobre la interfaz de QoS (`dev <iface>`) y `wg`/`wg-quick` solo sobre la interfaz WireGuard. El ámbito lo fija root (defaults del script + `/etc/krakenos/helper.conf`); `sudo` (env_reset) impide que el agente lo amplíe. Tests por caso permitido/denegado. |
 | **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts` (`parseTrustProxy`), `server.ts` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | ✅ **Mitigado (US-76):** `parseTrustProxy` admite **nº de hops** (`TRUST_PROXY=1`) o **lista de IPs/CIDRs** de proxies de confianza, no solo el booleano; `true` (confiar en cualquiera) sigue por compat pero **avisa al arrancar** (`trustProxyWarnings`). Tests de `req.ip` con/sin proxy. |
 | **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frenaba por usuario. | `auth/login-lockout.ts`, `auth.routes.ts` | "Rate limiting en /auth/login" (SPECS §9) | ✅ **Mitigado (US-88 + US-77):** US-88 extendió el rate-limit a los endpoints públicos de 2FA + `mfaToken` de un solo uso; US-77 añade **lockout por cuenta** (`auth/login-lockout.ts`): tras 5 fallos consecutivos la cuenta se bloquea con **backoff exponencial** (30 s → tope 1 h), se limpia al primer login correcto y audita `auth.login_locked` (+ push). Se aplica a cualquier email (no enumera). |
-| **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
+| **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revocaba el del legítimo pero no revocaba la familia ni alertaba; el atacante se quedaba con la sesión rotada. | `auth.service.ts` (`refresh`), `schema.prisma` (`RefreshToken.rotatedAt`) | "refresh tokens rotatorios" (SPECS §9) | ✅ **Mitigado (US-78):** reuse-detection estilo OAuth — al rotar se marca `rotatedAt`; si llega un token **ya rotado** se revoca **toda la familia** del usuario y se audita `auth.refresh_reuse` (+ push). Un token revocado por logout/admin (sin `rotatedAt`) no dispara el nuke: rechazo simple. |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
 | **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar o revocarse el token, la conexión sigue recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts:58-75` | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | Igual que la API **en el momento de conectar**; sin re-verificación periódica ni corte por revocación. |
@@ -211,9 +211,10 @@ por una verificación e2e.
 | **US-76** | `TRUST_PROXY` seguro (nº de hops / lista de proxies) | F2 (arreglo) | ✅ hecho |
 | **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
 | **US-77** | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
-| **US-78…US-86** | Resto de la remediación de abajo | F4/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-78** | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
+| **US-79…US-86** | Resto de la remediación de abajo | F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
 
-**Pendientes destacados:** F4 (reuso de refresh), F8 (secret store real — US-92 sólo detecta, no
+**Pendientes destacados:** F8 (secret store real — US-92 sólo detecta, no
 cifra), y F13 completo (US-91).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
@@ -234,7 +235,9 @@ cifra), y F13 completo (US-91).
    contador por email (además del límite por IP) con backoff exponencial (30 s → tope 1 h), reset al
    primer login correcto y por inactividad; audita `auth.login_locked` (+ push). Aplica a cualquier
    email (anti-enumeración).
-5. **US-78 · Detección de reuso de refresh (F4).** Al detectar un hash ya rotado/usado, revocar toda
+5. **US-78 · Detección de reuso de refresh (F4).** ✅ **Hecho.** `RefreshToken.rotatedAt` marca los
+   rotados; reusar un token rotado revoca toda la familia del usuario y audita `auth.refresh_reuse`
+   (+ push). Original: al detectar un hash ya rotado/usado, revocar toda
    la familia del usuario y emitir evento de seguridad (push/auditoría).
 6. **US-79 · Gestión de secretos de integración (F8).** Sacar credenciales de hardware del `.env`
    plano (fichero con permisos `0600` mínimo verificado al arrancar, o integración con un secret store);
