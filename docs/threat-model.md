@@ -138,7 +138,7 @@ por una verificación e2e.
 
 ### 4.6 Handshake de Socket.io (`io.use`)
 - **S/E**: exige access token válido (`type:'access'`) en `auth.token` o `Bearer` (`socketio.ts:58-75`). ✔
-- **Revocación**: auth **sólo en el handshake**; la conexión sigue viva tras expirar/revocarse el token (F7).
+- **Revocación**: auth en el handshake **+ re-verificación periódica** (US-80, cada 30 s): un token expirado o firmado con clave retirada corta la conexión (`auth:expired`). Acota la ventana al TTL + 30 s (F7 ✔). El access stateless no es revocable antes de `exp` (F9).
 
 ### 4.7 Invocación del helper privilegiado (`SudoHelperRunner` → `sudo -n helper`)
 - **T/E**: `execFile` (sin shell) → no hay inyección de shell; argv pasa literal (`runner.ts:29-40`). ✔
@@ -163,7 +163,7 @@ por una verificación e2e.
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revocaba el del legítimo pero no revocaba la familia ni alertaba; el atacante se quedaba con la sesión rotada. | `auth.service.ts` (`refresh`), `schema.prisma` (`RefreshToken.rotatedAt`) | "refresh tokens rotatorios" (SPECS §9) | ✅ **Mitigado (US-78):** reuse-detection estilo OAuth — al rotar se marca `rotatedAt`; si llega un token **ya rotado** se revoca **toda la familia** del usuario y se audita `auth.refresh_reuse` (+ push). Un token revocado por logout/admin (sin `rotatedAt`) no dispara el nuke: rechazo simple. |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
-| **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar o revocarse el token, la conexión sigue recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts:58-75` | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | Igual que la API **en el momento de conectar**; sin re-verificación periódica ni corte por revocación. |
+| **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar el token, la conexión seguía recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts` (`sweepStaleSockets`) | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | ✅ **Mitigado (US-80):** barrido periódico (cada 30 s) re-verifica el token de cada socket (firma + `exp` + `type`); si ya no es válido (expirado o clave retirada en rotación) emite `auth:expired` y corta la conexión → acota la ventana de sesión obsoleta al TTL + 30 s. El cliente refresca y reconecta. (Nota: el access stateless no es revocable antes de `exp`, F9; el corte por expiración es la garantía.) |
 | **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts`, `config/secret-permissions.ts` | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | 🟡 **Parcial:** US-92 detecta secretos commiteados; **US-79** verifica los permisos al arrancar y **avisa** si `.env` o la clave privada RS256 son legibles por grupo/otros (`chmod 600`). **Sigue sin** almacén de secretos ni cifrado en reposo (queda como mejora futura). |
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
@@ -213,7 +213,8 @@ por una verificación e2e.
 | **US-77** | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
 | **US-78** | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
 | **US-79** | Verificación de permisos de ficheros con secretos al arrancar | F8 (parcial) | ✅ hecho |
-| **US-80…US-86** | Resto de la remediación de abajo | F6/F7/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-80** | Re-verificación periódica de sesión en Socket.io | F7 (arreglo) | ✅ hecho |
+| **US-81…US-86** | Resto de la remediación de abajo | F6/F9/F10/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
@@ -245,8 +246,9 @@ cifra), y F13 completo (US-91).
    grupo/otros (recomienda `chmod 600`). **Pendiente como mejora futura:** almacén de secretos / cifrado en reposo.
 
 ### Prioridad media (🟡) — reducir ventana y superficie
-7. **US-80 · Re-verificación de sesión en Socket.io (F7).** Re-validar el token periódicamente (o por
-   TTL) y cortar conexiones cuya sesión se revocó.
+7. **US-80 · Re-verificación de sesión en Socket.io (F7).** ✅ **Hecho.** Barrido cada 30 s
+   (`sweepStaleSockets`) re-verifica el token de cada socket y corta (`auth:expired` + disconnect) los
+   expirados o firmados con clave retirada; el cliente refresca y reconecta.
 8. **US-81 · Cierre de la ventana de primer admin (F10).** Token de setup out-of-band (impreso en el
    log/CLI al primer arranque) exigido por `/setup/init`.
 9. **US-82 · Endurecer challenge WebAuthn (F6).** Challenge por ceremonia (tabla propia o campo con
