@@ -124,6 +124,14 @@ describe('InventoryPage', () => {
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
+  it('muestra un banner role="alert" cuando se pierde la conexión en tiempo real (US-93)', () => {
+    fakeSocket.connected = false;
+    useInventoryStore.setState({ devices: { d1: device() }, connected: false });
+    render(<InventoryPage />);
+    expect(screen.getByRole('alert')).toHaveTextContent(/Sin conexión en tiempo real/);
+    fakeSocket.connected = true; // restaura para el resto de la suite
+  });
+
   it('la tabla en vista lista es accesible: caption + cabeceras con scope (US-62)', async () => {
     useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
     const user = userEvent.setup();

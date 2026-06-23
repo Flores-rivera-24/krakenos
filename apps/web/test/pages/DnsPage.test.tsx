@@ -85,4 +85,21 @@ describe('DnsPage', () => {
     expect(screen.queryByText('Bloquear dominio')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Quitar' })).not.toBeInTheDocument();
   });
+
+  it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<DnsPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra estados vacíos honestos sin datos (US-93)', async () => {
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/dns/stats') return Promise.resolve(STATS);
+      return Promise.resolve([]); // blocklist + queries vacíos
+    });
+    render(<DnsPage />);
+    expect(await screen.findByText(/Aún no hay dominios bloqueados/)).toBeInTheDocument();
+    expect(screen.getByText(/Aún no hay consultas recientes/)).toBeInTheDocument();
+  });
 });

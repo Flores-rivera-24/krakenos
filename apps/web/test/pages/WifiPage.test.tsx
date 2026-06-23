@@ -53,10 +53,22 @@ describe('WifiPage', () => {
     expect(await screen.findByText(/Solo lectura/)).toBeInTheDocument();
   });
 
-  it('muestra error si la carga falla', async () => {
+  it('muestra un banner role="alert" de conexión si la carga falla (red)', async () => {
     setRole('viewer');
-    apiMock.get.mockRejectedValue(new Error('boom'));
+    apiMock.get.mockRejectedValue(new Error('boom')); // sin respuesta = fallo de red
     render(<WifiPage />);
-    expect(await screen.findByText(/No se pudo cargar la configuración WiFi/)).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra el estado vacío honesto sin configuración (US-93)', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      // Sin red principal ni de invitados; el resto (access-points/networks) son arrays.
+      if (path === '/wifi' || path === '/wifi/guest') return Promise.resolve(null);
+      return Promise.resolve([]);
+    });
+    render(<WifiPage />);
+    expect(await screen.findByText(/Aún no hay configuración WiFi disponible/)).toBeInTheDocument();
   });
 });

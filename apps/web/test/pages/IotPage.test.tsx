@@ -65,4 +65,19 @@ describe('IotPage', () => {
     render(<IotPage />);
     expect(await screen.findByText(/Solo lectura/)).toBeInTheDocument();
   });
+
+  it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<IotPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra el estado vacío honesto sin dispositivos (US-93)', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockResolvedValue([]);
+    render(<IotPage />);
+    expect(await screen.findByText(/Aún no hay dispositivos IoT/)).toBeInTheDocument();
+  });
 });

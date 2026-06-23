@@ -153,4 +153,13 @@ describe('TrafficPage', () => {
 
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/traffic/stats?range=week'));
   });
+
+  it('muestra un banner role="alert" si las cargas REST fallan (US-93)', async () => {
+    apiMock.get.mockRejectedValue(new Error('boom'));
+    render(<TrafficPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+    // El estado vacío honesto de la gráfica sigue presente.
+    expect(screen.getByText(/Esperando muestras/)).toBeInTheDocument();
+  });
 });

@@ -10,7 +10,9 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { formatBytes, formatRate } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -51,6 +53,7 @@ export function TrafficPage() {
   const [devRange, setDevRange] = useState<TrafficRange>('hour');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [selectedMac, setSelectedMac] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const devices = useInventoryStore((s) => s.devices);
   const subscribe = useInventoryStore((s) => s.subscribe);
 
@@ -62,7 +65,11 @@ export function TrafficPage() {
     void api
       .get<DeviceTrafficStats[]>(`/traffic/devices?range=${devRange}`)
       .then((s) => active && setDevStats(s))
-      .catch(() => active && setDevStats([]));
+      .catch((err) => {
+        if (!active) return;
+        setDevStats([]);
+        setError(describeError(err, 'No se pudo cargar el tráfico'));
+      });
     return () => {
       active = false;
     };
@@ -89,7 +96,7 @@ export function TrafficPage() {
     void api
       .get<TrafficStats>(`/traffic/stats?range=${range}`)
       .then((s) => active && setStats(s))
-      .catch(() => undefined);
+      .catch((err) => active && setError(describeError(err, 'No se pudo cargar el tráfico')));
     return () => {
       active = false;
     };
@@ -102,11 +109,10 @@ export function TrafficPage() {
     void api
       .get<TrafficSample[]>('/traffic/history')
       .then((h) => active && setSamples(h))
-      .catch(() => undefined);
+      .catch((err) => active && setError(describeError(err, 'No se pudo cargar el tráfico')));
 
     const onHistory = (h: TrafficSample[]) => setSamples(h);
-    const onSample = (s: TrafficSample) =>
-      setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
+    const onSample = (s: TrafficSample) => setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
 
     socket.on('traffic:history', onHistory);
     socket.on('traffic:sample', onSample);
@@ -151,6 +157,8 @@ export function TrafficPage() {
         <p className="text-sm text-muted-foreground">Uso de la WAN en tiempo real.</p>
       </div>
 
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard
           title="Descarga"
@@ -188,11 +196,31 @@ export function TrafficPage() {
                     <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="t" stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} minTickGap={40} />
+                <XAxis
+                  dataKey="t"
+                  stroke={TRAFFIC_CHART_COLORS.axis}
+                  fontSize={11}
+                  minTickGap={40}
+                />
                 <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v.toFixed(1)} Mbps`} />
-                <Area type="monotone" dataKey="rx" name="Descarga" stroke={TRAFFIC_CHART_COLORS.rx} fill="url(#rx)" />
-                <Area type="monotone" dataKey="tx" name="Subida" stroke={TRAFFIC_CHART_COLORS.tx} fill="url(#tx)" />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v: number) => `${v.toFixed(1)} Mbps`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="rx"
+                  name="Descarga"
+                  stroke={TRAFFIC_CHART_COLORS.rx}
+                  fill="url(#rx)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tx"
+                  name="Subida"
+                  stroke={TRAFFIC_CHART_COLORS.tx}
+                  fill="url(#tx)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -251,11 +279,31 @@ export function TrafficPage() {
                     <stop offset="95%" stopColor={TRAFFIC_CHART_COLORS.tx} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="t" stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} minTickGap={40} />
+                <XAxis
+                  dataKey="t"
+                  stroke={TRAFFIC_CHART_COLORS.axis}
+                  fontSize={11}
+                  minTickGap={40}
+                />
                 <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v.toFixed(1)} Mbps`} />
-                <Area type="monotone" dataKey="rx" name="Descarga" stroke={TRAFFIC_CHART_COLORS.rx} fill="url(#hrx)" />
-                <Area type="monotone" dataKey="tx" name="Subida" stroke={TRAFFIC_CHART_COLORS.tx} fill="url(#htx)" />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v: number) => `${v.toFixed(1)} Mbps`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="rx"
+                  name="Descarga"
+                  stroke={TRAFFIC_CHART_COLORS.rx}
+                  fill="url(#hrx)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tx"
+                  name="Subida"
+                  stroke={TRAFFIC_CHART_COLORS.tx}
+                  fill="url(#htx)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -326,7 +374,9 @@ export function TrafficPage() {
                       className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
                     >
                       <td className="py-2 text-foreground">{name}</td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground">{d.ip || '—'}</td>
+                      <td className="py-2 font-mono text-xs text-muted-foreground">
+                        {d.ip || '—'}
+                      </td>
                       <td className="py-2 text-green-500">{formatBytes(d.rxTotal)}</td>
                       <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
                     </tr>

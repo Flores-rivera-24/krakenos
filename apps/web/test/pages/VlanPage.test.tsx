@@ -100,4 +100,18 @@ describe('VlanPage', () => {
     expect(screen.queryByText('Nueva VLAN')).not.toBeInTheDocument();
     expect(screen.getByLabelText(/VLAN de/)).toBeDisabled();
   });
+
+  it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<VlanPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra estados vacíos honestos sin VLANs ni dispositivos (US-93)', async () => {
+    apiMock.get.mockReset().mockResolvedValue([]);
+    render(<VlanPage />);
+    expect(await screen.findByText(/Aún no hay VLANs configuradas/)).toBeInTheDocument();
+    expect(screen.getByText(/Aún no hay dispositivos en el inventario/)).toBeInTheDocument();
+  });
 });

@@ -3,25 +3,40 @@ import { Lightbulb, PlugZap, Thermometer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/auth.store';
 
 const ICONS = { light: Lightbulb, plug: PlugZap, sensor: Thermometer } as const;
 
-function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }) {
+function DeviceCard({
+  device,
+  isAdmin,
+  onError,
+}: {
+  device: IotDevice;
+  isAdmin: boolean;
+  onError: (err: unknown) => void;
+}) {
   const Icon = ICONS[device.kind];
   const [draft, setDraft] = useState<number | null>(null);
 
-  const toggle = () => void api.patch(`/iot/devices/${device.id}`, { on: !device.on });
+  // El estado real lo refleja el socket (`iot:device-updated`), así que no hay
+  // estado optimista que revertir: si el PATCH falla, la UI ya muestra el valor
+  // del servidor; basta con avisar del fallo (US-93).
+  const patch = (body: unknown) => void api.patch(`/iot/devices/${device.id}`, body).catch(onError);
+
+  const toggle = () => patch({ on: !device.on });
   const commitBrightness = () => {
     if (draft !== null) {
-      void api.patch(`/iot/devices/${device.id}`, { brightness: draft });
+      patch({ brightness: draft });
       setDraft(null);
     }
   };
-  const commitColor = (hex: string) =>
-    void api.patch(`/iot/devices/${device.id}`, { color: { hex } });
+  const commitColor = (hex: string) => patch({ color: { hex } });
 
   return (
     <Card>
@@ -95,6 +110,8 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
 export function IotPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [devices, setDevices] = useState<Record<string, IotDevice>>({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -103,7 +120,10 @@ export function IotPage() {
     void api
       .get<IotDevice[]>('/iot/devices')
       .then((list) => active && setDevices(Object.fromEntries(list.map((d) => [d.id, d]))))
-      .catch(() => undefined);
+      .catch(
+        (err) => active && setError(describeError(err, 'No se pudieron cargar los dispositivos')),
+      )
+      .finally(() => active && setLoading(false));
 
     const onSnapshot = (list: IotDevice[]) =>
       setDevices(Object.fromEntries(list.map((d) => [d.id, d])));
@@ -129,12 +149,27 @@ export function IotPage() {
         </p>
       </div>
 
-      {list.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">Sin dispositivos IoT.</p>
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-36 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : list.length === 0 ? (
+        !error && (
+          <p className="py-12 text-center text-sm text-kr-muted">Aún no hay dispositivos IoT.</p>
+        )
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((d) => (
-            <DeviceCard key={d.id} device={d} isAdmin={isAdmin} />
+            <DeviceCard
+              key={d.id}
+              device={d}
+              isAdmin={isAdmin}
+              onError={(e) => setError(describeError(e, 'No se pudo aplicar el cambio'))}
+            />
           ))}
         </div>
       )}

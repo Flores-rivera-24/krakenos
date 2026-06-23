@@ -59,9 +59,10 @@ describe('VpnPage', () => {
     expect(apiMock.post).toHaveBeenCalledWith('/vpn/peers', { name: 'Móvil' });
   });
 
-  it('muestra error si la carga falla', async () => {
-    apiMock.get.mockRejectedValue(new Error('boom'));
+  it('muestra un banner role="alert" de conexión si la carga falla (red)', async () => {
+    apiMock.get.mockRejectedValue(new Error('boom')); // sin respuesta = fallo de red
     render(<VpnPage />);
-    expect(await screen.findByText(/No se pudo cargar la VPN/)).toBeInTheDocument();
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
   });
 });

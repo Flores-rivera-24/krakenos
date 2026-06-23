@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiRequestError, api } from '@/lib/api';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
 
 const EMPTY: CreateVlanRequest = { tag: 0, name: '', subnet: '', isolated: false };
@@ -16,21 +19,20 @@ export function VlanPage() {
   const [form, setForm] = useState<CreateVlanRequest>(EMPTY);
   const [tagText, setTagText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
-    void Promise.all([
-      api.get<VlanWithCount[]>('/vlans'),
-      api.get<Device[]>('/inventory/devices'),
-    ])
+  const load = () =>
+    Promise.all([api.get<VlanWithCount[]>('/vlans'), api.get<Device[]>('/inventory/devices')])
       .then(([v, d]) => {
         setVlans(v);
         setDevices(d);
       })
-      .catch(() => setError('No se pudieron cargar las VLANs'));
-  };
+      .catch((err) => setError(describeError(err, 'No se pudieron cargar las VLANs')));
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load().finally(() => setLoading(false));
+  }, []);
 
   const addVlan = async (e: FormEvent) => {
     e.preventDefault();
@@ -47,9 +49,9 @@ export function VlanPage() {
       });
       setForm(EMPTY);
       setTagText('');
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo crear la VLAN');
+      setError(describeError(err, 'No se pudo crear la VLAN'));
     } finally {
       setBusy(false);
     }
@@ -59,9 +61,9 @@ export function VlanPage() {
     setError(null);
     try {
       await api.del(`/vlans/${id}`);
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo eliminar');
+      setError(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -69,9 +71,9 @@ export function VlanPage() {
     setError(null);
     try {
       await api.put<Device>(`/inventory/devices/${deviceId}/vlan`, { tag });
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo asignar');
+      setError(describeError(err, 'No se pudo asignar'));
     }
   };
 
@@ -84,7 +86,7 @@ export function VlanPage() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {isAdmin && (
         <Card>
@@ -143,33 +145,41 @@ export function VlanPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {vlans.map((v) => (
-          <Card key={v.id}>
-            <CardHeader className="flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base text-foreground">
-                  {v.name} <span className="font-mono text-xs text-muted-foreground">#{v.tag}</span>
-                </CardTitle>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">{v.subnet ?? 'sin subred'}</p>
-              </div>
-              {v.isolated && (
-                <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
-                  aislada
-                </span>
-              )}
-            </CardHeader>
-            <CardContent className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{v.deviceCount} dispositivos</span>
-              {isAdmin && (
-                <Button variant="ghost" size="sm" onClick={() => void removeVlan(v.id)}>
-                  Eliminar
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-        {vlans.length === 0 && (
-          <p className="text-sm text-muted-foreground">Sin VLANs configuradas.</p>
+        {loading &&
+          Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-xl" />
+          ))}
+        {!loading &&
+          vlans.map((v) => (
+            <Card key={v.id}>
+              <CardHeader className="flex-row items-start justify-between space-y-0">
+                <div>
+                  <CardTitle className="text-base text-foreground">
+                    {v.name}{' '}
+                    <span className="font-mono text-xs text-muted-foreground">#{v.tag}</span>
+                  </CardTitle>
+                  <p className="mt-1 font-mono text-xs text-muted-foreground">
+                    {v.subnet ?? 'sin subred'}
+                  </p>
+                </div>
+                {v.isolated && (
+                  <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
+                    aislada
+                  </span>
+                )}
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{v.deviceCount} dispositivos</span>
+                {isAdmin && (
+                  <Button variant="ghost" size="sm" onClick={() => void removeVlan(v.id)}>
+                    Eliminar
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        {!loading && vlans.length === 0 && (
+          <p className="text-kr-muted text-sm">Aún no hay VLANs configuradas.</p>
         )}
       </div>
 
@@ -188,36 +198,42 @@ export function VlanPage() {
                 </tr>
               </thead>
               <tbody>
-                {devices.map((d) => (
-                  <tr key={d.id} className="border-t border-border">
-                    <td className="px-3 py-2">{d.label ?? d.hostname ?? d.mac}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{d.ip}</td>
-                    <td className="px-3 py-2">
-                      <select
-                        aria-label={`VLAN de ${d.label ?? d.mac}`}
-                        value={d.vlanTag ?? ''}
-                        disabled={!isAdmin}
-                        onChange={(e) =>
-                          void assignDevice(d.id, e.target.value === '' ? null : Number(e.target.value))
-                        }
-                        className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
-                      >
-                        <option value="">Sin VLAN</option>
-                        {vlans.map((v) => (
-                          <option key={v.id} value={v.tag}>
-                            {v.name} (#{v.tag})
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-                {devices.length === 0 && (
+                {loading ? (
+                  <SkeletonRows cols={3} />
+                ) : devices.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">
-                      Sin dispositivos en el inventario.
+                    <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
+                      Aún no hay dispositivos en el inventario.
                     </td>
                   </tr>
+                ) : (
+                  devices.map((d) => (
+                    <tr key={d.id} className="border-t border-border">
+                      <td className="px-3 py-2">{d.label ?? d.hostname ?? d.mac}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{d.ip}</td>
+                      <td className="px-3 py-2">
+                        <select
+                          aria-label={`VLAN de ${d.label ?? d.mac}`}
+                          value={d.vlanTag ?? ''}
+                          disabled={!isAdmin}
+                          onChange={(e) =>
+                            void assignDevice(
+                              d.id,
+                              e.target.value === '' ? null : Number(e.target.value),
+                            )
+                          }
+                          className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+                        >
+                          <option value="">Sin VLAN</option>
+                          {vlans.map((v) => (
+                            <option key={v.id} value={v.tag}>
+                              {v.name} (#{v.tag})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

@@ -5,7 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ApiRequestError, api } from '@/lib/api';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { SkeletonRows } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
 
 const PRIORITIES: QosPriority[] = ['high', 'normal', 'low'];
@@ -38,16 +41,18 @@ export function QosPage() {
   const [downText, setDownText] = useState('');
   const [upText, setUpText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
-    void api
+  const load = () =>
+    api
       .get<QosRule[]>('/qos/rules')
       .then(setRules)
-      .catch(() => setError('No se pudieron cargar las reglas'));
-  };
+      .catch((err) => setError(describeError(err, 'No se pudieron cargar las reglas')));
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load().finally(() => setLoading(false));
+  }, []);
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -65,9 +70,9 @@ export function QosPage() {
       setForm(EMPTY);
       setDownText('');
       setUpText('');
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo crear la regla');
+      setError(describeError(err, 'No se pudo crear la regla'));
     } finally {
       setBusy(false);
     }
@@ -77,9 +82,9 @@ export function QosPage() {
     setError(null);
     try {
       await api.patch<QosRule>(`/qos/rules/${rule.id}`, { enabled: !rule.enabled });
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo actualizar');
+      setError(describeError(err, 'No se pudo actualizar'));
     }
   };
 
@@ -87,9 +92,9 @@ export function QosPage() {
     setError(null);
     try {
       await api.del(`/qos/rules/${id}`);
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo eliminar');
+      setError(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -102,7 +107,7 @@ export function QosPage() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {isAdmin && (
         <Card>
@@ -194,37 +199,40 @@ export function QosPage() {
                 </tr>
               </thead>
               <tbody>
-                {rules.map((r) => (
-                  <tr key={r.id} className="border-t border-border">
-                    <td className="px-3 py-2">
-                      <Switch
-                        checked={r.enabled}
-                        onCheckedChange={() => void toggleRule(r)}
-                        disabled={!isAdmin}
-                      />
-                    </td>
-                    <td className="px-3 py-2">{r.name}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
-                    <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
-                      {PRIORITY_LABEL[r.priority]}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.downloadKbps)}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
-                    {isAdmin && (
-                      <td className="px-3 py-2 text-right">
-                        <Button variant="ghost" size="sm" onClick={() => void removeRule(r.id)}>
-                          Eliminar
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-                {rules.length === 0 && (
+                {loading ? (
+                  <SkeletonRows cols={isAdmin ? 7 : 6} />
+                ) : rules.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center text-muted-foreground">
-                      Sin reglas de QoS.
+                    <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center text-kr-muted">
+                      Aún no hay reglas de QoS.
                     </td>
                   </tr>
+                ) : (
+                  rules.map((r) => (
+                    <tr key={r.id} className="border-t border-border">
+                      <td className="px-3 py-2">
+                        <Switch
+                          checked={r.enabled}
+                          onCheckedChange={() => void toggleRule(r)}
+                          disabled={!isAdmin}
+                        />
+                      </td>
+                      <td className="px-3 py-2">{r.name}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
+                      <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
+                        {PRIORITY_LABEL[r.priority]}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.downloadKbps)}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
+                      {isAdmin && (
+                        <td className="px-3 py-2 text-right">
+                          <Button variant="ghost" size="sm" onClick={() => void removeRule(r.id)}>
+                            Eliminar
+                          </Button>
+                        </td>
+                      )}
+                    </tr>
+                  ))
                 )}
               </tbody>
             </table>

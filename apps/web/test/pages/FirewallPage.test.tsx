@@ -82,4 +82,17 @@ describe('FirewallPage', () => {
     expect(screen.queryByText('Nueva regla')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Añadir regla/ })).not.toBeInTheDocument();
   });
+
+  it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<FirewallPage />);
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+  });
+
+  it('muestra el estado vacío honesto sin reglas (US-93)', async () => {
+    apiMock.get.mockReset().mockResolvedValue([]);
+    render(<FirewallPage />);
+    expect(await screen.findByText(/Aún no hay reglas configuradas/)).toBeInTheDocument();
+  });
 });

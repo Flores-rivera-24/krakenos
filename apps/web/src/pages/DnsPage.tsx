@@ -6,7 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiRequestError, api } from '@/lib/api';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { SkeletonRows } from '@/components/ui/skeleton';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
 
 export function DnsPage() {
@@ -16,10 +19,11 @@ export function DnsPage() {
   const [queries, setQueries] = useState<DnsQuery[]>([]);
   const [domain, setDomain] = useState('');
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
-    void Promise.all([
+  const load = () =>
+    Promise.all([
       api.get<DnsStats>('/dns/stats'),
       api.get<BlockedDomain[]>('/dns/blocklist'),
       api.get<DnsQuery[]>('/dns/queries?limit=20'),
@@ -29,10 +33,11 @@ export function DnsPage() {
         setBlocklist(b);
         setQueries(q);
       })
-      .catch(() => setError('No se pudo cargar el DNS'));
-  };
+      .catch((err) => setError(describeError(err, 'No se pudo cargar el DNS')));
 
-  useEffect(load, []);
+  useEffect(() => {
+    void load().finally(() => setLoading(false));
+  }, []);
 
   const addDomain = async (e: FormEvent) => {
     e.preventDefault();
@@ -42,9 +47,9 @@ export function DnsPage() {
     try {
       await api.post<BlockedDomain>('/dns/blocklist', { domain: domain.trim() });
       setDomain('');
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo bloquear el dominio');
+      setError(describeError(err, 'No se pudo bloquear el dominio'));
     } finally {
       setBusy(false);
     }
@@ -54,9 +59,9 @@ export function DnsPage() {
     setError(null);
     try {
       await api.del(`/dns/blocklist/${id}`);
-      load();
+      void load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo eliminar');
+      setError(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -69,10 +74,14 @@ export function DnsPage() {
         </p>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard title="Consultas" value={stats ? stats.totalQueries.toLocaleString() : '—'} icon={Globe} />
+        <StatCard
+          title="Consultas"
+          value={stats ? stats.totalQueries.toLocaleString() : '—'}
+          icon={Globe}
+        />
         <StatCard
           title="Bloqueadas"
           value={stats ? stats.blockedQueries.toLocaleString() : '—'}
@@ -85,7 +94,11 @@ export function DnsPage() {
           icon={ShieldCheck}
           accent="text-green-500"
         />
-        <StatCard title="Dominios" value={stats ? `${stats.blocklistSize}` : '—'} icon={ListFilter} />
+        <StatCard
+          title="Dominios"
+          value={stats ? `${stats.blocklistSize}` : '—'}
+          icon={ListFilter}
+        />
       </div>
 
       {isAdmin && (
@@ -128,24 +141,31 @@ export function DnsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {blocklist.map((b) => (
-                    <tr key={b.id} className="border-t border-border">
-                      <td className="px-3 py-2 font-mono text-xs">{b.domain}</td>
-                      {isAdmin && (
-                        <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => void removeDomain(b.id)}>
-                            Quitar
-                          </Button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                  {blocklist.length === 0 && (
+                  {loading ? (
+                    <SkeletonRows cols={isAdmin ? 2 : 1} />
+                  ) : blocklist.length === 0 ? (
                     <tr>
-                      <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center text-muted-foreground">
-                        Sin dominios bloqueados.
+                      <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center text-kr-muted">
+                        Aún no hay dominios bloqueados.
                       </td>
                     </tr>
+                  ) : (
+                    blocklist.map((b) => (
+                      <tr key={b.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-mono text-xs">{b.domain}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-2 text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void removeDomain(b.id)}
+                            >
+                              Quitar
+                            </Button>
+                          </td>
+                        )}
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
@@ -168,23 +188,28 @@ export function DnsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {queries.map((q, i) => (
-                    <tr key={`${q.timestamp}-${i}`} className="border-t border-border">
-                      <td className="px-3 py-2 font-mono text-xs">{q.domain}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{q.client}</td>
-                      <td className="px-3 py-2">
-                        <span className={q.blocked ? 'text-destructive' : 'text-green-500'}>
-                          {q.blocked ? 'bloqueada' : 'permitida'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {queries.length === 0 && (
+                  {loading ? (
+                    <SkeletonRows cols={3} />
+                  ) : queries.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-3 py-8 text-center text-muted-foreground">
-                        Sin consultas recientes.
+                      <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
+                        Aún no hay consultas recientes.
                       </td>
                     </tr>
+                  ) : (
+                    queries.map((q, i) => (
+                      <tr key={`${q.timestamp}-${i}`} className="border-t border-border">
+                        <td className="px-3 py-2 font-mono text-xs">{q.domain}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                          {q.client}
+                        </td>
+                        <td className="px-3 py-2">
+                          <span className={q.blocked ? 'text-destructive' : 'text-green-500'}>
+                            {q.blocked ? 'bloqueada' : 'permitida'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>
