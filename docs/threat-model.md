@@ -145,8 +145,8 @@ por una verificación e2e.
 - **E (ámbito)**: ✅ la allowlist del helper filtra **el verbo** (`iptables -A`, `tc qdisc`, `wg set`…) **y el ámbito** — cadena/interfaz (US-74, F1). Defensa en profundidad completada en el camino privilegiado.
 
 ### 4.8 Endpoints públicos de la pantalla de login
-- `GET /api/system/info` → `{homeName, version}`; `GET /api/auth/last-session` → `{timestamp, ip}`.
-- **I**: divulgación pre-auth de versión (apoyo a fingerprinting/CVE) e IP+hora del último login admin (F5). Por diseño (US-49), pero sin autenticar.
+- `GET /api/system/info` → `{homeName}` (+ `version` solo si `PUBLIC_VERSION`); `GET /api/auth/last-session` → `null` salvo `PUBLIC_LAST_SESSION`.
+- **I**: ✅ divulgación pre-auth **off por defecto** (US-83): `version` (fingerprinting/CVE) y la última sesión (IP+hora del admin) solo se exponen tras activar su flag. `homeName` se mantiene (branding del login, baja sensibilidad).
 
 ---
 
@@ -216,7 +216,8 @@ por una verificación e2e.
 | **US-80** | Re-verificación periódica de sesión en Socket.io | F7 (arreglo) | ✅ hecho |
 | **US-81** | Cierre de la ventana de primer admin (token out-of-band) | F10 (arreglo) | ✅ hecho |
 | **US-82** | Challenge WebAuthn por ceremonia (tabla propia) | F6 (arreglo) | ✅ hecho |
-| **US-83…US-86** | Resto de la remediación de abajo | F9/F11 + e2e | ⏳ pendiente |
+| **US-83** | Reducir divulgación pre-auth (`version`/`last-session` tras flag) | F5/doc (arreglo) | ✅ hecho |
+| **US-84…US-86** | Resto de la remediación de abajo | F9/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
@@ -257,8 +258,9 @@ cifra), y F13 completo (US-91).
 9. **US-82 · Endurecer challenge WebAuthn (F6).** ✅ **Hecho.** Tabla `WebAuthnChallenge` (una fila por
    ceremonia, `type` register/authenticate); al verificar se consume el desafío concreto que presenta la
    respuesta (challenge del `clientDataJSON`), soportando ceremonias concurrentes.
-10. **US-83 · Reducir divulgación pre-auth (F5).** Evaluar gating o reducción de `system/info`
-    (omitir `version`) y `last-session` (sólo tras primer login, o detrás de un flag).
+10. **US-83 · Reducir divulgación pre-auth (F5).** ✅ **Hecho.** `version` (en `system/info`) y
+    `last-session` están **off por defecto**, tras los flags `PUBLIC_VERSION`/`PUBLIC_LAST_SESSION`
+    (`config/env.ts:publicDisclosure`). `homeName` se mantiene (branding del login).
 11. **US-84 · Validación IP/CIDR estricta + fuzz (F12).** Acotar octetos/IPv6 y añadir un test
     property-based/fuzz al builder de `iptables`.
 12. **US-85 · Auditoría de eventos de seguridad robusta (F11).** Cola/reintento para `login_failed`/

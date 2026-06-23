@@ -46,6 +46,19 @@ export function parseTrustProxy(raw: string | undefined): boolean | number | str
   return list.length > 0 ? list : false;
 }
 
+/**
+ * Flags de divulgación pre-auth (US-83, F5). Se leen **en vivo** desde `process.env`
+ * (no se cachean en `env`) para poder activarlos por despliegue sin tocar código.
+ * Por defecto **off**: ni la versión del agente ni la última sesión se exponen sin
+ * autenticar (evita fingerprinting y fuga de IP/actividad del admin).
+ */
+export const publicDisclosure = {
+  /** Exponer `version` en `GET /api/system/info`. */
+  version: (): boolean => process.env.PUBLIC_VERSION === 'true',
+  /** Exponer la última sesión en `GET /api/auth/last-session`. */
+  lastSession: (): boolean => process.env.PUBLIC_LAST_SESSION === 'true',
+};
+
 /** Avisos de configuración de `TRUST_PROXY` (no bloquean el arranque). */
 export function trustProxyWarnings(value: boolean | number | string[]): string[] {
   if (value === true) {

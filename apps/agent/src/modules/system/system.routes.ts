@@ -12,7 +12,7 @@ import type {
 } from '@krakenos/types';
 import { SYSTEM_SETTING_KEYS } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
-import { env } from '../../config/env.js';
+import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
@@ -109,7 +109,12 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // Sin autenticación; no expone nada sensible.
   app.get('/info', { schema: systemInfoSchema }, async (): Promise<SystemPublicInfo> => {
     const row = await app.prisma.setting.findUnique({ where: { key: 'homeName' } });
-    return { homeName: row?.value || 'Mi hogar', version: AGENT_VERSION };
+    // `version` solo si está habilitada su divulgación pre-auth (US-83): omitirla
+    // por defecto evita el fingerprinting/CVE-matching de un atacante no autenticado.
+    return {
+      homeName: row?.value || 'Mi hogar',
+      ...(publicDisclosure.version() ? { version: AGENT_VERSION } : {}),
+    };
   });
 
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
