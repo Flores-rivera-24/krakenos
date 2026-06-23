@@ -91,8 +91,8 @@ por una verificación e2e.
 | Activo | Dónde vive | Protección actual | Impacto si se compromete |
 |---|---|---|---|
 | **Clave privada RS256** | `keys/*.pem` (disco, gitignored) | Permisos de fichero; cargada en memoria al arrancar (`env.ts:140`) | Falsificar **cualquier** sesión (access/refresh/mfa) |
-| **Access token** | Cliente (memoria/localStorage) | Firmado RS256, `iss`/`aud`, `exp` 900 s, `type:'access'` | Acceso de lectura/escritura hasta `exp`; **no revocable** (F9) |
-| **Refresh token** | Cliente + **hash sha256** en `RefreshToken` | Rotatorio, revocable, sólo hash en DB, **detección de reuso** (US-78) | Renovar sesión hasta revocación; un token robado y reusado revoca la familia (F4 ✔) |
+| **Access token** | Cliente (**solo memoria**, US-91) | Firmado RS256, `iss`/`aud`, `exp` 900 s, `type:'access'` | Acceso de lectura/escritura hasta `exp`; **no revocable** (F9) |
+| **Refresh token** | Cookie `httpOnly` en el cliente (US-91) + **hash sha256** en `RefreshToken` | Ilegible por JS; rotatorio, revocable, sólo hash en DB, **detección de reuso** (US-78) | Renovar sesión hasta revocación; un XSS ya no lo lee (F13 ✔), reuso revoca la familia (F4 ✔) |
 | **Token `mfa-pending`** | Cliente, 120 s | Firmado, `type:'mfa-pending'`, `sub` cruzado con email | Reintentos de 2FA durante 120 s (no es access token) |
 | **Hash de contraseña** | `User.passwordHash` | bcrypt cost 12 | Crackeo offline (mitigado por coste) |
 | **Hash de backup codes** | `BackupCode.codeHash` | sha256 de 48 bits aleatorios | Bypass de 2FA si se filtra DB **y** se invierte (alta entropía) |
@@ -169,7 +169,7 @@ por una verificación e2e.
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcanzaba el agente recién instalado reclamaba el admin (sin token out-of-band). | `setup.routes.ts`, `setup/setup-token.ts` | "Admin por el wizard /setup" (CLAUDE.md) | ✅ **Mitigado (US-81):** al arrancar sin usuarios el agente genera un token de configuración y lo **imprime en el log/CLI** (out-of-band); `/setup/init` lo exige (`SETUP_TOKEN_INVALID` si falta/erróneo, intento auditado) y lo invalida al crear el admin. Solo quien tiene acceso al servidor completa el setup. Sigue atómico contra carreras (US-53). |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emitía `log.warn`; eventos de seguridad podían perderse bajo presión de DB. El `detail` guardaba el email de logins fallidos (PII). | `plugins/audit.ts` | "Toda acción relevante queda registrada" (SPECS §9) | ✅ **Mitigado (US-85):** escritura con **reintentos por backoff** (`persistAuditWithRetry`, 100/500/2000 ms; sigue fire-and-forget, no bloquea) antes de rendirse → resiste picos transitorios de DB. **PII minimizada:** los eventos que llevaban el email (`login_failed`/`login_locked` en auth y webauthn) ahora guardan `hashEmail()` (sha256 truncado, `email:` prefijo) — correlacionable, sin texto plano. Tests del reintento (pura) y del hash. |
 | **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acotaba octetos (aceptaba `999.999.999.999`) y el IPv6 era permisivo. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`), `firewall/iptables.helpers.ts` | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87 + US-84):** US-87 añadió validadores anti-inyección puros para wg/qos/vlan. US-84 endurece la regla de firewall: `IP_CIDR_PATTERN` **estricto** (octetos 0-255 y prefijo 0-32 acotados por el patrón; IPv4-only, eliminado el IPv6 permisivo que ni se aplicaría —solo `iptables`, no `ip6tables`) **+** revalidación con `assertIpv4Cidr` en el builder de argv (defensa en profundidad) **+ test fuzz** del builder y del validador (invariante: todo valor que pasa solo contiene `[0-9./]`). |
-| **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usa `zustand/persist({name:'krakenos-auth'})` → ambos tokens quedan en `localStorage`. Un XSS lee el refresh (30 días) → **toma de cuenta persistente**. Mitigado parcialmente en US-90 (CSP); el arreglo real (cookie httpOnly) queda en US-91. | `web/src/store/auth.store.ts:62-107` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | En el **cliente** ambos tokens son legibles por JS. Ver Anexo (§7). |
+| **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usaba `zustand/persist` → ambos tokens en `localStorage`; un XSS leía el refresh (30 días) → toma de cuenta persistente. | `web/src/store/auth.store.ts`, `agent/src/auth/session-cookie.ts` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | ✅ **Resuelto (US-91):** el refresh token vive en una **cookie `httpOnly`+`SameSite=Strict`+`Secure`(condicional)** (ilegible por JS), emitida por los 5 emisores de sesión; el access token vive **solo en memoria** (sin `persist`) y se rehidrata al cargar con un `refresh()` que usa la cookie. `refresh`/`logout`/revoke-others leen la cookie, no el cuerpo. Un XSS ya no puede exfiltrar el refresh (US-90 cerró además la exfil off-origin). Residual: abuso en-página de la sesión viva mientras dura el XSS (inherente; el access es de vida corta, F9). |
 
 ### Controles verificados como correctos (no son hallazgos)
 - **Sin `alg:none`**: la verificación fija `algorithms:['RS256']` y `allowedIss`/`allowedAud` (`auth.ts:89,103-108`); el `kid` sólo elige clave pública, nunca el algoritmo. ✔
@@ -209,7 +209,7 @@ por una verificación e2e.
 | **US-74** | Allowlist del helper por ámbito (cadena/interfaz) | F1 (arreglo) | ✅ hecho |
 | **US-75** | Cotas en ajustes en caliente (`accessTokenTtl`/`loginRateLimit`) | F5 (arreglo) | ✅ hecho |
 | **US-76** | `TRUST_PROXY` seguro (nº de hops / lista de proxies) | F2 (arreglo) | ✅ hecho |
-| **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
+| **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ✅ hecho |
 | **US-77** | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
 | **US-78** | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
 | **US-79** | Verificación de permisos de ficheros con secretos al arrancar | F8 (parcial) | ✅ hecho |
@@ -221,8 +221,10 @@ por una verificación e2e.
 | **US-85** | Auditoría robusta (reintentos) + minimizar PII (hash email) | F11 (arreglo) | ✅ hecho |
 | **US-86** | Verificación e2e del límite de privilegios (hardware/root real) | F9 + e2e | ⏳ pendiente (no es código) |
 
-**Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
-cifra), y F13 completo (US-91).
+**Pendientes destacados:** toda la remediación de **código** del modelo (F1…F13) está **cerrada**. Quedan
+solo (a) **US-86** — verificación e2e del límite de privilegios con hardware/root real (no es código), y
+(b) la mejora futura de F8 — un **secret store / cifrado en reposo** (US-92 detecta secretos y US-79
+verifica permisos, pero no cifra).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
 1. **US-74 · Allowlist del helper por ámbito (F1).** ✅ **Hecho.** `krakenos-helper.sh` exige que
@@ -281,12 +283,15 @@ cifra), y F13 completo (US-91).
 
 Revisión del cliente web (`apps/web/src/store/auth.store.ts`, `lib/api.ts`, `lib/socket.ts`).
 
+> **Actualización (US-91, hecho):** lo que sigue describe la postura **previa** (US-90). Tras US-91 el
+> refresh vive en una cookie `httpOnly` (ilegible por JS) y el access solo en memoria; ver §7.5.
+
 ### 7.1 Dónde viven exactamente los tokens
 
-| Token | Vida | Ubicación real |
+| Token | Vida | Ubicación (tras US-91) |
 |---|---|---|
-| **access** | 15 min (def.) | Estado de Zustand (memoria) **y `localStorage`** |
-| **refresh** | 30 días, rotatorio | Estado de Zustand (memoria) **y `localStorage`** |
+| **access** | 15 min (def.) | Estado de Zustand (**solo memoria**; ya no se persiste) |
+| **refresh** | 30 días, rotatorio | **Cookie `httpOnly`+`SameSite=Strict`** (ilegible por JS) |
 
 El store usa `zustand/persist` con `{ name: 'krakenos-auth' }` y **storage por defecto =
 `localStorage`** (`auth.store.ts:62-107`). No hay `partialize`, así que se persiste todo el
@@ -332,32 +337,29 @@ exfiltración por **navegación de nivel superior** (`location = 'https://atacan
 gobierna `connect-src` y para la que `navigate-to` está deprecada). Por eso la CSP es **mitigación
 en profundidad**, no la solución: mientras el refresh sea legible por JS, el riesgo residual es alto.
 
-### 7.4 Decisión: por qué la cookie `httpOnly` se difiere (y no se hace ahora)
+### 7.4 Cómo se implementó (US-91)
 
-El arreglo correcto es **refresh en cookie `httpOnly`+`SameSite` + access sólo en memoria**, pero
-es **demasiado invasivo para un cambio acotado y de bajo riesgo** porque toca, de forma transversal:
+El arreglo —**refresh en cookie `httpOnly`+`SameSite` + access sólo en memoria**— se hizo en US-91,
+tocando de forma transversal:
 
-1. **Cuatro emisores de sesión** (`auth/login`, `setup/init`, `webauthn authenticate/verify`,
-   `backup-codes/verify`) deben **fijar la cookie**, además de `auth/refresh`.
-2. El **contrato por cuerpo** de `auth/refresh` y `auth/logout` (hoy reciben `refreshToken` en el
-   body) cambia a leer de cookie → afecta schemas y **~28 referencias en tests**.
-3. La función **"cerrar otras sesiones manteniendo la actual"** (US-41) pasa hoy el
-   `keepRefreshToken` desde el cliente; con la cookie `httpOnly` el cliente ya no lo conoce →
-   hay que reidentificar la sesión actual por la cookie (rediseño).
-4. **Frontend:** dejar de persistir tokens + **arranque con `refresh()` por cookie al cargar**
-   (hoy la sesión sobrevive a la recarga vía `localStorage`).
-5. **`Secure` condicional** (dev es HTTP en `:5173` con proxy de Vite → mismo origen; prod puede ser
-   HTTPS) y **postura CSRF** nueva (la cookie viaja sola ⇒ `SameSite=Lax/Strict` + posible token CSRF).
+1. **Cinco emisores de sesión** (`auth/login`, `setup/init`, `webauthn authenticate/verify`,
+   `backup-codes/verify`, `auth/refresh`) fijan la cookie vía un helper común (`auth/session-cookie.ts:sendSession`).
+2. El **contrato por cuerpo** de `auth/refresh` y `auth/logout` pasó a leer de cookie (`readRefreshCookie`);
+   se quitó `refreshToken` de los schemas de respuesta y los ~30 tests se migraron a cookies.
+3. **"Cerrar otras sesiones"** (US-41) identifica la sesión a conservar por la **cookie**, no por el cuerpo.
+4. **Frontend:** el store dejó de persistir (access solo en memoria); al cargar, `bootstrapSession()`
+   hace `refresh()` por cookie y, si hay sesión, carga el usuario con `/auth/status`.
+5. **`Secure` condicional** (`env.https !== null || env.behindProxy`; dev HTTP → off) y **CSRF** cubierto por
+   `SameSite=Strict` (app del mismo origen) + el access viaja por `Authorization: Bearer`, no por cookie,
+   así que las mutaciones de la API no son CSRF-ables; solo `refresh`/`logout` usan la cookie y `Strict` las protege.
 
-Es una historia propia, no un retoque. Hacerla aquí arriesga romper US-41 y dejar tests en rojo.
+### 7.5 Veredicto
 
-### 7.5 Veredicto y seguimiento
-
-- **Hecho ahora (US-90, bajo riesgo):** CSP `connect-src 'self'` + `frame-src 'none'` → cierra la
-  exfiltración off-origin del token. **Reduce** el radio de impacto, **no lo elimina**.
-- **Pendiente (US-91 · 🔴, F13):** refresh token en cookie `httpOnly`+`SameSite`+`Secure`(condicional),
-  access token sólo en memoria con bootstrap `refresh()` al cargar, rediseño de `keepRefreshToken`
-  por cookie y postura CSRF. Es **la** medida que hace el refresh ilegible por JS.
+- **US-90 (CSP `connect-src 'self'` + `frame-src 'none'`):** cierra la exfiltración off-origin del token.
+- **US-91 (cookie `httpOnly` + access en memoria):** ✅ hace el refresh **ilegible por JS** → cierra F13.
+  Residual honesto: un XSS *en vivo* aún puede usar la sesión en-página mientras dura (no hay forma de
+  evitarlo del todo si se ejecuta JS en el origen), pero ya no roba el refresh de larga vida ni logra una
+  toma de cuenta **persistente**; el access es de vida corta (≤ 1 h, US-75) y no revocable (F9).
 
 ---
 

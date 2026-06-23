@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { verifySession } from '@/lib/session';
+import { bootstrapSession } from '@/lib/session';
 import { useAuthStore } from '@/store/auth.store';
 
 // Lazy-load de páginas: cada una es su propio chunk. Aísla Recharts
@@ -51,14 +51,11 @@ function RequireAuth() {
 }
 
 export function App() {
-  // Al recargar, valida la sesión persistida antes de renderizar las rutas.
+  // Al cargar, intenta restaurar la sesión vía la cookie httpOnly del refresh
+  // token (el access token no se persiste; solo vive en memoria, US-91).
   const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (useAuthStore.getState().tokens) {
-      void verifySession().finally(() => setReady(true));
-    } else {
-      setReady(true);
-    }
+    void bootstrapSession().finally(() => setReady(true));
   }, []);
 
   if (!ready) return <FullScreenLoader />;

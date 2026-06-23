@@ -1,20 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { buildTestApp, eventually, resetDb, seedUser } from '../helpers/app.js';
+import {
+  buildTestApp,
+  eventually,
+  refreshCookie,
+  refreshCookieHeader,
+  resetDb,
+  seedUser,
+} from '../helpers/app.js';
 
 const PASSWORD = 'password123';
 
+// El refresh token vive en la cookie httpOnly (US-91); los helpers lo manejan como tal.
 async function login(app: FastifyInstance, email: string): Promise<string> {
   const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password: PASSWORD } });
-  return (res.json() as { tokens: { refreshToken: string } }).tokens.refreshToken;
+  return refreshCookie(res);
 }
 
-function refresh(app: FastifyInstance, refreshToken: string) {
-  return app.inject({ method: 'POST', url: '/api/auth/refresh', payload: { refreshToken } });
+function refresh(app: FastifyInstance, token: string) {
+  return app.inject({ method: 'POST', url: '/api/auth/refresh', cookies: refreshCookieHeader(token) });
 }
 
-function logout(app: FastifyInstance, refreshToken: string) {
-  return app.inject({ method: 'POST', url: '/api/auth/logout', payload: { refreshToken } });
+function logout(app: FastifyInstance, token: string) {
+  return app.inject({ method: 'POST', url: '/api/auth/logout', cookies: refreshCookieHeader(token) });
 }
 
 describe('detección de reuso de refresh (US-78, F4)', () => {
@@ -39,7 +47,7 @@ describe('detección de reuso de refresh (US-78, F4)', () => {
     // Rotación normal: el padre emite un hijo.
     const ok = await refresh(app, parent);
     expect(ok.statusCode).toBe(200);
-    const child = (ok.json() as { refreshToken: string }).refreshToken;
+    const child = refreshCookie(ok); // el hijo viene en la cookie rotada
 
     // Reuso del padre ya rotado → señal de robo.
     const reuse = await refresh(app, parent);

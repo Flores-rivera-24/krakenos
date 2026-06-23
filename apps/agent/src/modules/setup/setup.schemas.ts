@@ -11,14 +11,14 @@ const userResponse = {
   required: ['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'],
 } as const;
 
+// El refresh token NO va en el cuerpo (US-91): viaja en la cookie httpOnly.
 const tokensResponse = {
   type: 'object',
   properties: {
     accessToken: { type: 'string' },
-    refreshToken: { type: 'string' },
     expiresIn: { type: 'integer' },
   },
-  required: ['accessToken', 'refreshToken', 'expiresIn'],
+  required: ['accessToken', 'expiresIn'],
 } as const;
 
 export const setupStatusSchema = {

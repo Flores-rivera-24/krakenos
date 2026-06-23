@@ -267,7 +267,6 @@ function PasskeysCard() {
 export function SecuritySection({ settings, patch, isAdmin }: Props) {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
-  const currentRefresh = useAuthStore((s) => s.tokens?.refreshToken);
   const [sessions, setSessions] = useState<AuthSession[] | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [theme, setTheme] = useState<Theme>(settings.theme === 'light' ? 'light' : 'dark');
@@ -294,7 +293,8 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
   };
 
   const closeOthers = async () => {
-    await api.del('/auth/sessions', { body: { keepRefreshToken: currentRefresh } });
+    // La sesión a conservar es la actual, identificada por la cookie (US-91).
+    await api.del('/auth/sessions');
     loadSessions();
   };
 

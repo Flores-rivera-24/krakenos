@@ -1,11 +1,12 @@
-import type {
-  LastSession,
-  LoginRequest,
-  RefreshRequest,
-  RevokeSessionsRequest,
-} from '@krakenos/types';
+import type { LastSession, LoginRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { loginLockout } from '../../auth/login-lockout.js';
+import {
+  clearRefreshCookie,
+  readRefreshCookie,
+  sendSession,
+  setRefreshCookie,
+} from '../../auth/session-cookie.js';
 import { publicDisclosure } from '../../config/env.js';
 import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
@@ -93,9 +94,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         });
       }
 
-      const result = await service.issueSessionForUserId(user.id);
-      app.audit({ action: 'auth.login', userId: result.user.id, ip: req.ip });
-      return reply.send(result);
+      const session = await service.issueSessionForUserId(user.id);
+      app.audit({ action: 'auth.login', userId: session.user.id, ip: req.ip });
+      return sendSession(reply, session);
     } catch (err) {
       if (err instanceof AuthError) {
         // Login fallido: evento de seguridad (auditoría + push, US-45) y suma al
@@ -109,7 +110,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.post<{ Body: RefreshRequest }>(
+  app.post(
     '/refresh',
     {
       schema: refreshSchema,
@@ -118,11 +119,19 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       config: { rateLimit: { max: 60, timeWindow: '1 minute' } },
     },
     async (req, reply) => {
+      // El refresh token llega por la cookie `httpOnly` (US-91), no por el cuerpo.
+      const current = readRefreshCookie(req);
+      if (!current) {
+        return reply.code(401).send({ code: 'AUTH_INVALID_TOKEN', message: 'Sin sesión' });
+      }
       try {
-        const tokens = await service.refresh(req.body.refreshToken, req.ip);
-        return reply.send(tokens);
+        const tokens = await service.refresh(current, req.ip);
+        setRefreshCookie(reply, tokens.refreshToken);
+        return reply.send({ accessToken: tokens.accessToken, expiresIn: tokens.expiresIn });
       } catch (err) {
         if (err instanceof AuthError) {
+          // Refresh inválido/reusado: la cookie ya no sirve, se limpia.
+          clearRefreshCookie(reply);
           return reply.code(401).send({ code: err.code, message: err.message });
         }
         throw err;
@@ -130,14 +139,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.post<{ Body: RefreshRequest }>(
-    '/logout',
-    { schema: logoutSchema },
-    async (req, reply) => {
-      await service.logout(req.body.refreshToken);
-      return reply.code(204).send();
-    },
-  );
+  app.post('/logout', { schema: logoutSchema }, async (req, reply) => {
+    const current = readRefreshCookie(req);
+    if (current) await service.logout(current);
+    clearRefreshCookie(reply);
+    return reply.code(204).send();
+  });
 
   // ---- Sesiones (US-41) ----
 
@@ -167,11 +174,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
   );
 
-  app.delete<{ Body: RevokeSessionsRequest }>(
+  app.delete(
     '/sessions',
     { schema: revokeSessionsSchema, preHandler: app.authenticate },
     async (req, reply) => {
-      await service.revokeOtherSessions(req.user.sub, req.body?.keepRefreshToken);
+      // La sesión a conservar es la actual, identificada por la cookie (US-91):
+      // el cliente ya no conoce el refresh token.
+      await service.revokeOtherSessions(req.user.sub, readRefreshCookie(req) ?? undefined);
       app.audit({ action: 'auth.sessions.revoke-others', userId: req.user.sub, ip: req.ip });
       return reply.code(204).send();
     },

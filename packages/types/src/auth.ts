@@ -59,14 +59,15 @@ export interface LoginRequest {
   password: string;
 }
 
-export interface RefreshRequest {
-  refreshToken: string;
-}
-
-/** Respuesta de login y de refresh. */
+/**
+ * Tokens de sesión devueltos al cliente. El **refresh token ya no viaja en el
+ * cuerpo** (US-91, F13): el servidor lo emite en una cookie `httpOnly`+`SameSite`
+ * (ilegible por JS), y el access token vive solo en memoria del cliente. Así un
+ * XSS no puede robar el refresh (de larga vida) ni montar una toma de cuenta
+ * persistente. `POST /auth/refresh` y `/auth/logout` leen la cookie, no el cuerpo.
+ */
 export interface AuthTokens {
   accessToken: string;
-  refreshToken: string;
   /** Segundos hasta la expiración del access token. */
   expiresIn: number;
 }
@@ -109,8 +110,8 @@ export interface AuthSession {
   expiresAt: IsoDateTime;
 }
 
-/** Cuerpo opcional de `DELETE /api/auth/sessions` (cerrar todas menos la actual). */
-export interface RevokeSessionsRequest {
-  /** Refresh token de la sesión a conservar (no se revoca). */
-  keepRefreshToken?: string;
-}
+/**
+ * `DELETE /api/auth/sessions` cierra todas las sesiones **menos la actual**. La
+ * sesión a conservar se identifica por la **cookie de refresh** (US-91), no por
+ * el cuerpo: el cliente ya no conoce el refresh token.
+ */

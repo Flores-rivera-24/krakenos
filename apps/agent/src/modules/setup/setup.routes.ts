@@ -2,6 +2,7 @@ import type { SetupInitRequest } from '@krakenos/types';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import type { FastifyPluginAsync } from 'fastify';
+import { sendSession } from '../../auth/session-cookie.js';
 import { AuthService } from '../auth/auth.service.js';
 import { setupToken } from './setup-token.js';
 import { setupInitSchema, setupStatusSchema } from './setup.schemas.js';
@@ -78,10 +79,10 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
       // Admin creado: el token de setup ya no sirve (de un solo uso).
       setupToken.clear();
 
-      // Inicia sesión inmediatamente devolviendo user + tokens.
-      const result = await auth.login(email, password);
-      app.audit({ action: 'setup.init', userId: result.user.id, ip: req.ip });
-      return reply.send(result);
+      // Inicia sesión inmediatamente: refresh en cookie httpOnly, access en el cuerpo (US-91).
+      const session = await auth.login(email, password);
+      app.audit({ action: 'setup.init', userId: session.user.id, ip: req.ip });
+      return sendSession(reply, session);
     },
   );
 };

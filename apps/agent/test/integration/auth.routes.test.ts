@@ -1,15 +1,28 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import {
+  authHeader,
+  buildTestApp,
+  eventually,
+  refreshCookie,
+  refreshCookieHeader,
+  resetDb,
+  seedUser,
+  signAccess,
+} from '../helpers/app.js';
 
-/** Hace login por HTTP y devuelve los tokens. */
+/** Hace login por HTTP y devuelve el access token (cuerpo) + el refresh (cookie httpOnly). */
 async function login(app: FastifyInstance, email: string, password: string) {
   const res = await app.inject({
     method: 'POST',
     url: '/api/auth/login',
     payload: { email, password },
   });
-  return { status: res.statusCode, body: res.json() as { tokens: { accessToken: string; refreshToken: string } } };
+  return {
+    status: res.statusCode,
+    body: res.json() as { tokens: { accessToken: string } },
+    cookie: refreshCookie(res),
+  };
 }
 
 describe('rutas de autenticación', () => {
@@ -29,8 +42,10 @@ describe('rutas de autenticación', () => {
 
   it('flujo completo: login → status → refresh → logout', async () => {
     const user = await seedUser(app, { email: 'flujo@krakenos.test', password: 'password123' });
-    const { status, body } = await login(app, 'flujo@krakenos.test', 'password123');
+    const { status, body, cookie } = await login(app, 'flujo@krakenos.test', 'password123');
     expect(status).toBe(200);
+    expect(cookie).toBeTruthy(); // el refresh token vino en la cookie httpOnly
+    expect(body.tokens).not.toHaveProperty('refreshToken'); // nunca en el cuerpo (US-91)
 
     // status con el access token recién emitido
     const statusRes = await app.inject({
@@ -41,21 +56,21 @@ describe('rutas de autenticación', () => {
     expect(statusRes.statusCode).toBe(200);
     expect(statusRes.json().id).toBe(user.id);
 
-    // refresh rota el token
+    // refresh rota el token (lee la cookie, devuelve una nueva)
     const refreshRes = await app.inject({
       method: 'POST',
       url: '/api/auth/refresh',
-      payload: { refreshToken: body.tokens.refreshToken },
+      cookies: refreshCookieHeader(cookie),
     });
     expect(refreshRes.statusCode).toBe(200);
-    const rotated = refreshRes.json() as { refreshToken: string };
-    expect(rotated.refreshToken).not.toBe(body.tokens.refreshToken);
+    const rotatedCookie = refreshCookie(refreshRes);
+    expect(rotatedCookie).not.toBe(cookie);
 
-    // el refresh viejo ya no sirve (401)
+    // la cookie vieja ya no sirve (401)
     const reuse = await app.inject({
       method: 'POST',
       url: '/api/auth/refresh',
-      payload: { refreshToken: body.tokens.refreshToken },
+      cookies: refreshCookieHeader(cookie),
     });
     expect(reuse.statusCode).toBe(401);
 
@@ -63,16 +78,53 @@ describe('rutas de autenticación', () => {
     const logoutRes = await app.inject({
       method: 'POST',
       url: '/api/auth/logout',
-      payload: { refreshToken: rotated.refreshToken },
+      cookies: refreshCookieHeader(rotatedCookie),
     });
     expect(logoutRes.statusCode).toBe(204);
 
     const afterLogout = await app.inject({
       method: 'POST',
       url: '/api/auth/refresh',
-      payload: { refreshToken: rotated.refreshToken },
+      cookies: refreshCookieHeader(rotatedCookie),
     });
     expect(afterLogout.statusCode).toBe(401);
+  });
+
+  it('el refresh va en cookie httpOnly+SameSite (path /api/auth), no en el cuerpo (US-91, F13)', async () => {
+    await seedUser(app, { email: 'cookie@krakenos.test', password: 'password123' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'cookie@krakenos.test', password: 'password123' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().tokens).not.toHaveProperty('refreshToken');
+
+    const c = res.cookies.find((x) => x.name === 'krakenos_rt');
+    expect(c).toBeDefined();
+    expect(c!.value).toBeTruthy();
+    expect(c!.httpOnly).toBe(true); // ilegible por JS → un XSS no roba el refresh
+    expect(String(c!.sameSite).toLowerCase()).toBe('strict'); // anti-CSRF
+    expect(c!.path).toBe('/api/auth');
+  });
+
+  it('refresh sin la cookie de refresh devuelve 401 (US-91)', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/auth/refresh' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('logout borra la cookie de refresh (US-91)', async () => {
+    await seedUser(app, { email: 'lo@krakenos.test', password: 'password123' });
+    const { cookie } = await login(app, 'lo@krakenos.test', 'password123');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      cookies: refreshCookieHeader(cookie),
+    });
+    expect(res.statusCode).toBe(204);
+    const cleared = res.cookies.find((x) => x.name === 'krakenos_rt');
+    // clearCookie emite la cookie vacía / caducada.
+    expect(cleared?.value === '' || cleared?.maxAge === 0 || cleared?.expires !== undefined).toBe(true);
   });
 
   it('GET /api/auth/last-session devuelve null por defecto (US-83, divulgación off)', async () => {
@@ -114,10 +166,10 @@ describe('rutas de autenticación', () => {
 
   it('login de usuario sin passkeys sigue emitiendo tokens (US-50)', async () => {
     await seedUser(app, { email: 'nopk@krakenos.test', password: 'password123' });
-    const { status, body } = await login(app, 'nopk@krakenos.test', 'password123');
+    const { status, body, cookie } = await login(app, 'nopk@krakenos.test', 'password123');
     expect(status).toBe(200);
     expect(body.tokens.accessToken).toBeTruthy();
-    expect(body.tokens.refreshToken).toBeTruthy();
+    expect(cookie).toBeTruthy(); // refresh en cookie httpOnly, no en el cuerpo (US-91)
   });
 
   it('login de usuario con passkeys devuelve { requiresWebAuthn } sin tokens (US-50)', async () => {
@@ -225,8 +277,8 @@ describe('rutas de autenticación', () => {
   // ---- Sesiones (US-41) ----
 
   async function loginOk(app: FastifyInstance, email: string, password: string) {
-    const { body } = await login(app, email, password);
-    return body.tokens;
+    const { body, cookie } = await login(app, email, password);
+    return { accessToken: body.tokens.accessToken, cookie };
   }
 
   it('GET /api/auth/sessions lista solo las sesiones activas del usuario', async () => {
@@ -275,7 +327,7 @@ describe('rutas de autenticación', () => {
       method: 'DELETE',
       url: '/api/auth/sessions',
       headers: authHeader(a.accessToken),
-      payload: { keepRefreshToken: a.refreshToken },
+      cookies: refreshCookieHeader(a.cookie), // la sesión a conservar = la de la cookie (US-91)
     });
     expect(del.statusCode).toBe(204);
 
