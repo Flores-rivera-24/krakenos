@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
@@ -67,6 +68,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   if (opts.rateLimit) {
     await app.register(rateLimit, { global: false });
   }
+  await app.register(cookie); // refresh token en cookie httpOnly (US-91)
   await app.register(prismaPlugin);
   await app.register(auditPlugin);
   await app.register(authPlugin);
@@ -180,6 +182,16 @@ export function signMfaPending(
 /** Header de autorización `Bearer` listo para inject. */
 export function authHeader(token: string): { authorization: string } {
   return { authorization: `Bearer ${token}` };
+}
+
+/** Extrae el valor de la cookie del refresh token de una respuesta de inject (US-91). */
+export function refreshCookie(res: { cookies: Array<{ name: string; value: string }> }): string {
+  return res.cookies.find((c) => c.name === 'krakenos_rt')?.value ?? '';
+}
+
+/** Cookies para inject que envían el refresh token (US-91). */
+export function refreshCookieHeader(token: string): { krakenos_rt: string } {
+  return { krakenos_rt: token };
 }
 
 /**

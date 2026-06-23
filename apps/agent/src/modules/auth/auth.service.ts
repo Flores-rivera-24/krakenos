@@ -1,8 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type {
   AuthSession,
-  AuthTokens,
-  LoginResponse,
   MfaPendingTokenClaims,
   RefreshTokenClaims,
   User,
@@ -16,6 +14,23 @@ import { SETTING_BOUNDS, clampToBound } from '../../config/settings-bounds.js';
 
 /** Validez del token efímero de 2FA pendiente (US-51): 2 minutos. */
 const MFA_PENDING_TTL_SEC = 2 * 60;
+
+/**
+ * Tokens emitidos **internamente** (US-91): incluyen el refresh token para que la
+ * ruta lo fije en la cookie `httpOnly`. La ruta nunca lo devuelve en el cuerpo —
+ * al cliente solo le llega `{ accessToken, expiresIn }` (el `AuthTokens` público).
+ */
+export interface IssuedTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+}
+
+/** Sesión emitida internamente: usuario + tokens (con refresh para la cookie). */
+export interface IssuedSession {
+  user: User;
+  tokens: IssuedTokens;
+}
 
 /** Error de dominio de autenticación con código estable. */
 export class AuthError extends Error {
@@ -68,7 +83,7 @@ export class AuthService {
   }
 
   /** Firma access + refresh y persiste el hash del refresh token. */
-  private async issueTokens(user: DbUser): Promise<AuthTokens> {
+  private async issueTokens(user: DbUser): Promise<IssuedTokens> {
     const accessTtl = await this.accessTtl();
     const accessToken = this.app.jwt.sign(
       {
@@ -242,7 +257,7 @@ export class AuthService {
    * Emite una sesión (user + tokens) para un usuario ya autenticado por otro medio
    * (contraseña verificada, o passkey WebAuthn tras el 2FA).
    */
-  async issueSessionForUserId(userId: string): Promise<LoginResponse> {
+  async issueSessionForUserId(userId: string): Promise<IssuedSession> {
     const row = (await this.app.prisma.user.findUnique({ where: { id: userId } })) as DbUser | null;
     if (!row) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
@@ -250,7 +265,7 @@ export class AuthService {
     return { user: toUser(row), tokens: await this.issueTokens(row) };
   }
 
-  async login(email: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string): Promise<IssuedSession> {
     const user = await this.verifyCredentials(email, password);
     return this.issueSessionForUserId(user.id);
   }
@@ -261,7 +276,7 @@ export class AuthService {
    * es señal de robo (el legítimo y el atacante comparten el mismo padre) → se
    * revoca **toda la familia** del usuario y se registra un evento de seguridad.
    */
-  async refresh(refreshToken: string, ip?: string | null): Promise<AuthTokens> {
+  async refresh(refreshToken: string, ip?: string | null): Promise<IssuedTokens> {
     let claims: RefreshTokenClaims;
     try {
       // `verifyToken` resuelve la clave por `kid` (rotación RS256, US-64): un

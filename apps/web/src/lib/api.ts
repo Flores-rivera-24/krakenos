@@ -23,6 +23,8 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
 
   const res = await fetch(`/api${path}`, {
     ...rest,
+    // Envía la cookie httpOnly del refresh token cuando aplica (logout/revoke, US-91).
+    credentials: 'same-origin',
     headers: {
       'Content-Type': 'application/json',
       ...(token && !anonymous ? { Authorization: `Bearer ${token}` } : {}),

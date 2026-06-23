@@ -16,14 +16,14 @@ const userResponse = {
   required: ['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'],
 } as const;
 
+// El refresh token NO va en el cuerpo (US-91): viaja en la cookie httpOnly.
 const tokensResponse = {
   type: 'object',
   properties: {
     accessToken: { type: 'string' },
-    refreshToken: { type: 'string' },
     expiresIn: { type: 'integer' },
   },
-  required: ['accessToken', 'refreshToken', 'expiresIn'],
+  required: ['accessToken', 'expiresIn'],
 } as const;
 
 export const loginSchema = {
@@ -59,15 +59,8 @@ export const loginSchema = {
   },
 } as const;
 
+// El refresh token llega por la cookie httpOnly (US-91), no por el cuerpo.
 export const refreshSchema = {
-  body: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['refreshToken'],
-    properties: {
-      refreshToken: { type: 'string', minLength: 1 },
-    },
-  },
   response: {
     200: tokensResponse,
   },
@@ -79,15 +72,9 @@ export const statusSchema = {
   },
 } as const;
 
+// Logout: el refresh token a revocar llega por la cookie httpOnly (US-91).
 export const logoutSchema = {
-  body: {
-    type: 'object',
-    additionalProperties: false,
-    required: ['refreshToken'],
-    properties: {
-      refreshToken: { type: 'string', minLength: 1 },
-    },
-  },
+  response: { 204: { type: 'null' } },
 } as const;
 
 /** `GET /api/auth/last-session` — último login exitoso (público, US-49). */
@@ -123,10 +110,7 @@ export const listSessionsSchema = {
   response: { 200: { type: 'array', items: sessionItem } },
 } as const;
 
+// Cierra las demás sesiones; la actual se identifica por la cookie (US-91), sin cuerpo.
 export const revokeSessionsSchema = {
-  body: {
-    type: 'object',
-    additionalProperties: false,
-    properties: { keepRefreshToken: { type: 'string', minLength: 1 } },
-  },
+  response: { 204: { type: 'null' } },
 } as const;

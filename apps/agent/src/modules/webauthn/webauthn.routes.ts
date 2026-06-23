@@ -3,6 +3,7 @@ import type {
   AuthenticationResponseJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
+import { sendSession } from '../../auth/session-cookie.js';
 import { AuthService } from '../auth/auth.service.js';
 import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
@@ -138,7 +139,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       }
       const session = await auth.issueSessionForUserId(user.id);
       app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });
-      return reply.send(session);
+      return sendSession(reply, session);
     },
   );
 
@@ -187,7 +188,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       }
       const session = await auth.issueSessionForUserId(user.id);
       app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });
-      return reply.send(session);
+      return sendSession(reply, session);
     },
   );
 

@@ -52,7 +52,7 @@ describe('SecuritySection', () => {
     webauthnMock.isWebAuthnSupported.mockReset().mockReturnValue(true);
     useAuthStore.setState({
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
       logout: vi.fn().mockResolvedValue(undefined),
     });
   });
@@ -67,11 +67,11 @@ describe('SecuritySection', () => {
     expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions/s1');
   });
 
-  it('"Cerrar todas las sesiones" envía el refresh token actual a conservar', async () => {
+  it('"Cerrar todas las sesiones" cierra las demás (la actual se identifica por cookie, US-91)', async () => {
     const user = userEvent.setup();
     renderSection();
     await user.click(screen.getByRole('button', { name: 'Cerrar todas las sesiones' }));
-    expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions', { body: { keepRefreshToken: 'r' } });
+    expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions');
   });
 
   it('la zona de peligro pide confirmación antes de regenerar las claves', async () => {
