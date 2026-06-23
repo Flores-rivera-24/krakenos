@@ -67,8 +67,11 @@ describe('rutas de DNS', () => {
     expect(res.json().domain).toBe('malware.example.com');
 
     await eventually(async () => {
-      const log = await app.prisma.auditLog.findFirst({ where: { action: 'dns.block.add' } });
-      expect(log?.detail).toBe('malware.example.com');
+      // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'dns.block.add').
+      const log = await app.prisma.auditLog.findFirst({
+        where: { action: 'dns.block.add', detail: 'malware.example.com' },
+      });
+      expect(log).not.toBeNull();
     });
 
     const dup = await app.inject({

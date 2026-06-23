@@ -66,8 +66,11 @@ describe('rutas de QoS', () => {
     expect(rule.enabled).toBe(true);
 
     await eventually(async () => {
-      const log = await app.prisma.auditLog.findFirst({ where: { action: 'qos.rule.add' } });
-      expect(log?.detail).toBe('Prioridad trabajo');
+      // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'qos.rule.add').
+      const log = await app.prisma.auditLog.findFirst({
+        where: { action: 'qos.rule.add', detail: 'Prioridad trabajo' },
+      });
+      expect(log).not.toBeNull();
     });
   });
 
