@@ -114,7 +114,7 @@ por una verificación e2e.
 | **T**ampering | JSON Schema estricto (`additionalProperties:false`, email/longitud). ✔ |
 | **R**epudiation | `auth.login` / `auth.login_failed` auditados con IP. ✔ (best-effort, F11) |
 | **I**nfo disclosure | Mensaje genérico "Credenciales inválidas"; sin distinguir usuario inexistente. ✔ |
-| **D**oS | Rate limit por IP (`max=rateLimitStore.getCurrent()`, def. 10/min). Parcial: **sin lockout por cuenta** (F3). El spoofing por XFF se acotó en US-76 (F2: nº de hops / lista de proxies). |
+| **D**oS | Rate limit por IP (`max=rateLimitStore.getCurrent()`, def. 10/min) **+ lockout por cuenta con backoff** (US-77, F3). El spoofing por XFF se acotó en US-76 (F2: nº de hops / lista de proxies). |
 | **E**oP | Sin passkey → emite sesión; con passkey → sólo `mfaToken` (no tokens). Atadura de factores correcta. ✔ |
 
 ### 4.2 `POST /api/auth/refresh` (token de refresco)
@@ -159,7 +159,7 @@ por una verificación e2e.
 |---|---|---|---|---|---|
 | **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permitía `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (CLAUDE.md, sudoers) | ✅ **Mitigado (US-74):** el helper acota ahora también el **ámbito** — `iptables` solo sobre la cadena `KRAKENOS` (+ enlace `FORWARD -j KRAKENOS`, sin reglas extra, sin otra tabla que `filter`), `tc` solo sobre la interfaz de QoS (`dev <iface>`) y `wg`/`wg-quick` solo sobre la interfaz WireGuard. El ámbito lo fija root (defaults del script + `/etc/krakenos/helper.conf`); `sudo` (env_reset) impide que el agente lo amplíe. Tests por caso permitido/denegado. |
 | **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts` (`parseTrustProxy`), `server.ts` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | ✅ **Mitigado (US-76):** `parseTrustProxy` admite **nº de hops** (`TRUST_PROXY=1`) o **lista de IPs/CIDRs** de proxies de confianza, no solo el booleano; `true` (confiar en cualquiera) sigue por compat pero **avisa al arrancar** (`trustProxyWarnings`). Tests de `req.ip` con/sin proxy. |
-| **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. 🟡 **Parcial (US-88):** rate-limit extendido a los endpoints públicos de 2FA + `mfaToken` de un solo uso (anti-replay/brute-force de códigos). **Falta** el lockout por cuenta (US-77). |
+| **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frenaba por usuario. | `auth/login-lockout.ts`, `auth.routes.ts` | "Rate limiting en /auth/login" (SPECS §9) | ✅ **Mitigado (US-88 + US-77):** US-88 extendió el rate-limit a los endpoints públicos de 2FA + `mfaToken` de un solo uso; US-77 añade **lockout por cuenta** (`auth/login-lockout.ts`): tras 5 fallos consecutivos la cuenta se bloquea con **backoff exponencial** (30 s → tope 1 h), se limpia al primer login correcto y audita `auth.login_locked` (+ push). Se aplica a cualquier email (no enumera). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
@@ -210,7 +210,8 @@ por una verificación e2e.
 | **US-75** | Cotas en ajustes en caliente (`accessTokenTtl`/`loginRateLimit`) | F5 (arreglo) | ✅ hecho |
 | **US-76** | `TRUST_PROXY` seguro (nº de hops / lista de proxies) | F2 (arreglo) | ✅ hecho |
 | **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
-| **US-77…US-86** | Resto de la remediación de abajo | F4/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-77** | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
+| **US-78…US-86** | Resto de la remediación de abajo | F4/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F4 (reuso de refresh), F8 (secret store real — US-92 sólo detecta, no
 cifra), y F13 completo (US-91).
@@ -229,8 +230,10 @@ cifra), y F13 completo (US-91).
    IPs/CIDRs de proxies de confianza, y `trustProxyWarnings` avisa del `true` inseguro al arrancar.
    Original: sustituir el booleano por número de hops o lista de proxies
    de confianza de Fastify; documentar el riesgo de XFF. Test de `req.ip` con/ sin proxy.
-4. **US-77 · Lockout por cuenta + backoff en login (F3).** Contador por email (además del límite por
-   IP) con backoff exponencial y desbloqueo temporal; auditar el lockout.
+4. **US-77 · Lockout por cuenta + backoff en login (F3).** ✅ **Hecho.** `auth/login-lockout.ts`:
+   contador por email (además del límite por IP) con backoff exponencial (30 s → tope 1 h), reset al
+   primer login correcto y por inactividad; audita `auth.login_locked` (+ push). Aplica a cualquier
+   email (anti-enumeración).
 5. **US-78 · Detección de reuso de refresh (F4).** Al detectar un hash ya rotado/usado, revocar toda
    la familia del usuario y emitir evento de seguridad (push/auditoría).
 6. **US-79 · Gestión de secretos de integración (F8).** Sacar credenciales de hardware del `.env`

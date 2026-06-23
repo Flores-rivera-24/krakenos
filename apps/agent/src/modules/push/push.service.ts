@@ -12,6 +12,7 @@ const VAPID_SUBJECT = 'mailto:admin@krakenos.local';
 /** Acciones de auditoría que disparan una notificación push (US-45). */
 export const HIGH_PRIORITY_AUDIT_ACTIONS = [
   'auth.login_failed',
+  'auth.login_locked',
   'device.block',
   'inventory.unknown_device',
 ] as const;
@@ -28,6 +29,8 @@ export function pushNotificationForAudit(
   switch (action) {
     case 'auth.login_failed':
       return { title: 'Login fallido', body: `Intento desde ${ip ?? 'IP desconocida'}`, url: '/settings' };
+    case 'auth.login_locked':
+      return { title: 'Cuenta bloqueada', body: 'Demasiados intentos de login fallidos', url: '/settings' };
     case 'device.block':
       return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory' };
     case 'inventory.unknown_device':

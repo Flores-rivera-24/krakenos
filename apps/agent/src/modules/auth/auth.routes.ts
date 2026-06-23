@@ -5,6 +5,7 @@ import type {
   RevokeSessionsRequest,
 } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
+import { loginLockout } from '../../auth/login-lockout.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
@@ -52,8 +53,28 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       config: { rateLimit: { max: () => rateLimitStore.getCurrent(), timeWindow: '1 minute' } },
     },
     async (req, reply) => {
+    const { email } = req.body;
+
+    // Lockout por cuenta con backoff (US-77, F3): además del límite por IP, una
+    // cuenta con demasiados fallos consecutivos se bloquea temporalmente. Se
+    // comprueba para cualquier email (exista o no) → no enumera cuentas.
+    const retryAfter = loginLockout.retryAfterSec(email);
+    if (retryAfter > 0) {
+      app.audit({ action: 'auth.login_locked', detail: email, ip: req.ip });
+      return reply
+        .code(429)
+        .header('retry-after', String(retryAfter))
+        .send({
+          code: 'AUTH_ACCOUNT_LOCKED',
+          message: `Demasiados intentos. Reintenta en ${retryAfter} s.`,
+          retryAfter,
+        });
+    }
+
     try {
-      const user = await service.verifyCredentials(req.body.email, req.body.password);
+      const user = await service.verifyCredentials(email, req.body.password);
+      // Primer factor correcto: limpia el contador de fallos de la cuenta.
+      loginLockout.recordSuccess(email);
 
       // 2FA WebAuthn (US-50/US-51): si el usuario tiene passkeys, no se emiten tokens
       // todavía. Se devuelve un token efímero `mfa-pending` que acredita la contraseña
@@ -72,8 +93,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       return reply.send(result);
     } catch (err) {
       if (err instanceof AuthError) {
-        // Login fallido: evento de seguridad (auditoría + push, US-45).
-        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        // Login fallido: evento de seguridad (auditoría + push, US-45) y suma al
+        // contador de lockout por cuenta (US-77).
+        const lockedSec = loginLockout.recordFailure(email);
+        app.audit({ action: 'auth.login_failed', detail: email, ip: req.ip });
+        if (lockedSec > 0) app.audit({ action: 'auth.login_locked', detail: email, ip: req.ip });
         return reply.code(401).send({ code: err.code, message: err.message });
       }
       throw err;
