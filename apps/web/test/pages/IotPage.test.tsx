@@ -10,11 +10,42 @@ vi.mock('@/lib/socket', () => ({ getSocket: () => socketMock }));
 
 import { IotPage } from '@/pages/IotPage';
 import { useAuthStore } from '@/store/auth.store';
+import { useConnectionStore } from '@/store/connection.store';
 
 const DEVICES: IotDevice[] = [
-  { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, color: null, reading: null },
-  { id: 'sensor-temp', name: 'Temperatura', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
-  { id: 'light-hue', name: 'Foco Hue', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, color: { hex: '#ff8800', temperatureK: null }, reading: null },
+  {
+    id: 'plug-tv',
+    name: 'TV',
+    kind: 'plug',
+    room: 'Salón',
+    reachable: true,
+    on: true,
+    brightness: null,
+    color: null,
+    reading: null,
+  },
+  {
+    id: 'sensor-temp',
+    name: 'Temperatura',
+    kind: 'sensor',
+    room: 'Salón',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    reading: { metric: 'temperatura', value: 21.5, unit: '°C' },
+  },
+  {
+    id: 'light-hue',
+    name: 'Foco Hue',
+    kind: 'light',
+    room: 'Salón',
+    reachable: true,
+    on: true,
+    brightness: 80,
+    color: { hex: '#ff8800', temperatureK: null },
+    reading: null,
+  },
 ];
 
 function setRole(role: 'admin' | 'viewer') {
@@ -30,6 +61,7 @@ describe('IotPage', () => {
     apiMock.patch.mockReset().mockResolvedValue(DEVICES[0]);
     socketMock.on.mockReset();
     socketMock.off.mockReset();
+    useConnectionStore.setState({ status: 'connected' });
   });
 
   it('lista dispositivos y muestra la lectura del sensor', async () => {
@@ -57,7 +89,9 @@ describe('IotPage', () => {
 
     const picker = screen.getByLabelText('Color') as HTMLInputElement;
     fireEvent.input(picker, { target: { value: '#00ff00' } });
-    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/light-hue', { color: { hex: '#00ff00' } });
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/light-hue', {
+      color: { hex: '#00ff00' },
+    });
   });
 
   it('un viewer ve el aviso de solo lectura', async () => {
@@ -79,5 +113,20 @@ describe('IotPage', () => {
     apiMock.get.mockReset().mockResolvedValue([]);
     render(<IotPage />);
     expect(await screen.findByText(/Aún no hay dispositivos IoT/)).toBeInTheDocument();
+  });
+
+  it('marca los datos como obsoletos cuando el stream está caído (US-94)', async () => {
+    setRole('admin');
+    useConnectionStore.setState({ status: 'offline' });
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
+  });
+
+  it('sin caída del stream no marca obsoleto (US-94)', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
   });
 });

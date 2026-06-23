@@ -11,10 +11,13 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatBytes, formatRate } from '@/lib/format';
+import { isSampleStale, useNow } from '@/lib/realtime';
 import { getSocket } from '@/lib/socket';
+import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const MAX_POINTS = 60;
@@ -135,6 +138,12 @@ export function TrafficPage() {
 
   const last = samples.at(-1);
 
+  // El panel en vivo está obsoleto si el stream está caído o la última muestra
+  // dejó de refrescarse (datos congelados, US-94).
+  const connected = useConnectionStore((s) => s.status) === 'connected';
+  const now = useNow();
+  const liveStale = !!last && (!connected || isSampleStale(last.timestamp, now));
+
   const history = useMemo(() => {
     if (!stats) return [];
     const sameDay = range === 'hour' || range === 'day';
@@ -177,8 +186,9 @@ export function TrafficPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Ancho de banda (Mbps)</CardTitle>
+          {liveStale && <StaleBadge />}
         </CardHeader>
         <CardContent>
           {data.length === 0 ? (

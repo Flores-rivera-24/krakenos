@@ -5,6 +5,7 @@ import { LogoMark } from '@/components/ui/logo';
 import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useConnectionStore } from '@/store/connection.store';
 import { AppSidebar } from './AppSidebar';
 import { MOBILE_PRIMARY, MOBILE_SECONDARY, type NavItem } from './nav';
 
@@ -93,6 +94,9 @@ export function AppLayout() {
   const logout = useAuthStore((s) => s.logout);
   const stats = useSidebarStats();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
+
+  // Refleja el estado real del stream Socket.io en el indicador de conexión (US-94).
+  useEffect(() => useConnectionStore.getState().subscribe(), []);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
