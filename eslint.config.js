@@ -9,6 +9,8 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/*.config.js',
       '**/prisma/**',
+      // Scripts de utilidad Node sueltos (.mjs con globals de Node, p. ej. medición de contraste).
+      '**/scripts/**',
       // Assets estáticos servidos tal cual (script anti-flash de tema, sw.js, etc.).
       'apps/web/public/**',
     ],

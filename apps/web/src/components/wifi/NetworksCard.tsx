@@ -11,9 +11,10 @@ export function NetworksCard() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [aps, setAps] = useState<AccessPoint[]>([]);
   const [networks, setNetworks] = useState<WifiNetworkInfo[]>([]);
-  const [clientsOf, setClientsOf] = useState<{ net: WifiNetworkInfo; clients: WifiClient[] } | null>(
-    null,
-  );
+  const [clientsOf, setClientsOf] = useState<{
+    net: WifiNetworkInfo;
+    clients: WifiClient[];
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -82,7 +83,9 @@ export function NetworksCard() {
                 <tr key={n.id} className="border-t border-border">
                   <td className="px-3 py-2">
                     {n.ssid}
-                    {n.isGuest && <span className="ml-1 text-xs text-muted-foreground">(invitados)</span>}
+                    {n.isGuest && (
+                      <span className="ml-1 text-xs text-muted-foreground">(invitados)</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">{n.band}</td>
                   <td className="px-3 py-2 text-muted-foreground">{apName(n.apId)}</td>
@@ -97,7 +100,12 @@ export function NetworksCard() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end">
-                      <Switch checked={n.enabled} onCheckedChange={() => void toggle(n)} disabled={!isAdmin} />
+                      <Switch
+                        checked={n.enabled}
+                        onCheckedChange={() => void toggle(n)}
+                        disabled={!isAdmin}
+                        aria-label={`Activar red ${n.ssid}`}
+                      />
                     </div>
                   </td>
                 </tr>

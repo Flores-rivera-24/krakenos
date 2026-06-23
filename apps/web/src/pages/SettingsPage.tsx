@@ -120,9 +120,12 @@ export function SettingsPage() {
   }, [isAdmin, section]);
 
   // Limpia el temporizador del aviso "aplicado al instante" al desmontar.
-  useEffect(() => () => {
-    if (appliedTimer.current) clearTimeout(appliedTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (appliedTimer.current) clearTimeout(appliedTimer.current);
+    },
+    [],
+  );
 
   const patch = async (key: SystemSettingKey, value: string) => {
     setError(null);
@@ -231,13 +234,18 @@ export function SettingsPage() {
                   <Setting label="Nombre del hogar">
                     <div className="flex gap-2">
                       <Input
+                        aria-label="Nombre del hogar"
                         value={homeName}
                         onChange={(e) => setHomeName(e.target.value)}
                         disabled={!isAdmin}
                         maxLength={60}
                       />
                       {isAdmin && (
-                        <Button variant="outline" size="sm" onClick={() => void patch('homeName', homeName)}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void patch('homeName', homeName)}
+                        >
                           Guardar
                         </Button>
                       )}
@@ -246,6 +254,7 @@ export function SettingsPage() {
                   <Setting label="Zona horaria">
                     <select
                       className={SELECT_CLASS}
+                      aria-label="Zona horaria"
                       value={setting('timezone')}
                       disabled={!isAdmin}
                       onChange={(e) => void patch('timezone', e.target.value)}
@@ -260,6 +269,7 @@ export function SettingsPage() {
                   <Setting label="Intervalo de escaneo">
                     <select
                       className={SELECT_CLASS}
+                      aria-label="Intervalo de escaneo"
                       value={setting('scanIntervalSec')}
                       disabled={!isAdmin}
                       onChange={(e) => void patch('scanIntervalSec', e.target.value)}
@@ -272,7 +282,9 @@ export function SettingsPage() {
                   <Setting label="HTTPS">
                     <span className="flex items-center gap-2 text-kr-base">
                       <StatusDot status={data?.info.httpsEnabled ? 'online' : 'offline'} />
-                      {data?.info.httpsEnabled ? 'Activado (certificado en LAN)' : 'Desactivado (HTTP)'}
+                      {data?.info.httpsEnabled
+                        ? 'Activado (certificado en LAN)'
+                        : 'Desactivado (HTTP)'}
                     </span>
                   </Setting>
                 </CardContent>
@@ -319,7 +331,11 @@ export function SettingsPage() {
                   </Button>
                   {isAdmin && (
                     <>
-                      <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInput.current?.click()}
+                      >
                         Restaurar backup
                       </Button>
                       <input
@@ -357,7 +373,12 @@ export function SettingsPage() {
                   </div>
                   {isAdmin && (
                     <div className="flex items-center gap-3">
-                      <Button variant="outline" size="sm" onClick={() => void runTest()} disabled={testing}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void runTest()}
+                        disabled={testing}
+                      >
                         {testing ? 'Probando…' : 'Probar conexión'}
                       </Button>
                       {test && (
@@ -379,6 +400,7 @@ export function SettingsPage() {
                   <Setting label="Historial de tráfico">
                     <select
                       className={SELECT_CLASS}
+                      aria-label="Retención del historial de tráfico"
                       value={setting('trafficRetentionDays')}
                       disabled={!isAdmin}
                       onChange={(e) => void patch('trafficRetentionDays', e.target.value)}
@@ -391,6 +413,7 @@ export function SettingsPage() {
                   <Setting label="Registro de auditoría">
                     <select
                       className={SELECT_CLASS}
+                      aria-label="Retención del registro de auditoría"
                       value={setting('auditRetentionDays')}
                       disabled={!isAdmin}
                       onChange={(e) => void patch('auditRetentionDays', e.target.value)}
@@ -446,7 +469,9 @@ export function SettingsPage() {
                     {audit === null ? (
                       <p className="py-6 text-center text-kr-sm text-kr-muted">Cargando…</p>
                     ) : audit.length === 0 ? (
-                      <p className="py-6 text-center text-kr-sm text-kr-muted">Sin actividad registrada.</p>
+                      <p className="py-6 text-center text-kr-sm text-kr-muted">
+                        Sin actividad registrada.
+                      </p>
                     ) : (
                       <div className="overflow-hidden rounded-md border border-kr">
                         <table className="w-full text-kr-sm">
@@ -461,8 +486,12 @@ export function SettingsPage() {
                             {audit.map((e) => (
                               <tr key={e.id} className="border-t border-kr">
                                 <td className="px-3 py-2 text-kr-primary">{e.action}</td>
-                                <td className="px-3 py-2 font-mono text-kr-xs text-kr-muted">{e.ip ?? '—'}</td>
-                                <td className="px-3 py-2 text-kr-xs text-kr-muted">{timeAgo(e.createdAt)}</td>
+                                <td className="px-3 py-2 font-mono text-kr-xs text-kr-muted">
+                                  {e.ip ?? '—'}
+                                </td>
+                                <td className="px-3 py-2 text-kr-xs text-kr-muted">
+                                  {timeAgo(e.createdAt)}
+                                </td>
                               </tr>
                             ))}
                           </tbody>

@@ -56,12 +56,23 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base text-foreground">Red principal</CardTitle>
-        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!isAdmin} />
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          disabled={!isAdmin}
+          aria-label="Activar red principal"
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="ssid">SSID</Label>
-          <Input id="ssid" value={ssid} onChange={(e) => setSsid(e.target.value)} disabled={!isAdmin} maxLength={32} />
+          <Input
+            id="ssid"
+            value={ssid}
+            onChange={(e) => setSsid(e.target.value)}
+            disabled={!isAdmin}
+            maxLength={32}
+          />
         </div>
 
         <div className="space-y-2">

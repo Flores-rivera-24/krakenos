@@ -51,7 +51,12 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base text-foreground">Red de invitados</CardTitle>
-        <Switch checked={enabled} onCheckedChange={setEnabled} disabled={!isAdmin} />
+        <Switch
+          checked={enabled}
+          onCheckedChange={setEnabled}
+          disabled={!isAdmin}
+          aria-label="Activar red de invitados"
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">

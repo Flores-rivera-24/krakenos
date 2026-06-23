@@ -72,6 +72,8 @@ const config: Config = {
         'kr-secondary': 'var(--kr-text-secondary)',
         'kr-muted': 'var(--kr-text-muted)',
         'kr-accent': 'var(--kr-accent)',
+        // Texto de acento accesible (enlaces/nav activa) sobre fondos oscuros (US-95).
+        'kr-link': 'var(--kr-link)',
         success: 'var(--kr-success)',
         info: 'var(--kr-info)',
         warning: 'var(--kr-warning)',

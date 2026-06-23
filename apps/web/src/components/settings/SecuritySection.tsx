@@ -161,8 +161,8 @@ function PasskeysCard() {
               <p className="py-2 text-kr-sm text-kr-muted">Cargando…</p>
             ) : passkeys.length === 0 ? (
               <p className="text-kr-sm text-kr-muted">
-                Sin passkeys registradas. Añade una para activar verificación en dos pasos al iniciar
-                sesión.
+                Sin passkeys registradas. Añade una para activar verificación en dos pasos al
+                iniciar sesión.
               </p>
             ) : (
               <ul className="space-y-2">
@@ -315,6 +315,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           <Row label="Duración del access token">
             <select
               className={SELECT_CLASS}
+              aria-label="Duración del access token"
               value={settings.accessTokenTtl}
               disabled={!isAdmin}
               onChange={(e) => void patch('accessTokenTtl', e.target.value)}
@@ -327,6 +328,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           <Row label="Límite de intentos de login">
             <select
               className={SELECT_CLASS}
+              aria-label="Límite de intentos de login"
               value={settings.loginRateLimit}
               disabled={!isAdmin}
               onChange={(e) => void patch('loginRateLimit', e.target.value)}
@@ -337,7 +339,11 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
             </select>
           </Row>
           <Row label="Tema oscuro">
-            <Switch checked={theme === 'dark'} onCheckedChange={(v) => void toggleTheme(v)} />
+            <Switch
+              checked={theme === 'dark'}
+              onCheckedChange={(v) => void toggleTheme(v)}
+              aria-label="Tema oscuro"
+            />
           </Row>
         </CardContent>
       </Card>
@@ -399,8 +405,8 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
             ¿Regenerar las claves RS256?
           </h3>
           <p className="mt-2 text-kr-sm text-kr-secondary">
-            Esto cerrará todas las sesiones activas (incluida la tuya) y tendrás que volver a iniciar
-            sesión. Esta acción no se puede deshacer.
+            Esto cerrará todas las sesiones activas (incluida la tuya) y tendrás que volver a
+            iniciar sesión. Esta acción no se puede deshacer.
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirmRegen(false)}>
