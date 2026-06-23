@@ -32,6 +32,7 @@ import { InventoryService } from './modules/inventory/inventory.service.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
+import { setupToken } from './modules/setup/setup-token.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -200,6 +201,16 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();
+
+  // Ventana de primer admin (US-81, F10): si no hay usuarios, genera un token de
+  // configuración y lo imprime en el log/CLI (canal out-of-band). `/setup/init`
+  // lo exigirá, de modo que solo quien tiene acceso al servidor crea el admin.
+  if ((await app.prisma.user.count()) === 0) {
+    const token = setupToken.ensure();
+    app.log.warn(
+      `[setup] Sistema sin administrador. Token de configuración para POST /api/setup/init: ${token}`,
+    );
+  }
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).
   if (env.web.serve && existsSync(resolve(env.web.distPath, 'index.html'))) {

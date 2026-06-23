@@ -17,6 +17,8 @@ export function SetupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [token, setToken] = useState('');
+  const [requiresToken, setRequiresToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +28,9 @@ export function SetupPage() {
     void api
       .get<SetupStatus>('/setup/status')
       .then((s) => {
-        if (active && !s.needsSetup) navigate('/login', { replace: true });
+        if (!active) return;
+        if (!s.needsSetup) navigate('/login', { replace: true });
+        else setRequiresToken(s.requiresToken);
       })
       .catch(() => undefined);
     return () => {
@@ -46,7 +50,13 @@ export function SetupPage() {
       return;
     }
     setLoading(true);
-    const body: SetupInitRequest = { homeName, displayName, email, password };
+    const body: SetupInitRequest = {
+      homeName,
+      displayName,
+      email,
+      password,
+      ...(requiresToken ? { setupToken: token } : {}),
+    };
     try {
       const data = await api.post<LoginResponse>('/setup/init', body, { anonymous: true });
       setSession(data);
@@ -94,6 +104,22 @@ export function SetupPage() {
           <Label htmlFor="confirm">Confirmar contraseña</Label>
           <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
         </div>
+
+        {requiresToken && (
+          <div className="space-y-2">
+            <Label htmlFor="setupToken">Token de configuración</Label>
+            <Input
+              id="setupToken"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
+              required
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">
+              Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).
+            </p>
+          </div>
+        )}
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
