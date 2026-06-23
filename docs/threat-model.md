@@ -168,7 +168,7 @@ por una verificación e2e.
 | **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcanzaba el agente recién instalado reclamaba el admin (sin token out-of-band). | `setup.routes.ts`, `setup/setup-token.ts` | "Admin por el wizard /setup" (CLAUDE.md) | ✅ **Mitigado (US-81):** al arrancar sin usuarios el agente genera un token de configuración y lo **imprime en el log/CLI** (out-of-band); `/setup/init` lo exige (`SETUP_TOKEN_INVALID` si falta/erróneo, intento auditado) y lo invalida al crear el admin. Solo quien tiene acceso al servidor completa el setup. Sigue atómico contra carreras (US-53). |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
-| **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87):** validadores anti-inyección puros (`privileged/validators.ts`) en los builders de wg/qos/vlan (iface, clave WG, IPv4/CIDR con octetos acotados, tag/nombre de VLAN) + rechazo de caracteres de control en el helper. Tests adversarios por argumento. |
+| **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acotaba octetos (aceptaba `999.999.999.999`) y el IPv6 era permisivo. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`), `firewall/iptables.helpers.ts` | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87 + US-84):** US-87 añadió validadores anti-inyección puros para wg/qos/vlan. US-84 endurece la regla de firewall: `IP_CIDR_PATTERN` **estricto** (octetos 0-255 y prefijo 0-32 acotados por el patrón; IPv4-only, eliminado el IPv6 permisivo que ni se aplicaría —solo `iptables`, no `ip6tables`) **+** revalidación con `assertIpv4Cidr` en el builder de argv (defensa en profundidad) **+ test fuzz** del builder y del validador (invariante: todo valor que pasa solo contiene `[0-9./]`). |
 | **F13** | 🔴 | **Access + refresh token en `localStorage` (legibles por JS).** El store usa `zustand/persist({name:'krakenos-auth'})` → ambos tokens quedan en `localStorage`. Un XSS lee el refresh (30 días) → **toma de cuenta persistente**. Mitigado parcialmente en US-90 (CSP); el arreglo real (cookie httpOnly) queda en US-91. | `web/src/store/auth.store.ts:62-107` | "JWT… refresh persistido solo como hash" (SPECS §9 — sólo en el servidor) | En el **cliente** ambos tokens son legibles por JS. Ver Anexo (§7). |
 
 ### Controles verificados como correctos (no son hallazgos)
@@ -217,7 +217,8 @@ por una verificación e2e.
 | **US-81** | Cierre de la ventana de primer admin (token out-of-band) | F10 (arreglo) | ✅ hecho |
 | **US-82** | Challenge WebAuthn por ceremonia (tabla propia) | F6 (arreglo) | ✅ hecho |
 | **US-83** | Reducir divulgación pre-auth (`version`/`last-session` tras flag) | F5/doc (arreglo) | ✅ hecho |
-| **US-84…US-86** | Resto de la remediación de abajo | F9/F11 + e2e | ⏳ pendiente |
+| **US-84** | Validación IP/CIDR estricta + fuzz del builder de iptables | F12 (refuerzo) | ✅ hecho |
+| **US-85…US-86** | Resto de la remediación de abajo | F9/F11 + e2e | ⏳ pendiente |
 
 **Pendientes destacados:** F8 (secret store real / cifrado en reposo — US-92 detecta y US-79 verifica permisos, pero no
 cifra), y F13 completo (US-91).
@@ -261,8 +262,9 @@ cifra), y F13 completo (US-91).
 10. **US-83 · Reducir divulgación pre-auth (F5).** ✅ **Hecho.** `version` (en `system/info`) y
     `last-session` están **off por defecto**, tras los flags `PUBLIC_VERSION`/`PUBLIC_LAST_SESSION`
     (`config/env.ts:publicDisclosure`). `homeName` se mantiene (branding del login).
-11. **US-84 · Validación IP/CIDR estricta + fuzz (F12).** Acotar octetos/IPv6 y añadir un test
-    property-based/fuzz al builder de `iptables`.
+11. **US-84 · Validación IP/CIDR estricta + fuzz (F12).** ✅ **Hecho.** `IP_CIDR_PATTERN` estricto
+    (octetos 0-255/prefijo 0-32, IPv4-only) + `assertIpv4Cidr` en el builder de `iptables` (defensa en
+    profundidad) + test fuzz determinista (invariante: lo que pasa solo contiene `[0-9./]`).
 12. **US-85 · Auditoría de eventos de seguridad robusta (F11).** Cola/reintento para `login_failed`/
     `block` y minimizar PII (hash del email en `detail`).
 

@@ -30,12 +30,15 @@ const ruleResponse = {
 } as const;
 
 /**
- * IPv4/IPv6 con máscara CIDR opcional. Defensa en profundidad: el valor acaba
- * en `iptables -s/-d`, así que se rechaza cualquier cosa con espacios, guiones
- * iniciales u otros caracteres que no sean una dirección/red válida.
+ * IPv4 con máscara CIDR opcional, **estricta** (US-84, F12): octetos 0-255 y
+ * prefijo 0-32 acotados por el propio patrón (no solo 1-3 dígitos). Es IPv4-only
+ * a propósito: el helper privilegiado solo permite `iptables` (no `ip6tables`),
+ * así que una regla IPv6 nunca se aplicaría; aceptarla sería engañoso. El valor
+ * acaba en `iptables -s/-d`, así que esto cierra octetos fuera de rango, prefijos
+ * inválidos y el antiguo IPv6 permisivo (`::::`), además de espacios/guiones.
  */
-const IP_CIDR_PATTERN =
-  '^((\\d{1,3}\\.){3}\\d{1,3}(/\\d{1,2})?|[0-9A-Fa-f:]+(/\\d{1,3})?)$';
+const OCTET = '(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)';
+const IP_CIDR_PATTERN = `^${OCTET}(\\.${OCTET}){3}(/(3[0-2]|[12]?\\d))?$`;
 const source = {
   type: ['string', 'null'],
   maxLength: 64,

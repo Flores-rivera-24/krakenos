@@ -1,4 +1,5 @@
 import type { FirewallAction, FirewallRule } from '@krakenos/types';
+import { assertIpv4Cidr } from '../privileged/validators.js';
 
 /** Objetivo iptables (`-j`) según la acción de la regla. */
 export function ruleTarget(action: FirewallAction): 'ACCEPT' | 'DROP' {
@@ -31,8 +32,11 @@ export function iptablesAppendArgsForRule(chain: string, rule: FirewallRule): st
   return protocols.map((proto) => {
     const args = ['iptables', '-A', chain];
     if (proto) args.push('-p', proto);
-    if (rule.source) args.push('-s', rule.source);
-    if (rule.destination) args.push('-d', rule.destination);
+    // Defensa en profundidad (US-84, F12): aunque el schema ya valida IP/CIDR,
+    // se revalida en el constructor de argv —el cuello de botella pre-exec— para
+    // que ningún valor (store en disco, futura ruta) llegue a `iptables` sin acotar.
+    if (rule.source) args.push('-s', assertIpv4Cidr(rule.source, 'firewall source'));
+    if (rule.destination) args.push('-d', assertIpv4Cidr(rule.destination, 'firewall destination'));
     if (rule.port != null) args.push('--dport', String(rule.port));
     // Etiqueta cada regla con su id para trazabilidad en `iptables -L`.
     args.push('-m', 'comment', '--comment', `krakenos:${rule.id}`);
