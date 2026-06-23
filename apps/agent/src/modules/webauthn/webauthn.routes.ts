@@ -4,6 +4,7 @@ import type {
   RegistrationResponseJSON,
 } from '@simplewebauthn/server';
 import { AuthService } from '../auth/auth.service.js';
+import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import type { BackupCodeService } from '../../webauthn/backup-codes.service.js';
 import { WebAuthnError, type WebAuthnService } from '../../webauthn/webauthn.service.js';
@@ -121,7 +122,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       // factor por token (anti-replay). Un fallo de passkey exige re-login (US-88).
       const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
       if (!user) {
-        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
         return reply
           .code(401)
           .send({ code: 'AUTH_INVALID_TOKEN', message: 'Verificación de 2FA no válida' });
@@ -130,7 +131,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
         await service.verifyAuthentication(user, req.body.response);
       } catch (err) {
         if (err instanceof WebAuthnError) {
-          app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+          app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
           return reply.code(401).send({ code: 'WEBAUTHN_ERROR', message: err.message });
         }
         throw err;
@@ -172,14 +173,14 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       // hace inviable la fuerza bruta de los códigos de recuperación (US-88).
       const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
       if (!user) {
-        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
         return reply
           .code(401)
           .send({ code: 'AUTH_INVALID_TOKEN', message: 'Verificación de 2FA no válida' });
       }
       const ok = await backupCodes.consume(user.id, req.body.code);
       if (!ok) {
-        app.audit({ action: 'auth.login_failed', detail: req.body.email, ip: req.ip });
+        app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
         return reply
           .code(401)
           .send({ code: 'WEBAUTHN_ERROR', message: 'Código de recuperación inválido' });
