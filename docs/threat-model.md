@@ -32,8 +32,8 @@ Los hallazgos no son agujeros abiertos sino **límites de defensa en profundidad
    último muro antes de root. ✅ **Resuelto en US-74**: el helper acota ahora también el
    ámbito (cadena/interfaz); ver F1.
 2. **Ajustes "en caliente" sin cota superior** (🟠): `accessTokenTtl` y `loginRateLimit`
-   se leen de `Setting` sin máximo; un valor enorme degrada silenciosamente la sesión corta
-   o el rate limit.
+   se leían de `Setting` sin máximo; un valor enorme degradaba silenciosamente la sesión corta
+   o el rate limit. ✅ **Resuelto en US-75** (cotas al escribir y al leer); ver F5.
 3. **`TRUST_PROXY` es un booleano sin lista de proxies de confianza** (🟠): mal configurado,
    permite falsificar `X-Forwarded-For` y burlar el rate limit y la auditoría por IP.
 
@@ -160,11 +160,11 @@ por una verificación e2e.
 | **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts:393`, `server.ts:56-57` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | No hay guarda ni lista de hops de confianza; la mala config habilita el spoofing en silencio. |
 | **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frena por usuario. | `auth.routes.ts:48-52`, `rate-limit-store.ts:13` | "Rate limiting en /auth/login" (SPECS §9) | Existe y es configurable en caliente, pero es por IP. 🟡 **Parcial (US-88):** rate-limit extendido a los endpoints públicos de 2FA + `mfaToken` de un solo uso (anti-replay/brute-force de códigos). **Falta** el lockout por cuenta (US-77). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revoca el del legítimo (lo desloguea) pero no revoca la familia ni alerta; el atacante se queda con la sesión rotada. | `auth.service.ts:214-248` | "refresh tokens rotatorios" (SPECS §9) | Rota y revoca, sí. **Sin** reuse-detection estilo OAuth (revocar familia + señal de robo). |
-| **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leen de `Setting` con sólo `n>0`; un admin (o quien escriba ajustes) puede fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `auth.service.ts:57-62`, `rate-limit-store.ts:23-27` | "access de vida corta (default 900 s)" (SPECS §9) | El default es 900 s, pero **no hay máximo**; el valor caliente puede desactivar la garantía. |
+| **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado (US-75):** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
 | **F6** | 🟡 | **Desafío WebAuthn = un solo campo en `User`.** Ceremonias concurrentes (registro+login, dos pestañas) se pisan el challenge → fallo/usabilidad; no es fuga, pero sí DoS suave del 2FA. | `webauthn.service.ts:230-238` | (no afirmado) | Correcto para flujo secuencial; frágil bajo concurrencia. |
 | **F7** | 🟡 | **Socket.io autentica sólo en el handshake.** Tras expirar o revocarse el token, la conexión sigue recibiendo inventario/tráfico/IoT hasta desconectar. | `socketio.ts:58-75` | "lectura autenticada igual que la API" (CLAUDE.md, SPECS §9) | Igual que la API **en el momento de conectar**; sin re-verificación periódica ni corte por revocación. |
 | **F8** | 🟠 | **Credenciales de integración en claro.** SSH/REST/SNMP/MQTT y `TAPO_EMAIL`/`PASSWORD` viven en `.env`/`process.env`; un `.env` legible o un compromiso del host filtra todas las credenciales de la red. | `config/env.ts` (driver/iot/vlan/dns) | "Deps opcionales… se instalan en el servidor" (CLAUDE.md) | Por diseño de electrodoméstico, pero sin almacén de secretos ni cifrado en reposo. |
-| **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto — depende de F5. |
+| **F9** | 🟡 | **Access token no revocable antes de `exp`.** Logout/revoke sólo afectan a refresh tokens; el access vive hasta caducar (stateless). | `auth.service.ts:65-96`, `auth.ts` | "Logout con invalidación de token" (SPECS §4.1) | Se invalida el **refresh**; el access sigue válido su TTL. Aceptable con TTL corto, ahora **garantizado** por la cota de F5 (≤ 3600 s, US-75). |
 | **F10** | 🟡 | **Ventana de primer admin.** `/setup/init` es público mientras no haya usuarios; el primer cliente que alcance el agente recién instalado reclama el admin (sin token out-of-band). | `setup.routes.ts:21-58` | "Admin por el wizard /setup" (CLAUDE.md) | Atómico contra carreras (US-53) ✔, pero no autentica el *primer* arranque. |
 | **F11** | 🟡 | **Auditoría best-effort.** Un fallo de escritura sólo emite `log.warn`; eventos de seguridad (`login_failed`, `device.block`) pueden perderse bajo presión de DB. El `detail` guarda el email de logins fallidos (PII). | `audit.ts:26-45` | "Toda acción relevante queda registrada" (SPECS §9) | Best-effort, no transaccional; truncado a 1 KB (US-58) ✔. |
 | **F12** | 🟡 | **Patrón IP/CIDR laxo.** El IPv4 no acota octetos (acepta `999.999.999.999`) y el IPv6 es permisivo. `execFile` evita el shell y el patrón bloquea el `-` inicial, así que la inyección de argumentos a `iptables` está mitigada, pero la validación no es estricta. | `firewall.schemas.ts` (`IP_CIDR_PATTERN`) | "se validan como IP/CIDR (defensa frente a inyección…)" (SPECS §9) | ✅ **Mitigado (US-87):** validadores anti-inyección puros (`privileged/validators.ts`) en los builders de wg/qos/vlan (iface, clave WG, IPv4/CIDR con octetos acotados, tag/nombre de VLAN) + rechazo de caracteres de control en el helper. Tests adversarios por argumento. |
@@ -206,11 +206,12 @@ por una verificación e2e.
 | **US-90** | Reducir radio de impacto de XSS en tokens (CSP `connect-src 'self'`) | F13 (parcial) | ✅ hecho |
 | **US-92** | Secret scanning (gitleaks, bloqueante) + SAST (semgrep) en CI | endurece F8 (detecta secretos commiteados) | ✅ hecho |
 | **US-74** | Allowlist del helper por ámbito (cadena/interfaz) | F1 (arreglo) | ✅ hecho |
+| **US-75** | Cotas en ajustes en caliente (`accessTokenTtl`/`loginRateLimit`) | F5 (arreglo) | ✅ hecho |
 | **US-91** | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ⏳ pendiente |
-| **US-75…US-86** | Resto de la remediación de abajo | F2/F4/F5/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
+| **US-76…US-86** | Resto de la remediación de abajo | F2/F4/F6/F7/F8/F9/F10/F11 + e2e | ⏳ pendiente |
 
-**Pendientes destacados:** F4 (reuso de refresh), F2 (`TRUST_PROXY`), F5 (cotas en ajustes),
-F8 (secret store real — US-92 sólo detecta, no cifra), y F13 completo (US-91).
+**Pendientes destacados:** F4 (reuso de refresh), F2 (`TRUST_PROXY`), F8 (secret store real —
+US-92 sólo detecta, no cifra), y F13 completo (US-91).
 
 ### Prioridad alta (🟠) — endurecer fronteras de privilegio y sesión
 1. **US-74 · Allowlist del helper por ámbito (F1).** ✅ **Hecho.** `krakenos-helper.sh` exige que
@@ -219,7 +220,8 @@ F8 (secret store real — US-92 sólo detecta, no cifra), y F13 completo (US-91)
    `wg`/`wg-quick` sólo sobre `wg0`. Resto rechazado (64). Ámbito configurable por root (defaults +
    `/etc/krakenos/helper.conf`); `sudo`/`env_reset` impide que el agente lo amplíe. Tests del helper
    por caso permitido/denegado (incl. ámbito a medida).
-2. **US-75 · Cotas en ajustes en caliente (F5).** Máximo duro a `accessTokenTtl` (p. ej. ≤ 3600 s) y
+2. **US-75 · Cotas en ajustes en caliente (F5).** ✅ **Hecho.** Cotas en `config/settings-bounds.ts`
+   (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas al escribir y al leer. Máximo duro a `accessTokenTtl` (p. ej. ≤ 3600 s) y
    rango válido a `loginRateLimit`; ignorar/clamp fuera de rango. Test de borde.
 3. **US-76 · `TRUST_PROXY` seguro (F2).** Sustituir el booleano por número de hops o lista de proxies
    de confianza de Fastify; documentar el riesgo de XFF. Test de `req.ip` con/ sin proxy.

@@ -12,6 +12,7 @@ import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import { mfaTokenStore } from '../../auth/mfa-token-store.js';
 import { env } from '../../config/env.js';
+import { SETTING_BOUNDS, clampToBound } from '../../config/settings-bounds.js';
 
 /** Validez del token efímero de 2FA pendiente (US-51): 2 minutos. */
 const MFA_PENDING_TTL_SEC = 2 * 60;
@@ -55,11 +56,15 @@ function toUser(row: DbUser): User {
 export class AuthService {
   constructor(private readonly app: FastifyInstance) {}
 
-  /** TTL del access token: lee el ajuste `accessTokenTtl` con fallback a `env`. */
+  /**
+   * TTL del access token: lee el ajuste `accessTokenTtl` con fallback a `env` y
+   * lo **acota** a su rango permitido (US-75, F5) — un valor enorme no puede
+   * anular la "vida corta" del access token.
+   */
   private async accessTtl(): Promise<number> {
     const row = await this.app.prisma.setting.findUnique({ where: { key: 'accessTokenTtl' } });
-    const n = row ? Number(row.value) : NaN;
-    return Number.isFinite(n) && n > 0 ? n : env.accessTokenTtl;
+    const n = row ? Number(row.value) : env.accessTokenTtl;
+    return clampToBound(n, SETTING_BOUNDS.accessTokenTtl) ?? env.accessTokenTtl;
   }
 
   /** Firma access + refresh y persiste el hash del refresh token. */

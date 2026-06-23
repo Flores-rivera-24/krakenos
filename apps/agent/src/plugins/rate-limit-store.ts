@@ -9,6 +9,8 @@
  * sin reiniciar el agente ni re-registrar plugins.
  */
 
+import { SETTING_BOUNDS, clampToBound } from '../config/settings-bounds.js';
+
 /** Límite por defecto (intentos de login por minuto) cuando no hay setting. */
 export const DEFAULT_LOGIN_RATE_LIMIT = 10;
 
@@ -19,11 +21,14 @@ export const rateLimitStore = {
   getCurrent(): number {
     return current;
   },
-  /** Actualiza el límite vigente. Ignora valores no positivos o no finitos. */
+  /**
+   * Actualiza el límite vigente. Ignora valores no finitos y **acota** el resto
+   * al rango permitido (US-75, F5): un valor desmedido no puede neutralizar el
+   * freno a la fuerza bruta, ni un 0 bloquear todos los logins.
+   */
   update(value: number): void {
-    if (Number.isFinite(value) && value > 0) {
-      current = Math.floor(value);
-    }
+    const clamped = clampToBound(value, SETTING_BOUNDS.loginRateLimit);
+    if (clamped !== null) current = Math.floor(clamped);
   },
   /** Restaura el valor por defecto (útil en tests). */
   reset(): void {
