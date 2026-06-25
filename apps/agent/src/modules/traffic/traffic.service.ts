@@ -8,6 +8,7 @@ import type {
 } from '@krakenos/types';
 import { TRAFFIC_ROOM } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { normalizeTrafficSample } from './normalize.js';
 
 /** Nº de muestras retenidas en memoria (~2 min a 2 s/muestra). */
 const MAX_HISTORY = 60;
@@ -61,7 +62,8 @@ export class TrafficService {
 
   /** Toma una muestra, la guarda en el histórico/acumulador y la emite. */
   async sampleOnce(): Promise<TrafficSample> {
-    const result = await this.driver.getTrafficSample();
+    // Saneado en la frontera del driver: forma de WAN inválida → lanza (US-98).
+    const result = normalizeTrafficSample(await this.driver.getTrafficSample());
     const sample: TrafficSample = {
       timestamp: new Date().toISOString(),
       rxBytesPerSec: result.wan.rxBytesPerSec,

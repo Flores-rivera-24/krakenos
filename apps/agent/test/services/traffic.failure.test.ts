@@ -53,10 +53,12 @@ describe('TrafficService contra driver que falla', () => {
     });
   });
 
-  describe('modo garbage — getTrafficSample malformado', () => {
-    it('sampleOnce() revienta al leer wan null; sampleCycle() lo absorbe', async () => {
+  describe('modo garbage — getTrafficSample malformado (frontera endurecida)', () => {
+    it('sampleOnce() lanza un error descriptivo (no TypeError); sampleCycle() lo absorbe', async () => {
       const service = new TrafficService(app, new FailingDriver('garbage'));
-      await expect(service.sampleOnce()).rejects.toBeInstanceOf(TypeError);
+      // `normalizeTrafficSample` detecta el wan inválido y lanza un error claro
+      // en vez de dejar reventar `result.wan.rxBytesPerSec` con un TypeError.
+      await expect(service.sampleOnce()).rejects.toThrow(/forma inválida/i);
 
       const errorLog = vi.spyOn(app.log, 'error').mockImplementation(() => app.log);
       try {
