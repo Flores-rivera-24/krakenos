@@ -12,11 +12,14 @@ import { MOBILE_PRIMARY, MOBILE_SECONDARY, type NavItem } from './nav';
 
 const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 
+// Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 6 celdas encojan por
+// igual a ≤375px (en vez de `min-w-[4rem]`, que sumaba 384px y desbordaba), y la
+// etiqueta trunca para no solaparse con la vecina (US-97).
+const BOTTOM_ITEM_BASE =
+  'flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 px-0.5 py-2';
+
 function bottomLinkClass({ isActive }: { isActive: boolean }): string {
-  return cn(
-    'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
-    isActive ? 'text-kr-link' : 'text-kr-secondary',
-  );
+  return cn(BOTTOM_ITEM_BASE, isActive ? 'text-kr-link' : 'text-kr-secondary');
 }
 
 function MobileBottomNav() {
@@ -70,21 +73,18 @@ function MobileBottomNav() {
       <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface md:hidden">
         {MOBILE_PRIMARY.map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
-            <Icon className="h-5 w-5" />
-            {label}
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="w-full truncate text-center text-[10px] leading-tight">{label}</span>
           </NavLink>
         ))}
         <button
           type="button"
           onClick={() => setMoreOpen((v) => !v)}
           aria-label="Más"
-          className={cn(
-            'flex min-w-[4rem] flex-1 flex-col items-center gap-1 py-2 text-kr-xs',
-            moreOpen ? 'text-kr-link' : 'text-kr-secondary',
-          )}
+          className={cn(BOTTOM_ITEM_BASE, moreOpen ? 'text-kr-link' : 'text-kr-secondary')}
         >
-          <MoreHorizontal className="h-5 w-5" />
-          Más
+          <MoreHorizontal className="h-5 w-5 shrink-0" />
+          <span className="w-full truncate text-center text-[10px] leading-tight">Más</span>
         </button>
       </nav>
     </>
