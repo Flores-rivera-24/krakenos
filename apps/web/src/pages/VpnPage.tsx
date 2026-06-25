@@ -137,7 +137,7 @@ export function VpnPage() {
           <CardTitle className="text-base text-foreground">Dispositivos autorizados</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-hidden rounded-md border border-border">
+          <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-secondary text-secondary-foreground">
                 <tr>

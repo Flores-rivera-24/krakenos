@@ -130,7 +130,7 @@ export function TuyaManager({ reachable }: Props) {
     <div className="space-y-3">
       {error && <p className="text-kr-sm text-danger">{error}</p>}
 
-      <div className="overflow-hidden rounded-md border border-kr">
+      <div className="overflow-x-auto rounded-md border border-kr">
         <table className="w-full text-kr-sm">
           <thead className="bg-kr-elevated text-kr-secondary">
             <tr>

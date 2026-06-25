@@ -65,7 +65,7 @@ export function NetworksCard() {
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-md border border-border">
+        <div className="overflow-x-auto rounded-md border border-border">
           <table className="w-full text-sm">
             <thead className="bg-secondary text-secondary-foreground">
               <tr>
