@@ -19,12 +19,21 @@ export default defineConfig({
     setupFiles: ['./test/setup.ts'],
     css: false,
     restoreMocks: true,
-    // Coverage informativo (US-60): sin umbrales que bloqueen. `all: false` mide solo
-    // lo que tocan los tests.
+    // Coverage (US-60/US-99). `all: false` mide solo lo que tocan los tests.
+    // `thresholds` = suelo anti-regresión por debajo de los números reales
+    // (~88% stmts / ~84% branch / ~67% funcs), no un objetivo. El suelo de
+    // funciones es más bajo a propósito: muchos componentes exponen handlers/
+    // callbacks que no todos los tests disparan (ver docs/coverage-notes.md).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
       all: false,
+      thresholds: {
+        statements: 85,
+        branches: 78,
+        functions: 60,
+        lines: 85,
+      },
     },
   },
 });
