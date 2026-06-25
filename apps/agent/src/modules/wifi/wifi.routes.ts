@@ -6,6 +6,14 @@ import type {
 } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  normalizeAccessPoints,
+  normalizeGuestNetwork,
+  normalizeWifiClientsOrNull,
+  normalizeWifiNetwork,
+  normalizeWifiNetworkOrNull,
+  normalizeWifiNetworks,
+} from './normalize.js';
+import {
   accessPointsSchema,
   getGuestSchema,
   getNetworkSchema,
@@ -26,28 +34,31 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
   const adminOnly = app.requireRole('admin');
 
   app.get('/', { schema: getWifiSchema, preHandler: app.authenticate }, async () => {
-    return driver.getWifi();
+    return normalizeWifiNetwork(await driver.getWifi());
   });
 
   app.put<{ Body: UpdateWifiRequest }>(
     '/',
     { schema: updateWifiSchema, preHandler: adminOnly },
     async (req) => {
-      const result = await driver.updateWifi(req.body);
+      const result = normalizeWifiNetwork(await driver.updateWifi(req.body), 'updateWifi');
       app.audit({ action: 'wifi.update', userId: req.user.sub, ip: req.ip });
       return result;
     },
   );
 
   app.get('/guest', { schema: getGuestSchema, preHandler: app.authenticate }, async () => {
-    return driver.getGuestNetwork();
+    return normalizeGuestNetwork(await driver.getGuestNetwork());
   });
 
   app.put<{ Body: UpdateGuestNetworkRequest }>(
     '/guest',
     { schema: updateGuestSchema, preHandler: adminOnly },
     async (req) => {
-      const result = await driver.updateGuestNetwork(req.body);
+      const result = normalizeGuestNetwork(
+        await driver.updateGuestNetwork(req.body),
+        'updateGuestNetwork',
+      );
       app.audit({ action: 'wifi.guest.update', userId: req.user.sub, ip: req.ip });
       return result;
     },
@@ -56,18 +67,18 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
   // ---- Multi-AP (Fase 2) ----
 
   app.get('/access-points', { schema: accessPointsSchema, preHandler: app.authenticate }, async () => {
-    return driver.listAccessPoints();
+    return normalizeAccessPoints(await driver.listAccessPoints());
   });
 
   app.get('/networks', { schema: networksSchema, preHandler: app.authenticate }, async () => {
-    return driver.listWifiNetworks();
+    return normalizeWifiNetworks(await driver.listWifiNetworks());
   });
 
   app.get<{ Params: { id: string } }>(
     '/networks/:id',
     { schema: getNetworkSchema, preHandler: app.authenticate },
     async (req, reply) => {
-      const network = await driver.getWifiNetwork(req.params.id);
+      const network = normalizeWifiNetworkOrNull(await driver.getWifiNetwork(req.params.id));
       if (!network) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }
@@ -79,7 +90,10 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
     '/networks/:id',
     { schema: updateNetworkSchema, preHandler: adminOnly },
     async (req, reply) => {
-      const network = await driver.updateWifiNetwork(req.params.id, req.body);
+      const network = normalizeWifiNetworkOrNull(
+        await driver.updateWifiNetwork(req.params.id, req.body),
+        'updateWifiNetwork',
+      );
       if (!network) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }
@@ -92,7 +106,7 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
     '/networks/:id/clients',
     { schema: networkClientsSchema, preHandler: app.authenticate },
     async (req, reply) => {
-      const clients = await driver.listNetworkClients(req.params.id);
+      const clients = normalizeWifiClientsOrNull(await driver.listNetworkClients(req.params.id));
       if (!clients) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }

@@ -8,6 +8,7 @@ import type {
 } from '@krakenos/types';
 import { TRAFFIC_ROOM } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { normalizeTrafficSample } from './normalize.js';
 
 /** Nº de muestras retenidas en memoria (~2 min a 2 s/muestra). */
 const MAX_HISTORY = 60;
@@ -61,7 +62,8 @@ export class TrafficService {
 
   /** Toma una muestra, la guarda en el histórico/acumulador y la emite. */
   async sampleOnce(): Promise<TrafficSample> {
-    const result = await this.driver.getTrafficSample();
+    // Saneado en la frontera del driver: forma de WAN inválida → lanza (US-98).
+    const result = normalizeTrafficSample(await this.driver.getTrafficSample());
     const sample: TrafficSample = {
       timestamp: new Date().toISOString(),
       rxBytesPerSec: result.wan.rxBytesPerSec,
@@ -229,10 +231,33 @@ export class TrafficService {
     return stats;
   }
 
+  /**
+   * Toma una muestra **sin propagar errores**: para el timer fire-and-forget. Si
+   * el driver falla (caído, timeout, `getTrafficSample` malformado) lo registra y
+   * omite el ciclo en vez de dejar una promesa rechazada sin gestionar —que, sin
+   * handler global de `unhandledRejection`, tumbaría el agente cada 2 s.
+   */
+  async sampleCycle(): Promise<void> {
+    try {
+      await this.sampleOnce();
+    } catch (err) {
+      this.app.log.error({ err }, '[traffic] el muestreo falló; se omite este ciclo');
+    }
+  }
+
+  /** Persiste el rollup sin propagar errores (mismo motivo que `sampleCycle`). */
+  async flushCycle(): Promise<void> {
+    try {
+      await this.flushRollup();
+    } catch (err) {
+      this.app.log.error({ err }, '[traffic] el rollup falló; se omite este ciclo');
+    }
+  }
+
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => void this.sampleOnce(), this.intervalMs);
-    this.rollupTimer = setInterval(() => void this.flushRollup(), this.rollupMs);
+    this.timer = setInterval(() => void this.sampleCycle(), this.intervalMs);
+    this.rollupTimer = setInterval(() => void this.flushCycle(), this.rollupMs);
     // No mantener vivo el proceso solo por estos intervalos.
     this.timer.unref();
     this.rollupTimer.unref();

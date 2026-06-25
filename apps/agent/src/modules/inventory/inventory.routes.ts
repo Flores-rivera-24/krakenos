@@ -95,10 +95,15 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
 
   // Entrega un snapshot a cada cliente que se une al room de inventario.
   app.io.on('connection', (socket) => {
+    // `scanCycle()` traga el error (driver caído/timeout/garbage): un cliente no
+    // debe poder tumbar el agente con un rescan cuando el driver falla.
     socket.on('inventory:rescan', () => {
-      void service.scan();
+      void service.scanCycle();
     });
     void socket.join(INVENTORY_ROOM);
-    void service.list().then((devices) => socket.emit('inventory:snapshot', devices));
+    void service
+      .list()
+      .then((devices) => socket.emit('inventory:snapshot', devices))
+      .catch((err) => app.log.error({ err }, '[inventory] no se pudo enviar el snapshot inicial'));
   });
 };

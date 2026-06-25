@@ -11,6 +11,7 @@ import type {
 import type { Device as DbDevice } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { inferDeviceType } from './identify.js';
+import { normalizeDiscovered } from './normalize.js';
 import { lookupVendor } from './oui.js';
 
 export class InventoryService {
@@ -70,9 +71,28 @@ export class InventoryService {
       this.scanTimer = null;
     }
     if (ms > 0) {
-      this.scanTimer = setInterval(() => void this.scan(), ms);
+      this.scanTimer = setInterval(() => void this.scanCycle(), ms);
       // No mantener vivo el proceso solo por este intervalo.
       this.scanTimer.unref();
+    }
+  }
+
+  /**
+   * Ejecuta un ciclo de barrido **sin propagar errores**: pensado para los
+   * disparos fire-and-forget (timer periódico y socket `inventory:rescan`). Si el
+   * driver falla (caído, timeout, respuesta malformada) lo registra y degrada —
+   * el agente sigue vivo y reintenta en el próximo ciclo. La ruta HTTP
+   * `POST /rescan` usa `scan()` directamente porque ahí sí queremos propagar el
+   * fallo como 500 al cliente que lo pidió.
+   */
+  async scanCycle(): Promise<void> {
+    try {
+      await this.scan();
+    } catch (err) {
+      this.app.log.error(
+        { err },
+        '[inventory] el barrido falló; se omite este ciclo y se reintentará en el próximo',
+      );
     }
   }
 
@@ -144,11 +164,22 @@ export class InventoryService {
 
   /** Ejecuta un barrido (ARP + mDNS), persiste cambios y emite eventos en tiempo real. */
   async scan(): Promise<Device[]> {
-    const [arp, mdns] = await Promise.all([this.driver.scanArp(), this.driver.scanMdns()]);
+    const [arpRaw, mdnsRaw] = await Promise.all([this.driver.scanArp(), this.driver.scanMdns()]);
+
+    // Frontera del driver: descarta entradas malformadas antes de tocarlas (US-98).
+    const arp = normalizeDiscovered(arpRaw);
+    const mdns = normalizeDiscovered(mdnsRaw);
+    const dropped = arp.dropped + mdns.dropped;
+    if (dropped > 0) {
+      this.app.log.warn(
+        { dropped },
+        '[inventory] el driver devolvió entradas de descubrimiento malformadas; descartadas',
+      );
+    }
 
     // Combina ambas fuentes por MAC: une hostname, vendor y orígenes.
     const merged = new Map<string, MergedDevice>();
-    for (const d of [...arp, ...mdns]) {
+    for (const d of [...arp.devices, ...mdns.devices]) {
       const mac = d.mac.toLowerCase();
       const cur = merged.get(mac) ?? { mac, ip: d.ip, hostname: null, vendor: null, sources: new Set() };
       cur.ip = d.ip || cur.ip;
@@ -160,6 +191,19 @@ export class InventoryService {
 
     for (const device of merged.values()) {
       await this.upsertDiscovered(device);
+    }
+
+    // Anti-flapping (US-98): un barrido que no descubre **nada** casi siempre es
+    // un fallo transitorio del driver, no una red realmente vacía (el gateway
+    // siempre aparece en ARP). Marcar todo offline en ese caso haría parpadear el
+    // inventario entero; mejor omitir el barrido de stale y dejar que el próximo
+    // ciclo con datos reconcilie. (Coste asumido: una red de verdad vacía no
+    // marca offline hasta el siguiente barrido con al menos un dispositivo.)
+    if (merged.size === 0) {
+      this.app.log.warn(
+        '[inventory] barrido sin dispositivos; se omite el marcado offline (posible fallo transitorio del driver)',
+      );
+      return this.list();
     }
 
     // Marca como offline lo que no apareció en este barrido. Una sola escritura

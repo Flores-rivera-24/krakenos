@@ -10,6 +10,7 @@ import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { createCameraManager } from './cameras/index.js';
 import { createDnsManager } from './dns/index.js';
 import { createDriver } from './drivers/index.js';
+import { wrapDriverErrors } from './drivers/driver-error.js';
 import { createFirewallManager } from './firewall/index.js';
 import { createIotManager, startIotManager } from './iot/index.js';
 import { createQosManager } from './qos/index.js';
@@ -86,19 +87,22 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authPlugin);
   await app.register(socketioPlugin);
 
-  // Driver de hardware compartido por los módulos que lo necesitan.
-  const driver = createDriver({
-    kind: env.driver.kind,
-    host: env.driver.host,
-    openwrt: env.driver.openwrt,
-    pfsense: env.driver.pfsense,
-    ciscoIos: env.driver.ciscoIos,
-    ciscoNetconf: env.driver.ciscoNetconf,
-    unifi: env.driver.unifi,
-    mikrotik: env.driver.mikrotik,
-    omada: env.driver.omada,
-    asus: env.driver.asus,
-  });
+  // Driver de hardware compartido por los módulos que lo necesitan. Se envuelve
+  // para traducir fallos del hardware en 502 tipados (US-98) en vez de 500.
+  const driver = wrapDriverErrors(
+    createDriver({
+      kind: env.driver.kind,
+      host: env.driver.host,
+      openwrt: env.driver.openwrt,
+      pfsense: env.driver.pfsense,
+      ciscoIos: env.driver.ciscoIos,
+      ciscoNetconf: env.driver.ciscoNetconf,
+      unifi: env.driver.unifi,
+      mikrotik: env.driver.mikrotik,
+      omada: env.driver.omada,
+      asus: env.driver.asus,
+    }),
+  );
   const vpn = createVpnManager({
     kind: env.vpn.kind,
     endpoint: env.vpn.endpoint,
