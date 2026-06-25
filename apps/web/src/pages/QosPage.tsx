@@ -2,6 +2,7 @@ import type { CreateQosRuleRequest, QosPriority, QosRule } from '@krakenos/types
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
@@ -226,9 +227,12 @@ export function QosPage() {
                       <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
                       {isAdmin && (
                         <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => void removeRule(r.id)}>
+                          <DeleteButton
+                            onDelete={() => removeRule(r.id)}
+                            aria-label={`Eliminar regla ${r.name}`}
+                          >
                             Eliminar
-                          </Button>
+                          </DeleteButton>
                         </td>
                       )}
                     </tr>

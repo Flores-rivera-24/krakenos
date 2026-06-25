@@ -2,6 +2,7 @@ import type { CreateVlanRequest, Device, VlanWithCount } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -174,9 +175,12 @@ export function VlanPage() {
               <CardContent className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">{v.deviceCount} dispositivos</span>
                 {isAdmin && (
-                  <Button variant="ghost" size="sm" onClick={() => void removeVlan(v.id)}>
+                  <DeleteButton
+                    onDelete={() => removeVlan(v.id)}
+                    aria-label={`Eliminar VLAN ${v.name}`}
+                  >
                     Eliminar
-                  </Button>
+                  </DeleteButton>
                 )}
               </CardContent>
             </Card>

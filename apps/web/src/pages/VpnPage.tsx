@@ -2,6 +2,7 @@ import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatus } from '@krakenos
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -168,16 +169,12 @@ export function VpnPage() {
                         {p.publicKey.slice(0, 16)}…
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void removePeer(p.id);
-                          }}
+                        <DeleteButton
+                          onDelete={() => removePeer(p.id)}
+                          aria-label={`Eliminar ${p.name}`}
                         >
                           Eliminar
-                        </Button>
+                        </DeleteButton>
                       </td>
                     </tr>
                   ))

@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -157,13 +158,12 @@ export function DnsPage() {
                         <td className="px-3 py-2 font-mono text-xs">{b.domain}</td>
                         {isAdmin && (
                           <td className="px-3 py-2 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => void removeDomain(b.id)}
+                            <DeleteButton
+                              onDelete={() => removeDomain(b.id)}
+                              aria-label={`Quitar ${b.domain}`}
                             >
                               Quitar
-                            </Button>
+                            </DeleteButton>
                           </td>
                         )}
                       </tr>
