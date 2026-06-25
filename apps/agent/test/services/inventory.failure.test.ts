@@ -53,37 +53,38 @@ describe('InventoryService contra driver que falla', () => {
     });
   });
 
-  describe('modo garbage — respuesta malformada del driver', () => {
-    it('scan() revienta con TypeError al parsear la forma malformada', async () => {
-      // GAP documentado: el servicio no valida la forma del driver; una mac
-      // numérica/null hace fallar `d.mac.toLowerCase()`. Aceptable mientras el
-      // ciclo de fondo lo absorba (abajo), pero la frontera del driver no está
-      // endurecida → DEUDA.
-      const service = new InventoryService(app, new FailingDriver('garbage'));
-      await expect(service.scan()).rejects.toBeInstanceOf(TypeError);
-    });
-
-    it('scanCycle() absorbe el TypeError (no tumba el proceso)', async () => {
-      const errorLog = vi.spyOn(app.log, 'error').mockImplementation(() => app.log);
+  describe('modo garbage — respuesta malformada del driver (frontera endurecida)', () => {
+    it('scan() descarta las entradas malformadas y resuelve a [] (ya no revienta)', async () => {
+      const warnLog = vi.spyOn(app.log, 'warn').mockImplementation(() => app.log);
       const service = new InventoryService(app, new FailingDriver('garbage'));
       try {
-        await expect(service.scanCycle()).resolves.toBeUndefined();
-        expect(errorLog).toHaveBeenCalled();
+        // Antes lanzaba TypeError (`d.mac.toLowerCase()`); ahora `normalizeDiscovered`
+        // descarta lo inválido y avisa por el log.
+        await expect(service.scan()).resolves.toEqual([]);
+        expect(warnLog).toHaveBeenCalledWith(
+          expect.objectContaining({ dropped: expect.any(Number) }),
+          expect.stringMatching(/malformad/i),
+        );
       } finally {
-        errorLog.mockRestore();
+        warnLog.mockRestore();
       }
+    });
+
+    it('scanCycle() también degrada sin lanzar', async () => {
+      const service = new InventoryService(app, new FailingDriver('garbage'));
+      await expect(service.scanCycle()).resolves.toBeUndefined();
     });
   });
 
-  describe('modo empty — degradación limpia (y nota de flapping)', () => {
+  describe('modo empty — degradación limpia + anti-flapping', () => {
     it('scan() resuelve a [] sin lanzar cuando el driver no reporta nada', async () => {
       const service = new InventoryService(app, new FailingDriver('empty'));
       await expect(service.scan()).resolves.toEqual([]);
     });
 
-    it('un [] transitorio marca offline a los dispositivos ya conocidos (flapping)', async () => {
-      // DEUDA de diseño: el servicio no distingue "red vacía" de "fallo que
-      // devolvió []". Un barrido vacío por fallo transitorio marca todo offline.
+    it('un [] transitorio NO marca offline a los dispositivos ya conocidos (anti-flapping)', async () => {
+      // Fix US-98: un barrido vacío suele ser un fallo transitorio (la red real
+      // nunca está vacía: el gateway siempre aparece). No se marca offline; se avisa.
       await app.prisma.device.create({
         data: {
           mac: 'aa:bb:cc:dd:ee:ff',
@@ -93,9 +94,27 @@ describe('InventoryService contra driver que falla', () => {
           sources: '["arp"]',
         },
       });
+      const warnLog = vi.spyOn(app.log, 'warn').mockImplementation(() => app.log);
       const service = new InventoryService(app, new FailingDriver('empty'));
-      await service.scan();
-      const row = await app.prisma.device.findUnique({ where: { mac: 'aa:bb:cc:dd:ee:ff' } });
+      try {
+        await service.scan();
+        const row = await app.prisma.device.findUnique({ where: { mac: 'aa:bb:cc:dd:ee:ff' } });
+        expect(row?.online).toBe(true); // sigue online: no flapping
+        expect(warnLog).toHaveBeenCalledWith(expect.stringMatching(/se omite el marcado offline/i));
+      } finally {
+        warnLog.mockRestore();
+      }
+    });
+
+    it('un barrido CON dispositivos sí marca offline a los ausentes (no se rompe el caso normal)', async () => {
+      // El anti-flapping solo aplica cuando el barrido está totalmente vacío.
+      await app.prisma.device.create({
+        data: { mac: 'aa:bb:cc:dd:ee:01', ip: '192.168.1.51', online: true, type: 'unknown', sources: '["arp"]' },
+      });
+      const { MockDriver } = await import('../../src/drivers/mock.driver.js');
+      const service = new InventoryService(app, new MockDriver());
+      await service.scan(); // descubre 5 → el previo ausente debe quedar offline
+      const row = await app.prisma.device.findUnique({ where: { mac: 'aa:bb:cc:dd:ee:01' } });
       expect(row?.online).toBe(false);
     });
   });
