@@ -2,14 +2,16 @@ import type { CreateQosRuleRequest, QosPriority, QosRule } from '@krakenos/types
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 
 const PRIORITIES: QosPriority[] = ['high', 'normal', 'low'];
 
@@ -70,31 +72,28 @@ export function QosPage() {
       setForm(EMPTY);
       setDownText('');
       setUpText('');
+      toast.success('Regla creada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo crear la regla'));
+      toast.error(describeError(err, 'No se pudo crear la regla'));
     } finally {
       setBusy(false);
     }
   };
 
-  const toggleRule = async (rule: QosRule) => {
-    setError(null);
-    try {
-      await api.patch<QosRule>(`/qos/rules/${rule.id}`, { enabled: !rule.enabled });
-      void load();
-    } catch (err) {
-      setError(describeError(err, 'No se pudo actualizar'));
-    }
-  };
+  // Toggle optimista: revierte y avisa si falla (US-96); en éxito refresca la fila.
+  const toggleRule = (rule: QosRule, next: boolean) =>
+    api
+      .patch<QosRule>(`/qos/rules/${rule.id}`, { enabled: next })
+      .then((updated) => setRules((prev) => prev.map((r) => (r.id === updated.id ? updated : r))));
 
   const removeRule = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/qos/rules/${id}`);
+      toast.success('Regla eliminada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -211,10 +210,11 @@ export function QosPage() {
                   rules.map((r) => (
                     <tr key={r.id} className="border-t border-border">
                       <td className="px-3 py-2">
-                        <Switch
+                        <OptimisticSwitch
                           checked={r.enabled}
-                          onCheckedChange={() => void toggleRule(r)}
+                          onToggle={(next) => toggleRule(r, next)}
                           disabled={!isAdmin}
+                          errorMessage={`No se pudo actualizar ${r.name}`}
                           aria-label={`Activar regla ${r.name}`}
                         />
                       </td>
@@ -227,9 +227,12 @@ export function QosPage() {
                       <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
                       {isAdmin && (
                         <td className="px-3 py-2 text-right">
-                          <Button variant="ghost" size="sm" onClick={() => void removeRule(r.id)}>
+                          <DeleteButton
+                            onDelete={() => removeRule(r.id)}
+                            aria-label={`Eliminar regla ${r.name}`}
+                          >
                             Eliminar
-                          </Button>
+                          </DeleteButton>
                         </td>
                       )}
                     </tr>

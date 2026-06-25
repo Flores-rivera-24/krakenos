@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -11,6 +12,7 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 
 export function DnsPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
@@ -47,21 +49,22 @@ export function DnsPage() {
     try {
       await api.post<BlockedDomain>('/dns/blocklist', { domain: domain.trim() });
       setDomain('');
+      toast.success('Dominio bloqueado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo bloquear el dominio'));
+      toast.error(describeError(err, 'No se pudo bloquear el dominio'));
     } finally {
       setBusy(false);
     }
   };
 
   const removeDomain = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/dns/blocklist/${id}`);
+      toast.success('Dominio eliminado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar el dominio'));
     }
   };
 
@@ -155,13 +158,12 @@ export function DnsPage() {
                         <td className="px-3 py-2 font-mono text-xs">{b.domain}</td>
                         {isAdmin && (
                           <td className="px-3 py-2 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => void removeDomain(b.id)}
+                            <DeleteButton
+                              onDelete={() => removeDomain(b.id)}
+                              aria-label={`Quitar ${b.domain}`}
                             >
                               Quitar
-                            </Button>
+                            </DeleteButton>
                           </td>
                         )}
                       </tr>

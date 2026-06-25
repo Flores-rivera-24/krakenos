@@ -1,5 +1,5 @@
 import type { Device } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +17,9 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
+import { Toaster } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth.store';
+import { useToastStore } from '@/store/toast.store';
 
 function device(over: Partial<Device> = {}): Device {
   return {
@@ -53,6 +55,7 @@ describe('DeviceDetailSlideover', () => {
     apiMock.post.mockReset().mockResolvedValue(device({ isBlocked: true }));
     apiMock.put.mockReset().mockResolvedValue(undefined);
     apiMock.del.mockReset().mockResolvedValue(undefined);
+    useToastStore.setState({ toasts: [] });
   });
 
   it('muestra los datos del dispositivo', () => {
@@ -94,6 +97,34 @@ describe('DeviceDetailSlideover', () => {
 
     await user.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
+  });
+
+  it('bloqueo optimista: si la petición rechaza, revierte y avisa (US-96)', async () => {
+    asRole('admin');
+    // POST /block en vuelo: observamos el estado optimista antes de resolver.
+    let reject!: (err: unknown) => void;
+    apiMock.post.mockReset().mockReturnValue(
+      new Promise((_, r) => {
+        reject = r;
+      }),
+    );
+    render(
+      <>
+        <DeviceDetailSlideover device={device({ isBlocked: false })} onClose={() => {}} />
+        <Toaster />
+      </>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
+    // Optimista: el subtítulo marca "bloqueado" YA, con la petición aún en vuelo.
+    await waitFor(() => expect(screen.getByText(/bloqueado/)).toBeInTheDocument());
+    expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block');
+
+    // Falla → revierte (no miente) y avisa por toast.
+    reject(new Error('boom'));
+    await waitFor(() => expect(screen.queryByText(/bloqueado/)).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Bloquear acceso a la red' })).toBeInTheDocument();
+    expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
   });
 
   it('renderiza el sparkline cuando hay datos de tráfico (US-46)', async () => {

@@ -15,7 +15,10 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_TYPES, TYPE_LABELS } from '@/lib/devices';
+import { describeError } from '@/lib/errors';
+import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 
 const SELECT_CLASS =
   'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
@@ -39,7 +42,6 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [type, setType] = useState<DeviceType>(device.type);
   const [notes, setNotes] = useState(device.notes ?? '');
   const [saving, setSaving] = useState(false);
-  const [blocking, setBlocking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [vlans, setVlans] = useState<VlanWithCount[]>([]);
   const [vlanTag, setVlanTag] = useState<number | null>(device.vlanTag);
@@ -66,27 +68,30 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       .catch(() => setTraffic(null));
   }, [device.mac]);
 
-  const toggleBlock = async () => {
-    setBlocking(true);
-    setError(null);
-    try {
-      if (device.isBlocked) await api.del(`/inventory/devices/${device.id}/block`);
-      else await api.post(`/inventory/devices/${device.id}/block`);
-    } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo cambiar el bloqueo');
-    } finally {
-      setBlocking(false);
-    }
-  };
+  // Bloqueo optimista con reversión (US-96): el botón refleja el estado al
+  // instante y vuelve atrás + toast si la petición falla; la verdad la confirma
+  // luego el socket (`inventory:device-updated`).
+  const block = useOptimisticToggle({
+    value: device.isBlocked,
+    mutate: (next) =>
+      next
+        ? api.post(`/inventory/devices/${device.id}/block`)
+        : api.del(`/inventory/devices/${device.id}/block`),
+    onSuccess: (next) =>
+      toast.success(next ? 'Dispositivo bloqueado' : 'Acceso a la red restaurado'),
+    onError: (err) => toast.error(describeError(err, 'No se pudo cambiar el bloqueo')),
+  });
 
   const assignVlan = async (tag: number | null) => {
-    setVlanTag(tag);
+    const previous = vlanTag;
+    setVlanTag(tag); // optimista
     setVlanBusy(true);
-    setError(null);
     try {
       await api.put(`/inventory/devices/${device.id}/vlan`, { tag });
+      toast.success('VLAN actualizada');
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo asignar la VLAN');
+      setVlanTag(previous); // revertir: no mentir sobre la asignación real
+      toast.error(describeError(err, 'No se pudo asignar la VLAN'));
     } finally {
       setVlanBusy(false);
     }
@@ -102,6 +107,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     };
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, body);
+      toast.success('Cambios guardados');
       onClose();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar');
@@ -114,7 +120,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     <span className="flex items-center gap-2">
       <StatusDot status={device.online ? 'online' : 'offline'} />
       {device.online ? 'online' : 'offline'}
-      {device.isBlocked && <span className="text-danger">· bloqueado</span>}
+      {block.on && <span className="text-danger">· bloqueado</span>}
     </span>
   );
 
@@ -126,14 +132,14 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       </Button>
       {isAdmin && (
         <Button
-          variant={device.isBlocked ? 'outline' : 'destructive'}
-          onClick={() => void toggleBlock()}
-          disabled={blocking}
+          variant={block.on ? 'outline' : 'destructive'}
+          onClick={() => void block.toggle()}
+          disabled={block.pending}
           className="w-full"
         >
-          {blocking
+          {block.pending
             ? 'Aplicando…'
-            : device.isBlocked
+            : block.on
               ? 'Desbloquear acceso a la red'
               : 'Bloquear acceso a la red'}
         </Button>

@@ -2,6 +2,7 @@ import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatus } from '@krakenos
 import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -9,6 +10,7 @@ import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { toast } from '@/store/toast.store';
 
 export function VpnPage() {
   const [status, setStatus] = useState<VpnStatus | null>(null);
@@ -41,21 +43,22 @@ export function VpnPage() {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
       setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
+      toast.success('Peer creado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo crear el peer'));
+      toast.error(describeError(err, 'No se pudo crear el peer'));
     } finally {
       setBusy(false);
     }
   };
 
   const removePeer = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/vpn/peers/${id}`);
+      toast.success('Peer eliminado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar el peer'));
     }
   };
 
@@ -166,16 +169,12 @@ export function VpnPage() {
                         {p.publicKey.slice(0, 16)}…
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void removePeer(p.id);
-                          }}
+                        <DeleteButton
+                          onDelete={() => removePeer(p.id)}
+                          aria-label={`Eliminar ${p.name}`}
                         >
                           Eliminar
-                        </Button>
+                        </DeleteButton>
                       </td>
                     </tr>
                   ))
