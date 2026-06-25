@@ -5,9 +5,10 @@ import { FailingDriver } from '../helpers/failing-driver.js';
 import type { DriverFailureMode } from '../helpers/failing-driver.js';
 
 /**
- * Inyecta `FailingDriver` por el stack HTTP real. Comprueba dos cosas:
- *  1. Un fallo del driver en una ruta se traduce en **500** (no en cuelgue ni
- *     crash): la acción falló de verdad y el front (US-96) revierte ante no-2xx.
+ * Inyecta `FailingDriver` por el stack HTTP real. Comprueba que:
+ *  1. Un fallo del driver en una ruta se traduce en **502 DRIVER_UNAVAILABLE**
+ *     (no 500 genérico, ni cuelgue ni crash): el front (US-93/96) distingue el
+ *     fallo del hardware aguas arriba y revierte/avisa limpio.
  *  2. El modo `empty` **degrada limpio** (200 con vacío / 404 coherente).
  * Tras cada fallo se golpea `/health` para probar que el agente sigue vivo.
  */
@@ -31,35 +32,37 @@ describe('rutas con driver que falla', () => {
     expect(health.json()).toEqual({ status: 'ok' });
   }
 
-  describe('modo throw → 500, el agente sigue vivo', () => {
+  describe('modo throw → 502 DRIVER_UNAVAILABLE, el agente sigue vivo', () => {
     let app: FastifyInstance;
     beforeEach(async () => {
       app = await appWith('throw');
     });
 
-    it('GET /api/wifi devuelve 500 y no tumba el proceso', async () => {
+    it('GET /api/wifi devuelve 502 tipado y no tumba el proceso', async () => {
       const user = await seedUser(app, { role: 'viewer' });
       const res = await app.inject({
         method: 'GET',
         url: '/api/wifi',
         headers: authHeader(signAccess(app, user)),
       });
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('DRIVER_UNAVAILABLE');
       await assertAlive(app);
     });
 
-    it('POST /api/inventory/rescan devuelve 500 y no tumba el proceso', async () => {
+    it('POST /api/inventory/rescan devuelve 502 y no tumba el proceso', async () => {
       const user = await seedUser(app, { role: 'viewer' });
       const res = await app.inject({
         method: 'POST',
         url: '/api/inventory/rescan',
         headers: authHeader(signAccess(app, user)),
       });
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('DRIVER_UNAVAILABLE');
       await assertAlive(app);
     });
 
-    it('POST block de un dispositivo existente da 500 (el driver no pudo aplicar)', async () => {
+    it('POST block de un dispositivo existente da 502 (el driver no pudo aplicar)', async () => {
       const admin = await seedUser(app, { role: 'admin' });
       const device = await app.prisma.device.create({
         data: { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.50', online: true, type: 'unknown', sources: '[]' },
@@ -69,7 +72,8 @@ describe('rutas con driver que falla', () => {
         url: `/api/inventory/devices/${device.id}/block`,
         headers: authHeader(signAccess(app, admin)),
       });
-      expect(res.statusCode).toBe(500);
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('DRIVER_UNAVAILABLE');
       await assertAlive(app);
     });
   });
@@ -120,7 +124,24 @@ describe('rutas con driver que falla', () => {
   });
 
   describe('modo garbage → el agente nunca cae', () => {
-    it('GET /api/wifi responde (200/500) y /health sigue OK', async () => {
+    it('POST /api/inventory/rescan descarta lo malformado y degrada a 200 []', async () => {
+      const app = await appWith('garbage');
+      const user = await seedUser(app, { role: 'viewer' });
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/inventory/rescan',
+        headers: authHeader(signAccess(app, user)),
+      });
+      // `normalizeDiscovered` descarta las entradas inválidas → barrido vacío.
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual([]);
+      await assertAlive(app);
+    });
+
+    it('GET /api/wifi (forma malformada sin normalizar) responde sin colgar ni crashear', async () => {
+      // El WiFi GET no normaliza la forma (deuda conocida menor): un driver que
+      // devuelve `null` sin lanzar puede serializar raro o dar 500, pero el
+      // proceso sigue vivo. No es un crash.
       const app = await appWith('garbage');
       const user = await seedUser(app, { role: 'viewer' });
       const res = await app.inject({
@@ -128,8 +149,6 @@ describe('rutas con driver que falla', () => {
         url: '/api/wifi',
         headers: authHeader(signAccess(app, user)),
       });
-      // La forma malformada puede serializar raro o dar 500; lo que NO debe es
-      // colgar ni matar el proceso.
       expect([200, 500]).toContain(res.statusCode);
       await assertAlive(app);
     });

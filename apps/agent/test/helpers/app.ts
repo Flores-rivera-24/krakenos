@@ -7,6 +7,7 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { io as ioClient, type Socket } from 'socket.io-client';
 import { MockDriver } from '../../src/drivers/mock.driver.js';
+import { wrapDriverErrors } from '../../src/drivers/driver-error.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
 import { webauthnRoutes } from '../../src/modules/webauthn/webauthn.routes.js';
@@ -79,7 +80,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   await app.register(healthRoutes);
 
   if (opts.routes) {
-    const driver = opts.driver ?? new MockDriver();
+    // Mismo envoltorio que producción: fallos del driver → 502 tipados (US-98).
+    const driver = wrapDriverErrors(opts.driver ?? new MockDriver());
     // Instancia compartida (no arrancamos su barrido en tests: sin timers).
     const inventoryService = new InventoryService(app, driver);
     // Push: decorado como en producción (las claves VAPID se generan al vuelo).
