@@ -130,7 +130,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         {feedback && (
-          <p className={feedback.ok ? 'text-sm text-green-500' : 'text-sm text-destructive'}>
+          <p className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}>
             {feedback.msg}
           </p>
         )}

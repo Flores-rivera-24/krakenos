@@ -9,8 +9,10 @@ const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() 
 vi.mock('@/lib/socket', () => ({ getSocket: () => socketMock }));
 
 import { IotPage } from '@/pages/IotPage';
+import { Toaster } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
+import { useToastStore } from '@/store/toast.store';
 
 const DEVICES: IotDevice[] = [
   {
@@ -62,6 +64,7 @@ describe('IotPage', () => {
     socketMock.on.mockReset();
     socketMock.off.mockReset();
     useConnectionStore.setState({ status: 'connected' });
+    useToastStore.setState({ toasts: [] });
   });
 
   it('lista dispositivos y muestra la lectura del sensor', async () => {
@@ -80,6 +83,37 @@ describe('IotPage', () => {
     // TV es el primer dispositivo, así que su switch es el primero.
     fireEvent.click(screen.getAllByRole('switch')[0]!);
     expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-tv', { on: false });
+  });
+
+  it('toggle optimista: si el PATCH rechaza, el switch revierte y avisa (US-96)', async () => {
+    setRole('admin');
+    // Petición controlada: la dejamos en vuelo para observar el estado optimista.
+    let reject!: (err: unknown) => void;
+    apiMock.patch.mockReset().mockReturnValue(
+      new Promise((_, r) => {
+        reject = r;
+      }),
+    );
+    render(
+      <>
+        <IotPage />
+        <Toaster />
+      </>,
+    );
+    await screen.findByText('TV');
+
+    const sw = screen.getAllByRole('switch')[0]!; // TV (plug), on: true
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(sw);
+    // Optimista: se mueve YA, sin esperar al servidor.
+    await waitFor(() => expect(sw).toHaveAttribute('aria-checked', 'false'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-tv', { on: false });
+
+    // La petición falla → revierte (no miente) y muestra un toast de error.
+    reject(new Error('network down'));
+    await waitFor(() => expect(sw).toHaveAttribute('aria-checked', 'true'));
+    expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
   });
 
   it('un admin puede cambiar el color de una luz con color (PATCH)', async () => {

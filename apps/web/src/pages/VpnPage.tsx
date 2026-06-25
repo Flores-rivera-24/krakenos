@@ -9,6 +9,7 @@ import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { toast } from '@/store/toast.store';
 
 export function VpnPage() {
   const [status, setStatus] = useState<VpnStatus | null>(null);
@@ -41,21 +42,22 @@ export function VpnPage() {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
       setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
+      toast.success('Peer creado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo crear el peer'));
+      toast.error(describeError(err, 'No se pudo crear el peer'));
     } finally {
       setBusy(false);
     }
   };
 
   const removePeer = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/vpn/peers/${id}`);
+      toast.success('Peer eliminado');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar el peer'));
     }
   };
 

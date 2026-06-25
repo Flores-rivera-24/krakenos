@@ -9,6 +9,7 @@ import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 
 const EMPTY: CreateVlanRequest = { tag: 0, name: '', subnet: '', isolated: false };
 
@@ -49,31 +50,33 @@ export function VlanPage() {
       });
       setForm(EMPTY);
       setTagText('');
+      toast.success('VLAN creada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo crear la VLAN'));
+      toast.error(describeError(err, 'No se pudo crear la VLAN'));
     } finally {
       setBusy(false);
     }
   };
 
   const removeVlan = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/vlans/${id}`);
+      toast.success('VLAN eliminada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar la VLAN'));
     }
   };
 
   const assignDevice = async (deviceId: string, tag: number | null) => {
-    setError(null);
     try {
       await api.put<Device>(`/inventory/devices/${deviceId}/vlan`, { tag });
+      toast.success('VLAN actualizada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo asignar'));
+      toast.error(describeError(err, 'No se pudo asignar la VLAN'));
+      void load(); // re-sincroniza el selector con la verdad del servidor
     }
   };
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
+import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -35,10 +35,8 @@ export function NetworksCard() {
 
   const apName = (id: string) => aps.find((a) => a.id === id)?.name ?? id;
 
-  const toggle = async (net: WifiNetworkInfo) => {
-    const updated = await api.put<WifiNetworkInfo>(`/wifi/networks/${net.id}`, {
-      enabled: !net.enabled,
-    });
+  const toggle = async (net: WifiNetworkInfo, next: boolean) => {
+    const updated = await api.put<WifiNetworkInfo>(`/wifi/networks/${net.id}`, { enabled: next });
     setNetworks((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
   };
 
@@ -100,10 +98,11 @@ export function NetworksCard() {
                   </td>
                   <td className="px-3 py-2 text-right">
                     <div className="flex justify-end">
-                      <Switch
+                      <OptimisticSwitch
                         checked={n.enabled}
-                        onCheckedChange={() => void toggle(n)}
+                        onToggle={(next) => toggle(n, next)}
                         disabled={!isAdmin}
+                        errorMessage={`No se pudo cambiar la red ${n.ssid}`}
                         aria-label={`Activar red ${n.ssid}`}
                       />
                     </div>

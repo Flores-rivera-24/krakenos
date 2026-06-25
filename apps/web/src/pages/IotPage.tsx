@@ -2,43 +2,38 @@ import type { IotDevice } from '@krakenos/types';
 import { Lightbulb, PlugZap, Thermometer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getSocket } from '@/lib/socket';
+import { toast } from '@/store/toast.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 
 const ICONS = { light: Lightbulb, plug: PlugZap, sensor: Thermometer } as const;
 
-function DeviceCard({
-  device,
-  isAdmin,
-  onError,
-}: {
-  device: IotDevice;
-  isAdmin: boolean;
-  onError: (err: unknown) => void;
-}) {
+function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }) {
   const Icon = ICONS[device.kind];
   const [draft, setDraft] = useState<number | null>(null);
 
-  // El estado real lo refleja el socket (`iot:device-updated`), así que no hay
-  // estado optimista que revertir: si el PATCH falla, la UI ya muestra el valor
-  // del servidor; basta con avisar del fallo (US-93).
-  const patch = (body: unknown) => void api.patch(`/iot/devices/${device.id}`, body).catch(onError);
+  // El on/off va por `OptimisticSwitch`: se mueve ya y revierte si falla (US-96).
+  // El brillo/color confirman con la lectura del socket (`iot:device-updated`);
+  // si el PATCH falla se avisa con un toast y la UI sigue mostrando la verdad.
+  const patch = (body: unknown) =>
+    api.patch(`/iot/devices/${device.id}`, body).catch((err) => {
+      toast.error(describeError(err, 'No se pudo aplicar el cambio'));
+    });
 
-  const toggle = () => patch({ on: !device.on });
   const commitBrightness = () => {
     if (draft !== null) {
-      patch({ brightness: draft });
+      void patch({ brightness: draft });
       setDraft(null);
     }
   };
-  const commitColor = (hex: string) => patch({ color: { hex } });
+  const commitColor = (hex: string) => void patch({ color: { hex } });
 
   return (
     <Card>
@@ -56,10 +51,11 @@ function DeviceCard({
           <CardTitle className="text-sm text-foreground">{device.name}</CardTitle>
         </div>
         {device.kind !== 'sensor' && (
-          <Switch
+          <OptimisticSwitch
             checked={device.on ?? false}
-            onCheckedChange={toggle}
+            onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
             disabled={!isAdmin}
+            errorMessage={`No se pudo cambiar ${device.name}`}
             aria-label={`Encender ${device.name}`}
           />
         )}
@@ -179,12 +175,7 @@ export function IotPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((d) => (
-            <DeviceCard
-              key={d.id}
-              device={d}
-              isAdmin={isAdmin}
-              onError={(e) => setError(describeError(e, 'No se pudo aplicar el cambio'))}
-            />
+            <DeviceCard key={d.id} device={d} isAdmin={isAdmin} />
           ))}
         </div>
       )}

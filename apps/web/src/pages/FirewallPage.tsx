@@ -10,12 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
+import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
 
@@ -65,31 +66,29 @@ export function FirewallPage() {
       });
       setForm(EMPTY);
       setPortText('');
+      toast.success('Regla creada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo crear la regla'));
+      toast.error(describeError(err, 'No se pudo crear la regla'));
     } finally {
       setBusy(false);
     }
   };
 
-  const toggleRule = async (rule: FirewallRule) => {
-    setError(null);
-    try {
-      await api.patch<FirewallRule>(`/firewall/rules/${rule.id}`, { enabled: !rule.enabled });
-      void load();
-    } catch (err) {
-      setError(describeError(err, 'No se pudo actualizar'));
-    }
-  };
+  // Toggle optimista: el `OptimisticSwitch` revierte y avisa si falla (US-96);
+  // en éxito refrescamos solo esa fila con lo que devuelve el servidor.
+  const toggleRule = (rule: FirewallRule, next: boolean) =>
+    api
+      .patch<FirewallRule>(`/firewall/rules/${rule.id}`, { enabled: next })
+      .then((updated) => setRules((prev) => prev.map((r) => (r.id === updated.id ? updated : r))));
 
   const removeRule = async (id: string) => {
-    setError(null);
     try {
       await api.del(`/firewall/rules/${id}`);
+      toast.success('Regla eliminada');
       void load();
     } catch (err) {
-      setError(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, 'No se pudo eliminar'));
     }
   };
 
@@ -224,10 +223,11 @@ export function FirewallPage() {
                       onClick={() => setSelected(r)}
                     >
                       <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                        <Switch
+                        <OptimisticSwitch
                           checked={r.enabled}
-                          onCheckedChange={() => void toggleRule(r)}
+                          onToggle={(next) => toggleRule(r, next)}
                           disabled={!isAdmin}
+                          errorMessage={`No se pudo actualizar ${r.name}`}
                           aria-label={`Activar regla ${r.name}`}
                         />
                       </td>

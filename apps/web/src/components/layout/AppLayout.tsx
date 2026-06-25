@@ -2,6 +2,7 @@ import { MoreHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
+import { Toaster } from '@/components/ui/toast';
 import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -130,6 +131,8 @@ export function AppLayout() {
 
         <MobileBottomNav />
       </div>
+
+      <Toaster />
     </div>
   );
 }
