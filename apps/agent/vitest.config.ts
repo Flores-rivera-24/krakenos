@@ -26,12 +26,23 @@ export default defineConfig({
       ACCESS_TOKEN_TTL: '900',
       REFRESH_TOKEN_TTL: '2592000',
     },
-    // Coverage informativo (US-60): sin umbrales que bloqueen. `all: false` mide solo
-    // lo que tocan los tests, evitando importar entrypoints con efectos secundarios.
+    // Coverage (US-60/US-99). `all: false` mide solo lo que tocan los tests,
+    // evitando importar entrypoints con efectos secundarios. Los `thresholds`
+    // son un **suelo anti-regresión**, fijado holgadamente por debajo de los
+    // números reales (~88% stmts / ~84% branch), no un objetivo: avisan si una
+    // rama bien probada deja de estarlo, no persiguen un %. No bloquea por los
+    // caminos de hardware ausentes (transports SSH/SNMP/HTTP + helper sudo se
+    // verifican con hardware real → US-86; ver docs/coverage-notes.md).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
       all: false,
+      thresholds: {
+        statements: 85,
+        branches: 80,
+        functions: 83,
+        lines: 85,
+      },
     },
   },
 });
