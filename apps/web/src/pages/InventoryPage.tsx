@@ -26,7 +26,7 @@ const FILTERS: { value: ActiveFilter; label: string }[] = [
   { value: 'unknown', label: 'Unknown' },
 ];
 
-/** En <768px se fuerza la vista lista; por defecto (jsdom/SSR) asume escritorio. */
+/** En <768px se fuerza la vista de tarjetas; por defecto (jsdom/SSR) asume escritorio. */
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(false);
   useEffect(() => {
@@ -138,7 +138,10 @@ export function InventoryPage() {
   const [groupsOpen, setGroupsOpen] = useState<Record<string, boolean>>(loadGroupsOpen);
 
   const isMobile = useIsMobile();
-  const effectiveView = isMobile ? 'list' : view;
+  // En móvil la tabla de 7 columnas queda inusable: se fuerza la rejilla de
+  // tarjetas (apila a 1 columna), que es táctil y no desborda (US-97). El toggle
+  // grid/lista solo se ofrece en ≥md, donde la tabla sí cabe.
+  const effectiveView = isMobile ? 'grid' : view;
 
   useEffect(() => subscribe(), [subscribe]);
 

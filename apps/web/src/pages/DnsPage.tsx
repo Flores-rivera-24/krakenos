@@ -135,7 +135,7 @@ export function DnsPage() {
             <CardTitle className="text-base text-foreground">Blocklist</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-md border border-border">
+            <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-secondary text-secondary-foreground">
                   <tr>
@@ -180,7 +180,7 @@ export function DnsPage() {
             <CardTitle className="text-base text-foreground">Consultas recientes</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-hidden rounded-md border border-border">
+            <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-secondary text-secondary-foreground">
                   <tr>

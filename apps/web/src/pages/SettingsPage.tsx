@@ -473,7 +473,7 @@ export function SettingsPage() {
                         Sin actividad registrada.
                       </p>
                     ) : (
-                      <div className="overflow-hidden rounded-md border border-kr">
+                      <div className="overflow-x-auto rounded-md border border-kr">
                         <table className="w-full text-kr-sm">
                           <thead className="bg-kr-elevated text-kr-secondary">
                             <tr>

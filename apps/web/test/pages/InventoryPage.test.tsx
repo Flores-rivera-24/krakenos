@@ -1,7 +1,20 @@
 import type { Device } from '@krakenos/types';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** Simula el media query `(max-width: 767px)` que usa `useIsMobile`. */
+function mockViewport(mobile: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockReturnValue({
+      matches: mobile,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  });
+}
 
 // Socket falso para el store de inventario.
 const fakeSocket = vi.hoisted(() => ({
@@ -48,6 +61,13 @@ describe('InventoryPage', () => {
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'viewer', createdAt: '', updatedAt: '' },
       tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
     });
+  });
+
+  // Restaura el viewport por defecto (jsdom sin matchMedia = escritorio) para no
+  // contaminar los tests que asumen escritorio.
+  afterEach(() => {
+    // @ts-expect-error: volvemos al estado original (sin matchMedia) de jsdom.
+    delete window.matchMedia;
   });
 
   it('muestra el estado vacío sin dispositivos', () => {
@@ -120,6 +140,30 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
     // Vista grid por defecto: sin tabla.
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'List view' }));
+    expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('en móvil fuerza las tarjetas aunque se pulse "List view" (US-97)', async () => {
+    mockViewport(true); // <768px
+    useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
+    const user = userEvent.setup();
+    render(<InventoryPage />);
+
+    // El botón de lista sigue en el DOM (Tailwind `hidden` no se aplica en jsdom),
+    // pero en móvil la vista se fuerza a rejilla: nunca se monta la <table>.
+    await user.click(screen.getByRole('button', { name: 'List view' }));
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    expect(screen.getByText('MacBook')).toBeInTheDocument();
+  });
+
+  it('en escritorio sí permite cambiar a la tabla (US-97)', async () => {
+    mockViewport(false); // ≥768px
+    useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
+    const user = userEvent.setup();
+    render(<InventoryPage />);
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument(); // grid por defecto
     await user.click(screen.getByRole('button', { name: 'List view' }));
     expect(screen.getByRole('table')).toBeInTheDocument();
   });

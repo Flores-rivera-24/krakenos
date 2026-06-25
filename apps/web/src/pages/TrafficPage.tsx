@@ -344,56 +344,59 @@ export function TrafficPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <table className="w-full text-sm">
-              <caption className="sr-only">Tráfico de red por dispositivo</caption>
-              <thead>
-                <tr className="text-left text-muted-foreground">
-                  <th scope="col" className="py-2 font-medium">
-                    Dispositivo
-                  </th>
-                  <th scope="col" className="py-2 font-medium">
-                    IP
-                  </th>
-                  <th
-                    scope="col"
-                    aria-sort={sortDir === 'desc' ? 'descending' : 'ascending'}
-                    className="py-2 font-medium"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
-                      className="inline-flex items-center gap-1 hover:text-foreground"
-                      aria-label="Ordenar por descarga total"
+            {/* Scroll horizontal en móvil en vez de desbordar la página (US-97). */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <caption className="sr-only">Tráfico de red por dispositivo</caption>
+                <thead>
+                  <tr className="text-left text-muted-foreground">
+                    <th scope="col" className="py-2 font-medium">
+                      Dispositivo
+                    </th>
+                    <th scope="col" className="py-2 font-medium">
+                      IP
+                    </th>
+                    <th
+                      scope="col"
+                      aria-sort={sortDir === 'desc' ? 'descending' : 'ascending'}
+                      className="py-2 font-medium"
                     >
-                      ↓ Descarga {sortDir === 'desc' ? '▾' : '▴'}
-                    </button>
-                  </th>
-                  <th scope="col" className="py-2 font-medium">
-                    ↑ Subida
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {sortedDev.map((d) => {
-                  const dev = deviceByMac[d.mac.toLowerCase()];
-                  const name = d.label ?? dev?.hostname ?? d.mac;
-                  return (
-                    <tr
-                      key={d.mac}
-                      onClick={() => setSelectedMac(d.mac)}
-                      className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
-                    >
-                      <td className="py-2 text-foreground">{name}</td>
-                      <td className="py-2 font-mono text-xs text-muted-foreground">
-                        {d.ip || '—'}
-                      </td>
-                      <td className="py-2 text-green-500">{formatBytes(d.rxTotal)}</td>
-                      <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      <button
+                        type="button"
+                        onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                        className="inline-flex items-center gap-1 hover:text-foreground"
+                        aria-label="Ordenar por descarga total"
+                      >
+                        ↓ Descarga {sortDir === 'desc' ? '▾' : '▴'}
+                      </button>
+                    </th>
+                    <th scope="col" className="py-2 font-medium">
+                      ↑ Subida
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedDev.map((d) => {
+                    const dev = deviceByMac[d.mac.toLowerCase()];
+                    const name = d.label ?? dev?.hostname ?? d.mac;
+                    return (
+                      <tr
+                        key={d.mac}
+                        onClick={() => setSelectedMac(d.mac)}
+                        className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
+                      >
+                        <td className="py-2 text-foreground">{name}</td>
+                        <td className="py-2 font-mono text-xs text-muted-foreground">
+                          {d.ip || '—'}
+                        </td>
+                        <td className="py-2 text-green-500">{formatBytes(d.rxTotal)}</td>
+                        <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       )}
