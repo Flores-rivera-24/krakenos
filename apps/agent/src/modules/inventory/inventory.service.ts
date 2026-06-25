@@ -70,9 +70,28 @@ export class InventoryService {
       this.scanTimer = null;
     }
     if (ms > 0) {
-      this.scanTimer = setInterval(() => void this.scan(), ms);
+      this.scanTimer = setInterval(() => void this.scanCycle(), ms);
       // No mantener vivo el proceso solo por este intervalo.
       this.scanTimer.unref();
+    }
+  }
+
+  /**
+   * Ejecuta un ciclo de barrido **sin propagar errores**: pensado para los
+   * disparos fire-and-forget (timer periódico y socket `inventory:rescan`). Si el
+   * driver falla (caído, timeout, respuesta malformada) lo registra y degrada —
+   * el agente sigue vivo y reintenta en el próximo ciclo. La ruta HTTP
+   * `POST /rescan` usa `scan()` directamente porque ahí sí queremos propagar el
+   * fallo como 500 al cliente que lo pidió.
+   */
+  async scanCycle(): Promise<void> {
+    try {
+      await this.scan();
+    } catch (err) {
+      this.app.log.error(
+        { err },
+        '[inventory] el barrido falló; se omite este ciclo y se reintentará en el próximo',
+      );
     }
   }
 

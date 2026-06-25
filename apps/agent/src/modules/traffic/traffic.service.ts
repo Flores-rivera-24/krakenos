@@ -229,10 +229,33 @@ export class TrafficService {
     return stats;
   }
 
+  /**
+   * Toma una muestra **sin propagar errores**: para el timer fire-and-forget. Si
+   * el driver falla (caído, timeout, `getTrafficSample` malformado) lo registra y
+   * omite el ciclo en vez de dejar una promesa rechazada sin gestionar —que, sin
+   * handler global de `unhandledRejection`, tumbaría el agente cada 2 s.
+   */
+  async sampleCycle(): Promise<void> {
+    try {
+      await this.sampleOnce();
+    } catch (err) {
+      this.app.log.error({ err }, '[traffic] el muestreo falló; se omite este ciclo');
+    }
+  }
+
+  /** Persiste el rollup sin propagar errores (mismo motivo que `sampleCycle`). */
+  async flushCycle(): Promise<void> {
+    try {
+      await this.flushRollup();
+    } catch (err) {
+      this.app.log.error({ err }, '[traffic] el rollup falló; se omite este ciclo');
+    }
+  }
+
   start(): void {
     if (this.timer) return;
-    this.timer = setInterval(() => void this.sampleOnce(), this.intervalMs);
-    this.rollupTimer = setInterval(() => void this.flushRollup(), this.rollupMs);
+    this.timer = setInterval(() => void this.sampleCycle(), this.intervalMs);
+    this.rollupTimer = setInterval(() => void this.flushCycle(), this.rollupMs);
     // No mantener vivo el proceso solo por estos intervalos.
     this.timer.unref();
     this.rollupTimer.unref();

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import type { UserRole, VpnManager } from '@krakenos/types';
+import type { HardwareDriver, UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -47,8 +47,11 @@ import { socketioPlugin } from '../../src/plugins/socketio.js';
 export interface BuildTestAppOptions {
   /** Registra también las rutas HTTP (para tests de integración con inject). */
   routes?: boolean;
-  /** Driver a inyectar en las rutas; por defecto un `MockDriver` nuevo. */
-  driver?: MockDriver;
+  /**
+   * Driver a inyectar en las rutas; por defecto un `MockDriver` nuevo. Acepta
+   * cualquier `HardwareDriver` (p. ej. `FailingDriver`) para probar caminos de fallo.
+   */
+  driver?: HardwareDriver;
   /** Gestor de VPN a inyectar; por defecto un `MockVpnManager` nuevo. */
   vpn?: VpnManager;
   /** Registra `@fastify/rate-limit` (global:false) como en producción. */
