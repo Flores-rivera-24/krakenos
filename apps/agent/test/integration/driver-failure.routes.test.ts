@@ -138,10 +138,9 @@ describe('rutas con driver que falla', () => {
       await assertAlive(app);
     });
 
-    it('GET /api/wifi (forma malformada sin normalizar) responde sin colgar ni crashear', async () => {
-      // El WiFi GET no normaliza la forma (deuda conocida menor): un driver que
-      // devuelve `null` sin lanzar puede serializar raro o dar 500, pero el
-      // proceso sigue vivo. No es un crash.
+    it('GET /api/wifi (forma malformada) → 502 tipado, ya no un 500 de serialización', async () => {
+      // Ahora el WiFi GET normaliza la forma: un driver que devuelve `null`/garbage
+      // se traduce en 502 DRIVER_UNAVAILABLE, coherente con el resto.
       const app = await appWith('garbage');
       const user = await seedUser(app, { role: 'viewer' });
       const res = await app.inject({
@@ -149,7 +148,21 @@ describe('rutas con driver que falla', () => {
         url: '/api/wifi',
         headers: authHeader(signAccess(app, user)),
       });
-      expect([200, 500]).toContain(res.statusCode);
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('DRIVER_UNAVAILABLE');
+      await assertAlive(app);
+    });
+
+    it('GET /api/wifi/networks (lista no-array) → 502 tipado', async () => {
+      const app = await appWith('garbage');
+      const user = await seedUser(app, { role: 'viewer' });
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/wifi/networks',
+        headers: authHeader(signAccess(app, user)),
+      });
+      expect(res.statusCode).toBe(502);
+      expect(res.json().code).toBe('DRIVER_UNAVAILABLE');
       await assertAlive(app);
     });
   });
