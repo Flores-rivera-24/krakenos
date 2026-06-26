@@ -69,9 +69,23 @@ export class MikrotikDriver implements HardwareDriver {
     this.now = opts.now ?? Date.now;
   }
 
+  /**
+   * Llama a `transport.list` validando que la respuesta sea una **lista**
+   * (frontera del transporte, US-100): un RouterOS/transporte que devuelve algo
+   * inesperado produce un error descriptivo, no un `TypeError` al iterar la
+   * respuesta. Los métodos que ya envuelven en `try/catch` degradan igual.
+   */
+  private async listRows(menu: string): Promise<Record<string, unknown>[]> {
+    const rows = await this.opts.transport.list(menu);
+    if (!Array.isArray(rows)) {
+      throw new Error(`Respuesta inesperada de RouterOS para "${menu}": se esperaba una lista`);
+    }
+    return rows;
+  }
+
   async healthcheck(): Promise<boolean> {
     try {
-      await this.opts.transport.list('system/resource');
+      await this.listRows('system/resource');
       return true;
     } catch {
       return false;
@@ -79,20 +93,20 @@ export class MikrotikDriver implements HardwareDriver {
   }
 
   async scanArp(): Promise<DiscoveredDevice[]> {
-    return parseMikrotikArp(await this.opts.transport.list('ip/arp'));
+    return parseMikrotikArp(await this.listRows('ip/arp'));
   }
 
   async scanMdns(): Promise<DiscoveredDevice[]> {
     // RouterOS no hace mDNS; las concesiones DHCP son la fuente de hostnames.
     try {
-      return parseMikrotikLeases(await this.opts.transport.list('ip/dhcp-server/lease'));
+      return parseMikrotikLeases(await this.listRows('ip/dhcp-server/lease'));
     } catch {
       return [];
     }
   }
 
   async getTrafficSample(): Promise<TrafficSampleResult> {
-    const counters = parseMikrotikInterface(await this.opts.transport.list('interface'), this.wan);
+    const counters = parseMikrotikInterface(await this.listRows('interface'), this.wan);
     if (!counters) throw new Error(`Interfaz WAN no encontrada en RouterOS: ${this.wan}`);
     const t = this.now();
     const prev = this.lastCounters;
@@ -111,7 +125,7 @@ export class MikrotikDriver implements HardwareDriver {
 
   /** Garantiza que existe la regla drop que descarta la address-list de bloqueo. */
   private async ensureDropRule(): Promise<void> {
-    const rules = await this.opts.transport.list('ip/firewall/filter');
+    const rules = await this.listRows('ip/firewall/filter');
     const exists = rules.some(
       (r) => r['src-address-list'] === BLOCK_LIST && r.action === 'drop',
     );
@@ -126,7 +140,7 @@ export class MikrotikDriver implements HardwareDriver {
   }
 
   async blockDevice(mac: string): Promise<void> {
-    const arp = await this.opts.transport.list('ip/arp');
+    const arp = await this.listRows('ip/arp');
     const ip = ipForMac(arp, mac);
     if (!ip) throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de RouterOS`);
     await this.ensureDropRule();
@@ -139,9 +153,9 @@ export class MikrotikDriver implements HardwareDriver {
 
   async unblockDevice(mac: string): Promise<void> {
     try {
-      const arp = await this.opts.transport.list('ip/arp');
+      const arp = await this.listRows('ip/arp');
       const ip = ipForMac(arp, mac);
-      const entries = await this.opts.transport.list('ip/firewall/address-list');
+      const entries = await this.listRows('ip/firewall/address-list');
       const id = blockEntryId(entries, mac, ip);
       if (id) await this.opts.transport.remove('ip/firewall/address-list', id);
     } catch {
@@ -154,7 +168,7 @@ export class MikrotikDriver implements HardwareDriver {
   private async loadWireless(): Promise<WifiNetworkInfo[]> {
     let rows: Record<string, unknown>[];
     try {
-      rows = await this.opts.transport.list('interface/wireless');
+      rows = await this.listRows('interface/wireless');
     } catch {
       // El menú no existe (sin paquete wireless / RouterOS sin WiFi).
       throw new FeatureNotSupportedError('Este router MikroTik no expone interfaces WiFi (wireless)');

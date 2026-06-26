@@ -39,6 +39,12 @@ function tryJson(text: string): unknown {
  * `clave: "valor"` de algunas builds.
  */
 export function parseNvram(text: string): Record<string, string> {
+  // Frontera del transporte (US-100): si `appGet.cgi` no devolvió texto (driver
+  // con bug / respuesta corrupta), lanza un error deliberado en vez de reventar
+  // con un `TypeError` al hacer `text.split`.
+  if (typeof text !== 'string') {
+    throw new Error('Respuesta NVRAM inesperada del router ASUS (se esperaba texto)');
+  }
   const json = tryJson(text);
   if (json && typeof json === 'object' && !Array.isArray(json)) {
     const out: Record<string, string> = {};
