@@ -1,8 +1,10 @@
 import type { GuestNetwork, WifiNetwork } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { GuestNetworkCard } from '@/components/wifi/GuestNetworkCard';
 import { MainNetworkCard } from '@/components/wifi/MainNetworkCard';
 import { NetworksCard } from '@/components/wifi/NetworksCard';
+import { buttonVariants } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
@@ -58,9 +60,16 @@ export function WifiPage() {
         </div>
       ) : (
         !error && (
-          <p className="py-12 text-center text-sm text-kr-muted">
-            Aún no hay configuración WiFi disponible.
-          </p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
+            <p className="text-kr-secondary">Aún no hay configuración WiFi disponible.</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
+              La configuración WiFi aparece cuando tu router está conectado a KrakenOS. Conéctalo para
+              gestionar desde aquí el nombre de tu red, la contraseña y la red de invitados.
+            </p>
+            <Link to="/connect" className={buttonVariants()}>
+              Conecta tu router
+            </Link>
+          </div>
         )
       )}
 

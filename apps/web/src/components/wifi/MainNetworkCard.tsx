@@ -2,10 +2,20 @@ import type { UpdateWifiRequest, WifiBand, WifiNetwork, WifiSecurity } from '@kr
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
+
+/** Explicación llana de WPA2 vs WPA3 (no hay una única clave de glosario para "seguridad"). */
+const SECURITY_HELP =
+  'El candado que protege tu WiFi con contraseña. WPA3 es lo más seguro; WPA2 es compatible con aparatos antiguos; el modo mixto WPA2/WPA3 acepta ambos.';
+
+/** "Red oculta" no está en el glosario: se explica en línea. */
+const HIDDEN_HELP =
+  'Si la activas, tu red no aparece en la lista de WiFi y hay que escribir el nombre a mano para conectarse. No la hace más segura, solo menos visible.';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
@@ -65,7 +75,10 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="ssid">SSID</Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="ssid">SSID</Label>
+            <GlossaryHint termKey="ssid" />
+          </div>
           <Input
             id="ssid"
             value={ssid}
@@ -91,7 +104,10 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="band">Banda</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="band">Banda</Label>
+              <GlossaryHint termKey="banda-24-5-6" />
+            </div>
             <select
               id="band"
               className={SELECT_CLASS}
@@ -107,7 +123,10 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="security">Seguridad</Label>
+            <div className="flex items-center gap-1.5">
+              <Label htmlFor="security">Seguridad</Label>
+              <HelpHint content={SECURITY_HELP} label="¿Qué es la seguridad WiFi?" />
+            </div>
             <select
               id="security"
               className={SELECT_CLASS}
@@ -125,7 +144,10 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="flex items-center justify-between">
-          <Label htmlFor="hidden">SSID oculto</Label>
+          <span className="flex items-center gap-1.5">
+            <Label htmlFor="hidden">SSID oculto</Label>
+            <HelpHint content={HIDDEN_HELP} label="¿Qué es un SSID oculto?" />
+          </span>
           <Switch id="hidden" checked={hidden} onCheckedChange={setHidden} disabled={!isAdmin} />
         </div>
 

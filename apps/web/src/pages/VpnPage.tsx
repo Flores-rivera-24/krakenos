@@ -3,6 +3,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { GlossaryTerm } from '@/components/ui/glossary-term';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -10,7 +13,12 @@ import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { getGlossaryEntry } from '@/lib/guides';
 import { toast } from '@/store/toast.store';
+
+/** Cómo usar el QR que aparece al crear un dispositivo. */
+const QR_HELP =
+  'Instala la app gratuita de WireGuard en tu móvil. Al crear el dispositivo aquí aparecerá un código QR: escanéalo desde la app y ya podrás conectarte a tu red de casa desde cualquier lugar. El QR solo se muestra una vez.';
 
 export function VpnPage() {
   const [status, setStatus] = useState<VpnStatus | null>(null);
@@ -65,9 +73,16 @@ export function VpnPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">VPN / Acceso remoto</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold">VPN / Acceso remoto</h2>
+          <GlossaryHint termKey="vpn" />
+        </div>
         <p className="text-sm text-muted-foreground">
-          Conecta tus dispositivos por WireGuard. Ningún puerto queda expuesto a internet.
+          Conecta tus dispositivos por{' '}
+          <GlossaryTerm term="WireGuard" definition={getGlossaryEntry('wireguard')?.short ?? ''}>
+            WireGuard
+          </GlossaryTerm>
+          . Ningún puerto queda expuesto a internet.
         </p>
       </div>
 
@@ -110,7 +125,10 @@ export function VpnPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Añadir dispositivo</CardTitle>
+            <span className="flex items-center gap-1.5">
+              <CardTitle className="text-base text-foreground">Añadir dispositivo</CardTitle>
+              <HelpHint content={QR_HELP} label="¿Cómo funciona el QR?" />
+            </span>
           </CardHeader>
           <CardContent>
             <form onSubmit={addPeer} className="flex items-end gap-3">
@@ -152,8 +170,12 @@ export function VpnPage() {
                   <SkeletonRows cols={4} />
                 ) : peers.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center text-kr-muted">
-                      Sin dispositivos. Crea el primero arriba.
+                    <td colSpan={4} className="px-3 py-8 text-center">
+                      <p className="text-kr-muted">Sin dispositivos. Crea el primero arriba.</p>
+                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                        Dale un nombre a tu móvil u ordenador y pulsa «Crear peer»: obtendrás un QR
+                        para conectarlo a tu red desde cualquier lugar con la app de WireGuard.
+                      </p>
                     </td>
                   </tr>
                 ) : (

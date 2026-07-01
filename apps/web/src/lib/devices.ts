@@ -22,18 +22,6 @@ export const TYPE_LABELS: Record<DeviceType, string> = {
   unknown: 'Desconocido',
 };
 
-/** Etiquetas en inglés usadas en la vista UniFi de inventario (US-43). */
-export const TYPE_LABELS_EN: Record<DeviceType, string> = {
-  router: 'Router',
-  computer: 'Computer',
-  phone: 'Mobile',
-  tablet: 'Tablet',
-  iot: 'IoT',
-  tv: 'TV',
-  printer: 'Printer',
-  unknown: 'Unknown',
-};
-
 /** Filtro rápido por estado en la página de inventario (US-43). */
 export type ActiveFilter = 'online' | 'offline' | 'blocked' | 'unknown';
 

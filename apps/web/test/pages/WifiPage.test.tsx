@@ -1,5 +1,6 @@
 import type { GuestNetwork, WifiNetwork } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
@@ -47,6 +48,13 @@ describe('WifiPage', () => {
     expect(await screen.findByText(/Gestiona tu red principal/)).toBeInTheDocument();
   });
 
+  it('muestra pistas de ayuda contextual junto a la jerga WiFi (US-150)', async () => {
+    setRole('admin');
+    render(<WifiPage />);
+    await screen.findByText('Red principal');
+    expect(screen.getByRole('button', { name: '¿Qué es SSID?' })).toBeInTheDocument();
+  });
+
   it('un viewer ve el aviso de solo lectura', async () => {
     setRole('viewer');
     render(<WifiPage />);
@@ -68,7 +76,15 @@ describe('WifiPage', () => {
       if (path === '/wifi' || path === '/wifi/guest') return Promise.resolve(null);
       return Promise.resolve([]);
     });
-    render(<WifiPage />);
+    render(
+      <MemoryRouter>
+        <WifiPage />
+      </MemoryRouter>,
+    );
     expect(await screen.findByText(/Aún no hay configuración WiFi disponible/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Conecta tu router/ })).toHaveAttribute(
+      'href',
+      '/connect',
+    );
   });
 });

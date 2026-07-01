@@ -3,6 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -13,6 +15,12 @@ import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const EMPTY: CreateVlanRequest = { tag: 0, name: '', subnet: '', isolated: false };
+
+/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
+const TAG_HELP =
+  'Número (1–4094) que identifica la VLAN. Cada VLAN tiene el suyo, único: así el equipo de red sabe a qué segmento pertenece cada aparato.';
+const ISOLATED_HELP =
+  'Si la activas, los aparatos de esta VLAN no pueden comunicarse con los de otras. Útil para separar, por ejemplo, los aparatos inteligentes del resto de la casa.';
 
 export function VlanPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
@@ -84,7 +92,10 @@ export function VlanPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">VLANs</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold">VLANs</h2>
+          <GlossaryHint termKey="vlan" />
+        </div>
         <p className="text-sm text-muted-foreground">
           Segmenta la red en VLANs y asigna dispositivos a cada segmento.
         </p>
@@ -100,7 +111,10 @@ export function VlanPage() {
           <CardContent>
             <form onSubmit={addVlan} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
-                <Label htmlFor="vlan-tag">Tag (1-4094)</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="vlan-tag">Tag (1-4094)</Label>
+                  <HelpHint content={TAG_HELP} label="¿Qué es el tag de una VLAN?" />
+                </div>
                 <Input
                   id="vlan-tag"
                   value={tagText}
@@ -120,7 +134,10 @@ export function VlanPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="vlan-subnet">Subred</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="vlan-subnet">Subred</Label>
+                  <GlossaryHint termKey="subred" />
+                </div>
                 <Input
                   id="vlan-subnet"
                   value={form.subnet ?? ''}
@@ -128,7 +145,7 @@ export function VlanPage() {
                   placeholder="10.0.30.0/24"
                 />
               </div>
-              <div className="flex items-end gap-3">
+              <div className="flex items-end gap-1.5">
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -137,6 +154,7 @@ export function VlanPage() {
                   />
                   Aislada
                 </label>
+                <HelpHint content={ISOLATED_HELP} label="¿Qué es una VLAN aislada?" />
               </div>
               <div className="flex items-end lg:col-span-5">
                 <Button type="submit" disabled={busy}>
@@ -186,7 +204,14 @@ export function VlanPage() {
             </Card>
           ))}
         {!loading && vlans.length === 0 && (
-          <p className="text-kr-muted text-sm">Aún no hay VLANs configuradas.</p>
+          <div className="rounded-xl border border-kr bg-kr-surface py-10 text-center sm:col-span-2 lg:col-span-3">
+            <p className="text-kr-secondary">Aún no hay VLANs configuradas.</p>
+            <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-muted">
+              Una VLAN divide tu red en zonas separadas usando el mismo cableado, como poner tabiques
+              a una habitación grande.{' '}
+              {isAdmin && 'Crea la primera arriba para, por ejemplo, aislar tus aparatos inteligentes.'}
+            </p>
+          </div>
         )}
       </div>
 

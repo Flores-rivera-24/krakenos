@@ -5,11 +5,12 @@ import { DeviceCard } from '@/components/inventory/DeviceCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
 import { StatusDot } from '@/components/ui/status-dot';
 import {
   type ActiveFilter,
   DEVICE_TYPES,
-  TYPE_LABELS_EN,
+  TYPE_LABELS,
   filterDevices,
   groupDevicesByType,
 } from '@/lib/devices';
@@ -20,10 +21,10 @@ import { useInventoryStore } from '@/store/inventory.store';
 const GROUPS_OPEN_KEY = 'kr-groups-open';
 
 const FILTERS: { value: ActiveFilter; label: string }[] = [
-  { value: 'online', label: 'Online' },
-  { value: 'offline', label: 'Offline' },
-  { value: 'blocked', label: 'Blocked' },
-  { value: 'unknown', label: 'Unknown' },
+  { value: 'online', label: 'En línea' },
+  { value: 'offline', label: 'Desconectados' },
+  { value: 'blocked', label: 'Bloqueados' },
+  { value: 'unknown', label: 'Sin identificar' },
 ];
 
 /** En <768px se fuerza la vista de tarjetas; por defecto (jsdom/SSR) asume escritorio. */
@@ -54,10 +55,10 @@ function statusOf(d: Device): {
   text: string;
   danger: boolean;
 } {
-  if (d.isBlocked) return { dot: 'danger', text: 'Blocked', danger: true };
+  if (d.isBlocked) return { dot: 'danger', text: 'Bloqueado', danger: true };
   return d.online
-    ? { dot: 'online', text: 'Online', danger: false }
-    : { dot: 'offline', text: 'Offline', danger: false };
+    ? { dot: 'online', text: 'En línea', danger: false }
+    : { dot: 'offline', text: 'Desconectado', danger: false };
 }
 
 const GRID_CLASS = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3';
@@ -70,25 +71,28 @@ function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: 
         <thead className="bg-kr-elevated text-kr-secondary">
           <tr>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Device
+              Dispositivo
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
               IP
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              MAC
+              <span className="inline-flex items-center gap-1">
+                MAC
+                <GlossaryHint termKey="mac" />
+              </span>
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Vendor
+              Fabricante
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Type
+              Tipo
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Status
+              Estado
             </th>
             <th scope="col" className="px-3 py-2 text-right font-medium">
-              Last seen
+              Visto por última vez
             </th>
           </tr>
         </thead>
@@ -105,7 +109,7 @@ function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: 
                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.ip}</td>
                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.mac}</td>
                 <td className="px-3 py-2 text-kr-secondary">{d.vendor ?? '—'}</td>
-                <td className="px-3 py-2 text-kr-secondary">{TYPE_LABELS_EN[d.type]}</td>
+                <td className="px-3 py-2 text-kr-secondary">{TYPE_LABELS[d.type]}</td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-2">
                     <StatusDot status={s.dot} />
@@ -180,8 +184,8 @@ export function InventoryPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
-            aria-label="Search devices"
+            placeholder="Buscar..."
+            aria-label="Buscar dispositivos"
             className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
@@ -197,7 +201,7 @@ export function InventoryPage() {
                 tab === t ? 'bg-kr-accent text-white' : 'text-kr-secondary hover:text-kr-primary',
               )}
             >
-              {t === 'all' ? 'All Devices' : 'Groups'}
+              {t === 'all' ? 'Todos' : 'Grupos'}
             </button>
           ))}
         </div>
@@ -206,7 +210,7 @@ export function InventoryPage() {
           <div className="hidden rounded-md border border-kr bg-kr-elevated p-0.5 md:inline-flex">
             <button
               type="button"
-              aria-label="Grid view"
+              aria-label="Vista de cuadrícula"
               onClick={() => setView('grid')}
               className={cn(
                 'rounded p-1.5',
@@ -217,7 +221,7 @@ export function InventoryPage() {
             </button>
             <button
               type="button"
-              aria-label="List view"
+              aria-label="Vista de lista"
               onClick={() => setView('list')}
               className={cn(
                 'rounded p-1.5',
@@ -229,7 +233,7 @@ export function InventoryPage() {
           </div>
           <Button onClick={rescan} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4" />
-            Scan
+            Escanear
           </Button>
         </div>
       </div>
@@ -271,16 +275,20 @@ export function InventoryPage() {
         </div>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-          <p className="text-kr-secondary">No devices yet.</p>
+          <p className="text-kr-secondary">Aún no hay dispositivos.</p>
+          <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
+            KrakenOS descubre solo los aparatos conectados a tu red (móviles, ordenadores, tele,
+            enchufes inteligentes…). Pulsa «Escanear la red» para buscarlos ahora.
+          </p>
           <Button onClick={rescan}>
             <RefreshCw className="h-4 w-4" />
-            Scan network
+            Escanear la red
           </Button>
         </div>
       ) : tab === 'all' ? (
         filtered.length === 0 ? (
           <div className="rounded-xl border border-kr bg-kr-surface py-16 text-center text-kr-secondary">
-            No devices match your search.
+            Ningún dispositivo coincide con tu búsqueda.
           </div>
         ) : effectiveView === 'grid' ? (
           <div className={GRID_CLASS}>
@@ -305,7 +313,7 @@ export function InventoryPage() {
                   className="flex w-full items-center justify-between px-4 py-3 text-left text-kr-primary hover:bg-kr-elevated"
                 >
                   <span className="font-medium">
-                    {TYPE_LABELS_EN[type]} ({items.length})
+                    {TYPE_LABELS[type]} ({items.length})
                   </span>
                   {open ? (
                     <ChevronUp className="h-5 w-5 text-kr-muted" />

@@ -9,6 +9,8 @@ import { FirewallRuleSlideover } from '@/components/firewall/FirewallRuleSlideov
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
@@ -20,6 +22,15 @@ import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
+
+/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
+const FIREWALL_HELP =
+  'Un cortafuegos es el portero de tu red: cada regla decide si una conexión se permite o se bloquea, según de dónde viene, a dónde va y por qué puerto.';
+const ACTION_HELP = '«Permitir» deja pasar la conexión; «Bloquear» la corta.';
+const SOURCE_HELP =
+  'De dónde viene la conexión. Puede ser una IP (192.168.1.50), un rango en formato CIDR (192.168.1.0/24 = toda esa red) o la dirección MAC de un aparato. Déjalo vacío para «cualquiera».';
+const DEST_HELP =
+  'A dónde va la conexión: una IP, un rango CIDR o un nombre de host. Déjalo vacío para «cualquiera».';
 
 const EMPTY: CreateFirewallRuleRequest = {
   name: '',
@@ -96,9 +107,13 @@ export function FirewallPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">Firewall</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold">Firewall</h2>
+          <HelpHint content={FIREWALL_HELP} label="¿Qué es un cortafuegos?" />
+        </div>
         <p className="text-sm text-muted-foreground">
-          Reglas allow/deny por origen, destino, protocolo y puerto. Se evalúan por prioridad.
+          Reglas que permiten o bloquean el tráfico por origen, destino, protocolo y puerto. Se
+          evalúan por prioridad.
         </p>
       </div>
 
@@ -122,7 +137,10 @@ export function FirewallPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fw-action">Acción</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fw-action">Acción</Label>
+                  <HelpHint content={ACTION_HELP} label="¿Qué hace la acción?" />
+                </div>
                 <select
                   id="fw-action"
                   value={form.action}
@@ -134,7 +152,10 @@ export function FirewallPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fw-protocol">Protocolo</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fw-protocol">Protocolo</Label>
+                  <GlossaryHint termKey="protocolo" />
+                </div>
                 <select
                   id="fw-protocol"
                   value={form.protocol}
@@ -151,7 +172,10 @@ export function FirewallPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fw-source">Origen</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fw-source">Origen</Label>
+                  <HelpHint content={SOURCE_HELP} label="¿Qué es el origen?" />
+                </div>
                 <Input
                   id="fw-source"
                   value={form.source ?? ''}
@@ -160,7 +184,10 @@ export function FirewallPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fw-dest">Destino</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fw-dest">Destino</Label>
+                  <HelpHint content={DEST_HELP} label="¿Qué es el destino?" />
+                </div>
                 <Input
                   id="fw-dest"
                   value={form.destination ?? ''}
@@ -169,7 +196,10 @@ export function FirewallPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="fw-port">Puerto</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="fw-port">Puerto</Label>
+                  <GlossaryHint termKey="puerto" />
+                </div>
                 <Input
                   id="fw-port"
                   value={portText}
@@ -212,8 +242,13 @@ export function FirewallPage() {
                   <SkeletonRows cols={isAdmin ? 8 : 7} />
                 ) : rules.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center text-kr-muted">
-                      Aún no hay reglas configuradas.
+                    <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
+                      <p className="text-kr-muted">Aún no hay reglas configuradas.</p>
+                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                        El cortafuegos decide qué conexiones se permiten y cuáles se bloquean. Sin
+                        reglas, todo el tráfico pasa.{' '}
+                        {isAdmin && 'Crea una arriba para, por ejemplo, impedir que un aparato salga a internet.'}
+                      </p>
                     </td>
                   </tr>
                 ) : (

@@ -2,10 +2,18 @@ import type { GuestNetwork, UpdateGuestNetworkRequest } from '@krakenos/types';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
+
+/** "Aislar clientes" y "límite de ancho de banda" no están en el glosario: se explican en línea. */
+const ISOLATION_HELP =
+  'Impide que los aparatos conectados a la red de invitados se vean entre sí. Ideal para que las visitas solo tengan internet y nada más.';
+const LIMIT_HELP =
+  'Velocidad máxima que puede usar la red de invitados, en Mbps (1000 Mbps = 1 Gbps). Déjalo vacío para no poner límite.';
 
 interface Props {
   network: GuestNetwork;
@@ -50,7 +58,10 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base text-foreground">Red de invitados</CardTitle>
+        <span className="flex items-center gap-1.5">
+          <CardTitle className="text-base text-foreground">Red de invitados</CardTitle>
+          <GlossaryHint termKey="red-invitados" placement="bottom" />
+        </span>
         <Switch
           checked={enabled}
           onCheckedChange={setEnabled}
@@ -85,7 +96,10 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="flex items-center justify-between">
-          <Label htmlFor="isolation">Aislar clientes entre sí</Label>
+          <span className="flex items-center gap-1.5">
+            <Label htmlFor="isolation">Aislar clientes entre sí</Label>
+            <HelpHint content={ISOLATION_HELP} label="¿Qué es aislar clientes?" />
+          </span>
           <Switch
             id="isolation"
             checked={clientIsolation}
@@ -95,7 +109,10 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="limit">Límite de ancho de banda (Mbps)</Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="limit">Límite de ancho de banda (Mbps)</Label>
+            <HelpHint content={LIMIT_HELP} label="¿Qué es el límite de ancho de banda?" />
+          </div>
           <Input
             id="limit"
             type="number"
