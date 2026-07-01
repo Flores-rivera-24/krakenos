@@ -59,7 +59,7 @@ export function encryptSecret(plaintext: string, key: Buffer): string {
     throw new Error(`Clave de secretbox inválida: se esperaban ${KEY_BYTES} bytes.`);
   }
   const iv = randomBytes(IV_BYTES);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_BYTES });
   const ct = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
   return [SCHEME, iv.toString('base64'), tag.toString('base64'), ct.toString('base64')].join('.');
@@ -79,7 +79,10 @@ export function decryptSecret(token: string, key: Buffer): string {
     throw new SecretDecryptError('Nonce o tag de autenticación con longitud inválida.');
   }
   try {
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    // `authTagLength` explícito: fija la longitud esperada del tag GCM (16 bytes), de
+    // modo que Node rechaza un tag truncado (evita forjas por tag corto). Defensa en
+    // profundidad además del check de longitud de arriba.
+    const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_BYTES });
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(ct), decipher.final()]).toString('utf8');
   } catch {
