@@ -35,6 +35,7 @@ vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { LoginPage } from '@/pages/LoginPage';
 import { SetupPage } from '@/pages/SetupPage';
+import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { WifiPage } from '@/pages/WifiPage';
@@ -155,6 +156,7 @@ function apiGet(path: string): Promise<unknown> {
   if (path === '/setup/status') return Promise.resolve({ needsSetup: false, requiresToken: false });
   if (path === '/system/info') return Promise.resolve({ homeName: 'Casa' });
   if (path === '/auth/last-session') return Promise.resolve(null);
+  if (path === '/integrations') return Promise.resolve({ domains: [] });
   if (path === '/system/settings') return Promise.resolve(SETTINGS);
   if (path.startsWith('/system/stats'))
     return Promise.resolve({
@@ -221,6 +223,7 @@ function apiGet(path: string): Promise<unknown> {
 const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Login', el: <LoginPage /> },
   { name: 'Setup', el: <SetupPage /> },
+  { name: 'Connect', el: <ConnectPage /> },
   { name: 'Dashboard', el: <DashboardPage /> },
   { name: 'Inventory', el: <InventoryPage /> },
   { name: 'Wifi', el: <WifiPage /> },

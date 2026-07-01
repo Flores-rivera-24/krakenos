@@ -3,6 +3,8 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
@@ -14,6 +16,14 @@ import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const PRIORITIES: QosPriority[] = ['high', 'normal', 'low'];
+
+/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
+const TARGET_HELP =
+  'El aparato o servicio al que se aplica la regla: su IP (192.168.1.50), su dirección MAC o el nombre de un servicio.';
+const PRIORITY_HELP =
+  'Cuando la red se satura, el tráfico de prioridad alta pasa primero y el de prioridad baja espera. La mayoría del tráfico va en «Normal».';
+const KBPS_HELP =
+  'Límite de velocidad en kbps (1000 kbps ≈ 1 Mbps). Escribe 0 para no poner límite.';
 
 const PRIORITY_LABEL: Record<QosPriority, string> = {
   high: 'Alta',
@@ -100,7 +110,10 @@ export function QosPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">QoS</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold">QoS</h2>
+          <GlossaryHint termKey="qos" />
+        </div>
         <p className="text-sm text-muted-foreground">
           Prioriza y limita el ancho de banda por dispositivo o servicio.
         </p>
@@ -126,7 +139,10 @@ export function QosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="qos-target">Objetivo</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="qos-target">Objetivo</Label>
+                  <HelpHint content={TARGET_HELP} label="¿Qué es el objetivo?" />
+                </div>
                 <Input
                   id="qos-target"
                   value={form.target}
@@ -135,7 +151,10 @@ export function QosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="qos-priority">Prioridad</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="qos-priority">Prioridad</Label>
+                  <HelpHint content={PRIORITY_HELP} label="¿Qué es la prioridad?" />
+                </div>
                 <select
                   id="qos-priority"
                   value={form.priority}
@@ -150,7 +169,10 @@ export function QosPage() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="qos-down">↓ kbps (0=∞)</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="qos-down">↓ kbps (0=∞)</Label>
+                  <HelpHint content={KBPS_HELP} label="¿Qué son los kbps?" />
+                </div>
                 <Input
                   id="qos-down"
                   value={downText}
@@ -202,8 +224,13 @@ export function QosPage() {
                   <SkeletonRows cols={isAdmin ? 7 : 6} />
                 ) : rules.length === 0 ? (
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center text-kr-muted">
-                      Aún no hay reglas de QoS.
+                    <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
+                      <p className="text-kr-muted">Aún no hay reglas de QoS.</p>
+                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                        La QoS reparte tu conexión para que lo importante no se resienta.{' '}
+                        {isAdmin &&
+                          'Crea una regla arriba para, por ejemplo, dar prioridad a las videollamadas o limitar una descarga.'}
+                      </p>
                     </td>
                   </tr>
                 ) : (

@@ -35,6 +35,7 @@ import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
 import type { TuyaDeviceRecord } from '../../src/iot/tuya.store.js';
+import type { CameraDefinition } from '../../src/cameras/rtsp.cameras.js';
 import { MemoryJsonStore, type JsonStore } from '../../src/store/json-store.js';
 import { MockQosManager } from '../../src/qos/mock.qos.js';
 import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
@@ -44,6 +45,10 @@ import { authPlugin } from '../../src/plugins/auth.js';
 import { healthRoutes } from '../../src/plugins/health.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
 import { socketioPlugin } from '../../src/plugins/socketio.js';
+import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
+import { IntegrationConfigStore } from '../../src/integrations/integration-config.store.js';
+import { buildIntegrationRuntime } from '../../src/integrations/runtime.js';
+import { integrationsRoutes } from '../../src/modules/integrations/integrations.routes.js';
 
 export interface BuildTestAppOptions {
   /** Registra también las rutas HTTP (para tests de integración con inject). */
@@ -59,6 +64,8 @@ export interface BuildTestAppOptions {
   rateLimit?: boolean;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
+  /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
+  cameraStore?: JsonStore<CameraDefinition>;
 }
 
 /**
@@ -112,11 +119,26 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
     });
-    await app.register(camerasRoutes, { prefix: '/api/cameras', cameras: new MockCameraManager() });
+    await app.register(camerasRoutes, {
+      prefix: '/api/cameras',
+      cameras: new MockCameraManager(),
+      store: opts.cameraStore ?? new MemoryJsonStore<CameraDefinition>(),
+    });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
     await app.register(dnsRoutes, { prefix: '/api/dns', dns: new MockDnsManager() });
+    // Configuración de integraciones (US-142): runtime + store propios para el test app.
+    const integrationStore = new IntegrationConfigStore(
+      app.prisma,
+      createSecretbox(generateSecretboxKey()),
+    );
+    const runtime = await buildIntegrationRuntime(app, integrationStore);
+    await app.register(integrationsRoutes, {
+      prefix: '/api/integrations',
+      runtime,
+      store: integrationStore,
+    });
   }
 
   await app.ready();
@@ -133,6 +155,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
+  await app.prisma.integrationConfig.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();
 }

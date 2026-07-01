@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
+import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
 import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
@@ -63,6 +64,8 @@ export function DashboardPage() {
           {editing ? 'Hecho' : 'Personalizar'}
         </Button>
       </div>
+
+      <GettingStarted />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {layout.order.map((id) => {

@@ -7,15 +7,11 @@ import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import { checkSecretFilePermissions } from './config/secret-permissions.js';
-import { createCameraManager } from './cameras/index.js';
-import { createDnsManager } from './dns/index.js';
-import { createDriver } from './drivers/index.js';
-import { wrapDriverErrors } from './drivers/driver-error.js';
-import { createFirewallManager } from './firewall/index.js';
-import { createIotManager, startIotManager } from './iot/index.js';
-import { createQosManager } from './qos/index.js';
-import { createVlanManager } from './vlan/index.js';
-import { createVpnManager } from './vpn/index.js';
+import { loadOrCreateSecretbox } from './config/secretbox.js';
+import { IntegrationConfigStore } from './integrations/integration-config.store.js';
+import { buildIntegrationRuntime } from './integrations/runtime.js';
+import { FileJsonStore } from './store/json-store.js';
+import type { CameraDefinition } from './cameras/rtsp.cameras.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
@@ -36,6 +32,7 @@ import { setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
+import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
 import { iotRoutes } from './modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from './modules/iot/tuya-config.routes.js';
@@ -87,56 +84,23 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(authPlugin);
   await app.register(socketioPlugin);
 
-  // Driver de hardware compartido por los módulos que lo necesitan. Se envuelve
-  // para traducir fallos del hardware en 502 tipados (US-98) en vez de 500.
-  const driver = wrapDriverErrors(
-    createDriver({
-      kind: env.driver.kind,
-      host: env.driver.host,
-      openwrt: env.driver.openwrt,
-      pfsense: env.driver.pfsense,
-      ciscoIos: env.driver.ciscoIos,
-      ciscoNetconf: env.driver.ciscoNetconf,
-      unifi: env.driver.unifi,
-      mikrotik: env.driver.mikrotik,
-      omada: env.driver.omada,
-      asus: env.driver.asus,
-    }),
-  );
-  const vpn = createVpnManager({
-    kind: env.vpn.kind,
-    endpoint: env.vpn.endpoint,
-    listenPort: env.vpn.listenPort,
-    wireguard: env.vpn.wireguard,
-  });
-  // El store de config Tuya lo crea la factory (única instancia, compartida con
-  // las rutas `/api/iot/tuya` vía el bundle) — sin duplicar la instancia (US-63).
-  const { manager: iot, tuyaStore } = createIotManager({
-    kind: env.iot.kind,
-    zigbee: env.iot.zigbee,
-    matter: env.iot.matter,
-    hue: env.iot.hue,
-    govee: env.iot.govee,
-    tuya: env.iot.tuya,
-    kasa: env.iot.kasa,
-    shelly: env.iot.shelly,
-    meross: env.iot.meross,
-    switchbot: env.iot.switchbot,
-  });
-  // Arranca la conexión en segundo plano de los managers que la necesiten (zigbee/govee).
-  startIotManager(iot, (msg) => app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`));
-  const cameras = createCameraManager({ kind: env.cameras.kind, rtsp: env.cameras.rtsp });
-  const firewall = createFirewallManager({
-    kind: env.firewall.kind,
-    iptables: env.firewall.iptables,
-  });
-  const vlan = createVlanManager({
-    kind: env.vlan.kind,
-    switch: env.vlan.switch,
-    cisco: env.vlan.cisco,
-  });
-  const qos = createQosManager({ kind: env.qos.kind, tc: env.qos.tc });
-  const dns = createDnsManager({ kind: env.dns.kind, pihole: env.dns.pihole });
+  // Sistema de configuración de integraciones (US-139/140/141): cada manager se
+  // hidrata desde la config guardada en la DB (con `.env` de fallback) y es
+  // **recargable en caliente**. Las rutas reciben un `handle` transparente que delega
+  // en la instancia viva, así reconfigurar una integración solo intercambia la
+  // instancia — sin reiniciar el agente ni re-registrar plugins/rutas de Fastify.
+  const secretbox = loadOrCreateSecretbox(env.secretboxKeyPath);
+  const integrationStore = new IntegrationConfigStore(app.prisma, secretbox);
+  const runtime = await buildIntegrationRuntime(app, integrationStore);
+  const driver = runtime.driver.handle;
+  const vpn = runtime.vpn.handle;
+  const iot = runtime.iot.handle;
+  const cameras = runtime.cameras.handle;
+  const firewall = runtime.firewall.handle;
+  const vlan = runtime.vlan.handle;
+  const qos = runtime.qos.handle;
+  const dns = runtime.dns.handle;
+  const tuyaStore = runtime.tuyaStore;
 
   // Healthcheck público y mínimo (US-58): solo `{ status: 'ok' }`.
   await app.register(healthRoutes);
@@ -182,11 +146,21 @@ export async function buildServer(): Promise<FastifyInstance> {
   if (tuyaStore) {
     await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
   }
-  await app.register(camerasRoutes, { prefix: '/api/cameras', cameras });
+  // Store de cámaras (US-148): alta/baja desde la UI; el RtspCameraManager lee el
+  // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
+  const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
+  await app.register(camerasRoutes, { prefix: '/api/cameras', cameras, store: cameraStore });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });
   await app.register(dnsRoutes, { prefix: '/api/dns', dns });
+  // Configuración de integraciones desde la UI (US-142): catálogo + guardar + probar
+  // conexión + revertir; recarga el manager en caliente vía el runtime (US-141).
+  await app.register(integrationsRoutes, {
+    prefix: '/api/integrations',
+    runtime,
+    store: integrationStore,
+  });
   await app.register(auditRoutes, { prefix: '/api/audit' });
   await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
 

@@ -70,9 +70,20 @@ describe('InventoryPage', () => {
     delete window.matchMedia;
   });
 
-  it('muestra el estado vacío sin dispositivos', () => {
+  it('muestra el estado vacío en español y enseña qué hace el inventario', () => {
     render(<InventoryPage />);
-    expect(screen.getByText(/No devices yet/)).toBeInTheDocument();
+    expect(screen.getByText(/Aún no hay dispositivos/)).toBeInTheDocument();
+    expect(screen.getByText(/KrakenOS descubre solo los aparatos/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Escanear la red/ })).toBeInTheDocument();
+  });
+
+  it('la interfaz está en español (sin cadenas en inglés)', () => {
+    useInventoryStore.setState({ devices: { d1: device() } });
+    render(<InventoryPage />);
+    expect(screen.getByRole('button', { name: 'Todos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grupos' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Escanear' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bloqueados' })).toBeInTheDocument();
   });
 
   it('lista los dispositivos del store', () => {
@@ -92,7 +103,7 @@ describe('InventoryPage', () => {
     const user = userEvent.setup();
     useInventoryStore.setState({ devices: { d1: device() } });
     render(<InventoryPage />);
-    await user.click(screen.getByRole('button', { name: 'Scan' }));
+    await user.click(screen.getByRole('button', { name: 'Escanear' }));
     expect(fakeSocket.emit).toHaveBeenCalledWith('inventory:rescan');
   });
 
@@ -115,7 +126,7 @@ describe('InventoryPage', () => {
     });
     const user = userEvent.setup();
     render(<InventoryPage />);
-    await user.type(screen.getByLabelText('Search devices'), 'macbook');
+    await user.type(screen.getByLabelText('Buscar dispositivos'), 'macbook');
     expect(screen.getByText('MacBook')).toBeInTheDocument();
     expect(screen.queryByText('Living Room TV')).not.toBeInTheDocument();
   });
@@ -129,7 +140,7 @@ describe('InventoryPage', () => {
     });
     const user = userEvent.setup();
     render(<InventoryPage />);
-    await user.click(screen.getByRole('button', { name: 'Offline' }));
+    await user.click(screen.getByRole('button', { name: 'Desconectados' }));
     expect(screen.getByText('Offline One')).toBeInTheDocument();
     expect(screen.queryByText('Online One')).not.toBeInTheDocument();
   });
@@ -140,7 +151,7 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
     // Vista grid por defecto: sin tabla.
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'List view' }));
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
@@ -152,7 +163,7 @@ describe('InventoryPage', () => {
 
     // El botón de lista sigue en el DOM (Tailwind `hidden` no se aplica en jsdom),
     // pero en móvil la vista se fuerza a rejilla: nunca se monta la <table>.
-    await user.click(screen.getByRole('button', { name: 'List view' }));
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.getByText('MacBook')).toBeInTheDocument();
   });
@@ -164,7 +175,7 @@ describe('InventoryPage', () => {
     render(<InventoryPage />);
 
     expect(screen.queryByRole('table')).not.toBeInTheDocument(); // grid por defecto
-    await user.click(screen.getByRole('button', { name: 'List view' }));
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
     expect(screen.getByRole('table')).toBeInTheDocument();
   });
 
@@ -180,12 +191,15 @@ describe('InventoryPage', () => {
     useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
     const user = userEvent.setup();
     render(<InventoryPage />);
-    await user.click(screen.getByRole('button', { name: 'List view' }));
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
 
     expect(
       screen.getByRole('table', { name: 'Dispositivos detectados en la red' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Device' })).toHaveAttribute('scope', 'col');
-    expect(screen.getByRole('columnheader', { name: 'Status' })).toHaveAttribute('scope', 'col');
+    expect(screen.getByRole('columnheader', { name: 'Dispositivo' })).toHaveAttribute(
+      'scope',
+      'col',
+    );
+    expect(screen.getByRole('columnheader', { name: 'Estado' })).toHaveAttribute('scope', 'col');
   });
 });

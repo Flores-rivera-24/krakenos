@@ -1,7 +1,10 @@
 import type { IotDevice } from '@krakenos/types';
 import { Lightbulb, PlugZap, Thermometer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { HelpHint } from '@/components/ui/help-hint';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,6 +17,10 @@ import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 
 const ICONS = { light: Lightbulb, plug: PlugZap, sensor: Thermometer } as const;
+
+/** "IoT" no tiene clave de glosario propia: se explica en línea. */
+const IOT_HELP =
+  'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.';
 
 function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }) {
   const Icon = ICONS[device.kind];
@@ -150,7 +157,10 @@ export function IotPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Dispositivos IoT</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-xl font-semibold">Dispositivos IoT</h2>
+            <HelpHint content={IOT_HELP} label="¿Qué es IoT?" />
+          </div>
           <p className="text-sm text-muted-foreground">
             {isAdmin
               ? 'Controla luces, enchufes y sensores.'
@@ -170,7 +180,16 @@ export function IotPage() {
         </div>
       ) : list.length === 0 ? (
         !error && (
-          <p className="py-12 text-center text-sm text-kr-muted">Aún no hay dispositivos IoT.</p>
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
+            <p className="text-kr-secondary">Aún no hay dispositivos IoT.</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
+              Aquí controlarás tus luces, enchufes y sensores inteligentes. Conecta el primero y
+              aparecerá en esta pantalla para encenderlo o apagarlo desde el móvil.
+            </p>
+            <Link to="/connect" className={buttonVariants()}>
+              Conecta tu primera luz o enchufe
+            </Link>
+          </div>
         )
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,5 +1,6 @@
 import type { IotDevice } from '@krakenos/types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
@@ -142,11 +143,17 @@ describe('IotPage', () => {
     expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
   });
 
-  it('muestra el estado vacío honesto sin dispositivos (US-93)', async () => {
+  it('muestra el estado vacío honesto sin dispositivos y ofrece conectar (US-93/US-150)', async () => {
     setRole('admin');
     apiMock.get.mockReset().mockResolvedValue([]);
-    render(<IotPage />);
+    render(
+      <MemoryRouter>
+        <IotPage />
+      </MemoryRouter>,
+    );
     expect(await screen.findByText(/Aún no hay dispositivos IoT/)).toBeInTheDocument();
+    const cta = screen.getByRole('link', { name: /Conecta tu primera luz o enchufe/ });
+    expect(cta).toHaveAttribute('href', '/connect');
   });
 
   it('marca los datos como obsoletos cuando el stream está caído (US-94)', async () => {

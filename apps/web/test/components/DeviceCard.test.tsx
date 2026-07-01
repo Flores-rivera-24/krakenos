@@ -31,12 +31,12 @@ describe('DeviceCard', () => {
     expect(screen.getByText('192.168.1.10')).toBeInTheDocument();
   });
 
-  it('muestra "Blocked" con color danger aunque online sea true', () => {
+  it('muestra "Bloqueado" con color danger aunque online sea true', () => {
     render(<DeviceCard device={device({ isBlocked: true, online: true })} onSelect={() => {}} />);
-    const status = screen.getByText('Blocked');
+    const status = screen.getByText('Bloqueado');
     expect(status).toBeInTheDocument();
     expect(status).toHaveClass('text-danger');
-    expect(screen.queryByText('Online')).not.toBeInTheDocument();
+    expect(screen.queryByText('En línea')).not.toBeInTheDocument();
   });
 
   it('click llama al handler onSelect con el id', async () => {

@@ -16,3 +16,12 @@ openssl rsa -in "$KEYS_DIR/jwt-private.pem" -pubout -out "$KEYS_DIR/jwt-public.p
 chmod 600 "$KEYS_DIR/jwt-private.pem"
 
 echo "Claves RS256 generadas en $KEYS_DIR"
+
+# Clave de cifrado de secretos en reposo (AES-256-GCM, US-139). Las credenciales de
+# integración configuradas desde la UI se guardan cifradas en la base de datos, nunca
+# en claro. Si falta, el agente también la genera al arrancar (loadOrCreateSecretbox).
+if [[ ! -f "$KEYS_DIR/secretbox.key" ]]; then
+  openssl rand -base64 32 >"$KEYS_DIR/secretbox.key"
+  chmod 600 "$KEYS_DIR/secretbox.key"
+  echo "Clave de cifrado de secretos generada en $KEYS_DIR/secretbox.key"
+fi

@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Map,
   Network,
+  PlusCircle,
   Settings,
   ShieldAlert,
   Video,
@@ -30,6 +31,7 @@ export interface NavItem {
 /** Grupos de navegación (separadores visuales en la sidebar, estilo UniFi). */
 export const NAV_GROUPS: NavItem[][] = [
   [
+    { to: '/connect', label: 'Conectar', icon: PlusCircle },
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/inventory', label: 'Dispositivos', icon: Network, badge: 'devices' },
     { to: '/wifi', label: 'Red WiFi', icon: Wifi },
@@ -57,9 +59,9 @@ export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flat();
 
 /** Los 5 ítems más frecuentes para la bottom-nav móvil. */
 export const MOBILE_PRIMARY: NavItem[] = [
-  NAV_GROUPS[0]![0]!, // Dashboard
-  NAV_GROUPS[0]![1]!, // Dispositivos
-  NAV_GROUPS[0]![2]!, // Red WiFi
+  NAV_GROUPS[0]![0]!, // Conectar
+  NAV_GROUPS[0]![1]!, // Dashboard
+  NAV_GROUPS[0]![2]!, // Dispositivos
   NAV_GROUPS[1]![0]!, // IoT
   NAV_GROUPS[1]![2]!, // Tráfico
 ];

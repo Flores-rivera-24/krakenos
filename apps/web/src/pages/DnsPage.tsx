@@ -5,14 +5,22 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { GlossaryTerm } from '@/components/ui/glossary-term';
+import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { getGlossaryEntry } from '@/lib/guides';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+
+/** "Dominio" no tiene clave de glosario propia: se explica en línea. */
+const DOMAIN_HELP =
+  'El nombre de una web, como ejemplo.com. Al bloquearlo, ningún aparato de tu casa podrá cargarlo (útil contra anuncios y rastreadores).';
 
 export function DnsPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
@@ -71,9 +79,18 @@ export function DnsPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">DNS</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-xl font-semibold">DNS</h2>
+          <GlossaryHint termKey="dns" />
+        </div>
         <p className="text-sm text-muted-foreground">
-          Bloqueo de dominios (anuncios/rastreadores) y estadísticas de consultas.
+          <GlossaryTerm
+            term="Bloqueo de anuncios"
+            definition={getGlossaryEntry('adblock')?.short ?? ''}
+          >
+            Bloqueo de dominios
+          </GlossaryTerm>{' '}
+          (anuncios/rastreadores) y estadísticas de consultas.
         </p>
       </div>
 
@@ -112,7 +129,10 @@ export function DnsPage() {
           <CardContent>
             <form onSubmit={addDomain} className="flex items-end gap-3">
               <div className="flex-1 space-y-2">
-                <Label htmlFor="dns-domain">Dominio</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label htmlFor="dns-domain">Dominio</Label>
+                  <HelpHint content={DOMAIN_HELP} label="¿Qué es un dominio?" />
+                </div>
                 <Input
                   id="dns-domain"
                   value={domain}
@@ -148,8 +168,12 @@ export function DnsPage() {
                     <SkeletonRows cols={isAdmin ? 2 : 1} />
                   ) : blocklist.length === 0 ? (
                     <tr>
-                      <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center text-kr-muted">
-                        Aún no hay dominios bloqueados.
+                      <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center">
+                        <p className="text-kr-muted">Aún no hay dominios bloqueados.</p>
+                        <p className="mx-auto mt-1 max-w-xs text-kr-xs text-kr-secondary">
+                          El bloqueo por DNS filtra anuncios y rastreadores para toda la casa.{' '}
+                          {isAdmin && 'Añade un dominio arriba para empezar.'}
+                        </p>
                       </td>
                     </tr>
                   ) : (

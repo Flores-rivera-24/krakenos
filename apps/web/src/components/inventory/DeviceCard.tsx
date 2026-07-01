@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { StatusDot } from '@/components/ui/status-dot';
-import { TYPE_LABELS_EN } from '@/lib/devices';
+import { TYPE_LABELS } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -41,7 +41,7 @@ export function DeviceCard({ device, onSelect }: Props) {
   const name = device.label ?? device.hostname ?? device.mac;
   const blocked = device.isBlocked;
   const dotStatus = blocked ? 'danger' : device.online ? 'online' : 'offline';
-  const statusText = blocked ? 'Blocked' : device.online ? 'Online' : 'Offline';
+  const statusText = blocked ? 'Bloqueado' : device.online ? 'En línea' : 'Desconectado';
 
   return (
     <button
@@ -54,7 +54,7 @@ export function DeviceCard({ device, onSelect }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-kr-primary">{name}</p>
           <p className="text-kr-sm text-kr-secondary">{device.ip}</p>
-          <p className="text-kr-xs text-kr-muted">{TYPE_LABELS_EN[device.type]}</p>
+          <p className="text-kr-xs text-kr-muted">{TYPE_LABELS[device.type]}</p>
         </div>
       </div>
       <div className="flex items-center justify-between">
