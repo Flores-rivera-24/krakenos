@@ -7,8 +7,9 @@ Plataforma de gestión de red doméstica e IoT que corre **en un servidor local 
 WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto a internet.
 
 > Todo arranca en modo **`mock`** (sin hardware), así que puedes clonar, correr y explorar
-> la app entera en desarrollo. Las integraciones reales se activan una a una por variable
-> de entorno. → [Conectar dispositivos reales](#conectar-dispositivos-reales)
+> la app entera en desarrollo. Las integraciones reales se conectan **desde la propia app**
+> con un asistente guiado paso a paso (o por variable de entorno, para automatizar).
+> → [Conectar dispositivos reales](#conectar-dispositivos-reales)
 
 ---
 
@@ -20,6 +21,9 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 - **Control IoT** unificado: luces, enchufes, sensores y cámaras desde una sola interfaz.
 - **Arquitectura por drivers**: el mismo código funciona con distintas marcas de hardware
   (OpenWrt, pfSense, UniFi, MikroTik, Cisco…) sin tocar la API ni el frontend.
+- **Conexión guiada desde la app**: un asistente paso a paso conecta routers, luces, enchufes
+  y cámaras **sin editar ficheros ni leer documentación externa** — con guías internalizadas,
+  ayuda en cada campo, prueba de conexión y recarga en caliente. Los secretos se **cifran en reposo**.
 
 UI estilo UniFi (tema oscuro, sidebar colapsable, paneles slideover, PWA instalable),
 auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (WebAuthn)**.
@@ -97,9 +101,15 @@ cd apps/agent && ./scripts/gen-cert.sh   # cert autofirmado en ./certs
 
 ## Conectar dispositivos reales
 
-Cada integración se selecciona con una variable `*_KIND` (por defecto `mock`). Cámbiala
-por la integración real y añade sus variables en `apps/agent/.env`. Hay una **guía por
-integración en `docs/`**.
+**Desde la app (recomendado):** entra en **Conectar** (`/connect`) y sigue el asistente —
+elige qué quieres conectar (router, luces, enchufes, cámaras…), rellena los datos con ayuda
+en cada campo, **prueba la conexión** y guarda. Se aplica en caliente, sin reiniciar, y las
+credenciales se guardan **cifradas**. No necesitas editar `.env` ni leer estos docs.
+
+**Por variable de entorno (alternativa / automatización):** cada integración también se
+selecciona con una variable `*_KIND` (por defecto `mock`); cámbiala por la integración real y
+añade sus variables en `apps/agent/.env`. Hay una **guía por integración en `docs/`** (las
+mismas guías están internalizadas en la app).
 
 > **Dependencias nativas.** Algunas integraciones necesitan una dep opcional que **no está
 > en `package.json`** (CI con lockfile congelado) y se instala solo en el servidor:
