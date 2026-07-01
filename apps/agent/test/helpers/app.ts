@@ -35,6 +35,7 @@ import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
 import type { TuyaDeviceRecord } from '../../src/iot/tuya.store.js';
+import type { CameraDefinition } from '../../src/cameras/rtsp.cameras.js';
 import { MemoryJsonStore, type JsonStore } from '../../src/store/json-store.js';
 import { MockQosManager } from '../../src/qos/mock.qos.js';
 import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
@@ -63,6 +64,8 @@ export interface BuildTestAppOptions {
   rateLimit?: boolean;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
+  /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
+  cameraStore?: JsonStore<CameraDefinition>;
 }
 
 /**
@@ -116,7 +119,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
     });
-    await app.register(camerasRoutes, { prefix: '/api/cameras', cameras: new MockCameraManager() });
+    await app.register(camerasRoutes, {
+      prefix: '/api/cameras',
+      cameras: new MockCameraManager(),
+      store: opts.cameraStore ?? new MemoryJsonStore<CameraDefinition>(),
+    });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });

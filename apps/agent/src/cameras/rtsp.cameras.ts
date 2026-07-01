@@ -15,7 +15,13 @@ export interface CameraDefinition {
 }
 
 export interface RtspCameraOptions {
-  cameras: CameraDefinition[];
+  /** Lista estática de cámaras. Alternativa a `configPath` (p. ej. en tests). */
+  cameras?: CameraDefinition[];
+  /**
+   * Ruta del JSON de cámaras, leída **en vivo** en cada operación para reflejar el
+   * alta/baja desde la UI (US-148) sin reinstanciar el manager.
+   */
+  configPath?: string;
   exec: FfmpegExec;
   transport?: string;
   /** Reloj inyectable (ms); por defecto `Date.now`. */
@@ -39,8 +45,14 @@ export class RtspCameraManager implements CameraManager {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cámaras vigentes: del fichero (en vivo) si hay `configPath`, o la lista estática. */
+  private getCameras(): CameraDefinition[] {
+    if (this.opts.configPath) return loadCameraDefinitions(this.opts.configPath);
+    return this.opts.cameras ?? [];
+  }
+
   async listCameras(): Promise<Camera[]> {
-    return this.opts.cameras.map((c) => ({
+    return this.getCameras().map((c) => ({
       id: c.id,
       name: c.name,
       room: c.room ?? null,
@@ -50,7 +62,7 @@ export class RtspCameraManager implements CameraManager {
   }
 
   async getSnapshot(id: string): Promise<CameraSnapshot | null> {
-    const camera = this.opts.cameras.find((c) => c.id === id);
+    const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
 
     const { stdout, code } = await this.opts.exec(

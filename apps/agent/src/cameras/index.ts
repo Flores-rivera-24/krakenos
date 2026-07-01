@@ -1,7 +1,7 @@
 import type { CameraKind, CameraManager } from '@krakenos/types';
 import { createFfmpegExec } from './ffmpeg.js';
 import { MockCameraManager } from './mock.cameras.js';
-import { RtspCameraManager, loadCameraDefinitions } from './rtsp.cameras.js';
+import { RtspCameraManager } from './rtsp.cameras.js';
 
 /** Config para la fuente RTSP real (`kind: 'rtsp'`). */
 export interface RtspCameraConfig {
@@ -32,7 +32,8 @@ export function createCameraManager(config: CameraConfig): CameraManager {
       const rtsp = config.rtsp;
       if (!rtsp) throw new Error('Falta la configuración RTSP (CameraConfig.rtsp)');
       return new RtspCameraManager({
-        cameras: loadCameraDefinitions(rtsp.configPath),
+        // Lee las cámaras EN VIVO del fichero (refleja el alta/baja desde la UI, US-148).
+        configPath: rtsp.configPath,
         exec: createFfmpegExec(rtsp.ffmpegPath),
         transport: rtsp.transport,
       });

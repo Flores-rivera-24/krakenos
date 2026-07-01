@@ -10,6 +10,8 @@ import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
 import { IntegrationConfigStore } from './integrations/integration-config.store.js';
 import { buildIntegrationRuntime } from './integrations/runtime.js';
+import { FileJsonStore } from './store/json-store.js';
+import type { CameraDefinition } from './cameras/rtsp.cameras.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
@@ -144,7 +146,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   if (tuyaStore) {
     await app.register(tuyaConfigRoutes, { prefix: '/api/iot/tuya', store: tuyaStore });
   }
-  await app.register(camerasRoutes, { prefix: '/api/cameras', cameras });
+  // Store de cámaras (US-148): alta/baja desde la UI; el RtspCameraManager lee el
+  // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
+  const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
+  await app.register(camerasRoutes, { prefix: '/api/cameras', cameras, store: cameraStore });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });

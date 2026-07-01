@@ -30,3 +30,25 @@ export interface CameraManager {
   /** Snapshot de una cámara online, o `null` si no existe o está offline. */
   getSnapshot(id: Id): Promise<CameraSnapshot | null>;
 }
+
+/** Petición para dar de alta una cámara (la `rtspUrl` lleva credenciales). */
+export interface CreateCameraRequest {
+  name: string;
+  /** URL RTSP del stream, p. ej. `rtsp://user:pass@10.0.0.5:554/stream1`. */
+  rtspUrl: string;
+  room?: string | null;
+  model?: string | null;
+  enabled?: boolean;
+}
+
+/** Campos editables de una cámara (todos opcionales). */
+export type UpdateCameraRequest = Partial<CreateCameraRequest>;
+
+/** Vista gestionable de una cámara: **nunca** incluye la `rtspUrl`. */
+export interface ManagedCamera {
+  id: Id;
+  name: string;
+  room: string | null;
+  model: string | null;
+  enabled: boolean;
+}
