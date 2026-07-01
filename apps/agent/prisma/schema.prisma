@@ -144,6 +144,19 @@ model DeviceTrafficSample {
   @@index([mac, timestamp])
 }
 
+/// Configuración de integraciones editable desde la UI (US-140). Una fila por
+/// dominio (driver/vpn/iot/cameras/firewall/vlan/qos/dns). `config` es un JSON con
+/// los valores; los secretos se guardan cifrados con secretbox (US-139), nunca en
+/// claro. Cuando existe y está `enabled`, precede a las variables de `.env`.
+model IntegrationConfig {
+  domain    String   @id // 'driver' | 'vpn' | 'iot' | 'cameras' | 'firewall' | 'vlan' | 'qos' | 'dns'
+  kind      String // implementación activa (CSV de backends en 'iot')
+  config    String   @default("{}") // JSON de valores; secretos como tokens kbx1.*
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model Device {
   id        String   @id @default(cuid())
   mac       String   @unique
