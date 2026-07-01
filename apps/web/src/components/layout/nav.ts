@@ -10,6 +10,7 @@ import {
   Map,
   Network,
   PlusCircle,
+  Radar,
   Settings,
   ShieldAlert,
   Video,
@@ -35,6 +36,7 @@ export const NAV_GROUPS: NavItem[][] = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
     { to: '/inventory', label: 'Dispositivos', icon: Network, badge: 'devices' },
     { to: '/wifi', label: 'Red WiFi', icon: Wifi },
+    { to: '/coverage', label: 'Cobertura WiFi', icon: Radar },
   ],
   [
     { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' },

@@ -18,6 +18,9 @@ const InventoryPage = lazy(() =>
   import('@/pages/InventoryPage').then((m) => ({ default: m.InventoryPage })),
 );
 const WifiPage = lazy(() => import('@/pages/WifiPage').then((m) => ({ default: m.WifiPage })));
+const CoveragePage = lazy(() =>
+  import('@/pages/CoveragePage').then((m) => ({ default: m.CoveragePage })),
+);
 const VpnPage = lazy(() => import('@/pages/VpnPage').then((m) => ({ default: m.VpnPage })));
 const TrafficPage = lazy(() =>
   import('@/pages/TrafficPage').then((m) => ({ default: m.TrafficPage })),
@@ -74,6 +77,7 @@ export function App() {
             <Route path="connect" element={<ConnectPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="wifi" element={<WifiPage />} />
+            <Route path="coverage" element={<CoveragePage />} />
             <Route path="vpn" element={<VpnPage />} />
             <Route path="traffic" element={<TrafficPage />} />
             <Route path="iot" element={<IotPage />} />
