@@ -70,6 +70,32 @@ async function mergeStoredSecrets(
   return merged;
 }
 
+/**
+ * Guarda la config de un dominio. `iot` es **aditivo**: como un hogar puede tener
+ * varios backends a la vez (luces + enchufes…), guardar un backend lo **une** al CSV
+ * de kinds y conserva los valores (y secretos ya descifrados) del resto de backends,
+ * en vez de reemplazar todo el dominio. El resto de dominios se guardan tal cual.
+ */
+async function saveDomainConfig(
+  store: IntegrationConfigStore,
+  domain: IntegrationDomain,
+  kind: string,
+  config: IntegrationConfigValues,
+  enabled: boolean,
+): Promise<void> {
+  if (domain !== 'iot') {
+    await store.save(domain, kind, config, enabled);
+    return;
+  }
+  const existing = await store.getDecrypted('iot');
+  const backends = new Set<string>(existing ? iotBackends(existing.kind) : []);
+  for (const backend of iotBackends(kind)) backends.add(backend);
+  // Parte de los valores ya descifrados (secretos en claro) y superpone los nuevos;
+  // `store.save` los vuelve a cifrar, así ningún backend previo pierde su secreto.
+  const mergedValues: IntegrationConfigValues = { ...(existing?.values ?? {}), ...config };
+  await store.save('iot', [...backends].join(','), mergedValues, enabled);
+}
+
 export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = async (app, opts) => {
   const { runtime, store } = opts;
 
@@ -106,7 +132,7 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
           .code(400)
           .send({ code: 'UNKNOWN_KIND', message: `Integración desconocida para ${domain}: ${kind}` });
       }
-      await store.save(domain, kind, config, enabled ?? true);
+      await saveDomainConfig(store, domain, kind, config, enabled ?? true);
       await runtime.reconfigure(domain);
       app.audit({ action: 'integration.save', userId: req.user.sub, detail: `${domain}:${kind}`, ip: req.ip });
       return store.getInfo(domain);

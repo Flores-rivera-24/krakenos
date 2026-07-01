@@ -1,9 +1,13 @@
 import { INTEGRATION_DOMAINS } from '../../integrations/schema.js';
 
-/** Objeto de valores de config: claves arbitrarias con valores primitivos. */
+/**
+ * Objeto de valores de config: claves arbitrarias con valores primitivos. Se usa el
+ * **union type** (`type: [...]`) a propósito y NO `anyOf`: con `coerceTypes` de Ajv,
+ * `anyOf` coacciona un número al primer branch (string) — el union no coacciona.
+ */
 const configObject = {
   type: 'object',
-  additionalProperties: { anyOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }] },
+  additionalProperties: { type: ['string', 'number', 'boolean'] },
 };
 
 const domainParams = {

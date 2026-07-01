@@ -151,4 +151,26 @@ describe('/api/integrations — API de configuración (US-142)', () => {
     expect(info!.config['hue.appKey']).toBeUndefined();
     expect(info!.config['hue.bridgeUrl']).toBe('https://b');
   });
+
+  it('iot es aditivo: conectar un segundo backend conserva el primero y su secreto', async () => {
+    await app.inject({
+      method: 'PUT',
+      url: '/api/integrations/iot',
+      headers: authHeader(adminToken),
+      payload: { kind: 'hue', config: { 'hue.bridgeUrl': 'https://b', 'hue.appKey': 'K3Y' } },
+    });
+    // Conectar Govee NO debe borrar Hue (luces + enchufes a la vez).
+    await app.inject({
+      method: 'PUT',
+      url: '/api/integrations/iot',
+      headers: authHeader(adminToken),
+      payload: { kind: 'govee', config: { 'govee.listenPort': 4002 } },
+    });
+
+    const iot = (await overview()).find((d) => d.domain === 'iot')!;
+    expect(iot.effectiveKind.split(',').sort()).toEqual(['govee', 'hue']);
+    expect(iot.current!.secretsSet).toContain('hue.appKey'); // el secreto de hue sobrevive
+    expect(iot.current!.config['hue.bridgeUrl']).toBe('https://b');
+    expect(iot.current!.config['govee.listenPort']).toBe(4002);
+  });
 });
