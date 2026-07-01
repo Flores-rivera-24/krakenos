@@ -196,6 +196,13 @@ export const env = {
    */
   jwtPreviousPublicKeys: pemList('JWT_PREVIOUS_PUBLIC_KEY_PATHS'),
 
+  /**
+   * Clave de cifrado de secretos de integración en reposo (US-139). Las credenciales
+   * configuradas desde la UI se guardan cifradas en la DB con esta clave. Se genera al
+   * arrancar si falta (`loadOrCreateSecretbox`), como el resto de claves de `keys/`.
+   */
+  secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? resolve('keys/secretbox.key'),
+
   driver: {
     kind: driverKind,
     host: process.env.DRIVER_HOST || undefined,

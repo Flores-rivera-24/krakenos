@@ -149,16 +149,21 @@ export interface IotManagerBundle {
  * y se inyecta tanto en el manager `tuya` como, vía el bundle, en sus rutas de
  * gestión: una única instancia, sin fugas.
  */
-export function createIotManager(config: IotConfig): IotManagerBundle {
+export function createIotManager(
+  config: IotConfig,
+  deps: { tuyaStore?: FileJsonStore<TuyaDeviceRecord> } = {},
+): IotManagerBundle {
   const kinds = config.kind
     .split(',')
     .map((k) => k.trim())
     .filter(Boolean) as IotKind[];
 
   // Store Tuya único: lo comparten el manager `tuya` y las rutas `/api/iot/tuya`.
-  const tuyaStore = config.tuya
-    ? new FileJsonStore<TuyaDeviceRecord>(config.tuya.configPath)
-    : undefined;
+  // Reconfigurar IoT en caliente (US-141) reinyecta el MISMO store (deps.tuyaStore)
+  // para no crear una segunda instancia sobre el mismo fichero (evita regresión US-63).
+  const tuyaStore =
+    deps.tuyaStore ??
+    (config.tuya ? new FileJsonStore<TuyaDeviceRecord>(config.tuya.configPath) : undefined);
 
   const manager =
     kinds.length <= 1
