@@ -6,7 +6,8 @@ export type WidgetId =
   | 'iot'
   | 'system'
   | 'alerts'
-  | 'wifi';
+  | 'wifi'
+  | 'coverage';
 
 export interface WidgetDef {
   id: WidgetId;
@@ -23,6 +24,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'topology', title: 'Topología de red', span: 2 },
   { id: 'iot', title: 'IoT', span: 1 },
   { id: 'wifi', title: 'WiFi', span: 1 },
+  { id: 'coverage', title: 'Cobertura WiFi', span: 1 },
   { id: 'alerts', title: 'Alertas recientes', span: 1 },
 ];
 

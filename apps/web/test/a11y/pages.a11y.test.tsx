@@ -39,6 +39,7 @@ import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
 import { WifiPage } from '@/pages/WifiPage';
+import { CoveragePage } from '@/pages/CoveragePage';
 import { VpnPage } from '@/pages/VpnPage';
 import { IotPage } from '@/pages/IotPage';
 import { CamerasPage } from '@/pages/CamerasPage';
@@ -151,6 +152,29 @@ const IOT_LIGHT = {
   reading: null,
 };
 const CAMERA = { id: 'cam', name: 'Entrada', room: 'Exterior', model: 'X', online: false };
+const FLOOR_PLAN = {
+  id: 'fp1',
+  name: 'Planta baja',
+  widthM: 10,
+  heightM: 8,
+  backgroundImage: null,
+  walls: [],
+  accessPoints: [],
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+const COVERAGE_HEATMAP = {
+  band: '5GHz',
+  source: 'predicted',
+  widthM: 10,
+  heightM: 8,
+  cols: 20,
+  rows: 16,
+  cellSizeM: 0.5,
+  values: Array.from({ length: 320 }, () => -60),
+  minDbm: -80,
+  maxDbm: -45,
+};
 
 function apiGet(path: string): Promise<unknown> {
   if (path === '/setup/status') return Promise.resolve({ needsSetup: false, requiresToken: false });
@@ -194,6 +218,11 @@ function apiGet(path: string): Promise<unknown> {
   if (path === '/qos/rules') return Promise.resolve([QOS_RULE]);
   if (path === '/vlans') return Promise.resolve([VLAN]);
   if (path === '/inventory/devices') return Promise.resolve([DEVICE]);
+  if (path === '/coverage/floorplans') return Promise.resolve([FLOOR_PLAN]);
+  if (path === '/coverage/access-points') return Promise.resolve([]);
+  if (path.startsWith('/coverage/floorplans/') && path.includes('/heatmap'))
+    return Promise.resolve(COVERAGE_HEATMAP);
+  if (path.startsWith('/coverage/floorplans/') && path.endsWith('/scans')) return Promise.resolve([]);
   if (path.startsWith('/traffic/stats'))
     return Promise.resolve({ range: 'day', buckets: [], totalRxBytes: 0, totalTxBytes: 0 });
   if (path === '/dns/stats')
@@ -227,6 +256,7 @@ const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Dashboard', el: <DashboardPage /> },
   { name: 'Inventory', el: <InventoryPage /> },
   { name: 'Wifi', el: <WifiPage /> },
+  { name: 'Coverage', el: <CoveragePage /> },
   { name: 'Vpn', el: <VpnPage /> },
   { name: 'Iot', el: <IotPage /> },
   { name: 'Cameras', el: <CamerasPage /> },

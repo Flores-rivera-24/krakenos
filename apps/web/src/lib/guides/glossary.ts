@@ -27,6 +27,21 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     short: 'Son los "carriles" por los que viaja tu WiFi. La de 2.4 GHz llega más lejos; la de 5 y 6 GHz es más rápida pero de menor alcance.',
     long: 'Tu router puede emitir WiFi en varias frecuencias. La banda de 2.4 GHz atraviesa mejor las paredes y llega lejos, pero es más lenta y se satura fácil. Las de 5 y 6 GHz (esta última, en equipos WiFi 6E/7) son mucho más rápidas pero pierden fuerza a distancia.',
   },
+  rssi: {
+    term: 'RSSI / señal',
+    short: 'La fuerza con la que un dispositivo recibe el WiFi. Se mide en dBm y siempre es un número negativo: cuanto más cerca de 0, mejor.',
+    long: 'RSSI es la intensidad de la señal recibida. -50 dBm es una señal excelente (estás al lado del router), -70 dBm es aceptable y por debajo de -80 dBm la conexión va lenta o se corta. Es lo que colorea el mapa de calor de cobertura.',
+  },
+  dbm: {
+    term: 'dBm',
+    short: 'La unidad en la que se mide la fuerza del WiFi. Va en negativo: -50 es señal fuerte, -80 es señal débil.',
+    long: 'El dBm mide la potencia de la señal. Como son valores muy pequeños, se expresan en negativo: -50 dBm es mucha más señal que -80 dBm (cada 10 dBm es 10 veces más/menos potencia).',
+  },
+  'mapa-calor-cobertura': {
+    term: 'Mapa de calor de cobertura',
+    short: 'Un dibujo de tu casa coloreado según la fuerza del WiFi en cada rincón: verde donde llega bien, rojo donde llega mal.',
+    long: 'KrakenOS estima (o mide con tu móvil) la señal WiFi por toda la casa y la pinta sobre el plano: verde = señal excelente, amarillo = aceptable, rojo = débil o sin cobertura. Sirve para decidir dónde colocar el router o un punto de acceso extra.',
+  },
   wpa2: {
     term: 'WPA2',
     short: 'Es el candado que protege tu WiFi con contraseña. Ha sido el estándar durante años y es seguro para la mayoría de hogares.',

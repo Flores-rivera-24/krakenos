@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, Eye, EyeOff, Settings2 } from 'lucide-react';
 import { useEffect, useState, type ComponentType } from 'react';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
+import { CoverageWidget } from '@/components/dashboard/widgets/CoverageWidget';
 import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
 import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTopologyWidget';
@@ -29,6 +30,7 @@ const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
   system: SystemWidget,
   alerts: AlertsWidget,
   wifi: WifiStatusWidget,
+  coverage: CoverageWidget,
 };
 
 const WIDGET_META = Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
