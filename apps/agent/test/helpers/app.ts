@@ -44,6 +44,10 @@ import { authPlugin } from '../../src/plugins/auth.js';
 import { healthRoutes } from '../../src/plugins/health.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
 import { socketioPlugin } from '../../src/plugins/socketio.js';
+import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
+import { IntegrationConfigStore } from '../../src/integrations/integration-config.store.js';
+import { buildIntegrationRuntime } from '../../src/integrations/runtime.js';
+import { integrationsRoutes } from '../../src/modules/integrations/integrations.routes.js';
 
 export interface BuildTestAppOptions {
   /** Registra también las rutas HTTP (para tests de integración con inject). */
@@ -117,6 +121,17 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
     await app.register(dnsRoutes, { prefix: '/api/dns', dns: new MockDnsManager() });
+    // Configuración de integraciones (US-142): runtime + store propios para el test app.
+    const integrationStore = new IntegrationConfigStore(
+      app.prisma,
+      createSecretbox(generateSecretboxKey()),
+    );
+    const runtime = await buildIntegrationRuntime(app, integrationStore);
+    await app.register(integrationsRoutes, {
+      prefix: '/api/integrations',
+      runtime,
+      store: integrationStore,
+    });
   }
 
   await app.ready();
@@ -133,6 +148,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
+  await app.prisma.integrationConfig.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();
 }

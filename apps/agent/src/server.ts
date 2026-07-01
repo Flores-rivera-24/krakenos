@@ -30,6 +30,7 @@ import { setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
+import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
 import { iotRoutes } from './modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from './modules/iot/tuya-config.routes.js';
@@ -148,6 +149,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });
   await app.register(dnsRoutes, { prefix: '/api/dns', dns });
+  // Configuración de integraciones desde la UI (US-142): catálogo + guardar + probar
+  // conexión + revertir; recarga el manager en caliente vía el runtime (US-141).
+  await app.register(integrationsRoutes, {
+    prefix: '/api/integrations',
+    runtime,
+    store: integrationStore,
+  });
   await app.register(auditRoutes, { prefix: '/api/audit' });
   await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
 

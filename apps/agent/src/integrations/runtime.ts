@@ -42,6 +42,10 @@ import { createManagerHolder, disposeManager, type ManagerHolder } from './manag
  * activa; si no, `.env`) y lo guarda en un {@link ManagerHolder}. Los módulos reciben
  * el `handle` de cada holder, así `reconfigure(domain)` reconstruye e intercambia la
  * instancia viva sin reiniciar el agente ni re-registrar rutas.
+ *
+ * Robustez: si construir un manager desde la config **guardada** falla (config
+ * inválida o secreto ilegible tras perder la clave), se registra un aviso y se cae al
+ * fallback de `.env` en vez de tumbar el arranque.
  */
 export interface IntegrationRuntime {
   driver: ManagerHolder<HardwareDriver>;
@@ -70,69 +74,89 @@ export async function buildIntegrationRuntime(
   const onIotError = (msg: string): void =>
     app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`);
 
+  /**
+   * Construye un manager desde la config efectiva de `domain`. Si la config **guardada**
+   * hace fallar la construcción, avisa y reintenta con `.env` (record `null`).
+   */
+  async function tryBuild<T>(
+    domain: IntegrationDomain,
+    build: (rec: DomainRecord | null) => T,
+  ): Promise<T> {
+    const rec = await effective(domain);
+    if (!rec) return build(null);
+    try {
+      return build(rec);
+    } catch (err) {
+      app.log.warn(
+        `[integrations] no se pudo aplicar la config guardada de ${domain} ` +
+          `(${err instanceof Error ? err.message : String(err)}); se usa el fallback de .env`,
+      );
+      return build(null);
+    }
+  }
+
   const driver = createManagerHolder<HardwareDriver>(
-    wrapDriverErrors(createDriver(resolveDriverConfig(await effective('driver')))),
+    await tryBuild('driver', (r) => wrapDriverErrors(createDriver(resolveDriverConfig(r)))),
     disposeManager,
   );
   const vpn = createManagerHolder<VpnManager>(
-    createVpnManager(resolveVpnConfig(await effective('vpn'))),
+    await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r))),
     disposeManager,
   );
-  const initialIot = createIotManager(resolveIotConfig(await effective('iot')));
+  const initialIot = await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r)));
   startIotManager(initialIot.manager, onIotError);
   const iot = createManagerHolder<IotManager>(initialIot.manager, disposeManager);
   const tuyaStore = initialIot.tuyaStore;
   const cameras = createManagerHolder<CameraManager>(
-    createCameraManager(resolveCameraConfig(await effective('cameras'))),
+    await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r))),
     disposeManager,
   );
   const firewall = createManagerHolder<FirewallManager>(
-    createFirewallManager(resolveFirewallConfig(await effective('firewall'))),
+    await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r))),
     disposeManager,
   );
   const vlan = createManagerHolder<VlanManager>(
-    createVlanManager(resolveVlanConfig(await effective('vlan'))),
+    await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r))),
     disposeManager,
   );
   const qos = createManagerHolder<QosManager>(
-    createQosManager(resolveQosConfig(await effective('qos'))),
+    await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r))),
     disposeManager,
   );
   const dns = createManagerHolder<DnsManager>(
-    createDnsManager(resolveDnsConfig(await effective('dns'))),
+    await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r))),
     disposeManager,
   );
 
   async function reconfigure(domain: IntegrationDomain): Promise<void> {
-    const rec = await effective(domain);
     switch (domain) {
       case 'driver':
-        driver.swap(wrapDriverErrors(createDriver(resolveDriverConfig(rec))));
+        driver.swap(await tryBuild('driver', (r) => wrapDriverErrors(createDriver(resolveDriverConfig(r)))));
         break;
       case 'vpn':
-        vpn.swap(createVpnManager(resolveVpnConfig(rec)));
+        vpn.swap(await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r))));
         break;
       case 'iot': {
         // Reinyecta el mismo tuyaStore para no duplicar la instancia (US-63).
-        const bundle = createIotManager(resolveIotConfig(rec), { tuyaStore });
+        const bundle = await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r), { tuyaStore }));
         startIotManager(bundle.manager, onIotError);
         iot.swap(bundle.manager);
         break;
       }
       case 'cameras':
-        cameras.swap(createCameraManager(resolveCameraConfig(rec)));
+        cameras.swap(await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r))));
         break;
       case 'firewall':
-        firewall.swap(createFirewallManager(resolveFirewallConfig(rec)));
+        firewall.swap(await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r))));
         break;
       case 'vlan':
-        vlan.swap(createVlanManager(resolveVlanConfig(rec)));
+        vlan.swap(await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r))));
         break;
       case 'qos':
-        qos.swap(createQosManager(resolveQosConfig(rec)));
+        qos.swap(await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r))));
         break;
       case 'dns':
-        dns.swap(createDnsManager(resolveDnsConfig(rec)));
+        dns.swap(await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r))));
         break;
       default: {
         const exhaustive: never = domain;
