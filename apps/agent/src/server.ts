@@ -43,6 +43,7 @@ import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
+import { coverageRoutes } from './modules/coverage/coverage.routes.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
 export async function buildServer(): Promise<FastifyInstance> {
@@ -139,6 +140,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   }
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
+  // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
+  await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
   await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });

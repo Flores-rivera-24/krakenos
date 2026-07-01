@@ -30,6 +30,7 @@ import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
+import { coverageRoutes } from '../../src/modules/coverage/coverage.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
 import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
@@ -107,6 +108,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
+    await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
@@ -155,6 +157,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
+  await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample
   await app.prisma.integrationConfig.deleteMany();
   await app.prisma.setting.deleteMany();
   await app.prisma.user.deleteMany();

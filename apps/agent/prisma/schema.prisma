@@ -157,6 +157,56 @@ model IntegrationConfig {
   updatedAt DateTime @updatedAt
 }
 
+/// Plano de una planta de la casa para la cobertura WiFi (US-151). Las paredes
+/// y los APs colocados se serializan como JSON string (`walls`/`accessPoints`),
+/// igual que `Device.sources`, porque SQLite no tiene tipos estructurados.
+model FloorPlan {
+  id              String       @id @default(cuid())
+  name            String
+  /// Ancho real del plano en metros.
+  widthM          Float
+  /// Alto real del plano en metros.
+  heightM         Float
+  /// Data URL (base64) de un plano de fondo opcional.
+  backgroundImage String?
+  /// JSON `Wall[]`.
+  walls           String       @default("[]")
+  /// JSON `ApPlacement[]`.
+  accessPoints    String       @default("[]")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  scans           SurveyScan[]
+}
+
+/// Un recorrido de medición (survey) de señal real sobre un plano (US-151).
+model SurveyScan {
+  id          String         @id @default(cuid())
+  floorPlanId String
+  floorPlan   FloorPlan      @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  name        String
+  band        String
+  /// MAC del dispositivo itinerante cuya señal en vivo se registra, o null.
+  deviceMac   String?
+  createdAt   DateTime       @default(now())
+  samples     SurveySample[]
+
+  @@index([floorPlanId])
+}
+
+/// Una muestra de señal medida en un punto del plano (US-151).
+model SurveySample {
+  id        String     @id @default(cuid())
+  scanId    String
+  scan      SurveyScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  /// Posición en el plano (metros).
+  x         Float
+  y         Float
+  rssiDbm   Int
+  createdAt DateTime   @default(now())
+
+  @@index([scanId])
+}
+
 model Device {
   id        String   @id @default(cuid())
   mac       String   @unique

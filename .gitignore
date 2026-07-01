@@ -40,8 +40,10 @@ pnpm-debug.log*
 apps/web/dist/
 apps/web/.vite/
 
-# Test coverage
-coverage/
+# Test coverage (informes de vitest; NO los directorios fuente llamados
+# "coverage", p. ej. apps/agent/src/coverage o apps/web/src/components/coverage).
+/coverage/
+apps/*/coverage/
 
 # Documentos Word
 ~$*
