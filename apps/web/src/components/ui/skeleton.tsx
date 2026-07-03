@@ -2,11 +2,12 @@ import { cn } from '@/lib/utils';
 
 /**
  * Placeholder de carga animado (US-93): evita el "flash en blanco" mientras se
- * resuelve la primera petición. Mismo gesto que el skeleton inline del inventario,
- * extraído para reutilizar. Tokens kr-*.
+ * resuelve la primera petición. US-160: el pulse plano pasa a un barrido shimmer
+ * (`kr-shimmer`) — un gradiente que recorre la superficie, más "en vivo" —
+ * respetando prefers-reduced-motion (queda estático). Tokens kr-*.
  */
 export function Skeleton({ className }: { className?: string }) {
-  return <div aria-hidden className={cn('animate-pulse rounded-md bg-kr-elevated', className)} />;
+  return <div aria-hidden className={cn('kr-shimmer rounded-md bg-kr-elevated', className)} />;
 }
 
 /** Filas de carga para tablas: `rows` filas con una barra que abarca `cols` columnas. */

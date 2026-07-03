@@ -41,6 +41,12 @@
     /* US-95: el acento (#2563eb) sirve de fondo de botón (texto blanco 5.17:1) pero como TEXTO
        sobre superficies oscuras solo llega a 3.35:1. Token aparte para enlaces/texto de acento. */
     --kr-link: #58a6ff;
+    /* US-160: halos de acento (color-mix conserva el matiz del token en ambos temas) para
+       superficies "tecnológicas": anillos del splash, glow de foco/hover, backdrops. */
+    --kr-accent-glow: color-mix(in srgb, var(--kr-accent) 34%, transparent);
+    --kr-accent-faint: color-mix(in srgb, var(--kr-accent) 12%, transparent);
+    /* Brillo del barrido de los skeletons (shimmer). Claro/oscuro lo ajustan abajo. */
+    --kr-shimmer-highlight: rgba(255, 255, 255, 0.08);
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;
@@ -100,6 +106,8 @@
     --kr-text-muted: #5f6670;
     /* El acento como texto sí cumple en claro (5.17:1); el enlace iguala al acento. */
     --kr-link: #2563eb;
+    /* US-160: en claro el brillo del shimmer es una sombra tenue, no un highlight blanco. */
+    --kr-shimmer-highlight: rgba(0, 0, 0, 0.05);
     --kr-success: #1a7f37;
     --kr-info: #0969da;
     --kr-warning: #9a6700;
@@ -118,5 +126,58 @@
       -apple-system,
       sans-serif;
     @apply bg-kr-base text-kr-primary transition-colors duration-200;
+  }
+}
+
+/* === US-160 · Lenguaje "tecnológico": shimmer, rejilla y anillos ===
+   Clases utilitarias reutilizables. Los @keyframes se declaran aquí (no dependen
+   del tree-shaking de Tailwind) para que las clases raw funcionen aunque el
+   utility `animate-*` no aparezca en el markup. */
+@keyframes kr-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@layer components {
+  /* Barrido de carga de los skeletons — sustituye al pulse plano por un gradiente
+     que recorre la superficie (más "en vivo"). Tokens kr-*, adaptado a tema. */
+  .kr-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      var(--kr-bg-elevated) 0%,
+      var(--kr-shimmer-highlight) 50%,
+      var(--kr-bg-elevated) 100%
+    );
+    background-size: 200% 100%;
+    animation: kr-shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* Rejilla técnica de fondo (splash, estados vacíos), desvanecida hacia los bordes. */
+  .kr-grid-bg {
+    background-image:
+      linear-gradient(var(--kr-border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--kr-border) 1px, transparent 1px);
+    background-size: 34px 34px;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 0%, transparent 72%);
+    mask-image: radial-gradient(ellipse at center, #000 0%, transparent 72%);
+  }
+}
+
+/* Accesibilidad: sin movimiento cuando el usuario lo pide. Los skeletons quedan
+   como un gradiente estático; los anillos del splash, quietos. */
+@media (prefers-reduced-motion: reduce) {
+  .kr-shimmer,
+  .animate-kr-shimmer,
+  .animate-kr-orbit,
+  .animate-kr-orbit-slow,
+  .animate-kr-pulse-ring,
+  .animate-kr-glow,
+  .animate-kr-fade-up,
+  .animate-kr-fade-in {
+    animation: none !important;
   }
 }

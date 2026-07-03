@@ -1,6 +1,6 @@
 import { MoreHorizontal, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
 import { useSidebarStats } from '@/lib/sidebar-stats';
@@ -94,6 +94,7 @@ function MobileBottomNav() {
 export function AppLayout() {
   const logout = useAuthStore((s) => s.logout);
   const stats = useSidebarStats();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
   // Refleja el estado real del stream Socket.io en el indicador de conexión (US-94).
@@ -125,7 +126,9 @@ export function AppLayout() {
           </button>
         </header>
 
-        <main className="flex-1 pb-20 md:pb-0">
+        {/* La `key` por ruta reinicia el fade en cada navegación (transición sutil,
+            US-160). motion-reduce desactiva el desplazamiento. */}
+        <main key={location.pathname} className="flex-1 animate-kr-fade-up pb-20 md:pb-0">
           <Outlet />
         </main>
 

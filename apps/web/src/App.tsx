@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { Splash } from '@/components/ui/splash';
 import { bootstrapSession } from '@/lib/session';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -42,14 +43,6 @@ const CompatibilityPage = lazy(() =>
   import('@/pages/CompatibilityPage').then((m) => ({ default: m.CompatibilityPage })),
 );
 
-function FullScreenLoader() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <p className="text-sm text-muted-foreground">Cargando…</p>
-    </div>
-  );
-}
-
 /** Protege rutas: redirige a /login si no hay sesión. */
 function RequireAuth() {
   const user = useAuthStore((s) => s.user);
@@ -64,10 +57,10 @@ export function App() {
     void bootstrapSession().finally(() => setReady(true));
   }, []);
 
-  if (!ready) return <FullScreenLoader />;
+  if (!ready) return <Splash label="Iniciando KrakenOS…" />;
 
   return (
-    <Suspense fallback={<FullScreenLoader />}>
+    <Suspense fallback={<Splash />}>
       <Routes>
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/login" element={<LoginPage />} />

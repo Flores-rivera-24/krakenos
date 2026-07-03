@@ -48,26 +48,42 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
       title={collapsed ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'group flex items-center gap-3 rounded-lg px-3 py-2 text-kr-base transition-colors',
+          'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-kr-base transition-all duration-150',
           collapsed && 'justify-center px-0',
           isActive
-            ? 'bg-kr-elevated text-kr-primary'
+            ? 'bg-kr-elevated text-kr-primary shadow-kr-glow-sm'
             : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
         )
       }
     >
-      <Icon className="h-5 w-5 shrink-0" />
-      {!collapsed && <span className="flex-1 truncate">{label}</span>}
-      {item.badge && badge > 0 && (
-        <span
-          className={cn(
-            'rounded-full bg-kr-accent px-1.5 py-0.5 text-kr-xs font-semibold text-white',
-            collapsed && 'absolute right-1 top-1 px-1 py-0',
+      {({ isActive }) => (
+        <>
+          {/* Barra de acento del ítem activo (estilo consola). */}
+          {isActive && (
+            <span
+              aria-hidden
+              className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-kr-accent"
+            />
           )}
-          aria-label={`${badge}`}
-        >
-          {badge}
-        </span>
+          <Icon
+            className={cn(
+              'h-5 w-5 shrink-0 transition-colors',
+              isActive && 'text-kr-accent',
+            )}
+          />
+          {!collapsed && <span className="flex-1 truncate">{label}</span>}
+          {item.badge && badge > 0 && (
+            <span
+              className={cn(
+                'rounded-full bg-kr-accent px-1.5 py-0.5 text-kr-xs font-semibold text-white',
+                collapsed && 'absolute right-1 top-1 px-1 py-0',
+              )}
+              aria-label={`${badge}`}
+            >
+              {badge}
+            </span>
+          )}
+        </>
       )}
     </NavLink>
   );
