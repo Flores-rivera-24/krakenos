@@ -79,3 +79,37 @@ export const recentQueriesSchema = {
     200: { type: 'array', items: queryResponse },
   },
 } as const;
+
+/** Feed de categoría (adlist) — US-114. */
+const feed = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'name', 'description', 'url', 'enabled'],
+  properties: {
+    id: { type: 'string' },
+    name: { type: 'string' },
+    description: { type: 'string' },
+    url: { type: 'string' },
+    enabled: { type: 'boolean' },
+  },
+} as const;
+
+export const listFeedsSchema = {
+  response: { 200: { type: 'array', items: feed } },
+} as const;
+
+export const updateFeedSchema = {
+  params: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['id'],
+    properties: { id: { type: 'string', minLength: 1 } },
+  },
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['enabled'],
+    properties: { enabled: { type: 'boolean' } },
+  },
+  response: { 200: feed },
+} as const;

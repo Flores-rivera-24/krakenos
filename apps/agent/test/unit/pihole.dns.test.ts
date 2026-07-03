@@ -168,4 +168,32 @@ describe('PiholeDnsManager', () => {
     expect(queries).toHaveLength(2);
     expect(queries[0]).toMatchObject({ domain: 'ads.bad.com', client: '10.0.0.5', blocked: true });
   });
+
+  it('listFeeds marca activo el feed cuya URL está en las adlists (US-114)', async () => {
+    fake.on('GET /api/lists', () => ({
+      status: 200,
+      json: {
+        lists: [
+          { address: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts', enabled: true },
+        ],
+      },
+    }));
+    const feeds = await makeManager(fake).listFeeds();
+    expect(feeds.find((f) => f.id === 'ads')?.enabled).toBe(true);
+    expect(feeds.find((f) => f.id === 'malware')?.enabled).toBe(false);
+  });
+
+  it('setFeedEnabled(true) suscribe la adlist con POST /api/lists (US-114)', async () => {
+    fake.on('POST /api/lists', () => ({ status: 201, json: {} }));
+    const feed = await makeManager(fake).setFeedEnabled('ads', true);
+    expect(feed.enabled).toBe(true);
+    const post = fake.calls.find((c) => c.method === 'POST' && c.path === '/api/lists');
+    expect((post?.body as { address: string }).address).toContain('StevenBlack');
+  });
+
+  it('setFeedEnabled con id desconocido lanza DnsError (US-114)', async () => {
+    await expect(makeManager(fake).setFeedEnabled('desconocido', true)).rejects.toBeInstanceOf(
+      DnsError,
+    );
+  });
 });

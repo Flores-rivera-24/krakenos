@@ -3,6 +3,7 @@ import { Ban, Globe, ShieldCheck, ListFilter } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
+import { DnsFeeds } from '@/components/dns/DnsFeeds';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { GlossaryHint } from '@/components/ui/glossary-hint';
@@ -148,6 +149,9 @@ export function DnsPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Feeds de categoría / adlists (US-114) */}
+      <DnsFeeds canEdit={isAdmin} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>

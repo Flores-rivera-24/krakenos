@@ -47,6 +47,7 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   // dns
   { method: 'POST', url: '/api/dns/blocklist', payload: { domain: 'ads.example.com' } },
   { method: 'DELETE', url: '/api/dns/blocklist/x' },
+  { method: 'PATCH', url: '/api/dns/feeds/ads', payload: { enabled: true } },
   // access schedules / control parental (US-108)
   {
     method: 'POST',

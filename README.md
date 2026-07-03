@@ -17,7 +17,8 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 
 - **Inventario en tiempo real** de los dispositivos de tu red (descubrimiento ARP/mDNS,
   identificación por OUI, bloqueo, edición).
-- **Control de red**: WiFi, VPN WireGuard (con QR), firewall, VLANs, QoS y DNS/bloqueo.
+- **Control de red**: WiFi, VPN WireGuard (con QR), firewall, VLANs, QoS y DNS/bloqueo (con
+  **feeds de categoría**: publicidad, malware, rastreo).
 - **Control IoT** unificado: luces, enchufes, sensores y cámaras desde una sola interfaz.
 - **Arquitectura por drivers**: el mismo código funciona con distintas marcas de hardware
   (OpenWrt, pfSense, UniFi, MikroTik, Cisco…) sin tocar la API ni el frontend.

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import type { BlockedDomain, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
+import type { BlockedDomain, DnsFeed, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
+import { DNS_FEED_CATALOG } from './feeds.js';
 
 /** Error de dominio del DNS con código estable. */
 export class DnsError extends Error {
@@ -20,6 +21,7 @@ export class DnsError extends Error {
 export class MockDnsManager implements DnsManager {
   readonly kind = 'mock' as const;
   private readonly blocked = new Map<string, BlockedDomain>();
+  private readonly enabledFeeds = new Set<string>();
   private seq = 0;
 
   // Contadores de demostración (deterministas).
@@ -79,5 +81,17 @@ export class MockDnsManager implements DnsManager {
 
   async recentQueries(limit = 50): Promise<DnsQuery[]> {
     return [...this.queries].reverse().slice(0, limit);
+  }
+
+  async listFeeds(): Promise<DnsFeed[]> {
+    return DNS_FEED_CATALOG.map((f) => ({ ...f, enabled: this.enabledFeeds.has(f.id) }));
+  }
+
+  async setFeedEnabled(id: string, enabled: boolean): Promise<DnsFeed> {
+    const feed = DNS_FEED_CATALOG.find((f) => f.id === id);
+    if (!feed) throw new DnsError('FEED_UNKNOWN', `Feed desconocido: ${id}`);
+    if (enabled) this.enabledFeeds.add(id);
+    else this.enabledFeeds.delete(id);
+    return { ...feed, enabled };
   }
 }

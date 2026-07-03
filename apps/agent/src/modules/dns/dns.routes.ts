@@ -1,12 +1,14 @@
-import type { AddBlockedDomainRequest, DnsManager } from '@krakenos/types';
+import type { AddBlockedDomainRequest, DnsManager, UpdateDnsFeedRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { DnsError } from '../../dns/mock.dns.js';
 import {
   addBlockedSchema,
   dnsStatsSchema,
   listBlockedSchema,
+  listFeedsSchema,
   recentQueriesSchema,
   removeBlockedSchema,
+  updateFeedSchema,
 } from './dns.schemas.js';
 
 interface DnsRoutesOpts {
@@ -63,6 +65,31 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
       }
       app.audit({ action: 'dns.block.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
       return reply.code(204).send();
+    },
+  );
+
+  // Feeds de categoría / adlists (US-114).
+  app.get('/feeds', { schema: listFeedsSchema }, async () => dns.listFeeds());
+
+  app.patch<{ Params: { id: string }; Body: UpdateDnsFeedRequest }>(
+    '/feeds/:id',
+    { schema: updateFeedSchema, preHandler: adminOnly },
+    async (req, reply) => {
+      try {
+        const feed = await dns.setFeedEnabled(req.params.id, req.body.enabled);
+        app.audit({
+          action: 'dns.feed.update',
+          userId: req.user.sub,
+          detail: `${feed.id}=${feed.enabled}`,
+          ip: req.ip,
+        });
+        return reply.send(feed);
+      } catch (err) {
+        if (err instanceof DnsError && err.code === 'FEED_UNKNOWN') {
+          return reply.code(404).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
     },
   );
 };

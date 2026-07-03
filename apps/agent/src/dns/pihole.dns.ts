@@ -1,5 +1,6 @@
-import type { BlockedDomain, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
+import type { BlockedDomain, DnsFeed, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
 import { DnsError } from './mock.dns.js';
+import { DNS_FEED_CATALOG } from './feeds.js';
 import {
   parseAddedDomain,
   parseDenyExactList,
@@ -147,5 +148,46 @@ export class PiholeDnsManager implements DnsManager {
     const res = await this.request(`/api/queries?length=${limit}`);
     await this.ensureOk(res, 'No se pudieron leer las consultas de Pi-hole');
     return parseQueries(await res.json(), limit);
+  }
+
+  /**
+   * Feeds de categoría (adlists, US-114): se corresponden con las listas de bloqueo
+   * (`/api/lists`) de Pi-hole. Un feed está activo si su URL está entre las adlists.
+   * Verificación con Pi-hole real: US-86.
+   */
+  async listFeeds(): Promise<DnsFeed[]> {
+    const res = await this.request('/api/lists?type=block');
+    await this.ensureOk(res, 'No se pudieron leer las listas de Pi-hole');
+    const body = (await res.json()) as { lists?: { address?: string; enabled?: boolean }[] };
+    const active = new Set(
+      (body.lists ?? [])
+        .filter((l) => l.enabled !== false && typeof l.address === 'string')
+        .map((l) => l.address as string),
+    );
+    return DNS_FEED_CATALOG.map((f) => ({ ...f, enabled: active.has(f.url) }));
+  }
+
+  async setFeedEnabled(id: string, enabled: boolean): Promise<DnsFeed> {
+    const feed = DNS_FEED_CATALOG.find((f) => f.id === id);
+    if (!feed) throw new DnsError('FEED_UNKNOWN', `Feed desconocido: ${id}`);
+    if (enabled) {
+      // Suscribe la adlist (idempotente: un 409 "ya existe" se tolera).
+      const res = await this.request('/api/lists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: feed.url, type: 'block', enabled: true, comment: `KrakenOS: ${feed.name}` }),
+      });
+      if (!res.ok && res.status !== 409) {
+        await this.ensureOk(res, 'No se pudo suscribir la lista en Pi-hole');
+      }
+    } else {
+      const res = await this.request(`/api/lists/${encodeURIComponent(feed.url)}?type=block`, {
+        method: 'DELETE',
+      });
+      if (!res.ok && res.status !== 404) {
+        await this.ensureOk(res, 'No se pudo quitar la lista de Pi-hole');
+      }
+    }
+    return { ...feed, enabled };
   }
 }

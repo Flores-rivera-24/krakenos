@@ -37,6 +37,23 @@ export interface AddBlockedDomainRequest {
 }
 
 /**
+ * Feed de categoría (adlist): una lista curada de dominios a bloquear que el
+ * resolver (Pi-hole) gestiona por URL. El catálogo es fijo; el usuario activa o
+ * desactiva cada uno (US-114).
+ */
+export interface DnsFeed {
+  id: string;
+  name: string;
+  description: string;
+  url: string;
+  enabled: boolean;
+}
+
+export interface UpdateDnsFeedRequest {
+  enabled: boolean;
+}
+
+/**
  * Gestor de DNS intercambiable. La implementación real (`pihole`) habla con la
  * API de Pi-hole; `mock` mantiene la blocklist y las estadísticas en memoria.
  */
@@ -49,4 +66,8 @@ export interface DnsManager {
   removeBlocked(id: Id): Promise<boolean>;
   /** Últimas consultas DNS (más recientes primero). */
   recentQueries(limit?: number): Promise<DnsQuery[]>;
+  /** Catálogo de feeds de categoría con su estado activo (US-114). */
+  listFeeds(): Promise<DnsFeed[]>;
+  /** Activa o desactiva un feed por id; lanza si el id no está en el catálogo. */
+  setFeedEnabled(id: string, enabled: boolean): Promise<DnsFeed>;
 }

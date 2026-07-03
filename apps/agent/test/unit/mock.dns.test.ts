@@ -37,4 +37,18 @@ describe('MockDnsManager', () => {
     expect(all.length).toBeGreaterThan(0);
     expect(await dns.recentQueries(2)).toHaveLength(2);
   });
+
+  it('togglea los feeds de categoría del catálogo (US-114)', async () => {
+    const dns = new MockDnsManager();
+    let feeds = await dns.listFeeds();
+    expect(feeds.length).toBeGreaterThan(0);
+    expect(feeds.every((f) => !f.enabled)).toBe(true);
+
+    const updated = await dns.setFeedEnabled('ads', true);
+    expect(updated.enabled).toBe(true);
+    feeds = await dns.listFeeds();
+    expect(feeds.find((f) => f.id === 'ads')?.enabled).toBe(true);
+
+    await expect(dns.setFeedEnabled('desconocido', true)).rejects.toBeInstanceOf(DnsError);
+  });
 });
