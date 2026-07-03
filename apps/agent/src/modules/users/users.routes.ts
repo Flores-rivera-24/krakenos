@@ -15,7 +15,9 @@ import {
  */
 export const usersRoutes: FastifyPluginAsync = async (app) => {
   const service = new UsersService(app);
-  const adminOnly = app.requireRole('admin');
+  // Admin RE-VERIFICADO en la DB (no solo el claim del token): un admin degradado no
+  // puede reganar privilegios dentro de la vida de su access token (hallazgo de seguridad).
+  const adminOnly = app.requireActiveAdmin;
 
   app.get('/', { schema: listUsersSchema, preHandler: adminOnly }, async () => service.list());
 

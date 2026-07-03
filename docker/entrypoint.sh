@@ -11,8 +11,11 @@ mkdir -p "$(dirname "$JWT_PRIVATE_KEY_PATH")"
 # arrancar). El agente EXIGE la clave privada al iniciar, así que debe existir ya.
 if [ ! -f "$JWT_PRIVATE_KEY_PATH" ]; then
   echo "[entrypoint] Generando claves JWT RS256…"
-  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$JWT_PRIVATE_KEY_PATH"
-  openssl rsa -pubout -in "$JWT_PRIVATE_KEY_PATH" -out "$JWT_PUBLIC_KEY_PATH"
+  # umask 077 en un subshell: la clave privada nace 600 (sin ventana legible por
+  # grupo/otros entre crearla y el chmod).
+  ( umask 077
+    openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out "$JWT_PRIVATE_KEY_PATH"
+    openssl rsa -pubout -in "$JWT_PRIVATE_KEY_PATH" -out "$JWT_PUBLIC_KEY_PATH" )
   chmod 600 "$JWT_PRIVATE_KEY_PATH"
 fi
 

@@ -203,7 +203,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   const backupService = new BackupService(app.prisma);
   app.post<{ Body: { passphrase: string } }>(
     '/backup',
-    { preHandler: app.requireRole('admin'), schema: backupSchema },
+    { preHandler: app.requireActiveAdmin, schema: backupSchema },
     async (req, reply) => {
       const archive = await backupService.create(req.body.passphrase);
       app.audit({ action: 'system.backup', userId: req.user.sub, ip: req.ip });
@@ -216,11 +216,14 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
 
   // Restauración (US-104): sube el backup cifrado (base64) + passphrase. Se descifra,
   // se **valida** (anti path-traversal) y se deja en staging; se aplica al reiniciar
-  // (no se puede intercambiar la DB viva de forma segura). Admin-only y auditada.
-  const restoreStagingDir = resolve('data/restore-staging');
+  // (no se puede intercambiar la DB viva de forma segura). Admin activo y auditada.
+  // El staging vive en `var/` (FUERA de `data/`), que es un destino de restore — si
+  // no, un backup con una entrada `data/restore-staging` colisionaría al aplicar.
+  const restoreStagingDir = resolve('var/restore-staging');
   app.post<{ Body: { passphrase: string; data: string } }>(
     '/restore',
-    { preHandler: app.requireRole('admin'), schema: restoreSchema, bodyLimit: 400 * 1024 * 1024 },
+    // 64 MB: evita el OOM de bufferizar base64 gigante en hardware tipo Raspberry Pi.
+    { preHandler: app.requireActiveAdmin, schema: restoreSchema, bodyLimit: 64 * 1024 * 1024 },
     async (req, reply) => {
       let staged: string[];
       try {

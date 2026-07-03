@@ -16,6 +16,13 @@ import { SETTING_BOUNDS, clampToBound } from '../../config/settings-bounds.js';
 const MFA_PENDING_TTL_SEC = 2 * 60;
 
 /**
+ * Hash señuelo del MISMO coste (12) que los hashes reales. La comparación
+ * anti-enumeración en `verifyCredentials` tarda lo mismo exista o no la cuenta —
+ * antes el señuelo era coste 10, un oráculo de temporización para enumerar cuentas.
+ */
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('krakenos-anti-enumeracion', 12);
+
+/**
  * Tokens emitidos **internamente** (US-91): incluyen el refresh token para que la
  * ruta lo fije en la cookie `httpOnly`. La ruta nunca lo devuelve en el cuerpo —
  * al cliente solo le llega `{ accessToken, expiresIn }` (el `AuthTokens` público).
@@ -190,8 +197,8 @@ export class AuthService {
       where: { email },
     })) as DbUser | null;
 
-    // Comparación constante incluso si el usuario no existe (anti-enumeración).
-    const hash = user?.passwordHash ?? '$2b$10$invalidinvalidinvalidinvalidinvalidinvalidinv';
+    // Comparación de coste constante incluso si el usuario no existe (anti-enumeración).
+    const hash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
     const valid = await bcrypt.compare(password, hash);
 
     if (!user || !valid) {

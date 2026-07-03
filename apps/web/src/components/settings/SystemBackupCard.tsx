@@ -81,7 +81,7 @@ export function SystemBackupCard() {
               type="password"
               value={pass}
               onChange={(e) => setPass(e.target.value)}
-              minLength={8}
+              minLength={12}
               maxLength={256}
               autoComplete="new-password"
             />
@@ -93,13 +93,13 @@ export function SystemBackupCard() {
               type="password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              minLength={8}
+              minLength={12}
               maxLength={256}
               autoComplete="new-password"
             />
           </div>
         </div>
-        <Button size="sm" onClick={() => void run()} disabled={busy || pass.length < 8}>
+        <Button size="sm" onClick={() => void run()} disabled={busy || pass.length < 12}>
           {busy ? 'Generando…' : 'Descargar copia de seguridad'}
         </Button>
 
@@ -131,7 +131,7 @@ export function SystemBackupCard() {
                 type="password"
                 value={restorePass}
                 onChange={(e) => setRestorePass(e.target.value)}
-                minLength={8}
+                minLength={12}
                 maxLength={256}
                 autoComplete="off"
               />
@@ -141,7 +141,7 @@ export function SystemBackupCard() {
             size="sm"
             variant="outline"
             onClick={() => void runRestore()}
-            disabled={restoreBusy || !restoreFile || restorePass.length < 8}
+            disabled={restoreBusy || !restoreFile || restorePass.length < 12}
           >
             {restoreBusy ? 'Preparando…' : 'Restaurar copia'}
           </Button>

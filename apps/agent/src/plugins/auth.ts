@@ -35,6 +35,14 @@ declare module 'fastify' {
       role: UserRole,
     ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /**
+     * preHandler que exige **admin activo re-verificado en la DB** (no solo el claim
+     * del token). Cierra la ventana en la que un admin recién degradado/deshabilitado
+     * podría —con su access token aún válido— reganar privilegios o exfiltrar/borrar
+     * (gestión de usuarios, backup, restore). Para el resto de rutas admin basta
+     * `requireRole` (el residual queda acotado por la vida corta del access token).
+     */
+    requireActiveAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /**
      * Verifica un JWT eligiendo la clave por `kid` (rotación RS256, US-64): la
      * clave de firma actual o una previa durante el solape. Lanza si la firma,
      * el emisor/audiencia o la expiración no validan, o si el `kid` es desconocido.
@@ -140,5 +148,24 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
         });
       }
     };
+  });
+
+  // Re-verifica admin+activo contra la DB (no solo el claim del token): cierra la
+  // ventana en que un admin recién degradado/deshabilitado, con su access token aún
+  // válido, reganaría privilegios o exfiltraría/borraría (gestión de usuarios/backup/
+  // restore). Coste: una lectura por petición en esas rutas sensibles.
+  app.decorate('requireActiveAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
+    await app.authenticate(req, reply);
+    if (reply.sent) return;
+    const actor = await app.prisma.user.findUnique({
+      where: { id: req.user.sub },
+      select: { role: true, status: true },
+    });
+    if (!actor || actor.role !== 'admin' || actor.status !== 'active') {
+      return reply.code(403).send({
+        code: 'AUTH_FORBIDDEN',
+        message: 'Requiere un administrador activo',
+      });
+    }
   });
 });

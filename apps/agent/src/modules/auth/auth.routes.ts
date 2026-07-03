@@ -192,7 +192,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
   // actual (revoca las demás), de modo que un cambio expulse a sesiones ajenas.
   app.post<{ Body: ChangePasswordRequest }>(
     '/change-password',
-    { schema: changePasswordSchema, preHandler: app.authenticate },
+    {
+      schema: changePasswordSchema,
+      preHandler: app.authenticate,
+      // Verifica la contraseña actual (bcrypt) → oráculo de adivinación si roban un
+      // access token. Limita los intentos (defensa en profundidad).
+      config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
+    },
     async (req, reply) => {
       try {
         await service.changePassword(req.user.sub, req.body.currentPassword, req.body.newPassword);

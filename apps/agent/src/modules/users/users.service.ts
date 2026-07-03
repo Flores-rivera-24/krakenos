@@ -83,13 +83,6 @@ export class UsersService {
     return rows.map(toSummary);
   }
 
-  /** Nº de administradores activos, opcionalmente excluyendo un id (el objetivo). */
-  private async countActiveAdmins(excludeId?: string): Promise<number> {
-    return this.app.prisma.user.count({
-      where: { role: 'admin', status: 'active', ...(excludeId ? { id: { not: excludeId } } : {}) },
-    });
-  }
-
   async create(body: CreateUserRequest): Promise<UserSummary> {
     const passwordHash = await bcrypt.hash(body.password, BCRYPT_COST);
     try {
@@ -112,36 +105,37 @@ export class UsersService {
   }
 
   async update(id: string, patch: UpdateUserRequest): Promise<UpdateResult | null> {
-    const target = await this.app.prisma.user.findUnique({ where: { id }, select: SUMMARY_SELECT });
-    if (!target) return null;
-
-    // Invariante: no permitir que la acción deje 0 administradores activos.
-    const removesAdmin =
-      target.role === 'admin' &&
-      target.status === 'active' &&
-      ((patch.role !== undefined && patch.role !== 'admin') || patch.status === 'disabled');
-    if (removesAdmin && (await this.countActiveAdmins(id)) === 0) {
-      throw new UserError('LAST_ADMIN', 'Debe quedar al menos un administrador activo');
-    }
-
     const data: { displayName?: string; role?: UserRole; status?: UserStatus } = {};
     if (patch.displayName !== undefined) data.displayName = patch.displayName;
     if (patch.role !== undefined) data.role = patch.role;
     if (patch.status !== undefined) data.status = patch.status;
 
-    const row = await this.app.prisma.user.update({ where: { id }, data, select: SUMMARY_SELECT });
+    // Todo dentro de una transacción con comprobación **posterior** al cambio: si el
+    // resultado dejara 0 administradores activos, se revierte. Esto es race-free —
+    // dos degradaciones/deshabilitaciones concurrentes no pueden ambas confirmar un
+    // estado sin admins (antes había un TOCTOU entre contar y escribir).
+    const result = await this.app.prisma.$transaction(async (tx) => {
+      const target = await tx.user.findUnique({ where: { id }, select: SUMMARY_SELECT });
+      if (!target) return null;
+      const row = await tx.user.update({ where: { id }, data, select: SUMMARY_SELECT });
+      const activeAdmins = await tx.user.count({ where: { role: 'admin', status: 'active' } });
+      if (activeAdmins === 0) {
+        throw new UserError('LAST_ADMIN', 'Debe quedar al menos un administrador activo');
+      }
+      return { target, row };
+    });
+    if (!result) return null;
 
-    // Cambio de rol o deshabilitado → revoca las sesiones del objetivo: su access
-    // token viejo caduca solo (vida corta), pero no debe poder refrescar con el
-    // rol/estado anterior.
-    const roleChanged = patch.role !== undefined && patch.role !== target.role;
-    const disabled = patch.status === 'disabled' && target.status !== 'disabled';
+    // Cambio de rol o deshabilitado → revoca las sesiones del objetivo (tras confirmar
+    // la transacción): su access token viejo caduca solo, pero no debe poder refrescar.
+    const roleChanged = patch.role !== undefined && patch.role !== result.target.role;
+    const disabled = patch.status === 'disabled' && result.target.status !== 'disabled';
     let sessionsRevoked = false;
     if (roleChanged || disabled) {
       await this.auth.revokeAllForUser(id);
       sessionsRevoked = true;
     }
-    return { user: toSummary(row), sessionsRevoked };
+    return { user: toSummary(result.row), sessionsRevoked };
   }
 
   async resetPassword(id: string, password: string): Promise<boolean> {
@@ -155,19 +149,21 @@ export class UsersService {
   }
 
   async remove(id: string, actingUserId: string): Promise<boolean> {
-    const target = await this.app.prisma.user.findUnique({
-      where: { id },
-      select: { id: true, role: true, status: true },
-    });
-    if (!target) return false;
     if (id === actingUserId) {
       throw new UserError('CANNOT_DELETE_SELF', 'No puedes eliminar tu propia cuenta');
     }
-    if (target.role === 'admin' && target.status === 'active' && (await this.countActiveAdmins(id)) === 0) {
-      throw new UserError('LAST_ADMIN', 'Debe quedar al menos un administrador activo');
-    }
-    // La cascada de Prisma limpia refresh tokens, passkeys, códigos, etc.
-    await this.app.prisma.user.delete({ where: { id } });
-    return true;
+    // Igual que `update`: borra y comprueba el invariante dentro de la transacción,
+    // de modo que no pueda quedar 0 administradores activos por una carrera.
+    return this.app.prisma.$transaction(async (tx) => {
+      const target = await tx.user.findUnique({ where: { id }, select: { id: true } });
+      if (!target) return false;
+      // La cascada de Prisma limpia refresh tokens, passkeys, códigos, etc.
+      await tx.user.delete({ where: { id } });
+      const activeAdmins = await tx.user.count({ where: { role: 'admin', status: 'active' } });
+      if (activeAdmins === 0) {
+        throw new UserError('LAST_ADMIN', 'Debe quedar al menos un administrador activo');
+      }
+      return true;
+    });
   }
 }

@@ -10,6 +10,10 @@ services:
     container_name: krakenos
     restart: unless-stopped
     ports:
+      # Accesible en la LAN (el modelo es LAN + WireGuard para remoto; una LAN
+      # doméstica está tras NAT). Si este host es accesible desde internet, NO
+      # expongas la UI directamente: usa `127.0.0.1:3001:3001` y ponla detrás de
+      # la interfaz WireGuard o un proxy TLS (la UI sirve HTTP en claro).
       - '3001:3001'
     environment:
       SERVE_WEB: 'true'

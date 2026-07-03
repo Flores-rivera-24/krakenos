@@ -91,21 +91,37 @@ export function applyStagedRestore(
   targets: RestoreTargets,
   preRestoreDir: string,
 ): string[] {
-  const applied: string[] = [];
-  for (const rel of listStagedFiles(stagingDir)) {
-    if (!isSafeEntryName(rel)) continue; // defensa en profundidad
-    const dest = destFor(rel, targets);
-    if (!dest) continue;
-    // Respalda lo actual (recuperable si el restore sale mal).
-    if (existsSync(dest)) {
-      const bak = join(preRestoreDir, rel);
-      mkdirSync(dirname(bak), { recursive: true });
-      copyFileSync(dest, bak);
+  const applied: { rel: string; dest: string; existed: boolean }[] = [];
+  try {
+    for (const rel of listStagedFiles(stagingDir)) {
+      if (!isSafeEntryName(rel)) continue; // defensa en profundidad
+      const dest = destFor(rel, targets);
+      if (!dest) continue;
+      const existed = existsSync(dest);
+      // Respalda lo actual (para poder revertir si un fichero posterior falla).
+      if (existed) {
+        const bak = join(preRestoreDir, rel);
+        mkdirSync(dirname(bak), { recursive: true });
+        copyFileSync(dest, bak);
+      }
+      mkdirSync(dirname(dest), { recursive: true });
+      copyFileSync(join(stagingDir, rel), dest);
+      applied.push({ rel, dest, existed });
     }
-    mkdirSync(dirname(dest), { recursive: true });
-    copyFileSync(join(stagingDir, rel), dest);
-    applied.push(rel);
+  } catch (err) {
+    // Aplicación ATÓMICA (best-effort): si un fichero falla a mitad, revierte los ya
+    // aplicados —restaura el previo o borra el recién creado— y deja el staging para
+    // que el arranque lo aparte. Así nunca queda un estado a medio restaurar.
+    for (const { rel, dest, existed } of applied) {
+      try {
+        if (existed) copyFileSync(join(preRestoreDir, rel), dest);
+        else rmSync(dest, { force: true });
+      } catch {
+        // mejor esfuerzo: la copia previa sigue en preRestoreDir para rescate manual
+      }
+    }
+    throw err;
   }
   rmSync(stagingDir, { recursive: true, force: true });
-  return applied;
+  return applied.map((a) => a.rel);
 }

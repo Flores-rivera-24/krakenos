@@ -24,6 +24,27 @@ const TAG_LEN = 16;
 /** Prefijo de un blob cifrado: identifica el formato antes de intentar descifrar. */
 const ENC_MAGIC = Buffer.from('KBK1', 'ascii');
 
+// Parámetros scrypt. `KDF_LOG_N` (por defecto 16 → N=65536) se escribe en el envelope
+// tras el magic, así el coste puede subir en el futuro sin romper archivos antiguos.
+// Al descifrar se ACOTA el `logN` leído para que un archivo manipulado no fuerce una
+// asignación de memoria enorme (DoS) — la derivación ocurre antes de autenticar.
+const KDF_LOG_N = 16;
+const KDF_R = 8;
+const KDF_P = 1;
+const KDF_MIN_LOG_N = 14;
+const KDF_MAX_LOG_N = 17;
+// maxmem cubre 2^KDF_MAX_LOG_N (≈128 MB para N=2^17, r=8).
+const KDF_MAXMEM = 256 * 1024 * 1024;
+/** Longitud mínima de la passphrase (el archivo cifra secretos → resistir fuerza bruta). */
+const MIN_PASSPHRASE = 12;
+
+function deriveKey(passphrase: string, salt: Buffer, logN: number): Buffer {
+  if (!Number.isInteger(logN) || logN < KDF_MIN_LOG_N || logN > KDF_MAX_LOG_N) {
+    throw new Error('Parámetros de cifrado del backup no válidos');
+  }
+  return scryptSync(passphrase, salt, 32, { N: 2 ** logN, r: KDF_R, p: KDF_P, maxmem: KDF_MAXMEM });
+}
+
 export interface ArchiveEntry {
   /** Ruta relativa dentro del backup, p. ej. `db/app.db`, `keys/secretbox.key`. */
   name: string;
@@ -37,7 +58,9 @@ export interface ArchiveEntry {
  * un archivo manipulado no puede escribir fuera del árbol previsto.
  */
 export function isSafeEntryName(name: string): boolean {
-  return /^(db|keys|data)\/[A-Za-z0-9._-]+$/.test(name);
+  // Un único segmento que EMPIEZA por alfanumérico (rechaza `.`, `..` y nombres con
+  // punto inicial), bajo db/ keys/ data/. Sin `/` interior → sin traversal multinivel.
+  return /^(db|keys|data)\/(?!\.\.?$)[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name);
 }
 
 interface ManifestEntry {
@@ -81,6 +104,10 @@ export function unpackArchive(buf: Buffer): ArchiveEntry[] {
   let offset = 4 + headerLen;
   const entries: ArchiveEntry[] = [];
   for (const m of manifest.entries) {
+    // No confíes en el manifest: nombre string y longitud entera no negativa.
+    if (typeof m.name !== 'string' || !Number.isInteger(m.length) || m.length < 0) {
+      throw new Error('Backup dañado (manifest inválido)');
+    }
     const end = offset + m.length;
     if (end > buf.length) throw new Error('Backup dañado (payload truncado)');
     entries.push({ name: m.name, data: buf.subarray(offset, end) });
@@ -89,34 +116,36 @@ export function unpackArchive(buf: Buffer): ArchiveEntry[] {
   return entries;
 }
 
-/** Cifra `plain` con una clave derivada de `passphrase`: `[KBK1][salt][iv][tag][ct]`. */
+/** Cifra `plain` con clave derivada de `passphrase`: `[KBK1][logN][salt][iv][tag][ct]`. */
 export function encryptArchive(plain: Buffer, passphrase: string): Buffer {
-  if (passphrase.length < 8) {
-    throw new Error('La contraseña del backup debe tener al menos 8 caracteres');
+  if (passphrase.length < MIN_PASSPHRASE) {
+    throw new Error(`La contraseña del backup debe tener al menos ${MIN_PASSPHRASE} caracteres`);
   }
   const salt = randomBytes(SALT_LEN);
-  const key = scryptSync(passphrase, salt, 32);
+  const key = deriveKey(passphrase, salt, KDF_LOG_N);
   const iv = randomBytes(IV_LEN);
   // authTagLength explícito: requerido por el SAST (semgrep gcm-no-tag-length) y
   // fija el tag GCM a 128 bits (igual que en `config/secretbox.ts`).
   const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LEN });
   const ct = Buffer.concat([cipher.update(plain), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return Buffer.concat([ENC_MAGIC, salt, iv, tag, ct]);
+  return Buffer.concat([ENC_MAGIC, Buffer.from([KDF_LOG_N]), salt, iv, tag, ct]);
 }
 
 /** Descifra un blob de `encryptArchive`. Lanza si la passphrase es incorrecta o está dañado. */
 export function decryptArchive(blob: Buffer, passphrase: string): Buffer {
-  const min = ENC_MAGIC.length + SALT_LEN + IV_LEN + TAG_LEN;
-  if (blob.length < min || !blob.subarray(0, ENC_MAGIC.length).equals(ENC_MAGIC)) {
+  const headerLen = ENC_MAGIC.length + 1 + SALT_LEN + IV_LEN + TAG_LEN;
+  if (blob.length < headerLen || !blob.subarray(0, ENC_MAGIC.length).equals(ENC_MAGIC)) {
     throw new Error('Archivo de backup no reconocido');
   }
   let p = ENC_MAGIC.length;
+  const logN = blob[p]!; // byte de coste scrypt (acotado en deriveKey)
+  p += 1;
   const salt = blob.subarray(p, (p += SALT_LEN));
   const iv = blob.subarray(p, (p += IV_LEN));
   const tag = blob.subarray(p, (p += TAG_LEN));
   const ct = blob.subarray(p);
-  const key = scryptSync(passphrase, salt, 32);
+  const key = deriveKey(passphrase, salt, logN);
   const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LEN });
   decipher.setAuthTag(tag);
   try {

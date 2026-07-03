@@ -121,7 +121,9 @@ export const backupSchema = {
     type: 'object',
     additionalProperties: false,
     required: ['passphrase'],
-    properties: { passphrase: { type: 'string', minLength: 8, maxLength: 256 } },
+    // Mín 12: el archivo cifra las joyas de la corona; una passphrase corta sería
+    // fuerza-bruteable offline si el archivo se filtra.
+    properties: { passphrase: { type: 'string', minLength: 12, maxLength: 256 } },
   },
 } as const;
 
@@ -135,9 +137,9 @@ export const restoreSchema = {
     additionalProperties: false,
     required: ['passphrase', 'data'],
     properties: {
-      passphrase: { type: 'string', minLength: 8, maxLength: 256 },
-      // El archivo cifrado, en base64.
-      data: { type: 'string', minLength: 1, maxLength: 400_000_000 },
+      passphrase: { type: 'string', minLength: 12, maxLength: 256 },
+      // El archivo cifrado, en base64 (base64 de ~64 MB ≈ 88 M de caracteres).
+      data: { type: 'string', minLength: 1, maxLength: 90_000_000 },
     },
   },
   response: {
