@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import os from 'node:os';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
   ConnectivityTestResult,
@@ -16,12 +17,14 @@ import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
+import { stageRestore } from '../../system/restore.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import {
   backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
   regenKeysSchema,
+  restoreSchema,
   systemInfoSchema,
   systemStatsSchema,
   updateSettingSchema,
@@ -208,6 +211,34 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         .header('content-type', 'application/octet-stream')
         .header('content-disposition', 'attachment; filename="krakenos-backup.kbk"')
         .send(archive);
+    },
+  );
+
+  // Restauración (US-104): sube el backup cifrado (base64) + passphrase. Se descifra,
+  // se **valida** (anti path-traversal) y se deja en staging; se aplica al reiniciar
+  // (no se puede intercambiar la DB viva de forma segura). Admin-only y auditada.
+  const restoreStagingDir = resolve('data/restore-staging');
+  app.post<{ Body: { passphrase: string; data: string } }>(
+    '/restore',
+    { preHandler: app.requireRole('admin'), schema: restoreSchema, bodyLimit: 400 * 1024 * 1024 },
+    async (req, reply) => {
+      let staged: string[];
+      try {
+        const blob = Buffer.from(req.body.data, 'base64');
+        staged = stageRestore(blob, req.body.passphrase, restoreStagingDir);
+      } catch (err) {
+        return reply.code(400).send({
+          code: 'RESTORE_INVALID',
+          message: err instanceof Error ? err.message : 'Backup inválido',
+        });
+      }
+      app.audit({
+        action: 'system.restore.staged',
+        userId: req.user.sub,
+        detail: `${staged.length} ficheros`,
+        ip: req.ip,
+      });
+      return reply.send({ staged: staged.length, restartRequired: true });
     },
   );
 };

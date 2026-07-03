@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { downloadBackup } from '@/lib/system-backup';
+import { downloadBackup, restoreBackup } from '@/lib/system-backup';
 import { toast } from '@/store/toast.store';
 
 /**
@@ -16,6 +16,27 @@ export function SystemBackupCard() {
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [restoreFile, setRestoreFile] = useState<File | null>(null);
+  const [restorePass, setRestorePass] = useState('');
+  const [restoreBusy, setRestoreBusy] = useState(false);
+
+  const runRestore = async () => {
+    if (!restoreFile) return;
+    setRestoreBusy(true);
+    try {
+      const { staged } = await restoreBackup(restoreFile, restorePass);
+      toast.success(`Restauración preparada (${staged} ficheros). Reinicia el agente para aplicarla.`);
+      setRestoreFile(null);
+      setRestorePass('');
+      if (fileInput.current) fileInput.current.value = '';
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'No se pudo restaurar');
+    } finally {
+      setRestoreBusy(false);
+    }
+  };
 
   const run = async () => {
     if (pass !== confirm) {
@@ -81,10 +102,54 @@ export function SystemBackupCard() {
         <Button size="sm" onClick={() => void run()} disabled={busy || pass.length < 8}>
           {busy ? 'Generando…' : 'Descargar copia de seguridad'}
         </Button>
-        <Callout variant="info" title="Restaurar">
-          Para restaurar, coloca este archivo en la instalación nueva y aplica la restauración al
-          desplegar. La restauración desde la propia app llegará en una próxima versión.
-        </Callout>
+
+        {/* Restaurar (US-104) */}
+        <div className="space-y-3 border-t border-kr pt-4">
+          <div>
+            <h4 className="text-kr-base font-medium text-kr-primary">Restaurar</h4>
+            <p className="text-kr-sm text-kr-secondary">
+              Sube un archivo de copia y su contraseña. Se valida y se prepara; se aplica al{' '}
+              <strong>reiniciar</strong> el agente (se respalda lo actual por si acaso).
+            </p>
+          </div>
+          <div className="grid max-w-lg gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="bk-file">Archivo de copia</Label>
+              <input
+                ref={fileInput}
+                id="bk-file"
+                type="file"
+                accept=".kbk,application/octet-stream"
+                onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
+                className="block w-full text-kr-sm text-kr-secondary file:mr-3 file:rounded-md file:border file:border-kr file:bg-kr-elevated file:px-3 file:py-1.5 file:text-kr-primary"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bk-rpass">Contraseña del backup</Label>
+              <Input
+                id="bk-rpass"
+                type="password"
+                value={restorePass}
+                onChange={(e) => setRestorePass(e.target.value)}
+                minLength={8}
+                maxLength={256}
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => void runRestore()}
+            disabled={restoreBusy || !restoreFile || restorePass.length < 8}
+          >
+            {restoreBusy ? 'Preparando…' : 'Restaurar copia'}
+          </Button>
+          <Callout variant="warning" title="Ojo">
+            Restaurar sustituye la base de datos, las claves y los datos actuales por los de la
+            copia. Reinicia el agente para completar el proceso.
+          </Callout>
+        </div>
       </CardContent>
     </Card>
   );

@@ -124,3 +124,31 @@ export const backupSchema = {
     properties: { passphrase: { type: 'string', minLength: 8, maxLength: 256 } },
   },
 } as const;
+
+/**
+ * `POST /api/system/restore` — sube un backup (base64) + passphrase; se **valida y
+ * prepara** para aplicar al reiniciar (US-104). No aplica en caliente.
+ */
+export const restoreSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['passphrase', 'data'],
+    properties: {
+      passphrase: { type: 'string', minLength: 8, maxLength: 256 },
+      // El archivo cifrado, en base64.
+      data: { type: 'string', minLength: 1, maxLength: 400_000_000 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['staged', 'restartRequired'],
+      properties: {
+        staged: { type: 'integer' },
+        restartRequired: { type: 'boolean' },
+      },
+    },
+  },
+} as const;

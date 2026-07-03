@@ -30,6 +30,16 @@ export interface ArchiveEntry {
   data: Buffer;
 }
 
+/**
+ * ¿Es un nombre de entrada seguro para escribir al restaurar? Solo un segmento
+ * bajo `db/`, `keys/` o `data/` (sin `..`, sin rutas absolutas, sin subdirectorios
+ * ni caracteres raros). Blinda la restauración contra *path traversal* / zip-slip:
+ * un archivo manipulado no puede escribir fuera del árbol previsto.
+ */
+export function isSafeEntryName(name: string): boolean {
+  return /^(db|keys|data)\/[A-Za-z0-9._-]+$/.test(name);
+}
+
 interface ManifestEntry {
   name: string;
   length: number;
