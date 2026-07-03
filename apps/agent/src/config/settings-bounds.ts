@@ -21,6 +21,10 @@ export const SETTING_BOUNDS = {
   accessTokenTtl: { min: 60, max: 3600 },
   /** Intentos de login por minuto por IP. Mín 1 (nunca 0 = lockout total). */
   loginRateLimit: { min: 1, max: 1000 },
+  /** Retención de los rollups de tráfico en días (US-102). Mín 1, máx 1 año. */
+  trafficRetentionDays: { min: 1, max: 365 },
+  /** Retención del registro de auditoría en días (US-102). Mín 1, máx 10 años. */
+  auditRetentionDays: { min: 1, max: 3650 },
 } satisfies Record<string, NumericBound>;
 
 export type BoundedSettingKey = keyof typeof SETTING_BOUNDS;

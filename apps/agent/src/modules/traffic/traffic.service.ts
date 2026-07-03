@@ -8,13 +8,14 @@ import type {
 } from '@krakenos/types';
 import { TRAFFIC_ROOM } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { DAY_MS, retentionDays } from '../../config/retention.js';
 import { normalizeTrafficSample } from './normalize.js';
 
 /** Nº de muestras retenidas en memoria (~2 min a 2 s/muestra). */
 const MAX_HISTORY = 60;
 
-/** Retención de los rollups persistidos: una semana (cubre el rango máximo). */
-const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+/** Retención por defecto de los rollups (días) si el ajuste no existe. Cubre el rango máximo. */
+const DEFAULT_TRAFFIC_RETENTION_DAYS = 7;
 
 /** Duración de la ventana por rango, en milisegundos. */
 const RANGE_MS: Record<TrafficRange, number> = {
@@ -103,11 +104,20 @@ export class TrafficService {
     this.sumTx = 0;
     this.count = 0;
 
+    // Retención configurable (US-102): antes era una constante de 7 días y el
+    // ajuste `trafficRetentionDays` no se leía. Ahora lo respeta (acotado).
+    const days = await retentionDays(
+      this.app.prisma,
+      'trafficRetentionDays',
+      DEFAULT_TRAFFIC_RETENTION_DAYS,
+    );
+    const cutoff = new Date(Date.now() - days * DAY_MS);
+
     await this.app.prisma.trafficSample.create({
       data: { rxBytesPerSec, txBytesPerSec },
     });
     await this.app.prisma.trafficSample.deleteMany({
-      where: { timestamp: { lt: new Date(Date.now() - RETENTION_MS) } },
+      where: { timestamp: { lt: cutoff } },
     });
 
     // Rollup por dispositivo (US-46): una fila por MAC con su media del intervalo.
@@ -120,7 +130,7 @@ export class TrafficService {
       });
     }
     await this.app.prisma.deviceTrafficSample.deleteMany({
-      where: { timestamp: { lt: new Date(Date.now() - RETENTION_MS) } },
+      where: { timestamp: { lt: cutoff } },
     });
   }
 

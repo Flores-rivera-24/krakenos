@@ -40,6 +40,7 @@ import { tuyaConfigRoutes } from './modules/iot/tuya-config.routes.js';
 import { qosRoutes } from './modules/qos/qos.routes.js';
 import { vlanRoutes } from './modules/vlan/vlan.routes.js';
 import { systemRoutes } from './modules/system/system.routes.js';
+import { RetentionService } from './modules/system/retention.service.js';
 import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -182,6 +183,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   const scanSec = Number(scanRow?.value) > 0 ? Number(scanRow!.value) : 60;
   inventoryService.setScanInterval(scanSec * 1000);
   app.addHook('onClose', async () => inventoryService.stopScan());
+
+  // Retención de datos (US-102): poda periódica del registro de auditoría según
+  // `auditRetentionDays` (antes crecía sin límite). El tráfico ya poda en su rollup.
+  const retentionService = new RetentionService(app);
+  retentionService.start();
+  app.addHook('onClose', async () => retentionService.stop());
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();
