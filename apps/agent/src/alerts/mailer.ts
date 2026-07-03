@@ -68,7 +68,7 @@ export class Mailer {
   private readonly send: SendMail | null;
 
   constructor(
-    private readonly app: Pick<FastifyInstance, 'log'>,
+    private readonly app: Pick<FastifyInstance, 'log' | 'alertConfig'>,
     private readonly config: SmtpConfig | null,
     transport?: SendMail,
   ) {
@@ -84,6 +84,9 @@ export class Mailer {
     if (!this.config || !this.send) return;
     const note = pushNotificationForAudit(action, detail, ip);
     if (!note) return;
+    // Regla de alerta configurable (US-112): si no hay config (tests), ON.
+    const channels = this.app.alertConfig?.channelsFor(action) ?? { push: true, email: true };
+    if (!channels.email) return;
     const msg: MailMessage = {
       from: this.config.from,
       to: this.config.to,

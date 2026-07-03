@@ -30,9 +30,11 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 - **Copias de seguridad cifradas**: descarga y restaura un backup **cifrado con tu contraseña**
   (base de datos + claves + credenciales de integración) desde **Ajustes → Sistema**.
 - **Control parental / horarios de acceso**: corta el internet de un dispositivo en ventanas
-  recurrentes ("sin internet 21:00–07:00 de lunes a viernes"), desde su ficha en Dispositivos.
-- **Informes CSV y alertas**: exporta auditoría, inventario y tráfico a CSV (para una revisión
-  o un auditor); recibe los eventos de seguridad por **push** y, opcionalmente, por **email**.
+  recurrentes ("sin internet 21:00–07:00 de lunes a viernes") o **pausa su internet de un toque**
+  (30 min / 1 h / 2 h, con auto-reanudación), desde su ficha en Dispositivos.
+- **Informes CSV y alertas configurables**: exporta auditoría, inventario y tráfico a CSV (para una
+  revisión o un auditor); eliges **qué eventos de seguridad te avisan y por qué canal** — **push**
+  y/o **email**.
 
 UI estilo UniFi (tema oscuro, sidebar colapsable, paneles slideover, PWA instalable),
 auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (WebAuthn)**.

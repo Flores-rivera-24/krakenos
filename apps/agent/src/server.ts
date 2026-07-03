@@ -13,7 +13,9 @@ import { IntegrationConfigStore } from './integrations/integration-config.store.
 import { buildIntegrationRuntime } from './integrations/runtime.js';
 import { FileJsonStore } from './store/json-store.js';
 import type { CameraDefinition } from './cameras/rtsp.cameras.js';
+import { AlertConfigService } from './alerts/alert-config.js';
 import { Mailer, smtpConfigFromEnv } from './alerts/mailer.js';
+import { alertsRoutes } from './modules/alerts/alerts.routes.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
@@ -130,6 +132,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   const pushService = new PushService(app);
   app.decorate('push', pushService);
 
+  // Reglas de alerta configurables (US-112): qué eventos alertan y por qué canal.
+  const alertConfig = new AlertConfigService(app);
+  app.decorate('alertConfig', alertConfig);
+
   // Alertas por email (US-110): mismo conjunto de eventos que push, si hay SMTP.
   const mailer = new Mailer(app, smtpConfigFromEnv());
   app.decorate('mailer', mailer);
@@ -189,6 +195,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
   await app.register(auditRoutes, { prefix: '/api/audit' });
   await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
+  // Reglas de alerta configurables (US-112).
+  await app.register(alertsRoutes, { prefix: '/api/alerts', service: alertConfig });
 
   // Monitor de tráfico: muestrea vía driver y emite por Socket.io.
   const trafficService = new TrafficService(app, driver);
@@ -220,6 +228,9 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();
+
+  // Siembra las reglas de alerta por defecto y carga su caché (US-112).
+  await alertConfig.ensureDefaults();
 
   // Ventana de primer admin (US-81, F10): si no hay usuarios, genera un token de
   // configuración y lo imprime en el log/CLI (canal out-of-band). `/setup/init`

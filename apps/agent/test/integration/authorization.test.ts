@@ -57,6 +57,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/access/schedules/x' },
   { method: 'POST', url: '/api/access/pause', payload: { mac: 'aa:bb:cc:dd:ee:ff', minutes: 30 } },
   { method: 'POST', url: '/api/access/resume', payload: { mac: 'aa:bb:cc:dd:ee:ff' } },
+  // reglas de alerta (US-112)
+  { method: 'PATCH', url: '/api/alerts/rules/device.block', payload: { email: true } },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)

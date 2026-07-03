@@ -107,6 +107,9 @@ export class PushService {
   notifyForAudit(action: string, detail?: string | null, ip?: string | null): void {
     const note = pushNotificationForAudit(action, detail, ip);
     if (!note) return;
+    // Regla de alerta configurable (US-112): si no hay config (p. ej. en tests), ON.
+    const channels = this.app.alertConfig?.channelsFor(action) ?? { push: true, email: true };
+    if (!channels.push) return;
     void this.sendToAll(note.title, note.body, note.url).catch((err: unknown) =>
       this.app.log.warn({ err }, 'No se pudo notificar el evento de auditoría'),
     );

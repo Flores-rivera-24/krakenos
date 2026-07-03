@@ -38,6 +38,18 @@ describe('mailer — alertas por email (US-110)', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('no envía si la regla de alerta desactiva el email (US-112)', () => {
+    const calls: MailMessage[] = [];
+    const app = {
+      log: { warn: () => {} },
+      alertConfig: { channelsFor: () => ({ push: true, email: false }) },
+    } as unknown as Pick<FastifyInstance, 'log' | 'alertConfig'>;
+    new Mailer(app, CONFIG, async (m) => {
+      calls.push(m);
+    }).notifyForAudit('device.block', 'aa:bb');
+    expect(calls).toHaveLength(0);
+  });
+
   it('deshabilitado si no hay config SMTP', () => {
     const calls: MailMessage[] = [];
     const mailer = new Mailer(fakeApp, null, async (m) => {

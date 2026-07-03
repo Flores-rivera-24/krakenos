@@ -24,6 +24,8 @@ import { accessRoutes } from '../../src/modules/access/access.routes.js';
 import { AccessScheduleService } from '../../src/modules/access/access.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
+import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
+import { AlertConfigService } from '../../src/alerts/alert-config.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
@@ -124,6 +126,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
     await app.register(auditRoutes, { prefix: '/api/audit' });
     await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
+    await app.register(alertsRoutes, { prefix: '/api/alerts', service: new AlertConfigService(app) });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
     await app.register(reportsRoutes, {
@@ -172,6 +175,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
+  await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample
   await app.prisma.integrationConfig.deleteMany();
   await app.prisma.setting.deleteMany();

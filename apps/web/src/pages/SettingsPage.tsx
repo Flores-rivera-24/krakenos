@@ -7,6 +7,7 @@ import type {
 import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
+import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
@@ -304,6 +305,8 @@ export function SettingsPage() {
               </Card>
 
               {isAdmin && <SystemBackupCard />}
+
+              {isAdmin && <AlertRulesCard />}
 
               <ReportsCard />
             </>
