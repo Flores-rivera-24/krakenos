@@ -13,6 +13,7 @@ import { IntegrationConfigStore } from './integrations/integration-config.store.
 import { buildIntegrationRuntime } from './integrations/runtime.js';
 import { FileJsonStore } from './store/json-store.js';
 import type { CameraDefinition } from './cameras/rtsp.cameras.js';
+import { Mailer, smtpConfigFromEnv } from './alerts/mailer.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
@@ -128,6 +129,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   // auditoría dispare avisos de eventos de alta prioridad.
   const pushService = new PushService(app);
   app.decorate('push', pushService);
+
+  // Alertas por email (US-110): mismo conjunto de eventos que push, si hay SMTP.
+  const mailer = new Mailer(app, smtpConfigFromEnv());
+  app.decorate('mailer', mailer);
+  if (mailer.enabled) app.log.info('[alerts] alertas por email habilitadas (SMTP configurado)');
 
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
