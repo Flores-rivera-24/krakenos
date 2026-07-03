@@ -158,9 +158,14 @@ describe('DeviceDetailSlideover', () => {
 
   it('un admin asigna una VLAN: PUT con el tag', async () => {
     asRole('admin');
-    apiMock.get.mockResolvedValue([
-      { id: 'v1', tag: 30, name: 'IoT', subnet: null, isolated: true, createdAt: '', deviceCount: 0 },
-    ]);
+    // Devuelve las VLAN solo para /vlans; el resto ([] ) cubre /access/schedules y /traffic.
+    apiMock.get.mockImplementation((url: string) =>
+      url === '/vlans'
+        ? Promise.resolve([
+            { id: 'v1', tag: 30, name: 'IoT', subnet: null, isolated: true, createdAt: '', deviceCount: 0 },
+          ])
+        : Promise.resolve([]),
+    );
     const user = userEvent.setup();
     render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
 

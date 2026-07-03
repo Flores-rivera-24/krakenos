@@ -19,3 +19,4 @@ export * from './dns.js';
 export * from './push.js';
 export * from './webauthn.js';
 export * from './coverage.js';
+export * from './access.js';

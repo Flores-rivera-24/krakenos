@@ -27,6 +27,8 @@ import { BackupCodeService } from './webauthn/backup-codes.service.js';
 import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
+import { accessRoutes } from './modules/access/access.routes.js';
+import { AccessScheduleService } from './modules/access/access.service.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
@@ -114,6 +116,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // sistema (para reprogramar el barrido en caliente al cambiar `scanIntervalSec`).
   const inventoryService = new InventoryService(app, driver);
 
+  // Horarios de acceso / control parental (US-108): CRUD + barrido que aplica el
+  // bloqueo por horario vía driver. Le da al inventario la comprobación de "¿hay
+  // horario activo?" para que un desbloqueo manual no anule el control parental.
+  const accessService = new AccessScheduleService(app, driver);
+  inventoryService.setScheduleGuard((mac) => accessService.isBlockedNow(mac));
+
   // Notificaciones push (US-45): decorado en `app.push` para que el plugin de
   // auditoría dispare avisos de eventos de alta prioridad.
   const pushService = new PushService(app);
@@ -145,6 +153,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     app.log.warn(`[webauthn] ${w}`);
   }
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
+  await app.register(accessRoutes, { prefix: '/api/access', service: accessService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
@@ -191,6 +200,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   const retentionService = new RetentionService(app);
   retentionService.start();
   app.addHook('onClose', async () => retentionService.stop());
+
+  // Aplica los horarios de control parental cada minuto (US-108).
+  accessService.start();
+  app.addHook('onClose', async () => accessService.stop());
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();

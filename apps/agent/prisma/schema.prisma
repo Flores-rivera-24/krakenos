@@ -229,3 +229,18 @@ model Device {
 
   @@index([online])
 }
+
+/// Horario de acceso / control parental (US-108). Bloquea el internet de un
+/// dispositivo (por MAC) en ventanas recurrentes. `days` es un JSON de 0-6.
+model AccessSchedule {
+  id          String   @id @default(cuid())
+  name        String
+  mac         String
+  enabled     Boolean  @default(true)
+  days        String // JSON: array de 0-6 (Dom-Sáb)
+  startMinute Int // minutos desde medianoche (0-1439)
+  endMinute   Int // si <= startMinute, cruza medianoche
+  createdAt   DateTime @default(now())
+
+  @@index([mac])
+}

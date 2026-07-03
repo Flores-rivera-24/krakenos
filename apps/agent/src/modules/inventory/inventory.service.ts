@@ -16,11 +16,19 @@ import { lookupVendor } from './oui.js';
 
 export class InventoryService {
   private scanTimer: NodeJS.Timeout | null = null;
+  /** ¿Hay un horario de acceso activo ahora para esta MAC? (US-108, inyectado). */
+  private scheduleGuard?: (mac: string) => Promise<boolean>;
 
   constructor(
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
   ) {}
+
+  /** Inyecta la comprobación de horarios de acceso, para no desbloquear a mano un
+   *  dispositivo que un horario de control parental mantiene bloqueado (US-108). */
+  setScheduleGuard(fn: (mac: string) => Promise<boolean>): void {
+    this.scheduleGuard = fn;
+  }
 
   /** Mapea una fila Prisma al DTO `Device` del contrato compartido. */
   private toDevice(row: DbDevice): Device {
@@ -134,8 +142,15 @@ export class InventoryService {
     const existing = await this.app.prisma.device.findUnique({ where: { id } });
     if (!existing) return null;
 
-    if (blocked) await this.driver.blockDevice(existing.mac);
-    else await this.driver.unblockDevice(existing.mac);
+    if (blocked) {
+      await this.driver.blockDevice(existing.mac);
+    } else {
+      // No desbloquees si un horario de control parental está activo ahora (US-108):
+      // el bloqueo por horario prevalece sobre el desbloqueo manual.
+      const keepBlocked = this.scheduleGuard ? await this.scheduleGuard(existing.mac) : false;
+      if (keepBlocked) await this.driver.blockDevice(existing.mac);
+      else await this.driver.unblockDevice(existing.mac);
+    }
 
     const row = await this.app.prisma.device.update({
       where: { id },

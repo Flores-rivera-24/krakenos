@@ -47,6 +47,14 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   // dns
   { method: 'POST', url: '/api/dns/blocklist', payload: { domain: 'ads.example.com' } },
   { method: 'DELETE', url: '/api/dns/blocklist/x' },
+  // access schedules / control parental (US-108)
+  {
+    method: 'POST',
+    url: '/api/access/schedules',
+    payload: { name: 'Noche', mac: 'aa:bb:cc:dd:ee:ff', days: [1], startMinute: 1260, endMinute: 420 },
+  },
+  { method: 'PATCH', url: '/api/access/schedules/x', payload: { enabled: false } },
+  { method: 'DELETE', url: '/api/access/schedules/x' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)

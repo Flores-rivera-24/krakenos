@@ -20,6 +20,8 @@ import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
 import { vlanRoutes } from '../../src/modules/vlan/vlan.routes.js';
 import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
+import { accessRoutes } from '../../src/modules/access/access.routes.js';
+import { AccessScheduleService } from '../../src/modules/access/access.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
@@ -109,6 +111,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       backupCodes: new BackupCodeService(app.prisma),
     });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
+    await app.register(accessRoutes, {
+      prefix: '/api/access',
+      service: new AccessScheduleService(app, driver),
+    });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
@@ -159,6 +165,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.backupCode.deleteMany();
   await app.prisma.device.deleteMany();
+  await app.prisma.accessSchedule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample
   await app.prisma.integrationConfig.deleteMany();
   await app.prisma.setting.deleteMany();
