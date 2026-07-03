@@ -87,7 +87,9 @@ export function encryptArchive(plain: Buffer, passphrase: string): Buffer {
   const salt = randomBytes(SALT_LEN);
   const key = scryptSync(passphrase, salt, 32);
   const iv = randomBytes(IV_LEN);
-  const cipher = createCipheriv('aes-256-gcm', key, iv);
+  // authTagLength explícito: requerido por el SAST (semgrep gcm-no-tag-length) y
+  // fija el tag GCM a 128 bits (igual que en `config/secretbox.ts`).
+  const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LEN });
   const ct = Buffer.concat([cipher.update(plain), cipher.final()]);
   const tag = cipher.getAuthTag();
   return Buffer.concat([ENC_MAGIC, salt, iv, tag, ct]);
@@ -105,7 +107,7 @@ export function decryptArchive(blob: Buffer, passphrase: string): Buffer {
   const tag = blob.subarray(p, (p += TAG_LEN));
   const ct = blob.subarray(p);
   const key = scryptSync(passphrase, salt, 32);
-  const decipher = createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LEN });
   decipher.setAuthTag(tag);
   try {
     return Buffer.concat([decipher.update(ct), decipher.final()]);
