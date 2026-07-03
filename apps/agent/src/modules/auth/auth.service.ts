@@ -53,6 +53,8 @@ interface DbUser {
   displayName: string;
   passwordHash: string;
   role: string;
+  status: string;
+  lastLoginAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -195,7 +197,29 @@ export class AuthService {
     if (!user || !valid) {
       throw new AuthError('AUTH_INVALID_CREDENTIALS', 'Credenciales inválidas');
     }
+    // Cuenta deshabilitada (US-101): se comprueba **después** de validar la
+    // contraseña, así un fallo de credenciales no revela si la cuenta existe.
+    if (user.status === 'disabled') {
+      throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
+    }
     return toUser(user);
+  }
+
+  /**
+   * Cambia la propia contraseña (US-101): verifica la actual y guarda el nuevo hash.
+   * La rotación de sesiones la decide la ruta (revoca las demás, conserva la actual).
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    const row = (await this.app.prisma.user.findUnique({ where: { id: userId } })) as DbUser | null;
+    if (!row) {
+      throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
+    }
+    const valid = await bcrypt.compare(currentPassword, row.passwordHash);
+    if (!valid) {
+      throw new AuthError('AUTH_INVALID_CREDENTIALS', 'La contraseña actual no es correcta');
+    }
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.app.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
   }
 
   /**
@@ -262,6 +286,9 @@ export class AuthService {
     if (!row) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
     }
+    // Registra el último acceso efectivo (US-101): visible para el admin en la
+    // gestión de usuarios. Se marca al emitir sesión (login/2FA/setup), no al refrescar.
+    await this.app.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
     return { user: toUser(row), tokens: await this.issueTokens(row) };
   }
 
@@ -321,6 +348,12 @@ export class AuthService {
     })) as DbUser | null;
     if (!user) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
+    }
+    // Cuenta deshabilitada tras emitir la sesión (US-101): corta el refresco y
+    // revoca lo que quede, de modo que una sesión viva no sobreviva al bloqueo.
+    if (user.status === 'disabled') {
+      await this.revokeAllForUser(user.id);
+      throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
     }
 
     await this.app.prisma.refreshToken.update({

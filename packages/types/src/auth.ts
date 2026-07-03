@@ -13,6 +13,49 @@ export interface User {
   updatedAt: IsoDateTime;
 }
 
+/** Estado de la cuenta de un usuario (US-101). Un usuario `disabled` no puede iniciar sesión. */
+export type UserStatus = 'active' | 'disabled';
+
+/**
+ * Usuario tal como lo ve la gestión de usuarios (US-101): añade estado y último
+ * acceso. Nunca incluye el hash de contraseña.
+ */
+export interface UserSummary {
+  id: Id;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  status: UserStatus;
+  lastLoginAt: IsoDateTime | null;
+  createdAt: IsoDateTime;
+}
+
+/** Alta de un usuario por un admin (US-101). */
+export interface CreateUserRequest {
+  email: string;
+  displayName: string;
+  password: string;
+  role: UserRole;
+}
+
+/** Edición de un usuario por un admin: nombre, rol y/o estado (US-101). */
+export interface UpdateUserRequest {
+  displayName?: string;
+  role?: UserRole;
+  status?: UserStatus;
+}
+
+/** Un admin fija una nueva contraseña para un usuario (US-101). */
+export interface AdminResetPasswordRequest {
+  password: string;
+}
+
+/** Cambio de la propia contraseña por el usuario autenticado (US-101). */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 /** Claims del access token JWT (RS256). */
 export interface AccessTokenClaims {
   /** Subject: id del usuario. */

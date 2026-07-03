@@ -114,3 +114,17 @@ export const listSessionsSchema = {
 export const revokeSessionsSchema = {
   response: { 204: { type: 'null' } },
 } as const;
+
+/** Cambio de la propia contraseña (US-101): exige la actual + la nueva. */
+export const changePasswordSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['currentPassword', 'newPassword'],
+    properties: {
+      currentPassword: { type: 'string', minLength: 8, maxLength: 128 },
+      newPassword: { type: 'string', minLength: 8, maxLength: 128 },
+    },
+  },
+  response: { 204: { type: 'null' } },
+} as const;

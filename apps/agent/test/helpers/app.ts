@@ -25,6 +25,7 @@ import { PushService } from '../../src/modules/push/push.service.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
+import { usersRoutes } from '../../src/modules/users/users.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
@@ -97,6 +98,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     app.decorate('push', pushService);
     await app.register(setupRoutes, { prefix: '/api/setup' });
     await app.register(authRoutes, { prefix: '/api/auth' });
+    await app.register(usersRoutes, { prefix: '/api/users' });
     await app.register(webauthnRoutes, {
       prefix: '/api/webauthn',
       service: new WebAuthnService(app.prisma, {

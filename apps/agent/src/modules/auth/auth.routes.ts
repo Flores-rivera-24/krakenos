@@ -1,4 +1,4 @@
-import type { LastSession, LoginRequest } from '@krakenos/types';
+import type { ChangePasswordRequest, LastSession, LoginRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { loginLockout } from '../../auth/login-lockout.js';
 import {
@@ -12,6 +12,7 @@ import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
+  changePasswordSchema,
   lastSessionSchema,
   listSessionsSchema,
   loginSchema,
@@ -182,6 +183,30 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       // el cliente ya no conoce el refresh token.
       await service.revokeOtherSessions(req.user.sub, readRefreshCookie(req) ?? undefined);
       app.audit({ action: 'auth.sessions.revoke-others', userId: req.user.sub, ip: req.ip });
+      return reply.code(204).send();
+    },
+  );
+
+  // Cambio de la propia contraseña (US-101) — auto-servicio de cualquier usuario
+  // autenticado. Verifica la actual, guarda el nuevo hash y conserva solo la sesión
+  // actual (revoca las demás), de modo que un cambio expulse a sesiones ajenas.
+  app.post<{ Body: ChangePasswordRequest }>(
+    '/change-password',
+    { schema: changePasswordSchema, preHandler: app.authenticate },
+    async (req, reply) => {
+      try {
+        await service.changePassword(req.user.sub, req.body.currentPassword, req.body.newPassword);
+      } catch (err) {
+        if (err instanceof AuthError) {
+          // Contraseña actual incorrecta → 400 (no 401): no es un fallo de sesión,
+          // y evita que el cliente dispare su ruta de refresco ante un 401.
+          const status = err.code === 'AUTH_INVALID_CREDENTIALS' ? 400 : 401;
+          return reply.code(status).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
+      await service.revokeOtherSessions(req.user.sub, readRefreshCookie(req) ?? undefined);
+      app.audit({ action: 'auth.password.change', userId: req.user.sub, ip: req.ip });
       return reply.code(204).send();
     },
   );

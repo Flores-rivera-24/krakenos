@@ -30,6 +30,7 @@ import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
+import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
@@ -118,6 +119,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
+  // Gestión de usuarios (US-101): alta/edición/baja + roles, admin-only y auditada.
+  await app.register(usersRoutes, { prefix: '/api/users' });
   const webAuthnService = new WebAuthnService(app.prisma, {
     rpName: env.webauthn.rpName,
     rpID: env.webauthn.rpID,

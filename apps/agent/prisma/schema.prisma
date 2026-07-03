@@ -14,6 +14,8 @@ model User {
   displayName  String
   passwordHash String
   role         String         @default("viewer") // 'admin' | 'viewer'
+  status       String         @default("active") // 'active' | 'disabled' (US-101)
+  lastLoginAt  DateTime?      // último inicio de sesión efectivo (US-101)
   refreshTokens RefreshToken[]
   webAuthnCredentials WebAuthnCredential[]
   webAuthnChallenges  WebAuthnChallenge[]

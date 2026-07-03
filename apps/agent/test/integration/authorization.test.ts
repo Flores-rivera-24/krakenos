@@ -61,6 +61,15 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'PATCH', url: '/api/system/settings', payload: { key: 'homeName', value: 'Hogar' } },
   { method: 'POST', url: '/api/system/connectivity-test' },
   { method: 'POST', url: '/api/system/regen-keys' },
+  // users (US-101)
+  {
+    method: 'POST',
+    url: '/api/users',
+    payload: { email: 'nuevo@krakenos.test', displayName: 'Nuevo', password: 'password123', role: 'viewer' },
+  },
+  { method: 'PATCH', url: '/api/users/x', payload: { displayName: 'Cambiado' } },
+  { method: 'POST', url: '/api/users/x/password', payload: { password: 'password123' } },
+  { method: 'DELETE', url: '/api/users/x' },
 ];
 
 /**
@@ -88,6 +97,13 @@ const AUTHED_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/auth/sessions/x' },
   // Body {} válido: la ruta valida un objeto antes de autenticar; sin cuerpo daría 400.
   { method: 'DELETE', url: '/api/auth/sessions', payload: {} },
+  // auth: cambiar la propia contraseña (US-101). La contraseña actual coincide con
+  // la del viewer sembrado (seedUser → 'password123'), así el viewer no se bloquea.
+  {
+    method: 'POST',
+    url: '/api/auth/change-password',
+    payload: { currentPassword: 'password123', newPassword: 'nuevaClave123' },
+  },
 ];
 
 describe('autorización exhaustiva de escritura (US-89)', () => {

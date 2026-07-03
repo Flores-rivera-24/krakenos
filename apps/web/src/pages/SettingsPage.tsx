@@ -4,10 +4,12 @@ import type {
   SystemSettingKey,
   SystemSettingsResponse,
 } from '@krakenos/types';
-import { Cpu, Lock, Plug, Server, User } from 'lucide-react';
+import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -21,13 +23,15 @@ import { timeAgo } from '@/lib/format';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { useAuthStore } from '@/store/auth.store';
 
-type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'cuenta';
+type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'usuarios' | 'cuenta';
 
-const SECTIONS: { id: Section; label: string; icon: typeof Cpu }[] = [
+/** `adminOnly` oculta la sección a los viewers (el servidor la impone igualmente). */
+const SECTIONS: { id: Section; label: string; icon: typeof Cpu; adminOnly?: boolean }[] = [
   { id: 'sistema', label: 'Sistema', icon: Cpu },
   { id: 'red', label: 'Red', icon: Server },
   { id: 'seguridad', label: 'Seguridad', icon: Lock },
   { id: 'integraciones', label: 'Integraciones', icon: Plug },
+  { id: 'usuarios', label: 'Usuarios', icon: Users, adminOnly: true },
   { id: 'cuenta', label: 'Cuenta', icon: User },
 ];
 
@@ -189,7 +193,7 @@ export function SettingsPage() {
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         {/* Sidebar de secciones */}
         <nav className="flex gap-1 overflow-x-auto md:flex-col">
-          {SECTIONS.map(({ id, label, icon: Icon }) => (
+          {SECTIONS.filter((s) => !s.adminOnly || isAdmin).map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -430,6 +434,8 @@ export function SettingsPage() {
             <IntegrationsSection driver={data.info.driver} isAdmin={isAdmin} />
           )}
 
+          {section === 'usuarios' && isAdmin && <UsersSection />}
+
           {section === 'cuenta' && (
             <>
               <Card>
@@ -453,6 +459,8 @@ export function SettingsPage() {
                   </dl>
                 </CardContent>
               </Card>
+
+              <ChangePasswordCard />
 
               {isAdmin && (
                 <Card>
