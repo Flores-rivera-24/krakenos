@@ -119,4 +119,24 @@ describe('TrafficService', () => {
       expect((first?.samples.length ?? 0) >= 1).toBe(true);
     });
   });
+
+  describe('histórico mensual (US-113)', () => {
+    beforeEach(async () => {
+      await app.prisma.trafficSample.deleteMany();
+    });
+
+    it('el rango "month" agrupa por día', async () => {
+      const svc = new TrafficService(app, new MockDriver());
+      const DAY = 24 * 60 * 60 * 1000;
+      for (let i = 1; i <= 3; i++) {
+        await app.prisma.trafficSample.create({
+          data: { rxBytesPerSec: 100 * i, txBytesPerSec: 10 * i, timestamp: new Date(Date.now() - i * DAY) },
+        });
+      }
+      const stats = await svc.getStats('month');
+      expect(stats.range).toBe('month');
+      expect(stats.buckets).toHaveLength(3); // un bucket por día distinto
+      expect(stats.totalRxBytes).toBeGreaterThan(0);
+    });
+  });
 });

@@ -29,7 +29,7 @@ export const trafficStatsSchema = {
     type: 'object',
     additionalProperties: false,
     properties: {
-      range: { type: 'string', enum: ['hour', 'day', 'week'], default: 'day' },
+      range: { type: 'string', enum: ['hour', 'day', 'week', 'month'], default: 'day' },
     },
   },
   response: {
@@ -37,7 +37,7 @@ export const trafficStatsSchema = {
       type: 'object',
       additionalProperties: false,
       properties: {
-        range: { type: 'string', enum: ['hour', 'day', 'week'] },
+        range: { type: 'string', enum: ['hour', 'day', 'week', 'month'] },
         buckets: { type: 'array', items: bucket },
         totalRxBytes: { type: 'number' },
         totalTxBytes: { type: 'number' },

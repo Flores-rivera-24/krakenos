@@ -10,7 +10,7 @@ const trafficRangeSchema = {
   querystring: {
     type: 'object',
     additionalProperties: false,
-    properties: { range: { type: 'string', enum: ['hour', 'day', 'week'] } },
+    properties: { range: { type: 'string', enum: ['hour', 'day', 'week', 'month'] } },
   },
 } as const;
 

@@ -27,6 +27,9 @@ const RANGES: { value: TrafficRange; label: string }[] = [
   { value: 'day', label: '24h' },
   { value: 'week', label: '7d' },
 ];
+// El gráfico WAN admite además el rango mensual (US-113). El desglose por
+// dispositivo se queda en 7 días (consultar un mes por MAC sería muy pesado).
+const WAN_RANGES: { value: TrafficRange; label: string }[] = [...RANGES, { value: 'month', label: '30d' }];
 /**
  * Colores de las gráficas leídos de los tokens del tema (US-57): al ser
  * `var(--kr-*)`, cambian automáticamente al togglear claro/oscuro en vez de
@@ -147,12 +150,16 @@ export function TrafficPage() {
   const history = useMemo(() => {
     if (!stats) return [];
     const sameDay = range === 'hour' || range === 'day';
+    const label = (d: Date): string => {
+      if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      // Mes (buckets diarios): fecha corta; semana: día + hora.
+      if (range === 'month') return d.toLocaleDateString([], { day: '2-digit', month: 'short' });
+      return d.toLocaleDateString([], { weekday: 'short', hour: '2-digit' });
+    };
     return stats.buckets.map((b) => {
       const d = new Date(b.timestamp);
       return {
-        t: sameDay
-          ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          : d.toLocaleDateString([], { weekday: 'short', hour: '2-digit' }),
+        t: label(d),
         rx: +(b.rxBytesPerSec * 8) / 1_000_000,
         tx: +(b.txBytesPerSec * 8) / 1_000_000,
       };
@@ -241,7 +248,7 @@ export function TrafficPage() {
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>Histórico</CardTitle>
           <div className="flex gap-1" role="group" aria-label="Rango">
-            {RANGES.map((r) => (
+            {WAN_RANGES.map((r) => (
               <button
                 key={r.value}
                 type="button"

@@ -28,7 +28,7 @@ export interface TrafficSampleResult {
 }
 
 /** Ventana temporal para las estadísticas históricas de tráfico. */
-export type TrafficRange = 'hour' | 'day' | 'week';
+export type TrafficRange = 'hour' | 'day' | 'week' | 'month';
 
 /** Punto agregado del histórico: media de tasa en el intervalo del bucket. */
 export interface TrafficBucket {

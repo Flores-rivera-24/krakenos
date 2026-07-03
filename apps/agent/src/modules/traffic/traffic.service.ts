@@ -14,14 +14,16 @@ import { normalizeTrafficSample } from './normalize.js';
 /** Nº de muestras retenidas en memoria (~2 min a 2 s/muestra). */
 const MAX_HISTORY = 60;
 
-/** Retención por defecto de los rollups (días) si el ajuste no existe. Cubre el rango máximo. */
-const DEFAULT_TRAFFIC_RETENTION_DAYS = 7;
+/** Retención por defecto de los rollups (días) si el ajuste no existe. Cubre el rango
+ *  máximo (mes, US-113); ajustable con `trafficRetentionDays`. */
+const DEFAULT_TRAFFIC_RETENTION_DAYS = 30;
 
 /** Duración de la ventana por rango, en milisegundos. */
 const RANGE_MS: Record<TrafficRange, number> = {
   hour: 60 * 60 * 1000,
   day: 24 * 60 * 60 * 1000,
   week: 7 * 24 * 60 * 60 * 1000,
+  month: 30 * 24 * 60 * 60 * 1000,
 };
 
 /** Tamaño del bucket de agregación por rango, en milisegundos. */
@@ -29,6 +31,7 @@ const BUCKET_MS: Record<TrafficRange, number> = {
   hour: 60 * 1000, // 1 min  → 60 puntos
   day: 15 * 60 * 1000, // 15 min → 96 puntos
   week: 60 * 60 * 1000, // 1 hora → 168 puntos
+  month: 24 * 60 * 60 * 1000, // 1 día → 30 puntos
 };
 
 /**

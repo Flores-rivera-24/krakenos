@@ -41,7 +41,7 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   homeName: '',
   timezone: 'UTC',
   scanIntervalSec: '60',
-  trafficRetentionDays: '7',
+  trafficRetentionDays: '30',
   auditRetentionDays: '90',
   accessTokenTtl: '900',
   loginRateLimit: '10',
