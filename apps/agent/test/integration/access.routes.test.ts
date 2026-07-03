@@ -105,6 +105,50 @@ describe('horarios de acceso (US-108)', () => {
     expect(calls).toContain(`unblock:${mac}`);
   });
 
+  it('pausa y reanuda el internet de un dispositivo (US-111)', async () => {
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+
+    const pause = await app.inject({
+      method: 'POST',
+      url: '/api/access/pause',
+      headers: authHeader(adminToken),
+      payload: { mac, minutes: 30 },
+    });
+    expect(pause.statusCode).toBe(200);
+    const { pausedUntil } = pause.json() as { pausedUntil: string };
+    expect(new Date(pausedUntil).getTime()).toBeGreaterThan(Date.now());
+    expect((await app.prisma.device.findUnique({ where: { mac } }))?.pausedUntil).not.toBeNull();
+
+    const resume = await app.inject({
+      method: 'POST',
+      url: '/api/access/resume',
+      headers: authHeader(adminToken),
+      payload: { mac },
+    });
+    expect(resume.statusCode).toBe(204);
+    expect((await app.prisma.device.findUnique({ where: { mac } }))?.pausedUntil).toBeNull();
+  });
+
+  it('el barrido desbloquea cuando la pausa expira (US-111)', async () => {
+    const calls: string[] = [];
+    const fakeDriver = {
+      blockDevice: async (m: string) => calls.push(`block:${m}`),
+      unblockDevice: async (m: string) => calls.push(`unblock:${m}`),
+    } as unknown as HardwareDriver;
+    const service = new AccessScheduleService(app, fakeDriver);
+
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+    await service.pause(mac, 30);
+    expect(calls).toContain(`block:${mac}`);
+
+    // Simula que la pausa expiró.
+    await app.prisma.device.update({ where: { mac }, data: { pausedUntil: new Date(Date.now() - 1000) } });
+    await service.tick(new Date());
+    expect(calls).toContain(`unblock:${mac}`);
+  });
+
   it('no desbloquea un dispositivo bloqueado a mano al terminar la ventana', async () => {
     const calls: string[] = [];
     const fakeDriver = {

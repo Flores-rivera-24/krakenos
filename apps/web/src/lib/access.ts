@@ -21,6 +21,14 @@ export const updateSchedule = (
 export const deleteSchedule = (id: string): Promise<void> =>
   api.del<void>(`/access/schedules/${id}`);
 
+/** Pausa el internet de un dispositivo N minutos (US-111). */
+export const pauseInternet = (mac: string, minutes: number): Promise<{ pausedUntil: string }> =>
+  api.post<{ pausedUntil: string }>('/access/pause', { mac, minutes });
+
+/** Reanuda el internet de un dispositivo (US-111). */
+export const resumeInternet = (mac: string): Promise<void> =>
+  api.post<void>('/access/resume', { mac });
+
 /** Minutos desde medianoche → "HH:MM". */
 export const minutesToHHMM = (m: number): string =>
   `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;

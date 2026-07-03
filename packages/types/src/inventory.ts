@@ -32,6 +32,8 @@ export interface Device {
   type: DeviceType;
   /** `true` si el dispositivo está bloqueado (sin acceso a la red). */
   isBlocked: boolean;
+  /** Pausa de internet activa hasta este instante (US-111), o `null`/ausente si no hay pausa. */
+  pausedUntil?: IsoDateTime | null;
   /** `true` si se vio en el último barrido. */
   online: boolean;
   /** VLAN (tag 802.1Q) a la que está asignado, o `null` si ninguna. */

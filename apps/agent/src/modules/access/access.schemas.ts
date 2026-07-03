@@ -76,3 +76,34 @@ export const updateScheduleSchema = {
 } as const;
 
 export const deleteScheduleSchema = { params: idParam } as const;
+
+const mac = { type: 'string', minLength: 1, maxLength: 64 } as const;
+
+/** `POST /api/access/pause` — pausa el internet de un dispositivo N minutos (US-111). */
+export const pauseSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['mac', 'minutes'],
+    properties: { mac, minutes: { type: 'integer', minimum: 1, maximum: 1440 } },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['pausedUntil'],
+      properties: { pausedUntil: { type: 'string' } },
+    },
+  },
+} as const;
+
+/** `POST /api/access/resume` — reanuda el internet de un dispositivo (US-111). */
+export const resumeSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['mac'],
+    properties: { mac },
+  },
+  response: { 204: { type: 'null' } },
+} as const;

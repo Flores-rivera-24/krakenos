@@ -55,6 +55,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/access/schedules/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/access/schedules/x' },
+  { method: 'POST', url: '/api/access/pause', payload: { mac: 'aa:bb:cc:dd:ee:ff', minutes: 30 } },
+  { method: 'POST', url: '/api/access/resume', payload: { mac: 'aa:bb:cc:dd:ee:ff' } },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)

@@ -12,6 +12,7 @@ const deviceResponse = {
     vendor: { type: ['string', 'null'] },
     type: { type: 'string', enum: deviceTypeEnum },
     isBlocked: { type: 'boolean' },
+    pausedUntil: { type: ['string', 'null'] },
     online: { type: 'boolean' },
     vlanTag: { type: ['integer', 'null'] },
     sources: { type: 'array', items: { type: 'string', enum: ['arp', 'mdns', 'manual'] } },

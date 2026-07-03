@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AccessSchedules } from '@/components/inventory/AccessSchedules';
+import { PauseInternet } from '@/components/inventory/PauseInternet';
 import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
 import { Slideover } from '@/components/ui/slideover';
 import { Sparkline } from '@/components/ui/sparkline';
@@ -204,8 +205,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
       )}
 
-      {/* Control parental / horarios de acceso (US-108) */}
-      <div className="mb-4 rounded-lg border border-kr bg-kr-elevated p-3">
+      {/* Pausa de internet (US-111) + control parental / horarios (US-108) */}
+      <div className="mb-4 space-y-3 rounded-lg border border-kr bg-kr-elevated p-3">
+        <PauseInternet device={device} canEdit={isAdmin} />
+        <div className="border-t border-kr-muted" />
         <AccessSchedules mac={device.mac} canEdit={isAdmin} />
       </div>
 

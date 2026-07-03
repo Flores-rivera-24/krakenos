@@ -42,6 +42,7 @@ export class InventoryService {
       vendor: row.vendor,
       type: row.type as DeviceType,
       isBlocked: row.isBlocked,
+      pausedUntil: row.pausedUntil ? row.pausedUntil.toISOString() : null,
       online: row.online,
       vlanTag: row.vlanTag,
       sources: this.parseSources(row.sources, row.mac),

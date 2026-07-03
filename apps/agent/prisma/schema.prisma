@@ -219,6 +219,8 @@ model Device {
   type      String   @default("unknown")
   notes     String?
   isBlocked Boolean  @default(false)
+  /// Pausa de internet hasta este instante (US-111); null = sin pausa.
+  pausedUntil DateTime?
   online    Boolean  @default(true)
   /// VLAN (tag 802.1Q) asignada, o null si ninguna (US-15).
   vlanTag   Int?

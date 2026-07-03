@@ -5,6 +5,8 @@ import {
   createScheduleSchema,
   deleteScheduleSchema,
   listSchedulesSchema,
+  pauseSchema,
+  resumeSchema,
   updateScheduleSchema,
 } from './access.schemas.js';
 
@@ -74,6 +76,32 @@ export const accessRoutes: FastifyPluginAsync<AccessRoutesOpts> = async (app, op
         detail: req.params.id,
         ip: req.ip,
       });
+      return reply.code(204).send();
+    },
+  );
+
+  // Pausa / reanudación de internet de un toque (US-111).
+  app.post<{ Body: { mac: string; minutes: number } }>(
+    '/pause',
+    { schema: pauseSchema, preHandler: adminOnly },
+    async (req, reply) => {
+      const pausedUntil = await service.pause(req.body.mac, req.body.minutes);
+      app.audit({
+        action: 'access.pause',
+        userId: req.user.sub,
+        detail: `${req.body.mac} · ${req.body.minutes}m`,
+        ip: req.ip,
+      });
+      return reply.send({ pausedUntil: pausedUntil.toISOString() });
+    },
+  );
+
+  app.post<{ Body: { mac: string } }>(
+    '/resume',
+    { schema: resumeSchema, preHandler: adminOnly },
+    async (req, reply) => {
+      await service.resume(req.body.mac);
+      app.audit({ action: 'access.resume', userId: req.user.sub, detail: req.body.mac, ip: req.ip });
       return reply.code(204).send();
     },
   );

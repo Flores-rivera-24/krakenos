@@ -36,8 +36,8 @@ function toSchedule(row: DbAccessSchedule): AccessSchedule {
  */
 export class AccessScheduleService {
   private timer: NodeJS.Timeout | null = null;
-  /** MACs que este servicio bloqueó por horario (para no pisar bloqueos manuales). */
-  private readonly scheduleBlocked = new Set<string>();
+  /** MACs que este servicio bloqueó por horario o pausa (para no pisar bloqueos manuales). */
+  private readonly managedBlocked = new Set<string>();
 
   constructor(
     private readonly app: FastifyInstance,
@@ -98,10 +98,50 @@ export class AccessScheduleService {
     return true;
   }
 
-  /** ¿Hay algún horario ACTIVO ahora para este MAC? (lo usa el inventario al desbloquear). */
+  /**
+   * ¿Debe estar bloqueado ahora este MAC por horario **o pausa**? Lo usa el
+   * inventario al desbloquear a mano (para que horario/pausa prevalezcan).
+   */
   async isBlockedNow(mac: string, now: Date = new Date()): Promise<boolean> {
+    const device = await this.app.prisma.device.findUnique({
+      where: { mac },
+      select: { pausedUntil: true },
+    });
+    if (device?.pausedUntil && device.pausedUntil > now) return true;
     const rows = await this.app.prisma.accessSchedule.findMany({ where: { mac, enabled: true } });
     return activeBlockedMacs(rows.map(toSchedule), now).has(mac);
+  }
+
+  // ---- Pausa de internet de un toque (US-111) ----
+
+  /** Pausa el internet de un dispositivo `minutes` minutos. Devuelve el fin de la pausa. */
+  async pause(mac: string, minutes: number): Promise<Date> {
+    const pausedUntil = new Date(Date.now() + minutes * 60_000);
+    await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil } });
+    try {
+      await this.driver.blockDevice(mac);
+    } catch (err) {
+      this.app.log.error({ err, mac }, '[access] no se pudo pausar el dispositivo');
+    }
+    this.managedBlocked.add(mac);
+    return pausedUntil;
+  }
+
+  /** Reanuda el internet de un dispositivo. Si un horario sigue activo, permanece bloqueado. */
+  async resume(mac: string): Promise<void> {
+    await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil: null } });
+    const device = await this.app.prisma.device.findUnique({ where: { mac } });
+    const manual = device?.isBlocked ?? false;
+    // Con la pausa ya quitada, `isBlockedNow` refleja solo los horarios.
+    const keepBlocked = manual || (await this.isBlockedNow(mac));
+    if (!keepBlocked) {
+      try {
+        await this.driver.unblockDevice(mac);
+      } catch (err) {
+        this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo');
+      }
+      this.managedBlocked.delete(mac);
+    }
   }
 
   // ---- Enforcement ----
@@ -110,12 +150,19 @@ export class AccessScheduleService {
   async tick(now: Date = new Date()): Promise<void> {
     const rows = await this.app.prisma.accessSchedule.findMany({ where: { enabled: true } });
     const active = activeBlockedMacs(rows.map(toSchedule), now);
+    // La pausa de internet (US-111) cuenta como bloqueo activo hasta que expira; el
+    // barrido la desbloquea automáticamente cuando `pausedUntil` queda en el pasado.
+    const paused = await this.app.prisma.device.findMany({
+      where: { pausedUntil: { gt: now } },
+      select: { mac: true },
+    });
+    for (const d of paused) active.add(d.mac);
     // Considera las MAC activas ahora + las que nosotros dejamos bloqueadas.
-    const macs = new Set<string>([...active, ...this.scheduleBlocked]);
+    const macs = new Set<string>([...active, ...this.managedBlocked]);
 
     for (const mac of macs) {
       const shouldBlock = active.has(mac);
-      const managedByUs = this.scheduleBlocked.has(mac);
+      const managedByUs = this.managedBlocked.has(mac);
       if (shouldBlock === managedByUs) continue; // sin cambio
 
       const device = await this.app.prisma.device.findUnique({ where: { mac } });
@@ -123,12 +170,12 @@ export class AccessScheduleService {
       try {
         if (shouldBlock) {
           if (!manual) await this.driver.blockDevice(mac);
-          this.scheduleBlocked.add(mac);
+          this.managedBlocked.add(mac);
           this.app.audit({ action: 'access.schedule_block', detail: mac });
         } else {
           // Fin de la ventana: solo desbloquea si NO está bloqueado a mano.
           if (!manual) await this.driver.unblockDevice(mac);
-          this.scheduleBlocked.delete(mac);
+          this.managedBlocked.delete(mac);
           this.app.audit({ action: 'access.schedule_unblock', detail: mac });
         }
       } catch (err) {
