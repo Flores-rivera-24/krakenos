@@ -172,7 +172,7 @@ export function LoginPage() {
           </span>
           <div className="min-w-0 flex-1">
             {homeName === null ? (
-              <span className="block h-4 w-20 animate-pulse rounded bg-kr-elevated" />
+              <span className="kr-shimmer block h-4 w-20 rounded bg-kr-elevated" />
             ) : (
               <p className="truncate text-kr-base font-medium text-kr-primary">{homeName}</p>
             )}

@@ -270,7 +270,7 @@ export function InventoryPage() {
       {loading ? (
         <div className={GRID_CLASS}>
           {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-xl bg-kr-elevated" />
+            <div key={i} className="kr-shimmer h-32 rounded-xl bg-kr-elevated" />
           ))}
         </div>
       ) : list.length === 0 ? (

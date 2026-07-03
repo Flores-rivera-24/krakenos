@@ -2,6 +2,7 @@ import type { IotDevice } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 
@@ -58,7 +59,7 @@ export function IotStatusWidget() {
       </CardHeader>
       <CardContent className="space-y-2">
         {devices === null ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Cargando…</p>
+          <LoadingLine />
         ) : backends.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">Sin dispositivos IoT.</p>
         ) : (

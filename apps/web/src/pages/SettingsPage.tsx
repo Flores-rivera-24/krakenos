@@ -10,8 +10,10 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
@@ -215,15 +217,7 @@ export function SettingsPage() {
               Cambio aplicado al instante (sin reiniciar).
             </div>
           )}
-          {error && (
-            <div
-              role="alert"
-              className="flex items-center gap-2 rounded-md border border-danger bg-kr-elevated px-3 py-2 text-kr-sm text-danger"
-            >
-              <StatusDot status="danger" />
-              {error}
-            </div>
-          )}
+          {error && <ErrorBanner>{error}</ErrorBanner>}
           {section === 'sistema' && (
             <>
               <Card>
@@ -467,7 +461,7 @@ export function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     {audit === null ? (
-                      <p className="py-6 text-center text-kr-sm text-kr-muted">Cargando…</p>
+                      <LoadingLine />
                     ) : audit.length === 0 ? (
                       <p className="py-6 text-center text-kr-sm text-kr-muted">
                         Sin actividad registrada.

@@ -2,6 +2,7 @@ import type { CoverageHeatmap, FloorPlan, SignalQuality } from '@krakenos/types'
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { getPredictedHeatmap, listFloorPlans } from '@/lib/coverage';
 import { SIGNAL_QUALITY_LABELS, signalQuality, signalQualityColorVar } from '@/lib/coverage-format';
 
@@ -68,7 +69,7 @@ export function CoverageWidget() {
       </CardHeader>
       <CardContent className="space-y-3">
         {plan === undefined ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Cargando…</p>
+          <LoadingLine />
         ) : plan === null ? (
           <div className="space-y-2 py-2">
             <p className="text-kr-sm text-kr-muted">

@@ -2,6 +2,7 @@ import type { AuditLogEntry } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 
@@ -45,7 +46,7 @@ export function AlertsWidget() {
       </CardHeader>
       <CardContent>
         {entries === null ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Cargando…</p>
+          <LoadingLine />
         ) : entries.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">Sin actividad registrada.</p>
         ) : (

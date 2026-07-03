@@ -1,6 +1,7 @@
 import type { SystemStats } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { api } from '@/lib/api';
 import { formatUptime } from '@/lib/format';
 
@@ -47,7 +48,7 @@ export function SystemWidget() {
       </CardHeader>
       <CardContent className="space-y-3">
         {!stats ? (
-          <p className="py-6 text-center text-kr-sm text-kr-muted">Cargando…</p>
+          <LoadingLine />
         ) : (
           <>
             <div className="flex items-center justify-between text-kr-sm">
