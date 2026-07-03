@@ -24,6 +24,11 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 - **Conexión guiada desde la app**: un asistente paso a paso conecta routers, luces, enchufes
   y cámaras **sin editar ficheros ni leer documentación externa** — con guías internalizadas,
   ayuda en cada campo, prueba de conexión y recarga en caliente. Los secretos se **cifran en reposo**.
+- **Multi-usuario y roles**: da acceso a tu familia o a tu equipo — varios usuarios con rol
+  **admin** (gestiona todo) o **solo lectura**, con alta, edición, activar/deshabilitar, reset y
+  cambio de contraseña propio, desde **Ajustes → Usuarios**.
+- **Copias de seguridad cifradas**: descarga y restaura un backup **cifrado con tu contraseña**
+  (base de datos + claves + credenciales de integración) desde **Ajustes → Sistema**.
 
 UI estilo UniFi (tema oscuro, sidebar colapsable, paneles slideover, PWA instalable),
 auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (WebAuthn)**.
@@ -76,6 +81,25 @@ pnpm dev:web       # solo web (requiere el agente en :3001)
 
 ## Producción
 
+### Docker (la vía más simple)
+
+```bash
+docker compose up -d
+```
+
+Levanta una imagen **todo-en-uno** (API + UI en `:3001`), como usuario **no root**, con
+**todo el estado persistente** (base de datos, claves, credenciales) en el volumen
+`krakenos-data`. Genera las claves y aplica las migraciones al arrancar. Conecta tu hardware
+**desde la app** (no hace falta editar variables). Al primer arranque,
+`docker compose logs krakenos` imprime una **URL de configuración con un QR** (token ya
+incrustado) para crear el administrador — ábrela o escanéala con el móvil en la misma red.
+
+> El contenedor publica en `:3001` de la LAN (el modelo es LAN + WireGuard para remoto). Si el
+> host es accesible desde internet, no expongas la UI directamente: bind a `127.0.0.1` y detrás
+> de WireGuard o un proxy TLS. Ver comentarios en `docker-compose.yml`.
+
+### Sin Docker (Node)
+
 En producción **el agente sirve también el frontend** (API + UI en un único puerto),
 así que todo cabe en un comando:
 
@@ -85,7 +109,8 @@ pnpm prod          # = ./scripts/prod.sh
 
 Encadena: instalar deps → generar claves JWT (si faltan) → crear `.env` (si falta) →
 `prisma migrate deploy` → `pnpm build` → arrancar en `NODE_ENV=production` sirviendo
-API+UI en `PORT` (por defecto `:3001`). El primer arranque muestra el wizard `/setup`.
+API+UI en `PORT` (por defecto `:3001`). El primer arranque imprime en el log una **URL de
+configuración con QR** (token incrustado) y abre el wizard `/setup` para crear el administrador.
 
 **Servicio persistente (systemd):** usa `apps/agent/scripts/krakenos.service.example`
 (instrucciones en su cabecera), luego `systemctl enable --now krakenos`.
@@ -209,6 +234,9 @@ pnpm --filter @krakenos/web test:watch # web en watch
 - **security** → **secret scanning con gitleaks** (escanea todo el historial; **bloquea** el
   build ante un secreto o un fichero sensible commiteado: `keys/`, `.env`, `*.db`) + **SAST con
   semgrep** (reglas por defecto + JS/TS, acotado a `src/`; **bloquea** ante hallazgos).
+
+Además: **CodeQL** (análisis semántico de seguridad) en cada push, y un workflow **Docker** que
+construye la imagen y hace un *smoke test* de `/health` cuando cambia el empaquetado.
 
 ---
 
