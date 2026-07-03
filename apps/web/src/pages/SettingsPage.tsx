@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -69,7 +70,6 @@ export function SettingsPage() {
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   // Notificaciones push (US-45): estado reflejado desde localStorage.
   const pushSupported = isPushSupported();
@@ -165,23 +165,6 @@ export function SettingsPage() {
     }
   };
 
-  const exportBackup = () => {
-    if (!data) return;
-    const blob = new Blob([JSON.stringify(data.settings, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'krakenos-settings.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const importBackup = async (file: File) => {
-    const parsed = JSON.parse(await file.text()) as Record<string, string>;
-    for (const [key, value] of Object.entries(parsed)) {
-      if (data && key in data.settings) await patch(key as SystemSettingKey, String(value));
-    }
-  };
 
   return (
     <div className="space-y-6 p-6">
@@ -319,38 +302,7 @@ export function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Copia de seguridad</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                  <Button variant="outline" size="sm" onClick={exportBackup} disabled={!data}>
-                    Exportar backup
-                  </Button>
-                  {isAdmin && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => fileInput.current?.click()}
-                      >
-                        Restaurar backup
-                      </Button>
-                      <input
-                        ref={fileInput}
-                        type="file"
-                        accept="application/json"
-                        className="hidden"
-                        aria-label="Restaurar backup"
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) void importBackup(f);
-                        }}
-                      />
-                    </>
-                  )}
-                </CardContent>
-              </Card>
+              {isAdmin && <SystemBackupCard />}
             </>
           )}
 

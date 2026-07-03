@@ -15,8 +15,10 @@ import type { FastifyPluginAsync } from 'fastify';
 import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
+import { BackupService } from '../../system/backup.service.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import {
+  backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
   regenKeysSchema,
@@ -191,4 +193,21 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });
     return reply.code(204).send();
   });
+
+  // Copia de seguridad **real** cifrada (US-103): DB + keys + data. Reemplaza el
+  // falso backup que solo exportaba ajustes cosméticos. Admin-only y auditada. El
+  // cuerpo de la respuesta es el archivo binario (octet-stream), listo para descargar.
+  const backupService = new BackupService(app.prisma);
+  app.post<{ Body: { passphrase: string } }>(
+    '/backup',
+    { preHandler: app.requireRole('admin'), schema: backupSchema },
+    async (req, reply) => {
+      const archive = await backupService.create(req.body.passphrase);
+      app.audit({ action: 'system.backup', userId: req.user.sub, ip: req.ip });
+      return reply
+        .header('content-type', 'application/octet-stream')
+        .header('content-disposition', 'attachment; filename="krakenos-backup.kbk"')
+        .send(archive);
+    },
+  );
 };

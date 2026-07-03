@@ -61,6 +61,7 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'PATCH', url: '/api/system/settings', payload: { key: 'homeName', value: 'Hogar' } },
   { method: 'POST', url: '/api/system/connectivity-test' },
   { method: 'POST', url: '/api/system/regen-keys' },
+  { method: 'POST', url: '/api/system/backup', payload: { passphrase: 'password123' } },
   // users (US-101)
   {
     method: 'POST',

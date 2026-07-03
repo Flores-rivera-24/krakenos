@@ -111,3 +111,16 @@ export const connectivityTestSchema = {
 export const regenKeysSchema = {
   response: { 204: { type: 'null' } },
 } as const;
+
+/**
+ * `POST /api/system/backup` — genera la copia de seguridad cifrada (US-103). Sin
+ * schema de `response`: el cuerpo es binario (el archivo) y no debe serializarse.
+ */
+export const backupSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['passphrase'],
+    properties: { passphrase: { type: 'string', minLength: 8, maxLength: 256 } },
+  },
+} as const;
