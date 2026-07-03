@@ -17,6 +17,9 @@ apps/agent/.env
 CLAUDE.md
 SPECS.md
 BACKLOG.md
-**/coverage
-apps/*/coverage
+# OJO: NO usar `**/coverage` — se traga los directorios FUENTE llamados `coverage`
+# (apps/web/src/components/coverage, apps/agent/src/coverage…) y rompe el build.
+# Igual que el gotcha del .gitignore: anclar solo los informes de cobertura.
+apps/agent/coverage
+apps/web/coverage
 *.log
