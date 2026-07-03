@@ -1,6 +1,5 @@
 import type { Device } from '@krakenos/types';
 import { ChevronLeft, LogOut } from 'lucide-react';
-import { Fragment } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -139,12 +138,18 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
         )}
       </div>
 
-      {/* Navegación por grupos */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-2">
+      {/* Navegación por grupos con cabecera (US-163) */}
+      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2">
         {NAV_GROUPS.map((group, gi) => (
-          <Fragment key={gi}>
-            {gi > 0 && <div className="my-2 border-t border-kr-muted" />}
-            {group.map((item) => (
+          <div key={group.label} className="space-y-1">
+            {collapsed ? (
+              gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
+            ) : (
+              <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
+                {group.label}
+              </p>
+            )}
+            {group.items.map((item) => (
               <div key={item.to} className="relative">
                 <SidebarItem
                   item={item}
@@ -153,7 +158,7 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
                 />
               </div>
             ))}
-          </Fragment>
+          </div>
         ))}
       </nav>
 

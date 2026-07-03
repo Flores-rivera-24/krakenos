@@ -7,7 +7,6 @@ import {
   KeyRound,
   Layers,
   LayoutDashboard,
-  Map,
   Network,
   PlusCircle,
   Radar,
@@ -29,46 +28,47 @@ export interface NavItem {
   badge?: NavBadgeKey;
 }
 
-/** Grupos de navegación (separadores visuales en la sidebar, estilo UniFi). */
-export const NAV_GROUPS: NavItem[][] = [
-  [
-    { to: '/connect', label: 'Conectar', icon: PlusCircle },
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
-    { to: '/inventory', label: 'Dispositivos', icon: Network, badge: 'devices' },
-    { to: '/wifi', label: 'Red WiFi', icon: Wifi },
-    { to: '/coverage', label: 'Cobertura WiFi', icon: Radar },
-  ],
-  [
-    { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' },
-    { to: '/cameras', label: 'Cámaras', icon: Video },
-    { to: '/traffic', label: 'Tráfico', icon: Activity },
-  ],
-  [
-    { to: '/vpn', label: 'VPN', icon: KeyRound },
-    { to: '/firewall', label: 'Firewall', icon: ShieldAlert, badge: 'firewall' },
-    { to: '/vlans', label: 'VLANs', icon: Layers },
-    { to: '/qos', label: 'QoS', icon: Gauge },
-    { to: '/dns', label: 'DNS', icon: Globe },
-  ],
-  [
-    { to: '/compatibility', label: 'Compatibilidad', icon: Map },
-    { to: '/settings', label: 'Ajustes', icon: Settings },
-  ],
+/** Grupo con cabecera visible en la sidebar (estilo consola de red). */
+export interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
+
+// Ítems con identidad estable, para reutilizarlos por referencia en la bottom-nav
+// móvil (así `MOBILE_SECONDARY` se deriva por diferencia sin duplicar rutas).
+const CONNECT: NavItem = { to: '/connect', label: 'Conectar', icon: PlusCircle };
+const DASHBOARD: NavItem = { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true };
+const DEVICES: NavItem = { to: '/inventory', label: 'Dispositivos', icon: Network, badge: 'devices' };
+const WIFI: NavItem = { to: '/wifi', label: 'Red WiFi', icon: Wifi };
+const COVERAGE: NavItem = { to: '/coverage', label: 'Cobertura WiFi', icon: Radar };
+const TRAFFIC: NavItem = { to: '/traffic', label: 'Tráfico', icon: Activity };
+const IOT: NavItem = { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' };
+const CAMERAS: NavItem = { to: '/cameras', label: 'Cámaras', icon: Video };
+const VPN: NavItem = { to: '/vpn', label: 'VPN', icon: KeyRound };
+const FIREWALL: NavItem = { to: '/firewall', label: 'Firewall', icon: ShieldAlert, badge: 'firewall' };
+const VLANS: NavItem = { to: '/vlans', label: 'VLANs', icon: Layers };
+const QOS: NavItem = { to: '/qos', label: 'QoS', icon: Gauge };
+const DNS: NavItem = { to: '/dns', label: 'DNS', icon: Globe };
+const SETTINGS: NavItem = { to: '/settings', label: 'Ajustes', icon: Settings };
+
+/**
+ * Navegación por grupos con cabecera (US-163). De lo cotidiano a lo avanzado:
+ * General → Red → Hogar → Red avanzada → Sistema. "Compatibilidad" se sacó del
+ * menú (es una referencia estática, no una operación): se enlaza desde «Conectar».
+ */
+export const NAV_GROUPS: NavGroup[] = [
+  { label: 'General', items: [CONNECT, DASHBOARD] },
+  { label: 'Red', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
+  { label: 'Hogar', items: [IOT, CAMERAS] },
+  { label: 'Red avanzada', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
+  { label: 'Sistema', items: [SETTINGS] },
 ];
 
 /** Lista plana de todos los ítems, en orden. */
-export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flat();
+export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
 /** Los 5 ítems más frecuentes para la bottom-nav móvil. */
-export const MOBILE_PRIMARY: NavItem[] = [
-  NAV_GROUPS[0]![0]!, // Conectar
-  NAV_GROUPS[0]![1]!, // Dashboard
-  NAV_GROUPS[0]![2]!, // Dispositivos
-  NAV_GROUPS[1]![0]!, // IoT
-  NAV_GROUPS[1]![2]!, // Tráfico
-];
+export const MOBILE_PRIMARY: NavItem[] = [CONNECT, DASHBOARD, DEVICES, IOT, TRAFFIC];
 
 /** El resto de ítems, accesibles desde el botón "Más" de la bottom-nav. */
-export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter(
-  (i) => !MOBILE_PRIMARY.includes(i),
-);
+export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i));
