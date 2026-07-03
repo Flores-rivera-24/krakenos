@@ -19,7 +19,11 @@ export function SetupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [token, setToken] = useState('');
+  // Prefill del token desde `?token=` (US-105): al escanear el QR de arranque, el
+  // usuario llega con el token ya puesto y solo rellena nombre/email/contraseña.
+  const [token, setToken] = useState(
+    () => new URLSearchParams(window.location.search).get('token') ?? '',
+  );
   const [requiresToken, setRequiresToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

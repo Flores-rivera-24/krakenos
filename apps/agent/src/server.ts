@@ -4,6 +4,7 @@ import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify from 'fastify';
+import QRCode from 'qrcode';
 import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import { checkSecretFilePermissions } from './config/secret-permissions.js';
@@ -30,6 +31,7 @@ import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
+import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
@@ -198,9 +200,22 @@ export async function buildServer(): Promise<FastifyInstance> {
   // lo exigirá, de modo que solo quien tiene acceso al servidor crea el admin.
   if ((await app.prisma.user.count()) === 0) {
     const token = setupToken.ensure();
-    app.log.warn(
-      `[setup] Sistema sin administrador. Token de configuración para POST /api/setup/init: ${token}`,
-    );
+    const setupUrl = buildSetupUrl({
+      scheme: env.https ? 'https' : 'http',
+      host: firstLanIpv4(),
+      port: env.port,
+      token,
+    });
+    // Onboarding (US-105): además del token, imprime la URL lista para abrir y un
+    // QR escaneable, para que un usuario no técnico no tenga que buscar en el log.
+    app.log.warn(`[setup] Sistema sin administrador. Abre en tu navegador:\n    ${setupUrl}`);
+    try {
+      const qr = await QRCode.toString(setupUrl, { type: 'terminal', small: true });
+      app.log.warn(`[setup] O escanéalo con tu móvil (mismo WiFi):\n${qr}`);
+    } catch {
+      // El QR es opcional; si falla, la URL de arriba basta.
+    }
+    app.log.warn(`[setup] (token de configuración: ${token})`);
   }
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).
