@@ -59,6 +59,8 @@ const config: Config = {
         'kr-elevated': 'var(--kr-bg-elevated)',
         'kr-accent': 'var(--kr-accent)',
         'kr-accent-hover': 'var(--kr-accent-hover)',
+        'kr-accent-faint': 'var(--kr-accent-faint)',
+        'kr-accent-glow': 'var(--kr-accent-glow)',
         success: 'var(--kr-success)',
         info: 'var(--kr-info)',
         warning: 'var(--kr-warning)',

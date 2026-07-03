@@ -2,6 +2,7 @@ import type { LastSession, SetupStatus, SystemPublicInfo } from '@krakenos/types
 import { Clock, Eye, EyeOff, Fingerprint, Lock } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthBackdrop } from '@/components/ui/auth-backdrop';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LogoMark } from '@/components/ui/logo';
@@ -150,18 +151,9 @@ export function LoginPage() {
   const healthUi = HEALTH_UI[health];
 
   return (
-    <div
-      className="flex min-h-screen flex-col items-center justify-center gap-4 bg-kr-base px-4"
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Ccircle cx='2' cy='2' r='1' fill='%232563eb'/%3E%3C/svg%3E\")",
-        backgroundRepeat: 'repeat',
-      }}
-    >
-      <div
-        className="w-full max-w-[380px] overflow-hidden rounded-xl bg-kr-surface"
-        style={{ border: '0.5px solid var(--kr-border)' }}
-      >
+    <div className="relative flex min-h-screen flex-col items-center justify-center gap-4 overflow-hidden bg-kr-base px-4">
+      <AuthBackdrop />
+      <div className="relative z-10 w-full max-w-[380px] overflow-hidden rounded-xl border border-kr bg-kr-surface shadow-kr-glow-sm">
         {/* Header: hogar + estado del sistema */}
         <div
           className="flex items-center gap-3 px-5 py-4"

@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
 import { Slideover } from '@/components/ui/slideover';
 import { Sparkline } from '@/components/ui/sparkline';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -155,6 +156,22 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       subtitle={subtitle}
       footer={footer}
     >
+      {/* Render del producto según el tipo detectado (US-161). */}
+      <div className="mb-4 flex items-center gap-4 rounded-lg border border-kr bg-kr-elevated p-4">
+        <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-surface shadow-kr-glow-sm">
+          <ProductArt kind={deviceTypeToArtKind(device.type)} className="h-12 w-12" />
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-kr-base font-medium text-kr-primary">
+            {device.label ?? device.hostname ?? device.mac}
+          </p>
+          <p className="text-kr-sm text-kr-secondary">{TYPE_LABELS[device.type]}</p>
+          {device.vendor && (
+            <p className="truncate text-kr-xs text-kr-muted">{device.vendor}</p>
+          )}
+        </div>
+      </div>
+
       <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
         <Field label="IP" value={device.ip} />
         <Field label="MAC" value={device.mac} />

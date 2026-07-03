@@ -1,7 +1,9 @@
 import type { LoginResponse, SetupInitRequest, SetupStatus } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthBackdrop } from '@/components/ui/auth-backdrop';
 import { Button } from '@/components/ui/button';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogoMark } from '@/components/ui/logo';
@@ -71,16 +73,17 @@ export function SetupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-kr-base p-4">
+      <AuthBackdrop />
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 shadow-lg"
+        className="relative z-10 w-full max-w-md space-y-4 rounded-xl border border-kr bg-kr-surface p-6 shadow-kr-glow-sm"
       >
         <div className="flex items-center gap-3">
           <LogoMark className="h-9 w-9 text-kr-accent" />
           <div>
-            <h1 className="text-2xl font-semibold text-primary">Bienvenido a KrakenOS</h1>
-            <p className="text-sm text-muted-foreground">Configura tu administrador para empezar.</p>
+            <h1 className="text-2xl font-semibold text-kr-primary">Bienvenido a KrakenOS</h1>
+            <p className="text-sm text-kr-secondary">Configura tu administrador para empezar.</p>
           </div>
         </div>
 
@@ -115,13 +118,13 @@ export function SetupPage() {
               required
               autoComplete="off"
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-kr-muted">
               Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).
             </p>
           </div>
         )}
 
-        {error && <p className="text-sm text-destructive">{error}</p>}
+        {error && <ErrorBanner>{error}</ErrorBanner>}
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Configurando…' : 'Crear administrador'}
