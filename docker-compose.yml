@@ -1,0 +1,35 @@
+# KrakenOS — despliegue self-hosted en un comando: `docker compose up -d`.
+# Todo el estado persistente (base de datos, claves, datos de integraciones) vive
+# en el volumen `krakenos-data` (/data), separado de la imagen, para sobrevivir a
+# actualizaciones. Cambia el driver/integraciones desde la UI (Ajustes) — ya no
+# hace falta editar variables de entorno.
+services:
+  krakenos:
+    build: .
+    image: krakenos:local
+    container_name: krakenos
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      SERVE_WEB: 'true'
+      HOST: 0.0.0.0
+      PORT: '3001'
+      # Empieza en modo demo; conéctalo a tu hardware desde la app.
+      DRIVER_KIND: mock
+      # Estado persistente redirigido al volumen /data.
+      DATABASE_URL: file:/data/app.db
+      JWT_PRIVATE_KEY_PATH: /data/keys/jwt-private.pem
+      JWT_PUBLIC_KEY_PATH: /data/keys/jwt-public.pem
+      SECRETBOX_KEY_PATH: /data/keys/secretbox.key
+      WG_PEER_STORE: /data/wg-peers.json
+      TUYA_CONFIG_PATH: /data/tuya-devices.json
+      CAMERAS_CONFIG: /data/cameras.json
+      FW_RULE_STORE: /data/firewall-rules.json
+      VLAN_STORE: /data/vlans.json
+      TC_RULE_STORE: /data/qos-rules.json
+    volumes:
+      - krakenos-data:/data
+
+volumes:
+  krakenos-data:

@@ -1,0 +1,22 @@
+# Se reinstala/reconstruye limpio dentro de la imagen.
+**/node_modules
+**/dist
+.git
+.github
+.claude
+
+# Estado local que NUNCA debe entrar en la imagen (secretos / datos).
+**/*.db
+**/*.db-journal
+apps/agent/keys
+apps/agent/data
+apps/agent/.env
+**/.env
+
+# Docs internos gitignored y ruido.
+CLAUDE.md
+SPECS.md
+BACKLOG.md
+**/coverage
+apps/*/coverage
+*.log

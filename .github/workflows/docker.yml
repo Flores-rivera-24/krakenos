@@ -1,0 +1,39 @@
+name: Docker
+
+# Verifica que la imagen del contenedor construye (US-106). Separado del CI
+# principal para no ralentizarlo; se dispara solo cuando cambia el empaquetado.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - '.dockerignore'
+      - 'pnpm-lock.yaml'
+  pull_request:
+    paths:
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - '.dockerignore'
+  workflow_dispatch:
+
+jobs:
+  build-image:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Docker image
+        run: docker build -t krakenos:ci .
+      - name: Smoke — la imagen arranca y expone /health
+        run: |
+          docker run -d --name krakenos-ci -p 3001:3001 krakenos:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/health >/dev/null 2>&1; then
+              echo "OK: /health respondió"; docker logs krakenos-ci | tail -20; docker rm -f krakenos-ci; exit 0
+            fi
+            sleep 3
+          done
+          echo "FALLÓ: /health no respondió a tiempo"; docker logs krakenos-ci; docker rm -f krakenos-ci; exit 1
