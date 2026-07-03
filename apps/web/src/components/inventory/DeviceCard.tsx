@@ -1,31 +1,9 @@
-import type { Device, DeviceType } from '@krakenos/types';
-import {
-  Cpu,
-  HelpCircle,
-  Laptop,
-  Printer,
-  Router,
-  Smartphone,
-  Tablet,
-  Tv,
-  type LucideIcon,
-} from 'lucide-react';
+import type { Device } from '@krakenos/types';
+import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
 import { StatusDot } from '@/components/ui/status-dot';
 import { TYPE_LABELS } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
-
-/** Icono lucide (24px en la card) por tipo de dispositivo. */
-const TYPE_ICONS: Record<DeviceType, LucideIcon> = {
-  router: Router,
-  computer: Laptop,
-  phone: Smartphone,
-  tablet: Tablet,
-  iot: Cpu,
-  tv: Tv,
-  printer: Printer,
-  unknown: HelpCircle,
-};
 
 interface Props {
   device: Device;
@@ -33,11 +11,11 @@ interface Props {
 }
 
 /**
- * Card de dispositivo estilo UniFi (US-43): icono del tipo, nombre, IP, tipo legible y
- * fila inferior con estado + última vez visto. Click → abre el slideover de detalle.
+ * Card de dispositivo estilo UniFi (US-43): render del producto por tipo (US-161),
+ * nombre, IP, tipo legible y fila inferior con estado + última vez visto. Click →
+ * abre el slideover de detalle.
  */
 export function DeviceCard({ device, onSelect }: Props) {
-  const Icon = TYPE_ICONS[device.type];
   const name = device.label ?? device.hostname ?? device.mac;
   const blocked = device.isBlocked;
   const dotStatus = blocked ? 'danger' : device.online ? 'online' : 'offline';
@@ -47,10 +25,12 @@ export function DeviceCard({ device, onSelect }: Props) {
     <button
       type="button"
       onClick={() => onSelect(device.id)}
-      className="flex w-full cursor-pointer flex-col gap-3 rounded-xl border border-kr bg-kr-surface p-4 text-left transition-colors duration-150 hover:border-kr-accent"
+      className="group flex w-full cursor-pointer flex-col gap-3 rounded-xl border border-kr bg-kr-surface p-4 text-left transition-all duration-150 hover:-translate-y-0.5 hover:border-kr-accent hover:shadow-kr-glow-sm"
     >
       <div className="flex items-start gap-3">
-        <Icon className="h-6 w-6 shrink-0 text-kr-secondary" aria-hidden />
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-kr-muted bg-kr-elevated transition-colors group-hover:border-kr-accent-glow">
+          <ProductArt kind={deviceTypeToArtKind(device.type)} className="h-9 w-9" />
+        </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-kr-primary">{name}</p>
           <p className="text-kr-sm text-kr-secondary">{device.ip}</p>

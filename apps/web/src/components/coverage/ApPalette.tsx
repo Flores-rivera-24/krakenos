@@ -1,13 +1,15 @@
 import type { ApPlacement, PlaceableAccessPoint, WifiBand } from '@krakenos/types';
 import { useEffect, useState } from 'react';
-import { Check, Plus, Trash2, Wifi, WifiOff } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { ProductArt } from '@/components/ui/product-art';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { listPlaceableAccessPoints } from '@/lib/coverage';
 import { describeError } from '@/lib/errors';
+import { cn } from '@/lib/utils';
 
 /** Bandas seleccionables por AP, en orden. */
 const ALL_BANDS: { value: WifiBand; label: string }[] = [
@@ -95,11 +97,14 @@ export function ApPalette({
                   key={ap.id}
                   className="flex items-center gap-2 rounded-md border border-kr bg-kr-bg px-2.5 py-2"
                 >
-                  {ap.online ? (
-                    <Wifi className="h-5 w-5 shrink-0 text-kr-accent" aria-hidden />
-                  ) : (
-                    <WifiOff className="h-5 w-5 shrink-0 text-kr-muted" aria-hidden />
-                  )}
+                  <span
+                    className={cn(
+                      'flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-kr-muted bg-kr-elevated',
+                      !ap.online && 'opacity-50',
+                    )}
+                  >
+                    <ProductArt kind="access-point" className="h-7 w-7" />
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-kr-sm text-kr-primary">{ap.name}</p>
                     <p className="truncate text-kr-xs text-kr-muted">

@@ -1,24 +1,11 @@
 import type { IntegrationConfigInfo, IntegrationDomain, IntegrationKindSchema } from '@krakenos/types';
-import {
-  Camera,
-  Flame,
-  FlaskConical,
-  Gauge,
-  Lightbulb,
-  Network,
-  Plug,
-  Puzzle,
-  Router,
-  ShieldBan,
-  ShieldCheck,
-  type LucideIcon,
-} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
 import { Badge } from '@/components/ui/badge';
 import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { ProductArt, type ProductArtKind } from '@/components/ui/product-art';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { describeError } from '@/lib/errors';
@@ -37,19 +24,24 @@ import {
 } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
 
-/** Resuelve el `icon` (string de la guía) a un componente lucide. */
-const ICON_MAP: Record<string, LucideIcon> = {
-  Camera,
-  Flame,
-  FlaskConical,
-  Gauge,
-  Lightbulb,
-  Network,
-  Plug,
-  Router,
-  ShieldBan,
-  ShieldCheck,
+/** Categoría de la guía → ilustración de producto (US-161). */
+const CATEGORY_ART: Record<GuideCategory, ProductArtKind> = {
+  router: 'router',
+  lights: 'bulb',
+  plugs: 'plug',
+  cameras: 'camera',
+  'remote-access': 'vpn',
+  'ad-blocking': 'dns',
+  firewall: 'firewall',
+  vlan: 'switch',
+  qos: 'qos',
 };
+
+/** Ilustración para una guía. El modo demo (icono `FlaskConical`) prima sobre la categoría. */
+function guideToArtKind(guide: IntegrationGuide): ProductArtKind {
+  if (guide.icon === 'FlaskConical') return 'demo';
+  return CATEGORY_ART[guide.category] ?? 'unknown';
+}
 
 /** Dominio de la guía → dominio del backend (`camera` es singular en las guías). */
 const GUIDE_DOMAIN: Record<GuideDomain, IntegrationDomain> = {
@@ -277,20 +269,19 @@ interface ConnectCardProps {
   onClick: () => void;
 }
 
-/** Tarjeta clicable de una integración: icono + nombre + dificultad + estado. */
+/** Tarjeta clicable de una integración: render del producto + nombre + dificultad + estado. */
 function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
-  const Icon = ICON_MAP[guide.icon] ?? Puzzle;
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        'flex h-full items-start gap-3 rounded-xl border border-kr bg-kr-surface p-4 text-left transition-colors',
-        'hover:border-kr-accent hover:bg-kr-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group flex h-full items-start gap-3 rounded-xl border border-kr bg-kr-surface p-4 text-left transition-all duration-150',
+        'hover:-translate-y-0.5 hover:border-kr-accent hover:shadow-kr-glow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       )}
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-kr-elevated text-kr-accent">
-        <Icon className="h-5 w-5" aria-hidden />
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-kr-muted bg-kr-elevated transition-colors group-hover:border-kr-accent-glow">
+        <ProductArt kind={guideToArtKind(guide)} className="h-10 w-10" />
       </span>
       <span className="min-w-0 flex-1 space-y-1">
         <span className="flex flex-wrap items-center gap-2">

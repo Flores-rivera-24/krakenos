@@ -47,6 +47,20 @@
     --kr-accent-faint: color-mix(in srgb, var(--kr-accent) 12%, transparent);
     /* Brillo del barrido de los skeletons (shimmer). Claro/oscuro lo ajustan abajo. */
     --kr-shimmer-highlight: rgba(255, 255, 255, 0.08);
+    /* US-161: materiales de las ilustraciones de producto. No son tokens de chrome
+       (texto/fondo/borde): son los "materiales" de un render 2.5D reconocible —
+       fills planos con 2–3 sombras. Centralizados aquí para coherencia y ajuste. Un
+       producto se ve igual en ambos temas, así que se definen una vez en :root. */
+    --kr-art-shell: #2c3444;
+    --kr-art-shell-hi: #3f4a5e;
+    --kr-art-shell-lo: #1c222e;
+    --kr-art-edge: #12161f;
+    --kr-art-screen: #0e1422;
+    --kr-art-metal: #aab4c2;
+    --kr-art-metal-lo: #7b8798;
+    --kr-art-glass: #e2e8f1;
+    --kr-art-warm: #ffce7b;
+    --kr-art-glow: var(--kr-accent);
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;

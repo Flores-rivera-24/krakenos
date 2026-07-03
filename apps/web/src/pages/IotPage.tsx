@@ -1,29 +1,27 @@
 import type { IotDevice } from '@krakenos/types';
-import { Lightbulb, PlugZap, Thermometer } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { HelpHint } from '@/components/ui/help-hint';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { ProductArt, iotKindToArtKind } from '@/components/ui/product-art';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getSocket } from '@/lib/socket';
+import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
-
-const ICONS = { light: Lightbulb, plug: PlugZap, sensor: Thermometer } as const;
 
 /** "IoT" no tiene clave de glosario propia: se explica en línea. */
 const IOT_HELP =
   'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.';
 
 function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }) {
-  const Icon = ICONS[device.kind];
   const [draft, setDraft] = useState<number | null>(null);
 
   // El on/off va por `OptimisticSwitch`: se mueve ya y revierte si falla (US-96).
@@ -46,15 +44,14 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex items-center gap-2">
-          <Icon
-            className={
-              device.kind === 'sensor'
-                ? 'h-4 w-4 text-primary'
-                : device.on
-                  ? 'h-4 w-4 text-amber-400'
-                  : 'h-4 w-4 text-muted-foreground'
-            }
-          />
+          <span
+            className={cn(
+              'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-kr-muted bg-kr-elevated',
+              device.kind !== 'sensor' && !device.on && 'opacity-50',
+            )}
+          >
+            <ProductArt kind={iotKindToArtKind(device.kind)} className="h-6 w-6" />
+          </span>
           <CardTitle className="text-sm text-foreground">{device.name}</CardTitle>
         </div>
         {device.kind !== 'sensor' && (
