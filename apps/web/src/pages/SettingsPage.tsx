@@ -8,6 +8,7 @@ import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
+import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { UsersSection } from '@/components/settings/UsersSection';
@@ -303,6 +304,8 @@ export function SettingsPage() {
               </Card>
 
               {isAdmin && <SystemBackupCard />}
+
+              <ReportsCard />
             </>
           )}
 

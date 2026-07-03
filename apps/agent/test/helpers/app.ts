@@ -31,6 +31,8 @@ import { usersRoutes } from '../../src/modules/users/users.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
+import { ReportsService } from '../../src/modules/reports/reports.service.js';
+import { reportsRoutes } from '../../src/modules/reports/reports.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { coverageRoutes } from '../../src/modules/coverage/coverage.routes.js';
@@ -124,6 +126,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
+    await app.register(reportsRoutes, {
+      prefix: '/api/reports',
+      service: new ReportsService(app, new TrafficService(app, driver)),
+    });
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
     await app.register(tuyaConfigRoutes, {
       prefix: '/api/iot/tuya',
