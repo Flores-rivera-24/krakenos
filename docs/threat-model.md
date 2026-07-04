@@ -360,6 +360,50 @@ tocando de forma transversal:
 
 ---
 
+## 8. Segunda auditoría adversarial (2026-07-04) — post Fase 1/3
+
+Revisión exhaustiva sobre el código **actual** (no el diff), en 6 frentes con verificación
+adversarial de cada hallazgo: auth/JWT/2FA, autorización/IDOR, inyección/path-traversal,
+DoS/crash/agotamiento, fuga de información/cripto, y validación de entrada/frontend. Enfoque en los
+tres riesgos del dueño: **vulnerabilidad explotable, caída del servicio, filtrado de información**.
+
+**Confirmaciones sólidas (sin acción):** la confusión de algoritmo de `fast-jwt` está **neutralizada
+por config** (`algorithms:['RS256']` explícito en ambos caminos de verificación + `iss`/`aud`); el
+path-traversal de `node-tar` **no aplica** (backup usa formato propio, no tar); cripto en reposo
+correcta (AES-256-GCM con IV único por cifrado, backup scrypt con `logN` acotado, manifest dentro del
+blob cifrado); redacción de secretos verificada en todos los dominios; frontend sin XSS, access token
+solo en memoria, refresh en cookie `httpOnly`, CSP estricta; control de acceso consistente en el
+servidor; validadores anti-inyección y helper por ámbito sólidos.
+
+**Remediado (rama `seguridad-hardening` → `main`):**
+
+| # | Sev | Hallazgo | Fix |
+|---|-----|----------|-----|
+| 1 | 🔴 Alta | Crash del proceso: promesa sin `.catch()` en handler IoT + sin red de seguridad global → un driver IoT caído tumba el agente en bucle | `.catch()` en IoT + `process.on('unhandledRejection')` (sigue vivo) / `uncaughtException` (cierre limpio) |
+| 2 | 🟠 Media | `GET /api/reports/audit.csv` accesible a `viewer` (mismo dato que `/api/audit`, admin-only) | `requireRole('admin')` |
+| 3 | 🟠 Media | TOCTOU en rotación de refresh: dos refresh concurrentes emiten 2 sesiones sin disparar la detección de reuso (anula US-78) | Revocación atómica (`updateMany` condicional); count≠1 → reuso |
+| 4 | 🟠 Media | `issueSessionForUserId` no revalida estado: cuenta deshabilitada durante la ventana del `mfaToken` completa el 2FA | Revalida `status==='disabled'` |
+| 5 | 🟠 Media | `scanIntervalSec` sin cota → `PATCH value:0.001` = bucle apretado de `setInterval` (DoS) | `SETTING_BOUNDS` [5,3600] + clamp al escribir y al leer (0=desactivar) |
+| 6 | 🟠 Media | Inyección de fórmulas CSV: hostname hostil de la red → fórmula ejecutable al abrir el export | `escapeField` antepone `'` a `=+-@\t\r` |
+| 7 | 🟠 Media | `inventory:rescan` sin throttle → amplificación a hardware | Coalescing (`isScanning`) en `scanCycle` |
+| 8 | 🟠 Media | Inyección CLI RouterOS: SSID sin escapar en `cliProps` (modo SSH de MikroTik) | Entrecomillado+escape siempre; pattern anti-control en SSID |
+| 9 | 🟡 Baja | `rtspUrl` sin esquema → LFI/SSRF vía protocolos de ffmpeg | `pattern:'^rtsps?://'` |
+| 10 | 🟡 Baja | Interfaz WAN Cisco interpolada sin validar | `assertCiscoInterface` en el builder |
+| 11 | 🟡 Baja | `backgroundImage` de coverage sin cota; MAC de acceso sin pattern | `maxLength`+`data:image/`; pattern MAC |
+| 12 | 🟡 Baja | Cookie sin `Secure` en prod sin TLS/proxy (silencioso) | Aviso al arrancar |
+
+**Pendiente (esfuerzo mayor, documentado, NO bloqueante):**
+- **Heatmap de cobertura bloquea el event loop** (`coverage/propagation.ts`, síncrono O(celdas·APs·paredes),
+  hasta ~8·10⁹ ops): cualquier autenticado puede congelar el proceso pidiendo el heatmap de un plano grande.
+  Mitigación real = worker thread + caché por versión de plano (requiere refactor y pruebas).
+- **Actualizar `@fastify/jwt`→10 / Fastify 4→5** para arrastrar `fast-jwt` parcheado (defensa en profundidad;
+  el bypass activo ya está cerrado por config). Migración coordinada de todos los `@fastify/*`.
+- **Filtrado de egress (SSRF)** para drivers/integraciones con URL configurable: aceptable hoy (solo admin),
+  imprescindible antes de multi-tenant (Fase 4).
+
+---
+
 > _Este documento es interno a la auditoría de seguridad; describe la postura a junio de 2026
-> sobre el código de las US-01…US-72 (y anexos US-90). Cualquier remediación se implementa en su
-> propia US y se reconcilia con `SPECS §9` y `CLAUDE.md` al cerrarse._
+> sobre el código de las US-01…US-72 (y anexos US-90), más la **segunda auditoría adversarial de
+> 2026-07-04** (§8). Cualquier remediación se implementa en su propia US y se reconcilia con
+> `SPECS §9` y `CLAUDE.md` al cerrarse._
