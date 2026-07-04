@@ -138,8 +138,15 @@ describe('rutas de autenticación', () => {
   it('GET /api/auth/last-session expone { timestamp, ip } solo con PUBLIC_LAST_SESSION (US-49/US-83)', async () => {
     process.env.PUBLIC_LAST_SESSION = 'true';
     try {
-      // Sin logins: null aunque el flag esté on.
-      expect((await app.inject({ method: 'GET', url: '/api/auth/last-session' })).json()).toBeNull();
+      // Sin logins: null aunque el flag esté on. El audit del login de un test
+      // anterior se escribe sin await (best-effort) y puede aterrizar después del
+      // resetDb de este test → purgar y reintentar hasta que se estabilice.
+      await eventually(async () => {
+        await app.prisma.auditLog.deleteMany({ where: { action: 'auth.login' } });
+        expect(
+          (await app.inject({ method: 'GET', url: '/api/auth/last-session' })).json(),
+        ).toBeNull();
+      });
 
       await seedUser(app, { email: 'last@krakenos.test', password: 'password123' });
       const ok = await login(app, 'last@krakenos.test', 'password123');
