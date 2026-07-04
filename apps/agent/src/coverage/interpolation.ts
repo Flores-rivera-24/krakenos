@@ -13,6 +13,7 @@
  * Funciones PURAS: sin efectos secundarios ni dependencias de tiempo/estado.
  */
 import type { CoverageHeatmap, SurveySample, WifiBand } from '@krakenos/types';
+import { ROWS_PER_YIELD, yieldToEventLoop } from './chunk.js';
 import { resolveGrid } from './grid.js';
 
 /** `power` (exponente de la distancia) por defecto del IDW. */
@@ -79,54 +80,111 @@ export function idwEstimate(
  *
  * Si no hay muestras, todas las celdas quedan `null`.
  */
-export function computeMeasuredHeatmap(
-  widthM: number,
-  heightM: number,
-  samples: SurveySample[],
-  opts: { band: WifiBand; cellSizeM?: number; power?: number; maxRadiusM?: number },
-): CoverageHeatmap {
-  const power = opts.power ?? DEFAULT_POWER;
-  const maxRadiusM = opts.maxRadiusM ?? DEFAULT_MAX_RADIUS_M;
+interface MeasuredOpts {
+  band: WifiBand;
+  cellSizeM?: number;
+  power?: number;
+  maxRadiusM?: number;
+}
 
-  // Misma rejilla acotada que la predicción (resolveGrid), para superponerse.
+interface MeasuredSetup {
+  cols: number;
+  rows: number;
+  cellSizeM: number;
+  power: number;
+  maxRadiusM: number;
+  values: (number | null)[];
+}
+
+/** Prepara la rejilla (misma que la predicción) y reserva el buffer de valores. */
+function setupMeasured(widthM: number, heightM: number, opts: MeasuredOpts): MeasuredSetup {
   const { cols, rows, cellSizeM } = resolveGrid(
     widthM,
     heightM,
     opts.cellSizeM ?? DEFAULT_CELL_SIZE_M,
   );
-
-  const values: (number | null)[] = new Array<number | null>(cols * rows);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const cx = (c + 0.5) * cellSizeM;
-      const cy = (r + 0.5) * cellSizeM;
-      values[r * cols + c] = idwEstimate(cx, cy, samples, power, maxRadiusM);
-    }
-  }
-
-  // Cotas de la leyenda: rango real de las muestras medidas. Sin muestras usa
-  // un rango por defecto razonable (banda WiFi típica).
-  let minDbm = -90;
-  let maxDbm = -30;
-  if (samples.length > 0) {
-    minDbm = Infinity;
-    maxDbm = -Infinity;
-    for (const sample of samples) {
-      if (sample.rssiDbm < minDbm) minDbm = sample.rssiDbm;
-      if (sample.rssiDbm > maxDbm) maxDbm = sample.rssiDbm;
-    }
-  }
-
   return {
-    band: opts.band,
-    source: 'measured',
-    widthM,
-    heightM,
     cols,
     rows,
     cellSizeM,
-    values,
+    power: opts.power ?? DEFAULT_POWER,
+    maxRadiusM: opts.maxRadiusM ?? DEFAULT_MAX_RADIUS_M,
+    values: new Array<number | null>(rows * cols),
+  };
+}
+
+/** Rellena UNA fila del heatmap medido por IDW (matemática compartida sync/async). */
+function fillMeasuredRow(row: number, setup: MeasuredSetup, samples: SurveySample[]): void {
+  const { cols, cellSizeM, power, maxRadiusM, values } = setup;
+  for (let c = 0; c < cols; c++) {
+    const cx = (c + 0.5) * cellSizeM;
+    const cy = (row + 0.5) * cellSizeM;
+    values[row * cols + c] = idwEstimate(cx, cy, samples, power, maxRadiusM);
+  }
+}
+
+/** Cotas de la leyenda: rango real de las muestras, o un rango por defecto si no hay. */
+function measuredBounds(samples: SurveySample[]): { minDbm: number; maxDbm: number } {
+  if (samples.length === 0) return { minDbm: -90, maxDbm: -30 };
+  let minDbm = Infinity;
+  let maxDbm = -Infinity;
+  for (const sample of samples) {
+    if (sample.rssiDbm < minDbm) minDbm = sample.rssiDbm;
+    if (sample.rssiDbm > maxDbm) maxDbm = sample.rssiDbm;
+  }
+  return { minDbm, maxDbm };
+}
+
+function finalizeMeasured(
+  widthM: number,
+  heightM: number,
+  band: WifiBand,
+  setup: MeasuredSetup,
+  samples: SurveySample[],
+): CoverageHeatmap {
+  const { minDbm, maxDbm } = measuredBounds(samples);
+  return {
+    band,
+    source: 'measured',
+    widthM,
+    heightM,
+    cols: setup.cols,
+    rows: setup.rows,
+    cellSizeM: setup.cellSizeM,
+    values: setup.values,
     minDbm,
     maxDbm,
   };
+}
+
+export function computeMeasuredHeatmap(
+  widthM: number,
+  heightM: number,
+  samples: SurveySample[],
+  opts: MeasuredOpts,
+): CoverageHeatmap {
+  const setup = setupMeasured(widthM, heightM, opts);
+  for (let r = 0; r < setup.rows; r++) {
+    fillMeasuredRow(r, setup, samples);
+  }
+  return finalizeMeasured(widthM, heightM, opts.band, setup, samples);
+}
+
+/**
+ * Igual que `computeMeasuredHeatmap` pero **cede el event loop** cada
+ * `ROWS_PER_YIELD` filas para no congelar el proceso con un plano grande.
+ * Resultado idéntico al síncrono (misma matemática compartida).
+ */
+export async function computeMeasuredHeatmapAsync(
+  widthM: number,
+  heightM: number,
+  samples: SurveySample[],
+  opts: MeasuredOpts,
+): Promise<CoverageHeatmap> {
+  const setup = setupMeasured(widthM, heightM, opts);
+  for (let r = 0; r < setup.rows; r++) {
+    fillMeasuredRow(r, setup, samples);
+    if (r % ROWS_PER_YIELD === ROWS_PER_YIELD - 1) await yieldToEventLoop();
+  }
+  return finalizeMeasured(widthM, heightM, opts.band, setup, samples);
 }

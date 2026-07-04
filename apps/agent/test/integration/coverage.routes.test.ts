@@ -229,6 +229,31 @@ describe('rutas de cobertura', () => {
       });
       expect(res.statusCode).toBe(404);
     });
+
+    it('cachea el heatmap y lo invalida al editar el plano', async () => {
+      const admin = await seedUser(app, { role: 'admin' });
+      const token = signAccess(app, admin);
+      const id = await createPlan(token, true);
+      const url = `/api/coverage/floorplans/${id}/heatmap?band=${encodeURIComponent(band)}`;
+
+      // Dos lecturas seguidas → misma geometría (servida de caché la segunda).
+      const first = (await app.inject({ method: 'GET', url, headers: authHeader(token) })).json();
+      const second = (await app.inject({ method: 'GET', url, headers: authHeader(token) })).json();
+      expect(second).toEqual(first);
+
+      // Editar el plano (cambia dimensiones) debe invalidar la caché por el nuevo
+      // updatedAt → la siguiente lectura refleja la nueva rejilla.
+      await app.inject({
+        method: 'PATCH',
+        url: `/api/coverage/floorplans/${id}`,
+        headers: authHeader(token),
+        payload: { widthM: 20, heightM: 16 },
+      });
+      const afterEdit = (await app.inject({ method: 'GET', url, headers: authHeader(token) })).json();
+      expect(afterEdit.widthM).toBe(20);
+      expect(afterEdit.heightM).toBe(16);
+      expect(afterEdit).not.toEqual(first);
+    });
   });
 
   describe('surveys y medición en vivo', () => {

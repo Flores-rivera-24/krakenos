@@ -1,6 +1,10 @@
 import type { SurveySample } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
-import { computeMeasuredHeatmap, idwEstimate } from '../../src/coverage/interpolation.js';
+import {
+  computeMeasuredHeatmap,
+  computeMeasuredHeatmapAsync,
+  idwEstimate,
+} from '../../src/coverage/interpolation.js';
 
 /** Crea una muestra de survey con valores por defecto sensatos. */
 function sample(partial: Partial<SurveySample> & { x: number; y: number; rssiDbm: number }): SurveySample {
@@ -168,5 +172,18 @@ describe('computeMeasuredHeatmap', () => {
     const hm = computeMeasuredHeatmap(4, 4, [], { band: '5GHz' });
     expect(hm.minDbm).toBe(-90);
     expect(hm.maxDbm).toBe(-30);
+  });
+});
+
+describe('computeMeasuredHeatmapAsync — paridad con la versión síncrona', () => {
+  it('produce un resultado IDÉNTICO al síncrono', async () => {
+    const s = [
+      sample({ x: 1, y: 1, rssiDbm: -40 }),
+      sample({ x: 18, y: 18, rssiDbm: -70 }),
+      sample({ x: 10, y: 5, rssiDbm: -55 }),
+    ];
+    const sync = computeMeasuredHeatmap(20, 20, s, { band: '5GHz', cellSizeM: 0.5 });
+    const async = await computeMeasuredHeatmapAsync(20, 20, s, { band: '5GHz', cellSizeM: 0.5 });
+    expect(async).toEqual(sync);
   });
 });

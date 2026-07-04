@@ -27,8 +27,15 @@ import type { FastifyInstance } from 'fastify';
 //  · computePredictedHeatmap: modelo de propagación RF (log-distance + atenuación
 //    por paredes) a partir de los APs colocados en el plano.
 //  · computeMeasuredHeatmap: interpolación IDW de las muestras de un survey.
-import { computePredictedHeatmap } from '../../coverage/propagation.js';
-import { computeMeasuredHeatmap } from '../../coverage/interpolation.js';
+import { createHash } from 'node:crypto';
+import { computePredictedHeatmapAsync } from '../../coverage/propagation.js';
+import { computeMeasuredHeatmapAsync } from '../../coverage/interpolation.js';
+import { HeatmapCache } from '../../coverage/heatmap-cache.js';
+
+/** Firma corta y estable del contenido que determina un heatmap (para la clave de caché). */
+function signature(payload: unknown): string {
+  return createHash('sha1').update(JSON.stringify(payload)).digest('hex');
+}
 
 /**
  * Resultado de registrar una muestra. Distingue los tres desenlaces que la ruta
@@ -50,6 +57,14 @@ export type RecordSampleOutcome =
  * TEXT; se serializan al escribir y se parsean al leer.
  */
 export class CoverageService {
+  /**
+   * Caché de heatmaps (single-flight + límite de concurrencia): el servicio se
+   * instancia una sola vez al registrar el plugin, así que su estado persiste
+   * durante toda la vida del proceso. La clave incluye la versión del plano /
+   * survey, de modo que una edición invalida la entrada sin purga explícita.
+   */
+  private readonly heatmapCache = new HeatmapCache<CoverageHeatmap>();
+
   constructor(
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
@@ -167,9 +182,21 @@ export class CoverageService {
     const row = await this.app.prisma.floorPlan.findUnique({ where: { id } });
     if (!row) return null;
     const plan = this.toFloorPlan(row);
-    return computePredictedHeatmap(plan.widthM, plan.heightM, plan.accessPoints, plan.walls, {
-      band,
-    });
+    // Clave content-addressed: firma del contenido que determina el mapa (dims,
+    // paredes, APs, banda). Inmune a la resolución del reloj y además reutiliza el
+    // resultado si una edición se revierte al mismo estado. `backgroundImage` no
+    // entra porque no afecta al cálculo.
+    const key = `pred:${plan.id}:${band}:${signature({
+      w: plan.widthM,
+      h: plan.heightM,
+      walls: plan.walls,
+      aps: plan.accessPoints,
+    })}`;
+    return this.heatmapCache.get(key, () =>
+      computePredictedHeatmapAsync(plan.widthM, plan.heightM, plan.accessPoints, plan.walls, {
+        band,
+      }),
+    );
   }
 
   /** Mapa de calor **medido** (interpolación de las muestras del survey). `null` si el survey no existe. */
@@ -185,9 +212,19 @@ export class CoverageService {
     if (!floorPlan) return null;
     const samples = scan.samples.map((s) => this.toSample(s));
     const plan = this.toFloorPlan(floorPlan);
-    return computeMeasuredHeatmap(plan.widthM, plan.heightM, samples, {
-      band: scan.band as WifiBand,
-    });
+    // Clave content-addressed: firma de las dimensiones del plano, la banda y las
+    // muestras (x/y/rssi). Cambia si se añade/quita una muestra o se edita el plano.
+    const key = `meas:${scanId}:${signature({
+      w: plan.widthM,
+      h: plan.heightM,
+      band: scan.band,
+      samples: samples.map((s) => [s.x, s.y, s.rssiDbm]),
+    })}`;
+    return this.heatmapCache.get(key, () =>
+      computeMeasuredHeatmapAsync(plan.widthM, plan.heightM, samples, {
+        band: scan.band as WifiBand,
+      }),
+    );
   }
 
   // ---- APs colocables (en vivo desde el driver) ----

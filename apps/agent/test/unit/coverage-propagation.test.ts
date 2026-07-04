@@ -2,6 +2,7 @@ import type { ApPlacement, Wall, WallMaterial, WifiBand } from '@krakenos/types'
 import { describe, expect, it } from 'vitest';
 import {
   computePredictedHeatmap,
+  computePredictedHeatmapAsync,
   fsplAt1m,
   pathLoss,
   rssiFromAp,
@@ -343,5 +344,24 @@ describe('computePredictedHeatmap — selección de APs y suelo', () => {
     const hm = computePredictedHeatmap(3, 3, [], [], { ...base, floorDbm: -90 });
     expect(hm.minDbm).toBe(-90);
     expect(hm.maxDbm).toBe(-90);
+  });
+});
+
+describe('computePredictedHeatmapAsync — paridad con la versión síncrona', () => {
+  const base = { band: '5GHz' as WifiBand, cellSizeM: 0.5, pathLossExponent: 3 };
+
+  it('produce un resultado IDÉNTICO al síncrono (misma matemática, solo cede el loop)', async () => {
+    // Plano con varias filas (> ROWS_PER_YIELD implica cesión real) + paredes + APs.
+    const aps = [
+      ap({ id: 'a', x: 1, y: 1, bands: ['5GHz'], txPowerDbm: 22 }),
+      ap({ id: 'b', x: 18, y: 18, bands: ['5GHz'], txPowerDbm: 20 }),
+    ];
+    const walls: Wall[] = [
+      { x1: 5, y1: 0, x2: 5, y2: 20, material: 'concrete' },
+      { x1: 0, y1: 10, x2: 20, y2: 10, material: 'brick' },
+    ];
+    const sync = computePredictedHeatmap(20, 20, aps, walls, base);
+    const async = await computePredictedHeatmapAsync(20, 20, aps, walls, base);
+    expect(async).toEqual(sync);
   });
 });

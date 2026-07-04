@@ -21,6 +21,7 @@ import type {
   Wall,
   WifiBand,
 } from '@krakenos/types';
+import { ROWS_PER_YIELD, yieldToEventLoop } from './chunk.js';
 import { resolveGrid } from './grid.js';
 
 /** Opciones del modelo de propagación (todas con valor por defecto salvo la banda). */
@@ -201,9 +202,112 @@ export function rssiFromAp(
   return ap.txPowerDbm - pl - loss;
 }
 
+/** Acumulador mutable de las cotas (min/max) del heatmap mientras se rellena. */
+interface DbmAccum {
+  minDbm: number;
+  maxDbm: number;
+}
+
+/** Geometría + entrada ya preparada para rellenar el heatmap predicho fila a fila. */
+interface PredictedSetup {
+  cols: number;
+  rows: number;
+  cellSizeM: number;
+  activeAps: ApPlacement[];
+  walls: Wall[];
+  floorDbm: number;
+  values: (number | null)[];
+}
+
+/** Prepara la rejilla, filtra APs por banda y reserva el buffer de valores. */
+function setupPredicted(
+  widthM: number,
+  heightM: number,
+  aps: ApPlacement[],
+  walls: Wall[],
+  opts: PropagationOptions,
+): PredictedSetup {
+  const { cols, rows, cellSizeM } = resolveGrid(
+    widthM,
+    heightM,
+    opts.cellSizeM ?? DEFAULT_CELL_SIZE_M,
+  );
+  const { band } = opts;
+  const activeAps = aps.filter((ap) => ap.enabled && ap.bands.includes(band));
+  return {
+    cols,
+    rows,
+    cellSizeM,
+    activeAps,
+    walls,
+    floorDbm: opts.floorDbm ?? DEFAULT_FLOOR_DBM,
+    values: new Array<number | null>(rows * cols),
+  };
+}
+
+/**
+ * Rellena UNA fila del heatmap predicho (fuente única de la matemática RF,
+ * compartida por la variante síncrona y la asíncrona). Escribe en `values` y
+ * actualiza las cotas en `accum`.
+ */
+function fillPredictedRow(
+  row: number,
+  setup: PredictedSetup,
+  opts: PropagationOptions,
+  accum: DbmAccum,
+): void {
+  const { cols, cellSizeM, activeAps, walls, floorDbm, values } = setup;
+  for (let col = 0; col < cols; col++) {
+    const x = (col + 0.5) * cellSizeM;
+    const y = (row + 0.5) * cellSizeM;
+
+    let best: number | null = null;
+    for (const ap of activeAps) {
+      const rssi = rssiFromAp(x, y, ap, walls, opts);
+      if (best === null || rssi > best) best = rssi;
+    }
+
+    const idx = row * cols + col;
+    if (best === null || best < floorDbm) {
+      values[idx] = null;
+    } else {
+      values[idx] = best;
+      if (best < accum.minDbm) accum.minDbm = best;
+      if (best > accum.maxDbm) accum.maxDbm = best;
+    }
+  }
+}
+
+/** Construye el DTO final del heatmap predicho a partir del setup y las cotas. */
+function finalizePredicted(
+  widthM: number,
+  heightM: number,
+  band: WifiBand,
+  setup: PredictedSetup,
+  accum: DbmAccum,
+): CoverageHeatmap {
+  // Sin ninguna celda con señal, las cotas colapsan al suelo de sensibilidad.
+  const minDbm = Number.isFinite(accum.minDbm) ? accum.minDbm : setup.floorDbm;
+  const maxDbm = Number.isFinite(accum.maxDbm) ? accum.maxDbm : setup.floorDbm;
+  return {
+    band,
+    source: 'predicted',
+    widthM,
+    heightM,
+    cols: setup.cols,
+    rows: setup.rows,
+    cellSizeM: setup.cellSizeM,
+    values: setup.values,
+    minDbm,
+    maxDbm,
+  };
+}
+
 /**
  * Calcula el mapa de calor de cobertura PREDICHA sobre un plano de
- * `widthM`×`heightM` metros.
+ * `widthM`×`heightM` metros (versión SÍNCRONA, pura y determinista — usada en
+ * tests y cálculos pequeños). En producción, el servicio usa la variante
+ * asíncrona `computePredictedHeatmapAsync`, que cede el event loop.
  *
  * - Filtra internamente los APs por `enabled` y por `bands.includes(band)`.
  * - Rejilla de celdas cuadradas de `cellSizeM`; el RSSI se evalúa en el CENTRO
@@ -219,61 +323,32 @@ export function computePredictedHeatmap(
   walls: Wall[],
   opts: PropagationOptions,
 ): CoverageHeatmap {
-  const floorDbm = opts.floorDbm ?? DEFAULT_FLOOR_DBM;
-  const { band } = opts;
-
-  // Rejilla compartida con la interpolación y acotada a MAX_HEATMAP_CELLS; el
-  // `cellSizeM` puede agrandarse respecto al pedido para planos grandes.
-  const { cols, rows, cellSizeM } = resolveGrid(
-    widthM,
-    heightM,
-    opts.cellSizeM ?? DEFAULT_CELL_SIZE_M,
-  );
-
-  // Solo APs habilitados que emiten en la banda pedida.
-  const activeAps = aps.filter((ap) => ap.enabled && ap.bands.includes(band));
-
-  const values: (number | null)[] = new Array<number | null>(rows * cols);
-
-  let minDbm = Number.POSITIVE_INFINITY;
-  let maxDbm = Number.NEGATIVE_INFINITY;
-
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const x = (col + 0.5) * cellSizeM;
-      const y = (row + 0.5) * cellSizeM;
-
-      let best: number | null = null;
-      for (const ap of activeAps) {
-        const rssi = rssiFromAp(x, y, ap, walls, opts);
-        if (best === null || rssi > best) best = rssi;
-      }
-
-      const idx = row * cols + col;
-      if (best === null || best < floorDbm) {
-        values[idx] = null;
-      } else {
-        values[idx] = best;
-        if (best < minDbm) minDbm = best;
-        if (best > maxDbm) maxDbm = best;
-      }
-    }
+  const setup = setupPredicted(widthM, heightM, aps, walls, opts);
+  const accum: DbmAccum = { minDbm: Number.POSITIVE_INFINITY, maxDbm: Number.NEGATIVE_INFINITY };
+  for (let row = 0; row < setup.rows; row++) {
+    fillPredictedRow(row, setup, opts, accum);
   }
+  return finalizePredicted(widthM, heightM, opts.band, setup, accum);
+}
 
-  // Sin ninguna celda con señal, las cotas colapsan al suelo de sensibilidad.
-  if (!Number.isFinite(minDbm)) minDbm = floorDbm;
-  if (!Number.isFinite(maxDbm)) maxDbm = floorDbm;
-
-  return {
-    band,
-    source: 'predicted',
-    widthM,
-    heightM,
-    cols,
-    rows,
-    cellSizeM,
-    values,
-    minDbm,
-    maxDbm,
-  };
+/**
+ * Igual que `computePredictedHeatmap` pero **cede el event loop** cada
+ * `ROWS_PER_YIELD` filas, para que un plano grande no congele el proceso
+ * (health checks, sockets, resto de peticiones siguen atendiéndose). El
+ * resultado es idéntico bit a bit al síncrono (misma matemática compartida).
+ */
+export async function computePredictedHeatmapAsync(
+  widthM: number,
+  heightM: number,
+  aps: ApPlacement[],
+  walls: Wall[],
+  opts: PropagationOptions,
+): Promise<CoverageHeatmap> {
+  const setup = setupPredicted(widthM, heightM, aps, walls, opts);
+  const accum: DbmAccum = { minDbm: Number.POSITIVE_INFINITY, maxDbm: Number.NEGATIVE_INFINITY };
+  for (let row = 0; row < setup.rows; row++) {
+    fillPredictedRow(row, setup, opts, accum);
+    if (row % ROWS_PER_YIELD === ROWS_PER_YIELD - 1) await yieldToEventLoop();
+  }
+  return finalizePredicted(widthM, heightM, opts.band, setup, accum);
 }
