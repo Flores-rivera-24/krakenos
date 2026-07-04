@@ -29,6 +29,11 @@ describe('cisco-ios.commands', () => {
     );
   });
 
+  it('showInterfacesCommand rechaza una interfaz con salto de línea (anti-inyección IOS)', () => {
+    expect(() => showInterfacesCommand('Gi0/0\nreload')).toThrow(InvalidArgumentError);
+    expect(() => showInterfacesCommand('Gi0/0; reload')).toThrow(InvalidArgumentError);
+  });
+
   it('showVersionCommand', () => {
     expect(showVersionCommand()).toBe('show version');
   });

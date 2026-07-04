@@ -34,6 +34,10 @@ export function showMacAddressTableCommand(): string {
 
 /** Detalle de una interfaz (incluye contadores rx/tx). */
 export function showInterfacesCommand(iface: string): string {
+  // El nombre de interfaz WAN viene de la config (env/integración). Aunque solo lo
+  // fija el admin, se valida igual que el resto de valores interpolados (VLAN, MAC,
+  // puerto): un salto de línea aquí inyectaría comandos IOS en la sesión exec.
+  assertCiscoInterface(iface);
   return `show interfaces ${iface}`;
 }
 

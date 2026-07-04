@@ -55,7 +55,11 @@ const managedCameraResponse = {
 
 const cameraBodyProps = {
   name: { type: 'string', minLength: 1, maxLength: 80 },
-  rtspUrl: { type: 'string', minLength: 1, maxLength: 2048 },
+  // Solo `rtsp://` (o `rtsps://`). Sin restringir el esquema, la URL llega a
+  // `ffmpeg -i`, que acepta `file://` (LFI), `http://` (SSRF a metadata/interno),
+  // `concat:`, etc. La salida forzada a JPEG limita la exfiltración de ficheros,
+  // pero el SSRF sí sería efectivo. Se acota a RTSP en el borde.
+  rtspUrl: { type: 'string', minLength: 1, maxLength: 2048, pattern: '^rtsps?://' },
   room: { type: ['string', 'null'], maxLength: 80 },
   model: { type: ['string', 'null'], maxLength: 80 },
   enabled: { type: 'boolean' },

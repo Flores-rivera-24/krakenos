@@ -1,5 +1,10 @@
 /** JSON Schemas de los horarios de acceso / control parental (US-108). */
 
+// MAC en los cuerpos de entrada: acepta hex separado por `:`/`-` (todos los
+// formatos reales), y rechaza control/`;`/espacios. Defensa temprana; el driver
+// re-normaliza antes de tocar el hardware (`normalizeMac`/`toCiscoMac`).
+const MAC_PATTERN = '^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$';
+
 const days = {
   type: 'array',
   items: { type: 'integer', minimum: 0, maximum: 6 },
@@ -48,7 +53,7 @@ export const createScheduleSchema = {
     required: ['name', 'mac', 'days', 'startMinute', 'endMinute'],
     properties: {
       name: { type: 'string', minLength: 1, maxLength: 60 },
-      mac: { type: 'string', minLength: 1, maxLength: 64 },
+      mac: { type: 'string', minLength: 1, maxLength: 64, pattern: MAC_PATTERN },
       days,
       startMinute: minute,
       endMinute: minute,
@@ -77,7 +82,7 @@ export const updateScheduleSchema = {
 
 export const deleteScheduleSchema = { params: idParam } as const;
 
-const mac = { type: 'string', minLength: 1, maxLength: 64 } as const;
+const mac = { type: 'string', minLength: 1, maxLength: 64, pattern: MAC_PATTERN } as const;
 
 /** `POST /api/access/pause` — pausa el internet de un dispositivo N minutos (US-111). */
 export const pauseSchema = {

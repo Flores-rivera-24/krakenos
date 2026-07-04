@@ -134,10 +134,28 @@ export function menuToCli(menu: string): string {
   return `/${menu.replace(/\//g, ' ')}`;
 }
 
-/** Construye `clave=valor` con comillas si el valor lleva espacios. */
+/**
+ * Construye `clave=valor` para la CLI de RouterOS con **entrecomillado seguro**.
+ *
+ * El valor puede venir de entrada del usuario (p. ej. el SSID en `wireless set`).
+ * La versión anterior interpolaba en crudo cuando no había espacios y solo ponía
+ * comillas dobles (sin escapar) cuando los había, de modo que un valor con `"` o
+ * `;` podía cerrar la cadena e inyectar un segundo comando en la sesión SSH
+ * (`ssid="x" ;/system reset-configuration;"`). Ahora el valor **siempre** se
+ * entrecomilla y se escapan `\` y `"` (los metacaracteres de las comillas dobles
+ * de RouterOS); dentro de comillas, `;` y espacios son literales. Los caracteres
+ * de control (CR/LF/NUL) se eliminan porque no tienen cabida en un valor de config
+ * y podrían partir la línea de comando.
+ */
 export function cliProps(props: Record<string, string>): string {
   return Object.entries(props)
-    .map(([k, v]) => `${k}=${/\s/.test(v) ? `"${v}"` : v}`)
+    .map(([k, v]) => {
+      const escaped = v
+        .replace(/[\r\n\0]/g, '')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+      return `${k}="${escaped}"`;
+    })
     .join(' ');
 }
 
