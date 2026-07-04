@@ -16,6 +16,8 @@ import { lookupVendor } from './oui.js';
 
 export class InventoryService {
   private scanTimer: NodeJS.Timeout | null = null;
+  /** Coalescing: evita barridos solapados (US-47/hardening). */
+  private isScanning = false;
   /** ¿Hay un horario de acceso activo ahora para esta MAC? (US-108, inyectado). */
   private scheduleGuard?: (mac: string) => Promise<boolean>;
 
@@ -95,6 +97,12 @@ export class InventoryService {
    * fallo como 500 al cliente que lo pidió.
    */
   async scanCycle(): Promise<void> {
+    // Coalescing: si ya hay un barrido en curso, se omite. Cierra la amplificación
+    // del socket `inventory:rescan` (sin rate limit): una avalancha de eventos ya
+    // no dispara N `scanArp`/`scanMdns` concurrentes contra el router/switch — a lo
+    // sumo se encadena uno más al terminar el actual.
+    if (this.isScanning) return;
+    this.isScanning = true;
     try {
       await this.scan();
     } catch (err) {
@@ -102,6 +110,8 @@ export class InventoryService {
         { err },
         '[inventory] el barrido falló; se omite este ciclo y se reintentará en el próximo',
       );
+    } finally {
+      this.isScanning = false;
     }
   }
 

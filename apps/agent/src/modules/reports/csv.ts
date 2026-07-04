@@ -6,9 +6,22 @@
 
 export type CsvValue = string | number | boolean | null | undefined;
 
+/**
+ * Neutraliza la **inyección de fórmulas** (CSV/Formula Injection): Excel y
+ * LibreOffice evalúan como fórmula cualquier celda que empiece por `= + - @` (o
+ * TAB/CR). Campos como el `hostname`/`label` de un dispositivo los controla un
+ * tercero que conecte hardware hostil a la red (los anuncia por DHCP/mDNS), así
+ * que un `=HYPERLINK(...)`/`=cmd|...` acabaría ejecutándose al abrir el export.
+ * Se antepone un apóstrofo, que fuerza a la hoja de cálculo a tratar la celda como
+ * texto literal (y luego se aplica el entrecomillado RFC 4180 normal).
+ */
+function neutralizeFormula(s: string): string {
+  return /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
+}
+
 function escapeField(value: CsvValue): string {
   if (value === null || value === undefined) return '';
-  const s = String(value);
+  const s = neutralizeFormula(String(value));
   return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

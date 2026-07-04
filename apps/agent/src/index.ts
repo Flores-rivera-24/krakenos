@@ -58,6 +58,26 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
+  // Red de seguridad de proceso: sin esto, una sola promesa sin `.catch()` en
+  // cualquier handler (p. ej. un driver caído) tumbaría el agente y con él el
+  // control de la red del hogar/comercio. Política deliberada:
+  //  · unhandledRejection → SOLO se registra; el proceso sigue vivo. Una promesa
+  //    rechazada aislada no deja el runtime en estado indefinido, así que es
+  //    preferible seguir sirviendo a caer (el objetivo del dueño: "que no se caiga").
+  //  · uncaughtException → sí deja el runtime en estado indefinido: se registra,
+  //    se intenta un cierre limpio y se sale con código 1 para que systemd/Docker
+  //    reinicien con estado fresco (Restart=on-failure / restart: unless-stopped).
+  process.on('unhandledRejection', (reason) => {
+    app.log.error({ err: reason }, 'unhandledRejection no capturado — el proceso sigue vivo');
+  });
+  process.on('uncaughtException', (err) => {
+    app.log.fatal({ err }, 'uncaughtException — cerrando para reiniciar limpio');
+    void app
+      .close()
+      .catch(() => undefined)
+      .finally(() => process.exit(1));
+  });
+
   try {
     await app.listen({ port: env.port, host: env.host });
   } catch (err) {

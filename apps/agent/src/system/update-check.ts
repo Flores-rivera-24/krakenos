@@ -44,6 +44,10 @@ export function isNewer(a: string, b: string): boolean {
 const defaultFetch: UpdateFetch = (url) =>
   fetch(url, {
     headers: { 'User-Agent': 'KrakenOS', Accept: 'application/vnd.github+json' },
+    // Sin timeout, una conexión que GitHub deje colgada retiene el handler
+    // indefinidamente. 10 s de tope; el `catch` de `fetchLatest` lo degrada a
+    // "sin datos" sin romper la página.
+    signal: AbortSignal.timeout(10_000),
   });
 
 export class UpdateChecker {

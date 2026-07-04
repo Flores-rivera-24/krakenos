@@ -25,6 +25,14 @@ export const SETTING_BOUNDS = {
   trafficRetentionDays: { min: 1, max: 365 },
   /** Retención del registro de auditoría en días (US-102). Mín 1, máx 10 años. */
   auditRetentionDays: { min: 1, max: 3650 },
+  /**
+   * Intervalo del barrido de inventario en segundos. Mín 5 s: sin cota, un valor
+   * fraccionario (`0.001`) o desbordado (Node normaliza delays > 2^31-1 a 1 ms)
+   * convertía `setInterval` en un bucle apretado que martillea el driver/hardware
+   * y satura la CPU. El valor 0 es un caso aparte (desactiva el barrido) que el
+   * handler trata antes de acotar. Máx 1 h.
+   */
+  scanIntervalSec: { min: 5, max: 3600 },
 } satisfies Record<string, NumericBound>;
 
 export type BoundedSettingKey = keyof typeof SETTING_BOUNDS;

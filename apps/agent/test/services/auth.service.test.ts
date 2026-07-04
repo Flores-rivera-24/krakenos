@@ -174,6 +174,24 @@ describe('AuthService', () => {
     });
   });
 
+  describe('issueSessionForUserId (camino de 2FA/setup)', () => {
+    it('emite sesión para una cuenta activa', async () => {
+      const seeded = await seedUser(app, { email: 'ok@krakenos.test' });
+      const result = await service.issueSessionForUserId(seeded.id);
+      expect(result.user.id).toBe(seeded.id);
+      expect(result.tokens.accessToken).toBeTruthy();
+    });
+
+    it('rechaza una cuenta deshabilitada (cierra la ventana del mfaToken)', async () => {
+      const seeded = await seedUser(app, { email: 'off@krakenos.test' });
+      // Simula que un admin deshabilitó la cuenta durante la ventana del mfaToken.
+      await app.prisma.user.update({ where: { id: seeded.id }, data: { status: 'disabled' } });
+      await expect(service.issueSessionForUserId(seeded.id)).rejects.toMatchObject({
+        code: 'AUTH_ACCOUNT_DISABLED',
+      });
+    });
+  });
+
   describe('getById', () => {
     it('devuelve el usuario sin el hash, o null si no existe', async () => {
       const seeded = await seedUser(app, { email: 'a@krakenos.test' });

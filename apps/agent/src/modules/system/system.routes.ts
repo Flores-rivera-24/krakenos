@@ -158,8 +158,17 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       // (el lado lector recurre a su fallback).
       const bound = boundFor(key);
       if (bound) {
-        const clamped = clampToBound(Number(value), bound);
-        if (clamped !== null) value = String(clamped);
+        // `scanIntervalSec === 0` es un valor especial legítimo (desactiva el
+        // barrido), así que se respeta sin acotar; cualquier otro valor —incluido
+        // un fraccionario como 0.001— se acota a [min, max] para no degenerar en un
+        // bucle apretado de `setInterval`.
+        const n = Number(value);
+        if (key === 'scanIntervalSec' && n === 0) {
+          value = '0';
+        } else {
+          const clamped = clampToBound(n, bound);
+          if (clamped !== null) value = String(clamped);
+        }
       }
 
       await app.prisma.setting.upsert({

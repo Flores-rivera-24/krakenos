@@ -61,7 +61,8 @@ export const securityHeadersPlugin = fp(
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Resource-Policy': 'same-origin',
         'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-        // Fastify expone la versión en `Server`/`X-Powered-By`; no hace falta filtrarla.
+        // Fastify NO emite `Server` ni `X-Powered-By` por defecto (no hay versión que
+        // filtrar aquí). Si se pone un proxy delante, comprobar que no añada `Server`.
         ...(hsts ? { 'Strict-Transport-Security': 'max-age=15552000; includeSubDomains' } : {}),
       });
     });

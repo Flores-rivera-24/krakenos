@@ -49,10 +49,22 @@ describe('mikrotik.transport helpers', () => {
     expect(menuToCli('interface/wireless')).toBe('/interface wireless');
   });
 
-  it('cliProps entrecomilla los valores con espacios', () => {
+  it('cliProps entrecomilla SIEMPRE los valores (seguro por defecto)', () => {
     expect(cliProps({ list: 'krakenos-blocked', comment: 'mi pc' })).toBe(
-      'list=krakenos-blocked comment="mi pc"',
+      'list="krakenos-blocked" comment="mi pc"',
     );
+  });
+
+  it('cliProps escapa comillas y backslash → impide inyección de comandos RouterOS', () => {
+    // Un SSID hostil no puede cerrar la cadena ni encadenar `;/system ...`.
+    expect(cliProps({ ssid: 'x" ;/system reset-configuration;"' })).toBe(
+      'ssid="x\\" ;/system reset-configuration;\\""',
+    );
+    expect(cliProps({ ssid: 'a\\b' })).toBe('ssid="a\\\\b"');
+  });
+
+  it('cliProps elimina caracteres de control (CR/LF/NUL) que partirían la línea', () => {
+    expect(cliProps({ ssid: 'a\r\nb\0c' })).toBe('ssid="abc"');
   });
 });
 

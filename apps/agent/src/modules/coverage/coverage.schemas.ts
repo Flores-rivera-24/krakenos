@@ -44,7 +44,14 @@ const floorPlanResponse = {
     name: { type: 'string' },
     widthM: { type: 'number' },
     heightM: { type: 'number' },
-    backgroundImage: { type: ['string', 'null'] },
+    // Data-URL de imagen acotada: sin `maxLength` cada plano podía llevar ~1 MB
+    // (tope del bodyLimit) en SQLite → crecimiento no acotado con N planos. El
+    // prefijo `data:image/` impide guardar URLs de otro esquema.
+    backgroundImage: {
+      type: ['string', 'null'],
+      maxLength: 1_500_000,
+      pattern: '^data:image/',
+    },
     walls: { type: 'array', items: wallSchema, maxItems: 500 },
     accessPoints: { type: 'array', items: apPlacementSchema, maxItems: 64 },
     createdAt: { type: 'string', format: 'date-time' },
@@ -187,7 +194,14 @@ const createFloorPlanBody = {
     name: { type: 'string', minLength: 1, maxLength: 120 },
     widthM: { type: 'number', exclusiveMinimum: 0, maximum: 300 },
     heightM: { type: 'number', exclusiveMinimum: 0, maximum: 300 },
-    backgroundImage: { type: ['string', 'null'] },
+    // Data-URL de imagen acotada: sin `maxLength` cada plano podía llevar ~1 MB
+    // (tope del bodyLimit) en SQLite → crecimiento no acotado con N planos. El
+    // prefijo `data:image/` impide guardar URLs de otro esquema.
+    backgroundImage: {
+      type: ['string', 'null'],
+      maxLength: 1_500_000,
+      pattern: '^data:image/',
+    },
     walls: { type: 'array', items: wallSchema, maxItems: 500 },
     accessPoints: { type: 'array', items: apPlacementSchema, maxItems: 64 },
   },
@@ -201,7 +215,14 @@ const updateFloorPlanBody = {
     name: { type: 'string', minLength: 1, maxLength: 120 },
     widthM: { type: 'number', exclusiveMinimum: 0, maximum: 300 },
     heightM: { type: 'number', exclusiveMinimum: 0, maximum: 300 },
-    backgroundImage: { type: ['string', 'null'] },
+    // Data-URL de imagen acotada: sin `maxLength` cada plano podía llevar ~1 MB
+    // (tope del bodyLimit) en SQLite → crecimiento no acotado con N planos. El
+    // prefijo `data:image/` impide guardar URLs de otro esquema.
+    backgroundImage: {
+      type: ['string', 'null'],
+      maxLength: 1_500_000,
+      pattern: '^data:image/',
+    },
     walls: { type: 'array', items: wallSchema, maxItems: 500 },
     accessPoints: { type: 'array', items: apPlacementSchema, maxItems: 64 },
   },

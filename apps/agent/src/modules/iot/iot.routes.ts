@@ -36,9 +36,16 @@ export const iotRoutes: FastifyPluginAsync<IotRoutesOpts> = async (app, opts) =>
     },
   );
 
-  // Snapshot de IoT a cada cliente que se conecta.
+  // Snapshot de IoT a cada cliente que se conecta. El `.catch()` es CRÍTICO: si el
+  // driver IoT real está caído/timeout (MQTT desconectado, bridge sin responder),
+  // `listDevices()` rechaza; sin capturar, sería un `unhandledRejection` que en
+  // Node 20 **termina el proceso** → bucle de crash cada vez que un cliente
+  // reconecta mientras el IoT siga mal. Se degrada como en inventario.
   app.io.on('connection', (socket) => {
     void socket.join(IOT_ROOM);
-    void iot.listDevices().then((devices) => socket.emit('iot:snapshot', devices));
+    void iot
+      .listDevices()
+      .then((devices) => socket.emit('iot:snapshot', devices))
+      .catch((err) => app.log.error({ err }, '[iot] no se pudo enviar el snapshot inicial'));
   });
 };

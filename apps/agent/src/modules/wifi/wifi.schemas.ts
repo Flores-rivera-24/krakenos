@@ -1,6 +1,11 @@
 const bandEnum = ['2.4GHz', '5GHz', '6GHz'];
 const securityEnum = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
 
+// SSID sin caracteres de control (CR/LF/NUL/…): nunca forman parte de un SSID
+// legítimo y son justo lo que permitiría partir una línea de comando al llegar a la
+// CLI de un router. Defensa temprana; el transporte además entrecomilla/escapa.
+const SSID_PATTERN = '^[^\\u0000-\\u001f\\u007f]+$';
+
 const wifiResponse = {
   type: 'object',
   properties: {
@@ -36,7 +41,7 @@ export const updateWifiSchema = {
     additionalProperties: false,
     minProperties: 1,
     properties: {
-      ssid: { type: 'string', minLength: 1, maxLength: 32 },
+      ssid: { type: 'string', minLength: 1, maxLength: 32, pattern: SSID_PATTERN },
       password: { type: 'string', minLength: 8, maxLength: 63 },
       enabled: { type: 'boolean' },
       band: { type: 'string', enum: bandEnum },
@@ -57,7 +62,7 @@ export const updateGuestSchema = {
     additionalProperties: false,
     minProperties: 1,
     properties: {
-      ssid: { type: 'string', minLength: 1, maxLength: 32 },
+      ssid: { type: 'string', minLength: 1, maxLength: 32, pattern: SSID_PATTERN },
       password: { type: 'string', minLength: 8, maxLength: 63 },
       enabled: { type: 'boolean' },
       clientIsolation: { type: 'boolean' },
@@ -135,7 +140,7 @@ export const updateNetworkSchema = {
     additionalProperties: false,
     minProperties: 1,
     properties: {
-      ssid: { type: 'string', minLength: 1, maxLength: 32 },
+      ssid: { type: 'string', minLength: 1, maxLength: 32, pattern: SSID_PATTERN },
       password: { type: 'string', minLength: 8, maxLength: 63 },
       enabled: { type: 'boolean' },
       band: { type: 'string', enum: bandEnum },
