@@ -4,6 +4,8 @@
  * librería `@simplewebauthn/*`; aquí se tratan como objetos opacos.
  */
 
+import { errorResponse } from '../common.schemas.js';
+
 /** Objeto WebAuthn opaco (options o response de la ceremonia). */
 const opaqueObject = { type: 'object', additionalProperties: true } as const;
 
@@ -45,7 +47,7 @@ const userResponse = {
 } as const;
 
 export const registerOptionsSchema = {
-  response: { 200: opaqueObject },
+  response: { 200: opaqueObject, 401: errorResponse },
 } as const;
 
 const backupCodesArray = { type: 'array', items: { type: 'string' } } as const;
