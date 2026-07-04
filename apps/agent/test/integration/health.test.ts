@@ -19,4 +19,10 @@ describe('GET /health', () => {
     // Igualdad exacta: no debe exponer driver.kind ni uptime del proceso.
     expect(res.json()).toEqual({ status: 'ok' });
   });
+
+  it('/health/ready comprueba la base de datos (US-115)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/health/ready' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'ready' });
+  });
 });
