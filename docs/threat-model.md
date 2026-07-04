@@ -367,6 +367,11 @@ adversarial de cada hallazgo: auth/JWT/2FA, autorización/IDOR, inyección/path-
 DoS/crash/agotamiento, fuga de información/cripto, y validación de entrada/frontend. Enfoque en los
 tres riesgos del dueño: **vulnerabilidad explotable, caída del servicio, filtrado de información**.
 
+> **Actualización (2026-07-04):** el hallazgo #13 (heatmap que congela el event loop), inicialmente
+> aplazado por requerir refactor, se resolvió en la misma tanda con cómputo cooperativo + caché
+> (portable, sin tocar el pipeline de build). Queda como pendiente mayor solo la actualización de
+> `@fastify/jwt`/Fastify y el filtrado de egress SSRF.
+
 **Confirmaciones sólidas (sin acción):** la confusión de algoritmo de `fast-jwt` está **neutralizada
 por config** (`algorithms:['RS256']` explícito en ambos caminos de verificación + `iss`/`aud`); el
 path-traversal de `node-tar` **no aplica** (backup usa formato propio, no tar); cripto en reposo
@@ -391,11 +396,9 @@ servidor; validadores anti-inyección y helper por ámbito sólidos.
 | 10 | 🟡 Baja | Interfaz WAN Cisco interpolada sin validar | `assertCiscoInterface` en el builder |
 | 11 | 🟡 Baja | `backgroundImage` de coverage sin cota; MAC de acceso sin pattern | `maxLength`+`data:image/`; pattern MAC |
 | 12 | 🟡 Baja | Cookie sin `Secure` en prod sin TLS/proxy (silencioso) | Aviso al arrancar |
+| 13 | 🟠 Media | **Heatmap de cobertura congela el event loop** (síncrono O(celdas·APs·paredes), hasta ~250k celdas): cualquier autenticado bloqueaba el proceso decenas de segundos pidiendo el heatmap de un plano grande | Cómputo **asíncrono cooperativo** (cede el loop cada 32 filas) + **caché content-addressed** con single-flight y límite de concurrencia. Verificado empíricamente: 24 s de bloqueo del loop → 0 (responsivo durante el cálculo) |
 
 **Pendiente (esfuerzo mayor, documentado, NO bloqueante):**
-- **Heatmap de cobertura bloquea el event loop** (`coverage/propagation.ts`, síncrono O(celdas·APs·paredes),
-  hasta ~8·10⁹ ops): cualquier autenticado puede congelar el proceso pidiendo el heatmap de un plano grande.
-  Mitigación real = worker thread + caché por versión de plano (requiere refactor y pruebas).
 - **Actualizar `@fastify/jwt`→10 / Fastify 4→5** para arrastrar `fast-jwt` parcheado (defensa en profundidad;
   el bypass activo ya está cerrado por config). Migración coordinada de todos los `@fastify/*`.
 - **Filtrado de egress (SSRF)** para drivers/integraciones con URL configurable: aceptable hoy (solo admin),
