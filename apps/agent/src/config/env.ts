@@ -203,6 +203,13 @@ export const env = {
    */
   secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? resolve('keys/secretbox.key'),
 
+  /**
+   * Comprobación de actualizaciones (US-116). **Opt-in**: `UPDATE_CHECK_REPO`
+   * = `owner/repo` de GitHub. Sin él, el agente no hace ninguna llamada externa
+   * (coherente con la postura "sin nube de terceros"). Ver `docs/updates.md`.
+   */
+  updateCheckRepo: process.env.UPDATE_CHECK_REPO || null,
+
   driver: {
     kind: driverKind,
     host: process.env.DRIVER_HOST || undefined,

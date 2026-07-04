@@ -18,6 +18,7 @@ import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
 import { stageRestore } from '../../system/restore.js';
+import { UpdateChecker } from '../../system/update-check.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import {
   backupSchema,
@@ -27,6 +28,7 @@ import {
   restoreSchema,
   systemInfoSchema,
   systemStatsSchema,
+  updateCheckSchema,
   updateSettingSchema,
 } from './system.schemas.js';
 
@@ -66,6 +68,13 @@ function readAgentVersion(): string {
 }
 
 const AGENT_VERSION = readAgentVersion();
+
+/**
+ * Comprobador de actualizaciones compartido (US-116). Instancia única a nivel de
+ * módulo para conservar la caché de 1 h entre peticiones y no golpear la API de
+ * GitHub en cada carga de Ajustes. `updateCheckRepo` = null → `enabled:false`.
+ */
+const updateChecker = new UpdateChecker(AGENT_VERSION, env.updateCheckRepo);
 
 function readStats(): SystemStats {
   const cores = os.cpus().length || 1;
@@ -124,6 +133,12 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
 
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
     readStats(),
+  );
+
+  // Comprobación de actualizaciones (US-116). Lectura autenticada; opt-in por
+  // `UPDATE_CHECK_REPO`. Sin repo, no hay llamada externa (`enabled:false`).
+  app.get('/update-check', { preHandler: app.authenticate, schema: updateCheckSchema }, () =>
+    updateChecker.check(),
   );
 
   app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async () =>
