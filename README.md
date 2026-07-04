@@ -46,7 +46,7 @@ auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (We
 
 ```
 apps/
-  agent/    Agente local — Fastify 4 + Prisma + SQLite + Socket.io
+  agent/    Agente local — Fastify 5 + Prisma + SQLite + Socket.io
   web/      Frontend — React 18 + Vite + Tailwind + shadcn/ui + Zustand
 packages/
   types/    Tipos TypeScript compartidos (@krakenos/types)
