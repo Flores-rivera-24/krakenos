@@ -2,6 +2,7 @@
  * JSON Schemas de validación para las rutas de autenticación.
  * Se mantienen alineados con los tipos de `@krakenos/types`.
  */
+import { errorResponse } from '../common.schemas.js';
 
 const userResponse = {
   type: 'object',
@@ -63,12 +64,14 @@ export const loginSchema = {
 export const refreshSchema = {
   response: {
     200: tokensResponse,
+    401: errorResponse,
   },
 } as const;
 
 export const statusSchema = {
   response: {
     200: userResponse,
+    401: errorResponse,
   },
 } as const;
 
