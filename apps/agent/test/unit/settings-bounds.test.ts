@@ -29,4 +29,17 @@ describe('settings-bounds (US-75, F5)', () => {
     expect(SETTING_BOUNDS.accessTokenTtl.max).toBeLessThanOrEqual(3600);
     expect(SETTING_BOUNDS.loginRateLimit.min).toBeGreaterThanOrEqual(1);
   });
+
+  it('scanIntervalSec está acotado (mín ≥ 5 s) para no degenerar en un bucle de setInterval', () => {
+    expect(boundFor('scanIntervalSec')).toEqual(SETTING_BOUNDS.scanIntervalSec);
+    expect(SETTING_BOUNDS.scanIntervalSec.min).toBeGreaterThanOrEqual(5);
+    // Un valor fraccionario abusivo se acota al mínimo, no a ~1 ms.
+    expect(clampToBound(0.001, SETTING_BOUNDS.scanIntervalSec)).toBe(
+      SETTING_BOUNDS.scanIntervalSec.min,
+    );
+    // Un valor desbordado se acota al máximo (Node normalizaría delays enormes a 1 ms).
+    expect(clampToBound(9_999_999_999, SETTING_BOUNDS.scanIntervalSec)).toBe(
+      SETTING_BOUNDS.scanIntervalSec.max,
+    );
+  });
 });

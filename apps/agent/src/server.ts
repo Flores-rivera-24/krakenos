@@ -9,6 +9,7 @@ import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
+import { SETTING_BOUNDS, clampToBound } from './config/settings-bounds.js';
 import { IntegrationConfigStore } from './integrations/integration-config.store.js';
 import { buildIntegrationRuntime } from './integrations/runtime.js';
 import { FileJsonStore } from './store/json-store.js';
@@ -71,6 +72,17 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Aviso si TRUST_PROXY confía en XFF de cualquier origen (US-76, F2).
   for (const w of trustProxyWarnings(env.trustProxy)) {
     app.log.warn(`[config] ${w}`);
+  }
+
+  // Aviso si en producción la cookie de refresh viajaría SIN `Secure` (sin TLS
+  // nativo ni proxy de confianza): sobre HTTP plano el refresh token sería
+  // interceptable en la red. El modelo asume TLS/VPN; si no lo hay, es un riesgo real.
+  if (env.isProd && env.https === null && !env.behindProxy) {
+    app.log.warn(
+      '[config] NODE_ENV=production sin HTTPS ni TRUST_PROXY: la cookie de refresh se ' +
+        'emite sin `Secure` y viajaría en claro sobre HTTP. Termina TLS (HTTPS_ENABLED) ' +
+        'o sitúa el agente tras un proxy de confianza / WireGuard.',
+    );
   }
 
   // Aviso si los ficheros con secretos (.env, clave privada RS256) son legibles
@@ -212,7 +224,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Barrido periódico de inventario: usa el intervalo persistido (`scanIntervalSec`,
   // por defecto 60 s) y se reprograma en caliente desde Ajustes (US-47).
   const scanRow = await app.prisma.setting.findUnique({ where: { key: 'scanIntervalSec' } });
-  const scanSec = Number(scanRow?.value) > 0 ? Number(scanRow!.value) : 60;
+  // Acota en lectura (defensa en profundidad, US-75): aunque un valor abusivo se
+  // colara por otra vía (escritura directa en la DB, un backup antiguo), el runtime
+  // nunca arranca un `setInterval` fuera de [min, max]. Un valor ausente/no numérico
+  // recurre a 60 s.
+  const rawScan = Number(scanRow?.value);
+  const scanSec = Number.isFinite(rawScan) && rawScan > 0
+    ? (clampToBound(rawScan, SETTING_BOUNDS.scanIntervalSec) ?? 60)
+    : 60;
   inventoryService.setScanInterval(scanSec * 1000);
   app.addHook('onClose', async () => inventoryService.stopScan());
 
