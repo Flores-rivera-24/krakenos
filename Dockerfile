@@ -1,9 +1,20 @@
 # KrakenOS — imagen todo-en-uno (agente API + UI en un puerto).
-# Imagen única (build + runtime) por robustez: evita copiar entre etapas el motor
-# nativo de Prisma y bcrypt. Optimización multi-stage: pendiente.
-FROM node:20-bookworm-slim
+#
+# Build multi-stage (US-117):
+#   · `builder` trae el toolchain nativo (python3/make/g++) para compilar bcrypt y
+#     genera el cliente de Prisma + construye web y agente.
+#   · `runtime` parte de una base limpia SIN toolchain de compilación: hereda el
+#     árbol `/app` ya construido (node_modules con el .node de bcrypt y el motor
+#     nativo de Prisma ya compilados contra la MISMA libc — ambas etapas son
+#     `node:20-bookworm-slim`, así que los binarios son compatibles). El resultado
+#     no lleva compiladores en la imagen final (menor superficie + tamaño).
+#
+# Nota: se copia el árbol completo (no `pnpm deploy`) a propósito, por robustez:
+# evita reconstruir node_modules y perder el cliente generado de Prisma (.prisma/client).
 
-# Dependencias de build (bcrypt nativo) + runtime (openssl para claves/Prisma).
+# ---------- Etapa 1: build ----------
+FROM node:20-bookworm-slim AS builder
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
@@ -11,12 +22,26 @@ RUN apt-get update \
 
 WORKDIR /app
 
-# Instala dependencias y construye agente + web.
 COPY . .
 RUN pnpm install --frozen-lockfile \
   && pnpm --filter @krakenos/agent exec prisma generate \
   && pnpm --filter @krakenos/web build \
   && pnpm --filter @krakenos/agent build
+
+# ---------- Etapa 2: runtime ----------
+FROM node:20-bookworm-slim AS runtime
+
+# Solo runtime: openssl (claves/Prisma) + ca-certificates. Sin compiladores.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/* \
+  && corepack enable
+
+WORKDIR /app
+
+# Hereda el árbol ya construido (dist, node_modules con binarios nativos,
+# cliente de Prisma generado, migraciones y build de la web).
+COPY --from=builder /app /app
 
 ENV NODE_ENV=production \
     SERVE_WEB=true \
@@ -40,7 +65,7 @@ RUN chmod +x /entrypoint.sh
 USER krakenos
 WORKDIR /app/apps/agent
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3001)+'/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/entrypoint.sh"]

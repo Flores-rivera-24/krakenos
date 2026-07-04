@@ -78,3 +78,14 @@ export interface ConnectivityTestResult {
   latencyMs?: number;
   error?: string;
 }
+
+/**
+ * Estado de la comprobación de actualizaciones (US-116). `enabled` es `false`
+ * cuando no hay repo de GitHub configurado (sin llamadas externas).
+ */
+export interface UpdateStatus {
+  enabled: boolean;
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+}

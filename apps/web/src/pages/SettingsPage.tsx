@@ -12,6 +12,7 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
+import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -303,6 +304,8 @@ export function SettingsPage() {
                   )}
                 </CardContent>
               </Card>
+
+              <UpdateCard />
 
               {isAdmin && <SystemBackupCard />}
 

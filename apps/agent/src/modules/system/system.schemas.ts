@@ -93,6 +93,23 @@ export const systemInfoSchema = {
   },
 } as const;
 
+/** `GET /api/system/update-check` — estado de actualizaciones (US-116). */
+export const updateCheckSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        enabled: { type: 'boolean' },
+        current: { type: 'string' },
+        latest: { type: ['string', 'null'] },
+        updateAvailable: { type: 'boolean' },
+      },
+      required: ['enabled', 'current', 'latest', 'updateAvailable'],
+    },
+  },
+} as const;
+
 export const connectivityTestSchema = {
   response: {
     200: {

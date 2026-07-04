@@ -234,20 +234,17 @@ verifica permisos, pero no cifra).
    `/etc/krakenos/helper.conf`); `sudo`/`env_reset` impide que el agente lo amplíe. Tests del helper
    por caso permitido/denegado (incl. ámbito a medida).
 2. **US-75 · Cotas en ajustes en caliente (F5).** ✅ **Hecho.** Cotas en `config/settings-bounds.ts`
-   (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas al escribir y al leer. Máximo duro a `accessTokenTtl` (p. ej. ≤ 3600 s) y
-   rango válido a `loginRateLimit`; ignorar/clamp fuera de rango. Test de borde.
+   (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas al escribir y al leer, con test de borde.
 3. **US-76 · `TRUST_PROXY` seguro (F2).** ✅ **Hecho.** `parseTrustProxy` admite nº de hops o lista de
    IPs/CIDRs de proxies de confianza, y `trustProxyWarnings` avisa del `true` inseguro al arrancar.
-   Original: sustituir el booleano por número de hops o lista de proxies
-   de confianza de Fastify; documentar el riesgo de XFF. Test de `req.ip` con/ sin proxy.
+   Test de `req.ip` con/sin proxy.
 4. **US-77 · Lockout por cuenta + backoff en login (F3).** ✅ **Hecho.** `auth/login-lockout.ts`:
    contador por email (además del límite por IP) con backoff exponencial (30 s → tope 1 h), reset al
    primer login correcto y por inactividad; audita `auth.login_locked` (+ push). Aplica a cualquier
    email (anti-enumeración).
 5. **US-78 · Detección de reuso de refresh (F4).** ✅ **Hecho.** `RefreshToken.rotatedAt` marca los
    rotados; reusar un token rotado revoca toda la familia del usuario y audita `auth.refresh_reuse`
-   (+ push). Original: al detectar un hash ya rotado/usado, revocar toda
-   la familia del usuario y emitir evento de seguridad (push/auditoría).
+   (+ push).
 6. **US-79 · Gestión de secretos de integración (F8).** ✅ **Hecho (parcial).** `config/secret-permissions.ts`
    verifica al arrancar los permisos de `.env` y de la clave privada RS256 y **avisa** si son legibles por
    grupo/otros (recomienda `chmod 600`). **Pendiente como mejora futura:** almacén de secretos / cifrado en reposo.

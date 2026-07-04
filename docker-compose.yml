@@ -5,6 +5,9 @@
 # hace falta editar variables de entorno.
 services:
   krakenos:
+    # Por defecto construye la imagen localmente. Para usar la imagen publicada
+    # en GHCR (US-117), comenta `build` y descomenta `image` con tu repo:
+    #   image: ghcr.io/<tu-usuario>/krakenos:latest
     build: .
     image: krakenos:local
     container_name: krakenos
