@@ -39,15 +39,29 @@ describe('informes CSV (US-109)', () => {
     expect(res.body).toContain('aa:bb:cc:00:11:22');
   });
 
-  it('exporta la auditoría como CSV', async () => {
+  it('exporta la auditoría como CSV (solo admin)', async () => {
+    await app.prisma.auditLog.create({ data: { action: 'test.export', ip: '10.0.0.1' } });
+    const adminToken = signAccess(
+      app,
+      await seedUser(app, { email: 'admin-csv@krakenos.test', role: 'admin' }),
+    );
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/reports/audit.csv',
+      headers: authHeader(adminToken),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toContain('test.export');
+  });
+
+  it('un viewer NO puede descargar la auditoría por CSV (403, coherente con /api/audit)', async () => {
     await app.prisma.auditLog.create({ data: { action: 'test.export', ip: '10.0.0.1' } });
     const res = await app.inject({
       method: 'GET',
       url: '/api/reports/audit.csv',
-      headers: authHeader(token),
+      headers: authHeader(token), // token de viewer del beforeEach
     });
-    expect(res.statusCode).toBe(200);
-    expect(res.body).toContain('test.export');
+    expect(res.statusCode).toBe(403);
   });
 
   it('exporta el tráfico como CSV (cabecera aun sin datos)', async () => {

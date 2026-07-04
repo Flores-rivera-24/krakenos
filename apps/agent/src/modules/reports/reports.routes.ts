@@ -28,7 +28,10 @@ function sendCsv(reply: FastifyReply, filename: string, csv: string): FastifyRep
 export const reportsRoutes: FastifyPluginAsync<ReportsRoutesOpts> = async (app, opts) => {
   const { service } = opts;
 
-  app.get('/audit.csv', { preHandler: app.authenticate }, async (_req, reply) =>
+  // El log de auditoría es admin-only (igual que `GET /api/audit`): vuelca IPs,
+  // actorIds y eventos de seguridad. Antes bastaba `authenticate`, así que un
+  // `viewer` lo descargaba por CSV pese a tener 403 en la página de auditoría.
+  app.get('/audit.csv', { preHandler: app.requireRole('admin') }, async (_req, reply) =>
     sendCsv(reply, 'krakenos-auditoria.csv', await service.auditCsv()),
   );
 

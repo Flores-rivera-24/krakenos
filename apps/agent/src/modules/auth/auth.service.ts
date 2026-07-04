@@ -293,6 +293,13 @@ export class AuthService {
     if (!row) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
     }
+    // Revalida el estado aquí (no solo en `login`): este camino también lo usan el
+    // setup y ambos verificadores de 2FA. Sin esto, si un admin deshabilita la
+    // cuenta durante la ventana del `mfaToken` (120 s), el usuario completaría la
+    // passkey/código y obtendría una sesión completa para una cuenta ya bloqueada.
+    if (row.status === 'disabled') {
+      throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
+    }
     // Registra el último acceso efectivo (US-101): visible para el admin en la
     // gestión de usuarios. Se marca al emitir sesión (login/2FA/setup), no al refrescar.
     await this.app.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
@@ -363,10 +370,26 @@ export class AuthService {
       throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
     }
 
-    await this.app.prisma.refreshToken.update({
-      where: { id: stored.id },
+    // Revocación ATÓMICA y condicional (cierra el TOCTOU): solo un `refresh`
+    // concurrente puede pasar `revoked:false → true`. Si dos peticiones llegan a la
+    // vez con el mismo token robado+legítimo, una gana (count===1) y la otra ve
+    // count===0 → la tratamos como reuso (rota dos veces el mismo padre) y revocamos
+    // la familia + alertamos, en vez de emitir dos sesiones vivas en paralelo sin
+    // que salte la detección de reuso de US-78.
+    const claimed = await this.app.prisma.refreshToken.updateMany({
+      where: { id: stored.id, revoked: false },
       data: { revoked: true, rotatedAt: new Date() },
     });
+    if (claimed.count !== 1) {
+      const revoked = await this.revokeAllForUser(stored.userId);
+      this.app.audit({
+        action: 'auth.refresh_reuse',
+        userId: stored.userId,
+        detail: `rotación concurrente; sesiones revocadas: ${revoked}`,
+        ip,
+      });
+      throw new AuthError('AUTH_REFRESH_REUSE', 'Refresh token reutilizado; sesiones revocadas');
+    }
 
     return this.issueTokens(user);
   }

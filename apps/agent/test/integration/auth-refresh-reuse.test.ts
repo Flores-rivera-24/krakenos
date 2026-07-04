@@ -60,6 +60,26 @@ describe('detección de reuso de refresh (US-78, F4)', () => {
     expect(childAfter.json().code).toBe('AUTH_INVALID_TOKEN');
   });
 
+  it('dos refresh CONCURRENTES con el mismo token: uno gana, el otro se trata como reuso (cierra el TOCTOU)', async () => {
+    await seedUser(app, { email: 'race@krakenos.test', password: PASSWORD });
+    const parent = await login(app, 'race@krakenos.test');
+
+    // Ambas peticiones leen el token como no-revocado, pero la rotación es atómica
+    // (updateMany condicional): solo una puede pasar revoked:false→true.
+    const [a, b] = await Promise.all([refresh(app, parent), refresh(app, parent)]);
+    const codes = [a.statusCode, b.statusCode].sort();
+    expect(codes).toEqual([200, 401]);
+
+    const failed = a.statusCode === 401 ? a : b;
+    expect(failed.json().code).toBe('AUTH_REFRESH_REUSE');
+
+    // La familia queda revocada: la sesión que "ganó" tampoco puede refrescar de nuevo.
+    const winner = a.statusCode === 200 ? a : b;
+    const winnerChild = refreshCookie(winner);
+    const after = await refresh(app, winnerChild);
+    expect(after.statusCode).toBe(401);
+  });
+
   it('el reuso registra el evento de seguridad auth.refresh_reuse', async () => {
     await seedUser(app, { email: 'audit-reuse@krakenos.test', password: PASSWORD });
     const parent = await login(app, 'audit-reuse@krakenos.test');
