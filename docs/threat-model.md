@@ -403,10 +403,16 @@ servidor; validadores anti-inyección y helper por ámbito sólidos.
   `fast-jwt` 4.0.5 (bypass por HMAC vacío, confusión de algoritmo RS256↔HS256, cache confusion) y los de
   `fastify`/`fast-uri`. El audit deja de reportar críticos/altos en el stack HTTP de runtime (los restantes
   son tooling de dev: vitest/vite/tar). Verificado con arranque real (auth RS256 + cookie httpOnly + rotación).
+- **Filtrado de egress (SSRF).** ✅ `net/egress.ts`: política que **siempre** bloquea metadata de nube
+  (169.254.169.254 / IMDS), link-local y la dirección no especificada, pero **permite IPs privadas/loopback
+  por defecto** (son destinos LAN legítimos en esta app — no se puede bloquear sin romper la función). El
+  borde de configuración (`/api/integrations`) valida los campos `url`/`host`/`ip` con IP literal → un admin
+  no puede apuntar una integración a metadata (400 `EGRESS_BLOCKED`). `safeFetch` (valida la URL y cada
+  redirect) protege las peticiones salientes (update-check) y es la base para el filtrado por hostname en
+  runtime. Modo estricto opt-in `EGRESS_STRICT` (bloquea además loopback+privados) para multi-tenant (Fase 4).
 
-**Pendiente (esfuerzo mayor, documentado, NO bloqueante):**
-- **Filtrado de egress (SSRF)** para drivers/integraciones con URL configurable: aceptable hoy (solo admin),
-  imprescindible antes de multi-tenant (Fase 4).
+**Con esto, toda la remediación de código de las DOS auditorías (US-73 y la de 2026-07-04) queda cerrada.**
+El único pendiente es de despliegue: **US-86** (verificación e2e con hardware/root real, no es código).
 
 ---
 
