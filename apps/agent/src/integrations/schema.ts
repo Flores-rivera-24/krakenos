@@ -305,6 +305,30 @@ export function secretKeysFor(
   return out;
 }
 
+/**
+ * Tipo de campo (`url`/`host`/`ip`/…) de una clave de valor según el esquema, o
+ * `undefined` si no se conoce. Respeta el namespacing `backend.campo` de `iot`.
+ * Lo usa el filtrado de egress para saber qué valores son destinos de red.
+ */
+export function fieldTypeFor(
+  domain: IntegrationDomain,
+  valueKey: string,
+): IntegrationFieldType | undefined {
+  if (domain === 'iot') {
+    const dot = valueKey.indexOf('.');
+    if (dot < 0) return undefined;
+    const backend = valueKey.slice(0, dot);
+    const field = valueKey.slice(dot + 1);
+    return INTEGRATION_SCHEMA.iot[backend]?.fields.find((f) => f.key === field)?.type;
+  }
+  // Busca en todos los kinds del dominio (la clave puede venir sin el kind exacto).
+  for (const kindSchema of Object.values(INTEGRATION_SCHEMA[domain])) {
+    const field = kindSchema.fields.find((f) => f.key === valueKey);
+    if (field) return field.type;
+  }
+  return undefined;
+}
+
 /** ¿La clave de valor `valueKey` es un secreto según el esquema? */
 export function isSecretKey(domain: IntegrationDomain, kind: string, valueKey: string): boolean {
   if (domain === 'iot') {

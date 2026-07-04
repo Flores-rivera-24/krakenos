@@ -210,6 +210,15 @@ export const env = {
    */
   updateCheckRepo: process.env.UPDATE_CHECK_REPO || null,
 
+  /**
+   * Filtrado de egress estricto (SSRF, opt-in). Por defecto solo se bloquean
+   * metadata de nube y link-local (las IPs privadas/loopback son destinos LAN
+   * legítimos). Con `EGRESS_STRICT=true` se bloquean **además** loopback y los
+   * rangos privados: pensado para despliegues endurecidos / multi-tenant (Fase 4)
+   * donde el agente no debe alcanzar la red interna del host. Ver `src/net/egress.ts`.
+   */
+  egressStrict: process.env.EGRESS_STRICT === 'true',
+
   driver: {
     kind: driverKind,
     host: process.env.DRIVER_HOST || undefined,

@@ -97,6 +97,41 @@ describe('/api/integrations — API de configuración (US-142)', () => {
     expect((res.json() as { code: string }).code).toBe('UNKNOWN_KIND');
   });
 
+  it('PUT rechaza un host de metadata de nube (SSRF) → 400 EGRESS_BLOCKED', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/integrations/driver',
+      headers: authHeader(adminToken),
+      payload: {
+        kind: 'openwrt',
+        config: { host: '169.254.169.254', username: 'root', password: 'x', sshPort: 22 },
+      },
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as { code: string }).code).toBe('EGRESS_BLOCKED');
+  });
+
+  it('POST test también rechaza un destino de metadata → 400 EGRESS_BLOCKED', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/integrations/dns/test',
+      headers: authHeader(adminToken),
+      payload: { kind: 'pihole', config: { baseUrl: 'http://169.254.169.254', password: 'x' } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect((res.json() as { code: string }).code).toBe('EGRESS_BLOCKED');
+  });
+
+  it('PUT permite un destino de LAN privada por defecto (no rompe la función principal)', async () => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/api/integrations/dns',
+      headers: authHeader(adminToken),
+      payload: { kind: 'pihole', config: { baseUrl: 'http://192.168.1.10', password: 'x' } },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
   it('POST /:domain/test con mock → ok:true', async () => {
     const res = await app.inject({
       method: 'POST',

@@ -4,6 +4,8 @@
  * no hace ninguna llamada externa. Fetcher inyectable (mock-first) + caché de 1 h.
  */
 
+import { safeFetch } from '../net/egress.js';
+
 export interface UpdateStatus {
   /** ¿Está activada la comprobación (hay repo configurado)? */
   enabled: boolean;
@@ -42,7 +44,9 @@ export function isNewer(a: string, b: string): boolean {
 }
 
 const defaultFetch: UpdateFetch = (url) =>
-  fetch(url, {
+  // `safeFetch` valida la URL y **cada redirect** contra la política de egress:
+  // ni la URL de GitHub ni un 3xx pueden reapuntar a metadata/interno (SSRF).
+  safeFetch(url, {
     headers: { 'User-Agent': 'KrakenOS', Accept: 'application/vnd.github+json' },
     // Sin timeout, una conexión que GitHub deje colgada retiene el handler
     // indefinidamente. 10 s de tope; el `catch` de `fetchLatest` lo degrada a

@@ -1,12 +1,14 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type {
   IntegrationConfigValues,
   IntegrationDomain,
   SaveIntegrationConfigRequest,
 } from '@krakenos/types';
 import { env } from '../../config/env.js';
+import { assertConfigEgressAllowed } from '../../integrations/config-egress.js';
 import type { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
 import type { IntegrationRuntime } from '../../integrations/runtime.js';
+import { EgressBlockedError, type EgressPolicy } from '../../net/egress.js';
 import {
   INTEGRATION_DOMAINS,
   getKindSchema,
@@ -96,8 +98,37 @@ async function saveDomainConfig(
   await store.save('iot', [...backends].join(','), mergedValues, enabled);
 }
 
+/**
+ * Valida los campos de red de una config contra la política de egress. Si algún
+ * destino está prohibido, responde 400 y devuelve la reply (señal de "cortar");
+ * si todo está permitido, devuelve `null` y el llamante sigue.
+ */
+async function checkEgress(
+  domain: IntegrationDomain,
+  config: IntegrationConfigValues,
+  policy: EgressPolicy,
+  reply: FastifyReply,
+): Promise<FastifyReply | null> {
+  try {
+    await assertConfigEgressAllowed(domain, config, policy);
+    return null;
+  } catch (err) {
+    if (err instanceof EgressBlockedError) {
+      return reply.code(400).send({
+        code: 'EGRESS_BLOCKED',
+        message: `Destino de red no permitido: ${err.message}`,
+      });
+    }
+    throw err;
+  }
+}
+
 export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = async (app, opts) => {
   const { runtime, store } = opts;
+
+  // Política de egress: por defecto solo bloquea metadata/link-local; con
+  // EGRESS_STRICT también loopback + rangos privados (multi-tenant, Fase 4).
+  const egressPolicy: EgressPolicy = { blockPrivate: env.egressStrict };
 
   // Lectura: cualquier usuario autenticado. Escritura: solo admin.
   app.addHook('preHandler', app.authenticate);
@@ -132,6 +163,8 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
           .code(400)
           .send({ code: 'UNKNOWN_KIND', message: `Integración desconocida para ${domain}: ${kind}` });
       }
+      const blocked = await checkEgress(domain, config, egressPolicy, reply);
+      if (blocked) return blocked;
       await saveDomainConfig(store, domain, kind, config, enabled ?? true);
       await runtime.reconfigure(domain);
       app.audit({ action: 'integration.save', userId: req.user.sub, detail: `${domain}:${kind}`, ip: req.ip });
@@ -151,6 +184,8 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
           .code(400)
           .send({ code: 'UNKNOWN_KIND', message: `Integración desconocida para ${domain}: ${kind}` });
       }
+      const blocked = await checkEgress(domain, config, egressPolicy, reply);
+      if (blocked) return blocked;
       const values = await mergeStoredSecrets(store, domain, kind, config);
       return testConnection(domain, { kind, values });
     },
