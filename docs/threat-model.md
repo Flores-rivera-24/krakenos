@@ -398,9 +398,13 @@ servidor; validadores anti-inyección y helper por ámbito sólidos.
 | 12 | 🟡 Baja | Cookie sin `Secure` en prod sin TLS/proxy (silencioso) | Aviso al arrancar |
 | 13 | 🟠 Media | **Heatmap de cobertura congela el event loop** (síncrono O(celdas·APs·paredes), hasta ~250k celdas): cualquier autenticado bloqueaba el proceso decenas de segundos pidiendo el heatmap de un plano grande | Cómputo **asíncrono cooperativo** (cede el loop cada 32 filas) + **caché content-addressed** con single-flight y límite de concurrencia. Verificado empíricamente: 24 s de bloqueo del loop → 0 (responsivo durante el cálculo) |
 
+**Resuelto después (2026-07-04):**
+- **Migración a Fastify 5 + `@fastify/jwt` 10 (`fast-jwt` 6.2.4).** ✅ Elimina de raíz los CVE críticos de
+  `fast-jwt` 4.0.5 (bypass por HMAC vacío, confusión de algoritmo RS256↔HS256, cache confusion) y los de
+  `fastify`/`fast-uri`. El audit deja de reportar críticos/altos en el stack HTTP de runtime (los restantes
+  son tooling de dev: vitest/vite/tar). Verificado con arranque real (auth RS256 + cookie httpOnly + rotación).
+
 **Pendiente (esfuerzo mayor, documentado, NO bloqueante):**
-- **Actualizar `@fastify/jwt`→10 / Fastify 4→5** para arrastrar `fast-jwt` parcheado (defensa en profundidad;
-  el bypass activo ya está cerrado por config). Migración coordinada de todos los `@fastify/*`.
 - **Filtrado de egress (SSRF)** para drivers/integraciones con URL configurable: aceptable hoy (solo admin),
   imprescindible antes de multi-tenant (Fase 4).
 
