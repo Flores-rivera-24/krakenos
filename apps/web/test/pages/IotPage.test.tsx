@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn() }));
+const apiMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), put: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() }));
@@ -60,8 +60,11 @@ function setRole(role: 'admin' | 'viewer') {
 
 describe('IotPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue(DEVICES);
+    apiMock.get.mockReset().mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+    );
     apiMock.patch.mockReset().mockResolvedValue(DEVICES[0]);
+    apiMock.put.mockReset().mockResolvedValue(undefined);
     socketMock.on.mockReset();
     socketMock.off.mockReset();
     useConnectionStore.setState({ status: 'connected' });
@@ -74,6 +77,42 @@ describe('IotPage', () => {
     await waitFor(() => expect(screen.getByText('TV')).toBeInTheDocument());
     expect(screen.getByText('Temperatura')).toBeInTheDocument();
     expect(screen.getByText('°C')).toBeInTheDocument();
+  });
+
+  it('un admin asigna un IoT a una habitación (PUT /rooms/assign, US-165)', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/iot/devices') return Promise.resolve(DEVICES);
+      if (path === '/rooms')
+        return Promise.resolve([
+          {
+            id: 'r1',
+            name: 'Salón',
+            icon: 'living',
+            order: 0,
+            createdAt: '',
+            deviceCount: 0,
+            iotCount: 0,
+            controllableCount: 0,
+            onCount: 0,
+            anyUnreachable: false,
+            iotDeviceIds: [],
+          },
+        ]);
+      return Promise.resolve([]);
+    });
+    render(<IotPage />);
+    await screen.findByText('TV');
+
+    const select = await screen.findByLabelText('Habitación', { selector: '#iot-room-plug-tv' });
+    fireEvent.change(select, { target: { value: 'r1' } });
+    await waitFor(() =>
+      expect(apiMock.put).toHaveBeenCalledWith('/rooms/assign', {
+        kind: 'iot',
+        ref: 'plug-tv',
+        roomId: 'r1',
+      }),
+    );
   });
 
   it('un admin puede alternar un enchufe (PATCH)', async () => {

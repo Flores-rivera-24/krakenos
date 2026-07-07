@@ -47,6 +47,7 @@ export class InventoryService {
       pausedUntil: row.pausedUntil ? row.pausedUntil.toISOString() : null,
       online: row.online,
       vlanTag: row.vlanTag,
+      roomId: row.roomId,
       sources: this.parseSources(row.sources, row.mac),
       firstSeen: row.firstSeen.toISOString(),
       lastSeen: row.lastSeen.toISOString(),
@@ -181,6 +182,25 @@ export class InventoryService {
     const row = await this.app.prisma.device.update({
       where: { id },
       data: { vlanTag },
+    });
+
+    const device = this.toDevice(row);
+    this.app.io.emit('inventory:device-updated', device);
+    return device;
+  }
+
+  /**
+   * Asigna (o quita, con `null`) la habitación de un dispositivo de red (US-165)
+   * y emite el cambio. Reusa el mapeo/emisión de inventario para que la vista se
+   * actualice sola. `RoomService` valida antes que la habitación exista.
+   */
+  async setRoom(id: string, roomId: string | null): Promise<Device | null> {
+    const existing = await this.app.prisma.device.findUnique({ where: { id } });
+    if (!existing) return null;
+
+    const row = await this.app.prisma.device.update({
+      where: { id },
+      data: { roomId },
     });
 
     const device = this.toDevice(row);

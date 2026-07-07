@@ -60,6 +60,58 @@ jobs:
         run: pnpm audit --audit-level high
         continue-on-error: true
 
+  # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
+  # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate JWT keys (agent)
+        run: bash scripts/gen-keys.sh
+        working-directory: apps/agent
+
+      - name: Generate Prisma client
+        run: pnpm --filter @krakenos/agent prisma:generate
+
+      # El agente sirve apps/web/dist; e2e arranca el build, no el dev server.
+      - name: Build
+        run: pnpm build
+
+      # Chromium + sus dependencias del sistema (libnspr4/libnss3/…): en el runner
+      # de GitHub se instalan con --with-deps (apt vía sudo).
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e
+        run: pnpm test:e2e
+
+      # Trazas/vídeo/screenshots (solo se generan al fallar) como artefactos.
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+          retention-days: 7
+
   # Escaneo de secretos (gitleaks, BLOQUEANTE) + SAST (semgrep). US-92.
   # Job aparte para que corra en paralelo a build-test y falle de forma aislada.
   security:

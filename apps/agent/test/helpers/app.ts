@@ -22,6 +22,9 @@ import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { accessRoutes } from '../../src/modules/access/access.routes.js';
 import { AccessScheduleService } from '../../src/modules/access/access.service.js';
+import { roomsRoutes } from '../../src/modules/rooms/rooms.routes.js';
+import { RoomService } from '../../src/modules/rooms/rooms.service.js';
+import { favoritesRoutes } from '../../src/modules/favorites/favorites.routes.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
@@ -119,6 +122,15 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/access',
       service: new AccessScheduleService(app, driver),
     });
+    // Habitaciones/grupos (US-165) + favoritos (US-170). El `RoomService` comparte
+    // el mismo `MockIotManager` que las rutas IoT para que la acción de grupo y el
+    // estado agregado reflejen los mismos dispositivos.
+    const sharedIot = new MockIotManager();
+    await app.register(roomsRoutes, {
+      prefix: '/api/rooms',
+      service: new RoomService(app, sharedIot, inventoryService),
+    });
+    await app.register(favoritesRoutes, { prefix: '/api/favorites' });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
@@ -173,7 +185,10 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.pushSubscription.deleteMany();
   await app.prisma.webAuthnCredential.deleteMany();
   await app.prisma.backupCode.deleteMany();
+  await app.prisma.favorite.deleteMany();
+  await app.prisma.iotRoomMember.deleteMany();
   await app.prisma.device.deleteMany();
+  await app.prisma.room.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample

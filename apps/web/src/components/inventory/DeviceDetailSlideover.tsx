@@ -2,6 +2,7 @@ import type {
   Device,
   DeviceTrafficStats,
   DeviceType,
+  RoomWithState,
   UpdateDeviceRequest,
   VlanWithCount,
 } from '@krakenos/types';
@@ -11,6 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AccessSchedules } from '@/components/inventory/AccessSchedules';
 import { PauseInternet } from '@/components/inventory/PauseInternet';
+import { RoomSelect } from '@/components/rooms/RoomSelect';
+import { assignRoom, listRooms } from '@/lib/rooms';
 import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
 import { Slideover } from '@/components/ui/slideover';
 import { Sparkline } from '@/components/ui/sparkline';
@@ -50,6 +53,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [vlanTag, setVlanTag] = useState<number | null>(device.vlanTag);
   const [vlanBusy, setVlanBusy] = useState(false);
   const [traffic, setTraffic] = useState<DeviceTrafficStats | null>(null);
+  const [rooms, setRooms] = useState<RoomWithState[]>([]);
+  const [roomId, setRoomId] = useState<string | null>(device.roomId);
+  const [roomBusy, setRoomBusy] = useState(false);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   // Carga las VLANs disponibles para el selector (best-effort).
@@ -59,6 +65,28 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       .then(setVlans)
       .catch(() => setVlans([]));
   }, []);
+
+  // Habitaciones para el selector de asignación (US-165, best-effort).
+  useEffect(() => {
+    void listRooms()
+      .then(setRooms)
+      .catch(() => setRooms([]));
+  }, []);
+
+  const assignToRoom = async (next: string | null) => {
+    const previous = roomId;
+    setRoomId(next); // optimista
+    setRoomBusy(true);
+    try {
+      await assignRoom({ kind: 'device', ref: device.id, roomId: next });
+      toast.success('Habitación actualizada');
+    } catch (err) {
+      setRoomId(previous); // revertir: no mentir sobre la asignación real
+      toast.error(describeError(err, 'No se pudo asignar la habitación'));
+    } finally {
+      setRoomBusy(false);
+    }
+  };
 
   // Histórico de tráfico de la última hora para este dispositivo (US-46).
   useEffect(() => {
@@ -248,6 +276,16 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             maxLength={500}
           />
         </div>
+
+        {isAdmin && (
+          <RoomSelect
+            id="d-room"
+            rooms={rooms}
+            value={roomId}
+            disabled={roomBusy}
+            onChange={(next) => void assignToRoom(next)}
+          />
+        )}
 
         {isAdmin && (
           <div className="space-y-2">

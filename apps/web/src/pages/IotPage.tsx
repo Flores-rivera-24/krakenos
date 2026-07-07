@@ -1,10 +1,13 @@
-import type { IotDevice } from '@krakenos/types';
+import type { IotDevice, RoomWithState } from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { RoomSelect } from '@/components/rooms/RoomSelect';
 import { buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FavoriteButton } from '@/components/ui/favorite-button';
 import { HelpHint } from '@/components/ui/help-hint';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { assignRoom, listRooms } from '@/lib/rooms';
 import { ProductArt, iotKindToArtKind } from '@/components/ui/product-art';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -16,12 +19,25 @@ import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
+import { useFavoritesStore } from '@/store/favorites.store';
 
 /** "IoT" no tiene clave de glosario propia: se explica en línea. */
 const IOT_HELP =
   'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.';
 
-function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }) {
+function DeviceCard({
+  device,
+  isAdmin,
+  rooms,
+  roomId,
+  onAssignRoom,
+}: {
+  device: IotDevice;
+  isAdmin: boolean;
+  rooms: RoomWithState[];
+  roomId: string | null;
+  onAssignRoom: (deviceId: string, roomId: string | null) => void;
+}) {
   const [draft, setDraft] = useState<number | null>(null);
 
   // El on/off va por `OptimisticSwitch`: se mueve ya y revierte si falla (US-96).
@@ -54,15 +70,18 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
           </span>
           <CardTitle className="text-sm text-foreground">{device.name}</CardTitle>
         </div>
-        {device.kind !== 'sensor' && (
-          <OptimisticSwitch
-            checked={device.on ?? false}
-            onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
-            disabled={!isAdmin}
-            errorMessage={`No se pudo cambiar ${device.name}`}
-            aria-label={`Encender ${device.name}`}
-          />
-        )}
+        <div className="flex items-center gap-1">
+          <FavoriteButton kind="iot" ref_={device.id} label={device.name} />
+          {device.kind !== 'sensor' && (
+            <OptimisticSwitch
+              checked={device.on ?? false}
+              onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
+              disabled={!isAdmin}
+              errorMessage={`No se pudo cambiar ${device.name}`}
+              aria-label={`Encender ${device.name}`}
+            />
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <p className="mb-2 text-xs text-muted-foreground">{device.room ?? 'Sin estancia'}</p>
@@ -110,6 +129,18 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
             />
           </div>
         )}
+
+        {/* Asignación a habitación (US-165), admin-only. */}
+        {isAdmin && rooms.length > 0 && (
+          <div className="mt-3">
+            <RoomSelect
+              id={`iot-room-${device.id}`}
+              rooms={rooms}
+              value={roomId}
+              onChange={(next) => onAssignRoom(device.id, next)}
+            />
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -118,12 +149,58 @@ function DeviceCard({ device, isAdmin }: { device: IotDevice; isAdmin: boolean }
 export function IotPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [devices, setDevices] = useState<Record<string, IotDevice>>({});
+  const [rooms, setRooms] = useState<RoomWithState[]>([]);
+  const [iotRoom, setIotRoom] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Deriva el mapa deviceId→roomId desde el estado agregado de las habitaciones.
+  const buildRoomMap = (list: RoomWithState[]): Record<string, string> => {
+    const map: Record<string, string> = {};
+    for (const room of list) {
+      for (const id of room.iotDeviceIds) map[id] = room.id;
+    }
+    return map;
+  };
+
+  // Asigna un IoT a una habitación (optimista con reversión, US-96/US-165).
+  const assignIotRoom = async (deviceId: string, roomId: string | null) => {
+    const previous = iotRoom[deviceId] ?? null;
+    setIotRoom((prev) => {
+      const next = { ...prev };
+      if (roomId) next[deviceId] = roomId;
+      else delete next[deviceId];
+      return next;
+    });
+    try {
+      await assignRoom({ kind: 'iot', ref: deviceId, roomId });
+      toast.success('Habitación actualizada');
+    } catch (err) {
+      setIotRoom((prev) => {
+        const next = { ...prev };
+        if (previous) next[deviceId] = previous;
+        else delete next[deviceId];
+        return next;
+      });
+      toast.error(describeError(err, 'No se pudo asignar la habitación'));
+    }
+  };
 
   useEffect(() => {
     let active = true;
     const socket = getSocket();
+
+    // Favoritos para que la estrella de cada tarjeta refleje el estado real (US-170).
+    void useFavoritesStore.getState().load();
+
+    // Habitaciones para el selector de asignación IoT (US-165, best-effort).
+    void listRooms()
+      .then((list) => {
+        if (!active) return;
+        setRooms(list);
+        setIotRoom(buildRoomMap(list));
+      })
+      .catch(() => active && setRooms([]));
 
     void api
       .get<IotDevice[]>('/iot/devices')
@@ -191,7 +268,14 @@ export function IotPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((d) => (
-            <DeviceCard key={d.id} device={d} isAdmin={isAdmin} />
+            <DeviceCard
+              key={d.id}
+              device={d}
+              isAdmin={isAdmin}
+              rooms={rooms}
+              roomId={iotRoom[d.id] ?? null}
+              onAssignRoom={(id, roomId) => void assignIotRoom(id, roomId)}
+            />
           ))}
         </div>
       )}

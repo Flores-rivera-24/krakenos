@@ -1,0 +1,6 @@
+# Artefactos y estado efímero de la suite e2e (US-189)
+.state.json
+.server.pid
+.auth/
+/playwright-report/
+/test-results/

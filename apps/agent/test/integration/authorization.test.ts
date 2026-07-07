@@ -60,6 +60,13 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/access/resume', payload: { mac: 'aa:bb:cc:dd:ee:ff' } },
   // reglas de alerta (US-112)
   { method: 'PATCH', url: '/api/alerts/rules/device.block', payload: { email: true } },
+
+  // habitaciones y grupos (US-165)
+  { method: 'POST', url: '/api/rooms', payload: { name: 'Salón' } },
+  { method: 'PATCH', url: '/api/rooms/x', payload: { name: 'Salón' } },
+  { method: 'DELETE', url: '/api/rooms/x' },
+  { method: 'PUT', url: '/api/rooms/assign', payload: { kind: 'iot', ref: 'light-salon', roomId: null } },
+  { method: 'POST', url: '/api/rooms/x/action', payload: { on: false } },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)
@@ -108,6 +115,10 @@ const AUTHED_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/webauthn/backup-codes' },
   { method: 'PATCH', url: '/api/webauthn/credentials/x', payload: { name: 'Nuevo' } },
   { method: 'DELETE', url: '/api/webauthn/credentials/x' },
+  // favoritos: gestionar los propios (US-170)
+  { method: 'POST', url: '/api/favorites', payload: { kind: 'iot', ref: 'light-salon' } },
+  { method: 'DELETE', url: '/api/favorites/x' },
+  { method: 'PUT', url: '/api/favorites/order', payload: { ids: [] } },
   // auth: gestionar las propias sesiones (US-41)
   { method: 'DELETE', url: '/api/auth/sessions/x' },
   // Body {} válido: la ruta valida un objeto antes de autenticar; sin cuerpo daría 400.

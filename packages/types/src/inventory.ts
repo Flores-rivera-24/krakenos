@@ -38,6 +38,8 @@ export interface Device {
   online: boolean;
   /** VLAN (tag 802.1Q) a la que está asignado, o `null` si ninguna. */
   vlanTag: number | null;
+  /** Habitación asignada (US-165), o `null` si ninguna. */
+  roomId: string | null;
   sources: DiscoverySource[];
   firstSeen: IsoDateTime;
   lastSeen: IsoDateTime;

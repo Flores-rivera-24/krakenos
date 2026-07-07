@@ -52,7 +52,11 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
     res = await fetch(`/api${path}`, {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json' },
+      // Solo declara JSON cuando hay cuerpo: `refresh`/`logout` van sin cuerpo (el
+      // token viaja en la cookie), y un `Content-Type: application/json` con body
+      // vacío hace que Fastify responda 400 — rompía el bootstrap de sesión al
+      // recargar (US-91). Detectado por e2e (US-189).
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
