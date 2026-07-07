@@ -73,6 +73,20 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'PATCH', url: '/api/scenes/x', payload: { name: 'Noche' } },
   { method: 'DELETE', url: '/api/scenes/x' },
   { method: 'POST', url: '/api/scenes/x/run' },
+
+  // horarios IoT (US-168)
+  {
+    method: 'POST',
+    url: '/api/iot-schedules',
+    payload: {
+      name: 'Riego',
+      days: [1],
+      time: { kind: 'fixed', minute: 420 },
+      target: { type: 'device', deviceId: 'plug-cafetera', on: true },
+    },
+  },
+  { method: 'PATCH', url: '/api/iot-schedules/x', payload: { enabled: false } },
+  { method: 'DELETE', url: '/api/iot-schedules/x' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)

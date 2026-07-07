@@ -48,6 +48,8 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   accessTokenTtl: '900',
   loginRateLimit: '10',
   theme: 'dark',
+  homeLatitude: '',
+  homeLongitude: '',
 };
 
 /**

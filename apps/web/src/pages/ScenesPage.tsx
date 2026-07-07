@@ -1,6 +1,7 @@
 import type { IotDevice, Scene, SceneAction, SceneIcon } from '@krakenos/types';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { IotSchedulesSection } from '@/components/scenes/IotSchedulesSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -416,6 +417,11 @@ export function ScenesPage() {
           ))}
         </div>
       )}
+
+      {/* Programación por horario (US-168): luces/enchufes/escenas a hora fija o solar. */}
+      <div className="border-t border-kr-muted pt-6">
+        <IotSchedulesSection devices={devices} scenes={scenes ?? []} isAdmin={isAdmin} />
+      </div>
 
       {editorOpen && (
         <SceneEditor
