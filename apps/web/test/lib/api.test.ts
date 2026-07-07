@@ -49,6 +49,29 @@ describe('cliente API', () => {
     expect(await api.del('/inventory/devices/x/block')).toBeUndefined();
   });
 
+  it('NO envía Content-Type en un POST sin cuerpo (evita el 400 de body vacío, US-189)', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.post('/inventory/devices/x/block'); // bloquear: sin cuerpo
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined();
+    expect(init.body).toBeUndefined();
+  });
+
+  it('SÍ envía Content-Type JSON cuando hay cuerpo', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.patch('/inventory/devices/x', { label: 'Salón' });
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+  });
+
   it('lanza ApiRequestError con status y body en error', async () => {
     useAuthStore.setState({ tokens: TOKENS });
     vi.stubGlobal(

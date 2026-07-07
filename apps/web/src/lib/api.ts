@@ -26,7 +26,10 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
     // Envía la cookie httpOnly del refresh token cuando aplica (logout/revoke, US-91).
     credentials: 'same-origin',
     headers: {
-      'Content-Type': 'application/json',
+      // Solo declara JSON cuando **hay** cuerpo: un POST/DELETE sin cuerpo pero con
+      // `Content-Type: application/json` hace que Fastify rechace el body vacío con
+      // 400 (bloquear/desbloquear, rescan, logout…). Detectado por e2e (US-189).
+      ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
       ...(token && !anonymous ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
