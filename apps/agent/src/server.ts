@@ -36,6 +36,8 @@ import { AccessScheduleService } from './modules/access/access.service.js';
 import { roomsRoutes } from './modules/rooms/rooms.routes.js';
 import { RoomService } from './modules/rooms/rooms.service.js';
 import { favoritesRoutes } from './modules/favorites/favorites.routes.js';
+import { scenesRoutes } from './modules/scenes/scenes.routes.js';
+import { SceneService } from './modules/scenes/scenes.service.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
@@ -189,6 +191,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(roomsRoutes, { prefix: '/api/rooms', service: roomService });
   // Favoritos por usuario (US-170): acceso rápido a lo cotidiano en el dashboard.
   await app.register(favoritesRoutes, { prefix: '/api/favorites' });
+  // Escenas de un toque (US-166): deja N dispositivos IoT en un estado con un toque.
+  const sceneService = new SceneService(app, iot);
+  await app.register(scenesRoutes, { prefix: '/api/scenes', service: sceneService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });

@@ -13,6 +13,7 @@ navegador real".
 | 2 | **Login** por formulario → dashboard | auth, sesión |
 | 3 | **Crear una habitación** (US-165) | escritura del hogar, slideover |
 | 4 | **Escanear inventario + bloquear** un dispositivo | driver mock, escritura, auditoría |
+| 5 | **Crear una escena** desde plantilla y **ejecutarla** (US-166) | escenas, IoT mock, ejecución |
 
 Un **bug real** encontrado por esta suite: los `POST`/`DELETE` **sin cuerpo** enviaban
 `Content-Type: application/json`, y Fastify rechaza el JSON vacío con **400** — rompía
@@ -54,7 +55,7 @@ screenshots, por `trace: 'retain-on-failure'`).
   - **2FA con passkey** (virtual authenticator vía CDP WebAuthn): requiere cablear la
     ceremonia registro+login con un autenticador virtual; se activará con el endurecimiento
     de WebAuthn en e2e.
-  - **Escenas** (US-166): la UI aún no existe; el flujo se añade cuando se implemente.
+  - (El flujo de **escenas** de US-166 ya está **activo**; salió de cuarentena al llegar su UI.)
 
 Si un test se vuelve flaky, se marca `test.fixme` con un comentario del motivo y un issue de
 seguimiento, en vez de dejarlo parpadeando en rojo.

@@ -1,15 +1,19 @@
-import type { Device, Favorite, IotDevice, RoomWithState } from '@krakenos/types';
+import type { Device, Favorite, IotDevice, RoomWithState, Scene } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { roomGlyph } from '@/lib/rooms';
+import { runScene, sceneGlyph } from '@/lib/scenes';
 import { getSocket } from '@/lib/socket';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
+import { toast } from '@/store/toast.store';
 
 /** Un favorito resuelto contra el estado vivo, listo para pintar el tile. */
 interface ResolvedTile {
@@ -18,6 +22,8 @@ interface ResolvedTile {
   glyph: string;
   /** Si es un IoT controlable, su estado on + acción de toggle. */
   iot?: { id: string; on: boolean };
+  /** Si es una escena, su id para ejecutarla de un toque. */
+  sceneId?: string;
   /** Destino del enlace (ir a la sección relevante). */
   to: string;
   online: boolean;
@@ -28,6 +34,7 @@ function resolveTiles(
   iot: Map<string, IotDevice>,
   devices: Map<string, Device>,
   rooms: Map<string, RoomWithState>,
+  scenes: Map<string, Scene>,
 ): ResolvedTile[] {
   const tiles: ResolvedTile[] = [];
   for (const fav of favorites) {
@@ -62,6 +69,17 @@ function resolveTiles(
         to: '/rooms',
         online: !r.anyUnreachable,
       });
+    } else if (fav.kind === 'scene') {
+      const s = scenes.get(fav.ref);
+      if (!s) continue;
+      tiles.push({
+        key: fav.id,
+        label: s.name,
+        glyph: sceneGlyph(s.icon),
+        sceneId: s.id,
+        to: '/scenes',
+        online: true,
+      });
     }
   }
   return tiles;
@@ -79,24 +97,27 @@ export function QuickActionsWidget() {
   const [iot, setIot] = useState<Map<string, IotDevice>>(new Map());
   const [devices, setDevices] = useState<Map<string, Device>>(new Map());
   const [rooms, setRooms] = useState<Map<string, RoomWithState>>(new Map());
+  const [scenes, setScenes] = useState<Map<string, Scene>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [runningScene, setRunningScene] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
-    const byId = <T extends { id?: string; mac?: string }>(list: T[], key: (t: T) => string) =>
-      new Map(list.map((t) => [key(t), t]));
+    const byId = <T,>(list: T[], key: (t: T) => string) => new Map(list.map((t) => [key(t), t]));
 
     void Promise.all([
       loadFavorites(),
       api.get<IotDevice[]>('/iot/devices').catch(() => [] as IotDevice[]),
       api.get<Device[]>('/inventory/devices').catch(() => [] as Device[]),
       api.get<RoomWithState[]>('/rooms').catch(() => [] as RoomWithState[]),
+      api.get<Scene[]>('/scenes').catch(() => [] as Scene[]),
     ])
-      .then(([, iotList, devList, roomList]) => {
+      .then(([, iotList, devList, roomList, sceneList]) => {
         if (!active) return;
         setIot(byId(iotList, (d) => d.id));
         setDevices(byId(devList, (d) => d.id));
         setRooms(byId(roomList, (r) => r.id));
+        setScenes(byId(sceneList, (s) => s.id));
       })
       .finally(() => active && setLoading(false));
 
@@ -110,7 +131,20 @@ export function QuickActionsWidget() {
     };
   }, [loadFavorites]);
 
-  const tiles = resolveTiles(favorites, iot, devices, rooms);
+  const runFavoriteScene = async (id: string, name: string) => {
+    setRunningScene(id);
+    try {
+      const result = await runScene(id);
+      if (result.failed.length > 0) toast.error(`${result.applied} ok, ${result.failed.length} fallo(s)`);
+      else toast.success(`Escena «${name}» activada`);
+    } catch (err) {
+      toast.error(describeError(err, 'No se pudo activar la escena'));
+    } finally {
+      setRunningScene(null);
+    }
+  };
+
+  const tiles = resolveTiles(favorites, iot, devices, rooms, scenes);
 
   return (
     <Card>
@@ -151,6 +185,16 @@ export function QuickActionsWidget() {
                     errorMessage={`No se pudo cambiar ${tile.label}`}
                     aria-label={`Encender ${tile.label}`}
                   />
+                )}
+                {tile.sceneId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!isAdmin || runningScene === tile.sceneId}
+                    onClick={() => void runFavoriteScene(tile.sceneId!, tile.label)}
+                  >
+                    {runningScene === tile.sceneId ? 'Activando…' : 'Activar'}
+                  </Button>
                 )}
               </li>
             ))}

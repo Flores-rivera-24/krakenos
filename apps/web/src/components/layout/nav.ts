@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
+  Clapperboard,
   Cpu,
   Gauge,
   Globe,
@@ -44,6 +45,7 @@ const WIFI: NavItem = { to: '/wifi', label: 'Red WiFi', icon: Wifi };
 const COVERAGE: NavItem = { to: '/coverage', label: 'Cobertura WiFi', icon: Radar };
 const TRAFFIC: NavItem = { to: '/traffic', label: 'Tráfico', icon: Activity };
 const ROOMS: NavItem = { to: '/rooms', label: 'Habitaciones', icon: Home };
+const SCENES: NavItem = { to: '/scenes', label: 'Escenas', icon: Clapperboard };
 const IOT: NavItem = { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' };
 const CAMERAS: NavItem = { to: '/cameras', label: 'Cámaras', icon: Video };
 const VPN: NavItem = { to: '/vpn', label: 'VPN', icon: KeyRound };
@@ -61,7 +63,7 @@ const SETTINGS: NavItem = { to: '/settings', label: 'Ajustes', icon: Settings };
 export const NAV_GROUPS: NavGroup[] = [
   { label: 'General', items: [CONNECT, DASHBOARD] },
   { label: 'Red', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
-  { label: 'Hogar', items: [ROOMS, IOT, CAMERAS] },
+  { label: 'Hogar', items: [ROOMS, SCENES, IOT, CAMERAS] },
   { label: 'Red avanzada', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
   { label: 'Sistema', items: [SETTINGS] },
 ];

@@ -25,6 +25,8 @@ import { AccessScheduleService } from '../../src/modules/access/access.service.j
 import { roomsRoutes } from '../../src/modules/rooms/rooms.routes.js';
 import { RoomService } from '../../src/modules/rooms/rooms.service.js';
 import { favoritesRoutes } from '../../src/modules/favorites/favorites.routes.js';
+import { scenesRoutes } from '../../src/modules/scenes/scenes.routes.js';
+import { SceneService } from '../../src/modules/scenes/scenes.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
@@ -131,6 +133,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       service: new RoomService(app, sharedIot, inventoryService),
     });
     await app.register(favoritesRoutes, { prefix: '/api/favorites' });
+    await app.register(scenesRoutes, {
+      prefix: '/api/scenes',
+      service: new SceneService(app, sharedIot),
+    });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
@@ -189,6 +195,8 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.iotRoomMember.deleteMany();
   await app.prisma.device.deleteMany();
   await app.prisma.room.deleteMany();
+  await app.prisma.scene.deleteMany();
+  await app.prisma.iotSchedule.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample

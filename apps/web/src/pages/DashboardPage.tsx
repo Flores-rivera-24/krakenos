@@ -7,6 +7,7 @@ import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWid
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
 import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTopologyWidget';
 import { QuickActionsWidget } from '@/components/dashboard/widgets/QuickActionsWidget';
+import { ScenesWidget } from '@/components/dashboard/widgets/ScenesWidget';
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
@@ -25,6 +26,7 @@ import { useInventoryStore } from '@/store/inventory.store';
 
 const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
   quickActions: QuickActionsWidget,
+  scenes: ScenesWidget,
   topology: NetworkTopologyWidget,
   traffic: TrafficWidget,
   devices: DeviceCountWidget,

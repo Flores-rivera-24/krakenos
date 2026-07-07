@@ -67,6 +67,12 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/rooms/x' },
   { method: 'PUT', url: '/api/rooms/assign', payload: { kind: 'iot', ref: 'light-salon', roomId: null } },
   { method: 'POST', url: '/api/rooms/x/action', payload: { on: false } },
+
+  // escenas (US-166)
+  { method: 'POST', url: '/api/scenes', payload: { name: 'Noche', actions: [] } },
+  { method: 'PATCH', url: '/api/scenes/x', payload: { name: 'Noche' } },
+  { method: 'DELETE', url: '/api/scenes/x' },
+  { method: 'POST', url: '/api/scenes/x/run' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)
@@ -102,6 +108,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
 const AUTHED_WRITES: WriteEndpoint[] = [
   // refresco de inventario (equivalente al evento de socket `inventory:rescan`)
   { method: 'POST', url: '/api/inventory/rescan' },
+  // captura del estado IoT actual para el editor de escenas (solo lee, US-166)
+  { method: 'POST', url: '/api/scenes/capture', payload: { deviceIds: ['light-salon'] } },
   // push: gestionar la propia suscripción (US-45)
   {
     method: 'POST',
