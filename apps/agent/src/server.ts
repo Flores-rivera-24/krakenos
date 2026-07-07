@@ -33,6 +33,9 @@ import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { accessRoutes } from './modules/access/access.routes.js';
 import { AccessScheduleService } from './modules/access/access.service.js';
+import { roomsRoutes } from './modules/rooms/rooms.routes.js';
+import { RoomService } from './modules/rooms/rooms.service.js';
+import { favoritesRoutes } from './modules/favorites/favorites.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
@@ -180,6 +183,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   }
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(accessRoutes, { prefix: '/api/access', service: accessService });
+  // Habitaciones y grupos (US-165): organiza los dispositivos por estancia + acción
+  // de grupo sobre los IoT. Reusa el inventario para asignar dispositivos de red.
+  const roomService = new RoomService(app, iot, inventoryService);
+  await app.register(roomsRoutes, { prefix: '/api/rooms', service: roomService });
+  // Favoritos por usuario (US-170): acceso rápido a lo cotidiano en el dashboard.
+  await app.register(favoritesRoutes, { prefix: '/api/favorites' });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });

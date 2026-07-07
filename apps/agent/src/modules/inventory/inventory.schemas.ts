@@ -15,6 +15,7 @@ const deviceResponse = {
     pausedUntil: { type: ['string', 'null'] },
     online: { type: 'boolean' },
     vlanTag: { type: ['integer', 'null'] },
+    roomId: { type: ['string', 'null'] },
     sources: { type: 'array', items: { type: 'string', enum: ['arp', 'mdns', 'manual'] } },
     firstSeen: { type: 'string', format: 'date-time' },
     lastSeen: { type: 'string', format: 'date-time' },

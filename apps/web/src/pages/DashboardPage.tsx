@@ -6,6 +6,7 @@ import { CoverageWidget } from '@/components/dashboard/widgets/CoverageWidget';
 import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
 import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTopologyWidget';
+import { QuickActionsWidget } from '@/components/dashboard/widgets/QuickActionsWidget';
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
@@ -23,6 +24,7 @@ import { cn } from '@/lib/utils';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
+  quickActions: QuickActionsWidget,
   topology: NetworkTopologyWidget,
   traffic: TrafficWidget,
   devices: DeviceCountWidget,

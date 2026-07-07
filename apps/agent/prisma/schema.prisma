@@ -20,6 +20,7 @@ model User {
   webAuthnCredentials WebAuthnCredential[]
   webAuthnChallenges  WebAuthnChallenge[]
   backupCodes  BackupCode[]
+  favorites    Favorite[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
@@ -224,12 +225,61 @@ model Device {
   online    Boolean  @default(true)
   /// VLAN (tag 802.1Q) asignada, o null si ninguna (US-15).
   vlanTag   Int?
+  /// Habitación asignada (US-165), o null. Al borrar la habitación se pone a null.
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
   /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
   sources   String   @default("[]")
   firstSeen DateTime @default(now())
   lastSeen  DateTime @default(now())
 
   @@index([online])
+  @@index([roomId])
+}
+
+/// Habitación / grupo de dispositivos del hogar (US-165). Organiza los aparatos
+/// "como piensa el usuario su casa" en vez de como una lista de MACs. Los
+/// dispositivos de red se asocian por `Device.roomId`; los IoT (que viven en el
+/// manager, no en `Device`) por la tabla de mapeo `IotRoomMember`.
+model Room {
+  id         String          @id @default(cuid())
+  name       String
+  /// Clave de icono (mapeada a un glifo en el frontend), no una URL.
+  icon       String          @default("generic")
+  order      Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  devices    Device[]
+  iotMembers IotRoomMember[]
+}
+
+/// Mapeo de un dispositivo IoT (id del `IotManager`) a una habitación (US-165).
+/// Se guarda aparte de `Device` porque los IoT no son entidades de inventario;
+/// evita duplicarlos. Un IoT pertenece a lo sumo a una habitación (PK = id IoT).
+model IotRoomMember {
+  /// Id del dispositivo en el `IotManager`.
+  iotDeviceId String   @id
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([roomId])
+}
+
+/// Favorito de un usuario (US-170): dispositivo / IoT / habitación / escena
+/// fijado para acceso rápido en el dashboard. Es por usuario; un mismo objetivo
+/// (kind+ref) no se puede fijar dos veces por el mismo usuario.
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // 'device' | 'iot' | 'room' | 'scene'
+  ref       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, ref])
+  @@index([userId])
 }
 
 /// Regla de alerta configurable (US-112): por evento de auditoría, si notificar
