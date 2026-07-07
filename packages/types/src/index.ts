@@ -23,3 +23,5 @@ export * from './access.js';
 export * from './alert.js';
 export * from './room.js';
 export * from './favorite.js';
+export * from './scene.js';
+export * from './iot-schedule.js';

@@ -30,6 +30,10 @@ export const SYSTEM_SETTING_KEYS = [
   'accessTokenTtl',
   'loginRateLimit',
   'theme',
+  // Ubicación del hogar para el cálculo solar de horarios (US-168). Vacío = sin
+  // amanecer/atardecer (los horarios solares no disparan hasta configurarla).
+  'homeLatitude',
+  'homeLongitude',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];

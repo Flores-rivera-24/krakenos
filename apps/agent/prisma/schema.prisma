@@ -290,6 +290,36 @@ model AlertRule {
   email Boolean @default(false)
 }
 
+/// Escena (US-166): deja N dispositivos IoT en un estado deseado con un toque.
+/// `actions` es un JSON `SceneAction[]` (SQLite no tiene tipos estructurados).
+model Scene {
+  id        String   @id @default(cuid())
+  name      String
+  /// Clave de icono (mapeada a un glifo en el frontend), no una URL.
+  icon      String   @default("scene")
+  /// JSON `SceneAction[]`: [{deviceId, on?, brightness?, color?}].
+  actions   String   @default("[]")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Horario para IoT/escenas (US-168): dispara una acción en días concretos a una
+/// hora fija o solar (amanecer/atardecer). `days`/`time`/`target` van como JSON.
+/// Distinto de `AccessSchedule` (ventanas de bloqueo): esto es un disparo puntual.
+model IotSchedule {
+  id        String   @id @default(cuid())
+  name      String
+  enabled   Boolean  @default(true)
+  /// JSON: array de 0-6 (Dom-Sáb).
+  days      String   @default("[]")
+  /// JSON `IotScheduleTime`: {kind:'fixed',minute} | {kind:'sunrise'|'sunset',offsetMin}.
+  time      String
+  /// JSON `IotScheduleTarget`: {type:'device',deviceId,on?,brightness?} | {type:'scene',sceneId}.
+  target    String
+  createdAt DateTime @default(now())
+}
+
 /// Horario de acceso / control parental (US-108). Bloquea el internet de un
 /// dispositivo (por MAC) en ventanas recurrentes. `days` es un JSON de 0-6.
 model AccessSchedule {

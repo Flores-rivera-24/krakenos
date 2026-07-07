@@ -40,12 +40,23 @@ test('red: escanear el inventario y bloquear un dispositivo', async ({ page }) =
   await expect(panel.getByRole('button', { name: 'Desbloquear acceso a la red' })).toBeVisible();
 });
 
+test('hogar: crear una escena desde plantilla y ejecutarla (US-166)', async ({ page }) => {
+  await page.getByRole('link', { name: 'Escenas' }).first().click();
+  // Estado vacío → plantilla sugerida abre el editor precargado.
+  await page.getByRole('button', { name: /Buenas noches/ }).first().click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Guardar' }).click();
+
+  // La escena aparece y se ejecuta de un toque.
+  await expect(page.getByText('Buenas noches')).toBeVisible();
+  await page.getByRole('button', { name: 'Activar' }).first().click();
+  // Toast de confirmación (o de fallo parcial) → la ejecución llegó al servidor.
+  await expect(page.getByText(/activada|aplicado|sin responder/).first()).toBeVisible();
+});
+
 // --- Cuarentena explícita (flaky-policy, US-189) ---
 
 // 2FA con passkey requiere cablear un virtual authenticator (CDP WebAuthn) por
 // toda la ceremonia registro+login; se activará junto con el endurecimiento de
 // WebAuthn en e2e. Ver docs/e2e.md.
 test.fixme('login con 2FA (passkey vía virtual authenticator)', async () => {});
-
-// Las escenas llegan en US-166 (aún no existe la UI); el flujo se añade entonces.
-test.fixme('crear y ejecutar una escena (US-166)', async () => {});

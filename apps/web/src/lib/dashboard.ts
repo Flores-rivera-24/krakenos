@@ -1,6 +1,7 @@
 /** Identificadores estables de los widgets del dashboard (US-36). */
 export type WidgetId =
   | 'quickActions'
+  | 'scenes'
   | 'topology'
   | 'traffic'
   | 'devices'
@@ -20,6 +21,7 @@ export interface WidgetDef {
 /** Registro de widgets disponibles, en su orden por defecto. */
 export const WIDGETS: WidgetDef[] = [
   { id: 'quickActions', title: 'Acciones rápidas', span: 2 },
+  { id: 'scenes', title: 'Escenas', span: 2 },
   { id: 'devices', title: 'Dispositivos', span: 1 },
   { id: 'system', title: 'Sistema', span: 1 },
   { id: 'traffic', title: 'Tráfico WAN', span: 2 },
