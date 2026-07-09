@@ -34,6 +34,9 @@ export const SYSTEM_SETTING_KEYS = [
   // amanecer/atardecer (los horarios solares no disparan hasta configurarla).
   'homeLatitude',
   'homeLongitude',
+  // Ventana de gracia de la presencia en minutos (US-169): los móviles duermen
+  // el WiFi, así que "salió de casa" solo se marca tras este tiempo sin señal.
+  'presenceGraceMin',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];

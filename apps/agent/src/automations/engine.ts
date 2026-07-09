@@ -34,6 +34,14 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
     }
     case 'time':
       return false; // los disparadores de hora van por el barrido (dueTimeRules)
+    case 'person-arrived':
+      return (
+        event.type === 'person-arrived' && (!trigger.userId || event.userId === trigger.userId)
+      );
+    case 'person-left':
+      return event.type === 'person-left' && (!trigger.userId || event.userId === trigger.userId);
+    case 'mode-changed':
+      return event.type === 'mode-changed' && event.mode === trigger.mode;
   }
 }
 
@@ -119,6 +127,11 @@ export function eventSubject(event: HomeEvent): { mac?: string; deviceId?: strin
     case 'iot-off':
     case 'sensor-reading':
       return { deviceId: event.deviceId };
+    // La presencia y el modo no aportan un dispositivo objetivo (US-169).
+    case 'person-arrived':
+    case 'person-left':
+    case 'mode-changed':
+      return {};
   }
 }
 
@@ -137,5 +150,11 @@ export function describeEvent(event: HomeEvent): string {
       return `${event.deviceId} apagado`;
     case 'sensor-reading':
       return `${event.deviceId} = ${event.value}`;
+    case 'person-arrived':
+      return `${event.name} llega a casa`;
+    case 'person-left':
+      return `${event.name} sale de casa`;
+    case 'mode-changed':
+      return `modo del hogar → ${event.mode}`;
   }
 }

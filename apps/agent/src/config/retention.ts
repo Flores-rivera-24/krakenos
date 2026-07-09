@@ -15,11 +15,14 @@ type RetentionKey = 'trafficRetentionDays' | 'auditRetentionDays';
 /** Prisma mínimo que necesitan estas funciones (facilita el tipado en llamantes). */
 type PrismaLike = Pick<
   PrismaClient,
-  'setting' | 'auditLog' | 'refreshToken' | 'webAuthnChallenge' | 'automationRun'
+  'setting' | 'auditLog' | 'refreshToken' | 'webAuthnChallenge' | 'automationRun' | 'presenceEvent'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
 export const AUTOMATION_RUN_RETENTION_DAYS = 30;
+
+/** Retención fija del timeline de llegadas/salidas (US-169): dato sensible, corto. */
+export const PRESENCE_EVENT_RETENTION_DAYS = 30;
 
 /**
  * Margen (días tras `expiresAt`) durante el que se conservan los refresh tokens
@@ -79,5 +82,15 @@ export async function pruneAutomationRuns(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.automationRun.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return res.count;
+}
+
+/** Borra las llegadas/salidas del timeline más antiguas que la retención (US-169). */
+export async function prunePresenceEvents(
+  prisma: PrismaLike,
+  days: number = PRESENCE_EVENT_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.presenceEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });
   return res.count;
 }

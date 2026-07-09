@@ -72,6 +72,23 @@ describe('automations/engine — matchesTrigger', () => {
       matchesTrigger({ type: 'time', days: [3], minute: 720 }, { type: 'device-new', mac: 'aa' }),
     ).toBe(false);
   });
+
+  it('person-arrived/left: sin userId casa con cualquiera; con userId, solo esa persona (US-169)', () => {
+    const arrived: HomeEvent = { type: 'person-arrived', userId: 'u1', name: 'Ana' };
+    expect(matchesTrigger({ type: 'person-arrived' }, arrived)).toBe(true);
+    expect(matchesTrigger({ type: 'person-arrived', userId: 'u1' }, arrived)).toBe(true);
+    expect(matchesTrigger({ type: 'person-arrived', userId: 'u2' }, arrived)).toBe(false);
+    expect(matchesTrigger({ type: 'person-left' }, arrived)).toBe(false);
+    expect(
+      matchesTrigger({ type: 'person-left', userId: 'u1' }, { type: 'person-left', userId: 'u1', name: 'Ana' }),
+    ).toBe(true);
+  });
+
+  it('mode-changed exige el modo concreto (US-169)', () => {
+    const event: HomeEvent = { type: 'mode-changed', mode: 'away', prevMode: 'home' };
+    expect(matchesTrigger({ type: 'mode-changed', mode: 'away' }, event)).toBe(true);
+    expect(matchesTrigger({ type: 'mode-changed', mode: 'night' }, event)).toBe(false);
+  });
 });
 
 describe('automations/engine — passesCondition', () => {
@@ -165,5 +182,13 @@ describe('automations/engine — eventSubject / describeEvent', () => {
   it('describe los eventos de forma legible', () => {
     expect(describeEvent({ type: 'device-new', mac: 'aa' })).toContain('aa');
     expect(describeEvent({ type: 'sensor-reading', deviceId: 's', value: 21, prevValue: 20 })).toBe('s = 21');
+  });
+
+  it('la presencia no aporta objetivo implícito y se describe con el nombre (US-169)', () => {
+    expect(eventSubject({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toEqual({});
+    expect(eventSubject({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toEqual({});
+    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toContain('Ana');
+    expect(describeEvent({ type: 'person-left', userId: 'u1', name: 'Ana' })).toContain('sale');
+    expect(describeEvent({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toContain('night');
   });
 });

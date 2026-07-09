@@ -11,6 +11,7 @@ import type {
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 import { DAY_LABELS, minuteToTimeString } from '@/lib/iot-schedules';
+import { MODE_LABELS } from '@/lib/presence';
 
 export const listAutomations = () => api.get<AutomationRule[]>('/automations');
 export const createAutomation = (body: CreateAutomationRuleRequest) =>
@@ -27,6 +28,8 @@ export interface NameContext {
   scenes?: Scene[];
   /** MAC → etiqueta amable de red (label/hostname). */
   networkNames?: Map<string, string>;
+  /** userId → nombre de la persona (para los disparadores de presencia, US-169). */
+  userNames?: Map<string, string>;
 }
 
 const iotName = (ctx: NameContext, id: string) =>
@@ -50,6 +53,12 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${iotName(ctx, trigger.deviceId)} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value}`;
     case 'time':
       return `a las ${minuteToTimeString(trigger.minute)} (${trigger.days.map((d) => DAY_LABELS[d]).join(' ')})`;
+    case 'person-arrived':
+      return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} llega a casa`;
+    case 'person-left':
+      return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} sale de casa`;
+    case 'mode-changed':
+      return `el hogar pasa a «${MODE_LABELS[trigger.mode]}»`;
   }
 }
 

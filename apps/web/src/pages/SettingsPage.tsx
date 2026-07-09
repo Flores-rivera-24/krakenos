@@ -263,6 +263,20 @@ export function SettingsPage() {
                       <option value="300">5 minutos</option>
                     </select>
                   </Setting>
+                  <Setting label="Gracia de presencia">
+                    <select
+                      className={SELECT_CLASS}
+                      aria-label="Ventana de gracia de la presencia"
+                      value={setting('presenceGraceMin')}
+                      disabled={!isAdmin}
+                      onChange={(e) => void patch('presenceGraceMin', e.target.value)}
+                    >
+                      <option value="5">5 minutos</option>
+                      <option value="10">10 minutos</option>
+                      <option value="20">20 minutos</option>
+                      <option value="30">30 minutos</option>
+                    </select>
+                  </Setting>
                   <Setting label="HTTPS">
                     <span className="flex items-center gap-2 text-kr-base">
                       <StatusDot status={data?.info.httpsEnabled ? 'online' : 'offline'} />
