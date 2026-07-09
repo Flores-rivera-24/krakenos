@@ -7,8 +7,15 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
-import { decryptArchive, isSafeEntryName, unpackArchive } from './backup.js';
+import {
+  type ArchiveEntry,
+  decryptArchive,
+  decryptArchiveAsync,
+  isSafeEntryName,
+  unpackArchive,
+} from './backup.js';
 
 /**
  * Restauración de una copia de seguridad (US-104). Se hace en dos pasos por
@@ -42,6 +49,39 @@ export function resolveDbFile(databaseUrl: string): string {
  */
 export function stageRestore(blob: Buffer, passphrase: string, stagingDir: string): string[] {
   const entries = unpackArchive(decryptArchive(blob, passphrase));
+  validateEntries(entries);
+  rmSync(stagingDir, { recursive: true, force: true });
+  for (const e of entries) {
+    const dest = join(stagingDir, e.name);
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, e.data);
+  }
+  return entries.map((e) => e.name);
+}
+
+/**
+ * Como `stageRestore` pero **cooperativo** (US-202 / AUD-06): descifrado por
+ * trozos + E/S con `fs.promises`. Es la variante que usa la ruta HTTP; la
+ * síncrona se conserva para tests y paridad.
+ */
+export async function stageRestoreAsync(
+  blob: Buffer,
+  passphrase: string,
+  stagingDir: string,
+): Promise<string[]> {
+  const entries = unpackArchive(await decryptArchiveAsync(blob, passphrase));
+  validateEntries(entries);
+  await rm(stagingDir, { recursive: true, force: true });
+  for (const e of entries) {
+    const dest = join(stagingDir, e.name);
+    await mkdir(dirname(dest), { recursive: true });
+    await writeFile(dest, e.data);
+  }
+  return entries.map((e) => e.name);
+}
+
+/** Validación compartida: nombres seguros (anti path-traversal) y DB presente. */
+function validateEntries(entries: ArchiveEntry[]): void {
   for (const e of entries) {
     if (!isSafeEntryName(e.name)) {
       throw new Error(`El backup contiene una ruta no válida: ${e.name}`);
@@ -50,13 +90,6 @@ export function stageRestore(blob: Buffer, passphrase: string, stagingDir: strin
   if (!entries.some((e) => e.name === 'db/app.db')) {
     throw new Error('El backup no contiene la base de datos');
   }
-  rmSync(stagingDir, { recursive: true, force: true });
-  for (const e of entries) {
-    const dest = join(stagingDir, e.name);
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, e.data);
-  }
-  return entries.map((e) => e.name);
 }
 
 /** Lista los ficheros (relativos) bajo `dir` recorriendo `db/ keys/ data/`. */

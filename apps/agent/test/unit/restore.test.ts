@@ -3,7 +3,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { encryptArchive, packArchive, type ArchiveEntry } from '../../src/system/backup.js';
-import { applyStagedRestore, resolveDbFile, stageRestore } from '../../src/system/restore.js';
+import {
+  applyStagedRestore,
+  resolveDbFile,
+  stageRestore,
+  stageRestoreAsync,
+} from '../../src/system/restore.js';
 
 const PASS = 'passphrase-larga';
 const makeBackup = (entries: ArchiveEntry[]) => encryptArchive(packArchive(entries), PASS);
@@ -49,6 +54,25 @@ describe('restore (US-104)', () => {
   it('stage: passphrase incorrecta lanza', () => {
     const blob = makeBackup([{ name: 'db/app.db', data: Buffer.from('X') }]);
     expect(() => stageRestore(blob, 'otra-distinta', join(tmp, 's'))).toThrow();
+  });
+
+  it('stage async: paridad con la variante síncrona (US-202)', async () => {
+    const blob = makeBackup([
+      { name: 'db/app.db', data: Buffer.from('DBDATA') },
+      { name: 'keys/secretbox.key', data: Buffer.from([1, 2, 3]) },
+    ]);
+    const staging = join(tmp, 'staging-async');
+    const names = await stageRestoreAsync(blob, PASS, staging);
+    expect(names.sort()).toEqual(['db/app.db', 'keys/secretbox.key']);
+    expect(readFileSync(join(staging, 'db/app.db')).toString()).toBe('DBDATA');
+
+    // Misma validación: traversal y passphrase incorrecta rechazan.
+    const evil = makeBackup([
+      { name: 'db/app.db', data: Buffer.from('X') },
+      { name: '../evil', data: Buffer.from('pwn') },
+    ]);
+    await expect(stageRestoreAsync(evil, PASS, join(tmp, 's2'))).rejects.toThrow(/no válida/i);
+    await expect(stageRestoreAsync(blob, 'otra-distinta', join(tmp, 's3'))).rejects.toThrow();
   });
 
   it('apply: coloca los ficheros y respalda lo anterior; borra el staging', () => {

@@ -1,8 +1,9 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import type { PrismaClient } from '@prisma/client';
-import { type ArchiveEntry, encryptArchive, packArchive } from './backup.js';
+import { type ArchiveEntry, encryptArchiveAsync, packArchive } from './backup.js';
 
 /**
  * Copia de seguridad real (US-103). Reemplaza el falso "backup" (que solo
@@ -13,6 +14,10 @@ import { type ArchiveEntry, encryptArchive, packArchive } from './backup.js';
  *    cifrados en la DB serían irrecuperables tras restaurar),
  *  - `data/` (localKeys Tuya, rtspUrl de cámaras, peers WireGuard, reglas…).
  * El archivo contiene secretos → cifrado con passphrase obligatorio.
+ *
+ * Toda la E/S y el cifrado son **asíncronos/cooperativos** (US-202 / AUD-06):
+ * en hardware modesto la versión síncrona congelaba Socket.io y los barridos
+ * varios segundos (misma clase de problema que el heatmap).
  */
 
 const DEFAULT_KEYS_DIR = resolve('keys');
@@ -24,13 +29,13 @@ export interface BackupPaths {
 }
 
 /** Lee (no recursivo) los ficheros de `dir` como entradas con `prefix/`. Vacío si no existe. */
-function readDirEntries(dir: string, prefix: string): ArchiveEntry[] {
+async function readDirEntries(dir: string, prefix: string): Promise<ArchiveEntry[]> {
   if (!existsSync(dir)) return [];
   const out: ArchiveEntry[] = [];
-  for (const name of readdirSync(dir)) {
+  for (const name of await readdir(dir)) {
     const full = join(dir, name);
-    if (statSync(full).isFile()) {
-      out.push({ name: `${prefix}/${name}`, data: readFileSync(full) });
+    if ((await stat(full)).isFile()) {
+      out.push({ name: `${prefix}/${name}`, data: await readFile(full) });
     }
   }
   return out;
@@ -50,15 +55,15 @@ export class BackupService {
 
   /** Snapshot consistente de la base SQLite a un fichero temporal, devuelto como Buffer. */
   private async snapshotDb(): Promise<Buffer> {
-    const tmpDir = mkdtempSync(join(tmpdir(), 'krakenos-bak-'));
+    const tmpDir = await mkdtemp(join(tmpdir(), 'krakenos-bak-'));
     const tmp = join(tmpDir, 'snapshot.db');
     try {
       // `VACUUM INTO` produce una copia consistente sin bloquear la base viva.
       // La ruta la construimos nosotros (no es entrada de usuario); escapamos comillas.
       await this.prisma.$executeRawUnsafe(`VACUUM INTO '${tmp.replace(/'/g, "''")}'`);
-      return readFileSync(tmp);
+      return await readFile(tmp);
     } finally {
-      rmSync(dirname(tmp), { recursive: true, force: true });
+      await rm(dirname(tmp), { recursive: true, force: true });
     }
   }
 
@@ -66,9 +71,9 @@ export class BackupService {
   async create(passphrase: string): Promise<Buffer> {
     const entries: ArchiveEntry[] = [
       { name: 'db/app.db', data: await this.snapshotDb() },
-      ...readDirEntries(this.keysDir, 'keys'),
-      ...readDirEntries(this.dataDir, 'data'),
+      ...(await readDirEntries(this.keysDir, 'keys')),
+      ...(await readDirEntries(this.dataDir, 'data')),
     ];
-    return encryptArchive(packArchive(entries), passphrase);
+    return encryptArchiveAsync(packArchive(entries), passphrase);
   }
 }
