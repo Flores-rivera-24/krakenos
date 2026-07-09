@@ -7,6 +7,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { type Capability, can } from '../auth/capabilities.js';
 import { Keyring } from '../auth/keyring.js';
 import { env } from '../config/env.js';
 
@@ -33,6 +34,14 @@ declare module 'fastify' {
     /** Genera un preHandler que además exige un rol concreto. */
     requireRole: (
       role: UserRole,
+    ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /**
+     * Genera un preHandler que exige una **capacidad** (US-179): generaliza
+     * `requireRole` para los roles del hogar sin tocar las rutas admin (mapa en
+     * `auth/capabilities.ts`).
+     */
+    requireCapability: (
+      capability: Capability,
     ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /**
      * preHandler que exige **admin activo re-verificado en la DB** (no solo el claim
@@ -145,6 +154,19 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
         return reply.code(403).send({
           code: 'AUTH_FORBIDDEN',
           message: `Requiere rol ${role}`,
+        });
+      }
+    };
+  });
+
+  app.decorate('requireCapability', (capability: Capability) => {
+    return async (req: FastifyRequest, reply: FastifyReply) => {
+      await app.authenticate(req, reply);
+      if (reply.sent) return;
+      if (!can(req.user.role, capability)) {
+        return reply.code(403).send({
+          code: 'AUTH_FORBIDDEN',
+          message: 'Tu rol no permite esta acción',
         });
       }
     };

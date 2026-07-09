@@ -17,6 +17,7 @@ import { describeError } from '@/lib/errors';
 import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
+import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { useFavoritesStore } from '@/store/favorites.store';
@@ -28,12 +29,14 @@ const IOT_HELP =
 function DeviceCard({
   device,
   isAdmin,
+  canControl,
   rooms,
   roomId,
   onAssignRoom,
 }: {
   device: IotDevice;
   isAdmin: boolean;
+  canControl: boolean;
   rooms: RoomWithState[];
   roomId: string | null;
   onAssignRoom: (deviceId: string, roomId: string | null) => void;
@@ -76,7 +79,7 @@ function DeviceCard({
             <OptimisticSwitch
               checked={device.on ?? false}
               onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
-              disabled={!isAdmin}
+              disabled={!canControl}
               errorMessage={`No se pudo cambiar ${device.name}`}
               aria-label={`Encender ${device.name}`}
             />
@@ -106,7 +109,7 @@ function DeviceCard({
               min={0}
               max={100}
               value={draft ?? device.brightness ?? 0}
-              disabled={!isAdmin}
+              disabled={!canControl}
               aria-label={`Brillo de ${device.name}`}
               onChange={(e) => setDraft(Number(e.target.value))}
               onPointerUp={commitBrightness}
@@ -123,7 +126,7 @@ function DeviceCard({
               type="color"
               aria-label="Color"
               value={device.color.hex ?? '#ffffff'}
-              disabled={!isAdmin}
+              disabled={!canControl}
               onChange={(e) => commitColor(e.target.value)}
               className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent disabled:opacity-50"
             />
@@ -148,6 +151,8 @@ function DeviceCard({
 
 export function IotPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Operar el hogar (toggle/brillo/color) también para `member` (US-179).
+  const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [devices, setDevices] = useState<Record<string, IotDevice>>({});
   const [rooms, setRooms] = useState<RoomWithState[]>([]);
   const [iotRoom, setIotRoom] = useState<Record<string, string>>({});
@@ -272,6 +277,7 @@ export function IotPage() {
               key={d.id}
               device={d}
               isAdmin={isAdmin}
+              canControl={canControl}
               rooms={rooms}
               roomId={iotRoom[d.id] ?? null}
               onAssignRoom={(id, roomId) => void assignIotRoom(id, roomId)}

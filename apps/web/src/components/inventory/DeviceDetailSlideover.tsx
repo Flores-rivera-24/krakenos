@@ -4,6 +4,7 @@ import type {
   DeviceType,
   RoomWithState,
   UpdateDeviceRequest,
+  UserSummary,
   VlanWithCount,
 } from '@krakenos/types';
 import { useEffect, useState } from 'react';
@@ -22,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_TYPES, TYPE_LABELS } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
+import { listUsers } from '@/lib/users';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -56,6 +58,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [rooms, setRooms] = useState<RoomWithState[]>([]);
   const [roomId, setRoomId] = useState<string | null>(device.roomId);
   const [roomBusy, setRoomBusy] = useState(false);
+  // Dueño del dispositivo (US-179): base de presencia/bienestar por persona.
+  const [ownerId, setOwnerId] = useState<string | null>(device.ownerId);
+  const [ownerBusy, setOwnerBusy] = useState(false);
+  const [householdUsers, setHouseholdUsers] = useState<UserSummary[]>([]);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   // Carga las VLANs disponibles para el selector (best-effort).
@@ -125,6 +131,29 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       toast.error(describeError(err, 'No se pudo asignar la VLAN'));
     } finally {
       setVlanBusy(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void listUsers()
+      .then(setHouseholdUsers)
+      .catch(() => setHouseholdUsers([]));
+  }, [isAdmin]);
+
+  // Asignación de dueño con reversión (mismo patrón que habitación/VLAN).
+  const assignOwner = async (next: string | null) => {
+    const previous = ownerId;
+    setOwnerId(next);
+    setOwnerBusy(true);
+    try {
+      await api.patch<Device>(`/inventory/devices/${device.id}`, { ownerId: next });
+      toast.success('Dueño actualizado');
+    } catch (err) {
+      setOwnerId(previous);
+      toast.error(describeError(err, 'No se pudo asignar el dueño'));
+    } finally {
+      setOwnerBusy(false);
     }
   };
 
@@ -285,6 +314,26 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             disabled={roomBusy}
             onChange={(next) => void assignToRoom(next)}
           />
+        )}
+
+        {isAdmin && householdUsers.length > 0 && (
+          <div className="space-y-2">
+            <Label htmlFor="d-owner">Dueño</Label>
+            <select
+              id="d-owner"
+              className={SELECT_CLASS}
+              value={ownerId ?? ''}
+              disabled={ownerBusy}
+              onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
+            >
+              <option value="">Sin dueño</option>
+              {householdUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
 
         {isAdmin && (

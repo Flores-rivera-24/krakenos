@@ -16,6 +16,7 @@ const deviceResponse = {
     online: { type: 'boolean' },
     vlanTag: { type: ['integer', 'null'] },
     roomId: { type: ['string', 'null'] },
+    ownerId: { type: ['string', 'null'] },
     sources: { type: 'array', items: { type: 'string', enum: ['arp', 'mdns', 'manual'] } },
     firstSeen: { type: 'string', format: 'date-time' },
     lastSeen: { type: 'string', format: 'date-time' },
@@ -54,6 +55,8 @@ export const updateDeviceSchema = {
       label: { type: ['string', 'null'], maxLength: 64 },
       type: { type: 'string', enum: deviceTypeEnum },
       notes: { type: ['string', 'null'], maxLength: 500 },
+      // Dueño del dispositivo (US-179); null lo desasigna.
+      ownerId: { type: ['string', 'null'], maxLength: 64 },
     },
   },
   response: {

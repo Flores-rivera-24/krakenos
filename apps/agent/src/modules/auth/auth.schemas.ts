@@ -3,6 +3,7 @@
  * Se mantienen alineados con los tipos de `@krakenos/types`.
  */
 import { errorResponse } from '../common.schemas.js';
+import { USER_ROLES } from '@krakenos/types';
 
 const userResponse = {
   type: 'object',
@@ -10,7 +11,7 @@ const userResponse = {
     id: { type: 'string' },
     email: { type: 'string', format: 'email' },
     displayName: { type: 'string' },
-    role: { type: 'string', enum: ['admin', 'viewer'] },
+    role: { type: 'string', enum: USER_ROLES },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },

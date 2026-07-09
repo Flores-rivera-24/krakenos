@@ -78,3 +78,31 @@ export const MOBILE_PRIMARY: NavItem[] = [CONNECT, DASHBOARD, DEVICES, IOT, TRAF
 
 /** El resto de ítems, accesibles desde el botón "Más" de la bottom-nav. */
 export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i));
+
+/**
+ * Grupos visibles según el rol del hogar (US-179) — solo presentación, la
+ * autoridad es del servidor:
+ * - `admin`/`viewer`: todo (viewer ya ve solo-lectura).
+ * - `member`: sin «Red avanzada» (opera el hogar, no gestiona la red).
+ * - `kid`/`guest`: UI reducida — Dashboard, Hogar básico y Ajustes (su perfil).
+ */
+export function navGroupsForRole(role?: string): NavGroup[] {
+  if (role === 'member') return NAV_GROUPS.filter((g) => g.label !== 'Red avanzada');
+  if (role === 'kid' || role === 'guest') {
+    return [
+      { label: 'General', items: [DASHBOARD] },
+      { label: 'Hogar', items: [ROOMS, SCENES, IOT] },
+      { label: 'Sistema', items: [SETTINGS] },
+    ];
+  }
+  return NAV_GROUPS;
+}
+
+/** Bottom-nav móvil filtrada al conjunto visible del rol (US-179). */
+export function mobileNavForRole(role?: string): { primary: NavItem[]; secondary: NavItem[] } {
+  const allowed = new Set(navGroupsForRole(role).flatMap((g) => g.items));
+  return {
+    primary: MOBILE_PRIMARY.filter((i) => allowed.has(i)),
+    secondary: MOBILE_SECONDARY.filter((i) => allowed.has(i)),
+  };
+}

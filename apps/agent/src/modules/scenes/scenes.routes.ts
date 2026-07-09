@@ -15,9 +15,10 @@ interface ScenesRoutesOpts {
 }
 
 /**
- * Escenas de un toque (US-166). Lectura = autenticado; crear/editar/borrar/ejecutar
- * = admin y auditado (ejecutar muta el estado del hogar). La captura de estado solo
- * lee el IoT actual → autenticado.
+ * Escenas de un toque (US-166). Lectura = autenticado; crear/editar/borrar =
+ * admin y auditado; **ejecutar** = capacidad `home.control` (admin y member,
+ * US-179), también auditado. La captura de estado solo lee el IoT actual →
+ * autenticado.
  */
 export const scenesRoutes: FastifyPluginAsync<ScenesRoutesOpts> = async (app, opts) => {
   const { service } = opts;
@@ -69,9 +70,11 @@ export const scenesRoutes: FastifyPluginAsync<ScenesRoutesOpts> = async (app, op
     },
   );
 
+  // Ejecutar una escena es operar el hogar → capacidad `home.control` (US-179):
+  // admin y member (crear/editar/borrar siguen siendo solo admin).
   app.post<{ Params: { id: string } }>(
     '/:id/run',
-    { schema: runSceneSchema, preHandler: adminOnly },
+    { schema: runSceneSchema, preHandler: app.requireCapability('home.control') },
     async (req, reply) => {
       const result = await service.run(req.params.id);
       if (!result) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Escena no encontrada' });
