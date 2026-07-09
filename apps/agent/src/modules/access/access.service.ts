@@ -162,13 +162,16 @@ export class AccessScheduleService {
   async pause(mac: string, minutes: number): Promise<Date> {
     const pausedUntil = new Date(Date.now() + minutes * 60_000);
     await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil } });
+    // Solo se marca como gestionado tras el éxito del driver: si falla, la MAC
+    // queda "activa pero no gestionada" y el barrido reintenta el bloqueo cada
+    // minuto mientras dure la pausa (US-200 / AUD-04).
     try {
       await this.driver.blockDevice(mac);
+      this.managedBlocked.add(mac);
+      await this.persistManaged();
     } catch (err) {
-      this.app.log.error({ err, mac }, '[access] no se pudo pausar el dispositivo');
+      this.app.log.error({ err, mac }, '[access] no se pudo pausar el dispositivo; se reintenta');
     }
-    this.managedBlocked.add(mac);
-    await this.persistManaged();
     return pausedUntil;
   }
 
@@ -180,13 +183,15 @@ export class AccessScheduleService {
     // Con la pausa ya quitada, `isBlockedNow` refleja solo los horarios.
     const keepBlocked = manual || (await this.isBlockedNow(mac));
     if (!keepBlocked) {
+      // Igual que en `pause`: si el driver falla, la MAC sigue gestionada y el
+      // barrido reintenta el desbloqueo en el siguiente tick (US-200 / AUD-04).
       try {
         await this.driver.unblockDevice(mac);
+        this.managedBlocked.delete(mac);
+        await this.persistManaged();
       } catch (err) {
-        this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo');
+        this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo; se reintenta');
       }
-      this.managedBlocked.delete(mac);
-      await this.persistManaged();
     }
   }
 
