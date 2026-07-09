@@ -1,0 +1,104 @@
+import type { Id, IsoDateTime } from './common.js';
+
+/**
+ * Automatizaciones «si X entonces Y» (US-167). El motor es local (sin nube):
+ * los disparadores se alimentan de los eventos que el agente ya produce
+ * (inventario, estado IoT) más un barrido de hora por cruce de minuto.
+ */
+
+/** Disparador de una regla. */
+export type AutomationTrigger =
+  /** Un dispositivo con MAC nunca vista aparece en la red. */
+  | { type: 'device-new' }
+  /** Un dispositivo concreto pasa a online/offline en el inventario. */
+  | { type: 'device-online'; mac: string }
+  | { type: 'device-offline'; mac: string }
+  /** Un dispositivo IoT concreto pasa a encendido/apagado. */
+  | { type: 'iot-on'; deviceId: Id }
+  | { type: 'iot-off'; deviceId: Id }
+  /** La lectura de un sensor cruza un umbral (dispara solo al cruzar, no sostenido). */
+  | { type: 'sensor-threshold'; deviceId: Id; op: 'gt' | 'lt'; value: number }
+  /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
+  | { type: 'time'; days: number[]; minute: number };
+
+/**
+ * Condición opcional: la regla solo dispara dentro de la ventana. Si
+ * `fromMinute > toMinute` la ventana cruza medianoche (p. ej. 22:00→07:00).
+ */
+export interface AutomationCondition {
+  /** Días permitidos (0-6, Dom-Sáb). Ausente = todos. */
+  days?: number[];
+  fromMinute?: number;
+  toMinute?: number;
+}
+
+/**
+ * Acción de una regla. En `iot-set`/`device-block`/`device-pause`, omitir el
+ * objetivo significa «el dispositivo del evento» (p. ej. "dispositivo
+ * desconocido → bloquéalo"); una regla cuyo disparador no aporta objetivo
+ * compatible falla esa acción de forma controlada.
+ */
+export type AutomationAction =
+  | { type: 'iot-set'; deviceId?: Id; on?: boolean; brightness?: number }
+  | { type: 'scene-run'; sceneId: Id }
+  | { type: 'device-block'; mac?: string }
+  | { type: 'device-pause'; mac?: string; minutes: number }
+  | { type: 'notify'; message: string };
+
+export interface AutomationRule {
+  id: Id;
+  name: string;
+  enabled: boolean;
+  trigger: AutomationTrigger;
+  condition?: AutomationCondition;
+  actions: AutomationAction[];
+  /** Segundos mínimos entre disparos de la misma regla (anti-ruido/anti-bucle). */
+  cooldownSec: number;
+  createdAt: IsoDateTime;
+}
+
+/** Alta de regla (`POST /api/automations`). */
+export interface CreateAutomationRuleRequest {
+  name: string;
+  enabled?: boolean;
+  trigger: AutomationTrigger;
+  condition?: AutomationCondition;
+  actions: AutomationAction[];
+  cooldownSec?: number;
+}
+
+/** Cambios parciales (`PATCH /api/automations/:id`). `condition: null` la quita. */
+export interface UpdateAutomationRuleRequest {
+  name?: string;
+  enabled?: boolean;
+  trigger?: AutomationTrigger;
+  condition?: AutomationCondition | null;
+  actions?: AutomationAction[];
+  cooldownSec?: number;
+}
+
+/** Ejecución registrada de una regla (log, `GET /api/automations/runs`). */
+export interface AutomationRun {
+  id: Id;
+  ruleId: Id;
+  /** Resumen legible del evento que disparó la regla. */
+  event: string;
+  ok: boolean;
+  /** Detalle de fallos por acción (si los hubo). */
+  detail: string | null;
+  createdAt: IsoDateTime;
+}
+
+/**
+ * Evento interno del hogar (bus ligero del agente, US-167). `origin` marca la
+ * procedencia para el anti-bucle: un evento causado por una automatización
+ * lleva `automation:<ruleId>` y esa misma regla no se re-dispara con él.
+ */
+export type HomeEvent = (
+  | { type: 'device-new'; mac: string }
+  | { type: 'device-online'; mac: string }
+  | { type: 'device-offline'; mac: string }
+  | { type: 'iot-on'; deviceId: Id }
+  | { type: 'iot-off'; deviceId: Id }
+  | { type: 'sensor-reading'; deviceId: Id; value: number; prevValue: number | null }
+) & { origin?: string };

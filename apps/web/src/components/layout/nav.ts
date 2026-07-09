@@ -16,6 +16,7 @@ import {
   ShieldAlert,
   Video,
   Wifi,
+  Workflow,
 } from 'lucide-react';
 
 /** Clave de badge dinámico que puede llevar un ítem de navegación. */
@@ -46,6 +47,7 @@ const COVERAGE: NavItem = { to: '/coverage', label: 'Cobertura WiFi', icon: Rada
 const TRAFFIC: NavItem = { to: '/traffic', label: 'Tráfico', icon: Activity };
 const ROOMS: NavItem = { to: '/rooms', label: 'Habitaciones', icon: Home };
 const SCENES: NavItem = { to: '/scenes', label: 'Escenas', icon: Clapperboard };
+const AUTOMATIONS: NavItem = { to: '/automations', label: 'Automatizaciones', icon: Workflow };
 const IOT: NavItem = { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' };
 const CAMERAS: NavItem = { to: '/cameras', label: 'Cámaras', icon: Video };
 const VPN: NavItem = { to: '/vpn', label: 'VPN', icon: KeyRound };
@@ -63,7 +65,7 @@ const SETTINGS: NavItem = { to: '/settings', label: 'Ajustes', icon: Settings };
 export const NAV_GROUPS: NavGroup[] = [
   { label: 'General', items: [CONNECT, DASHBOARD] },
   { label: 'Red', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
-  { label: 'Hogar', items: [ROOMS, SCENES, IOT, CAMERAS] },
+  { label: 'Hogar', items: [ROOMS, SCENES, AUTOMATIONS, IOT, CAMERAS] },
   { label: 'Red avanzada', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
   { label: 'Sistema', items: [SETTINGS] },
 ];

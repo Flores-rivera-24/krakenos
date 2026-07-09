@@ -339,3 +339,39 @@ model AccessSchedule {
 
   @@index([mac])
 }
+
+/// Regla de automatización «si X entonces Y» (US-167). `trigger`/`condition`/
+/// `actions` van como JSON (shape en `@krakenos/types`, parseo defensivo US-63).
+model AutomationRule {
+  id          String          @id @default(cuid())
+  name        String
+  enabled     Boolean         @default(true)
+  /// JSON `AutomationTrigger`.
+  trigger     String
+  /// JSON `AutomationCondition` (opcional).
+  condition   String?
+  /// JSON `AutomationAction[]`.
+  actions     String
+  /// Segundos mínimos entre disparos de la misma regla (anti-ruido/anti-bucle).
+  cooldownSec Int             @default(60)
+  runs        AutomationRun[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+/// Ejecución registrada de una regla (log de automatizaciones, US-167). Se poda
+/// por edad en el barrido de retención.
+model AutomationRun {
+  id        String         @id @default(cuid())
+  ruleId    String
+  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  /// Resumen legible del evento disparador.
+  event     String
+  ok        Boolean
+  /// Detalle de fallos por acción (si los hubo).
+  detail    String?
+  createdAt DateTime       @default(now())
+
+  @@index([ruleId, createdAt])
+  @@index([createdAt])
+}

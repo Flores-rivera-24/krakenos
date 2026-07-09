@@ -29,6 +29,9 @@ import { scenesRoutes } from '../../src/modules/scenes/scenes.routes.js';
 import { SceneService } from '../../src/modules/scenes/scenes.service.js';
 import { iotScheduleRoutes } from '../../src/modules/iot-schedule/iot-schedule.routes.js';
 import { IotScheduleService } from '../../src/modules/iot-schedule/iot-schedule.service.js';
+import { HomeEventBus } from '../../src/automations/event-bus.js';
+import { automationsRoutes } from '../../src/modules/automations/automations.routes.js';
+import { AutomationService } from '../../src/modules/automations/automations.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
@@ -142,6 +145,18 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/iot-schedules',
       service: new IotScheduleService(app, sharedIot, sceneServiceForTests),
     });
+    // Automatizaciones (US-167). Sin timers ni watcher: los tests publican en el
+    // bus o llaman a `tick()` a mano.
+    await app.register(automationsRoutes, {
+      prefix: '/api/automations',
+      service: new AutomationService(app, {
+        iot: sharedIot,
+        scenes: sceneServiceForTests,
+        inventory: inventoryService,
+        access: new AccessScheduleService(app, driver),
+        bus: new HomeEventBus(),
+      }),
+    });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
@@ -202,6 +217,8 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.room.deleteMany();
   await app.prisma.scene.deleteMany();
   await app.prisma.iotSchedule.deleteMany();
+  await app.prisma.automationRun.deleteMany();
+  await app.prisma.automationRule.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample

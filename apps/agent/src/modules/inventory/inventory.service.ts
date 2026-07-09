@@ -3,6 +3,7 @@ import type {
   DeviceType,
   DiscoverySource,
   HardwareDriver,
+  HomeEvent,
   UpdateDeviceRequest,
 } from '@krakenos/types';
 // Tipo de fila derivado del schema Prisma: si el modelo `Device` cambia, el
@@ -20,6 +21,8 @@ export class InventoryService {
   private isScanning = false;
   /** ¿Hay un horario de acceso activo ahora para esta MAC? (US-108, inyectado). */
   private scheduleGuard?: (mac: string) => Promise<boolean>;
+  /** Sumidero de eventos del hogar (US-167, inyectado): dispositivo nuevo/online/offline. */
+  private eventSink?: (event: HomeEvent) => void;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -30,6 +33,11 @@ export class InventoryService {
    *  dispositivo que un horario de control parental mantiene bloqueado (US-108). */
   setScheduleGuard(fn: (mac: string) => Promise<boolean>): void {
     this.scheduleGuard = fn;
+  }
+
+  /** Inyecta el bus de eventos del hogar para las automatizaciones (US-167). */
+  setEventSink(sink: (event: HomeEvent) => void): void {
+    this.eventSink = sink;
   }
 
   /** Mapea una fila Prisma al DTO `Device` del contrato compartido. */
@@ -262,6 +270,7 @@ export class InventoryService {
       await this.app.prisma.device.updateMany({ where: staleWhere, data: { online: false } });
       for (const row of stale) {
         this.app.io.emit('inventory:device-updated', this.toDevice({ ...row, online: false }));
+        this.eventSink?.({ type: 'device-offline', mac: row.mac });
       }
     }
 
@@ -309,6 +318,10 @@ export class InventoryService {
     // Dispositivo nuevo (MAC nunca vista): evento de seguridad (auditoría + push, US-45).
     if (!existing) {
       this.app.audit({ action: 'inventory.unknown_device', detail: mac });
+      this.eventSink?.({ type: 'device-new', mac });
+    } else if (!existing.online) {
+      // Transición offline→online (US-167: base de "al llegar a casa").
+      this.eventSink?.({ type: 'device-online', mac });
     }
 
     this.app.io.emit('inventory:device-updated', this.toDevice(row));

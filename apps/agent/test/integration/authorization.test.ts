@@ -87,6 +87,18 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/iot-schedules/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/iot-schedules/x' },
+  // automatizaciones (US-167)
+  {
+    method: 'POST',
+    url: '/api/automations',
+    payload: {
+      name: 'Regla',
+      trigger: { type: 'device-new' },
+      actions: [{ type: 'notify', message: 'x' }],
+    },
+  },
+  { method: 'PATCH', url: '/api/automations/x', payload: { enabled: false } },
+  { method: 'DELETE', url: '/api/automations/x' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)
