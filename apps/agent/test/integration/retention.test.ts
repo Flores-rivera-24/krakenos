@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   DAY_MS,
   pruneAuditLog,
+  pruneAutomationRuns,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
   retentionDays,
@@ -116,6 +117,22 @@ describe('retención de datos (US-102)', () => {
     expect(await pruneExpiredWebAuthnChallenges(app.prisma)).toBe(1);
     const left = await app.prisma.webAuthnChallenge.findMany();
     expect(left[0]?.challenge).toBe('vigente');
+  });
+
+  it('poda ejecuciones de automatizaciones antiguas (US-167)', async () => {
+    const rule = await app.prisma.automationRule.create({
+      data: { name: 'r', trigger: '{"type":"device-new"}', actions: '[]' },
+    });
+    const seedRun = (event: string, ageDays: number) =>
+      app.prisma.automationRun.create({
+        data: { ruleId: rule.id, event, ok: true, createdAt: new Date(Date.now() - ageDays * DAY_MS) },
+      });
+    await seedRun('vieja', 40);
+    await seedRun('reciente', 5);
+
+    expect(await pruneAutomationRuns(app.prisma)).toBe(1);
+    const left = await app.prisma.automationRun.findMany();
+    expect(left[0]?.event).toBe('reciente');
   });
 
   it('pruneOnce cubre auditoría + tokens + desafíos en un solo barrido (US-206)', async () => {

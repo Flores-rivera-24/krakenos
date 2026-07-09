@@ -1,0 +1,169 @@
+import type { AutomationRule, HomeEvent } from '@krakenos/types';
+import { describe, expect, it } from 'vitest';
+import {
+  describeEvent,
+  dueRulesForEvent,
+  dueTimeRules,
+  eventSubject,
+  matchesTrigger,
+  passesCondition,
+  timeTriggerDue,
+} from '../../src/automations/engine.js';
+
+function rule(over: Partial<AutomationRule> = {}): AutomationRule {
+  return {
+    id: 'r1',
+    name: 'Regla',
+    enabled: true,
+    trigger: { type: 'device-new' },
+    actions: [{ type: 'notify', message: 'hola' }],
+    cooldownSec: 60,
+    createdAt: '',
+    ...over,
+  };
+}
+
+const NOW = new Date(2026, 6, 8, 12, 0, 0); // miércoles (día 3) 12:00
+
+/** Motor de automatizaciones (US-167): decisión pura de disparo. */
+describe('automations/engine — matchesTrigger', () => {
+  it('device-new casa con cualquier MAC nueva', () => {
+    expect(matchesTrigger({ type: 'device-new' }, { type: 'device-new', mac: 'aa' })).toBe(true);
+    expect(matchesTrigger({ type: 'device-new' }, { type: 'device-online', mac: 'aa' })).toBe(false);
+  });
+
+  it('device-online/offline exigen la MAC concreta', () => {
+    expect(
+      matchesTrigger({ type: 'device-online', mac: 'aa' }, { type: 'device-online', mac: 'aa' }),
+    ).toBe(true);
+    expect(
+      matchesTrigger({ type: 'device-online', mac: 'aa' }, { type: 'device-online', mac: 'bb' }),
+    ).toBe(false);
+    expect(
+      matchesTrigger({ type: 'device-offline', mac: 'aa' }, { type: 'device-offline', mac: 'aa' }),
+    ).toBe(true);
+  });
+
+  it('iot-on/off exigen el dispositivo concreto', () => {
+    expect(matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-on', deviceId: 'x' })).toBe(true);
+    expect(matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-off', deviceId: 'x' })).toBe(false);
+  });
+
+  it('sensor-threshold dispara solo al CRUZAR el umbral, no sostenido', () => {
+    const trigger = { type: 'sensor-threshold', deviceId: 's', op: 'gt', value: 30 } as const;
+    const reading = (value: number, prevValue: number | null): HomeEvent => ({
+      type: 'sensor-reading',
+      deviceId: 's',
+      value,
+      prevValue,
+    });
+    expect(matchesTrigger(trigger, reading(35, 25))).toBe(true); // cruza hacia arriba
+    expect(matchesTrigger(trigger, reading(36, 35))).toBe(false); // ya estaba por encima
+    expect(matchesTrigger(trigger, reading(35, null))).toBe(true); // primera lectura
+    expect(matchesTrigger(trigger, reading(25, 35))).toBe(false); // cruza hacia abajo
+
+    const lt = { type: 'sensor-threshold', deviceId: 's', op: 'lt', value: 10 } as const;
+    expect(matchesTrigger(lt, reading(5, 15))).toBe(true);
+    expect(matchesTrigger(lt, reading(4, 5))).toBe(false);
+  });
+
+  it('time nunca casa por evento (va por el barrido)', () => {
+    expect(
+      matchesTrigger({ type: 'time', days: [3], minute: 720 }, { type: 'device-new', mac: 'aa' }),
+    ).toBe(false);
+  });
+});
+
+describe('automations/engine — passesCondition', () => {
+  it('sin condición siempre pasa; los días filtran', () => {
+    expect(passesCondition(undefined, NOW)).toBe(true);
+    expect(passesCondition({ days: [3] }, NOW)).toBe(true);
+    expect(passesCondition({ days: [0, 6] }, NOW)).toBe(false);
+  });
+
+  it('ventana horaria normal y cruzando medianoche', () => {
+    expect(passesCondition({ fromMinute: 600, toMinute: 800 }, NOW)).toBe(true); // 12:00 ∈ [10:00,13:20)
+    expect(passesCondition({ fromMinute: 800, toMinute: 900 }, NOW)).toBe(false);
+    // 22:00→07:00 cruza medianoche: 12:00 fuera, 23:00 dentro, 06:00 dentro.
+    const night = { fromMinute: 22 * 60, toMinute: 7 * 60 };
+    expect(passesCondition(night, NOW)).toBe(false);
+    expect(passesCondition(night, new Date(2026, 6, 8, 23, 0))).toBe(true);
+    expect(passesCondition(night, new Date(2026, 6, 8, 6, 0))).toBe(true);
+  });
+});
+
+describe('automations/engine — timeTriggerDue', () => {
+  const trigger = { type: 'time', days: [3], minute: 12 * 60 } as const; // miércoles 12:00
+
+  it('dispara al cruzar el minuto, no antes ni después', () => {
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 59), new Date(2026, 6, 8, 12, 0))).toBe(true);
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 57), new Date(2026, 6, 8, 11, 58))).toBe(false);
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 12, 0), new Date(2026, 6, 8, 12, 1))).toBe(false);
+  });
+
+  it('respeta el día de la semana y cruza medianoche', () => {
+    // Mismo minuto pero jueves → no dispara.
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 9, 11, 59), new Date(2026, 6, 9, 12, 0))).toBe(false);
+    // 00:00 del jueves con barrido que cruza medianoche desde el miércoles.
+    const midnight = { type: 'time', days: [4], minute: 0 } as const;
+    expect(
+      timeTriggerDue(midnight, new Date(2026, 6, 8, 23, 59, 30), new Date(2026, 6, 9, 0, 0, 30)),
+    ).toBe(true);
+  });
+});
+
+describe('automations/engine — dueRulesForEvent / dueTimeRules', () => {
+  const event: HomeEvent = { type: 'device-new', mac: 'aa:bb' };
+
+  it('filtra deshabilitadas, no-casan, condición y cooldown', () => {
+    const rules = [
+      rule({ id: 'ok' }),
+      rule({ id: 'off', enabled: false }),
+      rule({ id: 'otra', trigger: { type: 'iot-on', deviceId: 'x' } }),
+      rule({ id: 'noche', condition: { days: [0] } }),
+      rule({ id: 'caliente' }),
+    ];
+    const lastFired = new Map([['caliente', NOW.getTime() - 30_000]]); // cooldown 60 s
+    expect(dueRulesForEvent(rules, event, NOW, lastFired).map((r) => r.id)).toEqual(['ok']);
+  });
+
+  it('anti-bucle: un evento con origin de la propia regla no la re-dispara', () => {
+    const self = rule({ id: 'r1' });
+    const other = rule({ id: 'r2' });
+    const caused: HomeEvent = { ...event, origin: 'automation:r1' };
+    expect(dueRulesForEvent([self, other], caused, NOW, new Map()).map((r) => r.id)).toEqual(['r2']);
+  });
+
+  it('cooldown cumplido vuelve a permitir el disparo', () => {
+    const r = rule({ id: 'ok', cooldownSec: 60 });
+    const lastFired = new Map([['ok', NOW.getTime() - 61_000]]);
+    expect(dueRulesForEvent([r], event, NOW, lastFired)).toHaveLength(1);
+  });
+
+  it('dueTimeRules solo considera disparadores de hora', () => {
+    const timed = rule({ id: 't', trigger: { type: 'time', days: [3], minute: 12 * 60 } });
+    const evented = rule({ id: 'e' });
+    const due = dueTimeRules(
+      [timed, evented],
+      new Date(2026, 6, 8, 11, 59),
+      new Date(2026, 6, 8, 12, 0),
+      new Map(),
+    );
+    expect(due.map((r) => r.id)).toEqual(['t']);
+  });
+});
+
+describe('automations/engine — eventSubject / describeEvent', () => {
+  it('extrae el objetivo implícito del evento', () => {
+    expect(eventSubject({ type: 'device-new', mac: 'aa' })).toEqual({ mac: 'aa' });
+    expect(eventSubject({ type: 'iot-on', deviceId: 'x' })).toEqual({ deviceId: 'x' });
+    expect(eventSubject({ type: 'sensor-reading', deviceId: 's', value: 1, prevValue: null })).toEqual({
+      deviceId: 's',
+    });
+  });
+
+  it('describe los eventos de forma legible', () => {
+    expect(describeEvent({ type: 'device-new', mac: 'aa' })).toContain('aa');
+    expect(describeEvent({ type: 'sensor-reading', deviceId: 's', value: 21, prevValue: 20 })).toBe('s = 21');
+  });
+});

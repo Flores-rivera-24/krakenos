@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import {
   pruneAuditLog,
+  pruneAutomationRuns,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
   retentionDays,
@@ -46,6 +47,10 @@ export class RetentionService {
       const challenges = await pruneExpiredWebAuthnChallenges(this.app.prisma);
       if (challenges > 0) {
         this.app.log.info(`[retention] podados ${challenges} desafíos WebAuthn expirados`);
+      }
+      const runs = await pruneAutomationRuns(this.app.prisma);
+      if (runs > 0) {
+        this.app.log.info(`[retention] podadas ${runs} ejecuciones de automatizaciones`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

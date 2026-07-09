@@ -40,6 +40,10 @@ import { scenesRoutes } from './modules/scenes/scenes.routes.js';
 import { SceneService } from './modules/scenes/scenes.service.js';
 import { iotScheduleRoutes } from './modules/iot-schedule/iot-schedule.routes.js';
 import { IotScheduleService } from './modules/iot-schedule/iot-schedule.service.js';
+import { HomeEventBus } from './automations/event-bus.js';
+import { IotWatcher } from './automations/iot-watcher.js';
+import { AutomationService } from './modules/automations/automations.service.js';
+import { automationsRoutes } from './modules/automations/automations.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
@@ -200,6 +204,23 @@ export async function buildServer(): Promise<FastifyInstance> {
   // acción a hora fija o solar (amanecer/atardecer con la lat/long del hogar).
   const iotScheduleService = new IotScheduleService(app, iot, sceneService);
   await app.register(iotScheduleRoutes, { prefix: '/api/iot-schedules', service: iotScheduleService });
+  // Automatizaciones «si X→Y» (US-167): bus de eventos del hogar (inventario +
+  // watcher IoT) + motor puro + barrido de hora. El inventario publica
+  // dispositivo nuevo/online/offline; el watcher, transiciones de estado IoT.
+  const homeBus = new HomeEventBus((err, event) =>
+    app.log.error({ err, event: event.type }, '[automations] un handler del bus falló'),
+  );
+  inventoryService.setEventSink((event) => homeBus.publish(event));
+  const iotWatcher = new IotWatcher(iot, homeBus, app.log);
+  const automationService = new AutomationService(app, {
+    iot,
+    scenes: sceneService,
+    inventory: inventoryService,
+    access: accessService,
+    bus: homeBus,
+    watcher: iotWatcher,
+  });
+  await app.register(automationsRoutes, { prefix: '/api/automations', service: automationService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
@@ -268,6 +289,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Dispara los horarios IoT/escenas cada minuto (US-168).
   iotScheduleService.start();
   app.addHook('onClose', async () => iotScheduleService.stop());
+
+  // Automatizaciones (US-167): sondeo de transiciones IoT + barrido de hora.
+  iotWatcher.start();
+  app.addHook('onClose', async () => iotWatcher.stop());
+  automationService.start();
+  app.addHook('onClose', async () => automationService.stop());
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();

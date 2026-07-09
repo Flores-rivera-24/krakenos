@@ -1,0 +1,749 @@
+import type {
+  AutomationAction,
+  AutomationRule,
+  AutomationRun,
+  AutomationTrigger,
+  Device,
+  IotDevice,
+  Scene,
+} from '@krakenos/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/ui/delete-button';
+import { ErrorBanner } from '@/components/ui/error-banner';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Slideover } from '@/components/ui/slideover';
+import { Switch } from '@/components/ui/switch';
+import { api } from '@/lib/api';
+import {
+  createAutomation,
+  deleteAutomation,
+  describeAction,
+  describeCondition,
+  describeTrigger,
+  listAutomationRuns,
+  listAutomations,
+  updateAutomation,
+  type NameContext,
+} from '@/lib/automations';
+import { describeError } from '@/lib/errors';
+import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
+import { listScenes } from '@/lib/scenes';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
+
+const SELECT_CLASS =
+  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+
+type TriggerType = AutomationTrigger['type'];
+type ActionType = AutomationAction['type'];
+
+/** Etiqueta amable de un dispositivo de red (para selects y frases). */
+function networkLabel(d: Device): string {
+  return d.label || d.hostname || d.mac;
+}
+
+/** Fila editable de acción en el builder (campos superpuestos de todos los tipos). */
+interface DraftAction {
+  type: ActionType;
+  deviceId: string;
+  on: boolean;
+  sceneId: string;
+  mac: string; // '' = el dispositivo del evento
+  minutes: number;
+  message: string;
+}
+
+function defaultAction(iot: IotDevice[], scenes: Scene[]): DraftAction {
+  return {
+    type: 'iot-set',
+    deviceId: iot.find((d) => d.on !== null)?.id ?? '',
+    on: true,
+    sceneId: scenes[0]?.id ?? '',
+    mac: '',
+    minutes: 30,
+    message: '',
+  };
+}
+
+function toAction(row: DraftAction): AutomationAction {
+  switch (row.type) {
+    case 'iot-set':
+      return { type: 'iot-set', deviceId: row.deviceId, on: row.on };
+    case 'scene-run':
+      return { type: 'scene-run', sceneId: row.sceneId };
+    case 'device-block':
+      return { type: 'device-block', ...(row.mac ? { mac: row.mac } : {}) };
+    case 'device-pause':
+      return { type: 'device-pause', minutes: row.minutes, ...(row.mac ? { mac: row.mac } : {}) };
+    case 'notify':
+      return { type: 'notify', message: row.message };
+  }
+}
+
+function fromAction(action: AutomationAction, base: DraftAction): DraftAction {
+  const row = { ...base, type: action.type };
+  switch (action.type) {
+    case 'iot-set':
+      return { ...row, deviceId: action.deviceId ?? '', on: action.on ?? true };
+    case 'scene-run':
+      return { ...row, sceneId: action.sceneId };
+    case 'device-block':
+      return { ...row, mac: action.mac ?? '' };
+    case 'device-pause':
+      return { ...row, mac: action.mac ?? '', minutes: action.minutes };
+    case 'notify':
+      return { ...row, message: action.message };
+  }
+}
+
+function RuleEditor({
+  rule,
+  iotDevices,
+  networkDevices,
+  scenes,
+  onClose,
+  onSaved,
+}: {
+  rule: AutomationRule | null;
+  iotDevices: IotDevice[];
+  networkDevices: Device[];
+  scenes: Scene[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const editing = rule !== null;
+  const controllable = iotDevices.filter((d) => d.on !== null);
+  const sensors = iotDevices.filter((d) => d.reading !== null);
+
+  const [name, setName] = useState(rule?.name ?? '');
+  const [triggerType, setTriggerType] = useState<TriggerType>(rule?.trigger.type ?? 'device-new');
+  const trg = rule?.trigger;
+  const [triggerMac, setTriggerMac] = useState(
+    trg && (trg.type === 'device-online' || trg.type === 'device-offline')
+      ? trg.mac
+      : (networkDevices[0]?.mac ?? ''),
+  );
+  const [triggerDevice, setTriggerDevice] = useState(
+    trg && (trg.type === 'iot-on' || trg.type === 'iot-off' || trg.type === 'sensor-threshold')
+      ? trg.deviceId
+      : (controllable[0]?.id ?? ''),
+  );
+  const [sensorOp, setSensorOp] = useState<'gt' | 'lt'>(
+    trg?.type === 'sensor-threshold' ? trg.op : 'gt',
+  );
+  const [sensorValue, setSensorValue] = useState(
+    trg?.type === 'sensor-threshold' ? trg.value : 30,
+  );
+  const [timeDays, setTimeDays] = useState<number[]>(
+    trg?.type === 'time' ? trg.days : ALL_DAYS,
+  );
+  const [timeAt, setTimeAt] = useState(
+    trg?.type === 'time' ? minuteToTimeString(trg.minute) : '20:00',
+  );
+
+  const [withWindow, setWithWindow] = useState(rule?.condition !== undefined);
+  const [windowFrom, setWindowFrom] = useState(
+    rule?.condition?.fromMinute !== undefined ? minuteToTimeString(rule.condition.fromMinute) : '22:00',
+  );
+  const [windowTo, setWindowTo] = useState(
+    rule?.condition?.toMinute !== undefined ? minuteToTimeString(rule.condition.toMinute) : '07:00',
+  );
+  const [windowDays, setWindowDays] = useState<number[]>(rule?.condition?.days ?? ALL_DAYS);
+
+  const base = defaultAction(iotDevices, scenes);
+  const [actions, setActions] = useState<DraftAction[]>(
+    rule ? rule.actions.map((a) => fromAction(a, base)) : [base],
+  );
+  const [cooldownMin, setCooldownMin] = useState(Math.max(1, Math.round((rule?.cooldownSec ?? 60) / 60)));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggleIn = (list: number[], d: number) =>
+    list.includes(d) ? list.filter((x) => x !== d) : [...list, d].sort((a, b) => a - b);
+
+  const buildTrigger = (): AutomationTrigger => {
+    switch (triggerType) {
+      case 'device-new':
+        return { type: 'device-new' };
+      case 'device-online':
+      case 'device-offline':
+        return { type: triggerType, mac: triggerMac };
+      case 'iot-on':
+      case 'iot-off':
+        return { type: triggerType, deviceId: triggerDevice };
+      case 'sensor-threshold':
+        return { type: 'sensor-threshold', deviceId: triggerDevice, op: sensorOp, value: sensorValue };
+      case 'time':
+        return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
+    }
+  };
+
+  const save = async () => {
+    const trimmed = name.trim();
+    if (trimmed === '') {
+      setError('Ponle un nombre a la automatización.');
+      return;
+    }
+    if (actions.length === 0) {
+      setError('Añade al menos una acción.');
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const body = {
+      name: trimmed,
+      trigger: buildTrigger(),
+      condition: withWindow
+        ? {
+            ...(windowDays.length < 7 ? { days: windowDays } : {}),
+            fromMinute: timeStringToMinute(windowFrom),
+            toMinute: timeStringToMinute(windowTo),
+          }
+        : null,
+      actions: actions.map(toAction),
+      cooldownSec: Math.max(5, cooldownMin * 60),
+    };
+    try {
+      if (editing) {
+        await updateAutomation(rule.id, body);
+        toast.success('Automatización actualizada');
+      } else {
+        await createAutomation({ ...body, condition: body.condition ?? undefined });
+        toast.success('Automatización creada');
+      }
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(describeError(err, 'No se pudo guardar la automatización'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!editing) return;
+    try {
+      await deleteAutomation(rule.id);
+      toast.success('Automatización eliminada');
+      onSaved();
+      onClose();
+    } catch (err) {
+      toast.error(describeError(err, 'No se pudo eliminar'));
+    }
+  };
+
+  const updateAction = (i: number, patch: Partial<DraftAction>) =>
+    setActions((prev) => prev.map((row, j) => (j === i ? { ...row, ...patch } : row)));
+
+  /** ¿El disparador aporta un objetivo de red implícito para bloquear/pausar? */
+  const eventHasMac =
+    triggerType === 'device-new' || triggerType === 'device-online' || triggerType === 'device-offline';
+
+  const dayPicker = (selected: number[], onToggle: (d: number) => void, label: string) => (
+    <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
+      {DAY_LABELS.map((text, d) => (
+        <button
+          key={d}
+          type="button"
+          aria-pressed={selected.includes(d)}
+          onClick={() => onToggle(d)}
+          className={cn(
+            'h-9 w-11 rounded-md border text-kr-xs transition-colors',
+            selected.includes(d)
+              ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
+              : 'border-kr bg-kr-elevated text-kr-muted',
+          )}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <Slideover
+      open
+      onClose={onClose}
+      title={editing ? 'Editar automatización' : 'Nueva automatización'}
+      footer={
+        <div className="space-y-2">
+          {error && <p className="text-kr-sm text-danger">{error}</p>}
+          <Button onClick={() => void save()} disabled={saving} className="w-full">
+            {saving ? 'Guardando…' : 'Guardar'}
+          </Button>
+          {editing && (
+            <DeleteButton onDelete={remove} variant="destructive" className="w-full">
+              Eliminar automatización
+            </DeleteButton>
+          )}
+        </div>
+      }
+    >
+      <div className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="auto-name">Nombre</Label>
+          <Input
+            id="auto-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+            placeholder="Luz al llegar, Intruso fuera…"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="auto-when">Cuando</Label>
+          <select
+            id="auto-when"
+            className={SELECT_CLASS}
+            value={triggerType}
+            onChange={(e) => setTriggerType(e.target.value as TriggerType)}
+          >
+            <option value="device-new">Aparece un dispositivo desconocido</option>
+            <option value="device-online">Un dispositivo se conecta</option>
+            <option value="device-offline">Un dispositivo se desconecta</option>
+            <option value="iot-on">Una luz/enchufe se enciende</option>
+            <option value="iot-off">Una luz/enchufe se apaga</option>
+            <option value="sensor-threshold">Un sensor cruza un umbral</option>
+            <option value="time">A una hora</option>
+          </select>
+
+          {(triggerType === 'device-online' || triggerType === 'device-offline') && (
+            <select
+              aria-label="Dispositivo de red"
+              className={SELECT_CLASS}
+              value={triggerMac}
+              onChange={(e) => setTriggerMac(e.target.value)}
+            >
+              {networkDevices.map((d) => (
+                <option key={d.mac} value={d.mac}>
+                  {networkLabel(d)}
+                </option>
+              ))}
+            </select>
+          )}
+          {(triggerType === 'iot-on' || triggerType === 'iot-off') && (
+            <select
+              aria-label="Dispositivo IoT"
+              className={SELECT_CLASS}
+              value={triggerDevice}
+              onChange={(e) => setTriggerDevice(e.target.value)}
+            >
+              {controllable.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {triggerType === 'sensor-threshold' && (
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label="Sensor"
+                className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                value={triggerDevice}
+                onChange={(e) => setTriggerDevice(e.target.value)}
+              >
+                {sensors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Comparación"
+                className={cn(SELECT_CLASS, 'w-auto')}
+                value={sensorOp}
+                onChange={(e) => setSensorOp(e.target.value as 'gt' | 'lt')}
+              >
+                <option value="gt">supera</option>
+                <option value="lt">baja de</option>
+              </select>
+              <Input
+                type="number"
+                aria-label="Umbral"
+                value={sensorValue}
+                onChange={(e) => setSensorValue(Number(e.target.value))}
+                className="w-24"
+              />
+            </div>
+          )}
+          {triggerType === 'time' && (
+            <div className="space-y-2">
+              {dayPicker(timeDays, (d) => setTimeDays((prev) => toggleIn(prev, d)), 'Días del disparo')}
+              <Input
+                type="time"
+                aria-label="Hora del disparo"
+                value={timeAt}
+                onChange={(e) => setTimeAt(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-kr-sm text-kr-primary">
+            <input
+              type="checkbox"
+              checked={withWindow}
+              onChange={(e) => setWithWindow(e.target.checked)}
+            />
+            Solo en una franja (opcional)
+          </label>
+          {withWindow && (
+            <div className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
+              {dayPicker(windowDays, (d) => setWindowDays((prev) => toggleIn(prev, d)), 'Días de la franja')}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  aria-label="Desde"
+                  value={windowFrom}
+                  onChange={(e) => setWindowFrom(e.target.value)}
+                />
+                <span className="text-kr-xs text-kr-muted">a</span>
+                <Input
+                  type="time"
+                  aria-label="Hasta"
+                  value={windowTo}
+                  onChange={(e) => setWindowTo(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Entonces</Label>
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={() => setActions((prev) => [...prev, defaultAction(iotDevices, scenes)])}
+            >
+              Añadir acción
+            </Button>
+          </div>
+          <ul className="space-y-2">
+            {actions.map((row, i) => (
+              <li key={i} className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
+                <div className="flex items-center gap-2">
+                  <select
+                    aria-label={`Acción ${i + 1}`}
+                    className={SELECT_CLASS}
+                    value={row.type}
+                    onChange={(e) => updateAction(i, { type: e.target.value as ActionType })}
+                  >
+                    <option value="iot-set">Encender/apagar un dispositivo</option>
+                    <option value="scene-run">Activar una escena</option>
+                    <option value="device-block">Bloquear internet</option>
+                    <option value="device-pause">Pausar internet</option>
+                    <option value="notify">Avisarme</option>
+                  </select>
+                  {actions.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      type="button"
+                      aria-label={`Quitar acción ${i + 1}`}
+                      onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))}
+                    >
+                      ✕
+                    </Button>
+                  )}
+                </div>
+
+                {row.type === 'iot-set' && (
+                  <div className="flex items-center gap-2">
+                    <select
+                      aria-label={`Dispositivo de la acción ${i + 1}`}
+                      className={SELECT_CLASS}
+                      value={row.deviceId}
+                      onChange={(e) => updateAction(i, { deviceId: e.target.value })}
+                    >
+                      {controllable.map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      aria-label={`Estado de la acción ${i + 1}`}
+                      className={cn(SELECT_CLASS, 'w-auto')}
+                      value={row.on ? 'on' : 'off'}
+                      onChange={(e) => updateAction(i, { on: e.target.value === 'on' })}
+                    >
+                      <option value="on">encender</option>
+                      <option value="off">apagar</option>
+                    </select>
+                  </div>
+                )}
+                {row.type === 'scene-run' && (
+                  <select
+                    aria-label={`Escena de la acción ${i + 1}`}
+                    className={SELECT_CLASS}
+                    value={row.sceneId}
+                    onChange={(e) => updateAction(i, { sceneId: e.target.value })}
+                  >
+                    {scenes.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {(row.type === 'device-block' || row.type === 'device-pause') && (
+                  <div className="space-y-2">
+                    <select
+                      aria-label={`Objetivo de la acción ${i + 1}`}
+                      className={SELECT_CLASS}
+                      value={row.mac}
+                      onChange={(e) => updateAction(i, { mac: e.target.value })}
+                    >
+                      {eventHasMac && <option value="">El dispositivo del evento</option>}
+                      {networkDevices.map((d) => (
+                        <option key={d.mac} value={d.mac}>
+                          {networkLabel(d)}
+                        </option>
+                      ))}
+                    </select>
+                    {row.type === 'device-pause' && (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={1440}
+                          aria-label={`Minutos de pausa de la acción ${i + 1}`}
+                          value={row.minutes}
+                          onChange={(e) => updateAction(i, { minutes: Number(e.target.value) })}
+                          className="w-24"
+                        />
+                        <span className="text-kr-xs text-kr-muted">minutos</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {row.type === 'notify' && (
+                  <Input
+                    aria-label={`Mensaje de la acción ${i + 1}`}
+                    value={row.message}
+                    maxLength={200}
+                    placeholder="Se detectó movimiento en casa"
+                    onChange={(e) => updateAction(i, { message: e.target.value })}
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Label htmlFor="auto-cooldown" className="text-kr-sm text-kr-secondary">
+            No repetir antes de
+          </Label>
+          <Input
+            id="auto-cooldown"
+            type="number"
+            min={1}
+            max={1440}
+            value={cooldownMin}
+            onChange={(e) => setCooldownMin(Number(e.target.value))}
+            className="w-20"
+          />
+          <span className="text-kr-xs text-kr-muted">minutos</span>
+        </div>
+      </div>
+    </Slideover>
+  );
+}
+
+export function AutomationsPage() {
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const [rules, setRules] = useState<AutomationRule[] | null>(null);
+  const [runs, setRuns] = useState<AutomationRun[]>([]);
+  const [iotDevices, setIotDevices] = useState<IotDevice[]>([]);
+  const [networkDevices, setNetworkDevices] = useState<Device[]>([]);
+  const [scenes, setScenes] = useState<Scene[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<AutomationRule | null>(null);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  const reload = useCallback(() => {
+    void listAutomations()
+      .then((list) => {
+        setRules(list);
+        setError(null);
+      })
+      .catch((err) => {
+        setRules((prev) => prev ?? []);
+        setError(describeError(err, 'No se pudieron cargar las automatizaciones'));
+      });
+    void listAutomationRuns()
+      .then(setRuns)
+      .catch(() => setRuns([]));
+  }, []);
+
+  useEffect(() => {
+    reload();
+    void api.get<IotDevice[]>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
+    void api
+      .get<Device[]>('/inventory/devices')
+      .then(setNetworkDevices)
+      .catch(() => setNetworkDevices([]));
+    void listScenes().then(setScenes).catch(() => setScenes([]));
+  }, [reload]);
+
+  const ctx: NameContext = useMemo(
+    () => ({
+      devices: iotDevices,
+      scenes,
+      networkNames: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
+    }),
+    [iotDevices, scenes, networkDevices],
+  );
+
+  const toggleEnabled = async (rule: AutomationRule, enabled: boolean) => {
+    try {
+      await updateAutomation(rule.id, { enabled });
+      reload();
+    } catch (err) {
+      toast.error(describeError(err, 'No se pudo cambiar el estado'));
+    }
+  };
+
+  const ruleName = (id: string) => rules?.find((r) => r.id === id)?.name ?? id;
+
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Automatizaciones</h2>
+          <p className="text-sm text-muted-foreground">
+            La casa reacciona sola: «si pasa X, haz Y».
+          </p>
+        </div>
+        {isAdmin && (
+          <Button
+            onClick={() => {
+              setEditing(null);
+              setEditorOpen(true);
+            }}
+          >
+            Nueva automatización
+          </Button>
+        )}
+      </div>
+
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {rules === null ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : rules.length === 0 ? (
+        !error && (
+          <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-12 text-center">
+            <p className="text-kr-secondary">Aún no tienes automatizaciones.</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
+              Ejemplos: «si aparece un dispositivo desconocido, bloquéalo y avísame» ·
+              «a las 23:00 apaga las luces» · «si el sensor supera 30º, enciende el ventilador».
+            </p>
+            {isAdmin && (
+              <Button
+                onClick={() => {
+                  setEditing(null);
+                  setEditorOpen(true);
+                }}
+              >
+                Crear la primera
+              </Button>
+            )}
+          </div>
+        )
+      ) : (
+        <ul className="space-y-2">
+          {rules.map((rule) => {
+            const condition = describeCondition(rule.condition);
+            return (
+              <li
+                key={rule.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-kr bg-kr-surface px-4 py-3"
+              >
+                <button
+                  type="button"
+                  disabled={!isAdmin}
+                  onClick={() => {
+                    setEditing(rule);
+                    setEditorOpen(true);
+                  }}
+                  className="min-w-0 flex-1 text-left disabled:cursor-default"
+                >
+                  <span className="block truncate text-kr-base font-medium text-kr-primary">
+                    {rule.name}
+                  </span>
+                  <span className="block truncate text-kr-sm text-kr-muted">
+                    Cuando {describeTrigger(rule.trigger, ctx)}
+                    {condition ? ` (${condition})` : ''} →{' '}
+                    {rule.actions.map((a) => describeAction(a, ctx)).join(' · ')}
+                  </span>
+                </button>
+                {isAdmin && (
+                  <Switch
+                    checked={rule.enabled}
+                    onCheckedChange={(v) => void toggleEnabled(rule, v)}
+                    aria-label={`Activar ${rule.name}`}
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {runs.length > 0 && (
+        <section className="space-y-2 border-t border-kr-muted pt-6">
+          <h3 className="text-kr-lg font-semibold text-kr-primary">Últimas ejecuciones</h3>
+          <ul className="divide-y divide-kr-muted overflow-hidden rounded-lg border border-kr">
+            {runs.slice(0, 20).map((run) => (
+              <li key={run.id} className="flex items-center gap-3 bg-kr-surface px-3 py-2">
+                <span aria-hidden className={cn('text-kr-sm', run.ok ? 'text-success' : 'text-danger')}>
+                  {run.ok ? '✓' : '✕'}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <span className="block truncate text-kr-sm text-kr-primary">
+                    {ruleName(run.ruleId)} · {run.event}
+                  </span>
+                  {run.detail && (
+                    <span className="block truncate text-kr-xs text-kr-muted">{run.detail}</span>
+                  )}
+                </div>
+                <time className="shrink-0 text-kr-xs text-kr-muted">
+                  {new Date(run.createdAt).toLocaleString()}
+                </time>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {editorOpen && (
+        <RuleEditor
+          rule={editing}
+          iotDevices={iotDevices}
+          networkDevices={networkDevices}
+          scenes={scenes}
+          onClose={() => setEditorOpen(false)}
+          onSaved={reload}
+        />
+      )}
+    </div>
+  );
+}
