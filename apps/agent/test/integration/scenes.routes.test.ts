@@ -95,6 +95,43 @@ describe('escenas (US-166)', () => {
     expect(typeof actions[0]?.brightness).toBe('number');
   });
 
+  it('la captura hace un solo listDevices, sin un getDevice por id (US-204)', async () => {
+    const { SceneService } = await import('../../src/modules/scenes/scenes.service.js');
+    const { MockIotManager } = await import('../../src/iot/mock.iot.js');
+    const inner = new MockIotManager();
+    let listCalls = 0;
+    let getCalls = 0;
+    const spied = {
+      listDevices: async () => {
+        listCalls++;
+        return inner.listDevices();
+      },
+      getDevice: async (id: string) => {
+        getCalls++;
+        return inner.getDevice(id);
+      },
+      setState: async () => {
+        throw new Error('no aplica');
+      },
+    } as unknown as import('@krakenos/types').IotManager;
+
+    const service = new SceneService(app, spied);
+    const actions = await service.captureState(['light-salon', 'sensor-temp', 'a', 'b', 'c']);
+    expect(actions.map((a) => a.deviceId)).toEqual(['light-salon']);
+    expect(listCalls).toBe(1);
+    expect(getCalls).toBe(0);
+  });
+
+  it('la captura rechaza más de 50 ids (cota anti-amplificación, US-204)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/scenes/capture',
+      headers: authHeader(adminToken),
+      payload: { deviceIds: Array.from({ length: 51 }, (_, i) => `d-${i}`) },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
   it('run/CRUD bloqueado para viewer (403) y sin token (401); 404 si no existe', async () => {
     const asViewer = await app.inject({
       method: 'POST',

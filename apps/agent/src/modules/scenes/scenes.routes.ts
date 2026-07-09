@@ -36,9 +36,14 @@ export const scenesRoutes: FastifyPluginAsync<ScenesRoutesOpts> = async (app, op
   );
 
   // Captura del estado actual de N dispositivos como acciones (para el editor).
+  // Rate-limit: toca el hardware IoT desde cualquier rol autenticado (US-204).
   app.post<{ Body: CaptureSceneRequest }>(
     '/capture',
-    { schema: captureSceneSchema, preHandler: app.authenticate },
+    {
+      schema: captureSceneSchema,
+      preHandler: app.authenticate,
+      config: { rateLimit: { max: 10, timeWindow: '1 minute' } },
+    },
     async (req) => service.captureState(req.body.deviceIds),
   );
 
