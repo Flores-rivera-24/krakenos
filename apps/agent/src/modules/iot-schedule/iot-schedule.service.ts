@@ -9,6 +9,7 @@ import type {
 import { IOT_ROOM } from '@krakenos/types';
 import type { IotSchedule as DbIotSchedule } from '@prisma/client';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import { withActionTimeout } from '../../iot/action-timeout.js';
 import type { SceneService } from '../scenes/scenes.service.js';
 import { type HomeLocation, dueSchedules } from './schedule-eval.js';
 
@@ -134,10 +135,14 @@ export class IotScheduleService {
     const { target } = schedule;
     try {
       if (target.type === 'device') {
-        const device = await this.iot.setState(target.deviceId, {
-          ...(target.on !== undefined ? { on: target.on } : {}),
-          ...(target.brightness !== undefined ? { brightness: target.brightness } : {}),
-        });
+        // Con timeout: un dispositivo colgado no frena los horarios restantes del
+        // lote (la ventana de cruce ya habría avanzado y nunca dispararían, US-203).
+        const device = await withActionTimeout(() =>
+          this.iot.setState(target.deviceId, {
+            ...(target.on !== undefined ? { on: target.on } : {}),
+            ...(target.brightness !== undefined ? { brightness: target.brightness } : {}),
+          }),
+        );
         this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
       } else {
         await this.scenes.run(target.sceneId);

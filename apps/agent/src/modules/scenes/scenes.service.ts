@@ -11,6 +11,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type { Scene as DbScene } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
+import { withActionTimeout } from '../../iot/action-timeout.js';
 
 function parseActions(raw: string): SceneAction[] {
   try {
@@ -102,11 +103,14 @@ export class SceneService {
     const result: SceneRunResult = { applied: 0, failed: [] };
     for (const action of scene.actions) {
       try {
-        const device = await this.iot.setState(action.deviceId, {
-          ...(action.on !== undefined ? { on: action.on } : {}),
-          ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
-          ...(action.color !== undefined ? { color: action.color } : {}),
-        });
+        // Con timeout: un dispositivo colgado cuenta como fallo y no frena el resto (US-203).
+        const device = await withActionTimeout(() =>
+          this.iot.setState(action.deviceId, {
+            ...(action.on !== undefined ? { on: action.on } : {}),
+            ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
+            ...(action.color !== undefined ? { color: action.color } : {}),
+          }),
+        );
         this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
         result.applied += 1;
       } catch (err) {
