@@ -147,6 +147,9 @@ model DeviceTrafficSample {
   txBytesPerSec Float
 
   @@index([mac, timestamp])
+  // La poda de retención y el rollup filtran solo por timestamp: sin este índice
+  // eran un full scan cada minuto (AUD-10 / US-206).
+  @@index([timestamp])
 }
 
 /// Configuración de integraciones editable desde la UI (US-140). Una fila por
