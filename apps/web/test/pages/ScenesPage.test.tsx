@@ -101,4 +101,41 @@ describe('ScenesPage (US-166)', () => {
     await screen.findByText(/Aún no tienes escenas/);
     expect(screen.queryByRole('button', { name: /Nueva escena/ })).not.toBeInTheDocument();
   });
+
+  it('un error de carga muestra el banner y no deja el Skeleton para siempre (US-207)', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/scenes' ? Promise.reject(new Error('boom')) : Promise.resolve([]),
+    );
+    const { container } = renderPage();
+    await screen.findByText(/No se pudo conectar con el servidor/);
+    expect(container.querySelector('.kr-shimmer')).toBeNull();
+    // Y el estado vacío ("aún no tienes escenas") no debe mentir bajo el error.
+    expect(screen.queryByText(/Aún no tienes escenas/)).not.toBeInTheDocument();
+  });
+
+  it('si fallan los dispositivos IoT lo dice en vez de fingir que no hay (US-207)', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.reject(new Error('bridge caído')) : Promise.resolve([]),
+    );
+    renderPage();
+    await screen.findByText(/No se pudo conectar con el servidor/);
+  });
+
+  it('el editor no crashea si los dispositivos llegan después de abrirlo (US-207)', async () => {
+    let resolveDevices: (d: IotDevice[]) => void = () => undefined;
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/iot/devices') return new Promise((res) => (resolveDevices = res));
+      return Promise.resolve([]);
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    // Abre el editor ANTES de que llegue el snapshot de dispositivos.
+    await user.click(await screen.findByRole('button', { name: 'Crear escena' }));
+    await screen.findByText(/No hay luces ni enchufes/);
+
+    // Los dispositivos llegan tarde: el editor debe pintarlos sin TypeError.
+    resolveDevices([LIGHT]);
+    await screen.findByLabelText(`Incluir ${LIGHT.name}`);
+  });
 });

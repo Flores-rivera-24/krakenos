@@ -8,7 +8,9 @@ import type {
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
+import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { api } from '@/lib/api';
@@ -323,13 +325,21 @@ export function IotSchedulesSection({
   isAdmin: boolean;
 }) {
   const [schedules, setSchedules] = useState<IotSchedule[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<IotSchedule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
   const reload = useCallback(() => {
     void listIotSchedules()
-      .then(setSchedules)
-      .catch(() => setSchedules([]));
+      .then((list) => {
+        setSchedules(list);
+        setError(null);
+      })
+      .catch((err) => {
+        // No fingir "sin horarios": el fallo se muestra y la lista deja de cargar (AUD-15).
+        setSchedules((prev) => prev ?? []);
+        setError(describeError(err, 'No se pudieron cargar los horarios'));
+      });
   }, []);
 
   useEffect(() => reload(), [reload]);
@@ -363,12 +373,16 @@ export function IotSchedulesSection({
 
       {isAdmin && <HomeLocationCard />}
 
+      {error && <ErrorBanner>{error}</ErrorBanner>}
+
       {schedules === null ? (
-        <p className="text-kr-sm text-kr-muted">Cargando…</p>
+        <LoadingLine label="Cargando horarios…" />
       ) : schedules.length === 0 ? (
-        <p className="text-kr-sm text-kr-muted">
-          Programa luces y enchufes por horario (riego a las 7:00, luces al atardecer…).
-        </p>
+        !error && (
+          <p className="text-kr-sm text-kr-muted">
+            Programa luces y enchufes por horario (riego a las 7:00, luces al atardecer…).
+          </p>
+        )
       ) : (
         <ul className="divide-y divide-kr-muted overflow-hidden rounded-lg border border-kr">
           {schedules.map((s) => (

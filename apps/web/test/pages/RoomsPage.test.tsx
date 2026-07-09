@@ -98,4 +98,13 @@ describe('RoomsPage (US-165)', () => {
     await screen.findByText(/Aún no has creado/);
     expect(screen.queryByRole('button', { name: /Nueva habitación/ })).not.toBeInTheDocument();
   });
+
+  it('un error de carga muestra el banner y no deja el Skeleton para siempre (US-207)', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/rooms' ? Promise.reject(new Error('boom')) : Promise.resolve([]),
+    );
+    const { container } = renderPage();
+    await screen.findByText(/No se pudo conectar con el servidor/);
+    expect(container.querySelector('.kr-shimmer')).toBeNull();
+  });
 });

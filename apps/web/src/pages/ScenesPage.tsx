@@ -153,8 +153,16 @@ function SceneEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const update = (id: string, patch: Partial<DraftAction>) =>
-    setDraft((prev) => ({ ...prev, [id]: { ...prev[id]!, ...patch } }));
+  /**
+   * Fila efectiva de un dispositivo: si llegó DESPUÉS de sembrar el draft (carga
+   * tardía del snapshot IoT), cae a una fila por defecto en vez de crashear con
+   * `draft[d.id]!` (AUD-12).
+   */
+  const rowFor = (d: IotDevice): DraftAction =>
+    draft[d.id] ?? { include: false, on: d.on ?? true, brightness: d.brightness ?? null };
+
+  const update = (d: IotDevice, patch: Partial<DraftAction>) =>
+    setDraft((prev) => ({ ...prev, [d.id]: { ...rowFor(d), ...prev[d.id], ...patch } }));
 
   const capture = () => {
     setDraft((prev) => {
@@ -172,7 +180,7 @@ function SceneEditor({
     devices
       .filter((d) => draft[d.id]?.include)
       .map((d) => {
-        const row = draft[d.id]!;
+        const row = rowFor(d);
         const action: SceneAction = { deviceId: d.id, on: row.on };
         if (d.kind === 'light' && row.brightness !== null) action.brightness = row.brightness;
         return action;
@@ -286,21 +294,21 @@ function SceneEditor({
         ) : (
           <ul className="space-y-2">
             {controllable.map((d) => {
-              const row = draft[d.id]!;
+              const row = rowFor(d);
               return (
                 <li key={d.id} className="rounded-lg border border-kr bg-kr-elevated p-3">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       checked={row.include}
-                      onChange={(e) => update(d.id, { include: e.target.checked })}
+                      onChange={(e) => update(d, { include: e.target.checked })}
                       aria-label={`Incluir ${d.name}`}
                     />
                     <span className="flex-1 truncate text-kr-sm text-kr-primary">{d.name}</span>
                     {row.include && (
                       <Switch
                         checked={row.on}
-                        onCheckedChange={(v) => update(d.id, { on: v })}
+                        onCheckedChange={(v) => update(d, { on: v })}
                         aria-label={`Estado de ${d.name} en la escena`}
                       />
                     )}
@@ -314,7 +322,7 @@ function SceneEditor({
                         max={100}
                         value={row.brightness ?? 100}
                         aria-label={`Brillo de ${d.name} en la escena`}
-                        onChange={(e) => update(d.id, { brightness: Number(e.target.value) })}
+                        onChange={(e) => update(d, { brightness: Number(e.target.value) })}
                         className="flex-1 accent-primary"
                       />
                       <span className="w-8 text-right text-kr-xs text-kr-secondary">
@@ -337,6 +345,7 @@ export function ScenesPage() {
   const [scenes, setScenes] = useState<Scene[] | null>(null);
   const [devices, setDevices] = useState<IotDevice[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [devicesError, setDevicesError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Scene | null>(null);
   const [template, setTemplate] = useState<SceneTemplate | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -347,15 +356,26 @@ export function ScenesPage() {
         setScenes(list);
         setError(null);
       })
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las escenas')));
+      .catch((err) => {
+        // Sin esto la rama `=== null` dejaba el Skeleton brillando para siempre (AUD-13).
+        setScenes((prev) => prev ?? []);
+        setError(describeError(err, 'No se pudieron cargar las escenas'));
+      });
   }, []);
 
   useEffect(() => {
     reload();
     void api
       .get<IotDevice[]>('/iot/devices')
-      .then(setDevices)
-      .catch(() => setDevices([]));
+      .then((list) => {
+        setDevices(list);
+        setDevicesError(null);
+      })
+      .catch((err) => {
+        // El editor afirmaba "no hay luces" cuando en realidad falló la carga (AUD-12).
+        setDevices([]);
+        setDevicesError(describeError(err, 'No se pudieron cargar los dispositivos IoT'));
+      });
     void useFavoritesStore.getState().load();
   }, [reload]);
 
@@ -383,6 +403,7 @@ export function ScenesPage() {
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
+      {devicesError && <ErrorBanner>{devicesError}</ErrorBanner>}
 
       {scenes === null ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

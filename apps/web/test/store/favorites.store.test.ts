@@ -46,4 +46,20 @@ describe('favorites.store (US-170)', () => {
     expect(apiMock.del).toHaveBeenCalledWith('/favorites/f1');
     expect(useFavoritesStore.getState().favorites).toHaveLength(0);
   });
+
+  it('reset vacía el espejo y permite recargar (logout, US-207)', async () => {
+    useFavoritesStore.setState({
+      favorites: [{ id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' }],
+      loaded: true,
+    });
+
+    useFavoritesStore.getState().reset();
+    expect(useFavoritesStore.getState().favorites).toHaveLength(0);
+    expect(useFavoritesStore.getState().loaded).toBe(false);
+
+    // Tras el reset, el siguiente load vuelve a pedir al servidor (otro usuario).
+    apiMock.get.mockResolvedValue([]);
+    await useFavoritesStore.getState().load();
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+  });
 });
