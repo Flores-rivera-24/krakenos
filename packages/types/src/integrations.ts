@@ -73,6 +73,11 @@ export interface IntegrationConfigInfo {
   source: 'db' | 'env' | 'default';
   /** ISO 8601 de la última modificación (solo si viene de DB). */
   updatedAt?: string;
+  /**
+   * Solo en la respuesta del PUT: `true` si la config se guardó pero el manager
+   * vivo no pudo construirse con ella y quedó en el fallback de `.env` (US-205).
+   */
+  fallback?: boolean;
 }
 
 /** Cuerpo para guardar la config de un dominio. */

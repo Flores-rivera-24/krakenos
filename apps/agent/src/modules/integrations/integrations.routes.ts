@@ -166,9 +166,18 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
       const blocked = await checkEgress(domain, config, egressPolicy, reply);
       if (blocked) return blocked;
       await saveDomainConfig(store, domain, kind, config, enabled ?? true);
-      await runtime.reconfigure(domain);
-      app.audit({ action: 'integration.save', userId: req.user.sub, detail: `${domain}:${kind}`, ip: req.ip });
-      return store.getInfo(domain);
+      // `fallback: true` = la config se guardó pero el manager vivo no pudo
+      // construirse con ella y quedó en el de `.env` — sin esto la UI diría
+      // "aplicado" mientras opera otro manager (US-205 / AUD-09).
+      const { fallback } = await runtime.reconfigure(domain);
+      app.audit({
+        action: 'integration.save',
+        userId: req.user.sub,
+        detail: `${domain}:${kind}${fallback ? ' · fallback a .env' : ''}`,
+        ip: req.ip,
+      });
+      const info = await store.getInfo(domain);
+      return { ...info, fallback };
     },
   );
 

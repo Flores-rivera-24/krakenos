@@ -48,4 +48,20 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
     const rt = await buildIntegrationRuntime(app, store);
     expect(rt.driver.handle.kind).toBe('mock'); // ignora la config no activa
   });
+
+  it('reconfigure reporta fallback:true si la config guardada no se puede aplicar (US-205)', async () => {
+    const rt = await buildIntegrationRuntime(app, store);
+
+    // Config guardada que hace lanzar a la factory (kind desconocido para el driver).
+    await store.save('driver', 'kind-inexistente', { host: 'x' });
+    const bad = await rt.reconfigure('driver');
+    expect(bad.fallback).toBe(true);
+    expect(rt.driver.handle.kind).toBe('mock'); // el vivo es el de .env
+
+    // Con una config válida el flag vuelve a false.
+    await store.save('driver', 'openwrt', { host: '192.168.1.1', username: 'root', password: 'x', sshPort: 22 });
+    const ok = await rt.reconfigure('driver');
+    expect(ok.fallback).toBe(false);
+    expect(rt.driver.handle.kind).toBe('openwrt');
+  });
 });

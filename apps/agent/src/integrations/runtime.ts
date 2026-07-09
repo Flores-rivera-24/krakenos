@@ -58,8 +58,12 @@ export interface IntegrationRuntime {
   dns: ManagerHolder<DnsManager>;
   /** Store de dispositivos Tuya, compartido con las rutas `/api/iot/tuya` (US-63). */
   tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
-  /** Reconstruye e intercambia en caliente el manager de `domain` desde la config actual. */
-  reconfigure(domain: IntegrationDomain): Promise<void>;
+  /**
+   * Reconstruye e intercambia en caliente el manager de `domain` desde la config
+   * actual. Devuelve `fallback: true` si la config guardada no se pudo aplicar y
+   * el manager vivo quedó construido desde `.env` (US-205 / AUD-09).
+   */
+  reconfigure(domain: IntegrationDomain): Promise<{ fallback: boolean }>;
 }
 
 export async function buildIntegrationRuntime(
@@ -81,83 +85,98 @@ export async function buildIntegrationRuntime(
   async function tryBuild<T>(
     domain: IntegrationDomain,
     build: (rec: DomainRecord | null) => T,
-  ): Promise<T> {
+  ): Promise<{ value: T; fallback: boolean }> {
     const rec = await effective(domain);
-    if (!rec) return build(null);
+    if (!rec) return { value: build(null), fallback: false };
     try {
-      return build(rec);
+      return { value: build(rec), fallback: false };
     } catch (err) {
       app.log.warn(
         `[integrations] no se pudo aplicar la config guardada de ${domain} ` +
           `(${err instanceof Error ? err.message : String(err)}); se usa el fallback de .env`,
       );
-      return build(null);
+      // fallback: la config guardada existe pero el manager vivo viene de .env (US-205).
+      return { value: build(null), fallback: true };
     }
   }
 
   const driver = createManagerHolder<HardwareDriver>(
-    await tryBuild('driver', (r) => wrapDriverErrors(createDriver(resolveDriverConfig(r)))),
+    (await tryBuild('driver', (r) => wrapDriverErrors(createDriver(resolveDriverConfig(r))))).value,
     disposeManager,
   );
   const vpn = createManagerHolder<VpnManager>(
-    await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r))),
+    (await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r)))).value,
     disposeManager,
   );
-  const initialIot = await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r)));
+  const initialIot = (await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r)))).value;
   startIotManager(initialIot.manager, onIotError);
   const iot = createManagerHolder<IotManager>(initialIot.manager, disposeManager);
   const tuyaStore = initialIot.tuyaStore;
   const cameras = createManagerHolder<CameraManager>(
-    await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r))),
+    (await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r)))).value,
     disposeManager,
   );
   const firewall = createManagerHolder<FirewallManager>(
-    await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r))),
+    (await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r)))).value,
     disposeManager,
   );
   const vlan = createManagerHolder<VlanManager>(
-    await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r))),
+    (await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r)))).value,
     disposeManager,
   );
   const qos = createManagerHolder<QosManager>(
-    await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r))),
+    (await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r)))).value,
     disposeManager,
   );
   const dns = createManagerHolder<DnsManager>(
-    await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r))),
+    (await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r)))).value,
     disposeManager,
   );
 
-  async function reconfigure(domain: IntegrationDomain): Promise<void> {
+  async function reconfigure(domain: IntegrationDomain): Promise<{ fallback: boolean }> {
     switch (domain) {
-      case 'driver':
-        driver.swap(await tryBuild('driver', (r) => wrapDriverErrors(createDriver(resolveDriverConfig(r)))));
-        break;
-      case 'vpn':
-        vpn.swap(await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r))));
-        break;
+      case 'driver': {
+        const r = await tryBuild('driver', (rec) => wrapDriverErrors(createDriver(resolveDriverConfig(rec))));
+        driver.swap(r.value);
+        return { fallback: r.fallback };
+      }
+      case 'vpn': {
+        const r = await tryBuild('vpn', (rec) => createVpnManager(resolveVpnConfig(rec)));
+        vpn.swap(r.value);
+        return { fallback: r.fallback };
+      }
       case 'iot': {
         // Reinyecta el mismo tuyaStore para no duplicar la instancia (US-63).
-        const bundle = await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r), { tuyaStore }));
-        startIotManager(bundle.manager, onIotError);
-        iot.swap(bundle.manager);
-        break;
+        const r = await tryBuild('iot', (rec) => createIotManager(resolveIotConfig(rec), { tuyaStore }));
+        startIotManager(r.value.manager, onIotError);
+        iot.swap(r.value.manager);
+        return { fallback: r.fallback };
       }
-      case 'cameras':
-        cameras.swap(await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r))));
-        break;
-      case 'firewall':
-        firewall.swap(await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r))));
-        break;
-      case 'vlan':
-        vlan.swap(await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r))));
-        break;
-      case 'qos':
-        qos.swap(await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r))));
-        break;
-      case 'dns':
-        dns.swap(await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r))));
-        break;
+      case 'cameras': {
+        const r = await tryBuild('cameras', (rec) => createCameraManager(resolveCameraConfig(rec)));
+        cameras.swap(r.value);
+        return { fallback: r.fallback };
+      }
+      case 'firewall': {
+        const r = await tryBuild('firewall', (rec) => createFirewallManager(resolveFirewallConfig(rec)));
+        firewall.swap(r.value);
+        return { fallback: r.fallback };
+      }
+      case 'vlan': {
+        const r = await tryBuild('vlan', (rec) => createVlanManager(resolveVlanConfig(rec)));
+        vlan.swap(r.value);
+        return { fallback: r.fallback };
+      }
+      case 'qos': {
+        const r = await tryBuild('qos', (rec) => createQosManager(resolveQosConfig(rec)));
+        qos.swap(r.value);
+        return { fallback: r.fallback };
+      }
+      case 'dns': {
+        const r = await tryBuild('dns', (rec) => createDnsManager(resolveDnsConfig(rec)));
+        dns.swap(r.value);
+        return { fallback: r.fallback };
+      }
       default: {
         const exhaustive: never = domain;
         throw new Error(`Dominio de integración desconocido: ${String(exhaustive)}`);
