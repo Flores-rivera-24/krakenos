@@ -45,6 +45,12 @@ export class GoveeIotManager implements IotManager {
     await this.discover();
   }
 
+  /** Cierra el socket UDP al recargar la integración en caliente (US-201). */
+  async stop(): Promise<void> {
+    this.started = false;
+    await this.opts.transport.dispose?.();
+  }
+
   private async discover(): Promise<void> {
     await this.opts.transport.sendMulticast(GOVEE_MULTICAST, GOVEE_SCAN_PORT, buildScan());
   }

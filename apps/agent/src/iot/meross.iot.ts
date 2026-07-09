@@ -57,6 +57,12 @@ export class MerossIotManager implements IotManager {
     await this.refreshAll();
   }
 
+  /** Cierra la conexión MQTT al recargar la integración en caliente (US-201). */
+  async stop(): Promise<void> {
+    this.started = false;
+    await this.opts.transport.dispose?.();
+  }
+
   private onMessage(topic: string, payload: string): void {
     const uuid = uuidFromTopic(topic);
     if (!uuid || !this.byUuid.has(uuid)) return;

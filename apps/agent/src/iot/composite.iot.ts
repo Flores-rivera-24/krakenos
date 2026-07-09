@@ -34,6 +34,11 @@ export class CompositeIotManager implements IotManager {
     }
   }
 
+  /** Libera las conexiones de todos los miembros, best-effort (US-201). */
+  async stop(): Promise<void> {
+    await Promise.allSettled(this.entries.map(({ manager }) => manager.stop?.()));
+  }
+
   private prefixed(prefix: string, device: IotDevice): IotDevice {
     return { ...device, id: `${prefix}:${device.id}` };
   }

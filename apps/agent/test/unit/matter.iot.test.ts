@@ -11,8 +11,13 @@ const NODES = [
 /** Transporte WS falso: responde cada petición por su `message_id` y registra los comandos. */
 class FakeWs implements WsTransport {
   sent: { command: string; args: Record<string, unknown> }[] = [];
+  disposed = 0;
   result: (command: string) => unknown = (command) => (command === 'get_nodes' ? NODES : null);
   private handler?: (data: string) => void;
+
+  async dispose(): Promise<void> {
+    this.disposed++;
+  }
 
   onMessage(handler: (data: string) => void): void {
     this.handler = handler;
@@ -63,5 +68,10 @@ describe('MatterIotManager', () => {
     await expect(iot.setState('999', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
     await expect(iot.setState('6', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_CONTROLLABLE' });
     expect(ws.sent.some((s) => s.command === 'device_command')).toBe(false);
+  });
+
+  it('stop cierra el WebSocket (US-201)', async () => {
+    await iot.stop();
+    expect(ws.disposed).toBe(1);
   });
 });

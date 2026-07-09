@@ -44,6 +44,12 @@ export class ZigbeeIotManager implements IotManager {
     await this.opts.transport.subscribe(`${this.base}/+`, onMessage);
   }
 
+  /** Cierra la conexión MQTT al recargar la integración en caliente (US-201). */
+  async stop(): Promise<void> {
+    this.started = false;
+    await this.opts.transport.dispose?.();
+  }
+
   /** Enruta un mensaje MQTT entrante a la caché correspondiente según el topic. */
   private onMessage(topic: string, payload: string): void {
     let json: unknown;

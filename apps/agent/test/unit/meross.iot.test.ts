@@ -5,10 +5,14 @@ import type { MqttMessageHandler, MqttTransport } from '../../src/iot/mqtt.trans
 
 class FakeMqtt implements MqttTransport {
   published: { topic: string; payload: string }[] = [];
+  disposed = 0;
   private handlers: { filter: string; handler: MqttMessageHandler }[] = [];
 
   async subscribe(filter: string, handler: MqttMessageHandler): Promise<void> {
     this.handlers.push({ filter, handler });
+  }
+  async dispose(): Promise<void> {
+    this.disposed++;
   }
   async publish(topic: string, payload: string): Promise<void> {
     this.published.push({ topic, payload });
@@ -73,5 +77,13 @@ describe('MerossIotManager', () => {
     const mgr = new MerossIotManager({ transport: mqtt, devices: [{ ...DEVICE, channels: 2 }], ...CTX });
     const devices = await mgr.listDevices();
     expect(devices.map((d) => d.id)).toEqual(['meross:u1:0', 'meross:u1:1']);
+  });
+
+  it('stop cierra la conexión MQTT (US-201)', async () => {
+    const mqtt = new FakeMqtt();
+    const mgr = new MerossIotManager({ transport: mqtt, devices: [DEVICE], ...CTX });
+    await mgr.start();
+    await mgr.stop();
+    expect(mqtt.disposed).toBe(1);
   });
 });

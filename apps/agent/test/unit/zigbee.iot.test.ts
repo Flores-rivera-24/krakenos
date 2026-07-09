@@ -5,10 +5,15 @@ import { ZigbeeIotManager } from '../../src/iot/zigbee.iot.js';
 /** Transporte MQTT falso: enruta los mensajes emitidos por los filtros suscritos. */
 class FakeMqtt implements MqttTransport {
   published: { topic: string; payload: string }[] = [];
+  disposed = 0;
   private subs: { filter: string; handler: MqttMessageHandler }[] = [];
 
   async subscribe(filter: string, handler: MqttMessageHandler): Promise<void> {
     this.subs.push({ filter, handler });
+  }
+
+  async dispose(): Promise<void> {
+    this.disposed++;
   }
 
   async publish(topic: string, payload: string): Promise<void> {
@@ -88,5 +93,10 @@ describe('ZigbeeIotManager', () => {
     const before = await iot.listDevices();
     await iot.start();
     expect(await iot.listDevices()).toHaveLength(before.length);
+  });
+
+  it('stop cierra la conexión MQTT (US-201)', async () => {
+    await iot.stop();
+    expect(mqtt.disposed).toBe(1);
   });
 });
