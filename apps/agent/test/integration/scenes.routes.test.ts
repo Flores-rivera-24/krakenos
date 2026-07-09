@@ -1,4 +1,4 @@
-import type { Scene, SceneAction, SceneRunResult } from '@krakenos/types';
+import type { IotManager, Scene, SceneAction, SceneRunResult } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
@@ -113,7 +113,7 @@ describe('escenas (US-166)', () => {
       setState: async () => {
         throw new Error('no aplica');
       },
-    } as unknown as import('@krakenos/types').IotManager;
+    } as unknown as IotManager;
 
     const service = new SceneService(app, spied);
     const actions = await service.captureState(['light-salon', 'sensor-temp', 'a', 'b', 'c']);
