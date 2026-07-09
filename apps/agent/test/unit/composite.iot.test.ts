@@ -9,9 +9,13 @@ function device(id: string, name = id): IotDevice {
 /** Manager falso con dispositivos en memoria. */
 class FakeManager implements IotManager {
   started = false;
+  stopped = false;
   constructor(private readonly devices: IotDevice[]) {}
   async start(): Promise<void> {
     this.started = true;
+  }
+  async stop(): Promise<void> {
+    this.stopped = true;
   }
   async listDevices(): Promise<IotDevice[]> {
     return this.devices;
@@ -66,5 +70,14 @@ describe('CompositeIotManager', () => {
     const { composite, hue, govee } = makeComposite();
     await composite.start();
     expect(hue.started && govee.started).toBe(true);
+  });
+
+  it('stop libera todos los miembros aunque uno falle (US-201)', async () => {
+    const { composite, hue, govee } = makeComposite();
+    hue.stop = async () => {
+      throw new Error('broker caído');
+    };
+    await expect(composite.stop()).resolves.toBeUndefined();
+    expect(govee.stopped).toBe(true);
   });
 });

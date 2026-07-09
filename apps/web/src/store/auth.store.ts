@@ -104,5 +104,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
     // El servidor revoca el refresh de la cookie y la borra.
     await postJson('/auth/logout').catch(() => undefined);
     set({ user: null, tokens: null });
+    // Estado por-usuario que no debe sobrevivir al cambio de cuenta (AUD-14).
+    const { useFavoritesStore } = await import('./favorites.store');
+    useFavoritesStore.getState().reset();
   },
 }));

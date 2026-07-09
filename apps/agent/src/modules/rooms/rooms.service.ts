@@ -13,6 +13,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type { Room as DbRoom } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
+import { withActionTimeout } from '../../iot/action-timeout.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 
 function toRoom(row: DbRoom): Room {
@@ -194,7 +195,8 @@ export class RoomService {
 
     for (const member of members) {
       try {
-        const device = await this.iot.setState(member.iotDeviceId, action);
+        // Con timeout: un dispositivo colgado cuenta como fallo y no frena el resto (US-203).
+        const device = await withActionTimeout(() => this.iot.setState(member.iotDeviceId, action));
         this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
         result.applied += 1;
       } catch (err) {

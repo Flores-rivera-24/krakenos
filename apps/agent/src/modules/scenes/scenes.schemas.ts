@@ -113,7 +113,8 @@ export const captureSceneSchema = {
     additionalProperties: false,
     required: ['deviceIds'],
     properties: {
-      deviceIds: { type: 'array', items: { type: 'string', minLength: 1 }, maxItems: 200 },
+      // Cota baja: la captura alimenta el editor, no necesita cientos de ids (US-204).
+      deviceIds: { type: 'array', items: { type: 'string', minLength: 1 }, maxItems: 50 },
     },
   },
   response: { 200: actions },

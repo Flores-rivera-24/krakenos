@@ -155,6 +155,31 @@ describe('gestión de usuarios (US-101)', () => {
     expect(list).toHaveLength(1);
   });
 
+  it('borrar un usuario elimina sus suscripciones push en cascada (US-198)', async () => {
+    const user = (await create({
+      email: 'con-push@krakenos.test',
+      displayName: 'Con Push',
+      password: 'claveSegura1',
+      role: 'viewer',
+    }).then((r) => r.json())) as { id: string };
+    await app.prisma.pushSubscription.create({
+      data: {
+        userId: user.id,
+        endpoint: 'https://push.example/ep-1',
+        p256dh: 'clave',
+        auth: 'auth',
+      },
+    });
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/users/${user.id}`,
+      headers: authHeader(adminToken),
+    });
+    expect(del.statusCode).toBe(204);
+    expect(await app.prisma.pushSubscription.count({ where: { userId: user.id } })).toBe(0);
+  });
+
   it('el admin resetea la contraseña de un usuario', async () => {
     const user = (await create({
       email: 'olvidadiza@krakenos.test',

@@ -17,7 +17,7 @@ import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
-import { stageRestore } from '../../system/restore.js';
+import { stageRestoreAsync } from '../../system/restore.js';
 import { UpdateChecker } from '../../system/update-check.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import {
@@ -254,7 +254,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       let staged: string[];
       try {
         const blob = Buffer.from(req.body.data, 'base64');
-        staged = stageRestore(blob, req.body.passphrase, restoreStagingDir);
+        staged = await stageRestoreAsync(blob, req.body.passphrase, restoreStagingDir);
       } catch (err) {
         return reply.code(400).send({
           code: 'RESTORE_INVALID',

@@ -158,8 +158,15 @@ export function IntegrationWizard({
   const runSave = async () => {
     setSaving(true);
     try {
-      await saveIntegration(domain, { kind, enabled: true, config: buildConfig() });
-      toast.success(`¡${displayName} conectado!`);
+      const saved = await saveIntegration(domain, { kind, enabled: true, config: buildConfig() });
+      if (saved.fallback) {
+        // Guardada pero no aplicada: el manager vivo sigue siendo el de .env (US-205).
+        toast.error(
+          `La configuración de ${displayName} se guardó pero no se pudo aplicar; sigue activa la configuración anterior`,
+        );
+      } else {
+        toast.success(`¡${displayName} conectado!`);
+      }
       onDone();
     } catch (err) {
       toast.error(describeError(err, `No se pudo guardar ${displayName}`));

@@ -138,4 +138,52 @@ describe('horarios IoT (US-168)', () => {
     await service.tick(new Date(2026, 5, 21, 23, 59));
     expect(calls).toHaveLength(0);
   });
+
+  it('una fila corrupta se degrada a deshabilitada sin tumbar el GET ni el barrido (US-199)', async () => {
+    // Fila corrupta (time/target no son JSON) + una sana que debe seguir funcionando.
+    await app.prisma.iotSchedule.create({
+      data: {
+        name: 'corrupta',
+        enabled: true,
+        days: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
+        time: 'no-json{',
+        target: 'tampoco}',
+      },
+    });
+    await app.prisma.iotSchedule.create({
+      data: {
+        name: 'sana',
+        enabled: true,
+        days: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
+        time: JSON.stringify({ kind: 'fixed', minute: 7 * 60 }),
+        target: JSON.stringify({ type: 'device', deviceId: 'plug-cafetera', on: true }),
+      },
+    });
+
+    // GET responde 200 con la fila corrupta degradada (no 500).
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/iot-schedules',
+      headers: authHeader(adminToken),
+    });
+    expect(list.statusCode).toBe(200);
+    const schedules = list.json() as IotSchedule[];
+    expect(schedules).toHaveLength(2);
+    expect(schedules.find((s) => s.name === 'corrupta')?.enabled).toBe(false);
+
+    // El barrido no lanza y el horario sano sigue disparando.
+    const calls: UpdateIotStateRequest[] = [];
+    const fakeIot = {
+      setState: async (_id: string, input: UpdateIotStateRequest) => {
+        calls.push(input);
+        return (await new MockIotManager().getDevice('plug-cafetera'))!;
+      },
+      getDevice: async () => null,
+      listDevices: async () => [],
+    } as unknown as IotManager;
+    const service = new IotScheduleService(app, fakeIot, new SceneService(app, fakeIot));
+    await service.tick(new Date(2026, 5, 21, 6, 59));
+    await service.tick(new Date(2026, 5, 21, 7, 0));
+    expect(calls).toEqual([{ on: true }]);
+  });
 });

@@ -177,4 +177,130 @@ describe('horarios de acceso (US-108)', () => {
     await service.tick(later); // fuera de la ventana → NO debe desbloquear (bloqueo manual)
     expect(calls).not.toContain(`unblock:${mac}`);
   });
+
+  it('reconcilia tras un reinicio: desbloquea la pausa persistida que ya expiró (US-197)', async () => {
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+
+    // Primera "vida" del agente: pausa → persiste la MAC gestionada.
+    const before = new AccessScheduleService(app, {
+      blockDevice: async () => undefined,
+      unblockDevice: async () => undefined,
+    } as unknown as HardwareDriver);
+    await before.pause(mac, 30);
+    const persisted = await app.prisma.setting.findUnique({
+      where: { key: 'access.managedBlocked' },
+    });
+    expect(JSON.parse(persisted?.value ?? '[]')).toContain(mac);
+
+    // "Reinicio": instancia nueva (Set vacío) + la pausa ya expiró.
+    await app.prisma.device.update({
+      where: { mac },
+      data: { pausedUntil: new Date(Date.now() - 1000) },
+    });
+    const calls: string[] = [];
+    const after = new AccessScheduleService(app, {
+      blockDevice: async (m: string) => calls.push(`block:${m}`),
+      unblockDevice: async (m: string) => calls.push(`unblock:${m}`),
+    } as unknown as HardwareDriver);
+    await after.reconcile();
+    expect(calls).toContain(`unblock:${mac}`);
+    const cleared = await app.prisma.setting.findUnique({
+      where: { key: 'access.managedBlocked' },
+    });
+    expect(JSON.parse(cleared?.value ?? '[]')).not.toContain(mac);
+  });
+
+  it('reconcilia tras un reinicio: mantiene el bloqueo si la ventana sigue activa (US-197)', async () => {
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    const now = new Date(2026, 6, 6, 22, 0, 0); // dentro de la ventana [21:00, 23:00)
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+    await app.prisma.accessSchedule.create({
+      data: {
+        name: 'x',
+        mac,
+        enabled: true,
+        days: JSON.stringify([now.getDay()]),
+        startMinute: 21 * 60,
+        endMinute: 23 * 60,
+      },
+    });
+    await app.prisma.setting.create({
+      data: { key: 'access.managedBlocked', value: JSON.stringify([mac]) },
+    });
+
+    const calls: string[] = [];
+    const service = new AccessScheduleService(app, {
+      blockDevice: async (m: string) => calls.push(`block:${m}`),
+      unblockDevice: async (m: string) => calls.push(`unblock:${m}`),
+    } as unknown as HardwareDriver);
+    await service.reconcile(now);
+    expect(calls).not.toContain(`unblock:${mac}`);
+  });
+
+  it('si el driver falla al pausar, el barrido reintenta el bloqueo (US-200)', async () => {
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+
+    const calls: string[] = [];
+    let fail = true;
+    const service = new AccessScheduleService(app, {
+      blockDevice: async (m: string) => {
+        if (fail) throw new Error('router timeout');
+        calls.push(`block:${m}`);
+      },
+      unblockDevice: async (m: string) => calls.push(`unblock:${m}`),
+    } as unknown as HardwareDriver);
+
+    // La pausa no lanza, pero NO marca el estado como aplicado.
+    await service.pause(mac, 30);
+    expect(calls).toHaveLength(0);
+    const persisted = await app.prisma.setting.findUnique({
+      where: { key: 'access.managedBlocked' },
+    });
+    expect(JSON.parse(persisted?.value ?? '[]')).not.toContain(mac);
+
+    // El siguiente barrido reintenta (la pausa sigue vigente) y ahora sí bloquea.
+    fail = false;
+    await service.tick(new Date());
+    expect(calls).toContain(`block:${mac}`);
+  });
+
+  it('si el driver falla al reanudar, el barrido reintenta el desbloqueo (US-200)', async () => {
+    const mac = 'aa:bb:cc:dd:ee:ff';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });
+
+    const calls: string[] = [];
+    let fail = false;
+    const service = new AccessScheduleService(app, {
+      blockDevice: async (m: string) => calls.push(`block:${m}`),
+      unblockDevice: async (m: string) => {
+        if (fail) throw new Error('router timeout');
+        calls.push(`unblock:${m}`);
+      },
+    } as unknown as HardwareDriver);
+
+    await service.pause(mac, 30);
+    expect(calls).toContain(`block:${mac}`);
+
+    // El resume falla en el driver → la MAC sigue gestionada y se reintenta.
+    fail = true;
+    await service.resume(mac);
+    expect(calls).not.toContain(`unblock:${mac}`);
+
+    fail = false;
+    await service.tick(new Date());
+    expect(calls).toContain(`unblock:${mac}`);
+  });
+
+  it('reconcilia con el estado persistido corrupto sin lanzar (US-197)', async () => {
+    await app.prisma.setting.create({
+      data: { key: 'access.managedBlocked', value: 'no-es-json{' },
+    });
+    const service = new AccessScheduleService(app, {
+      blockDevice: async () => undefined,
+      unblockDevice: async () => undefined,
+    } as unknown as HardwareDriver);
+    await expect(service.reconcile()).resolves.toBeUndefined();
+  });
 });

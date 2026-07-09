@@ -16,6 +16,11 @@ interface FavoritesState {
   toggle: (kind: FavoriteKind, ref: string) => Promise<boolean>;
   /** Quita un favorito por su id. */
   remove: (id: string) => Promise<void>;
+  /**
+   * Vacía el espejo (logout): sin esto, los favoritos del usuario anterior se
+   * mostraban al siguiente que iniciara sesión en la misma pestaña (AUD-14).
+   */
+  reset: () => void;
 }
 
 /**
@@ -59,5 +64,10 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   remove: async (id) => {
     await api.del<void>(`/favorites/${id}`);
     set((s) => ({ favorites: s.favorites.filter((f) => f.id !== id) }));
+  },
+
+  reset: () => {
+    inFlight = null;
+    set({ favorites: [], loaded: false });
   },
 }));

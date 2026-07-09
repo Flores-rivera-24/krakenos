@@ -29,9 +29,16 @@ export interface MatterIotOptions {
 export class MatterIotManager implements IotManager {
   readonly kind = 'matter' as const;
   private readonly client: MatterClient;
+  private readonly transport: WsTransport;
 
   constructor(opts: MatterIotOptions) {
+    this.transport = opts.transport;
     this.client = new MatterClient(opts.transport);
+  }
+
+  /** Cierra el WebSocket al recargar la integración en caliente (US-201). */
+  async stop(): Promise<void> {
+    await this.transport.dispose?.();
   }
 
   private async nodes() {

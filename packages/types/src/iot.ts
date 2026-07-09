@@ -70,6 +70,12 @@ export interface IotManager {
   getDevice(id: Id): Promise<IotDevice | null>;
   /** Aplica el cambio de estado a un dispositivo controlable. */
   setState(id: Id, input: UpdateIotStateRequest): Promise<IotDevice>;
+  /**
+   * Libera la conexión persistente del backend (MQTT/UDP/WS) si la hay. Lo
+   * invoca `disposeManager` al recargar la integración en caliente para no
+   * fugar la instancia saliente (US-201).
+   */
+  stop?(): Promise<void>;
 }
 
 /** Versiones del protocolo local Tuya soportadas. */

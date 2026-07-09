@@ -107,4 +107,18 @@ describe('useAuthStore', () => {
     await expect(useAuthStore.getState().logout()).resolves.toBeUndefined();
     expect(useAuthStore.getState().tokens).toBeNull();
   });
+
+  it('logout vacía los favoritos del usuario saliente (US-207)', async () => {
+    const { useFavoritesStore } = await import('@/store/favorites.store');
+    useAuthStore.setState({ user: USER, tokens: TOKENS });
+    useFavoritesStore.setState({
+      favorites: [{ id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' }],
+      loaded: true,
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(204, null)));
+
+    await useAuthStore.getState().logout();
+    expect(useFavoritesStore.getState().favorites).toHaveLength(0);
+    expect(useFavoritesStore.getState().loaded).toBe(false);
+  });
 });

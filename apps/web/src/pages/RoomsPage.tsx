@@ -243,7 +243,11 @@ export function RoomsPage() {
         setRooms(list);
         setError(null);
       })
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las habitaciones')));
+      .catch((err) => {
+        // Sin esto la rama `=== null` dejaba el Skeleton brillando para siempre (AUD-13).
+        setRooms((prev) => prev ?? []);
+        setError(describeError(err, 'No se pudieron cargar las habitaciones'));
+      });
   }, []);
 
   useEffect(() => {

@@ -100,4 +100,15 @@ describe('IotSchedulesSection (US-168)', () => {
       }),
     );
   });
+
+  it('un error de carga muestra el banner en vez de fingir "sin horarios" (US-207)', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot-schedules'
+        ? Promise.reject(new Error('boom'))
+        : Promise.resolve({ settings: {} }),
+    );
+    renderSection();
+    await screen.findByText(/No se pudo conectar con el servidor/);
+    expect(screen.queryByText(/Programa luces y enchufes/)).not.toBeInTheDocument();
+  });
 });

@@ -6,7 +6,12 @@ import type { UdpMessageHandler, UdpTransport } from '../../src/iot/govee.transp
 class FakeUdp implements UdpTransport {
   unicast: { ip: string; port: number; payload: string }[] = [];
   multicast: { group: string; port: number; payload: string }[] = [];
+  disposed = 0;
   private handler?: UdpMessageHandler;
+
+  async dispose(): Promise<void> {
+    this.disposed++;
+  }
 
   async send(ip: string, port: number, payload: string): Promise<void> {
     this.unicast.push({ ip, port, payload });
@@ -71,5 +76,10 @@ describe('GoveeIotManager', () => {
 
   it('setState lanza IOT_NOT_FOUND si el dispositivo no se ha descubierto', async () => {
     await expect(govee.setState('NO:PE', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
+  });
+
+  it('stop cierra el socket UDP (US-201)', async () => {
+    await govee.stop();
+    expect(udp.disposed).toBe(1);
   });
 });

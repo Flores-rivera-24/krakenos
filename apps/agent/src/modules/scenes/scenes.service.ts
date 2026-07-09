@@ -11,6 +11,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type { Scene as DbScene } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
+import { withActionTimeout } from '../../iot/action-timeout.js';
 
 function parseActions(raw: string): SceneAction[] {
   try {
@@ -102,11 +103,14 @@ export class SceneService {
     const result: SceneRunResult = { applied: 0, failed: [] };
     for (const action of scene.actions) {
       try {
-        const device = await this.iot.setState(action.deviceId, {
-          ...(action.on !== undefined ? { on: action.on } : {}),
-          ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
-          ...(action.color !== undefined ? { color: action.color } : {}),
-        });
+        // Con timeout: un dispositivo colgado cuenta como fallo y no frena el resto (US-203).
+        const device = await withActionTimeout(() =>
+          this.iot.setState(action.deviceId, {
+            ...(action.on !== undefined ? { on: action.on } : {}),
+            ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
+            ...(action.color !== undefined ? { color: action.color } : {}),
+          }),
+        );
         this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
         result.applied += 1;
       } catch (err) {
@@ -121,11 +125,16 @@ export class SceneService {
    * Captura el estado actual de los dispositivos dados como acciones de escena
    * (para prellenar el editor con "cómo está ahora"). Ignora los que no existen o
    * no son controlables (un sensor no aporta una acción).
+   *
+   * Un único `listDevices()` mapeado por id — con un backend real cada
+   * `getDevice` era 1 HTTP al bridge, amplificable desde el rol viewer (US-204).
    */
   async captureState(deviceIds: string[]): Promise<SceneAction[]> {
+    const snapshot = await this.iot.listDevices().catch(() => []);
+    const byId = new Map(snapshot.map((d) => [d.id, d]));
     const actions: SceneAction[] = [];
     for (const deviceId of deviceIds) {
-      const device = await this.iot.getDevice(deviceId).catch(() => null);
+      const device = byId.get(deviceId);
       if (!device || device.on === null) continue; // inexistente o no controlable
       const action: SceneAction = { deviceId, on: device.on };
       if (device.brightness !== null) action.brightness = device.brightness;

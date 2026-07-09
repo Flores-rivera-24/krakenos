@@ -8,24 +8,46 @@ import type {
 } from '@krakenos/types';
 import { IOT_ROOM } from '@krakenos/types';
 import type { IotSchedule as DbIotSchedule } from '@prisma/client';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
+import { withActionTimeout } from '../../iot/action-timeout.js';
 import type { SceneService } from '../scenes/scenes.service.js';
 import { type HomeLocation, dueSchedules } from './schedule-eval.js';
 
-function toSchedule(row: DbIotSchedule): IotSchedule {
+/**
+ * Proyección DB→API con parseo defensivo (patrón US-63): una fila con
+ * `time`/`target` corruptos se **degrada a deshabilitada** con valores inertes
+ * en vez de tumbar el GET y el barrido entero (US-199 / AUD-03).
+ */
+function toSchedule(row: DbIotSchedule, log?: FastifyBaseLogger): IotSchedule {
   let days: number[] = [];
   try {
     days = JSON.parse(row.days) as number[];
   } catch {
     days = [];
   }
+  let time: IotScheduleTime | null = null;
+  let target: IotScheduleTarget | null = null;
+  try {
+    time = JSON.parse(row.time) as IotScheduleTime;
+  } catch {
+    time = null;
+  }
+  try {
+    target = JSON.parse(row.target) as IotScheduleTarget;
+  } catch {
+    target = null;
+  }
+  const corrupt = time === null || target === null;
+  if (corrupt) {
+    log?.warn({ schedule: row.id }, '[iot-schedule] fila corrupta; se degrada a deshabilitada');
+  }
   return {
     id: row.id,
     name: row.name,
-    enabled: row.enabled,
+    enabled: corrupt ? false : row.enabled,
     days,
-    time: JSON.parse(row.time) as IotScheduleTime,
-    target: JSON.parse(row.target) as IotScheduleTarget,
+    time: time ?? { kind: 'fixed', minute: 0 },
+    target: target ?? { type: 'device', deviceId: '' },
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -52,7 +74,7 @@ export class IotScheduleService {
 
   async list(): Promise<IotSchedule[]> {
     const rows = await this.app.prisma.iotSchedule.findMany({ orderBy: { createdAt: 'asc' } });
-    return rows.map(toSchedule);
+    return rows.map((row) => toSchedule(row, this.app.log));
   }
 
   async create(body: CreateIotScheduleRequest): Promise<IotSchedule> {
@@ -65,7 +87,7 @@ export class IotScheduleService {
         target: JSON.stringify(body.target),
       },
     });
-    return toSchedule(row);
+    return toSchedule(row, this.app.log);
   }
 
   async update(id: string, patch: UpdateIotScheduleRequest): Promise<IotSchedule | null> {
@@ -83,7 +105,7 @@ export class IotScheduleService {
         ...(patch.target !== undefined ? { target: JSON.stringify(patch.target) } : {}),
       },
     });
-    return toSchedule(row);
+    return toSchedule(row, this.app.log);
   }
 
   async remove(id: string): Promise<boolean> {
@@ -113,10 +135,14 @@ export class IotScheduleService {
     const { target } = schedule;
     try {
       if (target.type === 'device') {
-        const device = await this.iot.setState(target.deviceId, {
-          ...(target.on !== undefined ? { on: target.on } : {}),
-          ...(target.brightness !== undefined ? { brightness: target.brightness } : {}),
-        });
+        // Con timeout: un dispositivo colgado no frena los horarios restantes del
+        // lote (la ventana de cruce ya habría avanzado y nunca dispararían, US-203).
+        const device = await withActionTimeout(() =>
+          this.iot.setState(target.deviceId, {
+            ...(target.on !== undefined ? { on: target.on } : {}),
+            ...(target.brightness !== undefined ? { brightness: target.brightness } : {}),
+          }),
+        );
         this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
       } else {
         await this.scenes.run(target.sceneId);
