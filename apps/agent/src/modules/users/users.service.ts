@@ -157,7 +157,8 @@ export class UsersService {
     return this.app.prisma.$transaction(async (tx) => {
       const target = await tx.user.findUnique({ where: { id }, select: { id: true } });
       if (!target) return false;
-      // La cascada de Prisma limpia refresh tokens, passkeys, códigos, etc.
+      // La cascada de Prisma limpia refresh tokens, passkeys, códigos y
+      // suscripciones push (FK con onDelete: Cascade desde US-198).
       await tx.user.delete({ where: { id } });
       const activeAdmins = await tx.user.count({ where: { role: 'admin', status: 'active' } });
       if (activeAdmins === 0) {
