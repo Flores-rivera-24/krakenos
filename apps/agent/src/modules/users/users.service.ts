@@ -30,6 +30,7 @@ interface UserRow {
   role: string;
   status: string;
   lastLoginAt: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
 }
 
@@ -41,6 +42,7 @@ const SUMMARY_SELECT = {
   role: true,
   status: true,
   lastLoginAt: true,
+  expiresAt: true,
   createdAt: true,
 } as const;
 
@@ -52,6 +54,7 @@ function toSummary(row: UserRow): UserSummary {
     role: row.role as UserRole,
     status: row.status as UserStatus,
     lastLoginAt: row.lastLoginAt ? row.lastLoginAt.toISOString() : null,
+    expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -92,6 +95,8 @@ export class UsersService {
           displayName: body.displayName,
           passwordHash,
           role: body.role,
+          // Caducidad del acceso (invitados, US-179).
+          ...(body.expiresAt !== undefined ? { expiresAt: new Date(body.expiresAt) } : {}),
         },
         select: SUMMARY_SELECT,
       });
@@ -105,10 +110,13 @@ export class UsersService {
   }
 
   async update(id: string, patch: UpdateUserRequest): Promise<UpdateResult | null> {
-    const data: { displayName?: string; role?: UserRole; status?: UserStatus } = {};
+    const data: { displayName?: string; role?: UserRole; status?: UserStatus; expiresAt?: Date | null } = {};
     if (patch.displayName !== undefined) data.displayName = patch.displayName;
     if (patch.role !== undefined) data.role = patch.role;
     if (patch.status !== undefined) data.status = patch.status;
+    if (patch.expiresAt !== undefined) {
+      data.expiresAt = patch.expiresAt === null ? null : new Date(patch.expiresAt);
+    }
 
     // Todo dentro de una transacción con comprobación **posterior** al cambio: si el
     // resultado dejara 0 administradores activos, se revierte. Esto es race-free —

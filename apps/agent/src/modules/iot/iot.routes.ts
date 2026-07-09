@@ -17,9 +17,11 @@ export const iotRoutes: FastifyPluginAsync<IotRoutesOpts> = async (app, opts) =>
     return iot.listDevices();
   });
 
+  // Operar el hogar (encender/apagar/atenuar) es capacidad `home.control`
+  // (US-179): admin y member; kid/guest/viewer siguen en solo-lectura.
   app.patch<{ Params: { id: string }; Body: UpdateIotStateRequest }>(
     '/devices/:id',
-    { schema: updateIotSchema, preHandler: app.requireRole('admin') },
+    { schema: updateIotSchema, preHandler: app.requireCapability('home.control') },
     async (req, reply) => {
       try {
         const device = await iot.setState(req.params.id, req.body);

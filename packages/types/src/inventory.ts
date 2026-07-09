@@ -40,6 +40,8 @@ export interface Device {
   vlanTag: number | null;
   /** Habitación asignada (US-165), o `null` si ninguna. */
   roomId: string | null;
+  /** Persona del hogar dueña del dispositivo (US-179; base de presencia US-169). */
+  ownerId: string | null;
   sources: DiscoverySource[];
   firstSeen: IsoDateTime;
   lastSeen: IsoDateTime;
@@ -59,4 +61,6 @@ export interface UpdateDeviceRequest {
   label?: string | null;
   type?: DeviceType;
   notes?: string | null;
+  /** Dueño del dispositivo (US-179); `null` lo desasigna. */
+  ownerId?: string | null;
 }

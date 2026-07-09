@@ -1,7 +1,7 @@
 import type { HardwareDriver, UpdateDeviceRequest } from '@krakenos/types';
 import { INVENTORY_ROOM } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
-import { InventoryService } from './inventory.service.js';
+import { InventoryError, InventoryService } from './inventory.service.js';
 import {
   blockDeviceSchema,
   listDevicesSchema,
@@ -33,7 +33,15 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
     '/devices/:id',
     { schema: updateDeviceSchema, preHandler: adminOnly },
     async (req, reply) => {
-      const device = await service.updateMetadata(req.params.id, req.body);
+      let device;
+      try {
+        device = await service.updateMetadata(req.params.id, req.body);
+      } catch (err) {
+        if (err instanceof InventoryError) {
+          return reply.code(400).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
       if (!device) {
         return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }

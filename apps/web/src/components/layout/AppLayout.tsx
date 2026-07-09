@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { AppSidebar } from './AppSidebar';
-import { MOBILE_PRIMARY, MOBILE_SECONDARY, type NavItem } from './nav';
+import { mobileNavForRole, type NavItem } from './nav';
 
 const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 
@@ -24,6 +24,9 @@ function bottomLinkClass({ isActive }: { isActive: boolean }): string {
 
 function MobileBottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
+  // Bottom-nav filtrada por rol (US-179): kid/guest ven la UI reducida.
+  const role = useAuthStore((s) => s.user?.role);
+  const { primary, secondary } = mobileNavForRole(role);
   return (
     <>
       {/* Panel "Más" — resto de secciones */}
@@ -46,7 +49,7 @@ function MobileBottomNav() {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {MOBILE_SECONDARY.map(({ to, label, icon: Icon, end }: NavItem) => (
+              {secondary.map(({ to, label, icon: Icon, end }: NavItem) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -71,7 +74,7 @@ function MobileBottomNav() {
       )}
 
       <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface md:hidden">
-        {MOBILE_PRIMARY.map(({ to, label, icon: Icon, end }) => (
+        {primary.map(({ to, label, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
             <span className="w-full truncate text-center text-[10px] leading-tight">{label}</span>

@@ -1,4 +1,5 @@
 import type { UserRole, UserSummary } from '@krakenos/types';
+import { USER_ROLES } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
 import { timeAgo } from '@/lib/format';
+import { ROLE_LABELS } from '@/lib/roles';
 import {
   createUser,
   deleteUser,
@@ -19,9 +21,14 @@ import {
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
-const ROLE_LABELS: Record<UserRole, string> = { admin: 'Administrador', viewer: 'Solo lectura' };
-
-const EMPTY_FORM = { email: '', displayName: '', password: '', role: 'viewer' as UserRole };
+const EMPTY_FORM = {
+  email: '',
+  displayName: '',
+  password: '',
+  role: 'viewer' as UserRole,
+  /** Caducidad local (`datetime-local`) para invitados (US-179); '' = sin caducidad. */
+  expiresAt: '',
+};
 
 /**
  * Gestión de usuarios (US-101) — alta, rol, estado, reset de contraseña y baja.
@@ -54,7 +61,14 @@ export function UsersSection() {
     e.preventDefault();
     setCreating(true);
     try {
-      await createUser(form);
+      const { expiresAt, ...base } = form;
+      await createUser({
+        ...base,
+        // El invitado caduca (US-179): el input local se envía como ISO.
+        ...(form.role === 'guest' && expiresAt !== ''
+          ? { expiresAt: new Date(expiresAt).toISOString() }
+          : {}),
+      });
       toast.success(`Usuario ${form.email} creado`);
       setForm(EMPTY_FORM);
       await load();
@@ -162,10 +176,24 @@ export function UsersSection() {
               onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
               className="h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary"
             >
-              <option value="viewer">{ROLE_LABELS.viewer}</option>
-              <option value="admin">{ROLE_LABELS.admin}</option>
+              {USER_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {ROLE_LABELS[role]}
+                </option>
+              ))}
             </select>
           </div>
+          {form.role === 'guest' && (
+            <div className="space-y-1.5">
+              <Label htmlFor="nu-expires">Caduca (invitado)</Label>
+              <Input
+                id="nu-expires"
+                type="datetime-local"
+                value={form.expiresAt}
+                onChange={(e) => setForm({ ...form, expiresAt: e.target.value })}
+              />
+            </div>
+          )}
         </div>
         <Button type="submit" disabled={creating}>
           {creating ? 'Creando…' : 'Crear usuario'}
@@ -212,9 +240,17 @@ export function UsersSection() {
                         }
                         className="h-8 rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary disabled:opacity-50"
                       >
-                        <option value="viewer">{ROLE_LABELS.viewer}</option>
-                        <option value="admin">{ROLE_LABELS.admin}</option>
+                        {USER_ROLES.map((role) => (
+                          <option key={role} value={role}>
+                            {ROLE_LABELS[role]}
+                          </option>
+                        ))}
                       </select>
+                      {u.expiresAt && (
+                        <div className="mt-1 text-kr-xs text-kr-muted">
+                          Caduca {new Date(u.expiresAt).toLocaleString()}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       {u.status === 'active' ? (

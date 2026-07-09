@@ -1,13 +1,16 @@
-/** JSON Schemas del módulo de gestión de usuarios (US-101). */
+import { USER_ROLES } from '@krakenos/types';
 
-const ROLE = { type: 'string', enum: ['admin', 'viewer'] } as const;
+/** JSON Schemas del módulo de gestión de usuarios (US-101/US-179). */
+
+// Derivado del array `as const` de `@krakenos/types` (fuente única, sin deriva).
+const ROLE = { type: 'string', enum: USER_ROLES } as const;
 const STATUS = { type: 'string', enum: ['active', 'disabled'] } as const;
 
 /** Usuario expuesto por la API — nunca incluye el hash de contraseña. */
 const userSummary = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'email', 'displayName', 'role', 'status', 'lastLoginAt', 'createdAt'],
+  required: ['id', 'email', 'displayName', 'role', 'status', 'lastLoginAt', 'expiresAt', 'createdAt'],
   properties: {
     id: { type: 'string' },
     email: { type: 'string' },
@@ -15,6 +18,7 @@ const userSummary = {
     role: ROLE,
     status: STATUS,
     lastLoginAt: { type: ['string', 'null'] },
+    expiresAt: { type: ['string', 'null'] },
     createdAt: { type: 'string' },
   },
 } as const;
@@ -40,6 +44,8 @@ export const createUserSchema = {
       displayName: { type: 'string', minLength: 1, maxLength: 80 },
       password: { type: 'string', minLength: 8, maxLength: 128 },
       role: ROLE,
+      // Caducidad del acceso (invitados, US-179).
+      expiresAt: { type: 'string', format: 'date-time' },
     },
   },
   response: { 201: userSummary },
@@ -55,6 +61,7 @@ export const updateUserSchema = {
       displayName: { type: 'string', minLength: 1, maxLength: 80 },
       role: ROLE,
       status: STATUS,
+      expiresAt: { oneOf: [{ type: 'string', format: 'date-time' }, { type: 'null' }] },
     },
   },
   response: { 200: userSummary },

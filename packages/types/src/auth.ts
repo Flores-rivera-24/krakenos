@@ -1,7 +1,16 @@
 import type { Id, IsoDateTime } from './common.js';
 
-/** Roles soportados por KrakenOS. */
-export type UserRole = 'admin' | 'viewer';
+/**
+ * Roles soportados por KrakenOS (US-179). Array `as const` como fuente única —
+ * los schemas JSON derivan de aquí (evita la deriva enum-duplicado, AUD-17):
+ * - `admin`: gestiona todo.
+ * - `member`: ve el hogar y controla lo cotidiano (IoT, escenas, habitaciones).
+ * - `kid`: UI reducida; su acceso lo rigen los horarios/parental (US-108).
+ * - `guest`: temporal y acotado; **expira** (`expiresAt`).
+ * - `viewer`: solo lectura (rol legado, sigue siendo el default seguro).
+ */
+export const USER_ROLES = ['admin', 'member', 'kid', 'guest', 'viewer'] as const;
+export type UserRole = (typeof USER_ROLES)[number];
 
 /** Usuario tal como se expone al cliente (sin hash de contraseña). */
 export interface User {
@@ -27,6 +36,8 @@ export interface UserSummary {
   role: UserRole;
   status: UserStatus;
   lastLoginAt: IsoDateTime | null;
+  /** Caducidad del acceso (invitados, US-179); `null` = sin caducidad. */
+  expiresAt: IsoDateTime | null;
   createdAt: IsoDateTime;
 }
 
@@ -36,6 +47,8 @@ export interface CreateUserRequest {
   displayName: string;
   password: string;
   role: UserRole;
+  /** Caducidad del acceso (pensado para `guest`, US-179). */
+  expiresAt?: IsoDateTime;
 }
 
 /** Edición de un usuario por un admin: nombre, rol y/o estado (US-101). */
@@ -43,6 +56,8 @@ export interface UpdateUserRequest {
   displayName?: string;
   role?: UserRole;
   status?: UserStatus;
+  /** Caducidad del acceso (US-179); `null` la quita. */
+  expiresAt?: IsoDateTime | null;
 }
 
 /** Un admin fija una nueva contraseña para un usuario (US-101). */

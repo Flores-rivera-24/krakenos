@@ -21,6 +21,7 @@ import {
 } from '@/lib/rooms';
 import { describeError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
+import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
@@ -29,11 +30,14 @@ import { toast } from '@/store/toast.store';
 function RoomTile({
   room,
   isAdmin,
+  canControl,
   onEdit,
   onReload,
 }: {
   room: RoomWithState;
   isAdmin: boolean;
+  /** Operar la habitación (acción de grupo) también para `member` (US-179). */
+  canControl: boolean;
   onEdit: () => void;
   onReload: () => void;
 }) {
@@ -94,7 +98,7 @@ function RoomTile({
           <p className="text-kr-sm text-kr-muted">Sin luces ni enchufes</p>
         )}
 
-        {isAdmin && room.controllableCount > 0 && (
+        {canControl && room.controllableCount > 0 && (
           <div className="mt-auto flex gap-2">
             <Button
               variant={allOn ? 'default' : 'outline'}
@@ -233,6 +237,7 @@ function RoomEditor({
 
 export function RoomsPage() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [rooms, setRooms] = useState<RoomWithState[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editor, setEditor] = useState<RoomWithState | 'new' | null>(null);
@@ -302,6 +307,7 @@ export function RoomsPage() {
               key={room.id}
               room={room}
               isAdmin={isAdmin}
+              canControl={canControl}
               onEdit={() => setEditor(room)}
               onReload={reload}
             />

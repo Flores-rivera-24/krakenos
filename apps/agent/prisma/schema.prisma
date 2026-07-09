@@ -13,10 +13,14 @@ model User {
   email        String         @unique
   displayName  String
   passwordHash String
-  role         String         @default("viewer") // 'admin' | 'viewer'
+  role         String         @default("viewer") // 'admin' | 'member' | 'kid' | 'guest' | 'viewer' (US-179)
   status       String         @default("active") // 'active' | 'disabled' (US-101)
   lastLoginAt  DateTime?      // último inicio de sesión efectivo (US-101)
+  /// Caducidad del acceso (invitados, US-179); null = sin caducidad.
+  expiresAt    DateTime?
   refreshTokens RefreshToken[]
+  /// Dispositivos de red de los que es dueño (US-179).
+  devices      Device[]
   webAuthnCredentials WebAuthnCredential[]
   webAuthnChallenges  WebAuthnChallenge[]
   backupCodes  BackupCode[]
@@ -233,6 +237,9 @@ model Device {
   /// Habitación asignada (US-165), o null. Al borrar la habitación se pone a null.
   roomId    String?
   room      Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  /// Dueño del dispositivo (US-179; base de presencia US-169), o null.
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
   sources   String   @default("[]")
   firstSeen DateTime @default(now())
@@ -240,6 +247,7 @@ model Device {
 
   @@index([online])
   @@index([roomId])
+  @@index([ownerId])
 }
 
 /// Habitación / grupo de dispositivos del hogar (US-165). Organiza los aparatos

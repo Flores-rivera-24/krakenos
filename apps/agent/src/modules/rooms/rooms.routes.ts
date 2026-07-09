@@ -88,9 +88,10 @@ export const roomsRoutes: FastifyPluginAsync<RoomsRoutesOpts> = async (app, opts
   );
 
   // Acción de grupo sobre los IoT de la habitación (encender/apagar/atenuar todo).
+  // Operar el hogar es capacidad `home.control` (US-179): admin y member.
   app.post<{ Params: { id: string }; Body: RoomGroupActionRequest }>(
     '/:id/action',
-    { schema: roomActionSchema, preHandler: adminOnly },
+    { schema: roomActionSchema, preHandler: app.requireCapability('home.control') },
     async (req, reply) => {
       const result = await service.runGroupAction(req.params.id, req.body);
       if (!result) {

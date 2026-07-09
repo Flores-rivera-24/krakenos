@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { describeError } from '@/lib/errors';
 import { listScenes, runScene, sceneGlyph } from '@/lib/scenes';
+import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 /** Ejecuta escenas de un toque desde el dashboard (US-166). */
 export function ScenesWidget() {
-  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [scenes, setScenes] = useState<Scene[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -60,7 +61,7 @@ export function ScenesWidget() {
               <button
                 key={scene.id}
                 type="button"
-                disabled={!isAdmin || busy === scene.id}
+                disabled={!canControl || busy === scene.id}
                 onClick={() => void run(scene)}
                 className="flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-1.5 text-kr-sm text-kr-primary transition-colors hover:border-kr-accent disabled:opacity-50"
               >

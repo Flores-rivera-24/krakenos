@@ -15,6 +15,16 @@ import { inferDeviceType } from './identify.js';
 import { normalizeDiscovered } from './normalize.js';
 import { lookupVendor } from './oui.js';
 
+/** Error de dominio de inventario con código estable (→ 400 en la ruta). */
+export class InventoryError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 export class InventoryService {
   private scanTimer: NodeJS.Timeout | null = null;
   /** Coalescing: evita barridos solapados (US-47/hardening). */
@@ -56,6 +66,7 @@ export class InventoryService {
       online: row.online,
       vlanTag: row.vlanTag,
       roomId: row.roomId,
+      ownerId: row.ownerId,
       sources: this.parseSources(row.sources, row.mac),
       firstSeen: row.firstSeen.toISOString(),
       lastSeen: row.lastSeen.toISOString(),
@@ -143,12 +154,23 @@ export class InventoryService {
     const existing = await this.app.prisma.device.findUnique({ where: { id } });
     if (!existing) return null;
 
+    // El dueño debe existir (US-179): valida antes para responder 400 tipado en
+    // vez de reventar con la FK (misma clase de fallo que AUD-18).
+    if (input.ownerId != null) {
+      const owner = await this.app.prisma.user.findUnique({
+        where: { id: input.ownerId },
+        select: { id: true },
+      });
+      if (!owner) throw new InventoryError('OWNER_NOT_FOUND', 'El usuario dueño no existe');
+    }
+
     const row = await this.app.prisma.device.update({
       where: { id },
       data: {
         ...(input.label !== undefined ? { label: input.label } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
       },
     });
 

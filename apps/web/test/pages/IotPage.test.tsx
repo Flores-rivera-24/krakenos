@@ -51,7 +51,7 @@ const DEVICES: IotDevice[] = [
   },
 ];
 
-function setRole(role: 'admin' | 'viewer') {
+function setRole(role: 'admin' | 'member' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
     tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
@@ -123,6 +123,17 @@ describe('IotPage', () => {
     // TV es el primer dispositivo, así que su switch es el primero.
     fireEvent.click(screen.getAllByRole('switch')[0]!);
     expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-tv', { on: false });
+  });
+
+  it('un member también puede alternar (home.control, US-179) pero no asignar habitación', async () => {
+    setRole('member');
+    render(<IotPage />);
+    await screen.findByText('TV');
+
+    fireEvent.click(screen.getAllByRole('switch')[0]!);
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-tv', { on: false });
+    // La asignación a habitación sigue siendo gestión (solo admin).
+    expect(screen.queryByLabelText(/Habitación/)).not.toBeInTheDocument();
   });
 
   it('toggle optimista: si el PATCH rechaza, el switch revierte y avisa (US-96)', async () => {

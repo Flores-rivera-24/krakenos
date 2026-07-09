@@ -9,7 +9,7 @@ import type { SidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
-import { NAV_GROUPS, type NavBadgeKey, type NavItem } from './nav';
+import { navGroupsForRole, type NavBadgeKey, type NavItem } from './nav';
 import { ThemeToggle } from './ThemeToggle';
 
 /** Cuenta de dispositivos desconocidos o bloqueados (badge de "Dispositivos"). */
@@ -96,6 +96,8 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
   const user = useAuthStore((s) => s.user);
+  // UI reducida por rol (US-179): kid/guest ven solo Dashboard/Hogar/Ajustes.
+  const navGroups = navGroupsForRole(user?.role);
   const logout = useAuthStore((s) => s.logout);
   const devices = useInventoryStore((s) => s.devices);
   const devicesBadge = unknownOrBlockedCount(devices);
@@ -140,7 +142,7 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
 
       {/* Navegación por grupos con cabecera (US-163) */}
       <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2">
-        {NAV_GROUPS.map((group, gi) => (
+        {navGroups.map((group, gi) => (
           <div key={group.label} className="space-y-1">
             {collapsed ? (
               gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />

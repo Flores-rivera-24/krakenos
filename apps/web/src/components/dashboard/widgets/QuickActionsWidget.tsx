@@ -11,6 +11,7 @@ import { describeError } from '@/lib/errors';
 import { roomGlyph } from '@/lib/rooms';
 import { runScene, sceneGlyph } from '@/lib/scenes';
 import { getSocket } from '@/lib/socket';
+import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
@@ -91,7 +92,8 @@ function resolveTiles(
  * en móvil) para operar lo cotidiano en un toque.
  */
 export function QuickActionsWidget() {
-  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Operar lo cotidiano también para `member` (US-179); la autoridad es del servidor.
+  const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const favorites = useFavoritesStore((s) => s.favorites);
   const loadFavorites = useFavoritesStore((s) => s.load);
   const [iot, setIot] = useState<Map<string, IotDevice>>(new Map());
@@ -181,7 +183,7 @@ export function QuickActionsWidget() {
                   <OptimisticSwitch
                     checked={tile.iot.on}
                     onToggle={(next) => api.patch(`/iot/devices/${tile.iot!.id}`, { on: next })}
-                    disabled={!isAdmin}
+                    disabled={!canControl}
                     errorMessage={`No se pudo cambiar ${tile.label}`}
                     aria-label={`Encender ${tile.label}`}
                   />
@@ -190,7 +192,7 @@ export function QuickActionsWidget() {
                   <Button
                     size="sm"
                     variant="outline"
-                    disabled={!isAdmin || runningScene === tile.sceneId}
+                    disabled={!canControl || runningScene === tile.sceneId}
                     onClick={() => void runFavoriteScene(tile.sceneId!, tile.label)}
                   >
                     {runningScene === tile.sceneId ? 'Activando…' : 'Activar'}

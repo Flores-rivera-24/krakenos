@@ -62,8 +62,14 @@ interface DbUser {
   role: string;
   status: string;
   lastLoginAt: Date | null;
+  expiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** ¿El acceso del usuario caducó? (invitados con `expiresAt`, US-179). */
+function isExpired(row: Pick<DbUser, 'expiresAt'>, now: Date = new Date()): boolean {
+  return row.expiresAt !== null && row.expiresAt <= now;
 }
 
 function toUser(row: DbUser): User {
@@ -209,6 +215,10 @@ export class AuthService {
     if (user.status === 'disabled') {
       throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
     }
+    // Acceso caducado (invitados, US-179): mismo tratamiento que deshabilitado.
+    if (isExpired(user)) {
+      throw new AuthError('AUTH_ACCOUNT_EXPIRED', 'El acceso ha caducado');
+    }
     return toUser(user);
   }
 
@@ -300,6 +310,9 @@ export class AuthService {
     if (row.status === 'disabled') {
       throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
     }
+    if (isExpired(row)) {
+      throw new AuthError('AUTH_ACCOUNT_EXPIRED', 'El acceso ha caducado');
+    }
     // Registra el último acceso efectivo (US-101): visible para el admin en la
     // gestión de usuarios. Se marca al emitir sesión (login/2FA/setup), no al refrescar.
     await this.app.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
@@ -368,6 +381,11 @@ export class AuthService {
     if (user.status === 'disabled') {
       await this.revokeAllForUser(user.id);
       throw new AuthError('AUTH_ACCOUNT_DISABLED', 'La cuenta está deshabilitada');
+    }
+    // Un invitado caducado tampoco refresca: caduca de verdad, sin sesión viva (US-179).
+    if (isExpired(user)) {
+      await this.revokeAllForUser(user.id);
+      throw new AuthError('AUTH_ACCOUNT_EXPIRED', 'El acceso ha caducado');
     }
 
     // Revocación ATÓMICA y condicional (cierra el TOCTOU): solo un `refresh`
