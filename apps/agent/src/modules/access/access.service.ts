@@ -27,6 +27,9 @@ function toSchedule(row: DbAccessSchedule): AccessSchedule {
   };
 }
 
+/** Clave de `Setting` donde se persisten las MACs bloqueadas por horario/pausa (US-197). */
+const MANAGED_BLOCKED_KEY = 'access.managedBlocked';
+
 /**
  * Horarios de acceso / control parental (US-108). Hace dos cosas: CRUD de horarios
  * y un **barrido periódico** que aplica el bloqueo/desbloqueo por horario vía el
@@ -36,7 +39,12 @@ function toSchedule(row: DbAccessSchedule): AccessSchedule {
  */
 export class AccessScheduleService {
   private timer: NodeJS.Timeout | null = null;
-  /** MACs que este servicio bloqueó por horario o pausa (para no pisar bloqueos manuales). */
+  /**
+   * MACs que este servicio bloqueó por horario o pausa (para no pisar bloqueos
+   * manuales). Se **persiste** en `Setting` y se recarga en `reconcile()` al
+   * arrancar: sin eso, un reinicio dejaría el bloqueo aplicado en el driver sin
+   * nadie que lo retire al terminar la ventana (US-197 / AUD-01).
+   */
   private readonly managedBlocked = new Set<string>();
 
   constructor(
@@ -112,6 +120,42 @@ export class AccessScheduleService {
     return activeBlockedMacs(rows.map(toSchedule), now).has(mac);
   }
 
+  // ---- Persistencia del estado gestionado (US-197) ----
+
+  private async persistManaged(): Promise<void> {
+    const value = JSON.stringify([...this.managedBlocked].sort());
+    try {
+      await this.app.prisma.setting.upsert({
+        where: { key: MANAGED_BLOCKED_KEY },
+        update: { value },
+        create: { key: MANAGED_BLOCKED_KEY, value },
+      });
+    } catch (err) {
+      this.app.log.warn({ err }, '[access] no se pudo persistir el estado de bloqueo gestionado');
+    }
+  }
+
+  private async loadManaged(): Promise<void> {
+    const row = await this.app.prisma.setting.findUnique({ where: { key: MANAGED_BLOCKED_KEY } });
+    if (!row) return;
+    try {
+      const macs = JSON.parse(row.value) as string[];
+      for (const mac of macs) if (typeof mac === 'string') this.managedBlocked.add(mac);
+    } catch (err) {
+      this.app.log.warn({ err }, '[access] estado de bloqueo gestionado corrupto; se ignora');
+    }
+  }
+
+  /**
+   * Reconcilia driver↔estado al arrancar: recarga las MACs que quedaron bloqueadas
+   * por horario/pausa antes del reinicio y aplica un barrido inmediato, que
+   * desbloquea (idempotente) lo que ya no debe estar bloqueado.
+   */
+  async reconcile(now: Date = new Date()): Promise<void> {
+    await this.loadManaged();
+    await this.tick(now);
+  }
+
   // ---- Pausa de internet de un toque (US-111) ----
 
   /** Pausa el internet de un dispositivo `minutes` minutos. Devuelve el fin de la pausa. */
@@ -124,6 +168,7 @@ export class AccessScheduleService {
       this.app.log.error({ err, mac }, '[access] no se pudo pausar el dispositivo');
     }
     this.managedBlocked.add(mac);
+    await this.persistManaged();
     return pausedUntil;
   }
 
@@ -141,6 +186,7 @@ export class AccessScheduleService {
         this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo');
       }
       this.managedBlocked.delete(mac);
+      await this.persistManaged();
     }
   }
 
@@ -159,6 +205,7 @@ export class AccessScheduleService {
     for (const d of paused) active.add(d.mac);
     // Considera las MAC activas ahora + las que nosotros dejamos bloqueadas.
     const macs = new Set<string>([...active, ...this.managedBlocked]);
+    let changed = false;
 
     for (const mac of macs) {
       const shouldBlock = active.has(mac);
@@ -171,17 +218,20 @@ export class AccessScheduleService {
         if (shouldBlock) {
           if (!manual) await this.driver.blockDevice(mac);
           this.managedBlocked.add(mac);
+          changed = true;
           this.app.audit({ action: 'access.schedule_block', detail: mac });
         } else {
           // Fin de la ventana: solo desbloquea si NO está bloqueado a mano.
           if (!manual) await this.driver.unblockDevice(mac);
           this.managedBlocked.delete(mac);
+          changed = true;
           this.app.audit({ action: 'access.schedule_unblock', detail: mac });
         }
       } catch (err) {
         this.app.log.error({ err, mac }, '[access] fallo al aplicar el horario; se reintenta');
       }
     }
+    if (changed) await this.persistManaged();
   }
 
   /** Barrido sin propagar errores (para el timer). */
@@ -195,7 +245,10 @@ export class AccessScheduleService {
 
   start(intervalMs = 60_000): void {
     if (this.timer) return;
-    void this.tickCycle();
+    // El primer barrido reconcilia con lo persistido antes del reinicio (US-197).
+    void this.reconcile().catch((err: unknown) => {
+      this.app.log.error({ err }, '[access] la reconciliación al arrancar falló; se omite');
+    });
     this.timer = setInterval(() => void this.tickCycle(), intervalMs);
     this.timer.unref();
   }
