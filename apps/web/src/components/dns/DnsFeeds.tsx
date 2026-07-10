@@ -8,7 +8,7 @@ import { describeError } from '@/lib/errors';
 import { toast } from '@/store/toast.store';
 
 /**
- * Feeds de categoría / adlists (US-114): suscríbete a listas curadas de bloqueo
+ * Listas por categoría / adlists (US-114): suscríbete a listas curadas de bloqueo
  * (publicidad, malware, rastreo). Solo `admin` togglea; el resolver (Pi-hole) las
  * gestiona por URL.
  */
@@ -19,7 +19,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
     try {
       setFeeds(await api.get<DnsFeed[]>('/dns/feeds'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudieron cargar los feeds'));
+      toast.error(describeError(err, 'No se pudieron cargar las listas'));
     }
   };
   useEffect(() => {
@@ -31,7 +31,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
     try {
       await api.patch<DnsFeed>(`/dns/feeds/${feed.id}`, { enabled });
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el feed'));
+      toast.error(describeError(err, 'No se pudo cambiar la lista'));
       await load();
     }
   };
@@ -39,7 +39,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base text-foreground">Feeds de categoría</CardTitle>
+        <CardTitle className="text-base text-foreground">Listas por categoría</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-kr-sm text-kr-secondary">
