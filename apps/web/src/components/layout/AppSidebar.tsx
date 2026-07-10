@@ -5,6 +5,7 @@ import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 import { formatUptime } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import type { SidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -39,7 +40,9 @@ interface SidebarItemProps {
 }
 
 function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
-  const { to, label, icon: Icon, end } = item;
+  const t = useT();
+  const { to, labelKey, icon: Icon, end } = item;
+  const label = t(labelKey);
   return (
     <NavLink
       to={to}
@@ -95,6 +98,7 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   // UI reducida por rol (US-179) y por modo sencillo (US-176).
   const navGroups = navGroupsForRole(user?.role, user?.uiMode);
@@ -118,7 +122,7 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
           <button
             type="button"
             onClick={onToggle}
-            aria-label="Expandir menú"
+            aria-label={t('layout.expandMenu')}
             className="mx-auto flex h-8 w-8 items-center justify-center rounded-md text-kr-accent hover:bg-kr-elevated"
           >
             <LogoMark className="h-6 w-6" />
@@ -132,7 +136,7 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
             <button
               type="button"
               onClick={onToggle}
-              aria-label="Colapsar menú"
+              aria-label={t('layout.collapseMenu')}
               className="flex h-7 w-7 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -149,7 +153,7 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
               gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
             ) : (
               <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
-                {group.label}
+                {t(group.labelKey)}
               </p>
             )}
             {group.items.map((item) => (
@@ -178,16 +182,16 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
                   sustituye por un estado llano; el punto de estado se mantiene. */}
               {simpleMode ? (
                 <div className="truncate text-kr-secondary">
-                  {stats.online ? 'Casa conectada' : 'Sin conexión con el router'}
+                  {stats.online ? t('layout.homeConnected') : t('layout.noRouterConnection')}
                 </div>
               ) : (
                 <>
                   <div className="truncate text-kr-secondary">
-                    Driver: <span className="text-kr-primary">{stats.driver ?? '—'}</span>
+                    {t('layout.driver')}: <span className="text-kr-primary">{stats.driver ?? '—'}</span>
                   </div>
                   {stats.uptimeSeconds != null && (
                     <div className="text-kr-xs text-kr-muted">
-                      Uptime {formatUptime(stats.uptimeSeconds)}
+                      {t('layout.uptime')} {formatUptime(stats.uptimeSeconds)}
                     </div>
                   )}
                 </>
@@ -211,8 +215,8 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
           <button
             type="button"
             onClick={() => void logout()}
-            aria-label="Salir"
-            title="Salir"
+            aria-label={t('common.logout')}
+            title={t('common.logout')}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
           >
             <LogOut className="h-4 w-4" />

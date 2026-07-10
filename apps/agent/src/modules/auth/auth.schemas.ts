@@ -3,7 +3,7 @@
  * Se mantienen alineados con los tipos de `@krakenos/types`.
  */
 import { errorResponse } from '../common.schemas.js';
-import { UI_MODES, USER_ROLES } from '@krakenos/types';
+import { LOCALES, UI_MODES, USER_ROLES } from '@krakenos/types';
 
 const userResponse = {
   type: 'object',
@@ -13,10 +13,11 @@ const userResponse = {
     displayName: { type: 'string' },
     role: { type: 'string', enum: USER_ROLES },
     uiMode: { type: 'string', enum: UI_MODES },
+    locale: { type: 'string', enum: LOCALES },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'email', 'displayName', 'role', 'uiMode', 'createdAt', 'updatedAt'],
+  required: ['id', 'email', 'displayName', 'role', 'uiMode', 'locale', 'createdAt', 'updatedAt'],
 } as const;
 
 // El refresh token NO va en el cuerpo (US-91): viaja en la cookie httpOnly.
@@ -127,6 +128,17 @@ export const updateUiModeSchema = {
     additionalProperties: false,
     required: ['uiMode'],
     properties: { uiMode: { type: 'string', enum: UI_MODES } },
+  },
+  response: { 200: userResponse },
+} as const;
+
+/** Cambio del idioma de interfaz propio (US-177) — autoservicio, solo presentación. */
+export const updateLocaleSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['locale'],
+    properties: { locale: { type: 'string', enum: LOCALES } },
   },
   response: { 200: userResponse },
 } as const;

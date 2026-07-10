@@ -20,6 +20,7 @@ import {
   refreshSchema,
   revokeSessionsSchema,
   statusSchema,
+  updateLocaleSchema,
   updateUiModeSchema,
 } from './auth.schemas.js';
 
@@ -224,5 +225,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     '/ui-mode',
     { schema: updateUiModeSchema, preHandler: app.authenticate },
     async (req) => service.setUiMode(req.user.sub, req.body.uiMode),
+  );
+
+  // Idioma de la interfaz (US-177): autoservicio, solo presentación — el
+  // frontend traduce con este valor; la authz de cada ruta no cambia.
+  app.patch<{ Body: { locale: 'es' | 'en' } }>(
+    '/locale',
+    { schema: updateLocaleSchema, preHandler: app.authenticate },
+    async (req) => service.setLocale(req.user.sub, req.body.locale),
   );
 };

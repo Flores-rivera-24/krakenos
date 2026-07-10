@@ -7,14 +7,17 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogoMark } from '@/components/ui/logo';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
+import { t as translate, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 
 export function SetupPage() {
+  const t = useT();
   const navigate = useNavigate();
   const setSession = useAuthStore((s) => s.setSession);
 
-  const [homeName, setHomeName] = useState('Mi hogar');
+  const [homeName, setHomeName] = useState(() => translate('setup.defaultHomeName'));
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,11 +51,11 @@ export function SetupPage() {
     e.preventDefault();
     setError(null);
     if (password !== confirm) {
-      setError('Las contraseñas no coinciden.');
+      setError(t('setup.error.mismatch'));
       return;
     }
     if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
+      setError(t('setup.error.short'));
       return;
     }
     setLoading(true);
@@ -68,9 +71,7 @@ export function SetupPage() {
       setSession(data);
       navigate('/', { replace: true });
     } catch (err) {
-      const msg =
-        err instanceof ApiRequestError ? err.body.message : 'No se pudo completar la configuración';
-      setError(msg);
+      setError(describeError(err, t('setup.error.generic')));
     } finally {
       setLoading(false);
     }
@@ -86,35 +87,35 @@ export function SetupPage() {
         <div className="flex items-center gap-3">
           <LogoMark className="h-9 w-9 text-kr-accent" />
           <div>
-            <h1 className="text-2xl font-semibold text-kr-primary">Bienvenido a KrakenOS</h1>
-            <p className="text-sm text-kr-secondary">Configura tu administrador para empezar.</p>
+            <h1 className="text-2xl font-semibold text-kr-primary">{t('setup.welcome')}</h1>
+            <p className="text-sm text-kr-secondary">{t('setup.subtitle')}</p>
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="homeName">Nombre del hogar</Label>
+          <Label htmlFor="homeName">{t('setup.homeName')}</Label>
           <Input id="homeName" value={homeName} onChange={(e) => setHomeName(e.target.value)} required maxLength={64} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="displayName">Tu nombre</Label>
+          <Label htmlFor="displayName">{t('setup.displayName')}</Label>
           <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={80} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{t('setup.email')}</Label>
           <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Contraseña</Label>
+          <Label htmlFor="password">{t('setup.password')}</Label>
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm">Confirmar contraseña</Label>
+          <Label htmlFor="confirm">{t('setup.confirm')}</Label>
           <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
         </div>
 
         {requiresToken && (
           <div className="space-y-2">
-            <Label htmlFor="setupToken">Token de configuración</Label>
+            <Label htmlFor="setupToken">{t('setup.token')}</Label>
             <Input
               id="setupToken"
               value={token}
@@ -122,16 +123,14 @@ export function SetupPage() {
               required
               autoComplete="off"
             />
-            <p className="text-xs text-kr-muted">
-              Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).
-            </p>
+            <p className="text-xs text-kr-muted">{t('setup.tokenHint')}</p>
           </div>
         )}
 
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Configurando…' : 'Crear administrador'}
+          {loading ? t('setup.submitting') : t('setup.submit')}
         </Button>
       </form>
     </div>
