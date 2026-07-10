@@ -87,7 +87,35 @@ export interface IotManager {
    * fugar la instancia saliente (US-201).
    */
   stop?(): Promise<void>;
+  /**
+   * Comisiona un dispositivo Matter nuevo a partir de su QR o código de
+   * emparejamiento (US-172). Solo lo implementan los backends Matter; el
+   * composite lo delega en su miembro Matter. Ausente = no soportado.
+   */
+  commission?(code: string): Promise<MatterCommissionResult>;
 }
+
+/**
+ * Resultado de comisionar un dispositivo Matter (US-172): el nodo recién añadido
+ * al controlador (python-matter-server). El `deviceId` ya viene con el prefijo del
+ * composite si aplica (p. ej. `matter:5`).
+ */
+export interface MatterCommissionResult {
+  deviceId: Id;
+  name: string;
+}
+
+/**
+ * Código de error de comisionado Matter, para traducir a un mensaje amable en la
+ * UI (US-172). `invalid-code` = QR/código mal; `not-found` = dispositivo lejos o
+ * inalcanzable; `thread-no-border` = dispositivo Thread sin border router; `failed`
+ * = fallo genérico.
+ */
+export type MatterCommissionErrorCode =
+  | 'invalid-code'
+  | 'not-found'
+  | 'thread-no-border'
+  | 'failed';
 
 /** Versiones del protocolo local Tuya soportadas. */
 export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4';

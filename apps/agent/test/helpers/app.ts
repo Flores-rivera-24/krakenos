@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import type { HardwareDriver, UserRole, VpnManager } from '@krakenos/types';
+import type { HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -97,6 +97,8 @@ export interface BuildTestAppOptions {
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
   /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
   cameraStore?: JsonStore<CameraDefinition>;
+  /** Gestor IoT para las rutas `/api/iot`; por defecto el `MockIotManager` compartido. */
+  iot?: IotManager;
 }
 
 /**
@@ -215,7 +217,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/reports',
       service: new ReportsService(app, new TrafficService(app, driver), energyService),
     });
-    await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
+    await app.register(iotRoutes, { prefix: '/api/iot', iot: opts.iot ?? new MockIotManager() });
     await app.register(tuyaConfigRoutes, {
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),

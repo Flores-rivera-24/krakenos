@@ -35,6 +35,33 @@ export const listIotSchema = {
   },
 } as const;
 
+const errorResponse = {
+  type: 'object',
+  properties: { code: { type: 'string' }, message: { type: 'string' } },
+  required: ['code', 'message'],
+} as const;
+
+/** Comisionado de un dispositivo Matter (US-172). */
+export const commissionMatterSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['code'],
+    // QR (`MT:…`, ~22+ chars) o código manual de 11 dígitos (con o sin guiones).
+    properties: { code: { type: 'string', minLength: 5, maxLength: 64 } },
+  },
+  response: {
+    201: {
+      type: 'object',
+      additionalProperties: false,
+      properties: { deviceId: { type: 'string' }, name: { type: 'string' } },
+      required: ['deviceId', 'name'],
+    },
+    400: errorResponse,
+    409: errorResponse,
+  },
+} as const;
+
 export const updateIotSchema = {
   params: {
     type: 'object',

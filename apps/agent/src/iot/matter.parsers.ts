@@ -1,4 +1,9 @@
-import type { IotDevice, IotDeviceKind, IotReading } from '@krakenos/types';
+import type {
+  IotDevice,
+  IotDeviceKind,
+  IotReading,
+  MatterCommissionErrorCode,
+} from '@krakenos/types';
 
 /**
  * Parsers/builders **puros** para la API de python-matter-server. Mapean los
@@ -135,4 +140,40 @@ export function buildLevelArgs(nodeId: number, endpoint: number, level: number):
     command_name: 'MoveToLevel',
     payload: { level, transitionTime: 0 },
   };
+}
+
+// ---- Comisionado (US-172) ----
+
+/**
+ * Args del comando `commission_with_code` de python-matter-server: acepta tanto
+ * el QR (`MT:…`) como el código manual de 11 dígitos. `network_only:false` permite
+ * comisionar por BLE si hace falta (dispositivos aún no en la red).
+ */
+export function buildCommissionArgs(code: string): Record<string, unknown> {
+  return { code: code.trim(), network_only: false };
+}
+
+/**
+ * Extrae el `node_id` de la respuesta de `commission_with_code`. El resultado
+ * puede ser el nodo (`{node_id}`) o venir envuelto; se buscan ambas formas.
+ * Devuelve `null` si no se reconoce un id de nodo (el llamante lo trata como fallo).
+ */
+export function parseCommissionResult(result: unknown): { nodeId: number } | null {
+  const r = (result ?? {}) as Record<string, unknown>;
+  const raw = r.node_id ?? (r.node as Record<string, unknown> | undefined)?.node_id;
+  const nodeId = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(nodeId) ? { nodeId } : null;
+}
+
+/**
+ * Clasifica un fallo de comisionado en un código estable para traducir a un
+ * mensaje amable en la UI (US-172). Se basa en palabras clave del mensaje del
+ * controlador (heurístico, tolerante a mayúsculas/idioma del server).
+ */
+export function classifyCommissionError(message: string): MatterCommissionErrorCode {
+  const m = message.toLowerCase();
+  if (/(invalid|parse|malformed|qr|code)/.test(m)) return 'invalid-code';
+  if (/(thread|border router|no operational dataset)/.test(m)) return 'thread-no-border';
+  if (/(timeout|unreachable|not found|no response|discover)/.test(m)) return 'not-found';
+  return 'failed';
 }

@@ -104,6 +104,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/discovery/suggestions/hue%3A192.168.1.2' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
+  // comisionado Matter (US-172): admin-only (el mock no lo soporta → 409, no 403)
+  { method: 'POST', url: '/api/iot/matter/commission', payload: { code: 'MT:ABC123XYZ' } },
   // iot tuya (config de credenciales)
   {
     method: 'POST',
