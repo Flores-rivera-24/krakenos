@@ -42,6 +42,7 @@ import { WifiPage } from '@/pages/WifiPage';
 import { CoveragePage } from '@/pages/CoveragePage';
 import { VpnPage } from '@/pages/VpnPage';
 import { IotPage } from '@/pages/IotPage';
+import { EnergyPage } from '@/pages/EnergyPage';
 import { CamerasPage } from '@/pages/CamerasPage';
 import { TrafficPage } from '@/pages/TrafficPage';
 import { FirewallPage } from '@/pages/FirewallPage';
@@ -224,6 +225,21 @@ function apiGet(path: string): Promise<unknown> {
   if (path.startsWith('/coverage/floorplans/') && path.endsWith('/scans')) return Promise.resolve([]);
   if (path.startsWith('/traffic/stats'))
     return Promise.resolve({ range: 'day', buckets: [], totalRxBytes: 0, totalTxBytes: 0 });
+  if (path === '/energy/config') return Promise.resolve({ pricePerKwh: 0.15, currency: '€' });
+  if (path.startsWith('/energy/stats'))
+    return Promise.resolve({
+      range: 'day',
+      buckets: [{ timestamp: '2026-01-01T10:00:00.000Z', powerW: 100, energyWh: 100 }],
+      totalEnergyWh: 1500,
+      previousTotalEnergyWh: 1000,
+      pricePerKwh: 0.15,
+      currency: '€',
+      totalCost: 0.23,
+      previousTotalCost: 0.15,
+      devices: [
+        { deviceId: 'plug-tv', name: 'TV', room: 'Salón', energyWh: 1500, cost: 0.23, buckets: [] },
+      ],
+    });
   if (path === '/dns/stats')
     return Promise.resolve({
       totalQueries: 10,
@@ -258,6 +274,7 @@ const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Coverage', el: <CoveragePage /> },
   { name: 'Vpn', el: <VpnPage /> },
   { name: 'Iot', el: <IotPage /> },
+  { name: 'Energy', el: <EnergyPage /> },
   { name: 'Cameras', el: <CamerasPage /> },
   { name: 'Traffic', el: <TrafficPage /> },
   { name: 'Firewall', el: <FirewallPage /> },

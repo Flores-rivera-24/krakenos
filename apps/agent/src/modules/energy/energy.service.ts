@@ -1,12 +1,18 @@
 import type {
   DeviceEnergyStats,
   EnergyBucket,
+  EnergyConfig,
   EnergyRange,
   EnergyStats,
   IotManager,
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEFAULT_ENERGY_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
+
+/** Error de validación de la configuración de energía (precio inválido). */
+export class EnergyConfigError extends Error {
+  readonly code = 'ENERGY_CONFIG_INVALID';
+}
 
 /** Ventana temporal de cada rango, en milisegundos. */
 const RANGE_MS: Record<EnergyRange, number> = {
@@ -89,6 +95,9 @@ export class EnergyService {
     await this.app.prisma.energySample.deleteMany({ where: { timestamp: { lt: cutoff } } });
   }
 
+  /** Símbolo de moneda por defecto (el proyecto nació en España). */
+  private static readonly DEFAULT_CURRENCY = '€';
+
   /** Precio del kWh configurado (ajuste del hogar `energyPricePerKwh`), o `null`. */
   private async pricePerKwh(): Promise<number | null> {
     const row = await this.app.prisma.setting.findUnique({ where: { key: 'energyPricePerKwh' } });
@@ -97,13 +106,66 @@ export class EnergyService {
     return Number.isFinite(n) && n >= 0 ? n : null;
   }
 
+  /** Configuración de energía del hogar: precio del kWh + moneda (US-182). */
+  async getConfig(): Promise<EnergyConfig> {
+    const currencyRow = await this.app.prisma.setting.findUnique({
+      where: { key: 'energyCurrency' },
+    });
+    const currency = currencyRow?.value?.trim() || EnergyService.DEFAULT_CURRENCY;
+    return { pricePerKwh: await this.pricePerKwh(), currency };
+  }
+
+  /**
+   * Guarda la configuración de energía del hogar (US-182). `pricePerKwh` negativo o
+   * no finito se rechaza; `null` limpia el precio (vuelve a "sin coste").
+   */
+  async setConfig(input: { pricePerKwh?: number | null; currency?: string }): Promise<EnergyConfig> {
+    if (input.pricePerKwh !== undefined) {
+      if (input.pricePerKwh === null) {
+        await this.app.prisma.setting.deleteMany({ where: { key: 'energyPricePerKwh' } });
+      } else {
+        const p = input.pricePerKwh;
+        if (!Number.isFinite(p) || p < 0) {
+          throw new EnergyConfigError('El precio del kWh debe ser un número ≥ 0');
+        }
+        await this.app.prisma.setting.upsert({
+          where: { key: 'energyPricePerKwh' },
+          create: { key: 'energyPricePerKwh', value: String(p) },
+          update: { value: String(p) },
+        });
+      }
+    }
+    if (input.currency !== undefined) {
+      const currency = input.currency.trim() || EnergyService.DEFAULT_CURRENCY;
+      await this.app.prisma.setting.upsert({
+        where: { key: 'energyCurrency' },
+        create: { key: 'energyCurrency', value: currency },
+        update: { value: currency },
+      });
+    }
+    return this.getConfig();
+  }
+
+  /** Suma de energía (Wh) persistida en la ventana `[since, until)`. */
+  private async energyBetween(since: Date, until: Date): Promise<number> {
+    const rows = await this.app.prisma.energySample.findMany({
+      where: { timestamp: { gte: since, lt: until } },
+      select: { powerW: true },
+    });
+    const rollupHours = this.rollupMs / 1000 / 3600;
+    const wh = rows.reduce((s, r) => s + r.powerW * rollupHours, 0);
+    return Math.round(wh * 100) / 100;
+  }
+
   /**
    * Estadísticas de consumo para una ventana: serie del hogar en buckets, total
    * de energía y coste estimado, y el desglose por dispositivo (nombre/estancia
    * desde el manager vivo). La energía se integra de la potencia media persistida.
    */
   async getStats(range: EnergyRange): Promise<EnergyStats> {
-    const since = new Date(Date.now() - RANGE_MS[range]);
+    const now = Date.now();
+    const windowMs = RANGE_MS[range];
+    const since = new Date(now - windowMs);
     const rows = await this.app.prisma.energySample.findMany({
       where: { timestamp: { gte: since } },
       orderBy: { timestamp: 'asc' },
@@ -111,7 +173,13 @@ export class EnergyService {
 
     const bucketMs = BUCKET_MS[range];
     const rollupHours = this.rollupMs / 1000 / 3600;
-    const price = await this.pricePerKwh();
+    const { pricePerKwh: price, currency } = await this.getConfig();
+
+    // Comparativa vs el periodo inmediatamente anterior, de igual duración (US-182).
+    const previousTotalEnergyWh = await this.energyBetween(
+      new Date(now - 2 * windowMs),
+      since,
+    );
 
     // Nombre/estancia actuales desde el manager (puede ya no existir la fila).
     const live = await this.iot.listDevices().catch(() => []);
@@ -176,8 +244,11 @@ export class EnergyService {
       range,
       buckets: toBuckets(home),
       totalEnergyWh,
+      previousTotalEnergyWh,
       pricePerKwh: price,
+      currency,
       totalCost: cost(totalEnergyWh),
+      previousTotalCost: cost(previousTotalEnergyWh),
       devices,
     };
   }

@@ -70,6 +70,7 @@ import { RetentionService } from './modules/system/retention.service.js';
 import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import { EnergyService } from './modules/energy/energy.service.js';
+import { energyRoutes } from './modules/energy/energy.routes.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -276,18 +277,20 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Monitor de tráfico: muestrea vía driver y emite por Socket.io.
   const trafficService = new TrafficService(app, driver);
   await app.register(trafficRoutes, { prefix: '/api/traffic', service: trafficService });
-  // Informes exportables en CSV (US-109): auditoría, inventario, tráfico.
-  await app.register(reportsRoutes, {
-    prefix: '/api/reports',
-    service: new ReportsService(app, trafficService),
-  });
-  trafficService.start();
-  app.addHook('onClose', async () => trafficService.stop());
 
   // Medición de consumo eléctrico (US-181): sondea la potencia de los IoT que la
   // reportan y persiste un rollup por minuto por dispositivo. La energía/coste se
   // integran al consultar; la poda de retención es red de seguridad del barrido.
   const energyService = new EnergyService(app, iot);
+  await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
+
+  // Informes exportables en CSV (US-109/182): auditoría, inventario, tráfico, energía.
+  await app.register(reportsRoutes, {
+    prefix: '/api/reports',
+    service: new ReportsService(app, trafficService, energyService),
+  });
+  trafficService.start();
+  app.addHook('onClose', async () => trafficService.stop());
   energyService.start();
   app.addHook('onClose', async () => energyService.stop());
 

@@ -17,7 +17,9 @@ describe('EnergyService (US-181)', () => {
 
   beforeEach(async () => {
     await app.prisma.energySample.deleteMany();
-    await app.prisma.setting.deleteMany({ where: { key: 'energyPricePerKwh' } });
+    await app.prisma.setting.deleteMany({
+      where: { key: { in: ['energyPricePerKwh', 'energyCurrency'] } },
+    });
   });
 
   it('muestrea solo los dispositivos que reportan potencia', async () => {
@@ -151,6 +153,40 @@ describe('EnergyService (US-181)', () => {
     // Solo la muestra reciente cuenta.
     expect(stats.devices).toHaveLength(1);
     expect(stats.devices[0]?.buckets.length).toBe(1);
+  });
+
+  it('getStats calcula el total del periodo anterior para comparar', async () => {
+    const iot = new MockIotManager();
+    const svc = new EnergyService(app, iot);
+    const HOUR = 60 * 60 * 1000;
+    // Periodo actual (últimas 24 h): una muestra reciente.
+    await app.prisma.energySample.create({ data: { deviceId: 'plug-x', powerW: 60 } });
+    // Periodo anterior (24-48 h atrás): una muestra a 36 h.
+    await app.prisma.energySample.create({
+      data: { deviceId: 'plug-x', powerW: 120, timestamp: new Date(Date.now() - 36 * HOUR) },
+    });
+
+    const stats = await svc.getStats('day');
+    expect(stats.totalEnergyWh).toBeCloseTo(60 / 60, 2); // 1 Wh
+    expect(stats.previousTotalEnergyWh).toBeCloseTo(120 / 60, 2); // 2 Wh
+  });
+
+  it('setConfig guarda precio y moneda; null limpia el precio', async () => {
+    const iot = new MockIotManager();
+    const svc = new EnergyService(app, iot);
+    await svc.setConfig({ pricePerKwh: 0.2, currency: '$' });
+    expect(await svc.getConfig()).toEqual({ pricePerKwh: 0.2, currency: '$' });
+
+    await svc.setConfig({ pricePerKwh: null });
+    expect((await svc.getConfig()).pricePerKwh).toBeNull();
+  });
+
+  it('setConfig rechaza un precio negativo', async () => {
+    const iot = new MockIotManager();
+    const svc = new EnergyService(app, iot);
+    await expect(svc.setConfig({ pricePerKwh: -0.5 })).rejects.toMatchObject({
+      code: 'ENERGY_CONFIG_INVALID',
+    });
   });
 
   it('el rango "month" agrupa por día', async () => {

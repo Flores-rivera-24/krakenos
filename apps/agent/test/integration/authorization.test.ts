@@ -112,6 +112,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/iot/tuya/devices/d1', payload: { name: 'Nuevo' } },
   { method: 'DELETE', url: '/api/iot/tuya/devices/d1' },
+  // energía (US-182): precio del kWh / moneda del hogar
+  { method: 'PUT', url: '/api/energy/config', payload: { pricePerKwh: 0.15 } },
   // system
   { method: 'PATCH', url: '/api/system/settings', payload: { key: 'homeName', value: 'Hogar' } },
   { method: 'POST', url: '/api/system/connectivity-test' },

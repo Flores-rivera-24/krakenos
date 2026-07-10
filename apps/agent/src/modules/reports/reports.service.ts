@@ -1,5 +1,6 @@
-import type { TrafficRange } from '@krakenos/types';
+import type { EnergyRange, TrafficRange } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import type { EnergyService } from '../energy/energy.service.js';
 import type { TrafficService } from '../traffic/traffic.service.js';
 import { toCsv } from './csv.js';
 
@@ -15,6 +16,7 @@ export class ReportsService {
   constructor(
     private readonly app: FastifyInstance,
     private readonly traffic: TrafficService,
+    private readonly energy: EnergyService,
   ) {}
 
   async auditCsv(): Promise<string> {
@@ -52,6 +54,20 @@ export class ReportsService {
     return toCsv(
       ['timestamp', 'rx_bytes_por_seg', 'tx_bytes_por_seg'],
       stats.buckets.map((b) => [b.timestamp, Math.round(b.rxBytesPerSec), Math.round(b.txBytesPerSec)]),
+    );
+  }
+
+  /** Consumo por dispositivo en la ventana: energía (Wh) y coste estimado (US-182). */
+  async energyCsv(range: EnergyRange): Promise<string> {
+    const stats = await this.energy.getStats(range);
+    return toCsv(
+      ['dispositivo', 'estancia', 'energia_wh', `coste_${stats.currency}`],
+      stats.devices.map((d) => [
+        d.name ?? d.deviceId,
+        d.room ?? '',
+        Math.round(d.energyWh * 100) / 100,
+        d.cost ?? '',
+      ]),
     );
   }
 }

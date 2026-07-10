@@ -33,6 +33,17 @@ export interface DeviceEnergyStats {
 }
 
 /**
+ * Configuración de energía del hogar (US-182): precio del kWh y símbolo de moneda,
+ * usados para estimar el coste. El precio es `null` mientras no se configure.
+ */
+export interface EnergyConfig {
+  /** Precio por kWh en la moneda del hogar; `null` si no está configurado. */
+  pricePerKwh: number | null;
+  /** Símbolo de la moneda para mostrar el coste (por defecto `€`). */
+  currency: string;
+}
+
+/**
  * Estadísticas de consumo eléctrico para una ventana temporal (US-182). El total
  * y el coste agregan todos los dispositivos con medición; el desglose va en
  * `devices` (orden descendente por energía).
@@ -43,10 +54,16 @@ export interface EnergyStats {
   buckets: EnergyBucket[];
   /** Energía total estimada del hogar en la ventana (Wh). */
   totalEnergyWh: number;
+  /** Energía total del periodo inmediatamente anterior (misma duración), para comparar. */
+  previousTotalEnergyWh: number;
   /** Precio del kWh usado para el coste (moneda del hogar); `null` si no configurado. */
   pricePerKwh: number | null;
+  /** Símbolo de la moneda para mostrar el coste. */
+  currency: string;
   /** Coste total estimado (`totalEnergyWh/1000 × pricePerKwh`); `null` sin precio. */
   totalCost: number | null;
+  /** Coste del periodo anterior (misma duración); `null` sin precio. */
+  previousTotalCost: number | null;
   /** Desglose por dispositivo, orden descendente por energía. */
   devices: DeviceEnergyStats[];
 }
