@@ -44,6 +44,11 @@ import { HomeEventBus } from './automations/event-bus.js';
 import { IotWatcher } from './automations/iot-watcher.js';
 import { AutomationService } from './modules/automations/automations.service.js';
 import { automationsRoutes } from './modules/automations/automations.routes.js';
+import { PresenceService } from './modules/presence/presence.service.js';
+import { presenceRoutes } from './modules/presence/presence.routes.js';
+import { DgramDiscoveryTransport } from './discovery/transport.js';
+import { DiscoveryService } from './modules/discovery/discovery.service.js';
+import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { setupRoutes } from './modules/setup/setup.routes.js';
@@ -221,6 +226,15 @@ export async function buildServer(): Promise<FastifyInstance> {
     watcher: iotWatcher,
   });
   await app.register(automationsRoutes, { prefix: '/api/automations', service: automationService });
+  // Modos del hogar + presencia por WiFi (US-169): deriva llegadas/salidas de los
+  // eventos device-online/offline del bus sobre `Device.ownerId`, con ventana de
+  // gracia; el modo es estado global observable y trigger de automatización.
+  const presenceService = new PresenceService(app, homeBus);
+  await app.register(presenceRoutes, { prefix: '/api/presence', service: presenceService });
+  // Auto-descubrimiento de IoT (US-175): sondeo mDNS/SSDP solo-LAN con huellas
+  // por integración; alimenta las tarjetas de sugerencia de «Conectar».
+  const discoveryService = new DiscoveryService(app, new DgramDiscoveryTransport());
+  await app.register(discoveryRoutes, { prefix: '/api/discovery', service: discoveryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
@@ -295,6 +309,15 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.addHook('onClose', async () => iotWatcher.stop());
   automationService.start();
   app.addHook('onClose', async () => automationService.stop());
+
+  // Presencia (US-169): reconcilia el timeline al arrancar y confirma salidas
+  // pendientes (ventana de gracia) cada minuto.
+  presenceService.start();
+  app.addHook('onClose', async () => presenceService.stop());
+
+  // Auto-descubrimiento (US-175): barrido periódico suave (10 min) + bajo demanda.
+  discoveryService.start();
+  app.addHook('onClose', async () => discoveryService.stop());
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();

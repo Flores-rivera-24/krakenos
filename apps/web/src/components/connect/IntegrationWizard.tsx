@@ -34,6 +34,12 @@ export interface IntegrationWizardProps {
   kindSchema: IntegrationKindSchema;
   /** Config actualmente guardada del dominio, o `null`. */
   current: IntegrationConfigInfo | null;
+  /**
+   * Valores para precargar el formulario (clave de campo sin namespacing),
+   * p. ej. la IP detectada por el auto-descubrimiento (US-175). Priman sobre la
+   * config guardada; los secretos nunca se prefillan.
+   */
+  initialValues?: Record<string, string>;
   /** Se invoca al terminar (tras guardar con éxito) para cerrar y refrescar. */
   onDone: () => void;
 }
@@ -54,6 +60,7 @@ export function IntegrationWizard({
   kind,
   kindSchema,
   current,
+  initialValues,
   onDone,
 }: IntegrationWizardProps) {
   const guide = getGuideByKind(kind);
@@ -82,12 +89,15 @@ export function IntegrationWizard({
         out[f.key] = ''; // nunca se prefilla un secreto
       } else {
         const stored = current?.config[storageKey(f.key)];
+        // Lo detectado por el auto-descubrimiento prima sobre lo guardado (US-175).
         out[f.key] =
-          stored !== undefined && stored !== null
-            ? String(stored)
-            : f.default !== undefined
-              ? String(f.default)
-              : '';
+          initialValues?.[f.key] !== undefined
+            ? initialValues[f.key]!
+            : stored !== undefined && stored !== null
+              ? String(stored)
+              : f.default !== undefined
+                ? String(f.default)
+                : '';
       }
     }
     return out;

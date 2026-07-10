@@ -32,6 +32,10 @@ import { IotScheduleService } from '../../src/modules/iot-schedule/iot-schedule.
 import { HomeEventBus } from '../../src/automations/event-bus.js';
 import { automationsRoutes } from '../../src/modules/automations/automations.routes.js';
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
+import { presenceRoutes } from '../../src/modules/presence/presence.routes.js';
+import { PresenceService } from '../../src/modules/presence/presence.service.js';
+import { discoveryRoutes } from '../../src/modules/discovery/discovery.routes.js';
+import { DiscoveryService } from '../../src/modules/discovery/discovery.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
@@ -146,7 +150,9 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       service: new IotScheduleService(app, sharedIot, sceneServiceForTests),
     });
     // Automatizaciones (US-167). Sin timers ni watcher: los tests publican en el
-    // bus o llaman a `tick()` a mano.
+    // bus o llaman a `tick()` a mano. El bus se comparte con presencia (US-169),
+    // como en producción.
+    const homeBus = new HomeEventBus();
     await app.register(automationsRoutes, {
       prefix: '/api/automations',
       service: new AutomationService(app, {
@@ -154,8 +160,20 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
         scenes: sceneServiceForTests,
         inventory: inventoryService,
         access: new AccessScheduleService(app, driver),
-        bus: new HomeEventBus(),
+        bus: homeBus,
       }),
+    });
+    // Presencia + modos del hogar (US-169). Sin timers: los tests llaman a
+    // `onEvent()`/`tick()` a mano o publican en el bus.
+    await app.register(presenceRoutes, {
+      prefix: '/api/presence',
+      service: new PresenceService(app, homeBus),
+    });
+    // Auto-descubrimiento (US-175) con transporte inerte: los tests nunca abren
+    // sockets multicast reales (los de comportamiento inyectan un fake propio).
+    await app.register(discoveryRoutes, {
+      prefix: '/api/discovery',
+      service: new DiscoveryService(app, { probe: async () => [] }),
     });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
@@ -219,6 +237,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.iotSchedule.deleteMany();
   await app.prisma.automationRun.deleteMany();
   await app.prisma.automationRule.deleteMany();
+  await app.prisma.presenceEvent.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample

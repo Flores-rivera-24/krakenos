@@ -17,6 +17,7 @@ const CTX: NameContext = {
   devices: [{ id: 'light-1', name: 'Luz salón' } as IotDevice],
   scenes: [{ id: 's1', name: 'Cine' } as Scene],
   networkNames: new Map([['aa:bb', 'Móvil de Ana']]),
+  userNames: new Map([['u1', 'Ana']]),
 };
 
 describe('lib/automations (US-167)', () => {
@@ -28,6 +29,13 @@ describe('lib/automations (US-167)', () => {
       describeTrigger({ type: 'sensor-threshold', deviceId: 'light-1', op: 'gt', value: 30 }, CTX),
     ).toBe('Luz salón supera 30');
     expect(describeTrigger({ type: 'time', days: [1, 2], minute: 8 * 60 })).toBe('a las 08:00 (Lun Mar)');
+  });
+
+  it('describe los disparadores de presencia y modo (US-169)', () => {
+    expect(describeTrigger({ type: 'person-arrived' }, CTX)).toBe('alguien llega a casa');
+    expect(describeTrigger({ type: 'person-arrived', userId: 'u1' }, CTX)).toBe('Ana llega a casa');
+    expect(describeTrigger({ type: 'person-left', userId: 'u1' }, CTX)).toBe('Ana sale de casa');
+    expect(describeTrigger({ type: 'mode-changed', mode: 'night' }, CTX)).toBe('el hogar pasa a «Noche»');
   });
 
   it('describe acciones (incluido el objetivo implícito del evento)', () => {

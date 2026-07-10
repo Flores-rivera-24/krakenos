@@ -26,6 +26,8 @@ model User {
   backupCodes  BackupCode[]
   favorites    Favorite[]
   pushSubscriptions PushSubscription[]
+  /// Llegadas/salidas derivadas de la presencia WiFi (US-169).
+  presenceEvents PresenceEvent[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
@@ -365,6 +367,20 @@ model AutomationRule {
   runs        AutomationRun[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
+}
+
+/// Llegada/salida de una persona derivada de la presencia WiFi (US-169): la
+/// transición online/offline de sus dispositivos (`Device.ownerId`) con ventana
+/// de gracia. Alimenta el timeline (privado por rol) y se poda por retención.
+model PresenceEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // 'arrived' | 'left'
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 /// Ejecución registrada de una regla (log de automatizaciones, US-167). Se poda

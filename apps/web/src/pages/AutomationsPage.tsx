@@ -4,9 +4,12 @@ import type {
   AutomationRun,
   AutomationTrigger,
   Device,
+  HomeMode,
   IotDevice,
   Scene,
+  UserSummary,
 } from '@krakenos/types';
+import { HOME_MODES } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -30,6 +33,7 @@ import {
 } from '@/lib/automations';
 import { describeError } from '@/lib/errors';
 import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
+import { MODE_LABELS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -107,6 +111,7 @@ function RuleEditor({
   iotDevices,
   networkDevices,
   scenes,
+  users,
   onClose,
   onSaved,
 }: {
@@ -114,6 +119,7 @@ function RuleEditor({
   iotDevices: IotDevice[];
   networkDevices: Device[];
   scenes: Scene[];
+  users: UserSummary[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -145,6 +151,15 @@ function RuleEditor({
   );
   const [timeAt, setTimeAt] = useState(
     trg?.type === 'time' ? minuteToTimeString(trg.minute) : '20:00',
+  );
+  // Presencia/modos (US-169): '' = cualquier persona.
+  const [triggerUserId, setTriggerUserId] = useState(
+    trg && (trg.type === 'person-arrived' || trg.type === 'person-left')
+      ? (trg.userId ?? '')
+      : '',
+  );
+  const [triggerMode, setTriggerMode] = useState<HomeMode>(
+    trg?.type === 'mode-changed' ? trg.mode : 'away',
   );
 
   const [withWindow, setWithWindow] = useState(rule?.condition !== undefined);
@@ -181,6 +196,11 @@ function RuleEditor({
         return { type: 'sensor-threshold', deviceId: triggerDevice, op: sensorOp, value: sensorValue };
       case 'time':
         return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
+      case 'person-arrived':
+      case 'person-left':
+        return { type: triggerType, ...(triggerUserId ? { userId: triggerUserId } : {}) };
+      case 'mode-changed':
+        return { type: 'mode-changed', mode: triggerMode };
     }
   };
 
@@ -312,6 +332,9 @@ function RuleEditor({
             <option value="iot-off">Una luz/enchufe se apaga</option>
             <option value="sensor-threshold">Un sensor cruza un umbral</option>
             <option value="time">A una hora</option>
+            <option value="person-arrived">Alguien llega a casa</option>
+            <option value="person-left">Alguien sale de casa</option>
+            <option value="mode-changed">El hogar cambia de modo</option>
           </select>
 
           {(triggerType === 'device-online' || triggerType === 'device-offline') && (
@@ -384,6 +407,35 @@ function RuleEditor({
                 onChange={(e) => setTimeAt(e.target.value)}
               />
             </div>
+          )}
+          {(triggerType === 'person-arrived' || triggerType === 'person-left') && (
+            <select
+              aria-label="Persona"
+              className={SELECT_CLASS}
+              value={triggerUserId}
+              onChange={(e) => setTriggerUserId(e.target.value)}
+            >
+              <option value="">Cualquier persona</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName}
+                </option>
+              ))}
+            </select>
+          )}
+          {triggerType === 'mode-changed' && (
+            <select
+              aria-label="Modo del hogar"
+              className={SELECT_CLASS}
+              value={triggerMode}
+              onChange={(e) => setTriggerMode(e.target.value as HomeMode)}
+            >
+              {HOME_MODES.map((m) => (
+                <option key={m} value={m}>
+                  {MODE_LABELS[m]}
+                </option>
+              ))}
+            </select>
           )}
         </div>
 
@@ -570,6 +622,7 @@ export function AutomationsPage() {
   const [iotDevices, setIotDevices] = useState<IotDevice[]>([]);
   const [networkDevices, setNetworkDevices] = useState<Device[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
+  const [users, setUsers] = useState<UserSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -599,13 +652,21 @@ export function AutomationsPage() {
     void listScenes().then(setScenes).catch(() => setScenes([]));
   }, [reload]);
 
+  // Personas del hogar para los disparadores de presencia (US-169). El listado
+  // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
+  useEffect(() => {
+    if (!isAdmin) return;
+    void api.get<UserSummary[]>('/users').then(setUsers).catch(() => setUsers([]));
+  }, [isAdmin]);
+
   const ctx: NameContext = useMemo(
     () => ({
       devices: iotDevices,
       scenes,
       networkNames: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
+      userNames: new Map(users.map((u) => [u.id, u.displayName])),
     }),
-    [iotDevices, scenes, networkDevices],
+    [iotDevices, scenes, networkDevices, users],
   );
 
   const toggleEnabled = async (rule: AutomationRule, enabled: boolean) => {
@@ -740,6 +801,7 @@ export function AutomationsPage() {
           iotDevices={iotDevices}
           networkDevices={networkDevices}
           scenes={scenes}
+          users={users}
           onClose={() => setEditorOpen(false)}
           onSaved={reload}
         />

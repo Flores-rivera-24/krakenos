@@ -4,6 +4,7 @@ import {
   pruneAutomationRuns,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
+  prunePresenceEvents,
   retentionDays,
 } from '../../config/retention.js';
 
@@ -51,6 +52,10 @@ export class RetentionService {
       const runs = await pruneAutomationRuns(this.app.prisma);
       if (runs > 0) {
         this.app.log.info(`[retention] podadas ${runs} ejecuciones de automatizaciones`);
+      }
+      const presence = await prunePresenceEvents(this.app.prisma);
+      if (presence > 0) {
+        this.app.log.info(`[retention] podadas ${presence} llegadas/salidas de presencia`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

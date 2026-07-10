@@ -1,4 +1,5 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { HomeMode } from './presence.js';
 
 /**
  * Automatizaciones «si X entonces Y» (US-167). El motor es local (sin nube):
@@ -19,7 +20,12 @@ export type AutomationTrigger =
   /** La lectura de un sensor cruza un umbral (dispara solo al cruzar, no sostenido). */
   | { type: 'sensor-threshold'; deviceId: Id; op: 'gt' | 'lt'; value: number }
   /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
-  | { type: 'time'; days: number[]; minute: number };
+  | { type: 'time'; days: number[]; minute: number }
+  /** Una persona llega/se va de casa (US-169). Sin `userId` = cualquiera. */
+  | { type: 'person-arrived'; userId?: Id }
+  | { type: 'person-left'; userId?: Id }
+  /** El hogar entra en un modo concreto (US-169). */
+  | { type: 'mode-changed'; mode: HomeMode };
 
 /**
  * Condición opcional: la regla solo dispara dentro de la ventana. Si
@@ -101,4 +107,11 @@ export type HomeEvent = (
   | { type: 'iot-on'; deviceId: Id }
   | { type: 'iot-off'; deviceId: Id }
   | { type: 'sensor-reading'; deviceId: Id; value: number; prevValue: number | null }
+  /**
+   * Presencia y modos del hogar (US-169). `name` acompaña al id para que el log
+   * de ejecuciones sea legible sin otra consulta.
+   */
+  | { type: 'person-arrived'; userId: Id; name: string }
+  | { type: 'person-left'; userId: Id; name: string }
+  | { type: 'mode-changed'; mode: HomeMode; prevMode: HomeMode }
 ) & { origin?: string };

@@ -1,3 +1,4 @@
+import { HOME_MODES } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
 /** JSON Schemas de automatizaciones «si X entonces Y» (US-167). */
@@ -30,6 +31,9 @@ const trigger = {
         'iot-off',
         'sensor-threshold',
         'time',
+        'person-arrived',
+        'person-left',
+        'mode-changed',
       ],
     },
     mac,
@@ -38,6 +42,9 @@ const trigger = {
     value: { type: 'number', minimum: -1_000_000, maximum: 1_000_000 },
     days,
     minute: { type: 'integer', minimum: 0, maximum: 1439 },
+    // Presencia/modos (US-169): `userId` opcional (ausente = cualquier persona).
+    userId: { type: 'string', minLength: 1, maxLength: 128 },
+    mode: { enum: [...HOME_MODES] },
   },
   allOf: [
     {
@@ -55,6 +62,10 @@ const trigger = {
     {
       if: { properties: { type: { const: 'time' } }, required: ['type'] },
       then: { required: ['days', 'minute'] },
+    },
+    {
+      if: { properties: { type: { const: 'mode-changed' } }, required: ['type'] },
+      then: { required: ['mode'] },
     },
   ],
 } as const;

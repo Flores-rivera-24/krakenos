@@ -50,6 +50,7 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   theme: 'dark',
   homeLatitude: '',
   homeLongitude: '',
+  presenceGraceMin: '10',
 };
 
 /**

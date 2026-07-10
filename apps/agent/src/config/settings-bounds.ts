@@ -33,6 +33,11 @@ export const SETTING_BOUNDS = {
    * handler trata antes de acotar. Máx 1 h.
    */
   scanIntervalSec: { min: 5, max: 3600 },
+  /**
+   * Ventana de gracia de la presencia en minutos (US-169). Mín 1 (un móvil que
+   * duerme el WiFi generaría salidas fantasma con 0); máx 3 h.
+   */
+  presenceGraceMin: { min: 1, max: 180 },
 } satisfies Record<string, NumericBound>;
 
 export type BoundedSettingKey = keyof typeof SETTING_BOUNDS;

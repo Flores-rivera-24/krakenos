@@ -99,6 +99,9 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/automations/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/automations/x' },
+  // auto-descubrimiento (US-175)
+  { method: 'POST', url: '/api/discovery/scan' },
+  { method: 'DELETE', url: '/api/discovery/suggestions/hue%3A192.168.1.2' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // iot tuya (config de credenciales)

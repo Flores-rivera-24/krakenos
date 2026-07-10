@@ -25,9 +25,16 @@ const HUE_SCHEMA: IntegrationKindSchema = {
   ],
 };
 
-function renderHue(onDone = vi.fn()) {
+function renderHue(onDone = vi.fn(), initialValues?: Record<string, string>) {
   render(
-    <IntegrationWizard domain="iot" kind="hue" kindSchema={HUE_SCHEMA} current={null} onDone={onDone} />,
+    <IntegrationWizard
+      domain="iot"
+      kind="hue"
+      kindSchema={HUE_SCHEMA}
+      current={null}
+      initialValues={initialValues}
+      onDone={onDone}
+    />,
   );
   return { onDone };
 }
@@ -65,6 +72,15 @@ describe('IntegrationWizard', () => {
 
     await user.type(screen.getByLabelText(/Clave de aplicación/), 'secret-app-key');
     expect(next).toBeEnabled();
+  });
+
+  it('precarga los valores del auto-descubrimiento (US-175), nunca los secretos', async () => {
+    const user = userEvent.setup();
+    renderHue(vi.fn(), { bridgeUrl: 'http://192.168.1.2', appKey: 'no-debe-precargarse' });
+    await gotoConnect(user);
+
+    expect(screen.getByLabelText(/Dirección del bridge/)).toHaveValue('http://192.168.1.2');
+    expect(screen.getByLabelText(/Clave de aplicación/)).toHaveValue('');
   });
 
   it('tras una prueba correcta, guardar hace PUT namespaced y avisa con un toast', async () => {
