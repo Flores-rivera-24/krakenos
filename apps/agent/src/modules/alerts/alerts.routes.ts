@@ -29,7 +29,7 @@ export const alertsRoutes: FastifyPluginAsync<AlertsRoutesOpts> = async (app, op
       app.audit({
         action: 'alerts.rule.update',
         userId: req.user.sub,
-        detail: `${rule.event} push=${rule.push} email=${rule.email}`,
+        detail: `${rule.event} push=${rule.push} email=${rule.email} telegram=${rule.telegram}`,
         ip: req.ip,
       });
       return reply.send(rule);

@@ -317,6 +317,19 @@ export function SettingsPage() {
                       </div>
                     </Setting>
                   )}
+                  <Setting label="Resumen del hogar">
+                    <select
+                      className={SELECT_CLASS}
+                      aria-label="Resumen del hogar"
+                      value={setting('digestFrequency')}
+                      disabled={!isAdmin}
+                      onChange={(e) => void patch('digestFrequency', e.target.value)}
+                    >
+                      <option value="off">Apagado</option>
+                      <option value="daily">Diario (08:00)</option>
+                      <option value="weekly">Semanal (lunes 08:00)</option>
+                    </select>
+                  </Setting>
                 </CardContent>
               </Card>
 

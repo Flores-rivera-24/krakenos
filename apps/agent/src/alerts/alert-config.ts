@@ -16,8 +16,8 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
 
 const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));
 
-/** Canales por defecto de un evento del catálogo: push sí, email no. */
-const DEFAULT_CHANNELS = { push: true, email: false };
+/** Canales por defecto de un evento del catálogo: push sí, email/Telegram no. */
+const DEFAULT_CHANNELS = { push: true, email: false, telegram: false };
 
 /**
  * Fuente de verdad de qué eventos alertan y por qué canal. Cachea las reglas en
@@ -25,7 +25,7 @@ const DEFAULT_CHANNELS = { push: true, email: false };
  * sin tocar la DB en cada acción auditada.
  */
 export class AlertConfigService {
-  private cache = new Map<string, { push: boolean; email: boolean }>();
+  private cache = new Map<string, { push: boolean; email: boolean; telegram: boolean }>();
 
   constructor(private readonly app: FastifyInstance) {}
 
@@ -39,12 +39,14 @@ export class AlertConfigService {
 
   async reload(): Promise<void> {
     const rows = await this.app.prisma.alertRule.findMany();
-    this.cache = new Map(rows.map((r) => [r.event, { push: r.push, email: r.email }]));
+    this.cache = new Map(
+      rows.map((r) => [r.event, { push: r.push, email: r.email, telegram: r.telegram }]),
+    );
   }
 
   /** Canales activos para un evento (desde la caché). Evento fuera del catálogo → nada. */
-  channelsFor(event: string): { push: boolean; email: boolean } {
-    return this.cache.get(event) ?? { push: false, email: false };
+  channelsFor(event: string): { push: boolean; email: boolean; telegram: boolean } {
+    return this.cache.get(event) ?? { push: false, email: false, telegram: false };
   }
 
   async list(): Promise<AlertRule[]> {
@@ -52,7 +54,13 @@ export class AlertConfigService {
     const byEvent = new Map(rows.map((r) => [r.event, r]));
     return ALERT_EVENTS.map(({ event, label }) => {
       const r = byEvent.get(event);
-      return { event, label, push: r?.push ?? DEFAULT_CHANNELS.push, email: r?.email ?? DEFAULT_CHANNELS.email };
+      return {
+        event,
+        label,
+        push: r?.push ?? DEFAULT_CHANNELS.push,
+        email: r?.email ?? DEFAULT_CHANNELS.email,
+        telegram: r?.telegram ?? DEFAULT_CHANNELS.telegram,
+      };
     });
   }
 
@@ -61,14 +69,20 @@ export class AlertConfigService {
     if (!label) return null; // fuera del catálogo
     const row = await this.app.prisma.alertRule.upsert({
       where: { event },
-      create: { event, push: patch.push ?? DEFAULT_CHANNELS.push, email: patch.email ?? DEFAULT_CHANNELS.email },
+      create: {
+        event,
+        push: patch.push ?? DEFAULT_CHANNELS.push,
+        email: patch.email ?? DEFAULT_CHANNELS.email,
+        telegram: patch.telegram ?? DEFAULT_CHANNELS.telegram,
+      },
       update: {
         ...(patch.push !== undefined ? { push: patch.push } : {}),
         ...(patch.email !== undefined ? { email: patch.email } : {}),
+        ...(patch.telegram !== undefined ? { telegram: patch.telegram } : {}),
       },
     });
     await this.reload();
-    return { event, label, push: row.push, email: row.email };
+    return { event, label, push: row.push, email: row.email, telegram: row.telegram };
   }
 }
 

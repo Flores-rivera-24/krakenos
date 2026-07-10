@@ -69,10 +69,14 @@ describe('reglas de alerta (US-112)', () => {
   it('AlertConfigService.channelsFor refleja la config', async () => {
     const svc = new AlertConfigService(app);
     await svc.ensureDefaults();
-    expect(svc.channelsFor('device.block')).toEqual({ push: true, email: false });
-    expect(svc.channelsFor('evento.desconocido')).toEqual({ push: false, email: false });
+    expect(svc.channelsFor('device.block')).toEqual({ push: true, email: false, telegram: false });
+    expect(svc.channelsFor('evento.desconocido')).toEqual({
+      push: false,
+      email: false,
+      telegram: false,
+    });
 
-    await svc.update('device.block', { push: false, email: true });
-    expect(svc.channelsFor('device.block')).toEqual({ push: false, email: true });
+    await svc.update('device.block', { push: false, email: true, telegram: true });
+    expect(svc.channelsFor('device.block')).toEqual({ push: false, email: true, telegram: true });
   });
 });

@@ -302,11 +302,12 @@ model Favorite {
 }
 
 /// Regla de alerta configurable (US-112): por evento de auditoría, si notificar
-/// por push y/o email. El catálogo de eventos es fijo (código).
+/// por push, email y/o Telegram (US-180). El catálogo de eventos es fijo (código).
 model AlertRule {
-  event String  @id
-  push  Boolean @default(true)
-  email Boolean @default(false)
+  event    String  @id
+  push     Boolean @default(true)
+  email    Boolean @default(false)
+  telegram Boolean @default(false)
 }
 
 /// Escena (US-166): deja N dispositivos IoT en un estado deseado con un toque.

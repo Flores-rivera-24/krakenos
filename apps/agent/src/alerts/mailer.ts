@@ -97,6 +97,20 @@ export class Mailer {
       this.app.log.warn({ err }, 'No se pudo enviar la alerta por email'),
     );
   }
+
+  /** Envío genérico (resumen del hogar, US-180). Fire-and-forget con log. */
+  sendRaw(subject: string, text: string): void {
+    if (!this.config || !this.send) return;
+    const msg: MailMessage = {
+      from: this.config.from,
+      to: this.config.to,
+      subject: `[KrakenOS] ${subject}`,
+      text: `${text}\n\n— KrakenOS`,
+    };
+    void this.send(msg).catch((err: unknown) =>
+      this.app.log.warn({ err }, 'No se pudo enviar el resumen por email'),
+    );
+  }
 }
 
 declare module 'fastify' {

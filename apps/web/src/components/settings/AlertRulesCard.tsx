@@ -22,11 +22,11 @@ export function AlertRulesCard() {
     void load();
   }, []);
 
-  const toggle = async (rule: AlertRule, channel: 'push' | 'email', value: boolean) => {
+  const toggle = async (rule: AlertRule, channel: 'push' | 'email' | 'telegram', value: boolean) => {
     // Optimista: refleja ya el cambio y revierte si falla.
     setRules((cur) => cur?.map((r) => (r.event === rule.event ? { ...r, [channel]: value } : r)) ?? cur);
     try {
-      await updateAlertRule(rule.event, channel === 'push' ? { push: value } : { email: value });
+      await updateAlertRule(rule.event, { [channel]: value });
     } catch (err) {
       toast.error(describeError(err, 'No se pudo cambiar la alerta'));
       await load();
@@ -40,8 +40,8 @@ export function AlertRulesCard() {
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-kr-sm text-kr-secondary">
-          Elige qué eventos de seguridad te avisan y por qué canal. El email requiere SMTP
-          configurado en el servidor.
+          Elige qué eventos de seguridad te avisan y por qué canal. El email requiere SMTP y
+          Telegram un bot (TELEGRAM_*) configurados en el servidor.
         </p>
         {rules === null ? (
           <LoadingLine />
@@ -53,6 +53,7 @@ export function AlertRulesCard() {
                   <th className="px-3 py-2 text-left">Evento</th>
                   <th className="px-3 py-2">Push</th>
                   <th className="px-3 py-2">Email</th>
+                  <th className="px-3 py-2">Telegram</th>
                 </tr>
               </thead>
               <tbody>
@@ -71,6 +72,13 @@ export function AlertRulesCard() {
                         checked={r.email}
                         onCheckedChange={(v) => void toggle(r, 'email', v)}
                         aria-label={`Email: ${r.label}`}
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <Switch
+                        checked={r.telegram}
+                        onCheckedChange={(v) => void toggle(r, 'telegram', v)}
+                        aria-label={`Telegram: ${r.label}`}
                       />
                     </td>
                   </tr>

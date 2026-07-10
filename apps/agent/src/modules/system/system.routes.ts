@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   homeLatitude: '',
   homeLongitude: '',
   presenceGraceMin: '10',
+  digestFrequency: 'off',
 };
 
 /**
