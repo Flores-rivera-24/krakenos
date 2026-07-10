@@ -734,4 +734,7 @@ export const en: Record<TranslationKey, string> = {
   'automations.action.deviceBlock': 'Block internet',
   'automations.action.devicePause': 'Pause internet',
   'automations.action.notify': 'Notify me',
+
+  // --- Glossary ---
+  'glossary.whatIs': 'What is {term}?',
 };

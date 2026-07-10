@@ -5,7 +5,17 @@
  * hablar de una dirección IP. `short` es la definición de una línea (ideal para
  * un tooltip); `long` amplía cuando ayuda. La clave es un slug estable que la UI
  * puede usar para enlazar una palabra a su definición.
+ *
+ * ⚠️ Este módulo es **ligero a propósito**: no importa los arrays de guías
+ * (`integrations/*`), solo el glosario (es + overlay en). Los consumidores que
+ * solo necesitan el glosario (`GlossaryHint`, VPN, DNS) importan de aquí y NO del
+ * barrel `@/lib/guides`, para que el contenido pesado de las guías se quede en el
+ * chunk lazy de «Conectar» y no engorde la entrada (presupuesto de bundle US-193).
  */
+
+import { getLocale } from '@/lib/i18n';
+import { GLOSSARY_EN } from './en/glossary';
+import { localizeGlossaryEntry } from './localize';
 
 export interface GlossaryEntry {
   /** Término tal y como se muestra, p. ej. "Dirección IP". */
@@ -179,14 +189,26 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
 };
 
-/** Devuelve la entrada del glosario por su clave, o undefined si no existe. */
+/**
+ * Devuelve la entrada del glosario (localizada al idioma activo) por su clave, o
+ * undefined. En español devuelve la fuente; en otro idioma superpone su traducción
+ * (texto ausente → español). Se lee el idioma en cada llamada: los componentes que
+ * lo consumen se suscriben con `useT`/`useLocale` y re-renderizan al cambiarlo.
+ */
 export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
-  return GLOSSARY[key];
+  const base = GLOSSARY[key];
+  if (!base) return undefined;
+  if (getLocale() === 'es') return base;
+  return localizeGlossaryEntry(base, GLOSSARY_EN[key]);
 }
 
-/** Lista todas las entradas del glosario ordenadas alfabéticamente por término. */
+/** Lista las entradas del glosario (localizadas) ordenadas por término. */
 export function glossaryEntries(): (GlossaryEntry & { key: string })[] {
+  const locale = getLocale();
   return Object.entries(GLOSSARY)
-    .map(([key, entry]) => ({ key, ...entry }))
-    .sort((a, b) => a.term.localeCompare(b.term, 'es'));
+    .map(([key, entry]) => {
+      const localized = locale === 'es' ? entry : localizeGlossaryEntry(entry, GLOSSARY_EN[key]);
+      return { key, ...localized };
+    })
+    .sort((a, b) => a.term.localeCompare(b.term, locale));
 }

@@ -13,7 +13,7 @@ import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { getGlossaryEntry } from '@/lib/guides';
+import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
