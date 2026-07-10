@@ -531,6 +531,38 @@ export const es = {
   'traffic.sortLabel': 'Ordenar por descarga total',
   'traffic.col.download': '↓ Descarga',
   'traffic.col.upload': '↑ Subida',
+
+  // --- Conectar (US-139) ---
+  'connect.loadError': 'No se pudo cargar el catálogo de integraciones',
+  'connect.scanEmpty': 'Barrido terminado: nada nuevo por ahora',
+  'connect.scanError': 'No se pudo buscar dispositivos',
+  'connect.dismissError': 'No se pudo descartar la sugerencia',
+  'connect.title': '¿Qué quieres conectar?',
+  'connect.intro':
+    'Elige el tipo de aparato o función y te guiamos paso a paso, sin tecnicismos. No necesitas salir de aquí ni leer manuales.',
+  'connect.explore.title': '¿Solo quieres explorar?',
+  'connect.explore.before': 'Activa el ',
+  'connect.explore.strong': 'Modo demostración',
+  'connect.explore.after':
+    ' en «Tu red y router» para probar KrakenOS con una casa simulada, sin ningún aparato real.',
+  'connect.retry': 'Reintentar',
+  'connect.detected.title': 'Detectados en tu red',
+  'connect.detected.desc':
+    'KrakenOS sondea tu WiFi (solo tu red local, nada sale fuera) y te propone qué conectar. Tú confirmas.',
+  'connect.scanning': 'Buscando…',
+  'connect.scan': 'Buscar dispositivos',
+  'connect.detected.empty':
+    'Nada detectado por ahora. Pulsa «Buscar dispositivos» o conecta algo abajo a mano.',
+  'connect.connect': 'Conectar',
+  'connect.dismissLabel': 'Descartar {label}',
+  'connect.dismiss': 'Descartar',
+  'connect.wizardTitle': 'Conectar {name}',
+  'connect.wizardSubtitle': 'Te guiamos paso a paso',
+  'connect.connected': '✓ Conectado',
+  'connect.tier.1': 'Muy fácil',
+  'connect.tier.2': 'Fácil',
+  'connect.tier.3': 'Intermedio',
+  'connect.tier.4': 'Avanzado',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

@@ -525,4 +525,36 @@ export const en: Record<TranslationKey, string> = {
   'traffic.sortLabel': 'Sort by total download',
   'traffic.col.download': '↓ Download',
   'traffic.col.upload': '↑ Upload',
+
+  // --- Connect ---
+  'connect.loadError': 'Could not load the integrations catalog',
+  'connect.scanEmpty': 'Scan finished: nothing new for now',
+  'connect.scanError': 'Could not search for devices',
+  'connect.dismissError': 'Could not dismiss the suggestion',
+  'connect.title': 'What do you want to connect?',
+  'connect.intro':
+    'Choose the type of device or feature and we guide you step by step, without jargon. You do not need to leave this screen or read any manuals.',
+  'connect.explore.title': 'Just want to explore?',
+  'connect.explore.before': 'Turn on ',
+  'connect.explore.strong': 'Demo mode',
+  'connect.explore.after':
+    ' under «Your network and router» to try KrakenOS with a simulated home, without any real device.',
+  'connect.retry': 'Retry',
+  'connect.detected.title': 'Detected on your network',
+  'connect.detected.desc':
+    'KrakenOS probes your WiFi (your local network only, nothing leaves it) and suggests what to connect. You confirm.',
+  'connect.scanning': 'Searching…',
+  'connect.scan': 'Search for devices',
+  'connect.detected.empty':
+    'Nothing detected for now. Press «Search for devices» or connect something below by hand.',
+  'connect.connect': 'Connect',
+  'connect.dismissLabel': 'Dismiss {label}',
+  'connect.dismiss': 'Dismiss',
+  'connect.wizardTitle': 'Connect {name}',
+  'connect.wizardSubtitle': 'We guide you step by step',
+  'connect.connected': '✓ Connected',
+  'connect.tier.1': 'Very easy',
+  'connect.tier.2': 'Easy',
+  'connect.tier.3': 'Intermediate',
+  'connect.tier.4': 'Advanced',
 };
