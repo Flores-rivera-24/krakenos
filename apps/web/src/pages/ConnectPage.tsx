@@ -5,7 +5,7 @@ import type {
   IntegrationKindSchema,
 } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -268,16 +268,6 @@ export function ConnectPage() {
         <p className="max-w-2xl text-kr-base text-kr-secondary">
           Elige el tipo de aparato o función y te guiamos paso a paso, sin tecnicismos. No
           necesitas salir de aquí ni leer manuales.
-        </p>
-        <p className="text-kr-sm text-kr-muted">
-          ¿No sabes si tu equipo es compatible?{' '}
-          <Link
-            to="/compatibility"
-            className="font-medium text-kr-link underline underline-offset-2 hover:text-kr-primary"
-          >
-            Consulta la compatibilidad de hardware
-          </Link>
-          .
         </p>
         <Callout variant="info" title="¿Solo quieres explorar?">
           Activa el <strong>Modo demostración</strong> en «Tu red y router» para probar KrakenOS con
