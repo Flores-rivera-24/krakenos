@@ -40,7 +40,7 @@ export function DeviceCard({ device, onSelect }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-kr-primary">{name}</p>
           <p className="text-kr-sm text-kr-secondary">{device.ip}</p>
-          <p className="text-kr-xs text-kr-muted">{TYPE_LABELS[device.type]}</p>
+          <p className="text-kr-xs text-kr-muted">{t(TYPE_LABELS[device.type])}</p>
         </div>
       </div>
       <div className="flex items-center justify-between">

@@ -3,19 +3,21 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { Switch } from '@/components/ui/switch';
+import { useT } from '@/lib/i18n';
 import { listAlertRules, updateAlertRule } from '@/lib/alerts';
 import { describeError } from '@/lib/errors';
 import { toast } from '@/store/toast.store';
 
 /** Reglas de alerta configurables (US-112): qué eventos avisan y por qué canal. */
 export function AlertRulesCard() {
+  const t = useT();
   const [rules, setRules] = useState<AlertRule[] | null>(null);
 
   const load = async () => {
     try {
       setRules(await listAlertRules());
     } catch (err) {
-      toast.error(describeError(err, 'No se pudieron cargar las alertas'));
+      toast.error(describeError(err, t('settings.alerts.loadError')));
     }
   };
   useEffect(() => {
@@ -28,7 +30,7 @@ export function AlertRulesCard() {
     try {
       await updateAlertRule(rule.event, { [channel]: value });
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar la alerta'));
+      toast.error(describeError(err, t('settings.alerts.toggleError')));
       await load();
     }
   };
@@ -36,13 +38,10 @@ export function AlertRulesCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Alertas</CardTitle>
+        <CardTitle>{t('settings.alerts.title')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-3 text-kr-sm text-kr-secondary">
-          Elige qué eventos de seguridad te avisan y por qué canal. El email requiere SMTP y
-          Telegram un bot (TELEGRAM_*) configurados en el servidor.
-        </p>
+        <p className="mb-3 text-kr-sm text-kr-secondary">{t('settings.alerts.description')}</p>
         {rules === null ? (
           <LoadingLine />
         ) : (
@@ -50,10 +49,10 @@ export function AlertRulesCard() {
             <table className="w-full text-kr-sm">
               <thead className="bg-kr-elevated text-kr-secondary">
                 <tr>
-                  <th className="px-3 py-2 text-left">Evento</th>
-                  <th className="px-3 py-2">Push</th>
-                  <th className="px-3 py-2">Email</th>
-                  <th className="px-3 py-2">Telegram</th>
+                  <th className="px-3 py-2 text-left">{t('settings.alerts.colEvent')}</th>
+                  <th className="px-3 py-2">{t('settings.alerts.colPush')}</th>
+                  <th className="px-3 py-2">{t('settings.alerts.colEmail')}</th>
+                  <th className="px-3 py-2">{t('settings.alerts.colTelegram')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -64,21 +63,21 @@ export function AlertRulesCard() {
                       <Switch
                         checked={r.push}
                         onCheckedChange={(v) => void toggle(r, 'push', v)}
-                        aria-label={`Push: ${r.label}`}
+                        aria-label={t('settings.alerts.ariaPush', { label: r.label })}
                       />
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Switch
                         checked={r.email}
                         onCheckedChange={(v) => void toggle(r, 'email', v)}
-                        aria-label={`Email: ${r.label}`}
+                        aria-label={t('settings.alerts.ariaEmail', { label: r.label })}
                       />
                     </td>
                     <td className="px-3 py-2 text-center">
                       <Switch
                         checked={r.telegram}
                         onCheckedChange={(v) => void toggle(r, 'telegram', v)}
-                        aria-label={`Telegram: ${r.label}`}
+                        aria-label={t('settings.alerts.ariaTelegram', { label: r.label })}
                       />
                     </td>
                   </tr>

@@ -1,4 +1,5 @@
 import { Spinner } from '@/components/ui/spinner';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -7,12 +8,13 @@ import { cn } from '@/lib/utils';
  * `role="status"` la anuncia; el spinner queda decorativo (el texto ya informa).
  */
 export function LoadingLine({
-  label = 'Cargando…',
+  label,
   className,
 }: {
   label?: string;
   className?: string;
 }) {
+  const t = useT();
   return (
     <div
       role="status"
@@ -22,7 +24,7 @@ export function LoadingLine({
       )}
     >
       <Spinner size="sm" label="" />
-      <span>{label}</span>
+      <span>{label ?? t('common.loading')}</span>
     </div>
   );
 }

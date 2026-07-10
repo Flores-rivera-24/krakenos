@@ -264,7 +264,7 @@ export function FloorPlanStage({
               strokeWidth={WALL_STROKE_WIDTH[w.material]}
               strokeLinecap="round"
             >
-              <title>{WALL_MATERIAL_LABELS[w.material]}</title>
+              <title>{t(WALL_MATERIAL_LABELS[w.material])}</title>
             </line>
           ))}
 

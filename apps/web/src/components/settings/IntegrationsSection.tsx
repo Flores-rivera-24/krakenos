@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { TuyaManager } from './TuyaManager';
 
 interface BackendStats {
@@ -27,6 +28,7 @@ function IntegrationCard({
   stats: BackendStats;
   children?: ReactNode;
 }) {
+  const t = useT();
   const active = stats.total > 0;
   return (
     <Card>
@@ -36,7 +38,9 @@ function IntegrationCard({
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-kr-sm text-kr-secondary">
-          {active ? `${stats.online}/${stats.total} en línea` : 'No detectada'}
+          {active
+            ? t('settings.integrations.online', { online: stats.online, total: stats.total })
+            : t('settings.integrations.notDetected')}
         </p>
         {children}
       </CardContent>
@@ -49,14 +53,15 @@ interface Props {
   isAdmin: boolean;
 }
 
-const DOCS: { name: string; doc: string; hint: string }[] = [
-  { name: 'Philips Hue', doc: 'docs/hue-setup.md', hint: 'Pulsa el botón del bridge y configura HUE_*.' },
-  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'Activa «LAN Control» en la app Govee.' },
-  { name: 'Tuya', doc: 'docs/tuya-setup.md', hint: 'Registra cada foco con su deviceId/localKey.' },
-  { name: 'Cisco IOS', doc: 'docs/cisco-ios-setup.md', hint: 'Habilita SSH y configura DRIVER_KIND=cisco-ios.' },
+const DOCS: { name: string; doc: string; hintKey: TranslationKey }[] = [
+  { name: 'Philips Hue', doc: 'docs/hue-setup.md', hintKey: 'settings.integrations.hueHint' },
+  { name: 'Govee', doc: 'docs/govee-setup.md', hintKey: 'settings.integrations.goveeHint' },
+  { name: 'Tuya', doc: 'docs/tuya-setup.md', hintKey: 'settings.integrations.tuyaHint' },
+  { name: 'Cisco IOS', doc: 'docs/cisco-ios-setup.md', hintKey: 'settings.integrations.ciscoHint' },
 ];
 
 export function IntegrationsSection({ driver, isAdmin }: Props) {
+  const t = useT();
   const [devices, setDevices] = useState<IotDevice[]>([]);
   const [tuyaOpen, setTuyaOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -86,20 +91,22 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <IntegrationCard title="Philips Hue" stats={hue}>
           {hue.total === 0 && (
-            <p className="text-kr-xs text-kr-muted">Pulsa el botón del bridge para re-vincular.</p>
+            <p className="text-kr-xs text-kr-muted">{t('settings.integrations.hueRelink')}</p>
           )}
         </IntegrationCard>
 
         <IntegrationCard title="Govee" stats={govee}>
           {govee.total === 0 && (
-            <p className="text-kr-xs text-kr-muted">Activa «LAN Control» en la app Govee.</p>
+            <p className="text-kr-xs text-kr-muted">{t('settings.integrations.goveeHint')}</p>
           )}
         </IntegrationCard>
 
         <IntegrationCard title="Tuya" stats={tuya}>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setTuyaOpen((v) => !v)}>
-              {tuyaOpen ? 'Ocultar focos' : 'Gestionar focos'}
+              {tuyaOpen
+                ? t('settings.integrations.tuyaHide')
+                : t('settings.integrations.tuyaManage')}
             </Button>
           )}
         </IntegrationCard>
@@ -111,7 +118,9 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
               <StatusDot status={ciscoTest ? (ciscoTest.ok ? 'online' : 'danger') : 'warning'} />
             </CardHeader>
             <CardContent className="space-y-2">
-              <p className="text-kr-sm text-kr-secondary">Driver: {driver}</p>
+              <p className="text-kr-sm text-kr-secondary">
+                {t('settings.integrations.driver', { driver })}
+              </p>
               {isAdmin && (
                 <Button
                   variant="outline"
@@ -122,12 +131,14 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
                       .then(setCiscoTest)
                   }
                 >
-                  Probar conexión SSH
+                  {t('settings.integrations.testSsh')}
                 </Button>
               )}
               {ciscoTest && (
                 <p className="text-kr-xs text-kr-muted">
-                  {ciscoTest.ok ? `Conectado · ${ciscoTest.latencyMs} ms` : ciscoTest.error}
+                  {ciscoTest.ok
+                    ? t('settings.integrations.ciscoConnected', { latency: ciscoTest.latencyMs ?? 0 })
+                    : ciscoTest.error}
                 </p>
               )}
             </CardContent>
@@ -141,14 +152,14 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
           className="flex min-h-[120px] items-center justify-center gap-2 rounded-xl border border-dashed border-kr text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <Plus className="h-5 w-5" />
-          Añadir integración
+          {t('settings.integrations.addIntegration')}
         </button>
       </div>
 
       {tuyaOpen && isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle>Focos Tuya</CardTitle>
+            <CardTitle>{t('settings.integrations.tuyaBulbsTitle')}</CardTitle>
           </CardHeader>
           <CardContent>
             <TuyaManager reachable={reachableTuya} />
@@ -162,23 +173,23 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
             id="dialog-add-integration-title"
             className="text-kr-lg font-semibold text-kr-primary"
           >
-            Añadir integración
+            {t('settings.integrations.addIntegration')}
           </h3>
           <p className="mt-1 text-kr-sm text-kr-secondary">
-            Configura cada integración con su variable de entorno y consulta su guía en `docs/`.
+            {t('settings.integrations.addDescription')}
           </p>
           <ul className="mt-4 space-y-3">
             {DOCS.map((d) => (
               <li key={d.name} className="rounded-md border border-kr p-3">
                 <div className="text-kr-base text-kr-primary">{d.name}</div>
-                <div className="text-kr-sm text-kr-secondary">{d.hint}</div>
+                <div className="text-kr-sm text-kr-secondary">{t(d.hintKey)}</div>
                 <code className="text-kr-xs text-kr-muted">{d.doc}</code>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex justify-end">
             <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>
-              Cerrar
+              {t('common.close')}
             </Button>
           </div>
         </Dialog>

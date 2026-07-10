@@ -1,5 +1,6 @@
 import type { Device } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
+import { t } from '@/lib/i18n';
 import {
   DEVICE_TYPES,
   TYPE_LABELS,
@@ -42,7 +43,7 @@ describe('catálogo de tipos de dispositivo', () => {
   it('incluye los tipos esperados', () => {
     expect(DEVICE_TYPES).toContain('router');
     expect(DEVICE_TYPES).toContain('unknown');
-    expect(TYPE_LABELS.iot).toBe('IoT');
+    expect(t(TYPE_LABELS.iot)).toBe('IoT');
   });
 });
 

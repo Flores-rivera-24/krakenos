@@ -172,7 +172,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setType(nextType);
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, { type: nextType });
-      toast.success(t('inventory.detail.identifiedAs', { type: TYPE_LABELS[nextType] }));
+      toast.success(t('inventory.detail.identifiedAs', { type: t(TYPE_LABELS[nextType]) }));
     } catch (err) {
       setType(previous);
       toast.error(describeError(err, t('inventory.detail.identifyError')));
@@ -247,7 +247,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           <p className="truncate text-kr-base font-medium text-kr-primary">
             {device.label ?? device.hostname ?? device.mac}
           </p>
-          <p className="text-kr-sm text-kr-secondary">{TYPE_LABELS[device.type]}</p>
+          <p className="text-kr-sm text-kr-secondary">{t(TYPE_LABELS[device.type])}</p>
           {device.vendor && (
             <p className="truncate text-kr-xs text-kr-muted">{device.vendor}</p>
           )}
@@ -261,7 +261,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             <p className="mb-2">
               {device.suggestedType
                 ? t('inventory.detail.suggestQuestion', {
-                    type: TYPE_LABELS[device.suggestedType].toLowerCase(),
+                    type: t(TYPE_LABELS[device.suggestedType]).toLowerCase(),
                   })
                 : t('inventory.detail.notIdentified')}
             </p>
@@ -279,8 +279,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                   onClick={() => void identifyAs(candidate)}
                 >
                   {candidate === device.suggestedType
-                    ? t('inventory.detail.yesItIs', { type: TYPE_LABELS[candidate].toLowerCase() })
-                    : TYPE_LABELS[candidate]}
+                    ? t('inventory.detail.yesItIs', { type: t(TYPE_LABELS[candidate]).toLowerCase() })
+                    : t(TYPE_LABELS[candidate])}
                 </Button>
               ))}
             </div>
@@ -350,9 +350,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             value={type}
             onChange={(e) => setType(e.target.value as DeviceType)}
           >
-            {DEVICE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
+            {DEVICE_TYPES.map((dt) => (
+              <option key={dt} value={dt}>
+                {t(TYPE_LABELS[dt])}
               </option>
             ))}
           </select>
@@ -368,7 +368,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             <option value="">{t('inventory.detail.iconAuto')}</option>
             {DEVICE_ICONS.map((k) => (
               <option key={k} value={k}>
-                {DEVICE_ICON_LABELS[k]}
+                {t(DEVICE_ICON_LABELS[k])}
               </option>
             ))}
           </select>

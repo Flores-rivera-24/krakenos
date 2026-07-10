@@ -1,4 +1,5 @@
 import type { UserRole } from '@krakenos/types';
+import type { TranslationKey } from '@/lib/i18n';
 
 /**
  * Capa cosmética de los roles del hogar (US-179). La autoridad es del servidor
@@ -11,11 +12,11 @@ export function canControlHome(role: UserRole | undefined): boolean {
   return role === 'admin' || role === 'member';
 }
 
-/** Etiquetas humanas de los roles para la gestión de usuarios. */
-export const ROLE_LABELS: Record<UserRole, string> = {
-  admin: 'Administrador',
-  member: 'Miembro',
-  kid: 'Menor',
-  guest: 'Invitado',
-  viewer: 'Observador',
+/** Etiquetas humanas de los roles (claves i18n) para la gestión de usuarios. */
+export const ROLE_LABELS: Record<UserRole, TranslationKey> = {
+  admin: 'role.admin',
+  member: 'role.member',
+  kid: 'role.kid',
+  guest: 'role.guest',
+  viewer: 'role.viewer',
 };

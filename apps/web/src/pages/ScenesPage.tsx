@@ -137,7 +137,7 @@ function SceneEditor({
 }) {
   const t = useT();
   const editing = scene !== null;
-  const [name, setName] = useState(scene?.name ?? template?.name ?? '');
+  const [name, setName] = useState(scene?.name ?? (template ? t(template.nameKey) : ''));
   const [icon, setIcon] = useState<SceneIcon>(scene?.icon ?? template?.icon ?? 'scene');
   const [draft, setDraft] = useState<Record<string, DraftAction>>(() => {
     const base = initialDraft(devices, scene?.actions ?? []);
@@ -268,8 +268,8 @@ function SceneEditor({
               <button
                 key={opt.icon}
                 type="button"
-                title={opt.label}
-                aria-label={opt.label}
+                title={t(opt.labelKey)}
+                aria-label={t(opt.labelKey)}
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(
@@ -427,8 +427,8 @@ export function ScenesPage() {
             {isAdmin && (
               <div className="flex flex-wrap justify-center gap-2">
                 {SCENE_TEMPLATES.map((tpl) => (
-                  <Button key={tpl.name} variant="outline" onClick={() => openNew(tpl)}>
-                    {sceneGlyph(tpl.icon)} {tpl.name}
+                  <Button key={tpl.icon} variant="outline" onClick={() => openNew(tpl)}>
+                    {sceneGlyph(tpl.icon)} {t(tpl.nameKey)}
                   </Button>
                 ))}
                 <Button onClick={() => openNew(null)}>{t('scenes.create')}</Button>

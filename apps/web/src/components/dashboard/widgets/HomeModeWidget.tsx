@@ -11,7 +11,7 @@ import {
   getPresence,
   getPresenceTimeline,
   MODE_GLYPHS,
-  MODE_LABELS,
+  MODE_LABEL_KEYS,
   setHomeMode,
 } from '@/lib/presence';
 import { canControlHome } from '@/lib/roles';
@@ -108,7 +108,7 @@ export function HomeModeWidget() {
                   <span aria-hidden className="text-xl">
                     {MODE_GLYPHS[mode]}
                   </span>
-                  {MODE_LABELS[mode]}
+                  {t(MODE_LABEL_KEYS[mode])}
                 </button>
               ))}
             </div>

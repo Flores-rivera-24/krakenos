@@ -33,8 +33,8 @@ import {
 } from '@/lib/automations';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
-import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
-import { MODE_LABELS } from '@/lib/presence';
+import { DAY_LABEL_KEYS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
+import { MODE_LABEL_KEYS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -269,7 +269,7 @@ function RuleEditor({
 
   const dayPicker = (selected: number[], onToggle: (d: number) => void, label: string) => (
     <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
-      {DAY_LABELS.map((text, d) => (
+      {DAY_LABEL_KEYS.map((key, d) => (
         <button
           key={d}
           type="button"
@@ -282,7 +282,7 @@ function RuleEditor({
               : 'border-kr bg-kr-elevated text-kr-muted',
           )}
         >
-          {text}
+          {t(key)}
         </button>
       ))}
     </div>
@@ -434,7 +434,7 @@ function RuleEditor({
             >
               {HOME_MODES.map((m) => (
                 <option key={m} value={m}>
-                  {MODE_LABELS[m]}
+                  {t(MODE_LABEL_KEYS[m])}
                 </option>
               ))}
             </select>

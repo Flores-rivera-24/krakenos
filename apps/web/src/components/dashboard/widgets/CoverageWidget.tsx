@@ -109,7 +109,7 @@ export function CoverageWidget() {
                       width: `${(counts[q] / covered) * 100}%`,
                       backgroundColor: signalQualityColorVar(q),
                     }}
-                    title={`${SIGNAL_QUALITY_LABELS[q]}: ${Math.round((counts[q] / covered) * 100)}%`}
+                    title={`${t(SIGNAL_QUALITY_LABELS[q])}: ${Math.round((counts[q] / covered) * 100)}%`}
                   />
                 ) : null,
               )}

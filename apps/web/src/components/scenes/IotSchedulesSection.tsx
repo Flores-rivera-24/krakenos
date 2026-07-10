@@ -17,8 +17,9 @@ import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import {
-  DAY_LABELS,
+  DAY_LABEL_KEYS,
   createIotSchedule,
+  dayLabel,
   deleteIotSchedule,
   formatScheduleTime,
   listIotSchedules,
@@ -152,7 +153,7 @@ function ScheduleEditor({
         <div className="space-y-2">
           <Label>{t('iotSchedule.daysLabel')}</Label>
           <div className="flex flex-wrap gap-1">
-            {DAY_LABELS.map((label, d) => (
+            {DAY_LABEL_KEYS.map((key, d) => (
               <button
                 key={d}
                 type="button"
@@ -165,7 +166,7 @@ function ScheduleEditor({
                     : 'border-kr bg-kr-elevated text-kr-muted',
                 )}
               >
-                {label}
+                {t(key)}
               </button>
             ))}
           </div>
@@ -412,7 +413,7 @@ export function IotSchedulesSection({
                   {s.name} {!s.enabled && <span className="text-kr-muted">{t('iotSchedule.disabled')}</span>}
                 </span>
                 <span className="block truncate text-kr-xs text-kr-muted">
-                  {formatScheduleTime(s.time)} · {s.days.map((d) => DAY_LABELS[d]).join(' ')} ·{' '}
+                  {formatScheduleTime(s.time)} · {s.days.map(dayLabel).join(' ')} ·{' '}
                   {targetLabel(s)}
                 </span>
               </button>

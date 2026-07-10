@@ -130,7 +130,7 @@ function DeviceTable({
                     <td className="px-3 py-2 text-kr-secondary">{d.vendor ?? '—'}</td>
                   </>
                 )}
-                <td className="px-3 py-2 text-kr-secondary">{TYPE_LABELS[d.type]}</td>
+                <td className="px-3 py-2 text-kr-secondary">{t(TYPE_LABELS[d.type])}</td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-2">
                     <StatusDot status={s.dot} />
@@ -338,7 +338,7 @@ export function InventoryPage() {
                   className="flex w-full items-center justify-between px-4 py-3 text-left text-kr-primary hover:bg-kr-elevated"
                 >
                   <span className="font-medium">
-                    {TYPE_LABELS[type]} ({items.length})
+                    {t(TYPE_LABELS[type])} ({items.length})
                   </span>
                   {open ? (
                     <ChevronUp className="h-5 w-5 text-kr-muted" />

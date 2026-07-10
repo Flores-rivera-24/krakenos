@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useId, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export interface StepperStep {
@@ -52,12 +53,17 @@ export function Stepper({
   onStepChange,
   onComplete,
   busy = false,
-  backLabel = 'Atrás',
-  nextLabel = 'Siguiente',
-  finishLabel = 'Finalizar',
-  skipLabel = 'Omitir',
+  backLabel,
+  nextLabel,
+  finishLabel,
+  skipLabel,
   className,
 }: StepperProps) {
+  const t = useT();
+  const resolvedBackLabel = backLabel ?? t('ui.stepper.back');
+  const resolvedNextLabel = nextLabel ?? t('ui.stepper.next');
+  const resolvedFinishLabel = finishLabel ?? t('ui.stepper.finish');
+  const resolvedSkipLabel = skipLabel ?? t('ui.stepper.skip');
   const titleId = useId();
   const total = steps.length;
   if (total === 0) return null;
@@ -79,13 +85,13 @@ export function Stepper({
     <div className={cn('flex flex-col gap-4', className)}>
       {/* Anuncio para lectores de pantalla al cambiar de paso. */}
       <span className="sr-only" role="status" aria-live="polite">
-        Paso {active + 1} de {total}: {step.title}
+        {t('ui.stepper.progress', { current: active + 1, total })}: {step.title}
       </span>
 
       {/* Indicador de progreso: texto + barra segmentada (decorativa). */}
       <div className="space-y-2">
         <p className="text-kr-sm font-medium text-kr-secondary">
-          Paso {active + 1} de {total}
+          {t('ui.stepper.progress', { current: active + 1, total })}
         </p>
         <ol aria-hidden className="flex gap-1.5">
           {steps.map((s, i) => {
@@ -120,12 +126,12 @@ export function Stepper({
       {/* Pie de navegación. */}
       <footer className="flex items-center justify-between gap-3 pt-2">
         <Button type="button" variant="outline" onClick={goBack} disabled={isFirst || busy}>
-          {backLabel}
+          {resolvedBackLabel}
         </Button>
         <div className="flex items-center gap-2">
           {step.skippable && (
             <Button type="button" variant="ghost" onClick={goSkip} disabled={busy}>
-              {skipLabel}
+              {resolvedSkipLabel}
             </Button>
           )}
           <Button
@@ -135,7 +141,7 @@ export function Stepper({
             aria-busy={busy}
           >
             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-            {isLast ? finishLabel : nextLabel}
+            {isLast ? resolvedFinishLabel : resolvedNextLabel}
           </Button>
         </div>
       </footer>

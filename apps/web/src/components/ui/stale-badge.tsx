@@ -1,4 +1,5 @@
 import { StatusDot } from '@/components/ui/status-dot';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -7,16 +8,17 @@ import { cn } from '@/lib/utils';
  * si fueran actuales. Tokens kr-*.
  */
 export function StaleBadge({ className }: { className?: string }) {
+  const t = useT();
   return (
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-full border border-warning bg-kr-elevated px-2 py-0.5 text-kr-xs font-medium text-warning',
         className,
       )}
-      title="Sin datos en vivo: se muestran los últimos valores conocidos."
+      title={t('ui.staleBadge.title')}
     >
-      <StatusDot status="warning" label="Datos obsoletos" />
-      Datos obsoletos
+      <StatusDot status="warning" label={t('ui.staleBadge.label')} />
+      {t('ui.staleBadge.label')}
     </span>
   );
 }

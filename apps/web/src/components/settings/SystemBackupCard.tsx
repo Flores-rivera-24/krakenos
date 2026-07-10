@@ -4,6 +4,7 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useT } from '@/lib/i18n';
 import { downloadBackup, restoreBackup } from '@/lib/system-backup';
 import { toast } from '@/store/toast.store';
 
@@ -13,6 +14,7 @@ import { toast } from '@/store/toast.store';
  * de integraciones. Admin-only (contiene secretos).
  */
 export function SystemBackupCard() {
+  const t = useT();
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -27,12 +29,12 @@ export function SystemBackupCard() {
     setRestoreBusy(true);
     try {
       const { staged } = await restoreBackup(restoreFile, restorePass);
-      toast.success(`Restauración preparada (${staged} ficheros). Reinicia el agente para aplicarla.`);
+      toast.success(t('settings.backup.restorePrepared', { staged }));
       setRestoreFile(null);
       setRestorePass('');
       if (fileInput.current) fileInput.current.value = '';
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo restaurar');
+      toast.error(err instanceof Error ? err.message : t('settings.backup.restoreError'));
     } finally {
       setRestoreBusy(false);
     }
@@ -40,7 +42,7 @@ export function SystemBackupCard() {
 
   const run = async () => {
     if (pass !== confirm) {
-      toast.error('Las contraseñas no coinciden');
+      toast.error(t('settings.backup.passwordMismatch'));
       return;
     }
     setBusy(true);
@@ -52,11 +54,11 @@ export function SystemBackupCard() {
       a.download = `krakenos-backup-${new Date().toISOString().slice(0, 10)}.kbk`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Copia de seguridad descargada');
+      toast.success(t('settings.backup.downloaded'));
       setPass('');
       setConfirm('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo generar la copia');
+      toast.error(err instanceof Error ? err.message : t('settings.backup.downloadError'));
     } finally {
       setBusy(false);
     }
@@ -65,17 +67,16 @@ export function SystemBackupCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Copia de seguridad</CardTitle>
+        <CardTitle>{t('settings.backup.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-kr-sm text-kr-secondary">
-          Descarga un archivo <strong>cifrado</strong> con todo lo importante: la base de datos,
-          las claves y los datos de tus integraciones. Guárdalo en un lugar seguro — necesitarás
-          esta contraseña para restaurarlo, y sin ella el archivo es irrecuperable.
+          {t('settings.backup.descPrefix')} <strong>{t('settings.backup.descEncrypted')}</strong>{' '}
+          {t('settings.backup.descSuffix')}
         </p>
         <div className="grid max-w-lg gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="bk-pass">Contraseña de la copia</Label>
+            <Label htmlFor="bk-pass">{t('settings.backup.passwordLabel')}</Label>
             <Input
               id="bk-pass"
               type="password"
@@ -87,7 +88,7 @@ export function SystemBackupCard() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="bk-confirm">Confirmar</Label>
+            <Label htmlFor="bk-confirm">{t('settings.backup.confirmLabel')}</Label>
             <Input
               id="bk-confirm"
               type="password"
@@ -100,21 +101,24 @@ export function SystemBackupCard() {
           </div>
         </div>
         <Button size="sm" onClick={() => void run()} disabled={busy || pass.length < 12}>
-          {busy ? 'Generando…' : 'Descargar copia de seguridad'}
+          {busy ? t('settings.backup.generating') : t('settings.backup.download')}
         </Button>
 
         {/* Restaurar (US-104) */}
         <div className="space-y-3 border-t border-kr pt-4">
           <div>
-            <h4 className="text-kr-base font-medium text-kr-primary">Restaurar</h4>
+            <h4 className="text-kr-base font-medium text-kr-primary">
+              {t('settings.backup.restoreTitle')}
+            </h4>
             <p className="text-kr-sm text-kr-secondary">
-              Sube un archivo de copia y su contraseña. Se valida y se prepara; se aplica al{' '}
-              <strong>reiniciar</strong> el agente (se respalda lo actual por si acaso).
+              {t('settings.backup.restoreDescPrefix')}{' '}
+              <strong>{t('settings.backup.restoreDescRestart')}</strong>{' '}
+              {t('settings.backup.restoreDescSuffix')}
             </p>
           </div>
           <div className="grid max-w-lg gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="bk-file">Archivo de copia</Label>
+              <Label htmlFor="bk-file">{t('settings.backup.fileLabel')}</Label>
               <input
                 ref={fileInput}
                 id="bk-file"
@@ -125,7 +129,7 @@ export function SystemBackupCard() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bk-rpass">Contraseña de la copia</Label>
+              <Label htmlFor="bk-rpass">{t('settings.backup.passwordLabel')}</Label>
               <Input
                 id="bk-rpass"
                 type="password"
@@ -143,11 +147,10 @@ export function SystemBackupCard() {
             onClick={() => void runRestore()}
             disabled={restoreBusy || !restoreFile || restorePass.length < 12}
           >
-            {restoreBusy ? 'Preparando…' : 'Restaurar copia'}
+            {restoreBusy ? t('settings.backup.preparing') : t('settings.backup.restore')}
           </Button>
-          <Callout variant="warning" title="Ojo">
-            Restaurar sustituye la base de datos, las claves y los datos actuales por los de la
-            copia. Reinicia el agente para completar el proceso.
+          <Callout variant="warning" title={t('settings.backup.warningTitle')}>
+            {t('settings.backup.warningBody')}
           </Callout>
         </div>
       </CardContent>

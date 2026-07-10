@@ -229,8 +229,8 @@ function RoomEditor({
               <button
                 key={opt.icon}
                 type="button"
-                title={opt.label}
-                aria-label={opt.label}
+                title={t(opt.labelKey)}
+                aria-label={t(opt.labelKey)}
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(

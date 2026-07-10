@@ -1,5 +1,6 @@
 import type { Device, DeviceIcon, DeviceType } from '@krakenos/types';
 import { deviceTypeToArtKind, type ProductArtKind } from '@/components/ui/product-art';
+import type { TranslationKey } from '@/lib/i18n';
 
 /**
  * Ilustración efectiva de un dispositivo (US-178): el icono elegido a mano
@@ -9,21 +10,21 @@ export function deviceArtKind(device: Pick<Device, 'icon' | 'type'>): ProductArt
   return (device.icon as ProductArtKind | null) ?? deviceTypeToArtKind(device.type);
 }
 
-/** Etiquetas humanas del catálogo de iconos elegibles (US-178). */
-export const DEVICE_ICON_LABELS: Record<DeviceIcon, string> = {
-  router: 'Router',
-  'access-point': 'Punto de acceso',
-  switch: 'Switch',
-  laptop: 'Ordenador',
-  phone: 'Móvil',
-  tablet: 'Tablet',
-  tv: 'Tele',
-  printer: 'Impresora',
-  'iot-hub': 'Hub IoT',
-  bulb: 'Bombilla',
-  plug: 'Enchufe',
-  camera: 'Cámara',
-  sensor: 'Sensor',
+/** Claves i18n de las etiquetas del catálogo de iconos elegibles (US-178). */
+export const DEVICE_ICON_LABELS: Record<DeviceIcon, TranslationKey> = {
+  router: 'device.icon.router',
+  'access-point': 'device.icon.access-point',
+  switch: 'device.icon.switch',
+  laptop: 'device.icon.laptop',
+  phone: 'device.icon.phone',
+  tablet: 'device.icon.tablet',
+  tv: 'device.icon.tv',
+  printer: 'device.icon.printer',
+  'iot-hub': 'device.icon.iot-hub',
+  bulb: 'device.icon.bulb',
+  plug: 'device.icon.plug',
+  camera: 'device.icon.camera',
+  sensor: 'device.icon.sensor',
 };
 
 export const DEVICE_TYPES: DeviceType[] = [
@@ -37,15 +38,15 @@ export const DEVICE_TYPES: DeviceType[] = [
   'unknown',
 ];
 
-export const TYPE_LABELS: Record<DeviceType, string> = {
-  router: 'Router',
-  computer: 'Ordenador',
-  phone: 'Móvil',
-  tablet: 'Tablet',
-  iot: 'IoT',
-  tv: 'TV',
-  printer: 'Impresora',
-  unknown: 'Desconocido',
+export const TYPE_LABELS: Record<DeviceType, TranslationKey> = {
+  router: 'device.type.router',
+  computer: 'device.type.computer',
+  phone: 'device.type.phone',
+  tablet: 'device.type.tablet',
+  iot: 'device.type.iot',
+  tv: 'device.type.tv',
+  printer: 'device.type.printer',
+  unknown: 'device.type.unknown',
 };
 
 /** Filtro rápido por estado en la página de inventario (US-43). */

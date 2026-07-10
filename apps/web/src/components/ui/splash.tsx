@@ -1,4 +1,5 @@
 import { LogoMark } from '@/components/ui/logo';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -18,11 +19,13 @@ export interface SplashProps {
   className?: string;
 }
 
-export function Splash({ label = 'Cargando…', fullScreen = true, className }: SplashProps) {
+export function Splash({ label, fullScreen = true, className }: SplashProps) {
+  const t = useT();
+  const resolvedLabel = label ?? t('common.loading');
   return (
     <div
       role="status"
-      aria-label={label}
+      aria-label={resolvedLabel}
       className={cn(
         'relative flex flex-col items-center justify-center gap-7 overflow-hidden bg-kr-base',
         fullScreen ? 'min-h-screen' : 'min-h-[60vh] w-full',
@@ -58,7 +61,7 @@ export function Splash({ label = 'Cargando…', fullScreen = true, className }: 
         <div className="h-1 w-44 overflow-hidden rounded-full bg-kr-elevated">
           <div aria-hidden className="kr-shimmer h-full w-full rounded-full" />
         </div>
-        <span className="text-kr-xs text-kr-muted">{label}</span>
+        <span className="text-kr-xs text-kr-muted">{resolvedLabel}</span>
       </div>
     </div>
   );

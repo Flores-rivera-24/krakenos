@@ -1,3 +1,4 @@
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /**
@@ -25,13 +26,15 @@ const SIZES: Record<NonNullable<SpinnerProps['size']>, string> = {
   xl: 'h-10 w-10 border-[3px]',
 };
 
-export function Spinner({ size = 'md', className, label = 'Cargando…' }: SpinnerProps) {
-  const decorative = label === '';
+export function Spinner({ size = 'md', className, label }: SpinnerProps) {
+  const t = useT();
+  const resolvedLabel = label ?? t('common.loading');
+  const decorative = resolvedLabel === '';
   return (
     <span
       role={decorative ? undefined : 'status'}
       aria-hidden={decorative || undefined}
-      aria-label={decorative ? undefined : label}
+      aria-label={decorative ? undefined : resolvedLabel}
       className={cn(
         'inline-block shrink-0 animate-spin rounded-full border-kr-elevated border-t-kr-accent motion-reduce:animate-none',
         SIZES[size],

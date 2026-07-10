@@ -10,8 +10,9 @@ import type {
   UpdateAutomationRuleRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
-import { DAY_LABELS, minuteToTimeString } from '@/lib/iot-schedules';
-import { MODE_LABELS } from '@/lib/presence';
+import { t } from '@/lib/i18n';
+import { dayLabel, minuteToTimeString } from '@/lib/iot-schedules';
+import { MODE_LABEL_KEYS } from '@/lib/presence';
 
 export const listAutomations = () => api.get<AutomationRule[]>('/automations');
 export const createAutomation = (body: CreateAutomationRuleRequest) =>
@@ -36,49 +37,74 @@ const iotName = (ctx: NameContext, id: string) =>
   ctx.devices?.find((d) => d.id === id)?.name ?? id;
 const macName = (ctx: NameContext, mac: string) => ctx.networkNames?.get(mac) ?? mac;
 
-/** Frase legible del disparador ("Cuando…"). */
+/** Nombre de la persona de un disparador de presencia, o «alguien» si es cualquiera. */
+const personName = (ctx: NameContext, userId?: string): string =>
+  userId ? (ctx.userNames?.get(userId) ?? userId) : t('automations.desc.someone');
+
+/** Frase legible del disparador ("Cuando…"). Interpola frases completas por idioma. */
 export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {}): string {
   switch (trigger.type) {
     case 'device-new':
-      return 'aparece un dispositivo desconocido';
+      return t('automations.desc.deviceNew');
     case 'device-online':
-      return `${macName(ctx, trigger.mac)} se conecta`;
+      return t('automations.desc.deviceOnline', { name: macName(ctx, trigger.mac) });
     case 'device-offline':
-      return `${macName(ctx, trigger.mac)} se desconecta`;
+      return t('automations.desc.deviceOffline', { name: macName(ctx, trigger.mac) });
     case 'iot-on':
-      return `${iotName(ctx, trigger.deviceId)} se enciende`;
+      return t('automations.desc.iotOn', { name: iotName(ctx, trigger.deviceId) });
     case 'iot-off':
-      return `${iotName(ctx, trigger.deviceId)} se apaga`;
+      return t('automations.desc.iotOff', { name: iotName(ctx, trigger.deviceId) });
     case 'sensor-threshold':
-      return `${iotName(ctx, trigger.deviceId)} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value}`;
+      return t(
+        trigger.op === 'gt' ? 'automations.desc.sensorAbove' : 'automations.desc.sensorBelow',
+        { name: iotName(ctx, trigger.deviceId), value: trigger.value },
+      );
     case 'time':
-      return `a las ${minuteToTimeString(trigger.minute)} (${trigger.days.map((d) => DAY_LABELS[d]).join(' ')})`;
+      return t('automations.desc.time', {
+        time: minuteToTimeString(trigger.minute),
+        days: trigger.days.map(dayLabel).join(' '),
+      });
     case 'person-arrived':
-      return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} llega a casa`;
+      return t('automations.desc.personArrived', { who: personName(ctx, trigger.userId) });
     case 'person-left':
-      return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} sale de casa`;
+      return t('automations.desc.personLeft', { who: personName(ctx, trigger.userId) });
     case 'mode-changed':
-      return `el hogar pasa a «${MODE_LABELS[trigger.mode]}»`;
+      return t('automations.desc.modeChanged', { mode: t(MODE_LABEL_KEYS[trigger.mode]) });
   }
 }
 
-/** Frase legible de una acción ("entonces…"). */
+/** Frase legible de una acción ("entonces…"). Interpola frases completas por idioma. */
 export function describeAction(action: AutomationAction, ctx: NameContext = {}): string {
   switch (action.type) {
     case 'iot-set': {
-      const target = action.deviceId ? iotName(ctx, action.deviceId) : 'el dispositivo del evento';
-      const state = action.on === false ? 'apaga' : 'enciende';
-      const dim = action.brightness !== undefined ? ` al ${action.brightness}%` : '';
-      return `${state} ${target}${dim}`;
+      const target = action.deviceId
+        ? iotName(ctx, action.deviceId)
+        : t('automations.desc.eventDevice');
+      if (action.brightness !== undefined) {
+        return t(
+          action.on === false ? 'automations.desc.turnOffBright' : 'automations.desc.turnOnBright',
+          { target, brightness: action.brightness },
+        );
+      }
+      return t(action.on === false ? 'automations.desc.turnOff' : 'automations.desc.turnOn', {
+        target,
+      });
     }
     case 'scene-run':
-      return `activa la escena ${ctx.scenes?.find((s) => s.id === action.sceneId)?.name ?? action.sceneId}`;
+      return t('automations.desc.sceneRun', {
+        scene: ctx.scenes?.find((s) => s.id === action.sceneId)?.name ?? action.sceneId,
+      });
     case 'device-block':
-      return `bloquea ${action.mac ? macName(ctx, action.mac) : 'el dispositivo del evento'}`;
+      return t('automations.desc.block', {
+        target: action.mac ? macName(ctx, action.mac) : t('automations.desc.eventDevice'),
+      });
     case 'device-pause':
-      return `pausa ${action.mac ? macName(ctx, action.mac) : 'el dispositivo del evento'} ${action.minutes} min`;
+      return t('automations.desc.pause', {
+        target: action.mac ? macName(ctx, action.mac) : t('automations.desc.eventDevice'),
+        minutes: action.minutes,
+      });
     case 'notify':
-      return `avisa: «${action.message}»`;
+      return t('automations.desc.notify', { message: action.message });
   }
 }
 
@@ -87,12 +113,12 @@ export function describeCondition(condition: AutomationCondition | undefined): s
   if (!condition) return null;
   const parts: string[] = [];
   if (condition.days && condition.days.length < 7) {
-    parts.push(condition.days.map((d) => DAY_LABELS[d]).join(' '));
+    parts.push(condition.days.map(dayLabel).join(' '));
   }
   if (condition.fromMinute !== undefined && condition.toMinute !== undefined) {
     parts.push(
       `${minuteToTimeString(condition.fromMinute)}–${minuteToTimeString(condition.toMinute)}`,
     );
   }
-  return parts.length > 0 ? `solo ${parts.join(' · ')}` : null;
+  return parts.length > 0 ? t('automations.desc.only', { parts: parts.join(' · ') }) : null;
 }

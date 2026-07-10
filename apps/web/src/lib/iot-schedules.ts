@@ -5,9 +5,24 @@ import type {
   UpdateIotScheduleRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
+import { t, type TranslationKey } from '@/lib/i18n';
 
-/** Etiquetas cortas de los días de la semana (0=Dom … 6=Sáb). */
-export const DAY_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+/** Claves i18n de las etiquetas cortas de los días (0=Dom … 6=Sáb). */
+export const DAY_LABEL_KEYS: TranslationKey[] = [
+  'schedule.day.sun',
+  'schedule.day.mon',
+  'schedule.day.tue',
+  'schedule.day.wed',
+  'schedule.day.thu',
+  'schedule.day.fri',
+  'schedule.day.sat',
+];
+
+/** Etiqueta corta traducida de un día (0=Dom … 6=Sáb); '' si el índice no es válido. */
+export function dayLabel(day: number): string {
+  const key = DAY_LABEL_KEYS[day];
+  return key ? t(key) : '';
+}
 
 /** Formatea un momento de disparo en algo legible ("07:00", "Atardecer −15m"). */
 export function formatScheduleTime(time: IotScheduleTime): string {
@@ -16,10 +31,10 @@ export function formatScheduleTime(time: IotScheduleTime): string {
     const m = time.minute % 60;
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
   }
-  const base = time.kind === 'sunrise' ? 'Amanecer' : 'Atardecer';
+  const base = t(time.kind === 'sunrise' ? 'schedule.solar.sunrise' : 'schedule.solar.sunset');
   if (time.offsetMin === 0) return base;
   const sign = time.offsetMin > 0 ? '+' : '−';
-  return `${base} ${sign}${Math.abs(time.offsetMin)}m`;
+  return t('schedule.solar.offset', { base, sign, min: Math.abs(time.offsetMin) });
 }
 
 /** "HH:MM" → minutos del día (0-1439). */

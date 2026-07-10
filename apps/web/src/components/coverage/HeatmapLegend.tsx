@@ -57,7 +57,7 @@ export function HeatmapLegend({ minDbm = -85, maxDbm = -45, className }: Props) 
               className="inline-block h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: signalQualityColorVar(q) }}
             />
-            {SIGNAL_QUALITY_LABELS[q]}
+            {t(SIGNAL_QUALITY_LABELS[q])}
           </li>
         ))}
       </ul>

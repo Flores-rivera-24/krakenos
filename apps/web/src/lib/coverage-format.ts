@@ -1,23 +1,24 @@
 import type { SignalQuality, WallMaterial } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
+import type { TranslationKey } from '@/lib/i18n';
 
-/** Etiquetas en español de cada material de pared/obstáculo. */
-export const WALL_MATERIAL_LABELS: Record<WallMaterial, string> = {
-  drywall: 'Pladur/tabique',
-  wood: 'Madera',
-  glass: 'Cristal',
-  brick: 'Ladrillo',
-  concrete: 'Hormigón',
-  metal: 'Metal',
+/** Clave i18n de cada material de pared/obstáculo. Resuélvela con `t()` en el call-site. */
+export const WALL_MATERIAL_LABELS: Record<WallMaterial, TranslationKey> = {
+  drywall: 'coverage.material.drywall',
+  wood: 'coverage.material.wood',
+  glass: 'coverage.material.glass',
+  brick: 'coverage.material.brick',
+  concrete: 'coverage.material.concrete',
+  metal: 'coverage.material.metal',
 };
 
-/** Etiquetas en español de cada categoría de calidad de señal. */
-export const SIGNAL_QUALITY_LABELS: Record<SignalQuality, string> = {
-  excellent: 'Excelente',
-  good: 'Buena',
-  fair: 'Aceptable',
-  weak: 'Débil',
-  none: 'Sin señal',
+/** Clave i18n de cada categoría de calidad de señal. Resuélvela con `t()` en el call-site. */
+export const SIGNAL_QUALITY_LABELS: Record<SignalQuality, TranslationKey> = {
+  excellent: 'coverage.quality.excellent',
+  good: 'coverage.quality.good',
+  fair: 'coverage.quality.fair',
+  weak: 'coverage.quality.weak',
+  none: 'coverage.quality.none',
 };
 
 /** Variable CSS `--kr-*` para colorear cada categoría de calidad de señal. */

@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'react';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export type DotStatus = 'online' | 'offline' | 'warning' | 'danger';
@@ -11,12 +12,12 @@ const STATUS_BG: Record<DotStatus, string> = {
   danger: 'bg-danger',
 };
 
-/** Etiqueta accesible por estado. */
-const STATUS_LABEL: Record<DotStatus, string> = {
-  online: 'En línea',
-  offline: 'Desconectado',
-  warning: 'Advertencia',
-  danger: 'Error',
+/** Clave de etiqueta accesible por estado. */
+const STATUS_LABEL_KEY: Record<DotStatus, TranslationKey> = {
+  online: 'ui.statusDot.online',
+  offline: 'ui.statusDot.offline',
+  warning: 'ui.statusDot.warning',
+  danger: 'ui.statusDot.danger',
 };
 
 export interface StatusDotProps extends HTMLAttributes<HTMLSpanElement> {
@@ -30,10 +31,11 @@ export interface StatusDotProps extends HTMLAttributes<HTMLSpanElement> {
  * Verde/gris/amarillo/rojo según `status`.
  */
 export function StatusDot({ status, label, className, ...props }: StatusDotProps) {
+  const t = useT();
   return (
     <span
       role="status"
-      aria-label={label ?? STATUS_LABEL[status]}
+      aria-label={label ?? t(STATUS_LABEL_KEY[status])}
       data-status={status}
       className={cn('inline-block h-2 w-2 shrink-0 rounded-full', STATUS_BG[status], className)}
       {...props}

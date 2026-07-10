@@ -83,7 +83,7 @@ export function CoverageToolbar({
           >
             {WALL_MATERIALS.map((m) => (
               <option key={m} value={m}>
-                {WALL_MATERIAL_LABELS[m]}
+                {t(WALL_MATERIAL_LABELS[m])}
               </option>
             ))}
           </select>

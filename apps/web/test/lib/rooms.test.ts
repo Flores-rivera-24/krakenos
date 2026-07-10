@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 const apiMock = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() }));
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { t } from '@/lib/i18n';
 import { ROOM_ICONS, assignRoom, createRoom, roomGlyph, runRoomAction } from '@/lib/rooms';
 
 describe('lib/rooms (US-165)', () => {
@@ -14,7 +15,7 @@ describe('lib/rooms (US-165)', () => {
 
   it('el catálogo de iconos cubre todos los kinds sin glifos vacíos', () => {
     expect(ROOM_ICONS.length).toBeGreaterThanOrEqual(10);
-    expect(ROOM_ICONS.every((r) => r.glyph.length > 0 && r.label.length > 0)).toBe(true);
+    expect(ROOM_ICONS.every((r) => r.glyph.length > 0 && t(r.labelKey).length > 0)).toBe(true);
   });
 
   it('los helpers llaman al endpoint correcto', () => {
