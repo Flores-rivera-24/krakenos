@@ -34,7 +34,7 @@ export function DeviceCountWidget() {
         <CardTitle>Dispositivos</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
-        <Stat status="online" label="online" value={online} />
+        <Stat status="online" label="en línea" value={online} />
         <Stat status="offline" label="total" value={devices.length} />
         <Stat status="warning" label="desconocidos" value={unknown} />
         <Stat status="danger" label="bloqueados" value={blocked} />

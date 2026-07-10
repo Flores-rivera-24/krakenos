@@ -136,14 +136,14 @@ describe('AppSidebar', () => {
 
   it('renderiza el botón ThemeToggle en la sidebar', () => {
     renderSidebar({ collapsed: false });
-    expect(screen.getByRole('button', { name: 'Switch to light mode' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cambiar a modo claro' })).toBeInTheDocument();
   });
 
   it('al hacer clic en el ThemeToggle llama a toggleTheme', async () => {
     themeMock.toggleTheme.mockClear();
     const user = userEvent.setup();
     renderSidebar({ collapsed: false });
-    await user.click(screen.getByRole('button', { name: 'Switch to light mode' }));
+    await user.click(screen.getByRole('button', { name: 'Cambiar a modo claro' }));
     expect(themeMock.toggleTheme).toHaveBeenCalled();
   });
 });
