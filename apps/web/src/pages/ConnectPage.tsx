@@ -16,7 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { dismissSuggestion, getDiscovery, scanDiscovery } from '@/lib/discovery';
 import { describeError } from '@/lib/errors';
-import { useT, type TranslationKey } from '@/lib/i18n';
+import { useLocale, useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import {
@@ -126,6 +126,7 @@ const SUGGESTION_ART: Record<string, ProductArtKind> = {
 
 export function ConnectPage() {
   const t = useT();
+  const locale = useLocale();
   const navigate = useNavigate();
   const [views, setViews] = useState<DomainView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,7 +262,7 @@ export function ConnectPage() {
       }
     }
     return out;
-  }, []);
+  }, [locale]);
 
   return (
     <div className="mx-auto max-w-5xl space-y-8">

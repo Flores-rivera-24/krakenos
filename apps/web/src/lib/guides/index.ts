@@ -1,9 +1,15 @@
+import { getLocale } from '@/lib/i18n';
 import type { GuideCategory, GuideDomain, IntegrationGuide } from './types';
 import { DRIVER_GUIDES } from './integrations/drivers';
 import { LIGHT_GUIDES } from './integrations/lights';
 import { PLUG_GUIDES } from './integrations/plugs';
 import { CAMERA_GUIDES } from './integrations/cameras';
 import { NETWORK_GUIDES } from './integrations/network';
+import { DRIVER_GUIDES_EN } from './integrations/en/drivers';
+import { LIGHT_GUIDES_EN } from './integrations/en/lights';
+import { PLUG_GUIDES_EN } from './integrations/en/plugs';
+import { CAMERA_GUIDES_EN } from './integrations/en/cameras';
+import { NETWORK_GUIDES_EN } from './integrations/en/network';
 
 /**
  * Punto de entrada de las guías de conexión in-app (US-144).
@@ -34,7 +40,12 @@ export {
   NETWORK_GUIDES,
 };
 
-/** Todas las guías, ordenadas por familia (drivers → luces → enchufes → cámaras → red). */
+/**
+ * Todas las guías en español, ordenadas por familia
+ * (drivers → luces → enchufes → cámaras → red). `GUIDES` mantiene el catálogo
+ * en español como fuente/compatibilidad; los accesores devuelven el idioma
+ * activo (US-177).
+ */
 export const GUIDES: IntegrationGuide[] = [
   ...DRIVER_GUIDES,
   ...LIGHT_GUIDES,
@@ -43,30 +54,45 @@ export const GUIDES: IntegrationGuide[] = [
   ...NETWORK_GUIDES,
 ];
 
-/** Índice por id para búsquedas O(1). */
-const GUIDES_BY_ID: Map<string, IntegrationGuide> = new Map(GUIDES.map((g) => [g.id, g]));
+/** Gemelo inglés (misma estructura/ids; solo la prosa cambia, US-177). */
+const GUIDES_EN: IntegrationGuide[] = [
+  ...DRIVER_GUIDES_EN,
+  ...LIGHT_GUIDES_EN,
+  ...PLUG_GUIDES_EN,
+  ...CAMERA_GUIDES_EN,
+  ...NETWORK_GUIDES_EN,
+];
 
-/** Devuelve una guía por su id (slug), o undefined si no existe. */
+/** Índices por id por idioma para búsquedas O(1). */
+const BY_ID_ES = new Map(GUIDES.map((g) => [g.id, g]));
+const BY_ID_EN = new Map(GUIDES_EN.map((g) => [g.id, g]));
+
+/** Catálogo del idioma activo (español por defecto). */
+function activeGuides(): IntegrationGuide[] {
+  return getLocale() === 'en' ? GUIDES_EN : GUIDES;
+}
+
+/** Devuelve una guía por su id (slug) en el idioma activo, o undefined. */
 export function getGuide(id: string): IntegrationGuide | undefined {
-  return GUIDES_BY_ID.get(id);
+  return (getLocale() === 'en' ? BY_ID_EN : BY_ID_ES).get(id);
 }
 
-/** Devuelve la guía cuyo `kind` de backend coincide, o undefined. */
+/** Devuelve la guía cuyo `kind` de backend coincide (idioma activo), o undefined. */
 export function getGuideByKind(kind: string): IntegrationGuide | undefined {
-  return GUIDES.find((g) => g.kind === kind);
+  return activeGuides().find((g) => g.kind === kind);
 }
 
-/** Todas las guías de una categoría (lo que la persona está conectando). */
+/** Todas las guías de una categoría (idioma activo). */
 export function guidesByCategory(category: GuideCategory): IntegrationGuide[] {
-  return GUIDES.filter((g) => g.category === category);
+  return activeGuides().filter((g) => g.category === category);
 }
 
-/** Todas las guías de un dominio funcional del backend. */
+/** Todas las guías de un dominio funcional del backend (idioma activo). */
 export function guidesByDomain(domain: GuideDomain): IntegrationGuide[] {
-  return GUIDES.filter((g) => g.domain === domain);
+  return activeGuides().filter((g) => g.domain === domain);
 }
 
-/** Guías ordenadas de más fácil (tier 1) a más avanzada (tier 4). */
+/** Guías ordenadas de más fácil (tier 1) a más avanzada (tier 4), idioma activo. */
 export function guidesByTier(): IntegrationGuide[] {
-  return [...GUIDES].sort((a, b) => a.tier - b.tier);
+  return [...activeGuides()].sort((a, b) => a.tier - b.tier);
 }

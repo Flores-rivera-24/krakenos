@@ -7,6 +7,9 @@
  * puede usar para enlazar una palabra a su definición.
  */
 
+import { getLocale } from '@/lib/i18n';
+import { GLOSSARY_EN } from './glossary.en';
+
 export interface GlossaryEntry {
   /** Término tal y como se muestra, p. ej. "Dirección IP". */
   term: string;
@@ -179,14 +182,20 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   },
 };
 
-/** Devuelve la entrada del glosario por su clave, o undefined si no existe. */
+/** Glosario del idioma activo (español por defecto, inglés en `en`; US-177). */
+function activeGlossary(): Record<string, GlossaryEntry> {
+  return getLocale() === 'en' ? GLOSSARY_EN : GLOSSARY;
+}
+
+/** Devuelve la entrada del glosario por su clave (idioma activo), o undefined. */
 export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
-  return GLOSSARY[key];
+  return activeGlossary()[key];
 }
 
 /** Lista todas las entradas del glosario ordenadas alfabéticamente por término. */
 export function glossaryEntries(): (GlossaryEntry & { key: string })[] {
-  return Object.entries(GLOSSARY)
+  const locale = getLocale();
+  return Object.entries(activeGlossary())
     .map(([key, entry]) => ({ key, ...entry }))
-    .sort((a, b) => a.term.localeCompare(b.term, 'es'));
+    .sort((a, b) => a.term.localeCompare(b.term, locale));
 }
