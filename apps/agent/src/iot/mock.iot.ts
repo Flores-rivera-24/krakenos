@@ -10,6 +10,32 @@ export class IotError extends Error {
   }
 }
 
+/**
+ * Potencia de referencia por dispositivo del mock, para que la medición de
+ * energía (US-181) tenga datos deterministas en dev/tests. Los enchufes con
+ * "carga" declarada consumen esa potencia cuando están encendidos; un aparato
+ * apagado consume ~0. Los sensores no miden potencia.
+ */
+const MOCK_LOAD_W: Record<string, number> = {
+  'light-salon': 9,
+  'light-dormitorio': 7,
+  'plug-cafetera': 900,
+  'plug-tv': 120,
+};
+
+/**
+ * Rellena `powerW` según el estado del dispositivo (US-181): potencia declarada
+ * si está encendido (las luces escalan con el brillo), ~0 en standby si apagado,
+ * y `null` para lo que no tiene carga conocida (sensores).
+ */
+function withSimulatedPower(device: IotDevice): IotDevice {
+  const load = MOCK_LOAD_W[device.id];
+  if (load === undefined || device.on === null) return { ...device, powerW: null };
+  if (!device.on) return { ...device, powerW: 0 };
+  const scale = device.kind === 'light' && device.brightness !== null ? device.brightness / 100 : 1;
+  return { ...device, powerW: Math.round(load * scale * 10) / 10 };
+}
+
 /** Integración IoT en memoria para desarrollo. */
 export class MockIotManager implements IotManager {
   readonly kind = 'mock' as const;
@@ -24,7 +50,10 @@ export class MockIotManager implements IotManager {
       { id: 'sensor-temp', name: 'Temperatura salón', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
       { id: 'sensor-hum', name: 'Humedad', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'humedad', value: 45, unit: '%' } },
     ];
-    for (const d of seed) this.devices.set(d.id, d);
+    for (const d of seed) {
+      const withPower = withSimulatedPower(d);
+      this.devices.set(withPower.id, withPower);
+    }
   }
 
   async listDevices(): Promise<IotDevice[]> {
@@ -56,7 +85,8 @@ export class MockIotManager implements IotManager {
         next.color = { hex: null, temperatureK: input.color.temperatureK };
       }
     }
-    this.devices.set(id, next);
-    return next;
+    const withPower = withSimulatedPower(next);
+    this.devices.set(id, withPower);
+    return withPower;
   }
 }

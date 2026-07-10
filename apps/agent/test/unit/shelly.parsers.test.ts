@@ -35,7 +35,9 @@ describe('shelly.parsers', () => {
     expect(devices).toHaveLength(2);
     expect(devices[0]).toMatchObject({ id: 'shelly:192.168.1.80:0', kind: 'plug', on: true });
     expect(devices[0]!.reading).toEqual({ metric: 'potencia', value: 12.3, unit: 'W' });
-    expect(devices[1]).toMatchObject({ id: 'shelly:192.168.1.80:1', on: false });
+    // powerW estructurado para la medición de energía (US-181).
+    expect(devices[0]!.powerW).toBe(12.3);
+    expect(devices[1]).toMatchObject({ id: 'shelly:192.168.1.80:1', on: false, powerW: 0 });
   });
 
   it('parseGen1Status mapea un dimmer (type=light) con brillo', () => {
@@ -48,6 +50,7 @@ describe('shelly.parsers', () => {
     const plug = parseGen2Channel({ ip: '192.168.1.82', gen: 2, type: 'relay' }, 0, { output: true, apower: 7.7 });
     expect(plug).toMatchObject({ id: 'shelly:192.168.1.82:0', kind: 'plug', on: true });
     expect(plug.reading).toEqual({ metric: 'potencia', value: 7.7, unit: 'W' });
+    expect(plug.powerW).toBe(7.7);
 
     const light = parseGen2Channel({ ip: '192.168.1.83', gen: 2, type: 'light' }, 0, { output: false, brightness: 40 });
     expect(light).toMatchObject({ kind: 'light', on: false, brightness: 40 });

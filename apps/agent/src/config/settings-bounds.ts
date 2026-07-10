@@ -23,6 +23,8 @@ export const SETTING_BOUNDS = {
   loginRateLimit: { min: 1, max: 1000 },
   /** Retención de los rollups de tráfico en días (US-102). Mín 1, máx 1 año. */
   trafficRetentionDays: { min: 1, max: 365 },
+  /** Retención de los rollups de energía en días (US-181). Mín 1, máx 1 año. */
+  energyRetentionDays: { min: 1, max: 365 },
   /** Retención del registro de auditoría en días (US-102). Mín 1, máx 10 años. */
   auditRetentionDays: { min: 1, max: 3650 },
   /**

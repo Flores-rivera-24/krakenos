@@ -32,9 +32,11 @@ describe('reglas de alerta (US-112)', () => {
     });
     expect(res.statusCode).toBe(200);
     const rules = res.json() as AlertRule[];
-    expect(rules).toHaveLength(5);
+    // Catálogo fijo (US-112) + `energy.threshold` (US-183).
+    expect(rules).toHaveLength(6);
     const block = rules.find((r) => r.event === 'device.block');
     expect(block).toMatchObject({ push: true, email: false });
+    expect(rules.some((r) => r.event === 'energy.threshold')).toBe(true);
   });
 
   it('un admin cambia una regla y persiste', async () => {

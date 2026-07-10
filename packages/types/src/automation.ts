@@ -19,6 +19,8 @@ export type AutomationTrigger =
   | { type: 'iot-off'; deviceId: Id }
   /** La lectura de un sensor cruza un umbral (dispara solo al cruzar, no sostenido). */
   | { type: 'sensor-threshold'; deviceId: Id; op: 'gt' | 'lt'; value: number }
+  /** Un dispositivo supera su umbral de consumo (US-183). Sin `deviceId` = cualquiera. */
+  | { type: 'energy-threshold'; deviceId?: Id }
   /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
   | { type: 'time'; days: number[]; minute: number }
   /** Una persona llega/se va de casa (US-169). Sin `userId` = cualquiera. */
@@ -107,6 +109,18 @@ export type HomeEvent = (
   | { type: 'iot-on'; deviceId: Id }
   | { type: 'iot-off'; deviceId: Id }
   | { type: 'sensor-reading'; deviceId: Id; value: number; prevValue: number | null }
+  /**
+   * Un dispositivo cruza su umbral de consumo (US-183). `metric` distingue
+   * potencia sostenida (W) de energía diaria (Wh); `value` es la magnitud
+   * observada y `threshold` el umbral configurado. Lo emite `EnergyAlertService`.
+   */
+  | {
+      type: 'energy-threshold';
+      deviceId: Id;
+      metric: 'sustained-power' | 'daily-energy';
+      value: number;
+      threshold: number;
+    }
   /**
    * Presencia y modos del hogar (US-169). `name` acompaña al id para que el log
    * de ejecuciones sea legible sin otra consulta.

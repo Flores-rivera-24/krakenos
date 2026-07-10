@@ -1,4 +1,4 @@
-import type { TrafficRange } from '@krakenos/types';
+import type { EnergyRange, TrafficRange } from '@krakenos/types';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type { ReportsService } from './reports.service.js';
 
@@ -11,6 +11,14 @@ const trafficRangeSchema = {
     type: 'object',
     additionalProperties: false,
     properties: { range: { type: 'string', enum: ['hour', 'day', 'week', 'month'] } },
+  },
+} as const;
+
+const energyRangeSchema = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: { range: { type: 'string', enum: ['day', 'week', 'month'] } },
   },
 } as const;
 
@@ -44,5 +52,13 @@ export const reportsRoutes: FastifyPluginAsync<ReportsRoutesOpts> = async (app, 
     { schema: trafficRangeSchema, preHandler: app.authenticate },
     async (req, reply) =>
       sendCsv(reply, 'krakenos-trafico.csv', await service.trafficCsv(req.query.range ?? 'week')),
+  );
+
+  // Consumo eléctrico por dispositivo en la ventana (US-182).
+  app.get<{ Querystring: { range?: EnergyRange } }>(
+    '/energy.csv',
+    { schema: energyRangeSchema, preHandler: app.authenticate },
+    async (req, reply) =>
+      sendCsv(reply, 'krakenos-energia.csv', await service.energyCsv(req.query.range ?? 'week')),
   );
 };

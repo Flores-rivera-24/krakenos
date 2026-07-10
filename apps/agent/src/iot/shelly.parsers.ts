@@ -88,6 +88,11 @@ function powerReading(power: number | null): IotReading | null {
   return power !== null ? { metric: 'potencia', value: Math.round(power * 10) / 10, unit: 'W' } : null;
 }
 
+/** Potencia redondeada a 1 decimal para `IotDevice.powerW` (US-181), o `null`. */
+function powerW(power: number | null): number | null {
+  return power !== null ? Math.round(power * 10) / 10 : null;
+}
+
 function deviceId(ip: string, channel: number): string {
   return `shelly:${ip}:${channel}`;
 }
@@ -124,6 +129,7 @@ export function parseGen1Status(cfg: ShellyDeviceConfig, status: unknown): IotDe
         brightness: num(l.brightness),
         color: null,
         reading: powerReading(power),
+        powerW: powerW(power),
       });
     } else {
       const r = relays[ch] ?? {};
@@ -137,6 +143,7 @@ export function parseGen1Status(cfg: ShellyDeviceConfig, status: unknown): IotDe
         brightness: null,
         color: null,
         reading: powerReading(power),
+        powerW: powerW(power),
       });
     }
   }
@@ -161,6 +168,7 @@ export function parseGen2Channel(cfg: ShellyDeviceConfig, channel: number, resul
     brightness: isLight ? num(r.brightness) : null,
     color: null,
     reading: powerReading(num(r.apower)),
+    powerW: powerW(num(r.apower)),
   };
 }
 

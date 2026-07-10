@@ -18,6 +18,7 @@ import {
   Video,
   Wifi,
   Workflow,
+  Zap,
 } from 'lucide-react';
 
 /** Clave de badge dinámico que puede llevar un ítem de navegación. */
@@ -58,6 +59,7 @@ const ROOMS: NavItem = { to: '/rooms', labelKey: 'nav.rooms', icon: Home };
 const SCENES: NavItem = { to: '/scenes', labelKey: 'nav.scenes', icon: Clapperboard };
 const AUTOMATIONS: NavItem = { to: '/automations', labelKey: 'nav.automations', icon: Workflow };
 const IOT: NavItem = { to: '/iot', labelKey: 'nav.iot', icon: Cpu, badge: 'iot' };
+const ENERGY: NavItem = { to: '/energy', labelKey: 'nav.energy', icon: Zap };
 const CAMERAS: NavItem = { to: '/cameras', labelKey: 'nav.cameras', icon: Video };
 const VPN: NavItem = { to: '/vpn', labelKey: 'nav.vpn', icon: KeyRound };
 const FIREWALL: NavItem = { to: '/firewall', labelKey: 'nav.firewall', icon: ShieldAlert, badge: 'firewall' };
@@ -73,7 +75,7 @@ const SETTINGS: NavItem = { to: '/settings', labelKey: 'nav.settings', icon: Set
 export const NAV_GROUPS: NavGroup[] = [
   { label: 'General', labelKey: 'nav.group.general', items: [CONNECT, DASHBOARD] },
   { label: 'Red', labelKey: 'nav.group.network', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
-  { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, AUTOMATIONS, IOT, CAMERAS] },
+  { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, AUTOMATIONS, IOT, ENERGY, CAMERAS] },
   { label: 'Red avanzada', labelKey: 'nav.group.advanced', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
   { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
 ];

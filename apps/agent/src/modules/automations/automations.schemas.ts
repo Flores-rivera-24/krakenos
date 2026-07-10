@@ -30,6 +30,7 @@ const trigger = {
         'iot-on',
         'iot-off',
         'sensor-threshold',
+        'energy-threshold',
         'time',
         'person-arrived',
         'person-left',

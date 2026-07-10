@@ -47,6 +47,12 @@ import { usersRoutes } from '../../src/modules/users/users.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
+import { EnergyService } from '../../src/modules/energy/energy.service.js';
+import { energyRoutes } from '../../src/modules/energy/energy.routes.js';
+import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
+import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
+import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
+import { wellbeingRoutes } from '../../src/modules/wellbeing/wellbeing.routes.js';
 import { ReportsService } from '../../src/modules/reports/reports.service.js';
 import { reportsRoutes } from '../../src/modules/reports/reports.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
@@ -185,9 +191,21 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(alertsRoutes, { prefix: '/api/alerts', service: new AlertConfigService(app) });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
     await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
+    // Energía (US-181/182): sin arrancar timers; los tests consultan vía servicio.
+    const energyService = new EnergyService(app, new MockIotManager());
+    await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
+    // Alertas de energía (US-183): sin arrancar el timer; el tick se invoca a mano.
+    await app.register(energyAlertsRoutes, {
+      prefix: '/api/energy/alerts',
+      service: new EnergyAlertService(app, sharedIot, homeBus),
+    });
+    await app.register(wellbeingRoutes, {
+      prefix: '/api/wellbeing',
+      service: new WellbeingService(app),
+    });
     await app.register(reportsRoutes, {
       prefix: '/api/reports',
-      service: new ReportsService(app, new TrafficService(app, driver)),
+      service: new ReportsService(app, new TrafficService(app, driver), energyService),
     });
     await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
     await app.register(tuyaConfigRoutes, {

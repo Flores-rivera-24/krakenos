@@ -28,6 +28,7 @@ const TrafficPage = lazy(() =>
   import('@/pages/TrafficPage').then((m) => ({ default: m.TrafficPage })),
 );
 const IotPage = lazy(() => import('@/pages/IotPage').then((m) => ({ default: m.IotPage })));
+const EnergyPage = lazy(() => import('@/pages/EnergyPage').then((m) => ({ default: m.EnergyPage })));
 const RoomsPage = lazy(() => import('@/pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
 const ScenesPage = lazy(() => import('@/pages/ScenesPage').then((m) => ({ default: m.ScenesPage })));
 const AutomationsPage = lazy(() =>
@@ -89,6 +90,7 @@ export function App() {
             <Route path="scenes" element={<ScenesPage />} />
             <Route path="automations" element={<AutomationsPage />} />
             <Route path="iot" element={<IotPage />} />
+            <Route path="energy" element={<EnergyPage />} />
             <Route path="cameras" element={<CamerasPage />} />
             <Route path="firewall" element={<FirewallPage />} />
             <Route path="vlans" element={<VlanPage />} />

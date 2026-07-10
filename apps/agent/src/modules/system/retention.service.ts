@@ -1,7 +1,9 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  DEFAULT_ENERGY_RETENTION_DAYS,
   pruneAuditLog,
   pruneAutomationRuns,
+  pruneEnergySamples,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
   prunePresenceEvents,
@@ -56,6 +58,17 @@ export class RetentionService {
       const presence = await prunePresenceEvents(this.app.prisma);
       if (presence > 0) {
         this.app.log.info(`[retention] podadas ${presence} llegadas/salidas de presencia`);
+      }
+      // Red de seguridad de los rollups de energía (US-181): el flush por minuto
+      // ya poda, pero si el sampler estuvo parado, esto los recorta igualmente.
+      const energyDays = await retentionDays(
+        this.app.prisma,
+        'energyRetentionDays',
+        DEFAULT_ENERGY_RETENTION_DAYS,
+      );
+      const energy = await pruneEnergySamples(this.app.prisma, energyDays);
+      if (energy > 0) {
+        this.app.log.info(`[retention] podados ${energy} rollups de energía (> ${energyDays} días)`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

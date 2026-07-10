@@ -32,6 +32,11 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
       const satisfies = (v: number) => (trigger.op === 'gt' ? v > trigger.value : v < trigger.value);
       return satisfies(event.value) && (event.prevValue === null || !satisfies(event.prevValue));
     }
+    case 'energy-threshold':
+      return (
+        event.type === 'energy-threshold' &&
+        (!trigger.deviceId || event.deviceId === trigger.deviceId)
+      );
     case 'time':
       return false; // los disparadores de hora van por el barrido (dueTimeRules)
     case 'person-arrived':
@@ -126,6 +131,7 @@ export function eventSubject(event: HomeEvent): { mac?: string; deviceId?: strin
     case 'iot-on':
     case 'iot-off':
     case 'sensor-reading':
+    case 'energy-threshold':
       return { deviceId: event.deviceId };
     // La presencia y el modo no aportan un dispositivo objetivo (US-169).
     case 'person-arrived':
@@ -150,6 +156,10 @@ export function describeEvent(event: HomeEvent): string {
       return `${event.deviceId} apagado`;
     case 'sensor-reading':
       return `${event.deviceId} = ${event.value}`;
+    case 'energy-threshold':
+      return event.metric === 'sustained-power'
+        ? `${event.deviceId} supera ${event.threshold} W`
+        : `${event.deviceId} supera ${event.threshold} Wh hoy`;
     // Sin el nombre a propósito: el log de ejecuciones (`AutomationRun.event`)
     // lo lee cualquier usuario autenticado, y la presencia ajena es privada por
     // rol (US-169) — el nombre del evento del bus no debe acabar persistido ahí.
