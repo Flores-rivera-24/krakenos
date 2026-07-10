@@ -246,8 +246,8 @@ export function ConnectPage() {
 
   // Secciones deduplicadas por etiqueta (firewall/vlan/qos → "Red avanzada").
   const sections = useMemo(() => {
-    const out: { label: string; guides: IntegrationGuide[] }[] = [];
-    const byLabel = new Map<string, IntegrationGuide[]>();
+    const out: { label: TranslationKey; guides: IntegrationGuide[] }[] = [];
+    const byLabel = new Map<TranslationKey, IntegrationGuide[]>();
     for (const category of SECTION_ORDER) {
       const guides = guidesByCategory(category);
       if (guides.length === 0) continue;
@@ -359,7 +359,7 @@ export function ConnectPage() {
       ) : (
         sections.map((section) => (
           <section key={section.label} className="space-y-3">
-            <h2 className="text-kr-lg font-semibold text-kr-primary">{section.label}</h2>
+            <h2 className="text-kr-lg font-semibold text-kr-primary">{t(section.label)}</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {section.guides.map((guide) => (
                 <ConnectCard

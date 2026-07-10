@@ -1369,6 +1369,20 @@ export const es = {
   'ui.favorite.unpinTitle': 'Quitar de favoritos',
   'ui.guideStep.onYourDevice': 'En tu dispositivo',
   'ui.glossary.whatIs': '¿Qué es {term}?',
+  // --- Estado de conexión / primitivas restantes / categorías (US-177) ---
+  'connection.realtime': 'En tiempo real',
+  'connection.reconnecting': 'Reconectando…',
+  'connection.offline': 'Sin conexión',
+  'ui.sparkline.trend': 'Tendencia',
+  'ui.toast.dismiss': 'Descartar',
+  'ui.optimisticSwitch.error': 'No se pudo aplicar el cambio',
+  'connect.category.router': 'Tu red y router',
+  'connect.category.lights': 'Luces inteligentes',
+  'connect.category.plugs': 'Enchufes e interruptores',
+  'connect.category.cameras': 'Cámaras',
+  'connect.category.remoteAccess': 'Acceso remoto (VPN)',
+  'connect.category.adBlocking': 'Bloqueo de anuncios (DNS)',
+  'connect.category.advanced': 'Red avanzada',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

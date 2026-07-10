@@ -1,3 +1,5 @@
+import { useT } from '@/lib/i18n';
+
 interface SparklineProps {
   /** Serie de valores (p. ej. bytes/seg). */
   points: number[];
@@ -11,6 +13,7 @@ interface SparklineProps {
  * cards/paneles, estilo UniFi. Devuelve `null` si hay menos de 2 puntos.
  */
 export function Sparkline({ points, width = 120, height = 32, className }: SparklineProps) {
+  const t = useT();
   if (points.length < 2) return null;
   const max = Math.max(...points);
   const min = Math.min(...points);
@@ -31,7 +34,7 @@ export function Sparkline({ points, width = 120, height = 32, className }: Spark
       viewBox={`0 0 ${width} ${height}`}
       className={className}
       role="img"
-      aria-label="Tendencia"
+      aria-label={t('ui.sparkline.trend')}
       preserveAspectRatio="none"
     >
       <path d={path} fill="none" stroke="var(--kr-accent)" strokeWidth={1.5} />

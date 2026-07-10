@@ -1,5 +1,6 @@
 import { Switch } from '@/components/ui/switch';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { toast } from '@/store/toast.store';
 
@@ -24,14 +25,16 @@ export function OptimisticSwitch({
   checked,
   onToggle,
   disabled,
-  errorMessage = 'No se pudo aplicar el cambio',
+  errorMessage,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
 }: Props) {
+  const t = useT();
   const { on, pending, toggle } = useOptimisticToggle({
     value: checked,
     mutate: onToggle,
-    onError: (err) => toast.error(describeError(err, errorMessage)),
+    onError: (err) =>
+      toast.error(describeError(err, errorMessage ?? t('ui.optimisticSwitch.error'))),
   });
 
   return (

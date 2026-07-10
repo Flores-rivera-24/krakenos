@@ -1,5 +1,6 @@
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
 import { useEffect } from 'react';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type Toast, type ToastKind, useToastStore } from '@/store/toast.store';
 
@@ -18,6 +19,7 @@ const ACCENT: Record<ToastKind, string> = {
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
+  const t = useT();
   const dismiss = useToastStore((s) => s.dismiss);
   const Icon = ICONS[toast.kind];
 
@@ -39,7 +41,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       <span className="flex-1 text-kr-primary">{toast.message}</span>
       <button
         type="button"
-        aria-label="Descartar"
+        aria-label={t('ui.toast.dismiss')}
         onClick={() => dismiss(toast.id)}
         className="shrink-0 text-kr-muted hover:text-kr-primary"
       >

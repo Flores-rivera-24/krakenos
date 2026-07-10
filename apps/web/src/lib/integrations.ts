@@ -7,6 +7,7 @@ import type {
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 import type { GuideCategory } from '@/lib/guides';
+import type { TranslationKey } from '@/lib/i18n';
 
 /**
  * Cliente tipado del sistema de configuración de integraciones (US-140+),
@@ -72,14 +73,14 @@ export function kindSchemaFor(
  * conexión de cara a una persona no técnica. `firewall`/`vlan`/`qos` comparten
  * el mismo título ("Red avanzada") a propósito: se muestran en una sola sección.
  */
-export const CATEGORY_LABELS: Record<GuideCategory, string> = {
-  router: 'Tu red y router',
-  lights: 'Luces inteligentes',
-  plugs: 'Enchufes e interruptores',
-  cameras: 'Cámaras',
-  'remote-access': 'Acceso remoto (VPN)',
-  'ad-blocking': 'Bloqueo de anuncios (DNS)',
-  firewall: 'Red avanzada',
-  vlan: 'Red avanzada',
-  qos: 'Red avanzada',
+export const CATEGORY_LABELS: Record<GuideCategory, TranslationKey> = {
+  router: 'connect.category.router',
+  lights: 'connect.category.lights',
+  plugs: 'connect.category.plugs',
+  cameras: 'connect.category.cameras',
+  'remote-access': 'connect.category.remoteAccess',
+  'ad-blocking': 'connect.category.adBlocking',
+  firewall: 'connect.category.advanced',
+  vlan: 'connect.category.advanced',
+  qos: 'connect.category.advanced',
 };

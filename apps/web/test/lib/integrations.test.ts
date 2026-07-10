@@ -11,6 +11,7 @@ const apiMock = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/api', () => ({ api: apiMock }));
 
+import { t } from '@/lib/i18n';
 import {
   CATEGORY_LABELS,
   deleteIntegration,
@@ -82,10 +83,13 @@ describe('lib/integrations', () => {
   });
 
   it('CATEGORY_LABELS agrupa firewall/vlan/qos bajo "Red avanzada"', () => {
-    expect(CATEGORY_LABELS.router).toBe('Tu red y router');
-    expect(CATEGORY_LABELS.lights).toBe('Luces inteligentes');
-    expect(CATEGORY_LABELS.firewall).toBe('Red avanzada');
-    expect(CATEGORY_LABELS.vlan).toBe('Red avanzada');
-    expect(CATEGORY_LABELS.qos).toBe('Red avanzada');
+    expect(t(CATEGORY_LABELS.router)).toBe('Tu red y router');
+    expect(t(CATEGORY_LABELS.lights)).toBe('Luces inteligentes');
+    expect(t(CATEGORY_LABELS.firewall)).toBe('Red avanzada');
+    expect(t(CATEGORY_LABELS.vlan)).toBe('Red avanzada');
+    expect(t(CATEGORY_LABELS.qos)).toBe('Red avanzada');
+    // firewall/vlan/qos comparten la MISMA clave → se agrupan en una sección.
+    expect(CATEGORY_LABELS.firewall).toBe(CATEGORY_LABELS.vlan);
+    expect(CATEGORY_LABELS.vlan).toBe(CATEGORY_LABELS.qos);
   });
 });

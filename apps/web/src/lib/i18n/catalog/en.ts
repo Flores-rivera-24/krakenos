@@ -1362,4 +1362,18 @@ export const en: Record<TranslationKey, string> = {
   'ui.favorite.unpinTitle': 'Remove from favorites',
   'ui.guideStep.onYourDevice': 'On your device',
   'ui.glossary.whatIs': 'What is {term}?',
+  // --- Connection status / remaining primitives / categories ---
+  'connection.realtime': 'Real-time',
+  'connection.reconnecting': 'Reconnecting…',
+  'connection.offline': 'Offline',
+  'ui.sparkline.trend': 'Trend',
+  'ui.toast.dismiss': 'Dismiss',
+  'ui.optimisticSwitch.error': 'Could not apply the change',
+  'connect.category.router': 'Your network and router',
+  'connect.category.lights': 'Smart lights',
+  'connect.category.plugs': 'Plugs and switches',
+  'connect.category.cameras': 'Cameras',
+  'connect.category.remoteAccess': 'Remote access (VPN)',
+  'connect.category.adBlocking': 'Ad blocking (DNS)',
+  'connect.category.advanced': 'Advanced network',
 };

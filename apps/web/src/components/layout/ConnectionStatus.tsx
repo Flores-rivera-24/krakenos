@@ -1,11 +1,12 @@
 import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useConnectionStore, type ConnectionStatus as Status } from '@/store/connection.store';
 
-const UI: Record<Status, { dot: DotStatus; label: string }> = {
-  connected: { dot: 'online', label: 'En tiempo real' },
-  reconnecting: { dot: 'warning', label: 'Reconectando…' },
-  offline: { dot: 'danger', label: 'Sin conexión' },
+const UI: Record<Status, { dot: DotStatus; labelKey: TranslationKey }> = {
+  connected: { dot: 'online', labelKey: 'connection.realtime' },
+  reconnecting: { dot: 'warning', labelKey: 'connection.reconnecting' },
+  offline: { dot: 'danger', labelKey: 'connection.offline' },
 };
 
 /**
@@ -14,15 +15,17 @@ const UI: Record<Status, { dot: DotStatus; label: string }> = {
  * valor real de `connection.store` (no finge la reconexión).
  */
 export function ConnectionStatus({ collapsed }: { collapsed: boolean }) {
+  const t = useT();
   const status = useConnectionStore((s) => s.status);
   const ui = UI[status];
+  const label = t(ui.labelKey);
   return (
     <div
       className={cn('flex items-center gap-2', collapsed && 'justify-center')}
-      title={collapsed ? ui.label : undefined}
+      title={collapsed ? label : undefined}
     >
-      <StatusDot status={ui.dot} label={ui.label} />
-      {!collapsed && <span className="text-kr-xs text-kr-secondary">{ui.label}</span>}
+      <StatusDot status={ui.dot} label={label} />
+      {!collapsed && <span className="text-kr-xs text-kr-secondary">{label}</span>}
     </div>
   );
 }
