@@ -69,6 +69,22 @@ describe('resumen del hogar (US-180)', () => {
     });
   }
 
+  it('el resumen semanal incluye el uso de internet del hogar (US-184), el diario no', async () => {
+    const now = new Date();
+    // Tráfico WAN en la ventana (dos rollups). El detalle por persona NO va aquí
+    // (privacidad por rol): solo el total del hogar.
+    await app.prisma.trafficSample.create({ data: { rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 } });
+    await app.prisma.trafficSample.create({ data: { rxBytesPerSec: 500_000, txBytesPerSec: 100_000 } });
+
+    const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weekly = await buildDigest(app.prisma, since, new Date(now.getTime() + 1000), 'weekly');
+    expect(weekly?.body).toContain('Uso de internet esta semana');
+
+    // El resumen diario no lleva la línea de uso (es semanal).
+    const daily = await buildDigest(app.prisma, since, new Date(now.getTime() + 1000), 'daily');
+    expect(daily?.body ?? '').not.toContain('Uso de internet');
+  });
+
   it('buildDigest resume el periodo con nombres amables y SIN PII (emails/IPs)', async () => {
     const now = new Date();
     await seedActivity(now);

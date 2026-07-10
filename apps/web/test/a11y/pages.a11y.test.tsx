@@ -225,6 +225,13 @@ function apiGet(path: string): Promise<unknown> {
   if (path.startsWith('/coverage/floorplans/') && path.endsWith('/scans')) return Promise.resolve([]);
   if (path.startsWith('/traffic/stats'))
     return Promise.resolve({ range: 'day', buckets: [], totalRxBytes: 0, totalTxBytes: 0 });
+  if (path.startsWith('/wellbeing/usage'))
+    return Promise.resolve({
+      range: 'week',
+      people: [
+        { userId: 'u1', name: 'Ana', rxBytes: 1000, txBytes: 500, totalBytes: 1500, deviceCount: 2, buckets: [] },
+      ],
+    });
   if (path === '/energy/config') return Promise.resolve({ pricePerKwh: 0.15, currency: '€' });
   if (path.startsWith('/energy/stats'))
     return Promise.resolve({

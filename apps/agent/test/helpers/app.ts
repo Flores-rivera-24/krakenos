@@ -51,6 +51,8 @@ import { EnergyService } from '../../src/modules/energy/energy.service.js';
 import { energyRoutes } from '../../src/modules/energy/energy.routes.js';
 import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
+import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
+import { wellbeingRoutes } from '../../src/modules/wellbeing/wellbeing.routes.js';
 import { ReportsService } from '../../src/modules/reports/reports.service.js';
 import { reportsRoutes } from '../../src/modules/reports/reports.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
@@ -196,6 +198,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(energyAlertsRoutes, {
       prefix: '/api/energy/alerts',
       service: new EnergyAlertService(app, sharedIot, homeBus),
+    });
+    await app.register(wellbeingRoutes, {
+      prefix: '/api/wellbeing',
+      service: new WellbeingService(app),
     });
     await app.register(reportsRoutes, {
       prefix: '/api/reports',

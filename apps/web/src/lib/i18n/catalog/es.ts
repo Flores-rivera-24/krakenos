@@ -533,6 +533,15 @@ export const es = {
   'traffic.col.download': '↓ Descarga',
   'traffic.col.upload': '↑ Subida',
 
+  // --- Bienestar digital (US-184) ---
+  'wellbeing.title': 'Uso por persona',
+  'wellbeing.subtitle': 'Uso de internet agregado por persona del hogar. Solo tú y los administradores veis el detalle de cada uno.',
+  'wellbeing.rangeLabel': 'Rango',
+  'wellbeing.loading': 'Cargando…',
+  'wellbeing.empty': 'Sin datos de uso todavía. Asigna un dueño a los dispositivos en su detalle.',
+  'wellbeing.unassigned': 'Sin asignar',
+  'wellbeing.devices': '{n} dispositivo(s)',
+
   // --- Energía (US-182) ---
   'energy.loadError': 'No se pudo cargar el consumo',
   'energy.title': 'Energía',

@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
+import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -413,6 +414,9 @@ export function TrafficPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Bienestar digital (US-184): uso de internet por persona, privacidad por rol. */}
+      <WellbeingCard />
 
       {selectedDevice && (
         <DeviceDetailSlideover device={selectedDevice} onClose={() => setSelectedMac(null)} />

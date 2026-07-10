@@ -16,7 +16,20 @@ import { ALERT_EVENTS } from './alert-config.js';
 /** Hora local de envío (minuto del día): 08:00. */
 const SEND_MINUTE = 8 * 60;
 
-type PrismaLike = Pick<PrismaClient, 'device' | 'auditLog' | 'automationRun' | 'setting'>;
+type PrismaLike = Pick<
+  PrismaClient,
+  'device' | 'auditLog' | 'automationRun' | 'setting' | 'trafficSample'
+>;
+
+/** Intervalo (s) que representa cada rollup de tráfico (media × segundos = bytes). */
+const ROLLUP_SECONDS = 60;
+
+/** Formatea bytes de forma legible para el resumen (GB/MB, sin decimales de más). */
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(0)} MB`;
+  return `${Math.round(bytes / 1024)} KB`;
+}
 
 export interface DigestContent {
   title: string;
@@ -50,7 +63,22 @@ export async function buildDigest(
     prisma.automationRun.count({ where: { createdAt: { gte: since, lt: now }, ok: false } }),
   ]);
 
-  if (newDevices.length === 0 && securityEvents === 0 && runs === 0) return null;
+  // Uso de internet del hogar en el periodo (US-184): solo en el resumen semanal
+  // y a nivel de hogar (WAN), nunca desglosado por persona — el detalle por
+  // persona es privado por rol y vive en la UI autenticada, no en un broadcast.
+  let usageBytes = 0;
+  if (period === 'weekly') {
+    const samples = await prisma.trafficSample.findMany({
+      where: { timestamp: { gte: since, lt: now } },
+      select: { rxBytesPerSec: true, txBytesPerSec: true },
+    });
+    usageBytes = samples.reduce(
+      (sum, s) => sum + (s.rxBytesPerSec + s.txBytesPerSec) * ROLLUP_SECONDS,
+      0,
+    );
+  }
+
+  if (newDevices.length === 0 && securityEvents === 0 && runs === 0 && usageBytes === 0) return null;
 
   const lines: string[] = [];
   if (newDevices.length > 0) {
@@ -69,6 +97,9 @@ export async function buildDigest(
     lines.push(
       `• ${runs} automatización(es) ejecutada(s)${failedRuns > 0 ? ` · ${failedRuns} con fallos` : ''}`,
     );
+  }
+  if (usageBytes > 0) {
+    lines.push(`• Uso de internet esta semana: ${formatBytes(usageBytes)}`);
   }
 
   return {

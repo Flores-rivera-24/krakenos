@@ -155,7 +155,9 @@ describe('TrafficPage', () => {
     render(<TrafficPage />);
 
     await screen.findByText('Histórico');
-    await userEvent.click(screen.getByRole('button', { name: '7d' }));
+    // El primer «7d» es el del histórico WAN (la tarjeta de bienestar, US-184,
+    // añade su propio selector de rango más abajo).
+    await userEvent.click(screen.getAllByRole('button', { name: '7d' })[0]!);
 
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/traffic/stats?range=week'));
   });

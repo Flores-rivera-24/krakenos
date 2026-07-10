@@ -527,6 +527,15 @@ export const en: Record<TranslationKey, string> = {
   'traffic.col.download': '↓ Download',
   'traffic.col.upload': '↑ Upload',
 
+  // --- Digital wellbeing (US-184) ---
+  'wellbeing.title': 'Usage by person',
+  'wellbeing.subtitle': 'Internet usage aggregated per household member. Only you and admins see each person’s detail.',
+  'wellbeing.rangeLabel': 'Range',
+  'wellbeing.loading': 'Loading…',
+  'wellbeing.empty': 'No usage data yet. Assign an owner to devices in their detail view.',
+  'wellbeing.unassigned': 'Unassigned',
+  'wellbeing.devices': '{n} device(s)',
+
   // --- Energy (US-182) ---
   'energy.loadError': 'Could not load consumption',
   'energy.title': 'Energy',

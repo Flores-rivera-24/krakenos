@@ -73,6 +73,8 @@ import { EnergyService } from './modules/energy/energy.service.js';
 import { energyRoutes } from './modules/energy/energy.routes.js';
 import { EnergyAlertService } from './modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from './modules/energy/energy-alerts.routes.js';
+import { WellbeingService } from './modules/wellbeing/wellbeing.service.js';
+import { wellbeingRoutes } from './modules/wellbeing/wellbeing.routes.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -291,6 +293,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   // lo audita para el despacho multicanal (US-180).
   const energyAlertService = new EnergyAlertService(app, iot, homeBus);
   await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
+
+  // Bienestar digital (US-184): uso de internet por persona (privacidad por rol).
+  await app.register(wellbeingRoutes, {
+    prefix: '/api/wellbeing',
+    service: new WellbeingService(app),
+  });
 
   // Informes exportables en CSV (US-109/182): auditoría, inventario, tráfico, energía.
   await app.register(reportsRoutes, {
