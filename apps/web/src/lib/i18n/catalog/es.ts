@@ -174,6 +174,23 @@ export const es = {
     'Dale un nombre a tu móvil u ordenador y pulsa «Añadir dispositivo»: obtendrás un QR para conectarlo a tu red desde cualquier lugar con la app de WireGuard.',
   'vpn.delete': 'Eliminar',
   'vpn.deleteLabel': 'Eliminar {name}',
+
+  // --- Cámaras (US-25/148) ---
+  'cameras.title': 'Cámaras',
+  'cameras.subtitle': 'Vista de las cámaras IP del hogar.',
+  'cameras.add': 'Añadir cámara',
+  'cameras.tileAlt': 'Cámara {name}',
+  'cameras.connecting': 'Conectando…',
+  'cameras.noSignal': 'Sin señal',
+  'cameras.live': '● EN VIVO',
+  'cameras.edit': 'Editar {name}',
+  'cameras.delete': 'Eliminar {name}',
+  'cameras.loadError': 'No se pudieron cargar las cámaras',
+  'cameras.removed': 'Cámara eliminada',
+  'cameras.removeError': 'No se pudo eliminar la cámara',
+  'cameras.empty.admin': 'Aún no hay cámaras. Añade la primera con su URL RTSP.',
+  'cameras.empty.viewer':
+    'Aún no hay cámaras. Pídele a un administrador que añada la primera con su URL RTSP.',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

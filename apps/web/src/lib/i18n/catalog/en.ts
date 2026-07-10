@@ -168,4 +168,21 @@ export const en: Record<TranslationKey, string> = {
     'Give your phone or computer a name and press “Add device”: you’ll get a QR to connect it to your network from anywhere with the WireGuard app.',
   'vpn.delete': 'Delete',
   'vpn.deleteLabel': 'Delete {name}',
+
+  // --- Cámaras (US-25/148) ---
+  'cameras.title': 'Cameras',
+  'cameras.subtitle': 'View of the home’s IP cameras.',
+  'cameras.add': 'Add camera',
+  'cameras.tileAlt': 'Camera {name}',
+  'cameras.connecting': 'Connecting…',
+  'cameras.noSignal': 'No signal',
+  'cameras.live': '● LIVE',
+  'cameras.edit': 'Edit {name}',
+  'cameras.delete': 'Delete {name}',
+  'cameras.loadError': 'Could not load the cameras',
+  'cameras.removed': 'Camera deleted',
+  'cameras.removeError': 'Could not delete the camera',
+  'cameras.empty.admin': 'No cameras yet. Add the first one with its RTSP URL.',
+  'cameras.empty.viewer':
+    'No cameras yet. Ask an administrator to add the first one with its RTSP URL.',
 };
