@@ -3,13 +3,17 @@ import type {
   CreateCameraRequest,
   StreamTokenClaims,
   UpdateCameraRequest,
+  UpdateMotionConfigRequest,
 } from '@krakenos/types';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { toCameraRecord, toManagedCamera, type CameraStore } from '../../cameras/camera.store.js';
 import { StreamLimitError } from '../../cameras/hls-stream.js';
+import type { MotionService } from './motion.service.js';
 import {
   createCameraSchema,
+  getMotionConfigSchema,
   listCamerasSchema,
+  motionEventsSchema,
   removeCameraSchema,
   snapshotSchema,
   startStreamSchema,
@@ -17,19 +21,22 @@ import {
   streamPlaylistSchema,
   streamSegmentSchema,
   updateCameraSchema,
+  updateMotionConfigSchema,
 } from './cameras.schemas.js';
 
 interface CameraRoutesOpts {
   cameras: CameraManager;
   /** Store de gestión de cámaras (alta/baja desde la UI, US-148). Sin él, solo lectura. */
   store?: CameraStore;
+  /** Servicio de movimiento (US-186). Sin él, no se exponen sus rutas. */
+  motion?: MotionService;
 }
 
 /** Vida del token de stream (US-185): corta, el reproductor lo refresca solo. */
 const STREAM_TOKEN_TTL_SEC = 300;
 
 export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, opts) => {
-  const { cameras, store } = opts;
+  const { cameras, store, motion } = opts;
 
   /**
    * Valida el token de stream de la query (`?st=`) para **una** cámara. A
@@ -171,6 +178,38 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
         .send(Buffer.from(bytes));
     },
   );
+
+  // --- Detección de movimiento (US-186) ---
+  if (motion) {
+    // Eventos recientes con snapshot (línea de tiempo, US-187) — cualquier rol.
+    app.get<{ Querystring: { cameraId?: string } }>(
+      '/motion/events',
+      { schema: motionEventsSchema, preHandler: app.authenticate },
+      async (req) => motion.recentEvents(req.query.cameraId),
+    );
+
+    // Config de movimiento por cámara: lectura autenticada, escritura admin.
+    app.get<{ Params: { id: string } }>(
+      '/:id/motion',
+      { schema: getMotionConfigSchema, preHandler: app.authenticate },
+      async (req) => motion.getConfig(req.params.id),
+    );
+
+    app.put<{ Params: { id: string }; Body: UpdateMotionConfigRequest }>(
+      '/:id/motion',
+      { schema: updateMotionConfigSchema, preHandler: app.requireRole('admin') },
+      async (req) => {
+        const updated = await motion.setConfig(req.params.id, req.body);
+        app.audit({
+          action: 'camera.motion_config',
+          userId: req.user.sub,
+          detail: req.params.id,
+          ip: req.ip,
+        });
+        return updated;
+      },
+    );
+  }
 
   // Gestión de cámaras (alta/edición/baja) — solo admin, si hay store. La `rtspUrl`
   // (con credenciales) se acepta pero **nunca** se devuelve.

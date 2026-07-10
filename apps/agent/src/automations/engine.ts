@@ -37,6 +37,11 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
         event.type === 'energy-threshold' &&
         (!trigger.deviceId || event.deviceId === trigger.deviceId)
       );
+    case 'motion-detected':
+      return (
+        event.type === 'motion-detected' &&
+        (!trigger.cameraId || event.cameraId === trigger.cameraId)
+      );
     case 'time':
       return false; // los disparadores de hora van por el barrido (dueTimeRules)
     case 'person-arrived':
@@ -133,10 +138,11 @@ export function eventSubject(event: HomeEvent): { mac?: string; deviceId?: strin
     case 'sensor-reading':
     case 'energy-threshold':
       return { deviceId: event.deviceId };
-    // La presencia y el modo no aportan un dispositivo objetivo (US-169).
+    // La presencia, el modo y el movimiento no aportan un dispositivo objetivo.
     case 'person-arrived':
     case 'person-left':
     case 'mode-changed':
+    case 'motion-detected':
       return {};
   }
 }
@@ -169,5 +175,8 @@ export function describeEvent(event: HomeEvent): string {
       return 'alguien sale de casa';
     case 'mode-changed':
       return `modo del hogar → ${event.mode}`;
+    // El nombre de la cámara lo pone el admin (no es PII como la presencia ajena).
+    case 'motion-detected':
+      return `movimiento en ${event.cameraName}`;
   }
 }

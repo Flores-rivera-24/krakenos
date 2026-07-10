@@ -13,6 +13,7 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'device.block', label: 'Dispositivo bloqueado' },
   { event: 'inventory.unknown_device', label: 'Dispositivo desconocido' },
   { event: 'energy.threshold', label: 'Consumo eléctrico anómalo' },
+  { event: 'camera.motion', label: 'Movimiento detectado' },
 ];
 
 const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));

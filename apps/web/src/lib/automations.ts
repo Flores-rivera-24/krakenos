@@ -30,6 +30,8 @@ export interface NameContext {
   networkNames?: Map<string, string>;
   /** userId → nombre de la persona (para los disparadores de presencia, US-169). */
   userNames?: Map<string, string>;
+  /** cameraId → nombre de la cámara (disparador de movimiento, US-186). */
+  cameraNames?: Map<string, string>;
 }
 
 const iotName = (ctx: NameContext, id: string) =>
@@ -61,6 +63,8 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} sale de casa`;
     case 'mode-changed':
       return `el hogar pasa a «${MODE_LABELS[trigger.mode]}»`;
+    case 'motion-detected':
+      return `${trigger.cameraId ? (ctx.cameraNames?.get(trigger.cameraId) ?? trigger.cameraId) : 'una cámara'} detecta movimiento`;
   }
 }
 

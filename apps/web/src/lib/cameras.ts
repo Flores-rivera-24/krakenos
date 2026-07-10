@@ -1,9 +1,12 @@
 import type {
   Camera,
+  CameraMotionConfig,
   CameraStreamSession,
   CreateCameraRequest,
   ManagedCamera,
+  MotionEvent,
   UpdateCameraRequest,
+  UpdateMotionConfigRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 
@@ -45,3 +48,16 @@ export const stopStream = (id: string): Promise<void> => api.del<void>(`/cameras
 /** Construye la URL (con token) de la playlist HLS que consume el reproductor. */
 export const streamPlaylistUrl = (id: string, token: string): string =>
   `/api/cameras/${id}/stream/index.m3u8?st=${encodeURIComponent(token)}`;
+
+/** Config de detección de movimiento de una cámara (US-186). */
+export const getMotionConfig = (id: string): Promise<CameraMotionConfig> =>
+  api.get<CameraMotionConfig>(`/cameras/${id}/motion`);
+
+export const updateMotionConfig = (
+  id: string,
+  body: UpdateMotionConfigRequest,
+): Promise<CameraMotionConfig> => api.put<CameraMotionConfig>(`/cameras/${id}/motion`, body);
+
+/** Eventos de movimiento recientes (con snapshot), opcionalmente por cámara. */
+export const listMotionEvents = (cameraId?: string): Promise<MotionEvent[]> =>
+  api.get<MotionEvent[]>(`/cameras/motion/events${cameraId ? `?cameraId=${cameraId}` : ''}`);

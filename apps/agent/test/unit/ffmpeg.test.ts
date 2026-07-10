@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildHlsArgs, buildSnapshotArgs, jpegToDataUrl } from '../../src/cameras/ffmpeg.js';
+import {
+  buildHlsArgs,
+  buildMotionFrameArgs,
+  buildSnapshotArgs,
+  jpegToDataUrl,
+} from '../../src/cameras/ffmpeg.js';
 
 describe('buildSnapshotArgs', () => {
   it('captura un fotograma del RTSP a JPEG por stdout', () => {
@@ -15,6 +20,15 @@ describe('buildSnapshotArgs', () => {
     const args = buildSnapshotArgs('rtsp://cam', { transport: 'udp', timeoutMicros: 2_000_000 });
     expect(args[args.indexOf('-rtsp_transport') + 1]).toBe('udp');
     expect(args[args.indexOf('-rw_timeout') + 1]).toBe('2000000');
+  });
+});
+
+describe('buildMotionFrameArgs', () => {
+  it('captura un fotograma escalado a gris en rawvideo (US-186)', () => {
+    const args = buildMotionFrameArgs('rtsp://cam/s', 32, 24);
+    expect(args[args.indexOf('-i') + 1]).toBe('rtsp://cam/s');
+    expect(args[args.indexOf('-vf') + 1]).toBe('scale=32:24,format=gray');
+    expect(args).toEqual(expect.arrayContaining(['-frames:v', '1', '-f', 'rawvideo', '-']));
   });
 });
 

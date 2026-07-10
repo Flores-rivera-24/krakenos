@@ -171,6 +171,76 @@ describe('streaming HLS en vivo (US-185)', () => {
   });
 });
 
+describe('detección de movimiento — config y eventos (US-186)', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp({ routes: true });
+  });
+  afterAll(async () => {
+    await app.close();
+  });
+  beforeEach(async () => {
+    await resetDb(app);
+  });
+
+  it('GET config devuelve los valores por defecto (desactivada)', async () => {
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/cam-entrada/motion',
+      headers: authHeader(signAccess(app, user)),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as Record<string, unknown>;
+    expect(body).toMatchObject({ cameraId: 'cam-entrada', enabled: false, sensitivity: 'medium' });
+    expect(body.arming).toEqual({ mode: 'always' });
+  });
+
+  it('PUT config es admin-only y persiste; el viewer recibe 403', async () => {
+    const admin = await seedUser(app, { email: 'a@krakenos.test', role: 'admin' });
+    const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
+
+    const forbidden = await app.inject({
+      method: 'PUT',
+      url: '/api/cameras/cam-entrada/motion',
+      headers: authHeader(signAccess(app, viewer)),
+      payload: { enabled: true },
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/api/cameras/cam-entrada/motion',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { enabled: true, sensitivity: 'high', cooldownSec: 120, arming: { mode: 'schedule', windows: [{ fromMinute: 1320, toMinute: 420 }] } },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({ enabled: true, sensitivity: 'high', cooldownSec: 120 });
+
+    // Persistió: una nueva lectura lo refleja.
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/cam-entrada/motion',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    expect((read.json() as { enabled: boolean }).enabled).toBe(true);
+  });
+
+  it('GET eventos exige autenticación y arranca vacío', async () => {
+    const anon = await app.inject({ method: 'GET', url: '/api/cameras/motion/events' });
+    expect(anon.statusCode).toBe(401);
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/motion/events',
+      headers: authHeader(signAccess(app, user)),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
+});
+
 describe('gestión de cámaras desde la UI (US-148)', () => {
   let app: FastifyInstance;
   let store: MemoryJsonStore<CameraDefinition>;

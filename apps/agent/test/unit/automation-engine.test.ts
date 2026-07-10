@@ -83,6 +83,14 @@ describe('automations/engine — matchesTrigger', () => {
     );
   });
 
+  it('motion-detected: sin cameraId casa con cualquiera; con cameraId, solo esa (US-186)', () => {
+    const ev: HomeEvent = { type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' };
+    expect(matchesTrigger({ type: 'motion-detected' }, ev)).toBe(true);
+    expect(matchesTrigger({ type: 'motion-detected', cameraId: 'cam-1' }, ev)).toBe(true);
+    expect(matchesTrigger({ type: 'motion-detected', cameraId: 'cam-2' }, ev)).toBe(false);
+    expect(matchesTrigger({ type: 'motion-detected' }, { type: 'iot-on', deviceId: 'x' })).toBe(false);
+  });
+
   it('time nunca casa por evento (va por el barrido)', () => {
     expect(
       matchesTrigger({ type: 'time', days: [3], minute: 720 }, { type: 'device-new', mac: 'aa' }),
@@ -198,6 +206,12 @@ describe('automations/engine — eventSubject / describeEvent', () => {
   it('describe los eventos de forma legible', () => {
     expect(describeEvent({ type: 'device-new', mac: 'aa' })).toContain('aa');
     expect(describeEvent({ type: 'sensor-reading', deviceId: 's', value: 21, prevValue: 20 })).toBe('s = 21');
+  });
+
+  it('motion-detected: sin objetivo implícito, resumen con el nombre de la cámara (US-186)', () => {
+    const ev: HomeEvent = { type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' };
+    expect(eventSubject(ev)).toEqual({});
+    expect(describeEvent(ev)).toContain('Entrada');
   });
 
   it('la presencia no aporta objetivo implícito y su resumen NO filtra el nombre (privacidad US-169)', () => {

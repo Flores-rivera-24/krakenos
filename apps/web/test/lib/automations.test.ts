@@ -18,6 +18,7 @@ const CTX: NameContext = {
   scenes: [{ id: 's1', name: 'Cine' } as Scene],
   networkNames: new Map([['aa:bb', 'Móvil de Ana']]),
   userNames: new Map([['u1', 'Ana']]),
+  cameraNames: new Map([['cam-1', 'Entrada']]),
 };
 
 describe('lib/automations (US-167)', () => {
@@ -36,6 +37,13 @@ describe('lib/automations (US-167)', () => {
     expect(describeTrigger({ type: 'person-arrived', userId: 'u1' }, CTX)).toBe('Ana llega a casa');
     expect(describeTrigger({ type: 'person-left', userId: 'u1' }, CTX)).toBe('Ana sale de casa');
     expect(describeTrigger({ type: 'mode-changed', mode: 'night' }, CTX)).toBe('el hogar pasa a «Noche»');
+  });
+
+  it('describe el disparador de movimiento (US-186)', () => {
+    expect(describeTrigger({ type: 'motion-detected' }, CTX)).toBe('una cámara detecta movimiento');
+    expect(describeTrigger({ type: 'motion-detected', cameraId: 'cam-1' }, CTX)).toBe(
+      'Entrada detecta movimiento',
+    );
   });
 
   it('describe acciones (incluido el objetivo implícito del evento)', () => {

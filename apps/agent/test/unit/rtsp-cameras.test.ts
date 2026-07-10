@@ -70,6 +70,25 @@ describe('RtspCameraManager (US-148)', () => {
       await mgr.stop();
     });
 
+    it('getMotionFrame: pasa la rtspUrl a ffmpeg y valida el tamaño (US-186)', async () => {
+      const args: string[][] = [];
+      const okFrame: FfmpegExec = async (a) => {
+        args.push(a);
+        return { stdout: Buffer.alloc(32 * 24, 40), stderr: Buffer.from(''), code: 0 };
+      };
+      const mgr = new RtspCameraManager({ cameras: [cam('1')], exec: okFrame });
+      const frame = await mgr.getMotionFrame('1');
+      expect(frame!.length).toBe(32 * 24);
+      expect(args[0]).toContain('rtsp://10.0.0.1/s');
+      expect(args[0]).toContain('rawvideo');
+      // Tamaño incorrecto → null (no confía en una salida truncada).
+      const badMgr = new RtspCameraManager({
+        cameras: [cam('1')],
+        exec: async () => ({ stdout: Buffer.alloc(10), stderr: Buffer.from(''), code: 0 }),
+      });
+      expect(await badMgr.getMotionFrame('1')).toBeNull();
+    });
+
     it('arranca el stream pasando la rtspUrl real al spawner; offline → null', async () => {
       const urls: string[] = [];
       const mgr = new RtspCameraManager({

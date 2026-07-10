@@ -53,6 +53,38 @@ export function jpegToDataUrl(buffer: Buffer): string {
   return `data:image/jpeg;base64,${buffer.toString('base64')}`;
 }
 
+/**
+ * Construye los argumentos de ffmpeg para capturar **una huella de movimiento**:
+ * un fotograma escalado a `w`×`h` en **escala de grises** y emitido como
+ * `rawvideo` por stdout (exactamente `w*h` bytes). Función pura (US-186). Es
+ * mucho más barato que decodificar la imagen completa: basta para el diff.
+ */
+export function buildMotionFrameArgs(
+  rtspUrl: string,
+  w: number,
+  h: number,
+  opts: SnapshotArgsOptions = {},
+): string[] {
+  const transport = opts.transport ?? 'tcp';
+  const timeout = opts.timeoutMicros ?? 5_000_000;
+  return [
+    '-nostdin',
+    '-rtsp_transport',
+    transport,
+    '-rw_timeout',
+    String(timeout),
+    '-i',
+    rtspUrl,
+    '-frames:v',
+    '1',
+    '-vf',
+    `scale=${w}:${h},format=gray`,
+    '-f',
+    'rawvideo',
+    '-',
+  ];
+}
+
 export interface HlsArgsOptions {
   /** Transporte RTSP (`tcp` es lo más fiable). */
   transport?: string;

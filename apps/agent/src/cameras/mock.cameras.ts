@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Camera, CameraManager, CameraSnapshot, CameraStreamSession } from '@krakenos/types';
+import { MOTION_FRAME_HEIGHT, MOTION_FRAME_WIDTH } from '@krakenos/types';
 import {
   HLS_PLAYLIST_NAME,
   HlsStreamManager,
@@ -68,8 +69,10 @@ export class MockCameraManager implements CameraManager {
     { id: 'cam-garaje', name: 'Garaje', room: 'Garaje', model: 'KrakenCam 720p', online: false },
   ];
   private readonly hls: HlsStreamManager;
+  private readonly clock: () => number;
 
   constructor(opts: MockCameraOptions = {}) {
+    this.clock = opts.now ?? Date.now;
     this.hls = new HlsStreamManager({
       // Dir único por instancia: dev y tests no colisionan al usar los mismos ids.
       baseDir: opts.hlsBaseDir ?? join(tmpdir(), 'krakenos-hls-mock', randomUUID()),
@@ -95,6 +98,23 @@ export class MockCameraManager implements CameraManager {
     const camera = this.cameras.find((c) => c.id === id);
     if (!camera || !camera.online) return null;
     return this.hls.start(id, `mock://${id}`);
+  }
+
+  async getMotionFrame(id: string): Promise<Uint8Array | null> {
+    const camera = this.cameras.find((c) => c.id === id);
+    if (!camera || !camera.online) return null;
+    // Fondo gris con un bloque brillante que se desplaza cada ~8 s: estático
+    // entre saltos (sin movimiento) y con un cambio localizado en cada salto
+    // (movimiento), para poder demostrar la detección al activarla en un mock.
+    const w = MOTION_FRAME_WIDTH;
+    const h = MOTION_FRAME_HEIGHT;
+    const frame = new Uint8Array(w * h).fill(40);
+    const bucket = Math.floor(this.clock() / 8000);
+    const blockX = bucket % (w - 4);
+    for (let y = Math.floor(h / 3); y < Math.floor((2 * h) / 3); y++) {
+      for (let x = blockX; x < blockX + 4; x++) frame[y * w + x] = 210;
+    }
+    return frame;
   }
 
   async stopStream(id: string): Promise<void> {

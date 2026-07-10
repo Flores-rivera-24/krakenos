@@ -5,8 +5,10 @@ import type {
   CameraSnapshot,
   CameraStreamSession,
 } from '@krakenos/types';
+import { MOTION_FRAME_HEIGHT, MOTION_FRAME_WIDTH } from '@krakenos/types';
 import {
   type FfmpegExec,
+  buildMotionFrameArgs,
   buildSnapshotArgs,
   createFfmpegStreamSpawner,
   jpegToDataUrl,
@@ -119,6 +121,19 @@ export class RtspCameraManager implements CameraManager {
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
     return this.hls.start(id, camera.rtspUrl);
+  }
+
+  async getMotionFrame(id: string): Promise<Uint8Array | null> {
+    const camera = this.getCameras().find((c) => c.id === id);
+    if (!camera || camera.enabled === false) return null;
+    const { stdout, code } = await this.opts.exec(
+      buildMotionFrameArgs(camera.rtspUrl, MOTION_FRAME_WIDTH, MOTION_FRAME_HEIGHT, {
+        transport: this.opts.transport,
+      }),
+    );
+    // Debe salir exactamente w*h bytes de gris; cualquier otra cosa = fallo.
+    if (code !== 0 || stdout.length !== MOTION_FRAME_WIDTH * MOTION_FRAME_HEIGHT) return null;
+    return new Uint8Array(stdout);
   }
 
   async stopStream(id: string): Promise<void> {

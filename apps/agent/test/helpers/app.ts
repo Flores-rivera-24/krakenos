@@ -62,6 +62,7 @@ import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
 import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { coverageRoutes } from '../../src/modules/coverage/coverage.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
+import { MotionService } from '../../src/modules/cameras/motion.service.js';
 import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
@@ -222,10 +223,15 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
     });
+    const cameraManager = new MockCameraManager();
+    const motionService = new MotionService(app, cameraManager, new HomeEventBus(() => {}), {
+      intervalMs: 3_600_000, // sin sondeo en tests; los tests llaman a tick() directamente
+    });
     await app.register(camerasRoutes, {
       prefix: '/api/cameras',
-      cameras: new MockCameraManager(),
+      cameras: cameraManager,
       store: opts.cameraStore ?? new MemoryJsonStore<CameraDefinition>(),
+      motion: motionService,
     });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });

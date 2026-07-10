@@ -151,3 +151,83 @@ export const streamSegmentSchema = {
   },
   querystring: streamTokenQuery,
 } as const;
+
+// --- Detección de movimiento (US-186) ---
+
+const motionArming = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['mode'],
+  properties: {
+    mode: { enum: ['always', 'never', 'schedule'] },
+    windows: {
+      type: 'array',
+      maxItems: 20,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['fromMinute', 'toMinute'],
+        properties: {
+          fromMinute: { type: 'integer', minimum: 0, maximum: 1439 },
+          toMinute: { type: 'integer', minimum: 0, maximum: 1439 },
+          days: { type: 'array', maxItems: 7, items: { type: 'integer', minimum: 0, maximum: 6 } },
+        },
+      },
+    },
+  },
+} as const;
+
+const motionConfigResponse = {
+  type: 'object',
+  properties: {
+    cameraId: { type: 'string' },
+    enabled: { type: 'boolean' },
+    sensitivity: { enum: ['low', 'medium', 'high'] },
+    cooldownSec: { type: 'integer' },
+    arming: motionArming,
+  },
+  required: ['cameraId', 'enabled', 'sensitivity', 'cooldownSec', 'arming'],
+} as const;
+
+export const getMotionConfigSchema = {
+  params: idParams,
+  response: { 200: motionConfigResponse },
+} as const;
+
+export const updateMotionConfigSchema = {
+  params: idParams,
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    minProperties: 1,
+    properties: {
+      enabled: { type: 'boolean' },
+      sensitivity: { enum: ['low', 'medium', 'high'] },
+      cooldownSec: { type: 'integer', minimum: 5, maximum: 3600 },
+      arming: motionArming,
+    },
+  },
+  response: { 200: motionConfigResponse },
+} as const;
+
+export const motionEventsSchema = {
+  querystring: {
+    type: 'object',
+    properties: { cameraId: { type: 'string', minLength: 1, maxLength: 128 } },
+  },
+  response: {
+    200: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          cameraId: { type: 'string' },
+          cameraName: { type: 'string' },
+          detectedAt: { type: 'string', format: 'date-time' },
+          snapshot: { type: ['string', 'null'] },
+        },
+        required: ['cameraId', 'cameraName', 'detectedAt', 'snapshot'],
+      },
+    },
+  },
+} as const;
