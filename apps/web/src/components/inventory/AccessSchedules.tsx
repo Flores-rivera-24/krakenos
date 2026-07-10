@@ -94,7 +94,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       await deleteSchedule(s.id);
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo borrar el horario'));
+      toast.error(describeError(err, 'No se pudo eliminar el horario'));
     }
   };
 
@@ -144,7 +144,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 <button
                   type="button"
                   onClick={() => void remove(s)}
-                  aria-label={`Borrar ${s.name}`}
+                  aria-label={`Eliminar ${s.name}`}
                   className="px-1 text-kr-secondary hover:text-danger"
                 >
                   ✕

@@ -49,13 +49,13 @@ describe('AccessSchedules — control parental (US-108)', () => {
     expect(body.days).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it('lista un horario y permite borrarlo', async () => {
+  it('lista un horario y permite eliminarlo', async () => {
     apiMock.get.mockResolvedValue([SCHEDULE]);
     const user = userEvent.setup();
     render(<AccessSchedules mac="aa:bb" canEdit />);
     await screen.findByText('Noche');
 
-    await user.click(screen.getByRole('button', { name: 'Borrar Noche' }));
+    await user.click(screen.getByRole('button', { name: 'Eliminar Noche' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/access/schedules/s1'));
   });
 
@@ -64,6 +64,6 @@ describe('AccessSchedules — control parental (US-108)', () => {
     render(<AccessSchedules mac="aa:bb" canEdit={false} />);
     await screen.findByText('Noche');
     expect(screen.queryByRole('button', { name: 'Añadir horario' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Borrar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Eliminar/ })).not.toBeInTheDocument();
   });
 });

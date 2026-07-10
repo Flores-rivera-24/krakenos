@@ -75,7 +75,7 @@ export function SystemBackupCard() {
         </p>
         <div className="grid max-w-lg gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="bk-pass">Contraseña del backup</Label>
+            <Label htmlFor="bk-pass">Contraseña de la copia</Label>
             <Input
               id="bk-pass"
               type="password"
@@ -125,7 +125,7 @@ export function SystemBackupCard() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bk-rpass">Contraseña del backup</Label>
+              <Label htmlFor="bk-rpass">Contraseña de la copia</Label>
               <Input
                 id="bk-rpass"
                 type="password"

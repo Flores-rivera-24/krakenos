@@ -51,7 +51,7 @@ export async function restoreBackup(file: File, passphrase: string): Promise<{ s
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(err?.message ?? 'No se pudo restaurar el backup');
+    throw new Error(err?.message ?? 'No se pudo restaurar la copia de seguridad');
   }
   return res.json() as Promise<{ staged: number }>;
 }
