@@ -55,7 +55,11 @@ export async function buildDigest(
   const lines: string[] = [];
   if (newDevices.length > 0) {
     // Nombres amables (label/hostname); nunca MACs ni emails (sin PII, US-85).
-    const names = newDevices.map((d) => d.label ?? d.hostname ?? 'sin nombre').join(', ');
+    // Saneados: el hostname lo elige el propio aparato — uno hostil podría
+    // colar texto de phishing en un canal de confianza. Se colapsa y trunca.
+    const names = newDevices
+      .map((d) => (d.label ?? d.hostname ?? 'sin nombre').replace(/\s+/g, ' ').slice(0, 32))
+      .join(', ');
     lines.push(`• ${newDevices.length} dispositivo(s) nuevo(s) en la red: ${names}`);
   }
   if (securityEvents > 0) {

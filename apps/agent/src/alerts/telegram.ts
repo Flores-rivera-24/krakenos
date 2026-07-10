@@ -25,15 +25,37 @@ export function telegramConfigFromEnv(): TelegramConfig | null {
   return { botToken, chatId };
 }
 
+/** Redacta el token del bot de cualquier texto de error (podría acabar en el log). */
+function redactToken(message: string): string {
+  return message.replace(/bot[^/\s"']+/gi, 'bot***');
+}
+
+/**
+ * Enmascara identificadores que no deben salir del perímetro en claro (postura
+ * de PII de US-85): la Bot API es nube de un tercero, así que las MACs se
+ * reducen a sus últimos octetos y las IPs a «la red local».
+ */
+export function maskSensitive(text: string): string {
+  return text
+    .replace(/\b(?:[0-9a-f]{2}:){4}([0-9a-f]{2}:[0-9a-f]{2})\b/gi, '…:$1')
+    .replace(/\b\d{1,3}(?:\.\d{1,3}){3}\b/g, 'la red local');
+}
+
 /** Envío real contra la Bot API (por `safeFetch`: valida URL y cada redirect). */
 function realSender(config: TelegramConfig): SendTelegram {
   return async (text) => {
-    const res = await safeFetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ chat_id: config.chatId, text }),
-    });
-    if (!res.ok) throw new Error(`Telegram respondió ${res.status}`);
+    try {
+      const res = await safeFetch(`https://api.telegram.org/bot${config.botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ chat_id: config.chatId, text }),
+      });
+      if (!res.ok) throw new Error(`Telegram respondió ${res.status}`);
+    } catch (err) {
+      // Un error de egress puede llevar la URL completa (token incluido): se
+      // relanza redactado para que jamás acabe en el log.
+      throw new Error(redactToken(err instanceof Error ? err.message : String(err)));
+    }
   };
 }
 
@@ -52,10 +74,13 @@ export class TelegramNotifier {
     return this.send !== null;
   }
 
-  /** Envío genérico (resumen del hogar, avisos). Fire-and-forget con log. */
+  /**
+   * Envío genérico (resumen del hogar, avisos). Fire-and-forget con log. Todo
+   * lo que sale hacia Telegram va con los identificadores enmascarados.
+   */
   notify(title: string, body: string): void {
     if (!this.send) return;
-    void this.send(`${title}\n${body}`).catch((err: unknown) =>
+    void this.send(maskSensitive(`${title}\n${body}`)).catch((err: unknown) =>
       this.app.log.warn({ err }, 'No se pudo enviar la alerta por Telegram'),
     );
   }

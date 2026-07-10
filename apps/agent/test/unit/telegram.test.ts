@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TelegramNotifier, telegramConfigFromEnv } from '../../src/alerts/telegram.js';
+import { TelegramNotifier, maskSensitive, telegramConfigFromEnv } from '../../src/alerts/telegram.js';
 
 function fakeApp(channels?: { telegram: boolean }): FastifyInstance {
   return {
@@ -58,6 +58,20 @@ describe('alerts/telegram', () => {
     const on = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, send);
     on.notifyForAudit('device.block', 'aa:bb:cc:dd:ee:ff');
     await vi.waitFor(() => expect(sent).toHaveLength(1));
+  });
+
+  it('lo que sale hacia Telegram va con MAC e IP enmascaradas (postura US-85)', async () => {
+    expect(maskSensitive('Se bloqueó aa:bb:cc:dd:ee:ff desde 192.168.1.77')).toBe(
+      'Se bloqueó …:ee:ff desde la red local',
+    );
+    const sent: string[] = [];
+    const notifier = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, async (t) => {
+      sent.push(t);
+    });
+    notifier.notifyForAudit('device.block', 'aa:bb:cc:dd:ee:ff');
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).not.toContain('aa:bb:cc:dd:ee:ff');
+    expect(sent[0]).toContain('…:ee:ff');
   });
 
   it('un evento fuera del catálogo de alertas no genera mensaje', async () => {

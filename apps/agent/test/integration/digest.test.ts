@@ -89,6 +89,26 @@ describe('resumen del hogar (US-180)', () => {
     expect(digest?.body).not.toContain('10.0.0.30');
   });
 
+  it('sanea los nombres del resumen: un hostname hostil no cuela texto largo ni saltos', async () => {
+    const now = new Date();
+    await app.prisma.device.create({
+      data: {
+        mac: 'aa:bb:cc:dd:0d:02',
+        ip: '10.0.0.31',
+        hostname: 'URGENTE\nrenueva tu clave en http://evil.tld/con/una/ruta/larguisima',
+        firstSeen: new Date(now.getTime() - 60 * 60 * 1000),
+      },
+    });
+    const digest = await buildDigest(
+      app.prisma,
+      new Date(now.getTime() - 24 * 60 * 60 * 1000),
+      new Date(now.getTime() + 1000),
+      'daily',
+    );
+    expect(digest?.body).not.toContain('\nrenueva');
+    expect(digest?.body).not.toContain('evil.tld/con/una/ruta');
+  });
+
   it('un periodo sin novedades no genera resumen (no hacer ruido)', async () => {
     const now = new Date();
     expect(
