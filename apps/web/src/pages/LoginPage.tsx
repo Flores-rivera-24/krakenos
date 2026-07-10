@@ -10,20 +10,22 @@ import { Label } from '@/components/ui/label';
 import { StatusDot, type DotStatus } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { completePasskeyLogin, verifyBackupCode } from '@/lib/webauthn';
 import { HttpError, useAuthStore } from '@/store/auth.store';
 
 type HealthState = 'loading' | 'online' | 'offline';
 
-const HEALTH_UI: Record<HealthState, { dot: DotStatus; label: string }> = {
-  loading: { dot: 'offline', label: 'Verificando…' },
-  online: { dot: 'online', label: 'Sistema en línea' },
-  offline: { dot: 'danger', label: 'Sin conexión' },
+const HEALTH_DOT: Record<HealthState, DotStatus> = {
+  loading: 'offline',
+  online: 'online',
+  offline: 'danger',
 };
 
 type PasskeyStatus = 'idle' | 'verifying' | 'cancelled' | 'error';
 
 export function LoginPage() {
+  const t = useT();
   const login = useAuthStore((s) => s.login);
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
@@ -113,8 +115,8 @@ export function LoginPage() {
       // US-55: un 401 es credenciales; cualquier otro fallo (red, 5xx) es de conexión.
       setError(
         err instanceof HttpError && err.status === 401
-          ? 'Correo o contraseña incorrectos.'
-          : 'No se pudo conectar con el servidor. Inténtalo de nuevo.',
+          ? t('login.error.credentials')
+          : t('login.error.connection'),
       );
     } finally {
       setLoading(false);
@@ -142,13 +144,18 @@ export function LoginPage() {
       setSession(session);
       navigate('/');
     } catch {
-      setBackupError('Código inválido o ya usado.');
+      setBackupError(t('login.backup.invalid'));
     } finally {
       setBackupBusy(false);
     }
   };
 
-  const healthUi = HEALTH_UI[health];
+  const healthLabel =
+    health === 'online'
+      ? t('login.health.online')
+      : health === 'offline'
+        ? t('login.health.offline')
+        : t('login.verifying');
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center gap-4 overflow-hidden bg-kr-base px-4">
@@ -169,8 +176,8 @@ export function LoginPage() {
               <p className="truncate text-kr-base font-medium text-kr-primary">{homeName}</p>
             )}
             <span className="mt-0.5 flex items-center gap-1.5">
-              <StatusDot status={healthUi.dot} />
-              <span className="text-kr-xs text-kr-secondary">{healthUi.label}</span>
+              <StatusDot status={HEALTH_DOT[health]} />
+              <span className="text-kr-xs text-kr-secondary">{healthLabel}</span>
             </span>
           </div>
           <span className="self-start text-[11px] text-kr-muted">KrakenOS</span>
@@ -180,16 +187,12 @@ export function LoginPage() {
         {stage === 'webauthn' ? (
           <div className="space-y-4 px-5 py-6 text-center">
             <Fingerprint size={32} className="mx-auto text-kr-accent" />
-            <h1 className="text-kr-lg font-medium text-kr-primary">
-              Verifica tu identidad con tu dispositivo
-            </h1>
+            <h1 className="text-kr-lg font-medium text-kr-primary">{t('login.mfa.title')}</h1>
             {passkeyStatus === 'cancelled' && (
-              <p className="text-[13px] text-danger">Verificación cancelada. Inténtalo de nuevo.</p>
+              <p className="text-[13px] text-danger">{t('login.mfa.cancelled')}</p>
             )}
             {passkeyStatus === 'error' && (
-              <p className="text-[13px] text-danger">
-                No se pudo verificar la passkey. Inténtalo de nuevo.
-              </p>
+              <p className="text-[13px] text-danger">{t('login.mfa.error')}</p>
             )}
             <Button
               type="button"
@@ -198,17 +201,17 @@ export function LoginPage() {
               disabled={passkeyStatus === 'verifying'}
             >
               {passkeyStatus === 'verifying'
-                ? 'Verificando…'
+                ? t('login.verifying')
                 : passkeyStatus === 'idle'
-                  ? 'Usar passkey'
-                  : 'Reintentar'}
+                  ? t('login.mfa.usePasskey')
+                  : t('login.mfa.retry')}
             </Button>
 
             {/* Recuperación con código (US-59) */}
             {backupMode ? (
               <div className="space-y-2 text-left">
                 <Label htmlFor="backup-code" className="text-kr-secondary">
-                  Código de recuperación
+                  {t('login.backup.label')}
                 </Label>
                 <Input
                   id="backup-code"
@@ -226,7 +229,7 @@ export function LoginPage() {
                   onClick={() => void runBackupCode()}
                   disabled={backupBusy || backupCode.trim() === ''}
                 >
-                  {backupBusy ? 'Verificando…' : 'Verificar código'}
+                  {backupBusy ? t('login.verifying') : t('login.backup.verify')}
                 </Button>
               </div>
             ) : (
@@ -235,18 +238,18 @@ export function LoginPage() {
                 onClick={() => setBackupMode(true)}
                 className="text-kr-xs text-kr-secondary underline hover:text-kr-primary"
               >
-                ¿Perdiste tu dispositivo? Usar un código de recuperación
+                {t('login.backup.prompt')}
               </button>
             )}
           </div>
         ) : (
           /* Cuerpo: formulario */
           <form onSubmit={onSubmit} className="space-y-4 px-5 py-5">
-            <h1 className="text-kr-lg font-medium text-kr-primary">Bienvenido de vuelta</h1>
+            <h1 className="text-kr-lg font-medium text-kr-primary">{t('login.welcome')}</h1>
 
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-kr-secondary">
-                Correo electrónico
+                {t('login.email')}
               </Label>
               <Input
                 id="email"
@@ -260,7 +263,7 @@ export function LoginPage() {
 
             <div className="space-y-1.5">
               <Label htmlFor="password" className="text-kr-secondary">
-                Contraseña
+                {t('login.password')}
               </Label>
               <div className="relative">
                 <Input
@@ -275,7 +278,7 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-label={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-kr-muted hover:text-kr-secondary"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -290,11 +293,11 @@ export function LoginPage() {
                 onChange={(e) => setKeepSignedIn(e.target.checked)}
                 className="h-4 w-4 rounded border-kr accent-kr-accent"
               />
-              Mantener sesión iniciada
+              {t('login.keepSignedIn')}
             </label>
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Entrando…' : 'Iniciar sesión'}
+              {loading ? t('login.submitting') : t('login.submit')}
             </Button>
 
             {error && <p className="text-[13px] text-danger">{error}</p>}
@@ -309,7 +312,7 @@ export function LoginPage() {
           >
             <span className="flex items-center gap-1.5">
               <Clock size={13} />
-              Último acceso: {formatRelative(new Date(lastSession.timestamp))}
+              {t('login.lastAccess')}: {formatRelative(new Date(lastSession.timestamp))}
             </span>
             {lastSession.ip && <span>{lastSession.ip}</span>}
           </div>
@@ -318,7 +321,7 @@ export function LoginPage() {
 
       <p className="flex items-center gap-1.5 text-[12px] text-kr-muted">
         <Lock size={13} />
-        Acceso local · Sin nube · Sin terceros
+        {t('login.tagline')}
       </p>
     </div>
   );
