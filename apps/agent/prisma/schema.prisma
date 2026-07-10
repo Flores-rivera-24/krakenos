@@ -231,6 +231,8 @@ model Device {
   label     String?
   vendor    String?
   type      String   @default("unknown")
+  /// Icono elegido a mano (US-178), clave del catálogo ProductArt; null = inferido.
+  icon      String?
   notes     String?
   isBlocked Boolean  @default(false)
   /// Pausa de internet hasta este instante (US-111); null = sin pausa.

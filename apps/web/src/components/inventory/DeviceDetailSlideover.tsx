@@ -1,5 +1,6 @@
 import type {
   Device,
+  DeviceIcon,
   DeviceTrafficStats,
   DeviceType,
   RoomWithState,
@@ -7,6 +8,7 @@ import type {
   UserSummary,
   VlanWithCount,
 } from '@krakenos/types';
+import { DEVICE_ICONS } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,13 +17,14 @@ import { AccessSchedules } from '@/components/inventory/AccessSchedules';
 import { PauseInternet } from '@/components/inventory/PauseInternet';
 import { RoomSelect } from '@/components/rooms/RoomSelect';
 import { assignRoom, listRooms } from '@/lib/rooms';
-import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
+import { Callout } from '@/components/ui/callout';
+import { ProductArt } from '@/components/ui/product-art';
 import { Slideover } from '@/components/ui/slideover';
 import { Sparkline } from '@/components/ui/sparkline';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
-import { DEVICE_TYPES, TYPE_LABELS } from '@/lib/devices';
+import { DEVICE_ICON_LABELS, DEVICE_TYPES, TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
 import { listUsers } from '@/lib/users';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
@@ -48,6 +51,8 @@ function Field({ label, value }: { label: string; value: string }) {
 export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [label, setLabel] = useState(device.label ?? '');
   const [type, setType] = useState<DeviceType>(device.type);
+  // Icono elegido a mano (US-178); null = inferido del tipo.
+  const [icon, setIcon] = useState<DeviceIcon | null>(device.icon);
   const [notes, setNotes] = useState(device.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -159,12 +164,26 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     }
   };
 
+  // Identificación asistida (US-178): un toque clasifica el aparato desconocido.
+  const identifyAs = async (t: DeviceType) => {
+    const previous = type;
+    setType(t);
+    try {
+      await api.patch<Device>(`/inventory/devices/${device.id}`, { type: t });
+      toast.success(`Identificado como ${TYPE_LABELS[t]}`);
+    } catch (err) {
+      setType(previous);
+      toast.error(describeError(err, 'No se pudo identificar el dispositivo'));
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     setError(null);
     const body: UpdateDeviceRequest = {
       label: label.trim() === '' ? null : label.trim(),
       type,
+      icon,
       notes: notes.trim() === '' ? null : notes.trim(),
     };
     try {
@@ -217,10 +236,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       subtitle={subtitle}
       footer={footer}
     >
-      {/* Render del producto según el tipo detectado (US-161). */}
+      {/* Render del producto: icono manual (US-178) o inferido del tipo (US-161). */}
       <div className="mb-4 flex items-center gap-4 rounded-lg border border-kr bg-kr-elevated p-4">
         <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-surface shadow-kr-glow-sm">
-          <ProductArt kind={deviceTypeToArtKind(device.type)} className="h-12 w-12" />
+          <ProductArt kind={deviceArtKind({ icon, type })} className="h-12 w-12" />
         </span>
         <div className="min-w-0">
           <p className="truncate text-kr-base font-medium text-kr-primary">
@@ -232,6 +251,36 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           )}
         </div>
       </div>
+
+      {/* Identificación asistida (US-178): la app propone, el usuario confirma. */}
+      {type === 'unknown' && (
+        <div className="mb-4">
+          <Callout variant="info" title="¿Qué es este aparato?">
+            <p className="mb-2">
+              {device.suggestedType
+                ? `Por su fabricante y nombre parece ${TYPE_LABELS[device.suggestedType].toLowerCase()}. ¿Lo es?`
+                : 'Aún no está identificado. Dinos qué es para reconocerlo en toda la app.'}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                ...(device.suggestedType ? [device.suggestedType] : []),
+                ...(['tv', 'phone', 'computer', 'iot'] as DeviceType[]).filter(
+                  (t) => t !== device.suggestedType,
+                ),
+              ].map((t) => (
+                <Button
+                  key={t}
+                  size="sm"
+                  variant={t === device.suggestedType ? 'default' : 'outline'}
+                  onClick={() => void identifyAs(t)}
+                >
+                  {t === device.suggestedType ? `Sí, es ${TYPE_LABELS[t].toLowerCase()}` : TYPE_LABELS[t]}
+                </Button>
+              ))}
+            </div>
+          </Callout>
+        </div>
+      )}
 
       <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
         <Field label="IP" value={device.ip} />
@@ -293,6 +342,22 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             {DEVICE_TYPES.map((t) => (
               <option key={t} value={t}>
                 {TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="d-icon">Icono</Label>
+          <select
+            id="d-icon"
+            className={SELECT_CLASS}
+            value={icon ?? ''}
+            onChange={(e) => setIcon(e.target.value === '' ? null : (e.target.value as DeviceIcon))}
+          >
+            <option value="">Automático (según el tipo)</option>
+            {DEVICE_ICONS.map((k) => (
+              <option key={k} value={k}>
+                {DEVICE_ICON_LABELS[k]}
               </option>
             ))}
           </select>

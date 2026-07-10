@@ -1,4 +1,30 @@
-import type { Device, DeviceType } from '@krakenos/types';
+import type { Device, DeviceIcon, DeviceType } from '@krakenos/types';
+import { deviceTypeToArtKind, type ProductArtKind } from '@/components/ui/product-art';
+
+/**
+ * Ilustración efectiva de un dispositivo (US-178): el icono elegido a mano
+ * prima sobre el inferido por tipo.
+ */
+export function deviceArtKind(device: Pick<Device, 'icon' | 'type'>): ProductArtKind {
+  return (device.icon as ProductArtKind | null) ?? deviceTypeToArtKind(device.type);
+}
+
+/** Etiquetas humanas del catálogo de iconos elegibles (US-178). */
+export const DEVICE_ICON_LABELS: Record<DeviceIcon, string> = {
+  router: 'Router',
+  'access-point': 'Punto de acceso',
+  switch: 'Switch',
+  laptop: 'Ordenador',
+  phone: 'Móvil',
+  tablet: 'Tablet',
+  tv: 'Tele',
+  printer: 'Impresora',
+  'iot-hub': 'Hub IoT',
+  bulb: 'Bombilla',
+  plug: 'Enchufe',
+  camera: 'Cámara',
+  sensor: 'Sensor',
+};
 
 export const DEVICE_TYPES: DeviceType[] = [
   'router',

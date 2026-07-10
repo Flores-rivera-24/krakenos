@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEVICE_TYPES,
   TYPE_LABELS,
+  deviceArtKind,
   filterDevices,
   groupDevicesByType,
 } from '@/lib/devices';
@@ -78,6 +79,14 @@ describe('filterDevices', () => {
     const result = filterDevices(list, '', ['online']);
     expect(result.map((d) => d.id)).not.toContain('c');
     expect(result.map((d) => d.id)).toContain('a');
+  });
+});
+
+describe('deviceArtKind (US-178)', () => {
+  it('el icono manual prima sobre el inferido por tipo; sin icono, se infiere', () => {
+    expect(deviceArtKind({ icon: 'bulb', type: 'computer' })).toBe('bulb');
+    expect(deviceArtKind({ icon: null, type: 'computer' })).toBe('laptop');
+    expect(deviceArtKind({ icon: null, type: 'unknown' })).toBe('unknown');
   });
 });
 

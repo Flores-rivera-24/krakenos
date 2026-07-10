@@ -1,14 +1,27 @@
 import type { AccessPoint, WifiClient, WifiNetworkInfo } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+import { useInventoryStore } from '@/store/inventory.store';
 
 export function NetworksCard() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Apodos del inventario por MAC (US-178): la lista de clientes usa el nombre
+  // amable que la persona ya puso, no el hostname críptico.
+  const devices = useInventoryStore((s) => s.devices);
+  const inventoryLabels = useMemo(
+    () =>
+      new Map(
+        Object.values(devices)
+          .filter((d) => d.label)
+          .map((d) => [d.mac.toLowerCase(), d.label as string]),
+      ),
+    [devices],
+  );
   const [aps, setAps] = useState<AccessPoint[]>([]);
   const [networks, setNetworks] = useState<WifiNetworkInfo[]>([]);
   const [clientsOf, setClientsOf] = useState<{
@@ -135,7 +148,8 @@ export function NetworksCard() {
             <tbody>
               {clientsOf.clients.map((c) => (
                 <tr key={c.mac} className="border-t border-border">
-                  <td className="py-1">{c.hostname ?? c.mac}</td>
+                  {/* Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC. */}
+                  <td className="py-1">{inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}</td>
                   <td className="py-1 font-mono text-xs">{c.ip}</td>
                   <td className="py-1">{c.signalDbm} dBm</td>
                 </tr>
