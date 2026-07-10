@@ -170,7 +170,7 @@ export function QosPage() {
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="qos-down">↓ kbps (0=∞)</Label>
+                  <Label htmlFor="qos-down">Descarga en kbps (0 = sin límite)</Label>
                   <HelpHint content={KBPS_HELP} label="¿Qué son los kbps?" />
                 </div>
                 <Input
@@ -182,7 +182,7 @@ export function QosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="qos-up">↑ kbps (0=∞)</Label>
+                <Label htmlFor="qos-up">Subida en kbps (0 = sin límite)</Label>
                 <Input
                   id="qos-up"
                   value={upText}

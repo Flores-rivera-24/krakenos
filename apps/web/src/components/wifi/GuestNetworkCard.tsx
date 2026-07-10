@@ -87,7 +87,7 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
             id="guest-password"
             type="password"
             value={password}
-            placeholder="••••••••  (dejar vacío para no cambiar)"
+            placeholder="•••••••• (dejar vacío para no cambiar)"
             onChange={(e) => setPassword(e.target.value)}
             disabled={!isAdmin}
             minLength={8}

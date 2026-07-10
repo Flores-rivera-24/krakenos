@@ -54,7 +54,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
 
   const submit = async () => {
     if (days.length === 0) {
-      toast.error('Elige al menos un día');
+      toast.error('Elige al menos un día.');
       return;
     }
     setBusy(true);

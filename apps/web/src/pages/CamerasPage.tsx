@@ -47,7 +47,7 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <VideoOff className="h-8 w-8" />
-            <span className="text-xs">{camera.online ? 'Cargando…' : 'Sin señal'}</span>
+            <span className="text-xs">{camera.online ? 'Conectando…' : 'Sin señal'}</span>
           </div>
         )}
         {camera.online && (

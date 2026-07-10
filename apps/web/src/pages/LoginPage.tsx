@@ -184,7 +184,7 @@ export function LoginPage() {
               Verifica tu identidad con tu dispositivo
             </h1>
             {passkeyStatus === 'cancelled' && (
-              <p className="text-[13px] text-danger">Verificación cancelada — intenta de nuevo</p>
+              <p className="text-[13px] text-danger">Verificación cancelada. Inténtalo de nuevo.</p>
             )}
             {passkeyStatus === 'error' && (
               <p className="text-[13px] text-danger">
