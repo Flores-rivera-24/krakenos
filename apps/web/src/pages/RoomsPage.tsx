@@ -268,7 +268,7 @@ export function RoomsPage() {
         <div>
           <h2 className="text-xl font-semibold">Habitaciones</h2>
           <p className="text-sm text-muted-foreground">
-            Organiza tus dispositivos por estancia y contrólalos en grupo.
+            Organiza tus dispositivos por habitación y contrólalos en grupo.
           </p>
         </div>
         {isAdmin && (
@@ -289,7 +289,7 @@ export function RoomsPage() {
           <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
             <p className="text-kr-secondary">Aún no has creado ninguna habitación.</p>
             <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-              Agrupa tus luces, enchufes y dispositivos por estancia («Salón», «Cocina») para
+              Agrupa tus luces, enchufes y dispositivos por habitación («Salón», «Cocina») para
               manejar tu casa como la piensas y encender o apagar todo de un toque.
             </p>
             {isAdmin ? (

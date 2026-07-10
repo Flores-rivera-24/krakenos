@@ -87,7 +87,7 @@ function DeviceCard({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="mb-2 text-xs text-muted-foreground">{device.room ?? 'Sin estancia'}</p>
+        <p className="mb-2 text-xs text-muted-foreground">{device.room ?? 'Sin habitación'}</p>
 
         {device.kind === 'sensor' && device.reading && (
           <p className="text-2xl font-bold">
