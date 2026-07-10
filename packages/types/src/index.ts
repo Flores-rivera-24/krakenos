@@ -27,3 +27,4 @@ export * from './scene.js';
 export * from './iot-schedule.js';
 export * from './automation.js';
 export * from './presence.js';
+export * from './discovery.js';

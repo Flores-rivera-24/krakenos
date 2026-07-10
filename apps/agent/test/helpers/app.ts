@@ -34,6 +34,8 @@ import { automationsRoutes } from '../../src/modules/automations/automations.rou
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
 import { presenceRoutes } from '../../src/modules/presence/presence.routes.js';
 import { PresenceService } from '../../src/modules/presence/presence.service.js';
+import { discoveryRoutes } from '../../src/modules/discovery/discovery.routes.js';
+import { DiscoveryService } from '../../src/modules/discovery/discovery.service.js';
 import { pushRoutes } from '../../src/modules/push/push.routes.js';
 import { PushService } from '../../src/modules/push/push.service.js';
 import { alertsRoutes } from '../../src/modules/alerts/alerts.routes.js';
@@ -166,6 +168,12 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(presenceRoutes, {
       prefix: '/api/presence',
       service: new PresenceService(app, homeBus),
+    });
+    // Auto-descubrimiento (US-175) con transporte inerte: los tests nunca abren
+    // sockets multicast reales (los de comportamiento inyectan un fake propio).
+    await app.register(discoveryRoutes, {
+      prefix: '/api/discovery',
+      service: new DiscoveryService(app, { probe: async () => [] }),
     });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });

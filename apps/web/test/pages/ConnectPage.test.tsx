@@ -15,6 +15,7 @@ const apiMock = vi.hoisted(() => ({
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 import { ConnectPage } from '@/pages/ConnectPage';
+import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
 function view(domain: string, kinds: { kind: string; label: string; fields?: IntegrationField[]; zeroConfig?: boolean }[]) {
@@ -103,5 +104,79 @@ describe('ConnectPage', () => {
 
     expect(await screen.findByText('PÁGINA VPN')).toBeInTheDocument();
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+/** Tarjetas de sugerencia del auto-descubrimiento (US-175). */
+describe('ConnectPage — detectados en tu red', () => {
+  const HUE_SUGGESTION = {
+    id: 'hue:192.168.1.2',
+    domain: 'iot',
+    kind: 'hue',
+    label: 'Bridge Philips Hue',
+    ip: '192.168.1.2',
+    hostname: 'Hue Bridge',
+    prefill: { bridgeUrl: 'http://192.168.1.2' },
+    source: 'mdns',
+    lastSeen: new Date().toISOString(),
+  };
+
+  const DOMAINS_WITH_HUE = DOMAINS.map((v) =>
+    v.domain === 'iot'
+      ? view('iot', [
+          { kind: 'mock', label: 'Demo', zeroConfig: true },
+          {
+            kind: 'hue',
+            label: 'Philips Hue',
+            fields: [
+              { key: 'bridgeUrl', type: 'url', required: true },
+              { key: 'appKey', type: 'password', required: true, secret: true },
+            ],
+          },
+        ])
+      : v,
+  );
+
+  beforeEach(() => {
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/integrations') return Promise.resolve({ domains: DOMAINS_WITH_HUE });
+      if (path === '/discovery')
+        return Promise.resolve({ suggestions: [HUE_SUGGESTION], scanning: false, lastScanAt: null });
+      return Promise.resolve({});
+    });
+    apiMock.del.mockReset().mockResolvedValue(undefined);
+    useAuthStore.setState({
+      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    });
+    useToastStore.setState({ toasts: [] });
+  });
+
+  it('muestra la sugerencia y abre el asistente precargado con la IP detectada', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText('Bridge Philips Hue')).toBeInTheDocument();
+    expect(screen.getByText(/192\.168\.1\.2/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Conectar' }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    // Avanza al paso "Conecta": el campo llega precargado con lo detectado.
+    await user.click(screen.getByRole('button', { name: 'Siguiente' }));
+    expect(screen.getByLabelText(/Dirección del bridge/)).toHaveValue('http://192.168.1.2');
+  });
+
+  it('descartar una sugerencia llama al API y quita la tarjeta', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText('Bridge Philips Hue');
+    await user.click(screen.getByRole('button', { name: /Descartar Bridge Philips Hue/ }));
+
+    await waitFor(() =>
+      expect(apiMock.del).toHaveBeenCalledWith('/discovery/suggestions/hue%3A192.168.1.2'),
+    );
+    expect(screen.queryByText('Bridge Philips Hue')).not.toBeInTheDocument();
   });
 });

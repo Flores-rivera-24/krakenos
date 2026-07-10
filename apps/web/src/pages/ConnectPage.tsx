@@ -1,14 +1,23 @@
-import type { IntegrationConfigInfo, IntegrationDomain, IntegrationKindSchema } from '@krakenos/types';
+import type {
+  DiscoverySuggestion,
+  IntegrationConfigInfo,
+  IntegrationDomain,
+  IntegrationKindSchema,
+} from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { ProductArt, type ProductArtKind } from '@/components/ui/product-art';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
+import { dismissSuggestion, getDiscovery, scanDiscovery } from '@/lib/discovery';
 import { describeError } from '@/lib/errors';
+import { useAuthStore } from '@/store/auth.store';
+import { toast } from '@/store/toast.store';
 import {
   getGuideByKind,
   guidesByCategory,
@@ -94,8 +103,25 @@ const TIER_HINT: Record<1 | 2 | 3 | 4, string> = {
 
 /** Acción de una tarjeta: abrir el asistente o navegar a otra pantalla. */
 type CardAction =
-  | { type: 'wizard'; domain: IntegrationDomain; kind: string; kindSchema: IntegrationKindSchema; current: IntegrationConfigInfo | null }
+  | {
+      type: 'wizard';
+      domain: IntegrationDomain;
+      kind: string;
+      kindSchema: IntegrationKindSchema;
+      current: IntegrationConfigInfo | null;
+      /** Precarga del formulario desde una sugerencia detectada (US-175). */
+      initialValues?: Record<string, string>;
+    }
   | { type: 'navigate'; to: string };
+
+/** Ilustración por `kind` sugerido por el auto-descubrimiento (US-175). */
+const SUGGESTION_ART: Record<string, ProductArtKind> = {
+  hue: 'bulb',
+  shelly: 'plug',
+  kasa: 'plug',
+  zigbee: 'router',
+  rtsp: 'camera',
+};
 
 export function ConnectPage() {
   const navigate = useNavigate();
@@ -103,6 +129,11 @@ export function ConnectPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState<Extract<CardAction, { type: 'wizard' }> | null>(null);
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Sugerencias del auto-descubrimiento (US-175). Best-effort: si falla, la
+  // página funciona igual (solo desaparece la sección "Detectados en tu red").
+  const [suggestions, setSuggestions] = useState<DiscoverySuggestion[]>([]);
+  const [scanning, setScanning] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -114,11 +145,59 @@ export function ConnectPage() {
     } finally {
       setLoading(false);
     }
+    try {
+      const status = await getDiscovery();
+      // Defensivo: un payload inesperado no debe tumbar el hub de Conectar.
+      setSuggestions(Array.isArray(status.suggestions) ? status.suggestions : []);
+    } catch {
+      setSuggestions([]);
+    }
   }, []);
 
   useEffect(() => {
     void load();
   }, [load]);
+
+  /** Barrido bajo demanda («Buscar dispositivos en mi red»). */
+  const runScan = async () => {
+    setScanning(true);
+    try {
+      const status = await scanDiscovery();
+      const found = Array.isArray(status.suggestions) ? status.suggestions : [];
+      setSuggestions(found);
+      if (found.length === 0) toast.success('Barrido terminado: nada nuevo por ahora');
+    } catch (err) {
+      toast.error(describeError(err, 'No se pudo buscar dispositivos'));
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  /** Descarta una sugerencia (persistido en el servidor). */
+  const dismiss = async (s: DiscoverySuggestion) => {
+    try {
+      await dismissSuggestion(s.id);
+      setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
+    } catch (err) {
+      toast.error(describeError(err, 'No se pudo descartar la sugerencia'));
+    }
+  };
+
+  /** Abre el asistente precargado con lo detectado (US-175). */
+  const onSuggestionClick = (s: DiscoverySuggestion) => {
+    const view = viewByDomain.get(s.domain);
+    if (!view) return;
+    const schema = kindSchemaFor(view, s.kind);
+    if (!schema) return;
+    setActive({
+      type: 'wizard',
+      domain: view.domain,
+      kind: schema.kind,
+      kindSchema: schema,
+      current: view.current,
+      initialValues: s.prefill,
+    });
+  };
 
   const viewByDomain = useMemo(
     () => new Map(views.map((v) => [v.domain, v])),
@@ -219,6 +298,65 @@ export function ConnectPage() {
         </ErrorBanner>
       )}
 
+      {(suggestions.length > 0 || isAdmin) && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-kr-lg font-semibold text-kr-primary">Detectados en tu red</h2>
+              <p className="text-kr-sm text-kr-muted">
+                KrakenOS sondea tu WiFi (solo tu red local, nada sale fuera) y te propone qué
+                conectar. Tú confirmas.
+              </p>
+            </div>
+            {isAdmin && (
+              <Button variant="outline" size="sm" disabled={scanning} onClick={() => void runScan()}>
+                {scanning ? 'Buscando…' : 'Buscar dispositivos'}
+              </Button>
+            )}
+          </div>
+          {suggestions.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-kr bg-kr-surface px-4 py-3 text-kr-sm text-kr-muted">
+              Nada detectado por ahora. Pulsa «Buscar dispositivos» o conecta algo abajo a mano.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {suggestions.map((s) => (
+                <div
+                  key={s.id}
+                  className="group relative flex h-full items-start gap-3 rounded-xl border border-kr-accent-glow bg-kr-surface p-4"
+                >
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-kr-muted bg-kr-elevated">
+                    <ProductArt kind={SUGGESTION_ART[s.kind] ?? 'unknown'} className="h-10 w-10" />
+                  </span>
+                  <span className="min-w-0 flex-1 space-y-1">
+                    <span className="block font-medium text-kr-primary">{s.label}</span>
+                    <span className="block truncate font-mono text-kr-xs text-kr-muted">
+                      {s.ip}
+                      {s.hostname ? ` · ${s.hostname}` : ''}
+                    </span>
+                    <span className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={() => onSuggestionClick(s)}>
+                        Conectar
+                      </Button>
+                      {isAdmin && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          aria-label={`Descartar ${s.label}`}
+                          onClick={() => void dismiss(s)}
+                        >
+                          Descartar
+                        </Button>
+                      )}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
       {loading ? (
         <div className="space-y-6" aria-busy="true">
           {Array.from({ length: 2 }).map((_, s) => (
@@ -262,6 +400,7 @@ export function ConnectPage() {
             kind={active.kind}
             kindSchema={active.kindSchema}
             current={active.current}
+            initialValues={active.initialValues}
             onDone={() => {
               setActive(null);
               void load();
