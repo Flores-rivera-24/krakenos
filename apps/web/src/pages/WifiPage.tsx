@@ -9,9 +9,11 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 
 export function WifiPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [wifi, setWifi] = useState<WifiNetwork | null>(null);
   const [guest, setGuest] = useState<GuestNetwork | null>(null);
@@ -26,9 +28,7 @@ export function WifiPage() {
         setWifi(w);
         setGuest(g);
       })
-      .catch(
-        (err) => active && setError(describeError(err, 'No se pudo cargar la configuración WiFi')),
-      )
+      .catch((err) => active && setError(describeError(err, t('wifi.loadError'))))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -38,11 +38,9 @@ export function WifiPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">Red WiFi</h2>
+        <h2 className="text-xl font-semibold">{t('wifi.title')}</h2>
         <p className="text-sm text-muted-foreground">
-          {isAdmin
-            ? 'Gestiona tu red principal y la de invitados.'
-            : 'Solo lectura — se requiere rol admin para editar.'}
+          {isAdmin ? t('wifi.subtitle.admin') : t('wifi.subtitle.readonly')}
         </p>
       </div>
 
@@ -61,13 +59,10 @@ export function WifiPage() {
       ) : (
         !error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-            <p className="text-kr-secondary">Aún no hay configuración WiFi disponible.</p>
-            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-              La configuración WiFi aparece cuando tu router está conectado a KrakenOS. Conéctalo para
-              gestionar desde aquí el nombre de tu red, la contraseña y la red de invitados.
-            </p>
+            <p className="text-kr-secondary">{t('wifi.empty.title')}</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">{t('wifi.empty.desc')}</p>
             <Link to="/connect" className={buttonVariants()}>
-              Conecta tu router
+              {t('wifi.empty.cta')}
             </Link>
           </div>
         )

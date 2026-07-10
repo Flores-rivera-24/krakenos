@@ -20,6 +20,7 @@ import {
   updateRoom,
 } from '@/lib/rooms';
 import { describeError } from '@/lib/errors';
+import { plural, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
@@ -41,6 +42,7 @@ function RoomTile({
   onEdit: () => void;
   onReload: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const allOn = room.controllableCount > 0 && room.onCount === room.controllableCount;
 
@@ -49,13 +51,15 @@ function RoomTile({
     try {
       const result = await runRoomAction(room.id, { on });
       if (result.failed.length > 0) {
-        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
+        toast.error(
+          t('rooms.actionPartial', { applied: result.applied, failed: result.failed.length }),
+        );
       } else {
-        toast.success(on ? 'Habitación encendida' : 'Habitación apagada');
+        toast.success(on ? t('rooms.turnedOn') : t('rooms.turnedOff'));
       }
       onReload();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo aplicar la acción'));
+      toast.error(describeError(err, t('rooms.actionError')));
     } finally {
       setBusy(false);
     }
@@ -82,9 +86,14 @@ function RoomTile({
                 {room.name}
               </span>
               <span className="block text-kr-xs text-kr-muted">
-                {room.deviceCount} {room.deviceCount === 1 ? 'dispositivo' : 'dispositivos'} ·{' '}
+                {room.deviceCount}{' '}
+                {plural(room.deviceCount, {
+                  one: t('rooms.device.one'),
+                  other: t('rooms.device.other'),
+                })}{' '}
+                ·{' '}
                 {room.iotCount} IoT
-                {room.anyUnreachable && <span className="text-warning"> · sin señal</span>}
+                {room.anyUnreachable && <span className="text-warning">{t('rooms.noSignal')}</span>}
               </span>
             </span>
           </button>
@@ -93,10 +102,10 @@ function RoomTile({
 
         {room.controllableCount > 0 ? (
           <p className="text-kr-sm text-kr-secondary">
-            {room.onCount}/{room.controllableCount} encendido(s)
+            {t('rooms.onCount', { on: room.onCount, total: room.controllableCount })}
           </p>
         ) : (
-          <p className="text-kr-sm text-kr-muted">Sin luces ni enchufes</p>
+          <p className="text-kr-sm text-kr-muted">{t('rooms.noControllable')}</p>
         )}
 
         {canControl && room.controllableCount > 0 && (
@@ -107,7 +116,7 @@ function RoomTile({
               disabled={busy}
               onClick={() => void runAction(true)}
             >
-              Encender
+              {t('rooms.turnOn')}
             </Button>
             <Button
               variant="outline"
@@ -115,7 +124,7 @@ function RoomTile({
               disabled={busy}
               onClick={() => void runAction(false)}
             >
-              Apagar
+              {t('rooms.turnOff')}
             </Button>
           </div>
         )}
@@ -134,6 +143,7 @@ function RoomEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const editing = room !== 'new';
   const [name, setName] = useState(editing ? room.name : '');
   const [icon, setIcon] = useState<RoomIcon>(editing ? room.icon : 'living');
@@ -143,7 +153,7 @@ function RoomEditor({
   const save = async () => {
     const trimmed = name.trim();
     if (trimmed === '') {
-      setError('Ponle un nombre a la habitación.');
+      setError(t('rooms.nameRequired'));
       return;
     }
     setSaving(true);
@@ -151,16 +161,16 @@ function RoomEditor({
     try {
       if (editing) {
         await updateRoom(room.id, { name: trimmed, icon });
-        toast.success('Habitación actualizada');
+        toast.success(t('rooms.updated'));
       } else {
         const body: CreateRoomRequest = { name: trimmed, icon };
         await createRoom(body);
-        toast.success('Habitación creada');
+        toast.success(t('rooms.created'));
       }
       onSaved();
       onClose();
     } catch (err) {
-      setError(describeError(err, 'No se pudo guardar la habitación'));
+      setError(describeError(err, t('rooms.saveError')));
     } finally {
       setSaving(false);
     }
@@ -170,11 +180,11 @@ function RoomEditor({
     if (!editing) return;
     try {
       await deleteRoom(room.id);
-      toast.success('Habitación eliminada');
+      toast.success(t('rooms.deleted'));
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar la habitación'));
+      toast.error(describeError(err, t('rooms.deleteError')));
     }
   };
 
@@ -182,16 +192,16 @@ function RoomEditor({
     <Slideover
       open
       onClose={onClose}
-      title={editing ? 'Editar habitación' : 'Nueva habitación'}
+      title={editing ? t('rooms.editTitle') : t('rooms.newTitle')}
       footer={
         <div className="space-y-2">
           {error && <p className="text-kr-sm text-danger">{error}</p>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar'}
+            {saving ? t('rooms.saving') : t('rooms.save')}
           </Button>
           {editing && (
             <DeleteButton onDelete={remove} variant="destructive" className="w-full">
-              Eliminar habitación
+              {t('rooms.deleteRoom')}
             </DeleteButton>
           )}
         </div>
@@ -199,24 +209,24 @@ function RoomEditor({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="room-name">Nombre</Label>
+          <Label htmlFor="room-name">{t('rooms.name')}</Label>
           <Input
             id="room-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Salón, Cocina, Dormitorio…"
+            placeholder={t('rooms.namePlaceholder')}
             maxLength={60}
           />
         </div>
         <div className="space-y-2">
-          <Label>Icono</Label>
+          <Label>{t('rooms.icon')}</Label>
           <div className="grid grid-cols-5 gap-2">
             {ROOM_ICONS.map((opt) => (
               <button
                 key={opt.icon}
                 type="button"
-                title={opt.label}
-                aria-label={opt.label}
+                title={t(`rooms.icon.${opt.icon}`)}
+                aria-label={t(`rooms.icon.${opt.icon}`)}
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(
@@ -237,6 +247,7 @@ function RoomEditor({
 }
 
 export function RoomsPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [rooms, setRooms] = useState<RoomWithState[] | null>(null);
@@ -252,7 +263,7 @@ export function RoomsPage() {
       .catch((err) => {
         // Sin esto la rama `=== null` dejaba el Skeleton brillando para siempre (AUD-13).
         setRooms((prev) => prev ?? []);
-        setError(describeError(err, 'No se pudieron cargar las habitaciones'));
+        setError(describeError(err, t('rooms.loadError')));
       });
   }, []);
 
@@ -266,13 +277,11 @@ export function RoomsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Habitaciones</h2>
-          <p className="text-sm text-muted-foreground">
-            Organiza tus dispositivos por habitación y contrólalos en grupo.
-          </p>
+          <h2 className="text-xl font-semibold">{t('rooms.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('rooms.subtitle')}</p>
         </div>
         {isAdmin && (
-          <Button onClick={() => setEditor('new')}>Nueva habitación</Button>
+          <Button onClick={() => setEditor('new')}>{t('rooms.newTitle')}</Button>
         )}
       </div>
 
@@ -287,16 +296,13 @@ export function RoomsPage() {
       ) : rooms.length === 0 ? (
         !error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-            <p className="text-kr-secondary">Aún no has creado ninguna habitación.</p>
-            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-              Agrupa tus luces, enchufes y dispositivos por habitación («Salón», «Cocina») para
-              manejar tu casa como la piensas y encender o apagar todo de un toque.
-            </p>
+            <p className="text-kr-secondary">{t('rooms.empty.title')}</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">{t('rooms.empty.desc')}</p>
             {isAdmin ? (
-              <Button onClick={() => setEditor('new')}>Crear la primera habitación</Button>
+              <Button onClick={() => setEditor('new')}>{t('rooms.empty.cta')}</Button>
             ) : (
               <Link to="/iot" className={buttonVariants({ variant: 'outline' })}>
-                Ver dispositivos IoT
+                {t('rooms.empty.viewIot')}
               </Link>
             )}
           </div>

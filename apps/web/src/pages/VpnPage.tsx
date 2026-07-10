@@ -14,13 +14,11 @@ import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getGlossaryEntry } from '@/lib/guides';
+import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
-/** Cómo usar el QR que aparece al crear un dispositivo. */
-const QR_HELP =
-  'Instala la app gratuita de WireGuard en tu móvil. Al crear el dispositivo aquí aparecerá un código QR: escanéalo desde la app y ya podrás conectarte a tu red de casa desde cualquier lugar. El QR solo se muestra una vez.';
-
 export function VpnPage() {
+  const t = useT();
   const [status, setStatus] = useState<VpnStatus | null>(null);
   const [peers, setPeers] = useState<VpnPeer[]>([]);
   const [name, setName] = useState('');
@@ -36,7 +34,7 @@ export function VpnPage() {
         setStatus(s);
         setPeers(p);
       })
-      .catch((err) => setError(describeError(err, 'No se pudo cargar la VPN')));
+      .catch((err) => setError(describeError(err, t('vpn.loadError'))));
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
@@ -51,10 +49,10 @@ export function VpnPage() {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
       setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
-      toast.success('Dispositivo añadido');
+      toast.success(t('vpn.peerAdded'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo añadir el dispositivo'));
+      toast.error(describeError(err, t('vpn.peerAddError')));
     } finally {
       setBusy(false);
     }
@@ -63,10 +61,10 @@ export function VpnPage() {
   const removePeer = async (id: string) => {
     try {
       await api.del(`/vpn/peers/${id}`);
-      toast.success('Dispositivo eliminado');
+      toast.success(t('vpn.peerRemoved'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el dispositivo'));
+      toast.error(describeError(err, t('vpn.peerRemoveError')));
     }
   };
 
@@ -74,15 +72,15 @@ export function VpnPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold">VPN / Acceso remoto</h2>
+          <h2 className="text-xl font-semibold">{t('vpn.title')}</h2>
           <GlossaryHint termKey="vpn" />
         </div>
         <p className="text-sm text-muted-foreground">
-          Conecta tus dispositivos por{' '}
+          {t('vpn.subtitle.before')}
           <GlossaryTerm term="WireGuard" definition={getGlossaryEntry('wireguard')?.short ?? ''}>
             WireGuard
           </GlossaryTerm>
-          . Ningún puerto queda expuesto a internet.
+          {t('vpn.subtitle.after')}
         </p>
       </div>
 
@@ -91,7 +89,7 @@ export function VpnPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Servidor</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('vpn.server')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {loading ? (
@@ -103,22 +101,22 @@ export function VpnPage() {
             ) : status ? (
               <>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Estado</span>
+                  <span className="text-muted-foreground">{t('vpn.status')}</span>
                   <span className={status.enabled ? 'text-green-500' : 'text-muted-foreground'}>
-                    {status.enabled ? 'Activo' : 'Inactivo'}
+                    {status.enabled ? t('vpn.status.active') : t('vpn.status.inactive')}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Endpoint</span>
+                  <span className="text-muted-foreground">{t('vpn.endpoint')}</span>
                   <span className="font-mono text-xs">{status.endpoint ?? '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Dispositivos</span>
+                  <span className="text-muted-foreground">{t('vpn.devices')}</span>
                   <span>{status.peerCount}</span>
                 </div>
               </>
             ) : (
-              <p className="text-kr-muted">No disponible.</p>
+              <p className="text-kr-muted">{t('vpn.unavailable')}</p>
             )}
           </CardContent>
         </Card>
@@ -126,24 +124,24 @@ export function VpnPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <span className="flex items-center gap-1.5">
-              <CardTitle className="text-base text-foreground">Añadir dispositivo</CardTitle>
-              <HelpHint content={QR_HELP} label="¿Cómo funciona el QR?" />
+              <CardTitle className="text-base text-foreground">{t('vpn.addDevice')}</CardTitle>
+              <HelpHint content={t('vpn.qrHelp')} label={t('vpn.qrHelp.label')} />
             </span>
           </CardHeader>
           <CardContent>
             <form onSubmit={addPeer} className="flex items-end gap-3">
               <div className="flex-1 space-y-2">
-                <Label htmlFor="peer-name">Nombre</Label>
+                <Label htmlFor="peer-name">{t('vpn.name')}</Label>
                 <Input
                   id="peer-name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="p. ej. Móvil de Emilio"
+                  placeholder={t('vpn.namePlaceholder')}
                   maxLength={60}
                 />
               </div>
               <Button type="submit" disabled={busy}>
-                {busy ? 'Añadiendo…' : 'Añadir dispositivo'}
+                {busy ? t('vpn.adding') : t('vpn.addDevice')}
               </Button>
             </form>
           </CardContent>
@@ -152,17 +150,17 @@ export function VpnPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-foreground">Dispositivos autorizados</CardTitle>
+          <CardTitle className="text-base text-foreground">{t('vpn.authorized')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-secondary text-secondary-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left">Nombre</th>
-                  <th className="px-3 py-2 text-left">IP VPN</th>
-                  <th className="px-3 py-2 text-left">Clave pública</th>
-                  <th className="px-3 py-2 text-right">Acción</th>
+                  <th className="px-3 py-2 text-left">{t('vpn.col.name')}</th>
+                  <th className="px-3 py-2 text-left">{t('vpn.col.vpnIp')}</th>
+                  <th className="px-3 py-2 text-left">{t('vpn.col.publicKey')}</th>
+                  <th className="px-3 py-2 text-right">{t('vpn.col.action')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,10 +169,9 @@ export function VpnPage() {
                 ) : peers.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">Sin dispositivos. Crea el primero arriba.</p>
+                      <p className="text-kr-muted">{t('vpn.empty.title')}</p>
                       <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        Dale un nombre a tu móvil u ordenador y pulsa «Añadir dispositivo»: obtendrás un QR
-                        para conectarlo a tu red desde cualquier lugar con la app de WireGuard.
+                        {t('vpn.empty.desc')}
                       </p>
                     </td>
                   </tr>
@@ -193,9 +190,9 @@ export function VpnPage() {
                       <td className="px-3 py-2 text-right">
                         <DeleteButton
                           onDelete={() => removePeer(p.id)}
-                          aria-label={`Eliminar ${p.name}`}
+                          aria-label={t('vpn.deleteLabel', { name: p.name })}
                         >
-                          Eliminar
+                          {t('vpn.delete')}
                         </DeleteButton>
                       </td>
                     </tr>

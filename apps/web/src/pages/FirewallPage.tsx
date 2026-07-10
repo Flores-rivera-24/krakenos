@@ -18,22 +18,11 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
-// Etiquetas visibles (el valor de la API no cambia): mismas palabras que ACTION_HELP.
-const ACTION_LABEL: Record<FirewallAction, string> = { deny: 'Bloquear', allow: 'Permitir' };
-const PROTOCOL_LABEL: Record<FirewallProtocol, string> = { any: 'Cualquiera', tcp: 'TCP', udp: 'UDP' };
-
-/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
-const FIREWALL_HELP =
-  'Un cortafuegos es el portero de tu red: cada regla decide si una conexión se permite o se bloquea, según de dónde viene, a dónde va y por qué puerto.';
-const ACTION_HELP = '«Permitir» deja pasar la conexión; «Bloquear» la corta.';
-const SOURCE_HELP =
-  'De dónde viene la conexión. Puede ser una IP (192.168.1.50), un rango en formato CIDR (192.168.1.0/24 = toda esa red) o la dirección MAC de un aparato. Déjalo vacío para «cualquiera».';
-const DEST_HELP =
-  'A dónde va la conexión: una IP, un rango CIDR o un nombre de host. Déjalo vacío para «cualquiera».';
 
 const EMPTY: CreateFirewallRuleRequest = {
   name: '',
@@ -45,6 +34,17 @@ const EMPTY: CreateFirewallRuleRequest = {
 };
 
 export function FirewallPage() {
+  const t = useT();
+  // Etiquetas visibles (el valor de la API no cambia): mismas palabras que firewall.actionHelp.
+  const actionLabel: Record<FirewallAction, string> = {
+    deny: t('firewall.action.deny'),
+    allow: t('firewall.action.allow'),
+  };
+  const protocolLabel: Record<FirewallProtocol, string> = {
+    any: t('firewall.protocol.any'),
+    tcp: 'TCP',
+    udp: 'UDP',
+  };
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [rules, setRules] = useState<FirewallRule[]>([]);
   const [form, setForm] = useState<CreateFirewallRuleRequest>(EMPTY);
@@ -58,7 +58,7 @@ export function FirewallPage() {
     api
       .get<FirewallRule[]>('/firewall/rules')
       .then(setRules)
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las reglas')));
+      .catch((err) => setError(describeError(err, t('firewall.loadError'))));
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
@@ -81,10 +81,10 @@ export function FirewallPage() {
       });
       setForm(EMPTY);
       setPortText('');
-      toast.success('Regla creada');
+      toast.success(t('firewall.ruleCreated'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear la regla'));
+      toast.error(describeError(err, t('firewall.createError')));
     } finally {
       setBusy(false);
     }
@@ -100,10 +100,10 @@ export function FirewallPage() {
   const removeRule = async (id: string) => {
     try {
       await api.del(`/firewall/rules/${id}`);
-      toast.success('Regla eliminada');
+      toast.success(t('firewall.ruleRemoved'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, t('firewall.removeError')));
     }
   };
 
@@ -111,13 +111,10 @@ export function FirewallPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold">Firewall</h2>
-          <HelpHint content={FIREWALL_HELP} label="¿Qué es un cortafuegos?" />
+          <h2 className="text-xl font-semibold">{t('firewall.title')}</h2>
+          <HelpHint content={t('firewall.help')} label={t('firewall.helpLabel')} />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Reglas que permiten o bloquean el tráfico por origen, destino, protocolo y puerto. Se
-          evalúan por prioridad.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('firewall.subtitle')}</p>
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -125,24 +122,24 @@ export function FirewallPage() {
       {isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Nueva regla</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('firewall.newRule')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={addRule} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
               <div className="space-y-2 lg:col-span-2">
-                <Label htmlFor="fw-name">Nombre</Label>
+                <Label htmlFor="fw-name">{t('firewall.name')}</Label>
                 <Input
                   id="fw-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="p. ej. Bloquear cámara"
+                  placeholder={t('firewall.namePlaceholder')}
                   maxLength={60}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="fw-action">Acción</Label>
-                  <HelpHint content={ACTION_HELP} label="¿Qué hace la acción?" />
+                  <Label htmlFor="fw-action">{t('firewall.action')}</Label>
+                  <HelpHint content={t('firewall.actionHelp')} label={t('firewall.actionHelpLabel')} />
                 </div>
                 <select
                   id="fw-action"
@@ -150,13 +147,13 @@ export function FirewallPage() {
                   onChange={(e) => setForm({ ...form, action: e.target.value as FirewallAction })}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="deny">{ACTION_LABEL.deny}</option>
-                  <option value="allow">{ACTION_LABEL.allow}</option>
+                  <option value="deny">{actionLabel.deny}</option>
+                  <option value="allow">{actionLabel.allow}</option>
                 </select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="fw-protocol">Protocolo</Label>
+                  <Label htmlFor="fw-protocol">{t('firewall.protocol')}</Label>
                   <GlossaryHint termKey="protocolo" />
                 </div>
                 <select
@@ -169,51 +166,51 @@ export function FirewallPage() {
                 >
                   {PROTOCOLS.map((p) => (
                     <option key={p} value={p}>
-                      {PROTOCOL_LABEL[p]}
+                      {protocolLabel[p]}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="fw-source">Origen</Label>
-                  <HelpHint content={SOURCE_HELP} label="¿Qué es el origen?" />
+                  <Label htmlFor="fw-source">{t('firewall.source')}</Label>
+                  <HelpHint content={t('firewall.sourceHelp')} label={t('firewall.sourceHelpLabel')} />
                 </div>
                 <Input
                   id="fw-source"
                   value={form.source ?? ''}
                   onChange={(e) => setForm({ ...form, source: e.target.value })}
-                  placeholder="IP/CIDR/MAC"
+                  placeholder={t('firewall.sourcePlaceholder')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="fw-dest">Destino</Label>
-                  <HelpHint content={DEST_HELP} label="¿Qué es el destino?" />
+                  <Label htmlFor="fw-dest">{t('firewall.dest')}</Label>
+                  <HelpHint content={t('firewall.destHelp')} label={t('firewall.destHelpLabel')} />
                 </div>
                 <Input
                   id="fw-dest"
                   value={form.destination ?? ''}
                   onChange={(e) => setForm({ ...form, destination: e.target.value })}
-                  placeholder="IP/CIDR/host"
+                  placeholder={t('firewall.destPlaceholder')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="fw-port">Puerto</Label>
+                  <Label htmlFor="fw-port">{t('firewall.port')}</Label>
                   <GlossaryHint termKey="puerto" />
                 </div>
                 <Input
                   id="fw-port"
                   value={portText}
                   onChange={(e) => setPortText(e.target.value.replace(/\D/g, ''))}
-                  placeholder="cualquiera"
+                  placeholder={t('firewall.portPlaceholder')}
                   inputMode="numeric"
                 />
               </div>
               <div className="flex items-end">
                 <Button type="submit" disabled={busy} className="w-full">
-                  {busy ? 'Creando…' : 'Añadir regla'}
+                  {busy ? t('firewall.creating') : t('firewall.addRule')}
                 </Button>
               </div>
             </form>
@@ -223,21 +220,21 @@ export function FirewallPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-foreground">Reglas</CardTitle>
+          <CardTitle className="text-base text-foreground">{t('firewall.rules')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-secondary text-secondary-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left">Activa</th>
-                  <th className="px-3 py-2 text-left">Nombre</th>
-                  <th className="px-3 py-2 text-left">Acción</th>
-                  <th className="px-3 py-2 text-left">Protocolo</th>
-                  <th className="px-3 py-2 text-left">Origen</th>
-                  <th className="px-3 py-2 text-left">Destino</th>
-                  <th className="px-3 py-2 text-left">Puerto</th>
-                  {isAdmin && <th className="px-3 py-2 text-right">Acción</th>}
+                  <th className="px-3 py-2 text-left">{t('firewall.col.active')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.name')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.action')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.protocol')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.source')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.dest')}</th>
+                  <th className="px-3 py-2 text-left">{t('firewall.col.port')}</th>
+                  {isAdmin && <th className="px-3 py-2 text-right">{t('firewall.col.action')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -246,11 +243,10 @@ export function FirewallPage() {
                 ) : rules.length === 0 ? (
                   <tr>
                     <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">Aún no hay reglas configuradas.</p>
+                      <p className="text-kr-muted">{t('firewall.empty.title')}</p>
                       <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        El cortafuegos decide qué conexiones se permiten y cuáles se bloquean. Sin
-                        reglas, todo el tráfico pasa.{' '}
-                        {isAdmin && 'Crea una arriba para, por ejemplo, impedir que un aparato salga a internet.'}
+                        {t('firewall.empty.desc')}{' '}
+                        {isAdmin && t('firewall.empty.cta')}
                       </p>
                     </td>
                   </tr>
@@ -266,8 +262,8 @@ export function FirewallPage() {
                           checked={r.enabled}
                           onToggle={(next) => toggleRule(r, next)}
                           disabled={!isAdmin}
-                          errorMessage={`No se pudo actualizar ${r.name}`}
-                          aria-label={`Activar regla ${r.name}`}
+                          errorMessage={t('firewall.toggleError', { name: r.name })}
+                          aria-label={t('firewall.toggleLabel', { name: r.name })}
                         />
                       </td>
                       <td className="px-3 py-2">{r.name}</td>
@@ -275,10 +271,10 @@ export function FirewallPage() {
                         <span
                           className={r.action === 'deny' ? 'text-destructive' : 'text-green-500'}
                         >
-                          {ACTION_LABEL[r.action]}
+                          {actionLabel[r.action]}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-muted-foreground">{PROTOCOL_LABEL[r.protocol]}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{protocolLabel[r.protocol]}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
@@ -286,9 +282,9 @@ export function FirewallPage() {
                         <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
                           <DeleteButton
                             onDelete={() => removeRule(r.id)}
-                            aria-label={`Eliminar regla ${r.name}`}
+                            aria-label={t('firewall.deleteLabel', { name: r.name })}
                           >
-                            Eliminar
+                            {t('firewall.delete')}
                           </DeleteButton>
                         </td>
                       )}
