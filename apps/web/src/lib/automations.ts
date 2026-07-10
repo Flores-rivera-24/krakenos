@@ -51,6 +51,8 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${iotName(ctx, trigger.deviceId)} se apaga`;
     case 'sensor-threshold':
       return `${iotName(ctx, trigger.deviceId)} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value}`;
+    case 'energy-threshold':
+      return `${trigger.deviceId ? iotName(ctx, trigger.deviceId) : 'un aparato'} supera su umbral de consumo`;
     case 'time':
       return `a las ${minuteToTimeString(trigger.minute)} (${trigger.days.map((d) => DAY_LABELS[d]).join(' ')})`;
     case 'person-arrived':

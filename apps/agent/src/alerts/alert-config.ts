@@ -12,6 +12,7 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'auth.refresh_reuse', label: 'Posible robo de sesión' },
   { event: 'device.block', label: 'Dispositivo bloqueado' },
   { event: 'inventory.unknown_device', label: 'Dispositivo desconocido' },
+  { event: 'energy.threshold', label: 'Consumo eléctrico anómalo' },
 ];
 
 const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));

@@ -3,6 +3,7 @@ import { Coins, Download, TrendingDown, TrendingUp, Zap } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatCard } from '@/components/dashboard/StatCard';
+import { EnergyAlertsCard } from '@/components/energy/EnergyAlertsCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -226,6 +227,8 @@ export function EnergyPage() {
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && <EnergyAlertsCard />}
 
       {isAdmin && (
         <Card>

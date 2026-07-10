@@ -67,6 +67,22 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger(lt, reading(4, 5))).toBe(false);
   });
 
+  it('energy-threshold: sin deviceId casa con cualquiera; con deviceId, solo ese (US-183)', () => {
+    const ev: HomeEvent = {
+      type: 'energy-threshold',
+      deviceId: 'plug-x',
+      metric: 'sustained-power',
+      value: 600,
+      threshold: 500,
+    };
+    expect(matchesTrigger({ type: 'energy-threshold' }, ev)).toBe(true);
+    expect(matchesTrigger({ type: 'energy-threshold', deviceId: 'plug-x' }, ev)).toBe(true);
+    expect(matchesTrigger({ type: 'energy-threshold', deviceId: 'other' }, ev)).toBe(false);
+    expect(matchesTrigger({ type: 'energy-threshold' }, { type: 'iot-on', deviceId: 'plug-x' })).toBe(
+      false,
+    );
+  });
+
   it('time nunca casa por evento (va por el barrido)', () => {
     expect(
       matchesTrigger({ type: 'time', days: [3], minute: 720 }, { type: 'device-new', mac: 'aa' }),

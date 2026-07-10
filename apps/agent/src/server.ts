@@ -71,6 +71,8 @@ import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
 import { EnergyService } from './modules/energy/energy.service.js';
 import { energyRoutes } from './modules/energy/energy.routes.js';
+import { EnergyAlertService } from './modules/energy/energy-alerts.service.js';
+import { energyAlertsRoutes } from './modules/energy/energy-alerts.routes.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -284,6 +286,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   const energyService = new EnergyService(app, iot);
   await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
 
+  // Alertas de consumo (US-183): evalúa umbrales por dispositivo y, al cruzarse,
+  // publica un evento `energy-threshold` al bus (disparador de automatización) y
+  // lo audita para el despacho multicanal (US-180).
+  const energyAlertService = new EnergyAlertService(app, iot, homeBus);
+  await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
+
   // Informes exportables en CSV (US-109/182): auditoría, inventario, tráfico, energía.
   await app.register(reportsRoutes, {
     prefix: '/api/reports',
@@ -293,6 +301,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.addHook('onClose', async () => trafficService.stop());
   energyService.start();
   app.addHook('onClose', async () => energyService.stop());
+  energyAlertService.start();
+  app.addHook('onClose', async () => energyAlertService.stop());
 
   // Barrido periódico de inventario: usa el intervalo persistido (`scanIntervalSec`,
   // por defecto 60 s) y se reprograma en caliente desde Ajustes (US-47).

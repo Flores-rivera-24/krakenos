@@ -196,6 +196,10 @@ function RuleEditor({
         return { type: triggerType, deviceId: triggerDevice };
       case 'sensor-threshold':
         return { type: 'sensor-threshold', deviceId: triggerDevice, op: sensorOp, value: sensorValue };
+      case 'energy-threshold':
+        // El umbral concreto vive en la regla de alerta de energía (US-183);
+        // aquí solo se elige el dispositivo objetivo (vacío = cualquiera).
+        return { type: 'energy-threshold', ...(triggerDevice ? { deviceId: triggerDevice } : {}) };
       case 'time':
         return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
       case 'person-arrived':
@@ -333,6 +337,7 @@ function RuleEditor({
             <option value="iot-on">{t('automations.trigger.iotOn')}</option>
             <option value="iot-off">{t('automations.trigger.iotOff')}</option>
             <option value="sensor-threshold">{t('automations.trigger.sensorThreshold')}</option>
+            <option value="energy-threshold">{t('automations.trigger.energyThreshold')}</option>
             <option value="time">{t('automations.trigger.time')}</option>
             <option value="person-arrived">{t('automations.trigger.personArrived')}</option>
             <option value="person-left">{t('automations.trigger.personLeft')}</option>
@@ -360,6 +365,21 @@ function RuleEditor({
               value={triggerDevice}
               onChange={(e) => setTriggerDevice(e.target.value)}
             >
+              {controllable.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {triggerType === 'energy-threshold' && (
+            <select
+              aria-label={t('automations.editor.iotDeviceAria')}
+              className={SELECT_CLASS}
+              value={triggerDevice}
+              onChange={(e) => setTriggerDevice(e.target.value)}
+            >
+              <option value="">{t('automations.editor.anyDevice')}</option>
               {controllable.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}

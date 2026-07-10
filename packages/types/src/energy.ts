@@ -1,4 +1,4 @@
-import type { IsoDateTime } from './common.js';
+import type { Id, IsoDateTime } from './common.js';
 
 /**
  * Ventana temporal para las estadísticas de consumo eléctrico (US-181/182).
@@ -30,6 +30,50 @@ export interface DeviceEnergyStats {
   cost: number | null;
   /** Serie agregada en buckets (orden cronológico) para la mini-gráfica. */
   buckets: EnergyBucket[];
+}
+
+/**
+ * Métrica de una alerta de energía (US-183): potencia sostenida (W durante X
+ * minutos) o energía acumulada en el día (Wh).
+ */
+export type EnergyAlertMetric = 'sustained-power' | 'daily-energy';
+
+/** Valores válidos de `EnergyAlertMetric` para derivar schemas/enums. */
+export const ENERGY_ALERT_METRICS = ['sustained-power', 'daily-energy'] as const;
+
+/**
+ * Regla de alerta de consumo por dispositivo (US-183). Cuando se cruza el umbral
+ * se emite un evento `energy-threshold` (usable como disparador de automatización)
+ * y se notifica por el canal preferido (US-180).
+ */
+export interface EnergyAlertRule {
+  id: Id;
+  /** Id del dispositivo en el IotManager. */
+  deviceId: Id;
+  metric: EnergyAlertMetric;
+  /** Umbral: vatios (`sustained-power`) o Wh en el día (`daily-energy`). */
+  threshold: number;
+  /** Minutos que la potencia debe mantenerse por encima (solo `sustained-power`). */
+  sustainMinutes: number;
+  enabled: boolean;
+  createdAt: IsoDateTime;
+}
+
+/** Alta de regla de alerta de energía (`POST /api/energy/alerts`). */
+export interface CreateEnergyAlertRuleRequest {
+  deviceId: Id;
+  metric: EnergyAlertMetric;
+  threshold: number;
+  sustainMinutes?: number;
+  enabled?: boolean;
+}
+
+/** Cambios parciales (`PATCH /api/energy/alerts/:id`). */
+export interface UpdateEnergyAlertRuleRequest {
+  metric?: EnergyAlertMetric;
+  threshold?: number;
+  sustainMinutes?: number;
+  enabled?: boolean;
 }
 
 /**

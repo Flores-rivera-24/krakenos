@@ -179,6 +179,22 @@ model EnergySample {
   @@index([timestamp])
 }
 
+/// Regla de alerta de consumo eléctrico por dispositivo (US-183). `metric` =
+/// `sustained-power` (W durante `sustainMinutes`) o `daily-energy` (Wh en el día).
+/// Al cruzar el umbral se emite un evento `energy-threshold` (disparador de
+/// automatización) y se notifica por el canal preferido (US-180).
+model EnergyAlertRule {
+  id            String   @id @default(cuid())
+  deviceId      String
+  metric        String // 'sustained-power' | 'daily-energy'
+  threshold     Float
+  sustainMinutes Int     @default(5)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([deviceId])
+}
+
 /// Configuración de integraciones editable desde la UI (US-140). Una fila por
 /// dominio (driver/vpn/iot/cameras/firewall/vlan/qos/dns). `config` es un JSON con
 /// los valores; los secretos se guardan cifrados con secretbox (US-139), nunca en

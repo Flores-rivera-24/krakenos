@@ -59,6 +59,8 @@ describe('EnergyPage (US-182)', () => {
     apiMock.get.mockReset().mockImplementation((path: string) => {
       if (path.startsWith('/energy/stats')) return Promise.resolve(stats());
       if (path === '/energy/config') return Promise.resolve(config);
+      if (path === '/energy/alerts') return Promise.resolve([]);
+      if (path === '/iot/devices') return Promise.resolve([]);
       return Promise.resolve({});
     });
     apiMock.put.mockReset().mockResolvedValue(config);

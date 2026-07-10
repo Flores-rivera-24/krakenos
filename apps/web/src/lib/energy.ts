@@ -1,4 +1,11 @@
-import type { EnergyConfig, EnergyRange, EnergyStats } from '@krakenos/types';
+import type {
+  CreateEnergyAlertRuleRequest,
+  EnergyAlertRule,
+  EnergyConfig,
+  EnergyRange,
+  EnergyStats,
+  UpdateEnergyAlertRuleRequest,
+} from '@krakenos/types';
 import { api } from './api';
 
 /** Rangos disponibles del panel de energía (US-182). */
@@ -21,6 +28,27 @@ export function saveEnergyConfig(input: {
   currency?: string;
 }): Promise<EnergyConfig> {
   return api.put<EnergyConfig>('/energy/config', input);
+}
+
+// --- Alertas de consumo (US-183) ---
+
+export function fetchEnergyAlerts(): Promise<EnergyAlertRule[]> {
+  return api.get<EnergyAlertRule[]>('/energy/alerts');
+}
+
+export function createEnergyAlert(input: CreateEnergyAlertRuleRequest): Promise<EnergyAlertRule> {
+  return api.post<EnergyAlertRule>('/energy/alerts', input);
+}
+
+export function updateEnergyAlert(
+  id: string,
+  patch: UpdateEnergyAlertRuleRequest,
+): Promise<EnergyAlertRule> {
+  return api.patch<EnergyAlertRule>(`/energy/alerts/${id}`, patch);
+}
+
+export function deleteEnergyAlert(id: string): Promise<void> {
+  return api.del<void>(`/energy/alerts/${id}`);
 }
 
 /**
