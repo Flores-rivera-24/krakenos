@@ -30,7 +30,7 @@ const rtsp: IntegrationGuide = {
     },
     {
       title: 'Averigua la dirección RTSP',
-      body: 'La dirección RTSP tiene esta forma: rtsp://usuario:contraseña@IP-de-la-camara:554/ruta. El "554" es el puerto habitual y la "ruta" del final depende de la marca (a veces es /stream1, /h264, /Streaming/Channels/101...). La encuentras en el manual de la cámara, en su app, o buscando el modelo por internet.',
+      body: 'La dirección RTSP tiene esta forma: rtsp://usuario:contraseña@IP-de-la-cámara:554/ruta. El "554" es el puerto habitual y la "ruta" del final depende de la marca (a veces es /stream1, /h264, /Streaming/Channels/101...). La encuentras en el manual de la cámara, en su app, o buscando el modelo por internet.',
       command: 'rtsp://usuario:contraseña@192.168.1.20:554/stream1',
       note: 'Consejo: reserva una IP fija a la cámara en el router para que esta dirección no cambie con el tiempo.',
       external: true,
