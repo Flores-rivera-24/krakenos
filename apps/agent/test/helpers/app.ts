@@ -53,6 +53,9 @@ import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.servi
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
 import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from '../../src/modules/wellbeing/wellbeing.routes.js';
+import { MatterBridgeService } from '../../src/modules/matter-bridge/matter-bridge.service.js';
+import { matterBridgeRoutes } from '../../src/modules/matter-bridge/matter-bridge.routes.js';
+import { MockMatterBridgeStack } from '../../src/iot/matter-bridge/stack.js';
 import { ReportsService } from '../../src/modules/reports/reports.service.js';
 import { reportsRoutes } from '../../src/modules/reports/reports.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
@@ -202,6 +205,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(wellbeingRoutes, {
       prefix: '/api/wellbeing',
       service: new WellbeingService(app),
+    });
+    // Puente Matter (US-171): stack mock; comparte el IoT de las rutas IoT.
+    await app.register(matterBridgeRoutes, {
+      prefix: '/api/matter-bridge',
+      service: new MatterBridgeService(app, sharedIot, new MockMatterBridgeStack()),
     });
     await app.register(reportsRoutes, {
       prefix: '/api/reports',

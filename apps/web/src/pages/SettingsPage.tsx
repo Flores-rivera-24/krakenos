@@ -9,6 +9,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
+import { MatterBridgeCard } from '@/components/settings/MatterBridgeCard';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
@@ -427,7 +428,10 @@ export function SettingsPage() {
           )}
 
           {section === 'integraciones' && data && (
-            <IntegrationsSection driver={data.info.driver} isAdmin={isAdmin} />
+            <div className="space-y-6">
+              <IntegrationsSection driver={data.info.driver} isAdmin={isAdmin} />
+              <MatterBridgeCard isAdmin={isAdmin} />
+            </div>
           )}
 
           {section === 'usuarios' && isAdmin && <UsersSection />}
