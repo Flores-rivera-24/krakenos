@@ -75,6 +75,9 @@ import { EnergyAlertService } from './modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from './modules/energy/energy-alerts.routes.js';
 import { WellbeingService } from './modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from './modules/wellbeing/wellbeing.routes.js';
+import { MatterBridgeService } from './modules/matter-bridge/matter-bridge.service.js';
+import { matterBridgeRoutes } from './modules/matter-bridge/matter-bridge.routes.js';
+import { createMatterBridgeStack } from './iot/matter-bridge/stack.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -299,6 +302,25 @@ export async function buildServer(): Promise<FastifyInstance> {
     prefix: '/api/wellbeing',
     service: new WellbeingService(app),
   });
+
+  // Puente Matter (US-171): expone los IoT elegidos a Alexa/Google/Apple. `mock`
+  // en dev; `matter` (dep opcional `@matter/main`) en producción. Opt-in: nace
+  // desactivado y solo publica los dispositivos elegidos. Reconciliado al arrancar.
+  const matterBridgeKind = process.env.MATTER_BRIDGE_KIND === 'matter' ? 'matter' : 'mock';
+  const matterBridgeService = new MatterBridgeService(
+    app,
+    iot,
+    await createMatterBridgeStack(matterBridgeKind),
+  );
+  await app.register(matterBridgeRoutes, {
+    prefix: '/api/matter-bridge',
+    service: matterBridgeService,
+  });
+  // Arranca el puente si estaba activado; un fallo del stack no tumba el arranque.
+  void matterBridgeService.reconcile().catch((err) => {
+    app.log.warn({ err }, '[matter-bridge] no se pudo reconciliar el puente al arrancar');
+  });
+  app.addHook('onClose', async () => matterBridgeService.stop());
 
   // Informes exportables en CSV (US-109/182): auditoría, inventario, tráfico, energía.
   await app.register(reportsRoutes, {

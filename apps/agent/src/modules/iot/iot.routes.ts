@@ -2,7 +2,8 @@ import type { IotManager, UpdateIotStateRequest } from '@krakenos/types';
 import { IOT_ROOM } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { IotError } from '../../iot/index.js';
-import { listIotSchema, updateIotSchema } from './iot.schemas.js';
+import { MatterCommissionError } from '../../iot/matter.iot.js';
+import { commissionMatterSchema, listIotSchema, updateIotSchema } from './iot.schemas.js';
 
 interface IotRoutesOpts {
   iot: IotManager;
@@ -32,6 +33,37 @@ export const iotRoutes: FastifyPluginAsync<IotRoutesOpts> = async (app, opts) =>
         if (err instanceof IotError) {
           const status = err.code === 'IOT_NOT_FOUND' ? 404 : 400;
           return reply.code(status).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
+    },
+  );
+
+  // Comisionar un dispositivo Matter nuevo desde la app (US-172). Solo admin y
+  // auditado. Disponible únicamente si la integración IoT activa soporta Matter
+  // (`commission`); si no, 409 con un mensaje claro. Los fallos del controlador se
+  // devuelven con un código estable que la UI traduce a un mensaje amable.
+  app.post<{ Body: { code: string } }>(
+    '/matter/commission',
+    { schema: commissionMatterSchema, preHandler: app.requireRole('admin') },
+    async (req, reply) => {
+      if (typeof iot.commission !== 'function') {
+        return reply
+          .code(409)
+          .send({ code: 'MATTER_UNAVAILABLE', message: 'No hay una integración Matter activa' });
+      }
+      try {
+        const result = await iot.commission(req.body.code);
+        app.audit({
+          action: 'iot.matter.commission',
+          userId: req.user.sub,
+          detail: result.deviceId,
+          ip: req.ip,
+        });
+        return reply.code(201).send(result);
+      } catch (err) {
+        if (err instanceof MatterCommissionError) {
+          return reply.code(400).send({ code: err.code, message: err.message });
         }
         throw err;
       }

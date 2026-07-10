@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import type { HardwareDriver, UserRole, VpnManager } from '@krakenos/types';
+import type { HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -53,6 +53,9 @@ import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.servi
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
 import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from '../../src/modules/wellbeing/wellbeing.routes.js';
+import { MatterBridgeService } from '../../src/modules/matter-bridge/matter-bridge.service.js';
+import { matterBridgeRoutes } from '../../src/modules/matter-bridge/matter-bridge.routes.js';
+import { MockMatterBridgeStack } from '../../src/iot/matter-bridge/stack.js';
 import { ReportsService } from '../../src/modules/reports/reports.service.js';
 import { reportsRoutes } from '../../src/modules/reports/reports.routes.js';
 import { vpnRoutes } from '../../src/modules/vpn/vpn.routes.js';
@@ -94,6 +97,8 @@ export interface BuildTestAppOptions {
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
   /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
   cameraStore?: JsonStore<CameraDefinition>;
+  /** Gestor IoT para las rutas `/api/iot`; por defecto el `MockIotManager` compartido. */
+  iot?: IotManager;
 }
 
 /**
@@ -203,11 +208,16 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/wellbeing',
       service: new WellbeingService(app),
     });
+    // Puente Matter (US-171): stack mock; comparte el IoT de las rutas IoT.
+    await app.register(matterBridgeRoutes, {
+      prefix: '/api/matter-bridge',
+      service: new MatterBridgeService(app, sharedIot, new MockMatterBridgeStack()),
+    });
     await app.register(reportsRoutes, {
       prefix: '/api/reports',
       service: new ReportsService(app, new TrafficService(app, driver), energyService),
     });
-    await app.register(iotRoutes, { prefix: '/api/iot', iot: new MockIotManager() });
+    await app.register(iotRoutes, { prefix: '/api/iot', iot: opts.iot ?? new MockIotManager() });
     await app.register(tuyaConfigRoutes, {
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),

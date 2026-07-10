@@ -7,6 +7,7 @@ import type {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
+import { MatterCommissionCard } from '@/components/connect/MatterCommissionCard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
@@ -343,6 +344,9 @@ export function ConnectPage() {
           )}
         </section>
       )}
+
+      {/* Añadir un dispositivo Matter escaneando su QR/código (US-172), solo admin. */}
+      {isAdmin && <MatterCommissionCard />}
 
       {loading ? (
         <div className="space-y-6" aria-busy="true">

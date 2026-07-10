@@ -104,6 +104,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/discovery/suggestions/hue%3A192.168.1.2' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
+  // comisionado Matter (US-172): admin-only (el mock no lo soporta → 409, no 403)
+  { method: 'POST', url: '/api/iot/matter/commission', payload: { code: 'MT:ABC123XYZ' } },
   // iot tuya (config de credenciales)
   {
     method: 'POST',
@@ -122,6 +124,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/energy/alerts/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/energy/alerts/x' },
+  // puente Matter (US-171)
+  { method: 'PUT', url: '/api/matter-bridge', payload: { enabled: false } },
   // system
   { method: 'PATCH', url: '/api/system/settings', payload: { key: 'homeName', value: 'Hogar' } },
   { method: 'POST', url: '/api/system/connectivity-test' },

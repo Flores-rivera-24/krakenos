@@ -1,4 +1,9 @@
-import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
+import type {
+  IotDevice,
+  IotManager,
+  MatterCommissionResult,
+  UpdateIotStateRequest,
+} from '@krakenos/types';
 import { IotError } from './mock.iot.js';
 
 /** Una integración miembro del composite, con su prefijo de id. */
@@ -65,5 +70,23 @@ export class CompositeIotManager implements IotManager {
     const entry = split && this.entries.find((e) => e.prefix === split.prefix);
     if (!split || !entry) throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
     return this.prefixed(entry.prefix, await entry.manager.setState(split.bareId, input));
+  }
+
+  /**
+   * Delega el comisionado Matter (US-172) en el primer miembro que lo soporte y
+   * prefija el id del nodo resultante para que case con `listDevices`. Solo se
+   * expone `commission` si hay un miembro Matter.
+   */
+  private matterEntry(): CompositeEntry | undefined {
+    return this.entries.find((e) => typeof e.manager.commission === 'function');
+  }
+
+  get commission(): ((code: string) => Promise<MatterCommissionResult>) | undefined {
+    const entry = this.matterEntry();
+    if (!entry) return undefined;
+    return async (code: string) => {
+      const result = await entry.manager.commission!(code);
+      return { ...result, deviceId: `${entry.prefix}:${result.deviceId}` };
+    };
   }
 }

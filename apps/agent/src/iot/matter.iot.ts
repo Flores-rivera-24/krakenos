@@ -1,14 +1,33 @@
-import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
+import type {
+  IotDevice,
+  IotManager,
+  MatterCommissionErrorCode,
+  MatterCommissionResult,
+  UpdateIotStateRequest,
+} from '@krakenos/types';
 import {
+  buildCommissionArgs,
   buildLevelArgs,
   buildOnOffArgs,
+  classifyCommissionError,
   endpointForCluster,
   nodeToIotDevice,
+  parseCommissionResult,
   parseNodes,
   percentToLevel,
 } from './matter.parsers.js';
 import { MatterClient, type WsTransport } from './matter.transport.js';
 import { IotError } from './mock.iot.js';
+
+/** Error de comisionado Matter con un código estable para la UI (US-172). */
+export class MatterCommissionError extends Error {
+  constructor(
+    readonly code: MatterCommissionErrorCode,
+    message: string,
+  ) {
+    super(message);
+  }
+}
 
 const ONOFF_CLUSTER = 6;
 const LEVEL_CLUSTER = 8;
@@ -39,6 +58,29 @@ export class MatterIotManager implements IotManager {
   /** Cierra el WebSocket al recargar la integración en caliente (US-201). */
   async stop(): Promise<void> {
     await this.transport.dispose?.();
+  }
+
+  /**
+   * Comisiona un dispositivo Matter nuevo a partir de su QR/código (US-172). Usa
+   * `commission_with_code` de python-matter-server; un fallo del controlador se
+   * clasifica en un `MatterCommissionError` con código estable para la UI.
+   */
+  async commission(code: string): Promise<MatterCommissionResult> {
+    let result: unknown;
+    try {
+      result = await this.client.request('commission_with_code', buildCommissionArgs(code));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new MatterCommissionError(classifyCommissionError(message), message);
+    }
+    const parsed = parseCommissionResult(result);
+    if (!parsed) {
+      throw new MatterCommissionError('failed', 'El controlador no devolvió un nodo válido');
+    }
+    // Nombre amable desde el nodo recién añadido (si ya aparece en la lista).
+    const node = (await this.nodes()).find((n) => n.node_id === parsed.nodeId);
+    const name = node ? nodeToIotDevice(node).name : `Matter ${parsed.nodeId}`;
+    return { deviceId: String(parsed.nodeId), name };
   }
 
   private async nodes() {
