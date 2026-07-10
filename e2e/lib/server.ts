@@ -55,6 +55,12 @@ function agentEnv(): NodeJS.ProcessEnv {
     // WebAuthn coherente con el origen fijo (para el flujo 2FA en cuarentena).
     WEBAUTHN_RP_ID: 'localhost',
     WEBAUTHN_ORIGIN: BASE_URL,
+    // Claves JWT explícitas (relativas al cwd del agente): en local venían del
+    // `.env` gitignored, pero en CI no hay `.env` y el agente moría al arrancar
+    // («Falta la variable de entorno obligatoria: JWT_PRIVATE_KEY_PATH») — era
+    // la causa del job e2e rojo en main. Las genera `scripts/gen-keys.sh`.
+    JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
+    JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',
   };
 }
 
