@@ -191,6 +191,28 @@ export const es = {
   'cameras.empty.admin': 'Aún no hay cámaras. Añade la primera con su URL RTSP.',
   'cameras.empty.viewer':
     'Aún no hay cámaras. Pídele a un administrador que añada la primera con su URL RTSP.',
+
+  // --- IoT (US-24) ---
+  'iot.title': 'Dispositivos IoT',
+  'iot.help':
+    'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.',
+  'iot.helpLabel': '¿Qué es IoT?',
+  'iot.subtitle.admin': 'Controla luces, enchufes y sensores.',
+  'iot.subtitle.viewer': 'Solo lectura — requiere rol admin.',
+  'iot.patchError': 'No se pudo aplicar el cambio',
+  'iot.toggleError': 'No se pudo cambiar {name}',
+  'iot.turnOn': 'Encender {name}',
+  'iot.noRoom': 'Sin habitación',
+  'iot.brightness': 'Brillo',
+  'iot.brightnessOf': 'Brillo de {name}',
+  'iot.color': 'Color',
+  'iot.roomUpdated': 'Habitación actualizada',
+  'iot.roomAssignError': 'No se pudo asignar la habitación',
+  'iot.loadError': 'No se pudieron cargar los dispositivos',
+  'iot.empty.title': 'Aún no hay dispositivos IoT.',
+  'iot.empty.desc':
+    'Aquí controlarás tus luces, enchufes y sensores inteligentes. Conecta el primero y aparecerá en esta pantalla para encenderlo o apagarlo desde el móvil.',
+  'iot.empty.cta': 'Conecta tu primera luz o enchufe',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

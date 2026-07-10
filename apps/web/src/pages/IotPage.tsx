@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
@@ -21,10 +22,6 @@ import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { useFavoritesStore } from '@/store/favorites.store';
-
-/** "IoT" no tiene clave de glosario propia: se explica en línea. */
-const IOT_HELP =
-  'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.';
 
 function DeviceCard({
   device,
@@ -41,6 +38,7 @@ function DeviceCard({
   roomId: string | null;
   onAssignRoom: (deviceId: string, roomId: string | null) => void;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState<number | null>(null);
 
   // El on/off va por `OptimisticSwitch`: se mueve ya y revierte si falla (US-96).
@@ -48,7 +46,7 @@ function DeviceCard({
   // si el PATCH falla se avisa con un toast y la UI sigue mostrando la verdad.
   const patch = (body: unknown) =>
     api.patch(`/iot/devices/${device.id}`, body).catch((err) => {
-      toast.error(describeError(err, 'No se pudo aplicar el cambio'));
+      toast.error(describeError(err, t('iot.patchError')));
     });
 
   const commitBrightness = () => {
@@ -80,14 +78,14 @@ function DeviceCard({
               checked={device.on ?? false}
               onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
               disabled={!canControl}
-              errorMessage={`No se pudo cambiar ${device.name}`}
-              aria-label={`Encender ${device.name}`}
+              errorMessage={t('iot.toggleError', { name: device.name })}
+              aria-label={t('iot.turnOn', { name: device.name })}
             />
           )}
         </div>
       </CardHeader>
       <CardContent>
-        <p className="mb-2 text-xs text-muted-foreground">{device.room ?? 'Sin habitación'}</p>
+        <p className="mb-2 text-xs text-muted-foreground">{device.room ?? t('iot.noRoom')}</p>
 
         {device.kind === 'sensor' && device.reading && (
           <p className="text-2xl font-bold">
@@ -101,7 +99,7 @@ function DeviceCard({
         {device.kind === 'light' && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Brillo</span>
+              <span>{t('iot.brightness')}</span>
               <span>{draft ?? device.brightness ?? 0}%</span>
             </div>
             <input
@@ -110,7 +108,7 @@ function DeviceCard({
               max={100}
               value={draft ?? device.brightness ?? 0}
               disabled={!canControl}
-              aria-label={`Brillo de ${device.name}`}
+              aria-label={t('iot.brightnessOf', { name: device.name })}
               onChange={(e) => setDraft(Number(e.target.value))}
               onPointerUp={commitBrightness}
               onKeyUp={commitBrightness}
@@ -121,10 +119,10 @@ function DeviceCard({
 
         {device.kind === 'light' && device.color !== null && (
           <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Color</span>
+            <span className="text-xs text-muted-foreground">{t('iot.color')}</span>
             <input
               type="color"
-              aria-label="Color"
+              aria-label={t('iot.color')}
               value={device.color.hex ?? '#ffffff'}
               disabled={!canControl}
               onChange={(e) => commitColor(e.target.value)}
@@ -150,6 +148,7 @@ function DeviceCard({
 }
 
 export function IotPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   // Operar el hogar (toggle/brillo/color) también para `member` (US-179).
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
@@ -179,7 +178,7 @@ export function IotPage() {
     });
     try {
       await assignRoom({ kind: 'iot', ref: deviceId, roomId });
-      toast.success('Habitación actualizada');
+      toast.success(t('iot.roomUpdated'));
     } catch (err) {
       setIotRoom((prev) => {
         const next = { ...prev };
@@ -187,7 +186,7 @@ export function IotPage() {
         else delete next[deviceId];
         return next;
       });
-      toast.error(describeError(err, 'No se pudo asignar la habitación'));
+      toast.error(describeError(err, t('iot.roomAssignError')));
     }
   };
 
@@ -211,7 +210,7 @@ export function IotPage() {
       .get<IotDevice[]>('/iot/devices')
       .then((list) => active && setDevices(Object.fromEntries(list.map((d) => [d.id, d]))))
       .catch(
-        (err) => active && setError(describeError(err, 'No se pudieron cargar los dispositivos')),
+        (err) => active && setError(describeError(err, t('iot.loadError'))),
       )
       .finally(() => active && setLoading(false));
 
@@ -237,13 +236,11 @@ export function IotPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5">
-            <h2 className="text-xl font-semibold">Dispositivos IoT</h2>
-            <HelpHint content={IOT_HELP} label="¿Qué es IoT?" />
+            <h2 className="text-xl font-semibold">{t('iot.title')}</h2>
+            <HelpHint content={t('iot.help')} label={t('iot.helpLabel')} />
           </div>
           <p className="text-sm text-muted-foreground">
-            {isAdmin
-              ? 'Controla luces, enchufes y sensores.'
-              : 'Solo lectura — requiere rol admin.'}
+            {isAdmin ? t('iot.subtitle.admin') : t('iot.subtitle.viewer')}
           </p>
         </div>
         {stale && list.length > 0 && <StaleBadge className="mt-1" />}
@@ -260,13 +257,10 @@ export function IotPage() {
       ) : list.length === 0 ? (
         !error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-            <p className="text-kr-secondary">Aún no hay dispositivos IoT.</p>
-            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-              Aquí controlarás tus luces, enchufes y sensores inteligentes. Conecta el primero y
-              aparecerá en esta pantalla para encenderlo o apagarlo desde el móvil.
-            </p>
+            <p className="text-kr-secondary">{t('iot.empty.title')}</p>
+            <p className="mx-auto max-w-md text-kr-sm text-kr-muted">{t('iot.empty.desc')}</p>
             <Link to="/connect" className={buttonVariants()}>
-              Conecta tu primera luz o enchufe
+              {t('iot.empty.cta')}
             </Link>
           </div>
         )

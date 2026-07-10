@@ -185,4 +185,26 @@ export const en: Record<TranslationKey, string> = {
   'cameras.empty.admin': 'No cameras yet. Add the first one with its RTSP URL.',
   'cameras.empty.viewer':
     'No cameras yet. Ask an administrator to add the first one with its RTSP URL.',
+
+  // --- IoT (US-24) ---
+  'iot.title': 'IoT devices',
+  'iot.help':
+    'IoT are the “smart” devices around the house (lights, plugs, sensors) that connect to the network. From here you can turn them on and off and see their readings.',
+  'iot.helpLabel': 'What is IoT?',
+  'iot.subtitle.admin': 'Control lights, plugs and sensors.',
+  'iot.subtitle.viewer': 'Read-only — requires admin role.',
+  'iot.patchError': 'Could not apply the change',
+  'iot.toggleError': 'Could not change {name}',
+  'iot.turnOn': 'Turn on {name}',
+  'iot.noRoom': 'No room',
+  'iot.brightness': 'Brightness',
+  'iot.brightnessOf': 'Brightness of {name}',
+  'iot.color': 'Color',
+  'iot.roomUpdated': 'Room updated',
+  'iot.roomAssignError': 'Could not assign the room',
+  'iot.loadError': 'Could not load the devices',
+  'iot.empty.title': 'No IoT devices yet.',
+  'iot.empty.desc':
+    'Here you will control your smart lights, plugs and sensors. Connect the first one and it will appear on this screen so you can turn it on or off from your phone.',
+  'iot.empty.cta': 'Connect your first light or plug',
 };
