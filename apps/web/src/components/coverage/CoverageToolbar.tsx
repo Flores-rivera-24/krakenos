@@ -4,6 +4,7 @@ import { MousePointer2, Ruler, Save, Slash, Wifi } from 'lucide-react';
 import type { CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { Button } from '@/components/ui/button';
 import { WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -20,11 +21,11 @@ interface Props {
   canEdit?: boolean;
 }
 
-const TOOLS: { id: CoverageTool; label: string; Icon: typeof MousePointer2 }[] = [
-  { id: 'select', label: 'Seleccionar', Icon: MousePointer2 },
-  { id: 'wall', label: 'Pared', Icon: Slash },
-  { id: 'ap', label: 'Punto de acceso', Icon: Wifi },
-  { id: 'measure', label: 'Medir', Icon: Ruler },
+const TOOLS: { id: CoverageTool; labelKey: TranslationKey; Icon: typeof MousePointer2 }[] = [
+  { id: 'select', labelKey: 'coverage.toolbar.select', Icon: MousePointer2 },
+  { id: 'wall', labelKey: 'coverage.toolbar.wall', Icon: Slash },
+  { id: 'ap', labelKey: 'coverage.toolbar.ap', Icon: Wifi },
+  { id: 'measure', labelKey: 'coverage.toolbar.measure', Icon: Ruler },
 ];
 
 /**
@@ -42,11 +43,13 @@ export function CoverageToolbar({
   dirty = false,
   canEdit = false,
 }: Props) {
+  const t = useT();
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-kr bg-kr-surface p-2">
-      <div className="flex items-center gap-1" role="group" aria-label="Herramientas del plano">
-        {TOOLS.map(({ id, label, Icon }) => {
+      <div className="flex items-center gap-1" role="group" aria-label={t('coverage.toolbar.groupLabel')}>
+        {TOOLS.map(({ id, labelKey, Icon }) => {
           const active = tool === id;
+          const label = t(labelKey);
           return (
             <button
               key={id}
@@ -71,7 +74,7 @@ export function CoverageToolbar({
 
       {tool === 'wall' && (
         <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-          <span className="hidden md:inline">Material</span>
+          <span className="hidden md:inline">{t('coverage.toolbar.material')}</span>
           <select
             value={wallMaterial}
             disabled={!canEdit}
@@ -90,7 +93,7 @@ export function CoverageToolbar({
       <div className="ml-auto">
         <Button size="sm" onClick={onSave} disabled={!canEdit || saving || !dirty}>
           <Save className="h-4 w-4" aria-hidden />
-          {saving ? 'Guardando…' : dirty ? 'Guardar cambios' : 'Guardado'}
+          {saving ? t('common.saving') : dirty ? t('common.saveChanges') : t('coverage.toolbar.saved')}
         </Button>
       </div>
     </div>

@@ -13,6 +13,7 @@ import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import {
   SCENE_ICONS,
   SCENE_TEMPLATES,
@@ -39,6 +40,7 @@ function SceneTile({
   isAdmin: boolean;
   onEdit: () => void;
 }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
 
   const run = async () => {
@@ -46,12 +48,14 @@ function SceneTile({
     try {
       const result = await runScene(scene.id);
       if (result.failed.length > 0) {
-        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
+        toast.error(
+          t('scenes.partial', { applied: result.applied, failed: result.failed.length }),
+        );
       } else {
-        toast.success(`Escena «${scene.name}» activada`);
+        toast.success(t('scenes.activated', { name: scene.name }));
       }
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo activar la escena'));
+      toast.error(describeError(err, t('scenes.activateError')));
     } finally {
       setBusy(false);
     }
@@ -78,7 +82,7 @@ function SceneTile({
                 {scene.name}
               </span>
               <span className="block text-kr-xs text-kr-muted">
-                {scene.actions.length} dispositivo(s)
+                {t('scenes.deviceCount', { count: scene.actions.length })}
               </span>
             </span>
           </button>
@@ -90,7 +94,7 @@ function SceneTile({
           disabled={busy}
           onClick={() => void run()}
         >
-          {busy ? 'Activando…' : 'Activar'}
+          {busy ? t('scenes.activating') : t('scenes.activate')}
         </Button>
       </CardContent>
     </Card>
@@ -131,6 +135,7 @@ function SceneEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const editing = scene !== null;
   const [name, setName] = useState(scene?.name ?? template?.name ?? '');
   const [icon, setIcon] = useState<SceneIcon>(scene?.icon ?? template?.icon ?? 'scene');
@@ -173,7 +178,7 @@ function SceneEditor({
       }
       return next;
     });
-    toast.info('Estado actual capturado');
+    toast.info(t('scenes.stateCaptured'));
   };
 
   const buildActions = (): SceneAction[] =>
@@ -189,7 +194,7 @@ function SceneEditor({
   const save = async () => {
     const trimmed = name.trim();
     if (trimmed === '') {
-      setError('Ponle un nombre a la escena.');
+      setError(t('scenes.nameRequired'));
       return;
     }
     const actions = buildActions();
@@ -198,15 +203,15 @@ function SceneEditor({
     try {
       if (editing) {
         await updateScene(scene.id, { name: trimmed, icon, actions });
-        toast.success('Escena actualizada');
+        toast.success(t('scenes.updated'));
       } else {
         await createScene({ name: trimmed, icon, actions });
-        toast.success('Escena creada');
+        toast.success(t('scenes.created'));
       }
       onSaved();
       onClose();
     } catch (err) {
-      setError(describeError(err, 'No se pudo guardar la escena'));
+      setError(describeError(err, t('scenes.saveError')));
     } finally {
       setSaving(false);
     }
@@ -216,11 +221,11 @@ function SceneEditor({
     if (!editing) return;
     try {
       await deleteScene(scene.id);
-      toast.success('Escena eliminada');
+      toast.success(t('scenes.deleted'));
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar la escena'));
+      toast.error(describeError(err, t('scenes.deleteError')));
     }
   };
 
@@ -230,16 +235,16 @@ function SceneEditor({
     <Slideover
       open
       onClose={onClose}
-      title={editing ? 'Editar escena' : 'Nueva escena'}
+      title={editing ? t('scenes.editTitle') : t('scenes.new')}
       footer={
         <div className="space-y-2">
           {error && <p className="text-kr-sm text-danger">{error}</p>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
           {editing && (
             <DeleteButton onDelete={remove} variant="destructive" className="w-full">
-              Eliminar escena
+              {t('scenes.deleteScene')}
             </DeleteButton>
           )}
         </div>
@@ -247,17 +252,17 @@ function SceneEditor({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="scene-name">Nombre</Label>
+          <Label htmlFor="scene-name">{t('scenes.nameLabel')}</Label>
           <Input
             id="scene-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Buenas noches, Cine…"
+            placeholder={t('scenes.namePlaceholder')}
             maxLength={60}
           />
         </div>
         <div className="space-y-2">
-          <Label>Icono</Label>
+          <Label>{t('scenes.iconLabel')}</Label>
           <div className="grid grid-cols-5 gap-2">
             {SCENE_ICONS.map((opt) => (
               <button
@@ -281,15 +286,15 @@ function SceneEditor({
         </div>
 
         <div className="flex items-center justify-between">
-          <Label>Dispositivos</Label>
+          <Label>{t('scenes.devicesLabel')}</Label>
           <Button variant="outline" size="sm" onClick={capture} type="button">
-            Capturar estado actual
+            {t('scenes.captureState')}
           </Button>
         </div>
 
         {controllable.length === 0 ? (
           <p className="text-kr-sm text-kr-muted">
-            No hay luces ni enchufes que controlar todavía.
+            {t('scenes.noControllable')}
           </p>
         ) : (
           <ul className="space-y-2">
@@ -302,26 +307,26 @@ function SceneEditor({
                       type="checkbox"
                       checked={row.include}
                       onChange={(e) => update(d, { include: e.target.checked })}
-                      aria-label={`Incluir ${d.name}`}
+                      aria-label={t('scenes.includeDevice', { name: d.name })}
                     />
                     <span className="flex-1 truncate text-kr-sm text-kr-primary">{d.name}</span>
                     {row.include && (
                       <Switch
                         checked={row.on}
                         onCheckedChange={(v) => update(d, { on: v })}
-                        aria-label={`Estado de ${d.name} en la escena`}
+                        aria-label={t('scenes.deviceState', { name: d.name })}
                       />
                     )}
                   </label>
                   {row.include && d.kind === 'light' && row.on && (
                     <div className="mt-2 flex items-center gap-2">
-                      <span className="text-kr-xs text-kr-muted">Brillo</span>
+                      <span className="text-kr-xs text-kr-muted">{t('scenes.brightness')}</span>
                       <input
                         type="range"
                         min={0}
                         max={100}
                         value={row.brightness ?? 100}
-                        aria-label={`Brillo de ${d.name} en la escena`}
+                        aria-label={t('scenes.deviceBrightness', { name: d.name })}
                         onChange={(e) => update(d, { brightness: Number(e.target.value) })}
                         className="flex-1 accent-primary"
                       />
@@ -341,6 +346,7 @@ function SceneEditor({
 }
 
 export function ScenesPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [scenes, setScenes] = useState<Scene[] | null>(null);
   const [devices, setDevices] = useState<IotDevice[]>([]);
@@ -359,9 +365,9 @@ export function ScenesPage() {
       .catch((err) => {
         // Sin esto la rama `=== null` dejaba el Skeleton brillando para siempre (AUD-13).
         setScenes((prev) => prev ?? []);
-        setError(describeError(err, 'No se pudieron cargar las escenas'));
+        setError(describeError(err, t('scenes.loadError')));
       });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     reload();
@@ -374,10 +380,10 @@ export function ScenesPage() {
       .catch((err) => {
         // El editor afirmaba "no hay luces" cuando en realidad falló la carga (AUD-12).
         setDevices([]);
-        setDevicesError(describeError(err, 'No se pudieron cargar los dispositivos IoT'));
+        setDevicesError(describeError(err, t('scenes.devicesLoadError')));
       });
     void useFavoritesStore.getState().load();
-  }, [reload]);
+  }, [reload, t]);
 
   const openNew = (tpl: SceneTemplate | null) => {
     setEditing(null);
@@ -394,12 +400,12 @@ export function ScenesPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Escenas</h2>
+          <h2 className="text-xl font-semibold">{t('scenes.title')}</h2>
           <p className="text-sm text-muted-foreground">
-            Deja varios dispositivos como quieres con un solo toque.
+            {t('scenes.subtitle')}
           </p>
         </div>
-        {isAdmin && <Button onClick={() => openNew(null)}>Nueva escena</Button>}
+        {isAdmin && <Button onClick={() => openNew(null)}>{t('scenes.new')}</Button>}
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -414,10 +420,9 @@ export function ScenesPage() {
       ) : scenes.length === 0 ? (
         !error && (
           <div className="flex flex-col items-center gap-4 rounded-xl border border-kr bg-kr-surface py-12 text-center">
-            <p className="text-kr-secondary">Aún no tienes escenas.</p>
+            <p className="text-kr-secondary">{t('scenes.empty')}</p>
             <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-              Una escena deja tus luces y enchufes como quieres de un toque. Empieza con una
-              sugerencia o crea la tuya.
+              {t('scenes.emptyHint')}
             </p>
             {isAdmin && (
               <div className="flex flex-wrap justify-center gap-2">
@@ -426,7 +431,7 @@ export function ScenesPage() {
                     {sceneGlyph(tpl.icon)} {tpl.name}
                   </Button>
                 ))}
-                <Button onClick={() => openNew(null)}>Crear escena</Button>
+                <Button onClick={() => openNew(null)}>{t('scenes.create')}</Button>
               </div>
             )}
           </div>

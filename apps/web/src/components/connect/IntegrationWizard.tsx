@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Stepper, type StepperStep } from '@/components/ui/stepper';
 import { Switch } from '@/components/ui/switch';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { getGuideByKind, type GuideField } from '@/lib/guides';
 import { saveIntegration, testIntegration } from '@/lib/integrations';
 import { toast } from '@/store/toast.store';
@@ -63,6 +64,7 @@ export function IntegrationWizard({
   initialValues,
   onDone,
 }: IntegrationWizardProps) {
+  const t = useT();
   const guide = getGuideByKind(kind);
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';
@@ -157,7 +159,7 @@ export function IntegrationWizard({
     try {
       setResult(await testIntegration(domain, { kind, config: buildConfig() }));
     } catch (err) {
-      const message = describeError(err, `No se pudo probar ${displayName}`);
+      const message = describeError(err, t('connect.wizard.testError', { name: displayName }));
       setResult({ ok: false, message });
       toast.error(message);
     } finally {
@@ -171,15 +173,13 @@ export function IntegrationWizard({
       const saved = await saveIntegration(domain, { kind, enabled: true, config: buildConfig() });
       if (saved.fallback) {
         // Guardada pero no aplicada: el manager vivo sigue siendo el de .env (US-205).
-        toast.error(
-          `La configuración de ${displayName} se guardó pero no se pudo aplicar; sigue activa la configuración anterior`,
-        );
+        toast.error(t('connect.wizard.saveFallback', { name: displayName }));
       } else {
-        toast.success(`¡${displayName} conectado!`);
+        toast.success(t('connect.wizard.saveSuccess', { name: displayName }));
       }
       onDone();
     } catch (err) {
-      toast.error(describeError(err, `No se pudo guardar ${displayName}`));
+      toast.error(describeError(err, t('connect.wizard.saveError', { name: displayName })));
     } finally {
       setSaving(false);
     }
@@ -190,11 +190,11 @@ export function IntegrationWizard({
   const prepare = (
     <div className="space-y-4">
       <p className="text-kr-sm text-kr-secondary">
-        {guide?.intro ?? `Vamos a configurar ${kindSchema.label}.`}
+        {guide?.intro ?? t('connect.wizard.prepareIntro', { name: kindSchema.label })}
       </p>
       {guide && guide.prerequisites.length > 0 && (
         <div className="rounded-lg border border-kr bg-kr-elevated p-3">
-          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">Qué necesitas</p>
+          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">{t('connect.wizard.prerequisites')}</p>
           <ul className="list-disc space-y-1 pl-5 text-kr-sm text-kr-secondary">
             {guide.prerequisites.map((p, i) => (
               <li key={i}>{p}</li>
@@ -225,8 +225,8 @@ export function IntegrationWizard({
   const connect = (
     <div className="space-y-4">
       <p className="text-kr-sm text-kr-secondary">
-        Rellena los datos. Los marcados con <span className="text-danger">*</span> son
-        obligatorios; el resto puedes dejarlos como están.
+        {t('connect.wizard.connectIntroBefore')} <span className="text-danger">*</span>{' '}
+        {t('connect.wizard.connectIntroRest')}
       </p>
       {fields.map((f) => (
         <FieldRow
@@ -243,13 +243,10 @@ export function IntegrationWizard({
 
   const testSave = (
     <div className="space-y-4">
-      <p className="text-kr-sm text-kr-secondary">
-        Prueba la conexión para confirmar que todo está bien y luego guarda. Si tu dispositivo
-        no es accesible desde este navegador, puedes guardar sin probar.
-      </p>
+      <p className="text-kr-sm text-kr-secondary">{t('connect.wizard.saveIntro')}</p>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={() => void runTest()} disabled={busy}>
-          {testing ? 'Probando…' : 'Probar conexión'}
+          {testing ? t('connect.wizard.testing') : t('connect.wizard.test')}
         </Button>
         <button
           type="button"
@@ -257,13 +254,13 @@ export function IntegrationWizard({
           disabled={busy}
           className="text-kr-sm text-kr-secondary underline underline-offset-2 hover:text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
-          Guardar sin probar
+          {t('connect.wizard.saveWithoutTest')}
         </button>
       </div>
       {result && (
         <Callout
           variant={result.ok ? 'success' : 'danger'}
-          title={result.ok ? 'Conexión correcta' : 'No se pudo conectar'}
+          title={result.ok ? t('connect.wizard.testOk') : t('connect.wizard.testFail')}
         >
           <p>{result.message}</p>
           {result.ok && result.details && Object.keys(result.details).length > 0 && (
@@ -279,7 +276,7 @@ export function IntegrationWizard({
       )}
       {guide && guide.troubleshooting.length > 0 && (
         <div>
-          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">¿Problemas?</p>
+          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">{t('connect.wizard.troubleshooting')}</p>
           <Accordion>
             {guide.troubleshooting.map((t, i) => (
               <AccordionItem key={i} id={`ts-${i}`} title={t.q}>
@@ -293,14 +290,14 @@ export function IntegrationWizard({
   );
 
   const steps: StepperStep[] = [
-    { id: 'prepare', title: 'Prepara', description: displayName, content: prepare },
+    { id: 'prepare', title: t('connect.wizard.stepPrepare'), description: displayName, content: prepare },
   ];
   if (!skipConnect) {
-    steps.push({ id: 'connect', title: 'Conecta', canAdvance: formReady, content: connect });
+    steps.push({ id: 'connect', title: t('connect.wizard.stepConnect'), canAdvance: formReady, content: connect });
   }
   steps.push({
     id: 'save',
-    title: 'Prueba y guarda',
+    title: t('connect.wizard.stepSave'),
     canAdvance: result?.ok === true,
     content: testSave,
   });
@@ -312,7 +309,7 @@ export function IntegrationWizard({
       onStepChange={setStep}
       onComplete={() => void runSave()}
       busy={busy}
-      finishLabel="Guardar y conectar"
+      finishLabel={t('connect.wizard.finish')}
     />
   );
 }
@@ -338,6 +335,7 @@ interface FieldRowProps {
 
 /** Una fila del formulario: etiqueta amable + ayuda contextual + control por tipo. */
 function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps) {
+  const t = useT();
   const id = `intfield-${field.key}`;
   const labelId = `${id}-label`;
   // Sin guía, la clave técnica se humaniza («appKey» → «App key») en vez de
@@ -382,7 +380,7 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={
-          secret && secretStored ? '•••••• (guardado — deja en blanco para conservar)' : placeholder
+          secret && secretStored ? t('connect.wizard.secretStored') : placeholder
         }
         autoComplete={secret ? 'new-password' : undefined}
       />

@@ -9,6 +9,7 @@ import type {
 import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 /** Herramienta activa del lienzo. */
 export type CoverageTool = 'select' | 'wall' | 'ap' | 'measure';
@@ -78,6 +79,7 @@ export function FloorPlanStage({
   pxPerM: pxPerMProp,
   readOnly = false,
 }: Props) {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -237,7 +239,12 @@ export function FloorPlanStage({
           className="absolute inset-0 touch-none select-none"
           style={{ cursor }}
           role="img"
-          aria-label={`Plano ${plan.name}: ${plan.widthM}×${plan.heightM} m con ${accessPoints.length} punto(s) de acceso`}
+          aria-label={t('coverage.stage.planAria', {
+            name: plan.name,
+            width: plan.widthM,
+            height: plan.heightM,
+            count: accessPoints.length,
+          })}
           onPointerDown={onBackgroundPointerDown}
           onPointerMove={onSvgPointerMove}
           onPointerUp={onSvgPointerUp}
@@ -296,7 +303,11 @@ export function FloorPlanStage({
               key={ap.id}
               role="button"
               tabIndex={readOnly ? undefined : 0}
-              aria-label={`${ap.name} (${Math.round(ap.x)}, ${Math.round(ap.y)} m)`}
+              aria-label={t('coverage.stage.apAria', {
+                name: ap.name,
+                x: Math.round(ap.x),
+                y: Math.round(ap.y),
+              })}
               className={readOnly ? undefined : 'cursor-grab active:cursor-grabbing'}
               onPointerDown={(e) => onApPointerDown(e, ap)}
               onClick={() => onSelectAp?.(ap.id)}

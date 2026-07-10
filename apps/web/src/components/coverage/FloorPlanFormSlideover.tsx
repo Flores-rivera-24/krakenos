@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { createFloorPlan, deleteFloorPlan, updateFloorPlan } from '@/lib/coverage';
 import { describeError } from '@/lib/errors';
+import { t, useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -25,7 +26,7 @@ function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('No se pudo leer la imagen'));
+    reader.onerror = () => reject(reader.error ?? new Error(t('coverage.floorPlan.imageReadError')));
     reader.readAsDataURL(file);
   });
 }
@@ -37,6 +38,7 @@ function readAsDataUrl(file: File): Promise<string> {
  * luego en el propio lienzo de la página.
  */
 export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Props) {
+  const t = useT();
   const isEdit = plan != null;
   const [name, setName] = useState(plan?.name ?? '');
   const [widthM, setWidthM] = useState(plan ? String(plan.widthM) : '10');
@@ -62,7 +64,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
     try {
       setBackgroundImage(await readAsDataUrl(file));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cargar la imagen'));
+      toast.error(describeError(err, t('coverage.floorPlan.imageLoadError')));
     }
   };
 
@@ -80,7 +82,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
           backgroundImage,
         };
         saved = await updateFloorPlan(plan.id, body);
-        toast.success('Plano actualizado');
+        toast.success(t('coverage.floorPlan.updated'));
       } else {
         const body: CreateFloorPlanRequest = {
           name: name.trim(),
@@ -89,12 +91,15 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
           backgroundImage,
         };
         saved = await createFloorPlan(body);
-        toast.success('Plano creado');
+        toast.success(t('coverage.floorPlan.created'));
       }
       onSaved(saved);
       onClose();
     } catch (err) {
-      const message = describeError(err, isEdit ? 'No se pudo guardar' : 'No se pudo crear el plano');
+      const message = describeError(
+        err,
+        isEdit ? t('coverage.floorPlan.saveError') : t('coverage.floorPlan.createError'),
+      );
       setError(message);
       toast.error(message);
     } finally {
@@ -108,11 +113,11 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
     setError(null);
     try {
       await deleteFloorPlan(plan.id);
-      toast.success('Plano eliminado');
+      toast.success(t('coverage.floorPlan.deleted'));
       onDeleted?.(plan.id);
       onClose();
     } catch (err) {
-      const message = describeError(err, 'No se pudo eliminar el plano');
+      const message = describeError(err, t('coverage.floorPlan.deleteError'));
       setError(message);
       toast.error(message);
     } finally {
@@ -128,7 +133,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
         disabled={saving || deleting || !canSubmit}
         className="w-full"
       >
-        {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Crear plano'}
+        {saving ? t('common.saving') : isEdit ? t('common.saveChanges') : t('coverage.floorPlan.create')}
       </Button>
       {isEdit && onDeleted && (
         <Button
@@ -137,7 +142,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
           disabled={saving || deleting}
           className="w-full"
         >
-          {deleting ? 'Eliminando…' : 'Eliminar plano'}
+          {deleting ? t('coverage.floorPlan.deleting') : t('coverage.floorPlan.deletePlan')}
         </Button>
       )}
     </div>
@@ -147,27 +152,25 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
     <Slideover
       open
       onClose={onClose}
-      title={isEdit ? 'Editar plano' : 'Nuevo plano'}
-      subtitle={
-        isEdit ? plan.name : 'Define las medidas reales de la planta para calcular la cobertura'
-      }
+      title={isEdit ? t('coverage.floorPlan.editTitle') : t('coverage.floorPlan.newTitle')}
+      subtitle={isEdit ? plan.name : t('coverage.floorPlan.newSubtitle')}
       footer={footer}
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="plan-name">Nombre</Label>
+          <Label htmlFor="plan-name">{t('coverage.floorPlan.name')}</Label>
           <Input
             id="plan-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="p. ej. Planta baja"
+            placeholder={t('coverage.floorPlan.namePlaceholder')}
             maxLength={64}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="plan-width">Ancho (m)</Label>
+            <Label htmlFor="plan-width">{t('coverage.floorPlan.width')}</Label>
             <Input
               id="plan-width"
               type="number"
@@ -178,7 +181,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="plan-height">Alto (m)</Label>
+            <Label htmlFor="plan-height">{t('coverage.floorPlan.height')}</Label>
             <Input
               id="plan-height"
               type="number"
@@ -191,26 +194,24 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="plan-bg">Imagen de fondo (opcional)</Label>
-          <p className="text-kr-xs text-kr-muted">
-            Sube un plano o boceto de tu casa para dibujar las paredes encima.
-          </p>
+          <Label htmlFor="plan-bg">{t('coverage.floorPlan.bgImage')}</Label>
+          <p className="text-kr-xs text-kr-muted">{t('coverage.floorPlan.bgHint')}</p>
           {backgroundImage ? (
             <div className="space-y-2">
               <img
                 src={backgroundImage}
-                alt="Vista previa del plano de fondo"
+                alt={t('coverage.floorPlan.bgPreviewAlt')}
                 className="max-h-40 w-full rounded-md border border-kr object-contain"
               />
               <Button variant="ghost" size="sm" onClick={() => setBackgroundImage(null)}>
                 <ImageOff className="h-4 w-4" aria-hidden />
-                Quitar imagen
+                {t('coverage.floorPlan.removeImage')}
               </Button>
             </div>
           ) : (
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-kr px-3 py-6 text-kr-sm text-kr-secondary hover:bg-kr-elevated">
               <Upload className="h-5 w-5" aria-hidden />
-              Elegir imagen
+              {t('coverage.floorPlan.pickImage')}
               <input
                 id="plan-bg"
                 type="file"
@@ -222,10 +223,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
           )}
         </div>
 
-        <Callout variant="info">
-          Las medidas se usan para escalar el mapa de calor. Ajusta ancho y alto a los metros reales
-          de tu casa para que la predicción sea fiable.
-        </Callout>
+        <Callout variant="info">{t('coverage.floorPlan.measuresNote')}</Callout>
       </div>
     </Slideover>
   );

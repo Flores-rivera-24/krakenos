@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import {
   DAY_LABELS,
   createIotSchedule,
@@ -45,6 +46,7 @@ function ScheduleEditor({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const t = useT();
   const editing = schedule !== null;
   const controllable = devices.filter((d) => d.on !== null);
 
@@ -86,25 +88,25 @@ function ScheduleEditor({
       : { type: 'scene', sceneId };
 
   const save = async () => {
-    if (name.trim() === '') return setError('Ponle un nombre al horario.');
-    if (days.length === 0) return setError('Elige al menos un día.');
-    if (targetType === 'device' && !deviceId) return setError('Elige un dispositivo.');
-    if (targetType === 'scene' && !sceneId) return setError('Elige una escena.');
+    if (name.trim() === '') return setError(t('iotSchedule.nameRequired'));
+    if (days.length === 0) return setError(t('iotSchedule.dayRequired'));
+    if (targetType === 'device' && !deviceId) return setError(t('iotSchedule.deviceRequired'));
+    if (targetType === 'scene' && !sceneId) return setError(t('iotSchedule.sceneRequired'));
     setSaving(true);
     setError(null);
     try {
       const body = { name: name.trim(), days, time: buildTime(), target: buildTarget() };
       if (editing) {
         await updateIotSchedule(schedule.id, body);
-        toast.success('Horario actualizado');
+        toast.success(t('iotSchedule.updated'));
       } else {
         await createIotSchedule(body);
-        toast.success('Horario creado');
+        toast.success(t('iotSchedule.created'));
       }
       onSaved();
       onClose();
     } catch (err) {
-      setError(describeError(err, 'No se pudo guardar el horario'));
+      setError(describeError(err, t('iotSchedule.saveError')));
     } finally {
       setSaving(false);
     }
@@ -114,11 +116,11 @@ function ScheduleEditor({
     if (!editing) return;
     try {
       await deleteIotSchedule(schedule.id);
-      toast.success('Horario eliminado');
+      toast.success(t('iotSchedule.deleted'));
       onSaved();
       onClose();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, t('iotSchedule.deleteError')));
     }
   };
 
@@ -126,16 +128,16 @@ function ScheduleEditor({
     <Slideover
       open
       onClose={onClose}
-      title={editing ? 'Editar horario' : 'Nuevo horario'}
+      title={editing ? t('iotSchedule.editTitle') : t('iotSchedule.new')}
       footer={
         <div className="space-y-2">
           {error && <p className="text-kr-sm text-danger">{error}</p>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar'}
+            {saving ? t('common.saving') : t('common.save')}
           </Button>
           {editing && (
             <DeleteButton onDelete={remove} variant="destructive" className="w-full">
-              Eliminar horario
+              {t('iotSchedule.deleteSchedule')}
             </DeleteButton>
           )}
         </div>
@@ -143,12 +145,12 @@ function ScheduleEditor({
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="sch-name">Nombre</Label>
-          <Input id="sch-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder="Riego, Luces fuera…" />
+          <Label htmlFor="sch-name">{t('iotSchedule.nameLabel')}</Label>
+          <Input id="sch-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={t('iotSchedule.namePlaceholder')} />
         </div>
 
         <div className="space-y-2">
-          <Label>Días</Label>
+          <Label>{t('iotSchedule.daysLabel')}</Label>
           <div className="flex flex-wrap gap-1">
             {DAY_LABELS.map((label, d) => (
               <button
@@ -170,28 +172,28 @@ function ScheduleEditor({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sch-when">Cuándo</Label>
+          <Label htmlFor="sch-when">{t('iotSchedule.whenLabel')}</Label>
           <select
             id="sch-when"
             className={SELECT_CLASS}
             value={timeKind}
             onChange={(e) => setTimeKind(e.target.value as IotScheduleTime['kind'])}
           >
-            <option value="fixed">A una hora fija</option>
-            <option value="sunrise">Al amanecer</option>
-            <option value="sunset">Al atardecer</option>
+            <option value="fixed">{t('iotSchedule.whenFixed')}</option>
+            <option value="sunrise">{t('iotSchedule.whenSunrise')}</option>
+            <option value="sunset">{t('iotSchedule.whenSunset')}</option>
           </select>
           {timeKind === 'fixed' ? (
             <Input
               type="time"
-              aria-label="Hora"
+              aria-label={t('iotSchedule.timeLabel')}
               value={fixedTime}
               onChange={(e) => setFixedTime(e.target.value)}
             />
           ) : (
             <div className="flex items-center gap-2">
               <Label htmlFor="sch-offset" className="text-kr-sm text-kr-secondary">
-                Desfase (min)
+                {t('iotSchedule.offsetLabel')}
               </Label>
               <Input
                 id="sch-offset"
@@ -202,26 +204,26 @@ function ScheduleEditor({
                 onChange={(e) => setOffset(Number(e.target.value))}
                 className="w-24"
               />
-              <span className="text-kr-xs text-kr-muted">negativo = antes</span>
+              <span className="text-kr-xs text-kr-muted">{t('iotSchedule.offsetHint')}</span>
             </div>
           )}
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="sch-target">Qué hacer</Label>
+          <Label htmlFor="sch-target">{t('iotSchedule.targetLabel')}</Label>
           <select
             id="sch-target"
             className={SELECT_CLASS}
             value={targetType}
             onChange={(e) => setTargetType(e.target.value as IotScheduleTarget['type'])}
           >
-            <option value="device">Un dispositivo</option>
-            <option value="scene">Una escena</option>
+            <option value="device">{t('iotSchedule.targetDevice')}</option>
+            <option value="scene">{t('iotSchedule.targetScene')}</option>
           </select>
           {targetType === 'device' ? (
             <div className="space-y-2">
               <select
-                aria-label="Dispositivo"
+                aria-label={t('iotSchedule.deviceAria')}
                 className={SELECT_CLASS}
                 value={deviceId}
                 onChange={(e) => setDeviceId(e.target.value)}
@@ -233,18 +235,18 @@ function ScheduleEditor({
                 ))}
               </select>
               <select
-                aria-label="Acción"
+                aria-label={t('iotSchedule.actionAria')}
                 className={SELECT_CLASS}
                 value={deviceOn ? 'on' : 'off'}
                 onChange={(e) => setDeviceOn(e.target.value === 'on')}
               >
-                <option value="on">Encender</option>
-                <option value="off">Apagar</option>
+                <option value="on">{t('iotSchedule.turnOn')}</option>
+                <option value="off">{t('iotSchedule.turnOff')}</option>
               </select>
             </div>
           ) : (
             <select
-              aria-label="Escena"
+              aria-label={t('iotSchedule.sceneAria')}
               className={SELECT_CLASS}
               value={sceneId}
               onChange={(e) => setSceneId(e.target.value)}
@@ -264,6 +266,7 @@ function ScheduleEditor({
 
 /** Ubicación del hogar (lat/long) para el cálculo solar (US-168). */
 function HomeLocationCard() {
+  const t = useT();
   const [lat, setLat] = useState('');
   const [lon, setLon] = useState('');
   const [saving, setSaving] = useState(false);
@@ -283,9 +286,9 @@ function HomeLocationCard() {
     try {
       await api.patch('/system/settings', { key: 'homeLatitude', value: lat });
       await api.patch('/system/settings', { key: 'homeLongitude', value: lon });
-      toast.success('Ubicación guardada');
+      toast.success(t('iotSchedule.locationSaved'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo guardar la ubicación'));
+      toast.error(describeError(err, t('iotSchedule.locationSaveError')));
     } finally {
       setSaving(false);
     }
@@ -293,21 +296,21 @@ function HomeLocationCard() {
 
   return (
     <div className="rounded-lg border border-kr bg-kr-elevated p-3">
-      <p className="mb-1 text-kr-sm font-medium text-kr-primary">Ubicación del hogar</p>
+      <p className="mb-1 text-kr-sm font-medium text-kr-primary">{t('iotSchedule.locationTitle')}</p>
       <p className="mb-2 text-kr-xs text-kr-muted">
-        Necesaria para los horarios «al amanecer / atardecer».
+        {t('iotSchedule.locationHint')}
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="space-y-1">
-          <Label htmlFor="home-lat" className="text-kr-xs">Latitud</Label>
+          <Label htmlFor="home-lat" className="text-kr-xs">{t('iotSchedule.latitude')}</Label>
           <Input id="home-lat" type="number" value={lat} onChange={(e) => setLat(e.target.value)} className="w-28" placeholder="40.41" />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="home-lon" className="text-kr-xs">Longitud</Label>
+          <Label htmlFor="home-lon" className="text-kr-xs">{t('iotSchedule.longitude')}</Label>
           <Input id="home-lon" type="number" value={lon} onChange={(e) => setLon(e.target.value)} className="w-28" placeholder="-3.70" />
         </div>
         <Button variant="outline" size="sm" disabled={saving} onClick={() => void save()}>
-          Guardar
+          {t('common.save')}
         </Button>
       </div>
     </div>
@@ -324,6 +327,7 @@ export function IotSchedulesSection({
   scenes: Scene[];
   isAdmin: boolean;
 }) {
+  const t = useT();
   const [schedules, setSchedules] = useState<IotSchedule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<IotSchedule | null>(null);
@@ -338,25 +342,30 @@ export function IotSchedulesSection({
       .catch((err) => {
         // No fingir "sin horarios": el fallo se muestra y la lista deja de cargar (AUD-15).
         setSchedules((prev) => prev ?? []);
-        setError(describeError(err, 'No se pudieron cargar los horarios'));
+        setError(describeError(err, t('iotSchedule.loadError')));
       });
-  }, []);
+  }, [t]);
 
   useEffect(() => reload(), [reload]);
 
   const targetLabel = (s: IotSchedule): string => {
     const target = s.target;
     if (target.type === 'scene') {
-      return `Escena: ${scenes.find((x) => x.id === target.sceneId)?.name ?? target.sceneId}`;
+      return t('iotSchedule.targetScenePrefix', {
+        name: scenes.find((x) => x.id === target.sceneId)?.name ?? target.sceneId,
+      });
     }
     const dev = devices.find((d) => d.id === target.deviceId)?.name ?? target.deviceId;
-    return `${dev}: ${target.on === false ? 'apagar' : 'encender'}`;
+    return t('iotSchedule.targetDeviceLine', {
+      device: dev,
+      action: target.on === false ? t('iotSchedule.actionOff') : t('iotSchedule.actionOn'),
+    });
   };
 
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-kr-lg font-semibold text-kr-primary">Programación</h3>
+        <h3 className="text-kr-lg font-semibold text-kr-primary">{t('iotSchedule.title')}</h3>
         {isAdmin && (
           <Button
             variant="outline"
@@ -366,7 +375,7 @@ export function IotSchedulesSection({
               setEditorOpen(true);
             }}
           >
-            Nuevo horario
+            {t('iotSchedule.new')}
           </Button>
         )}
       </div>
@@ -376,11 +385,11 @@ export function IotSchedulesSection({
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       {schedules === null ? (
-        <LoadingLine label="Cargando horarios…" />
+        <LoadingLine label={t('iotSchedule.loading')} />
       ) : schedules.length === 0 ? (
         !error && (
           <p className="text-kr-sm text-kr-muted">
-            Programa luces y enchufes por horario (riego a las 7:00, luces al atardecer…).
+            {t('iotSchedule.empty')}
           </p>
         )
       ) : (
@@ -400,7 +409,7 @@ export function IotSchedulesSection({
                 className="min-w-0 flex-1 text-left disabled:cursor-default"
               >
                 <span className="block truncate text-kr-sm text-kr-primary">
-                  {s.name} {!s.enabled && <span className="text-kr-muted">(desactivado)</span>}
+                  {s.name} {!s.enabled && <span className="text-kr-muted">{t('iotSchedule.disabled')}</span>}
                 </span>
                 <span className="block truncate text-kr-xs text-kr-muted">
                   {formatScheduleTime(s.time)} · {s.days.map((d) => DAY_LABELS[d]).join(' ')} ·{' '}

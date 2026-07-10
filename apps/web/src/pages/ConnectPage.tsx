@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { dismissSuggestion, getDiscovery, scanDiscovery } from '@/lib/discovery';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import {
@@ -94,11 +95,11 @@ const SECTION_ORDER: GuideCategory[] = [
 ];
 
 /** Pista de dificultad para una persona no técnica. */
-const TIER_HINT: Record<1 | 2 | 3 | 4, string> = {
-  1: 'Muy fácil',
-  2: 'Fácil',
-  3: 'Intermedio',
-  4: 'Avanzado',
+const TIER_HINT_KEY: Record<1 | 2 | 3 | 4, TranslationKey> = {
+  1: 'connect.tier.veryEasy',
+  2: 'connect.tier.easy',
+  3: 'connect.tier.intermediate',
+  4: 'connect.tier.advanced',
 };
 
 /** Acción de una tarjeta: abrir el asistente o navegar a otra pantalla. */
@@ -124,6 +125,7 @@ const SUGGESTION_ART: Record<string, ProductArtKind> = {
 };
 
 export function ConnectPage() {
+  const t = useT();
   const navigate = useNavigate();
   const [views, setViews] = useState<DomainView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +143,7 @@ export function ConnectPage() {
     try {
       setViews(await getIntegrations());
     } catch (err) {
-      setError(describeError(err, 'No se pudo cargar el catálogo de integraciones'));
+      setError(describeError(err, t('connect.loadError')));
     } finally {
       setLoading(false);
     }
@@ -152,7 +154,7 @@ export function ConnectPage() {
     } catch {
       setSuggestions([]);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void load();
@@ -165,9 +167,9 @@ export function ConnectPage() {
       const status = await scanDiscovery();
       const found = Array.isArray(status.suggestions) ? status.suggestions : [];
       setSuggestions(found);
-      if (found.length === 0) toast.success('Barrido terminado: nada nuevo por ahora');
+      if (found.length === 0) toast.success(t('connect.discovery.scanEmpty'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo buscar dispositivos'));
+      toast.error(describeError(err, t('connect.discovery.scanError')));
     } finally {
       setScanning(false);
     }
@@ -179,7 +181,7 @@ export function ConnectPage() {
       await dismissSuggestion(s.id);
       setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo descartar la sugerencia'));
+      toast.error(describeError(err, t('connect.discovery.dismissError')));
     }
   };
 
@@ -264,14 +266,11 @@ export function ConnectPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8">
       <header className="space-y-3">
-        <h1 className="text-kr-2xl font-semibold text-kr-primary">¿Qué quieres conectar?</h1>
-        <p className="max-w-2xl text-kr-base text-kr-secondary">
-          Elige el tipo de aparato o función y te guiamos paso a paso, sin tecnicismos. No
-          necesitas salir de aquí ni leer manuales.
-        </p>
-        <Callout variant="info" title="¿Solo quieres explorar?">
-          Activa el <strong>Modo demostración</strong> en «Tu red y router» para probar KrakenOS con
-          una casa simulada, sin ningún aparato real.
+        <h1 className="text-kr-2xl font-semibold text-kr-primary">{t('connect.title')}</h1>
+        <p className="max-w-2xl text-kr-base text-kr-secondary">{t('connect.subtitle')}</p>
+        <Callout variant="info" title={t('connect.demoCallout.title')}>
+          {t('connect.demoCallout.before')} <strong>{t('connect.demoCallout.strong')}</strong>{' '}
+          {t('connect.demoCallout.rest')}
         </Callout>
       </header>
 
@@ -283,7 +282,7 @@ export function ConnectPage() {
             onClick={() => void load()}
             className="underline underline-offset-2 hover:text-kr-primary"
           >
-            Reintentar
+            {t('connect.retry')}
           </button>
         </ErrorBanner>
       )}
@@ -292,21 +291,18 @@ export function ConnectPage() {
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-kr-lg font-semibold text-kr-primary">Detectados en tu red</h2>
-              <p className="text-kr-sm text-kr-muted">
-                KrakenOS sondea tu WiFi (solo tu red local, nada sale fuera) y te propone qué
-                conectar. Tú confirmas.
-              </p>
+              <h2 className="text-kr-lg font-semibold text-kr-primary">{t('connect.discovery.title')}</h2>
+              <p className="text-kr-sm text-kr-muted">{t('connect.discovery.subtitle')}</p>
             </div>
             {isAdmin && (
               <Button variant="outline" size="sm" disabled={scanning} onClick={() => void runScan()}>
-                {scanning ? 'Buscando…' : 'Buscar dispositivos'}
+                {scanning ? t('connect.discovery.scanning') : t('connect.discovery.scan')}
               </Button>
             )}
           </div>
           {suggestions.length === 0 ? (
             <p className="rounded-xl border border-dashed border-kr bg-kr-surface px-4 py-3 text-kr-sm text-kr-muted">
-              Nada detectado por ahora. Pulsa «Buscar dispositivos» o conecta algo abajo a mano.
+              {t('connect.discovery.empty')}
             </p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -326,16 +322,16 @@ export function ConnectPage() {
                     </span>
                     <span className="flex gap-2 pt-1">
                       <Button size="sm" onClick={() => onSuggestionClick(s)}>
-                        Conectar
+                        {t('connect.discovery.connect')}
                       </Button>
                       {isAdmin && (
                         <Button
                           size="sm"
                           variant="ghost"
-                          aria-label={`Descartar ${s.label}`}
+                          aria-label={t('connect.discovery.dismissAria', { name: s.label })}
                           onClick={() => void dismiss(s)}
                         >
-                          Descartar
+                          {t('connect.discovery.dismiss')}
                         </Button>
                       )}
                     </span>
@@ -382,8 +378,10 @@ export function ConnectPage() {
         <Slideover
           open
           onClose={() => setActive(null)}
-          title={`Conectar ${getGuideByKind(active.kind)?.displayName ?? active.kindSchema.label}`}
-          subtitle="Te guiamos paso a paso"
+          title={t('connect.wizardTitle', {
+            name: getGuideByKind(active.kind)?.displayName ?? active.kindSchema.label,
+          })}
+          subtitle={t('connect.wizardSubtitle')}
         >
           <IntegrationWizard
             domain={active.domain}
@@ -410,6 +408,7 @@ interface ConnectCardProps {
 
 /** Tarjeta clicable de una integración: render del producto + nombre + dificultad + estado. */
 function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
+  const t = useT();
   return (
     <button
       type="button"
@@ -425,10 +424,10 @@ function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
       <span className="min-w-0 flex-1 space-y-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-kr-primary">{guide.displayName}</span>
-          {connected && <Badge variant="online">✓ Conectado</Badge>}
+          {connected && <Badge variant="online">{t('connect.connectedBadge')}</Badge>}
         </span>
         {guide.vendor && <span className="block truncate text-kr-xs text-kr-muted">{guide.vendor}</span>}
-        <span className="block text-kr-xs text-kr-secondary">{TIER_HINT[guide.tier]}</span>
+        <span className="block text-kr-xs text-kr-secondary">{t(TIER_HINT_KEY[guide.tier])}</span>
       </span>
     </button>
   );
