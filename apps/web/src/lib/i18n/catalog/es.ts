@@ -740,6 +740,9 @@ export const es = {
   'automations.action.deviceBlock': 'Bloquear internet',
   'automations.action.devicePause': 'Pausar internet',
   'automations.action.notify': 'Avisarme',
+
+  // --- Glosario (US-144/150) ---
+  'glossary.whatIs': '¿Qué es {term}?',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

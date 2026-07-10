@@ -17,6 +17,7 @@ import { Stepper, type StepperStep } from '@/components/ui/stepper';
 import { Switch } from '@/components/ui/switch';
 import { describeError } from '@/lib/errors';
 import { getGuideByKind, type GuideField } from '@/lib/guides';
+import { useLocale } from '@/lib/i18n';
 import { saveIntegration, testIntegration } from '@/lib/integrations';
 import { toast } from '@/store/toast.store';
 
@@ -63,6 +64,7 @@ export function IntegrationWizard({
   initialValues,
   onDone,
 }: IntegrationWizardProps) {
+  useLocale(); // re-renderiza al cambiar de idioma: `getGuideByKind` devuelve la guía localizada
   const guide = getGuideByKind(kind);
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';

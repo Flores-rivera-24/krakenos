@@ -178,15 +178,3 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     long: 'Para que KrakenOS controle tus luces Hue, el bridge tiene que darle permiso una vez. Pulsas el botón físico del bridge y él genera esta clave, que luego se guarda para no tener que repetir el permiso.',
   },
 };
-
-/** Devuelve la entrada del glosario por su clave, o undefined si no existe. */
-export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
-  return GLOSSARY[key];
-}
-
-/** Lista todas las entradas del glosario ordenadas alfabéticamente por término. */
-export function glossaryEntries(): (GlossaryEntry & { key: string })[] {
-  return Object.entries(GLOSSARY)
-    .map(([key, entry]) => ({ key, ...entry }))
-    .sort((a, b) => a.term.localeCompare(b.term, 'es'));
-}

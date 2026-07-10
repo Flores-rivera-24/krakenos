@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { HelpHint } from '@/components/ui/help-hint';
 import { getGlossaryEntry } from '@/lib/guides';
+import { useT } from '@/lib/i18n';
 
 export interface GlossaryHintProps {
   /** Clave del glosario (`@/lib/guides`), p. ej. "ssid". */
@@ -20,6 +21,7 @@ export interface GlossaryHintProps {
  * llano; si tampoco lo hay, no renderiza nada.
  */
 export function GlossaryHint({ termKey, fallback, placement }: GlossaryHintProps) {
+  const t = useT();
   const entry = getGlossaryEntry(termKey);
   if (!entry) {
     return fallback ? <HelpHint content={fallback} placement={placement} /> : null;
@@ -27,7 +29,7 @@ export function GlossaryHint({ termKey, fallback, placement }: GlossaryHintProps
   return (
     <HelpHint
       placement={placement}
-      label={`¿Qué es ${entry.term}?`}
+      label={t('glossary.whatIs', { term: entry.term })}
       content={
         <span className="block">
           <strong className="text-kr-primary">{entry.term}.</strong> {entry.short}
