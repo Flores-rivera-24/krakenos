@@ -7,6 +7,8 @@ export default tseslint.config(
     ignores: [
       '**/dist/**',
       '**/node_modules/**',
+      // Worktrees transitorios de agentes/editor (checkouts espejo; no son fuente a lintar).
+      '**/.claude/**',
       '**/*.config.js',
       '**/prisma/**',
       // Scripts de utilidad Node sueltos (.mjs con globals de Node, p. ej. medición de contraste).
