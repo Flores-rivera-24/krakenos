@@ -3,7 +3,7 @@
  * Se mantienen alineados con los tipos de `@krakenos/types`.
  */
 import { errorResponse } from '../common.schemas.js';
-import { USER_ROLES } from '@krakenos/types';
+import { UI_MODES, USER_ROLES } from '@krakenos/types';
 
 const userResponse = {
   type: 'object',
@@ -12,10 +12,11 @@ const userResponse = {
     email: { type: 'string', format: 'email' },
     displayName: { type: 'string' },
     role: { type: 'string', enum: USER_ROLES },
+    uiMode: { type: 'string', enum: UI_MODES },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'],
+  required: ['id', 'email', 'displayName', 'role', 'uiMode', 'createdAt', 'updatedAt'],
 } as const;
 
 // El refresh token NO va en el cuerpo (US-91): viaja en la cookie httpOnly.
@@ -117,6 +118,17 @@ export const listSessionsSchema = {
 // Cierra las demás sesiones; la actual se identifica por la cookie (US-91), sin cuerpo.
 export const revokeSessionsSchema = {
   response: { 204: { type: 'null' } },
+} as const;
+
+/** Cambio del modo de interfaz propio (US-176) — autoservicio, solo presentación. */
+export const updateUiModeSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['uiMode'],
+    properties: { uiMode: { type: 'string', enum: UI_MODES } },
+  },
+  response: { 200: userResponse },
 } as const;
 
 /** Cambio de la propia contraseña (US-101): exige la actual + la nueva. */

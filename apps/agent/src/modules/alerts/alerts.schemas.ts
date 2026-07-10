@@ -3,12 +3,13 @@
 const alertRule = {
   type: 'object',
   additionalProperties: false,
-  required: ['event', 'label', 'push', 'email'],
+  required: ['event', 'label', 'push', 'email', 'telegram'],
   properties: {
     event: { type: 'string' },
     label: { type: 'string' },
     push: { type: 'boolean' },
     email: { type: 'boolean' },
+    telegram: { type: 'boolean' },
   },
 } as const;
 
@@ -27,7 +28,11 @@ export const updateAlertRuleSchema = {
     type: 'object',
     additionalProperties: false,
     minProperties: 1,
-    properties: { push: { type: 'boolean' }, email: { type: 'boolean' } },
+    properties: {
+      push: { type: 'boolean' },
+      email: { type: 'boolean' },
+      telegram: { type: 'boolean' },
+    },
   },
   response: { 200: alertRule },
 } as const;

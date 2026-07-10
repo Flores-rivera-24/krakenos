@@ -12,6 +12,7 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
+import { UiModeCard } from '@/components/settings/UiModeCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
@@ -316,6 +317,19 @@ export function SettingsPage() {
                       </div>
                     </Setting>
                   )}
+                  <Setting label="Resumen del hogar">
+                    <select
+                      className={SELECT_CLASS}
+                      aria-label="Resumen del hogar"
+                      value={setting('digestFrequency')}
+                      disabled={!isAdmin}
+                      onChange={(e) => void patch('digestFrequency', e.target.value)}
+                    >
+                      <option value="off">Apagado</option>
+                      <option value="daily">Diario (08:00)</option>
+                      <option value="weekly">Semanal (lunes 08:00)</option>
+                    </select>
+                  </Setting>
                 </CardContent>
               </Card>
 
@@ -434,6 +448,8 @@ export function SettingsPage() {
                   </dl>
                 </CardContent>
               </Card>
+
+              <UiModeCard />
 
               <ChangePasswordCard />
 

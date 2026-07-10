@@ -80,14 +80,18 @@ export const MOBILE_PRIMARY: NavItem[] = [CONNECT, DASHBOARD, DEVICES, IOT, TRAF
 export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i));
 
 /**
- * Grupos visibles según el rol del hogar (US-179) — solo presentación, la
- * autoridad es del servidor:
+ * Grupos visibles según el rol del hogar (US-179) y el modo de interfaz
+ * (US-176) — solo presentación, la autoridad es del servidor:
  * - `admin`/`viewer`: todo (viewer ya ve solo-lectura).
  * - `member`: sin «Red avanzada» (opera el hogar, no gestiona la red).
  * - `kid`/`guest`: UI reducida — Dashboard, Hogar básico y Ajustes (su perfil).
+ * - `uiMode === 'simple'`: además, sin «Red avanzada» para cualquier rol
+ *   (VPN/Firewall/VLAN/QoS/DNS son jerga de red). Ausente = `advanced`.
  */
-export function navGroupsForRole(role?: string): NavGroup[] {
-  if (role === 'member') return NAV_GROUPS.filter((g) => g.label !== 'Red avanzada');
+export function navGroupsForRole(role?: string, uiMode?: string): NavGroup[] {
+  const base =
+    uiMode === 'simple' ? NAV_GROUPS.filter((g) => g.label !== 'Red avanzada') : NAV_GROUPS;
+  if (role === 'member') return base.filter((g) => g.label !== 'Red avanzada');
   if (role === 'kid' || role === 'guest') {
     return [
       { label: 'General', items: [DASHBOARD] },
@@ -95,12 +99,15 @@ export function navGroupsForRole(role?: string): NavGroup[] {
       { label: 'Sistema', items: [SETTINGS] },
     ];
   }
-  return NAV_GROUPS;
+  return base;
 }
 
-/** Bottom-nav móvil filtrada al conjunto visible del rol (US-179). */
-export function mobileNavForRole(role?: string): { primary: NavItem[]; secondary: NavItem[] } {
-  const allowed = new Set(navGroupsForRole(role).flatMap((g) => g.items));
+/** Bottom-nav móvil filtrada al conjunto visible del rol y modo (US-179/US-176). */
+export function mobileNavForRole(
+  role?: string,
+  uiMode?: string,
+): { primary: NavItem[]; secondary: NavItem[] } {
+  const allowed = new Set(navGroupsForRole(role, uiMode).flatMap((g) => g.items));
   return {
     primary: MOBILE_PRIMARY.filter((i) => allowed.has(i)),
     secondary: MOBILE_SECONDARY.filter((i) => allowed.has(i)),

@@ -1,7 +1,7 @@
 import type { Device } from '@krakenos/types';
-import { ProductArt, deviceTypeToArtKind } from '@/components/ui/product-art';
+import { ProductArt } from '@/components/ui/product-art';
 import { StatusDot } from '@/components/ui/status-dot';
-import { TYPE_LABELS } from '@/lib/devices';
+import { TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -29,7 +29,7 @@ export function DeviceCard({ device, onSelect }: Props) {
     >
       <div className="flex items-start gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-kr-muted bg-kr-elevated transition-colors group-hover:border-kr-accent-glow">
-          <ProductArt kind={deviceTypeToArtKind(device.type)} className="h-9 w-9" />
+          <ProductArt kind={deviceArtKind(device)} className="h-9 w-9" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-kr-primary">{name}</p>

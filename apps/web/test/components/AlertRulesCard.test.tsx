@@ -15,8 +15,8 @@ import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { useToastStore } from '@/store/toast.store';
 
 const RULES = [
-  { event: 'device.block', label: 'Dispositivo bloqueado', push: true, email: false },
-  { event: 'auth.login_failed', label: 'Login fallido', push: true, email: false },
+  { event: 'device.block', label: 'Dispositivo bloqueado', push: true, email: false, telegram: false },
+  { event: 'auth.login_failed', label: 'Login fallido', push: true, email: false, telegram: false },
 ];
 
 describe('AlertRulesCard — reglas de alerta (US-112)', () => {
@@ -34,6 +34,19 @@ describe('AlertRulesCard — reglas de alerta (US-112)', () => {
     await user.click(screen.getByRole('switch', { name: 'Email: Dispositivo bloqueado' }));
     await waitFor(() =>
       expect(apiMock.patch).toHaveBeenCalledWith('/alerts/rules/device.block', { email: true }),
+    );
+  });
+
+  it('activa el canal Telegram de un evento (US-180)', async () => {
+    const user = userEvent.setup();
+    render(<AlertRulesCard />);
+    await screen.findByText('Login fallido');
+
+    await user.click(screen.getByRole('switch', { name: 'Telegram: Login fallido' }));
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith('/alerts/rules/auth.login_failed', {
+        telegram: true,
+      }),
     );
   });
 });

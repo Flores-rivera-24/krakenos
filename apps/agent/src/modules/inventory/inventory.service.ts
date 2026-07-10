@@ -1,11 +1,13 @@
 import type {
   Device,
+  DeviceIcon,
   DeviceType,
   DiscoverySource,
   HardwareDriver,
   HomeEvent,
   UpdateDeviceRequest,
 } from '@krakenos/types';
+import { DEVICE_ICONS } from '@krakenos/types';
 // Tipo de fila derivado del schema Prisma: si el modelo `Device` cambia, el
 // mapeo `toDevice` deja de compilar (detecta derivas de schema, US-63) en vez de
 // confiar en un `as DbDevice` ciego.
@@ -61,6 +63,13 @@ export class InventoryService {
       notes: row.notes,
       vendor: row.vendor,
       type: row.type as DeviceType,
+      // Un icono legado/desconocido en la DB no debe mentirle al tipo (AUD-20).
+      icon: (DEVICE_ICONS as readonly string[]).includes(row.icon ?? '')
+        ? (row.icon as DeviceIcon)
+        : null,
+      // Identificación asistida (US-178): para un aparato aún sin identificar,
+      // la heurística OUI/hostname propone un tipo; el usuario confirma.
+      suggestedType: this.suggestType(row),
       isBlocked: row.isBlocked,
       pausedUntil: row.pausedUntil ? row.pausedUntil.toISOString() : null,
       online: row.online,
@@ -71,6 +80,13 @@ export class InventoryService {
       firstSeen: row.firstSeen.toISOString(),
       lastSeen: row.lastSeen.toISOString(),
     };
+  }
+
+  /** Sugerencia de tipo para un dispositivo aún `unknown` (US-178), o `null`. */
+  private suggestType(row: Pick<DbDevice, 'type' | 'vendor' | 'hostname'>): DeviceType | null {
+    if (row.type !== 'unknown') return null;
+    const inferred = inferDeviceType(row.vendor, row.hostname);
+    return inferred === 'unknown' ? null : inferred;
   }
 
   /**
@@ -170,6 +186,7 @@ export class InventoryService {
         ...(input.label !== undefined ? { label: input.label } : {}),
         ...(input.type !== undefined ? { type: input.type } : {}),
         ...(input.notes !== undefined ? { notes: input.notes } : {}),
+        ...(input.icon !== undefined ? { icon: input.icon } : {}),
         ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
       },
     });

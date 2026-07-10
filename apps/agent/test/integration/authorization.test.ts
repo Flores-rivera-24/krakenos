@@ -167,6 +167,8 @@ const AUTHED_WRITES: WriteEndpoint[] = [
     url: '/api/auth/change-password',
     payload: { currentPassword: 'password123', newPassword: 'nuevaClave123' },
   },
+  // auth: cambiar el propio modo de interfaz (US-176)
+  { method: 'PATCH', url: '/api/auth/ui-mode', payload: { uiMode: 'simple' } },
 ];
 
 describe('autorización exhaustiva de escritura (US-89)', () => {

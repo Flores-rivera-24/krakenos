@@ -37,6 +37,8 @@ export const SYSTEM_SETTING_KEYS = [
   // Ventana de gracia de la presencia en minutos (US-169): los móviles duermen
   // el WiFi, así que "salió de casa" solo se marca tras este tiempo sin señal.
   'presenceGraceMin',
+  // Resumen del hogar (US-180): off | daily | weekly (se envía a las 08:00).
+  'digestFrequency',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];

@@ -31,9 +31,12 @@ function device(over: Partial<Device> = {}): Device {
     notes: null,
     vendor: 'Apple',
     type: 'computer',
+    icon: null,
     isBlocked: false,
     online: true,
     vlanTag: null,
+    roomId: null,
+    ownerId: null,
     sources: ['arp', 'mdns'],
     firstSeen: '2026-01-01T00:00:00.000Z',
     lastSeen: '2026-01-01T00:00:00.000Z',
@@ -79,9 +82,51 @@ describe('DeviceDetailSlideover', () => {
     expect(apiMock.patch).toHaveBeenCalledWith('/inventory/devices/dev-1', {
       label: 'Mi portátil',
       type: 'computer',
+      icon: null,
       notes: null,
     });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('el selector de icono manda el icono elegido en el PATCH (US-178)', async () => {
+    asRole('viewer');
+    const user = userEvent.setup();
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+
+    await user.selectOptions(screen.getByLabelText('Icono'), 'tv');
+    await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith(
+        '/inventory/devices/dev-1',
+        expect.objectContaining({ icon: 'tv' }),
+      ),
+    );
+  });
+
+  it('identificación asistida (US-178): un desconocido con pista propone y un toque lo clasifica', async () => {
+    asRole('admin');
+    const user = userEvent.setup();
+    render(
+      <DeviceDetailSlideover
+        device={device({ type: 'unknown', suggestedType: 'tv', hostname: 'chromecast' })}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('¿Qué es este aparato?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Sí, es tv/i }));
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith('/inventory/devices/dev-1', { type: 'tv' }),
+    );
+    // Clasificado: la pregunta desaparece.
+    expect(screen.queryByText('¿Qué es este aparato?')).not.toBeInTheDocument();
+  });
+
+  it('un dispositivo ya identificado no muestra la pregunta de identificación', () => {
+    asRole('admin');
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+    expect(screen.queryByText('¿Qué es este aparato?')).not.toBeInTheDocument();
   });
 
   it('un viewer no ve el botón de bloqueo', () => {

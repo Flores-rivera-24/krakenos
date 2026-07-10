@@ -1,3 +1,5 @@
+import { DEVICE_ICONS } from '@krakenos/types';
+
 const deviceTypeEnum = ['router', 'computer', 'phone', 'tablet', 'iot', 'tv', 'printer', 'unknown'];
 
 const deviceResponse = {
@@ -11,6 +13,8 @@ const deviceResponse = {
     notes: { type: ['string', 'null'] },
     vendor: { type: ['string', 'null'] },
     type: { type: 'string', enum: deviceTypeEnum },
+    icon: { type: ['string', 'null'] },
+    suggestedType: { type: ['string', 'null'], enum: [...deviceTypeEnum, null] },
     isBlocked: { type: 'boolean' },
     pausedUntil: { type: ['string', 'null'] },
     online: { type: 'boolean' },
@@ -54,6 +58,8 @@ export const updateDeviceSchema = {
     properties: {
       label: { type: ['string', 'null'], maxLength: 64 },
       type: { type: 'string', enum: deviceTypeEnum },
+      // Icono manual (US-178); null vuelve al inferido por tipo.
+      icon: { type: ['string', 'null'], enum: [...DEVICE_ICONS, null] },
       notes: { type: ['string', 'null'], maxLength: 500 },
       // Dueño del dispositivo (US-179); null lo desasigna.
       ownerId: { type: ['string', 'null'], maxLength: 64 },

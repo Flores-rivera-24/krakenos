@@ -1,4 +1,4 @@
-import { USER_ROLES } from '@krakenos/types';
+import { UI_MODES, USER_ROLES } from '@krakenos/types';
 const userResponse = {
   type: 'object',
   properties: {
@@ -6,10 +6,11 @@ const userResponse = {
     email: { type: 'string', format: 'email' },
     displayName: { type: 'string' },
     role: { type: 'string', enum: USER_ROLES },
+    uiMode: { type: 'string', enum: UI_MODES },
     createdAt: { type: 'string', format: 'date-time' },
     updatedAt: { type: 'string', format: 'date-time' },
   },
-  required: ['id', 'email', 'displayName', 'role', 'createdAt', 'updatedAt'],
+  required: ['id', 'email', 'displayName', 'role', 'uiMode', 'createdAt', 'updatedAt'],
 } as const;
 
 // El refresh token NO va en el cuerpo (US-91): viaja en la cookie httpOnly.

@@ -16,6 +16,7 @@ import {
 } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const GROUPS_OPEN_KEY = 'kr-groups-open';
@@ -63,7 +64,16 @@ function statusOf(d: Device): {
 
 const GRID_CLASS = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3';
 
-function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: string) => void }) {
+function DeviceTable({
+  devices,
+  onSelect,
+  simpleMode = false,
+}: {
+  devices: Device[];
+  onSelect: (id: string) => void;
+  /** Modo sencillo (US-176): oculta las columnas técnicas MAC y Fabricante. */
+  simpleMode?: boolean;
+}) {
   return (
     <div className="overflow-x-auto rounded-xl border border-kr">
       <table className="w-full text-kr-sm">
@@ -76,15 +86,19 @@ function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: 
             <th scope="col" className="px-3 py-2 text-left font-medium">
               IP
             </th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">
-              <span className="inline-flex items-center gap-1">
-                MAC
-                <GlossaryHint termKey="mac" />
-              </span>
-            </th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">
-              Fabricante
-            </th>
+            {!simpleMode && (
+              <>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  <span className="inline-flex items-center gap-1">
+                    MAC
+                    <GlossaryHint termKey="mac" />
+                  </span>
+                </th>
+                <th scope="col" className="px-3 py-2 text-left font-medium">
+                  Fabricante
+                </th>
+              </>
+            )}
             <th scope="col" className="px-3 py-2 text-left font-medium">
               Tipo
             </th>
@@ -107,8 +121,12 @@ function DeviceTable({ devices, onSelect }: { devices: Device[]; onSelect: (id: 
               >
                 <td className="px-3 py-2 text-kr-primary">{d.label ?? d.hostname ?? d.mac}</td>
                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.ip}</td>
-                <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.mac}</td>
-                <td className="px-3 py-2 text-kr-secondary">{d.vendor ?? '—'}</td>
+                {!simpleMode && (
+                  <>
+                    <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.mac}</td>
+                    <td className="px-3 py-2 text-kr-secondary">{d.vendor ?? '—'}</td>
+                  </>
+                )}
                 <td className="px-3 py-2 text-kr-secondary">{TYPE_LABELS[d.type]}</td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-2">
@@ -133,6 +151,8 @@ export function InventoryPage() {
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
   const rescan = useInventoryStore((s) => s.rescan);
+  // Modo sencillo (US-176): sin columnas técnicas (MAC/fabricante).
+  const simpleMode = useAuthStore((s) => s.user?.uiMode === 'simple');
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<'all' | 'groups'>('all');
@@ -297,7 +317,7 @@ export function InventoryPage() {
             ))}
           </div>
         ) : (
-          <DeviceTable devices={filtered} onSelect={setSelectedId} />
+          <DeviceTable devices={filtered} onSelect={setSelectedId} simpleMode={simpleMode} />
         )
       ) : (
         // Pestaña "Groups": acordeones por tipo

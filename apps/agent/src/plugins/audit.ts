@@ -94,10 +94,11 @@ export const auditPlugin = fp(async (app: FastifyInstance) => {
           data: { action: input.action, userId: input.userId ?? null, detail, ip: input.ip ?? null },
         }),
       // Tras registrar la acción, notifica los eventos de alta prioridad por push
-      // (US-45) y por email si hay SMTP configurado (US-110).
+      // (US-45), email si hay SMTP (US-110) y Telegram si hay bot (US-180).
       onSuccess: () => {
         app.push?.notifyForAudit(input.action, detail, input.ip);
         app.mailer?.notifyForAudit(input.action, detail, input.ip);
+        app.telegram?.notifyForAudit(input.action, detail, input.ip);
       },
       onGiveUp: (err) => app.log.warn({ err }, 'No se pudo registrar auditoría tras reintentos'),
     });

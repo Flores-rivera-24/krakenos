@@ -18,6 +18,8 @@ model User {
   lastLoginAt  DateTime?      // último inicio de sesión efectivo (US-101)
   /// Caducidad del acceso (invitados, US-179); null = sin caducidad.
   expiresAt    DateTime?
+  /// Modo de la interfaz (US-176): 'simple' | 'advanced'. Solo presentación.
+  uiMode       String         @default("advanced")
   refreshTokens RefreshToken[]
   /// Dispositivos de red de los que es dueño (US-179).
   devices      Device[]
@@ -229,6 +231,8 @@ model Device {
   label     String?
   vendor    String?
   type      String   @default("unknown")
+  /// Icono elegido a mano (US-178), clave del catálogo ProductArt; null = inferido.
+  icon      String?
   notes     String?
   isBlocked Boolean  @default(false)
   /// Pausa de internet hasta este instante (US-111); null = sin pausa.
@@ -298,11 +302,12 @@ model Favorite {
 }
 
 /// Regla de alerta configurable (US-112): por evento de auditoría, si notificar
-/// por push y/o email. El catálogo de eventos es fijo (código).
+/// por push, email y/o Telegram (US-180). El catálogo de eventos es fijo (código).
 model AlertRule {
-  event String  @id
-  push  Boolean @default(true)
-  email Boolean @default(false)
+  event    String  @id
+  push     Boolean @default(true)
+  email    Boolean @default(false)
+  telegram Boolean @default(false)
 }
 
 /// Escena (US-166): deja N dispositivos IoT en un estado deseado con un toque.

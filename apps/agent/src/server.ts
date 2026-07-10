@@ -16,6 +16,8 @@ import { FileJsonStore } from './store/json-store.js';
 import type { CameraDefinition } from './cameras/rtsp.cameras.js';
 import { AlertConfigService } from './alerts/alert-config.js';
 import { Mailer, smtpConfigFromEnv } from './alerts/mailer.js';
+import { TelegramNotifier, telegramConfigFromEnv } from './alerts/telegram.js';
+import { DigestService } from './alerts/digest.js';
 import { alertsRoutes } from './modules/alerts/alerts.routes.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
@@ -169,6 +171,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.decorate('mailer', mailer);
   if (mailer.enabled) app.log.info('[alerts] alertas por email habilitadas (SMTP configurado)');
 
+  // Canal Telegram (US-180): bot opt-in por entorno; todo egress va por safeFetch.
+  const telegram = new TelegramNotifier(app, telegramConfigFromEnv());
+  app.decorate('telegram', telegram);
+  if (telegram.enabled) app.log.info('[alerts] alertas por Telegram habilitadas (bot configurado)');
+
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
@@ -318,6 +325,16 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Auto-descubrimiento (US-175): barrido periódico suave (10 min) + bajo demanda.
   discoveryService.start();
   app.addHook('onClose', async () => discoveryService.stop());
+
+  // Resumen del hogar diario/semanal (US-180): barrido horario, envía a las 08:00
+  // por los canales configurados (push + email + Telegram, los que existan).
+  const digestService = new DigestService(app, {
+    push: (title, body) => pushService.sendToAll(title, body, '/'),
+    email: (subject, text) => mailer.sendRaw(subject, text),
+    telegram: (title, body) => telegram.notify(title, body),
+  });
+  digestService.start();
+  app.addHook('onClose', async () => digestService.stop());
 
   // Genera y persiste las claves VAPID al arrancar si aún no existen (US-45).
   await pushService.ensureKeys();
