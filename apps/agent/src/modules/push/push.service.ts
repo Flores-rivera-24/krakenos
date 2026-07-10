@@ -38,6 +38,12 @@ export function pushNotificationForAudit(
       return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory' };
     case 'inventory.unknown_device':
       return { title: 'Dispositivo desconocido', body: 'Nueva MAC en la red', url: '/inventory' };
+    case 'camera.motion':
+      return {
+        title: 'Movimiento detectado',
+        body: detail ? `Movimiento en ${detail}` : 'Una cámara detectó movimiento',
+        url: '/cameras',
+      };
     default:
       return null;
   }

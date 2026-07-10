@@ -54,4 +54,63 @@ describe('RtspCameraManager (US-148)', () => {
       expect(await mgr.getSnapshot('99')).toBeNull(); // inexistente
     });
   });
+
+  describe('streaming HLS (US-185)', () => {
+    let hlsDir: string;
+    beforeAll(() => {
+      hlsDir = mkdtempSync(join(tmpdir(), 'kraken-hls-'));
+    });
+    afterAll(() => rmSync(hlsDir, { recursive: true, force: true }));
+
+    it('sin config hls, el streaming queda desactivado (null / 0)', async () => {
+      const mgr = new RtspCameraManager({ cameras: [cam('1')], exec: okExec });
+      expect(await mgr.startStream('1')).toBeNull();
+      expect(await mgr.readStreamPlaylist('1')).toBeNull();
+      expect(mgr.reapIdleStreams()).toBe(0);
+      await mgr.stop();
+    });
+
+    it('getMotionFrame: pasa la rtspUrl a ffmpeg y valida el tamaño (US-186)', async () => {
+      const args: string[][] = [];
+      const okFrame: FfmpegExec = async (a) => {
+        args.push(a);
+        return { stdout: Buffer.alloc(32 * 24, 40), stderr: Buffer.from(''), code: 0 };
+      };
+      const mgr = new RtspCameraManager({ cameras: [cam('1')], exec: okFrame });
+      const frame = await mgr.getMotionFrame('1');
+      expect(frame!.length).toBe(32 * 24);
+      expect(args[0]).toContain('rtsp://10.0.0.1/s');
+      expect(args[0]).toContain('rawvideo');
+      // Tamaño incorrecto → null (no confía en una salida truncada).
+      const badMgr = new RtspCameraManager({
+        cameras: [cam('1')],
+        exec: async () => ({ stdout: Buffer.alloc(10), stderr: Buffer.from(''), code: 0 }),
+      });
+      expect(await badMgr.getMotionFrame('1')).toBeNull();
+    });
+
+    it('arranca el stream pasando la rtspUrl real al spawner; offline → null', async () => {
+      const urls: string[] = [];
+      const mgr = new RtspCameraManager({
+        cameras: [cam('1'), cam('2', { enabled: false })],
+        exec: okExec,
+        hls: {
+          baseDir: hlsDir,
+          spawn: ({ rtspUrl, outputDir }) => {
+            urls.push(rtspUrl);
+            writeFileSync(join(outputDir, 'index.m3u8'), '#EXTM3U\nseg0.ts\n');
+            return { stop() {} };
+          },
+        },
+      });
+      const session = await mgr.startStream('1');
+      expect(session?.cameraId).toBe('1');
+      expect(urls).toEqual(['rtsp://10.0.0.1/s']);
+      expect(await mgr.readStreamPlaylist('1')).toContain('#EXTM3U');
+      // Deshabilitada no arranca (no expone su URL).
+      expect(await mgr.startStream('2')).toBeNull();
+      expect(urls).toEqual(['rtsp://10.0.0.1/s']);
+      await mgr.stop();
+    });
+  });
 });

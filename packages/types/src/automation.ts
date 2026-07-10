@@ -21,6 +21,8 @@ export type AutomationTrigger =
   | { type: 'sensor-threshold'; deviceId: Id; op: 'gt' | 'lt'; value: number }
   /** Un dispositivo supera su umbral de consumo (US-183). Sin `deviceId` = cualquiera. */
   | { type: 'energy-threshold'; deviceId?: Id }
+  /** Una cámara detecta movimiento (US-186). Sin `cameraId` = cualquiera. */
+  | { type: 'motion-detected'; cameraId?: Id }
   /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
   | { type: 'time'; days: number[]; minute: number }
   /** Una persona llega/se va de casa (US-169). Sin `userId` = cualquiera. */
@@ -121,6 +123,11 @@ export type HomeEvent = (
       value: number;
       threshold: number;
     }
+  /**
+   * Una cámara detecta movimiento (US-186). `cameraName` acompaña al id para que
+   * el log de ejecuciones sea legible sin otra consulta.
+   */
+  | { type: 'motion-detected'; cameraId: Id; cameraName: string }
   /**
    * Presencia y modos del hogar (US-169). `name` acompaña al id para que el log
    * de ejecuciones sea legible sin otra consulta.

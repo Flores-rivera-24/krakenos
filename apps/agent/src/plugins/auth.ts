@@ -3,6 +3,7 @@ import type {
   AccessTokenClaims,
   MfaPendingTokenClaims,
   RefreshTokenClaims,
+  StreamTokenClaims,
   UserRole,
 } from '@krakenos/types';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
@@ -15,10 +16,15 @@ import { env } from '../config/env.js';
 type SignablePayload =
   | Omit<AccessTokenClaims, 'iat' | 'exp'>
   | Omit<RefreshTokenClaims, 'iat' | 'exp'>
-  | Omit<MfaPendingTokenClaims, 'iat' | 'exp'>;
+  | Omit<MfaPendingTokenClaims, 'iat' | 'exp'>
+  | Omit<StreamTokenClaims, 'iat' | 'exp'>;
 
 /** Claims de cualquiera de los tokens que emite el agente. */
-type AnyTokenClaims = AccessTokenClaims | RefreshTokenClaims | MfaPendingTokenClaims;
+type AnyTokenClaims =
+  | AccessTokenClaims
+  | RefreshTokenClaims
+  | MfaPendingTokenClaims
+  | StreamTokenClaims;
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {

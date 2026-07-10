@@ -58,6 +58,7 @@ import { setupToken } from './modules/setup/setup-token.js';
 import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
+import { MotionService } from './modules/cameras/motion.service.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -264,7 +265,33 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Store de cámaras (US-148): alta/baja desde la UI; el RtspCameraManager lee el
   // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
   const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
-  await app.register(camerasRoutes, { prefix: '/api/cameras', cameras, store: cameraStore });
+  // Detección de movimiento (US-186): sondea las cámaras armadas, publica
+  // `motion-detected` al bus (disparador de automatización) y avisa multicanal.
+  const motionService = new MotionService(app, cameras, homeBus);
+  await app.register(camerasRoutes, {
+    prefix: '/api/cameras',
+    cameras,
+    store: cameraStore,
+    motion: motionService,
+  });
+  motionService.start();
+  app.addHook('onClose', async () => motionService.stop());
+  // Streaming HLS bajo demanda (US-185): barrido periódico que apaga las sesiones
+  // que nadie mira (no transcodificar 24/7). Va sobre el `handle` recargable, así
+  // sigue al manager vivo tras un hot-reload. `.unref()` para no bloquear el cierre.
+  const streamReapMs = Math.max(5_000, Math.floor(env.cameras.hls.idleTimeoutMs / 2));
+  const streamReap = setInterval(() => {
+    try {
+      cameras.reapIdleStreams();
+    } catch (err) {
+      app.log.warn({ err }, 'Fallo en el barrido de streams HLS ociosos');
+    }
+  }, streamReapMs);
+  streamReap.unref();
+  app.addHook('onClose', async () => {
+    clearInterval(streamReap);
+    await cameras.stop();
+  });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });

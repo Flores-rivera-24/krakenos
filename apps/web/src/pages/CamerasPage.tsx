@@ -1,7 +1,9 @@
 import type { Camera, CameraSnapshot } from '@krakenos/types';
-import { Pencil, Plus, Trash2, VideoOff } from 'lucide-react';
+import { Pause, Pencil, Play, Plus, Radar, Trash2, VideoOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraFormSlideover } from '@/components/cameras/CameraFormSlideover';
+import { CameraLivePlayer } from '@/components/cameras/CameraLivePlayer';
+import { MotionSettingsSlideover } from '@/components/cameras/MotionSettingsSlideover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -18,15 +20,20 @@ interface TileProps {
   camera: Camera;
   isAdmin: boolean;
   onEdit: (camera: Camera) => void;
+  onMotion: (camera: Camera) => void;
   onDelete: (camera: Camera) => Promise<void>;
 }
 
-function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
+function CameraTile({ camera, isAdmin, onEdit, onMotion, onDelete }: TileProps) {
   const t = useT();
   const [image, setImage] = useState<string | null>(null);
+  // Vídeo en vivo (HLS, US-185) bajo demanda: mientras está en `false` la tarjeta
+  // muestra el snapshot que se refresca cada 3 s; al activarlo transcodifica.
+  const [live, setLive] = useState(false);
 
   useEffect(() => {
-    if (!camera.online) return;
+    // El snapshot se pausa mientras se ve el vídeo en vivo (ahorra peticiones).
+    if (!camera.online || live) return;
     let active = true;
     const load = () =>
       api
@@ -39,12 +46,19 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
       active = false;
       clearInterval(id);
     };
-  }, [camera.id, camera.online]);
+  }, [camera.id, camera.online, live]);
+
+  // Si la cámara pasa a offline mientras se mira, corta el vídeo.
+  useEffect(() => {
+    if (!camera.online) setLive(false);
+  }, [camera.online]);
 
   return (
     <Card className="overflow-hidden">
       <div className="relative aspect-video bg-secondary/40">
-        {camera.online && image ? (
+        {live ? (
+          <CameraLivePlayer camera={camera} />
+        ) : camera.online && image ? (
           <img
             src={image}
             alt={t('cameras.tileAlt', { name: camera.name })}
@@ -58,10 +72,26 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
             </span>
           </div>
         )}
-        {camera.online && (
+        {camera.online && !live && (
           <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
             {t('cameras.live')}
           </span>
+        )}
+        {camera.online && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="absolute bottom-2 left-2 gap-1"
+            onClick={() => setLive((v) => !v)}
+            aria-label={live ? t('cameras.stopLive') : t('cameras.watchLive')}
+          >
+            {live ? (
+              <Pause className="h-4 w-4" aria-hidden />
+            ) : (
+              <Play className="h-4 w-4" aria-hidden />
+            )}
+            <span className="text-xs">{live ? t('cameras.stopLive') : t('cameras.watchLive')}</span>
+          </Button>
         )}
       </div>
       <CardContent className="flex items-center justify-between gap-2 py-3">
@@ -71,6 +101,14 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
         </div>
         {isAdmin && (
           <div className="flex shrink-0 items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMotion(camera)}
+              aria-label={t('cameras.motion.settings', { name: camera.name })}
+            >
+              <Radar className="h-4 w-4" aria-hidden />
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -100,6 +138,8 @@ export function CamerasPage() {
   const [error, setError] = useState<string | null>(null);
   // `false` = cerrado · `true` = alta · `Camera` = edición de esa cámara.
   const [panel, setPanel] = useState<false | true | Camera>(false);
+  // Cámara cuya config de movimiento se está editando (US-186), o null.
+  const [motionCamera, setMotionCamera] = useState<Camera | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -174,6 +214,7 @@ export function CamerasPage() {
               camera={c}
               isAdmin={isAdmin}
               onEdit={(cam) => setPanel(cam)}
+              onMotion={(cam) => setMotionCamera(cam)}
               onDelete={removeCamera}
             />
           ))}
@@ -186,6 +227,10 @@ export function CamerasPage() {
           onClose={() => setPanel(false)}
           onSaved={() => void load()}
         />
+      )}
+
+      {motionCamera && (
+        <MotionSettingsSlideover camera={motionCamera} onClose={() => setMotionCamera(null)} />
       )}
     </div>
   );

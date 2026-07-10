@@ -11,6 +11,14 @@ const apiMock = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+// El reproductor en vivo (US-185) usa hls.js y `<video>`, que no aportan nada en
+// jsdom: se sustituye por un marcador para poder asertar que se monta al pulsar.
+vi.mock('@/components/cameras/CameraLivePlayer', () => ({
+  CameraLivePlayer: ({ camera }: { camera: { id: string } }) => (
+    <div data-testid={`live-${camera.id}`}>live</div>
+  ),
+}));
+
 import { CamerasPage } from '@/pages/CamerasPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
@@ -73,6 +81,22 @@ describe('CamerasPage', () => {
     render(<CamerasPage />);
     await waitFor(() => expect(screen.getByAltText('Cámara Entrada')).toBeInTheDocument());
     expect(screen.getByText('Sin señal')).toBeInTheDocument();
+  });
+
+  it('«Ver en vivo» solo en cámaras online; al pulsar monta el reproductor (US-185)', async () => {
+    const user = userEvent.setup();
+    setRole('viewer'); // el vídeo en vivo lo puede ver cualquier rol
+    render(<CamerasPage />);
+    await screen.findByText('Entrada');
+
+    // Online tiene botón; offline no.
+    const watch = screen.getByRole('button', { name: /Ver en vivo/ });
+    expect(screen.getAllByRole('button', { name: /Ver en vivo/ })).toHaveLength(1);
+
+    await user.click(watch);
+    expect(screen.getByTestId('live-cam-entrada')).toBeInTheDocument();
+    // Ahora el botón alterna a «Detener».
+    expect(screen.getByRole('button', { name: /Detener/ })).toBeInTheDocument();
   });
 
   it('muestra un banner role="alert" si la carga falla (US-93)', async () => {

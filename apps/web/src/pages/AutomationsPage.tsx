@@ -3,6 +3,7 @@ import type {
   AutomationRule,
   AutomationRun,
   AutomationTrigger,
+  Camera,
   Device,
   HomeMode,
   IotDevice,
@@ -31,6 +32,7 @@ import {
   updateAutomation,
   type NameContext,
 } from '@/lib/automations';
+import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
@@ -113,6 +115,7 @@ function RuleEditor({
   networkDevices,
   scenes,
   users,
+  cameras,
   onClose,
   onSaved,
 }: {
@@ -121,6 +124,7 @@ function RuleEditor({
   networkDevices: Device[];
   scenes: Scene[];
   users: UserSummary[];
+  cameras: Camera[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -162,6 +166,10 @@ function RuleEditor({
   );
   const [triggerMode, setTriggerMode] = useState<HomeMode>(
     trg?.type === 'mode-changed' ? trg.mode : 'away',
+  );
+  // Movimiento (US-186): '' = cualquier cámara.
+  const [triggerCamera, setTriggerCamera] = useState(
+    trg?.type === 'motion-detected' ? (trg.cameraId ?? '') : '',
   );
 
   const [withWindow, setWithWindow] = useState(rule?.condition !== undefined);
@@ -207,6 +215,8 @@ function RuleEditor({
         return { type: triggerType, ...(triggerUserId ? { userId: triggerUserId } : {}) };
       case 'mode-changed':
         return { type: 'mode-changed', mode: triggerMode };
+      case 'motion-detected':
+        return { type: 'motion-detected', ...(triggerCamera ? { cameraId: triggerCamera } : {}) };
     }
   };
 
@@ -338,6 +348,7 @@ function RuleEditor({
             <option value="iot-off">{t('automations.trigger.iotOff')}</option>
             <option value="sensor-threshold">{t('automations.trigger.sensorThreshold')}</option>
             <option value="energy-threshold">{t('automations.trigger.energyThreshold')}</option>
+            <option value="motion-detected">{t('automations.trigger.motionDetected')}</option>
             <option value="time">{t('automations.trigger.time')}</option>
             <option value="person-arrived">{t('automations.trigger.personArrived')}</option>
             <option value="person-left">{t('automations.trigger.personLeft')}</option>
@@ -383,6 +394,21 @@ function RuleEditor({
               {controllable.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {triggerType === 'motion-detected' && (
+            <select
+              aria-label={t('automations.editor.cameraAria')}
+              className={SELECT_CLASS}
+              value={triggerCamera}
+              onChange={(e) => setTriggerCamera(e.target.value)}
+            >
+              <option value="">{t('automations.editor.anyCamera')}</option>
+              {cameras.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </select>
@@ -654,6 +680,7 @@ export function AutomationsPage() {
   const [networkDevices, setNetworkDevices] = useState<Device[]>([]);
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
+  const [cameras, setCameras] = useState<Camera[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -681,6 +708,7 @@ export function AutomationsPage() {
       .then(setNetworkDevices)
       .catch(() => setNetworkDevices([]));
     void listScenes().then(setScenes).catch(() => setScenes([]));
+    void listCameras().then(setCameras).catch(() => setCameras([]));
   }, [reload]);
 
   // Personas del hogar para los disparadores de presencia (US-169). El listado
@@ -696,8 +724,9 @@ export function AutomationsPage() {
       scenes,
       networkNames: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
       userNames: new Map(users.map((u) => [u.id, u.displayName])),
+      cameraNames: new Map(cameras.map((c) => [c.id, c.name])),
     }),
-    [iotDevices, scenes, networkDevices, users],
+    [iotDevices, scenes, networkDevices, users, cameras],
   );
 
   const toggleEnabled = async (rule: AutomationRule, enabled: boolean) => {
@@ -831,6 +860,7 @@ export function AutomationsPage() {
           networkDevices={networkDevices}
           scenes={scenes}
           users={users}
+          cameras={cameras}
           onClose={() => setEditorOpen(false)}
           onSaved={reload}
         />

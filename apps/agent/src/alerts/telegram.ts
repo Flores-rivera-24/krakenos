@@ -16,6 +16,8 @@ export interface TelegramConfig {
 }
 
 export type SendTelegram = (text: string) => Promise<void>;
+/** Envío de una foto (bytes + mime) con pie de foto. Inyectable (tests). */
+export type SendTelegramPhoto = (caption: string, photo: Uint8Array, mime: string) => Promise<void>;
 
 /** Lee la config del bot desde el entorno, o `null` si no está configurado. */
 export function telegramConfigFromEnv(): TelegramConfig | null {
@@ -59,15 +61,51 @@ function realSender(config: TelegramConfig): SendTelegram {
   };
 }
 
+/** Envío real de foto vía `sendPhoto` (multipart) por `safeFetch`. */
+function realPhotoSender(config: TelegramConfig): SendTelegramPhoto {
+  return async (caption, photo, mime) => {
+    try {
+      const form = new FormData();
+      form.append('chat_id', config.chatId);
+      form.append('caption', caption);
+      form.append('photo', new Blob([photo], { type: mime }), 'motion.jpg');
+      const res = await safeFetch(`https://api.telegram.org/bot${config.botToken}/sendPhoto`, {
+        method: 'POST',
+        body: form,
+      });
+      if (!res.ok) throw new Error(`Telegram respondió ${res.status}`);
+    } catch (err) {
+      throw new Error(redactToken(err instanceof Error ? err.message : String(err)));
+    }
+  };
+}
+
+/**
+ * Decodifica una data URL de imagen a `{ bytes, mime }`, o `null` si no es una
+ * imagen **rasterizada** en base64 (Telegram no acepta SVG; el mock lo produce).
+ */
+export function decodeImageDataUrl(dataUrl: string): { bytes: Uint8Array; mime: string } | null {
+  const m = /^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/i.exec(dataUrl);
+  if (!m) return null;
+  try {
+    return { bytes: new Uint8Array(Buffer.from(m[2]!, 'base64')), mime: m[1]! };
+  } catch {
+    return null;
+  }
+}
+
 export class TelegramNotifier {
   private readonly send: SendTelegram | null;
+  private readonly sendPhoto: SendTelegramPhoto | null;
 
   constructor(
     private readonly app: FastifyInstance,
     config: TelegramConfig | null,
     send?: SendTelegram,
+    sendPhoto?: SendTelegramPhoto,
   ) {
     this.send = send ?? (config ? realSender(config) : null);
+    this.sendPhoto = sendPhoto ?? (config ? realPhotoSender(config) : null);
   }
 
   get enabled(): boolean {
@@ -94,6 +132,23 @@ export class TelegramNotifier {
     const channels = this.app.alertConfig?.channelsFor(action) ?? { telegram: true };
     if (!channels.telegram) return;
     this.notify(`⚠️ ${note.title}`, note.body);
+  }
+
+  /**
+   * Envía una **foto** (data URL rasterizada) por Telegram para un evento
+   * auditado, si el canal está activo para ese evento (US-186). Respeta la misma
+   * regla de canal que el texto; una imagen no rasterizable (SVG del mock) se
+   * ignora en silencio. Fire-and-forget con log.
+   */
+  sendPhotoForAudit(action: string, caption: string, imageDataUrl: string): void {
+    if (!this.sendPhoto) return;
+    const channels = this.app.alertConfig?.channelsFor(action) ?? { telegram: true };
+    if (!channels.telegram) return;
+    const decoded = decodeImageDataUrl(imageDataUrl);
+    if (!decoded) return;
+    void this.sendPhoto(maskSensitive(caption), decoded.bytes, decoded.mime).catch((err: unknown) =>
+      this.app.log.warn({ err }, 'No se pudo enviar la foto por Telegram'),
+    );
   }
 }
 

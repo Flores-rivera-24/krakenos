@@ -31,6 +31,7 @@ const trigger = {
         'iot-off',
         'sensor-threshold',
         'energy-threshold',
+        'motion-detected',
         'time',
         'person-arrived',
         'person-left',
@@ -46,6 +47,8 @@ const trigger = {
     // Presencia/modos (US-169): `userId` opcional (ausente = cualquier persona).
     userId: { type: 'string', minLength: 1, maxLength: 128 },
     mode: { enum: [...HOME_MODES] },
+    // Movimiento (US-186): `cameraId` opcional (ausente = cualquier cámara).
+    cameraId: { type: 'string', minLength: 1, maxLength: 128 },
   },
   allOf: [
     {

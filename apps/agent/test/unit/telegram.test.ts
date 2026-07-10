@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TelegramNotifier, maskSensitive, telegramConfigFromEnv } from '../../src/alerts/telegram.js';
+import {
+  TelegramNotifier,
+  decodeImageDataUrl,
+  maskSensitive,
+  telegramConfigFromEnv,
+} from '../../src/alerts/telegram.js';
 
 function fakeApp(channels?: { telegram: boolean }): FastifyInstance {
   return {
@@ -82,5 +87,44 @@ describe('alerts/telegram', () => {
     notifier.notifyForAudit('rooms.create', 'x');
     await new Promise((r) => setTimeout(r, 20));
     expect(sent).toHaveLength(0);
+  });
+
+  // --- Foto de movimiento (US-186) ---
+
+  it('decodeImageDataUrl acepta JPEG/PNG base64 y rechaza SVG u otros', () => {
+    const jpeg = decodeImageDataUrl('data:image/jpeg;base64,/9j/');
+    expect(jpeg?.mime).toBe('image/jpeg');
+    expect(jpeg?.bytes).toBeInstanceOf(Uint8Array);
+    expect(decodeImageDataUrl('data:image/svg+xml;base64,AAAA')).toBeNull();
+    expect(decodeImageDataUrl('not a data url')).toBeNull();
+  });
+
+  it('sendPhotoForAudit envía la foto por el sender inyectado (canal ON)', async () => {
+    const photos: { caption: string; mime: string }[] = [];
+    const notifier = new TelegramNotifier(
+      fakeApp({ telegram: true }),
+      { botToken: 't', chatId: 'c' },
+      undefined,
+      async (caption, _bytes, mime) => {
+        photos.push({ caption, mime });
+      },
+    );
+    notifier.sendPhotoForAudit('camera.motion', '📷 Entrada', 'data:image/jpeg;base64,/9j/');
+    await vi.waitFor(() => expect(photos).toHaveLength(1));
+    expect(photos[0]!.mime).toBe('image/jpeg');
+    expect(photos[0]!.caption).toContain('Entrada');
+  });
+
+  it('sendPhotoForAudit no envía si el canal telegram está OFF o la imagen no es rasterizable', async () => {
+    const photos: unknown[] = [];
+    const sendPhoto = async () => {
+      photos.push(1);
+    };
+    const off = new TelegramNotifier(fakeApp({ telegram: false }), { botToken: 't', chatId: 'c' }, undefined, sendPhoto);
+    off.sendPhotoForAudit('camera.motion', 'x', 'data:image/jpeg;base64,/9j/');
+    const on = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, undefined, sendPhoto);
+    on.sendPhotoForAudit('camera.motion', 'x', 'data:image/svg+xml;base64,AAAA'); // SVG no rasterizable
+    await new Promise((r) => setTimeout(r, 20));
+    expect(photos).toHaveLength(0);
   });
 });

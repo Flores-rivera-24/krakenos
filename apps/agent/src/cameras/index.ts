@@ -13,10 +13,22 @@ export interface RtspCameraConfig {
   transport?: string;
 }
 
+/** Config de streaming HLS en vivo (US-185), común a mock y rtsp. */
+export interface CameraHlsConfig {
+  /** Directorio base de los segmentos HLS (`<baseDir>/<cameraId>`). */
+  baseDir: string;
+  /** Máximo de streams concurrentes (hardware modesto). */
+  maxConcurrent?: number;
+  /** Auto-apagado por inactividad, en ms. */
+  idleTimeoutMs?: number;
+}
+
 export interface CameraConfig {
   kind: CameraKind;
   /** Requerido cuando `kind === 'rtsp'`. */
   rtsp?: RtspCameraConfig;
+  /** Streaming HLS (US-185). Sin él, mock usa un tmp por defecto y rtsp lo desactiva. */
+  hls?: CameraHlsConfig;
 }
 
 /**
@@ -27,7 +39,11 @@ export interface CameraConfig {
 export function createCameraManager(config: CameraConfig): CameraManager {
   switch (config.kind) {
     case 'mock':
-      return new MockCameraManager();
+      return new MockCameraManager({
+        hlsBaseDir: config.hls?.baseDir,
+        maxConcurrent: config.hls?.maxConcurrent,
+        idleTimeoutMs: config.hls?.idleTimeoutMs,
+      });
     case 'rtsp': {
       const rtsp = config.rtsp;
       if (!rtsp) throw new Error('Falta la configuración RTSP (CameraConfig.rtsp)');
@@ -36,6 +52,15 @@ export function createCameraManager(config: CameraConfig): CameraManager {
         configPath: rtsp.configPath,
         exec: createFfmpegExec(rtsp.ffmpegPath),
         transport: rtsp.transport,
+        // Streaming HLS (US-185): solo si hay `hls.baseDir` configurado.
+        hls: config.hls
+          ? {
+              baseDir: config.hls.baseDir,
+              maxConcurrent: config.hls.maxConcurrent,
+              idleTimeoutMs: config.hls.idleTimeoutMs,
+              ffmpegPath: rtsp.ffmpegPath,
+            }
+          : undefined,
       });
     }
     default: {
