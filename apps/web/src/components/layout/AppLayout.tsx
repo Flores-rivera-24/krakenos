@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
+import { useT } from '@/lib/i18n';
 import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -23,6 +24,7 @@ function bottomLinkClass({ isActive }: { isActive: boolean }): string {
 }
 
 function MobileBottomNav() {
+  const t = useT();
   const [moreOpen, setMoreOpen] = useState(false);
   // Bottom-nav filtrada por rol (US-179) y modo sencillo (US-176).
   const role = useAuthStore((s) => s.user?.role);
@@ -39,10 +41,10 @@ function MobileBottomNav() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-kr-base font-semibold text-kr-primary">Más secciones</span>
+              <span className="text-kr-base font-semibold text-kr-primary">{t('layout.moreSections')}</span>
               <button
                 type="button"
-                aria-label="Cerrar"
+                aria-label={t('common.close')}
                 onClick={() => setMoreOpen(false)}
                 className="text-kr-secondary"
               >
@@ -50,7 +52,7 @@ function MobileBottomNav() {
               </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
-              {secondary.map(({ to, label, icon: Icon, end }: NavItem) => (
+              {secondary.map(({ to, labelKey, icon: Icon, end }: NavItem) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -66,7 +68,7 @@ function MobileBottomNav() {
                   }
                 >
                   <Icon className="h-5 w-5" />
-                  {label}
+                  {t(labelKey)}
                 </NavLink>
               ))}
             </div>
@@ -75,20 +77,20 @@ function MobileBottomNav() {
       )}
 
       <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface md:hidden">
-        {primary.map(({ to, label, icon: Icon, end }) => (
+        {primary.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="w-full truncate text-center text-[10px] leading-tight">{label}</span>
+            <span className="w-full truncate text-center text-[10px] leading-tight">{t(labelKey)}</span>
           </NavLink>
         ))}
         <button
           type="button"
           onClick={() => setMoreOpen((v) => !v)}
-          aria-label="Más"
+          aria-label={t('layout.more')}
           className={cn(BOTTOM_ITEM_BASE, moreOpen ? 'text-kr-link' : 'text-kr-secondary')}
         >
           <MoreHorizontal className="h-5 w-5 shrink-0" />
-          <span className="w-full truncate text-center text-[10px] leading-tight">Más</span>
+          <span className="w-full truncate text-center text-[10px] leading-tight">{t('layout.more')}</span>
         </button>
       </nav>
     </>
@@ -96,6 +98,7 @@ function MobileBottomNav() {
 }
 
 export function AppLayout() {
+  const t = useT();
   const logout = useAuthStore((s) => s.logout);
   const stats = useSidebarStats();
   const location = useLocation();
@@ -123,10 +126,10 @@ export function AppLayout() {
           <button
             type="button"
             onClick={() => void logout()}
-            aria-label="Salir"
+            aria-label={t('common.logout')}
             className="text-kr-sm text-kr-secondary hover:text-kr-primary"
           >
-            Salir
+            {t('common.logout')}
           </button>
         </header>
 

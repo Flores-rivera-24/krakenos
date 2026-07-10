@@ -3,21 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useState } from 'react';
 
-const OPTIONS: { mode: UiMode; label: string; description: string }[] = [
-  {
-    mode: 'simple',
-    label: 'Sencillo',
-    description: 'Solo lo cotidiano: dispositivos, hogar, WiFi y cámaras. Sin jerga técnica.',
-  },
-  {
-    mode: 'advanced',
-    label: 'Avanzado',
-    description: 'Todo, incluida la red avanzada (VPN, firewall, VLANs, QoS, DNS).',
-  },
+const OPTIONS: { mode: UiMode; labelKey: TranslationKey; descKey: TranslationKey }[] = [
+  { mode: 'simple', labelKey: 'settings.uiMode.simple', descKey: 'settings.uiMode.simpleDesc' },
+  { mode: 'advanced', labelKey: 'settings.uiMode.advanced', descKey: 'settings.uiMode.advancedDesc' },
 ];
 
 /**
@@ -25,6 +18,7 @@ const OPTIONS: { mode: UiMode; label: string; description: string }[] = [
  * presentación — los permisos los impone el servidor en cada ruta.
  */
 export function UiModeCard() {
+  const t = useT();
   const user = useAuthStore((s) => s.user);
   const [saving, setSaving] = useState(false);
   const current: UiMode = user?.uiMode === 'simple' ? 'simple' : 'advanced';
@@ -35,9 +29,9 @@ export function UiModeCard() {
     try {
       const updated = await api.patch<User>('/auth/ui-mode', { uiMode: mode });
       useAuthStore.setState({ user: updated });
-      toast.success(mode === 'simple' ? 'Modo sencillo activado' : 'Modo avanzado activado');
+      toast.success(t(mode === 'simple' ? 'settings.uiMode.simpleOn' : 'settings.uiMode.advancedOn'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el modo'));
+      toast.error(describeError(err, t('settings.uiMode.error')));
     } finally {
       setSaving(false);
     }
@@ -46,10 +40,14 @@ export function UiModeCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Modo de la aplicación</CardTitle>
+        <CardTitle>{t('settings.uiMode.title')}</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid gap-2 sm:grid-cols-2" role="group" aria-label="Modo de la aplicación">
+        <div
+          className="grid gap-2 sm:grid-cols-2"
+          role="group"
+          aria-label={t('settings.uiMode.title')}
+        >
           {OPTIONS.map((opt) => (
             <button
               key={opt.mode}
@@ -64,8 +62,8 @@ export function UiModeCard() {
                   : 'border-kr bg-kr-elevated hover:border-kr-accent-glow',
               )}
             >
-              <span className="block font-medium text-kr-primary">{opt.label}</span>
-              <span className="block text-kr-xs text-kr-muted">{opt.description}</span>
+              <span className="block font-medium text-kr-primary">{t(opt.labelKey)}</span>
+              <span className="block text-kr-xs text-kr-muted">{t(opt.descKey)}</span>
             </button>
           ))}
         </div>

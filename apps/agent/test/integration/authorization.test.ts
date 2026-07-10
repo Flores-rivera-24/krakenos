@@ -169,6 +169,8 @@ const AUTHED_WRITES: WriteEndpoint[] = [
   },
   // auth: cambiar el propio modo de interfaz (US-176)
   { method: 'PATCH', url: '/api/auth/ui-mode', payload: { uiMode: 'simple' } },
+  // auth: cambiar el propio idioma de interfaz (US-177)
+  { method: 'PATCH', url: '/api/auth/locale', payload: { locale: 'en' } },
 ];
 
 describe('autorización exhaustiva de escritura (US-89)', () => {

@@ -1,3 +1,5 @@
+import { getLocale } from '@/lib/i18n';
+
 /** Formatea bytes a una unidad legible (GB/MB). */
 export function formatBytes(bytes: number): string {
   const gb = bytes / 1024 ** 3;
@@ -22,30 +24,42 @@ export function formatRate(bytesPerSec: number): string {
   return `${Math.round(bits)} bps`;
 }
 
-/** Tiempo relativo en español con unidades completas ("hace 3 días", "hace 2 horas"). */
+/**
+ * Tiempo relativo con unidades completas, localizado (US-177):
+ * es → "hace 3 días" · en → "3 days ago". El texto en español es idéntico al
+ * de antes (los tests lo asertan).
+ */
 export function formatRelative(date: Date): string {
   const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 60) return 'hace un momento';
-  const units: [number, string, string][] = [
-    [86400, 'día', 'días'],
-    [3600, 'hora', 'horas'],
-    [60, 'minuto', 'minutos'],
+  const en = getLocale() === 'en';
+  if (s < 60) return en ? 'just now' : 'hace un momento';
+  const units: [number, string, string, string, string][] = [
+    [86400, 'día', 'días', 'day', 'days'],
+    [3600, 'hora', 'horas', 'hour', 'hours'],
+    [60, 'minuto', 'minutos', 'minute', 'minutes'],
   ];
-  for (const [secs, sing, plur] of units) {
+  for (const [secs, sing, plur, singEn, plurEn] of units) {
     const n = Math.floor(s / secs);
-    if (n >= 1) return `hace ${n} ${n === 1 ? sing : plur}`;
+    if (n >= 1) {
+      return en ? `${n} ${n === 1 ? singEn : plurEn} ago` : `hace ${n} ${n === 1 ? sing : plur}`;
+    }
   }
-  return 'hace un momento';
+  return en ? 'just now' : 'hace un momento';
 }
 
-/** Tiempo relativo corto en español ("hace 3m", "hace 2h"). */
+/**
+ * Tiempo relativo corto, localizado (US-177): es → "hace 3m" · en → "3m ago".
+ * Las unidades (m/h/d) son neutras; solo cambia el envoltorio.
+ */
 export function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 60) return 'hace un momento';
+  const en = getLocale() === 'en';
+  const wrap = (body: string) => (en ? `${body} ago` : `hace ${body}`);
+  if (s < 60) return en ? 'just now' : 'hace un momento';
   const m = Math.floor(s / 60);
-  if (m < 60) return `hace ${m}m`;
+  if (m < 60) return wrap(`${m}m`);
   const h = Math.floor(m / 60);
-  if (h < 24) return `hace ${h}h`;
-  return `hace ${Math.floor(h / 24)}d`;
+  if (h < 24) return wrap(`${h}h`);
+  return wrap(`${Math.floor(h / 24)}d`);
 }

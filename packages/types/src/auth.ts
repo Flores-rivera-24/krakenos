@@ -21,6 +21,17 @@ export type UserRole = (typeof USER_ROLES)[number];
 export const UI_MODES = ['simple', 'advanced'] as const;
 export type UiMode = (typeof UI_MODES)[number];
 
+/**
+ * Idiomas soportados por la interfaz (US-177). Array `as const` como fuente
+ * única — los schemas JSON y el catálogo de traducciones derivan de aquí.
+ * `es` es el idioma por defecto (el proyecto nació en español).
+ */
+export const LOCALES = ['es', 'en'] as const;
+export type Locale = (typeof LOCALES)[number];
+
+/** Idioma por defecto cuando falta preferencia (US-177). */
+export const DEFAULT_LOCALE: Locale = 'es';
+
 /** Usuario tal como se expone al cliente (sin hash de contraseña). */
 export interface User {
   id: Id;
@@ -32,6 +43,11 @@ export interface User {
    * antiguas en el cliente; el servidor siempre lo envía. Ausente = `advanced`.
    */
   uiMode?: UiMode;
+  /**
+   * Idioma de la interfaz (US-177). Opcional por compatibilidad con sesiones
+   * antiguas en el cliente; el servidor siempre lo envía. Ausente = `es`.
+   */
+  locale?: Locale;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
 }
@@ -39,6 +55,11 @@ export interface User {
 /** Cuerpo de `PATCH /api/auth/ui-mode` (autoservicio, US-176). */
 export interface UpdateUiModeRequest {
   uiMode: UiMode;
+}
+
+/** Cuerpo de `PATCH /api/auth/locale` (autoservicio, US-177). */
+export interface UpdateLocaleRequest {
+  locale: Locale;
 }
 
 /** Estado de la cuenta de un usuario (US-101). Un usuario `disabled` no puede iniciar sesión. */

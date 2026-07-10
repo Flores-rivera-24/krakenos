@@ -12,6 +12,7 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
+import { LanguageCard } from '@/components/settings/LanguageCard';
 import { UiModeCard } from '@/components/settings/UiModeCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
@@ -448,6 +449,8 @@ export function SettingsPage() {
                   </dl>
                 </CardContent>
               </Card>
+
+              <LanguageCard />
 
               <UiModeCard />
 

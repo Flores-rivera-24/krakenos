@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { formatBytes, formatUptime, timeAgo } from '@/lib/format';
+import { formatBytes, formatRelative, formatUptime, timeAgo } from '@/lib/format';
+import { setLocale } from '@/lib/i18n';
 
 describe('formatBytes', () => {
   it('usa GB a partir de 1 GiB', () => {
@@ -41,5 +42,19 @@ describe('timeAgo', () => {
     expect(timeAgo(new Date(now - 5 * 60_000).toISOString())).toBe('hace 5m');
     expect(timeAgo(new Date(now - 3 * 3_600_000).toISOString())).toBe('hace 3h');
     expect(timeAgo(new Date(now - 2 * 86_400_000).toISOString())).toBe('hace 2d');
+  });
+
+  it('localiza los intervalos relativos en inglés (US-177)', () => {
+    setLocale('en', { persist: false });
+    const now = Date.now();
+    try {
+      expect(timeAgo(new Date(now - 5_000).toISOString())).toBe('just now');
+      expect(timeAgo(new Date(now - 5 * 60_000).toISOString())).toBe('5m ago');
+      expect(timeAgo(new Date(now - 3 * 3_600_000).toISOString())).toBe('3h ago');
+      expect(formatRelative(new Date(now - 86_400_000))).toBe('1 day ago');
+      expect(formatRelative(new Date(now - 2 * 86_400_000))).toBe('2 days ago');
+    } finally {
+      setLocale('es', { persist: false });
+    }
   });
 });

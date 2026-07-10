@@ -20,6 +20,8 @@ model User {
   expiresAt    DateTime?
   /// Modo de la interfaz (US-176): 'simple' | 'advanced'. Solo presentación.
   uiMode       String         @default("advanced")
+  /// Idioma de la interfaz (US-177): 'es' | 'en'. Solo presentación.
+  locale       String         @default("es")
   refreshTokens RefreshToken[]
   /// Dispositivos de red de los que es dueño (US-179).
   devices      Device[]

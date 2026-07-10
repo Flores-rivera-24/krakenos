@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type {
   AuthSession,
+  Locale,
   MfaPendingTokenClaims,
   RefreshTokenClaims,
   UiMode,
@@ -65,6 +66,7 @@ interface DbUser {
   lastLoginAt: Date | null;
   expiresAt: Date | null;
   uiMode: string;
+  locale: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -82,6 +84,8 @@ function toUser(row: DbUser): User {
     role: row.role as UserRole,
     // Valor legado/desconocido → 'advanced' (comportamiento de siempre).
     uiMode: row.uiMode === 'simple' ? 'simple' : 'advanced',
+    // Valor legado/desconocido → 'es' (idioma por defecto, US-177).
+    locale: row.locale === 'en' ? 'en' : 'es',
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -202,6 +206,15 @@ export class AuthService {
     const row = (await this.app.prisma.user.update({
       where: { id: userId },
       data: { uiMode },
+    })) as DbUser;
+    return toUser(row);
+  }
+
+  /** Cambia el idioma de la interfaz del propio usuario (autoservicio, US-177). */
+  async setLocale(userId: string, locale: Locale): Promise<User> {
+    const row = (await this.app.prisma.user.update({
+      where: { id: userId },
+      data: { locale },
     })) as DbUser;
     return toUser(row);
   }

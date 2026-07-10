@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Splash } from '@/components/ui/splash';
+import { setLocale, useT } from '@/lib/i18n';
 import { bootstrapSession } from '@/lib/session';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -55,11 +56,20 @@ export function App() {
   // Al cargar, intenta restaurar la sesión vía la cookie httpOnly del refresh
   // token (el access token no se persiste; solo vive en memoria, US-91).
   const [ready, setReady] = useState(false);
+  const t = useT();
+  const userLocale = useAuthStore((s) => s.user?.locale);
   useEffect(() => {
     void bootstrapSession().finally(() => setReady(true));
   }, []);
 
-  if (!ready) return <Splash label="Iniciando KrakenOS…" />;
+  // La preferencia de idioma del usuario (servidor) prima sobre la del
+  // dispositivo (US-177): al iniciar/restaurar sesión, aplica y persiste su
+  // idioma. Sin sesión, se mantiene el resuelto en el arranque.
+  useEffect(() => {
+    if (userLocale) setLocale(userLocale);
+  }, [userLocale]);
+
+  if (!ready) return <Splash label={t('app.booting')} />;
 
   return (
     <Suspense fallback={<Splash />}>

@@ -1,4 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
+import type { TranslationKey } from '@/lib/i18n';
 import {
   Activity,
   Clapperboard,
@@ -24,7 +25,8 @@ export type NavBadgeKey = 'devices' | 'firewall' | 'iot';
 
 export interface NavItem {
   to: string;
-  label: string;
+  /** Clave i18n del rótulo (US-177); se traduce al renderizar con `t()`. */
+  labelKey: TranslationKey;
   icon: LucideIcon;
   end?: boolean;
   /** Badge de estado en tiempo real, si aplica. */
@@ -33,40 +35,47 @@ export interface NavItem {
 
 /** Grupo con cabecera visible en la sidebar (estilo consola de red). */
 export interface NavGroup {
+  /**
+   * Identidad estable del grupo (valor en español): se usa para filtrar por
+   * rol/modo y como clave en los tests. **No** se muestra directamente — la
+   * cabecera visible se traduce con `labelKey` (US-177).
+   */
   label: string;
+  /** Clave i18n de la cabecera visible (US-177). */
+  labelKey: TranslationKey;
   items: NavItem[];
 }
 
 // Ítems con identidad estable, para reutilizarlos por referencia en la bottom-nav
 // móvil (así `MOBILE_SECONDARY` se deriva por diferencia sin duplicar rutas).
-const CONNECT: NavItem = { to: '/connect', label: 'Conectar', icon: PlusCircle };
-const DASHBOARD: NavItem = { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true };
-const DEVICES: NavItem = { to: '/inventory', label: 'Dispositivos', icon: Network, badge: 'devices' };
-const WIFI: NavItem = { to: '/wifi', label: 'Red WiFi', icon: Wifi };
-const COVERAGE: NavItem = { to: '/coverage', label: 'Cobertura WiFi', icon: Radar };
-const TRAFFIC: NavItem = { to: '/traffic', label: 'Tráfico', icon: Activity };
-const ROOMS: NavItem = { to: '/rooms', label: 'Habitaciones', icon: Home };
-const SCENES: NavItem = { to: '/scenes', label: 'Escenas', icon: Clapperboard };
-const AUTOMATIONS: NavItem = { to: '/automations', label: 'Automatizaciones', icon: Workflow };
-const IOT: NavItem = { to: '/iot', label: 'IoT', icon: Cpu, badge: 'iot' };
-const CAMERAS: NavItem = { to: '/cameras', label: 'Cámaras', icon: Video };
-const VPN: NavItem = { to: '/vpn', label: 'VPN', icon: KeyRound };
-const FIREWALL: NavItem = { to: '/firewall', label: 'Firewall', icon: ShieldAlert, badge: 'firewall' };
-const VLANS: NavItem = { to: '/vlans', label: 'VLANs', icon: Layers };
-const QOS: NavItem = { to: '/qos', label: 'QoS', icon: Gauge };
-const DNS: NavItem = { to: '/dns', label: 'DNS', icon: Globe };
-const SETTINGS: NavItem = { to: '/settings', label: 'Ajustes', icon: Settings };
+const CONNECT: NavItem = { to: '/connect', labelKey: 'nav.connect', icon: PlusCircle };
+const DASHBOARD: NavItem = { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true };
+const DEVICES: NavItem = { to: '/inventory', labelKey: 'nav.devices', icon: Network, badge: 'devices' };
+const WIFI: NavItem = { to: '/wifi', labelKey: 'nav.wifi', icon: Wifi };
+const COVERAGE: NavItem = { to: '/coverage', labelKey: 'nav.coverage', icon: Radar };
+const TRAFFIC: NavItem = { to: '/traffic', labelKey: 'nav.traffic', icon: Activity };
+const ROOMS: NavItem = { to: '/rooms', labelKey: 'nav.rooms', icon: Home };
+const SCENES: NavItem = { to: '/scenes', labelKey: 'nav.scenes', icon: Clapperboard };
+const AUTOMATIONS: NavItem = { to: '/automations', labelKey: 'nav.automations', icon: Workflow };
+const IOT: NavItem = { to: '/iot', labelKey: 'nav.iot', icon: Cpu, badge: 'iot' };
+const CAMERAS: NavItem = { to: '/cameras', labelKey: 'nav.cameras', icon: Video };
+const VPN: NavItem = { to: '/vpn', labelKey: 'nav.vpn', icon: KeyRound };
+const FIREWALL: NavItem = { to: '/firewall', labelKey: 'nav.firewall', icon: ShieldAlert, badge: 'firewall' };
+const VLANS: NavItem = { to: '/vlans', labelKey: 'nav.vlans', icon: Layers };
+const QOS: NavItem = { to: '/qos', labelKey: 'nav.qos', icon: Gauge };
+const DNS: NavItem = { to: '/dns', labelKey: 'nav.dns', icon: Globe };
+const SETTINGS: NavItem = { to: '/settings', labelKey: 'nav.settings', icon: Settings };
 
 /**
  * Navegación por grupos con cabecera (US-163). De lo cotidiano a lo avanzado:
  * General → Red → Hogar → Red avanzada → Sistema.
  */
 export const NAV_GROUPS: NavGroup[] = [
-  { label: 'General', items: [CONNECT, DASHBOARD] },
-  { label: 'Red', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
-  { label: 'Hogar', items: [ROOMS, SCENES, AUTOMATIONS, IOT, CAMERAS] },
-  { label: 'Red avanzada', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
-  { label: 'Sistema', items: [SETTINGS] },
+  { label: 'General', labelKey: 'nav.group.general', items: [CONNECT, DASHBOARD] },
+  { label: 'Red', labelKey: 'nav.group.network', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
+  { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, AUTOMATIONS, IOT, CAMERAS] },
+  { label: 'Red avanzada', labelKey: 'nav.group.advanced', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
+  { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
 ];
 
 /** Lista plana de todos los ítems, en orden. */
@@ -93,9 +102,9 @@ export function navGroupsForRole(role?: string, uiMode?: string): NavGroup[] {
   if (role === 'member') return base.filter((g) => g.label !== 'Red avanzada');
   if (role === 'kid' || role === 'guest') {
     return [
-      { label: 'General', items: [DASHBOARD] },
-      { label: 'Hogar', items: [ROOMS, SCENES, IOT] },
-      { label: 'Sistema', items: [SETTINGS] },
+      { label: 'General', labelKey: 'nav.group.general', items: [DASHBOARD] },
+      { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, IOT] },
+      { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
     ];
   }
   return base;
