@@ -75,6 +75,27 @@ describe('AppSidebar', () => {
     expect(screen.getByText('openwrt')).toBeInTheDocument();
   });
 
+  it('modo sencillo (US-176): sin «Red avanzada» y sin jerga de driver', () => {
+    useAuthStore.setState({
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'Emilio Flores',
+        role: 'admin',
+        uiMode: 'simple',
+        createdAt: '',
+        updatedAt: '',
+      },
+      logout: vi.fn(),
+    });
+    renderSidebar({ collapsed: false });
+    expect(screen.queryByText('Red avanzada')).not.toBeInTheDocument();
+    expect(screen.queryByText('Firewall')).not.toBeInTheDocument();
+    // El estado técnico del driver se sustituye por un texto llano.
+    expect(screen.queryByText('openwrt')).not.toBeInTheDocument();
+    expect(screen.getByText('Casa conectada')).toBeInTheDocument();
+  });
+
   it('colapsada oculta marca y labels pero conserva los iconos/enlaces', () => {
     const { container } = renderSidebar({ collapsed: true });
     expect(screen.queryByText('KrakenOS')).not.toBeInTheDocument();

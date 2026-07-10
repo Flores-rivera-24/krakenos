@@ -3,6 +3,7 @@ import type {
   AuthSession,
   MfaPendingTokenClaims,
   RefreshTokenClaims,
+  UiMode,
   User,
   UserRole,
 } from '@krakenos/types';
@@ -63,6 +64,7 @@ interface DbUser {
   status: string;
   lastLoginAt: Date | null;
   expiresAt: Date | null;
+  uiMode: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -78,6 +80,8 @@ function toUser(row: DbUser): User {
     email: row.email,
     displayName: row.displayName,
     role: row.role as UserRole,
+    // Valor legado/desconocido → 'advanced' (comportamiento de siempre).
+    uiMode: row.uiMode === 'simple' ? 'simple' : 'advanced',
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -191,6 +195,15 @@ export class AuthService {
   async getById(id: string): Promise<User | null> {
     const row = (await this.app.prisma.user.findUnique({ where: { id } })) as DbUser | null;
     return row ? toUser(row) : null;
+  }
+
+  /** Cambia el modo de la interfaz del propio usuario (autoservicio, US-176). */
+  async setUiMode(userId: string, uiMode: UiMode): Promise<User> {
+    const row = (await this.app.prisma.user.update({
+      where: { id: userId },
+      data: { uiMode },
+    })) as DbUser;
+    return toUser(row);
   }
 
   /**

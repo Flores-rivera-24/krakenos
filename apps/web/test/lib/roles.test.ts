@@ -49,6 +49,25 @@ describe('lib/roles + nav por rol (US-179)', () => {
     }
   });
 
+  it('modo sencillo (US-176): oculta «Red avanzada» para cualquier rol; avanzado = todo', () => {
+    expect(navGroupsForRole('admin', 'simple').map((g) => g.label)).toEqual([
+      'General',
+      'Red',
+      'Hogar',
+      'Sistema',
+    ]);
+    expect(navGroupsForRole('admin', 'advanced').map((g) => g.label)).toContain('Red avanzada');
+    // Ausente (sesión antigua) = avanzado: el comportamiento de siempre.
+    expect(navGroupsForRole('admin').map((g) => g.label)).toContain('Red avanzada');
+
+    const simple = mobileNavForRole('admin', 'simple');
+    const paths = [...simple.primary, ...simple.secondary].map((i) => i.to);
+    for (const technical of ['/vpn', '/firewall', '/vlans', '/qos', '/dns']) {
+      expect(paths).not.toContain(technical);
+    }
+    expect(paths).toContain('/inventory');
+  });
+
   it('la bottom-nav móvil se filtra al conjunto visible del rol', () => {
     const kid = mobileNavForRole('kid');
     const kidPaths = [...kid.primary, ...kid.secondary].map((i) => i.to);

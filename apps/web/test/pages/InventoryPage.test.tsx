@@ -187,6 +187,30 @@ describe('InventoryPage', () => {
     fakeSocket.connected = true; // restaura para el resto de la suite
   });
 
+  it('modo sencillo (US-176): la tabla oculta las columnas técnicas MAC y Fabricante', async () => {
+    useAuthStore.setState({
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'viewer',
+        uiMode: 'simple',
+        createdAt: '',
+        updatedAt: '',
+      },
+      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    });
+    useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
+    const user = userEvent.setup();
+    render(<InventoryPage />);
+    await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
+
+    expect(screen.queryByRole('columnheader', { name: /MAC/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Fabricante' })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Dispositivo' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'IP' })).toBeInTheDocument();
+  });
+
   it('la tabla en vista lista es accesible: caption + cabeceras con scope (US-62)', async () => {
     useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
     const user = userEvent.setup();

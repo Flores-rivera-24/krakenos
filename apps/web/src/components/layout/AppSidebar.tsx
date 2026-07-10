@@ -96,8 +96,9 @@ interface AppSidebarProps {
 
 export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
   const user = useAuthStore((s) => s.user);
-  // UI reducida por rol (US-179): kid/guest ven solo Dashboard/Hogar/Ajustes.
-  const navGroups = navGroupsForRole(user?.role);
+  // UI reducida por rol (US-179) y por modo sencillo (US-176).
+  const navGroups = navGroupsForRole(user?.role, user?.uiMode);
+  const simpleMode = user?.uiMode === 'simple';
   const logout = useAuthStore((s) => s.logout);
   const devices = useInventoryStore((s) => s.devices);
   const devicesBadge = unknownOrBlockedCount(devices);
@@ -173,13 +174,23 @@ export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
           <StatusDot status={stats.online ? 'online' : 'danger'} />
           {!collapsed && (
             <div className="min-w-0 text-kr-sm">
-              <div className="truncate text-kr-secondary">
-                Driver: <span className="text-kr-primary">{stats.driver ?? '—'}</span>
-              </div>
-              {stats.uptimeSeconds != null && (
-                <div className="text-kr-xs text-kr-muted">
-                  Uptime {formatUptime(stats.uptimeSeconds)}
+              {/* En modo sencillo (US-176) la jerga técnica (driver/uptime) se
+                  sustituye por un estado llano; el punto de estado se mantiene. */}
+              {simpleMode ? (
+                <div className="truncate text-kr-secondary">
+                  {stats.online ? 'Casa conectada' : 'Sin conexión con el router'}
                 </div>
+              ) : (
+                <>
+                  <div className="truncate text-kr-secondary">
+                    Driver: <span className="text-kr-primary">{stats.driver ?? '—'}</span>
+                  </div>
+                  {stats.uptimeSeconds != null && (
+                    <div className="text-kr-xs text-kr-muted">
+                      Uptime {formatUptime(stats.uptimeSeconds)}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

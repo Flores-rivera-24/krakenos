@@ -95,6 +95,9 @@ export class UsersService {
           displayName: body.displayName,
           passwordHash,
           role: body.role,
+          // Modo de interfaz inicial por rol (US-176): kid/guest arrancan en
+          // «sencillo» (pueden cambiarlo en Ajustes); el resto, en «avanzado».
+          uiMode: body.role === 'kid' || body.role === 'guest' ? 'simple' : 'advanced',
           // Caducidad del acceso (invitados, US-179).
           ...(body.expiresAt !== undefined ? { expiresAt: new Date(body.expiresAt) } : {}),
         },

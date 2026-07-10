@@ -63,6 +63,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [ownerBusy, setOwnerBusy] = useState(false);
   const [householdUsers, setHouseholdUsers] = useState<UserSummary[]>([]);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Modo sencillo (US-176): sin campos técnicos (MAC/Fuentes) en el detalle.
+  const simpleMode = useAuthStore((s) => s.user?.uiMode === 'simple');
 
   // Carga las VLANs disponibles para el selector (best-effort).
   useEffect(() => {
@@ -233,10 +235,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
       <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
         <Field label="IP" value={device.ip} />
-        <Field label="MAC" value={device.mac} />
+        {!simpleMode && <Field label="MAC" value={device.mac} />}
         <Field label="Hostname" value={device.hostname ?? '—'} />
         <Field label="Fabricante" value={device.vendor ?? '—'} />
-        <Field label="Fuentes" value={device.sources.join(', ') || '—'} />
+        {!simpleMode && <Field label="Fuentes" value={device.sources.join(', ') || '—'} />}
         <Field label="Última vez" value={new Date(device.lastSeen).toLocaleString()} />
       </dl>
 

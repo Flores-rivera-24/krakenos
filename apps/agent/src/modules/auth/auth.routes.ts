@@ -20,6 +20,7 @@ import {
   refreshSchema,
   revokeSessionsSchema,
   statusSchema,
+  updateUiModeSchema,
 } from './auth.schemas.js';
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
@@ -215,5 +216,13 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       app.audit({ action: 'auth.password.change', userId: req.user.sub, ip: req.ip });
       return reply.code(204).send();
     },
+  );
+
+  // Modo de la interfaz (US-176): autoservicio, solo presentación — no cambia
+  // permisos (la authz de cada ruta sigue en el servidor).
+  app.patch<{ Body: { uiMode: 'simple' | 'advanced' } }>(
+    '/ui-mode',
+    { schema: updateUiModeSchema, preHandler: app.authenticate },
+    async (req) => service.setUiMode(req.user.sub, req.body.uiMode),
   );
 };

@@ -12,14 +12,33 @@ import type { Id, IsoDateTime } from './common.js';
 export const USER_ROLES = ['admin', 'member', 'kid', 'guest', 'viewer'] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
+/**
+ * Modo de la interfaz por usuario (US-176) — **solo presentación**, la authz
+ * del servidor no cambia: `simple` oculta la sección «Red avanzada» y las
+ * columnas técnicas (MAC, driver); `advanced` = todo. Array `as const` como
+ * fuente única (los schemas derivan).
+ */
+export const UI_MODES = ['simple', 'advanced'] as const;
+export type UiMode = (typeof UI_MODES)[number];
+
 /** Usuario tal como se expone al cliente (sin hash de contraseña). */
 export interface User {
   id: Id;
   email: string;
   displayName: string;
   role: UserRole;
+  /**
+   * Modo de la interfaz (US-176). Opcional por compatibilidad con sesiones
+   * antiguas en el cliente; el servidor siempre lo envía. Ausente = `advanced`.
+   */
+  uiMode?: UiMode;
   createdAt: IsoDateTime;
   updatedAt: IsoDateTime;
+}
+
+/** Cuerpo de `PATCH /api/auth/ui-mode` (autoservicio, US-176). */
+export interface UpdateUiModeRequest {
+  uiMode: UiMode;
 }
 
 /** Estado de la cuenta de un usuario (US-101). Un usuario `disabled` no puede iniciar sesión. */

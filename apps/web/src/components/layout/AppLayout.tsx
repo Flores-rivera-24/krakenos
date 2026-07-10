@@ -24,9 +24,10 @@ function bottomLinkClass({ isActive }: { isActive: boolean }): string {
 
 function MobileBottomNav() {
   const [moreOpen, setMoreOpen] = useState(false);
-  // Bottom-nav filtrada por rol (US-179): kid/guest ven la UI reducida.
+  // Bottom-nav filtrada por rol (US-179) y modo sencillo (US-176).
   const role = useAuthStore((s) => s.user?.role);
-  const { primary, secondary } = mobileNavForRole(role);
+  const uiMode = useAuthStore((s) => s.user?.uiMode);
+  const { primary, secondary } = mobileNavForRole(role, uiMode);
   return (
     <>
       {/* Panel "Más" — resto de secciones */}

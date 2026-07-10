@@ -12,6 +12,7 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
+import { UiModeCard } from '@/components/settings/UiModeCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
@@ -434,6 +435,8 @@ export function SettingsPage() {
                   </dl>
                 </CardContent>
               </Card>
+
+              <UiModeCard />
 
               <ChangePasswordCard />
 
