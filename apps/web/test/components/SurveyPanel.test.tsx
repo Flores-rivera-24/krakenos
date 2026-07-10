@@ -103,7 +103,7 @@ describe('SurveyPanel', () => {
 
     await user.click(screen.getByRole('button', { name: /Nuevo/ }));
     await user.type(screen.getByLabelText('Nombre'), 'Recorrido planta baja');
-    await user.click(screen.getByRole('button', { name: 'Crear survey' }));
+    await user.click(screen.getByRole('button', { name: 'Crear recorrido' }));
 
     await waitFor(() =>
       expect(coverageMock.createScan).toHaveBeenCalledWith('plan-1', {

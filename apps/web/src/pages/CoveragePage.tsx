@@ -39,7 +39,7 @@ type CoverageView = 'edit' | 'predict' | 'survey';
 const VIEWS: { id: CoverageView; label: string }[] = [
   { id: 'edit', label: 'Editar' },
   { id: 'predict', label: 'Predicción' },
-  { id: 'survey', label: 'Survey' },
+  { id: 'survey', label: 'Medición' },
 ];
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];

@@ -83,7 +83,7 @@ export function SurveyPanel({
     void listScans(floorPlanId)
       .then((list) => active && setScans(list))
       .catch(
-        (err) => active && setError(describeError(err, 'No se pudieron cargar los surveys')),
+        (err) => active && setError(describeError(err, 'No se pudieron cargar los recorridos')),
       )
       .finally(() => active && setLoading(false));
     return () => {
@@ -115,7 +115,7 @@ export function SurveyPanel({
         const detail = await getScan(id);
         onActiveScanChange(detail);
       } catch (err) {
-        toast.error(describeError(err, 'No se pudo abrir el survey'));
+        toast.error(describeError(err, 'No se pudo abrir el recorrido'));
       }
     },
     [onActiveScanChange, onMeasuredHeatmapChange, onShowMeasuredChange],
@@ -133,10 +133,10 @@ export function SurveyPanel({
       setScans((prev) => [scan, ...prev]);
       setName('');
       setShowForm(false);
-      toast.success('Survey creado');
+      toast.success('Recorrido creado');
       await handleSelectScan(scan.id);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el survey'));
+      toast.error(describeError(err, 'No se pudo crear el recorrido'));
     } finally {
       setCreating(false);
     }
@@ -152,9 +152,9 @@ export function SurveyPanel({
           onMeasuredHeatmapChange(null);
           onShowMeasuredChange(false);
         }
-        toast.success('Survey eliminado');
+        toast.success('Recorrido eliminado');
       } catch (err) {
-        toast.error(describeError(err, 'No se pudo eliminar el survey'));
+        toast.error(describeError(err, 'No se pudo eliminar el recorrido'));
       }
     },
     [activeScan, onActiveScanChange, onMeasuredHeatmapChange, onShowMeasuredChange],
@@ -214,7 +214,7 @@ export function SurveyPanel({
                   className="h-8"
                 />
                 <p className="text-kr-xs text-kr-muted">
-                  Survey manual: escribe la señal que marca tu móvil (p. ej. −58) y toca el plano en
+                  Recorrido manual: escribe la señal que marca tu móvil (p. ej. −58) y toca el plano en
                   ese punto para registrarla.
                 </p>
               </div>
@@ -251,7 +251,7 @@ export function SurveyPanel({
                 onShowMeasuredChange(false);
               }}
             >
-              Cerrar survey
+              Cerrar recorrido
             </Button>
           </div>
           {measuredHeatmap && showMeasured && sampleCount === 0 && (
@@ -326,7 +326,7 @@ export function SurveyPanel({
                 disabled={creating || name.trim() === ''}
                 onClick={() => void handleCreate()}
               >
-                {creating ? 'Creando…' : 'Crear survey'}
+                {creating ? 'Creando…' : 'Crear recorrido'}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
                 Cancelar
