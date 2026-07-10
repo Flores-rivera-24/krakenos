@@ -51,7 +51,7 @@ interface Props {
 
 const DOCS: { name: string; doc: string; hint: string }[] = [
   { name: 'Philips Hue', doc: 'docs/hue-setup.md', hint: 'Pulsa el botón del bridge y configura HUE_*.' },
-  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'Activa "LAN Control" en la app Govee.' },
+  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'Activa «LAN Control» en la app Govee.' },
   { name: 'Tuya', doc: 'docs/tuya-setup.md', hint: 'Registra cada foco con su deviceId/localKey.' },
   { name: 'Cisco IOS', doc: 'docs/cisco-ios-setup.md', hint: 'Habilita SSH y configura DRIVER_KIND=cisco-ios.' },
 ];
@@ -92,7 +92,7 @@ export function IntegrationsSection({ driver, isAdmin }: Props) {
 
         <IntegrationCard title="Govee" stats={govee}>
           {govee.total === 0 && (
-            <p className="text-kr-xs text-kr-muted">Activa "LAN Control" en la app Govee.</p>
+            <p className="text-kr-xs text-kr-muted">Activa «LAN Control» en la app Govee.</p>
           )}
         </IntegrationCard>
 

@@ -154,7 +154,7 @@ function PasskeysCard() {
       </CardHeader>
       <CardContent className="space-y-3">
         {!supported ? (
-          <p className="text-kr-sm text-kr-muted">Tu navegador no soporta passkeys.</p>
+          <p className="text-kr-sm text-kr-muted">Tu navegador no admite passkeys.</p>
         ) : (
           <>
             {passkeys === null ? (

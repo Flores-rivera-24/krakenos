@@ -136,7 +136,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             >
               {SECURITIES.map((s) => (
                 <option key={s} value={s}>
-                  {s.toUpperCase()}
+                  {s === 'open' ? 'Abierta (sin contraseña)' : s.toUpperCase()}
                 </option>
               ))}
             </select>

@@ -101,7 +101,7 @@ describe('SecuritySection', () => {
     webauthnMock.isWebAuthnSupported.mockReturnValue(false);
     renderSection();
     expect(screen.getByText('Passkeys')).toBeInTheDocument();
-    expect(screen.getByText('Tu navegador no soporta passkeys.')).toBeInTheDocument();
+    expect(screen.getByText('Tu navegador no admite passkeys.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Añadir passkey' })).not.toBeInTheDocument();
   });
 

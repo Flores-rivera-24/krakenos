@@ -105,7 +105,7 @@ export function VpnPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Estado</span>
                   <span className={status.enabled ? 'text-green-500' : 'text-muted-foreground'}>
-                    {status.enabled ? 'activo' : 'inactivo'}
+                    {status.enabled ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
                 <div className="flex justify-between">

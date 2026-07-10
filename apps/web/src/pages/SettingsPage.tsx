@@ -296,7 +296,7 @@ export function SettingsPage() {
                 <CardContent className="space-y-4">
                   {!pushSupported ? (
                     <p className="text-kr-sm text-kr-muted">
-                      Tu navegador no soporta notificaciones push.
+                      Tu navegador no admite notificaciones push.
                     </p>
                   ) : (
                     <Setting label="Notificaciones push">

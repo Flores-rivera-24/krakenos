@@ -274,11 +274,11 @@ export function UsersSection() {
                             void patch(
                               u.id,
                               { status: u.status === 'active' ? 'disabled' : 'active' },
-                              u.status === 'active' ? 'Usuario deshabilitado' : 'Usuario activado',
+                              u.status === 'active' ? 'Usuario deshabilitado' : 'Usuario habilitado',
                             )
                           }
                         >
-                          {u.status === 'active' ? 'Deshabilitar' : 'Activar'}
+                          {u.status === 'active' ? 'Deshabilitar' : 'Habilitar'}
                         </Button>
                         <Button
                           size="sm"

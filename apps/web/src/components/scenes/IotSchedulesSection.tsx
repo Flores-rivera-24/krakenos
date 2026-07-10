@@ -400,7 +400,7 @@ export function IotSchedulesSection({
                 className="min-w-0 flex-1 text-left disabled:cursor-default"
               >
                 <span className="block truncate text-kr-sm text-kr-primary">
-                  {s.name} {!s.enabled && <span className="text-kr-muted">(pausado)</span>}
+                  {s.name} {!s.enabled && <span className="text-kr-muted">(desactivado)</span>}
                 </span>
                 <span className="block truncate text-kr-xs text-kr-muted">
                   {formatScheduleTime(s.time)} · {s.days.map((d) => DAY_LABELS[d]).join(' ')} ·{' '}
