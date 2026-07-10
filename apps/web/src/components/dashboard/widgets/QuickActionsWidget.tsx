@@ -137,7 +137,8 @@ export function QuickActionsWidget() {
     setRunningScene(id);
     try {
       const result = await runScene(id);
-      if (result.failed.length > 0) toast.error(`${result.applied} ok, ${result.failed.length} fallo(s)`);
+      if (result.failed.length > 0)
+        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
       else toast.success(`Escena «${name}» activada`);
     } catch (err) {
       toast.error(describeError(err, 'No se pudo activar la escena'));
@@ -185,7 +186,7 @@ export function QuickActionsWidget() {
                     onToggle={(next) => api.patch(`/iot/devices/${tile.iot!.id}`, { on: next })}
                     disabled={!canControl}
                     errorMessage={`No se pudo cambiar ${tile.label}`}
-                    aria-label={`Encender ${tile.label}`}
+                    aria-label={`${tile.iot.on ? 'Apagar' : 'Encender'} ${tile.label}`}
                   />
                 )}
                 {tile.sceneId && (

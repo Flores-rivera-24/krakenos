@@ -40,7 +40,9 @@ export function AlertsWidget() {
         <CardTitle>Alertas recientes</CardTitle>
         {unread > 0 && (
           <button type="button" onClick={markSeen} aria-label="Marcar como leídas">
-            <Badge variant="warning">{unread} nuevas</Badge>
+            <Badge variant="warning">
+              {unread} {unread === 1 ? 'nueva' : 'nuevas'}
+            </Badge>
           </button>
         )}
       </CardHeader>

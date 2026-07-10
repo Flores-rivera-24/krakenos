@@ -161,13 +161,13 @@ describe('DeviceDetailSlideover', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
-    // Optimista: el subtítulo marca "bloqueado" YA, con la petición aún en vuelo.
-    await waitFor(() => expect(screen.getByText(/bloqueado/)).toBeInTheDocument());
+    // Optimista: el subtítulo marca "Bloqueado" YA, con la petición aún en vuelo.
+    await waitFor(() => expect(screen.getByText(/Bloqueado/)).toBeInTheDocument());
     expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block');
 
     // Falla → revierte (no miente) y avisa por toast.
     reject(new Error('boom'));
-    await waitFor(() => expect(screen.queryByText(/bloqueado/)).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText(/Bloqueado/)).not.toBeInTheDocument());
     expect(screen.getByRole('button', { name: 'Bloquear acceso a la red' })).toBeInTheDocument();
     expect(await screen.findByText(/No se pudo conectar con el servidor/)).toBeInTheDocument();
   });

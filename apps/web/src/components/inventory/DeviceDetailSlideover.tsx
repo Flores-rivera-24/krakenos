@@ -200,8 +200,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const subtitle = (
     <span className="flex items-center gap-2">
       <StatusDot status={device.online ? 'online' : 'offline'} />
-      {device.online ? 'online' : 'offline'}
-      {block.on && <span className="text-danger">· bloqueado</span>}
+      {device.online ? 'En línea' : 'Desconectado'}
+      {block.on && <span className="text-danger">· Bloqueado</span>}
     </span>
   );
 

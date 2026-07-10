@@ -82,7 +82,8 @@ function RoomTile({
                 {room.name}
               </span>
               <span className="block text-kr-xs text-kr-muted">
-                {room.deviceCount} disp · {room.iotCount} IoT
+                {room.deviceCount} {room.deviceCount === 1 ? 'dispositivo' : 'dispositivos'} ·{' '}
+                {room.iotCount} IoT
                 {room.anyUnreachable && <span className="text-warning"> · sin señal</span>}
               </span>
             </span>
