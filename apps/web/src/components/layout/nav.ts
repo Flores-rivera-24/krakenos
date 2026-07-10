@@ -59,8 +59,7 @@ const SETTINGS: NavItem = { to: '/settings', label: 'Ajustes', icon: Settings };
 
 /**
  * Navegación por grupos con cabecera (US-163). De lo cotidiano a lo avanzado:
- * General → Red → Hogar → Red avanzada → Sistema. "Compatibilidad" se sacó del
- * menú (es una referencia estática, no una operación): se enlaza desde «Conectar».
+ * General → Red → Hogar → Red avanzada → Sistema.
  */
 export const NAV_GROUPS: NavGroup[] = [
   { label: 'General', items: [CONNECT, DASHBOARD] },

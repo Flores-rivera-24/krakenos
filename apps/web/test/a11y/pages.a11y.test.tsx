@@ -48,7 +48,6 @@ import { FirewallPage } from '@/pages/FirewallPage';
 import { VlanPage } from '@/pages/VlanPage';
 import { QosPage } from '@/pages/QosPage';
 import { DnsPage } from '@/pages/DnsPage';
-import { CompatibilityPage } from '@/pages/CompatibilityPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -265,7 +264,6 @@ const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Vlan', el: <VlanPage /> },
   { name: 'Qos', el: <QosPage /> },
   { name: 'Dns', el: <DnsPage /> },
-  { name: 'Compatibility', el: <CompatibilityPage /> },
   { name: 'Settings', el: <SettingsPage /> },
 ];
 
