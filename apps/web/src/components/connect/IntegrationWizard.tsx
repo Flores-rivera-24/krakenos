@@ -317,6 +317,12 @@ export function IntegrationWizard({
   );
 }
 
+/** «appKey» → «App key»: separa camelCase y capitaliza la primera palabra. */
+function humanizeFieldKey(key: string): string {
+  const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 /** ¿El campo es un secreto (contraseña/clave)? Se cifra en reposo y nunca se prefilla. */
 function isSecret(field: IntegrationField): boolean {
   return field.secret === true || field.type === 'password';
@@ -334,7 +340,9 @@ interface FieldRowProps {
 function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps) {
   const id = `intfield-${field.key}`;
   const labelId = `${id}-label`;
-  const label = guide?.label ?? field.key;
+  // Sin guía, la clave técnica se humaniza («appKey» → «App key») en vez de
+  // mostrarse cruda como etiqueta.
+  const label = guide?.label ?? humanizeFieldKey(field.key);
   const help = guide?.help;
   const placeholder = guide?.placeholder;
   const secret = isSecret(field);

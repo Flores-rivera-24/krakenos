@@ -51,10 +51,10 @@ export function VpnPage() {
       const result = await api.post<CreatePeerResult>('/vpn/peers', { name: name.trim() });
       setSelected({ peer: result.peer, config: result.config }); // QR + config una sola vez
       setName('');
-      toast.success('Peer creado');
+      toast.success('Dispositivo añadido');
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el peer'));
+      toast.error(describeError(err, 'No se pudo añadir el dispositivo'));
     } finally {
       setBusy(false);
     }
@@ -63,10 +63,10 @@ export function VpnPage() {
   const removePeer = async (id: string) => {
     try {
       await api.del(`/vpn/peers/${id}`);
-      toast.success('Peer eliminado');
+      toast.success('Dispositivo eliminado');
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el peer'));
+      toast.error(describeError(err, 'No se pudo eliminar el dispositivo'));
     }
   };
 
@@ -105,7 +105,7 @@ export function VpnPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Estado</span>
                   <span className={status.enabled ? 'text-green-500' : 'text-muted-foreground'}>
-                    {status.enabled ? 'activo' : 'inactivo'}
+                    {status.enabled ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -113,7 +113,7 @@ export function VpnPage() {
                   <span className="font-mono text-xs">{status.endpoint ?? '—'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Peers</span>
+                  <span className="text-muted-foreground">Dispositivos</span>
                   <span>{status.peerCount}</span>
                 </div>
               </>
@@ -143,7 +143,7 @@ export function VpnPage() {
                 />
               </div>
               <Button type="submit" disabled={busy}>
-                {busy ? 'Creando…' : 'Crear peer'}
+                {busy ? 'Añadiendo…' : 'Añadir dispositivo'}
               </Button>
             </form>
           </CardContent>
@@ -173,7 +173,7 @@ export function VpnPage() {
                     <td colSpan={4} className="px-3 py-8 text-center">
                       <p className="text-kr-muted">Sin dispositivos. Crea el primero arriba.</p>
                       <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        Dale un nombre a tu móvil u ordenador y pulsa «Crear peer»: obtendrás un QR
+                        Dale un nombre a tu móvil u ordenador y pulsa «Añadir dispositivo»: obtendrás un QR
                         para conectarlo a tu red desde cualquier lugar con la app de WireGuard.
                       </p>
                     </td>

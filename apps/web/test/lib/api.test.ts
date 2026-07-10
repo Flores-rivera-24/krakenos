@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiRequestError, api, request } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -84,6 +85,31 @@ describe('cliente API', () => {
       await api.get('/inventory/devices/x');
     } catch (err) {
       expect(err).toMatchObject({ status: 404, body: { code: 'DEVICE_NOT_FOUND' } });
+    }
+  });
+
+  it('un error sin cuerpo JSON no filtra el statusText en inglés (describeError usa el fallback)', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => {
+          throw new Error('sin cuerpo');
+        },
+      } as unknown as Response),
+    );
+
+    try {
+      await api.get('/system/stats');
+      expect.unreachable('debería lanzar');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ApiRequestError);
+      expect((err as ApiRequestError).body.message).toBe('');
+      expect(describeError(err, 'No se pudo cargar el estado')).toBe(
+        'No se pudo cargar el estado (error 500).',
+      );
     }
   });
 

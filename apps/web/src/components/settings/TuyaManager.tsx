@@ -122,7 +122,7 @@ export function TuyaManager({ reachable }: Props) {
       await fn();
       load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'Operación fallida');
+      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo completar la operación');
     }
   };
 

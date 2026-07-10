@@ -442,7 +442,7 @@ const mikrotik: IntegrationGuide = {
       title: 'Crea un usuario con permisos',
       body: 'En vez de usar el "admin", crea un usuario dedicado para KrakenOS. Con permiso de lectura basta para ver aparatos y tráfico; añade permiso de escritura si quieres bloquear aparatos y cambiar la WiFi.',
       command:
-        '/user group add name=krakenos policy=read,write,api,rest-api,!ftp,!telnet\n/user add name=krakenos group=krakenos password=TU_CONTRASEÑA',
+        '/user group add name=krakenos policy=read,write,api,rest-api,!ftp,!telnet\n/user add name=krakenos group=krakenos password=TU_PASSWORD',
       external: true,
     },
     {

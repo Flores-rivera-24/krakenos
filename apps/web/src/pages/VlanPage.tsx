@@ -186,7 +186,7 @@ export function VlanPage() {
                 </div>
                 {v.isolated && (
                   <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
-                    aislada
+                    Aislada
                   </span>
                 )}
               </CardHeader>

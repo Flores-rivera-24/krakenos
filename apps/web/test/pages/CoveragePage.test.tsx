@@ -154,13 +154,13 @@ describe('CoveragePage', () => {
     );
   });
 
-  it('cambiar a la vista Survey muestra el panel de recorridos', async () => {
+  it('cambiar a la vista Medición muestra el panel de recorridos', async () => {
     setRole('admin');
     const user = userEvent.setup();
     render(<CoveragePage />);
     await screen.findByRole('option', { name: 'Planta baja' });
 
-    await user.click(screen.getByRole('button', { name: 'Survey' }));
+    await user.click(screen.getByRole('button', { name: 'Medición' }));
 
     expect(await screen.findByText('Recorridos de medición')).toBeInTheDocument();
     await waitFor(() => expect(coverageMock.listScans).toHaveBeenCalledWith('plan-1'));

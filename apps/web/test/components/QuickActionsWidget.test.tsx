@@ -65,7 +65,8 @@ describe('QuickActionsWidget (US-170)', () => {
     renderWidget();
 
     expect(await screen.findByText('Luz salón')).toBeInTheDocument();
-    await user.click(screen.getByRole('switch', { name: /Encender Luz salón/ }));
+    // El dispositivo está encendido → el interruptor anuncia la acción real (apagar).
+    await user.click(screen.getByRole('switch', { name: /Apagar Luz salón/ }));
     await waitFor(() =>
       expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/light-salon', { on: false }),
     );

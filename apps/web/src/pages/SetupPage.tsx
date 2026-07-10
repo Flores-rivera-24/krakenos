@@ -48,11 +48,11 @@ export function SetupPage() {
     e.preventDefault();
     setError(null);
     if (password !== confirm) {
-      setError('Las contraseñas no coinciden');
+      setError('Las contraseñas no coinciden.');
       return;
     }
     if (password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres');
+      setError('La contraseña debe tener al menos 8 caracteres.');
       return;
     }
     setLoading(true);

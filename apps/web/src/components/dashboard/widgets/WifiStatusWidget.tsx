@@ -40,7 +40,9 @@ export function WifiStatusWidget() {
                   <span className="truncate text-kr-primary">{n.ssid || '(oculta)'}</span>
                   {n.isGuest && <span className="text-kr-xs text-kr-muted">invitados</span>}
                 </span>
-                <span className="shrink-0 text-kr-secondary">{n.clientCount} clientes</span>
+                <span className="shrink-0 text-kr-secondary">
+                  {n.clientCount} {n.clientCount === 1 ? 'cliente' : 'clientes'}
+                </span>
               </div>
             ))}
             <Link to="/wifi" className="inline-block text-kr-sm text-kr-link hover:underline">

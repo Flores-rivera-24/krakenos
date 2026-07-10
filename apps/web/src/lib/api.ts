@@ -40,10 +40,10 @@ async function rawRequest<T>(path: string, options: RequestOptions): Promise<T> 
 
   const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new ApiRequestError(
-      res.status,
-      (data as ApiError) ?? { code: 'UNKNOWN', message: res.statusText },
-    );
+    // Sin cuerpo JSON no hay mensaje del agente: se deja vacío para que
+    // `describeError` use su fallback en español en lugar del statusText
+    // en inglés del navegador ("Not Found", "Internal Server Error"…).
+    throw new ApiRequestError(res.status, (data as ApiError) ?? { code: 'UNKNOWN', message: '' });
   }
   return data as T;
 }

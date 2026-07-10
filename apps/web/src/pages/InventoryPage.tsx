@@ -204,7 +204,7 @@ export function InventoryPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar..."
+            placeholder="Buscar…"
             aria-label="Buscar dispositivos"
             className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />

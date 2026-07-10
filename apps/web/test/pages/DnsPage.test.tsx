@@ -62,7 +62,7 @@ describe('DnsPage', () => {
     await waitFor(() => expect(screen.getByText('24%')).toBeInTheDocument());
     expect(screen.getByText('ads.doubleclick.net')).toBeInTheDocument();
     expect(screen.getByText('github.com')).toBeInTheDocument();
-    expect(screen.getByText('permitida')).toBeInTheDocument();
+    expect(screen.getByText('Permitida')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/dns/queries?limit=20');
   });
 

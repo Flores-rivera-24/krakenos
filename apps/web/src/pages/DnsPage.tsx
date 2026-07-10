@@ -156,7 +156,7 @@ export function DnsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Blocklist</CardTitle>
+            <CardTitle className="text-base text-foreground">Lista de bloqueo</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border border-border">
@@ -235,7 +235,7 @@ export function DnsPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span className={q.blocked ? 'text-destructive' : 'text-green-500'}>
-                            {q.blocked ? 'bloqueada' : 'permitida'}
+                            {q.blocked ? 'Bloqueada' : 'Permitida'}
                           </span>
                         </td>
                       </tr>

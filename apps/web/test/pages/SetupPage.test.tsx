@@ -56,7 +56,7 @@ describe('SetupPage', () => {
     await fill(user, 'password123', 'distinta1');
     await user.click(screen.getByRole('button', { name: 'Crear administrador' }));
 
-    expect(await screen.findByText('Las contraseñas no coinciden')).toBeInTheDocument();
+    expect(await screen.findByText('Las contraseñas no coinciden.')).toBeInTheDocument();
     expect(apiMock.post).not.toHaveBeenCalled();
   });
 

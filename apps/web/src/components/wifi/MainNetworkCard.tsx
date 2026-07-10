@@ -94,7 +94,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             id="password"
             type="password"
             value={password}
-            placeholder="••••••••  (dejar vacío para no cambiar)"
+            placeholder="•••••••• (dejar vacío para no cambiar)"
             onChange={(e) => setPassword(e.target.value)}
             disabled={!isAdmin || security === 'open'}
             minLength={8}
@@ -136,7 +136,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             >
               {SECURITIES.map((s) => (
                 <option key={s} value={s}>
-                  {s.toUpperCase()}
+                  {s === 'open' ? 'Abierta (sin contraseña)' : s.toUpperCase()}
                 </option>
               ))}
             </select>

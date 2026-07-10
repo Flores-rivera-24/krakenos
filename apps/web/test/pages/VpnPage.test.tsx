@@ -52,7 +52,7 @@ describe('VpnPage', () => {
     await screen.findByText('vpn.test:51820');
 
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Móvil' } });
-    fireEvent.click(screen.getByRole('button', { name: /Crear peer/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Añadir dispositivo/ }));
 
     expect(await screen.findByAltText('QR de configuración WireGuard')).toBeInTheDocument();
     expect(screen.getByText(/solo se muestra una vez/)).toBeInTheDocument();

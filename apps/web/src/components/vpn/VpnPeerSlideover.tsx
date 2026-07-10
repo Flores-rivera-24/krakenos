@@ -36,7 +36,7 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
               onClose();
             }}
           >
-            Eliminar peer
+            Eliminar dispositivo
           </Button>
         )
       }
@@ -67,7 +67,7 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
         </div>
       ) : (
         <p className="mt-4 text-kr-xs text-kr-muted">
-          La configuración y el QR solo están disponibles al crear el peer.
+          La configuración y el QR solo están disponibles al crear el dispositivo.
         </p>
       )}
     </Slideover>

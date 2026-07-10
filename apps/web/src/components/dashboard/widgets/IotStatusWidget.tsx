@@ -71,7 +71,7 @@ export function IotStatusWidget() {
                   <span className="text-kr-primary">{b.name}</span>
                 </span>
                 <span className="text-kr-secondary">
-                  {b.online}/{b.total} online
+                  {b.online}/{b.total} en línea
                 </span>
               </div>
             ))}

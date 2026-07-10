@@ -15,6 +15,9 @@ import { ApiRequestError, api } from '@/lib/api';
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary';
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
+// Etiquetas visibles (el valor de la API no cambia); alineadas con FirewallPage.
+const ACTION_LABEL: Record<FirewallAction, string> = { deny: 'Bloquear', allow: 'Permitir' };
+const PROTOCOL_LABEL: Record<FirewallProtocol, string> = { any: 'Cualquiera', tcp: 'TCP', udp: 'UDP' };
 
 interface Props {
   rule: FirewallRule;
@@ -94,8 +97,8 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
               value={action}
               onChange={(e) => setAction(e.target.value as FirewallAction)}
             >
-              <option value="deny">deny</option>
-              <option value="allow">allow</option>
+              <option value="deny">{ACTION_LABEL.deny}</option>
+              <option value="allow">{ACTION_LABEL.allow}</option>
             </select>
           </div>
           <div className="space-y-2">
@@ -108,7 +111,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
             >
               {PROTOCOLS.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {PROTOCOL_LABEL[p]}
                 </option>
               ))}
             </select>
