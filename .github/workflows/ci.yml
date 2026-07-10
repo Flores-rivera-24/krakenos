@@ -51,6 +51,11 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Presupuesto de rendimiento móvil (US-193): tamaños gzip del bundle web.
+      # BLOQUEANTE: una dependencia pesada o un chunk sin split no entra en verde.
+      - name: Bundle budget (web)
+        run: pnpm --filter @krakenos/web budget
+
       - name: Test (con coverage informativo)
         run: pnpm test:coverage
 
