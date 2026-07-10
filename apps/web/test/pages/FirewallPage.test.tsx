@@ -47,6 +47,9 @@ describe('FirewallPage', () => {
     render(<FirewallPage />);
     await waitFor(() => expect(screen.getByText('Bloquear IoT')).toBeInTheDocument());
     expect(screen.getByText('10.0.30.0/24')).toBeInTheDocument();
+    // La acción/protocolo se muestran con etiqueta en español, no el valor crudo de la API.
+    expect(screen.getByRole('cell', { name: 'Bloquear' })).toBeInTheDocument();
+    expect(screen.queryByText('deny')).not.toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/firewall/rules');
   });
 

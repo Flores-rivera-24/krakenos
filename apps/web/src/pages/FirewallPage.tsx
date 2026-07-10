@@ -22,6 +22,9 @@ import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
+// Etiquetas visibles (el valor de la API no cambia): mismas palabras que ACTION_HELP.
+const ACTION_LABEL: Record<FirewallAction, string> = { deny: 'Bloquear', allow: 'Permitir' };
+const PROTOCOL_LABEL: Record<FirewallProtocol, string> = { any: 'Cualquiera', tcp: 'TCP', udp: 'UDP' };
 
 /** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
 const FIREWALL_HELP =
@@ -147,8 +150,8 @@ export function FirewallPage() {
                   onChange={(e) => setForm({ ...form, action: e.target.value as FirewallAction })}
                   className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
                 >
-                  <option value="deny">deny</option>
-                  <option value="allow">allow</option>
+                  <option value="deny">{ACTION_LABEL.deny}</option>
+                  <option value="allow">{ACTION_LABEL.allow}</option>
                 </select>
               </div>
               <div className="space-y-2">
@@ -166,7 +169,7 @@ export function FirewallPage() {
                 >
                   {PROTOCOLS.map((p) => (
                     <option key={p} value={p}>
-                      {p}
+                      {PROTOCOL_LABEL[p]}
                     </option>
                   ))}
                 </select>
@@ -272,10 +275,10 @@ export function FirewallPage() {
                         <span
                           className={r.action === 'deny' ? 'text-destructive' : 'text-green-500'}
                         >
-                          {r.action}
+                          {ACTION_LABEL[r.action]}
                         </span>
                       </td>
-                      <td className="px-3 py-2 uppercase text-muted-foreground">{r.protocol}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{PROTOCOL_LABEL[r.protocol]}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
