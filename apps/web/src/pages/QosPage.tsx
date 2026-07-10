@@ -12,23 +12,16 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const PRIORITIES: QosPriority[] = ['high', 'normal', 'low'];
 
-/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
-const TARGET_HELP =
-  'El aparato o servicio al que se aplica la regla: su IP (192.168.1.50), su dirección MAC o el nombre de un servicio.';
-const PRIORITY_HELP =
-  'Cuando la red se satura, el tráfico de prioridad alta pasa primero y el de prioridad baja espera. La mayoría del tráfico va en «Normal».';
-const KBPS_HELP =
-  'Límite de velocidad en kbps (1000 kbps ≈ 1 Mbps). Escribe 0 para no poner límite.';
-
-const PRIORITY_LABEL: Record<QosPriority, string> = {
-  high: 'Alta',
-  normal: 'Normal',
-  low: 'Baja',
+const PRIORITY_LABEL: Record<QosPriority, TranslationKey> = {
+  high: 'qos.priority.high',
+  normal: 'qos.priority.normal',
+  low: 'qos.priority.low',
 };
 
 const PRIORITY_CLASS: Record<QosPriority, string> = {
@@ -47,6 +40,7 @@ function formatLimit(kbps: number): string {
 }
 
 export function QosPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [rules, setRules] = useState<QosRule[]>([]);
   const [form, setForm] = useState<CreateQosRuleRequest>(EMPTY);
@@ -60,7 +54,7 @@ export function QosPage() {
     api
       .get<QosRule[]>('/qos/rules')
       .then(setRules)
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las reglas')));
+      .catch((err) => setError(describeError(err, t('qos.loadError'))));
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
@@ -82,10 +76,10 @@ export function QosPage() {
       setForm(EMPTY);
       setDownText('');
       setUpText('');
-      toast.success('Regla creada');
+      toast.success(t('qos.created'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear la regla'));
+      toast.error(describeError(err, t('qos.createError')));
     } finally {
       setBusy(false);
     }
@@ -100,10 +94,10 @@ export function QosPage() {
   const removeRule = async (id: string) => {
     try {
       await api.del(`/qos/rules/${id}`);
-      toast.success('Regla eliminada');
+      toast.success(t('qos.removed'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar'));
+      toast.error(describeError(err, t('qos.removeError')));
     }
   };
 
@@ -114,9 +108,7 @@ export function QosPage() {
           <h2 className="text-xl font-semibold">QoS</h2>
           <GlossaryHint termKey="qos" />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Prioriza y limita el ancho de banda por dispositivo o servicio.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('qos.subtitle')}</p>
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -124,36 +116,36 @@ export function QosPage() {
       {isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Nueva regla</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('qos.newRule')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={addRule} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
               <div className="space-y-2 lg:col-span-2">
-                <Label htmlFor="qos-name">Nombre</Label>
+                <Label htmlFor="qos-name">{t('qos.name')}</Label>
                 <Input
                   id="qos-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="p. ej. Prioridad trabajo"
+                  placeholder={t('qos.namePlaceholder')}
                   maxLength={60}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="qos-target">Objetivo</Label>
-                  <HelpHint content={TARGET_HELP} label="¿Qué es el objetivo?" />
+                  <Label htmlFor="qos-target">{t('qos.target')}</Label>
+                  <HelpHint content={t('qos.targetHelp')} label={t('qos.targetHelpLabel')} />
                 </div>
                 <Input
                   id="qos-target"
                   value={form.target}
                   onChange={(e) => setForm({ ...form, target: e.target.value })}
-                  placeholder="IP/MAC/servicio"
+                  placeholder={t('qos.targetPlaceholder')}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="qos-priority">Prioridad</Label>
-                  <HelpHint content={PRIORITY_HELP} label="¿Qué es la prioridad?" />
+                  <Label htmlFor="qos-priority">{t('qos.priorityLabel')}</Label>
+                  <HelpHint content={t('qos.priorityHelp')} label={t('qos.priorityHelpLabel')} />
                 </div>
                 <select
                   id="qos-priority"
@@ -163,15 +155,15 @@ export function QosPage() {
                 >
                   {PRIORITIES.map((p) => (
                     <option key={p} value={p}>
-                      {PRIORITY_LABEL[p]}
+                      {t(PRIORITY_LABEL[p])}
                     </option>
                   ))}
                 </select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="qos-down">Descarga en kbps (0 = sin límite)</Label>
-                  <HelpHint content={KBPS_HELP} label="¿Qué son los kbps?" />
+                  <Label htmlFor="qos-down">{t('qos.download')}</Label>
+                  <HelpHint content={t('qos.kbpsHelp')} label={t('qos.kbpsHelpLabel')} />
                 </div>
                 <Input
                   id="qos-down"
@@ -182,7 +174,7 @@ export function QosPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="qos-up">Subida en kbps (0 = sin límite)</Label>
+                <Label htmlFor="qos-up">{t('qos.upload')}</Label>
                 <Input
                   id="qos-up"
                   value={upText}
@@ -193,7 +185,7 @@ export function QosPage() {
               </div>
               <div className="flex items-end lg:col-span-6">
                 <Button type="submit" disabled={busy}>
-                  {busy ? 'Creando…' : 'Añadir regla'}
+                  {busy ? t('qos.creating') : t('qos.addRule')}
                 </Button>
               </div>
             </form>
@@ -203,20 +195,20 @@ export function QosPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-foreground">Reglas</CardTitle>
+          <CardTitle className="text-base text-foreground">{t('qos.rules')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-secondary text-secondary-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left">Activa</th>
-                  <th className="px-3 py-2 text-left">Nombre</th>
-                  <th className="px-3 py-2 text-left">Objetivo</th>
-                  <th className="px-3 py-2 text-left">Prioridad</th>
+                  <th className="px-3 py-2 text-left">{t('qos.active')}</th>
+                  <th className="px-3 py-2 text-left">{t('qos.name')}</th>
+                  <th className="px-3 py-2 text-left">{t('qos.target')}</th>
+                  <th className="px-3 py-2 text-left">{t('qos.priorityLabel')}</th>
                   <th className="px-3 py-2 text-left">↓</th>
                   <th className="px-3 py-2 text-left">↑</th>
-                  {isAdmin && <th className="px-3 py-2 text-right">Acción</th>}
+                  {isAdmin && <th className="px-3 py-2 text-right">{t('qos.action')}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -225,11 +217,10 @@ export function QosPage() {
                 ) : rules.length === 0 ? (
                   <tr>
                     <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">Aún no hay reglas de QoS.</p>
+                      <p className="text-kr-muted">{t('qos.empty')}</p>
                       <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        La QoS reparte tu conexión para que lo importante no se resienta.{' '}
-                        {isAdmin &&
-                          'Crea una regla arriba para, por ejemplo, dar prioridad a las videollamadas o limitar una descarga.'}
+                        {t('qos.emptyHint')}{' '}
+                        {isAdmin && t('qos.emptyHintAdmin')}
                       </p>
                     </td>
                   </tr>
@@ -241,14 +232,14 @@ export function QosPage() {
                           checked={r.enabled}
                           onToggle={(next) => toggleRule(r, next)}
                           disabled={!isAdmin}
-                          errorMessage={`No se pudo actualizar ${r.name}`}
-                          aria-label={`Activar regla ${r.name}`}
+                          errorMessage={t('qos.updateError', { name: r.name })}
+                          aria-label={t('qos.toggleAria', { name: r.name })}
                         />
                       </td>
                       <td className="px-3 py-2">{r.name}</td>
                       <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
                       <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
-                        {PRIORITY_LABEL[r.priority]}
+                        {t(PRIORITY_LABEL[r.priority])}
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.downloadKbps)}</td>
                       <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
@@ -256,9 +247,9 @@ export function QosPage() {
                         <td className="px-3 py-2 text-right">
                           <DeleteButton
                             onDelete={() => removeRule(r.id)}
-                            aria-label={`Eliminar regla ${r.name}`}
+                            aria-label={t('qos.removeAria', { name: r.name })}
                           >
-                            Eliminar
+                            {t('qos.remove')}
                           </DeleteButton>
                         </td>
                       )}

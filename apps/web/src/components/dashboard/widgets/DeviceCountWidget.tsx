@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
+import { useT } from '@/lib/i18n';
 import { useInventoryStore } from '@/store/inventory.store';
 
 function Stat({
@@ -23,6 +24,7 @@ function Stat({
 
 /** Contadores de dispositivos: online / total / desconocidos / bloqueados. */
 export function DeviceCountWidget() {
+  const t = useT();
   const devices = useInventoryStore((s) => Object.values(s.devices));
   const online = devices.filter((d) => d.online).length;
   const unknown = devices.filter((d) => d.type === 'unknown').length;
@@ -31,15 +33,15 @@ export function DeviceCountWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Dispositivos</CardTitle>
+        <CardTitle>{t('dashboard.widget.devices.title')}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
-        <Stat status="online" label="en línea" value={online} />
-        <Stat status="offline" label="total" value={devices.length} />
-        <Stat status="warning" label="desconocidos" value={unknown} />
-        <Stat status="danger" label="bloqueados" value={blocked} />
+        <Stat status="online" label={t('dashboard.widget.devices.online')} value={online} />
+        <Stat status="offline" label={t('dashboard.widget.devices.total')} value={devices.length} />
+        <Stat status="warning" label={t('dashboard.widget.devices.unknown')} value={unknown} />
+        <Stat status="danger" label={t('dashboard.widget.devices.blocked')} value={blocked} />
         <Link to="/inventory" className="col-span-2 text-kr-sm text-kr-link hover:underline">
-          Ver inventario →
+          {t('dashboard.widget.devices.viewInventory')}
         </Link>
       </CardContent>
     </Card>

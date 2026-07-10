@@ -2,6 +2,7 @@ import type { Device } from '@krakenos/types';
 import { useMemo, useState } from 'react';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useT } from '@/lib/i18n';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const MAX_NODES = 10;
@@ -24,6 +25,7 @@ function dotColor(d: Device): string {
  * partir del inventario real; los nodos de dispositivo abren el Slideover.
  */
 export function NetworkTopologyWidget() {
+  const t = useT();
   const devices = useInventoryStore((s) => Object.values(s.devices));
   const [selected, setSelected] = useState<Device | null>(null);
 
@@ -43,17 +45,19 @@ export function NetworkTopologyWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Topología de red</CardTitle>
+        <CardTitle>{t('dashboard.widget.topology.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         {devices.length === 0 ? (
-          <p className="py-12 text-center text-kr-sm text-kr-muted">Sin dispositivos en la red.</p>
+          <p className="py-12 text-center text-kr-sm text-kr-muted">
+            {t('dashboard.widget.topology.empty')}
+          </p>
         ) : (
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="h-auto w-full"
             role="img"
-            aria-label="Diagrama de la red"
+            aria-label={t('dashboard.widget.topology.diagramAria')}
           >
             {/* Enlaces ISP→Router y Router→dispositivos */}
             <line x1={ispX} y1={midY} x2={routerX} y2={midY} stroke="var(--kr-border)" strokeWidth={2} />
@@ -81,7 +85,7 @@ export function NetworkTopologyWidget() {
             <g>
               <circle cx={routerX} cy={midY} r={20} fill="var(--kr-accent)" />
               <text x={routerX} y={midY + 38} textAnchor="middle" fill="var(--kr-text-secondary)" fontSize={11}>
-                {router ? deviceName(router) : 'Router'}
+                {router ? deviceName(router) : t('dashboard.widget.topology.router')}
               </text>
             </g>
 
@@ -109,7 +113,10 @@ export function NetworkTopologyWidget() {
         )}
         {devices.length > leaves.length + (router ? 1 : 0) && (
           <p className="mt-2 text-kr-xs text-kr-muted">
-            Mostrando {leaves.length} de {devices.length} dispositivos.
+            {t('dashboard.widget.topology.showing', {
+              shown: leaves.length,
+              total: devices.length,
+            })}
           </p>
         )}
       </CardContent>

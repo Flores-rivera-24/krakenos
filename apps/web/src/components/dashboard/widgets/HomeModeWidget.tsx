@@ -6,6 +6,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import {
   getPresence,
   getPresenceTimeline,
@@ -25,6 +26,7 @@ import { toast } from '@/store/toast.store';
  * de personas y el timeline llegan ya acotados por rol desde el servidor.
  */
 export function HomeModeWidget() {
+  const t = useT();
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [state, setState] = useState<PresenceState | null>(null);
   const [timeline, setTimeline] = useState<PresenceEvent[]>([]);
@@ -64,7 +66,7 @@ export function HomeModeWidget() {
     try {
       setState(await setHomeMode(mode));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el modo'));
+      toast.error(describeError(err, t('dashboard.widget.homeMode.changeError')));
     } finally {
       setChanging(false);
     }
@@ -73,18 +75,22 @@ export function HomeModeWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Modo del hogar</CardTitle>
+        <CardTitle>{t('dashboard.widget.homeMode.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
           <LoadingLine />
         ) : state === null ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">
-            No se pudo cargar el estado del hogar.
+            {t('dashboard.widget.homeMode.loadError')}
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label="Modo del hogar">
+            <div
+              className="grid grid-cols-3 gap-2"
+              role="group"
+              aria-label={t('dashboard.widget.homeMode.title')}
+            >
               {HOME_MODES.map((mode) => (
                 <button
                   key={mode}
@@ -108,7 +114,7 @@ export function HomeModeWidget() {
             </div>
             {state.modeSource === 'presence' && (
               <p className="text-kr-xs text-kr-muted">
-                Modo puesto automáticamente por la presencia.
+                {t('dashboard.widget.homeMode.autoMode')}
               </p>
             )}
 
@@ -120,10 +126,10 @@ export function HomeModeWidget() {
                     <span className="min-w-0 flex-1 truncate text-kr-primary">{p.displayName}</span>
                     <span className="shrink-0 text-kr-xs text-kr-muted">
                       {p.deviceCount === 0
-                        ? 'sin dispositivo asignado'
+                        ? t('dashboard.widget.homeMode.noDevice')
                         : p.home
-                          ? 'en casa'
-                          : 'fuera'}
+                          ? t('dashboard.widget.homeMode.atHome')
+                          : t('dashboard.widget.homeMode.away')}
                       {p.since ? ` · ${timeAgo(p.since)}` : ''}
                     </span>
                   </li>
@@ -134,14 +140,17 @@ export function HomeModeWidget() {
             {timeline.length > 0 && (
               <div>
                 <p className="mb-1 text-kr-xs font-medium uppercase tracking-wide text-kr-muted">
-                  Llegadas y salidas
+                  {t('dashboard.widget.homeMode.comingsGoings')}
                 </p>
                 <ul className="space-y-1">
                   {timeline.map((e) => (
                     <li key={e.id} className="flex items-center gap-2 text-kr-xs text-kr-muted">
                       <span aria-hidden>{e.kind === 'arrived' ? '→🏠' : '🏠→'}</span>
                       <span className="min-w-0 flex-1 truncate">
-                        {e.displayName} {e.kind === 'arrived' ? 'llegó' : 'salió'}
+                        {e.displayName}{' '}
+                        {e.kind === 'arrived'
+                          ? t('dashboard.widget.homeMode.arrived')
+                          : t('dashboard.widget.homeMode.left')}
                       </span>
                       <time className="shrink-0">{timeAgo(e.at)}</time>
                     </li>
@@ -151,8 +160,7 @@ export function HomeModeWidget() {
             )}
             {state.people.every((p) => p.deviceCount === 0) && (
               <p className="text-kr-xs text-kr-muted">
-                Asigna un dueño al móvil de cada persona (detalle del dispositivo en Inventario)
-                para que la casa sepa quién está.
+                {t('dashboard.widget.homeMode.assignOwnerHint')}
               </p>
             )}
           </>

@@ -1,6 +1,7 @@
 import { ArrowRight, CheckCircle2, Circle, Rocket, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { getIntegrations } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -9,8 +10,8 @@ const DISMISS_KEY = 'krakenos-onboarding-dismissed';
 
 interface Step {
   id: string;
-  label: string;
-  description: string;
+  labelKey: TranslationKey;
+  descriptionKey: TranslationKey;
   to: string;
   done: boolean;
 }
@@ -22,6 +23,7 @@ interface Step {
  * (red + un IoT) ya está conectado. Solo para administradores (quien da de alta equipos).
  */
 export function GettingStarted() {
+  const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -63,29 +65,29 @@ export function GettingStarted() {
   const steps: Step[] = [
     {
       id: 'router',
-      label: 'Conecta tu red',
-      description: 'Tu router o punto de acceso, para ver y controlar tus dispositivos.',
+      labelKey: 'dashboard.gettingStarted.router.label',
+      descriptionKey: 'dashboard.gettingStarted.router.desc',
       to: '/connect',
       done: routerDone,
     },
     {
       id: 'iot',
-      label: 'Añade una luz o un enchufe',
-      description: 'Philips Hue, Govee, TP-Link, Shelly y más — con guía paso a paso.',
+      labelKey: 'dashboard.gettingStarted.iot.label',
+      descriptionKey: 'dashboard.gettingStarted.iot.desc',
       to: '/connect',
       done: iotDone,
     },
     {
       id: 'wifi',
-      label: 'Revisa tu WiFi',
-      description: 'Nombre de red, contraseña y red de invitados.',
+      labelKey: 'dashboard.gettingStarted.wifi.label',
+      descriptionKey: 'dashboard.gettingStarted.wifi.desc',
       to: '/wifi',
       done: false,
     },
     {
       id: 'camera',
-      label: 'Añade una cámara',
-      description: 'Mira tus cámaras IP dentro de la app.',
+      labelKey: 'dashboard.gettingStarted.camera.label',
+      descriptionKey: 'dashboard.gettingStarted.camera.desc',
       to: '/cameras',
       done: false,
     },
@@ -103,17 +105,17 @@ export function GettingStarted() {
           </span>
           <div>
             <h3 id="onboarding-title" className="text-kr-lg font-semibold text-kr-primary">
-              ¡Bienvenido a KrakenOS!
+              {t('dashboard.gettingStarted.title')}
             </h3>
             <p className="text-kr-sm text-kr-secondary">
-              Conecta tus dispositivos en unos minutos. Te guiamos en cada paso.
+              {t('dashboard.gettingStarted.subtitle')}
             </p>
           </div>
         </div>
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Descartar primeros pasos"
+          aria-label={t('dashboard.gettingStarted.dismiss')}
           className="rounded p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <X className="h-4 w-4" />
@@ -137,10 +139,14 @@ export function GettingStarted() {
               )}
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-kr-base font-medium text-kr-primary">
-                  {step.label}
-                  {step.done && <span className="text-kr-xs text-success">· hecho</span>}
+                  {t(step.labelKey)}
+                  {step.done && (
+                    <span className="text-kr-xs text-success">
+                      {t('dashboard.gettingStarted.doneTag')}
+                    </span>
+                  )}
                 </span>
-                <span className="block text-kr-sm text-kr-secondary">{step.description}</span>
+                <span className="block text-kr-sm text-kr-secondary">{t(step.descriptionKey)}</span>
               </span>
               {!step.done && (
                 <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-kr-secondary" aria-hidden />

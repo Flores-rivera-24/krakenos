@@ -3,6 +3,7 @@ import { ProductArt } from '@/components/ui/product-art';
 import { StatusDot } from '@/components/ui/status-dot';
 import { TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -16,10 +17,15 @@ interface Props {
  * abre el slideover de detalle.
  */
 export function DeviceCard({ device, onSelect }: Props) {
+  const t = useT();
   const name = device.label ?? device.hostname ?? device.mac;
   const blocked = device.isBlocked;
   const dotStatus = blocked ? 'danger' : device.online ? 'online' : 'offline';
-  const statusText = blocked ? 'Bloqueado' : device.online ? 'En línea' : 'Desconectado';
+  const statusText = blocked
+    ? t('inventory.status.blocked')
+    : device.online
+      ? t('inventory.status.online')
+      : t('inventory.status.offline');
 
   return (
     <button

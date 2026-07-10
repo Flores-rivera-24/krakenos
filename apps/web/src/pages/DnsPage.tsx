@@ -16,14 +16,12 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getGlossaryEntry } from '@/lib/guides';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
-/** "Dominio" no tiene clave de glosario propia: se explica en línea. */
-const DOMAIN_HELP =
-  'El nombre de una web, como ejemplo.com. Al bloquearlo, ningún aparato de tu casa podrá cargarlo (útil contra anuncios y rastreadores).';
-
 export function DnsPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [stats, setStats] = useState<DnsStats | null>(null);
   const [blocklist, setBlocklist] = useState<BlockedDomain[]>([]);
@@ -44,7 +42,7 @@ export function DnsPage() {
         setBlocklist(b);
         setQueries(q);
       })
-      .catch((err) => setError(describeError(err, 'No se pudo cargar el DNS')));
+      .catch((err) => setError(describeError(err, t('dns.loadError'))));
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
@@ -58,10 +56,10 @@ export function DnsPage() {
     try {
       await api.post<BlockedDomain>('/dns/blocklist', { domain: domain.trim() });
       setDomain('');
-      toast.success('Dominio bloqueado');
+      toast.success(t('dns.domainBlocked'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo bloquear el dominio'));
+      toast.error(describeError(err, t('dns.blockError')));
     } finally {
       setBusy(false);
     }
@@ -70,10 +68,10 @@ export function DnsPage() {
   const removeDomain = async (id: string) => {
     try {
       await api.del(`/dns/blocklist/${id}`);
-      toast.success('Dominio eliminado');
+      toast.success(t('dns.domainRemoved'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el dominio'));
+      toast.error(describeError(err, t('dns.removeError')));
     }
   };
 
@@ -86,12 +84,12 @@ export function DnsPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           <GlossaryTerm
-            term="Bloqueo de anuncios"
+            term={t('dns.adblockTerm')}
             definition={getGlossaryEntry('adblock')?.short ?? ''}
           >
-            Bloqueo de dominios
+            {t('dns.domainBlocking')}
           </GlossaryTerm>{' '}
-          (anuncios/rastreadores) y estadísticas de consultas.
+          {t('dns.subtitleSuffix')}
         </p>
       </div>
 
@@ -99,24 +97,24 @@ export function DnsPage() {
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
-          title="Consultas"
+          title={t('dns.stat.queries')}
           value={stats ? stats.totalQueries.toLocaleString() : '—'}
           icon={Globe}
         />
         <StatCard
-          title="Bloqueadas"
+          title={t('dns.stat.blocked')}
           value={stats ? stats.blockedQueries.toLocaleString() : '—'}
           icon={Ban}
           accent="text-destructive"
         />
         <StatCard
-          title="% Bloqueado"
+          title={t('dns.stat.blockedPercent')}
           value={stats ? `${stats.blockedPercent}%` : '—'}
           icon={ShieldCheck}
           accent="text-green-500"
         />
         <StatCard
-          title="Dominios"
+          title={t('dns.stat.domains')}
           value={stats ? `${stats.blocklistSize}` : '—'}
           icon={ListFilter}
         />
@@ -125,25 +123,25 @@ export function DnsPage() {
       {isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Bloquear dominio</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('dns.blockDomain')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={addDomain} className="flex items-end gap-3">
               <div className="flex-1 space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="dns-domain">Dominio</Label>
-                  <HelpHint content={DOMAIN_HELP} label="¿Qué es un dominio?" />
+                  <Label htmlFor="dns-domain">{t('dns.domain')}</Label>
+                  <HelpHint content={t('dns.domainHelp')} label={t('dns.domainHelpLabel')} />
                 </div>
                 <Input
                   id="dns-domain"
                   value={domain}
                   onChange={(e) => setDomain(e.target.value)}
-                  placeholder="p. ej. ads.ejemplo.com"
+                  placeholder={t('dns.domainPlaceholder')}
                   maxLength={253}
                 />
               </div>
               <Button type="submit" disabled={busy}>
-                {busy ? 'Bloqueando…' : 'Bloquear'}
+                {busy ? t('dns.blocking') : t('dns.block')}
               </Button>
             </form>
           </CardContent>
@@ -156,15 +154,15 @@ export function DnsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Lista de bloqueo</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('dns.blocklist')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-secondary text-secondary-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Dominio</th>
-                    {isAdmin && <th className="px-3 py-2 text-right">Acción</th>}
+                    <th className="px-3 py-2 text-left">{t('dns.domain')}</th>
+                    {isAdmin && <th className="px-3 py-2 text-right">{t('dns.action')}</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -173,10 +171,10 @@ export function DnsPage() {
                   ) : blocklist.length === 0 ? (
                     <tr>
                       <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center">
-                        <p className="text-kr-muted">Aún no hay dominios bloqueados.</p>
+                        <p className="text-kr-muted">{t('dns.empty')}</p>
                         <p className="mx-auto mt-1 max-w-xs text-kr-xs text-kr-secondary">
-                          El bloqueo por DNS filtra anuncios y rastreadores para toda la casa.{' '}
-                          {isAdmin && 'Añade un dominio arriba para empezar.'}
+                          {t('dns.emptyHint')}{' '}
+                          {isAdmin && t('dns.emptyHintAdmin')}
                         </p>
                       </td>
                     </tr>
@@ -188,9 +186,9 @@ export function DnsPage() {
                           <td className="px-3 py-2 text-right">
                             <DeleteButton
                               onDelete={() => removeDomain(b.id)}
-                              aria-label={`Quitar ${b.domain}`}
+                              aria-label={t('dns.removeAria', { domain: b.domain })}
                             >
-                              Quitar
+                              {t('dns.remove')}
                             </DeleteButton>
                           </td>
                         )}
@@ -205,16 +203,16 @@ export function DnsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Consultas recientes</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('dns.recentQueries')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-secondary text-secondary-foreground">
                   <tr>
-                    <th className="px-3 py-2 text-left">Dominio</th>
-                    <th className="px-3 py-2 text-left">Cliente</th>
-                    <th className="px-3 py-2 text-left">Estado</th>
+                    <th className="px-3 py-2 text-left">{t('dns.domain')}</th>
+                    <th className="px-3 py-2 text-left">{t('dns.client')}</th>
+                    <th className="px-3 py-2 text-left">{t('dns.status')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,7 +221,7 @@ export function DnsPage() {
                   ) : queries.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
-                        Aún no hay consultas recientes.
+                        {t('dns.noQueries')}
                       </td>
                     </tr>
                   ) : (
@@ -235,7 +233,7 @@ export function DnsPage() {
                         </td>
                         <td className="px-3 py-2">
                           <span className={q.blocked ? 'text-destructive' : 'text-green-500'}>
-                            {q.blocked ? 'Bloqueada' : 'Permitida'}
+                            {q.blocked ? t('dns.blockedStatus') : t('dns.allowedStatus')}
                           </span>
                         </td>
                       </tr>

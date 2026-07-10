@@ -11,18 +11,14 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
 const EMPTY: CreateVlanRequest = { tag: 0, name: '', subnet: '', isolated: false };
 
-/** Ayudas en lenguaje llano para conceptos sin clave de glosario propia. */
-const TAG_HELP =
-  'Número (1–4094) que identifica la VLAN. Cada VLAN tiene el suyo, único: así el equipo de red sabe a qué segmento pertenece cada aparato.';
-const ISOLATED_HELP =
-  'Si la activas, los aparatos de esta VLAN no pueden comunicarse con los de otras. Útil para separar, por ejemplo, los aparatos inteligentes del resto de la casa.';
-
 export function VlanPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [vlans, setVlans] = useState<VlanWithCount[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -38,7 +34,7 @@ export function VlanPage() {
         setVlans(v);
         setDevices(d);
       })
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las VLANs')));
+      .catch((err) => setError(describeError(err, t('vlan.loadError'))));
 
   useEffect(() => {
     void load().finally(() => setLoading(false));
@@ -59,10 +55,10 @@ export function VlanPage() {
       });
       setForm(EMPTY);
       setTagText('');
-      toast.success('VLAN creada');
+      toast.success(t('vlan.created'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear la VLAN'));
+      toast.error(describeError(err, t('vlan.createError')));
     } finally {
       setBusy(false);
     }
@@ -71,20 +67,20 @@ export function VlanPage() {
   const removeVlan = async (id: string) => {
     try {
       await api.del(`/vlans/${id}`);
-      toast.success('VLAN eliminada');
+      toast.success(t('vlan.removed'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar la VLAN'));
+      toast.error(describeError(err, t('vlan.removeError')));
     }
   };
 
   const assignDevice = async (deviceId: string, tag: number | null) => {
     try {
       await api.put<Device>(`/inventory/devices/${deviceId}/vlan`, { tag });
-      toast.success('VLAN actualizada');
+      toast.success(t('vlan.assigned'));
       void load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo asignar la VLAN'));
+      toast.error(describeError(err, t('vlan.assignError')));
       void load(); // re-sincroniza el selector con la verdad del servidor
     }
   };
@@ -96,9 +92,7 @@ export function VlanPage() {
           <h2 className="text-xl font-semibold">VLANs</h2>
           <GlossaryHint termKey="vlan" />
         </div>
-        <p className="text-sm text-muted-foreground">
-          Segmenta la red en VLANs y asigna dispositivos a cada segmento.
-        </p>
+        <p className="text-sm text-muted-foreground">{t('vlan.subtitle')}</p>
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -106,14 +100,14 @@ export function VlanPage() {
       {isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base text-foreground">Nueva VLAN</CardTitle>
+            <CardTitle className="text-base text-foreground">{t('vlan.newVlan')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={addVlan} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="vlan-tag">Tag (1-4094)</Label>
-                  <HelpHint content={TAG_HELP} label="¿Qué es el tag de una VLAN?" />
+                  <Label htmlFor="vlan-tag">{t('vlan.tag')}</Label>
+                  <HelpHint content={t('vlan.tagHelp')} label={t('vlan.tagHelpLabel')} />
                 </div>
                 <Input
                   id="vlan-tag"
@@ -124,18 +118,18 @@ export function VlanPage() {
                 />
               </div>
               <div className="space-y-2 lg:col-span-2">
-                <Label htmlFor="vlan-name">Nombre</Label>
+                <Label htmlFor="vlan-name">{t('vlan.name')}</Label>
                 <Input
                   id="vlan-name"
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="p. ej. IoT"
+                  placeholder={t('vlan.namePlaceholder')}
                   maxLength={60}
                 />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
-                  <Label htmlFor="vlan-subnet">Subred</Label>
+                  <Label htmlFor="vlan-subnet">{t('vlan.subnet')}</Label>
                   <GlossaryHint termKey="subred" />
                 </div>
                 <Input
@@ -152,13 +146,13 @@ export function VlanPage() {
                     checked={form.isolated ?? false}
                     onChange={(e) => setForm({ ...form, isolated: e.target.checked })}
                   />
-                  Aislada
+                  {t('vlan.isolated')}
                 </label>
-                <HelpHint content={ISOLATED_HELP} label="¿Qué es una VLAN aislada?" />
+                <HelpHint content={t('vlan.isolatedHelp')} label={t('vlan.isolatedHelpLabel')} />
               </div>
               <div className="flex items-end lg:col-span-5">
                 <Button type="submit" disabled={busy}>
-                  {busy ? 'Creando…' : 'Crear VLAN'}
+                  {busy ? t('vlan.creating') : t('vlan.createVlan')}
                 </Button>
               </div>
             </form>
@@ -181,23 +175,25 @@ export function VlanPage() {
                     <span className="font-mono text-xs text-muted-foreground">#{v.tag}</span>
                   </CardTitle>
                   <p className="mt-1 font-mono text-xs text-muted-foreground">
-                    {v.subnet ?? 'sin subred'}
+                    {v.subnet ?? t('vlan.noSubnet')}
                   </p>
                 </div>
                 {v.isolated && (
                   <span className="rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-500">
-                    Aislada
+                    {t('vlan.isolated')}
                   </span>
                 )}
               </CardHeader>
               <CardContent className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{v.deviceCount} dispositivos</span>
+                <span className="text-sm text-muted-foreground">
+                  {t('vlan.deviceCount', { count: v.deviceCount })}
+                </span>
                 {isAdmin && (
                   <DeleteButton
                     onDelete={() => removeVlan(v.id)}
-                    aria-label={`Eliminar VLAN ${v.name}`}
+                    aria-label={t('vlan.removeAria', { name: v.name })}
                   >
-                    Eliminar
+                    {t('vlan.remove')}
                   </DeleteButton>
                 )}
               </CardContent>
@@ -205,11 +201,10 @@ export function VlanPage() {
           ))}
         {!loading && vlans.length === 0 && (
           <div className="rounded-xl border border-kr bg-kr-surface py-10 text-center sm:col-span-2 lg:col-span-3">
-            <p className="text-kr-secondary">Aún no hay VLANs configuradas.</p>
+            <p className="text-kr-secondary">{t('vlan.empty')}</p>
             <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-muted">
-              Una VLAN divide tu red en zonas separadas usando el mismo cableado, como poner tabiques
-              a una habitación grande.{' '}
-              {isAdmin && 'Crea la primera arriba para, por ejemplo, aislar tus aparatos inteligentes.'}
+              {t('vlan.emptyHint')}{' '}
+              {isAdmin && t('vlan.emptyHintAdmin')}
             </p>
           </div>
         )}
@@ -217,14 +212,14 @@ export function VlanPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base text-foreground">Asignación de dispositivos</CardTitle>
+          <CardTitle className="text-base text-foreground">{t('vlan.assignment')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="bg-secondary text-secondary-foreground">
                 <tr>
-                  <th className="px-3 py-2 text-left">Dispositivo</th>
+                  <th className="px-3 py-2 text-left">{t('vlan.device')}</th>
                   <th className="px-3 py-2 text-left">IP</th>
                   <th className="px-3 py-2 text-left">VLAN</th>
                 </tr>
@@ -235,7 +230,7 @@ export function VlanPage() {
                 ) : devices.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
-                      Aún no hay dispositivos en el inventario.
+                      {t('vlan.noDevices')}
                     </td>
                   </tr>
                 ) : (
@@ -245,7 +240,7 @@ export function VlanPage() {
                       <td className="px-3 py-2 font-mono text-xs">{d.ip}</td>
                       <td className="px-3 py-2">
                         <select
-                          aria-label={`VLAN de ${d.label ?? d.mac}`}
+                          aria-label={t('vlan.selectAria', { name: d.label ?? d.mac })}
                           value={d.vlanTag ?? ''}
                           disabled={!isAdmin}
                           onChange={(e) =>
@@ -256,7 +251,7 @@ export function VlanPage() {
                           }
                           className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
                         >
-                          <option value="">Sin VLAN</option>
+                          <option value="">{t('vlan.noVlan')}</option>
                           {vlans.map((v) => (
                             <option key={v.id} value={v.tag}>
                               {v.name} (#{v.tag})

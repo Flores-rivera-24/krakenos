@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { pauseInternet, resumeInternet } from '@/lib/access';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -10,10 +12,10 @@ interface Props {
   canEdit: boolean;
 }
 
-const OPTIONS = [
-  { minutes: 30, label: '30 min' },
-  { minutes: 60, label: '1 h' },
-  { minutes: 120, label: '2 h' },
+const OPTIONS: { minutes: number; labelKey: TranslationKey }[] = [
+  { minutes: 30, labelKey: 'inventory.pause.opt30' },
+  { minutes: 60, labelKey: 'inventory.pause.opt1h' },
+  { minutes: 120, labelKey: 'inventory.pause.opt2h' },
 ];
 
 function formatTime(iso: string): string {
@@ -25,6 +27,7 @@ function formatTime(iso: string): string {
  * minutos y se reanuda solo. Estado local sembrado desde `device.pausedUntil`.
  */
 export function PauseInternet({ device, canEdit }: Props) {
+  const t = useT();
   const [pausedUntil, setPausedUntil] = useState<string | null>(device.pausedUntil ?? null);
   const [busy, setBusy] = useState(false);
 
@@ -35,9 +38,9 @@ export function PauseInternet({ device, canEdit }: Props) {
     try {
       const res = await pauseInternet(device.mac, minutes);
       setPausedUntil(res.pausedUntil);
-      toast.success('Internet pausado');
+      toast.success(t('inventory.pause.paused'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo pausar'));
+      toast.error(describeError(err, t('inventory.pause.pauseError')));
     } finally {
       setBusy(false);
     }
@@ -48,9 +51,9 @@ export function PauseInternet({ device, canEdit }: Props) {
     try {
       await resumeInternet(device.mac);
       setPausedUntil(null);
-      toast.success('Internet reanudado');
+      toast.success(t('inventory.pause.resumed'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo reanudar'));
+      toast.error(describeError(err, t('inventory.pause.resumeError')));
     } finally {
       setBusy(false);
     }
@@ -62,16 +65,18 @@ export function PauseInternet({ device, canEdit }: Props) {
     <div className="flex flex-wrap items-center gap-2 text-kr-sm">
       {active ? (
         <>
-          <span className="text-warning">Internet pausado hasta {formatTime(pausedUntil!)}</span>
+          <span className="text-warning">
+            {t('inventory.pause.pausedUntil', { time: formatTime(pausedUntil!) })}
+          </span>
           {canEdit && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void resume()}>
-              Reanudar
+              {t('inventory.pause.resume')}
             </Button>
           )}
         </>
       ) : (
         <>
-          <span className="text-kr-secondary">Pausar internet:</span>
+          <span className="text-kr-secondary">{t('inventory.pause.label')}</span>
           {OPTIONS.map((o) => (
             <Button
               key={o.minutes}
@@ -80,7 +85,7 @@ export function PauseInternet({ device, canEdit }: Props) {
               disabled={busy}
               onClick={() => void pause(o.minutes)}
             >
-              {o.label}
+              {t(o.labelKey)}
             </Button>
           ))}
         </>

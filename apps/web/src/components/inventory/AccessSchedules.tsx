@@ -13,6 +13,7 @@ import {
   updateSchedule,
 } from '@/lib/access';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
 
@@ -28,6 +29,7 @@ const DEFAULT_DAYS = [1, 2, 3, 4, 5]; // lunes a viernes
  * internet del dispositivo en ventanas recurrentes. Solo `admin` edita.
  */
 export function AccessSchedules({ mac, canEdit }: Props) {
+  const t = useT();
   const [schedules, setSchedules] = useState<AccessSchedule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -42,7 +44,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
     try {
       setSchedules(await listSchedules(mac));
     } catch (err) {
-      setError(describeError(err, 'No se pudieron cargar los horarios'));
+      setError(describeError(err, t('inventory.access.loadError')));
     }
   };
   useEffect(() => {
@@ -54,19 +56,19 @@ export function AccessSchedules({ mac, canEdit }: Props) {
 
   const submit = async () => {
     if (days.length === 0) {
-      toast.error('Elige al menos un día.');
+      toast.error(t('inventory.access.pickDay'));
       return;
     }
     setBusy(true);
     try {
       await createSchedule({
-        name: name.trim() || 'Sin internet',
+        name: name.trim() || t('inventory.access.defaultName'),
         mac,
         days,
         startMinute: hhmmToMinutes(start),
         endMinute: hhmmToMinutes(end),
       });
-      toast.success('Horario creado');
+      toast.success(t('inventory.access.created'));
       setName('');
       setAdding(false);
       setDays(DEFAULT_DAYS);
@@ -74,7 +76,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       setEnd('07:00');
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el horario'));
+      toast.error(describeError(err, t('inventory.access.createError')));
     } finally {
       setBusy(false);
     }
@@ -85,7 +87,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       await updateSchedule(s.id, { enabled: !s.enabled });
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el horario'));
+      toast.error(describeError(err, t('inventory.access.toggleError')));
     }
   };
 
@@ -94,31 +96,26 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       await deleteSchedule(s.id);
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el horario'));
+      toast.error(describeError(err, t('inventory.access.deleteError')));
     }
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-kr-sm font-medium text-kr-primary">Control parental · horarios</h3>
+        <h3 className="text-kr-sm font-medium text-kr-primary">{t('inventory.access.title')}</h3>
         {canEdit && !adding && (
           <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
-            Añadir horario
+            {t('inventory.access.add')}
           </Button>
         )}
       </div>
-      <p className="text-kr-xs text-kr-muted">
-        Corta el acceso a internet de este dispositivo en las ventanas que definas (p. ej.
-        21:00–07:00 de lunes a viernes).
-      </p>
+      <p className="text-kr-xs text-kr-muted">{t('inventory.access.description')}</p>
 
       {error && <p className="text-kr-sm text-danger">{error}</p>}
 
       {schedules && schedules.length === 0 && !adding && (
-        <p className="text-kr-sm text-kr-secondary">
-          Sin horarios: este dispositivo no tiene cortes programados.
-        </p>
+        <p className="text-kr-sm text-kr-secondary">{t('inventory.access.empty')}</p>
       )}
 
       <ul className="space-y-2">
@@ -139,12 +136,12 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 <Switch
                   checked={s.enabled}
                   onCheckedChange={() => void toggle(s)}
-                  aria-label={`Activar ${s.name}`}
+                  aria-label={t('inventory.access.toggleAria', { name: s.name })}
                 />
                 <button
                   type="button"
                   onClick={() => void remove(s)}
-                  aria-label={`Eliminar ${s.name}`}
+                  aria-label={t('inventory.access.removeAria', { name: s.name })}
                   className="px-1 text-kr-secondary hover:text-danger"
                 >
                   ✕
@@ -160,7 +157,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre (p. ej. Hora de dormir)"
+            placeholder={t('inventory.access.namePlaceholder')}
             maxLength={60}
           />
           <div className="flex gap-1">
@@ -170,7 +167,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 type="button"
                 onClick={() => toggleDay(d)}
                 aria-pressed={days.includes(d)}
-                aria-label={`Día ${label}`}
+                aria-label={t('inventory.access.dayAria', { day: label })}
                 className={cn(
                   'h-8 w-8 rounded-md border text-kr-sm',
                   days.includes(d)
@@ -183,29 +180,29 @@ export function AccessSchedules({ mac, canEdit }: Props) {
             ))}
           </div>
           <div className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-            <span>De</span>
+            <span>{t('inventory.access.from')}</span>
             <Input
               type="time"
               value={start}
               onChange={(e) => setStart(e.target.value)}
               className="w-28"
-              aria-label="Hora de inicio"
+              aria-label={t('inventory.access.startAria')}
             />
-            <span>a</span>
+            <span>{t('inventory.access.to')}</span>
             <Input
               type="time"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
               className="w-28"
-              aria-label="Hora de fin"
+              aria-label={t('inventory.access.endAria')}
             />
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => void submit()} disabled={busy}>
-              {busy ? 'Guardando…' : 'Guardar'}
+              {busy ? t('common.saving') : t('common.save')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
           </div>
         </div>

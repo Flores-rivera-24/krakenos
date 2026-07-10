@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { createCamera, updateCamera } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -18,24 +19,19 @@ interface Props {
   onSaved: () => void;
 }
 
-/** Ayuda en lenguaje llano de "qué es una URL RTSP y dónde encontrarla". */
-const RTSP_HELP = (
-  <span className="block space-y-1">
-    <span className="block">
-      Es la dirección del vídeo en directo de tu cámara dentro de tu red. Suele estar en la app o el
-      manual de la cámara (busca «RTSP», «ONVIF» o «stream»).
-    </span>
-    <span className="block">
-      Formato típico:{' '}
-      <code className="break-all font-mono text-kr-xs">
-        rtsp://usuario:contraseña@192.168.1.50:554/stream1
-      </code>
-    </span>
-  </span>
-);
-
 export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
+  const t = useT();
   const isEdit = camera != null;
+  /** Ayuda en lenguaje llano de "qué es una URL RTSP y dónde encontrarla". */
+  const rtspHelp = (
+    <span className="block space-y-1">
+      <span className="block">{t('cameras.rtspHelp1')}</span>
+      <span className="block">
+        {t('cameras.rtspHelpFormat')}{' '}
+        <code className="break-all font-mono text-kr-xs">{t('cameras.rtspExample')}</code>
+      </span>
+    </span>
+  );
   const [name, setName] = useState(camera?.name ?? '');
   const [rtspUrl, setRtspUrl] = useState('');
   const [room, setRoom] = useState(camera?.room ?? '');
@@ -61,7 +57,7 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
           ...(rtspUrl.trim() !== '' ? { rtspUrl: rtspUrl.trim() } : {}),
         };
         await updateCamera(camera.id, body);
-        toast.success('Cámara actualizada');
+        toast.success(t('cameras.updated'));
       } else {
         const body: CreateCameraRequest = {
           name: name.trim(),
@@ -70,12 +66,15 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
           model: model_,
         };
         await createCamera(body);
-        toast.success('Cámara añadida');
+        toast.success(t('cameras.added'));
       }
       onSaved();
       onClose();
     } catch (err) {
-      const message = describeError(err, isEdit ? 'No se pudo guardar' : 'No se pudo añadir la cámara');
+      const message = describeError(
+        err,
+        isEdit ? t('cameras.saveError') : t('cameras.addError'),
+      );
       setError(message);
       toast.error(message);
     } finally {
@@ -87,7 +86,7 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
     <div className="space-y-2">
       {error && <p className="text-kr-sm text-danger">{error}</p>}
       <Button onClick={() => void submit()} disabled={saving || !canSubmit} className="w-full">
-        {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Añadir cámara'}
+        {saving ? t('common.saving') : isEdit ? t('common.saveChanges') : t('cameras.add')}
       </Button>
     </div>
   );
@@ -96,63 +95,56 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
     <Slideover
       open
       onClose={onClose}
-      title={isEdit ? 'Editar cámara' : 'Añadir cámara'}
-      subtitle={isEdit ? camera.name : 'Conecta una cámara IP por su URL RTSP'}
+      title={isEdit ? t('cameras.editTitle') : t('cameras.add')}
+      subtitle={isEdit ? camera.name : t('cameras.addSubtitle')}
       footer={footer}
     >
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="cam-name">Nombre</Label>
+          <Label htmlFor="cam-name">{t('cameras.name')}</Label>
           <Input
             id="cam-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="p. ej. Entrada"
+            placeholder={t('cameras.namePlaceholder')}
             maxLength={64}
           />
         </div>
 
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <Label htmlFor="cam-rtsp">URL RTSP</Label>
-            <HelpHint content={RTSP_HELP} label="¿Qué es una URL RTSP y dónde encontrarla?" />
+            <Label htmlFor="cam-rtsp">{t('cameras.rtspLabel')}</Label>
+            <HelpHint content={rtspHelp} label={t('cameras.rtspHelpLabel')} />
           </div>
           <Input
             id="cam-rtsp"
             value={rtspUrl}
             onChange={(e) => setRtspUrl(e.target.value)}
-            placeholder={
-              isEdit
-                ? 'dejar en blanco para conservar'
-                : 'rtsp://usuario:contraseña@192.168.1.50:554/stream1'
-            }
+            placeholder={isEdit ? t('cameras.rtspPlaceholderEdit') : t('cameras.rtspExample')}
             autoComplete="off"
             spellCheck={false}
           />
-          <Callout variant="info">
-            La URL y las credenciales que escribas se guardan solo en tu servidor KrakenOS y nunca
-            salen a internet.
-          </Callout>
+          <Callout variant="info">{t('cameras.rtspCallout')}</Callout>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="cam-room">Habitación</Label>
+            <Label htmlFor="cam-room">{t('cameras.room')}</Label>
             <Input
               id="cam-room"
               value={room}
               onChange={(e) => setRoom(e.target.value)}
-              placeholder="opcional"
+              placeholder={t('cameras.optional')}
               maxLength={64}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="cam-model">Modelo</Label>
+            <Label htmlFor="cam-model">{t('cameras.model')}</Label>
             <Input
               id="cam-model"
               value={model}
               onChange={(e) => setModel(e.target.value)}
-              placeholder="opcional"
+              placeholder={t('cameras.optional')}
               maxLength={64}
             />
           </div>

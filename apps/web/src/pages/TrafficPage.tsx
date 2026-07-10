@@ -15,6 +15,7 @@ import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatBytes, formatRate } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { isSampleStale, useNow } from '@/lib/realtime';
 import { getSocket } from '@/lib/socket';
 import { useConnectionStore } from '@/store/connection.store';
@@ -50,6 +51,7 @@ export const TOOLTIP_STYLE = {
 } as const;
 
 export function TrafficPage() {
+  const t = useT();
   const [samples, setSamples] = useState<TrafficSample[]>([]);
   const [range, setRange] = useState<TrafficRange>('day');
   const [stats, setStats] = useState<TrafficStats | null>(null);
@@ -74,12 +76,12 @@ export function TrafficPage() {
       .catch((err) => {
         if (!active) return;
         setDevStats([]);
-        setError(describeError(err, 'No se pudo cargar el tráfico'));
+        setError(describeError(err, t('traffic.loadError')));
       });
     return () => {
       active = false;
     };
-  }, [devRange]);
+  }, [devRange, t]);
 
   const deviceByMac = useMemo(() => {
     const map: Record<string, (typeof devices)[string]> = {};
@@ -102,11 +104,11 @@ export function TrafficPage() {
     void api
       .get<TrafficStats>(`/traffic/stats?range=${range}`)
       .then((s) => active && setStats(s))
-      .catch((err) => active && setError(describeError(err, 'No se pudo cargar el tráfico')));
+      .catch((err) => active && setError(describeError(err, t('traffic.loadError'))));
     return () => {
       active = false;
     };
-  }, [range]);
+  }, [range, t]);
 
   useEffect(() => {
     let active = true;
@@ -115,7 +117,7 @@ export function TrafficPage() {
     void api
       .get<TrafficSample[]>('/traffic/history')
       .then((h) => active && setSamples(h))
-      .catch((err) => active && setError(describeError(err, 'No se pudo cargar el tráfico')));
+      .catch((err) => active && setError(describeError(err, t('traffic.loadError'))));
 
     const onHistory = (h: TrafficSample[]) => setSamples(h);
     const onSample = (s: TrafficSample) => setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
@@ -127,7 +129,7 @@ export function TrafficPage() {
       socket.off('traffic:history', onHistory);
       socket.off('traffic:sample', onSample);
     };
-  }, []);
+  }, [t]);
 
   const data = useMemo(
     () =>
@@ -169,22 +171,22 @@ export function TrafficPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">Monitor de tráfico</h2>
-        <p className="text-sm text-muted-foreground">Uso de la WAN en tiempo real.</p>
+        <h2 className="text-xl font-semibold">{t('traffic.title')}</h2>
+        <p className="text-sm text-muted-foreground">{t('traffic.subtitle')}</p>
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <StatCard
-          title="Descarga"
+          title={t('traffic.download')}
           value={last ? formatRate(last.rxBytesPerSec) : '—'}
           icon={ArrowDownToLine}
           accent="text-green-500"
           hint="rx"
         />
         <StatCard
-          title="Subida"
+          title={t('traffic.upload')}
           value={last ? formatRate(last.txBytesPerSec) : '—'}
           icon={ArrowUpFromLine}
           accent="text-primary"
@@ -194,12 +196,14 @@ export function TrafficPage() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Ancho de banda (Mbps)</CardTitle>
+          <CardTitle>{t('traffic.bandwidth')}</CardTitle>
           {liveStale && <StaleBadge />}
         </CardHeader>
         <CardContent>
           {data.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">Esperando muestras…</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              {t('traffic.waiting')}
+            </p>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={data}>
@@ -227,14 +231,14 @@ export function TrafficPage() {
                 <Area
                   type="monotone"
                   dataKey="rx"
-                  name="Descarga"
+                  name={t('traffic.download')}
                   stroke={TRAFFIC_CHART_COLORS.rx}
                   fill="url(#rx)"
                 />
                 <Area
                   type="monotone"
                   dataKey="tx"
-                  name="Subida"
+                  name={t('traffic.upload')}
                   stroke={TRAFFIC_CHART_COLORS.tx}
                   fill="url(#tx)"
                 />
@@ -246,8 +250,8 @@ export function TrafficPage() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>Histórico</CardTitle>
-          <div className="flex gap-1" role="group" aria-label="Rango">
+          <CardTitle>{t('traffic.history')}</CardTitle>
+          <div className="flex gap-1" role="group" aria-label={t('traffic.rangeAria')}>
             {WAN_RANGES.map((r) => (
               <button
                 key={r.value}
@@ -268,13 +272,13 @@ export function TrafficPage() {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Descargado</p>
+              <p className="text-muted-foreground">{t('traffic.downloaded')}</p>
               <p className="font-semibold text-green-500">
                 {stats ? formatBytes(stats.totalRxBytes) : '—'}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Subido</p>
+              <p className="text-muted-foreground">{t('traffic.uploaded')}</p>
               <p className="font-semibold text-primary">
                 {stats ? formatBytes(stats.totalTxBytes) : '—'}
               </p>
@@ -282,7 +286,9 @@ export function TrafficPage() {
           </div>
 
           {history.length === 0 ? (
-            <p className="py-12 text-center text-sm text-muted-foreground">Sin datos históricos.</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              {t('traffic.noHistory')}
+            </p>
           ) : (
             <ResponsiveContainer width="100%" height={240}>
               <AreaChart data={history}>
@@ -310,14 +316,14 @@ export function TrafficPage() {
                 <Area
                   type="monotone"
                   dataKey="rx"
-                  name="Descarga"
+                  name={t('traffic.download')}
                   stroke={TRAFFIC_CHART_COLORS.rx}
                   fill="url(#hrx)"
                 />
                 <Area
                   type="monotone"
                   dataKey="tx"
-                  name="Subida"
+                  name={t('traffic.upload')}
                   stroke={TRAFFIC_CHART_COLORS.tx}
                   fill="url(#htx)"
                 />
@@ -331,8 +337,8 @@ export function TrafficPage() {
       {sortedDev.length > 0 && (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle>Por dispositivo</CardTitle>
-            <div className="flex gap-1" role="group" aria-label="Rango por dispositivo">
+            <CardTitle>{t('traffic.byDevice')}</CardTitle>
+            <div className="flex gap-1" role="group" aria-label={t('traffic.rangeDeviceAria')}>
               {RANGES.map((r) => (
                 <button
                   key={r.value}
@@ -354,11 +360,11 @@ export function TrafficPage() {
             {/* Scroll horizontal en móvil en vez de desbordar la página (US-97). */}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <caption className="sr-only">Tráfico de red por dispositivo</caption>
+                <caption className="sr-only">{t('traffic.tableCaption')}</caption>
                 <thead>
                   <tr className="text-left text-muted-foreground">
                     <th scope="col" className="py-2 font-medium">
-                      Dispositivo
+                      {t('traffic.colDevice')}
                     </th>
                     <th scope="col" className="py-2 font-medium">
                       IP
@@ -372,13 +378,13 @@ export function TrafficPage() {
                         type="button"
                         onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
                         className="inline-flex items-center gap-1 hover:text-foreground"
-                        aria-label="Ordenar por descarga total"
+                        aria-label={t('traffic.sortAria')}
                       >
-                        ↓ Descarga {sortDir === 'desc' ? '▾' : '▴'}
+                        ↓ {t('traffic.download')} {sortDir === 'desc' ? '▾' : '▴'}
                       </button>
                     </th>
                     <th scope="col" className="py-2 font-medium">
-                      ↑ Subida
+                      ↑ {t('traffic.upload')}
                     </th>
                   </tr>
                 </thead>

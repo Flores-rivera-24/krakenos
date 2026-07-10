@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { getPredictedHeatmap, listFloorPlans } from '@/lib/coverage';
 import { SIGNAL_QUALITY_LABELS, signalQuality, signalQualityColorVar } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 /** Categorías en orden de mejor a peor, para la barra de distribución. */
 const QUALITIES: SignalQuality[] = ['excellent', 'good', 'fair', 'weak', 'none'];
@@ -15,6 +16,7 @@ const QUALITIES: SignalQuality[] = ['excellent', 'good', 'fair', 'weak', 'none']
  * mejor, con una barra de distribución por calidad. Enlaza a la página completa.
  */
 export function CoverageWidget() {
+  const t = useT();
   // `undefined` = cargando · `null` = sin planos.
   const [plan, setPlan] = useState<FloorPlan | null | undefined>(undefined);
   const [heatmap, setHeatmap] = useState<CoverageHeatmap | null>(null);
@@ -65,27 +67,25 @@ export function CoverageWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Cobertura WiFi</CardTitle>
+        <CardTitle>{t('dashboard.widget.coverage.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {plan === undefined ? (
           <LoadingLine />
         ) : plan === null ? (
           <div className="space-y-2 py-2">
-            <p className="text-kr-sm text-kr-muted">
-              Crea un plano de tu casa para ver el mapa de calor de tu WiFi.
-            </p>
+            <p className="text-kr-sm text-kr-muted">{t('dashboard.widget.coverage.noPlan')}</p>
             <Link to="/coverage" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Crear plano →
+              {t('dashboard.widget.coverage.createPlan')}
             </Link>
           </div>
         ) : !heatmap || covered === 0 ? (
           <div className="space-y-2 py-2">
             <p className="text-kr-sm text-kr-muted">
-              Coloca tus puntos de acceso en «{plan.name}» para calcular la cobertura.
+              {t('dashboard.widget.coverage.noAps', { name: plan.name })}
             </p>
             <Link to="/coverage" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Ver cobertura →
+              {t('dashboard.widget.coverage.viewCoverage')}
             </Link>
           </div>
         ) : (
@@ -93,13 +93,13 @@ export function CoverageWidget() {
             <div>
               <p className="text-2xl font-semibold text-kr-primary">{okPct}%</p>
               <p className="text-kr-xs text-kr-muted">
-                con señal aceptable o mejor · {plan.name} · 5 GHz
+                {t('dashboard.widget.coverage.okCaption', { name: plan.name })}
               </p>
             </div>
             <div
               className="flex h-2 overflow-hidden rounded-full bg-kr-elevated"
               role="img"
-              aria-label={`Distribución de cobertura: ${okPct}% con señal aceptable o mejor`}
+              aria-label={t('dashboard.widget.coverage.distributionAria', { pct: okPct })}
             >
               {QUALITIES.map((q) =>
                 counts[q] > 0 ? (
@@ -115,7 +115,7 @@ export function CoverageWidget() {
               )}
             </div>
             <Link to="/coverage" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Ver mapa de calor →
+              {t('dashboard.widget.coverage.viewHeatmap')}
             </Link>
           </>
         )}

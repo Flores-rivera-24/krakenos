@@ -8,6 +8,7 @@ import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { roomGlyph } from '@/lib/rooms';
 import { runScene, sceneGlyph } from '@/lib/scenes';
 import { getSocket } from '@/lib/socket';
@@ -92,6 +93,7 @@ function resolveTiles(
  * en móvil) para operar lo cotidiano en un toque.
  */
 export function QuickActionsWidget() {
+  const t = useT();
   // Operar lo cotidiano también para `member` (US-179); la autoridad es del servidor.
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const favorites = useFavoritesStore((s) => s.favorites);
@@ -138,10 +140,12 @@ export function QuickActionsWidget() {
     try {
       const result = await runScene(id);
       if (result.failed.length > 0)
-        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
-      else toast.success(`Escena «${name}» activada`);
+        toast.error(
+          t('dashboard.scene.partial', { applied: result.applied, failed: result.failed.length }),
+        );
+      else toast.success(t('dashboard.scene.activated', { name }));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo activar la escena'));
+      toast.error(describeError(err, t('dashboard.scene.activateError')));
     } finally {
       setRunningScene(null);
     }
@@ -152,14 +156,14 @@ export function QuickActionsWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Acciones rápidas</CardTitle>
+        <CardTitle>{t('dashboard.widget.quickActions.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
           <LoadingLine />
         ) : tiles.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">
-            Fija tus dispositivos y habitaciones favoritos con la estrella ⭐ para tenerlos aquí.
+            {t('dashboard.widget.quickActions.empty')}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -176,7 +180,9 @@ export function QuickActionsWidget() {
                     <span className="block truncate text-kr-sm text-kr-primary">{tile.label}</span>
                     <span className="flex items-center gap-1 text-kr-xs text-kr-muted">
                       <StatusDot status={tile.online ? 'online' : 'offline'} />
-                      {tile.online ? 'disponible' : 'sin señal'}
+                      {tile.online
+                        ? t('dashboard.widget.quickActions.available')
+                        : t('dashboard.widget.quickActions.noSignal')}
                     </span>
                   </span>
                 </Link>
@@ -185,8 +191,14 @@ export function QuickActionsWidget() {
                     checked={tile.iot.on}
                     onToggle={(next) => api.patch(`/iot/devices/${tile.iot!.id}`, { on: next })}
                     disabled={!canControl}
-                    errorMessage={`No se pudo cambiar ${tile.label}`}
-                    aria-label={`${tile.iot.on ? 'Apagar' : 'Encender'} ${tile.label}`}
+                    errorMessage={t('dashboard.widget.quickActions.toggleError', {
+                      name: tile.label,
+                    })}
+                    aria-label={
+                      tile.iot.on
+                        ? t('dashboard.widget.quickActions.turnOff', { name: tile.label })
+                        : t('dashboard.widget.quickActions.turnOn', { name: tile.label })
+                    }
                   />
                 )}
                 {tile.sceneId && (
@@ -196,7 +208,9 @@ export function QuickActionsWidget() {
                     disabled={!canControl || runningScene === tile.sceneId}
                     onClick={() => void runFavoriteScene(tile.sceneId!, tile.label)}
                   >
-                    {runningScene === tile.sceneId ? 'Activando…' : 'Activar'}
+                    {runningScene === tile.sceneId
+                      ? t('dashboard.scene.activating')
+                      : t('dashboard.scene.activate')}
                   </Button>
                 )}
               </li>

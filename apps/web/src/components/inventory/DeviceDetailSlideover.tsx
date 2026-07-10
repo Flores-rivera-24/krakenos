@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_ICON_LABELS, DEVICE_TYPES, TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { listUsers } from '@/lib/users';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
@@ -49,6 +50,7 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 export function DeviceDetailSlideover({ device, onClose }: Props) {
+  const t = useT();
   const [label, setLabel] = useState(device.label ?? '');
   const [type, setType] = useState<DeviceType>(device.type);
   // Icono elegido a mano (US-178); null = inferido del tipo.
@@ -92,10 +94,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setRoomBusy(true);
     try {
       await assignRoom({ kind: 'device', ref: device.id, roomId: next });
-      toast.success('Habitación actualizada');
+      toast.success(t('inventory.detail.roomUpdated'));
     } catch (err) {
       setRoomId(previous); // revertir: no mentir sobre la asignación real
-      toast.error(describeError(err, 'No se pudo asignar la habitación'));
+      toast.error(describeError(err, t('inventory.detail.roomError')));
     } finally {
       setRoomBusy(false);
     }
@@ -122,8 +124,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         ? api.post(`/inventory/devices/${device.id}/block`)
         : api.del(`/inventory/devices/${device.id}/block`),
     onSuccess: (next) =>
-      toast.success(next ? 'Dispositivo bloqueado' : 'Acceso a la red restaurado'),
-    onError: (err) => toast.error(describeError(err, 'No se pudo cambiar el bloqueo')),
+      toast.success(next ? t('inventory.detail.blocked') : t('inventory.detail.unblocked')),
+    onError: (err) => toast.error(describeError(err, t('inventory.detail.blockError'))),
   });
 
   const assignVlan = async (tag: number | null) => {
@@ -132,10 +134,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setVlanBusy(true);
     try {
       await api.put(`/inventory/devices/${device.id}/vlan`, { tag });
-      toast.success('VLAN actualizada');
+      toast.success(t('inventory.detail.vlanUpdated'));
     } catch (err) {
       setVlanTag(previous); // revertir: no mentir sobre la asignación real
-      toast.error(describeError(err, 'No se pudo asignar la VLAN'));
+      toast.error(describeError(err, t('inventory.detail.vlanError')));
     } finally {
       setVlanBusy(false);
     }
@@ -155,25 +157,25 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setOwnerBusy(true);
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, { ownerId: next });
-      toast.success('Dueño actualizado');
+      toast.success(t('inventory.detail.ownerUpdated'));
     } catch (err) {
       setOwnerId(previous);
-      toast.error(describeError(err, 'No se pudo asignar el dueño'));
+      toast.error(describeError(err, t('inventory.detail.ownerError')));
     } finally {
       setOwnerBusy(false);
     }
   };
 
   // Identificación asistida (US-178): un toque clasifica el aparato desconocido.
-  const identifyAs = async (t: DeviceType) => {
+  const identifyAs = async (nextType: DeviceType) => {
     const previous = type;
-    setType(t);
+    setType(nextType);
     try {
-      await api.patch<Device>(`/inventory/devices/${device.id}`, { type: t });
-      toast.success(`Identificado como ${TYPE_LABELS[t]}`);
+      await api.patch<Device>(`/inventory/devices/${device.id}`, { type: nextType });
+      toast.success(t('inventory.detail.identifiedAs', { type: TYPE_LABELS[nextType] }));
     } catch (err) {
       setType(previous);
-      toast.error(describeError(err, 'No se pudo identificar el dispositivo'));
+      toast.error(describeError(err, t('inventory.detail.identifyError')));
     }
   };
 
@@ -188,10 +190,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     };
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, body);
-      toast.success('Cambios guardados');
+      toast.success(t('inventory.detail.saved'));
       onClose();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar');
+      setError(err instanceof ApiRequestError ? err.body.message : t('inventory.detail.saveError'));
     } finally {
       setSaving(false);
     }
@@ -200,8 +202,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const subtitle = (
     <span className="flex items-center gap-2">
       <StatusDot status={device.online ? 'online' : 'offline'} />
-      {device.online ? 'En línea' : 'Desconectado'}
-      {block.on && <span className="text-danger">· Bloqueado</span>}
+      {device.online ? t('inventory.status.online') : t('inventory.status.offline')}
+      {block.on && <span className="text-danger">{t('inventory.detail.blockedBadge')}</span>}
     </span>
   );
 
@@ -209,7 +211,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     <div className="space-y-2">
       {error && <p className="text-kr-sm text-danger">{error}</p>}
       <Button onClick={() => void save()} disabled={saving} className="w-full">
-        {saving ? 'Guardando…' : 'Guardar cambios'}
+        {saving ? t('common.saving') : t('common.saveChanges')}
       </Button>
       {isAdmin && (
         <Button
@@ -219,10 +221,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           className="w-full"
         >
           {block.pending
-            ? 'Aplicando…'
+            ? t('inventory.detail.applying')
             : block.on
-              ? 'Desbloquear acceso a la red'
-              : 'Bloquear acceso a la red'}
+              ? t('inventory.detail.unblock')
+              : t('inventory.detail.block')}
         </Button>
       )}
     </div>
@@ -255,26 +257,30 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       {/* Identificación asistida (US-178): la app propone, el usuario confirma. */}
       {type === 'unknown' && (
         <div className="mb-4">
-          <Callout variant="info" title="¿Qué es este aparato?">
+          <Callout variant="info" title={t('inventory.detail.whatIsThis')}>
             <p className="mb-2">
               {device.suggestedType
-                ? `Por su fabricante y nombre parece ${TYPE_LABELS[device.suggestedType].toLowerCase()}. ¿Lo es?`
-                : 'Aún no está identificado. Dinos qué es para reconocerlo en toda la app.'}
+                ? t('inventory.detail.suggestQuestion', {
+                    type: TYPE_LABELS[device.suggestedType].toLowerCase(),
+                  })
+                : t('inventory.detail.notIdentified')}
             </p>
             <div className="flex flex-wrap gap-2">
               {[
                 ...(device.suggestedType ? [device.suggestedType] : []),
                 ...(['tv', 'phone', 'computer', 'iot'] as DeviceType[]).filter(
-                  (t) => t !== device.suggestedType,
+                  (candidate) => candidate !== device.suggestedType,
                 ),
-              ].map((t) => (
+              ].map((candidate) => (
                 <Button
-                  key={t}
+                  key={candidate}
                   size="sm"
-                  variant={t === device.suggestedType ? 'default' : 'outline'}
-                  onClick={() => void identifyAs(t)}
+                  variant={candidate === device.suggestedType ? 'default' : 'outline'}
+                  onClick={() => void identifyAs(candidate)}
                 >
-                  {t === device.suggestedType ? `Sí, es ${TYPE_LABELS[t].toLowerCase()}` : TYPE_LABELS[t]}
+                  {candidate === device.suggestedType
+                    ? t('inventory.detail.yesItIs', { type: TYPE_LABELS[candidate].toLowerCase() })
+                    : TYPE_LABELS[candidate]}
                 </Button>
               ))}
             </div>
@@ -283,34 +289,39 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       )}
 
       <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
-        <Field label="IP" value={device.ip} />
-        {!simpleMode && <Field label="MAC" value={device.mac} />}
-        <Field label="Hostname" value={device.hostname ?? '—'} />
-        <Field label="Fabricante" value={device.vendor ?? '—'} />
-        {!simpleMode && <Field label="Fuentes" value={device.sources.join(', ') || '—'} />}
-        <Field label="Última vez" value={new Date(device.lastSeen).toLocaleString()} />
+        <Field label={t('inventory.detail.ip')} value={device.ip} />
+        {!simpleMode && <Field label={t('inventory.detail.mac')} value={device.mac} />}
+        <Field label={t('inventory.detail.hostname')} value={device.hostname ?? '—'} />
+        <Field label={t('inventory.detail.vendor')} value={device.vendor ?? '—'} />
+        {!simpleMode && (
+          <Field label={t('inventory.detail.sources')} value={device.sources.join(', ') || '—'} />
+        )}
+        <Field
+          label={t('inventory.detail.lastSeen')}
+          value={new Date(device.lastSeen).toLocaleString()}
+        />
       </dl>
 
       {/* Histórico de tráfico de la última hora (US-46). */}
       {traffic && traffic.samples.length >= 2 ? (
         <div className="mb-4 rounded-lg border border-kr bg-kr-elevated p-3">
-          <p className="mb-2 text-kr-xs text-kr-muted">Tráfico (última hora)</p>
+          <p className="mb-2 text-kr-xs text-kr-muted">{t('inventory.detail.traffic')}</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="mb-1 text-kr-xs text-kr-secondary">↓ Descarga</p>
+              <p className="mb-1 text-kr-xs text-kr-secondary">{t('inventory.detail.download')}</p>
               <Sparkline
                 points={traffic.samples.map((s) => s.rxBytesPerSec)}
                 className="w-full text-success"
               />
             </div>
             <div>
-              <p className="mb-1 text-kr-xs text-kr-secondary">↑ Subida</p>
+              <p className="mb-1 text-kr-xs text-kr-secondary">{t('inventory.detail.upload')}</p>
               <Sparkline points={traffic.samples.map((s) => s.txBytesPerSec)} className="w-full" />
             </div>
           </div>
         </div>
       ) : (
-        <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
+        <p className="mb-4 text-kr-xs text-kr-muted">{t('inventory.detail.noTraffic')}</p>
       )}
 
       {/* Pausa de internet (US-111) + control parental / horarios (US-108) */}
@@ -322,17 +333,17 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="d-label">Nombre</Label>
+          <Label htmlFor="d-label">{t('inventory.detail.name')}</Label>
           <Input
             id="d-label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder={device.hostname ?? 'Sin nombre'}
+            placeholder={device.hostname ?? t('inventory.detail.noName')}
             maxLength={64}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-type">Tipo</Label>
+          <Label htmlFor="d-type">{t('inventory.detail.type')}</Label>
           <select
             id="d-type"
             className={SELECT_CLASS}
@@ -347,14 +358,14 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-icon">Icono</Label>
+          <Label htmlFor="d-icon">{t('inventory.detail.icon')}</Label>
           <select
             id="d-icon"
             className={SELECT_CLASS}
             value={icon ?? ''}
             onChange={(e) => setIcon(e.target.value === '' ? null : (e.target.value as DeviceIcon))}
           >
-            <option value="">Automático (según el tipo)</option>
+            <option value="">{t('inventory.detail.iconAuto')}</option>
             {DEVICE_ICONS.map((k) => (
               <option key={k} value={k}>
                 {DEVICE_ICON_LABELS[k]}
@@ -363,12 +374,12 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-notes">Notas</Label>
+          <Label htmlFor="d-notes">{t('inventory.detail.notes')}</Label>
           <Textarea
             id="d-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas sobre este dispositivo…"
+            placeholder={t('inventory.detail.notesPlaceholder')}
             maxLength={500}
           />
         </div>
@@ -385,7 +396,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
         {isAdmin && householdUsers.length > 0 && (
           <div className="space-y-2">
-            <Label htmlFor="d-owner">Dueño</Label>
+            <Label htmlFor="d-owner">{t('inventory.detail.owner')}</Label>
             <select
               id="d-owner"
               className={SELECT_CLASS}
@@ -393,7 +404,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               disabled={ownerBusy}
               onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
             >
-              <option value="">Sin dueño</option>
+              <option value="">{t('inventory.detail.noOwner')}</option>
               {householdUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.displayName}
@@ -405,7 +416,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
         {isAdmin && (
           <div className="space-y-2">
-            <Label htmlFor="d-vlan">VLAN</Label>
+            <Label htmlFor="d-vlan">{t('inventory.detail.vlan')}</Label>
             <select
               id="d-vlan"
               className={SELECT_CLASS}
@@ -413,10 +424,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               disabled={vlanBusy}
               onChange={(e) => void assignVlan(e.target.value === '' ? null : Number(e.target.value))}
             >
-              <option value="">Sin VLAN</option>
+              <option value="">{t('inventory.detail.noVlan')}</option>
               {vlans.map((v) => (
                 <option key={v.id} value={v.tag}>
-                  {v.name} (tag {v.tag})
+                  {t('inventory.detail.vlanOption', { name: v.name, tag: v.tag })}
                 </option>
               ))}
             </select>

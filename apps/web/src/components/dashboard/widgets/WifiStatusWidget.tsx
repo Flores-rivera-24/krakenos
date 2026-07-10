@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { plural, useT } from '@/lib/i18n';
 
 /** SSIDs activos y clientes conectados por red. */
 export function WifiStatusWidget() {
+  const t = useT();
   const [networks, setNetworks] = useState<WifiNetworkInfo[] | null>(null);
 
   useEffect(() => {
@@ -24,29 +26,41 @@ export function WifiStatusWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>WiFi</CardTitle>
+        <CardTitle>{t('dashboard.widget.wifi.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {networks === null ? (
           <LoadingLine />
         ) : networks.length === 0 ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Sin redes WiFi.</p>
+          <p className="py-4 text-center text-kr-sm text-kr-muted">
+            {t('dashboard.widget.wifi.empty')}
+          </p>
         ) : (
           <>
             {networks.map((n) => (
               <div key={n.id} className="flex items-center justify-between text-kr-base">
                 <span className="flex min-w-0 items-center gap-2">
                   <StatusDot status={n.enabled ? 'online' : 'offline'} />
-                  <span className="truncate text-kr-primary">{n.ssid || '(oculta)'}</span>
-                  {n.isGuest && <span className="text-kr-xs text-kr-muted">invitados</span>}
+                  <span className="truncate text-kr-primary">
+                    {n.ssid || t('dashboard.widget.wifi.hidden')}
+                  </span>
+                  {n.isGuest && (
+                    <span className="text-kr-xs text-kr-muted">
+                      {t('dashboard.widget.wifi.guest')}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 text-kr-secondary">
-                  {n.clientCount} {n.clientCount === 1 ? 'cliente' : 'clientes'}
+                  {n.clientCount}{' '}
+                  {plural(n.clientCount, {
+                    one: t('dashboard.widget.wifi.clientOne'),
+                    other: t('dashboard.widget.wifi.clientOther'),
+                  })}
                 </span>
               </div>
             ))}
             <Link to="/wifi" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Gestionar WiFi →
+              {t('dashboard.widget.wifi.manage')}
             </Link>
           </>
         )}

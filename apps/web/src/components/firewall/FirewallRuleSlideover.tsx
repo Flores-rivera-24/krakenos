@@ -11,13 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary';
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
-// Etiquetas visibles (el valor de la API no cambia); alineadas con FirewallPage.
-const ACTION_LABEL: Record<FirewallAction, string> = { deny: 'Bloquear', allow: 'Permitir' };
-const PROTOCOL_LABEL: Record<FirewallProtocol, string> = { any: 'Cualquiera', tcp: 'TCP', udp: 'UDP' };
 
 interface Props {
   rule: FirewallRule;
@@ -29,6 +27,16 @@ interface Props {
 }
 
 export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props) {
+  const t = useT();
+  const ACTION_LABEL: Record<FirewallAction, string> = {
+    deny: t('firewall.action.deny'),
+    allow: t('firewall.action.allow'),
+  };
+  const PROTOCOL_LABEL: Record<FirewallProtocol, string> = {
+    any: t('firewall.protocol.any'),
+    tcp: 'TCP',
+    udp: 'UDP',
+  };
   const [name, setName] = useState(rule.name);
   const [action, setAction] = useState<FirewallAction>(rule.action);
   const [protocol, setProtocol] = useState<FirewallProtocol>(rule.protocol);
@@ -56,7 +64,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar');
+      setError(err instanceof ApiRequestError ? err.body.message : t('firewall.saveError'));
     } finally {
       setSaving(false);
     }
@@ -66,14 +74,14 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
     <Slideover
       open
       onClose={onClose}
-      title={`Regla: ${rule.name}`}
-      subtitle={`Prioridad ${rule.priority}`}
+      title={t('firewall.ruleTitle', { name: rule.name })}
+      subtitle={t('firewall.priority', { priority: rule.priority })}
       footer={
         canEdit && (
           <div className="space-y-2">
             {error && <p className="text-kr-sm text-danger">{error}</p>}
             <Button onClick={() => void save()} disabled={saving} className="w-full">
-              {saving ? 'Guardando…' : 'Guardar cambios'}
+              {saving ? t('common.saving') : t('common.saveChanges')}
             </Button>
           </div>
         )
@@ -81,16 +89,16 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
     >
       <fieldset disabled={!canEdit} className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label htmlFor="fr-enabled">Activa</Label>
+          <Label htmlFor="fr-enabled">{t('firewall.fields.enabled')}</Label>
           <Switch id="fr-enabled" checked={enabled} onCheckedChange={setEnabled} />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fr-name">Nombre</Label>
+          <Label htmlFor="fr-name">{t('firewall.fields.name')}</Label>
           <Input id="fr-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="fr-action">Acción</Label>
+            <Label htmlFor="fr-action">{t('firewall.fields.action')}</Label>
             <select
               id="fr-action"
               className={SELECT_CLASS}
@@ -102,7 +110,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
             </select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="fr-protocol">Protocolo</Label>
+            <Label htmlFor="fr-protocol">{t('firewall.fields.protocol')}</Label>
             <select
               id="fr-protocol"
               className={SELECT_CLASS}
@@ -118,30 +126,30 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
           </div>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fr-source">Origen</Label>
+          <Label htmlFor="fr-source">{t('firewall.fields.source')}</Label>
           <Input
             id="fr-source"
             value={source}
             onChange={(e) => setSource(e.target.value)}
-            placeholder="IP/CIDR/MAC"
+            placeholder={t('firewall.sourcePlaceholder')}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fr-dest">Destino</Label>
+          <Label htmlFor="fr-dest">{t('firewall.fields.destination')}</Label>
           <Input
             id="fr-dest"
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            placeholder="IP/CIDR/host"
+            placeholder={t('firewall.destPlaceholder')}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="fr-port">Puerto</Label>
+          <Label htmlFor="fr-port">{t('firewall.fields.port')}</Label>
           <Input
             id="fr-port"
             value={portText}
             onChange={(e) => setPortText(e.target.value.replace(/\D/g, ''))}
-            placeholder="cualquiera"
+            placeholder={t('firewall.portPlaceholder')}
             inputMode="numeric"
           />
         </div>

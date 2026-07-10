@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 interface BackendSummary {
   name: string;
@@ -37,6 +38,7 @@ function summarize(devices: IotDevice[]): BackendSummary[] {
 
 /** Estado de los backends IoT activos (Hue/Govee/Tuya…) con conteos. */
 export function IotStatusWidget() {
+  const t = useT();
   const [devices, setDevices] = useState<IotDevice[] | null>(null);
 
   useEffect(() => {
@@ -55,13 +57,15 @@ export function IotStatusWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>IoT</CardTitle>
+        <CardTitle>{t('dashboard.widget.iot.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {devices === null ? (
           <LoadingLine />
         ) : backends.length === 0 ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Sin dispositivos IoT.</p>
+          <p className="py-4 text-center text-kr-sm text-kr-muted">
+            {t('dashboard.widget.iot.empty')}
+          </p>
         ) : (
           <>
             {backends.map((b) => (
@@ -71,12 +75,12 @@ export function IotStatusWidget() {
                   <span className="text-kr-primary">{b.name}</span>
                 </span>
                 <span className="text-kr-secondary">
-                  {b.online}/{b.total} en línea
+                  {b.online}/{b.total} {t('dashboard.widget.iot.online')}
                 </span>
               </div>
             ))}
             <Link to="/iot" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Controlar IoT →
+              {t('dashboard.widget.iot.control')}
             </Link>
           </>
         )}

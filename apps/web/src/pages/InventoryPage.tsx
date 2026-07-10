@@ -15,17 +15,19 @@ import {
   groupDevicesByType,
 } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
+import type { TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const GROUPS_OPEN_KEY = 'kr-groups-open';
 
-const FILTERS: { value: ActiveFilter; label: string }[] = [
-  { value: 'online', label: 'En línea' },
-  { value: 'offline', label: 'Desconectados' },
-  { value: 'blocked', label: 'Bloqueados' },
-  { value: 'unknown', label: 'Sin identificar' },
+const FILTERS: { value: ActiveFilter; labelKey: TranslationKey }[] = [
+  { value: 'online', labelKey: 'inventory.filter.online' },
+  { value: 'offline', labelKey: 'inventory.filter.offline' },
+  { value: 'blocked', labelKey: 'inventory.filter.blocked' },
+  { value: 'unknown', labelKey: 'inventory.filter.unknown' },
 ];
 
 /** En <768px se fuerza la vista de tarjetas; por defecto (jsdom/SSR) asume escritorio. */
@@ -53,13 +55,13 @@ function loadGroupsOpen(): Record<string, boolean> {
 
 function statusOf(d: Device): {
   dot: 'online' | 'offline' | 'danger';
-  text: string;
+  textKey: TranslationKey;
   danger: boolean;
 } {
-  if (d.isBlocked) return { dot: 'danger', text: 'Bloqueado', danger: true };
+  if (d.isBlocked) return { dot: 'danger', textKey: 'inventory.status.blocked', danger: true };
   return d.online
-    ? { dot: 'online', text: 'En línea', danger: false }
-    : { dot: 'offline', text: 'Desconectado', danger: false };
+    ? { dot: 'online', textKey: 'inventory.status.online', danger: false }
+    : { dot: 'offline', textKey: 'inventory.status.offline', danger: false };
 }
 
 const GRID_CLASS = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3';
@@ -74,39 +76,40 @@ function DeviceTable({
   /** Modo sencillo (US-176): oculta las columnas técnicas MAC y Fabricante. */
   simpleMode?: boolean;
 }) {
+  const t = useT();
   return (
     <div className="overflow-x-auto rounded-xl border border-kr">
       <table className="w-full text-kr-sm">
-        <caption className="sr-only">Dispositivos detectados en la red</caption>
+        <caption className="sr-only">{t('inventory.table.caption')}</caption>
         <thead className="bg-kr-elevated text-kr-secondary">
           <tr>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Dispositivo
+              {t('inventory.table.device')}
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              IP
+              {t('inventory.table.ip')}
             </th>
             {!simpleMode && (
               <>
                 <th scope="col" className="px-3 py-2 text-left font-medium">
                   <span className="inline-flex items-center gap-1">
-                    MAC
+                    {t('inventory.table.mac')}
                     <GlossaryHint termKey="mac" />
                   </span>
                 </th>
                 <th scope="col" className="px-3 py-2 text-left font-medium">
-                  Fabricante
+                  {t('inventory.table.vendor')}
                 </th>
               </>
             )}
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Tipo
+              {t('inventory.table.type')}
             </th>
             <th scope="col" className="px-3 py-2 text-left font-medium">
-              Estado
+              {t('inventory.table.status')}
             </th>
             <th scope="col" className="px-3 py-2 text-right font-medium">
-              Visto por última vez
+              {t('inventory.table.lastSeen')}
             </th>
           </tr>
         </thead>
@@ -131,7 +134,9 @@ function DeviceTable({
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-2">
                     <StatusDot status={s.dot} />
-                    <span className={s.danger ? 'text-danger' : 'text-kr-secondary'}>{s.text}</span>
+                    <span className={s.danger ? 'text-danger' : 'text-kr-secondary'}>
+                      {t(s.textKey)}
+                    </span>
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right text-kr-xs text-kr-muted">
@@ -147,6 +152,7 @@ function DeviceTable({
 }
 
 export function InventoryPage() {
+  const t = useT();
   const devices = useInventoryStore((s) => s.devices);
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
@@ -204,24 +210,26 @@ export function InventoryPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar…"
-            aria-label="Buscar dispositivos"
+            placeholder={t('inventory.searchPlaceholder')}
+            aria-label={t('inventory.searchAria')}
             className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
         <div className="inline-flex rounded-md border border-kr bg-kr-elevated p-0.5">
-          {(['all', 'groups'] as const).map((t) => (
+          {(['all', 'groups'] as const).map((tabValue) => (
             <button
-              key={t}
+              key={tabValue}
               type="button"
-              onClick={() => setTab(t)}
+              onClick={() => setTab(tabValue)}
               className={cn(
                 'rounded px-3 py-1.5 text-kr-sm font-medium transition-colors',
-                tab === t ? 'bg-kr-accent text-white' : 'text-kr-secondary hover:text-kr-primary',
+                tab === tabValue
+                  ? 'bg-kr-accent text-white'
+                  : 'text-kr-secondary hover:text-kr-primary',
               )}
             >
-              {t === 'all' ? 'Todos' : 'Grupos'}
+              {tabValue === 'all' ? t('inventory.tab.all') : t('inventory.tab.groups')}
             </button>
           ))}
         </div>
@@ -230,7 +238,7 @@ export function InventoryPage() {
           <div className="hidden rounded-md border border-kr bg-kr-elevated p-0.5 md:inline-flex">
             <button
               type="button"
-              aria-label="Vista de cuadrícula"
+              aria-label={t('inventory.view.grid')}
               onClick={() => setView('grid')}
               className={cn(
                 'rounded p-1.5',
@@ -241,7 +249,7 @@ export function InventoryPage() {
             </button>
             <button
               type="button"
-              aria-label="Vista de lista"
+              aria-label={t('inventory.view.list')}
               onClick={() => setView('list')}
               className={cn(
                 'rounded p-1.5',
@@ -253,7 +261,7 @@ export function InventoryPage() {
           </div>
           <Button onClick={rescan} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4" />
-            Escanear
+            {t('inventory.scan')}
           </Button>
         </div>
       </div>
@@ -276,7 +284,7 @@ export function InventoryPage() {
                     : 'border-kr bg-kr-elevated text-kr-secondary hover:text-kr-primary',
                 )}
               >
-                {f.label}
+                {t(f.labelKey)}
               </button>
             );
           })}
@@ -284,7 +292,7 @@ export function InventoryPage() {
       )}
 
       {/* Conexión en tiempo real caída: el inventario llega por Socket.io (US-93). */}
-      {!connected && <ErrorBanner>Sin conexión en tiempo real — reintentando…</ErrorBanner>}
+      {!connected && <ErrorBanner>{t('inventory.noRealtime')}</ErrorBanner>}
 
       {/* Contenido */}
       {loading ? (
@@ -295,20 +303,17 @@ export function InventoryPage() {
         </div>
       ) : list.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-          <p className="text-kr-secondary">Aún no hay dispositivos.</p>
-          <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-            KrakenOS descubre solo los aparatos conectados a tu red (móviles, ordenadores, tele,
-            enchufes inteligentes…). Pulsa «Escanear la red» para buscarlos ahora.
-          </p>
+          <p className="text-kr-secondary">{t('inventory.empty.title')}</p>
+          <p className="mx-auto max-w-md text-kr-sm text-kr-muted">{t('inventory.empty.body')}</p>
           <Button onClick={rescan}>
             <RefreshCw className="h-4 w-4" />
-            Escanear la red
+            {t('inventory.scanNetwork')}
           </Button>
         </div>
       ) : tab === 'all' ? (
         filtered.length === 0 ? (
           <div className="rounded-xl border border-kr bg-kr-surface py-16 text-center text-kr-secondary">
-            Ningún dispositivo coincide con tu búsqueda.
+            {t('inventory.noMatch')}
           </div>
         ) : effectiveView === 'grid' ? (
           <div className={GRID_CLASS}>

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { api } from '@/lib/api';
 import { formatUptime } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 
 function Meter({ label, percent, detail }: { label: string; percent: number; detail: string }) {
   return (
@@ -24,6 +25,7 @@ function Meter({ label, percent, detail }: { label: string; percent: number; det
 
 /** Estado del servidor: uptime, CPU%, RAM%. */
 export function SystemWidget() {
+  const t = useT();
   const [stats, setStats] = useState<SystemStats | null>(null);
 
   useEffect(() => {
@@ -44,7 +46,7 @@ export function SystemWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Sistema</CardTitle>
+        <CardTitle>{t('dashboard.widget.system.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {!stats ? (
@@ -52,13 +54,16 @@ export function SystemWidget() {
         ) : (
           <>
             <div className="flex items-center justify-between text-kr-sm">
-              <span className="text-kr-secondary">Uptime</span>
+              <span className="text-kr-secondary">{t('dashboard.widget.system.uptime')}</span>
               <span className="text-kr-primary">{formatUptime(stats.uptimeSeconds)}</span>
             </div>
             <Meter
               label="CPU"
               percent={stats.cpu.loadPercent}
-              detail={`${stats.cpu.loadPercent}% · ${stats.cpu.cores} núcleos`}
+              detail={t('dashboard.widget.system.cpuDetail', {
+                pct: stats.cpu.loadPercent,
+                cores: stats.cpu.cores,
+              })}
             />
             <Meter
               label="RAM"

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { deleteCamera, listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
@@ -21,6 +22,7 @@ interface TileProps {
 }
 
 function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
+  const t = useT();
   const [image, setImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -43,16 +45,22 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
     <Card className="overflow-hidden">
       <div className="relative aspect-video bg-secondary/40">
         {camera.online && image ? (
-          <img src={image} alt={`Cámara ${camera.name}`} className="h-full w-full object-cover" />
+          <img
+            src={image}
+            alt={t('cameras.tileAlt', { name: camera.name })}
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <VideoOff className="h-8 w-8" />
-            <span className="text-xs">{camera.online ? 'Conectando…' : 'Sin señal'}</span>
+            <span className="text-xs">
+              {camera.online ? t('cameras.connecting') : t('cameras.noSignal')}
+            </span>
           </div>
         )}
         {camera.online && (
           <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
-            ● EN VIVO
+            {t('cameras.liveBadge')}
           </span>
         )}
       </div>
@@ -67,11 +75,14 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
               variant="ghost"
               size="sm"
               onClick={() => onEdit(camera)}
-              aria-label={`Editar ${camera.name}`}
+              aria-label={t('cameras.editAria', { name: camera.name })}
             >
               <Pencil className="h-4 w-4" aria-hidden />
             </Button>
-            <DeleteButton onDelete={() => onDelete(camera)} aria-label={`Eliminar ${camera.name}`}>
+            <DeleteButton
+              onDelete={() => onDelete(camera)}
+              aria-label={t('cameras.deleteAria', { name: camera.name })}
+            >
               <Trash2 className="h-4 w-4" aria-hidden />
             </DeleteButton>
           </div>
@@ -82,6 +93,7 @@ function CameraTile({ camera, isAdmin, onEdit, onDelete }: TileProps) {
 }
 
 export function CamerasPage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,27 +105,27 @@ export function CamerasPage() {
     setError(null);
     return listCameras()
       .then(setCameras)
-      .catch((err) => setError(describeError(err, 'No se pudieron cargar las cámaras')));
-  }, []);
+      .catch((err) => setError(describeError(err, t('cameras.loadError'))));
+  }, [t]);
 
   useEffect(() => {
     let active = true;
     void listCameras()
       .then((list) => active && setCameras(list))
-      .catch((err) => active && setError(describeError(err, 'No se pudieron cargar las cámaras')))
+      .catch((err) => active && setError(describeError(err, t('cameras.loadError'))))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, []);
+  }, [t]);
 
   const removeCamera = async (camera: Camera) => {
     try {
       await deleteCamera(camera.id);
-      toast.success('Cámara eliminada');
+      toast.success(t('cameras.deleted'));
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar la cámara'));
+      toast.error(describeError(err, t('cameras.deleteError')));
     }
   };
 
@@ -121,13 +133,13 @@ export function CamerasPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Cámaras</h2>
-          <p className="text-sm text-muted-foreground">Vista de las cámaras IP del hogar.</p>
+          <h2 className="text-xl font-semibold">{t('cameras.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('cameras.subtitle')}</p>
         </div>
         {isAdmin && (
           <Button onClick={() => setPanel(true)}>
             <Plus className="h-4 w-4" aria-hidden />
-            Añadir cámara
+            {t('cameras.add')}
           </Button>
         )}
       </div>
@@ -144,14 +156,12 @@ export function CamerasPage() {
         !error && (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
             <p className="text-kr-secondary">
-              {isAdmin
-                ? 'Aún no hay cámaras. Añade la primera con su URL RTSP.'
-                : 'Aún no hay cámaras. Pídele a un administrador que añada la primera con su URL RTSP.'}
+              {isAdmin ? t('cameras.emptyAdmin') : t('cameras.emptyViewer')}
             </p>
             {isAdmin && (
               <Button onClick={() => setPanel(true)}>
                 <Plus className="h-4 w-4" aria-hidden />
-                Añadir cámara
+                {t('cameras.add')}
               </Button>
             )}
           </div>

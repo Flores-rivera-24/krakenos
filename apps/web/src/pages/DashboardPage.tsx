@@ -13,6 +13,7 @@ import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
 import { Button } from '@/components/ui/button';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import {
   loadLayout,
   moveWidget,
@@ -41,7 +42,23 @@ const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
 
 const WIDGET_META = Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
 
+/** Título traducible de cada widget (la fuente de datos vive en `lib/dashboard`). */
+const WIDGET_TITLE_KEYS: Record<WidgetId, TranslationKey> = {
+  quickActions: 'dashboard.widget.quickActions.title',
+  homeMode: 'dashboard.widget.homeMode.title',
+  scenes: 'dashboard.widget.scenes.title',
+  topology: 'dashboard.widget.topology.title',
+  traffic: 'dashboard.widget.traffic.title',
+  devices: 'dashboard.widget.devices.title',
+  iot: 'dashboard.widget.iot.title',
+  system: 'dashboard.widget.system.title',
+  alerts: 'dashboard.widget.alerts.title',
+  wifi: 'dashboard.widget.wifi.title',
+  coverage: 'dashboard.widget.coverage.title',
+};
+
 export function DashboardPage() {
+  const t = useT();
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
   useEffect(() => subscribe(), [subscribe]);
@@ -58,9 +75,9 @@ export function DashboardPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-kr-xl font-semibold text-kr-primary">Dashboard</h2>
+          <h2 className="text-kr-xl font-semibold text-kr-primary">{t('dashboard.title')}</h2>
           <p className="text-kr-sm text-kr-secondary">
-            {connected ? 'En tiempo real · conectado' : 'Desconectado'}
+            {connected ? t('dashboard.connected') : t('dashboard.disconnected')}
           </p>
         </div>
         <Button
@@ -69,7 +86,7 @@ export function DashboardPage() {
           onClick={() => setEditing((v) => !v)}
         >
           <Settings2 className="h-4 w-4" />
-          {editing ? 'Hecho' : 'Personalizar'}
+          {editing ? t('dashboard.editDone') : t('dashboard.customize')}
         </Button>
       </div>
 
@@ -81,16 +98,17 @@ export function DashboardPage() {
           const Widget = WIDGET_COMPONENTS[id];
           const hidden = layout.hidden.includes(id);
           if (!meta || (hidden && !editing)) return null;
+          const title = t(WIDGET_TITLE_KEYS[id]);
 
           return (
             <div key={id} className={cn(meta.span === 2 && 'lg:col-span-2', hidden && 'opacity-50')}>
               {editing && (
                 <div className="mb-1 flex items-center justify-between rounded-md bg-kr-elevated px-2 py-1">
-                  <span className="text-kr-sm text-kr-secondary">{meta.title}</span>
+                  <span className="text-kr-sm text-kr-secondary">{title}</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      aria-label={`Subir ${meta.title}`}
+                      aria-label={t('dashboard.moveUp', { name: title })}
                       onClick={() => update(moveWidget(layout, id, 'up'))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -98,7 +116,7 @@ export function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label={`Bajar ${meta.title}`}
+                      aria-label={t('dashboard.moveDown', { name: title })}
                       onClick={() => update(moveWidget(layout, id, 'down'))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -106,7 +124,11 @@ export function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label={`${hidden ? 'Mostrar' : 'Ocultar'} ${meta.title}`}
+                      aria-label={
+                        hidden
+                          ? t('dashboard.show', { name: title })
+                          : t('dashboard.hide', { name: title })
+                      }
                       onClick={() => update(toggleHidden(layout, id))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
