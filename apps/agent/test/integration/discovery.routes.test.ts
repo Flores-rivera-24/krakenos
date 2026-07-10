@@ -126,6 +126,16 @@ describe('auto-descubrimiento (US-175)', () => {
     expect((await service.status()).suggestions).toHaveLength(1);
   });
 
+  it('las sugerencias en memoria están acotadas: una LAN hostil no infla el mapa sin límite', async () => {
+    // 150 "bridges Hue" fabricados con IPs distintas en un solo barrido.
+    const flood = Array.from({ length: 150 }, (_, i) =>
+      ssdp('hue-bridgeid: X', `10.0.${Math.floor(i / 250)}.${(i % 250) + 1}`),
+    );
+    const service = new DiscoveryService(app, new FakeTransport({ '239.255.255.250': flood }), 1);
+    await service.scanCycle();
+    expect((await service.status()).suggestions.length).toBeLessThanOrEqual(100);
+  });
+
   it('un ajuste discovery.dismissed corrupto se ignora sin romper el listado', async () => {
     await app.prisma.setting.create({ data: { key: 'discovery.dismissed', value: '{corrupto' } });
     const transport = new FakeTransport({

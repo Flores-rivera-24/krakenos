@@ -32,6 +32,20 @@ function instanceLabel(name: string): string | null {
   return first ? first : null;
 }
 
+/**
+ * ¿IPv4 privada (RFC 1918)? El registro A de un datagrama mDNS lo controla el
+ * emisor: sin este filtro, un aparato hostil podría anunciar una IP pública y
+ * colar «detectado en tu red» una sugerencia que apunta fuera de la LAN.
+ */
+export function isPrivateIpv4(ip: string): boolean {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
+    return false;
+  }
+  const [a, b] = parts as [number, number, number, number];
+  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+}
+
 function matchMdns(record: Extract<DiscoveryProbeRecord, { type: 'mdns' }>): FingerprintMatch | null {
   const service = record.service.toLowerCase();
   const name = record.name.toLowerCase();
@@ -140,6 +154,8 @@ function matchSsdp(record: Extract<DiscoveryProbeRecord, { type: 'ssdp' }>): Fin
 export function matchFingerprints(records: DiscoveryProbeRecord[]): FingerprintMatch[] {
   const out = new Map<string, FingerprintMatch>();
   for (const record of records) {
+    // Solo IPs de la LAN: la IP anunciada la controla el emisor del datagrama.
+    if (!isPrivateIpv4(record.ip)) continue;
     const match = record.type === 'mdns' ? matchMdns(record) : matchSsdp(record);
     if (!match) continue;
     const key = `${match.kind}:${match.ip}`;

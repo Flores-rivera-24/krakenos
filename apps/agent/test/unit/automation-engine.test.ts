@@ -184,10 +184,13 @@ describe('automations/engine — eventSubject / describeEvent', () => {
     expect(describeEvent({ type: 'sensor-reading', deviceId: 's', value: 21, prevValue: 20 })).toBe('s = 21');
   });
 
-  it('la presencia no aporta objetivo implícito y se describe con el nombre (US-169)', () => {
+  it('la presencia no aporta objetivo implícito y su resumen NO filtra el nombre (privacidad US-169)', () => {
     expect(eventSubject({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toEqual({});
     expect(eventSubject({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toEqual({});
-    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toContain('Ana');
+    // El resumen acaba en AutomationRun.event, legible por cualquier autenticado:
+    // no debe contener el nombre de la persona (la presencia ajena es por rol).
+    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).not.toContain('Ana');
+    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toContain('llega');
     expect(describeEvent({ type: 'person-left', userId: 'u1', name: 'Ana' })).toContain('sale');
     expect(describeEvent({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toContain('night');
   });

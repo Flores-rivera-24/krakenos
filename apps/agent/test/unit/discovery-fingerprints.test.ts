@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isPrivateIpv4,
   matchFingerprints,
   type DiscoveryProbeRecord,
 } from '../../src/discovery/fingerprints.js';
@@ -100,6 +101,22 @@ describe('discovery/fingerprints', () => {
       { type: 'ssdp', ip: '192.168.1.90', headers: { server: 'Samsung TV UPnP/1.0' } },
     ]);
     expect(out).toHaveLength(0);
+  });
+
+  it('descarta IPs fuera de la LAN: la IP anunciada la controla el emisor del datagrama', () => {
+    const out = matchFingerprints([
+      // Registro A hostil apuntando a una IP pública y a metadata de nube.
+      mdns({ service: '_hue._tcp.local', name: 'Evil._hue._tcp.local', ip: '203.0.113.7' }),
+      mdns({ service: '_hue._tcp.local', name: 'Evil._hue._tcp.local', ip: '169.254.169.254' }),
+      { type: 'ssdp', ip: '8.8.8.8', headers: { 'hue-bridgeid': 'X' } },
+    ]);
+    expect(out).toHaveLength(0);
+
+    expect(isPrivateIpv4('10.0.0.5')).toBe(true);
+    expect(isPrivateIpv4('172.31.1.1')).toBe(true);
+    expect(isPrivateIpv4('192.168.1.2')).toBe(true);
+    expect(isPrivateIpv4('172.32.0.1')).toBe(false);
+    expect(isPrivateIpv4('no-una-ip')).toBe(false);
   });
 
   it('deduplica por kind:ip prefiriendo la entrada con hostname (mDNS sobre SSDP)', () => {

@@ -150,10 +150,13 @@ export function describeEvent(event: HomeEvent): string {
       return `${event.deviceId} apagado`;
     case 'sensor-reading':
       return `${event.deviceId} = ${event.value}`;
+    // Sin el nombre a propósito: el log de ejecuciones (`AutomationRun.event`)
+    // lo lee cualquier usuario autenticado, y la presencia ajena es privada por
+    // rol (US-169) — el nombre del evento del bus no debe acabar persistido ahí.
     case 'person-arrived':
-      return `${event.name} llega a casa`;
+      return 'alguien llega a casa';
     case 'person-left':
-      return `${event.name} sale de casa`;
+      return 'alguien sale de casa';
     case 'mode-changed':
       return `modo del hogar → ${event.mode}`;
   }

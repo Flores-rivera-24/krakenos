@@ -33,6 +33,16 @@ const DEFAULT_SWEEP_MS = 10 * 60 * 1000;
 const DEFAULT_WAIT_MS = 2500;
 
 /**
+ * Tope de sugerencias vivas: un host LAN hostil puede fabricar parejas
+ * `kind:ip` sin límite en un datagrama; una casa real tiene decenas de
+ * aparatos, no miles. Al llegar al tope, lo nuevo se descarta (con aviso).
+ */
+const MAX_SUGGESTIONS = 100;
+
+/** Tope del listado persistido de descartes (se conservan los más recientes). */
+const MAX_DISMISSED = 500;
+
+/**
  * Auto-descubrimiento de IoT (US-175): sondea la LAN por mDNS y SSDP (solo
  * multicast local; el transporte garantiza el no-egress), casa las respuestas
  * contra huellas puras (`discovery/fingerprints.ts`) y mantiene en memoria las
@@ -95,9 +105,20 @@ export class DiscoveryService {
       this.app.log.warn({ err }, '[discovery] el sondeo SSDP falló; se omite');
     }
 
+    let dropped = 0;
     for (const match of matchFingerprints(records)) {
       const id = `${match.kind}:${match.ip}`;
+      if (!this.suggestions.has(id) && this.suggestions.size >= MAX_SUGGESTIONS) {
+        dropped += 1;
+        continue;
+      }
       this.suggestions.set(id, { ...match, id, lastSeen: now.toISOString() });
+    }
+    if (dropped > 0) {
+      this.app.log.warn(
+        { dropped },
+        '[discovery] tope de sugerencias alcanzado; se descartan las nuevas',
+      );
     }
     // Retira lo que lleva demasiado sin re-verse (el aparato salió de la red).
     for (const [id, suggestion] of this.suggestions) {
@@ -140,8 +161,10 @@ export class DiscoveryService {
   /** Descarta una sugerencia (persistido: no vuelve a aparecer tras re-verla). */
   async dismiss(id: string): Promise<void> {
     const ids = await this.dismissedIds();
+    ids.delete(id); // re-descartar la mueve al final (la más reciente)
     ids.add(id);
-    const value = JSON.stringify([...ids]);
+    // Acotado: el listado no crece sin límite (se conservan los más recientes).
+    const value = JSON.stringify([...ids].slice(-MAX_DISMISSED));
     await this.app.prisma.setting.upsert({
       where: { key: DISMISSED_KEY },
       create: { key: DISMISSED_KEY, value },
