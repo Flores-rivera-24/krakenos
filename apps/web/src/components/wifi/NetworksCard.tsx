@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 export function NetworksCard() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   // Apodos del inventario por MAC (US-178): la lista de clientes usa el nombre
   // amable que la persona ya puso, no el hostname críptico.
@@ -61,7 +63,7 @@ export function NetworksCard() {
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-base text-foreground">Puntos de acceso y redes</CardTitle>
+        <CardTitle className="text-base text-foreground">{t('wifi.networks.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -82,11 +84,11 @@ export function NetworksCard() {
           <table className="w-full text-sm">
             <thead className="bg-secondary text-secondary-foreground">
               <tr>
-                <th className="px-3 py-2 text-left">SSID</th>
-                <th className="px-3 py-2 text-left">Banda</th>
-                <th className="px-3 py-2 text-left">AP</th>
-                <th className="px-3 py-2 text-left">Clientes</th>
-                <th className="px-3 py-2 text-right">Activa</th>
+                <th className="px-3 py-2 text-left">{t('wifi.ssid')}</th>
+                <th className="px-3 py-2 text-left">{t('wifi.band')}</th>
+                <th className="px-3 py-2 text-left">{t('wifi.networks.ap')}</th>
+                <th className="px-3 py-2 text-left">{t('wifi.networks.clients')}</th>
+                <th className="px-3 py-2 text-right">{t('wifi.networks.active')}</th>
               </tr>
             </thead>
             <tbody>
@@ -95,7 +97,9 @@ export function NetworksCard() {
                   <td className="px-3 py-2">
                     {n.ssid}
                     {n.isGuest && (
-                      <span className="ml-1 text-xs text-muted-foreground">(invitados)</span>
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {t('wifi.networks.guestTag')}
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2">{n.band}</td>
@@ -115,8 +119,8 @@ export function NetworksCard() {
                         checked={n.enabled}
                         onToggle={(next) => toggle(n, next)}
                         disabled={!isAdmin}
-                        errorMessage={`No se pudo cambiar la red ${n.ssid}`}
-                        aria-label={`Activar red ${n.ssid}`}
+                        errorMessage={t('wifi.networks.toggleError', { ssid: n.ssid })}
+                        aria-label={t('wifi.networks.toggleAria', { ssid: n.ssid })}
                       />
                     </div>
                   </td>
@@ -131,18 +135,18 @@ export function NetworksCard() {
         <Dialog open onClose={() => setClientsOf(null)} aria-labelledby="dialog-clients-title">
           <div className="mb-3 flex items-start justify-between">
             <h3 id="dialog-clients-title" className="text-lg font-semibold">
-              Clientes · {clientsOf.net.ssid}
+              {t('wifi.clients.title', { ssid: clientsOf.net.ssid })}
             </h3>
             <Button variant="ghost" size="sm" onClick={() => setClientsOf(null)}>
-              Cerrar
+              {t('common.close')}
             </Button>
           </div>
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
-                <th className="py-1">Dispositivo</th>
-                <th className="py-1">IP</th>
-                <th className="py-1">Señal</th>
+                <th className="py-1">{t('wifi.clients.device')}</th>
+                <th className="py-1">{t('wifi.clients.ip')}</th>
+                <th className="py-1">{t('wifi.clients.signal')}</th>
               </tr>
             </thead>
             <tbody>

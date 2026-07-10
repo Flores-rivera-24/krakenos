@@ -8,14 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
-
-/** Explicación llana de WPA2 vs WPA3 (no hay una única clave de glosario para "seguridad"). */
-const SECURITY_HELP =
-  'El candado que protege tu WiFi con contraseña. WPA3 es lo más seguro; WPA2 es compatible con aparatos antiguos; el modo mixto WPA2/WPA3 acepta ambos.';
-
-/** "Red oculta" no está en el glosario: se explica en línea. */
-const HIDDEN_HELP =
-  'Si la activas, tu red no aparece en la lista de WiFi y hay que escribir el nombre a mano para conectarse. No la hace más segura, solo menos visible.';
+import { useT } from '@/lib/i18n';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
@@ -29,6 +22,7 @@ interface Props {
 }
 
 export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
+  const t = useT();
   const [ssid, setSsid] = useState(network.ssid);
   const [password, setPassword] = useState('');
   const [band, setBand] = useState<WifiBand>(network.band);
@@ -53,9 +47,9 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
       const updated = await api.put<WifiNetwork>('/wifi', body);
       onUpdated(updated);
       setPassword('');
-      setFeedback({ ok: true, msg: 'Cambios guardados' });
+      setFeedback({ ok: true, msg: t('wifi.saved') });
     } catch (err) {
-      const msg = err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar';
+      const msg = err instanceof ApiRequestError ? err.body.message : t('wifi.saveError');
       setFeedback({ ok: false, msg });
     } finally {
       setSaving(false);
@@ -65,18 +59,18 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base text-foreground">Red principal</CardTitle>
+        <CardTitle className="text-base text-foreground">{t('wifi.main.title')}</CardTitle>
         <Switch
           checked={enabled}
           onCheckedChange={setEnabled}
           disabled={!isAdmin}
-          aria-label="Activar red principal"
+          aria-label={t('wifi.main.enableAria')}
         />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <Label htmlFor="ssid">SSID</Label>
+            <Label htmlFor="ssid">{t('wifi.ssid')}</Label>
             <GlossaryHint termKey="ssid" />
           </div>
           <Input
@@ -89,12 +83,12 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Contraseña</Label>
+          <Label htmlFor="password">{t('wifi.password')}</Label>
           <Input
             id="password"
             type="password"
             value={password}
-            placeholder="•••••••• (dejar vacío para no cambiar)"
+            placeholder={t('wifi.passwordPlaceholder')}
             onChange={(e) => setPassword(e.target.value)}
             disabled={!isAdmin || security === 'open'}
             minLength={8}
@@ -105,7 +99,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="band">Banda</Label>
+              <Label htmlFor="band">{t('wifi.band')}</Label>
               <GlossaryHint termKey="banda-24-5-6" />
             </div>
             <select
@@ -124,8 +118,8 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="security">Seguridad</Label>
-              <HelpHint content={SECURITY_HELP} label="¿Qué es la seguridad WiFi?" />
+              <Label htmlFor="security">{t('wifi.security')}</Label>
+              <HelpHint content={t('wifi.securityHelp')} label={t('wifi.securityLabel')} />
             </div>
             <select
               id="security"
@@ -136,7 +130,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             >
               {SECURITIES.map((s) => (
                 <option key={s} value={s}>
-                  {s === 'open' ? 'Abierta (sin contraseña)' : s.toUpperCase()}
+                  {s === 'open' ? t('wifi.securityOpen') : s.toUpperCase()}
                 </option>
               ))}
             </select>
@@ -145,8 +139,8 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <Label htmlFor="hidden">SSID oculto</Label>
-            <HelpHint content={HIDDEN_HELP} label="¿Qué es un SSID oculto?" />
+            <Label htmlFor="hidden">{t('wifi.hiddenSsid')}</Label>
+            <HelpHint content={t('wifi.hiddenHelp')} label={t('wifi.hiddenLabel')} />
           </span>
           <Switch id="hidden" checked={hidden} onCheckedChange={setHidden} disabled={!isAdmin} />
         </div>
@@ -159,7 +153,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         {isAdmin && (
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving ? t('common.saving') : t('common.saveChanges')}
           </Button>
         )}
       </CardContent>

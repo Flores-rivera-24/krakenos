@@ -34,6 +34,8 @@ export const en: Record<TranslationKey, string> = {
   'app.booting': 'Starting KrakenOS…',
   'common.close': 'Close',
   'common.logout': 'Log out',
+  'common.saving': 'Saving…',
+  'common.saveChanges': 'Save changes',
 
   // --- Shell / layout ---
   'layout.expandMenu': 'Expand menu',
@@ -113,4 +115,53 @@ export const en: Record<TranslationKey, string> = {
   'settings.language.enDesc': 'The interface in English.',
   'settings.language.changed': 'Language changed',
   'settings.language.error': 'Could not change the language',
+
+  // --- WiFi ---
+  'wifi.title': 'WiFi',
+  'wifi.subtitle.admin': 'Manage your main and guest networks.',
+  'wifi.subtitle.readonly': 'Read-only — admin role is required to edit.',
+  'wifi.loadError': 'Could not load the WiFi configuration',
+  'wifi.empty.title': 'No WiFi configuration available yet.',
+  'wifi.empty.body':
+    'The WiFi configuration appears once your router is connected to KrakenOS. Connect it to manage your network name, password and guest network from here.',
+  'wifi.empty.cta': 'Connect your router',
+  'wifi.saved': 'Changes saved',
+  'wifi.saveError': 'Could not save',
+  'wifi.ssid': 'SSID',
+  'wifi.password': 'Password',
+  'wifi.passwordPlaceholder': '•••••••• (leave empty to keep unchanged)',
+  'wifi.band': 'Band',
+  'wifi.security': 'Security',
+  'wifi.securityLabel': 'What is WiFi security?',
+  'wifi.securityHelp':
+    'The lock that protects your WiFi with a password. WPA3 is the most secure; WPA2 is compatible with older devices; the mixed WPA2/WPA3 mode accepts both.',
+  'wifi.securityOpen': 'Open (no password)',
+  'wifi.hiddenSsid': 'Hidden SSID',
+  'wifi.hiddenLabel': 'What is a hidden SSID?',
+  'wifi.hiddenHelp':
+    'If you enable it, your network does not appear in the WiFi list and you have to type its name by hand to connect. It does not make it more secure, just less visible.',
+  'wifi.main.title': 'Main network',
+  'wifi.main.enableAria': 'Enable main network',
+  'wifi.guest.title': 'Guest network',
+  'wifi.guest.enableAria': 'Enable guest network',
+  'wifi.isolation': 'Isolate clients from each other',
+  'wifi.isolationLabel': 'What is client isolation?',
+  'wifi.isolationHelp':
+    'Prevents devices connected to the guest network from seeing each other. Ideal so visitors only get internet and nothing else.',
+  'wifi.limit': 'Bandwidth limit (Mbps)',
+  'wifi.limitLabel': 'What is the bandwidth limit?',
+  'wifi.limitHelp':
+    'Maximum speed the guest network can use, in Mbps (1000 Mbps = 1 Gbps). Leave it empty for no limit.',
+  'wifi.noLimit': 'No limit',
+  'wifi.networks.title': 'Access points and networks',
+  'wifi.networks.ap': 'AP',
+  'wifi.networks.clients': 'Clients',
+  'wifi.networks.active': 'Active',
+  'wifi.networks.guestTag': '(guest)',
+  'wifi.networks.toggleError': 'Could not change the {ssid} network',
+  'wifi.networks.toggleAria': 'Enable {ssid} network',
+  'wifi.clients.title': 'Clients · {ssid}',
+  'wifi.clients.device': 'Device',
+  'wifi.clients.ip': 'IP',
+  'wifi.clients.signal': 'Signal',
 };

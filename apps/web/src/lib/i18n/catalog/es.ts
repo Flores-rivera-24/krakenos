@@ -37,6 +37,8 @@ export const es = {
   'app.booting': 'Iniciando KrakenOS…',
   'common.close': 'Cerrar',
   'common.logout': 'Salir',
+  'common.saving': 'Guardando…',
+  'common.saveChanges': 'Guardar cambios',
 
   // --- Shell / layout ---
   'layout.expandMenu': 'Expandir menú',
@@ -119,6 +121,55 @@ export const es = {
   'settings.language.enDesc': 'The interface in English.',
   'settings.language.changed': 'Idioma cambiado',
   'settings.language.error': 'No se pudo cambiar el idioma',
+
+  // --- Red WiFi (US-177) ---
+  'wifi.title': 'Red WiFi',
+  'wifi.subtitle.admin': 'Gestiona tu red principal y la de invitados.',
+  'wifi.subtitle.readonly': 'Solo lectura — se requiere rol admin para editar.',
+  'wifi.loadError': 'No se pudo cargar la configuración WiFi',
+  'wifi.empty.title': 'Aún no hay configuración WiFi disponible.',
+  'wifi.empty.body':
+    'La configuración WiFi aparece cuando tu router está conectado a KrakenOS. Conéctalo para gestionar desde aquí el nombre de tu red, la contraseña y la red de invitados.',
+  'wifi.empty.cta': 'Conecta tu router',
+  'wifi.saved': 'Cambios guardados',
+  'wifi.saveError': 'No se pudo guardar',
+  'wifi.ssid': 'SSID',
+  'wifi.password': 'Contraseña',
+  'wifi.passwordPlaceholder': '•••••••• (dejar vacío para no cambiar)',
+  'wifi.band': 'Banda',
+  'wifi.security': 'Seguridad',
+  'wifi.securityLabel': '¿Qué es la seguridad WiFi?',
+  'wifi.securityHelp':
+    'El candado que protege tu WiFi con contraseña. WPA3 es lo más seguro; WPA2 es compatible con aparatos antiguos; el modo mixto WPA2/WPA3 acepta ambos.',
+  'wifi.securityOpen': 'Abierta (sin contraseña)',
+  'wifi.hiddenSsid': 'SSID oculto',
+  'wifi.hiddenLabel': '¿Qué es un SSID oculto?',
+  'wifi.hiddenHelp':
+    'Si la activas, tu red no aparece en la lista de WiFi y hay que escribir el nombre a mano para conectarse. No la hace más segura, solo menos visible.',
+  'wifi.main.title': 'Red principal',
+  'wifi.main.enableAria': 'Activar red principal',
+  'wifi.guest.title': 'Red de invitados',
+  'wifi.guest.enableAria': 'Activar red de invitados',
+  'wifi.isolation': 'Aislar clientes entre sí',
+  'wifi.isolationLabel': '¿Qué es aislar clientes?',
+  'wifi.isolationHelp':
+    'Impide que los aparatos conectados a la red de invitados se vean entre sí. Ideal para que las visitas solo tengan internet y nada más.',
+  'wifi.limit': 'Límite de ancho de banda (Mbps)',
+  'wifi.limitLabel': '¿Qué es el límite de ancho de banda?',
+  'wifi.limitHelp':
+    'Velocidad máxima que puede usar la red de invitados, en Mbps (1000 Mbps = 1 Gbps). Déjalo vacío para no poner límite.',
+  'wifi.noLimit': 'Sin límite',
+  'wifi.networks.title': 'Puntos de acceso y redes',
+  'wifi.networks.ap': 'AP',
+  'wifi.networks.clients': 'Clientes',
+  'wifi.networks.active': 'Activa',
+  'wifi.networks.guestTag': '(invitados)',
+  'wifi.networks.toggleError': 'No se pudo cambiar la red {ssid}',
+  'wifi.networks.toggleAria': 'Activar red {ssid}',
+  'wifi.clients.title': 'Clientes · {ssid}',
+  'wifi.clients.device': 'Dispositivo',
+  'wifi.clients.ip': 'IP',
+  'wifi.clients.signal': 'Señal',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */
