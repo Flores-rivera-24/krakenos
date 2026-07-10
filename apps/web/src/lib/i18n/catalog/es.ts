@@ -119,6 +119,27 @@ export const es = {
   'settings.language.enDesc': 'The interface in English.',
   'settings.language.changed': 'Idioma cambiado',
   'settings.language.error': 'No se pudo cambiar el idioma',
+
+  // --- Dashboard (US-160) ---
+  'dashboard.title': 'Dashboard',
+  'dashboard.realtime': 'En tiempo real · conectado',
+  'dashboard.disconnected': 'Desconectado',
+  'dashboard.customize': 'Personalizar',
+  'dashboard.done': 'Hecho',
+  'dashboard.moveUp': 'Subir {title}',
+  'dashboard.moveDown': 'Bajar {title}',
+  'dashboard.show': 'Mostrar {title}',
+  'dashboard.hide': 'Ocultar {title}',
+
+  // --- Red WiFi (US-15) ---
+  'wifi.title': 'Red WiFi',
+  'wifi.subtitle.admin': 'Gestiona tu red principal y la de invitados.',
+  'wifi.subtitle.readonly': 'Solo lectura — se requiere rol admin para editar.',
+  'wifi.loadError': 'No se pudo cargar la configuración WiFi',
+  'wifi.empty.title': 'Aún no hay configuración WiFi disponible.',
+  'wifi.empty.desc':
+    'La configuración WiFi aparece cuando tu router está conectado a KrakenOS. Conéctalo para gestionar desde aquí el nombre de tu red, la contraseña y la red de invitados.',
+  'wifi.empty.cta': 'Conecta tu router',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

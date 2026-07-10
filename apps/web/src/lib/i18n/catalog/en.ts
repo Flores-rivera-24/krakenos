@@ -113,4 +113,25 @@ export const en: Record<TranslationKey, string> = {
   'settings.language.enDesc': 'The interface in English.',
   'settings.language.changed': 'Language changed',
   'settings.language.error': 'Could not change the language',
+
+  // --- Dashboard ---
+  'dashboard.title': 'Dashboard',
+  'dashboard.realtime': 'Real time · connected',
+  'dashboard.disconnected': 'Disconnected',
+  'dashboard.customize': 'Customize',
+  'dashboard.done': 'Done',
+  'dashboard.moveUp': 'Move {title} up',
+  'dashboard.moveDown': 'Move {title} down',
+  'dashboard.show': 'Show {title}',
+  'dashboard.hide': 'Hide {title}',
+
+  // --- WiFi network ---
+  'wifi.title': 'WiFi network',
+  'wifi.subtitle.admin': 'Manage your main and guest networks.',
+  'wifi.subtitle.readonly': 'Read only — admin role required to edit.',
+  'wifi.loadError': 'Could not load the WiFi configuration',
+  'wifi.empty.title': 'No WiFi configuration available yet.',
+  'wifi.empty.desc':
+    'The WiFi configuration appears once your router is connected to KrakenOS. Connect it to manage your network name, password and guest network from here.',
+  'wifi.empty.cta': 'Connect your router',
 };

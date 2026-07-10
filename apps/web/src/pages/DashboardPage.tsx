@@ -22,6 +22,7 @@ import {
   type DashboardLayout,
   type WidgetId,
 } from '@/lib/dashboard';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useInventoryStore } from '@/store/inventory.store';
 
@@ -42,6 +43,7 @@ const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
 const WIDGET_META = Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
 
 export function DashboardPage() {
+  const t = useT();
   const connected = useInventoryStore((s) => s.connected);
   const subscribe = useInventoryStore((s) => s.subscribe);
   useEffect(() => subscribe(), [subscribe]);
@@ -58,9 +60,9 @@ export function DashboardPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-kr-xl font-semibold text-kr-primary">Dashboard</h2>
+          <h2 className="text-kr-xl font-semibold text-kr-primary">{t('dashboard.title')}</h2>
           <p className="text-kr-sm text-kr-secondary">
-            {connected ? 'En tiempo real · conectado' : 'Desconectado'}
+            {connected ? t('dashboard.realtime') : t('dashboard.disconnected')}
           </p>
         </div>
         <Button
@@ -69,7 +71,7 @@ export function DashboardPage() {
           onClick={() => setEditing((v) => !v)}
         >
           <Settings2 className="h-4 w-4" />
-          {editing ? 'Hecho' : 'Personalizar'}
+          {editing ? t('dashboard.done') : t('dashboard.customize')}
         </Button>
       </div>
 
@@ -90,7 +92,7 @@ export function DashboardPage() {
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      aria-label={`Subir ${meta.title}`}
+                      aria-label={t('dashboard.moveUp', { title: meta.title })}
                       onClick={() => update(moveWidget(layout, id, 'up'))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -98,7 +100,7 @@ export function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label={`Bajar ${meta.title}`}
+                      aria-label={t('dashboard.moveDown', { title: meta.title })}
                       onClick={() => update(moveWidget(layout, id, 'down'))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -106,7 +108,11 @@ export function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label={`${hidden ? 'Mostrar' : 'Ocultar'} ${meta.title}`}
+                      aria-label={
+                        hidden
+                          ? t('dashboard.show', { title: meta.title })
+                          : t('dashboard.hide', { title: meta.title })
+                      }
                       onClick={() => update(toggleHidden(layout, id))}
                       className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
