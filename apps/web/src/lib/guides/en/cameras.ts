@@ -24,6 +24,7 @@ export const CAMERA_GUIDES_EN: GuideTranslations = {
       {
         title: 'Find out the RTSP address',
         body: 'The RTSP address looks like this: rtsp://user:password@camera-IP:554/path. The “554” is the usual port and the “path” at the end depends on the brand (sometimes it is /stream1, /h264, /Streaming/Channels/101…). You can find it in the camera’s manual, in its app, or by searching for the model online.',
+        command: 'rtsp://user:password@192.168.1.20:554/stream1',
         note: 'Tip: reserve a fixed IP for the camera on the router so this address does not change over time.',
       },
       {
@@ -40,6 +41,7 @@ export const CAMERA_GUIDES_EN: GuideTranslations = {
       rtspUrl: {
         label: 'RTSP address',
         help: 'The address of the camera’s video, starting with rtsp://. It usually includes a username and password, which is why it is stored encrypted and not shown again.',
+        placeholder: 'rtsp://user:password@192.168.1.20:554/stream1',
       },
       room: {
         label: 'Room (optional)',

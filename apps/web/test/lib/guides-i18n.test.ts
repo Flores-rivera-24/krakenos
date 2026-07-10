@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { getGuide, getGuideByKind, getGlossaryEntry, GUIDES } from '@/lib/guides';
+import { getGuide, getGuideByKind, getGlossaryEntry, GLOSSARY, GUIDES } from '@/lib/guides';
+import { GLOSSARY_EN, GUIDE_TRANSLATIONS_EN } from '@/lib/guides/en';
 import { localizeGuide } from '@/lib/guides/localize';
 import { setLocale } from '@/lib/i18n';
 
@@ -62,8 +63,56 @@ describe('localización de guías (US-177)', () => {
   it('el glosario cae al español cuando no hay traducción de la clave', () => {
     setLocale('en', { persist: false });
     const entry = getGlossaryEntry('ssid');
-    // GLOSSARY_EN puede estar vacío para esta clave → term/short en español, sin romper.
     expect(entry?.term).toBeTruthy();
     expect(entry?.short).toBeTruthy();
+  });
+});
+
+/**
+ * Guardas de paridad estructural es↔en (US-177). El typecheck acepta cualquier
+ * `field.key`/`option.value` en el overlay (es `Record<string, …>`), así que estos
+ * tests atrapan un error del traductor: una clave inexistente se aplicaría en
+ * silencio a la nada. También exigen cobertura EN completa (cada guía y cada
+ * término del glosario traducidos).
+ */
+describe('paridad estructural de las traducciones EN (US-177)', () => {
+  it('toda guía en español tiene su overlay en inglés', () => {
+    const missing = GUIDES.filter((g) => !GUIDE_TRANSLATIONS_EN[g.id]).map((g) => g.id);
+    expect(missing).toEqual([]);
+  });
+
+  it('ningún overlay referencia un id de guía inexistente', () => {
+    const ids = new Set(GUIDES.map((g) => g.id));
+    const stray = Object.keys(GUIDE_TRANSLATIONS_EN).filter((id) => !ids.has(id));
+    expect(stray).toEqual([]);
+  });
+
+  it('los overlays solo referencian field.key / option.value reales y no exceden longitudes', () => {
+    for (const guide of GUIDES) {
+      const tr = GUIDE_TRANSLATIONS_EN[guide.id];
+      if (!tr) continue;
+      const fieldKeys = new Set(guide.fields.map((f) => f.key));
+      for (const key of Object.keys(tr.fields ?? {})) {
+        expect(fieldKeys, `${guide.id}: field.key '${key}'`).toContain(key);
+        const field = guide.fields.find((f) => f.key === key)!;
+        const optValues = new Set((field.options ?? []).map((o) => o.value));
+        for (const value of Object.keys(tr.fields?.[key]?.options ?? {})) {
+          expect(optValues, `${guide.id}.${key}: option '${value}'`).toContain(value);
+        }
+      }
+      // Los overlays por índice no deben exceder la fuente (español = estructura).
+      expect(tr.prerequisites?.length ?? 0).toBeLessThanOrEqual(guide.prerequisites.length);
+      expect(tr.steps?.length ?? 0).toBeLessThanOrEqual(guide.steps.length);
+      expect(tr.troubleshooting?.length ?? 0).toBeLessThanOrEqual(guide.troubleshooting.length);
+    }
+  });
+
+  it('el glosario EN cubre todas las claves y no añade ninguna extra', () => {
+    const esKeys = Object.keys(GLOSSARY);
+    const enKeys = Object.keys(GLOSSARY_EN);
+    const missing = esKeys.filter((k) => !(k in GLOSSARY_EN));
+    const stray = enKeys.filter((k) => !(k in GLOSSARY));
+    expect(missing).toEqual([]);
+    expect(stray).toEqual([]);
   });
 });
