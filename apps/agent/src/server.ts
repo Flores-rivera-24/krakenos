@@ -69,6 +69,7 @@ import { systemRoutes } from './modules/system/system.routes.js';
 import { RetentionService } from './modules/system/retention.service.js';
 import { TrafficService } from './modules/traffic/traffic.service.js';
 import { trafficRoutes } from './modules/traffic/traffic.routes.js';
+import { EnergyService } from './modules/energy/energy.service.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -282,6 +283,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
   trafficService.start();
   app.addHook('onClose', async () => trafficService.stop());
+
+  // Medición de consumo eléctrico (US-181): sondea la potencia de los IoT que la
+  // reportan y persiste un rollup por minuto por dispositivo. La energía/coste se
+  // integran al consultar; la poda de retención es red de seguridad del barrido.
+  const energyService = new EnergyService(app, iot);
+  energyService.start();
+  app.addHook('onClose', async () => energyService.stop());
 
   // Barrido periódico de inventario: usa el intervalo persistido (`scanIntervalSec`,
   // por defecto 60 s) y se reprograma en caliente desde Ajustes (US-47).

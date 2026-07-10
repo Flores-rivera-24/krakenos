@@ -51,6 +51,17 @@ export interface IotDevice {
   color: IotColor | null;
   /** Última lectura (sensor); `null` si no aplica. */
   reading: IotReading | null;
+  /**
+   * Potencia instantánea en vatios, si el dispositivo la mide (Shelly, Tapo/Kasa,
+   * Meross, el mock la simula); `undefined`/`null` si el backend no la reporta
+   * (US-181). La medición de energía (`EnergySample`) la integra en el tiempo.
+   */
+  powerW?: number | null;
+  /**
+   * Contador de energía acumulada en Wh que reportan algunos dispositivos
+   * (Shelly `aenergy.total`); `undefined`/`null` si no lo miden (US-181).
+   */
+  energyWh?: number | null;
 }
 
 /** Cambios de estado aplicables a un dispositivo controlable (light/plug). */

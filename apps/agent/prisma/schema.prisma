@@ -162,6 +162,23 @@ model DeviceTrafficSample {
   @@index([timestamp])
 }
 
+/// Rollup periódico (1/min) del consumo eléctrico por dispositivo IoT (US-181).
+/// Cada fila es la media de potencia (W) de las muestras del intervalo para un
+/// `deviceId` del `IotManager`. La energía (Wh/kWh) se integra en el tiempo al
+/// agregar; solo los dispositivos que reportan potencia generan filas.
+model EnergySample {
+  id        String   @id @default(cuid())
+  /// Id del dispositivo en el IotManager (namespaced en composite: `hue:x`).
+  deviceId  String
+  timestamp DateTime @default(now())
+  /// Media de potencia (W) en el intervalo de rollup.
+  powerW    Float
+
+  @@index([deviceId, timestamp])
+  // La poda de retención y el rollup filtran solo por timestamp (patrón US-206).
+  @@index([timestamp])
+}
+
 /// Configuración de integraciones editable desde la UI (US-140). Una fila por
 /// dominio (driver/vpn/iot/cameras/firewall/vlan/qos/dns). `config` es un JSON con
 /// los valores; los secretos se guardan cifrados con secretbox (US-139), nunca en

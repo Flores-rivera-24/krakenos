@@ -10,12 +10,18 @@ import { SETTING_BOUNDS, clampToBound } from './settings-bounds.js';
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
-type RetentionKey = 'trafficRetentionDays' | 'auditRetentionDays';
+type RetentionKey = 'trafficRetentionDays' | 'auditRetentionDays' | 'energyRetentionDays';
 
 /** Prisma mínimo que necesitan estas funciones (facilita el tipado en llamantes). */
 type PrismaLike = Pick<
   PrismaClient,
-  'setting' | 'auditLog' | 'refreshToken' | 'webAuthnChallenge' | 'automationRun' | 'presenceEvent'
+  | 'setting'
+  | 'auditLog'
+  | 'refreshToken'
+  | 'webAuthnChallenge'
+  | 'automationRun'
+  | 'presenceEvent'
+  | 'energySample'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
@@ -82,6 +88,23 @@ export async function pruneAutomationRuns(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.automationRun.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return res.count;
+}
+
+/** Retención por defecto de los rollups de energía (días) si el ajuste no existe (US-181). */
+export const DEFAULT_ENERGY_RETENTION_DAYS = 90;
+
+/**
+ * Borra los rollups de energía más antiguos que `days` (US-181). Devuelve cuántos
+ * borró. El rollup por minuto ya poda en cada flush; esto es la red de seguridad
+ * del barrido de retención por si el sampler estuvo parado.
+ */
+export async function pruneEnergySamples(
+  prisma: PrismaLike,
+  days: number,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.energySample.deleteMany({ where: { timestamp: { lt: cutoff } } });
   return res.count;
 }
 

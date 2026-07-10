@@ -10,6 +10,7 @@ export * from './setup.js';
 export * from './audit.js';
 export * from './vpn.js';
 export * from './traffic.js';
+export * from './energy.js';
 export * from './iot.js';
 export * from './camera.js';
 export * from './firewall.js';

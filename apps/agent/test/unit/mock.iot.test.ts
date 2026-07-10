@@ -24,6 +24,33 @@ describe('MockIotManager', () => {
     expect(updated.on).toBe(true);
   });
 
+  it('simula potencia (powerW) según el estado del dispositivo (US-181)', async () => {
+    const iot = new MockIotManager();
+    const devices = await iot.listDevices();
+    const byId = new Map(devices.map((d) => [d.id, d]));
+
+    // Enchufe encendido con carga → potencia > 0; apagado → 0.
+    expect(byId.get('plug-tv')?.powerW).toBeGreaterThan(0); // nace encendido
+    expect(byId.get('plug-cafetera')?.powerW).toBe(0); // nace apagado
+    // Los sensores no miden potencia.
+    expect(byId.get('sensor-temp')?.powerW).toBeNull();
+  });
+
+  it('encender un enchufe le da potencia; apagarlo la lleva a 0 (US-181)', async () => {
+    const iot = new MockIotManager();
+    const on = await iot.setState('plug-cafetera', { on: true });
+    expect(on.powerW).toBeGreaterThan(0);
+    const off = await iot.setState('plug-cafetera', { on: false });
+    expect(off.powerW).toBe(0);
+  });
+
+  it('la potencia de una luz escala con el brillo (US-181)', async () => {
+    const iot = new MockIotManager();
+    const full = await iot.setState('light-salon', { on: true, brightness: 100 });
+    const half = await iot.setState('light-salon', { brightness: 50 });
+    expect(half.powerW).toBeCloseTo((full.powerW ?? 0) / 2, 1);
+  });
+
   it('rechaza controlar un sensor', async () => {
     const iot = new MockIotManager();
     await expect(iot.setState('sensor-temp', { on: true })).rejects.toBeInstanceOf(IotError);
