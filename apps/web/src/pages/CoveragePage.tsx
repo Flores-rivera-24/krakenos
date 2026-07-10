@@ -29,6 +29,7 @@ import {
 } from '@/lib/coverage';
 import { formatDbm } from '@/lib/coverage-format';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -36,10 +37,10 @@ import { toast } from '@/store/toast.store';
 /** Vistas del lienzo de cobertura. */
 type CoverageView = 'edit' | 'predict' | 'survey';
 
-const VIEWS: { id: CoverageView; label: string }[] = [
-  { id: 'edit', label: 'Editar' },
-  { id: 'predict', label: 'Predicción' },
-  { id: 'survey', label: 'Medición' },
+const VIEWS: { id: CoverageView; label: TranslationKey }[] = [
+  { id: 'edit', label: 'coverage.view.edit' },
+  { id: 'predict', label: 'coverage.view.predict' },
+  { id: 'survey', label: 'coverage.view.survey' },
 ];
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
@@ -59,6 +60,7 @@ function localId(prefix: string): string {
  * (vía panel del segundo agente) medir cobertura real con un survey.
  */
 export function CoveragePage() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
 
   const [plans, setPlans] = useState<FloorPlan[]>([]);
@@ -107,7 +109,7 @@ export function CoveragePage() {
         setPlans(list);
         setSelectedId((prev) => prev ?? list[0]?.id ?? null);
       })
-      .catch((err) => active && setError(describeError(err, 'No se pudieron cargar los planos')))
+      .catch((err) => active && setError(describeError(err, t('coverage.loadError'))))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -152,7 +154,7 @@ export function CoveragePage() {
       .catch((err) => {
         if (!active) return;
         setHeatmap(null);
-        setHeatmapError(describeError(err, 'No se pudo calcular la predicción'));
+        setHeatmapError(describeError(err, t('coverage.predictError')));
       })
       .finally(() => active && setHeatmapLoading(false));
     return () => {
@@ -233,7 +235,7 @@ export function CoveragePage() {
   const handlePlacePoint = useCallback(
     async (x: number, y: number) => {
       if (!activeScan) {
-        toast.info('Elige o crea un survey antes de medir');
+        toast.info(t('coverage.survey.pickFirst'));
         return;
       }
       try {
@@ -245,9 +247,9 @@ export function CoveragePage() {
           isManual ? { x, y, rssiDbm: manualRssiDbm } : { x, y },
         );
         if (!result.found) {
-          toast.info('No se detectó el dispositivo aquí');
+          toast.info(t('coverage.survey.notFound'));
         } else {
-          toast.success(`Medido: ${formatDbm(result.rssiDbm)}`);
+          toast.success(t('coverage.survey.measured', { value: formatDbm(result.rssiDbm) }));
         }
         const detail = await getScan(activeScan.id);
         setActiveScan(detail);
@@ -255,7 +257,7 @@ export function CoveragePage() {
           setMeasuredHeatmap(await getMeasuredHeatmap(activeScan.id));
         }
       } catch (err) {
-        toast.error(describeError(err, 'No se pudo registrar la medición'));
+        toast.error(describeError(err, t('coverage.survey.recordError')));
       }
     },
     [activeScan, showMeasured, manualRssiDbm],
@@ -271,9 +273,9 @@ export function CoveragePage() {
       });
       setPlans((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
       setDirty(false);
-      toast.success('Plano guardado');
+      toast.success(t('coverage.saved'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo guardar el plano'));
+      toast.error(describeError(err, t('coverage.saveError')));
     } finally {
       setSaving(false);
     }
@@ -314,15 +316,13 @@ export function CoveragePage() {
     <div className="space-y-4 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">Cobertura WiFi</h2>
-          <p className="text-sm text-muted-foreground">
-            Dibuja el plano de tu casa, coloca los puntos de acceso y comprueba dónde llega la señal.
-          </p>
+          <h2 className="text-xl font-semibold">{t('coverage.title')}</h2>
+          <p className="text-sm text-muted-foreground">{t('coverage.subtitle')}</p>
         </div>
         {isAdmin && plans.length > 0 && (
           <Button variant="outline" size="sm" onClick={() => setMostrarFormPlano(true)}>
             <MapPinned className="h-4 w-4" aria-hidden />
-            Nuevo plano
+            {t('coverage.newPlan')}
           </Button>
         )}
       </div>
@@ -331,15 +331,12 @@ export function CoveragePage() {
 
       {!error && plans.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-kr bg-kr-surface py-16 text-center">
-          <p className="text-kr-secondary">Aún no has creado ningún plano.</p>
-          <p className="mx-auto max-w-md text-kr-sm text-kr-muted">
-            Crea un plano de tu casa con sus medidas para colocar los puntos de acceso y ver un mapa
-            de calor de la cobertura WiFi.
-          </p>
+          <p className="text-kr-secondary">{t('coverage.empty.title')}</p>
+          <p className="mx-auto max-w-md text-kr-sm text-kr-muted">{t('coverage.empty.desc')}</p>
           {isAdmin && (
             <Button onClick={() => setMostrarFormPlano(true)}>
               <MapPinned className="h-4 w-4" aria-hidden />
-              Crear plano
+              {t('coverage.empty.create')}
             </Button>
           )}
         </div>
@@ -351,7 +348,7 @@ export function CoveragePage() {
               <select
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
-                aria-label="Plano"
+                aria-label={t('coverage.planLabel')}
                 className="h-9 rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary"
               >
                 {plans.map((p) => (
@@ -364,7 +361,7 @@ export function CoveragePage() {
               <div
                 className="flex items-center gap-1 rounded-md border border-kr p-0.5"
                 role="group"
-                aria-label="Vista"
+                aria-label={t('coverage.viewLabel')}
               >
                 {VIEWS.map((v) => (
                   <button
@@ -379,7 +376,7 @@ export function CoveragePage() {
                         : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
                     )}
                   >
-                    {v.label}
+                    {t(v.label)}
                   </button>
                 ))}
               </div>
@@ -388,7 +385,7 @@ export function CoveragePage() {
                 <div
                   className="flex items-center gap-1 rounded-md border border-kr p-0.5"
                   role="group"
-                  aria-label="Banda"
+                  aria-label={t('coverage.bandLabel')}
                 >
                   {BANDS.map((b) => (
                     <button
@@ -417,7 +414,7 @@ export function CoveragePage() {
                   onClick={() => setPlanoEnEdicion(selectedPlan)}
                 >
                   <Pencil className="h-4 w-4" aria-hidden />
-                  Editar plano
+                  {t('coverage.editPlan')}
                 </Button>
               )}
             </div>
@@ -479,11 +476,11 @@ export function CoveragePage() {
                 {view === 'edit' && (
                   <>
                     <div className="rounded-xl border border-kr bg-kr-surface p-4 text-kr-sm text-kr-secondary">
-                      <p className="mb-2 font-medium text-kr-primary">Editar el plano</p>
+                      <p className="mb-2 font-medium text-kr-primary">{t('coverage.edit.title')}</p>
                       <ul className="list-disc space-y-1 pl-4 text-kr-muted">
-                        <li>«Pared»: arrastra para trazar un muro con el material elegido.</li>
-                        <li>«Punto de acceso»: haz clic para colocar un AP.</li>
-                        <li>«Seleccionar»: arrastra un AP para moverlo.</li>
+                        <li>{t('coverage.edit.hintWall')}</li>
+                        <li>{t('coverage.edit.hintAp')}</li>
+                        <li>{t('coverage.edit.hintSelect')}</li>
                       </ul>
                     </div>
                     <ApPalette
@@ -515,11 +512,8 @@ export function CoveragePage() {
 
                 {view === 'predict' && (
                   <div className="rounded-xl border border-kr bg-kr-surface p-4 text-kr-sm text-kr-secondary">
-                    <p className="font-medium text-kr-primary">Predicción de señal</p>
-                    <p className="mt-1 text-kr-muted">
-                      Estimación por propagación RF con las paredes y los APs guardados en la banda{' '}
-                      {band}. Guarda tus cambios en «Editar» para verlos reflejados aquí.
-                    </p>
+                    <p className="font-medium text-kr-primary">{t('coverage.predict.title')}</p>
+                    <p className="mt-1 text-kr-muted">{t('coverage.predict.desc', { band })}</p>
                   </div>
                 )}
               </aside>

@@ -631,6 +631,37 @@ export const es = {
   'settings.audit.colAction': 'Acción',
   'settings.audit.colIp': 'IP',
   'settings.audit.colWhen': 'Cuándo',
+  // --- Cobertura WiFi (US-151) ---
+  'coverage.title': 'Cobertura WiFi',
+  'coverage.subtitle':
+    'Dibuja el plano de tu casa, coloca los puntos de acceso y comprueba dónde llega la señal.',
+  'coverage.newPlan': 'Nuevo plano',
+  'coverage.empty.title': 'Aún no has creado ningún plano.',
+  'coverage.empty.desc':
+    'Crea un plano de tu casa con sus medidas para colocar los puntos de acceso y ver un mapa de calor de la cobertura WiFi.',
+  'coverage.empty.create': 'Crear plano',
+  'coverage.planLabel': 'Plano',
+  'coverage.viewLabel': 'Vista',
+  'coverage.bandLabel': 'Banda',
+  'coverage.editPlan': 'Editar plano',
+  'coverage.view.edit': 'Editar',
+  'coverage.view.predict': 'Predicción',
+  'coverage.view.survey': 'Medición',
+  'coverage.edit.title': 'Editar el plano',
+  'coverage.edit.hintWall': '«Pared»: arrastra para trazar un muro con el material elegido.',
+  'coverage.edit.hintAp': '«Punto de acceso»: haz clic para colocar un AP.',
+  'coverage.edit.hintSelect': '«Seleccionar»: arrastra un AP para moverlo.',
+  'coverage.predict.title': 'Predicción de señal',
+  'coverage.predict.desc':
+    'Estimación por propagación RF con las paredes y los APs guardados en la banda {band}. Guarda tus cambios en «Editar» para verlos reflejados aquí.',
+  'coverage.loadError': 'No se pudieron cargar los planos',
+  'coverage.predictError': 'No se pudo calcular la predicción',
+  'coverage.saved': 'Plano guardado',
+  'coverage.saveError': 'No se pudo guardar el plano',
+  'coverage.survey.pickFirst': 'Elige o crea un survey antes de medir',
+  'coverage.survey.notFound': 'No se detectó el dispositivo aquí',
+  'coverage.survey.measured': 'Medido: {value}',
+  'coverage.survey.recordError': 'No se pudo registrar la medición',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */
