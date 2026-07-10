@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { HelpHint } from '@/components/ui/help-hint';
-import { getGlossaryEntry } from '@/lib/guides';
+import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
 
 export interface GlossaryHintProps {

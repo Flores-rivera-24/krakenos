@@ -5,9 +5,8 @@ import { LIGHT_GUIDES } from './integrations/lights';
 import { PLUG_GUIDES } from './integrations/plugs';
 import { CAMERA_GUIDES } from './integrations/cameras';
 import { NETWORK_GUIDES } from './integrations/network';
-import { GLOSSARY, type GlossaryEntry } from './glossary';
-import { GUIDE_TRANSLATIONS_EN, GLOSSARY_EN } from './en';
-import { localizeGlossaryEntry, localizeGuide } from './localize';
+import { GUIDE_TRANSLATIONS_EN } from './en';
+import { localizeGuide } from './localize';
 
 /**
  * Punto de entrada de las guías de conexión in-app (US-144).
@@ -27,7 +26,7 @@ export type {
   IntegrationGuide,
 } from './types';
 
-export { GLOSSARY };
+export { GLOSSARY, getGlossaryEntry, glossaryEntries } from './glossary';
 export type { GlossaryEntry } from './glossary';
 
 export {
@@ -90,23 +89,4 @@ export function guidesByDomain(domain: GuideDomain): IntegrationGuide[] {
 /** Guías (localizadas) ordenadas de más fácil (tier 1) a más avanzada (tier 4). */
 export function guidesByTier(): IntegrationGuide[] {
   return [...GUIDES].sort((a, b) => a.tier - b.tier).map(localize);
-}
-
-/** Devuelve la entrada del glosario (localizada) por su clave, o undefined. */
-export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
-  const base = GLOSSARY[key];
-  if (!base) return undefined;
-  if (getLocale() === 'es') return base;
-  return localizeGlossaryEntry(base, GLOSSARY_EN[key]);
-}
-
-/** Lista las entradas del glosario (localizadas) ordenadas por término. */
-export function glossaryEntries(): (GlossaryEntry & { key: string })[] {
-  const locale = getLocale();
-  return Object.entries(GLOSSARY)
-    .map(([key, entry]) => {
-      const localized = locale === 'es' ? entry : localizeGlossaryEntry(entry, GLOSSARY_EN[key]);
-      return { key, ...localized };
-    })
-    .sort((a, b) => a.term.localeCompare(b.term, locale));
 }

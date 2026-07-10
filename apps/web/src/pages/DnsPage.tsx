@@ -15,7 +15,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { getGlossaryEntry } from '@/lib/guides';
+import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
