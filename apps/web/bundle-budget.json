@@ -1,0 +1,6 @@
+{
+  "_comment": "Presupuesto de rendimiento móvil (US-193), en kB GZIP. Calibrado 2026-07-09: entrada (index-*) 106.9 kB · chunk mayor (AreaChart/Recharts) 101.4 kB · total 326.2 kB en 68 chunks. El margen (~20%) absorbe crecimiento orgánico; un salto mayor debe justificarse en el PR que toque este fichero.",
+  "maxEntryKb": 130,
+  "maxChunkKb": 120,
+  "maxTotalKb": 400
+}
