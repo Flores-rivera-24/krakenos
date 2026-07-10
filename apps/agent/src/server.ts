@@ -265,6 +265,22 @@ export async function buildServer(): Promise<FastifyInstance> {
   // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
   const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
   await app.register(camerasRoutes, { prefix: '/api/cameras', cameras, store: cameraStore });
+  // Streaming HLS bajo demanda (US-185): barrido periódico que apaga las sesiones
+  // que nadie mira (no transcodificar 24/7). Va sobre el `handle` recargable, así
+  // sigue al manager vivo tras un hot-reload. `.unref()` para no bloquear el cierre.
+  const streamReapMs = Math.max(5_000, Math.floor(env.cameras.hls.idleTimeoutMs / 2));
+  const streamReap = setInterval(() => {
+    try {
+      cameras.reapIdleStreams();
+    } catch (err) {
+      app.log.warn({ err }, 'Fallo en el barrido de streams HLS ociosos');
+    }
+  }, streamReapMs);
+  streamReap.unref();
+  app.addHook('onClose', async () => {
+    clearInterval(streamReap);
+    await cameras.stop();
+  });
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });

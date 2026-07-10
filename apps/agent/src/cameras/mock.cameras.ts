@@ -1,4 +1,13 @@
-import type { Camera, CameraManager, CameraSnapshot } from '@krakenos/types';
+import { randomUUID } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import type { Camera, CameraManager, CameraSnapshot, CameraStreamSession } from '@krakenos/types';
+import {
+  HLS_PLAYLIST_NAME,
+  HlsStreamManager,
+  type StreamSpawner,
+} from './hls-stream.js';
 
 /** Genera un snapshot SVG sintético (cambia con la hora, simula "en vivo"). */
 function buildSnapshot(name: string, at: Date): string {
@@ -16,6 +25,40 @@ function buildSnapshot(name: string, at: Date): string {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
 }
 
+/**
+ * `StreamSpawner` sintético para desarrollo/tests: escribe **al instante** una
+ * playlist HLS válida y un par de segmentos de relleno en `outputDir`, de modo
+ * que el reproductor tiene algo que pedir sin ffmpeg ni una cámara real
+ * (mock-first, US-185). No hay proceso que matar: `stop()` es un no-op.
+ */
+export const mockStreamSpawner: StreamSpawner = ({ outputDir }) => {
+  const playlist = [
+    '#EXTM3U',
+    '#EXT-X-VERSION:3',
+    '#EXT-X-TARGETDURATION:2',
+    '#EXT-X-MEDIA-SEQUENCE:0',
+    '#EXTINF:2.0,',
+    'seg0.ts',
+    '#EXTINF:2.0,',
+    'seg1.ts',
+    '',
+  ].join('\n');
+  writeFileSync(join(outputDir, HLS_PLAYLIST_NAME), playlist);
+  // Bytes de relleno con la firma de un paquete MPEG-TS (0x47) — no es vídeo real,
+  // pero deja que las rutas y el reproductor ejerciten el flujo completo.
+  writeFileSync(join(outputDir, 'seg0.ts'), Buffer.from([0x47, 0x40, 0x00, 0x10]));
+  writeFileSync(join(outputDir, 'seg1.ts'), Buffer.from([0x47, 0x40, 0x00, 0x11]));
+  return { stop() {} };
+};
+
+export interface MockCameraOptions {
+  /** Directorio base para los segmentos HLS. Por defecto, uno en el tmp del SO. */
+  hlsBaseDir?: string;
+  maxConcurrent?: number;
+  idleTimeoutMs?: number;
+  now?: () => number;
+}
+
 /** Fuente de cámaras en memoria para desarrollo. */
 export class MockCameraManager implements CameraManager {
   readonly kind = 'mock' as const;
@@ -24,6 +67,18 @@ export class MockCameraManager implements CameraManager {
     { id: 'cam-patio', name: 'Patio', room: 'Exterior', model: 'KrakenCam 1080p', online: true },
     { id: 'cam-garaje', name: 'Garaje', room: 'Garaje', model: 'KrakenCam 720p', online: false },
   ];
+  private readonly hls: HlsStreamManager;
+
+  constructor(opts: MockCameraOptions = {}) {
+    this.hls = new HlsStreamManager({
+      // Dir único por instancia: dev y tests no colisionan al usar los mismos ids.
+      baseDir: opts.hlsBaseDir ?? join(tmpdir(), 'krakenos-hls-mock', randomUUID()),
+      spawn: mockStreamSpawner,
+      maxConcurrent: opts.maxConcurrent,
+      idleTimeoutMs: opts.idleTimeoutMs,
+      now: opts.now,
+    });
+  }
 
   async listCameras(): Promise<Camera[]> {
     return this.cameras;
@@ -34,5 +89,31 @@ export class MockCameraManager implements CameraManager {
     if (!camera || !camera.online) return null;
     const at = new Date();
     return { cameraId: id, image: buildSnapshot(camera.name, at), capturedAt: at.toISOString() };
+  }
+
+  async startStream(id: string): Promise<CameraStreamSession | null> {
+    const camera = this.cameras.find((c) => c.id === id);
+    if (!camera || !camera.online) return null;
+    return this.hls.start(id, `mock://${id}`);
+  }
+
+  async stopStream(id: string): Promise<void> {
+    await this.hls.stop(id);
+  }
+
+  async readStreamPlaylist(id: string): Promise<string | null> {
+    return this.hls.readPlaylist(id);
+  }
+
+  async readStreamSegment(id: string, segment: string): Promise<Uint8Array | null> {
+    return this.hls.readSegment(id, segment);
+  }
+
+  reapIdleStreams(): number {
+    return this.hls.reapIdle();
+  }
+
+  async stop(): Promise<void> {
+    await this.hls.stopAll();
   }
 }

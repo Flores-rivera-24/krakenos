@@ -1,6 +1,6 @@
 {
-  "_comment": "Presupuesto de rendimiento móvil (US-193), en kB GZIP. Calibrado 2026-07-09: entrada (index-*) 106.9 kB · chunk mayor (AreaChart/Recharts) 101.4 kB · total 326.2 kB en 68 chunks. El margen (~20%) absorbe crecimiento orgánico; un salto mayor debe justificarse en el PR que toque este fichero.",
+  "_comment": "Presupuesto de rendimiento móvil (US-193), en kB GZIP. Calibrado 2026-07-09: entrada (index-*) 106.9 kB · chunk mayor (AreaChart/Recharts) 101.4 kB · total 326.2 kB en 68 chunks. Recalibrado 2026-07-10 (US-185): +hls.light (~105 kB gzip) para el vídeo en vivo HLS, cargado de forma PEREZOSA solo al pulsar «Ver en vivo» en Cámaras — no afecta al TTI ni a la entrada. Se sube maxTotalKb 400→520 para alojarlo (queda ~7% de margen); la entrada y el cap por chunk (120) se mantienen intactos (hls.light ~105 kB < 120). El margen absorbe crecimiento orgánico; un salto mayor debe justificarse en el PR que toque este fichero.",
   "maxEntryKb": 130,
   "maxChunkKb": 120,
-  "maxTotalKb": 400
+  "maxTotalKb": 520
 }

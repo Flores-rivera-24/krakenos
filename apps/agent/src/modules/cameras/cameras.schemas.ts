@@ -1,3 +1,5 @@
+import { errorResponse } from '../common.schemas.js';
+
 const cameraResponse = {
   type: 'object',
   properties: {
@@ -89,4 +91,63 @@ export const updateCameraSchema = {
 export const removeCameraSchema = {
   params: idParams,
   response: { 204: { type: 'null' } },
+} as const;
+
+// --- Streaming HLS en vivo (US-185) ---
+
+/**
+ * Query con el token de stream efímero (`?st=`), común a playlist y segmento.
+ * `st` **no** es `required` a propósito: su ausencia la resuelve el handler con
+ * un 401 (no un 400 de validación), coherente con «falta autenticación».
+ */
+const streamTokenQuery = {
+  type: 'object',
+  properties: { st: { type: 'string', minLength: 1, maxLength: 4096 } },
+} as const;
+
+export const startStreamSchema = {
+  params: idParams,
+  response: {
+    201: {
+      type: 'object',
+      properties: {
+        cameraId: { type: 'string' },
+        startedAt: { type: 'string', format: 'date-time' },
+        /** Token efímero a poner en `?st=` de la playlist/segmentos. */
+        token: { type: 'string' },
+        /** Segundos de validez del token (para refrescarlo antes de que caduque). */
+        expiresIn: { type: 'integer' },
+      },
+      required: ['cameraId', 'startedAt', 'token', 'expiresIn'],
+    },
+    404: errorResponse,
+    429: errorResponse,
+  },
+} as const;
+
+export const stopStreamSchema = {
+  params: idParams,
+  response: { 204: { type: 'null' }, 404: errorResponse },
+} as const;
+
+/**
+ * Playlist y segmento se sirven con **content-type binario/HLS** y validan el
+ * token en la query (no el access token del header): por eso no declaran un
+ * `response` JSON — Fastify deja pasar el `reply.type(...).send(...)` tal cual.
+ */
+export const streamPlaylistSchema = {
+  params: idParams,
+  querystring: streamTokenQuery,
+} as const;
+
+export const streamSegmentSchema = {
+  params: {
+    type: 'object',
+    required: ['id', 'segment'],
+    properties: {
+      id: { type: 'string', minLength: 1 },
+      segment: { type: 'string', minLength: 1, maxLength: 128 },
+    },
+  },
+  querystring: streamTokenQuery,
 } as const;

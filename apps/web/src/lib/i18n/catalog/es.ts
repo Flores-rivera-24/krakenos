@@ -192,6 +192,12 @@ export const es = {
   'cameras.empty.admin': 'Aún no hay cámaras. Añade la primera con su URL RTSP.',
   'cameras.empty.viewer':
     'Aún no hay cámaras. Pídele a un administrador que añada la primera con su URL RTSP.',
+  'cameras.watchLive': 'Ver en vivo',
+  'cameras.stopLive': 'Detener',
+  'cameras.starting': 'Iniciando vídeo…',
+  'cameras.streamError': 'No se pudo iniciar el vídeo en vivo',
+  'cameras.streamLimit': 'Demasiadas cámaras en vivo a la vez. Detén otra e inténtalo de nuevo.',
+  'cameras.streamUnsupported': 'Tu navegador no puede reproducir este vídeo en vivo.',
 
   // --- IoT (US-24) ---
   'iot.title': 'Dispositivos IoT',

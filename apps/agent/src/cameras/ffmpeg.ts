@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import { HLS_PLAYLIST_NAME, type StreamSpawner } from './hls-stream.js';
 
 /**
  * Captura de snapshots RTSP con ffmpeg. El builder de argumentos es **puro** y
@@ -50,6 +51,81 @@ export function buildSnapshotArgs(rtspUrl: string, opts: SnapshotArgsOptions = {
 /** Codifica los bytes JPEG como data URL. */
 export function jpegToDataUrl(buffer: Buffer): string {
   return `data:image/jpeg;base64,${buffer.toString('base64')}`;
+}
+
+export interface HlsArgsOptions {
+  /** Transporte RTSP (`tcp` es lo más fiable). */
+  transport?: string;
+  /** Duración objetivo de cada segmento en segundos. Por defecto 2. */
+  segmentSeconds?: number;
+  /** Nº de segmentos en la playlist (ventana en vivo). Por defecto 4. */
+  listSize?: number;
+}
+
+/**
+ * Construye los argumentos de ffmpeg para transcodificar un stream RTSP a **HLS
+ * en vivo** (US-185): copia el vídeo sin recodificar (`-c:v copy`, barato en CPU
+ * de un Pi) y va escribiendo segmentos rotados en `outputDir`, con la playlist
+ * en `outputDir/index.m3u8`. Función **pura**. La ventana corta (`delete_segments`)
+ * evita que el disco crezca sin fin.
+ */
+export function buildHlsArgs(
+  rtspUrl: string,
+  outputDir: string,
+  playlistName: string,
+  opts: HlsArgsOptions = {},
+): string[] {
+  const transport = opts.transport ?? 'tcp';
+  const segmentSeconds = opts.segmentSeconds ?? 2;
+  const listSize = opts.listSize ?? 4;
+  return [
+    '-nostdin',
+    '-rtsp_transport',
+    transport,
+    '-i',
+    rtspUrl,
+    // Sin audio (evita problemas de códec) y copiando el vídeo (sin transcodificar).
+    '-an',
+    '-c:v',
+    'copy',
+    '-f',
+    'hls',
+    '-hls_time',
+    String(segmentSeconds),
+    '-hls_list_size',
+    String(listSize),
+    // Borra segmentos fuera de la ventana → disco acotado; playlist de tipo evento.
+    '-hls_flags',
+    'delete_segments+append_list+omit_endlist',
+    '-hls_segment_filename',
+    `${outputDir}/seg%d.ts`,
+    `${outputDir}/${playlistName}`,
+  ];
+}
+
+/**
+ * Crea un `StreamSpawner` que lanza ffmpeg como **proceso de larga duración**
+ * (RTSP→HLS, US-185): a diferencia de `createFfmpegExec` (un fotograma y muere),
+ * este va escribiendo segmentos hasta que se le mata con `stop()`. Se ignora el
+ * `stdout`/`stderr` (los segmentos van a fichero) para no llenar buffers.
+ */
+export function createFfmpegStreamSpawner(
+  ffmpegPath = 'ffmpeg',
+  opts: HlsArgsOptions = {},
+): StreamSpawner {
+  return ({ rtspUrl, outputDir }) => {
+    const child = spawn(ffmpegPath, buildHlsArgs(rtspUrl, outputDir, HLS_PLAYLIST_NAME, opts), {
+      stdio: 'ignore',
+    });
+    // Un ffmpeg que muere solo (cámara caída) no debe tumbar el proceso del agente.
+    child.on('error', () => {});
+    return {
+      stop() {
+        // SIGKILL directo: ffmpeg puede ignorar SIGTERM mientras espera al stream.
+        if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+      },
+    };
+  };
 }
 
 /** Ejecución real de ffmpeg vía `execFile` (binario del sistema). */

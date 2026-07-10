@@ -56,6 +56,121 @@ describe('rutas de cámaras', () => {
   });
 });
 
+describe('streaming HLS en vivo (US-185)', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp({ routes: true });
+  });
+  afterAll(async () => {
+    await app.close();
+  });
+  beforeEach(async () => {
+    await resetDb(app);
+  });
+
+  const startStream = async (cameraId: string) => {
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/cameras/${cameraId}/stream`,
+      headers: authHeader(signAccess(app, user)),
+    });
+    return res;
+  };
+
+  it('POST arranca el stream y devuelve un token efímero (autenticado)', async () => {
+    const res = await startStream('cam-entrada');
+    expect(res.statusCode).toBe(201);
+    const body = res.json() as { cameraId: string; token: string; expiresIn: number };
+    expect(body.cameraId).toBe('cam-entrada');
+    expect(body.token).toBeTruthy();
+    expect(body.expiresIn).toBeGreaterThan(0);
+  });
+
+  it('POST sin token → 401; cámara offline → 404', async () => {
+    const anon = await app.inject({ method: 'POST', url: '/api/cameras/cam-entrada/stream' });
+    expect(anon.statusCode).toBe(401);
+    const offline = await startStream('cam-garaje');
+    expect(offline.statusCode).toBe(404);
+  });
+
+  it('la playlist exige el token de stream en la URL (no el access token)', async () => {
+    const { token } = (await startStream('cam-entrada')).json() as { token: string };
+
+    // Sin token → 401.
+    const noToken = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/cam-entrada/stream/index.m3u8',
+    });
+    expect(noToken.statusCode).toBe(401);
+
+    // Con el token correcto → 200 y content-type HLS, segmentos con `?st=`.
+    const ok = await app.inject({
+      method: 'GET',
+      url: `/api/cameras/cam-entrada/stream/index.m3u8?st=${encodeURIComponent(token)}`,
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.headers['content-type']).toContain('mpegurl');
+    expect(ok.body).toContain('#EXTM3U');
+    expect(ok.body).toMatch(/seg0\.ts\?st=/);
+  });
+
+  it('un token de otra cámara no sirve (acotado por `cam`)', async () => {
+    const { token } = (await startStream('cam-entrada')).json() as { token: string };
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/cameras/cam-patio/stream/index.m3u8?st=${encodeURIComponent(token)}`,
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('sirve los segmentos con el token y rechaza path traversal', async () => {
+    const { token } = (await startStream('cam-entrada')).json() as { token: string };
+    const st = encodeURIComponent(token);
+
+    const seg = await app.inject({
+      method: 'GET',
+      url: `/api/cameras/cam-entrada/stream/seg0.ts?st=${st}`,
+    });
+    expect(seg.statusCode).toBe(200);
+    expect(seg.headers['content-type']).toContain('video/mp2t');
+
+    const traversal = await app.inject({
+      method: 'GET',
+      url: `/api/cameras/cam-entrada/stream/nope.ts?st=${st}`,
+    });
+    expect(traversal.statusCode).toBe(404);
+  });
+
+  it('DELETE detiene la sesión (la playlist deja de servirse)', async () => {
+    const user = await seedUser(app, { role: 'viewer' });
+    const headers = authHeader(signAccess(app, user));
+    const { token } = (
+      await app.inject({ method: 'POST', url: '/api/cameras/cam-entrada/stream', headers })
+    ).json() as { token: string };
+    const st = encodeURIComponent(token);
+
+    expect(
+      (await app.inject({ method: 'GET', url: `/api/cameras/cam-entrada/stream/index.m3u8?st=${st}` }))
+        .statusCode,
+    ).toBe(200);
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: '/api/cameras/cam-entrada/stream',
+      headers,
+    });
+    expect(del.statusCode).toBe(204);
+
+    const after = await app.inject({
+      method: 'GET',
+      url: `/api/cameras/cam-entrada/stream/index.m3u8?st=${st}`,
+    });
+    expect(after.statusCode).toBe(404); // sesión detenida
+  });
+});
+
 describe('gestión de cámaras desde la UI (US-148)', () => {
   let app: FastifyInstance;
   let store: MemoryJsonStore<CameraDefinition>;

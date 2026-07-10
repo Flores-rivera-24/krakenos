@@ -186,6 +186,12 @@ export const en: Record<TranslationKey, string> = {
   'cameras.empty.admin': 'No cameras yet. Add the first one with its RTSP URL.',
   'cameras.empty.viewer':
     'No cameras yet. Ask an administrator to add the first one with its RTSP URL.',
+  'cameras.watchLive': 'Watch live',
+  'cameras.stopLive': 'Stop',
+  'cameras.starting': 'Starting video…',
+  'cameras.streamError': 'Could not start the live video',
+  'cameras.streamLimit': 'Too many live cameras at once. Stop another and try again.',
+  'cameras.streamUnsupported': 'Your browser cannot play this live video.',
 
   // --- IoT (US-24) ---
   'iot.title': 'IoT devices',

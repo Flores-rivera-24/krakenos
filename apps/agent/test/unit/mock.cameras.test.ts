@@ -23,4 +23,32 @@ describe('MockCameraManager', () => {
   it('devuelve null para una cámara inexistente', async () => {
     expect(await new MockCameraManager().getSnapshot('nope')).toBeNull();
   });
+
+  it('arranca un stream HLS con playlist y segmento sintéticos (US-185)', async () => {
+    const mgr = new MockCameraManager();
+    const session = await mgr.startStream('cam-entrada');
+    expect(session?.cameraId).toBe('cam-entrada');
+    const playlist = await mgr.readStreamPlaylist('cam-entrada');
+    expect(playlist).toContain('#EXTM3U');
+    expect(playlist).toContain('seg0.ts');
+    const seg = await mgr.readStreamSegment('cam-entrada', 'seg0.ts');
+    expect(seg?.[0]).toBe(0x47); // firma MPEG-TS
+    await mgr.stop();
+  });
+
+  it('no arranca stream de una cámara offline/inexistente', async () => {
+    const mgr = new MockCameraManager();
+    expect(await mgr.startStream('cam-garaje')).toBeNull();
+    expect(await mgr.startStream('nope')).toBeNull();
+    await mgr.stop();
+  });
+
+  it('stopStream detiene la sesión (playlist deja de servirse)', async () => {
+    const mgr = new MockCameraManager();
+    await mgr.startStream('cam-entrada');
+    expect(await mgr.readStreamPlaylist('cam-entrada')).not.toBeNull();
+    await mgr.stopStream('cam-entrada');
+    expect(await mgr.readStreamPlaylist('cam-entrada')).toBeNull();
+    await mgr.stop();
+  });
 });

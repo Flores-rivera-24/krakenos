@@ -152,6 +152,24 @@ export interface MfaPendingTokenClaims {
   exp: number;
 }
 
+/**
+ * Claims del token efímero de **streaming** de cámara (US-185). Acredita que su
+ * portador puede leer la playlist/segmentos HLS de **una** cámara concreta,
+ * durante una ventana corta. Viaja en la URL (`?st=`) porque el `<video>` nativo
+ * y hls.js no pueden añadir cabeceras a las peticiones de segmentos; por eso está
+ * acotado a una cámara y caduca pronto. **No** sirve como access token
+ * (`authenticate` lo rechaza: su `type` no es `'access'`).
+ */
+export interface StreamTokenClaims {
+  /** Subject: id del usuario que abrió el stream. */
+  sub: Id;
+  type: 'stream';
+  /** Id de la cámara a cuyo stream da acceso (y solo a esa). */
+  cam: Id;
+  iat: number;
+  exp: number;
+}
+
 export interface LoginRequest {
   email: string;
   password: string;

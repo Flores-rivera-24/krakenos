@@ -23,6 +23,11 @@ function int(name: string, fallback: number): number {
   return parsed;
 }
 
+/** Acota un número al rango `[min, max]`. */
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
 /**
  * Parsea `TRUST_PROXY` al valor que espera `trustProxy` de Fastify (US-76, F2).
  * Sustituye el antiguo booleano por una configuración **acotada**:
@@ -377,6 +382,14 @@ export const env = {
       configPath: process.env.CAMERAS_CONFIG ?? resolve('data/cameras.json'),
       ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
       transport: process.env.CAMERAS_RTSP_TRANSPORT ?? 'tcp',
+    },
+    // Streaming HLS en vivo (US-185): segmentos efímeros en `var/hls` (FUERA de
+    // `data/`, que es destino de restore), con límite de streams concurrentes y
+    // auto-apagado por inactividad para no transcodificar 24/7 en hardware modesto.
+    hls: {
+      baseDir: process.env.CAMERAS_HLS_DIR ?? resolve('var/hls'),
+      maxConcurrent: clamp(int('CAMERAS_MAX_STREAMS', 2), 1, 16),
+      idleTimeoutMs: clamp(int('CAMERAS_STREAM_IDLE_SEC', 30), 5, 3600) * 1000,
     },
   },
 

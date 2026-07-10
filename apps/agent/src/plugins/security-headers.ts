@@ -24,6 +24,9 @@ export const DEFAULT_CSP = [
   "form-action 'self'",
   "object-src 'none'",
   "img-src 'self' data: blob:",
+  // `blob:` para el vídeo en vivo HLS: hls.js reproduce vía MediaSource (URL blob);
+  // el `<video>` nativo (Safari) usa la playlist directa (mismo origen). US-185.
+  "media-src 'self' blob:",
   "script-src 'self'",
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self'",
