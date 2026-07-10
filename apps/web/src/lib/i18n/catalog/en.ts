@@ -134,4 +134,38 @@ export const en: Record<TranslationKey, string> = {
   'wifi.empty.desc':
     'The WiFi configuration appears once your router is connected to KrakenOS. Connect it to manage your network name, password and guest network from here.',
   'wifi.empty.cta': 'Connect your router',
+
+  // --- VPN / Remote access ---
+  'vpn.title': 'VPN / Remote access',
+  'vpn.subtitle.before': 'Connect your devices over ',
+  'vpn.subtitle.after': '. No port is exposed to the internet.',
+  'vpn.qrHelp':
+    'Install the free WireGuard app on your phone. When you create the device here a QR code appears: scan it from the app and you can connect to your home network from anywhere. The QR is shown only once.',
+  'vpn.qrHelp.label': 'How does the QR work?',
+  'vpn.loadError': 'Could not load the VPN',
+  'vpn.peerAdded': 'Device added',
+  'vpn.peerAddError': 'Could not add the device',
+  'vpn.peerRemoved': 'Device removed',
+  'vpn.peerRemoveError': 'Could not remove the device',
+  'vpn.server': 'Server',
+  'vpn.status': 'Status',
+  'vpn.status.active': 'Active',
+  'vpn.status.inactive': 'Inactive',
+  'vpn.endpoint': 'Endpoint',
+  'vpn.devices': 'Devices',
+  'vpn.unavailable': 'Not available.',
+  'vpn.addDevice': 'Add device',
+  'vpn.name': 'Name',
+  'vpn.namePlaceholder': 'e.g. Emilio’s phone',
+  'vpn.adding': 'Adding…',
+  'vpn.authorized': 'Authorized devices',
+  'vpn.col.name': 'Name',
+  'vpn.col.vpnIp': 'VPN IP',
+  'vpn.col.publicKey': 'Public key',
+  'vpn.col.action': 'Action',
+  'vpn.empty.title': 'No devices. Create the first one above.',
+  'vpn.empty.desc':
+    'Give your phone or computer a name and press “Add device”: you’ll get a QR to connect it to your network from anywhere with the WireGuard app.',
+  'vpn.delete': 'Delete',
+  'vpn.deleteLabel': 'Delete {name}',
 };

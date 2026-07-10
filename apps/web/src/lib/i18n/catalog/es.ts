@@ -140,6 +140,40 @@ export const es = {
   'wifi.empty.desc':
     'La configuración WiFi aparece cuando tu router está conectado a KrakenOS. Conéctalo para gestionar desde aquí el nombre de tu red, la contraseña y la red de invitados.',
   'wifi.empty.cta': 'Conecta tu router',
+
+  // --- VPN / Acceso remoto (US-18) ---
+  'vpn.title': 'VPN / Acceso remoto',
+  'vpn.subtitle.before': 'Conecta tus dispositivos por ',
+  'vpn.subtitle.after': '. Ningún puerto queda expuesto a internet.',
+  'vpn.qrHelp':
+    'Instala la app gratuita de WireGuard en tu móvil. Al crear el dispositivo aquí aparecerá un código QR: escanéalo desde la app y ya podrás conectarte a tu red de casa desde cualquier lugar. El QR solo se muestra una vez.',
+  'vpn.qrHelp.label': '¿Cómo funciona el QR?',
+  'vpn.loadError': 'No se pudo cargar la VPN',
+  'vpn.peerAdded': 'Dispositivo añadido',
+  'vpn.peerAddError': 'No se pudo añadir el dispositivo',
+  'vpn.peerRemoved': 'Dispositivo eliminado',
+  'vpn.peerRemoveError': 'No se pudo eliminar el dispositivo',
+  'vpn.server': 'Servidor',
+  'vpn.status': 'Estado',
+  'vpn.status.active': 'Activo',
+  'vpn.status.inactive': 'Inactivo',
+  'vpn.endpoint': 'Endpoint',
+  'vpn.devices': 'Dispositivos',
+  'vpn.unavailable': 'No disponible.',
+  'vpn.addDevice': 'Añadir dispositivo',
+  'vpn.name': 'Nombre',
+  'vpn.namePlaceholder': 'p. ej. Móvil de Emilio',
+  'vpn.adding': 'Añadiendo…',
+  'vpn.authorized': 'Dispositivos autorizados',
+  'vpn.col.name': 'Nombre',
+  'vpn.col.vpnIp': 'IP VPN',
+  'vpn.col.publicKey': 'Clave pública',
+  'vpn.col.action': 'Acción',
+  'vpn.empty.title': 'Sin dispositivos. Crea el primero arriba.',
+  'vpn.empty.desc':
+    'Dale un nombre a tu móvil u ordenador y pulsa «Añadir dispositivo»: obtendrás un QR para conectarlo a tu red desde cualquier lugar con la app de WireGuard.',
+  'vpn.delete': 'Eliminar',
+  'vpn.deleteLabel': 'Eliminar {name}',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */
