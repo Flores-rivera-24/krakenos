@@ -133,6 +133,19 @@ export class MockCameraManager implements CameraManager {
     return this.hls.reapIdle();
   }
 
+  async recordClip(id: string, durationSec: number): Promise<Uint8Array | null> {
+    const camera = this.cameras.find((c) => c.id === id);
+    if (!camera || !camera.online) return null;
+    // Clip sintético: cabecera MP4 mínima (`ftyp` isom) + relleno proporcional a la
+    // duración. No es vídeo reproducible real, pero ejercita grabar→guardar→podar.
+    const header = Buffer.from([
+      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
+      0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+    ]);
+    const filler = Buffer.alloc(Math.max(1, durationSec) * 1024, 0x21);
+    return new Uint8Array(Buffer.concat([header, filler]));
+  }
+
   async stop(): Promise<void> {
     await this.hls.stopAll();
   }

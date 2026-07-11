@@ -241,6 +241,90 @@ describe('detección de movimiento — config y eventos (US-186)', () => {
   });
 });
 
+describe('grabación de clips — rutas (US-187)', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp({ routes: true });
+  });
+  afterAll(async () => {
+    await app.close();
+  });
+  beforeEach(async () => {
+    await resetDb(app);
+  });
+
+  it('lista de clips exige auth y arranca vacía', async () => {
+    const anon = await app.inject({ method: 'GET', url: '/api/cameras/recordings' });
+    expect(anon.statusCode).toBe(401);
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/recordings',
+      headers: authHeader(signAccess(app, user)),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
+
+  it('config de grabación: lectura auth, escritura admin', async () => {
+    const admin = await seedUser(app, { email: 'a@krakenos.test', role: 'admin' });
+    const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
+
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/recordings/config',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(read.statusCode).toBe(200);
+    expect(read.json()).toMatchObject({ retentionDays: 14, clipSeconds: 10 });
+
+    const forbidden = await app.inject({
+      method: 'PUT',
+      url: '/api/cameras/recordings/config',
+      headers: authHeader(signAccess(app, viewer)),
+      payload: { retentionDays: 30 },
+    });
+    expect(forbidden.statusCode).toBe(403);
+
+    const ok = await app.inject({
+      method: 'PUT',
+      url: '/api/cameras/recordings/config',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { retentionDays: 30, maxTotalMb: 500, clipSeconds: 15 },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toMatchObject({ retentionDays: 30, clipSeconds: 15 });
+  });
+
+  it('borrar una grabación inexistente → 404 (admin); viewer → 403', async () => {
+    const admin = await seedUser(app, { email: 'a2@krakenos.test', role: 'admin' });
+    const viewer = await seedUser(app, { email: 'v2@krakenos.test', role: 'viewer' });
+    const forbidden = await app.inject({
+      method: 'DELETE',
+      url: '/api/cameras/recordings/nope',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(forbidden.statusCode).toBe(403);
+    const notFound = await app.inject({
+      method: 'DELETE',
+      url: '/api/cameras/recordings/nope',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    expect(notFound.statusCode).toBe(404);
+  });
+
+  it('descargar una grabación inexistente → 404', async () => {
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/recordings/nope/download',
+      headers: authHeader(signAccess(app, user)),
+    });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
 describe('gestión de cámaras desde la UI (US-148)', () => {
   let app: FastifyInstance;
   let store: MemoryJsonStore<CameraDefinition>;

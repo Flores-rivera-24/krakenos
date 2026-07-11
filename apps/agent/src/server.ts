@@ -59,6 +59,7 @@ import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
+import { RecordingService } from './modules/cameras/recording.service.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -265,17 +266,27 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Store de cámaras (US-148): alta/baja desde la UI; el RtspCameraManager lee el
   // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
   const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
+  // Grabación por evento (US-187): al detectar movimiento con `record` activo, graba
+  // un clip a `data/recordings/` y poda por edad + tamaño total.
+  const recordingService = new RecordingService(app, cameras, env.cameras.recordingsDir);
   // Detección de movimiento (US-186): sondea las cámaras armadas, publica
   // `motion-detected` al bus (disparador de automatización) y avisa multicanal.
-  const motionService = new MotionService(app, cameras, homeBus);
+  const motionService = new MotionService(app, cameras, homeBus, { recorder: recordingService });
   await app.register(camerasRoutes, {
     prefix: '/api/cameras',
     cameras,
     store: cameraStore,
     motion: motionService,
+    recording: recordingService,
   });
   motionService.start();
   app.addHook('onClose', async () => motionService.stop());
+  // Poda periódica de grabaciones (edad + tamaño), además de la de cada grabación.
+  const recordingPrune = setInterval(() => {
+    void recordingService.prune().catch((err) => app.log.warn({ err }, '[recording] poda fallida'));
+  }, 6 * 60 * 60 * 1000);
+  recordingPrune.unref();
+  app.addHook('onClose', async () => clearInterval(recordingPrune));
   // Streaming HLS bajo demanda (US-185): barrido periódico que apaga las sesiones
   // que nadie mira (no transcodificar 24/7). Va sobre el `handle` recargable, así
   // sigue al manager vivo tras un hot-reload. `.unref()` para no bloquear el cierre.

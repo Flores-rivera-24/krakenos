@@ -51,6 +51,8 @@ export function createCameraManager(config: CameraConfig): CameraManager {
         // Lee las cámaras EN VIVO del fichero (refleja el alta/baja desde la UI, US-148).
         configPath: rtsp.configPath,
         exec: createFfmpegExec(rtsp.ffmpegPath),
+        // Clips (US-187): más timeout (dura varios s) y buffer (pesa más) que un snapshot.
+        clipExec: createFfmpegExec(rtsp.ffmpegPath, 30_000, 64 * 1024 * 1024),
         transport: rtsp.transport,
         // Streaming HLS (US-185): solo si hay `hls.baseDir` configurado.
         hls: config.hls

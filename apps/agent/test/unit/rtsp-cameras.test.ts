@@ -70,6 +70,26 @@ describe('RtspCameraManager (US-148)', () => {
       await mgr.stop();
     });
 
+    it('recordClip: pasa la rtspUrl a ffmpeg y devuelve los bytes (US-187)', async () => {
+      const args: string[][] = [];
+      const clipExec: FfmpegExec = async (a) => {
+        args.push(a);
+        return { stdout: Buffer.from([0, 1, 2, 3, 4]), stderr: Buffer.from(''), code: 0 };
+      };
+      const mgr = new RtspCameraManager({ cameras: [cam('1')], exec: okExec, clipExec });
+      const clip = await mgr.recordClip('1', 8);
+      expect(clip).toEqual(new Uint8Array([0, 1, 2, 3, 4]));
+      expect(args[0]).toContain('rtsp://10.0.0.1/s');
+      expect(args[0][args[0].indexOf('-t') + 1]).toBe('8');
+      // ffmpeg sin salida → null.
+      const empty = new RtspCameraManager({
+        cameras: [cam('1')],
+        exec: okExec,
+        clipExec: async () => ({ stdout: Buffer.alloc(0), stderr: Buffer.from(''), code: 0 }),
+      });
+      expect(await empty.recordClip('1', 8)).toBeNull();
+    });
+
     it('getMotionFrame: pasa la rtspUrl a ffmpeg y valida el tamaño (US-186)', async () => {
       const args: string[][] = [];
       const okFrame: FfmpegExec = async (a) => {

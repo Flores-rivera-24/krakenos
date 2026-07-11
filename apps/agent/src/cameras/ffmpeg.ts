@@ -160,14 +160,53 @@ export function createFfmpegStreamSpawner(
   };
 }
 
-/** Ejecución real de ffmpeg vía `execFile` (binario del sistema). */
-export function createFfmpegExec(ffmpegPath = 'ffmpeg', timeoutMs = 10_000): FfmpegExec {
+/**
+ * Argumentos de ffmpeg para grabar un **clip** de `durationSec` s del stream
+ * RTSP a MP4 fragmentado por stdout (US-187). `-c copy` no recodifica (barato);
+ * `-movflags frag_keyframe+empty_moov` hace el MP4 escribible a una tubería no
+ * buscable. Función pura.
+ */
+export function buildClipArgs(
+  rtspUrl: string,
+  durationSec: number,
+  opts: SnapshotArgsOptions = {},
+): string[] {
+  const transport = opts.transport ?? 'tcp';
+  return [
+    '-nostdin',
+    '-rtsp_transport',
+    transport,
+    '-i',
+    rtspUrl,
+    '-t',
+    String(durationSec),
+    '-an',
+    '-c:v',
+    'copy',
+    '-movflags',
+    'frag_keyframe+empty_moov',
+    '-f',
+    'mp4',
+    '-',
+  ];
+}
+
+/**
+ * Ejecución real de ffmpeg vía `execFile` (binario del sistema). `timeoutMs` y
+ * `maxBufferBytes` se parametrizan: los snapshots son pequeños y rápidos, pero un
+ * **clip** (US-187) dura varios segundos y pesa más → necesita más margen.
+ */
+export function createFfmpegExec(
+  ffmpegPath = 'ffmpeg',
+  timeoutMs = 10_000,
+  maxBufferBytes = 16 * 1024 * 1024,
+): FfmpegExec {
   return (args) =>
     new Promise((resolve) => {
       execFile(
         ffmpegPath,
         args,
-        { encoding: 'buffer', timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024 },
+        { encoding: 'buffer', timeout: timeoutMs, maxBuffer: maxBufferBytes },
         (err, stdout) => {
           const out = (stdout as Buffer | undefined) ?? Buffer.alloc(0);
           const code =

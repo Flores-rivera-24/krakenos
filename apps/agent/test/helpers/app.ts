@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type { HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
@@ -63,6 +66,7 @@ import { wifiRoutes } from '../../src/modules/wifi/wifi.routes.js';
 import { coverageRoutes } from '../../src/modules/coverage/coverage.routes.js';
 import { MockCameraManager } from '../../src/cameras/mock.cameras.js';
 import { MotionService } from '../../src/modules/cameras/motion.service.js';
+import { RecordingService } from '../../src/modules/cameras/recording.service.js';
 import { MockDnsManager } from '../../src/dns/mock.dns.js';
 import { MockFirewallManager } from '../../src/firewall/mock.firewall.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
@@ -224,14 +228,18 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
     });
     const cameraManager = new MockCameraManager();
+    const recordingDir = mkdtempSync(join(tmpdir(), 'krakenos-rec-'));
+    const recordingService = new RecordingService(app, cameraManager, recordingDir);
     const motionService = new MotionService(app, cameraManager, new HomeEventBus(() => {}), {
       intervalMs: 3_600_000, // sin sondeo en tests; los tests llaman a tick() directamente
+      recorder: recordingService,
     });
     await app.register(camerasRoutes, {
       prefix: '/api/cameras',
       cameras: cameraManager,
       store: opts.cameraStore ?? new MemoryJsonStore<CameraDefinition>(),
       motion: motionService,
+      recording: recordingService,
     });
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
@@ -271,6 +279,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.iotSchedule.deleteMany();
   await app.prisma.automationRun.deleteMany();
   await app.prisma.automationRule.deleteMany();
+  await app.prisma.recording.deleteMany();
   await app.prisma.presenceEvent.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();

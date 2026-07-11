@@ -391,6 +391,8 @@ export const env = {
       maxConcurrent: clamp(int('CAMERAS_MAX_STREAMS', 2), 1, 16),
       idleTimeoutMs: clamp(int('CAMERAS_STREAM_IDLE_SEC', 30), 5, 3600) * 1000,
     },
+    // Clips grabados por movimiento (US-187): en `data/` (persistente, gitignored).
+    recordingsDir: process.env.CAMERAS_RECORDINGS_DIR ?? resolve('data/recordings'),
   },
 
   firewall: {

@@ -5,10 +5,13 @@ import type {
   CreateCameraRequest,
   ManagedCamera,
   MotionEvent,
+  Recording,
+  RecordingConfig,
   UpdateCameraRequest,
   UpdateMotionConfigRequest,
 } from '@krakenos/types';
-import { api } from '@/lib/api';
+import { ApiRequestError, api } from '@/lib/api';
+import { useAuthStore } from '@/store/auth.store';
 
 /**
  * Envoltorio fino sobre `@/lib/api` para la gestión de cámaras (US-148).
@@ -61,3 +64,44 @@ export const updateMotionConfig = (
 /** Eventos de movimiento recientes (con snapshot), opcionalmente por cámara. */
 export const listMotionEvents = (cameraId?: string): Promise<MotionEvent[]> =>
   api.get<MotionEvent[]>(`/cameras/motion/events${cameraId ? `?cameraId=${cameraId}` : ''}`);
+
+/** Clips grabados (timeline), opcionalmente por cámara (US-187). */
+export const listRecordings = (cameraId?: string): Promise<Recording[]> =>
+  api.get<Recording[]>(`/cameras/recordings${cameraId ? `?cameraId=${cameraId}` : ''}`);
+
+export const deleteRecording = (id: string): Promise<void> =>
+  api.del<void>(`/cameras/recordings/${id}`);
+
+/**
+ * Descarga un clip **autenticado**: el token de acceso vive en memoria y un `<a>`
+ * normal no lo adjuntaría (401), así que se baja con `fetch` + cabecera y se
+ * dispara la descarga vía blob. Ante un 401 refresca una vez y reintenta.
+ */
+export async function downloadRecording(id: string): Promise<void> {
+  const url = `/api/cameras/recordings/${id}/download`;
+  const fetchBlob = async () => {
+    const token = useAuthStore.getState().tokens?.accessToken;
+    return fetch(url, {
+      credentials: 'same-origin',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  };
+  let res = await fetchBlob();
+  if (res.status === 401 && (await useAuthStore.getState().refresh())) res = await fetchBlob();
+  if (!res.ok) throw new ApiRequestError(res.status, { code: 'DOWNLOAD_FAILED', message: '' });
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = `${id}.mp4`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+export const getRecordingConfig = (): Promise<RecordingConfig> =>
+  api.get<RecordingConfig>('/cameras/recordings/config');
+
+export const updateRecordingConfig = (body: Partial<RecordingConfig>): Promise<RecordingConfig> =>
+  api.put<RecordingConfig>('/cameras/recordings/config', body);

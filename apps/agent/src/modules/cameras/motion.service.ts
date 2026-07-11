@@ -21,7 +21,18 @@ export const DEFAULT_MOTION_CONFIG: MotionConfig = {
   sensitivity: 'medium',
   cooldownSec: 60,
   arming: { mode: 'always' },
+  record: false,
 };
+
+/** Recibe un evento de movimiento para grabar su clip (US-187). Inyectable. */
+export interface MotionRecorder {
+  record(input: {
+    cameraId: string;
+    cameraName: string;
+    detectedAt: string;
+    snapshot: string | null;
+  }): Promise<void>;
+}
 
 /** Acota un número al rango `[min, max]` (o el fallback si no es número). */
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -70,6 +81,7 @@ export function normalizeMotionConfig(raw: unknown, base: MotionConfig = DEFAULT
     sensitivity,
     cooldownSec: clampInt(r.cooldownSec, 5, 3600, base.cooldownSec),
     arming: 'arming' in r ? normalizeArming(r.arming) : base.arming,
+    record: typeof r.record === 'boolean' ? r.record : base.record,
   };
 }
 
@@ -95,7 +107,13 @@ export class MotionService {
     private readonly app: FastifyInstance,
     private readonly cameras: CameraManager,
     private readonly bus: HomeEventBus,
-    private readonly opts: { intervalMs?: number; now?: () => number; maxEvents?: number } = {},
+    private readonly opts: {
+      intervalMs?: number;
+      now?: () => number;
+      maxEvents?: number;
+      /** Grabador de clips (US-187). Sin él, `record` en la config no hace nada. */
+      recorder?: MotionRecorder;
+    } = {},
   ) {}
 
   private get intervalMs(): number {
@@ -179,21 +197,17 @@ export class MotionService {
       const last = this.lastFiredMs.get(id) ?? Number.NEGATIVE_INFINITY;
       if (this.now() - last < cfg.cooldownSec * 1000) continue; // dentro del cooldown
       this.lastFiredMs.set(id, this.now());
-      await this.fire(camera.id, camera.name, now);
+      await this.fire(camera.id, camera.name, cfg.record, now);
     }
   }
 
-  /** Registra el evento, publica al bus, audita y envía la foto por Telegram. */
-  private async fire(cameraId: string, cameraName: string, now: Date): Promise<void> {
+  /** Registra el evento, publica al bus, audita, envía la foto y graba (US-187). */
+  private async fire(cameraId: string, cameraName: string, record: boolean, now: Date): Promise<void> {
     const snapshot = await this.cameras.getSnapshot(cameraId).catch(() => null);
     const image = snapshot?.image ?? null;
+    const detectedAt = now.toISOString();
 
-    const event: MotionEvent = {
-      cameraId,
-      cameraName,
-      detectedAt: now.toISOString(),
-      snapshot: image,
-    };
+    const event: MotionEvent = { cameraId, cameraName, detectedAt, snapshot: image };
     this.events.unshift(event);
     if (this.events.length > this.maxEvents) this.events.length = this.maxEvents;
 
@@ -202,6 +216,12 @@ export class MotionService {
     this.app.audit({ action: 'camera.motion', detail: cameraName });
     // La foto va aparte por Telegram (el canal donde una imagen adjunta es natural).
     if (image) this.app.telegram?.sendPhotoForAudit('camera.motion', `📷 ${cameraName}`, image);
+    // Grabación por evento (US-187), si está activada para la cámara y hay grabador.
+    if (record && this.opts.recorder) {
+      await this.opts.recorder
+        .record({ cameraId, cameraName, detectedAt, snapshot: image })
+        .catch((err) => this.app.log.warn({ err }, '[motion] no se pudo grabar el clip'));
+    }
     this.app.log.info(`[motion] movimiento en ${cameraName}`);
   }
 

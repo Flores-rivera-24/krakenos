@@ -25,6 +25,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
   const t = useT();
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
+  const [record, setRecord] = useState(false);
   const [sensitivity, setSensitivity] = useState<MotionSensitivity>('medium');
   const [cooldownSec, setCooldownSec] = useState(60);
   const [armMode, setArmMode] = useState<MotionArming['mode']>('always');
@@ -40,6 +41,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
       .then((cfg) => {
         if (!active) return;
         setEnabled(cfg.enabled);
+        setRecord(cfg.record);
         setSensitivity(cfg.sensitivity);
         setCooldownSec(cfg.cooldownSec);
         setArmMode(cfg.arming.mode);
@@ -81,6 +83,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
     try {
       await updateMotionConfig(camera.id, {
         enabled,
+        record,
         sensitivity,
         cooldownSec,
         arming: buildArming(),
@@ -126,6 +129,18 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
               checked={enabled}
               onCheckedChange={setEnabled}
               aria-label={t('cameras.motion.enabled')}
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label>{t('cameras.motion.record')}</Label>
+              <p className="text-kr-xs text-kr-secondary">{t('cameras.motion.recordHint')}</p>
+            </div>
+            <Switch
+              checked={record}
+              onCheckedChange={setRecord}
+              aria-label={t('cameras.motion.record')}
             />
           </div>
 

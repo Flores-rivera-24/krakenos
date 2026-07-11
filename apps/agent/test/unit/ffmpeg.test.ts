@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildClipArgs,
   buildHlsArgs,
   buildMotionFrameArgs,
   buildSnapshotArgs,
@@ -29,6 +30,16 @@ describe('buildMotionFrameArgs', () => {
     expect(args[args.indexOf('-i') + 1]).toBe('rtsp://cam/s');
     expect(args[args.indexOf('-vf') + 1]).toBe('scale=32:24,format=gray');
     expect(args).toEqual(expect.arrayContaining(['-frames:v', '1', '-f', 'rawvideo', '-']));
+  });
+});
+
+describe('buildClipArgs', () => {
+  it('graba un clip MP4 fragmentado sin recodificar (US-187)', () => {
+    const args = buildClipArgs('rtsp://cam/s', 10);
+    expect(args[args.indexOf('-i') + 1]).toBe('rtsp://cam/s');
+    expect(args[args.indexOf('-t') + 1]).toBe('10');
+    expect(args).toEqual(expect.arrayContaining(['-c:v', 'copy', '-f', 'mp4', '-']));
+    expect(args[args.indexOf('-movflags') + 1]).toContain('frag_keyframe');
   });
 });
 
