@@ -1,6 +1,8 @@
+import { createReadStream } from 'node:fs';
 import type {
   CameraManager,
   CreateCameraRequest,
+  RecordingConfig,
   StreamTokenClaims,
   UpdateCameraRequest,
   UpdateMotionConfigRequest,
@@ -9,12 +11,17 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { toCameraRecord, toManagedCamera, type CameraStore } from '../../cameras/camera.store.js';
 import { StreamLimitError } from '../../cameras/hls-stream.js';
 import type { MotionService } from './motion.service.js';
+import type { RecordingService } from './recording.service.js';
 import {
   createCameraSchema,
+  downloadRecordingSchema,
   getMotionConfigSchema,
+  getRecordingConfigSchema,
   listCamerasSchema,
+  listRecordingsSchema,
   motionEventsSchema,
   removeCameraSchema,
+  removeRecordingSchema,
   snapshotSchema,
   startStreamSchema,
   stopStreamSchema,
@@ -22,6 +29,7 @@ import {
   streamSegmentSchema,
   updateCameraSchema,
   updateMotionConfigSchema,
+  updateRecordingConfigSchema,
 } from './cameras.schemas.js';
 
 interface CameraRoutesOpts {
@@ -30,13 +38,15 @@ interface CameraRoutesOpts {
   store?: CameraStore;
   /** Servicio de movimiento (US-186). Sin él, no se exponen sus rutas. */
   motion?: MotionService;
+  /** Servicio de grabación (US-187). Sin él, no se exponen sus rutas. */
+  recording?: RecordingService;
 }
 
 /** Vida del token de stream (US-185): corta, el reproductor lo refresca solo. */
 const STREAM_TOKEN_TTL_SEC = 300;
 
 export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, opts) => {
-  const { cameras, store, motion } = opts;
+  const { cameras, store, motion, recording } = opts;
 
   /**
    * Valida el token de stream de la query (`?st=`) para **una** cámara. A
@@ -207,6 +217,68 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
           ip: req.ip,
         });
         return updated;
+      },
+    );
+  }
+
+  // --- Grabación de clips (US-187) ---
+  if (recording) {
+    // Config global de grabación: lectura auth, escritura admin. Las rutas `config`
+    // son estáticas → ganan a `/:id` en el router.
+    app.get(
+      '/recordings/config',
+      { schema: getRecordingConfigSchema, preHandler: app.authenticate },
+      async () => recording.getConfig(),
+    );
+    app.put<{ Body: Partial<RecordingConfig> }>(
+      '/recordings/config',
+      { schema: updateRecordingConfigSchema, preHandler: app.requireRole('admin') },
+      async (req) => {
+        const updated = await recording.setConfig(req.body);
+        app.audit({ action: 'camera.recording_config', userId: req.user.sub, ip: req.ip });
+        return updated;
+      },
+    );
+
+    // Lista de clips (timeline) — cualquier rol autenticado; sin la ruta en disco.
+    app.get<{ Querystring: { cameraId?: string } }>(
+      '/recordings',
+      { schema: listRecordingsSchema, preHandler: app.authenticate },
+      async (req) => recording.list(req.query.cameraId),
+    );
+
+    // Descarga autenticada del clip (streaming del fichero).
+    app.get<{ Params: { id: string } }>(
+      '/recordings/:id/download',
+      { schema: downloadRecordingSchema, preHandler: app.authenticate },
+      async (req, reply) => {
+        const row = await recording.getRow(req.params.id);
+        if (!row) {
+          return reply
+            .code(404)
+            .send({ code: 'RECORDING_NOT_FOUND', message: 'Grabación no encontrada' });
+        }
+        const stream = createReadStream(recording.absPath(row));
+        return reply
+          .header('Content-Type', 'video/mp4')
+          .header('Content-Disposition', `attachment; filename="${row.id}.mp4"`)
+          .send(stream);
+      },
+    );
+
+    // Borrado de un clip — admin.
+    app.delete<{ Params: { id: string } }>(
+      '/recordings/:id',
+      { schema: removeRecordingSchema, preHandler: app.requireRole('admin') },
+      async (req, reply) => {
+        const ok = await recording.remove(req.params.id);
+        if (!ok) {
+          return reply
+            .code(404)
+            .send({ code: 'RECORDING_NOT_FOUND', message: 'Grabación no encontrada' });
+        }
+        app.audit({ action: 'camera.recording_delete', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+        return reply.code(204).send();
       },
     );
   }

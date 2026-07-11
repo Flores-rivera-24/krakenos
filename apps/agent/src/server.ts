@@ -59,6 +59,7 @@ import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
+import { RecordingService } from './modules/cameras/recording.service.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -74,6 +75,8 @@ import { EnergyService } from './modules/energy/energy.service.js';
 import { energyRoutes } from './modules/energy/energy.routes.js';
 import { EnergyAlertService } from './modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from './modules/energy/energy-alerts.routes.js';
+import { alarmRoutes } from './modules/alarm/alarm.routes.js';
+import { AlarmService } from './modules/alarm/alarm.service.js';
 import { WellbeingService } from './modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from './modules/wellbeing/wellbeing.routes.js';
 import { MatterBridgeService } from './modules/matter-bridge/matter-bridge.service.js';
@@ -265,17 +268,27 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Store de cámaras (US-148): alta/baja desde la UI; el RtspCameraManager lee el
   // mismo fichero en vivo, así los cambios se reflejan sin reiniciar.
   const cameraStore = new FileJsonStore<CameraDefinition>(env.cameras.rtsp.configPath);
+  // Grabación por evento (US-187): al detectar movimiento con `record` activo, graba
+  // un clip a `data/recordings/` y poda por edad + tamaño total.
+  const recordingService = new RecordingService(app, cameras, env.cameras.recordingsDir);
   // Detección de movimiento (US-186): sondea las cámaras armadas, publica
   // `motion-detected` al bus (disparador de automatización) y avisa multicanal.
-  const motionService = new MotionService(app, cameras, homeBus);
+  const motionService = new MotionService(app, cameras, homeBus, { recorder: recordingService });
   await app.register(camerasRoutes, {
     prefix: '/api/cameras',
     cameras,
     store: cameraStore,
     motion: motionService,
+    recording: recordingService,
   });
   motionService.start();
   app.addHook('onClose', async () => motionService.stop());
+  // Poda periódica de grabaciones (edad + tamaño), además de la de cada grabación.
+  const recordingPrune = setInterval(() => {
+    void recordingService.prune().catch((err) => app.log.warn({ err }, '[recording] poda fallida'));
+  }, 6 * 60 * 60 * 1000);
+  recordingPrune.unref();
+  app.addHook('onClose', async () => clearInterval(recordingPrune));
   // Streaming HLS bajo demanda (US-185): barrido periódico que apaga las sesiones
   // que nadie mira (no transcodificar 24/7). Va sobre el `handle` recargable, así
   // sigue al manager vivo tras un hot-reload. `.unref()` para no bloquear el cierre.
@@ -323,6 +336,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   // lo audita para el despacho multicanal (US-180).
   const energyAlertService = new EnergyAlertService(app, iot, homeBus);
   await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
+
+  // Alarma del hogar (US-188): máquina de estados armada por modo/manual+PIN, con
+  // disparadores de cámara/sensor IoT, sirena/luces/aviso y fail-safe de sensor caído.
+  const alarmService = new AlarmService(app, iot, homeBus);
+  await app.register(alarmRoutes, { prefix: '/api/alarm', alarm: alarmService });
+  void alarmService.reconcile().then(() => alarmService.start());
+  app.addHook('onClose', async () => alarmService.stop());
 
   // Bienestar digital (US-184): uso de internet por persona (privacidad por rol).
   await app.register(wellbeingRoutes, {

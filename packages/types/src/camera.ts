@@ -64,6 +64,13 @@ export interface CameraManager {
   /** Detiene las sesiones ociosas (barrido periódico). Devuelve cuántas paró. */
   reapIdleStreams(): number;
   /**
+   * Graba un clip de ~`durationSec` segundos de la cámara y devuelve sus bytes
+   * (contenedor MP4), o `null` si la cámara no existe/offline o falla la captura
+   * (US-187). En `rtsp` copia el stream sin recodificar; en `mock` genera un
+   * clip sintético. El servicio de grabación lo escribe a disco.
+   */
+  recordClip(id: Id, durationSec: number): Promise<Uint8Array | null>;
+  /**
    * Fotograma reducido en **escala de grises** (rejilla fija, ver
    * `MOTION_FRAME_WIDTH`×`MOTION_FRAME_HEIGHT`) para la detección de movimiento por
    * diferencia de fotogramas (US-186). `null` si la cámara no existe/offline o no
@@ -110,6 +117,8 @@ export interface MotionConfig {
   /** Segundos mínimos entre avisos de la misma cámara (anti-ráfaga). */
   cooldownSec: number;
   arming: MotionArming;
+  /** Grabar un clip al detectar movimiento (US-187). */
+  record: boolean;
 }
 
 /** Config de movimiento efectiva de una cámara (incluye su id). */
@@ -123,6 +132,7 @@ export interface UpdateMotionConfigRequest {
   sensitivity?: MotionSensitivity;
   cooldownSec?: number;
   arming?: MotionArming;
+  record?: boolean;
 }
 
 /**
@@ -135,6 +145,31 @@ export interface MotionEvent {
   detectedAt: IsoDateTime;
   /** Snapshot capturado en el momento del disparo (data URL), o `null`. */
   snapshot: string | null;
+}
+
+/**
+ * Clip grabado por un evento de movimiento (US-187). La **ruta en disco nunca se
+ * expone** en la API (como la `rtspUrl`): la descarga va por `id`. `snapshot` es
+ * la miniatura del timeline.
+ */
+export interface Recording {
+  id: Id;
+  cameraId: Id;
+  cameraName: string;
+  startedAt: IsoDateTime;
+  durationSec: number;
+  sizeBytes: number;
+  snapshot: string | null;
+}
+
+/** Config de grabación por evento del hogar (US-187). */
+export interface RecordingConfig {
+  /** Días de retención de los clips (además del tope por tamaño). */
+  retentionDays: number;
+  /** Tope de tamaño total de todos los clips, en MB. */
+  maxTotalMb: number;
+  /** Duración de cada clip, en segundos. */
+  clipSeconds: number;
 }
 
 /** Petición para dar de alta una cámara (la `rtspUrl` lleva credenciales). */

@@ -1,9 +1,10 @@
 import type { Camera, CameraSnapshot } from '@krakenos/types';
-import { Pause, Pencil, Play, Plus, Radar, Trash2, VideoOff } from 'lucide-react';
+import { Film, Pause, Pencil, Play, Plus, Radar, Trash2, VideoOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraFormSlideover } from '@/components/cameras/CameraFormSlideover';
 import { CameraLivePlayer } from '@/components/cameras/CameraLivePlayer';
 import { MotionSettingsSlideover } from '@/components/cameras/MotionSettingsSlideover';
+import { RecordingsSlideover } from '@/components/cameras/RecordingsSlideover';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -21,10 +22,11 @@ interface TileProps {
   isAdmin: boolean;
   onEdit: (camera: Camera) => void;
   onMotion: (camera: Camera) => void;
+  onRecordings: (camera: Camera) => void;
   onDelete: (camera: Camera) => Promise<void>;
 }
 
-function CameraTile({ camera, isAdmin, onEdit, onMotion, onDelete }: TileProps) {
+function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete }: TileProps) {
   const t = useT();
   const [image, setImage] = useState<string | null>(null);
   // Vídeo en vivo (HLS, US-185) bajo demanda: mientras está en `false` la tarjeta
@@ -99,32 +101,42 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onDelete }: TileProps) 
           <span className="block truncate text-sm font-medium">{camera.name}</span>
           <span className="text-xs text-muted-foreground">{camera.room ?? '—'}</span>
         </div>
-        {isAdmin && (
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onMotion(camera)}
-              aria-label={t('cameras.motion.settings', { name: camera.name })}
-            >
-              <Radar className="h-4 w-4" aria-hidden />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(camera)}
-              aria-label={t('cameras.edit', { name: camera.name })}
-            >
-              <Pencil className="h-4 w-4" aria-hidden />
-            </Button>
-            <DeleteButton
-              onDelete={() => onDelete(camera)}
-              aria-label={t('cameras.delete', { name: camera.name })}
-            >
-              <Trash2 className="h-4 w-4" aria-hidden />
-            </DeleteButton>
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onRecordings(camera)}
+            aria-label={t('cameras.recordings.open', { name: camera.name })}
+          >
+            <Film className="h-4 w-4" aria-hidden />
+          </Button>
+          {isAdmin && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onMotion(camera)}
+                aria-label={t('cameras.motion.settings', { name: camera.name })}
+              >
+                <Radar className="h-4 w-4" aria-hidden />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(camera)}
+                aria-label={t('cameras.edit', { name: camera.name })}
+              >
+                <Pencil className="h-4 w-4" aria-hidden />
+              </Button>
+              <DeleteButton
+                onDelete={() => onDelete(camera)}
+                aria-label={t('cameras.delete', { name: camera.name })}
+              >
+                <Trash2 className="h-4 w-4" aria-hidden />
+              </DeleteButton>
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -140,6 +152,8 @@ export function CamerasPage() {
   const [panel, setPanel] = useState<false | true | Camera>(false);
   // Cámara cuya config de movimiento se está editando (US-186), o null.
   const [motionCamera, setMotionCamera] = useState<Camera | null>(null);
+  // Cámara cuyo timeline de grabaciones se muestra (US-187), o null.
+  const [recordingsCamera, setRecordingsCamera] = useState<Camera | null>(null);
 
   const load = useCallback(() => {
     setError(null);
@@ -215,6 +229,7 @@ export function CamerasPage() {
               isAdmin={isAdmin}
               onEdit={(cam) => setPanel(cam)}
               onMotion={(cam) => setMotionCamera(cam)}
+              onRecordings={(cam) => setRecordingsCamera(cam)}
               onDelete={removeCamera}
             />
           ))}
@@ -231,6 +246,14 @@ export function CamerasPage() {
 
       {motionCamera && (
         <MotionSettingsSlideover camera={motionCamera} onClose={() => setMotionCamera(null)} />
+      )}
+
+      {recordingsCamera && (
+        <RecordingsSlideover
+          camera={recordingsCamera}
+          isAdmin={isAdmin}
+          onClose={() => setRecordingsCamera(null)}
+        />
       )}
     </div>
   );

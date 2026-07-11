@@ -8,6 +8,7 @@ import type {
 import { MOTION_FRAME_HEIGHT, MOTION_FRAME_WIDTH } from '@krakenos/types';
 import {
   type FfmpegExec,
+  buildClipArgs,
   buildMotionFrameArgs,
   buildSnapshotArgs,
   createFfmpegStreamSpawner,
@@ -47,6 +48,8 @@ export interface RtspCameraOptions {
    */
   configPath?: string;
   exec: FfmpegExec;
+  /** Exec para clips (US-187): más timeout/buffer que `exec`. Cae a `exec` si falta. */
+  clipExec?: FfmpegExec;
   transport?: string;
   /** Config de streaming HLS (US-185). Sin ella, el streaming queda desactivado. */
   hls?: RtspHlsOptions;
@@ -150,6 +153,17 @@ export class RtspCameraManager implements CameraManager {
 
   reapIdleStreams(): number {
     return this.hls?.reapIdle() ?? 0;
+  }
+
+  async recordClip(id: string, durationSec: number): Promise<Uint8Array | null> {
+    const camera = this.getCameras().find((c) => c.id === id);
+    if (!camera || camera.enabled === false) return null;
+    const exec = this.opts.clipExec ?? this.opts.exec;
+    const { stdout, code } = await exec(
+      buildClipArgs(camera.rtspUrl, durationSec, { transport: this.opts.transport }),
+    );
+    if (code !== 0 || stdout.length === 0) return null;
+    return new Uint8Array(stdout);
   }
 
   async stop(): Promise<void> {

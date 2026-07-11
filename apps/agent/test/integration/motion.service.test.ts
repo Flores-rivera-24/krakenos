@@ -59,11 +59,18 @@ describe('MotionService (US-186)', () => {
     await resetDb(app);
   });
 
-  const build = (cameras: FakeCameras, now: () => number) => {
+  const build = (
+    cameras: FakeCameras,
+    now: () => number,
+    recorder?: { record: (input: unknown) => Promise<void> },
+  ) => {
     const events: HomeEvent[] = [];
     const bus = new HomeEventBus();
     bus.subscribe((e) => events.push(e));
-    const service = new MotionService(app, cameras, bus, { now });
+    const service = new MotionService(app, cameras, bus, {
+      now,
+      recorder: recorder as never,
+    });
     return { service, events };
   };
 
@@ -115,6 +122,31 @@ describe('MotionService (US-186)', () => {
     await service.tick(new Date()); // still
     await service.tick(new Date()); // moving otra vez, pero dentro del cooldown
     expect(events).toHaveLength(1);
+  });
+
+  it('graba un clip solo si la config tiene record activo (US-187)', async () => {
+    const cameras = new FakeCameras();
+    cameras.frames = [still(), moving()];
+    const recorded: unknown[] = [];
+    const recorder = { record: async (input: unknown) => void recorded.push(input) };
+    const { service } = build(cameras, () => 0, recorder);
+    vi.spyOn(app, 'audit').mockImplementation(() => {});
+    await service.setConfig('cam-1', { enabled: true, record: false, arming: { mode: 'always' } });
+
+    await service.tick(new Date());
+    await service.tick(new Date());
+    expect(recorded).toHaveLength(0); // record=false → no graba
+
+    // Ahora con record activo.
+    await service.setConfig('cam-1', { record: true });
+    const cams2 = new FakeCameras();
+    cams2.frames = [still(), moving()];
+    const rec2: unknown[] = [];
+    const { service: s2 } = build(cams2, () => 0, { record: async (i: unknown) => void rec2.push(i) });
+    await s2.setConfig('cam-1', { enabled: true, record: true, arming: { mode: 'always' } });
+    await s2.tick(new Date());
+    await s2.tick(new Date());
+    expect(rec2).toHaveLength(1);
   });
 
   it('no dispara si está deshabilitada o no armada', async () => {

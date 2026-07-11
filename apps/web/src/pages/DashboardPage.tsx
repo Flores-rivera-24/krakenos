@@ -4,6 +4,7 @@ import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
 import { CoverageWidget } from '@/components/dashboard/widgets/CoverageWidget';
 import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWidget';
+import { AlarmWidget } from '@/components/dashboard/widgets/AlarmWidget';
 import { HomeModeWidget } from '@/components/dashboard/widgets/HomeModeWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
 import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTopologyWidget';
@@ -29,6 +30,7 @@ import { useInventoryStore } from '@/store/inventory.store';
 const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
   quickActions: QuickActionsWidget,
   homeMode: HomeModeWidget,
+  alarm: AlarmWidget,
   scenes: ScenesWidget,
   topology: NetworkTopologyWidget,
   traffic: TrafficWidget,

@@ -439,3 +439,25 @@ model AutomationRun {
   @@index([ruleId, createdAt])
   @@index([createdAt])
 }
+
+/// Clip grabado a raíz de un evento de movimiento (US-187). El fichero de vídeo
+/// vive en disco (`data/recordings/<cameraId>/`); la fila guarda solo metadatos +
+/// ruta para el timeline por cámara y la descarga autenticada. Se poda por edad y
+/// por tamaño total del conjunto (RecordingService, patrón de retención US-102).
+model Recording {
+  id          String   @id @default(cuid())
+  cameraId    String
+  /// Nombre de la cámara en el momento (legible sin otra consulta).
+  cameraName  String
+  /// Ruta relativa del fichero dentro de `data/recordings`.
+  path        String
+  startedAt   DateTime
+  durationSec Int
+  sizeBytes   Int
+  /// Snapshot (data URL) del disparo, para la miniatura del timeline. Opcional.
+  snapshot    String?
+  createdAt   DateTime @default(now())
+
+  @@index([cameraId, startedAt])
+  @@index([startedAt])
+}

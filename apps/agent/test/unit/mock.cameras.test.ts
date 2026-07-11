@@ -66,4 +66,13 @@ describe('MockCameraManager', () => {
     const b = await new MockCameraManager({ now: () => 16_000 }).getMotionFrame('cam-entrada');
     expect(Buffer.from(a!).equals(Buffer.from(b!))).toBe(false);
   });
+
+  it('recordClip: clip sintético con cabecera MP4; null si offline (US-187)', async () => {
+    const mgr = new MockCameraManager();
+    const clip = await mgr.recordClip('cam-entrada', 5);
+    expect(clip).toBeInstanceOf(Uint8Array);
+    expect(clip!.length).toBeGreaterThan(24);
+    expect(Buffer.from(clip!.subarray(4, 8)).toString()).toBe('ftyp');
+    expect(await mgr.recordClip('cam-garaje', 5)).toBeNull(); // offline
+  });
 });

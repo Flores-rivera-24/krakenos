@@ -185,8 +185,9 @@ const motionConfigResponse = {
     sensitivity: { enum: ['low', 'medium', 'high'] },
     cooldownSec: { type: 'integer' },
     arming: motionArming,
+    record: { type: 'boolean' },
   },
-  required: ['cameraId', 'enabled', 'sensitivity', 'cooldownSec', 'arming'],
+  required: ['cameraId', 'enabled', 'sensitivity', 'cooldownSec', 'arming', 'record'],
 } as const;
 
 export const getMotionConfigSchema = {
@@ -205,9 +206,71 @@ export const updateMotionConfigSchema = {
       sensitivity: { enum: ['low', 'medium', 'high'] },
       cooldownSec: { type: 'integer', minimum: 5, maximum: 3600 },
       arming: motionArming,
+      record: { type: 'boolean' },
     },
   },
   response: { 200: motionConfigResponse },
+} as const;
+
+// --- Grabación de clips (US-187) ---
+
+const recordingResponse = {
+  type: 'object',
+  properties: {
+    id: { type: 'string' },
+    cameraId: { type: 'string' },
+    cameraName: { type: 'string' },
+    startedAt: { type: 'string', format: 'date-time' },
+    durationSec: { type: 'integer' },
+    sizeBytes: { type: 'integer' },
+    snapshot: { type: ['string', 'null'] },
+  },
+  required: ['id', 'cameraId', 'cameraName', 'startedAt', 'durationSec', 'sizeBytes', 'snapshot'],
+} as const;
+
+export const listRecordingsSchema = {
+  querystring: {
+    type: 'object',
+    properties: { cameraId: { type: 'string', minLength: 1, maxLength: 128 } },
+  },
+  response: { 200: { type: 'array', items: recordingResponse } },
+} as const;
+
+export const downloadRecordingSchema = {
+  params: idParams,
+} as const;
+
+export const removeRecordingSchema = {
+  params: idParams,
+  response: { 204: { type: 'null' }, 404: errorResponse },
+} as const;
+
+const recordingConfigResponse = {
+  type: 'object',
+  properties: {
+    retentionDays: { type: 'integer' },
+    maxTotalMb: { type: 'integer' },
+    clipSeconds: { type: 'integer' },
+  },
+  required: ['retentionDays', 'maxTotalMb', 'clipSeconds'],
+} as const;
+
+export const getRecordingConfigSchema = {
+  response: { 200: recordingConfigResponse },
+} as const;
+
+export const updateRecordingConfigSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    minProperties: 1,
+    properties: {
+      retentionDays: { type: 'integer', minimum: 1, maximum: 365 },
+      maxTotalMb: { type: 'integer', minimum: 10, maximum: 100000 },
+      clipSeconds: { type: 'integer', minimum: 3, maximum: 120 },
+    },
+  },
+  response: { 200: recordingConfigResponse },
 } as const;
 
 export const motionEventsSchema = {
