@@ -44,6 +44,18 @@ export function pushNotificationForAudit(
         body: detail ? `Movimiento en ${detail}` : 'Una cámara detectó movimiento',
         url: '/cameras',
       };
+    case 'alarm.triggered':
+      return {
+        title: '🚨 ¡Alarma disparada!',
+        body: detail ? `Activada por ${detail}` : 'Se disparó la alarma del hogar',
+        url: '/',
+      };
+    case 'alarm.sensor_fault':
+      return {
+        title: 'Sensor de alarma caído',
+        body: detail ? `${detail} no responde estando armada` : 'Un sensor no responde',
+        url: '/',
+      };
     default:
       return null;
   }

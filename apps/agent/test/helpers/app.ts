@@ -54,6 +54,8 @@ import { EnergyService } from '../../src/modules/energy/energy.service.js';
 import { energyRoutes } from '../../src/modules/energy/energy.routes.js';
 import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
+import { alarmRoutes } from '../../src/modules/alarm/alarm.routes.js';
+import { AlarmService } from '../../src/modules/alarm/alarm.service.js';
 import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from '../../src/modules/wellbeing/wellbeing.routes.js';
 import { MatterBridgeService } from '../../src/modules/matter-bridge/matter-bridge.service.js';
@@ -208,6 +210,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(energyAlertsRoutes, {
       prefix: '/api/energy/alerts',
       service: new EnergyAlertService(app, sharedIot, homeBus),
+    });
+    await app.register(alarmRoutes, {
+      prefix: '/api/alarm',
+      alarm: new AlarmService(app, sharedIot, homeBus),
     });
     await app.register(wellbeingRoutes, {
       prefix: '/api/wellbeing',

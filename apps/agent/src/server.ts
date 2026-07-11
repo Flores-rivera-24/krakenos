@@ -75,6 +75,8 @@ import { EnergyService } from './modules/energy/energy.service.js';
 import { energyRoutes } from './modules/energy/energy.routes.js';
 import { EnergyAlertService } from './modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from './modules/energy/energy-alerts.routes.js';
+import { alarmRoutes } from './modules/alarm/alarm.routes.js';
+import { AlarmService } from './modules/alarm/alarm.service.js';
 import { WellbeingService } from './modules/wellbeing/wellbeing.service.js';
 import { wellbeingRoutes } from './modules/wellbeing/wellbeing.routes.js';
 import { MatterBridgeService } from './modules/matter-bridge/matter-bridge.service.js';
@@ -334,6 +336,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   // lo audita para el despacho multicanal (US-180).
   const energyAlertService = new EnergyAlertService(app, iot, homeBus);
   await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
+
+  // Alarma del hogar (US-188): máquina de estados armada por modo/manual+PIN, con
+  // disparadores de cámara/sensor IoT, sirena/luces/aviso y fail-safe de sensor caído.
+  const alarmService = new AlarmService(app, iot, homeBus);
+  await app.register(alarmRoutes, { prefix: '/api/alarm', alarm: alarmService });
+  void alarmService.reconcile().then(() => alarmService.start());
+  app.addHook('onClose', async () => alarmService.stop());
 
   // Bienestar digital (US-184): uso de internet por persona (privacidad por rol).
   await app.register(wellbeingRoutes, {

@@ -2,6 +2,7 @@
 export type WidgetId =
   | 'quickActions'
   | 'homeMode'
+  | 'alarm'
   | 'scenes'
   | 'topology'
   | 'traffic'
@@ -23,6 +24,7 @@ export interface WidgetDef {
 export const WIDGETS: WidgetDef[] = [
   { id: 'quickActions', title: 'Acciones rápidas', span: 2 },
   { id: 'homeMode', title: 'Modo del hogar', span: 2 },
+  { id: 'alarm', title: 'Alarma', span: 2 },
   { id: 'scenes', title: 'Escenas', span: 2 },
   { id: 'devices', title: 'Dispositivos', span: 1 },
   { id: 'system', title: 'Sistema', span: 1 },
