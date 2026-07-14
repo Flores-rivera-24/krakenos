@@ -1,5 +1,28 @@
-import { describe, expect, it } from 'vitest';
-import { buildSetupUrl } from '../../src/modules/setup/setup-url.js';
+import os from 'node:os';
+import { describe, expect, it, vi } from 'vitest';
+import { buildSetupUrl, firstLanIpv4 } from '../../src/modules/setup/setup-url.js';
+
+type Nifs = ReturnType<typeof os.networkInterfaces>;
+
+describe('firstLanIpv4 (US-105)', () => {
+  it('devuelve la primera IPv4 no interna (LAN)', () => {
+    vi.spyOn(os, 'networkInterfaces').mockReturnValue({
+      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
+      eth0: [
+        { family: 'IPv6', internal: false, address: 'fe80::1' },
+        { family: 'IPv4', internal: false, address: '192.168.1.42' },
+      ],
+    } as unknown as Nifs);
+    expect(firstLanIpv4()).toBe('192.168.1.42');
+  });
+
+  it('cae a localhost si solo hay interfaces internas', () => {
+    vi.spyOn(os, 'networkInterfaces').mockReturnValue({
+      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
+    } as unknown as Nifs);
+    expect(firstLanIpv4()).toBe('localhost');
+  });
+});
 
 describe('setup URL (US-105)', () => {
   it('incrusta el token en el query y respeta el esquema/host/puerto', () => {
