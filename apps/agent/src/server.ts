@@ -22,6 +22,7 @@ import { alertsRoutes } from './modules/alerts/alerts.routes.js';
 import { auditPlugin } from './plugins/audit.js';
 import { authPlugin } from './plugins/auth.js';
 import { healthRoutes } from './plugins/health.js';
+import { metricsPlugin } from './plugins/metrics.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { securityHeadersPlugin } from './plugins/security-headers.js';
 import { socketioPlugin } from './plugins/socketio.js';
@@ -136,6 +137,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(rateLimit, { global: false });
   await app.register(prismaPlugin);
   await app.register(auditPlugin);
+  await app.register(metricsPlugin);
   await app.register(authPlugin);
   await app.register(socketioPlugin);
 
@@ -258,7 +260,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
-  await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
+  await app.register(systemRoutes, {
+    prefix: '/api/system',
+    driver,
+    inventoryService,
+    integrationStore,
+  });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   // Solo si hay store Tuya (config presente); con `env.iot.tuya` siempre lo hay.

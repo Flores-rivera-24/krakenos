@@ -15,6 +15,8 @@ import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
 import { UiModeCard } from '@/components/settings/UiModeCard';
+import { HealthCard } from '@/components/settings/HealthCard';
+import { SupportCard } from '@/components/settings/SupportCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
@@ -72,6 +74,7 @@ export function SettingsPage() {
   const [section, setSection] = useState<Section>('sistema');
   const [data, setData] = useState<SystemSettingsResponse | null>(null);
   const [homeName, setHomeName] = useState('');
+  const [maintWindow, setMaintWindow] = useState('');
   const [test, setTest] = useState<ConnectivityTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
@@ -114,6 +117,7 @@ export function SettingsPage() {
         if (!active) return;
         setData(d);
         setHomeName(d.settings.homeName);
+        setMaintWindow(d.settings.updateMaintenanceWindow ?? '');
       })
       .catch(() => undefined);
     return () => {
@@ -158,6 +162,8 @@ export function SettingsPage() {
       // nombre del hogar tiene estado propio, así que se restaura a mano.
       setError(t('settings.saveError'));
       if (key === 'homeName' && data) setHomeName(data.settings.homeName);
+      if (key === 'updateMaintenanceWindow' && data)
+        setMaintWindow(data.settings.updateMaintenanceWindow ?? '');
     }
   };
 
@@ -282,6 +288,27 @@ export function SettingsPage() {
                       <option value="30">{t('settings.system.min30')}</option>
                     </select>
                   </Setting>
+                  <Setting label={t('settings.system.maintenanceWindow')}>
+                    <div className="flex gap-2">
+                      <Input
+                        aria-label={t('settings.system.maintenanceWindow')}
+                        placeholder={t('settings.system.maintenanceWindowPlaceholder')}
+                        value={maintWindow}
+                        onChange={(e) => setMaintWindow(e.target.value)}
+                        disabled={!isAdmin}
+                        maxLength={11}
+                      />
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void patch('updateMaintenanceWindow', maintWindow.trim())}
+                        >
+                          {t('settings.system.save')}
+                        </Button>
+                      )}
+                    </div>
+                  </Setting>
                   <Setting label={t('settings.system.https')}>
                     <span className="flex items-center gap-2 text-kr-base">
                       <StatusDot status={data?.info.httpsEnabled ? 'online' : 'offline'} />
@@ -340,6 +367,10 @@ export function SettingsPage() {
               </Card>
 
               <UpdateCard />
+
+              <HealthCard />
+
+              {isAdmin && <SupportCard />}
 
               {isAdmin && <SystemBackupCard />}
 

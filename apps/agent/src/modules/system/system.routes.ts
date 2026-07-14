@@ -17,18 +17,30 @@ import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
+import { detectDeployMode } from '../../system/deploy-mode.js';
 import { stageRestoreAsync } from '../../system/restore.js';
 import { UpdateChecker } from '../../system/update-check.js';
+import { createUpdateSpawner } from '../../system/update-spawner.js';
+import { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
+import { createSecretbox, generateSecretboxKey } from '../../config/secretbox.js';
+import type { MetricsSnapshot } from '@krakenos/types';
 import type { InventoryService } from '../inventory/inventory.service.js';
+import { SupportService } from './support.service.js';
+import { UpdateService, type UpdateSpawner } from './update.service.js';
 import {
   backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
+  metricsSchema,
   regenKeysSchema,
   restoreSchema,
+  supportBundleSchema,
   systemInfoSchema,
   systemStatsSchema,
+  telemetrySchema,
+  updateApplySchema,
   updateCheckSchema,
+  updatePlanSchema,
   updateSettingSchema,
 } from './system.schemas.js';
 
@@ -36,6 +48,14 @@ interface SystemRoutesOpts {
   driver: HardwareDriver;
   /** Servicio de inventario compartido, para reprogramar el barrido en caliente. */
   inventoryService?: InventoryService;
+  /** Modo de despliegue forzado (US-190; por defecto se autodetecta). Tests. */
+  deployMode?: 'systemd' | 'docker';
+  /** Spawner del proceso actualizador (US-190; por defecto el real). Tests. */
+  updateSpawner?: UpdateSpawner;
+  /** Directorio de traspaso del actualizador (US-190; por defecto `var/`). Tests. */
+  updateVarDir?: string;
+  /** Store de integraciones para el bundle de soporte (US-192; opcional). */
+  integrationStore?: IntegrationConfigStore;
 }
 
 /** Valores por defecto de los ajustes editables (cuando no hay fila en `Setting`). */
@@ -52,6 +72,8 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   homeLongitude: '',
   presenceGraceMin: '10',
   digestFrequency: 'off',
+  updateMaintenanceWindow: '',
+  telemetryEnabled: 'off',
 };
 
 /**
@@ -72,6 +94,9 @@ function readAgentVersion(): string {
 }
 
 const AGENT_VERSION = readAgentVersion();
+
+/** No sondear el driver para métricas más de una vez cada 30 s (US-191). */
+const DRIVER_SAMPLE_THROTTLE_MS = 30_000;
 
 /**
  * Comprobador de actualizaciones compartido (US-116). Instancia única a nivel de
@@ -139,10 +164,121 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     readStats(),
   );
 
+  /** Instantánea de métricas (US-191), compartida por la ruta y el bundle. */
+  function metricsSnapshot(): MetricsSnapshot {
+    const mem = process.memoryUsage();
+    return app.metrics.snapshot({
+      uptimeSeconds: Math.round(process.uptime()),
+      memory: { rssBytes: mem.rss, heapUsedBytes: mem.heapUsed, heapTotalBytes: mem.heapTotal },
+      websocketClients: app.io?.sockets?.sockets?.size ?? 0,
+    });
+  }
+
+  // Observabilidad interna (US-191): métricas HTTP/loop/memoria + latencia del
+  // driver. **Lectura autenticada** (cualquier rol); `/health` sigue público y
+  // mínimo. Muestrea la latencia del driver con throttle para no martillear el
+  // hardware real en cada poll del panel.
+  let lastDriverPing = 0;
+  app.get('/metrics', { preHandler: app.authenticate, schema: metricsSchema }, async () => {
+    const now = Date.now();
+    if (now - lastDriverPing > DRIVER_SAMPLE_THROTTLE_MS) {
+      lastDriverPing = now;
+      const start = Date.now();
+      let ok = true;
+      try {
+        ok = await driver.healthcheck();
+      } catch {
+        ok = false;
+      }
+      app.metrics.recordOp(`driver:${driver.kind}`, Date.now() - start, ok);
+    }
+    return metricsSnapshot();
+  });
+
+  // Telemetría anónima opt-in + bundle de soporte (US-192).
+  const readTelemetryEnabled = async (): Promise<boolean> => {
+    const row = await app.prisma.setting.findUnique({ where: { key: 'telemetryEnabled' } });
+    return row?.value === 'on';
+  };
+  // `list()` de la store solo redacta (nunca descifra), así que un secretbox
+  // efímero basta como fallback cuando no se inyecta la store real (tests).
+  const integrationStore =
+    opts.integrationStore ??
+    new IntegrationConfigStore(app.prisma, createSecretbox(generateSecretboxKey()));
+  const supportService = new SupportService({
+    prisma: app.prisma,
+    integrationStore,
+    version: AGENT_VERSION,
+    deployMode: opts.deployMode ?? detectDeployMode(),
+    driverKind: driver.kind,
+    metrics: metricsSnapshot,
+    readSettings: async () => (await readSettings()).settings,
+    telemetryEnabled: readTelemetryEnabled,
+    uptimeSeconds: () => Math.round(process.uptime()),
+    now: () => new Date(),
+  });
+
+  // Telemetría: lectura autenticada. OFF por defecto → sin recuentos (opt-in).
+  app.get('/telemetry', { preHandler: app.authenticate, schema: telemetrySchema }, () =>
+    supportService.getTelemetry(),
+  );
+
+  // Bundle de soporte: admin activo + auditado. Sanitizado (sin secretos ni PII).
+  // Se sirve como descarga JSON.
+  app.post(
+    '/support-bundle',
+    { preHandler: app.requireActiveAdmin, schema: supportBundleSchema },
+    async (req, reply) => {
+      const bundle = await supportService.buildBundle();
+      app.audit({ action: 'system.support-bundle', userId: req.user.sub, ip: req.ip });
+      return reply
+        .header('content-type', 'application/json')
+        .header('content-disposition', 'attachment; filename="krakenos-support.json"')
+        .send(bundle);
+    },
+  );
+
   // Comprobación de actualizaciones (US-116). Lectura autenticada; opt-in por
   // `UPDATE_CHECK_REPO`. Sin repo, no hay llamada externa (`enabled:false`).
   app.get('/update-check', { preHandler: app.authenticate, schema: updateCheckSchema }, () =>
     updateChecker.check(),
+  );
+
+  // Actualización one-click con rollback (US-190). Reusa el comprobador (US-116) y
+  // el modo de despliegue: en systemd puede aplicar sola (proceso actualizador
+  // aparte con rollback); en Docker devuelve el comando manual.
+  const updateService = new UpdateService({
+    current: AGENT_VERSION,
+    mode: opts.deployMode ?? detectDeployMode(),
+    checker: updateChecker,
+    readMaintenanceWindow: async () => {
+      const row = await app.prisma.setting.findUnique({ where: { key: 'updateMaintenanceWindow' } });
+      return row?.value ?? '';
+    },
+    spawn: opts.updateSpawner ?? createUpdateSpawner(),
+    varDir: opts.updateVarDir,
+  });
+
+  // Plan de actualización (lectura autenticada): estado + modo + última ejecución.
+  app.get('/update/plan', { preHandler: app.authenticate, schema: updatePlanSchema }, () =>
+    updateService.getPlan(),
+  );
+
+  // Lanzar la actualización (admin activo + auditado). Devuelve 200 con `started`
+  // y el motivo; no lanza excepción por "fuera de ventana"/"docker" (es info, no error).
+  app.post<{ Body: { force?: boolean } }>(
+    '/update/apply',
+    { preHandler: app.requireActiveAdmin, schema: updateApplySchema },
+    async (req) => {
+      const result = await updateService.apply(req.body?.force === true);
+      app.audit({
+        action: 'system.update.apply',
+        userId: req.user.sub,
+        detail: result.started ? `→ ${result.message}` : `no aplicada: ${result.message}`,
+        ip: req.ip,
+      });
+      return result;
+    },
   );
 
   app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async () =>

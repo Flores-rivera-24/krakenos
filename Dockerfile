@@ -51,7 +51,8 @@ ENV NODE_ENV=production \
     DATABASE_URL=file:/data/app.db \
     JWT_PRIVATE_KEY_PATH=/data/keys/jwt-private.pem \
     JWT_PUBLIC_KEY_PATH=/data/keys/jwt-public.pem \
-    SECRETBOX_KEY_PATH=/data/keys/secretbox.key
+    SECRETBOX_KEY_PATH=/data/keys/secretbox.key \
+    KRAKENOS_DEPLOY_MODE=docker
 
 EXPOSE 3001
 

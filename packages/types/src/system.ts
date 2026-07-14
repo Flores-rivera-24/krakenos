@@ -39,6 +39,13 @@ export const SYSTEM_SETTING_KEYS = [
   'presenceGraceMin',
   // Resumen del hogar (US-180): off | daily | weekly (se envía a las 08:00).
   'digestFrequency',
+  // Ventana de mantenimiento para la actualización one-click (US-190): franja
+  // "HH:MM-HH:MM" (hora local) en la que se permite aplicar una actualización.
+  // Vacío = sin restricción (se puede aplicar en cualquier momento).
+  'updateMaintenanceWindow',
+  // Telemetría anónima (US-192): 'on' | 'off'. OFF por defecto (SPECS §9.2). Sin
+  // opt-in explícito no se agrega ni se expone ningún dato de uso.
+  'telemetryEnabled',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -97,4 +104,170 @@ export interface UpdateStatus {
   current: string;
   latest: string | null;
   updateAvailable: boolean;
+}
+
+/**
+ * Modo de despliegue (US-190). Determina si la actualización puede aplicarse
+ * sola (`systemd`/bare-metal, el proceso puede reemplazarse desde fuera) o si el
+ * contenedor no puede auto-reemplazarse (`docker`, se muestra el comando manual).
+ */
+export const DEPLOY_MODES = ['systemd', 'docker'] as const;
+export type DeployMode = (typeof DEPLOY_MODES)[number];
+
+/** Pasos de la orquestación de actualización (US-190), en orden de ejecución. */
+export const UPDATE_STEPS = [
+  'backup',
+  'fetch',
+  'apply',
+  'migrate',
+  'restart',
+  'healthcheck',
+  'rollback',
+] as const;
+export type UpdateStep = (typeof UPDATE_STEPS)[number];
+
+export type UpdateStepStatus = 'ok' | 'failed' | 'skipped';
+
+export interface UpdateStepResult {
+  step: UpdateStep;
+  status: UpdateStepStatus;
+  /** Mensaje breve (motivo del fallo, versión aplicada…). Sin secretos. */
+  detail?: string;
+}
+
+/**
+ * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso
+ * actualizador en `var/update-result.json` y lo lee el servicio para mostrarlo.
+ */
+export interface UpdateResult {
+  ok: boolean;
+  /** `true` si un fallo tras el backup obligó a revertir a la versión anterior. */
+  rolledBack: boolean;
+  fromVersion: string;
+  targetVersion: string | null;
+  steps: UpdateStepResult[];
+  finishedAt: IsoDateTime;
+}
+
+/**
+ * Plan de actualización (US-190): estado de comprobación (US-116) + cómo se
+ * aplicaría según el modo de despliegue + resultado de la última actualización.
+ */
+export interface UpdatePlan {
+  /** ¿Hay repo configurado para comprobar releases? (US-116). */
+  enabled: boolean;
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  mode: DeployMode;
+  /** `true` solo en `systemd`: el contenedor Docker no puede auto-reemplazarse. */
+  canSelfUpdate: boolean;
+  /** Comando manual a mostrar cuando `mode === 'docker'`. */
+  dockerCommand: string | null;
+  /** ¿Hay una actualización en curso ahora mismo? */
+  inProgress: boolean;
+  /** Franja de mantenimiento configurada ("HH:MM-HH:MM") o `null` si sin límite. */
+  maintenanceWindow: string | null;
+  /** Resultado de la última actualización aplicada, o `null` si nunca se aplicó. */
+  lastResult: UpdateResult | null;
+}
+
+/** Latencia/errores de una operación con nombre (p. ej. un manager) (US-191). */
+export interface ManagerMetric {
+  name: string;
+  count: number;
+  errors: number;
+  avgLatencyMs: number;
+  maxLatencyMs: number;
+}
+
+/**
+ * Instantánea de las métricas internas del agente (US-191). Solo lectura
+ * autenticada; efímera (se reinicia con el proceso). `/health` sigue mínimo.
+ */
+export interface MetricsSnapshot {
+  uptimeSeconds: number;
+  memory: {
+    rssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+  };
+  http: {
+    total: number;
+    errors: number;
+    errorRate: number;
+    avgLatencyMs: number;
+    p95LatencyMs: number;
+    inFlight: number;
+  };
+  eventLoop: {
+    lagMs: number;
+    maxLagMs: number;
+  };
+  websocketClients: number;
+  managers: ManagerMetric[];
+  timestamp: IsoDateTime;
+}
+
+/**
+ * Telemetría anónima (US-192). OFF por defecto (SPECS §9.2). Cuando está activa,
+ * son **solo recuentos agregados** (sin nombres, MAC, IP ni ubicación): lo que
+ * como mucho se compartiría. Local-first: no se envía a ningún sitio, el usuario
+ * la ve antes de decidir compartirla.
+ */
+export interface TelemetrySnapshot {
+  enabled: boolean;
+  version: string;
+  /** Presente solo si `enabled`: recuentos anónimos por tipo de entidad. */
+  counts?: {
+    devices: number;
+    rooms: number;
+    scenes: number;
+    automations: number;
+    iotSchedules: number;
+    users: number;
+  };
+}
+
+/**
+ * Bundle de soporte (US-192): instantánea **sanitizada** del estado del sistema
+ * para diagnosticar sin exponer secretos ni PII. Los secretos de integración se
+ * redactan (solo se dice qué claves hay puestas), la ubicación/nombre del hogar se
+ * omiten, y la auditoría reciente va sin IP ni actor.
+ */
+export interface SupportBundle {
+  generatedAt: IsoDateTime;
+  version: string;
+  deployMode: DeployMode;
+  nodeVersion: string;
+  platform: string;
+  uptimeSeconds: number;
+  driverKind: string;
+  /** Ajustes editables SIN los de PII (nombre/ubicación del hogar omitidos). */
+  settings: Record<string, string>;
+  /** Integraciones por dominio con secretos redactados (solo qué claves hay). */
+  integrations: {
+    domain: string;
+    kind: string;
+    enabled: boolean;
+    config: Record<string, string>;
+    secretsSet: string[];
+  }[];
+  metrics: MetricsSnapshot;
+  telemetry: TelemetrySnapshot;
+  /** Auditoría reciente: solo acción + fecha (sin IP ni actor). */
+  recentAudit: { action: string; at: IsoDateTime }[];
+  /** Dónde encontrar los logs reales (no van en el bundle: viven en journald/docker). */
+  logsHint: string;
+}
+
+/** Respuesta de `POST /api/system/update/apply` (US-190). */
+export interface ApplyUpdateResponse {
+  /** `true` si se lanzó el proceso de actualización (solo `systemd`). */
+  started: boolean;
+  mode: DeployMode;
+  /** Motivo cuando `started` es `false` (docker, fuera de ventana, ya en curso…). */
+  message: string;
+  /** Comando manual cuando el modo es `docker`. */
+  dockerCommand?: string;
 }

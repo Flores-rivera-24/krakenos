@@ -132,6 +132,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/system/regen-keys' },
   { method: 'POST', url: '/api/system/backup', payload: { passphrase: 'passphrase-123' } },
   { method: 'POST', url: '/api/system/restore', payload: { passphrase: 'passphrase-123', data: 'AAAA' } },
+  { method: 'POST', url: '/api/system/update/apply', payload: {} },
+  { method: 'POST', url: '/api/system/support-bundle', payload: {} },
   // users (US-101)
   {
     method: 'POST',

@@ -6,7 +6,9 @@ import { defineConfig } from 'tsup';
  * paquete de workspace `@krakenos/types`, que se publica como fuente `.ts`.
  */
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // `index.ts` = agente; `update-runner.ts` = proceso actualizador one-click
+  // independiente (US-190), lanzado detached para sobrevivir al reinicio del agente.
+  entry: ['src/index.ts', 'src/update-runner.ts'],
   format: ['esm'],
   platform: 'node',
   target: 'node20',
