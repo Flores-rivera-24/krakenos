@@ -8,11 +8,16 @@
 /** Maneja un mensaje recibido en un topic suscrito. */
 export type MqttMessageHandler = (topic: string, payload: string) => void;
 
+/** Opciones de publicación. `retain` deja el mensaje en el broker (HA Discovery). */
+export interface MqttPublishOptions {
+  retain?: boolean;
+}
+
 export interface MqttTransport {
   /** Suscribe a un filtro de topic (admite `+`/`#`) y registra el handler. */
   subscribe(filter: string, handler: MqttMessageHandler): Promise<void>;
-  /** Publica un payload (string) en un topic. */
-  publish(topic: string, payload: string): Promise<void>;
+  /** Publica un payload (string) en un topic; `retain` para dejarlo retenido. */
+  publish(topic: string, payload: string, opts?: MqttPublishOptions): Promise<void>;
   /** Cierra la conexión subyacente. */
   dispose?(): Promise<void>;
 }
@@ -62,7 +67,7 @@ export class MqttClientTransport implements MqttTransport {
 
   private async connect(): Promise<{
     subscribe: (filter: string) => void;
-    publish: (topic: string, payload: string) => void;
+    publish: (topic: string, payload: string, opts?: { retain?: boolean }) => void;
     end: () => void;
   }> {
     if (!this.client) {
@@ -78,7 +83,7 @@ export class MqttClientTransport implements MqttTransport {
       }) as {
         on: (ev: string, cb: (topic: string, payload: Uint8Array) => void) => void;
         subscribe: (filter: string) => void;
-        publish: (topic: string, payload: string) => void;
+        publish: (topic: string, payload: string, opts?: { retain?: boolean }) => void;
         end: () => void;
       };
       client.on('message', (topic, payload) => {
@@ -91,7 +96,7 @@ export class MqttClientTransport implements MqttTransport {
     }
     return this.client as {
       subscribe: (filter: string) => void;
-      publish: (topic: string, payload: string) => void;
+      publish: (topic: string, payload: string, opts?: { retain?: boolean }) => void;
       end: () => void;
     };
   }
@@ -102,9 +107,9 @@ export class MqttClientTransport implements MqttTransport {
     client.subscribe(filter);
   }
 
-  async publish(topic: string, payload: string): Promise<void> {
+  async publish(topic: string, payload: string, opts?: { retain?: boolean }): Promise<void> {
     const client = await this.connect();
-    client.publish(topic, payload);
+    client.publish(topic, payload, opts?.retain ? { retain: true } : undefined);
   }
 
   async dispose(): Promise<void> {

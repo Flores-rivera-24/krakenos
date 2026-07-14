@@ -77,6 +77,7 @@ export function SettingsPage() {
   const [data, setData] = useState<SystemSettingsResponse | null>(null);
   const [homeName, setHomeName] = useState('');
   const [maintWindow, setMaintWindow] = useState('');
+  const [nightSuppress, setNightSuppress] = useState('');
   const [test, setTest] = useState<ConnectivityTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
@@ -120,6 +121,7 @@ export function SettingsPage() {
         setData(d);
         setHomeName(d.settings.homeName);
         setMaintWindow(d.settings.updateMaintenanceWindow ?? '');
+        setNightSuppress(d.settings.presenceNightSuppress ?? '');
       })
       .catch(() => undefined);
     return () => {
@@ -166,6 +168,8 @@ export function SettingsPage() {
       if (key === 'homeName' && data) setHomeName(data.settings.homeName);
       if (key === 'updateMaintenanceWindow' && data)
         setMaintWindow(data.settings.updateMaintenanceWindow ?? '');
+      if (key === 'presenceNightSuppress' && data)
+        setNightSuppress(data.settings.presenceNightSuppress ?? '');
     }
   };
 
@@ -289,6 +293,41 @@ export function SettingsPage() {
                       <option value="20">{t('settings.system.min20')}</option>
                       <option value="30">{t('settings.system.min30')}</option>
                     </select>
+                  </Setting>
+                  <Setting label={t('settings.system.presenceSweeps')}>
+                    <select
+                      className={SELECT_CLASS}
+                      aria-label={t('settings.system.presenceSweepsAria')}
+                      value={setting('presenceLeaveSweeps')}
+                      disabled={!isAdmin}
+                      onChange={(e) => void patch('presenceLeaveSweeps', e.target.value)}
+                    >
+                      <option value="1">1</option>
+                      <option value="2">2</option>
+                      <option value="3">3</option>
+                      <option value="5">5</option>
+                    </select>
+                  </Setting>
+                  <Setting label={t('settings.system.presenceNight')}>
+                    <div className="flex gap-2">
+                      <Input
+                        aria-label={t('settings.system.presenceNight')}
+                        placeholder={t('settings.system.presenceNightPlaceholder')}
+                        value={nightSuppress}
+                        onChange={(e) => setNightSuppress(e.target.value)}
+                        disabled={!isAdmin}
+                        maxLength={11}
+                      />
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => void patch('presenceNightSuppress', nightSuppress.trim())}
+                        >
+                          {t('settings.system.save')}
+                        </Button>
+                      )}
+                    </div>
                   </Setting>
                   <Setting label={t('settings.system.maintenanceWindow')}>
                     <div className="flex gap-2">

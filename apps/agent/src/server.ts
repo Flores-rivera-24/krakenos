@@ -87,6 +87,8 @@ import { wellbeingRoutes } from './modules/wellbeing/wellbeing.routes.js';
 import { MatterBridgeService } from './modules/matter-bridge/matter-bridge.service.js';
 import { matterBridgeRoutes } from './modules/matter-bridge/matter-bridge.routes.js';
 import { createMatterBridgeStack } from './iot/matter-bridge/stack.js';
+import { IOT_ROOM } from '@krakenos/types';
+import { withActionTimeout } from './iot/action-timeout.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -344,41 +346,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   const energyService = new EnergyService(app, iot);
   await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
 
-  // Interop abierta (US-174): publicación opt-in de estados a un broker MQTT local
-  // (Home Assistant/Node-RED). Egress-filtrada; contraseña cifrada en reposo. La
-  // conexión persistente se cierra en onClose (US-201).
-  const mqttPublisher = new MqttPublisher({
-    prisma: app.prisma,
-    secretbox,
-    snapshot: async () => {
-      const iotDevices = await iot.listDevices().catch(() => []);
-      let energy: { todayKwh: number; todayCost: number; currency: string } | null = null;
-      try {
-        const s = await energyService.getStats('day');
-        energy = { todayKwh: s.totalEnergyWh / 1000, todayCost: s.totalCost ?? 0, currency: s.currency };
-      } catch {
-        energy = null;
-      }
-      const devicesOnline = await app.prisma.device.count({ where: { online: true } }).catch(() => 0);
-      return {
-        iot: iotDevices.map((d) => ({
-          id: d.id,
-          name: d.name,
-          on: d.on,
-          brightness: d.brightness,
-          powerW: d.powerW ?? null,
-        })),
-        energy,
-        devicesOnline,
-      };
-    },
-    onError: (msg) => app.log.warn({ msg }, 'MQTT publish (US-174)'),
-  });
-  await app.register(interopRoutes, { prefix: '/api/interop', publisher: mqttPublisher });
   // Consulta de compatibilidad de hardware (US-208): catálogo derivado del código.
   await app.register(compatibilityRoutes, { prefix: '/api/compatibility' });
-  await mqttPublisher.start();
-  app.addHook('onClose', async () => mqttPublisher.stop());
 
   // Alertas de consumo (US-183): evalúa umbrales por dispositivo y, al cruzarse,
   // publica un evento `energy-threshold` al bus (disparador de automatización) y
@@ -392,6 +361,59 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(alarmRoutes, { prefix: '/api/alarm', alarm: alarmService });
   void alarmService.reconcile().then(() => alarmService.start());
   app.addHook('onClose', async () => alarmService.stop());
+
+  // Interop abierta (US-174 + MQTT Discovery HA US-213): publicación opt-in de
+  // estados a un broker MQTT local (Home Assistant/Node-RED). Egress-filtrada;
+  // contraseña cifrada en reposo. Discovery y control entrante son toggles
+  // separados y OFF por defecto. Se cablea tras la alarma/presencia porque el
+  // snapshot publica su estado. Conexión persistente cerrada en onClose (US-201).
+  const mqttPublisher = new MqttPublisher({
+    prisma: app.prisma,
+    secretbox,
+    snapshot: async () => {
+      const iotDevices = await iot.listDevices().catch(() => []);
+      let energy: { todayKwh: number; todayCost: number; currency: string } | null = null;
+      try {
+        const s = await energyService.getStats('day');
+        energy = { todayKwh: s.totalEnergyWh / 1000, todayCost: s.totalCost ?? 0, currency: s.currency };
+      } catch {
+        energy = null;
+      }
+      const devicesOnline = await app.prisma.device.count({ where: { online: true } }).catch(() => 0);
+      // Privacidad (US-169): del hogar viaja SOLO el modo, nunca las personas.
+      const homeMode = await presenceService.getMode().catch(() => null);
+      const alarmPhase = alarmService.getState().phase;
+      return {
+        iot: iotDevices.map((d) => ({
+          id: d.id,
+          name: d.name,
+          kind: d.kind,
+          on: d.on,
+          brightness: d.brightness,
+          color: d.color,
+          powerW: d.powerW ?? null,
+        })),
+        energy,
+        devicesOnline,
+        homeMode,
+        alarmPhase,
+      };
+    },
+    // Control entrante (US-213): setState con timeout + publicación al bus con
+    // origin:'mqtt' (anti-bucle US-167) + auditoría. Solo si el toggle está activo.
+    onCommand: async (deviceId, state) => {
+      const device = await withActionTimeout(() => iot.setState(deviceId, state));
+      app.io.to(IOT_ROOM).emit('iot:device-updated', device);
+      for (const caused of iotWatcher.applyKnownState(device)) {
+        homeBus.publish({ ...caused, origin: 'mqtt' });
+      }
+      app.audit({ action: 'interop.mqtt.command', detail: device.id });
+    },
+    onError: (msg) => app.log.warn({ msg }, 'MQTT interop (US-174/US-213)'),
+  });
+  await app.register(interopRoutes, { prefix: '/api/interop', publisher: mqttPublisher });
+  await mqttPublisher.start();
+  app.addHook('onClose', async () => mqttPublisher.stop());
 
   // Bienestar digital (US-184): uso de internet por persona (privacidad por rol).
   await app.register(wellbeingRoutes, {

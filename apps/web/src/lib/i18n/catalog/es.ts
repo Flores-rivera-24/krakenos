@@ -205,6 +205,12 @@ export const es = {
   'settings.mqtt.passwordKeep': 'Déjalo en blanco para conservar la guardada.',
   'settings.mqtt.prefix': 'Prefijo de topics',
   'settings.mqtt.interval': 'Intervalo (s)',
+  'settings.mqtt.discovery': 'Descubrimiento de Home Assistant',
+  'settings.mqtt.discoveryDesc':
+    'Publica las entidades para que Home Assistant las descubra solo (luces, enchufes, energía, modo del hogar, alarma). No incluye personas.',
+  'settings.mqtt.control': 'Aceptar órdenes desde MQTT',
+  'settings.mqtt.controlDesc':
+    'Permite encender/apagar y atenuar tus dispositivos desde Home Assistant. Publicar estados no lo activa; es un permiso aparte.',
   'settings.mqtt.save': 'Guardar',
   'settings.mqtt.saving': 'Guardando…',
   'settings.mqtt.saved': 'Configuración MQTT guardada',
@@ -835,6 +841,10 @@ export const es = {
   'settings.system.min30': '30 minutos',
   'settings.system.presenceGrace': 'Gracia de presencia',
   'settings.system.presenceGraceAria': 'Ventana de gracia de la presencia',
+  'settings.system.presenceSweeps': 'Confirmación de salida (barridos)',
+  'settings.system.presenceSweepsAria': 'Barridos consecutivos para confirmar una salida',
+  'settings.system.presenceNight': 'Supresión nocturna de salidas',
+  'settings.system.presenceNightPlaceholder': 'p. ej. 23:00-07:00 (vacío = desactivada)',
   'settings.system.maintenanceWindow': 'Ventana de mantenimiento',
   'settings.system.maintenanceWindowPlaceholder': 'p. ej. 02:00-06:00 (vacío = siempre)',
   'settings.system.https': 'HTTPS',

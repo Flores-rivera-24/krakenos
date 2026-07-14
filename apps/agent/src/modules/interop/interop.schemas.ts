@@ -8,8 +8,19 @@ const mqttConfig = {
     hasPassword: { type: 'boolean' },
     topicPrefix: { type: 'string' },
     intervalSec: { type: 'number' },
+    discovery: { type: 'boolean' },
+    control: { type: 'boolean' },
   },
-  required: ['enabled', 'url', 'username', 'hasPassword', 'topicPrefix', 'intervalSec'],
+  required: [
+    'enabled',
+    'url',
+    'username',
+    'hasPassword',
+    'topicPrefix',
+    'intervalSec',
+    'discovery',
+    'control',
+  ],
 } as const;
 
 const mqttStatus = {
@@ -47,6 +58,8 @@ export const updateMqttSchema = {
       password: { type: ['string', 'null'], maxLength: 256 },
       topicPrefix: { type: 'string', minLength: 1, maxLength: 64, pattern: '^[\\w-]+$' },
       intervalSec: { type: 'integer', minimum: 5, maximum: 3600 },
+      discovery: { type: 'boolean' },
+      control: { type: 'boolean' },
     },
   },
   response: { 200: mqttResponse },

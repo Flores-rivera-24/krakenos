@@ -17,6 +17,18 @@ export interface MqttPublishConfig {
   topicPrefix: string;
   /** Cada cuántos segundos se publica el estado. */
   intervalSec: number;
+  /**
+   * MQTT Discovery de Home Assistant (US-213): publica configs **retained** bajo
+   * `homeassistant/…/config` para que HA descubra los dispositivos solo. Off por
+   * defecto. **Publicar estados ≠ aceptar órdenes** (ver `control`).
+   */
+  discovery: boolean;
+  /**
+   * Control entrante (US-213): suscribe a `<prefijo>/iot/<id>/set` y aplica el
+   * comando (`setState`, anti-bucle `origin:'mqtt'`, auditado). Off por defecto y
+   * **separado** de `discovery`: publicar estados no implica aceptar órdenes.
+   */
+  control: boolean;
 }
 
 /** Cuerpo de `PUT /api/interop/mqtt`. Campos omitidos = sin cambio. */
@@ -28,6 +40,8 @@ export interface UpdateMqttPublishRequest {
   password?: string | null;
   topicPrefix?: string;
   intervalSec?: number;
+  discovery?: boolean;
+  control?: boolean;
 }
 
 /** Estado en vivo de la publicación MQTT. */

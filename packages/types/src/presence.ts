@@ -24,6 +24,13 @@ export interface PersonPresence {
   since: IsoDateTime | null;
   /** Nº de dispositivos personales que alimentan su presencia. */
   deviceCount: number;
+  /**
+   * Confianza de la señal (US-220): `fresh` = el dispositivo responde ahora;
+   * `stale` = se le mantiene "en casa" pero su WiFi dejó de responder (salida
+   * pendiente de confirmar por histéresis/gracia). Solo va por la API acotada por
+   * rol, **nunca** por el socket broadcast (regla de privacidad US-169).
+   */
+  signal: 'fresh' | 'stale';
 }
 
 /**

@@ -230,7 +230,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       publisher: new MqttPublisher({
         prisma: app.prisma,
         secretbox: createSecretbox(generateSecretboxKey()),
-        snapshot: async () => ({ iot: [], energy: null, devicesOnline: 0 }),
+        snapshot: async () => ({ iot: [], energy: null, devicesOnline: 0, homeMode: null, alarmPhase: null }),
         transportFactory: () => ({ subscribe: async () => {}, publish: async () => {}, dispose: async () => {} }),
       }),
     });
