@@ -50,8 +50,10 @@ test('hogar: crear una escena desde plantilla y ejecutarla (US-166)', async ({ p
   // La escena aparece y se ejecuta de un toque.
   await expect(page.getByText('Buenas noches')).toBeVisible();
   await page.getByRole('button', { name: 'Activar' }).first().click();
-  // Toast de confirmación (o de fallo parcial) → la ejecución llegó al servidor.
-  await expect(page.getByText(/activada|aplicado|sin responder/).first()).toBeVisible();
+  // Con los mocks el resultado es DETERMINISTA: todas las acciones aplican, así que
+  // debe salir el toast de ÉXITO. Aceptar «sin responder» (fallo parcial) como éxito
+  // dejaría pasar el flujo aunque no aplicara nada (AUD-24).
+  await expect(page.getByText(/activada/).first()).toBeVisible();
 });
 
 // --- Cuarentena explícita (flaky-policy, US-189) ---

@@ -1,7 +1,11 @@
 import type { IsoDateTime } from './common.js';
 
-/** Tipo de entidad que se puede fijar como favorita (US-170). */
-export type FavoriteKind = 'device' | 'iot' | 'room' | 'scene';
+/**
+ * Tipo de entidad que se puede fijar como favorita (US-170). **Fuente única**
+ * (`as const`): el schema del agente deriva su enum de aquí (AUD-17).
+ */
+export const FAVORITE_KINDS = ['device', 'iot', 'room', 'scene'] as const;
+export type FavoriteKind = (typeof FAVORITE_KINDS)[number];
 
 /**
  * Favorito de un usuario: un dispositivo, IoT, habitación o escena fijado para

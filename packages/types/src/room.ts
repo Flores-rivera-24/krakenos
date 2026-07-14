@@ -4,17 +4,23 @@ import type { Id, IsoDateTime } from './common.js';
  * Icono de una habitación. Clave estable mapeada a un glifo/emoji en el frontend
  * (no una URL): así la habitación se reconoce de un vistazo sin depender de assets.
  */
-export type RoomIcon =
-  | 'living'
-  | 'bedroom'
-  | 'kitchen'
-  | 'bathroom'
-  | 'office'
-  | 'dining'
-  | 'garage'
-  | 'garden'
-  | 'kids'
-  | 'generic';
+/**
+ * Iconos de habitación (US-165). **Fuente única** (`as const`): los schemas del
+ * agente derivan su enum de aquí (AUD-17), no duplican la lista.
+ */
+export const ROOM_ICONS = [
+  'living',
+  'bedroom',
+  'kitchen',
+  'bathroom',
+  'office',
+  'dining',
+  'garage',
+  'garden',
+  'kids',
+  'generic',
+] as const;
+export type RoomIcon = (typeof ROOM_ICONS)[number];
 
 /** Habitación / grupo de dispositivos del hogar (US-165). */
 export interface Room {

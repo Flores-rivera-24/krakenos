@@ -239,4 +239,91 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       },
     );
   });
+
+  // Barrido automático (AUD-22): en vez de enumerar a mano las rutas admin (y
+  // arriesgarse a olvidar una nueva), recolecta la tabla de rutas REAL y exige que
+  // toda ruta de escritura bajo /api esté clasificada — como admin/autoservicio o
+  // en el allowlist explícito de rutas públicas/`home.control`. Una ruta mutante
+  // nueva sin clasificar rompe este test hasta que se decida su autorización.
+  describe('cobertura de rutas de escritura (AUD-22)', () => {
+    /**
+     * Rutas de escritura bajo /api que NO se enumeran en ADMIN_WRITES/AUTHED_WRITES
+     * de arriba, pero cuya autorización está cubierta por el test de authz de su
+     * propio módulo (o son públicas por diseño). Este allowlist las **reconoce
+     * explícitamente**: el barrido de abajo exige que toda ruta de escritura esté
+     * aquí o en las listas de arriba, así una ruta NUEVA sin clasificar rompe el test.
+     */
+    const KNOWN_UNSWEPT = new Set<string>([
+      // Públicas (sin token; probadas en sus módulos).
+      'POST /api/setup/init',
+      'POST /api/auth/login',
+      'POST /api/auth/refresh',
+      'POST /api/auth/logout',
+      'POST /api/webauthn/authenticate/options',
+      'POST /api/webauthn/authenticate/verify',
+      'POST /api/webauthn/backup-codes/verify',
+      // Capacidad home.control (admin+member): probadas por capacidad.
+      'PATCH /api/iot/devices/:p',
+      'POST /api/iot/matter/commission',
+      'POST /api/scenes/:p/run',
+      'POST /api/rooms/:p/action',
+      'POST /api/alarm/arm',
+      'POST /api/alarm/disarm',
+      'POST /api/presence/mode',
+      // Admin, cubiertas por el test de authz de su propio módulo.
+      'POST /api/coverage/floorplans',
+      'PATCH /api/coverage/floorplans/:p',
+      'DELETE /api/coverage/floorplans/:p',
+      'POST /api/coverage/floorplans/:p/scans',
+      'DELETE /api/coverage/scans/:p',
+      'POST /api/coverage/scans/:p/samples',
+      'POST /api/cameras',
+      'PATCH /api/cameras/:p',
+      'DELETE /api/cameras/:p',
+      'POST /api/cameras/:p/stream',
+      'DELETE /api/cameras/:p/stream',
+      'PUT /api/cameras/:p/motion',
+      'PUT /api/cameras/recordings/config',
+      'DELETE /api/cameras/recordings/:p',
+      'PATCH /api/iot/tuya/devices/:p',
+      'DELETE /api/iot/tuya/devices/:p',
+      'PATCH /api/alerts/rules/:p',
+      'PUT /api/alarm/config',
+      'PATCH /api/dns/feeds/:p',
+      'PUT /api/integrations/:p',
+      'POST /api/integrations/:p/test',
+      'DELETE /api/integrations/:p',
+      'DELETE /api/discovery/suggestions/:p',
+    ]);
+
+    /** Normaliza una URL concreta de las listas a su patrón (`:p` en los params). */
+    const toPattern = (method: string, url: string): string => {
+      const path = url
+        .split('/')
+        .map((seg) => (/^(x|nope|no-existe|[0-9a-f-]{8,}|aa:bb:cc:dd:ee:ff)$/i.test(seg) ? ':p' : seg))
+        .join('/');
+      return `${method.toUpperCase()} ${path}`;
+    };
+    const normalizeRoute = (method: string, url: string): string =>
+      `${method.toUpperCase()} ${url.replace(/:[^/]+/g, ':p')}`;
+
+    it('toda ruta de escritura /api está clasificada', () => {
+      const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
+        .collectedRoutes;
+      const classified = new Set<string>([
+        ...ADMIN_WRITES.map((w) => toPattern(w.method, w.url)),
+        ...AUTHED_WRITES.map((w) => toPattern(w.method, w.url)),
+        ...KNOWN_UNSWEPT,
+      ]);
+
+      const writeMethods = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+      const unclassified = collected
+        .filter((r) => writeMethods.has(r.method.toUpperCase()) && r.url.startsWith('/api'))
+        .map((r) => normalizeRoute(r.method, r.url))
+        .filter((key, i, arr) => arr.indexOf(key) === i)
+        .filter((key) => !classified.has(key));
+
+      expect(unclassified).toEqual([]);
+    });
+  });
 });

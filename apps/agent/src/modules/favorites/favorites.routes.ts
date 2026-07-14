@@ -1,6 +1,6 @@
 import type { CreateFavoriteRequest, ReorderFavoritesRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
-import { FavoriteService } from './favorites.service.js';
+import { FavoriteLimitError, FavoriteService } from './favorites.service.js';
 import {
   createFavoriteSchema,
   deleteFavoriteSchema,
@@ -25,8 +25,15 @@ export const favoritesRoutes: FastifyPluginAsync<FavoritesRoutesOpts> = async (a
   app.get('/', { schema: listFavoritesSchema }, async (req) => service.list(req.user.sub));
 
   app.post<{ Body: CreateFavoriteRequest }>('/', { schema: createFavoriteSchema }, async (req, reply) => {
-    const favorite = await service.create(req.user.sub, req.body);
-    return reply.code(201).send(favorite);
+    try {
+      const favorite = await service.create(req.user.sub, req.body);
+      return reply.code(201).send(favorite);
+    } catch (err) {
+      if (err instanceof FavoriteLimitError) {
+        return reply.code(413).send({ code: err.code, message: err.message });
+      }
+      throw err;
+    }
   });
 
   app.delete<{ Params: { id: string } }>(

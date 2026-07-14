@@ -2,6 +2,7 @@ import type { Favorite } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { MAX_FAVORITES_PER_USER } from '../../src/modules/favorites/favorites.service.js';
 
 /** Favoritos por usuario (US-170): autoservicio, aislados por usuario. */
 describe('favoritos (US-170)', () => {
@@ -97,5 +98,25 @@ describe('favoritos (US-170)', () => {
   it('sin token → 401', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/favorites' });
     expect(res.statusCode).toBe(401);
+  });
+
+  it('cota por usuario (AUD-19): al superar el máximo devuelve 413', async () => {
+    const user = await seedUser(app, { email: 'cap@krakenos.test', role: 'viewer' });
+    await app.prisma.favorite.createMany({
+      data: Array.from({ length: MAX_FAVORITES_PER_USER }, (_, i) => ({
+        userId: user.id,
+        kind: 'iot',
+        ref: `light-${i}`,
+        order: i,
+      })),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/favorites',
+      headers: authHeader(signAccess(app, user)),
+      payload: { kind: 'iot', ref: 'uno-de-mas' },
+    });
+    expect(res.statusCode).toBe(413);
+    expect(res.json().code).toBe('FAVORITE_LIMIT');
   });
 });

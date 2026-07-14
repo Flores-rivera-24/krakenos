@@ -9,7 +9,7 @@ GitHub. Es **opcional y está desactivado por defecto**: sin configuración, el 
 Define el repositorio de GitHub en el entorno del agente:
 
 ```bash
-UPDATE_CHECK_REPO=tu-usuario/krakenos
+UPDATE_CHECK_REPO=Flores-rivera-24/krakenos
 ```
 
 Con esa variable, **Ajustes → Sistema → Actualizaciones** muestra:

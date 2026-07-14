@@ -1,18 +1,10 @@
-/** JSON Schemas de escenas (US-166). */
+/** JSON Schemas de escenas (US-166). El enum de iconos deriva de `@krakenos/types`
+ * (fuente única, AUD-17). */
 
-const SCENE_ICONS = [
-  'night',
-  'movie',
-  'leave',
-  'morning',
-  'dinner',
-  'relax',
-  'party',
-  'focus',
-  'scene',
-] as const;
+import { SCENE_ICONS } from '@krakenos/types';
+import { errorResponse } from '../common.schemas.js';
 
-const icon = { type: 'string', enum: SCENE_ICONS } as const;
+const icon = { type: 'string', enum: [...SCENE_ICONS] } as const;
 const order = { type: 'integer', minimum: 0, maximum: 100000 } as const;
 
 const sceneAction = {
@@ -79,10 +71,13 @@ export const updateSceneSchema = {
     minProperties: 1,
     properties: { name: { type: 'string', minLength: 1, maxLength: 60 }, icon, actions, order },
   },
-  response: { 200: sceneResponse },
+  response: { 200: sceneResponse, 404: errorResponse },
 } as const;
 
-export const deleteSceneSchema = { params: idParam } as const;
+export const deleteSceneSchema = {
+  params: idParam,
+  response: { 404: errorResponse },
+} as const;
 
 const runResult = {
   type: 'object',
@@ -104,7 +99,7 @@ const runResult = {
 
 export const runSceneSchema = {
   params: idParam,
-  response: { 200: runResult },
+  response: { 200: runResult, 404: errorResponse },
 } as const;
 
 export const captureSceneSchema = {

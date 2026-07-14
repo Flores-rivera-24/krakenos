@@ -46,7 +46,11 @@ function signature(payload: unknown): string {
 export type RecordSampleOutcome =
   | { status: 'ok'; result: MeasureResult }
   | { status: 'scan-not-found' }
-  | { status: 'no-source' };
+  | { status: 'no-source' }
+  | { status: 'limit' };
+
+/** Máximo de muestras por survey (AUD-19): acota el coste O(celdas×muestras) del IDW. */
+export const MAX_SAMPLES_PER_SCAN = 10_000;
 
 /**
  * Servicio de cobertura WiFi (US-151): CRUD de planos, mapas de calor predichos
@@ -322,6 +326,11 @@ export class CoverageService {
   ): Promise<RecordSampleOutcome> {
     const scan = await this.app.prisma.surveyScan.findUnique({ where: { id: scanId } });
     if (!scan) return { status: 'scan-not-found' };
+
+    // Cota por survey (AUD-19): sin ella un survey en bucle crece sin límite y el
+    // IDW se vuelve O(celdas×muestras).
+    const count = await this.app.prisma.surveySample.count({ where: { scanId } });
+    if (count >= MAX_SAMPLES_PER_SCAN) return { status: 'limit' };
 
     let rssiDbm: number;
     if (input.rssiDbm !== undefined) {

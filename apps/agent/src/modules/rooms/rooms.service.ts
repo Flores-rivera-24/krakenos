@@ -5,11 +5,11 @@ import type {
   Room,
   RoomActionResult,
   RoomGroupActionRequest,
-  RoomIcon,
   RoomWithState,
   UpdateRoomRequest,
 } from '@krakenos/types';
-import { IOT_ROOM } from '@krakenos/types';
+import { IOT_ROOM, ROOM_ICONS } from '@krakenos/types';
+import { asEnum } from '../../util/as-enum.js';
 import type { Room as DbRoom } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
@@ -20,7 +20,7 @@ function toRoom(row: DbRoom): Room {
   return {
     id: row.id,
     name: row.name,
-    icon: row.icon as RoomIcon,
+    icon: asEnum(row.icon, ROOM_ICONS, 'generic'),
     order: row.order,
     createdAt: row.createdAt.toISOString(),
   };
@@ -142,6 +142,8 @@ export class RoomService {
     // `Device.roomId` se pone a null (onDelete: SetNull) y los `IotRoomMember` se
     // borran (onDelete: Cascade) automáticamente por las FK de la migración.
     await this.app.prisma.room.delete({ where: { id } });
+    // Limpia los favoritos que apuntaban a esta habitación (AUD-18).
+    await this.app.prisma.favorite.deleteMany({ where: { kind: 'room', ref: id } });
     return true;
   }
 

@@ -151,4 +151,22 @@ describe('escenas (US-166)', () => {
     });
     expect(missing.statusCode).toBe(404);
   });
+
+  it('borrar una escena limpia los favoritos que la referenciaban (AUD-18)', async () => {
+    const scene = await createScene([{ deviceId: 'light-salon', on: true }]);
+    // Un usuario la fija como favorita.
+    const fav = await app.inject({
+      method: 'POST',
+      url: '/api/favorites',
+      headers: authHeader(adminToken),
+      payload: { kind: 'scene', ref: scene.id },
+    });
+    expect(fav.statusCode).toBe(201);
+
+    await app.inject({ method: 'DELETE', url: `/api/scenes/${scene.id}`, headers: authHeader(adminToken) });
+
+    // El favorito huérfano ya no existe.
+    const orphan = await app.prisma.favorite.findFirst({ where: { kind: 'scene', ref: scene.id } });
+    expect(orphan).toBeNull();
+  });
 });
