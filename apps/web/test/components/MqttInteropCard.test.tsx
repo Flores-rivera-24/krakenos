@@ -12,7 +12,16 @@ import { setLocale } from '@/lib/i18n';
 import { MqttInteropCard } from '@/components/settings/MqttInteropCard';
 
 const state: MqttState = {
-  config: { enabled: false, url: 'mqtt://192.168.1.10:1883', username: 'ha', hasPassword: true, topicPrefix: 'krakenos', intervalSec: 30 },
+  config: {
+    enabled: false,
+    url: 'mqtt://192.168.1.10:1883',
+    username: 'ha',
+    hasPassword: true,
+    topicPrefix: 'krakenos',
+    intervalSec: 30,
+    discovery: false,
+    control: false,
+  },
   status: { enabled: false, connected: false, lastPublishAt: null, lastError: null },
 };
 
@@ -45,5 +54,16 @@ describe('MqttInteropCard (US-174)', () => {
     await waitFor(() => expect(interopMock.updateMqtt).toHaveBeenCalled());
     const body = interopMock.updateMqtt.mock.calls[0]?.[0];
     expect(body).not.toHaveProperty('password');
+  });
+
+  it('US-213: activa discovery y control por separado y los envía', async () => {
+    render(<MqttInteropCard />);
+    await screen.findByLabelText('Broker');
+    fireEvent.click(screen.getByLabelText(/Descubrimiento de Home Assistant/));
+    fireEvent.click(screen.getByLabelText(/Aceptar órdenes desde MQTT/));
+    fireEvent.click(screen.getByRole('button', { name: /Guardar/ }));
+    await waitFor(() => expect(interopMock.updateMqtt).toHaveBeenCalled());
+    const body = interopMock.updateMqtt.mock.calls[0]?.[0];
+    expect(body).toMatchObject({ discovery: true, control: true });
   });
 });

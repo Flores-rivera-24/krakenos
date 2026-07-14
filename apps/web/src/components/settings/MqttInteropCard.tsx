@@ -24,6 +24,8 @@ export function MqttInteropCard() {
   const [password, setPassword] = useState('');
   const [prefix, setPrefix] = useState('krakenos');
   const [interval, setIntervalSec] = useState('30');
+  const [discovery, setDiscovery] = useState(false);
+  const [control, setControl] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export function MqttInteropCard() {
         setUsername(s.config.username);
         setPrefix(s.config.topicPrefix);
         setIntervalSec(String(s.config.intervalSec));
+        setDiscovery(s.config.discovery);
+        setControl(s.config.control);
       })
       .catch(() => undefined);
     return () => {
@@ -55,6 +59,8 @@ export function MqttInteropCard() {
         ...(password ? { password } : {}),
         topicPrefix: prefix,
         intervalSec: Number(interval),
+        discovery,
+        control,
       });
       setState(next);
       setPassword('');
@@ -119,6 +125,33 @@ export function MqttInteropCard() {
               onChange={(e) => setIntervalSec(e.target.value)}
             />
           </div>
+        </div>
+
+        <div className="space-y-2 rounded-md border border-kr p-3">
+          <label className="flex items-start gap-2 text-kr-sm text-kr-secondary">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={discovery}
+              onChange={(e) => setDiscovery(e.target.checked)}
+            />
+            <span>
+              {t('settings.mqtt.discovery')}
+              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.discoveryDesc')}</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-kr-sm text-kr-secondary">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={control}
+              onChange={(e) => setControl(e.target.checked)}
+            />
+            <span>
+              {t('settings.mqtt.control')}
+              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.controlDesc')}</span>
+            </span>
+          </label>
         </div>
 
         {state && (

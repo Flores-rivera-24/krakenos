@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import type {
   MqttPublishConfig,
   MqttPublishStatus,
+  UpdateIotStateRequest,
   UpdateMqttPublishRequest,
 } from '@krakenos/types';
 import type { Secretbox } from '../../config/secretbox.js';
@@ -16,6 +17,16 @@ import {
   type MqttClientOptions,
   type MqttTransport,
 } from '../../iot/mqtt.transport.js';
+import {
+  buildDiscoveryConfigs,
+  buildStateMessages,
+  commandFilters,
+  parseInboundCommand,
+  removalMessage,
+  type StateSnapshot,
+} from './ha-discovery.js';
+
+export type { StateSnapshot } from './ha-discovery.js';
 
 /**
  * Publicación de estados a un broker MQTT **local** (US-174). Opt-in (off por
@@ -29,16 +40,11 @@ import {
  * cifra en reposo (secretbox) y **nunca** sale por la API ni en los payloads.
  */
 
-/** Estado que se publica (sin secretos ni PII cruda). */
-export interface StateSnapshot {
-  iot: { id: string; name: string; on: boolean | null; brightness?: number | null; powerW?: number | null }[];
-  energy: { todayKwh: number; todayCost: number; currency: string } | null;
-  /** Nº de dispositivos de red en línea (resumen, sin MAC/IP). */
-  devicesOnline: number;
-}
-
 export type SnapshotSource = () => Promise<StateSnapshot>;
 export type MqttTransportFactory = (opts: MqttClientOptions) => MqttTransport;
+
+/** Aplica un comando entrante (US-213): `setState` + anti-bucle + auditoría. */
+export type CommandHandler = (deviceId: string, state: UpdateIotStateRequest) => Promise<void>;
 
 interface StoredConfig {
   enabled: boolean;
@@ -48,6 +54,10 @@ interface StoredConfig {
   passwordEnc: string;
   topicPrefix: string;
   intervalSec: number;
+  /** MQTT Discovery de HA (US-213). */
+  discovery: boolean;
+  /** Control entrante (US-213); separado de `discovery`. */
+  control: boolean;
 }
 
 const SETTING_KEY = 'interop.mqtt';
@@ -58,6 +68,8 @@ const DEFAULTS: StoredConfig = {
   passwordEnc: '',
   topicPrefix: 'krakenos',
   intervalSec: 30,
+  discovery: false,
+  control: false,
 };
 const MIN_INTERVAL_SEC = 5;
 const MAX_INTERVAL_SEC = 3600;
@@ -71,6 +83,12 @@ export interface MqttPublisherDeps {
   now?: () => Date;
   /** Log de errores (por defecto silencioso; el server inyecta el logger). */
   onError?: (msg: string) => void;
+  /**
+   * Aplica un comando entrante (US-213). El server lo cablea a `setState` +
+   * `withActionTimeout` + publicación al bus con `origin:'mqtt'` (anti-bucle) +
+   * auditoría. Sin él, el control entrante no hace nada aunque esté activado.
+   */
+  onCommand?: CommandHandler;
 }
 
 export class MqttPublisher {
@@ -82,6 +100,8 @@ export class MqttPublisher {
   private connected = false;
   private lastPublishAt: Date | null = null;
   private lastError: string | null = null;
+  /** Topics de config de discovery publicados (para limpiar retenidos al quitar). */
+  private lastConfigTopics = new Set<string>();
 
   constructor(private readonly deps: MqttPublisherDeps) {
     this.transportFactory = deps.transportFactory ?? ((opts) => new MqttClientTransport(opts));
@@ -102,6 +122,8 @@ export class MqttPublisher {
         passwordEnc: typeof parsed.passwordEnc === 'string' ? parsed.passwordEnc : '',
         topicPrefix: typeof parsed.topicPrefix === 'string' && parsed.topicPrefix ? parsed.topicPrefix : 'krakenos',
         intervalSec: clampInterval(parsed.intervalSec),
+        discovery: parsed.discovery === true,
+        control: parsed.control === true,
       };
     } catch {
       return { ...DEFAULTS };
@@ -117,6 +139,8 @@ export class MqttPublisher {
       hasPassword: c.passwordEnc !== '',
       topicPrefix: c.topicPrefix,
       intervalSec: c.intervalSec,
+      discovery: c.discovery,
+      control: c.control,
     };
   }
 
@@ -144,6 +168,8 @@ export class MqttPublisher {
             : this.deps.secretbox.encrypt(req.password),
       topicPrefix: req.topicPrefix ?? cur.topicPrefix,
       intervalSec: req.intervalSec !== undefined ? clampInterval(req.intervalSec) : cur.intervalSec,
+      discovery: req.discovery ?? cur.discovery,
+      control: req.control ?? cur.control,
     };
     await this.deps.prisma.setting.upsert({
       where: { key: SETTING_KEY },
@@ -178,6 +204,19 @@ export class MqttPublisher {
     });
     this.lastError = null;
 
+    // Control entrante (US-213): OFF por defecto y separado de la publicación.
+    // Suscribe a `<prefijo>/iot/<id>/set` (+ brightness/rgb) y delega en onCommand.
+    if (c.control && this.deps.onCommand) {
+      for (const filter of commandFilters(c.topicPrefix)) {
+        await this.transport.subscribe(filter, (topic, payload) => {
+          const cmd = parseInboundCommand(topic, payload, c.topicPrefix);
+          if (cmd) void this.deps.onCommand?.(cmd.deviceId, cmd.state).catch((err) => {
+            this.deps.onError?.(err instanceof Error ? err.message : 'Error al aplicar comando MQTT');
+          });
+        });
+      }
+    }
+
     const tick = () => void this.publishOnce();
     this.timer = setInterval(tick, c.intervalSec * 1000);
     this.timer.unref?.();
@@ -201,6 +240,32 @@ export class MqttPublisher {
       }
       if (snap.energy) await this.transport.publish(`${p}/energy`, JSON.stringify(snap.energy));
       await this.transport.publish(`${p}/devices/online`, String(snap.devicesOnline));
+
+      // MQTT Discovery de HA (US-213): configs retained + estado en sus topics, con
+      // limpieza de los retenidos que ya no aplican (dispositivo quitado o discovery
+      // desactivado). Se publica además de los topics legados de US-174.
+      if (c.discovery) {
+        const configs = buildDiscoveryConfigs(snap, p, c.control);
+        for (const m of configs) await this.transport.publish(m.topic, m.payload, { retain: true });
+        for (const m of buildStateMessages(snap, p)) {
+          await this.transport.publish(m.topic, m.payload, { retain: !!m.retain });
+        }
+        const current = new Set(configs.map((m) => m.topic));
+        for (const topic of this.lastConfigTopics) {
+          if (!current.has(topic)) {
+            const rm = removalMessage(topic);
+            await this.transport.publish(rm.topic, rm.payload, { retain: true });
+          }
+        }
+        this.lastConfigTopics = current;
+      } else if (this.lastConfigTopics.size > 0) {
+        // Discovery recién desactivado: borra todas las configs retenidas.
+        for (const topic of this.lastConfigTopics) {
+          const rm = removalMessage(topic);
+          await this.transport.publish(rm.topic, rm.payload, { retain: true });
+        }
+        this.lastConfigTopics = new Set();
+      }
       this.connected = true;
       this.lastPublishAt = this.now();
       this.lastError = null;

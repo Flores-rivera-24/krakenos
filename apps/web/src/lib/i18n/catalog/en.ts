@@ -198,6 +198,12 @@ export const en: Record<TranslationKey, string> = {
   'settings.mqtt.passwordKeep': 'Leave blank to keep the saved one.',
   'settings.mqtt.prefix': 'Topic prefix',
   'settings.mqtt.interval': 'Interval (s)',
+  'settings.mqtt.discovery': 'Home Assistant discovery',
+  'settings.mqtt.discoveryDesc':
+    'Publishes entities so Home Assistant discovers them on its own (lights, plugs, energy, home mode, alarm). People are never included.',
+  'settings.mqtt.control': 'Accept commands over MQTT',
+  'settings.mqtt.controlDesc':
+    'Lets you turn devices on/off and dim them from Home Assistant. Publishing states does not enable this; it is a separate permission.',
   'settings.mqtt.save': 'Save',
   'settings.mqtt.saving': 'Saving…',
   'settings.mqtt.saved': 'MQTT configuration saved',

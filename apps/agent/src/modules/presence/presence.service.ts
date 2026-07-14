@@ -100,6 +100,14 @@ export class PresenceService {
    * Estado del hogar para quien pregunta: el modo es global; `people` se acota
    * por rol (admin ve a todas las personas con dispositivos; el resto solo a sí).
    */
+  /**
+   * Modo del hogar SOLO (sin la lista de personas). Para superficies que no deben
+   * ver quién está (US-169: la interop MQTT publica el modo, nunca personas).
+   */
+  async getMode(): Promise<HomeMode> {
+    return (await this.modeState()).mode;
+  }
+
   async getState(requester: PresenceRequester): Promise<PresenceState> {
     const mode = await this.modeState();
     const users = await this.app.prisma.user.findMany({

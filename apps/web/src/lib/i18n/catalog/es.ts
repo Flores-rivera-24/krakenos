@@ -205,6 +205,12 @@ export const es = {
   'settings.mqtt.passwordKeep': 'Déjalo en blanco para conservar la guardada.',
   'settings.mqtt.prefix': 'Prefijo de topics',
   'settings.mqtt.interval': 'Intervalo (s)',
+  'settings.mqtt.discovery': 'Descubrimiento de Home Assistant',
+  'settings.mqtt.discoveryDesc':
+    'Publica las entidades para que Home Assistant las descubra solo (luces, enchufes, energía, modo del hogar, alarma). No incluye personas.',
+  'settings.mqtt.control': 'Aceptar órdenes desde MQTT',
+  'settings.mqtt.controlDesc':
+    'Permite encender/apagar y atenuar tus dispositivos desde Home Assistant. Publicar estados no lo activa; es un permiso aparte.',
   'settings.mqtt.save': 'Guardar',
   'settings.mqtt.saving': 'Guardando…',
   'settings.mqtt.saved': 'Configuración MQTT guardada',
