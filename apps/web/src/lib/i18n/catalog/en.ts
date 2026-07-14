@@ -794,6 +794,8 @@ export const en: Record<TranslationKey, string> = {
   'matter.qrAlt': 'Matter pairing QR code',
   'matter.manualCode': 'Manual code',
   'matter.commissionHint': 'Add a “hub” or “Matter device” in your Alexa/Google/Apple app and scan this QR (or type the code).',
+  'matter.certWarning':
+    'When you scan the QR, Alexa/Google/Apple may warn that the device is “not certified”. That’s expected: KrakenOS uses a test identifier. You can continue, though some ecosystems may limit certain features.',
   'matter.devices': 'Devices to expose',
   'matter.noDevices': 'No controllable devices to expose yet.',
   'matter.expose': 'Expose',

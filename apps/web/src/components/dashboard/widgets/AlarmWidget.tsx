@@ -3,6 +3,7 @@ import { Settings, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AlarmSettingsSlideover } from '@/components/dashboard/AlarmSettingsSlideover';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LoadingLine } from '@/components/ui/loading-line';
@@ -37,6 +38,23 @@ function PhaseIcon({ phase }: { phase: AlarmPhase }) {
   return <ShieldOff className="h-5 w-5" aria-hidden />;
 }
 
+/** localStorage: recuerda que el usuario ya vio el aviso «no es alarma certificada». */
+const DISCLAIMER_KEY = 'krakenos.alarmDisclaimerAck';
+function disclaimerAcked(): boolean {
+  try {
+    return localStorage.getItem(DISCLAIMER_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function ackDisclaimer(): void {
+  try {
+    localStorage.setItem(DISCLAIMER_KEY, '1');
+  } catch {
+    /* almacenamiento no disponible: se volverá a mostrar, sin más */
+  }
+}
+
 /** Cuenta atrás en segundos hasta `endsAt`, o null. */
 function useCountdown(endsAt: string | null): number | null {
   const [secs, setSecs] = useState<number | null>(null);
@@ -68,7 +86,13 @@ export function AlarmWidget() {
   const [pinNeeded, setPinNeeded] = useState(false);
   const [pin, setPin] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(() => !disclaimerAcked());
   const countdown = useCountdown(state?.countdownEndsAt ?? null);
+
+  const dismissDisclaimer = () => {
+    ackDisclaimer();
+    setShowDisclaimer(false);
+  };
 
   useEffect(() => {
     let active = true;
@@ -141,6 +165,20 @@ export function AlarmWidget() {
             </div>
             {state.triggeredBy && (state.phase === 'entry' || state.phase === 'triggered') && (
               <p className="text-kr-xs text-kr-muted">Disparada por {state.triggeredBy}</p>
+            )}
+
+            {canControl && showDisclaimer && (
+              <Callout variant="warning" title="No sustituye una alarma certificada">
+                <div className="space-y-2">
+                  <p>
+                    Sin batería de respaldo ni conexión de emergencia por red móvil: deja de funcionar
+                    si se va la luz o se apaga el servidor. Es un aviso extra, no tu única protección.
+                  </p>
+                  <Button variant="outline" size="sm" onClick={dismissDisclaimer}>
+                    Entendido
+                  </Button>
+                </div>
+              </Callout>
             )}
 
             {canControl ? (

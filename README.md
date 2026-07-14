@@ -90,8 +90,9 @@ Un posicionamiento honesto declara también lo que no se es:
   de HA.
 - **No es un NVR profesional.** El detector de movimiento propio es básico; para detección por
   objetos, pre-roll y grabación continua, la vía es **Frigate**.
-- **No es una alarma certificada.** El modo alarma no tiene batería de respaldo ni backup celular:
-  si cae la luz o el servidor, deja de existir. No sustituye a una alarma con central receptora.
+- **No es una alarma certificada.** El modo alarma no tiene batería de respaldo ni conexión de
+  emergencia por red móvil: si cae la luz o el servidor, deja de existir. No sustituye a una alarma
+  con central receptora.
 - **No es un asistente de voz de nube.** La voz va por el **puente Matter** (local); no hay skill de
   Alexa ni Action de Google (rompería «sin puertos expuestos» — ver [ADR de voz](docs/adr-voice.md)).
 - **No es un producto de nube.** Cero telemetría por defecto, cero dependencias de nube de terceros:

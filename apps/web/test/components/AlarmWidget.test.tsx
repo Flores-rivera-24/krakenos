@@ -48,6 +48,7 @@ function setRole(role: 'admin' | 'member' | 'kid' | 'viewer') {
 
 describe('AlarmWidget (US-188)', () => {
   beforeEach(() => {
+    localStorage.clear();
     alarmMock.getAlarmState.mockReset().mockResolvedValue(disarmed);
     alarmMock.armAlarm.mockReset().mockResolvedValue(armed);
     alarmMock.disarmAlarm.mockReset().mockResolvedValue(disarmed);
@@ -61,6 +62,23 @@ describe('AlarmWidget (US-188)', () => {
     await user.click(screen.getByRole('button', { name: 'Armar (Fuera)' }));
     await waitFor(() => expect(alarmMock.armAlarm).toHaveBeenCalledWith('away'));
     await screen.findByText('Armada');
+  });
+
+  it('avisa (US-212) de que no sustituye una alarma certificada y se puede descartar', async () => {
+    const user = userEvent.setup();
+    render(<AlarmWidget />);
+    await screen.findByText('Desarmada');
+    expect(screen.getByText(/No sustituye una alarma certificada/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Entendido' }));
+    expect(screen.queryByText(/No sustituye una alarma certificada/)).not.toBeInTheDocument();
+    expect(localStorage.getItem('krakenos.alarmDisclaimerAck')).toBe('1');
+  });
+
+  it('no repite el aviso si ya se descartó antes', async () => {
+    localStorage.setItem('krakenos.alarmDisclaimerAck', '1');
+    render(<AlarmWidget />);
+    await screen.findByText('Desarmada');
+    expect(screen.queryByText(/No sustituye una alarma certificada/)).not.toBeInTheDocument();
   });
 
   it('kid/viewer no ven los controles de armar', async () => {

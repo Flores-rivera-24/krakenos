@@ -155,6 +155,12 @@ export function HomeModeWidget() {
                 para que la casa sepa quién está.
               </p>
             )}
+            {state.people.some((p) => p.deviceCount > 0) && (
+              <p className="text-kr-xs text-kr-muted">
+                La presencia se basa en la señal WiFi: un móvil en reposo profundo puede soltarla y
+                aparecer como «fuera» un rato. No confíes solo en esto para acciones críticas.
+              </p>
+            )}
           </>
         )}
       </CardContent>

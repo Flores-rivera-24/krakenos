@@ -50,6 +50,8 @@ describe('HomeModeWidget (US-169)', () => {
     expect(screen.getByText('Ana')).toBeInTheDocument();
     expect(screen.getByText('Bob')).toBeInTheDocument();
     expect(screen.getByText(/Ana llegó/)).toBeInTheDocument();
+    // US-212: nota honesta sobre el límite físico de la presencia por WiFi.
+    expect(screen.getByText(/reposo profundo/)).toBeInTheDocument();
   });
 
   it('cambiar de modo llama a POST /presence/mode y refleja la respuesta', async () => {
