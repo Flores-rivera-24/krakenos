@@ -32,6 +32,7 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { tokensRoutes } from './modules/tokens/tokens.routes.js';
 import { interopRoutes } from './modules/interop/interop.routes.js';
 import { MqttPublisher } from './modules/interop/mqtt-publisher.service.js';
+import { compatibilityRoutes } from './modules/compatibility/compatibility.routes.js';
 import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
 import { BackupCodeService } from './webauthn/backup-codes.service.js';
 import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
@@ -374,6 +375,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     onError: (msg) => app.log.warn({ msg }, 'MQTT publish (US-174)'),
   });
   await app.register(interopRoutes, { prefix: '/api/interop', publisher: mqttPublisher });
+  // Consulta de compatibilidad de hardware (US-208): catálogo derivado del código.
+  await app.register(compatibilityRoutes, { prefix: '/api/compatibility' });
   await mqttPublisher.start();
   app.addHook('onClose', async () => mqttPublisher.stop());
 

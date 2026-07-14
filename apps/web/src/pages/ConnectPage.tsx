@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
 import { MatterCommissionCard } from '@/components/connect/MatterCommissionCard';
 import { Badge } from '@/components/ui/badge';
@@ -378,6 +379,11 @@ export function ConnectPage() {
           </section>
         ))
       )}
+
+      {/* Consulta de compatibilidad de hardware (US-208). */}
+      <div className="border-t border-kr pt-6">
+        <CompatibilitySection />
+      </div>
 
       {active && (
         <Slideover

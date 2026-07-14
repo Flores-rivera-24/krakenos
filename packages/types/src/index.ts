@@ -14,6 +14,7 @@ export * from './energy.js';
 export * from './wellbeing.js';
 export * from './iot.js';
 export * from './interop.js';
+export * from './compatibility.js';
 export * from './matter-bridge.js';
 export * from './camera.js';
 export * from './firewall.js';

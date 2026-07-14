@@ -1,0 +1,84 @@
+import {
+  type CompatCapability,
+  type CompatCategory,
+  type CompatibilityEntry,
+  type CompatRequirement,
+  COMPAT_CATEGORIES,
+} from '@krakenos/types';
+import type { IntegrationField } from '@krakenos/types';
+import { INTEGRATION_SCHEMA } from '../../integrations/schema.js';
+
+/**
+ * Catálogo de compatibilidad (US-208) **derivado del código**: recorre el catálogo
+ * de integraciones (`INTEGRATION_SCHEMA`, fuente única de kinds/labels/campos) y
+ * anota las capacidades por categoría. No hay lista duplicada a mano; añadir un
+ * backend nuevo al schema lo hace aparecer aquí solo.
+ */
+
+/** Capacidades base por categoría (dominio). El WiFi del driver se añade por flag. */
+const CATEGORY_CAPABILITIES: Record<CompatCategory, CompatCapability[]> = {
+  driver: ['inventory', 'block', 'traffic'],
+  iot: ['control'],
+  cameras: ['camera-stream', 'camera-snapshot'],
+  vpn: ['vpn'],
+  firewall: ['firewall'],
+  vlan: ['vlan'],
+  qos: ['qos'],
+  dns: ['dns-block'],
+};
+
+/**
+ * Kinds que exigen una **dependencia opcional** en el servidor (no viaja en la
+ * imagen). Co-localizado y pequeño; refleja los `import` perezosos del código.
+ */
+const EXTRA_DEP_KINDS = new Set<string>([
+  'driver:openwrt',
+  'driver:cisco-ios',
+  'driver:cisco-netconf',
+  'driver:mikrotik',
+  'driver:asus',
+  'iot:zigbee',
+  'iot:meross',
+  'iot:matter',
+  'iot:tuya',
+  'vlan:switch',
+  'vlan:cisco',
+  'cameras:rtsp',
+]);
+
+/** Deriva los requisitos de puesta en marcha de los campos del schema. */
+function deriveRequirements(id: string, fields: IntegrationField[]): CompatRequirement[] {
+  const reqs = new Set<CompatRequirement>();
+  for (const f of fields) {
+    if (f.secret) reqs.add('credentials');
+    else if (f.required && (f.type === 'host' || f.type === 'url')) reqs.add('address');
+  }
+  if (EXTRA_DEP_KINDS.has(id)) reqs.add('extra-dependency');
+  return [...reqs];
+}
+
+/** Construye el catálogo de compatibilidad completo, ordenado por nombre. */
+export function buildCompatibilityCatalog(): CompatibilityEntry[] {
+  const entries: CompatibilityEntry[] = [];
+  for (const category of COMPAT_CATEGORIES) {
+    const kinds = INTEGRATION_SCHEMA[category];
+    for (const [kind, schema] of Object.entries(kinds)) {
+      // Solo el `mock` es el modo demostración; los backends `zeroConfig` (Tuya,
+      // Govee…) son hardware real que simplemente no necesita config para activarse.
+      if (kind === 'mock') continue;
+      const id = `${category}:${kind}`;
+      const capabilities: CompatCapability[] = [...CATEGORY_CAPABILITIES[category]];
+      if (category === 'driver' && schema.wifiSupported) capabilities.push('wifi');
+      entries.push({
+        id,
+        category,
+        label: schema.label,
+        capabilities,
+        requirements: deriveRequirements(id, schema.fields),
+        // Nada verificado con hardware real todavía (checklist US-86).
+        verified: false,
+      });
+    }
+  }
+  return entries.sort((a, b) => a.label.localeCompare(b.label));
+}

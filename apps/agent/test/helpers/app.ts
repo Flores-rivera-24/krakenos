@@ -55,6 +55,7 @@ import { EnergyService } from '../../src/modules/energy/energy.service.js';
 import { energyRoutes } from '../../src/modules/energy/energy.routes.js';
 import { interopRoutes } from '../../src/modules/interop/interop.routes.js';
 import { MqttPublisher } from '../../src/modules/interop/mqtt-publisher.service.js';
+import { compatibilityRoutes } from '../../src/modules/compatibility/compatibility.routes.js';
 import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
 import { alarmRoutes } from '../../src/modules/alarm/alarm.routes.js';
@@ -212,6 +213,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     // Energía (US-181/182): sin arrancar timers; los tests consultan vía servicio.
     const energyService = new EnergyService(app, new MockIotManager());
     await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
+    await app.register(compatibilityRoutes, { prefix: '/api/compatibility' });
     // Interop MQTT (US-174): publicador con transporte falso (no conecta a broker).
     await app.register(interopRoutes, {
       prefix: '/api/interop',
