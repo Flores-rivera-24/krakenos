@@ -16,6 +16,8 @@ import { FloorPlanFormSlideover } from '@/components/coverage/FloorPlanFormSlide
 import { FloorPlanStage, type CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { HeatmapLegend } from '@/components/coverage/HeatmapLegend';
 import { SurveyPanel } from '@/components/coverage/SurveyPanel';
+import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
+import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +30,7 @@ import {
   updateFloorPlan,
 } from '@/lib/coverage';
 import { formatDbm } from '@/lib/coverage-format';
+import { proposeWalls, type ProposedWall } from '@/lib/wall-propose';
 import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
@@ -80,6 +83,11 @@ export function CoveragePage() {
 
   const [tool, setTool] = useState<CoverageTool>('select');
   const [wallMaterial, setWallMaterial] = useState<WallMaterial>('drywall');
+
+  // Detección asistida de paredes (US-195): propuestas sin confirmar + material.
+  const [proposed, setProposed] = useState<ProposedWall[] | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectMaterial, setDetectMaterial] = useState<WallMaterial>('drywall');
   const [view, setView] = useState<CoverageView>('edit');
   const [band, setBand] = useState<WifiBand>('5GHz');
 
@@ -133,6 +141,7 @@ export function CoveragePage() {
     seededPlanId.current = selectedPlan.id;
     setEditWalls(selectedPlan.walls);
     setEditAps(selectedPlan.accessPoints);
+    setProposed(null); // las propuestas de detección pertenecen al plano anterior
     setDirty(false);
     // El survey activo/medido pertenece a un plano concreto: al cambiar, se limpia.
     setActiveScan(null);
@@ -168,6 +177,43 @@ export function CoveragePage() {
     setEditWalls((prev) => [...prev, { ...wall, id: localId('wall') }]);
     setDirty(true);
   }, []);
+
+  // Detección asistida de paredes (US-195). Corre en el navegador sobre la imagen
+  // de fondo; nada se guarda hasta que el usuario acepta y luego guarda el plano.
+  const handleDetectWalls = useCallback(async () => {
+    if (!selectedPlan?.backgroundImage) return;
+    setDetecting(true);
+    try {
+      const walls = await proposeWalls(
+        selectedPlan.backgroundImage,
+        selectedPlan.widthM,
+        selectedPlan.heightM,
+      );
+      setProposed(walls);
+    } catch (err) {
+      toast.error(describeError(err, t('coverage.detect.error')));
+    } finally {
+      setDetecting(false);
+    }
+  }, [selectedPlan, t]);
+
+  const handleAcceptProposed = useCallback(() => {
+    if (!proposed?.length) return;
+    setEditWalls((prev) => [
+      ...prev,
+      ...proposed.map((w) => ({
+        id: localId('wall'),
+        x1: w.x1,
+        y1: w.y1,
+        x2: w.x2,
+        y2: w.y2,
+        material: detectMaterial,
+      })),
+    ]);
+    setDirty(true);
+    toast.success(t('coverage.detect.accepted', { count: proposed.length }));
+    setProposed(null);
+  }, [proposed, detectMaterial, t]);
 
   const handleMoveAp = useCallback((id: string, x: number, y: number) => {
     setEditAps((prev) => prev.map((ap) => (ap.id === id ? { ...ap, x, y } : ap)));
@@ -449,6 +495,7 @@ export function CoveragePage() {
                           : null
                     }
                     walls={editWalls}
+                    proposedWalls={view === 'edit' ? (proposed ?? undefined) : undefined}
                     accessPoints={editAps}
                     surveySamples={view === 'survey' ? activeScan?.samples : undefined}
                     tool={
@@ -483,6 +530,24 @@ export function CoveragePage() {
                         <li>{t('coverage.edit.hintSelect')}</li>
                       </ul>
                     </div>
+                    <WallDetectPanel
+                      hasImage={!!selectedPlan.backgroundImage}
+                      detecting={detecting}
+                      proposed={proposed}
+                      material={detectMaterial}
+                      onMaterialChange={setDetectMaterial}
+                      onDetect={() => void handleDetectWalls()}
+                      onAccept={handleAcceptProposed}
+                      onDiscard={() => setProposed(null)}
+                      canEdit={isAdmin}
+                    />
+                    <RoomsFromPlanPanel
+                      walls={editWalls}
+                      accessPoints={editAps}
+                      widthM={selectedPlan.widthM}
+                      heightM={selectedPlan.heightM}
+                      canEdit={isAdmin}
+                    />
                     <ApPalette
                       placedAps={editAps}
                       onAddAccessPoint={handleAddPlaceableAp}

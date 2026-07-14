@@ -2,6 +2,8 @@
 // querystring de entrada (`additionalProperties: false`) y serializan la
 // respuesta. Mismo estilo que `wifi.schemas.ts`.
 
+import { errorResponse } from '../common.schemas.js';
+
 const bandEnum = ['2.4GHz', '5GHz', '6GHz'];
 const wallMaterialEnum = ['drywall', 'wood', 'glass', 'brick', 'concrete', 'metal'];
 
@@ -258,7 +260,7 @@ export const listFloorPlansSchema = {
 
 export const createFloorPlanSchema = {
   body: createFloorPlanBody,
-  response: { 201: floorPlanResponse },
+  response: { 201: floorPlanResponse, 400: errorResponse },
 } as const;
 
 export const getFloorPlanSchema = {
@@ -269,7 +271,7 @@ export const getFloorPlanSchema = {
 export const updateFloorPlanSchema = {
   params: idParams,
   body: updateFloorPlanBody,
-  response: { 200: floorPlanResponse },
+  response: { 200: floorPlanResponse, 400: errorResponse, 404: errorResponse },
 } as const;
 
 export const deleteFloorPlanSchema = {
