@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 
 /**
  * Config de Vitest para el agente.
@@ -26,22 +26,26 @@ export default defineConfig({
       ACCESS_TOKEN_TTL: '900',
       REFRESH_TOKEN_TTL: '2592000',
     },
-    // Coverage (US-60/US-99). `all: false` mide solo lo que tocan los tests,
-    // evitando importar entrypoints con efectos secundarios. Los `thresholds`
-    // son un **suelo anti-regresión**, fijado holgadamente por debajo de los
-    // números reales (~88% stmts / ~84% branch), no un objetivo: avisan si una
-    // rama bien probada deja de estarlo, no persiguen un %. No bloquea por los
-    // caminos de hardware ausentes (transports SSH/SNMP/HTTP + helper sudo se
-    // verifican con hardware real → US-86; ver docs/coverage-notes.md).
+    // Coverage honesto (US-219). `all: true` mide **todo** `src/**`, no solo lo
+    // que los tests importan: el número refleja la realidad del árbol (incluidos
+    // los transports de hardware SSH/SNMP/HTTP que solo se verifican con equipo
+    // real, US-86), no "de lo que se usa, cuánto se ejerce". Excludes legítimos:
+    // los dos **entrypoints** con efectos secundarios (`index.ts` arranca/escucha;
+    // `update-runner.ts` es el proceso actualizador aparte) — no son unit-testables
+    // sin arrancar el proceso. Los `thresholds` son un **suelo anti-regresión**
+    // fijado ~1–2 pts por debajo del número real medido (ver docs/coverage-notes.md
+    // para el número vigente y el plan de subida gradual).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
-      all: false,
+      all: true,
+      include: ['src/**/*.ts'],
+      exclude: [...coverageConfigDefaults.exclude, 'src/index.ts', 'src/update-runner.ts'],
       thresholds: {
-        statements: 85,
-        branches: 80,
-        functions: 83,
-        lines: 85,
+        statements: 89,
+        branches: 83,
+        functions: 90,
+        lines: 89,
       },
     },
   },

@@ -2,9 +2,17 @@
 
 [![CI](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml/badge.svg)](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml)
 
-Plataforma de gestión de red doméstica e IoT que corre **en un servidor local propio**
-(Raspberry Pi, mini PC) sin nube de terceros, y se accede de forma remota vía VPN
-WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto a internet.
+**El cerebro de red de tu hogar.** KrakenOS reúne en un solo producto **local** lo que ningún
+otro tiene junto: **cobertura WiFi sobre el plano de tu casa**, **control parental de red de
+verdad**, **presencia** sin geofence de nube, **bienestar digital** y **seguridad de red**
+completa (inventario, DNS, VLAN/QoS/firewall, VPN WireGuard). Corre **en un servidor local propio**
+(Raspberry Pi, mini PC) sin nube de terceros, y se accede de forma remota vía VPN WireGuard que el
+propio sistema gestiona. Ningún puerto de la UI queda expuesto a internet.
+
+> **Complemento de Home Assistant, no sustituto.** KrakenOS no compite con HA en amplitud —
+> **convive** con él y le añade lo que HA no da (cobertura, planos, parental, presencia, seguridad
+> de red). Ver [KrakenOS + Home Assistant](#krakenos--home-assistant) y el
+> [ADR de posicionamiento](docs/adr-positioning.md).
 
 > Todo arranca en modo **`mock`** (sin hardware), así que puedes clonar, correr y explorar
 > la app entera en desarrollo. Las integraciones reales se conectan **desde la propia app**
@@ -15,44 +23,102 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 
 ## Qué es
 
-- **Inventario en tiempo real** de los dispositivos de tu red (descubrimiento ARP/mDNS,
-  identificación por OUI, bloqueo, edición).
-- **Control de red**: WiFi, VPN WireGuard (con QR), firewall, VLANs, QoS y DNS/bloqueo (con
-  **feeds de categoría**: publicidad, malware, rastreo).
-- **Control IoT** unificado: luces, enchufes, sensores y cámaras desde una sola interfaz.
-- **Arquitectura por drivers**: el mismo código funciona con distintas marcas de hardware
-  (OpenWrt, pfSense, UniFi, MikroTik, Cisco…) sin tocar la API ni el frontend.
-- **Hogar inteligente**: **habitaciones** para agrupar dispositivos, **favoritos** de acceso
-  rápido, **escenas** (varios aparatos con un toque), **horarios IoT** (por hora o por evento
-  solar) y **automatizaciones** por frases ("si… entonces…").
-- **Cobertura WiFi**: mapa de calor (heatmap RF) sobre el plano de tu casa, con **importación del
-  plano desde una foto, un PDF o un Word** y detección de paredes.
-- **Cámaras**: **vídeo en vivo** (HLS), **detección de movimiento** con aviso y foto,
-  **grabación** de clips con línea de tiempo y **modo alarma** del hogar (armar/desarmar con PIN).
-- **Energía**: medición de consumo (W/kWh), panel con histórico y **coste estimado**, con alertas
-  por potencia sostenida o consumo diario.
-- **Presencia y modos del hogar**: llegada/salida de personas y modos (en casa / fuera) que
-  disparan automatizaciones.
-- **Ecosistemas y voz**: **puente Matter** para exponer tus dispositivos a Alexa / Google / Apple,
-  comisionado de dispositivos Matter desde la app, y **tokens de API + MQTT** para interoperar con
-  otros sistemas.
-- **Conexión guiada desde la app**: un asistente paso a paso conecta routers, luces, enchufes
-  y cámaras **sin editar ficheros ni leer documentación externa** — con guías internalizadas,
-  ayuda en cada campo, prueba de conexión y recarga en caliente. Los secretos se **cifran en reposo**.
-- **Multi-usuario y roles**: da acceso a tu familia o a tu equipo — varios usuarios con rol
-  **admin** (gestiona todo) o **solo lectura**, con alta, edición, activar/deshabilitar, reset y
-  cambio de contraseña propio, desde **Ajustes → Usuarios**.
-- **Copias de seguridad cifradas**: descarga y restaura un backup **cifrado con tu contraseña**
-  (base de datos + claves + credenciales de integración) desde **Ajustes → Sistema**.
+KrakenOS es **el cerebro de red del hogar**: un producto **local-first** que gana en la cuña que
+nadie más reúne —red + planos + presencia + parental + seguridad— y **delega** en los mejores donde
+existir best-in-class gratuito hace inútil competir (cámaras → Frigate, voz → Matter). Detalle en el
+[ADR de posicionamiento](docs/adr-positioning.md).
+
+### El núcleo — donde KrakenOS es único
+
+- **Cobertura WiFi + planos inteligentes**: mapa de calor (heatmap RF) sobre el **plano real de tu
+  casa**, con **importación del plano desde una foto, un PDF o un Word** y detección asistida de
+  paredes. Nadie del ecosistema smart-home hace esto.
 - **Control parental / horarios de acceso**: corta el internet de un dispositivo en ventanas
   recurrentes ("sin internet 21:00–07:00 de lunes a viernes") o **pausa su internet de un toque**
-  (30 min / 1 h / 2 h, con auto-reanudación), desde su ficha en Dispositivos.
-- **Informes CSV y alertas configurables**: exporta auditoría, inventario y tráfico a CSV (para una
-  revisión o un auditor); eliges **qué eventos de seguridad te avisan y por qué canal** — **push**
-  y/o **email**.
+  (30 min / 1 h / 2 h, con auto-reanudación) — control de **red**, no un temporizador de enchufe.
+- **Presencia y modos del hogar**: llegada/salida de personas por WiFi (sin geofence de nube) y
+  modos (en casa / fuera / noche) que disparan automatizaciones.
+- **Bienestar digital**: uso de internet por persona con su evolución, **con privacidad por rol**.
+- **Seguridad de red**: inventario en tiempo real (ARP/mDNS, OUI, bloqueo), VPN WireGuard propia
+  (con QR), firewall, VLANs, QoS y DNS/bloqueo con **listas por categoría** (publicidad, malware,
+  rastreo). **Arquitectura por drivers**: el mismo código funciona con OpenWrt, pfSense, UniFi,
+  MikroTik, Cisco… sin tocar la API ni el frontend.
+- **Energía**: medición de consumo (W/kWh), panel con histórico y **coste estimado**, con alertas
+  por potencia sostenida o consumo diario.
 
-UI estilo UniFi (tema oscuro, sidebar colapsable, paneles slideover, PWA instalable),
-auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (WebAuthn)**.
+### Lo cotidiano del hogar — suficiente y honesto
+
+- **Hogar inteligente**: **habitaciones** para agrupar dispositivos, **favoritos** de acceso
+  rápido, **escenas** (varios aparatos con un toque), **horarios IoT** (por hora o por evento solar)
+  y **automatizaciones** por frases ("si… entonces…").
+- **Control IoT** unificado: luces, enchufes y sensores desde una sola interfaz.
+- **Cámaras (básico integrado)**: **vídeo en vivo** (HLS), **detección de movimiento** con aviso y
+  foto, **grabación** de clips con línea de tiempo y **modo alarma** del hogar (armar/desarmar con
+  PIN). Para detección por objetos (persona/coche), pre-roll y NVR, KrakenOS se apoyará en
+  **Frigate** en vez de reinventarlo.
+
+### Ecosistemas e interoperabilidad
+
+- **Puente Matter**: expone tus dispositivos a **Alexa / Google / Apple** en LAN, sin nube, y
+  comisiona dispositivos Matter desde la app. Es la vía oficial de «funciona con Alexa/Google»
+  (ver [ADR de voz](docs/adr-voice.md)).
+- **Tokens de API + MQTT saliente**: publica el estado del hogar a un broker MQTT local para
+  integrarlo con **Home Assistant** o Node-RED, con permisos acotados por scope.
+
+### Operación
+
+- **Conexión guiada desde la app**: un asistente paso a paso conecta routers, luces, enchufes y
+  cámaras **sin editar ficheros ni leer documentación externa** — con guías internalizadas, ayuda en
+  cada campo, prueba de conexión y recarga en caliente. Los secretos se **cifran en reposo**.
+- **Multi-usuario y roles del hogar**: admin, miembro, menor, invitado y solo-lectura, con alta,
+  edición, activar/deshabilitar, reset y cambio de contraseña propio.
+- **Copias de seguridad cifradas** con tu contraseña (base de datos + claves + credenciales) e
+  **informes CSV** (auditoría, inventario, tráfico) con alertas configurables por **push**/**email**/
+  **Telegram**.
+
+UI estilo UniFi (tema oscuro, sidebar colapsable, paneles slideover, PWA instalable), **bilingüe
+es/en**, auth con JWT RS256 + refresh tokens rotatorios y **2FA opcional con passkeys (WebAuthn)**.
+
+---
+
+## Qué NO es
+
+Un posicionamiento honesto declara también lo que no se es:
+
+- **No es un sustituto de Home Assistant.** Es un **complemento**: le añade cobertura, planos,
+  parental, presencia y seguridad de red, y le habla por MQTT. No persigue las ~2.800 integraciones
+  de HA.
+- **No es un NVR profesional.** El detector de movimiento propio es básico; para detección por
+  objetos, pre-roll y grabación continua, la vía es **Frigate**.
+- **No es una alarma certificada.** El modo alarma no tiene batería de respaldo ni conexión de
+  emergencia por red móvil: si cae la luz o el servidor, deja de existir. No sustituye a una alarma
+  con central receptora.
+- **No es un asistente de voz de nube.** La voz va por el **puente Matter** (local); no hay skill de
+  Alexa ni Action de Google (rompería «sin puertos expuestos» — ver [ADR de voz](docs/adr-voice.md)).
+- **No es un producto de nube.** Cero telemetría por defecto, cero dependencias de nube de terceros:
+  los datos no salen de tu red.
+
+---
+
+## KrakenOS + Home Assistant
+
+KrakenOS y Home Assistant **conviven, no compiten**. HA es imbatible en amplitud de integraciones;
+KrakenOS aporta lo que HA no tiene de serie:
+
+| | Home Assistant | KrakenOS |
+|---|---|---|
+| Integraciones IoT (amplitud) | **~2.800**, comunidad enorme | las esenciales, guiadas |
+| Cobertura WiFi + plano de la casa | — | **✓** (heatmap RF + import de plano) |
+| Control parental de **red** | parcial (add-ons) | **✓** (por dispositivo, horarios, pausa) |
+| Presencia + bienestar por persona | trackers | **✓** (WiFi local + privacidad por rol) |
+| Seguridad de red (inventario/DNS/VLAN/QoS/firewall/VPN) | parcial | **✓** integrado |
+| Automatizaciones avanzadas | **✓✓** (YAML/Node-RED) | básicas por frases |
+| Cámaras con ML | vía Frigate | básico → **Frigate** (US-214) |
+
+**Cómo conviven:** KrakenOS publica el estado del hogar (luces, enchufes, energía, modo, alarma) a
+un broker MQTT local que HA descubre solo (MQTT Discovery, en camino con la Fase 6). Usas HA para lo
+que HA hace mejor y KrakenOS para su cuña, sin elegir. Ver el
+[ADR de posicionamiento](docs/adr-positioning.md).
 
 ---
 
@@ -102,36 +168,17 @@ pnpm dev:web       # solo web (requiere el agente en :3001)
 
 ## Producción
 
-### Docker (la vía más simple)
+**Requisitos del servidor:** Ubuntu/Debian (o similar) en **x86-64 o ARM64** (Raspberry Pi 4/5,
+mini PC), **Node.js ≥ 20**, **~1 GB de RAM** y **~2 GB de disco** libres (la base SQLite crece con
+el histórico de tráfico/energía y la retención acota su tamaño). Para las funciones privilegiadas
+(VPN/firewall/QoS) y de cámara hacen falta `wireguard-tools`, `iptables`, `iproute2` y `ffmpeg` en
+el host.
 
-```bash
-docker compose up -d
-```
+### Bare-metal / systemd (vía soportada)
 
-Por defecto `docker-compose.yml` **construye la imagen localmente**. Para usar la imagen ya
-publicada en **GHCR**, apunta el servicio a `ghcr.io/flores-rivera-24/krakenos:latest`
-(descomenta la línea `image:` en el compose).
-
-Levanta una imagen **todo-en-uno** (API + UI en `:3001`), como usuario **no root**, con
-**todo el estado persistente** (base de datos, claves, credenciales) en el volumen
-`krakenos-data`. Genera las claves y aplica las migraciones al arrancar. Conecta tu hardware
-**desde la app** (no hace falta editar variables). Al primer arranque,
-`docker compose logs krakenos` imprime una **URL de configuración con un QR** (token ya
-incrustado) para crear el administrador — ábrela o escanéala con el móvil en la misma red.
-
-> El contenedor publica en `:3001` de la LAN (el modelo es LAN + WireGuard para remoto). Si el
-> host es accesible desde internet, no expongas la UI directamente: bind a `127.0.0.1` y detrás
-> de WireGuard o un proxy TLS. Ver comentarios en `docker-compose.yml`.
-
-> ⚠️ **Limitaciones en Docker:** la imagen por defecto **no** incluye `sudo`/`wg`/`iptables`/`tc`/
-> `ffmpeg`, así que la VPN WireGuard, el firewall, el QoS, el streaming/grabación de cámaras RTSP y
-> el auto-descubrimiento por UDP (mDNS/SSDP) **no funcionan** dentro del contenedor. Para esas
-> funciones usa una instalación bare-metal/systemd. Detalle en [`docs/docker-limitations.md`](docs/docker-limitations.md).
-
-### Sin Docker (Node)
-
-En producción **el agente sirve también el frontend** (API + UI en un único puerto),
-así que todo cabe en un comando:
+Es la instalación **recomendada para producción**: es la única que opera **todas** las funciones,
+incluidas VPN WireGuard, firewall, QoS, cámaras RTSP y auto-descubrimiento. En producción **el
+agente sirve también el frontend** (API + UI en un único puerto), así que arranca con un comando:
 
 ```bash
 pnpm prod          # = ./scripts/prod.sh
@@ -143,7 +190,8 @@ API+UI en `PORT` (por defecto `:3001`). El primer arranque imprime en el log una
 configuración con QR** (token incrustado) y abre el wizard `/setup` para crear el administrador.
 
 **Servicio persistente (systemd):** usa `apps/agent/scripts/krakenos.service.example`
-(instrucciones en su cabecera), luego `systemctl enable --now krakenos`.
+(instrucciones en su cabecera), luego `systemctl enable --now krakenos`. Para las operaciones
+privilegiadas, instala el helper sudoers (ver [Operaciones privilegiadas](#operaciones-privilegiadas-helper-sudoers)).
 
 **HTTPS opcional en la LAN:**
 
@@ -151,6 +199,38 @@ configuración con QR** (token incrustado) y abre el wizard `/setup` para crear 
 cd apps/agent && ./scripts/gen-cert.sh   # cert autofirmado en ./certs
 # en .env: HTTPS_ENABLED=true
 ```
+
+> Un **instalador nativo de un comando** (`curl | bash`, systemd + helper + deps) está en camino
+> (Fase 6, US-216) y será la puerta de entrada recomendada.
+
+### Docker (demo / evaluación rápida)
+
+Docker es la vía más rápida para **probar** KrakenOS, pero **no** es una instalación de producción
+completa: la imagen es mínima y no privilegiada, así que **varias funciones insignia no operan**
+dentro del contenedor (ver aviso abajo). Para producción real, usa bare-metal/systemd.
+
+```bash
+docker compose up -d
+```
+
+Por defecto `docker-compose.yml` **construye la imagen localmente**. Para usar la imagen ya
+publicada en **GHCR**, apunta el servicio a `ghcr.io/flores-rivera-24/krakenos:latest`
+(descomenta la línea `image:` en el compose).
+
+Levanta una imagen **todo-en-uno** (API + UI en `:3001`), como usuario **no root**, con
+**todo el estado persistente** (base de datos, claves, credenciales) en el volumen
+`krakenos-data`. Genera las claves y aplica las migraciones al arrancar. Al primer arranque,
+`docker compose logs krakenos` imprime una **URL de configuración con un QR** (token ya
+incrustado) para crear el administrador — ábrela o escanéala con el móvil en la misma red.
+
+> El contenedor publica en `:3001` de la LAN (el modelo es LAN + WireGuard para remoto). Si el
+> host es accesible desde internet, no expongas la UI directamente: bind a `127.0.0.1` y detrás
+> de WireGuard o un proxy TLS. Ver comentarios en `docker-compose.yml`.
+
+> ⚠️ **Limitaciones en Docker:** la imagen por defecto **no** incluye `sudo`/`wg`/`iptables`/`tc`/
+> `ffmpeg`, así que la VPN WireGuard, el firewall, el QoS, el streaming/grabación de cámaras RTSP y
+> el auto-descubrimiento por UDP (mDNS/SSDP) **no funcionan** dentro del contenedor. Para esas
+> funciones usa una instalación bare-metal/systemd. Detalle en [`docs/docker-limitations.md`](docs/docker-limitations.md).
 
 ---
 

@@ -1,5 +1,6 @@
 import type { MatterBridgeState } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
@@ -86,6 +87,9 @@ export function MatterBridgeCard({ isAdmin }: MatterBridgeCardProps) {
 
         {state.enabled && (
           <>
+            {/* Honestidad (US-212): el asistente marcará el hub como «no certificado». */}
+            <Callout variant="warning">{t('matter.certWarning')}</Callout>
+
             {/* Comisionado: QR + código manual para añadirlo al asistente. */}
             {state.qrDataUrl && (
               <div className="flex flex-col items-center gap-2 rounded-md border border-kr p-4">

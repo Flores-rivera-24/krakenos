@@ -1,38 +1,56 @@
-# Cobertura honesta (US-99)
+# Cobertura honesta (US-99 · US-219)
 
 La CI corre `pnpm test:coverage` (v8). Este documento registra los **números
 reales**, las **zonas frías** (qué clase de código queda sin probar y por qué) y
 la política de umbrales. La meta no es un porcentaje bonito: es saber qué ramas
 de error están sin ejercer y cuáles no son testeables aquí.
 
-## Números reales (medidos con `all: false`)
+## Números reales
 
-`all: false` mide solo los ficheros que los tests importan, no el árbol entero;
-así el porcentaje refleja "de lo que se usa, cuánto se ejerce", sin inflar ni con
-entrypoints de efectos secundarios ni con ficheros de hardware que nadie carga.
+**El agente mide con `all: true` (US-219):** cuenta **todo** `src/**`, no solo lo
+que los tests importan — incluidos los transportes de hardware que nunca se cargan
+aquí. El número refleja la realidad del árbol, no "de lo que se usa, cuánto se
+ejerce". Se excluyen solo los dos **entrypoints** con efectos secundarios
+(`src/index.ts` arranca/escucha; `src/update-runner.ts` es el proceso actualizador
+aparte), no unit-testables sin arrancar el proceso. Sorpresa honesta: medido de
+verdad, el árbol está **mejor** cubierto que el 85% decorativo anterior — la suite
+ejercita casi todo, y el hardware sin test es una fracción pequeña.
 
-| Paquete | Statements | Branches | Functions | Lines |
-|---------|-----------:|---------:|----------:|------:|
-| **agente** (`apps/agent`) | ~88.7% | ~84.4% | ~87.2% | ~88.7% |
-| **web** (`apps/web`)      | ~88.7% | ~83.6% | ~67.0% | ~88.7% |
+**La web sigue con `all: false`** (mide lo que los tests importan). Migrarla a
+`all: true` es deuda aparte (arrastraría muchos componentes de widgets/páginas no
+testados; ver la brecha de i18n de widgets del dashboard) — pendiente de una US
+futura.
 
-Tests tras US-99: **963 agente + 251 web = 1214** (US-98 dejó el agente en 958;
-US-99 suma 5 tests dirigidos a ramas de error). Suite completa en verde.
+| Paquete | Medición | Statements | Branches | Functions | Lines |
+|---------|----------|-----------:|---------:|----------:|------:|
+| **agente** (`apps/agent`) | `all: true` | **91.4%** | **85.3%** | **92.4%** | **91.4%** |
+| **web** (`apps/web`)      | `all: false` | ~88% | ~79.5% | ~65% | ~88% |
+
+Medido el 2026-07-13 (US-219): agente **1959 tests** (213 ficheros), web **599
+tests** (114 ficheros). Suite completa en verde.
 
 ## Umbrales en CI: un suelo, no un objetivo
 
-`vitest.config.ts` (agente y web) fija `coverage.thresholds` **por debajo** de los
-números reales:
+`vitest.config.ts` (agente y web) fija `coverage.thresholds` como **suelo
+anti-regresión** ~1–2 pts **por debajo** del número real medido (no un objetivo
+decorativo del 85%):
 
-- **agente**: stmts 85 · branches 80 · funcs 83 · lines 85
-- **web**: stmts 85 · branches 78 · funcs **60** · lines 85
+- **agente** (`all: true`): stmts **89** · branches **83** · funcs **90** · lines **89**
+- **web** (`all: false`): stmts 85 · branches 78 · funcs **60** · lines 85
 
-Son un **suelo anti-regresión**: avisan si una rama hoy bien probada deja de
-estarlo, no persiguen subir el porcentaje. Se fijan holgados a propósito para que
-**no bloqueen** por los caminos de hardware ausentes (abajo) ni por la
-variabilidad de `all: false`. El suelo de *funciones* de la web es más bajo
-porque muchos componentes exponen handlers/callbacks que no todos los tests
-disparan (un valor real ~67%).
+Avisan si una rama hoy bien probada deja de estarlo. El margen de ~1–2 pts absorbe
+la variabilidad del árbol completo y **no bloquea** por los caminos de hardware
+ausentes (abajo, US-86). El suelo de *funciones* de la web es más bajo porque
+muchos componentes exponen handlers/callbacks que no todos los tests disparan.
+
+### Plan de subida gradual (agente)
+
+El suelo es de no-regresión, no un techo: cada vez que una tanda añada tests que
+suban el número real de forma estable, **subir el suelo detrás** (dejando el
+mismo margen de ~1–2 pts). Prioridad al subir: ramas de **riesgo** (auth, update,
+egress, integraciones), no relleno. Los transportes de hardware (`*.transport.ts`)
+solo suben cuando US-86 aporte verificación real o tests de contrato adicionales;
+no forzar test-por-cobertura sobre ellos.
 
 ## Zonas frías — por categoría
 
@@ -69,6 +87,12 @@ Ramas de error que el mock siempre-éxito no tocaba, ya con test dirigido:
 - **`/system/connectivity-test`** (US-99, `system-connectivity.routes.test.ts`):
   con `FailingDriver`, las ramas `ok:false` (healthcheck `false`) y `catch`
   (healthcheck lanza) que el mock —siempre `true`— nunca alcanzaba.
+- **US-219 (los 2–3 peores huecos de riesgo al pasar a `all: true`):**
+  `setup-url.ts::firstLanIpv4` (detección de IP LAN al arranque, mock de
+  `os.networkInterfaces`); `update-spawner.ts::createUpdateSpawner` (lanza el
+  actualizador **detached** + `unref`, mock de `child_process`, US-190);
+  `test-connection.ts::testConnection` (prueba transitoria mock de los 8 dominios
+  + dominio desconocido → fallo legible, US-142). +12 tests.
 
 ### 3. Frías restantes de bajo riesgo (deuda consciente)
 

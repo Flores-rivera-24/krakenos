@@ -72,6 +72,8 @@ describe('MatterBridgeCard (US-171)', () => {
     renderCard(true);
     expect(await screen.findByAltText(/QR de emparejamiento/)).toBeInTheDocument();
     expect(screen.getByText('3497-011-2332')).toBeInTheDocument();
+    // US-212: aviso de expectativa sobre la advertencia «no certificado».
+    expect(screen.getByText(/no está certificado/)).toBeInTheDocument();
   });
 
   it('un viewer ve el estado pero no puede togglear (controles deshabilitados)', async () => {

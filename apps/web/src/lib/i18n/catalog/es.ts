@@ -801,6 +801,8 @@ export const es = {
   'matter.qrAlt': 'Código QR de emparejamiento Matter',
   'matter.manualCode': 'Código manual',
   'matter.commissionHint': 'Añade un «hub» o «dispositivo Matter» en tu app de Alexa/Google/Apple y escanea este QR (o teclea el código).',
+  'matter.certWarning':
+    'Al escanear el QR, Alexa/Google/Apple pueden avisar de que el dispositivo «no está certificado». Es normal: KrakenOS usa un identificador de prueba. Puedes continuar; algunos ecosistemas pueden limitar ciertas funciones.',
   'matter.devices': 'Dispositivos a exponer',
   'matter.noDevices': 'No hay dispositivos controlables que exponer todavía.',
   'matter.expose': 'Exponer',

@@ -1,6 +1,7 @@
 import type { AlarmConfig, Camera, IotDevice, UpdateAlarmConfigRequest } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
@@ -137,6 +138,12 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
         <p className="text-kr-sm text-kr-secondary">Cargando…</p>
       ) : (
         <div className="space-y-5">
+          <Callout variant="warning" title="No sustituye una alarma certificada">
+            La alarma del hogar es un extra de aviso, no un sistema de seguridad profesional: no tiene
+            batería de respaldo ni conexión de emergencia por red móvil, y deja de funcionar si se va
+            la luz o se apaga el servidor. No la uses como tu única protección.
+          </Callout>
+
           <div className="space-y-1">
             <Label htmlFor="alarm-siren">Sirena (enchufe que se enciende al disparar)</Label>
             <select
