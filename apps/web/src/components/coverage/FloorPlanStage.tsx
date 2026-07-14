@@ -18,6 +18,8 @@ interface Props {
   /** Mapa de calor raster a pintar bajo el plano (predicho o medido), o `null`. */
   heatmap?: CoverageHeatmap | null;
   walls: Wall[];
+  /** Paredes propuestas por la detección (US-195), pintadas punteadas hasta aceptar. */
+  proposedWalls?: { x1: number; y1: number; x2: number; y2: number }[];
   accessPoints: ApPlacement[];
   surveySamples?: SurveySample[];
   tool: CoverageTool;
@@ -66,6 +68,7 @@ export function FloorPlanStage({
   plan,
   heatmap,
   walls,
+  proposedWalls,
   accessPoints,
   surveySamples,
   tool,
@@ -259,6 +262,22 @@ export function FloorPlanStage({
             >
               <title>{WALL_MATERIAL_LABELS[w.material]}</title>
             </line>
+          ))}
+
+          {/* Paredes propuestas por la detección (US-195): punteadas, sin confirmar */}
+          {proposedWalls?.map((w, i) => (
+            <line
+              key={`proposed-${i}`}
+              x1={w.x1 * pxPerM}
+              y1={w.y1 * pxPerM}
+              x2={w.x2 * pxPerM}
+              y2={w.y2 * pxPerM}
+              stroke="var(--kr-accent)"
+              strokeWidth={2}
+              strokeDasharray="5 4"
+              strokeLinecap="round"
+              opacity={0.85}
+            />
           ))}
 
           {/* Borrador de pared en curso */}
