@@ -13,6 +13,7 @@ import { MockDriver } from '../../src/drivers/mock.driver.js';
 import { wrapDriverErrors } from '../../src/drivers/driver-error.js';
 import { auditRoutes } from '../../src/modules/audit/audit.routes.js';
 import { authRoutes } from '../../src/modules/auth/auth.routes.js';
+import { tokensRoutes } from '../../src/modules/tokens/tokens.routes.js';
 import { webauthnRoutes } from '../../src/modules/webauthn/webauthn.routes.js';
 import { BackupCodeService } from '../../src/webauthn/backup-codes.service.js';
 import { WebAuthnService } from '../../src/webauthn/webauthn.service.js';
@@ -52,6 +53,9 @@ import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
 import { trafficRoutes } from '../../src/modules/traffic/traffic.routes.js';
 import { EnergyService } from '../../src/modules/energy/energy.service.js';
 import { energyRoutes } from '../../src/modules/energy/energy.routes.js';
+import { interopRoutes } from '../../src/modules/interop/interop.routes.js';
+import { MqttPublisher } from '../../src/modules/interop/mqtt-publisher.service.js';
+import { compatibilityRoutes } from '../../src/modules/compatibility/compatibility.routes.js';
 import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
 import { energyAlertsRoutes } from '../../src/modules/energy/energy-alerts.routes.js';
 import { alarmRoutes } from '../../src/modules/alarm/alarm.routes.js';
@@ -138,6 +142,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     app.decorate('push', pushService);
     await app.register(setupRoutes, { prefix: '/api/setup' });
     await app.register(authRoutes, { prefix: '/api/auth' });
+    await app.register(tokensRoutes, { prefix: '/api/tokens' });
     await app.register(usersRoutes, { prefix: '/api/users' });
     await app.register(webauthnRoutes, {
       prefix: '/api/webauthn',
@@ -208,6 +213,17 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     // Energía (US-181/182): sin arrancar timers; los tests consultan vía servicio.
     const energyService = new EnergyService(app, new MockIotManager());
     await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
+    await app.register(compatibilityRoutes, { prefix: '/api/compatibility' });
+    // Interop MQTT (US-174): publicador con transporte falso (no conecta a broker).
+    await app.register(interopRoutes, {
+      prefix: '/api/interop',
+      publisher: new MqttPublisher({
+        prisma: app.prisma,
+        secretbox: createSecretbox(generateSecretboxKey()),
+        snapshot: async () => ({ iot: [], energy: null, devicesOnline: 0 }),
+        transportFactory: () => ({ subscribe: async () => {}, publish: async () => {}, dispose: async () => {} }),
+      }),
+    });
     // Alertas de energía (US-183): sin arrancar el timer; el tick se invoca a mano.
     await app.register(energyAlertsRoutes, {
       prefix: '/api/energy/alerts',
@@ -273,6 +289,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
 /** Vacía todas las tablas para aislar cada test. */
 export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.refreshToken.deleteMany();
+  await app.prisma.apiToken.deleteMany();
   await app.prisma.auditLog.deleteMany();
   await app.prisma.trafficSample.deleteMany();
   await app.prisma.deviceTrafficSample.deleteMany();

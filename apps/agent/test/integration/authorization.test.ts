@@ -134,6 +134,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/system/restore', payload: { passphrase: 'passphrase-123', data: 'AAAA' } },
   { method: 'POST', url: '/api/system/update/apply', payload: {} },
   { method: 'POST', url: '/api/system/support-bundle', payload: {} },
+  // interop MQTT (US-174)
+  { method: 'PUT', url: '/api/interop/mqtt', payload: { enabled: false } },
   // users (US-101)
   {
     method: 'POST',
@@ -168,6 +170,9 @@ const AUTHED_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/webauthn/backup-codes' },
   { method: 'PATCH', url: '/api/webauthn/credentials/x', payload: { name: 'Nuevo' } },
   { method: 'DELETE', url: '/api/webauthn/credentials/x' },
+  // tokens de API: gestionar los propios (US-174, autoservicio)
+  { method: 'POST', url: '/api/tokens', payload: { name: 'HA', scopes: ['home.view'] } },
+  { method: 'DELETE', url: '/api/tokens/x' },
   // favoritos: gestionar los propios (US-170)
   { method: 'POST', url: '/api/favorites', payload: { kind: 'iot', ref: 'light-salon' } },
   { method: 'DELETE', url: '/api/favorites/x' },

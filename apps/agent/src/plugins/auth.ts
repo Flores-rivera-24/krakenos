@@ -1,6 +1,7 @@
 import fastifyJwt from '@fastify/jwt';
 import type {
   AccessTokenClaims,
+  ApiTokenScope,
   MfaPendingTokenClaims,
   RefreshTokenClaims,
   StreamTokenClaims,
@@ -8,6 +9,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { hashApiToken, isApiTokenValue, parseScopes } from '../auth/api-token.js';
 import { type Capability, can } from '../auth/capabilities.js';
 import { Keyring } from '../auth/keyring.js';
 import { env } from '../config/env.js';
@@ -34,6 +36,15 @@ declare module '@fastify/jwt' {
 }
 
 declare module 'fastify' {
+  interface FastifyRequest {
+    /**
+     * Scopes del token de API (US-174) si la petición se autenticó con uno; queda
+     * `undefined` en las sesiones normales. Su presencia marca la petición como
+     * "de token": las rutas de administración (`requireRole`/`requireActiveAdmin`)
+     * la rechazan y `requireCapability` la acota a estos scopes.
+     */
+    apiScopes?: ApiTokenScope[];
+  }
   interface FastifyInstance {
     /** preHandler: exige un access token válido. */
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
@@ -131,18 +142,56 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
     });
   });
 
+  const unauthorized = (reply: FastifyReply) =>
+    reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Token ausente o inválido' });
+
+  /**
+   * Autentica una petición con un **token de API** (US-174): opaco, resuelto por
+   * su hash en la DB. Popula `req.user` (con el rol ACTUAL del emisor, no el de la
+   * foto: si su rol bajó, sus capacidades bajan) y `req.apiScopes` (re-intersectado
+   * con el rol actual). Un token expirado o de un usuario inactivo → 401.
+   */
+  const authenticateApiToken = async (req: FastifyRequest, reply: FastifyReply, raw: string) => {
+    const row = await app.prisma.apiToken.findUnique({ where: { tokenHash: hashApiToken(raw) } });
+    if (!row) return unauthorized(reply);
+    if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return unauthorized(reply);
+    const owner = await app.prisma.user.findUnique({
+      where: { id: row.userId },
+      select: { email: true, role: true, status: true },
+    });
+    if (!owner || owner.status !== 'active') return unauthorized(reply);
+    const role = owner.role as UserRole;
+    req.user = { sub: row.userId, email: owner.email, role, type: 'access', iat: 0, exp: 0 };
+    // Los scopes guardados se re-acotan al rol vigente (nunca lo superan).
+    req.apiScopes = parseScopes(row.scopes).filter((s) => can(role, s as Capability));
+    // Marca de último uso, best-effort (no bloquea ni rompe la petición).
+    void app.prisma.apiToken
+      .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
+      .catch(() => undefined);
+  };
+
   app.decorate('authenticate', async (req: FastifyRequest, reply: FastifyReply) => {
+    let raw: string;
+    try {
+      raw = app.jwt.lookupToken(req);
+    } catch {
+      return unauthorized(reply);
+    }
+
+    // Token de API (US-174): opaco, no es un JWT — se resuelve por hash en la DB.
+    if (isApiTokenValue(raw)) {
+      return authenticateApiToken(req, reply, raw);
+    }
+
+    // JWT de sesión.
     let claims: AccessTokenClaims;
     try {
-      // Extrae el Bearer y verifica con la clave que indique el `kid` (incluye la
-      // previa durante el solape de una rotación). Popula `req.user` como jwtVerify.
-      claims = app.verifyToken<AccessTokenClaims>(app.jwt.lookupToken(req));
+      // Verifica con la clave que indique el `kid` (incluye la previa durante el
+      // solape de una rotación). Popula `req.user` como jwtVerify.
+      claims = app.verifyToken<AccessTokenClaims>(raw);
       req.user = claims;
     } catch {
-      return reply.code(401).send({
-        code: 'AUTH_UNAUTHORIZED',
-        message: 'Token ausente o inválido',
-      });
+      return unauthorized(reply);
     }
     if (claims.type !== 'access') {
       return reply.code(401).send({
@@ -152,10 +201,19 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
     }
   });
 
+  /** 403 para un token de API en una ruta de administración (US-174). */
+  const apiTokenForbidden = (reply: FastifyReply) =>
+    reply.code(403).send({
+      code: 'API_TOKEN_FORBIDDEN',
+      message: 'Los tokens de API no pueden administrar; usa una sesión.',
+    });
+
   app.decorate('requireRole', (role: UserRole) => {
     return async (req: FastifyRequest, reply: FastifyReply) => {
       await app.authenticate(req, reply);
       if (reply.sent) return;
+      // Un token de API NUNCA administra, aunque su emisor sea admin (US-174).
+      if (req.apiScopes) return apiTokenForbidden(reply);
       if (req.user.role !== role) {
         return reply.code(403).send({
           code: 'AUTH_FORBIDDEN',
@@ -169,7 +227,12 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
     return async (req: FastifyRequest, reply: FastifyReply) => {
       await app.authenticate(req, reply);
       if (reply.sent) return;
-      if (!can(req.user.role, capability)) {
+      // Con token de API, la capacidad debe estar entre sus scopes (ya acotados al
+      // rol vigente). Con sesión, basta la capacidad del rol.
+      const allowed = req.apiScopes
+        ? req.apiScopes.includes(capability as ApiTokenScope)
+        : can(req.user.role, capability);
+      if (!allowed) {
         return reply.code(403).send({
           code: 'AUTH_FORBIDDEN',
           message: 'Tu rol no permite esta acción',
@@ -185,6 +248,8 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
   app.decorate('requireActiveAdmin', async (req: FastifyRequest, reply: FastifyReply) => {
     await app.authenticate(req, reply);
     if (reply.sent) return;
+    // Un token de API nunca opera gestión sensible (backup/restore/usuarios), US-174.
+    if (req.apiScopes) return apiTokenForbidden(reply);
     const actor = await app.prisma.user.findUnique({
       where: { id: req.user.sub },
       select: { role: true, status: true },
