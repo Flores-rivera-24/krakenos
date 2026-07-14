@@ -80,6 +80,7 @@ import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
+import { metricsPlugin } from '../../src/plugins/metrics.js';
 import { healthRoutes } from '../../src/plugins/health.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
 import { socketioPlugin } from '../../src/plugins/socketio.js';
@@ -122,6 +123,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   await app.register(cookie); // refresh token en cookie httpOnly (US-91)
   await app.register(prismaPlugin);
   await app.register(auditPlugin);
+  await app.register(metricsPlugin);
   await app.register(authPlugin);
   await app.register(socketioPlugin);
   await app.register(healthRoutes);

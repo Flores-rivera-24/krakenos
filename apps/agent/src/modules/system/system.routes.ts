@@ -27,6 +27,7 @@ import {
   backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
+  metricsSchema,
   regenKeysSchema,
   restoreSchema,
   systemInfoSchema,
@@ -84,6 +85,9 @@ function readAgentVersion(): string {
 }
 
 const AGENT_VERSION = readAgentVersion();
+
+/** No sondear el driver para métricas más de una vez cada 30 s (US-191). */
+const DRIVER_SAMPLE_THROTTLE_MS = 30_000;
 
 /**
  * Comprobador de actualizaciones compartido (US-116). Instancia única a nivel de
@@ -150,6 +154,32 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
     readStats(),
   );
+
+  // Observabilidad interna (US-191): métricas HTTP/loop/memoria + latencia del
+  // driver. **Lectura autenticada** (cualquier rol); `/health` sigue público y
+  // mínimo. Muestrea la latencia del driver con throttle para no martillear el
+  // hardware real en cada poll del panel.
+  let lastDriverPing = 0;
+  app.get('/metrics', { preHandler: app.authenticate, schema: metricsSchema }, async () => {
+    const now = Date.now();
+    if (now - lastDriverPing > DRIVER_SAMPLE_THROTTLE_MS) {
+      lastDriverPing = now;
+      const start = Date.now();
+      let ok = true;
+      try {
+        ok = await driver.healthcheck();
+      } catch {
+        ok = false;
+      }
+      app.metrics.recordOp(`driver:${driver.kind}`, Date.now() - start, ok);
+    }
+    const mem = process.memoryUsage();
+    return app.metrics.snapshot({
+      uptimeSeconds: Math.round(process.uptime()),
+      memory: { rssBytes: mem.rss, heapUsedBytes: mem.heapUsed, heapTotalBytes: mem.heapTotal },
+      websocketClients: app.io?.sockets?.sockets?.size ?? 0,
+    });
+  });
 
   // Comprobación de actualizaciones (US-116). Lectura autenticada; opt-in por
   // `UPDATE_CHECK_REPO`. Sin repo, no hay llamada externa (`enabled:false`).

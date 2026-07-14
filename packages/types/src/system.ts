@@ -169,6 +169,43 @@ export interface UpdatePlan {
   lastResult: UpdateResult | null;
 }
 
+/** Latencia/errores de una operación con nombre (p. ej. un manager) (US-191). */
+export interface ManagerMetric {
+  name: string;
+  count: number;
+  errors: number;
+  avgLatencyMs: number;
+  maxLatencyMs: number;
+}
+
+/**
+ * Instantánea de las métricas internas del agente (US-191). Solo lectura
+ * autenticada; efímera (se reinicia con el proceso). `/health` sigue mínimo.
+ */
+export interface MetricsSnapshot {
+  uptimeSeconds: number;
+  memory: {
+    rssBytes: number;
+    heapUsedBytes: number;
+    heapTotalBytes: number;
+  };
+  http: {
+    total: number;
+    errors: number;
+    errorRate: number;
+    avgLatencyMs: number;
+    p95LatencyMs: number;
+    inFlight: number;
+  };
+  eventLoop: {
+    lagMs: number;
+    maxLagMs: number;
+  };
+  websocketClients: number;
+  managers: ManagerMetric[];
+  timestamp: IsoDateTime;
+}
+
 /** Respuesta de `POST /api/system/update/apply` (US-190). */
 export interface ApplyUpdateResponse {
   /** `true` si se lanzó el proceso de actualización (solo `systemd`). */

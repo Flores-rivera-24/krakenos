@@ -143,6 +143,22 @@ export const es = {
   'settings.update.lastRolledBack': 'Última actualización revertida a {from} (la nueva versión falló).',
   'settings.update.lastFailed': 'La última actualización falló.',
 
+  // --- Ajustes → Salud del sistema (US-191) ---
+  'settings.health.title': 'Salud del sistema',
+  'settings.health.loading': 'Cargando métricas…',
+  'settings.health.error': 'No se pudo cargar las métricas.',
+  'settings.health.uptime': 'Tiempo activo',
+  'settings.health.memory': 'Memoria',
+  'settings.health.requests': 'Peticiones',
+  'settings.health.errorRate': 'Tasa de error',
+  'settings.health.latency': 'Latencia (media / p95)',
+  'settings.health.inFlight': 'En curso',
+  'settings.health.loopLag': 'Retraso del bucle',
+  'settings.health.wsClients': 'Clientes en tiempo real',
+  'settings.health.managers': 'Managers',
+  'settings.health.noManagers': 'Aún sin muestras de manager.',
+  'settings.health.opsCount': '{count} llamadas',
+
   // --- Dashboard (US-160) ---
   'dashboard.title': 'Dashboard',
   'dashboard.realtime': 'En tiempo real · conectado',

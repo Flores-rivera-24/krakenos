@@ -178,6 +178,73 @@ export const updateApplySchema = {
   },
 } as const;
 
+/** `GET /api/system/metrics` — observabilidad interna (US-191, lectura auth). */
+export const metricsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        uptimeSeconds: { type: 'number' },
+        memory: {
+          type: 'object',
+          properties: {
+            rssBytes: { type: 'number' },
+            heapUsedBytes: { type: 'number' },
+            heapTotalBytes: { type: 'number' },
+          },
+          required: ['rssBytes', 'heapUsedBytes', 'heapTotalBytes'],
+        },
+        http: {
+          type: 'object',
+          properties: {
+            total: { type: 'number' },
+            errors: { type: 'number' },
+            errorRate: { type: 'number' },
+            avgLatencyMs: { type: 'number' },
+            p95LatencyMs: { type: 'number' },
+            inFlight: { type: 'number' },
+          },
+          required: ['total', 'errors', 'errorRate', 'avgLatencyMs', 'p95LatencyMs', 'inFlight'],
+        },
+        eventLoop: {
+          type: 'object',
+          properties: {
+            lagMs: { type: 'number' },
+            maxLagMs: { type: 'number' },
+          },
+          required: ['lagMs', 'maxLagMs'],
+        },
+        websocketClients: { type: 'number' },
+        managers: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              name: { type: 'string' },
+              count: { type: 'number' },
+              errors: { type: 'number' },
+              avgLatencyMs: { type: 'number' },
+              maxLatencyMs: { type: 'number' },
+            },
+            required: ['name', 'count', 'errors', 'avgLatencyMs', 'maxLatencyMs'],
+          },
+        },
+        timestamp: { type: 'string', format: 'date-time' },
+      },
+      required: [
+        'uptimeSeconds',
+        'memory',
+        'http',
+        'eventLoop',
+        'websocketClients',
+        'managers',
+        'timestamp',
+      ],
+    },
+  },
+} as const;
+
 /** `GET /api/system/update-check` — estado de actualizaciones (US-116). */
 export const updateCheckSchema = {
   response: {

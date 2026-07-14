@@ -136,6 +136,22 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.lastRolledBack': 'Last update rolled back to {from} (the new version failed).',
   'settings.update.lastFailed': 'The last update failed.',
 
+  // --- Settings → System health (US-191) ---
+  'settings.health.title': 'System health',
+  'settings.health.loading': 'Loading metrics…',
+  'settings.health.error': 'Could not load metrics.',
+  'settings.health.uptime': 'Uptime',
+  'settings.health.memory': 'Memory',
+  'settings.health.requests': 'Requests',
+  'settings.health.errorRate': 'Error rate',
+  'settings.health.latency': 'Latency (avg / p95)',
+  'settings.health.inFlight': 'In flight',
+  'settings.health.loopLag': 'Event loop lag',
+  'settings.health.wsClients': 'Real-time clients',
+  'settings.health.managers': 'Managers',
+  'settings.health.noManagers': 'No manager samples yet.',
+  'settings.health.opsCount': '{count} calls',
+
   // --- Dashboard ---
   'dashboard.title': 'Dashboard',
   'dashboard.realtime': 'Real time · connected',

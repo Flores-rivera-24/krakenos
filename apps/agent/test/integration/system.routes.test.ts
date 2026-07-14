@@ -299,4 +299,33 @@ describe('rutas de sistema', () => {
     const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
     expect(audit).not.toBeNull();
   });
+
+  // Observabilidad (US-191): lectura autenticada; /health sigue mínimo.
+  it('GET /api/system/metrics exige autenticación (401 sin token)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/system/metrics' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('GET /api/system/metrics devuelve métricas reales (cualquier rol autenticado)', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const headers = authHeader(signAccess(app, viewer));
+    // Genera algo de tráfico para que las métricas HTTP reflejen estado real.
+    await app.inject({ method: 'GET', url: '/api/system/stats', headers });
+
+    const res = await app.inject({ method: 'GET', url: '/api/system/metrics', headers });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.http.total).toBeGreaterThan(0);
+    expect(typeof body.memory.rssBytes).toBe('number');
+    expect(typeof body.eventLoop.lagMs).toBe('number');
+    expect(body.websocketClients).toBe(0);
+    // La ruta muestrea el driver → aparece como manager.
+    expect(body.managers.some((m: { name: string }) => m.name.startsWith('driver:'))).toBe(true);
+  });
+
+  it('/health público sigue mínimo (no filtra métricas ni uptime)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/health' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'ok' });
+  });
 });
