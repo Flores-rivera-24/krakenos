@@ -152,6 +152,23 @@ export const en: Record<TranslationKey, string> = {
   'settings.health.noManagers': 'No manager samples yet.',
   'settings.health.opsCount': '{count} calls',
 
+  // --- Settings → Support & diagnostics (US-192) ---
+  'settings.support.title': 'Support & diagnostics',
+  'settings.support.telemetry': 'Anonymous telemetry',
+  'settings.support.telemetryDesc':
+    'Aggregate counts, no personal data. Off by default; it never leaves your server unless you share the bundle.',
+  'settings.support.enable': 'Enable',
+  'settings.support.disable': 'Disable',
+  'settings.support.telemetryOn': 'Telemetry enabled',
+  'settings.support.telemetryOff': 'Telemetry disabled',
+  'settings.support.telemetryError': 'Could not change telemetry',
+  'settings.support.counts': '{devices} devices · {automations} automations',
+  'settings.support.downloadDesc':
+    'A file with your sanitized configuration (no secrets or personal data) to diagnose issues.',
+  'settings.support.download': 'Download support bundle',
+  'settings.support.downloading': 'Generating…',
+  'settings.support.error': 'Could not generate the support bundle',
+
   // --- Dashboard ---
   'dashboard.title': 'Dashboard',
   'dashboard.realtime': 'Real time · connected',

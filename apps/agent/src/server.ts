@@ -260,7 +260,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
-  await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
+  await app.register(systemRoutes, {
+    prefix: '/api/system',
+    driver,
+    inventoryService,
+    integrationStore,
+  });
   await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   // Solo si hay store Tuya (config presente); con `env.iot.tuya` siempre lo hay.

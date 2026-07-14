@@ -159,6 +159,23 @@ export const es = {
   'settings.health.noManagers': 'Aún sin muestras de manager.',
   'settings.health.opsCount': '{count} llamadas',
 
+  // --- Ajustes → Soporte y diagnóstico (US-192) ---
+  'settings.support.title': 'Soporte y diagnóstico',
+  'settings.support.telemetry': 'Telemetría anónima',
+  'settings.support.telemetryDesc':
+    'Recuentos agregados, sin datos personales. Desactivada por defecto; nunca sale de tu servidor salvo que compartas el paquete.',
+  'settings.support.enable': 'Activar',
+  'settings.support.disable': 'Desactivar',
+  'settings.support.telemetryOn': 'Telemetría activada',
+  'settings.support.telemetryOff': 'Telemetría desactivada',
+  'settings.support.telemetryError': 'No se pudo cambiar la telemetría',
+  'settings.support.counts': '{devices} dispositivos · {automations} automatizaciones',
+  'settings.support.downloadDesc':
+    'Un archivo con la configuración sanitizada (sin secretos ni datos personales) para diagnosticar problemas.',
+  'settings.support.download': 'Descargar paquete de soporte',
+  'settings.support.downloading': 'Generando…',
+  'settings.support.error': 'No se pudo generar el paquete de soporte',
+
   // --- Dashboard (US-160) ---
   'dashboard.title': 'Dashboard',
   'dashboard.realtime': 'En tiempo real · conectado',

@@ -328,4 +328,104 @@ describe('rutas de sistema', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ status: 'ok' });
   });
+
+  // Telemetría opt-in (US-192): OFF por defecto, sin recuentos hasta activarla.
+  it('GET /api/system/telemetry OFF por defecto (opt-in): sin recuentos', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/system/telemetry',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.enabled).toBe(false);
+    expect(body).not.toHaveProperty('counts'); // opt-in: nada hasta activarla
+    expect(typeof body.version).toBe('string');
+  });
+
+  it('GET /api/system/telemetry con opt-in ON devuelve recuentos anónimos', async () => {
+    await app.prisma.setting.upsert({
+      where: { key: 'telemetryEnabled' },
+      create: { key: 'telemetryEnabled', value: 'on' },
+      update: { value: 'on' },
+    });
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/system/telemetry',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    const body = res.json();
+    expect(body.enabled).toBe(true);
+    expect(body.counts).toBeDefined();
+    expect(typeof body.counts.devices).toBe('number');
+    expect(typeof body.counts.users).toBe('number');
+  });
+
+  // Bundle de soporte (US-192): admin, auditado, SIN secretos ni PII.
+  it('POST /api/system/support-bundle requiere admin (403 a viewer)', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/support-bundle',
+      headers: authHeader(signAccess(app, viewer)),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('POST /api/system/support-bundle (admin) no filtra secretos ni PII y queda auditado', async () => {
+    // Ajustes con PII (ubicación/nombre del hogar) + una integración con secreto.
+    await app.prisma.setting.createMany({
+      data: [
+        { key: 'homeName', value: 'Casa de Prueba' },
+        { key: 'homeLatitude', value: '40.4168' },
+        { key: 'homeLongitude', value: '-3.7038' },
+      ],
+    });
+    await app.prisma.integrationConfig.create({
+      data: {
+        domain: 'dns',
+        kind: 'pihole',
+        enabled: true,
+        // Un secreto (password) + un campo no secreto (baseUrl).
+        config: JSON.stringify({ password: 'SUPER-SECRETO-123', baseUrl: 'http://192.168.1.2' }),
+      },
+    });
+
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/support-bundle',
+      headers: authHeader(signAccess(app, admin)),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    const raw = res.body; // el JSON crudo, para buscar fugas por substring
+    expect(raw).not.toContain('SUPER-SECRETO-123'); // el secreto NO aparece
+    expect(raw).not.toContain('Casa de Prueba'); // el nombre del hogar (PII) NO aparece
+    expect(raw).not.toContain('40.4168'); // la ubicación (PII) NO aparece
+
+    const bundle = res.json();
+    // La integración aparece pero solo con qué secretos hay puestos (no el valor).
+    const dns = bundle.integrations.find((i: { domain: string }) => i.domain === 'dns');
+    expect(dns.secretsSet).toContain('password');
+    expect(dns.config).not.toHaveProperty('password');
+    expect(dns.config.baseUrl).toBe('http://192.168.1.2'); // lo no secreto sí aparece
+    // Ajustes sin claves PII.
+    expect(bundle.settings).not.toHaveProperty('homeName');
+    expect(bundle.settings).not.toHaveProperty('homeLatitude');
+    // Trae métricas + telemetría + auditoría sin IP.
+    expect(bundle.metrics).toBeDefined();
+    expect(bundle.telemetry.enabled).toBe(false);
+    expect(Array.isArray(bundle.recentAudit)).toBe(true);
+    if (bundle.recentAudit[0]) {
+      expect(bundle.recentAudit[0]).not.toHaveProperty('ip');
+      expect(bundle.recentAudit[0]).toHaveProperty('action');
+    }
+
+    const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.support-bundle' } });
+    expect(audit).not.toBeNull();
+  });
 });

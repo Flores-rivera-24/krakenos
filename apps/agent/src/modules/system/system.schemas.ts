@@ -178,6 +178,38 @@ export const updateApplySchema = {
   },
 } as const;
 
+/** `GET /api/system/telemetry` — telemetría anónima opt-in (US-192, lectura auth). */
+export const telemetrySchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        enabled: { type: 'boolean' },
+        version: { type: 'string' },
+        counts: {
+          type: 'object',
+          properties: {
+            devices: { type: 'number' },
+            rooms: { type: 'number' },
+            scenes: { type: 'number' },
+            automations: { type: 'number' },
+            iotSchedules: { type: 'number' },
+            users: { type: 'number' },
+          },
+        },
+      },
+      required: ['enabled', 'version'],
+    },
+  },
+} as const;
+
+/**
+ * `POST /api/system/support-bundle` — bundle de soporte sanitizado (US-192). Sin
+ * schema de `response`: el cuerpo es el JSON del bundle servido como descarga.
+ */
+export const supportBundleSchema = {} as const;
+
 /** `GET /api/system/metrics` — observabilidad interna (US-191, lectura auth). */
 export const metricsSchema = {
   response: {

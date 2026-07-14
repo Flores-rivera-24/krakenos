@@ -16,6 +16,7 @@ import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
 import { UiModeCard } from '@/components/settings/UiModeCard';
 import { HealthCard } from '@/components/settings/HealthCard';
+import { SupportCard } from '@/components/settings/SupportCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
@@ -368,6 +369,8 @@ export function SettingsPage() {
               <UpdateCard />
 
               <HealthCard />
+
+              {isAdmin && <SupportCard />}
 
               {isAdmin && <SystemBackupCard />}
 

@@ -43,6 +43,9 @@ export const SYSTEM_SETTING_KEYS = [
   // "HH:MM-HH:MM" (hora local) en la que se permite aplicar una actualización.
   // Vacío = sin restricción (se puede aplicar en cualquier momento).
   'updateMaintenanceWindow',
+  // Telemetría anónima (US-192): 'on' | 'off'. OFF por defecto (SPECS §9.2). Sin
+  // opt-in explícito no se agrega ni se expone ningún dato de uso.
+  'telemetryEnabled',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -204,6 +207,58 @@ export interface MetricsSnapshot {
   websocketClients: number;
   managers: ManagerMetric[];
   timestamp: IsoDateTime;
+}
+
+/**
+ * Telemetría anónima (US-192). OFF por defecto (SPECS §9.2). Cuando está activa,
+ * son **solo recuentos agregados** (sin nombres, MAC, IP ni ubicación): lo que
+ * como mucho se compartiría. Local-first: no se envía a ningún sitio, el usuario
+ * la ve antes de decidir compartirla.
+ */
+export interface TelemetrySnapshot {
+  enabled: boolean;
+  version: string;
+  /** Presente solo si `enabled`: recuentos anónimos por tipo de entidad. */
+  counts?: {
+    devices: number;
+    rooms: number;
+    scenes: number;
+    automations: number;
+    iotSchedules: number;
+    users: number;
+  };
+}
+
+/**
+ * Bundle de soporte (US-192): instantánea **sanitizada** del estado del sistema
+ * para diagnosticar sin exponer secretos ni PII. Los secretos de integración se
+ * redactan (solo se dice qué claves hay puestas), la ubicación/nombre del hogar se
+ * omiten, y la auditoría reciente va sin IP ni actor.
+ */
+export interface SupportBundle {
+  generatedAt: IsoDateTime;
+  version: string;
+  deployMode: DeployMode;
+  nodeVersion: string;
+  platform: string;
+  uptimeSeconds: number;
+  driverKind: string;
+  /** Ajustes editables SIN los de PII (nombre/ubicación del hogar omitidos). */
+  settings: Record<string, string>;
+  /** Integraciones por dominio con secretos redactados (solo qué claves hay). */
+  integrations: {
+    domain: string;
+    kind: string;
+    enabled: boolean;
+    config: Record<string, string>;
+    secretsSet: string[];
+  }[];
+  metrics: MetricsSnapshot;
+  telemetry: TelemetrySnapshot;
+  /** Auditoría reciente: solo acción + fecha (sin IP ni actor). */
+  recentAudit: { action: string; at: IsoDateTime }[];
+  /** Dónde encontrar los logs reales (no van en el bundle: viven en journald/docker). */
+  logsHint: string;
 }
 
 /** Respuesta de `POST /api/system/update/apply` (US-190). */
