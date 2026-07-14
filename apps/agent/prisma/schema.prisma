@@ -23,6 +23,8 @@ model User {
   /// Idioma de la interfaz (US-177): 'es' | 'en'. Solo presentación.
   locale       String         @default("es")
   refreshTokens RefreshToken[]
+  /// Tokens personales de API con scopes (US-174).
+  apiTokens    ApiToken[]
   /// Dispositivos de red de los que es dueño (US-179).
   devices      Device[]
   webAuthnCredentials WebAuthnCredential[]
@@ -115,6 +117,31 @@ model RefreshToken {
   rotatedAt DateTime?
   expiresAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Token personal de API con scopes (US-174). Opaco y **guardado solo por su hash
+/// sha256** (como RefreshToken); el valor en claro se muestra una única vez al
+/// crearlo. Revocable (borrar la fila). `scopes` es JSON (SQLite no tiene arrays);
+/// `role` es una foto del rol del emisor al crear (los scopes nunca lo superan).
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Etiqueta legible para reconocer el token (p. ej. "Home Assistant").
+  name       String
+  /// Hash sha256 del token (nunca el token en claro).
+  tokenHash  String    @unique
+  /// Prefijo visible del token (p. ej. "krt_ab12") para identificarlo en la lista.
+  prefix     String
+  /// Scopes concedidos, JSON de `ApiTokenScope[]` (subconjunto de las capacidades del rol).
+  scopes     String
+  /// Rol del emisor al crear (los scopes derivan de sus capacidades).
+  role       String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
 }

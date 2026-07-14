@@ -8,6 +8,8 @@ import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
+import { ApiTokensCard } from '@/components/settings/ApiTokensCard';
+import { MqttInteropCard } from '@/components/settings/MqttInteropCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { MatterBridgeCard } from '@/components/settings/MatterBridgeCard';
 import { ReportsCard } from '@/components/settings/ReportsCard';
@@ -462,6 +464,7 @@ export function SettingsPage() {
             <div className="space-y-6">
               <IntegrationsSection driver={data.info.driver} isAdmin={isAdmin} />
               <MatterBridgeCard isAdmin={isAdmin} />
+              {isAdmin && <MqttInteropCard />}
             </div>
           )}
 
@@ -496,6 +499,8 @@ export function SettingsPage() {
               <UiModeCard />
 
               <ChangePasswordCard />
+
+              <ApiTokensCard />
 
               {isAdmin && (
                 <Card>

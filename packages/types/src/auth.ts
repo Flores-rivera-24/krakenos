@@ -176,6 +176,45 @@ export interface LoginRequest {
 }
 
 /**
+ * Scopes de un token personal de API (US-174). Derivan de las capacidades
+ * (US-179) pero **acotados a las de uso**: leer el estado del hogar y controlar
+ * dispositivos. La administración (red/usuarios/sistema) **nunca** se concede por
+ * token — esas rutas siguen exigiendo una sesión con contraseña. Un token nunca
+ * supera el rol de quien lo emite (se valida al crear).
+ */
+export const API_TOKEN_SCOPES = ['home.view', 'home.control'] as const;
+export type ApiTokenScope = (typeof API_TOKEN_SCOPES)[number];
+
+/** Prefijo del valor en claro de un token de API (para reconocerlo de un vistazo). */
+export const API_TOKEN_PREFIX = 'krt_';
+
+/** Info de un token de API para la lista (**sin** el valor en claro ni el hash). */
+export interface ApiTokenInfo {
+  id: Id;
+  name: string;
+  /** Prefijo visible (p. ej. `krt_ab12`). El resto no se guarda en claro. */
+  prefix: string;
+  scopes: ApiTokenScope[];
+  role: UserRole;
+  lastUsedAt: IsoDateTime | null;
+  expiresAt: IsoDateTime | null;
+  createdAt: IsoDateTime;
+}
+
+export interface CreateApiTokenRequest {
+  name: string;
+  scopes: ApiTokenScope[];
+  /** Caducidad opcional en días; sin ella el token no caduca. */
+  expiresInDays?: number;
+}
+
+/** Respuesta al crear un token: su info + el valor en claro, mostrado **una vez**. */
+export interface CreateApiTokenResponse extends ApiTokenInfo {
+  /** El token en claro. No se vuelve a mostrar; guárdalo ahora. */
+  token: string;
+}
+
+/**
  * Tokens de sesión devueltos al cliente. El **refresh token ya no viaja en el
  * cuerpo** (US-91, F13): el servidor lo emite en una cookie `httpOnly`+`SameSite`
  * (ilegible por JS), y el access token vive solo en memoria del cliente. Así un

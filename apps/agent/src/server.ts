@@ -29,6 +29,9 @@ import { socketioPlugin } from './plugins/socketio.js';
 import { registerWebStatic } from './plugins/web.js';
 import { auditRoutes } from './modules/audit/audit.routes.js';
 import { authRoutes } from './modules/auth/auth.routes.js';
+import { tokensRoutes } from './modules/tokens/tokens.routes.js';
+import { interopRoutes } from './modules/interop/interop.routes.js';
+import { MqttPublisher } from './modules/interop/mqtt-publisher.service.js';
 import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
 import { BackupCodeService } from './webauthn/backup-codes.service.js';
 import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
@@ -194,6 +197,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Módulos del MVP.
   await app.register(setupRoutes, { prefix: '/api/setup' });
   await app.register(authRoutes, { prefix: '/api/auth' });
+  // Tokens personales de API con scopes (US-174): autoservicio, gestión session-only.
+  await app.register(tokensRoutes, { prefix: '/api/tokens' });
   // Gestión de usuarios (US-101): alta/edición/baja + roles, admin-only y auditada.
   await app.register(usersRoutes, { prefix: '/api/users' });
   const webAuthnService = new WebAuthnService(app.prisma, {
@@ -337,6 +342,40 @@ export async function buildServer(): Promise<FastifyInstance> {
   // integran al consultar; la poda de retención es red de seguridad del barrido.
   const energyService = new EnergyService(app, iot);
   await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
+
+  // Interop abierta (US-174): publicación opt-in de estados a un broker MQTT local
+  // (Home Assistant/Node-RED). Egress-filtrada; contraseña cifrada en reposo. La
+  // conexión persistente se cierra en onClose (US-201).
+  const mqttPublisher = new MqttPublisher({
+    prisma: app.prisma,
+    secretbox,
+    snapshot: async () => {
+      const iotDevices = await iot.listDevices().catch(() => []);
+      let energy: { todayKwh: number; todayCost: number; currency: string } | null = null;
+      try {
+        const s = await energyService.getStats('day');
+        energy = { todayKwh: s.totalEnergyWh / 1000, todayCost: s.totalCost ?? 0, currency: s.currency };
+      } catch {
+        energy = null;
+      }
+      const devicesOnline = await app.prisma.device.count({ where: { online: true } }).catch(() => 0);
+      return {
+        iot: iotDevices.map((d) => ({
+          id: d.id,
+          name: d.name,
+          on: d.on,
+          brightness: d.brightness,
+          powerW: d.powerW ?? null,
+        })),
+        energy,
+        devicesOnline,
+      };
+    },
+    onError: (msg) => app.log.warn({ msg }, 'MQTT publish (US-174)'),
+  });
+  await app.register(interopRoutes, { prefix: '/api/interop', publisher: mqttPublisher });
+  await mqttPublisher.start();
+  app.addHook('onClose', async () => mqttPublisher.stop());
 
   // Alertas de consumo (US-183): evalúa umbrales por dispositivo y, al cruzarse,
   // publica un evento `energy-threshold` al bus (disparador de automatización) y
