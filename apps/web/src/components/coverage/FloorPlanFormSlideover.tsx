@@ -1,14 +1,25 @@
 import type { CreateFloorPlanRequest, FloorPlan, UpdateFloorPlanRequest } from '@krakenos/types';
 import { useState } from 'react';
-import { ImageOff, Upload } from 'lucide-react';
+import { ImageOff, Ruler, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { createFloorPlan, deleteFloorPlan, updateFloorPlan } from '@/lib/coverage';
+import { importPlanFile, PlanImportError, type PlanImportReason } from '@/lib/coverage-import';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import { PlanCalibrationOverlay } from './PlanCalibrationOverlay';
+
+/** Mapea el motivo de fallo de importación a su clave i18n. */
+const IMPORT_ERROR_KEY: Record<PlanImportReason, TranslationKey> = {
+  unsupported: 'coverage.import.error.unsupported',
+  'pdf-unreadable': 'coverage.import.error.pdfUnreadable',
+  'docx-no-image': 'coverage.import.error.docxNoImage',
+  'decode-failed': 'coverage.import.error.decode',
+};
 
 interface Props {
   /** Si viene un plano, el panel edita; si no, da de alta uno nuevo. */
@@ -20,16 +31,6 @@ interface Props {
   onDeleted?: (id: string) => void;
 }
 
-/** Lee un fichero de imagen y devuelve su Data URL (base64). */
-function readAsDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('No se pudo leer la imagen'));
-    reader.readAsDataURL(file);
-  });
-}
-
 /**
  * Alta/edición de un plano de planta (nombre, medidas reales en metros e imagen
  * de fondo opcional). Sigue el patrón de `CameraFormSlideover`: estado local de
@@ -37,6 +38,7 @@ function readAsDataUrl(file: File): Promise<string> {
  * luego en el propio lienzo de la página.
  */
 export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Props) {
+  const t = useT();
   const isEdit = plan != null;
   const [name, setName] = useState(plan?.name ?? '');
   const [widthM, setWidthM] = useState(plan ? String(plan.widthM) : '10');
@@ -44,6 +46,8 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
   const [backgroundImage, setBackgroundImage] = useState<string | null>(
     plan?.backgroundImage ?? null,
   );
+  const [importing, setImporting] = useState(false);
+  const [calibrating, setCalibrating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,13 +61,30 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
     Number.isFinite(height) &&
     height > 0;
 
-  const onPickImage = async (file: File | undefined) => {
+  const onPickFile = async (file: File | undefined) => {
     if (!file) return;
+    setImporting(true);
     try {
-      setBackgroundImage(await readAsDataUrl(file));
+      // Importa (foto/PDF/Word) y normaliza en el navegador (reescala, recomprime,
+      // quita EXIF/GPS). El agente solo recibe la imagen ya normalizada.
+      setBackgroundImage(await importPlanFile(file));
+      setCalibrating(false);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cargar la imagen'));
+      const msg =
+        err instanceof PlanImportError
+          ? t(IMPORT_ERROR_KEY[err.reason])
+          : describeError(err, t('coverage.import.error.decode'));
+      toast.error(msg);
+    } finally {
+      setImporting(false);
     }
+  };
+
+  const applyCalibration = (w: number, h: number) => {
+    setWidthM(String(w));
+    setHeightM(String(h));
+    setCalibrating(false);
+    toast.success(t('coverage.calibrate.done', { width: w, height: h }));
   };
 
   const submit = async () => {
@@ -191,32 +212,47 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="plan-bg">Imagen de fondo (opcional)</Label>
-          <p className="text-kr-xs text-kr-muted">
-            Sube un plano o boceto de tu casa para dibujar las paredes encima.
-          </p>
+          <Label htmlFor="plan-bg">{t('coverage.import.label')}</Label>
+          <p className="text-kr-xs text-kr-muted">{t('coverage.import.hint')}</p>
           {backgroundImage ? (
             <div className="space-y-2">
-              <img
-                src={backgroundImage}
-                alt="Vista previa del plano de fondo"
-                className="max-h-40 w-full rounded-md border border-kr object-contain"
-              />
-              <Button variant="ghost" size="sm" onClick={() => setBackgroundImage(null)}>
-                <ImageOff className="h-4 w-4" aria-hidden />
-                Quitar imagen
-              </Button>
+              {calibrating ? (
+                <PlanCalibrationOverlay
+                  image={backgroundImage}
+                  onApply={applyCalibration}
+                  onCancel={() => setCalibrating(false)}
+                />
+              ) : (
+                <>
+                  <img
+                    src={backgroundImage}
+                    alt={t('coverage.import.preview')}
+                    className="max-h-40 w-full rounded-md border border-kr object-contain"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCalibrating(true)}>
+                      <Ruler className="h-4 w-4" aria-hidden />
+                      {t('coverage.calibrate.button')}
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => setBackgroundImage(null)}>
+                      <ImageOff className="h-4 w-4" aria-hidden />
+                      {t('coverage.import.remove')}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           ) : (
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-md border border-dashed border-kr px-3 py-6 text-kr-sm text-kr-secondary hover:bg-kr-elevated">
               <Upload className="h-5 w-5" aria-hidden />
-              Elegir imagen
+              {importing ? t('coverage.import.processing') : t('coverage.import.choose')}
               <input
                 id="plan-bg"
                 type="file"
-                accept="image/*"
+                accept="image/*,application/pdf,.docx"
                 className="sr-only"
-                onChange={(e) => void onPickImage(e.target.files?.[0])}
+                disabled={importing}
+                onChange={(e) => void onPickFile(e.target.files?.[0])}
               />
             </label>
           )}

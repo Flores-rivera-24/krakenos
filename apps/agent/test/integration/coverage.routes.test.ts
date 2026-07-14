@@ -153,6 +153,32 @@ describe('rutas de cobertura', () => {
       });
     });
 
+    it('valida la imagen de fondo por contenido (US-194): acepta PNG real, rechaza disfraz', async () => {
+      const admin = await seedUser(app, { role: 'admin' });
+      const headers = authHeader(signAccess(app, admin));
+      const pngBytes = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3];
+      const png = `data:image/png;base64,${Buffer.from(Uint8Array.from(pngBytes)).toString('base64')}`;
+      // Imagen PNG coherente → 201.
+      const ok = await app.inject({
+        method: 'POST',
+        url: '/api/coverage/floorplans',
+        headers,
+        payload: { name: 'Con foto', widthM: 6, heightM: 4, backgroundImage: png },
+      });
+      expect(ok.statusCode).toBe(201);
+
+      // Dice png pero el contenido son bytes basura → 400 IMAGE_INVALID.
+      const fake = `data:image/png;base64,${Buffer.from('no-soy-una-imagen').toString('base64')}`;
+      const bad = await app.inject({
+        method: 'POST',
+        url: '/api/coverage/floorplans',
+        headers,
+        payload: { name: 'Falsa', widthM: 6, heightM: 4, backgroundImage: fake },
+      });
+      expect(bad.statusCode).toBe(400);
+      expect(bad.json().code).toBe('IMAGE_INVALID');
+    });
+
     it('GET/PATCH/DELETE de un id inexistente dan 404', async () => {
       const admin = await seedUser(app, { role: 'admin' });
       const token = signAccess(app, admin);

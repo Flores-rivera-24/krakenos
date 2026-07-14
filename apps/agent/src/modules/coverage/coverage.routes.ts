@@ -7,6 +7,7 @@ import type {
   WifiBand,
 } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
+import { validateBackgroundImage } from '../../coverage/image-validation.js';
 import { CoverageService } from './coverage.service.js';
 import {
   accessPointsSchema,
@@ -36,6 +37,18 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
   const service = new CoverageService(app, opts.driver);
   const adminOnly = app.requireRole('admin');
 
+  /**
+   * Valida (US-194) la imagen de fondo por contenido. Devuelve el cuerpo de error
+   * 400 si es inválida, o `null` si es válida o no viene (opcional/`null`).
+   */
+  function checkBackgroundImage(
+    img: string | null | undefined,
+  ): { code: string; message: string } | null {
+    if (img == null) return null;
+    const result = validateBackgroundImage(img);
+    return result.ok ? null : { code: 'IMAGE_INVALID', message: result.reason };
+  }
+
   // ---- Planos ----
 
   app.get(
@@ -48,6 +61,10 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     '/floorplans',
     { schema: createFloorPlanSchema, preHandler: adminOnly },
     async (req, reply) => {
+      // Validación por CONTENIDO de la imagen de fondo (US-194): magic bytes, no
+      // confía en el MIME declarado. El schema ya acota tamaño y prefijo data:image/.
+      const imgErr = checkBackgroundImage(req.body.backgroundImage);
+      if (imgErr) return reply.code(400).send(imgErr);
       const plan = await service.createFloorPlan(req.body);
       app.audit({
         action: 'coverage.floorplan.create',
@@ -75,6 +92,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     '/floorplans/:id',
     { schema: updateFloorPlanSchema, preHandler: adminOnly },
     async (req, reply) => {
+      const imgErr = checkBackgroundImage(req.body.backgroundImage);
+      if (imgErr) return reply.code(400).send(imgErr);
       const plan = await service.updateFloorPlan(req.params.id, req.body);
       if (!plan) {
         return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
