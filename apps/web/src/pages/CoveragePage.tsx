@@ -16,6 +16,7 @@ import { FloorPlanFormSlideover } from '@/components/coverage/FloorPlanFormSlide
 import { FloorPlanStage, type CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { HeatmapLegend } from '@/components/coverage/HeatmapLegend';
 import { SurveyPanel } from '@/components/coverage/SurveyPanel';
+import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -538,6 +539,13 @@ export function CoveragePage() {
                       onDetect={() => void handleDetectWalls()}
                       onAccept={handleAcceptProposed}
                       onDiscard={() => setProposed(null)}
+                      canEdit={isAdmin}
+                    />
+                    <RoomsFromPlanPanel
+                      walls={editWalls}
+                      accessPoints={editAps}
+                      widthM={selectedPlan.widthM}
+                      heightM={selectedPlan.heightM}
                       canEdit={isAdmin}
                     />
                     <ApPalette
