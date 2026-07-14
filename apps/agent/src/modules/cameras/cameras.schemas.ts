@@ -34,6 +34,7 @@ export const snapshotSchema = {
       },
       required: ['cameraId', 'image', 'capturedAt'],
     },
+    404: errorResponse,
   },
 } as const;
 
@@ -85,12 +86,12 @@ export const updateCameraSchema = {
     minProperties: 1,
     properties: cameraBodyProps,
   },
-  response: { 200: managedCameraResponse },
+  response: { 200: managedCameraResponse, 404: errorResponse },
 } as const;
 
 export const removeCameraSchema = {
   params: idParams,
-  response: { 204: { type: 'null' } },
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 // --- Streaming HLS en vivo (US-185) ---

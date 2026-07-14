@@ -3,11 +3,11 @@ import type {
   IotManager,
   Scene,
   SceneAction,
-  SceneIcon,
   SceneRunResult,
   UpdateSceneRequest,
 } from '@krakenos/types';
-import { IOT_ROOM } from '@krakenos/types';
+import { IOT_ROOM, SCENE_ICONS } from '@krakenos/types';
+import { asEnum } from '../../util/as-enum.js';
 import type { Scene as DbScene } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
@@ -26,7 +26,7 @@ function toScene(row: DbScene): Scene {
   return {
     id: row.id,
     name: row.name,
-    icon: row.icon as SceneIcon,
+    icon: asEnum(row.icon, SCENE_ICONS, 'scene'),
     actions: parseActions(row.actions),
     order: row.order,
     createdAt: row.createdAt.toISOString(),
@@ -88,6 +88,9 @@ export class SceneService {
     const existing = await this.app.prisma.scene.findUnique({ where: { id } });
     if (!existing) return false;
     await this.app.prisma.scene.delete({ where: { id } });
+    // Limpia los favoritos que apuntaban a esta escena (AUD-18): sin esto quedarían
+    // referencias huérfanas que la UI no puede resolver.
+    await this.app.prisma.favorite.deleteMany({ where: { kind: 'scene', ref: id } });
     return true;
   }
 

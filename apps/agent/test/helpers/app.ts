@@ -121,6 +121,16 @@ export interface BuildTestAppOptions {
 export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
 
+  // Recolecta la tabla de rutas real a medida que se registran (AUD-22): la suite
+  // de autorización la usa para fallar si una ruta de escritura nueva no está
+  // clasificada, en vez de enumerarlas a mano y arriesgarse a olvidar una.
+  const collectedRoutes: { method: string; url: string }[] = [];
+  app.addHook('onRoute', (r) => {
+    const methods = Array.isArray(r.method) ? r.method : [r.method];
+    for (const method of methods) collectedRoutes.push({ method, url: r.url });
+  });
+  (app as unknown as { collectedRoutes: typeof collectedRoutes }).collectedRoutes = collectedRoutes;
+
   if (opts.rateLimit) {
     await app.register(rateLimit, { global: false });
   }

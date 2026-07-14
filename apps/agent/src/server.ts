@@ -501,15 +501,18 @@ export async function buildServer(): Promise<FastifyInstance> {
       token,
     });
     // Onboarding (US-105): además del token, imprime la URL lista para abrir y un
-    // QR escaneable, para que un usuario no técnico no tenga que buscar en el log.
-    app.log.warn(`[setup] Sistema sin administrador. Abre en tu navegador:\n    ${setupUrl}`);
+    // QR escaneable. Va por `process.stdout.write` DIRECTO, no por pino (AUD-26): en
+    // producción el logger es NDJSON y el QR/multilínea quedaría con `\n` escapados,
+    // ilegible en `journalctl`/`docker logs`. Escribirlo crudo lo mantiene legible.
+    let out = `\n[setup] Sistema sin administrador. Abre en tu navegador:\n    ${setupUrl}\n`;
     try {
       const qr = await QRCode.toString(setupUrl, { type: 'terminal', small: true });
-      app.log.warn(`[setup] O escanéalo con tu móvil (mismo WiFi):\n${qr}`);
+      out += `\n[setup] O escanéalo con tu móvil (mismo WiFi):\n${qr}\n`;
     } catch {
       // El QR es opcional; si falla, la URL de arriba basta.
     }
-    app.log.warn(`[setup] (token de configuración: ${token})`);
+    out += `\n[setup] (token de configuración: ${token})\n\n`;
+    process.stdout.write(out);
   }
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).

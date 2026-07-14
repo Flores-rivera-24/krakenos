@@ -1,6 +1,8 @@
-/** JSON Schemas de favoritos por usuario (US-170). */
+/** JSON Schemas de favoritos por usuario (US-170). El enum de tipos deriva de
+ * `@krakenos/types` (fuente única, AUD-17). */
 
-const FAVORITE_KINDS = ['device', 'iot', 'room', 'scene'] as const;
+import { FAVORITE_KINDS } from '@krakenos/types';
+import { errorResponse } from '../common.schemas.js';
 
 const favoriteResponse = {
   type: 'object',
@@ -25,12 +27,12 @@ export const createFavoriteSchema = {
     additionalProperties: false,
     required: ['kind', 'ref'],
     properties: {
-      kind: { type: 'string', enum: FAVORITE_KINDS },
+      kind: { type: 'string', enum: [...FAVORITE_KINDS] },
       ref: { type: 'string', minLength: 1, maxLength: 128 },
       order: { type: 'integer', minimum: 0, maximum: 100000 },
     },
   },
-  response: { 201: favoriteResponse },
+  response: { 201: favoriteResponse, 413: errorResponse },
 } as const;
 
 export const deleteFavoriteSchema = {
@@ -40,7 +42,7 @@ export const deleteFavoriteSchema = {
     required: ['id'],
     properties: { id: { type: 'string', minLength: 1 } },
   },
-  response: { 204: { type: 'null' } },
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 export const reorderFavoritesSchema = {

@@ -1,19 +1,10 @@
-/** JSON Schemas de habitaciones y grupos (US-165). */
+/** JSON Schemas de habitaciones y grupos (US-165). El enum de iconos deriva de
+ * `@krakenos/types` (fuente única, AUD-17). */
 
-const ROOM_ICONS = [
-  'living',
-  'bedroom',
-  'kitchen',
-  'bathroom',
-  'office',
-  'dining',
-  'garage',
-  'garden',
-  'kids',
-  'generic',
-] as const;
+import { ROOM_ICONS } from '@krakenos/types';
+import { errorResponse } from '../common.schemas.js';
 
-const icon = { type: 'string', enum: ROOM_ICONS } as const;
+const icon = { type: 'string', enum: [...ROOM_ICONS] } as const;
 const order = { type: 'integer', minimum: 0, maximum: 100000 } as const;
 
 const roomResponse = {
@@ -93,10 +84,13 @@ export const updateRoomSchema = {
       order,
     },
   },
-  response: { 200: roomResponse },
+  response: { 200: roomResponse, 404: errorResponse },
 } as const;
 
-export const deleteRoomSchema = { params: idParam } as const;
+export const deleteRoomSchema = {
+  params: idParam,
+  response: { 404: errorResponse },
+} as const;
 
 export const assignRoomSchema = {
   body: {
@@ -109,7 +103,7 @@ export const assignRoomSchema = {
       roomId: { type: ['string', 'null'], minLength: 1, maxLength: 64 },
     },
   },
-  response: { 204: { type: 'null' } },
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 export const roomActionSchema = {
@@ -141,5 +135,6 @@ export const roomActionSchema = {
         },
       },
     },
+    404: errorResponse,
   },
 } as const;

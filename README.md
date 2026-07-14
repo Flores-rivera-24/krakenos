@@ -22,6 +22,20 @@ WireGuard que el propio sistema gestiona. Ningún puerto de la UI queda expuesto
 - **Control IoT** unificado: luces, enchufes, sensores y cámaras desde una sola interfaz.
 - **Arquitectura por drivers**: el mismo código funciona con distintas marcas de hardware
   (OpenWrt, pfSense, UniFi, MikroTik, Cisco…) sin tocar la API ni el frontend.
+- **Hogar inteligente**: **habitaciones** para agrupar dispositivos, **favoritos** de acceso
+  rápido, **escenas** (varios aparatos con un toque), **horarios IoT** (por hora o por evento
+  solar) y **automatizaciones** por frases ("si… entonces…").
+- **Cobertura WiFi**: mapa de calor (heatmap RF) sobre el plano de tu casa, con **importación del
+  plano desde una foto, un PDF o un Word** y detección de paredes.
+- **Cámaras**: **vídeo en vivo** (HLS), **detección de movimiento** con aviso y foto,
+  **grabación** de clips con línea de tiempo y **modo alarma** del hogar (armar/desarmar con PIN).
+- **Energía**: medición de consumo (W/kWh), panel con histórico y **coste estimado**, con alertas
+  por potencia sostenida o consumo diario.
+- **Presencia y modos del hogar**: llegada/salida de personas y modos (en casa / fuera) que
+  disparan automatizaciones.
+- **Ecosistemas y voz**: **puente Matter** para exponer tus dispositivos a Alexa / Google / Apple,
+  comisionado de dispositivos Matter desde la app, y **tokens de API + MQTT** para interoperar con
+  otros sistemas.
 - **Conexión guiada desde la app**: un asistente paso a paso conecta routers, luces, enchufes
   y cámaras **sin editar ficheros ni leer documentación externa** — con guías internalizadas,
   ayuda en cada campo, prueba de conexión y recarga en caliente. Los secretos se **cifran en reposo**.
@@ -94,6 +108,10 @@ pnpm dev:web       # solo web (requiere el agente en :3001)
 docker compose up -d
 ```
 
+Por defecto `docker-compose.yml` **construye la imagen localmente**. Para usar la imagen ya
+publicada en **GHCR**, apunta el servicio a `ghcr.io/flores-rivera-24/krakenos:latest`
+(descomenta la línea `image:` en el compose).
+
 Levanta una imagen **todo-en-uno** (API + UI en `:3001`), como usuario **no root**, con
 **todo el estado persistente** (base de datos, claves, credenciales) en el volumen
 `krakenos-data`. Genera las claves y aplica las migraciones al arrancar. Conecta tu hardware
@@ -104,6 +122,11 @@ incrustado) para crear el administrador — ábrela o escanéala con el móvil e
 > El contenedor publica en `:3001` de la LAN (el modelo es LAN + WireGuard para remoto). Si el
 > host es accesible desde internet, no expongas la UI directamente: bind a `127.0.0.1` y detrás
 > de WireGuard o un proxy TLS. Ver comentarios en `docker-compose.yml`.
+
+> ⚠️ **Limitaciones en Docker:** la imagen por defecto **no** incluye `sudo`/`wg`/`iptables`/`tc`/
+> `ffmpeg`, así que la VPN WireGuard, el firewall, el QoS, el streaming/grabación de cámaras RTSP y
+> el auto-descubrimiento por UDP (mDNS/SSDP) **no funcionan** dentro del contenedor. Para esas
+> funciones usa una instalación bare-metal/systemd. Detalle en [`docs/docker-limitations.md`](docs/docker-limitations.md).
 
 ### Sin Docker (Node)
 
@@ -216,10 +239,12 @@ sudo install -m 0440 apps/agent/scripts/krakenos.sudoers.example /etc/sudoers.d/
 - Las integraciones de IoT, VPN, cámaras, firewall, VLANs, QoS y DNS siguen el mismo patrón:
   una factory construye el `mock` en desarrollo o la integración real según el `*_KIND`.
 - El proceso Node **no corre como root**: las operaciones privilegiadas se delegan al helper.
+- **La config puesta desde la UI precede a `.env`** (DB-sobre-env): el `kind` y las credenciales
+  de cada integración pueden venir de la base de datos (cifradas en reposo) y **recargarse en
+  caliente** sin reiniciar; `.env` queda como fallback.
 
 > Las integraciones reales están entregadas como código + unit tests del contrato. La
-> verificación end-to-end se hace en el despliegue con hardware. Lo único fuera del contrato
-> actual es el streaming continuo de cámaras (HLS/WebRTC).
+> verificación end-to-end se hace en el despliegue con hardware.
 
 ---
 
@@ -233,6 +258,9 @@ pnpm test                              # toda la suite (agente + web)
 pnpm --filter @krakenos/agent test     # solo el agente
 pnpm --filter @krakenos/web test:watch # web en watch
 ```
+
+Además hay una **suite end-to-end con Playwright** (carpeta `e2e/`) que arranca la app construida
+con mocks y recorre los flujos clave por la UI; corre en su propio job de CI (ver `docs/e2e.md`).
 
 **CI** (GitHub Actions): en cada push a `main` y cada PR, dos jobs en paralelo:
 

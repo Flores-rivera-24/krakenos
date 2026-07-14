@@ -1,19 +1,23 @@
 import type { IsoDateTime } from './common.js';
 
 /**
- * Icono de una escena (US-166). Clave estable mapeada a un glifo en el frontend
- * (no una URL), coherente con el modo self-hosted + CSP `connect-src 'self'`.
+ * Iconos de escena (US-166). Clave estable mapeada a un glifo en el frontend (no
+ * una URL), coherente con el modo self-hosted + CSP `connect-src 'self'`. **Fuente
+ * única** (`as const`): los schemas del agente derivan su enum de aquí (AUD-17), no
+ * duplican la lista.
  */
-export type SceneIcon =
-  | 'night'
-  | 'movie'
-  | 'leave'
-  | 'morning'
-  | 'dinner'
-  | 'relax'
-  | 'party'
-  | 'focus'
-  | 'scene';
+export const SCENE_ICONS = [
+  'night',
+  'movie',
+  'leave',
+  'morning',
+  'dinner',
+  'relax',
+  'party',
+  'focus',
+  'scene',
+] as const;
+export type SceneIcon = (typeof SCENE_ICONS)[number];
 
 /**
  * Una acción de escena: deja un dispositivo IoT en el estado deseado. Reusa la

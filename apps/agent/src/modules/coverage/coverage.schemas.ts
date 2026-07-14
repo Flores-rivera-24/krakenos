@@ -311,7 +311,7 @@ export const deleteScanSchema = {
 export const recordSampleSchema = {
   params: scanIdParams,
   body: recordSampleBody,
-  response: { 200: measureResultResponse },
+  response: { 200: measureResultResponse, 400: errorResponse, 404: errorResponse, 413: errorResponse },
 } as const;
 
 export const measuredHeatmapSchema = {

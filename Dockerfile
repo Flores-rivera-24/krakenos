@@ -32,10 +32,14 @@ RUN pnpm install --frozen-lockfile \
 FROM node:20-bookworm-slim AS runtime
 
 # Solo runtime: openssl (claves/Prisma) + ca-certificates. Sin compiladores.
+# `corepack prepare … --activate` deja pnpm 9.12.0 instalado EN LA IMAGEN (AUD-27):
+# sin esto, el primer `pnpm` en runtime hace que corepack lo descargue del registry
+# —rompe el arranque "sin nube" en una LAN aislada. Con esto, arranca offline.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
-  && corepack enable
+  && corepack enable \
+  && corepack prepare pnpm@9.12.0 --activate
 
 WORKDIR /app
 

@@ -1,11 +1,25 @@
-import type { CreateFavoriteRequest, Favorite, FavoriteKind } from '@krakenos/types';
+import type { CreateFavoriteRequest, Favorite } from '@krakenos/types';
+import { FAVORITE_KINDS } from '@krakenos/types';
 import type { Favorite as DbFavorite } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
+import { asEnum } from '../../util/as-enum.js';
+
+/** Máximo de favoritos por usuario (AUD-19): sin retención que pode esta tabla. */
+export const MAX_FAVORITES_PER_USER = 100;
+
+/** Se lanza al superar la cota de favoritos; la ruta la mapea a 413. */
+export class FavoriteLimitError extends Error {
+  readonly code = 'FAVORITE_LIMIT';
+  constructor() {
+    super(`Máximo ${MAX_FAVORITES_PER_USER} favoritos por usuario`);
+    this.name = 'FavoriteLimitError';
+  }
+}
 
 function toFavorite(row: DbFavorite): Favorite {
   return {
     id: row.id,
-    kind: row.kind as FavoriteKind,
+    kind: asEnum(row.kind, FAVORITE_KINDS, 'device'),
     ref: row.ref,
     order: row.order,
     createdAt: row.createdAt.toISOString(),
@@ -39,6 +53,13 @@ export class FavoriteService {
       where: { userId_kind_ref: { userId, kind: body.kind, ref: body.ref } },
     });
     if (existing) return toFavorite(existing);
+
+    // Cota por usuario (AUD-19): sin retención que pode esta tabla, un viewer podría
+    // scriptear filas sin límite. 100 favoritos es de sobra para un uso humano.
+    const count = await this.app.prisma.favorite.count({ where: { userId } });
+    if (count >= MAX_FAVORITES_PER_USER) {
+      throw new FavoriteLimitError();
+    }
 
     let order = body.order;
     if (order === undefined) {

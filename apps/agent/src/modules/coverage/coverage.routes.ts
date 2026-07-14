@@ -222,6 +222,12 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
           message: 'Sin rssiDbm en la petición y el survey no tiene deviceMac con el que medir',
         });
       }
+      if (outcome.status === 'limit') {
+        return reply.code(413).send({
+          code: 'SAMPLE_LIMIT',
+          message: 'Este survey alcanzó el máximo de muestras',
+        });
+      }
       app.audit({
         action: 'coverage.sample.record',
         userId: req.user.sub,

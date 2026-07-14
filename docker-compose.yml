@@ -6,12 +6,19 @@
 services:
   krakenos:
     # Por defecto construye la imagen localmente. Para usar la imagen publicada
-    # en GHCR (US-117), comenta `build` y descomenta `image` con tu repo:
-    #   image: ghcr.io/<tu-usuario>/krakenos:latest
+    # en GHCR (US-117), comenta `build` y descomenta `image`:
+    #   image: ghcr.io/flores-rivera-24/krakenos:latest
     build: .
     image: krakenos:local
     container_name: krakenos
     restart: unless-stopped
+    # Acota los logs para que no llenen el disco (AUD-30): sin esto, el driver
+    # json-file crece sin rotar y una SQLite en disco lleno muere sin aviso.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
     ports:
       # Accesible en la LAN (el modelo es LAN + WireGuard para remoto; una LAN
       # doméstica está tras NAT). Si este host es accesible desde internet, NO
@@ -29,12 +36,17 @@ services:
       JWT_PRIVATE_KEY_PATH: /data/keys/jwt-private.pem
       JWT_PUBLIC_KEY_PATH: /data/keys/jwt-public.pem
       SECRETBOX_KEY_PATH: /data/keys/secretbox.key
-      WG_PEER_STORE: /data/wg-peers.json
+      # Rutas de datos de integraciones que SÍ operan dentro del contenedor.
       TUYA_CONFIG_PATH: /data/tuya-devices.json
       CAMERAS_CONFIG: /data/cameras.json
-      FW_RULE_STORE: /data/firewall-rules.json
-      VLAN_STORE: /data/vlans.json
-      TC_RULE_STORE: /data/qos-rules.json
+      # WireGuard/iptables/tc/VLAN(SNMP) NO funcionan en la imagen por defecto (sin
+      # sudo/wg/iptables/tc en el contenedor) — ver docs/docker-limitations.md
+      # (AUD-25). Se dejan comentadas para no dar una falsa sensación de soporte;
+      # esos dominios necesitan un despliegue bare-metal/systemd:
+      #   WG_PEER_STORE: /data/wg-peers.json
+      #   FW_RULE_STORE: /data/firewall-rules.json
+      #   VLAN_STORE: /data/vlans.json
+      #   TC_RULE_STORE: /data/qos-rules.json
     volumes:
       - krakenos-data:/data
 

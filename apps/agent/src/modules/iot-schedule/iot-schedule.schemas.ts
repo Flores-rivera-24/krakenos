@@ -1,5 +1,7 @@
 /** JSON Schemas de horarios para IoT/escenas (US-168). */
 
+import { errorResponse } from '../common.schemas.js';
+
 const days = {
   type: 'array',
   items: { type: 'integer', minimum: 0, maximum: 6 },
@@ -113,7 +115,10 @@ export const updateIotScheduleSchema = {
       target,
     },
   },
-  response: { 200: scheduleResponse },
+  response: { 200: scheduleResponse, 404: errorResponse },
 } as const;
 
-export const deleteIotScheduleSchema = { params: idParam } as const;
+export const deleteIotScheduleSchema = {
+  params: idParam,
+  response: { 404: errorResponse },
+} as const;
