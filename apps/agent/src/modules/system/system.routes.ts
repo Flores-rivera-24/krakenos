@@ -17,9 +17,12 @@ import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
+import { detectDeployMode } from '../../system/deploy-mode.js';
 import { stageRestoreAsync } from '../../system/restore.js';
 import { UpdateChecker } from '../../system/update-check.js';
+import { createUpdateSpawner } from '../../system/update-spawner.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
+import { UpdateService, type UpdateSpawner } from './update.service.js';
 import {
   backupSchema,
   connectivityTestSchema,
@@ -28,7 +31,9 @@ import {
   restoreSchema,
   systemInfoSchema,
   systemStatsSchema,
+  updateApplySchema,
   updateCheckSchema,
+  updatePlanSchema,
   updateSettingSchema,
 } from './system.schemas.js';
 
@@ -36,6 +41,12 @@ interface SystemRoutesOpts {
   driver: HardwareDriver;
   /** Servicio de inventario compartido, para reprogramar el barrido en caliente. */
   inventoryService?: InventoryService;
+  /** Modo de despliegue forzado (US-190; por defecto se autodetecta). Tests. */
+  deployMode?: 'systemd' | 'docker';
+  /** Spawner del proceso actualizador (US-190; por defecto el real). Tests. */
+  updateSpawner?: UpdateSpawner;
+  /** Directorio de traspaso del actualizador (US-190; por defecto `var/`). Tests. */
+  updateVarDir?: string;
 }
 
 /** Valores por defecto de los ajustes editables (cuando no hay fila en `Setting`). */
@@ -52,6 +63,7 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   homeLongitude: '',
   presenceGraceMin: '10',
   digestFrequency: 'off',
+  updateMaintenanceWindow: '',
 };
 
 /**
@@ -143,6 +155,43 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // `UPDATE_CHECK_REPO`. Sin repo, no hay llamada externa (`enabled:false`).
   app.get('/update-check', { preHandler: app.authenticate, schema: updateCheckSchema }, () =>
     updateChecker.check(),
+  );
+
+  // Actualización one-click con rollback (US-190). Reusa el comprobador (US-116) y
+  // el modo de despliegue: en systemd puede aplicar sola (proceso actualizador
+  // aparte con rollback); en Docker devuelve el comando manual.
+  const updateService = new UpdateService({
+    current: AGENT_VERSION,
+    mode: opts.deployMode ?? detectDeployMode(),
+    checker: updateChecker,
+    readMaintenanceWindow: async () => {
+      const row = await app.prisma.setting.findUnique({ where: { key: 'updateMaintenanceWindow' } });
+      return row?.value ?? '';
+    },
+    spawn: opts.updateSpawner ?? createUpdateSpawner(),
+    varDir: opts.updateVarDir,
+  });
+
+  // Plan de actualización (lectura autenticada): estado + modo + última ejecución.
+  app.get('/update/plan', { preHandler: app.authenticate, schema: updatePlanSchema }, () =>
+    updateService.getPlan(),
+  );
+
+  // Lanzar la actualización (admin activo + auditado). Devuelve 200 con `started`
+  // y el motivo; no lanza excepción por "fuera de ventana"/"docker" (es info, no error).
+  app.post<{ Body: { force?: boolean } }>(
+    '/update/apply',
+    { preHandler: app.requireActiveAdmin, schema: updateApplySchema },
+    async (req) => {
+      const result = await updateService.apply(req.body?.force === true);
+      app.audit({
+        action: 'system.update.apply',
+        userId: req.user.sub,
+        detail: result.started ? `→ ${result.message}` : `no aplicada: ${result.message}`,
+        ip: req.ip,
+      });
+      return result;
+    },
   );
 
   app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async () =>

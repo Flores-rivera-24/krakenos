@@ -39,6 +39,10 @@ export const SYSTEM_SETTING_KEYS = [
   'presenceGraceMin',
   // Resumen del hogar (US-180): off | daily | weekly (se envía a las 08:00).
   'digestFrequency',
+  // Ventana de mantenimiento para la actualización one-click (US-190): franja
+  // "HH:MM-HH:MM" (hora local) en la que se permite aplicar una actualización.
+  // Vacío = sin restricción (se puede aplicar en cualquier momento).
+  'updateMaintenanceWindow',
 ] as const;
 
 export type SystemSettingKey = (typeof SYSTEM_SETTING_KEYS)[number];
@@ -97,4 +101,81 @@ export interface UpdateStatus {
   current: string;
   latest: string | null;
   updateAvailable: boolean;
+}
+
+/**
+ * Modo de despliegue (US-190). Determina si la actualización puede aplicarse
+ * sola (`systemd`/bare-metal, el proceso puede reemplazarse desde fuera) o si el
+ * contenedor no puede auto-reemplazarse (`docker`, se muestra el comando manual).
+ */
+export const DEPLOY_MODES = ['systemd', 'docker'] as const;
+export type DeployMode = (typeof DEPLOY_MODES)[number];
+
+/** Pasos de la orquestación de actualización (US-190), en orden de ejecución. */
+export const UPDATE_STEPS = [
+  'backup',
+  'fetch',
+  'apply',
+  'migrate',
+  'restart',
+  'healthcheck',
+  'rollback',
+] as const;
+export type UpdateStep = (typeof UPDATE_STEPS)[number];
+
+export type UpdateStepStatus = 'ok' | 'failed' | 'skipped';
+
+export interface UpdateStepResult {
+  step: UpdateStep;
+  status: UpdateStepStatus;
+  /** Mensaje breve (motivo del fallo, versión aplicada…). Sin secretos. */
+  detail?: string;
+}
+
+/**
+ * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso
+ * actualizador en `var/update-result.json` y lo lee el servicio para mostrarlo.
+ */
+export interface UpdateResult {
+  ok: boolean;
+  /** `true` si un fallo tras el backup obligó a revertir a la versión anterior. */
+  rolledBack: boolean;
+  fromVersion: string;
+  targetVersion: string | null;
+  steps: UpdateStepResult[];
+  finishedAt: IsoDateTime;
+}
+
+/**
+ * Plan de actualización (US-190): estado de comprobación (US-116) + cómo se
+ * aplicaría según el modo de despliegue + resultado de la última actualización.
+ */
+export interface UpdatePlan {
+  /** ¿Hay repo configurado para comprobar releases? (US-116). */
+  enabled: boolean;
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  mode: DeployMode;
+  /** `true` solo en `systemd`: el contenedor Docker no puede auto-reemplazarse. */
+  canSelfUpdate: boolean;
+  /** Comando manual a mostrar cuando `mode === 'docker'`. */
+  dockerCommand: string | null;
+  /** ¿Hay una actualización en curso ahora mismo? */
+  inProgress: boolean;
+  /** Franja de mantenimiento configurada ("HH:MM-HH:MM") o `null` si sin límite. */
+  maintenanceWindow: string | null;
+  /** Resultado de la última actualización aplicada, o `null` si nunca se aplicó. */
+  lastResult: UpdateResult | null;
+}
+
+/** Respuesta de `POST /api/system/update/apply` (US-190). */
+export interface ApplyUpdateResponse {
+  /** `true` si se lanzó el proceso de actualización (solo `systemd`). */
+  started: boolean;
+  mode: DeployMode;
+  /** Motivo cuando `started` es `false` (docker, fuera de ventana, ya en curso…). */
+  message: string;
+  /** Comando manual cuando el modo es `docker`. */
+  dockerCommand?: string;
 }

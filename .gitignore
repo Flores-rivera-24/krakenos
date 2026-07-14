@@ -18,6 +18,10 @@ certs/
 # Estado en runtime del agente (registro de peers WireGuard, etc.)
 data/
 
+# Traspaso en runtime del agente: staging de restore (US-104) y de la
+# actualización one-click (US-190: lock + resultado). Solo existe en despliegue.
+var/
+
 # Database
 *.db
 *.db-journal

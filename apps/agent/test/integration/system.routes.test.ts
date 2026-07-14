@@ -245,4 +245,58 @@ describe('rutas de sistema', () => {
     const active = await app.prisma.refreshToken.count({ where: { revoked: false } });
     expect(active).toBe(0);
   });
+
+  // Actualización one-click (US-190). En el entorno de test no hay UPDATE_CHECK_REPO
+  // → el comprobador está desactivado; el modo autodetectado es systemd (sin
+  // /.dockerenv). Verificamos auth, forma del plan y que apply no lanza nada real.
+  it('GET /api/system/update/plan devuelve el plan (autenticado)', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/system/update/plan',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.mode).toBe('systemd');
+    expect(body.canSelfUpdate).toBe(true);
+    expect(body.enabled).toBe(false); // sin repo configurado
+    expect(body.inProgress).toBe(false);
+    expect(body).toHaveProperty('lastResult');
+  });
+
+  it('GET /api/system/update/plan exige autenticación (401 sin token)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/system/update/plan' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('POST /api/system/update/apply requiere admin (403 a viewer)', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/update/apply',
+      headers: authHeader(signAccess(app, viewer)),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('POST /api/system/update/apply (admin) no aplica si la comprobación está desactivada', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/update/apply',
+      headers: authHeader(signAccess(app, admin)),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.started).toBe(false);
+    expect(body.mode).toBe('systemd');
+    expect(typeof body.message).toBe('string');
+
+    // Queda auditado.
+    const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
+    expect(audit).not.toBeNull();
+  });
 });

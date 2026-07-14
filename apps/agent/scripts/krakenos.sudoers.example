@@ -19,3 +19,9 @@
 # Sustituye `krakenos` por el usuario con el que corre el servicio del agente.
 
 krakenos ALL=(root) NOPASSWD: /usr/local/bin/krakenos-helper
+
+# Actualización one-click con rollback (US-190): la actualización desde la UI
+# reinicia el servicio del agente. Descomenta SOLO si usas esa función y ajusta el
+# nombre de la unidad (por defecto `krakenos`). Es un ámbito acotado a reiniciar ESA
+# unidad, no a `systemctl` en general.
+# krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl restart krakenos

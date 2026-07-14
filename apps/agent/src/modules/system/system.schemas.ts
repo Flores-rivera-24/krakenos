@@ -1,4 +1,5 @@
-import { SYSTEM_SETTING_KEYS } from '@krakenos/types';
+import { SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
+import { errorResponse } from '../common.schemas.js';
 
 export const systemStatsSchema = {
   response: {
@@ -90,6 +91,90 @@ export const systemInfoSchema = {
       },
       required: ['homeName'],
     },
+  },
+} as const;
+
+const updateResultSchema = {
+  type: ['object', 'null'],
+  properties: {
+    ok: { type: 'boolean' },
+    rolledBack: { type: 'boolean' },
+    fromVersion: { type: 'string' },
+    targetVersion: { type: ['string', 'null'] },
+    steps: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          step: { type: 'string', enum: [...UPDATE_STEPS] },
+          status: { type: 'string', enum: ['ok', 'failed', 'skipped'] },
+          detail: { type: 'string' },
+        },
+        required: ['step', 'status'],
+      },
+    },
+    finishedAt: { type: 'string' },
+  },
+  required: ['ok', 'rolledBack', 'fromVersion', 'targetVersion', 'steps', 'finishedAt'],
+} as const;
+
+/** `GET /api/system/update/plan` — plan de actualización one-click (US-190). */
+export const updatePlanSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        enabled: { type: 'boolean' },
+        current: { type: 'string' },
+        latest: { type: ['string', 'null'] },
+        updateAvailable: { type: 'boolean' },
+        mode: { type: 'string', enum: ['systemd', 'docker'] },
+        canSelfUpdate: { type: 'boolean' },
+        dockerCommand: { type: ['string', 'null'] },
+        inProgress: { type: 'boolean' },
+        maintenanceWindow: { type: ['string', 'null'] },
+        lastResult: updateResultSchema,
+      },
+      required: [
+        'enabled',
+        'current',
+        'latest',
+        'updateAvailable',
+        'mode',
+        'canSelfUpdate',
+        'dockerCommand',
+        'inProgress',
+        'maintenanceWindow',
+        'lastResult',
+      ],
+    },
+  },
+} as const;
+
+/** `POST /api/system/update/apply` — lanza la actualización one-click (US-190). */
+export const updateApplySchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      // Saltarse la ventana de mantenimiento (el admin quiere actualizar ya).
+      force: { type: 'boolean' },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        started: { type: 'boolean' },
+        mode: { type: 'string', enum: ['systemd', 'docker'] },
+        message: { type: 'string' },
+        dockerCommand: { type: 'string' },
+      },
+      required: ['started', 'mode', 'message'],
+    },
+    409: errorResponse,
   },
 } as const;
 

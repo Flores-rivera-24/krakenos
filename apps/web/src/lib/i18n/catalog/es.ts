@@ -121,6 +121,28 @@ export const es = {
   'settings.language.changed': 'Idioma cambiado',
   'settings.language.error': 'No se pudo cambiar el idioma',
 
+  // --- Ajustes → Actualizaciones (US-116 / US-190) ---
+  'settings.update.title': 'Actualizaciones',
+  'settings.update.installed': 'Versión instalada',
+  'settings.update.checking': 'Comprobando…',
+  'settings.update.disabled':
+    'Comprobación de actualizaciones desactivada. Actívala con {env} en el servidor.',
+  'settings.update.available': 'Actualización disponible: {version}',
+  'settings.update.upToDate': 'Estás al día.',
+  'settings.update.checkedAgainst': 'Comprobado contra las releases de GitHub.',
+  'settings.update.applyNow': 'Actualizar ahora',
+  'settings.update.applying': 'Iniciando…',
+  'settings.update.inProgress': 'Actualización en curso…',
+  'settings.update.dockerHint': 'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
+  'settings.update.copyCommand': 'Copiar comando',
+  'settings.update.copied': '¡Copiado!',
+  'settings.update.maintenanceWindow': 'Ventana de mantenimiento: {window}',
+  'settings.update.started': 'Actualización iniciada',
+  'settings.update.error': 'No se pudo iniciar la actualización',
+  'settings.update.lastOk': 'Última actualización correcta: {from} → {to}',
+  'settings.update.lastRolledBack': 'Última actualización revertida a {from} (la nueva versión falló).',
+  'settings.update.lastFailed': 'La última actualización falló.',
+
   // --- Dashboard (US-160) ---
   'dashboard.title': 'Dashboard',
   'dashboard.realtime': 'En tiempo real · conectado',
@@ -709,6 +731,8 @@ export const es = {
   'settings.system.min30': '30 minutos',
   'settings.system.presenceGrace': 'Gracia de presencia',
   'settings.system.presenceGraceAria': 'Ventana de gracia de la presencia',
+  'settings.system.maintenanceWindow': 'Ventana de mantenimiento',
+  'settings.system.maintenanceWindowPlaceholder': 'p. ej. 02:00-06:00 (vacío = siempre)',
   'settings.system.https': 'HTTPS',
   'settings.system.httpsOn': 'Activado (certificado en LAN)',
   'settings.system.httpsOff': 'Desactivado (HTTP)',
