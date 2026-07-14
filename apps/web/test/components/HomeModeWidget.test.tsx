@@ -16,8 +16,8 @@ const STATE: PresenceState = {
   modeSource: 'manual',
   modeChangedAt: null,
   people: [
-    { userId: 'u1', displayName: 'Ana', home: true, since: null, deviceCount: 1 },
-    { userId: 'u2', displayName: 'Bob', home: false, since: null, deviceCount: 2 },
+    { userId: 'u1', displayName: 'Ana', home: true, since: null, deviceCount: 1, signal: 'stale' },
+    { userId: 'u2', displayName: 'Bob', home: false, since: null, deviceCount: 2, signal: 'fresh' },
   ],
 };
 
@@ -52,6 +52,8 @@ describe('HomeModeWidget (US-169)', () => {
     expect(screen.getByText(/Ana llegó/)).toBeInTheDocument();
     // US-212: nota honesta sobre el límite físico de la presencia por WiFi.
     expect(screen.getByText(/reposo profundo/)).toBeInTheDocument();
+    // US-220: señal débil visible en la persona con salida pendiente (Ana, stale).
+    expect(screen.getByText(/señal débil/)).toBeInTheDocument();
   });
 
   it('cambiar de modo llama a POST /presence/mode y refleja la respuesta', async () => {

@@ -106,6 +106,8 @@ describe('presencia y modos del hogar (US-169)', () => {
       create: { key: 'presenceGraceMin', value: '10' },
       update: { value: '10' },
     });
+    // Aísla esta prueba a la gracia (histéresis de 1 barrido; US-220 la prueba aparte).
+    await app.prisma.setting.create({ data: { key: 'presenceLeaveSweeps', value: '1' } });
 
     // Llega (fija la caché) y luego pierde la señal.
     await service.onEvent({ type: 'device-online', mac: 'aa:bb:cc:00:00:02' }, T0);
@@ -156,6 +158,7 @@ describe('presencia y modos del hogar (US-169)', () => {
       create: { key: 'presenceGraceMin', value: '0' },
       update: { value: '0' },
     });
+    await app.prisma.setting.create({ data: { key: 'presenceLeaveSweeps', value: '1' } });
 
     await service.onEvent({ type: 'device-online', mac: 'aa:bb:cc:00:00:05' }, T0);
     await app.prisma.device.update({ where: { mac: 'aa:bb:cc:00:00:05' }, data: { online: false } });
@@ -302,6 +305,77 @@ describe('presencia y modos del hogar (US-169)', () => {
     });
     expect(rows.map((r) => r.kind)).toEqual(['arrived', 'left']);
     expect(events).toHaveLength(0); // sin automatizaciones atrasadas al arrancar
+  });
+
+  // --- Histéresis de salida ante el sueño del móvil (US-220) ---
+
+  async function armPendingLeave(service: PresenceService, mac: string, grace = '10') {
+    await app.prisma.setting.create({ data: { key: 'presenceGraceMin', value: grace } });
+    await service.onEvent({ type: 'device-online', mac }, T0);
+    await app.prisma.device.update({ where: { mac }, data: { online: false } });
+    await service.onEvent({ type: 'device-offline', mac }, min(1));
+  }
+
+  it('exige N barridos consecutivos offline además de la gracia (US-220)', async () => {
+    const { service } = makePresence();
+    const ana = await seedPerson('Ana', 'aa:bb:cc:00:00:20', true);
+    await app.prisma.setting.create({ data: { key: 'presenceLeaveSweeps', value: '2' } });
+    await armPendingLeave(service, 'aa:bb:cc:00:00:20');
+
+    // Pasada la gracia, el primer barrido es el sweep 1 → aún NO hay salida.
+    await service.tick(min(12));
+    expect(await app.prisma.presenceEvent.count({ where: { userId: ana.id, kind: 'left' } })).toBe(0);
+    // Segundo barrido consecutivo → sweep 2 → salida confirmada.
+    await service.tick(min(13));
+    expect(await app.prisma.presenceEvent.count({ where: { userId: ana.id, kind: 'left' } })).toBe(1);
+  });
+
+  it('un dispositivo que vuelve rompe la racha de barridos (no arma la casa)', async () => {
+    const { service } = makePresence();
+    const ana = await seedPerson('Ana', 'aa:bb:cc:00:00:21', true);
+    await app.prisma.setting.create({ data: { key: 'presenceLeaveSweeps', value: '3' } });
+    await armPendingLeave(service, 'aa:bb:cc:00:00:21');
+
+    await service.tick(min(12)); // sweep 1
+    // Vuelve la señal en la DB → el siguiente barrido cancela la salida.
+    await app.prisma.device.update({ where: { mac: 'aa:bb:cc:00:00:21' }, data: { online: true } });
+    await service.tick(min(13));
+    expect(await app.prisma.presenceEvent.count({ where: { userId: ana.id, kind: 'left' } })).toBe(0);
+    expect(await currentMode()).toMatchObject({ mode: 'home' }); // el auto-armado no se dispara
+  });
+
+  it('la supresión nocturna no confirma salidas dentro de la franja (US-220)', async () => {
+    const { service } = makePresence();
+    const ana = await seedPerson('Ana', 'aa:bb:cc:00:00:22', true);
+    await app.prisma.setting.create({ data: { key: 'presenceLeaveSweeps', value: '1' } });
+    // T0 = 18:00; franja 17:00-19:00 lo cubre.
+    await app.prisma.setting.create({ data: { key: 'presenceNightSuppress', value: '17:00-19:00' } });
+    await armPendingLeave(service, 'aa:bb:cc:00:00:22');
+
+    // Dentro de la franja: aunque pase la gracia, no hay salida (móvil dormido).
+    await service.tick(min(12));
+    expect(await app.prisma.presenceEvent.count({ where: { userId: ana.id, kind: 'left' } })).toBe(0);
+    expect(await currentMode()).toMatchObject({ mode: 'home' });
+
+    // Fuera de la franja (T0 + 90 min = 19:30): ya se confirma la salida.
+    await service.tick(min(90));
+    expect(await app.prisma.presenceEvent.count({ where: { userId: ana.id, kind: 'left' } })).toBe(1);
+  });
+
+  it('señal de confianza: `stale` mientras la salida está pendiente, `fresh` al volver', async () => {
+    const { service } = makePresence();
+    const ana = await seedPerson('Ana', 'aa:bb:cc:00:00:23', true);
+    await armPendingLeave(service, 'aa:bb:cc:00:00:23');
+
+    const requester = { sub: ana.id, role: 'member' as const };
+    const stale = await service.getState(requester);
+    expect(stale.people[0]).toMatchObject({ home: true, signal: 'stale' });
+
+    // Vuelve la señal → llegada → `fresh`.
+    await app.prisma.device.update({ where: { mac: 'aa:bb:cc:00:00:23' }, data: { online: true } });
+    await service.onEvent({ type: 'device-online', mac: 'aa:bb:cc:00:00:23' }, min(3));
+    const fresh = await service.getState(requester);
+    expect(fresh.people[0]).toMatchObject({ home: true, signal: 'fresh' });
   });
 
   it('los triggers de presencia validan en el borde: mode-changed exige mode', async () => {

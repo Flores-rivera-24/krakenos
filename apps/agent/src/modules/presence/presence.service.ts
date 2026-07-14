@@ -10,6 +10,7 @@ import type {
 import { HOME_MODES } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { SETTING_BOUNDS, clampToBound } from '../../config/settings-bounds.js';
+import { isWithinWindow, parseMaintenanceWindow } from '../../system/maintenance-window.js';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 
 /** Clave interna de `Setting` con el modo del hogar (no editable por la allowlist). */
@@ -17,6 +18,17 @@ const MODE_SETTING_KEY = 'presence.mode';
 
 /** Ventana de gracia por defecto si el ajuste falta/es inválido (minutos). */
 const DEFAULT_GRACE_MIN = 10;
+
+/** Barridos consecutivos offline por defecto (US-220), además de la gracia. */
+const DEFAULT_LEAVE_SWEEPS = 2;
+
+/** Una salida pendiente de confirmar: cuándo empezó y cuántos barridos lleva. */
+interface PendingLeave {
+  /** Instante en que el dueño se quedó sin señal. */
+  since: Date;
+  /** Barridos consecutivos que han re-confirmado el offline (histéresis US-220). */
+  sweeps: number;
+}
 
 /** Quién pregunta por el estado (la presencia ajena se acota por rol). */
 export interface PresenceRequester {
@@ -57,8 +69,8 @@ function isHomeMode(value: unknown): value is HomeMode {
  */
 export class PresenceService {
   private timer: NodeJS.Timeout | null = null;
-  /** Salidas pendientes de confirmar: userId → instante en que se quedó sin señal. */
-  private readonly pendingLeave = new Map<string, Date>();
+  /** Salidas pendientes de confirmar: userId → estado de la salida (US-220). */
+  private readonly pendingLeave = new Map<string, PendingLeave>();
   /** Última presencia conocida por persona (caché; la verdad histórica está en la DB). */
   private readonly homeState = new Map<string, boolean>();
 
@@ -96,6 +108,24 @@ export class PresenceService {
     return clampToBound(n, SETTING_BOUNDS.presenceGraceMin) ?? DEFAULT_GRACE_MIN;
   }
 
+  /** Barridos consecutivos offline exigidos para confirmar la salida (US-220). */
+  private async leaveSweeps(): Promise<number> {
+    const row = await this.app.prisma.setting.findUnique({ where: { key: 'presenceLeaveSweeps' } });
+    const n = Number(row?.value);
+    return clampToBound(n, SETTING_BOUNDS.presenceLeaveSweeps) ?? DEFAULT_LEAVE_SWEEPS;
+  }
+
+  /**
+   * ¿Estamos en la ventana de supresión nocturna (US-220)? Dentro de ella, una
+   * desaparición WiFi no confirma "salió" (el móvil duerme el WiFi de madrugada).
+   */
+  private async isNightSuppressed(now: Date): Promise<boolean> {
+    const row = await this.app.prisma.setting.findUnique({ where: { key: 'presenceNightSuppress' } });
+    const window = parseMaintenanceWindow(row?.value);
+    if (!window) return false; // sin franja configurada → nunca suprime
+    return isWithinWindow(window, now);
+  }
+
   /**
    * Estado del hogar para quien pregunta: el modo es global; `people` se acota
    * por rol (admin ve a todas las personas con dispositivos; el resto solo a sí).
@@ -129,6 +159,8 @@ export class PresenceService {
         home: this.isHome(u.id, u.devices.some((d) => d.online)),
         since: last ? last.createdAt.toISOString() : null,
         deviceCount: u.devices.length,
+        // `stale` si se le mantiene en casa pero su WiFi dejó de responder (US-220).
+        signal: this.pendingLeave.has(u.id) ? 'stale' : 'fresh',
       };
     });
     return {
@@ -210,8 +242,8 @@ export class PresenceService {
         });
         if (stillOnline > 0) return;
         // Sin señal: no se marca la salida aún (los móviles duermen el WiFi);
-        // el barrido la confirmará pasada la ventana de gracia.
-        if (!this.pendingLeave.has(ownerId)) this.pendingLeave.set(ownerId, now);
+        // el barrido la confirmará pasada la gracia + la histéresis (US-220).
+        if (!this.pendingLeave.has(ownerId)) this.pendingLeave.set(ownerId, { since: now, sweeps: 0 });
       }
     } catch (err) {
       this.app.log.error({ err, event: event.type }, '[presence] fallo procesando el evento');
@@ -257,22 +289,42 @@ export class PresenceService {
     }
   }
 
-  /** Confirma las salidas pendientes cuya ventana de gracia ya pasó. */
+  /**
+   * Confirma las salidas pendientes que ya pasaron la gracia **y** acumulan N
+   * barridos consecutivos offline (histéresis US-220), salvo dentro de la ventana
+   * de supresión nocturna. Un dispositivo que vuelve en cualquier barrido cancela
+   * la salida (rompe la racha) → la llegada la re-arma el propio evento del bus.
+   */
   async tick(now: Date = new Date()): Promise<void> {
     if (this.pendingLeave.size === 0) return;
     const graceMs = (await this.graceMinutes()) * 60_000;
-    for (const [userId, since] of [...this.pendingLeave]) {
-      if (now.getTime() - since.getTime() < graceMs) continue;
-      this.pendingLeave.delete(userId);
+    const requiredSweeps = await this.leaveSweeps();
+    const suppressed = await this.isNightSuppressed(now);
+    for (const [userId, pending] of [...this.pendingLeave]) {
+      if (now.getTime() - pending.since.getTime() < graceMs) continue;
+
       // Re-verifica contra la DB: si algún dispositivo volvió sin pasar por el
-      // bus (p. ej. reconciliación), no hay salida.
+      // bus (p. ej. reconciliación), no hay salida y se rompe la racha.
       const stillOnline = await this.app.prisma.device.count({
         where: { ownerId: userId, online: true },
       });
       if (stillOnline > 0) {
+        this.pendingLeave.delete(userId);
         this.homeState.set(userId, true);
         continue;
       }
+
+      // Supresión nocturna: dentro de la franja, una desaparición WiFi no confirma
+      // la salida (el móvil duerme el WiFi de madrugada). Se mantiene pendiente.
+      if (suppressed) continue;
+
+      // Histéresis: exige N barridos consecutivos offline además de la gracia.
+      const sweeps = pending.sweeps + 1;
+      if (sweeps < requiredSweeps) {
+        this.pendingLeave.set(userId, { since: pending.since, sweeps });
+        continue;
+      }
+      this.pendingLeave.delete(userId);
       await this.markLeft(userId, now);
     }
   }

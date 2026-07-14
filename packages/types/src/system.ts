@@ -37,6 +37,13 @@ export const SYSTEM_SETTING_KEYS = [
   // Ventana de gracia de la presencia en minutos (US-169): los móviles duermen
   // el WiFi, así que "salió de casa" solo se marca tras este tiempo sin señal.
   'presenceGraceMin',
+  // Histéresis de salida (US-220): nº de barridos consecutivos offline que se
+  // exigen —además de la gracia— para confirmar "salió". Amortigua el parpadeo.
+  'presenceLeaveSweeps',
+  // Supresión nocturna de salidas (US-220): franja "HH:MM-HH:MM" (hora local) en
+  // la que una desaparición WiFi NO dispara "salió" (el móvil duerme el WiFi de
+  // madrugada). Vacío = sin supresión.
+  'presenceNightSuppress',
   // Resumen del hogar (US-180): off | daily | weekly (se envía a las 08:00).
   'digestFrequency',
   // Ventana de mantenimiento para la actualización one-click (US-190): franja

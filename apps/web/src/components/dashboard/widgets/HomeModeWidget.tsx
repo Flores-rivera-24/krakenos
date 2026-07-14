@@ -124,6 +124,7 @@ export function HomeModeWidget() {
                         : p.home
                           ? 'en casa'
                           : 'fuera'}
+                      {p.home && p.signal === 'stale' ? ' · señal débil' : ''}
                       {p.since ? ` · ${timeAgo(p.since)}` : ''}
                     </span>
                   </li>

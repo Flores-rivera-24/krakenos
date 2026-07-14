@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { rateLimitStore } from '../../src/plugins/rate-limit-store.js';
-import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 describe('rutas de sistema', () => {
   let app: FastifyInstance;
@@ -295,9 +295,11 @@ describe('rutas de sistema', () => {
     expect(body.mode).toBe('systemd');
     expect(typeof body.message).toBe('string');
 
-    // Queda auditado.
-    const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
-    expect(audit).not.toBeNull();
+    // Queda auditado (el audit es fire-and-forget: se espera a que se persista).
+    await eventually(async () => {
+      const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
+      expect(audit).not.toBeNull();
+    });
   });
 
   // Observabilidad (US-191): lectura autenticada; /health sigue mínimo.

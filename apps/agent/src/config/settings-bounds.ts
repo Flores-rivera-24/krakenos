@@ -40,6 +40,12 @@ export const SETTING_BOUNDS = {
    * duerme el WiFi generaría salidas fantasma con 0); máx 3 h.
    */
   presenceGraceMin: { min: 1, max: 180 },
+  /**
+   * Barridos consecutivos offline exigidos para confirmar "salió" (US-220),
+   * además de la gracia. Mín 1 (el propio barrido tras la gracia); máx 10 para no
+   * retrasar una salida real indefinidamente.
+   */
+  presenceLeaveSweeps: { min: 1, max: 10 },
 } satisfies Record<string, NumericBound>;
 
 export type BoundedSettingKey = keyof typeof SETTING_BOUNDS;

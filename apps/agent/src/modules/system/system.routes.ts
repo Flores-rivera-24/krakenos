@@ -71,6 +71,8 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   homeLatitude: '',
   homeLongitude: '',
   presenceGraceMin: '10',
+  presenceLeaveSweeps: '2',
+  presenceNightSuppress: '',
   digestFrequency: 'off',
   updateMaintenanceWindow: '',
   telemetryEnabled: 'off',
