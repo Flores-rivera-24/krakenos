@@ -119,6 +119,31 @@ describe('AutomationsPage (US-167)', () => {
     );
   });
 
+  it('el trigger de movimiento permite filtrar por objeto detectado (Frigate, US-214)', async () => {
+    apiMock.post.mockResolvedValue(rule());
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Nombre'), 'Persona en la entrada');
+    await user.selectOptions(within(dialog).getByLabelText('Cuando'), 'motion-detected');
+    await user.selectOptions(
+      within(dialog).getByLabelText('Objeto detectado (con Frigate)'),
+      'person',
+    );
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        '/automations',
+        expect.objectContaining({
+          trigger: { type: 'motion-detected', label: 'person' },
+        }),
+      ),
+    );
+  });
+
   it('muestra el log de ejecuciones con éxito/fallo', async () => {
     mockGets({
       '/automations': [rule()],

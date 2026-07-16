@@ -378,12 +378,17 @@ export const env = {
   },
 
   cameras: {
-    kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp',
+    kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp' | 'frigate',
     // Solo se usa cuando CAMERAS_KIND=rtsp (snapshot vía ffmpeg).
     rtsp: {
       configPath: process.env.CAMERAS_CONFIG ?? resolve('data/cameras.json'),
       ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
       transport: process.env.CAMERAS_RTSP_TRANSPORT ?? 'tcp',
+    },
+    // Solo se usa cuando CAMERAS_KIND=frigate (NVR delegado, US-214).
+    frigate: {
+      url: process.env.FRIGATE_URL ?? '',
+      go2rtcUrl: process.env.FRIGATE_GO2RTC_URL || undefined,
     },
     // Streaming HLS en vivo (US-185): segmentos efímeros en `var/hls` (FUERA de
     // `data/`, que es destino de restore), con límite de streams concurrentes y

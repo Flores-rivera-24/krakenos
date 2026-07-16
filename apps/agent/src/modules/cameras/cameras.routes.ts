@@ -9,6 +9,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { toCameraRecord, toManagedCamera, type CameraStore } from '../../cameras/camera.store.js';
+import { FRIGATE_RECORDING_PREFIX, segmentContentType } from '../../cameras/frigate.parsers.js';
 import { StreamLimitError } from '../../cameras/hls-stream.js';
 import type { MotionService } from './motion.service.js';
 import type { RecordingService } from './recording.service.js';
@@ -184,7 +185,9 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
       }
       return reply
         .header('Cache-Control', 'no-store')
-        .type('video/mp2t')
+        // .ts → MPEG-TS; los backends que proxyean fMP4 (Frigate/go2rtc, US-214)
+        // sirven segmentos .m4s/.mp4 → video/mp4.
+        .type(segmentContentType(req.params.segment))
         .send(Buffer.from(bytes));
     },
   );
@@ -241,17 +244,35 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
     );
 
     // Lista de clips (timeline) — cualquier rol autenticado; sin la ruta en disco.
+    // Con un NVR delegado (Frigate, US-214) los clips viven allí: se listan por
+    // proxy y `RecordingService` no graba (no se duplica lo que el NVR ya hace).
     app.get<{ Querystring: { cameraId?: string } }>(
       '/recordings',
       { schema: listRecordingsSchema, preHandler: app.authenticate },
-      async (req) => recording.list(req.query.cameraId),
+      async (req) =>
+        cameras.listNativeRecordings
+          ? cameras.listNativeRecordings(req.query.cameraId)
+          : recording.list(req.query.cameraId),
     );
 
-    // Descarga autenticada del clip (streaming del fichero).
+    // Descarga autenticada del clip (fichero local, o proxy del NVR — la URL de
+    // Frigate nunca sale al cliente, US-214).
     app.get<{ Params: { id: string } }>(
       '/recordings/:id/download',
       { schema: downloadRecordingSchema, preHandler: app.authenticate },
       async (req, reply) => {
+        if (req.params.id.startsWith(FRIGATE_RECORDING_PREFIX) && cameras.readNativeRecording) {
+          const bytes = await cameras.readNativeRecording(req.params.id);
+          if (!bytes) {
+            return reply
+              .code(404)
+              .send({ code: 'RECORDING_NOT_FOUND', message: 'Grabación no encontrada' });
+          }
+          return reply
+            .header('Content-Type', 'video/mp4')
+            .header('Content-Disposition', `attachment; filename="${req.params.id}.mp4"`)
+            .send(Buffer.from(bytes));
+        }
         const row = await recording.getRow(req.params.id);
         if (!row) {
           return reply
@@ -266,11 +287,18 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
       },
     );
 
-    // Borrado de un clip — admin.
+    // Borrado de un clip — admin. Los clips del NVR no se borran desde aquí:
+    // su retención la gobierna Frigate (honesto, no fingimos gestionarla).
     app.delete<{ Params: { id: string } }>(
       '/recordings/:id',
       { schema: removeRecordingSchema, preHandler: app.requireRole('admin') },
       async (req, reply) => {
+        if (req.params.id.startsWith(FRIGATE_RECORDING_PREFIX)) {
+          return reply.code(400).send({
+            code: 'RECORDING_MANAGED_BY_NVR',
+            message: 'Esta grabación la gestiona Frigate; su retención se configura allí',
+          });
+        }
         const ok = await recording.remove(req.params.id);
         if (!ok) {
           return reply

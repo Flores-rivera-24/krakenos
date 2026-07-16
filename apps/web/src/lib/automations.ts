@@ -63,10 +63,28 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} sale de casa`;
     case 'mode-changed':
       return `el hogar pasa a «${MODE_LABELS[trigger.mode]}»`;
-    case 'motion-detected':
-      return `${trigger.cameraId ? (ctx.cameraNames?.get(trigger.cameraId) ?? trigger.cameraId) : 'una cámara'} detecta movimiento`;
+    case 'motion-detected': {
+      const camera = trigger.cameraId
+        ? (ctx.cameraNames?.get(trigger.cameraId) ?? trigger.cameraId)
+        : 'una cámara';
+      // Con detección nativa (Frigate, US-214) la regla puede filtrar por objeto.
+      const what = trigger.label ? (MOTION_LABEL_PHRASES[trigger.label] ?? `«${trigger.label}»`) : 'movimiento';
+      return `${camera} detecta ${what}`;
+    }
   }
 }
+
+/**
+ * Frase en español para los objetos que detecta el NVR (vocabulario del
+ * detector, en inglés). Uno desconocido se muestra citado tal cual.
+ */
+export const MOTION_LABEL_PHRASES: Record<string, string> = {
+  person: 'una persona',
+  car: 'un coche',
+  dog: 'un perro',
+  cat: 'un gato',
+  package: 'un paquete',
+};
 
 /** Frase legible de una acción ("entonces…"). */
 export function describeAction(action: AutomationAction, ctx: NameContext = {}): string {

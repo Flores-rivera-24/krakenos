@@ -91,6 +91,25 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger({ type: 'motion-detected' }, { type: 'iot-on', deviceId: 'x' })).toBe(false);
   });
 
+  it('motion-detected con label (Frigate, US-214): filtra por objeto detectado', () => {
+    const person: HomeEvent = {
+      type: 'motion-detected',
+      cameraId: 'cam-1',
+      cameraName: 'Entrada',
+      label: 'person',
+    };
+    const plain: HomeEvent = { type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' };
+    // Con label: solo el objeto pedido; el frame-diff local (sin label) NO dispara.
+    expect(matchesTrigger({ type: 'motion-detected', label: 'person' }, person)).toBe(true);
+    expect(matchesTrigger({ type: 'motion-detected', label: 'car' }, person)).toBe(false);
+    expect(matchesTrigger({ type: 'motion-detected', label: 'person' }, plain)).toBe(false);
+    // Sin label en la regla: cualquier detección, nativa o local.
+    expect(matchesTrigger({ type: 'motion-detected' }, person)).toBe(true);
+    // El resumen legible incluye el objeto (no es PII: lo pone el detector).
+    expect(describeEvent(person)).toBe('person en Entrada');
+    expect(describeEvent(plain)).toBe('movimiento en Entrada');
+  });
+
   it('time nunca casa por evento (va por el barrido)', () => {
     expect(
       matchesTrigger({ type: 'time', days: [3], minute: 720 }, { type: 'device-new', mac: 'aa' }),

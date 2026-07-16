@@ -1,5 +1,7 @@
 import type { CameraKind, CameraManager } from '@krakenos/types';
+import { safeFetch } from '../net/egress.js';
 import { createFfmpegExec } from './ffmpeg.js';
+import { FrigateCameraManager } from './frigate.cameras.js';
 import { MockCameraManager } from './mock.cameras.js';
 import { RtspCameraManager } from './rtsp.cameras.js';
 
@@ -23,10 +25,20 @@ export interface CameraHlsConfig {
   idleTimeoutMs?: number;
 }
 
+/** Config del backend Frigate (`kind: 'frigate'`, US-214). */
+export interface FrigateCameraConfig {
+  /** URL base de Frigate (p. ej. `http://frigate.lan:5000`). */
+  url: string;
+  /** URL del go2rtc embebido; por defecto el mismo host en el puerto 1984. */
+  go2rtcUrl?: string;
+}
+
 export interface CameraConfig {
   kind: CameraKind;
   /** Requerido cuando `kind === 'rtsp'`. */
   rtsp?: RtspCameraConfig;
+  /** Requerido cuando `kind === 'frigate'` (US-214). */
+  frigate?: FrigateCameraConfig;
   /** Streaming HLS (US-185). Sin él, mock usa un tmp por defecto y rtsp lo desactiva. */
   hls?: CameraHlsConfig;
 }
@@ -65,6 +77,16 @@ export function createCameraManager(config: CameraConfig): CameraManager {
           : undefined,
       });
     }
+    case 'frigate': {
+      const frigate = config.frigate;
+      if (!frigate?.url) throw new Error('Falta la configuración de Frigate (CameraConfig.frigate.url)');
+      return new FrigateCameraManager({
+        baseUrl: frigate.url,
+        go2rtcUrl: frigate.go2rtcUrl,
+        // Toda petición saliente pasa por la política de egress (SSRF).
+        fetchImpl: (url) => safeFetch(url),
+      });
+    }
     default: {
       const exhaustive: never = config.kind;
       throw new Error(`Fuente de cámaras desconocida: ${String(exhaustive)}`);
@@ -72,5 +94,6 @@ export function createCameraManager(config: CameraConfig): CameraManager {
   }
 }
 
+export { FrigateCameraManager } from './frigate.cameras.js';
 export { MockCameraManager } from './mock.cameras.js';
 export { RtspCameraManager } from './rtsp.cameras.js';

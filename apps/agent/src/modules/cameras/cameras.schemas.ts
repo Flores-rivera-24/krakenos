@@ -243,7 +243,8 @@ export const downloadRecordingSchema = {
 
 export const removeRecordingSchema = {
   params: idParams,
-  response: { 204: { type: 'null' }, 404: errorResponse },
+  // 400: la grabación es del NVR (Frigate) y su retención se gestiona allí (US-214).
+  response: { 204: { type: 'null' }, 400: errorResponse, 404: errorResponse },
 } as const;
 
 const recordingConfigResponse = {
@@ -289,6 +290,8 @@ export const motionEventsSchema = {
           cameraName: { type: 'string' },
           detectedAt: { type: 'string', format: 'date-time' },
           snapshot: { type: ['string', 'null'] },
+          // Objeto detectado si la detección es nativa (Frigate, US-214).
+          label: { type: ['string', 'null'] },
         },
         required: ['cameraId', 'cameraName', 'detectedAt', 'snapshot'],
       },
