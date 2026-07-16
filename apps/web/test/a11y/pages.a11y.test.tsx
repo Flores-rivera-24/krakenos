@@ -212,6 +212,13 @@ function apiGet(path: string): Promise<unknown> {
       peerCount: 1,
     });
   if (path === '/vpn/peers') return Promise.resolve([VPN_PEER]);
+  if (path === '/vpn/tailscale')
+    return Promise.resolve({
+      state: 'running',
+      tailscaleIp: '100.1.2.3',
+      magicDnsName: 'krakenos.tail1234.ts.net',
+      version: '1.66.4',
+    });
   if (path === '/iot/devices') return Promise.resolve([IOT_LIGHT]);
   if (path === '/cameras') return Promise.resolve([CAMERA]);
   if (path === '/firewall/rules') return Promise.resolve([FIREWALL_RULE]);

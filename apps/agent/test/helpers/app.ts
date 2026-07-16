@@ -82,6 +82,7 @@ import { MemoryJsonStore, type JsonStore } from '../../src/store/json-store.js';
 import { MockQosManager } from '../../src/qos/mock.qos.js';
 import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
+import type { TailscaleTransport } from '../../src/vpn/tailscale.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { metricsPlugin } from '../../src/plugins/metrics.js';
@@ -103,6 +104,11 @@ export interface BuildTestAppOptions {
   driver?: HardwareDriver;
   /** Gestor de VPN a inyectar; por defecto un `MockVpnManager` nuevo. */
   vpn?: VpnManager;
+  /**
+   * Transporte de la LocalAPI de Tailscale (US-215); por defecto uno que simula
+   * la ausencia del socket (→ `not-installed`), sin tocar el sistema.
+   */
+  tailscale?: TailscaleTransport;
   /** Registra `@fastify/rate-limit` (global:false) como en producción. */
   rateLimit?: boolean;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
@@ -214,7 +220,15 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
     await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
-    await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
+    // Tailscale (US-215): por defecto "socket ausente" (ENOENT → not-installed);
+    // los tests de comportamiento inyectan su transporte falso.
+    const tailscale =
+      opts.tailscale ??
+      ({
+        fetchStatus: () =>
+          Promise.reject(Object.assign(new Error('no socket'), { code: 'ENOENT' })),
+      } satisfies TailscaleTransport);
+    await app.register(vpnRoutes, { prefix: '/api/vpn', vpn, tailscale });
     await app.register(auditRoutes, { prefix: '/api/audit' });
     await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
     await app.register(alertsRoutes, { prefix: '/api/alerts', service: new AlertConfigService(app) });
