@@ -174,11 +174,34 @@ el histórico de tráfico/energía y la retención acota su tamaño). Para las f
 (VPN/firewall/QoS) y de cámara hacen falta `wireguard-tools`, `iptables`, `iproute2` y `ffmpeg` en
 el host.
 
-### Bare-metal / systemd (vía soportada)
+### Instalador de un comando (recomendado)
 
-Es la instalación **recomendada para producción**: es la única que opera **todas** las funciones,
-incluidas VPN WireGuard, firewall, QoS, cámaras RTSP y auto-descubrimiento. En producción **el
-agente sirve también el frontend** (API + UI en un único puerto), así que arranca con un comando:
+En un Debian/Ubuntu/Raspberry Pi OS (x86-64 o ARM64) limpio:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scripts/install.sh | sudo bash
+```
+
+Comprueba el sistema (SO/arquitectura/RAM/disco), instala Node 20 + pnpm (pinneado, sin
+descargas en el arranque), clona la última versión, genera las claves, migra la base, construye,
+crea el **servicio systemd** y te imprime la **URL de `/setup?token=` con QR** para crear el
+administrador. Es **idempotente** (re-ejecutarlo actualiza sin tocar tu configuración) y ofrece
+como **opcionales** el helper sudoers (VPN/firewall/QoS), `ffmpeg` (cámaras) y las dependencias
+de integraciones. Después:
+
+```bash
+sudo bash /opt/krakenos/scripts/install.sh --update      # actualizar (orquestador con rollback)
+sudo bash /opt/krakenos/scripts/install.sh --uninstall   # desinstalar (conserva DB/claves/datos)
+```
+
+> El smoke del instalador corre en CI sobre un Debian limpio en cada push. Las partes
+> privilegiadas (VPN/firewall/QoS/cámaras) se verifican con hardware real.
+
+### Bare-metal / systemd (manual)
+
+La misma instalación, a mano: es la vía que opera **todas** las funciones, incluidas VPN
+WireGuard, firewall, QoS, cámaras RTSP y auto-descubrimiento. En producción **el agente sirve
+también el frontend** (API + UI en un único puerto), así que arranca con un comando:
 
 ```bash
 pnpm prod          # = ./scripts/prod.sh
@@ -200,8 +223,6 @@ cd apps/agent && ./scripts/gen-cert.sh   # cert autofirmado en ./certs
 # en .env: HTTPS_ENABLED=true
 ```
 
-> Un **instalador nativo de un comando** (`curl | bash`, systemd + helper + deps) está en camino
-> (Fase 6, US-216) y será la puerta de entrada recomendada.
 
 ### Docker (demo / evaluación rápida)
 

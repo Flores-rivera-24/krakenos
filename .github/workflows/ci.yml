@@ -124,6 +124,40 @@ jobs:
             e2e/test-results/
           retention-days: 7
 
+  # Smoke del instalador de un comando (US-216): corre en un Debian LIMPIO
+  # (contenedor, sin Node preinstalado) desde la copia local del repo
+  # (--from-local) y verifica que el agente construido responde /health/ready.
+  # Sin systemd ni partes privilegiadas (no operan en contenedor, ver
+  # docs/docker-limitations.md); esas se verifican en despliegue real (US-86).
+  installer-smoke:
+    name: Installer smoke (Debian limpio)
+    runs-on: ubuntu-latest
+    container: debian:12
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run installer (from local tree, no service)
+        run: |
+          apt-get update -qq && apt-get install -y -qq curl git ca-certificates procps
+          bash scripts/install.sh --yes --no-service --dir /opt/krakenos --from-local "$PWD"
+
+      - name: Boot agent and probe /health/ready
+        run: |
+          cd /opt/krakenos/apps/agent
+          NODE_ENV=production nohup node dist/index.js > /tmp/agent.log 2>&1 &
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3001/health/ready > /dev/null 2>&1; then
+              echo "health/ready OK"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "el agente no respondió a /health/ready"
+          tail -50 /tmp/agent.log
+          exit 1
+
   # Escaneo de secretos (gitleaks, BLOQUEANTE) + SAST (semgrep). US-92.
   # Job aparte para que corra en paralelo a build-test y falle de forma aislada.
   security:
