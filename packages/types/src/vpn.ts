@@ -50,6 +50,25 @@ export interface CreatePeerResult {
 }
 
 /**
+ * Estados posibles de la detección de Tailscale (US-215). La app **detecta,
+ * guía y muestra** — no administra el tailnet (hacer `tailscale up` es
+ * interactivo/OAuth y queda fuera a propósito).
+ */
+export const TAILSCALE_STATES = ['running', 'needs-login', 'stopped', 'not-installed'] as const;
+export type TailscaleState = (typeof TAILSCALE_STATES)[number];
+
+/** Resultado de la detección del `tailscaled` local (US-215). Solo lectura. */
+export interface TailscaleStatus {
+  state: TailscaleState;
+  /** IP del servidor dentro del tailnet (100.x.y.z), si está activo. */
+  tailscaleIp: string | null;
+  /** Nombre MagicDNS del servidor (sin punto final), p. ej. `krakenos.tail1234.ts.net`. */
+  magicDnsName: string | null;
+  /** Versión del daemon, si la reporta. */
+  version: string | null;
+}
+
+/**
  * Gestor de VPN intercambiable. La implementación real delega las operaciones
  * privilegiadas (wg/iptables) a un helper vía sudoers; `mock` simula en memoria.
  */

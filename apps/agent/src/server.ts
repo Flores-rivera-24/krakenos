@@ -92,6 +92,7 @@ import { withActionTimeout } from './iot/action-timeout.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
+import { createTailscaleTransport } from './vpn/tailscale.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 import { coverageRoutes } from './modules/coverage/coverage.routes.js';
 
@@ -274,7 +275,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     inventoryService,
     integrationStore,
   });
-  await app.register(vpnRoutes, { prefix: '/api/vpn', vpn });
+  await app.register(vpnRoutes, {
+    prefix: '/api/vpn',
+    vpn,
+    // Detección de Tailscale (US-215): LocalAPI por socket UNIX, solo lectura.
+    tailscale: createTailscaleTransport(env.vpn.tailscaleSocketPath),
+  });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   // Solo si hay store Tuya (config presente); con `env.iot.tuya` siempre lo hay.
   if (tuyaStore) {

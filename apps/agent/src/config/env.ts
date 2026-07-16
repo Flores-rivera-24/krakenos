@@ -308,6 +308,8 @@ export const env = {
     kind: (process.env.VPN_KIND ?? 'mock') as 'mock' | 'wireguard',
     endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
     listenPort: int('VPN_LISTEN_PORT', 51820),
+    // Socket UNIX de la LocalAPI de tailscaled (US-215, detección solo-lectura).
+    tailscaleSocketPath: process.env.TAILSCALE_SOCKET ?? '/var/run/tailscale/tailscaled.sock',
     // Solo se usa cuando VPN_KIND=wireguard (gestor real).
     wireguard: {
       interface: process.env.WG_INTERFACE ?? 'wg0',

@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
+import { MobileAccessCard } from '@/components/vpn/MobileAccessCard';
+import { TailscaleCard } from '@/components/vpn/TailscaleCard';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -203,6 +205,12 @@ export function VpnPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Acceso remoto sin puertos (US-215): Tailscale para CGNAT + guía móvil. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <TailscaleCard />
+        <MobileAccessCard />
+      </div>
 
       {selected && (
         <VpnPeerSlideover

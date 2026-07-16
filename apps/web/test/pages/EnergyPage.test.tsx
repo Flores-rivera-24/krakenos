@@ -82,6 +82,10 @@ describe('EnergyPage (US-182)', () => {
     renderPage();
     const user = userEvent.setup();
     const priceInput = await screen.findByLabelText('Precio por kWh');
+    // Espera a que la config cargada esté aplicada antes de teclear: si no, el
+    // setPrice tardío del efecto re-renderiza en mitad de la interacción y el
+    // click puede caer en un nodo obsoleto (flaky bajo carga).
+    await waitFor(() => expect(priceInput).toHaveValue(0.15));
     await user.clear(priceInput);
     await user.type(priceInput, '0.2');
     await user.click(screen.getByRole('button', { name: 'Guardar' }));

@@ -1,3 +1,5 @@
+import { TAILSCALE_STATES } from '@krakenos/types';
+
 const peerResponse = {
   type: 'object',
   properties: {
@@ -57,6 +59,22 @@ export const createPeerSchema = {
         },
       },
       required: ['peer', 'config'],
+    },
+  },
+} as const;
+
+export const tailscaleStatusSchema = {
+  response: {
+    200: {
+      type: 'object',
+      properties: {
+        // Enum derivado de la fuente única en @krakenos/types (AUD-17).
+        state: { type: 'string', enum: [...TAILSCALE_STATES] },
+        tailscaleIp: { type: ['string', 'null'] },
+        magicDnsName: { type: ['string', 'null'] },
+        version: { type: ['string', 'null'] },
+      },
+      required: ['state', 'tailscaleIp', 'magicDnsName', 'version'],
     },
   },
 } as const;

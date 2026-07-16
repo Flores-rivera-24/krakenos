@@ -26,9 +26,17 @@ const PEER: VpnPeer = {
 
 describe('VpnPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      Promise.resolve(path === '/vpn/status' ? STATUS : []),
-    );
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/vpn/status') return Promise.resolve(STATUS);
+      if (path === '/vpn/tailscale')
+        return Promise.resolve({
+          state: 'not-installed',
+          tailscaleIp: null,
+          magicDnsName: null,
+          version: null,
+        });
+      return Promise.resolve([]);
+    });
     apiMock.post.mockReset();
     apiMock.del.mockReset();
   });

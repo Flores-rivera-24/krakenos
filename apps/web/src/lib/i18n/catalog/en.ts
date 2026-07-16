@@ -267,6 +267,48 @@ export const en: Record<TranslationKey, string> = {
   'vpn.delete': 'Delete',
   'vpn.deleteLabel': 'Delete {name}',
 
+  // --- Tailscale + acceso móvil (US-215) ---
+  'vpn.tailscale.title': 'Remote access via Tailscale',
+  'vpn.tailscale.desc':
+    'For homes without a public IP (CGNAT): a tunnel with no open ports. KrakenOS detects it and guides you; it never manages your Tailscale network.',
+  'vpn.tailscale.state': 'Status',
+  'vpn.tailscale.state.running': 'Active',
+  'vpn.tailscale.state.needs-login': 'Sign-in required',
+  'vpn.tailscale.state.stopped': 'Installed, not responding',
+  'vpn.tailscale.state.not-installed': 'Not detected',
+  'vpn.tailscale.magicDns': 'MagicDNS name',
+  'vpn.tailscale.magicDnsHint':
+    'Connect from outside using this name as the host (same URL and port as at home).',
+  'vpn.tailscale.ip': 'Tailnet IP',
+  'vpn.tailscale.version': 'Version',
+  'vpn.tailscale.needsLoginHint':
+    'Tailscale is installed but not signed in. Sign in from the server:',
+  'vpn.tailscale.stoppedHint':
+    'Tailscale seems installed but the daemon is not responding. Start it from the server:',
+  'vpn.tailscale.notInstalledHint':
+    'tailscaled was not detected on the server. If your connection has no public IP, install it with one command:',
+  'vpn.tailscale.wireguardNote':
+    'With a public IP, the WireGuard VPN above remains the recommended path.',
+  'vpn.tailscale.webauthnNote':
+    'If you use passkeys, set WEBAUTHN_RP_ID to this name as the host.',
+  'vpn.tailscale.loadError': 'Could not query Tailscale',
+  'vpn.tailscale.copy': 'Copy',
+  'vpn.tailscale.copied': 'Copied!',
+  'vpn.mobile.title': 'Your phone in 3 steps',
+  'vpn.mobile.desc':
+    'With this, opening the app on your phone connects right away — at home and away.',
+  'vpn.mobile.step1.title': 'Install the app (PWA)',
+  'vpn.mobile.step1.desc':
+    'Open KrakenOS in your phone browser and add it to the home screen (Android: Chrome menu → "Add to Home screen"; iPhone: Share → "Add to Home Screen"). On iPhone, push notifications only work with the app installed.',
+  'vpn.mobile.step2.title': 'Automatic tunnel',
+  'vpn.mobile.step2.desc':
+    'In the WireGuard app, enable the automatic mode (iPhone: "On-Demand" when leaving your WiFi; Android: "Always-on VPN"). With Tailscale, keep its app connected. The tunnel comes up by itself when you leave home.',
+  'vpn.mobile.step3.title': 'One single address',
+  'vpn.mobile.step3.desc':
+    'The installed app is tied to its address: use a name (not the IP) that works the same at home and through the tunnel — e.g. a local record in your Pi-hole (served over the VPN) or the Tailscale MagicDNS name.',
+  'vpn.mobile.note':
+    'Once done: an icon on your home screen, a session that keeps itself alive and push alerts — without opening a single port to the internet.',
+
   // --- Cámaras (US-25/148) ---
   'cameras.title': 'Cameras',
   'cameras.subtitle': 'View of the home’s IP cameras.',
