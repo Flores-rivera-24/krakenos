@@ -49,6 +49,9 @@ const trigger = {
     mode: { enum: [...HOME_MODES] },
     // Movimiento (US-186): `cameraId` opcional (ausente = cualquier cámara).
     cameraId: { type: 'string', minLength: 1, maxLength: 128 },
+    // Objeto detectado (Frigate, US-214): opcional (ausente = cualquier detección).
+    // Vocabulario del detector (person/car/dog/…): minúsculas simples.
+    label: { type: 'string', minLength: 1, maxLength: 32, pattern: '^[a-z_]+$' },
   },
   allOf: [
     {

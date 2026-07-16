@@ -221,6 +221,12 @@ export const INTEGRATION_SCHEMA: Record<
       }),
       opt('ffmpegPath', 'text', { default: 'ffmpeg' }),
     ]),
+    // NVR delegado (US-214): detección de objetos, pre-roll y grabación viven
+    // en Frigate; KrakenOS lista, avisa y sirve por proxy autenticado.
+    frigate: schema('cameras', 'frigate', 'Frigate (NVR con detección de objetos)', [
+      req('url', 'url'),
+      opt('go2rtcUrl', 'url'),
+    ]),
   },
 
   firewall: {

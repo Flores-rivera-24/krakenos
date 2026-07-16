@@ -338,11 +338,16 @@ export function resolveCameraConfig(
   const v = record.values;
   return {
     ...base,
-    kind: record.kind === 'rtsp' ? 'rtsp' : 'mock',
+    kind: record.kind === 'rtsp' ? 'rtsp' : record.kind === 'frigate' ? 'frigate' : 'mock',
     rtsp: {
       ...base.rtsp,
       ffmpegPath: str(v.ffmpegPath, base.rtsp.ffmpegPath),
       transport: str(v.transport, base.rtsp.transport),
+    },
+    // Frigate (US-214): la URL viene de la UI; el borde ya la validó (egress).
+    frigate: {
+      url: str(v.url, base.frigate.url),
+      go2rtcUrl: str(v.go2rtcUrl, base.frigate.go2rtcUrl ?? '') || undefined,
     },
   };
 }

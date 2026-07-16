@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import type { HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
+import type { CameraManager, HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -117,6 +117,8 @@ export interface BuildTestAppOptions {
   cameraStore?: JsonStore<CameraDefinition>;
   /** Gestor IoT para las rutas `/api/iot`; por defecto el `MockIotManager` compartido. */
   iot?: IotManager;
+  /** Fuente de cámaras a inyectar (p. ej. Frigate con transporte falso, US-214). */
+  cameras?: CameraManager;
 }
 
 /**
@@ -275,7 +277,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/iot/tuya',
       store: opts.tuyaStore ?? new MemoryJsonStore<TuyaDeviceRecord>(),
     });
-    const cameraManager = new MockCameraManager();
+    const cameraManager = opts.cameras ?? new MockCameraManager();
     const recordingDir = mkdtempSync(join(tmpdir(), 'krakenos-rec-'));
     const recordingService = new RecordingService(app, cameraManager, recordingDir);
     const motionService = new MotionService(app, cameraManager, new HomeEventBus(() => {}), {

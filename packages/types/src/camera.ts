@@ -1,7 +1,21 @@
 import type { Id, IsoDateTime } from './common.js';
 
 /** Implementaciones de fuente de cámaras disponibles. */
-export type CameraKind = 'mock' | 'rtsp';
+export type CameraKind = 'mock' | 'rtsp' | 'frigate';
+
+/**
+ * Evento de detección **nativo** de un backend con detección propia (Frigate,
+ * US-214): en vez del frame-diff local (US-186), el backend ya sabe QUÉ vio.
+ * `label` es el objeto detectado (`person`/`car`/`dog`/…, vocabulario del
+ * backend); `snapshot` es la miniatura del evento como data URL, si la hay.
+ */
+export interface NativeCameraEvent {
+  cameraId: Id;
+  cameraName: string;
+  detectedAt: IsoDateTime;
+  label: string;
+  snapshot: string | null;
+}
 
 /** Cámara IP gestionada por el agente (la URL RTSP nunca se expone en la API). */
 export interface Camera {
@@ -80,6 +94,22 @@ export interface CameraManager {
   getMotionFrame(id: Id): Promise<Uint8Array | null>;
   /** Detiene todas las sesiones y libera recursos (hot-reload/apagado). */
   stop(): Promise<void>;
+  /**
+   * Detección **nativa** (US-214): eventos nuevos desde `sinceMs` (epoch). Solo
+   * la implementan los backends con detección propia (Frigate) — su presencia
+   * hace que el `MotionService` NO aplique el frame-diff local (la detección
+   * vive en el backend; no se duplica) y sondee esto en su lugar.
+   */
+  pollEvents?(sinceMs: number): Promise<NativeCameraEvent[]>;
+  /**
+   * Grabaciones **nativas** del backend (US-214): clips que viven en el NVR
+   * (Frigate), listados por proxy — la URL del backend nunca sale al cliente.
+   * Su presencia hace que las rutas de grabaciones sirvan esta lista en vez de
+   * la local (`RecordingService` no graba: el NVR ya lo hace, no se duplica).
+   */
+  listNativeRecordings?(cameraId?: Id): Promise<Recording[]>;
+  /** Bytes MP4 de una grabación nativa por id, o `null` si no existe. */
+  readNativeRecording?(id: Id): Promise<Uint8Array | null>;
 }
 
 /** Ancho/alto de la huella de movimiento (rejilla fija, barata de comparar). */
@@ -145,6 +175,8 @@ export interface MotionEvent {
   detectedAt: IsoDateTime;
   /** Snapshot capturado en el momento del disparo (data URL), o `null`. */
   snapshot: string | null;
+  /** Objeto detectado (`person`/`car`/…) si la detección es nativa (US-214). */
+  label?: string | null;
 }
 
 /**

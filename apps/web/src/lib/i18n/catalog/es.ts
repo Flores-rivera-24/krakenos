@@ -174,6 +174,12 @@ export const es = {
     'Un archivo con la configuración sanitizada (sin secretos ni datos personales) para diagnosticar problemas.',
   'settings.support.download': 'Descargar paquete de soporte',
   'settings.support.downloading': 'Generando…',
+  'settings.feedback.title': 'Enviar feedback',
+  'settings.feedback.desc':
+    'Abre un aviso en GitHub con tu versión y modo de despliegue ya rellenados. Nada se envía solo: tú decides qué pegar, y puedes adjuntar el paquete de soporte (sin secretos ni datos personales).',
+  'settings.feedback.bug': 'Reportar un problema',
+  'settings.feedback.hardware': 'Informe de hardware',
+  'settings.feedback.feature': 'Proponer una mejora',
   'settings.support.error': 'No se pudo generar el paquete de soporte',
 
   // --- Ajustes → Tokens de API (US-174) ---
@@ -1044,6 +1050,13 @@ export const es = {
   'automations.editor.anyDevice': 'Cualquier dispositivo',
   'automations.editor.anyCamera': 'Cualquier cámara',
   'automations.editor.cameraAria': 'Cámara del disparador de movimiento',
+  'automations.editor.anyDetection': 'Cualquier detección',
+  'automations.editor.labelAria': 'Objeto detectado (con Frigate)',
+  'automations.label.person': 'Persona',
+  'automations.label.car': 'Coche',
+  'automations.label.dog': 'Perro',
+  'automations.label.cat': 'Gato',
+  'automations.label.package': 'Paquete',
   'automations.editor.sensorAria': 'Sensor',
   'automations.editor.comparisonAria': 'Comparación',
   'automations.editor.opGt': 'supera',

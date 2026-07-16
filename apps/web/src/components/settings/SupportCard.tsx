@@ -1,10 +1,11 @@
-import type { TelemetrySnapshot } from '@krakenos/types';
-import { Download, LifeBuoy } from 'lucide-react';
+import type { TelemetrySnapshot, UpdatePlan } from '@krakenos/types';
+import { Bug, Download, LifeBuoy, MessageSquarePlus, Router } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { buildIssueUrl, type FeedbackKind } from '@/lib/feedback';
 import { useT } from '@/lib/i18n';
 import { downloadSupportBundle } from '@/lib/support';
 import { toast } from '@/store/toast.store';
@@ -18,6 +19,8 @@ export function SupportCard() {
   const [telemetry, setTelemetry] = useState<TelemetrySnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  // Contexto para pre-rellenar el issue (US-218): versión + modo de despliegue.
+  const [plan, setPlan] = useState<UpdatePlan | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -25,10 +28,20 @@ export function SupportCard() {
       .get<TelemetrySnapshot>('/system/telemetry')
       .then((t2) => active && setTelemetry(t2))
       .catch(() => undefined);
+    void api
+      .get<UpdatePlan>('/system/update/plan')
+      .then((p) => active && setPlan(p))
+      .catch(() => undefined);
     return () => {
       active = false;
     };
   }, []);
+
+  /** Abre el issue pre-rellenado en GitHub. Nada se envía solo: el usuario pega. */
+  const openIssue = (kind: FeedbackKind) => {
+    const url = buildIssueUrl(kind, { version: plan?.current, deployMode: plan?.mode });
+    window.open(url, '_blank', 'noopener');
+  };
 
   const toggleTelemetry = async () => {
     const next = !telemetry?.enabled;
@@ -101,6 +114,27 @@ export function SupportCard() {
             <Download className="mr-2 h-4 w-4" aria-hidden />
             {downloading ? t('settings.support.downloading') : t('settings.support.download')}
           </Button>
+        </div>
+
+        {/* Feedback (US-218): abre un issue pre-rellenado en GitHub; local-first,
+            nada se envía solo — el usuario adjunta el bundle si quiere. */}
+        <div className="border-t border-kr pt-3">
+          <p className="font-medium text-kr-primary">{t('settings.feedback.title')}</p>
+          <p className="text-kr-xs text-kr-muted">{t('settings.feedback.desc')}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => openIssue('bug')}>
+              <Bug className="mr-2 h-4 w-4" aria-hidden />
+              {t('settings.feedback.bug')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openIssue('hardware-report')}>
+              <Router className="mr-2 h-4 w-4" aria-hidden />
+              {t('settings.feedback.hardware')}
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => openIssue('feature')}>
+              <MessageSquarePlus className="mr-2 h-4 w-4" aria-hidden />
+              {t('settings.feedback.feature')}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

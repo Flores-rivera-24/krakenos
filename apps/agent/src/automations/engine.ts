@@ -40,7 +40,10 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
     case 'motion-detected':
       return (
         event.type === 'motion-detected' &&
-        (!trigger.cameraId || event.cameraId === trigger.cameraId)
+        (!trigger.cameraId || event.cameraId === trigger.cameraId) &&
+        // Filtro por objeto detectado (Frigate, US-214): solo eventos nativos
+        // llevan `label`; una regla con label NO dispara con frame-diff local.
+        (!trigger.label || event.label === trigger.label)
       );
     case 'time':
       return false; // los disparadores de hora van por el barrido (dueTimeRules)
@@ -175,8 +178,11 @@ export function describeEvent(event: HomeEvent): string {
       return 'alguien sale de casa';
     case 'mode-changed':
       return `modo del hogar → ${event.mode}`;
-    // El nombre de la cámara lo pone el admin (no es PII como la presencia ajena).
+    // El nombre de la cámara lo pone el admin (no es PII como la presencia ajena);
+    // el label lo pone el detector del NVR (person/car/…), tampoco lo es.
     case 'motion-detected':
-      return `movimiento en ${event.cameraName}`;
+      return event.label
+        ? `${event.label} en ${event.cameraName}`
+        : `movimiento en ${event.cameraName}`;
   }
 }

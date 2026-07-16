@@ -167,6 +167,12 @@ export const en: Record<TranslationKey, string> = {
     'A file with your sanitized configuration (no secrets or personal data) to diagnose issues.',
   'settings.support.download': 'Download support bundle',
   'settings.support.downloading': 'Generating…',
+  'settings.feedback.title': 'Send feedback',
+  'settings.feedback.desc':
+    'Opens a GitHub issue with your version and deploy mode pre-filled. Nothing is sent on its own: you decide what to paste, and you can attach the support bundle (no secrets, no personal data).',
+  'settings.feedback.bug': 'Report a problem',
+  'settings.feedback.hardware': 'Hardware report',
+  'settings.feedback.feature': 'Suggest an improvement',
   'settings.support.error': 'Could not generate the support bundle',
 
   // --- Settings → API tokens (US-174) ---
@@ -1037,6 +1043,13 @@ export const en: Record<TranslationKey, string> = {
   'automations.editor.anyDevice': 'Any device',
   'automations.editor.anyCamera': 'Any camera',
   'automations.editor.cameraAria': 'Camera for the motion trigger',
+  'automations.editor.anyDetection': 'Any detection',
+  'automations.editor.labelAria': 'Detected object (with Frigate)',
+  'automations.label.person': 'Person',
+  'automations.label.car': 'Car',
+  'automations.label.dog': 'Dog',
+  'automations.label.cat': 'Cat',
+  'automations.label.package': 'Package',
   'automations.editor.sensorAria': 'Sensor',
   'automations.editor.comparisonAria': 'Comparison',
   'automations.editor.opGt': 'goes above',

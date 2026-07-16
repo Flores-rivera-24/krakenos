@@ -102,6 +102,8 @@ export class MotionService {
   private readonly prevFrames = new Map<string, Uint8Array>();
   private readonly lastFiredMs = new Map<string, number>();
   private readonly events: MotionEvent[] = [];
+  /** Marca del último sondeo de eventos nativos (US-214). */
+  private lastPollMs: number | null = null;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -171,8 +173,14 @@ export class MotionService {
 
   // ---- Barrido ----
 
-  /** Un barrido: evalúa cada cámara armada+habilitada. `now` inyectable en tests. */
+  /**
+   * Un barrido. Con un backend de detección **nativa** (Frigate, US-214) se
+   * sondean sus eventos (con `label`) en vez del frame-diff local — la
+   * detección vive allí y no se duplica; la config por cámara (activada,
+   * armado, cooldown) sigue gobernando los AVISOS. `now` inyectable en tests.
+   */
   async tick(now: Date = new Date()): Promise<void> {
+    if (this.cameras.pollEvents) return this.tickNative(now);
     const configs = await this.readAll();
     const enabledIds = Object.entries(configs).filter(([, c]) => c.enabled).map(([id]) => id);
     if (enabledIds.length === 0) return;
@@ -201,28 +209,63 @@ export class MotionService {
     }
   }
 
-  /** Registra el evento, publica al bus, audita, envía la foto y graba (US-187). */
-  private async fire(cameraId: string, cameraName: string, record: boolean, now: Date): Promise<void> {
-    const snapshot = await this.cameras.getSnapshot(cameraId).catch(() => null);
-    const image = snapshot?.image ?? null;
-    const detectedAt = now.toISOString();
+  /**
+   * Detección nativa (US-214): sondea los eventos del backend desde el último
+   * barrido y avisa según la config por cámara. NO graba clip local (`record`
+   * se ignora): el NVR ya graba con pre-roll; el timeline los lista por proxy.
+   */
+  private async tickNative(now: Date): Promise<void> {
+    const since = this.lastPollMs ?? this.now() - this.intervalMs;
+    this.lastPollMs = this.now();
+    const events = await this.cameras.pollEvents!(since);
+    if (events.length === 0) return;
+    const configs = await this.readAll();
+    for (const native of events) {
+      const cfg = configs[native.cameraId] ?? DEFAULT_MOTION_CONFIG;
+      if (!cfg.enabled) continue; // el aviso se activa por cámara, como en US-186
+      if (!isArmed(cfg.arming, now)) continue;
+      const last = this.lastFiredMs.get(native.cameraId) ?? Number.NEGATIVE_INFINITY;
+      if (this.now() - last < cfg.cooldownSec * 1000) continue;
+      this.lastFiredMs.set(native.cameraId, this.now());
+      await this.fire(native.cameraId, native.cameraName, false, now, {
+        label: native.label,
+        snapshot: native.snapshot,
+      });
+    }
+  }
 
-    const event: MotionEvent = { cameraId, cameraName, detectedAt, snapshot: image };
+  /** Registra el evento, publica al bus, audita, envía la foto y graba (US-187). */
+  private async fire(
+    cameraId: string,
+    cameraName: string,
+    record: boolean,
+    now: Date,
+    native?: { label: string; snapshot: string | null },
+  ): Promise<void> {
+    // El evento nativo trae su propia miniatura; el frame-diff local captura una.
+    const image =
+      native?.snapshot ?? (await this.cameras.getSnapshot(cameraId).catch(() => null))?.image ?? null;
+    const detectedAt = now.toISOString();
+    const label = native?.label;
+
+    const event: MotionEvent = { cameraId, cameraName, detectedAt, snapshot: image, label: label ?? null };
     this.events.unshift(event);
     if (this.events.length > this.maxEvents) this.events.length = this.maxEvents;
 
-    this.bus.publish({ type: 'motion-detected', cameraId, cameraName });
-    // Aviso de texto multicanal (US-180) + registro/auditoría/digest.
-    this.app.audit({ action: 'camera.motion', detail: cameraName });
+    this.bus.publish({ type: 'motion-detected', cameraId, cameraName, ...(label ? { label } : {}) });
+    // Aviso de texto multicanal (US-180) + registro/auditoría/digest. El label lo
+    // pone el detector del NVR (person/car/…), no es PII — puede ir en el detail.
+    const detail = label ? `${cameraName} (${label})` : cameraName;
+    this.app.audit({ action: 'camera.motion', detail });
     // La foto va aparte por Telegram (el canal donde una imagen adjunta es natural).
-    if (image) this.app.telegram?.sendPhotoForAudit('camera.motion', `📷 ${cameraName}`, image);
+    if (image) this.app.telegram?.sendPhotoForAudit('camera.motion', `📷 ${detail}`, image);
     // Grabación por evento (US-187), si está activada para la cámara y hay grabador.
     if (record && this.opts.recorder) {
       await this.opts.recorder
         .record({ cameraId, cameraName, detectedAt, snapshot: image })
         .catch((err) => this.app.log.warn({ err }, '[motion] no se pudo grabar el clip'));
     }
-    this.app.log.info(`[motion] movimiento en ${cameraName}`);
+    this.app.log.info(`[motion] movimiento en ${detail}`);
   }
 
   private async tickCycle(): Promise<void> {

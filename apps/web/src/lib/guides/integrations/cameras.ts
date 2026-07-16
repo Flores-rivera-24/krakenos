@@ -98,9 +98,85 @@ const rtsp: IntegrationGuide = {
     },
     {
       q: '¿Puedo ver el vídeo en directo continuo?',
-      a: 'Por ahora KrakenOS toma imágenes (capturas) de la cámara. El vídeo en directo continuo en el navegador es una función prevista para más adelante.',
+      a: 'Sí: en la página de Cámaras, el botón «Ver en vivo» abre el vídeo en directo. El servidor necesita tener ffmpeg instalado; el vídeo solo se procesa mientras alguien mira.',
     },
   ],
 };
 
-export const CAMERA_GUIDES: IntegrationGuide[] = [rtsp];
+/**
+ * Frigate (US-214): el NVR delegado. Para detección por objetos (persona,
+ * coche…), pre-roll y grabación continua, KrakenOS no compite — se conecta a
+ * un Frigate existente y hereda su detección. El detector propio queda como
+ * básico integrado para quien no tiene Frigate.
+ */
+const frigate: IntegrationGuide = {
+  id: 'frigate',
+  domain: 'camera',
+  kind: 'frigate',
+  category: 'cameras',
+  displayName: 'Frigate (NVR con detección de objetos)',
+  vendor: 'Frigate (frigate.video)',
+  icon: 'Camera',
+  tier: 2,
+  intro:
+    'Frigate es un grabador de vídeo en red (NVR) gratuito que detecta objetos con inteligencia artificial: sabe distinguir una persona de un coche o un gato. Si ya lo tienes (o quieres cámaras «serias»), KrakenOS se conecta a él y hereda esa detección: sus cámaras aparecen aquí, los avisos llegan con lo que se detectó («persona en la entrada») y las grabaciones de Frigate se ven desde KrakenOS. Es la vía recomendada para vigilancia de verdad; el detector propio de KrakenOS es más básico y queda para instalaciones sin Frigate.',
+  prerequisites: [
+    'Un servidor Frigate funcionando en tu red local (frigate.video tiene la guía de instalación).',
+    'La dirección de Frigate (por ejemplo http://192.168.1.30:5000).',
+    'Las cámaras ya configuradas dentro de Frigate (KrakenOS las lista tal cual).',
+  ],
+  steps: [
+    {
+      title: 'Localiza la dirección de Frigate',
+      body: 'Es la misma dirección con la que abres la interfaz de Frigate en el navegador, normalmente el puerto 5000. KrakenOS hablará con ella solo dentro de tu red; esa dirección nunca se comparte con el navegador ni sale de casa.',
+      command: 'http://192.168.1.30:5000',
+      external: true,
+    },
+    {
+      title: 'Conéctalo en KrakenOS',
+      body: 'Pega la dirección y guarda. Las cámaras de Frigate aparecerán en la página de Cámaras; el vídeo en vivo y las grabaciones se sirven a través de KrakenOS, autenticados como todo lo demás.',
+    },
+    {
+      title: 'Activa los avisos por cámara',
+      body: 'En cada cámara, abre los ajustes de movimiento y actívalos. Con Frigate, los avisos llegan con el objeto detectado, y en las automatizaciones puedes filtrar por él: «si detecta persona en la Entrada → enciende la luz».',
+    },
+  ],
+  fields: [
+    {
+      key: 'url',
+      label: 'Dirección de Frigate',
+      help: 'La URL de tu servidor Frigate en la red local, normalmente con el puerto 5000.',
+      type: 'url',
+      placeholder: 'http://192.168.1.30:5000',
+      required: true,
+    },
+    {
+      key: 'go2rtcUrl',
+      label: 'Dirección del vídeo en vivo (opcional)',
+      help: 'Solo si cambiaste el puerto del go2rtc que trae Frigate. Vacío = el mismo servidor en el puerto 1984.',
+      type: 'url',
+      placeholder: 'http://192.168.1.30:1984',
+      required: false,
+    },
+  ],
+  troubleshooting: [
+    {
+      q: 'Las cámaras no aparecen.',
+      a: 'Comprueba que la dirección de Frigate abre su interfaz desde otro dispositivo de la red y que las cámaras están configuradas dentro de Frigate. KrakenOS lista exactamente las que Frigate conoce.',
+    },
+    {
+      q: 'Los avisos no dicen qué se detectó.',
+      a: 'El objeto detectado (persona, coche…) lo pone Frigate. Revisa que la detección por objetos esté activa en la configuración de Frigate para esa cámara.',
+    },
+    {
+      q: '¿Y la detección de movimiento propia de KrakenOS?',
+      a: 'Con Frigate conectado se apaga sola: la detección vive en Frigate (que lo hace mejor) y KrakenOS no la duplica. Los ajustes de aviso por cámara (activado, horario de armado, tiempo entre avisos) siguen mandando.',
+    },
+    {
+      q: '¿Puedo borrar grabaciones desde KrakenOS?',
+      a: 'No: las grabaciones viven en Frigate y su retención se configura allí. KrakenOS las lista y las descarga, honesto y sin duplicar la gestión.',
+    },
+  ],
+};
+
+export const CAMERA_GUIDES: IntegrationGuide[] = [rtsp, frigate];

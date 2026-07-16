@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { MockCameraManager, RtspCameraManager, createCameraManager } from '../../src/cameras/index.js';
+import {
+  FrigateCameraManager,
+  MockCameraManager,
+  RtspCameraManager,
+  createCameraManager,
+} from '../../src/cameras/index.js';
 import { MockDnsManager, PiholeDnsManager, createDnsManager } from '../../src/dns/index.js';
 import {
   IptablesFirewallManager,
@@ -135,6 +140,19 @@ describe('createCameraManager', () => {
 
   it('lanza si falta la configuración RTSP', () => {
     expect(() => createCameraManager({ kind: 'rtsp' })).toThrow(/RTSP/i);
+  });
+
+  it('construye un FrigateCameraManager con su URL (US-214)', () => {
+    const cameras = createCameraManager({
+      kind: 'frigate',
+      frigate: { url: 'http://frigate.lan:5000' },
+    });
+    expect(cameras).toBeInstanceOf(FrigateCameraManager);
+  });
+
+  it('lanza si falta la URL de Frigate', () => {
+    expect(() => createCameraManager({ kind: 'frigate' })).toThrow(/Frigate/i);
+    expect(() => createCameraManager({ kind: 'frigate', frigate: { url: '' } })).toThrow(/Frigate/i);
   });
 
   it('lanza para un kind desconocido', () => {

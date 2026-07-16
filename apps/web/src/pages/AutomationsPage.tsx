@@ -171,6 +171,10 @@ function RuleEditor({
   const [triggerCamera, setTriggerCamera] = useState(
     trg?.type === 'motion-detected' ? (trg.cameraId ?? '') : '',
   );
+  // Objeto detectado (Frigate, US-214): '' = cualquier detección.
+  const [triggerLabel, setTriggerLabel] = useState(
+    trg?.type === 'motion-detected' ? (trg.label ?? '') : '',
+  );
 
   const [withWindow, setWithWindow] = useState(rule?.condition !== undefined);
   const [windowFrom, setWindowFrom] = useState(
@@ -216,7 +220,11 @@ function RuleEditor({
       case 'mode-changed':
         return { type: 'mode-changed', mode: triggerMode };
       case 'motion-detected':
-        return { type: 'motion-detected', ...(triggerCamera ? { cameraId: triggerCamera } : {}) };
+        return {
+          type: 'motion-detected',
+          ...(triggerCamera ? { cameraId: triggerCamera } : {}),
+          ...(triggerLabel ? { label: triggerLabel } : {}),
+        };
     }
   };
 
@@ -399,19 +407,35 @@ function RuleEditor({
             </select>
           )}
           {triggerType === 'motion-detected' && (
-            <select
-              aria-label={t('automations.editor.cameraAria')}
-              className={SELECT_CLASS}
-              value={triggerCamera}
-              onChange={(e) => setTriggerCamera(e.target.value)}
-            >
-              <option value="">{t('automations.editor.anyCamera')}</option>
-              {cameras.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                aria-label={t('automations.editor.cameraAria')}
+                className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                value={triggerCamera}
+                onChange={(e) => setTriggerCamera(e.target.value)}
+              >
+                <option value="">{t('automations.editor.anyCamera')}</option>
+                {cameras.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              {/* Filtro por objeto (Frigate, US-214): solo aplica con detección nativa. */}
+              <select
+                aria-label={t('automations.editor.labelAria')}
+                className={cn(SELECT_CLASS, 'w-auto min-w-36 flex-1')}
+                value={triggerLabel}
+                onChange={(e) => setTriggerLabel(e.target.value)}
+              >
+                <option value="">{t('automations.editor.anyDetection')}</option>
+                <option value="person">{t('automations.label.person')}</option>
+                <option value="car">{t('automations.label.car')}</option>
+                <option value="dog">{t('automations.label.dog')}</option>
+                <option value="cat">{t('automations.label.cat')}</option>
+                <option value="package">{t('automations.label.package')}</option>
+              </select>
+            </div>
           )}
           {triggerType === 'sensor-threshold' && (
             <div className="flex flex-wrap items-center gap-2">
