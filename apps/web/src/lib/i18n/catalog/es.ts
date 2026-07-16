@@ -174,6 +174,12 @@ export const es = {
     'Un archivo con la configuración sanitizada (sin secretos ni datos personales) para diagnosticar problemas.',
   'settings.support.download': 'Descargar paquete de soporte',
   'settings.support.downloading': 'Generando…',
+  'settings.feedback.title': 'Enviar feedback',
+  'settings.feedback.desc':
+    'Abre un aviso en GitHub con tu versión y modo de despliegue ya rellenados. Nada se envía solo: tú decides qué pegar, y puedes adjuntar el paquete de soporte (sin secretos ni datos personales).',
+  'settings.feedback.bug': 'Reportar un problema',
+  'settings.feedback.hardware': 'Informe de hardware',
+  'settings.feedback.feature': 'Proponer una mejora',
   'settings.support.error': 'No se pudo generar el paquete de soporte',
 
   // --- Ajustes → Tokens de API (US-174) ---

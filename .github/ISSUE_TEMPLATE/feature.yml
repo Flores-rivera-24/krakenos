@@ -1,0 +1,32 @@
+name: "\U0001F4A1 Proponer una mejora"
+description: Algo que KrakenOS debería hacer (o hacer mejor).
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Antes de proponer: KrakenOS es **el cerebro de red del hogar** — complemento de Home Assistant, no sustituto. Las cámaras avanzadas se delegan a Frigate y la voz al puente Matter (ver los ADR en `docs/`). Las propuestas dentro de esa cuña (red, planos, presencia, parental, energía) tienen mejor encaje.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de KrakenOS
+      placeholder: "0.1.0"
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Modo de despliegue
+      options:
+        - systemd
+        - docker
+        - desarrollo (pnpm dev)
+  - type: textarea
+    id: problem
+    attributes:
+      label: Qué problema resolvería
+      description: El problema real, antes que la solución («no puedo X» mejor que «añade Y»).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Cómo te imaginas la solución

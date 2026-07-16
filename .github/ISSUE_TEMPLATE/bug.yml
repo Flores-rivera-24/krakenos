@@ -1,0 +1,47 @@
+name: "\U0001F41B Reportar un problema"
+description: Algo no funciona como debería.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportarlo. Si vienes desde **Ajustes → Sistema → Enviar feedback**, la versión y el modo de despliegue ya vienen rellenados.
+        Puedes adjuntar el **paquete de soporte** (Ajustes → Sistema → Descargar paquete de soporte): está **sanitizado** — sin secretos, sin nombre/ubicación del hogar y sin datos personales. KrakenOS nunca envía nada solo; lo adjuntas tú si quieres.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de KrakenOS
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Modo de despliegue
+      options:
+        - systemd
+        - docker
+        - desarrollo (pnpm dev)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: Qué pasó
+      description: Qué hiciste, qué esperabas y qué ocurrió en su lugar.
+      placeholder: "Al bloquear un dispositivo desde el inventario…"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para reproducirlo
+      placeholder: |
+        1. Ir a…
+        2. Pulsar…
+        3. Ver el error…
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto (hardware, integraciones activas, logs)
+      description: Router/driver en uso, integraciones IoT activas, y cualquier línea de log relevante (journalctl -u krakenos). Adjunta el paquete de soporte si puedes.

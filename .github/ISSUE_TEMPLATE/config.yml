@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Preguntas y ayuda (Discussions)
+    url: https://github.com/Flores-rivera-24/krakenos/discussions
+    about: Para dudas de instalación, ideas sueltas o enseñar tu montaje — sin abrir un issue.

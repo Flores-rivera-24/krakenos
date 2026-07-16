@@ -1,0 +1,66 @@
+name: "\U0001F4E1 Informe de hardware verificado"
+description: Probaste KrakenOS con un equipo real — cuéntanos qué funcionó. Alimenta el catálogo de compatibilidad.
+labels: [hardware-report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        El catálogo de compatibilidad distingue **«soportado por código»** de **«verificado con hardware»**. Tu informe es lo que convierte lo primero en lo segundo. Gracias.
+  - type: input
+    id: version
+    attributes:
+      label: Versión de KrakenOS
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: Modo de despliegue
+      options:
+        - systemd
+        - docker
+        - desarrollo (pnpm dev)
+  - type: dropdown
+    id: category
+    attributes:
+      label: Categoría del equipo
+      options:
+        - Router / punto de acceso (driver)
+        - IoT (luces, enchufes, sensores)
+        - Cámaras
+        - VPN / firewall / QoS / VLAN / DNS
+        - Otro
+    validations:
+      required: true
+  - type: input
+    id: kind
+    attributes:
+      label: Integración usada (kind)
+      description: La que elegiste en Conectar (p. ej. openwrt, hue, shelly, frigate…).
+      placeholder: openwrt
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Marca y modelo exactos
+      placeholder: TP-Link Archer AX21 v3 (OpenWrt 23.05)
+    validations:
+      required: true
+  - type: textarea
+    id: works
+    attributes:
+      label: Qué probaste y qué funcionó
+      description: Sé concreto — es lo que se publica en el catálogo.
+      placeholder: |
+        - Inventario: ✅ aparecen los dispositivos con hostname
+        - Bloqueo: ✅ corta internet de verdad
+        - WiFi: ✅ cambiar SSID funciona / ⚠️ la red de invitados no
+    validations:
+      required: true
+  - type: textarea
+    id: issues
+    attributes:
+      label: Qué NO funcionó o necesitó maña
+      placeholder: "El tráfico por dispositivo no se reporta (esperado según la guía)…"

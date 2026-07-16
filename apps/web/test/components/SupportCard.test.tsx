@@ -20,9 +20,14 @@ const ON: TelemetrySnapshot = {
   counts: { devices: 5, rooms: 2, scenes: 1, automations: 3, iotSchedules: 0, users: 2 },
 };
 
+const PLAN = { current: '0.1.0', mode: 'systemd' };
+
 describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue(OFF);
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/system/update/plan') return Promise.resolve(PLAN);
+      return Promise.resolve(OFF);
+    });
     apiMock.patch.mockReset().mockResolvedValue({});
     supportMock.downloadSupportBundle.mockReset().mockResolvedValue(new Blob(['{}']));
     toastMock.success.mockReset();
@@ -58,5 +63,29 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
     const dl = await screen.findByRole('button', { name: /Descargar paquete de soporte/ });
     fireEvent.click(dl);
     await waitFor(() => expect(supportMock.downloadSupportBundle).toHaveBeenCalled());
+  });
+
+  it('«Reportar un problema» abre el issue pre-rellenado; nada se envía solo (US-218)', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    render(<SupportCard />);
+    // Espera a que el plan (versión/modo) esté cargado antes de pulsar.
+    await screen.findByRole('button', { name: 'Activar' });
+    await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/system/update/plan'));
+
+    fireEvent.click(screen.getByRole('button', { name: /Reportar un problema/ }));
+    expect(open).toHaveBeenCalledTimes(1);
+    const url = String(open.mock.calls[0]![0]);
+    expect(url).toContain('github.com/Flores-rivera-24/krakenos/issues/new');
+    expect(url).toContain('template=bug.yml');
+    expect(url).toContain('version=0.1.0');
+    expect(url).toContain('deploy=systemd');
+    // Ninguna petición POST salió del agente: el usuario pega, no la app.
+    expect(apiMock.post).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /Informe de hardware/ }));
+    expect(String(open.mock.calls[1]![0])).toContain('template=hardware-report.yml');
+    fireEvent.click(screen.getByRole('button', { name: /Proponer una mejora/ }));
+    expect(String(open.mock.calls[2]![0])).toContain('template=feature.yml');
+    open.mockRestore();
   });
 });
