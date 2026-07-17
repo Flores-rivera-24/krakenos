@@ -33,6 +33,10 @@ Corregido en `apps/web/src/lib/api.ts` y `store/auth.store.ts` (no declarar JSON
   `SameSite=Strict` inyectadas en el primer fetch de bootstrap.
 - La navegación entre páginas usa **clicks en la nav** (React Router, client-side): un
   `page.goto` recargaría y perdería el access token en memoria (US-91).
+- El contexto del navegador va **fijado a `locale: 'es-ES'`** (`playwright.config.ts`): la suite
+  asevera la UI en español (fuente canónica del copy), y sin fijarlo Chromium arranca en `en-US` y
+  la detección de idioma (US-177) renderiza la app en inglés → todos los selectores fallan. Si un
+  día se quiere un flujo e2e en inglés, será un proyecto aparte con su propio `locale`.
 
 ## Ejecutar
 
