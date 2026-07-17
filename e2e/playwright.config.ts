@@ -29,6 +29,11 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: {
     baseURL: BASE_URL,
+    // La suite asevera la UI en ESPAÑOL (fuente canónica del copy). Sin esto,
+    // Chromium arranca en en-US y la detección de idioma (US-177,
+    // `resolveInitialLocale`) renderiza la app en inglés → todos los selectores
+    // fallan (rompió CI desde la base i18n hasta este fix).
+    locale: 'es-ES',
     // Trazas + screenshots/vídeo como artefactos SOLO al fallar (o en reintento).
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

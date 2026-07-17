@@ -59,18 +59,19 @@ jobs:
       - name: Test (con coverage informativo)
         run: pnpm test:coverage
 
-      # Auditoría de dependencias de PRODUCCIÓN: una CVE **crítica** en runtime SÍ
-      # bloquea el pipeline (AUD-23). Se acota a `--prod` para no romper por
-      # herramientas de dev y a `critical` para no bloquear por ruido de severidad
-      # media/alta transitiva.
-      - name: Audit production dependencies (blocking on critical)
-        run: pnpm audit --prod --audit-level critical
-
-      # Auditoría completa (dev incluido, cualquier severidad alta): informativa —
-      # los hallazgos aparecen en el log para revisarlos sin bloquear. US-60.
-      - name: Audit all dependencies (informational)
-        run: pnpm audit --audit-level high
-        continue-on-error: true
+      # Auditoría de dependencias (AUD-23): una CVE **crítica** en dependencias de
+      # PRODUCCIÓN bloquea el pipeline. Datos de **OSV** (binario pineado): npm
+      # retiró sus endpoints legacy de audit (410 desde 2026-07-15) y pnpm aún no
+      # habla el bulk (pnpm/pnpm#11265), así que `pnpm audit` se quedó sin datos.
+      # `scripts/audit-osv.mjs` cruza el informe con `pnpm list --prod`: lo de dev
+      # (vitest/vite/tar) se reporta sin bloquear; el resumen completo va al log
+      # (cubre también la auditoría informativa de US-60).
+      - name: Audit dependencies via OSV (blocking on prod critical)
+        run: |
+          curl -sSfL -o /tmp/osv-scanner https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64
+          chmod +x /tmp/osv-scanner
+          /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
+          node scripts/audit-osv.mjs /tmp/osv.json
 
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
