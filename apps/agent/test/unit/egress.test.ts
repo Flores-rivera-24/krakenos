@@ -1,5 +1,7 @@
+import { createServer, type Server } from 'node:http';
+import type { AddressInfo } from 'node:net';
 import { lookup } from 'node:dns/promises';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_EGRESS_POLICY,
   EgressBlockedError,
@@ -221,5 +223,94 @@ describe('safeFetch (redirects revalidados)', () => {
     } as Response);
     const res = await safeFetch('https://8.8.8.8/', {}, LENIENT);
     expect(res.status).toBe(200);
+  });
+});
+
+/**
+ * US-230 (AUD3-31) — **estos tests atan la protección, no el mock.**
+ *
+ * Los de arriba mockean `globalThis.fetch` **entero**, así que la opción que DA la
+ * protección (`redirect: 'manual'`) nunca se ejerce: en la prueba de mutación de la
+ * 3ª auditoría, cambiarla a `'follow'` —una **regresión SSRF real**— atravesó los
+ * 2.641 tests sin romper ninguno. Aquí se levanta un servidor HTTP efímero y se
+ * comprueba el **efecto observable**: que el salto prohibido no se llega a pedir.
+ *
+ * Truco de la trampa: el destino del redirect es `0.0.0.0` (siempre bloqueada, en
+ * cualquier política) y en Linux resuelve a **este mismo servidor**. Si alguien
+ * quita `redirect: 'manual'`, `fetch` sigue el salto a ciegas y el servidor
+ * registra `/trampa` — el test lo delata sin depender de ninguna red externa.
+ */
+describe('safeFetch contra un servidor HTTP real (US-230)', () => {
+  let server: Server;
+  let port = 0;
+  let hits: string[] = [];
+
+  beforeAll(async () => {
+    server = createServer((req, res) => {
+      const url = req.url ?? '/';
+      hits.push(url);
+      if (url === '/redirect-a-bloqueada') {
+        res.writeHead(302, { location: `http://0.0.0.0:${port}/trampa` });
+      } else if (url === '/redirect-a-metadata') {
+        res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' });
+      } else if (url === '/redirect-sin-location') {
+        res.writeHead(302);
+      } else if (url === '/bucle') {
+        res.writeHead(302, { location: '/bucle' });
+      } else {
+        res.writeHead(200, { 'content-type': 'text/plain' });
+      }
+      res.end('ok');
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    port = (server.address() as AddressInfo).port;
+  });
+
+  afterAll(async () => {
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+
+  beforeEach(() => {
+    hits = [];
+  });
+
+  const url = (path: string) => `http://127.0.0.1:${port}${path}`;
+
+  it('NO sigue un redirect real hacia una dirección prohibida (mata redirect:follow)', async () => {
+    await expect(safeFetch(url('/redirect-a-bloqueada'), {}, LENIENT)).rejects.toBeInstanceOf(
+      EgressBlockedError,
+    );
+    // La prueba de verdad: el servidor recibió el primer salto y NUNCA la trampa.
+    expect(hits).toContain('/redirect-a-bloqueada');
+    expect(hits).not.toContain('/trampa');
+  });
+
+  it('NO sigue un redirect real hacia la metadata de nube', async () => {
+    await expect(safeFetch(url('/redirect-a-metadata'), {}, LENIENT)).rejects.toMatchObject({
+      code: 'EGRESS_BLOCKED',
+    });
+  });
+
+  it('un 3xx sin Location se devuelve tal cual, sin seguir nada', async () => {
+    const res = await safeFetch(url('/redirect-sin-location'), {}, LENIENT);
+    expect(res.status).toBe(302);
+    expect(hits).toEqual(['/redirect-sin-location']);
+  });
+
+  it('corta con error tras el máximo de saltos en vez de dar vueltas', async () => {
+    await expect(safeFetch(url('/bucle'), {}, LENIENT)).rejects.toThrow(/demasiados redirects/);
+    // MAX_REDIRECTS = 3 → 4 intentos (hop 0..3) y se rinde.
+    expect(hits).toHaveLength(4);
+  });
+
+  it('una respuesta normal pasa y se devuelve al llamante', async () => {
+    const res = await safeFetch(url('/ok'), {}, LENIENT);
+    expect(res.status).toBe(200);
+    await expect(res.text()).resolves.toBe('ok');
+  });
+
+  it('respeta la política: el mismo servidor loopback se bloquea en modo estricto', async () => {
+    await expect(safeFetch(url('/ok'), {}, STRICT)).rejects.toBeInstanceOf(EgressBlockedError);
+    expect(hits).toEqual([]); // ni se intentó la conexión
   });
 });

@@ -49,6 +49,16 @@ describe('paridad de rutas server real ↔ test-app (AUD-21)', () => {
     }
 
     const testAppRoutes = routesOf(testApp);
+
+    // US-230 (AUD3-31/32): **guard de tamaño mínimo**. Sin él este meta-test es
+    // decorativo — si el parseo de `printRoutes` deja de casar (cambio de formato
+    // del árbol de Fastify) o `collectedRoutes` viene vacío, `missing` sale `[]` y
+    // el test pasa **sin haber comprobado nada**. «No encontré nada» no puede
+    // confundirse con «está todo bien». El suelo es holgado a propósito: solo debe
+    // saltar ante un fallo de recolección, no ante un módulo de menos.
+    expect(realApiRoutes.size).toBeGreaterThan(100);
+    expect(testAppRoutes.size).toBeGreaterThan(100);
+
     // Toda ruta /api del servidor real debe existir en el test-app.
     const missing = [...realApiRoutes].filter((r) => !testAppRoutes.has(r));
     expect({ missing }).toEqual({ missing: [] });
