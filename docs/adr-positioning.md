@@ -1,6 +1,15 @@
 # ADR — Posicionamiento: «el cerebro de red del hogar» (US-211)
 
-- **Estado:** Aceptado (2026-07-13)
+> ⚠️ **Parcialmente sustituido el 2026-07-29 por [`adr-control-total.md`](adr-control-total.md).**
+> Se conserva la tesis central (complemento de Home Assistant, delegación de cámaras a Frigate y de
+> voz a Matter). Se **revierten** tres decisiones concretas de este documento: (1) IoT deja de ser
+> vertical «suficiente» y pasa a **core** acotado por protocolo abierto (§ tabla de verticales),
+> (2) la interop deja de ser solo saliente — se añade un consumidor MQTT Discovery **entrante**
+> genérico (§ «KrakenOS + Home Assistant»), y (3) el instalador deja de ser puerta de entrada válida
+> sin TLS (§ «Honestidad como parte del posicionamiento»). El enemigo declarado pasa a ser **la app
+> del fabricante**, no Home Assistant. Lee el ADR nuevo antes de tomar decisiones sobre IoT.
+
+- **Estado:** Aceptado (2026-07-13) · parcialmente sustituido (2026-07-29)
 - **Contexto de la decisión:** tras cerrar la Fase 5 («Hogar para todos», US-165…196) KrakenOS
   tiene una superficie enorme —red, IoT, cámaras, energía, presencia, planos, Matter, i18n— pero
   **ninguna validación de mercado**. Un análisis adversarial de producto contra el mercado real
