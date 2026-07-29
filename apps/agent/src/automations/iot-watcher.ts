@@ -1,5 +1,6 @@
 import type { HomeEvent, IotDevice, IotManager } from '@krakenos/types';
 import type { FastifyBaseLogger } from 'fastify';
+import { createTickLoop, type TickLoop } from '../system/tick-loop.js';
 import type { HomeEventBus } from './event-bus.js';
 
 /** Transiciones observables entre dos estados del mismo dispositivo. */
@@ -31,7 +32,7 @@ function transitions(before: IotDevice | undefined, after: IotDevice): HomeEvent
  * la línea base: no publica nada (mismo criterio que `prevTick` en horarios).
  */
 export class IotWatcher {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   private baseline: Map<string, IotDevice> | null = null;
 
   constructor(
@@ -68,25 +69,22 @@ export class IotWatcher {
     return events;
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.log?.warn({ err }, '[automations] el sondeo IoT falló; se omite este ciclo');
-    }
-  }
-
   start(intervalMs = 15_000): void {
-    if (this.timer) return;
-    void this.tickCycle(); // fija la línea base
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs,
+      immediate: true, // fija la línea base
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.log?.warn({ err }, '[automations] el sondeo IoT falló; se omite este ciclo'),
+      onSkip: () =>
+        this.log?.warn('[automations] el sondeo IoT anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

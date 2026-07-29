@@ -89,6 +89,7 @@ import { matterBridgeRoutes } from './modules/matter-bridge/matter-bridge.routes
 import { createMatterBridgeStack } from './iot/matter-bridge/stack.js';
 import { IOT_ROOM } from '@krakenos/types';
 import { withActionTimeout } from './iot/action-timeout.js';
+import { withDeviceCache } from './iot/device-cache.js';
 import { ReportsService } from './modules/reports/reports.service.js';
 import { reportsRoutes } from './modules/reports/reports.routes.js';
 import { vpnRoutes } from './modules/vpn/vpn.routes.js';
@@ -165,6 +166,16 @@ export async function buildServer(): Promise<FastifyInstance> {
   const qos = runtime.qos.handle;
   const dns = runtime.dns.handle;
   const tuyaStore = runtime.tuyaStore;
+  // Vista cacheada (TTL corto + single-flight) para los barridos de fondo que
+  // sondean la misma lista una y otra vez: con la alarma armada eran ~71
+  // `listDevices()` por minuto al hardware (US-229 / AUD3-18). Las **rutas**
+  // siguen usando `iot` directo, sin caché.
+  const iotPolled = withDeviceCache(iot);
+  // Cierre ordenado de TODOS los dominios (US-229): hasta ahora solo se apagaban
+  // las cámaras, así que un reinicio dejaba vivas la sesión SSH del router, la
+  // SNMP del switch y las conexiones persistentes de IoT (AUD3-16). Best-effort
+  // e idempotente: los `stop()` de cada manager toleran que ya se les llamara.
+  app.addHook('onClose', async () => runtime.stopAll());
 
   // Healthcheck público y mínimo (US-58): solo `{ status: 'ok' }`.
   await app.register(healthRoutes);
@@ -247,7 +258,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     app.log.error({ err, event: event.type }, '[automations] un handler del bus falló'),
   );
   inventoryService.setEventSink((event) => homeBus.publish(event));
-  const iotWatcher = new IotWatcher(iot, homeBus, app.log);
+  const iotWatcher = new IotWatcher(iotPolled, homeBus, app.log);
   const automationService = new AutomationService(app, {
     iot,
     scenes: sceneService,
@@ -349,7 +360,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Medición de consumo eléctrico (US-181): sondea la potencia de los IoT que la
   // reportan y persiste un rollup por minuto por dispositivo. La energía/coste se
   // integran al consultar; la poda de retención es red de seguridad del barrido.
-  const energyService = new EnergyService(app, iot);
+  const energyService = new EnergyService(app, iotPolled);
   await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
 
   // Consulta de compatibilidad de hardware (US-208): catálogo derivado del código.
@@ -358,14 +369,24 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Alertas de consumo (US-183): evalúa umbrales por dispositivo y, al cruzarse,
   // publica un evento `energy-threshold` al bus (disparador de automatización) y
   // lo audita para el despacho multicanal (US-180).
-  const energyAlertService = new EnergyAlertService(app, iot, homeBus);
+  const energyAlertService = new EnergyAlertService(app, iotPolled, homeBus);
   await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
 
   // Alarma del hogar (US-188): máquina de estados armada por modo/manual+PIN, con
   // disparadores de cámara/sensor IoT, sirena/luces/aviso y fail-safe de sensor caído.
-  const alarmService = new AlarmService(app, iot, homeBus);
+  const alarmService = new AlarmService(app, iotPolled, homeBus);
   await app.register(alarmRoutes, { prefix: '/api/alarm', alarm: alarmService });
-  void alarmService.reconcile().then(() => alarmService.start());
+  // La alarma arranca SIEMPRE, aunque la rehidratación del estado falle (US-229 /
+  // AUD3-17): con el `.then()` pelado anterior, un fallo al leer el `Setting`
+  // dejaba el servicio sin arrancar —sin escuchar el bus, sin avanzar las cuentas
+  // atrás y sin poder dispararse— y el único rastro era una línea de
+  // `unhandledRejection`. Peor fallar desarmada y avisando que no existir.
+  void alarmService
+    .reconcile()
+    .catch((err: unknown) => {
+      app.log.error({ err }, '[alarm] no se pudo rehidratar el estado; arranca desarmada');
+    })
+    .finally(() => alarmService.start());
   app.addHook('onClose', async () => alarmService.stop());
 
   // Interop abierta (US-174 + MQTT Discovery HA US-213): publicación opt-in de
@@ -377,7 +398,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     prisma: app.prisma,
     secretbox,
     snapshot: async () => {
-      const iotDevices = await iot.listDevices().catch(() => []);
+      const iotDevices = await iotPolled.listDevices().catch(() => []);
       let energy: { todayKwh: number; todayCost: number; currency: string } | null = null;
       try {
         const s = await energyService.getStats('day');
@@ -408,7 +429,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     // Control entrante (US-213): setState con timeout + publicación al bus con
     // origin:'mqtt' (anti-bucle US-167) + auditoría. Solo si el toggle está activo.
     onCommand: async (deviceId, state) => {
-      const device = await withActionTimeout(() => iot.setState(deviceId, state));
+      // Por la vista cacheada, para que el cambio invalide la instantánea que
+      // comparten los barridos (US-229) además de actualizar la línea base.
+      const device = await withActionTimeout(() => iotPolled.setState(deviceId, state));
       app.io.to(IOT_ROOM).emit('iot:device-updated', device);
       for (const caused of iotWatcher.applyKnownState(device)) {
         homeBus.publish({ ...caused, origin: 'mqtt' });

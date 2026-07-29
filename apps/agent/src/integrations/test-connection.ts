@@ -19,7 +19,7 @@ import {
   resolveVlanConfig,
   resolveVpnConfig,
 } from './factory-config.js';
-import { disposeManager } from './manager-holder.js';
+import { stopManager } from './manager-holder.js';
 
 /** Tiempo máximo de una prueba de conexión antes de darla por fallida. */
 const PROBE_TIMEOUT_MS = 8000;
@@ -46,7 +46,9 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /**
  * Prueba una integración (US-142) construyendo un manager **transitorio** con la
  * config propuesta (sin persistir) y haciendo una lectura ligera. Devuelve un
- * resultado en lenguaje llano. El manager transitorio se limpia (dispose) al terminar.
+ * resultado en lenguaje llano. El manager transitorio se cierra **esperando** a su
+ * `stop()` antes de responder (US-229: cada prueba dejaba una sesión SSH abierta
+ * contra el router porque los drivers no exponían limpieza alguna).
  * Con `kind: 'mock'` la prueba siempre pasa (útil para el modo demostración).
  */
 export async function testConnection(
@@ -73,7 +75,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
               message: 'El equipo respondió pero el chequeo de estado falló. Revisa las credenciales.',
             };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'vpn': {
@@ -82,7 +84,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         await mgr.getStatus();
         return { ok: true, message: 'WireGuard responde correctamente.' };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'iot': {
@@ -95,7 +97,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
           details: { dispositivos: devices.length },
         };
       } finally {
-        disposeManager(manager);
+        await stopManager(manager);
       }
     }
     case 'cameras': {
@@ -104,7 +106,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         const cams = await mgr.listCameras();
         return { ok: true, message: `Conectado. ${cams.length} cámara(s).`, details: { camaras: cams.length } };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'firewall': {
@@ -113,7 +115,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         const rules = await mgr.listRules();
         return { ok: true, message: `Cortafuegos operativo. ${rules.length} regla(s).`, details: { reglas: rules.length } };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'vlan': {
@@ -122,7 +124,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         const vlans = await mgr.listVlans();
         return { ok: true, message: `Conectado. ${vlans.length} VLAN(s).`, details: { vlans: vlans.length } };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'qos': {
@@ -131,7 +133,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         const rules = await mgr.listRules();
         return { ok: true, message: `QoS operativo. ${rules.length} regla(s).`, details: { reglas: rules.length } };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     case 'dns': {
@@ -140,7 +142,7 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
         await mgr.getStats();
         return { ok: true, message: 'El servidor DNS responde correctamente.' };
       } finally {
-        disposeManager(mgr);
+        await stopManager(mgr);
       }
     }
     default: {

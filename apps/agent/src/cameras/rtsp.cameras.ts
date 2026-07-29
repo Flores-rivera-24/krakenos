@@ -50,6 +50,12 @@ export interface RtspCameraOptions {
   exec: FfmpegExec;
   /** Exec para clips (US-187): más timeout/buffer que `exec`. Cae a `exec` si falta. */
   clipExec?: FfmpegExec;
+  /**
+   * Exec para el fotograma de movimiento (US-229): timeout **por debajo** del
+   * intervalo del barrido (5 s), para que una cámara que no responde no deje el
+   * ciclo colgado más de lo que tarda en llegar el siguiente. Cae a `exec` si falta.
+   */
+  motionExec?: FfmpegExec;
   transport?: string;
   /** Config de streaming HLS (US-185). Sin ella, el streaming queda desactivado. */
   hls?: RtspHlsOptions;
@@ -129,7 +135,8 @@ export class RtspCameraManager implements CameraManager {
   async getMotionFrame(id: string): Promise<Uint8Array | null> {
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
-    const { stdout, code } = await this.opts.exec(
+    const exec = this.opts.motionExec ?? this.opts.exec;
+    const { stdout, code } = await exec(
       buildMotionFrameArgs(camera.rtspUrl, MOTION_FRAME_WIDTH, MOTION_FRAME_HEIGHT, {
         transport: this.opts.transport,
       }),

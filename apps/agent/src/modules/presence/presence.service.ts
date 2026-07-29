@@ -11,6 +11,7 @@ import { HOME_MODES } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { SETTING_BOUNDS, clampToBound } from '../../config/settings-bounds.js';
 import { isWithinWindow, parseMaintenanceWindow } from '../../system/maintenance-window.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 
 /** Clave interna de `Setting` con el modo del hogar (no editable por la allowlist). */
@@ -68,7 +69,7 @@ function isHomeMode(value: unknown): value is HomeMode {
  * y se re-consulta por API, que acota por rol).
  */
 export class PresenceService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   /** Salidas pendientes de confirmar: userId → estado de la salida (US-220). */
   private readonly pendingLeave = new Map<string, PendingLeave>();
   /** Última presencia conocida por persona (caché; la verdad histórica está en la DB). */
@@ -364,27 +365,24 @@ export class PresenceService {
 
   // ---- Ciclo ----
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.error({ err }, '[presence] el barrido falló; se omite este ciclo');
-    }
-  }
-
   start(intervalMs = 60_000): void {
-    if (this.timer) return;
+    if (this.loop) return;
     void this.reconcile().catch((err) =>
       this.app.log.error({ err }, '[presence] la reconciliación inicial falló'),
     );
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    this.loop = createTickLoop({
+      intervalMs,
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.error({ err }, '[presence] el barrido falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[presence] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

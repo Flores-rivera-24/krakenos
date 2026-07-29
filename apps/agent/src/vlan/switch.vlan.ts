@@ -30,6 +30,11 @@ export class SwitchVlanManager implements VlanManager {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SNMP del transporte (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.snmp.dispose?.();
+  }
+
   async listVlans(): Promise<Vlan[]> {
     return (await this.opts.store.list()).sort((a, b) => a.tag - b.tag);
   }

@@ -12,6 +12,7 @@ import type { Scene as DbScene } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import { settleWithLimit } from '../../iot/batch.js';
 
 function parseActions(raw: string): SceneAction[] {
   try {
@@ -103,24 +104,31 @@ export class SceneService {
     const scene = await this.get(id);
     if (!scene) return null;
 
+    // En paralelo acotado (US-229 / AUD3-19): en serie, una escena de 8 luces con
+    // el bridge caído tardaba 8 × 10 s = 80 s con el usuario esperando. Sin cota
+    // serían hasta 200 peticiones simultáneas al bridge (el schema lo permite).
+    const outcomes = await settleWithLimit(scene.actions, (action) =>
+      withActionTimeout(() =>
+        this.iot.setState(action.deviceId, {
+          ...(action.on !== undefined ? { on: action.on } : {}),
+          ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
+          ...(action.color !== undefined ? { color: action.color } : {}),
+        }),
+      ),
+    );
+
+    // El reporte conserva el orden de las acciones (el `failed` va a la UI).
     const result: SceneRunResult = { applied: 0, failed: [] };
-    for (const action of scene.actions) {
-      try {
-        // Con timeout: un dispositivo colgado cuenta como fallo y no frena el resto (US-203).
-        const device = await withActionTimeout(() =>
-          this.iot.setState(action.deviceId, {
-            ...(action.on !== undefined ? { on: action.on } : {}),
-            ...(action.brightness !== undefined ? { brightness: action.brightness } : {}),
-            ...(action.color !== undefined ? { color: action.color } : {}),
-          }),
-        );
-        this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
+    outcomes.forEach((outcome, i) => {
+      if (outcome.status === 'fulfilled') {
+        this.app.io.to(IOT_ROOM).emit('iot:device-updated', outcome.value);
         result.applied += 1;
-      } catch (err) {
-        const message = err instanceof IotError ? err.message : 'error al aplicar la acción';
-        result.failed.push({ deviceId: action.deviceId, error: message });
+        return;
       }
-    }
+      const err: unknown = outcome.reason;
+      const message = err instanceof IotError ? err.message : 'error al aplicar la acción';
+      result.failed.push({ deviceId: scene.actions[i]!.deviceId, error: message });
+    });
     return result;
   }
 

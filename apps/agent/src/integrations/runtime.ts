@@ -33,7 +33,12 @@ import {
   resolveVpnConfig,
 } from './factory-config.js';
 import type { IntegrationConfigStore } from './integration-config.store.js';
-import { createManagerHolder, disposeManager, type ManagerHolder } from './manager-holder.js';
+import {
+  createManagerHolder,
+  disposeManager,
+  stopManager,
+  type ManagerHolder,
+} from './manager-holder.js';
 
 /**
  * Runtime de integraciones recargable (US-141).
@@ -47,6 +52,9 @@ import { createManagerHolder, disposeManager, type ManagerHolder } from './manag
  * inválida o secreto ilegible tras perder la clave), se registra un aviso y se cae al
  * fallback de `.env` en vez de tumbar el arranque.
  */
+/** Espera máxima por dominio al apagar el agente (US-229). */
+const STOP_TIMEOUT_MS = 5_000;
+
 export interface IntegrationRuntime {
   driver: ManagerHolder<HardwareDriver>;
   vpn: ManagerHolder<VpnManager>;
@@ -64,6 +72,13 @@ export interface IntegrationRuntime {
    * el manager vivo quedó construido desde `.env` (US-205 / AUD-09).
    */
   reconfigure(domain: IntegrationDomain): Promise<{ fallback: boolean }>;
+  /**
+   * Apaga **todos** los managers vivos (best-effort, en paralelo) al cerrar el
+   * agente. Antes de US-229 el `onClose` solo apagaba las cámaras, así que un
+   * reinicio dejaba abiertas la sesión SSH del router, la SNMP del switch y las
+   * conexiones persistentes de IoT (AUD3-16).
+   */
+  stopAll(): Promise<void>;
 }
 
 export async function buildIntegrationRuntime(
@@ -184,5 +199,23 @@ export async function buildIntegrationRuntime(
     }
   }
 
-  return { driver, vpn, iot, cameras, firewall, vlan, qos, dns, tuyaStore, reconfigure };
+  async function stopAll(): Promise<void> {
+    // En paralelo y best-effort (`stopManager` traga los fallos), y **con espera
+    // acotada**: cerrar un socket ya muerto puede no volver nunca, y el apagado
+    // del agente no debe depender de que el router conteste. El proceso está
+    // saliendo: abandonar la limpieza de un dominio es mejor que colgarse.
+    await Promise.all(
+      [driver, vpn, iot, cameras, firewall, vlan, qos, dns].map(async (h) => {
+        let timer: NodeJS.Timeout | undefined;
+        const deadline = new Promise<void>((resolve) => {
+          timer = setTimeout(resolve, STOP_TIMEOUT_MS);
+          timer.unref();
+        });
+        await Promise.race([stopManager(h.current), deadline]);
+        clearTimeout(timer);
+      }),
+    );
+  }
+
+  return { driver, vpn, iot, cameras, firewall, vlan, qos, dns, tuyaStore, reconfigure, stopAll };
 }

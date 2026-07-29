@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEVICE_TRAFFIC_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
 import { asNumber } from '../../db/sql-aggregate.js';
 import { normalizeTrafficSample } from './normalize.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /** Nº de muestras retenidas en memoria (~2 min a 2 s/muestra). */
 const MAX_HISTORY = 60;
@@ -43,8 +44,8 @@ const BUCKET_MS: Record<TrafficRange, number> = {
  */
 export class TrafficService {
   private history: TrafficSample[] = [];
-  private timer: NodeJS.Timeout | null = null;
-  private rollupTimer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
+  private rollupLoop: TickLoop | null = null;
 
   // Acumulador del rollup en curso.
   private sumRx = 0;
@@ -290,22 +291,31 @@ export class TrafficService {
   }
 
   start(): void {
-    if (this.timer) return;
-    this.timer = setInterval(() => void this.sampleCycle(), this.intervalMs);
-    this.rollupTimer = setInterval(() => void this.flushCycle(), this.rollupMs);
-    // No mantener vivo el proceso solo por estos intervalos.
-    this.timer.unref();
-    this.rollupTimer.unref();
+    if (this.loop) return;
+    // Dos bucles independientes: el muestreo (driver) y el rollup (DB) no se
+    // bloquean entre sí, pero ninguno se solapa consigo mismo (US-229).
+    // `sampleCycle`/`flushCycle` ya absorben y registran su error (US-98), así que
+    // el bucle solo aporta el guard de re-entrada y el `unref`.
+    this.loop = createTickLoop({
+      intervalMs: this.intervalMs,
+      tick: () => this.sampleCycle(),
+      onSkip: () =>
+        this.app.log.warn('[traffic] el muestreo anterior sigue en curso; se salta este ciclo'),
+    });
+    this.rollupLoop = createTickLoop({
+      intervalMs: this.rollupMs,
+      tick: () => this.flushCycle(),
+      onSkip: () =>
+        this.app.log.warn('[traffic] el rollup anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
+    this.rollupLoop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-    if (this.rollupTimer) {
-      clearInterval(this.rollupTimer);
-      this.rollupTimer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
+    this.rollupLoop?.stop();
+    this.rollupLoop = null;
   }
 }

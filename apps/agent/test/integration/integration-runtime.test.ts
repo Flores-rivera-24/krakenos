@@ -64,4 +64,49 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
     expect(ok.fallback).toBe(false);
     expect(rt.driver.handle.kind).toBe('openwrt');
   });
+
+  /**
+   * US-229 / AUD3-16: recargar una integración cambiaba la instancia viva pero
+   * nunca cerraba la saliente (los managers de red no exponían limpieza), y el
+   * `onClose` del agente solo apagaba las cámaras. Cada «Probar conexión» y cada
+   * reinicio dejaban sesiones SSH/SNMP abiertas contra el equipo del usuario.
+   */
+  it('reconfigure cierra el manager saliente y stopAll apaga todos los dominios', async () => {
+    const rt = await buildIntegrationRuntime(app, store);
+
+    const stops: string[] = [];
+    const stub = (domain: string): { stop: () => Promise<void> } => ({
+      stop: async () => {
+        stops.push(domain);
+      },
+    });
+    // Instancias vivas que registran su cierre (el swap cierra las originales).
+    rt.driver.swap({ ...stub('driver'), kind: 'mock' } as never);
+    rt.vpn.swap(stub('vpn') as never);
+    rt.dns.swap(stub('dns') as never);
+
+    // Recargar el driver cierra la instancia que sale.
+    await store.save('driver', 'openwrt', { host: '192.168.1.1', username: 'root', password: 'x', sshPort: 22 });
+    await rt.reconfigure('driver');
+    expect(stops).toEqual(['driver']);
+
+    // El apagado del agente cierra el resto de dominios vivos, no solo cámaras.
+    await rt.stopAll();
+    expect(stops).toContain('vpn');
+    expect(stops).toContain('dns');
+  });
+
+  it('stopAll no se cuelga si un transporte muerto nunca devuelve el cierre', async () => {
+    const rt = await buildIntegrationRuntime(app, store);
+    // Un `stop()` que no resuelve jamás (socket SSH a un router que ya no está).
+    rt.vpn.swap({ stop: () => new Promise<void>(() => undefined) } as never);
+
+    // Sin la espera acotada, esto no volvería y el agente se quedaría cerrando.
+    await expect(
+      Promise.race([
+        rt.stopAll().then(() => 'apagado'),
+        new Promise((resolve) => setTimeout(() => resolve('colgado'), 8_000)),
+      ]),
+    ).resolves.toBe('apagado');
+  }, 15_000);
 });

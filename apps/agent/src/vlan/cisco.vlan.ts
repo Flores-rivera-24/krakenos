@@ -38,6 +38,11 @@ export class CiscoVlanManager implements VlanManager {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SSH del transporte Cisco (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.transport.dispose?.();
+  }
+
   /** Tags presentes en el switch según `show vlan brief`, o `null` si no se pudo leer. */
   private async switchTags(): Promise<Set<number> | null> {
     try {
