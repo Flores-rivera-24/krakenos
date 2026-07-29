@@ -61,6 +61,8 @@ apps/*/coverage/
 /CLAUDE.md
 /BACKLOG.md
 /docs/history.md
+# Auditorías y notas internas (contienen hallazgos sin corregir: NUNCA se publican)
+/docs/internal/
 
 # Material de marca — fuente local. Los assets que usa la web viven en apps/web/public/.
 /Icons/
