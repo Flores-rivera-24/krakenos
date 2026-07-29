@@ -133,6 +133,7 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/system/backup', payload: { passphrase: 'passphrase-123' } },
   { method: 'POST', url: '/api/system/restore', payload: { passphrase: 'passphrase-123', data: 'AAAA' } },
   { method: 'POST', url: '/api/system/update/apply', payload: {} },
+  { method: 'POST', url: '/api/system/update/cancel' },
   { method: 'POST', url: '/api/system/support-bundle', payload: {} },
   // interop MQTT (US-174)
   { method: 'PUT', url: '/api/interop/mqtt', payload: { enabled: false } },

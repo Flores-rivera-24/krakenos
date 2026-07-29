@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { UpdateStatus } from '@krakenos/types';
@@ -25,8 +25,12 @@ function make(opts: {
   window?: string;
   varDir?: string;
   now?: () => Date;
+  /** ¿Vive el PID del lock? Inyectado para no depender de procesos reales. */
+  isProcessAlive?: (pid: number) => boolean;
+  /** PID que devuelve el spawner (se guarda en el lock, US-232). */
+  spawnPid?: number;
 }) {
-  const spawn = vi.fn();
+  const spawn = vi.fn(() => opts.spawnPid);
   const varDir = opts.varDir ?? tmpVar();
   const service = new UpdateService({
     current: opts.status.current,
@@ -36,9 +40,18 @@ function make(opts: {
     spawn,
     varDir,
     now: opts.now,
+    isProcessAlive: opts.isProcessAlive,
   });
   return { service, spawn, varDir };
 }
+
+/** Escribe un lock del formato actual (US-232) en `varDir`. */
+function writeLock(varDir: string, lock: { version: string; pid: number; startedAt: string }): void {
+  writeFileSync(join(varDir, 'update.lock'), `${JSON.stringify(lock)}\n`);
+}
+
+const LOCK_AT = '2026-07-29T12:00:00.000Z';
+const liveLock = { version: '1.1.0', pid: 4242, startedAt: LOCK_AT };
 
 describe('UpdateService.getPlan', () => {
   it('systemd: canSelfUpdate y sin comando docker', async () => {
@@ -67,9 +80,9 @@ describe('UpdateService.getPlan', () => {
     expect((await bad.service.getPlan()).maintenanceWindow).toBeNull();
   });
 
-  it('inProgress:true cuando existe el lock; lastResult se lee del fichero (parseo defensivo)', async () => {
+  it('inProgress:true con un lock VIVO; lastResult se lee del fichero (parseo defensivo)', async () => {
     const varDir = tmpVar();
-    writeFileSync(join(varDir, 'update.lock'), '1.1.0\n');
+    writeLock(varDir, liveLock);
     writeFileSync(
       join(varDir, 'update-result.json'),
       JSON.stringify({
@@ -81,14 +94,51 @@ describe('UpdateService.getPlan', () => {
         finishedAt: '2026-07-13T10:00:00.000Z',
       }),
     );
-    const { service } = make({ status: AVAILABLE, varDir });
+    const { service } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => true,
+      now: () => new Date(Date.parse(LOCK_AT) + 1000),
+    });
     const plan = await service.getPlan();
     expect(plan.inProgress).toBe(true);
+    expect(plan.inProgressSince).toBe(LOCK_AT);
     expect(plan.lastResult?.ok).toBe(true);
 
     // JSON corrupto → lastResult null, sin tumbar el plan.
     writeFileSync(join(varDir, 'update-result.json'), '{ roto');
     expect((await service.getPlan()).lastResult).toBeNull();
+  });
+
+  it('un lock HUÉRFANO no cuenta como en curso (AUD3-20: el actualizador murió)', async () => {
+    const varDir = tmpVar();
+    writeLock(varDir, liveLock);
+    const { service } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => false,
+      now: () => new Date(Date.parse(LOCK_AT) + 1000),
+    });
+    const plan = await service.getPlan();
+    expect(plan.inProgress).toBe(false);
+    expect(plan.inProgressSince).toBeNull();
+  });
+
+  it('un lock caducado por edad tampoco bloquea (actualizador atascado)', async () => {
+    const varDir = tmpVar();
+    writeLock(varDir, liveLock);
+    const { service } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => true,
+      now: () => new Date(Date.parse(LOCK_AT) + 21 * 60 * 1000),
+    });
+    expect((await service.getPlan()).inProgress).toBe(false);
+  });
+
+  it('sin lock, inProgressSince es null', async () => {
+    const { service } = make({ status: AVAILABLE });
+    expect((await service.getPlan()).inProgressSince).toBeNull();
   });
 });
 
@@ -116,14 +166,47 @@ describe('UpdateService.apply', () => {
     expect(spawn).not.toHaveBeenCalled();
   });
 
-  it('ya en curso (lock presente): no lanza otro', async () => {
+  it('ya en curso (lock VIVO): no lanza otro', async () => {
     const varDir = tmpVar();
-    writeFileSync(join(varDir, 'update.lock'), '1.1.0\n');
-    const { service, spawn } = make({ status: AVAILABLE, varDir });
+    writeLock(varDir, liveLock);
+    const { service, spawn } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => true,
+      now: () => new Date(Date.parse(LOCK_AT) + 1000),
+    });
     const res = await service.apply();
     expect(res.started).toBe(false);
     expect(res.message).toMatch(/en curso/i);
     expect(spawn).not.toHaveBeenCalled();
+  });
+
+  it('un lock huérfano NO deja la función inservible: se pisa y se relanza (AUD3-20)', async () => {
+    const varDir = tmpVar();
+    writeLock(varDir, liveLock);
+    const { service, spawn } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => false, // el actualizador murió en su propio restart
+      now: () => new Date(Date.parse(LOCK_AT) + 1000),
+      spawnPid: 777,
+    });
+    const res = await service.apply();
+    expect(res.started).toBe(true);
+    expect(spawn).toHaveBeenCalledWith('1.1.0');
+  });
+
+  it('guarda el PID que devuelve el spawner en el lock', async () => {
+    const { service, varDir } = make({ status: AVAILABLE, spawnPid: 4321 });
+    await service.apply();
+    const raw = readFileSync(join(varDir, 'update.lock'), 'utf8');
+    expect(JSON.parse(raw)).toMatchObject({ version: '1.1.0', pid: 4321 });
+  });
+
+  it('un spawner que no informa del PID deja el lock sin PID (caduca solo por TTL)', async () => {
+    const { service, varDir } = make({ status: AVAILABLE });
+    await service.apply();
+    expect(JSON.parse(readFileSync(join(varDir, 'update.lock'), 'utf8'))).toMatchObject({ pid: 0 });
   });
 
   it('fuera de la ventana de mantenimiento: no lanza salvo force', async () => {
@@ -166,5 +249,33 @@ describe('UpdateService.apply', () => {
     expect(res.started).toBe(false);
     expect(res.message).toMatch(/no se pudo lanzar/i);
     expect(existsSync(join(varDir, 'update.lock'))).toBe(false);
+  });
+});
+
+describe('UpdateService.cancel', () => {
+  it('libera el lock y permite volver a intentarlo', async () => {
+    const varDir = tmpVar();
+    writeLock(varDir, liveLock);
+    const { service, spawn } = make({
+      status: AVAILABLE,
+      varDir,
+      isProcessAlive: () => true,
+      now: () => new Date(Date.parse(LOCK_AT) + 1000),
+    });
+    // Con el lock vivo, apply() se niega…
+    expect((await service.apply()).started).toBe(false);
+
+    expect(await service.cancel()).toBe(true);
+    expect(existsSync(join(varDir, 'update.lock'))).toBe(false);
+    expect((await service.getPlan()).inProgress).toBe(false);
+
+    // …y tras cancelar, sí lanza.
+    expect((await service.apply()).started).toBe(true);
+    expect(spawn).toHaveBeenCalledWith('1.1.0');
+  });
+
+  it('sin lock devuelve false (nada que cancelar)', async () => {
+    const { service } = make({ status: AVAILABLE });
+    expect(await service.cancel()).toBe(false);
   });
 });

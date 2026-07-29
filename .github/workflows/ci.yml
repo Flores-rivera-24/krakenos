@@ -141,13 +141,14 @@ jobs:
 
       - name: Run installer (from local tree, no service)
         run: |
-          apt-get update -qq && apt-get install -y -qq curl git ca-certificates procps
-          bash scripts/install.sh --yes --no-service --dir /opt/krakenos --from-local "$PWD"
+          apt-get update -qq && apt-get install -y -qq curl git ca-certificates procps sudo
+          bash scripts/install.sh --yes --no-service --dir /opt/krakenos --from-local "$PWD" | tee /tmp/install-1.log
 
       - name: Boot agent and probe /health/ready
         run: |
           cd /opt/krakenos/apps/agent
           NODE_ENV=production nohup node dist/index.js > /tmp/agent.log 2>&1 &
+          echo $! > /tmp/agent.pid
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:3001/health/ready > /dev/null 2>&1; then
               echo "health/ready OK"
@@ -158,6 +159,77 @@ jobs:
           echo "el agente no respondió a /health/ready"
           tail -50 /tmp/agent.log
           exit 1
+
+      # AUD3-06: el instalador dejaba .env, la DB y data/ a 0644 → cualquier cuenta
+      # local leía credenciales SSH del router, rtspUrl con contraseñas y hashes.
+      - name: Secrets are not world-readable
+        run: |
+          agent=/opt/krakenos/apps/agent
+          fail=0
+          check() { # fichero_o_dir modo_esperado
+            actual="$(stat -c '%a' "$1")"
+            if [ "$actual" != "$2" ]; then
+              echo "::error::$1 tiene modo $actual, se esperaba $2"
+              fail=1
+            else
+              echo "OK  $1 → $actual"
+            fi
+          }
+          check "$agent/.env" 600
+          check "$agent/keys" 700
+          for f in "$agent"/keys/*.pem; do check "$f" 600; done
+          for f in "$agent"/prisma/*.db; do [ -e "$f" ] && check "$f" 600; done
+          exit $fail
+
+      # AUD3-23: los extras se omitían en SILENCIO (sin TTY, confirm() decía "no").
+      # Ahora son opt-in por bandera y lo que queda fuera se dice en voz alta.
+      - name: Installer reports what was left out
+        run: |
+          grep -q "Qué quedó FUERA" /tmp/install-1.log
+          grep -q -- "--with-ffmpeg" /tmp/install-1.log
+          grep -q -- "--with-helper" /tmp/install-1.log
+          echo "el resumen de extras omitidos está presente"
+
+      # Idempotencia real: re-ejecutar NO debe regenerar .env ni las claves (sería
+      # invalidar todas las sesiones y perder la config en cada reinstalación).
+      - name: Re-run installer (idempotence)
+        run: |
+          agent=/opt/krakenos/apps/agent
+          sha_before="$(sha256sum "$agent/.env" "$agent/keys/jwt-private.pem" | sha256sum)"
+          # Marcador en data/ para comprobar que el estado del usuario se conserva.
+          mkdir -p "$agent/data" && echo 'no me borres' > "$agent/data/smoke-marker"
+          kill "$(cat /tmp/agent.pid)" 2>/dev/null || true
+          bash scripts/install.sh --yes --no-service --dir /opt/krakenos --from-local "$PWD" > /tmp/install-2.log 2>&1 \
+            || { tail -30 /tmp/install-2.log; exit 1; }
+          sha_after="$(sha256sum "$agent/.env" "$agent/keys/jwt-private.pem" | sha256sum)"
+          [ "$sha_before" = "$sha_after" ] || { echo "::error::la re-ejecución regeneró .env o las claves"; exit 1; }
+          grep -q 'no me borres' "$agent/data/smoke-marker" || { echo "::error::se perdió data/"; exit 1; }
+          echo "re-ejecución idempotente: .env, claves y data/ intactos"
+
+      - name: Agent still boots after re-install
+        run: |
+          cd /opt/krakenos/apps/agent
+          NODE_ENV=production nohup node dist/index.js > /tmp/agent2.log 2>&1 &
+          echo $! > /tmp/agent.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3001/health/ready > /dev/null 2>&1 && exit 0
+            sleep 1
+          done
+          tail -50 /tmp/agent2.log
+          exit 1
+
+      # --uninstall conserva los datos (lo que promete) y --purge no deja residuos.
+      - name: Uninstall keeps data, purge leaves nothing
+        run: |
+          kill "$(cat /tmp/agent.pid)" 2>/dev/null || true
+          bash scripts/install.sh --yes --uninstall --dir /opt/krakenos | tee /tmp/uninstall.log
+          grep -q "Se conserva /opt/krakenos" /tmp/uninstall.log
+          test -f /opt/krakenos/apps/agent/keys/jwt-private.pem || { echo "::error::--uninstall borró las claves"; exit 1; }
+          test -f /opt/krakenos/apps/agent/data/smoke-marker || { echo "::error::--uninstall borró data/"; exit 1; }
+          test ! -f /etc/systemd/system/krakenos.service
+          bash scripts/install.sh --yes --uninstall --purge --dir /opt/krakenos
+          test ! -d /opt/krakenos || { echo "::error::--purge dejó residuos en /opt/krakenos"; exit 1; }
+          echo "uninstall/purge correctos"
 
   # Escaneo de secretos (gitleaks, BLOQUEANTE) + SAST (semgrep). US-92.
   # Job aparte para que corra en paralelo a build-test y falle de forma aislada.

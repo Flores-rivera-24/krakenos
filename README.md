@@ -183,16 +183,39 @@ curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scri
 ```
 
 Comprueba el sistema (SO/arquitectura/RAM/disco), instala Node 20 + pnpm (pinneado, sin
-descargas en el arranque), clona la última versión, genera las claves, migra la base, construye,
-crea el **servicio systemd** y te imprime la **URL de `/setup?token=` con QR** para crear el
-administrador. Es **idempotente** (re-ejecutarlo actualiza sin tocar tu configuración) y ofrece
-como **opcionales** el helper sudoers (VPN/firewall/QoS), `ffmpeg` (cámaras) y las dependencias
-de integraciones. Después:
+descargas en el arranque), clona la última versión etiquetada, genera las claves (con permisos
+restringidos), migra la base, construye, crea el **servicio systemd** y te imprime la
+**URL de `/setup?token=` con QR** para crear el administrador. Es **idempotente**:
+re-ejecutarlo actualiza el código sin tocar tu `.env`, tus claves ni tus datos.
+
+**Los extras son opt-in explícito por bandera** — en `curl | sudo bash` no hay terminal
+donde preguntar, así que se piden así (y al final el instalador te dice **qué quedó
+desactivado**):
+
+```bash
+# recomendado: instalación completa
+curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scripts/install.sh \
+  | sudo bash -s -- --with-all
+```
+
+| Bandera | Qué habilita |
+|---|---|
+| `--with-helper` | helper privilegiado + sudoers → **VPN WireGuard, firewall, QoS** |
+| `--with-ffmpeg` | `ffmpeg` → **cámaras RTSP** (vídeo en vivo, movimiento, grabación) |
+| `--with-deps` | deps de integraciones (`node-ssh`, `mqtt`, `net-snmp`, `ws`) → routers por SSH, zigbee2mqtt, SNMP, Matter |
+| `--with-all` | las tres |
+
+Sin banderas, KrakenOS se instala y funciona, pero esas funciones concretas no operan
+hasta que las añadas (re-ejecuta el instalador con la bandera que falte). Después:
 
 ```bash
 sudo bash /opt/krakenos/scripts/install.sh --update      # actualizar (orquestador con rollback)
 sudo bash /opt/krakenos/scripts/install.sh --uninstall   # desinstalar (conserva DB/claves/datos)
 ```
+
+> `--update` reusa el mismo camino que el botón «Actualizar ahora» de la app
+> (backup → apply → migrate → restart → healthcheck, con rollback) y **conserva las deps
+> opcionales** que instalaste. Detalle en [`docs/updates.md`](docs/updates.md).
 
 > El smoke del instalador corre en CI sobre un Debian limpio en cada push. Las partes
 > privilegiadas (VPN/firewall/QoS/cámaras) se verifican con hardware real.
@@ -366,7 +389,12 @@ con mocks y recorre los flujos clave por la UI; corre en su propio job de CI (ve
 **CI** (GitHub Actions): en cada push a `main` y cada PR, dos jobs en paralelo:
 
 - **build-test** → install → claves JWT + Prisma Client → `lint` → `typecheck` → `build` →
-  `test` (coverage) → `audit` de dependencias (informativo, no bloquea).
+  presupuesto de bundle web (bloqueante) → `test` (coverage) → **auditoría de dependencias
+  con OSV**, que **bloquea** ante una vulnerabilidad CRITICAL en dependencias de producción.
+- **installer-smoke** → instala en un Debian limpio, arranca el agente, comprueba
+  `/health/ready`, **re-ejecuta el instalador** (idempotencia: `.env`, claves y datos
+  intactos), verifica que los secretos no son legibles por todo el sistema y prueba
+  `--uninstall` (conserva los datos) y `--purge` (no deja residuos).
 - **security** → **secret scanning con gitleaks** (escanea todo el historial; **bloquea** el
   build ante un secreto o un fichero sensible commiteado: `keys/`, `.env`, `*.db`) + **SAST con
   semgrep** (reglas por defecto + JS/TS, acotado a `src/`; **bloquea** ante hallazgos).

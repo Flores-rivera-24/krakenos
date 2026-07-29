@@ -171,8 +171,13 @@ export interface UpdatePlan {
   canSelfUpdate: boolean;
   /** Comando manual a mostrar cuando `mode === 'docker'`. */
   dockerCommand: string | null;
-  /** ¿Hay una actualización en curso ahora mismo? */
+  /**
+   * ¿Hay una actualización en curso ahora mismo? Un lock huérfano (actualizador
+   * muerto) o caducado NO cuenta como en curso (US-232).
+   */
   inProgress: boolean;
+  /** Cuándo arrancó la actualización en curso (ISO), o `null` si no hay ninguna. */
+  inProgressSince: string | null;
   /** Franja de mantenimiento configurada ("HH:MM-HH:MM") o `null` si sin límite. */
   maintenanceWindow: string | null;
   /** Resultado de la última actualización aplicada, o `null` si nunca se aplicó. */
@@ -277,4 +282,15 @@ export interface ApplyUpdateResponse {
   message: string;
   /** Comando manual cuando el modo es `docker`. */
   dockerCommand?: string;
+}
+
+/**
+ * Resultado de liberar el lock de actualización (US-232). El caso que la
+ * caducidad automática no cubre es un actualizador **vivo pero atascado**: esto
+ * devuelve la capacidad de reintentar sin entrar por SSH a borrar el fichero.
+ */
+export interface CancelUpdateResponse {
+  /** `true` si había un lock y se liberó; `false` si no había nada que cancelar. */
+  cancelled: boolean;
+  message: string;
 }

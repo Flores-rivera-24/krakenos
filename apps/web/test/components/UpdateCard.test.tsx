@@ -27,6 +27,7 @@ const basePlan: UpdatePlan = {
   canSelfUpdate: true,
   dockerCommand: null,
   inProgress: false,
+  inProgressSince: null,
   maintenanceWindow: null,
   lastResult: null,
 };
@@ -95,6 +96,33 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     apiMock.get.mockResolvedValue({ ...basePlan, enabled: false, updateAvailable: false, latest: null });
     render(<UpdateCard />);
     expect(await screen.findByText(/desactivada/)).toBeInTheDocument();
+  });
+
+  // US-232: un actualizador atascado dejaba la card en «en curso» para siempre.
+  it('con una actualización en curso, el admin puede cancelarla y se refresca el plan', async () => {
+    apiMock.get.mockResolvedValue({
+      ...basePlan,
+      inProgress: true,
+      inProgressSince: '2026-07-29T12:00:00.000Z',
+    });
+    apiMock.post.mockResolvedValue({ cancelled: true, message: 'Actualización cancelada.' });
+    render(<UpdateCard />);
+    const btn = await screen.findByRole('button', { name: /Cancelar actualización/ });
+    // Mientras está en curso, no se ofrece relanzarla.
+    expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+    fireEvent.click(btn);
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/system/update/cancel'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
+    // Recarga el plan tras cancelar (1 al montar + 1 tras cancelar).
+    expect(apiMock.get.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('un viewer no ve el botón de cancelar', async () => {
+    setAdmin('viewer');
+    apiMock.get.mockResolvedValue({ ...basePlan, inProgress: true, inProgressSince: null });
+    render(<UpdateCard />);
+    await screen.findByText(/Actualización en curso/);
+    expect(screen.queryByRole('button', { name: /Cancelar/ })).not.toBeInTheDocument();
   });
 
   it('muestra el resultado revertido de la última actualización', async () => {

@@ -262,6 +262,7 @@ describe('rutas de sistema', () => {
     expect(body.canSelfUpdate).toBe(true);
     expect(body.enabled).toBe(false); // sin repo configurado
     expect(body.inProgress).toBe(false);
+    expect(body.inProgressSince).toBeNull();
     expect(body).toHaveProperty('lastResult');
   });
 
@@ -298,6 +299,37 @@ describe('rutas de sistema', () => {
     // Queda auditado (el audit es fire-and-forget: se espera a que se persista).
     await eventually(async () => {
       const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
+      expect(audit).not.toBeNull();
+    });
+  });
+
+  // Cancelar la actualización (US-232): sin lock no hay nada que cancelar, pero la
+  // ruta existe y está auditada — antes un lock huérfano solo se arreglaba por SSH.
+  it('POST /api/system/update/cancel requiere admin (403 a viewer)', async () => {
+    const viewer = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/update/cancel',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('POST /api/system/update/cancel (admin) sin actualización en curso responde cancelled:false y audita', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/update/cancel',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().cancelled).toBe(false);
+    expect(typeof res.json().message).toBe('string');
+
+    await eventually(async () => {
+      const audit = await app.prisma.auditLog.findFirst({
+        where: { action: 'system.update.cancel' },
+      });
       expect(audit).not.toBeNull();
     });
   });

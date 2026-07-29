@@ -133,6 +133,7 @@ export const updatePlanSchema = {
         canSelfUpdate: { type: 'boolean' },
         dockerCommand: { type: ['string', 'null'] },
         inProgress: { type: 'boolean' },
+        inProgressSince: { type: ['string', 'null'] },
         maintenanceWindow: { type: ['string', 'null'] },
         lastResult: updateResultSchema,
       },
@@ -145,6 +146,7 @@ export const updatePlanSchema = {
         'canSelfUpdate',
         'dockerCommand',
         'inProgress',
+        'inProgressSince',
         'maintenanceWindow',
         'lastResult',
       ],
@@ -175,6 +177,27 @@ export const updateApplySchema = {
       required: ['started', 'mode', 'message'],
     },
     409: errorResponse,
+  },
+} as const;
+
+/**
+ * `POST /api/system/update/cancel` — libera el lock de «actualización en curso»
+ * (US-232). Sin cuerpo: no cancela *una* actualización concreta, desbloquea la
+ * función. Devuelve 200 con `cancelled:false` si no había nada que cancelar.
+ */
+export const updateCancelSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        cancelled: { type: 'boolean' },
+        message: { type: 'string' },
+      },
+      required: ['cancelled', 'message'],
+    },
+    401: errorResponse,
+    403: errorResponse,
   },
 } as const;
 
