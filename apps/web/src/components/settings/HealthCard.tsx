@@ -79,6 +79,17 @@ export function HealthCard() {
                 danger={metrics.eventLoop.maxLagMs > 200}
               />
               <Metric label={t('settings.health.wsClients')} value={String(metrics.websocketClients)} />
+              {/* Disco y base (US-233): quedarse sin espacio es el fallo más
+                  probable de un aparato sobre tarjeta SD, y no se veía en ningún sitio. */}
+              <Metric
+                label={t('settings.health.disk')}
+                value={formatDisk(metrics.storage)}
+                danger={(metrics.storage?.diskUsedPercent ?? 0) >= 90}
+              />
+              <Metric
+                label={t('settings.health.dbSize')}
+                value={formatBytes(metrics.storage?.dbBytes ?? null)}
+              />
             </dl>
 
             <div>
@@ -130,4 +141,21 @@ function formatUptime(seconds: number): string {
 function formatMem(mem: MetricsSnapshot['memory']): string {
   const mb = (bytes: number) => Math.round(bytes / (1024 * 1024));
   return `${mb(mem.rssBytes)} / ${mb(mem.heapTotalBytes)} MB`;
+}
+
+/** Bytes legibles; `null` = el sistema no permitió medirlo (US-233). */
+function formatBytes(bytes: number | null): string {
+  if (bytes === null) return '—';
+  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+  return `${Math.round(bytes / 1024 ** 2)} MB`;
+}
+
+/**
+ * «12 GB libres · 68 %» o «—» si no se pudo medir. Tolera que falte el bloque
+ * entero: un agente anterior a US-233 no lo manda y la tarjeta no debe romperse.
+ */
+function formatDisk(storage: MetricsSnapshot['storage'] | undefined): string {
+  if (!storage || storage.diskFreeBytes === null) return '—';
+  const free = formatBytes(storage.diskFreeBytes);
+  return storage.diskUsedPercent === null ? free : `${free} · ${storage.diskUsedPercent}%`;
 }

@@ -30,9 +30,10 @@ export default defineConfig({
     // que los tests importan: el número refleja la realidad del árbol (incluidos
     // los transports de hardware SSH/SNMP/HTTP que solo se verifican con equipo
     // real, US-86), no "de lo que se usa, cuánto se ejerce". Excludes legítimos:
-    // los dos **entrypoints** con efectos secundarios (`index.ts` arranca/escucha;
-    // `update-runner.ts` es el proceso actualizador aparte) — no son unit-testables
-    // sin arrancar el proceso. Los `thresholds` son un **suelo anti-regresión**
+    // los **entrypoints** con efectos secundarios (`index.ts` arranca/escucha;
+    // `update-runner.ts` es el proceso actualizador aparte; `reset-admin.ts` es la
+    // recuperación de admin desde el host, US-233) — no son unit-testables sin
+    // arrancar el proceso; su lógica sí vive en módulos que se prueban. Los `thresholds` son un **suelo anti-regresión**
     // fijado ~1–2 pts por debajo del número real medido (ver docs/coverage-notes.md
     // para el número vigente y el plan de subida gradual).
     coverage: {
@@ -40,7 +41,12 @@ export default defineConfig({
       reporter: ['text-summary'],
       all: true,
       include: ['src/**/*.ts'],
-      exclude: [...coverageConfigDefaults.exclude, 'src/index.ts', 'src/update-runner.ts'],
+      exclude: [
+        ...coverageConfigDefaults.exclude,
+        'src/index.ts',
+        'src/update-runner.ts',
+        'src/reset-admin.ts',
+      ],
       thresholds: {
         statements: 89,
         branches: 83,

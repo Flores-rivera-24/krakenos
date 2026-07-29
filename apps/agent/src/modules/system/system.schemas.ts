@@ -1,4 +1,4 @@
-import { SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
+import { AUTO_BACKUP_FREQUENCIES, SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
 export const systemStatsSchema = {
@@ -271,6 +271,16 @@ export const metricsSchema = {
           required: ['lagMs', 'maxLagMs'],
         },
         websocketClients: { type: 'number' },
+        storage: {
+          type: 'object',
+          properties: {
+            dbBytes: { type: ['number', 'null'] },
+            diskFreeBytes: { type: ['number', 'null'] },
+            diskTotalBytes: { type: ['number', 'null'] },
+            diskUsedPercent: { type: ['number', 'null'] },
+          },
+          required: ['dbBytes', 'diskFreeBytes', 'diskTotalBytes', 'diskUsedPercent'],
+        },
         managers: {
           type: 'array',
           items: {
@@ -293,6 +303,7 @@ export const metricsSchema = {
         'http',
         'eventLoop',
         'websocketClients',
+        'storage',
         'managers',
         'timestamp',
       ],
@@ -376,5 +387,101 @@ export const restoreSchema = {
         restartRequired: { type: 'boolean' },
       },
     },
+    400: errorResponse,
+  },
+} as const;
+
+/** `GET /api/system/backup/auto` — estado de las copias automáticas (US-233). */
+export const autoBackupStatusSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'frequency',
+        'retention',
+        'passphraseSet',
+        'count',
+        'totalBytes',
+        'lastBackupAt',
+        'lastBackupBytes',
+        'lastError',
+        'stale',
+      ],
+      properties: {
+        frequency: { type: 'string', enum: [...AUTO_BACKUP_FREQUENCIES] },
+        retention: { type: 'integer' },
+        passphraseSet: { type: 'boolean' },
+        count: { type: 'integer' },
+        totalBytes: { type: 'integer' },
+        lastBackupAt: { type: ['string', 'null'] },
+        lastBackupBytes: { type: ['integer', 'null'] },
+        lastError: { type: ['string', 'null'] },
+        stale: { type: 'boolean' },
+      },
+    },
+  },
+} as const;
+
+/**
+ * `POST /api/system/backup/auto/passphrase` — fija o **genera** la contraseña de las
+ * copias automáticas (US-233). Sin cuerpo genera una y la devuelve **una sola vez**.
+ */
+export const autoBackupPassphraseSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      passphrase: { type: 'string', minLength: 12, maxLength: 256 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['passphraseSet'],
+      properties: {
+        passphraseSet: { type: 'boolean' },
+        /** Solo cuando se acaba de generar: es la única vez que se muestra así. */
+        generated: { type: ['string', 'null'] },
+      },
+    },
+  },
+} as const;
+
+/** `POST /api/system/backup/auto/passphrase/reveal` — muestra la contraseña guardada. */
+export const autoBackupRevealSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['passphrase'],
+      properties: { passphrase: { type: ['string', 'null'] } },
+    },
+  },
+} as const;
+
+/**
+ * `POST /api/system/restore/upload` — restauración por **streaming** (US-233). El
+ * cuerpo es el archivo binario (`application/octet-stream`), así que no hay schema
+ * de body; la passphrase viaja en cabecera (nunca en la URL: acabaría en los logs).
+ */
+export const restoreUploadSchema = {
+  // Sin schema de `headers` a propósito: la validación de Fastify corre ANTES del
+  // preHandler de auth, así que exigir la cabecera aquí daría 400 a una petición sin
+  // token en vez de 401 (y rompería el barrido de autorización). La cabecera se
+  // comprueba en el handler, ya autenticado.
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['staged', 'restartRequired'],
+      properties: {
+        staged: { type: 'integer' },
+        restartRequired: { type: 'boolean' },
+      },
+    },
+    400: errorResponse,
+    413: errorResponse,
   },
 } as const;

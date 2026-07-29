@@ -19,8 +19,34 @@ if [ ! -f "$JWT_PRIVATE_KEY_PATH" ]; then
   chmod 600 "$JWT_PRIVATE_KEY_PATH"
 fi
 
+# Snapshot antes de migrar (US-233). Una migración que falla a mitad —o que llega con
+# una imagen más nueva de lo que el volumen espera— puede dejar la base inservible, y
+# aquí no hay rollback como en el actualizador de systemd (US-190). Copiar el fichero
+# es barato y es la diferencia entre «vuelvo atrás» y «he perdido la casa».
+# Se conserva UNA copia (`.pre-migrate`): es una red de seguridad para el arranque, no
+# un histórico — para eso están las copias cifradas de Ajustes → Sistema.
+DB_FILE="$(printf '%s' "${DATABASE_URL:-file:./prisma/dev.db}" | sed 's/^file://')"
+case "$DB_FILE" in
+  /*) ;;
+  *) DB_FILE="$(pwd)/$DB_FILE" ;;
+esac
+if [ -f "$DB_FILE" ]; then
+  echo "[entrypoint] Copia previa a la migración: ${DB_FILE}.pre-migrate"
+  # `cp` del principal + WAL: con WAL activo (US-228) el fichero suelto no basta.
+  cp "$DB_FILE" "${DB_FILE}.pre-migrate" || echo "[entrypoint] AVISO: no se pudo copiar la base antes de migrar"
+  [ -f "${DB_FILE}-wal" ] && cp "${DB_FILE}-wal" "${DB_FILE}.pre-migrate-wal" || true
+fi
+
 echo "[entrypoint] Aplicando migraciones de base de datos…"
-pnpm exec prisma migrate deploy
+if ! pnpm exec prisma migrate deploy; then
+  echo "[entrypoint] ERROR: la migración falló." >&2
+  if [ -f "${DB_FILE}.pre-migrate" ]; then
+    echo "[entrypoint] La base ANTERIOR está intacta en ${DB_FILE}.pre-migrate" >&2
+    echo "[entrypoint] Para volver atrás: para el contenedor, restaura ese fichero sobre" >&2
+    echo "[entrypoint] ${DB_FILE} (y su -wal) y arranca la imagen anterior." >&2
+  fi
+  exit 1
+fi
 
 echo "[entrypoint] Arrancando KrakenOS…"
 exec node dist/index.js

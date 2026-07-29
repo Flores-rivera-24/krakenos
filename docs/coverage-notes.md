@@ -23,11 +23,16 @@ futura.
 
 | Paquete | Medición | Statements | Branches | Functions | Lines |
 |---------|----------|-----------:|---------:|----------:|------:|
-| **agente** (`apps/agent`) | `all: true` | **91.4%** | **85.3%** | **92.4%** | **91.4%** |
-| **web** (`apps/web`)      | `all: false` | ~88% | ~79.5% | ~65% | ~88% |
+| **agente** (`apps/agent`) | `all: true` | **91.97%** | **86.20%** | **91.10%** | **91.97%** |
+| **web** (`apps/web`)      | `all: false` | 88.60% | 79.73% | 66.02% | 88.60% |
 
-Medido el 2026-07-13 (US-219): agente **1959 tests** (213 ficheros), web **599
-tests** (114 ficheros). Suite completa en verde.
+Medido el 2026-07-29 (tras US-233): agente **2225 tests** (237 ficheros), web **625
+tests** (118 ficheros). Suite completa en verde.
+
+Entrypoints excluidos (efectos secundarios, no unit-testables sin arrancar el
+proceso): `src/index.ts`, `src/update-runner.ts` y `src/reset-admin.ts` (US-233).
+La lógica de los dos últimos sí se prueba, en `system/update-lock.ts`,
+`system/process-update-runner.ts` y `system/admin-reset.ts`.
 
 ## Umbrales en CI: un suelo, no un objetivo
 

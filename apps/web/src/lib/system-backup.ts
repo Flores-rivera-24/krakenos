@@ -1,3 +1,5 @@
+import type { AutoBackupStatus } from '@krakenos/types';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
@@ -23,35 +25,57 @@ export async function downloadBackup(passphrase: string): Promise<Blob> {
   return res.blob();
 }
 
-/** Convierte un `File` a base64 (por trozos, para no reventar la pila con archivos grandes). */
-async function fileToBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
 /**
  * Sube un backup cifrado + su passphrase (US-104). El servidor lo valida y lo deja
  * preparado; se aplica al **reiniciar** el agente.
+ *
+ * Desde US-233 el archivo se envía **en binario** (`application/octet-stream`) en vez
+ * de en base64 dentro de un JSON: el base64 lo inflaba un 33 % y topaba con el
+ * `bodyLimit` de 64 MB del servidor, así que una copia grande se podía crear pero no
+ * restaurar (AUD3-15). La contraseña va en cabecera, nunca en la URL.
  */
 export async function restoreBackup(file: File, passphrase: string): Promise<{ staged: number }> {
   const token = useAuthStore.getState().tokens?.accessToken;
-  const res = await fetch('/api/system/restore', {
+  const res = await fetch('/api/system/restore/upload', {
     method: 'POST',
     credentials: 'same-origin',
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/octet-stream',
+      'X-Restore-Passphrase': passphrase,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ passphrase, data: await fileToBase64(file) }),
+    body: file,
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => null)) as { message?: string } | null;
     throw new Error(err?.message ?? 'No se pudo restaurar la copia de seguridad');
   }
   return res.json() as Promise<{ staged: number }>;
+}
+
+/* ─────────────── Copias automáticas (US-233) ─────────────── */
+
+export function getAutoBackupStatus(): Promise<AutoBackupStatus> {
+  return api.get<AutoBackupStatus>('/system/backup/auto');
+}
+
+/** Lanza una copia automática ahora. Devuelve el estado ya actualizado. */
+export function runAutoBackup(): Promise<AutoBackupStatus> {
+  return api.post<AutoBackupStatus>('/system/backup/auto/run');
+}
+
+/**
+ * Fija la contraseña de las copias automáticas, o **genera** una si no se pasa
+ * ninguna (en ese caso viene en `generated`: es la única vez que se devuelve así,
+ * aunque después se puede consultar con `revealAutoBackupPassphrase`).
+ */
+export function setAutoBackupPassphrase(
+  passphrase?: string,
+): Promise<{ passphraseSet: boolean; generated: string | null }> {
+  return api.post('/system/backup/auto/passphrase', passphrase ? { passphrase } : {});
+}
+
+/** Muestra la contraseña guardada (admin activo; queda auditado). */
+export function revealAutoBackupPassphrase(): Promise<{ passphrase: string | null }> {
+  return api.post('/system/backup/auto/passphrase/reveal');
 }

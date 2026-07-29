@@ -46,6 +46,11 @@ export const SYSTEM_SETTING_KEYS = [
   'presenceNightSuppress',
   // Resumen del hogar (US-180): off | daily | weekly (se envía a las 08:00).
   'digestFrequency',
+  // Copias de seguridad automáticas (US-233): off | daily | weekly (a las 03:00) y
+  // cuántas conservar en `data/backups/`. OFF por defecto: la copia lleva secretos y
+  // su contraseña, así que activarla es una decisión del dueño.
+  'autoBackupFrequency',
+  'autoBackupRetention',
   // Ventana de mantenimiento para la actualización one-click (US-190): franja
   // "HH:MM-HH:MM" (hora local) en la que se permite aplicar una actualización.
   // Vacío = sin restricción (se puede aplicar en cualquier momento).
@@ -218,6 +223,11 @@ export interface MetricsSnapshot {
   };
   websocketClients: number;
   managers: ManagerMetric[];
+  /**
+   * Disco y tamaño de la base (US-233). El fallo más probable de un aparato sobre
+   * tarjeta SD es quedarse sin espacio, y hasta ahora nada lo publicaba.
+   */
+  storage: StorageInfo;
   timestamp: IsoDateTime;
 }
 
@@ -282,6 +292,43 @@ export interface ApplyUpdateResponse {
   message: string;
   /** Comando manual cuando el modo es `docker`. */
   dockerCommand?: string;
+}
+
+/**
+ * Almacenamiento (US-233): tamaño de la base y espacio del disco donde vive. Los
+ * campos son `null` cuando el sistema no permite medirlos — un gauge ausente es
+ * información, no un error. `dbBytes` incluye el `-wal` (US-228).
+ */
+export interface StorageInfo {
+  dbBytes: number | null;
+  diskFreeBytes: number | null;
+  diskTotalBytes: number | null;
+  diskUsedPercent: number | null;
+}
+
+/** Frecuencias de la copia de seguridad automática (US-233). */
+export const AUTO_BACKUP_FREQUENCIES = ['off', 'daily', 'weekly'] as const;
+export type AutoBackupFrequency = (typeof AUTO_BACKUP_FREQUENCIES)[number];
+
+/**
+ * Estado de las copias automáticas (US-233). No expone rutas de disco (igual que las
+ * grabaciones de cámara): solo lo que la UI necesita para decir la verdad.
+ */
+export interface AutoBackupStatus {
+  frequency: AutoBackupFrequency;
+  /** Cuántas copias se conservan en disco. */
+  retention: number;
+  /** ¿Hay contraseña configurada? (sin ella no se puede hacer ninguna copia). */
+  passphraseSet: boolean;
+  /** Copias presentes ahora mismo. */
+  count: number;
+  totalBytes: number;
+  lastBackupAt: IsoDateTime | null;
+  lastBackupBytes: number | null;
+  /** Mensaje del último fallo, o `null` si la última copia fue bien. */
+  lastError: string | null;
+  /** `true` si están activadas y la copia más reciente es demasiado vieja (o no hay). */
+  stale: boolean;
 }
 
 /**

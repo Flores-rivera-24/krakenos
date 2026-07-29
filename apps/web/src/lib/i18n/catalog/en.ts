@@ -152,6 +152,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.health.latency': 'Latency (avg / p95)',
   'settings.health.inFlight': 'In flight',
   'settings.health.loopLag': 'Event loop lag',
+  'settings.health.disk': 'Free disk',
+  'settings.health.dbSize': 'Database',
   'settings.health.wsClients': 'Real-time clients',
   'settings.health.managers': 'Managers',
   'settings.health.noManagers': 'No manager samples yet.',
