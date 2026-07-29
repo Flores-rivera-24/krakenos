@@ -59,8 +59,20 @@ function ipv4Octets(ip: string): [number, number, number, number] | null {
  * envolver una IP interna en notación v6).
  */
 function unmapV6(ip: string): string {
-  const m = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.exec(ip);
-  return m ? m[1]! : ip.toLowerCase();
+  const dotted = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.exec(ip);
+  if (dotted) return dotted[1]!;
+  const lower = ip.toLowerCase();
+  // Node normaliza `::ffff:169.254.169.254` a su forma **hexadecimal**
+  // `::ffff:a9fe:a9fe` (p. ej. al atravesar `new URL()`), que la regex de arriba no
+  // reconoce: sin desmapearla también, el bypass del IMDS vuelve por la puerta de
+  // atrás. Hallado con los tests de US-227.
+  const hex = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(lower);
+  if (hex) {
+    const hi = Number.parseInt(hex[1]!, 16);
+    const lo = Number.parseInt(hex[2]!, 16);
+    return `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+  }
+  return lower;
 }
 
 /** Categorías relevantes de una IP para la decisión de egress. */
@@ -157,8 +169,15 @@ export async function assertHostAllowed(
   policy: EgressPolicy = DEFAULT_EGRESS_POLICY,
   opts: { allowUnresolvable?: boolean } = {},
 ): Promise<void> {
-  const clean = host.trim();
-  if (!clean) throw new EgressBlockedError('host vacío', host);
+  const trimmed = host.trim();
+  if (!trimmed) throw new EgressBlockedError('host vacío', host);
+  // `new URL(...).hostname` devuelve las IPv6 **entre corchetes** (`[::1]`,
+  // `[fd00:ec2::254]`). Sin quitarlos, `isIP()` devuelve 0 y la trataríamos como un
+  // nombre DNS: en el borde de configuración (`allowUnresolvable`) eso dejaba pasar
+  // loopback e incluso la metadata IPv6 de nube. Hallado al escribir los tests de
+  // US-227; afecta a todo lo que pasa por aquí, no solo a push.
+  const clean =
+    trimmed.startsWith('[') && trimmed.endsWith(']') ? trimmed.slice(1, -1) : trimmed;
 
   if (isIP(clean) !== 0) {
     const reason = blockedReason(clean, policy);

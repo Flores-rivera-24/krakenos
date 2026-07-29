@@ -202,4 +202,52 @@ describe('EnergyService (US-181)', () => {
     expect(stats.range).toBe('month');
     expect(stats.buckets).toHaveLength(3); // un bucket por día distinto
   });
+
+  /**
+   * US-228 (AUD3-13): antes se traían **todas** las filas de la ventana a memoria
+   * para agruparlas en JS (`range=month` con 10 medidores ≈ 864.000 filas, y el
+   * snapshot de MQTT repetía la jugada cada 30 s). Ahora agrupa SQLite. Este test
+   * comprueba que con muchas muestras el resultado sigue siendo exacto y acotado.
+   */
+  it('agrega en la base: muchas muestras → pocos buckets, con medias exactas', async () => {
+    const iot = new MockIotManager();
+    const svc = new EnergyService(app, iot);
+    const HOUR = 60 * 60 * 1000;
+    const base = Math.floor(Date.now() / HOUR) * HOUR - 3 * HOUR;
+
+    // 4 dispositivos × 60 muestras (una por minuto) en 3 horas = 720 filas.
+    const data: { deviceId: string; powerW: number; timestamp: Date }[] = [];
+    for (let device = 0; device < 4; device++) {
+      for (let h = 0; h < 3; h++) {
+        for (let m = 0; m < 60; m++) {
+          data.push({
+            deviceId: `plug-${device}`,
+            // Potencia constante por (dispositivo, hora) → media conocida.
+            powerW: 100 + device * 10,
+            timestamp: new Date(base + h * HOUR + m * 60_000),
+          });
+        }
+      }
+    }
+    await app.prisma.energySample.createMany({ data });
+
+    const stats = await svc.getStats('day');
+
+    // 3 horas distintas → 3 buckets, no 720 puntos.
+    expect(stats.buckets).toHaveLength(3);
+    expect(stats.devices).toHaveLength(4);
+
+    // Media del hogar en cada bucket = media de las 240 muestras de esa hora.
+    const expectedHomeAvg = (100 + 110 + 120 + 130) / 4;
+    for (const bucket of stats.buckets) {
+      expect(bucket.powerW).toBeCloseTo(expectedHomeAvg, 1);
+    }
+
+    // Energía de un aparato: 100 W × 3 h = 300 Wh (rollup de 1 min → 1/60 h).
+    const first = stats.devices.find((d) => d.deviceId === 'plug-0');
+    expect(first?.energyWh).toBeCloseTo(300, 1);
+    expect(first?.buckets).toHaveLength(3);
+    // Total del hogar = suma de los cuatro.
+    expect(stats.totalEnergyWh).toBeCloseTo((100 + 110 + 120 + 130) * 3, 1);
+  });
 });

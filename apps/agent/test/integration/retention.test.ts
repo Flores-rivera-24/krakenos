@@ -6,6 +6,7 @@ import {
   pruneAutomationRuns,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
+  pruneSurveyScans,
   retentionDays,
 } from '../../src/config/retention.js';
 import { RetentionService } from '../../src/modules/system/retention.service.js';
@@ -160,5 +161,62 @@ describe('retención de datos (US-102)', () => {
     expect(await app.prisma.auditLog.count()).toBe(0);
     expect(await app.prisma.refreshToken.count()).toBe(0);
     expect(await app.prisma.webAuthnChallenge.count()).toBe(0);
+  });
+
+  /**
+   * Recorridos de cobertura (US-228/AUD3-14): hasta ahora **nada** los podaba —solo
+   * desaparecían al borrar su plano— y cada uno son hasta 10.000 muestras (~1,8 MB).
+   */
+  it('poda recorridos de cobertura antiguos y sus muestras en cascada', async () => {
+    const plan = await app.prisma.floorPlan.create({
+      data: { name: 'Casa', widthM: 10, heightM: 8, walls: '[]', accessPoints: '[]' },
+    });
+    const seedScan = async (name: string, ageDays: number) => {
+      const scan = await app.prisma.surveyScan.create({
+        data: {
+          floorPlanId: plan.id,
+          name,
+          band: '5',
+          createdAt: new Date(Date.now() - ageDays * DAY_MS),
+        },
+      });
+      await app.prisma.surveySample.createMany({
+        data: [
+          { scanId: scan.id, x: 1, y: 1, rssiDbm: -55 },
+          { scanId: scan.id, x: 2, y: 2, rssiDbm: -70 },
+        ],
+      });
+      return scan;
+    };
+
+    await seedScan('de hace un año', 400);
+    const reciente = await seedScan('de esta semana', 3);
+    expect(await app.prisma.surveySample.count()).toBe(4);
+
+    const removed = await pruneSurveyScans(app.prisma);
+
+    expect(removed).toBe(1);
+    const scans = await app.prisma.surveyScan.findMany();
+    expect(scans.map((s) => s.id)).toEqual([reciente.id]);
+    // Las muestras del recorrido viejo se van con él (onDelete: Cascade).
+    expect(await app.prisma.surveySample.count()).toBe(2);
+  });
+
+  it('pruneOnce también poda los recorridos de cobertura', async () => {
+    const plan = await app.prisma.floorPlan.create({
+      data: { name: 'Casa', widthM: 10, heightM: 8, walls: '[]', accessPoints: '[]' },
+    });
+    await app.prisma.surveyScan.create({
+      data: {
+        floorPlanId: plan.id,
+        name: 'antiguo',
+        band: '5',
+        createdAt: new Date(Date.now() - 400 * DAY_MS),
+      },
+    });
+
+    await new RetentionService(app).pruneOnce();
+
+    expect(await app.prisma.surveyScan.count()).toBe(0);
   });
 });

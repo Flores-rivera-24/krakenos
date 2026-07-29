@@ -52,6 +52,19 @@ export const HLS_PLAYLIST_NAME = 'index.m3u8';
 /** Segmentos permitidos: `seg0.ts`, `index12.ts`… nunca rutas ni `..`. */
 const SEGMENT_RE = /^[A-Za-z0-9_-]+\.ts$/;
 
+/**
+ * Ids de cámara admitidos **al componer rutas en disco** (AUD3-05). El id sale de
+ * `data/cameras.json` o de la config de Frigate; ambos son restaurables desde un
+ * backup, y aquí se usa para `join()` + un `rmSync` recursivo. Se valida el mismo
+ * invariante que en los segmentos: sin separadores, sin `..`.
+ */
+const CAMERA_ID_RE = /^[A-Za-z0-9_.-]{1,64}$/;
+
+/** ¿El id puede usarse para componer una ruta bajo `baseDir`? */
+export function isSafeCameraId(cameraId: string): boolean {
+  return CAMERA_ID_RE.test(cameraId) && !cameraId.includes('..');
+}
+
 /** Se lanza al superar el límite de streams concurrentes. */
 export class StreamLimitError extends Error {
   readonly code = 'STREAM_LIMIT_REACHED';
@@ -90,6 +103,11 @@ export class HlsStreamManager {
    * si al arrancar una nueva se superaría el límite de concurrencia.
    */
   start(cameraId: string, rtspUrl: string): CameraStreamSession {
+    // Se compone una ruta en disco y se borra recursivamente: el id no puede salir
+    // de `baseDir` aunque venga de un fichero de definiciones manipulado (AUD3-05).
+    if (!isSafeCameraId(cameraId)) {
+      throw new Error(`id de cámara no admitido para rutas en disco: ${cameraId}`);
+    }
     const existing = this.sessions.get(cameraId);
     if (existing) {
       existing.lastActiveAt = this.now();

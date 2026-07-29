@@ -79,6 +79,13 @@ export interface UserSummary {
   /** Caducidad del acceso (invitados, US-179); `null` = sin caducidad. */
   expiresAt: IsoDateTime | null;
   createdAt: IsoDateTime;
+  /**
+   * Tokens de API vivos del usuario (US-227/AUD3-04). Solo se rellena en el listado
+   * de admin: hasta ahora un administrador no podía ni **ver** que una cuenta tenía
+   * credenciales de automatización activas. Deshabilitar, cambiar el rol o resetear
+   * la contraseña las borra en cascada.
+   */
+  apiTokenCount?: number;
 }
 
 /** Alta de un usuario por un admin (US-101). */

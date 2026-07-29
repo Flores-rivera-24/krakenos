@@ -145,6 +145,20 @@ describe('HlsStreamManager', () => {
     expect(existsSync(baseDir)).toBe(false);
   });
 
+  it('start rechaza un id de cámara que se salga del directorio base (AUD3-05)', () => {
+    const sp = makeSpawner();
+    const hls = new HlsStreamManager({ baseDir, spawn: sp.spawn });
+    // El id sale de `data/cameras.json` (o de la config de Frigate), ambos
+    // restaurables desde un backup, y aquí se compone una ruta que además se borra
+    // recursivamente con `rmSync`.
+    for (const evil of ['../../..', '../otro', 'a/b', '..', 'cam/../..']) {
+      expect(() => hls.start(evil, 'rtsp://x/1')).toThrow(/id de cámara no admitido/);
+    }
+    expect(sp.urls).toHaveLength(0);
+    // Un id normal sigue funcionando (incluidos puntos, que Frigate admite).
+    expect(() => hls.start('cam.entrada-1', 'rtsp://x/1')).not.toThrow();
+  });
+
   it('start limpia un directorio residual de una sesión anterior mal cerrada', () => {
     const sp = makeSpawner();
     // Deja basura en el dir de la cámara antes de arrancar.

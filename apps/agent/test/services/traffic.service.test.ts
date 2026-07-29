@@ -118,6 +118,48 @@ describe('TrafficService', () => {
       expect(first?.txTotal).toBe((500 + 1500) * 60);
       expect((first?.samples.length ?? 0) >= 1).toBe(true);
     });
+
+    /**
+     * AUD3-12: el rollup per-device compartía el cutoff de la serie del hogar
+     * (30 días por defecto) mientras que el rango consultable máximo es `week` →
+     * el 77 % de la tabla más grande del sistema eran filas inconsultables.
+     */
+    it('la retención per-device es de 7 días, no la del hogar', async () => {
+      const svc = new TrafficService(app, new MockDriver());
+      const DAY = 24 * 60 * 60 * 1000;
+      await app.prisma.setting.upsert({
+        where: { key: 'trafficRetentionDays' },
+        create: { key: 'trafficRetentionDays', value: '30' },
+        update: { value: '30' },
+      });
+
+      // Una muestra de hace 10 días en ambas tablas.
+      await app.prisma.trafficSample.create({
+        data: { rxBytesPerSec: 1, txBytesPerSec: 1, timestamp: new Date(Date.now() - 10 * DAY) },
+      });
+      await app.prisma.deviceTrafficSample.create({
+        data: {
+          mac: 'aa:bb:cc:00:00:09',
+          rxBytesPerSec: 1,
+          txBytesPerSec: 1,
+          timestamp: new Date(Date.now() - 10 * DAY),
+        },
+      });
+
+      await svc.sampleOnce();
+      await svc.flushRollup();
+
+      // La serie del hogar respeta los 30 días configurados…
+      const home = await app.prisma.trafficSample.findMany({
+        where: { timestamp: { lt: new Date(Date.now() - 9 * DAY) } },
+      });
+      expect(home).toHaveLength(1);
+      // …y la per-device se poda a los 7, porque nadie puede consultarla más allá.
+      const perDevice = await app.prisma.deviceTrafficSample.findMany({
+        where: { mac: 'aa:bb:cc:00:00:09' },
+      });
+      expect(perDevice).toHaveLength(0);
+    });
   });
 
   describe('histórico mensual (US-113)', () => {

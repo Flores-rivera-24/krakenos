@@ -1,3 +1,5 @@
+import { errorResponse } from '../common.schemas.js';
+
 export const vapidPublicKeySchema = {
   response: {
     200: {
@@ -15,7 +17,9 @@ export const subscribeSchema = {
     additionalProperties: false,
     required: ['endpoint', 'keys'],
     properties: {
-      endpoint: { type: 'string', minLength: 1, maxLength: 1024 },
+      // El esquema `https` y el destino se validan en el handler contra la política
+      // de egress estricta (AUD3-01): aquí solo se acota la forma.
+      endpoint: { type: 'string', minLength: 1, maxLength: 1024, pattern: '^https://' },
       keys: {
         type: 'object',
         additionalProperties: false,
@@ -27,7 +31,7 @@ export const subscribeSchema = {
       },
     },
   },
-  response: { 204: { type: 'null' } },
+  response: { 204: { type: 'null' }, 400: errorResponse },
 } as const;
 
 export const unsubscribeSchema = {

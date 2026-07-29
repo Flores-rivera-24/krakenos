@@ -1,0 +1,12 @@
+-- US-228 (AUD3-11): índice muerto en la tabla que más crece.
+--
+-- `DeviceTrafficSample(mac, timestamp)` existía desde US-46, pero **ninguna** de las
+-- tres consultas de la tabla filtra por `mac`: la poda y el rollup filtran solo por
+-- `timestamp` (que tiene su propio índice desde US-206) y los informes agrupan por
+-- MAC ya en SQL. Medido con `dbstat`, ocupaba 438.272 B de los 1.990.656 B de la
+-- tabla: el **22 % del footprint** y una inserción de B-tree por fila y minuto, a
+-- cambio de nada.
+--
+-- Si algún día un informe necesita filtrar por MAC (p. ej. el detalle de un solo
+-- dispositivo), vuelve con la consulta que lo justifique.
+DROP INDEX IF EXISTS "DeviceTrafficSample_mac_timestamp_idx";

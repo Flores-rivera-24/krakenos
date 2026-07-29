@@ -32,13 +32,16 @@ describe('reglas de alerta (US-112)', () => {
     });
     expect(res.statusCode).toBe(200);
     const rules = res.json() as AlertRule[];
-    // Catálogo fijo (US-112) + energy.threshold (US-183) + camera.motion (US-186) + alarma (US-188).
-    expect(rules).toHaveLength(9);
+    // Catálogo fijo (US-112) + energy.threshold (US-183) + camera.motion (US-186) +
+    // alarma (US-188) + PIN incorrecto (US-227: antes se auditaba en silencio, así
+    // que una fuerza bruta del PIN no avisaba a nadie).
+    expect(rules).toHaveLength(10);
     const block = rules.find((r) => r.event === 'device.block');
     expect(block).toMatchObject({ push: true, email: false });
     expect(rules.some((r) => r.event === 'energy.threshold')).toBe(true);
     expect(rules.some((r) => r.event === 'camera.motion')).toBe(true);
     expect(rules.some((r) => r.event === 'alarm.triggered')).toBe(true);
+    expect(rules.some((r) => r.event === 'alarm.disarm_denied')).toBe(true);
   });
 
   it('un admin cambia una regla y persiste', async () => {

@@ -83,7 +83,17 @@ export class UsersService {
       select: SUMMARY_SELECT,
       orderBy: { createdAt: 'asc' },
     });
-    return rows.map(toSummary);
+    // Recuento de tokens de API por usuario en **una** consulta (no N+1): el admin
+    // necesita ver qué cuentas tienen credenciales de automatización vivas (AUD3-04).
+    const grouped = await this.app.prisma.apiToken.groupBy({
+      by: ['userId'],
+      _count: { _all: true },
+    });
+    const tokensByUser = new Map(grouped.map((g) => [g.userId, g._count._all]));
+    return rows.map((row) => ({
+      ...toSummary(row),
+      apiTokenCount: tokensByUser.get(row.id) ?? 0,
+    }));
   }
 
   async create(body: CreateUserRequest): Promise<UserSummary> {

@@ -57,6 +57,12 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
    * efímero acotado a la cámara que viaja en la URL. Devuelve `false` (y responde
    * 401) si el token falta, no valida, no es de tipo `stream` o es de otra cámara.
    */
+  /**
+   * Nombre de fichero seguro para `Content-Disposition`: el id de la grabación viaja
+   * en la URL, así que no se interpola crudo en una cabecera (AUD3-05).
+   */
+  const safeFilename = (id: string): string => id.replace(/[^\w.-]/g, '_').slice(0, 64) || 'clip';
+
   const authorizeStream = (req: FastifyRequest, reply: FastifyReply, cameraId: string): boolean => {
     const token = (req.query as { st?: string }).st;
     if (!token) {
@@ -76,14 +82,20 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
     return true;
   };
 
-  // Lecturas: cualquier rol autenticado.
-  app.get('/', { schema: listCamerasSchema, preHandler: app.authenticate }, async () => {
+  // Lecturas de vídeo: capacidad `home.cameras` (admin/member/viewer), NO «cualquier
+  // autenticado» (AUD3-02). `kid` y `guest` quedan fuera —la UI ya se lo ocultaba,
+  // pero el servidor no lo imponía— y un token de API tampoco alcanza (sus scopes
+  // son `home.view`/`home.control`): el vídeo del interior de la casa no se opera
+  // con una credencial de automatización.
+  const canWatch = app.requireCapability('home.cameras');
+
+  app.get('/', { schema: listCamerasSchema, preHandler: canWatch }, async () => {
     return cameras.listCameras();
   });
 
   app.get<{ Params: { id: string } }>(
     '/:id/snapshot',
-    { schema: snapshotSchema, preHandler: app.authenticate },
+    { schema: snapshotSchema, preHandler: canWatch },
     async (req, reply) => {
       const snapshot = await cameras.getSnapshot(req.params.id);
       if (!snapshot) {
@@ -100,7 +112,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
   // Arranca (o reutiliza) la sesión y devuelve un token de stream para la playlist.
   app.post<{ Params: { id: string } }>(
     '/:id/stream',
-    { schema: startStreamSchema, preHandler: app.authenticate },
+    { schema: startStreamSchema, preHandler: canWatch },
     async (req, reply) => {
       let session;
       try {
@@ -133,7 +145,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
   // Para la sesión bajo demanda (al cerrar el reproductor).
   app.delete<{ Params: { id: string } }>(
     '/:id/stream',
-    { schema: stopStreamSchema, preHandler: app.authenticate },
+    { schema: stopStreamSchema, preHandler: canWatch },
     async (req, reply) => {
       await cameras.stopStream(req.params.id);
       return reply.code(204).send();
@@ -194,17 +206,18 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
 
   // --- Detección de movimiento (US-186) ---
   if (motion) {
-    // Eventos recientes con snapshot (línea de tiempo, US-187) — cualquier rol.
+    // Eventos recientes **con snapshot** (línea de tiempo, US-187): son fotogramas
+    // del interior, así que van con `home.cameras` como el resto del vídeo.
     app.get<{ Querystring: { cameraId?: string } }>(
       '/motion/events',
-      { schema: motionEventsSchema, preHandler: app.authenticate },
+      { schema: motionEventsSchema, preHandler: canWatch },
       async (req) => motion.recentEvents(req.query.cameraId),
     );
 
-    // Config de movimiento por cámara: lectura autenticada, escritura admin.
+    // Config de movimiento por cámara: lectura con `home.cameras`, escritura admin.
     app.get<{ Params: { id: string } }>(
       '/:id/motion',
-      { schema: getMotionConfigSchema, preHandler: app.authenticate },
+      { schema: getMotionConfigSchema, preHandler: canWatch },
       async (req) => motion.getConfig(req.params.id),
     );
 
@@ -230,7 +243,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
     // son estáticas → ganan a `/:id` en el router.
     app.get(
       '/recordings/config',
-      { schema: getRecordingConfigSchema, preHandler: app.authenticate },
+      { schema: getRecordingConfigSchema, preHandler: canWatch },
       async () => recording.getConfig(),
     );
     app.put<{ Body: Partial<RecordingConfig> }>(
@@ -248,7 +261,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
     // proxy y `RecordingService` no graba (no se duplica lo que el NVR ya hace).
     app.get<{ Querystring: { cameraId?: string } }>(
       '/recordings',
-      { schema: listRecordingsSchema, preHandler: app.authenticate },
+      { schema: listRecordingsSchema, preHandler: canWatch },
       async (req) =>
         cameras.listNativeRecordings
           ? cameras.listNativeRecordings(req.query.cameraId)
@@ -259,7 +272,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
     // Frigate nunca sale al cliente, US-214).
     app.get<{ Params: { id: string } }>(
       '/recordings/:id/download',
-      { schema: downloadRecordingSchema, preHandler: app.authenticate },
+      { schema: downloadRecordingSchema, preHandler: canWatch },
       async (req, reply) => {
         if (req.params.id.startsWith(FRIGATE_RECORDING_PREFIX) && cameras.readNativeRecording) {
           const bytes = await cameras.readNativeRecording(req.params.id);
@@ -270,7 +283,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
           }
           return reply
             .header('Content-Type', 'video/mp4')
-            .header('Content-Disposition', `attachment; filename="${req.params.id}.mp4"`)
+            .header('Content-Disposition', `attachment; filename="${safeFilename(req.params.id)}.mp4"`)
             .send(Buffer.from(bytes));
         }
         const row = await recording.getRow(req.params.id);
@@ -282,7 +295,7 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
         const stream = createReadStream(recording.absPath(row));
         return reply
           .header('Content-Type', 'video/mp4')
-          .header('Content-Disposition', `attachment; filename="${row.id}.mp4"`)
+          .header('Content-Disposition', `attachment; filename="${safeFilename(row.id)}.mp4"`)
           .send(stream);
       },
     );

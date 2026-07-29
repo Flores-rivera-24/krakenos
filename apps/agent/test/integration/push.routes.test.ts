@@ -48,6 +48,32 @@ describe('rutas de push (US-45)', () => {
     expect(row?.p256dh).toBe('pkey');
   });
 
+  it('POST /api/push/subscribe rechaza endpoints no permitidos (AUD3-01)', async () => {
+    const user = await seedUser(app, { role: 'guest' });
+    const headers = authHeader(signAccess(app, user));
+    // El agente hará POST a este destino: un invitado no puede convertirlo en una
+    // SSRF contra la LAN ni redirigirse los avisos del hogar a un servidor propio.
+    const blocked = [
+      'https://169.254.169.254/latest/meta-data',
+      'https://127.0.0.1/hook',
+      'https://192.168.1.50/hook',
+      'http://push.example/sin-tls',
+    ];
+
+    for (const endpoint of blocked) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/push/subscribe',
+        headers,
+        payload: { ...SUB, endpoint },
+      });
+      expect(`${endpoint} → ${res.statusCode}`).not.toContain('→ 204');
+      expect([400, 401, 403]).toContain(res.statusCode);
+    }
+
+    expect(await app.prisma.pushSubscription.count()).toBe(0);
+  });
+
   it('POST /api/push/subscribe hace upsert si el endpoint ya existe', async () => {
     const user = await seedUser(app, { role: 'viewer' });
     const headers = authHeader(signAccess(app, user));

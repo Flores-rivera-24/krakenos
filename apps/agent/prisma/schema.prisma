@@ -183,9 +183,10 @@ model DeviceTrafficSample {
   /// Media de bytes/seg de subida (salida) en el intervalo.
   txBytesPerSec Float
 
-  @@index([mac, timestamp])
   // La poda de retención y el rollup filtran solo por timestamp: sin este índice
-  // eran un full scan cada minuto (AUD-10 / US-206).
+  // eran un full scan cada minuto (AUD-10 / US-206). El índice (mac, timestamp) se
+  // eliminó en US-228: ninguna consulta filtraba por MAC (los informes agrupan en
+  // SQL) y costaba el 22 % del tamaño de la tabla más grande del sistema.
   @@index([timestamp])
 }
 

@@ -183,6 +183,12 @@ export class AuthService {
       where: { userId, revoked: false },
       data: { revoked: true },
     });
+    // Los **tokens de API** (US-174) también son credenciales del usuario: hasta
+    // US-227 ninguna revocación los tocaba, así que deshabilitar una cuenta, bajarle
+    // el rol, resetear su contraseña o detectar reuso de refresh dejaba vivos sus
+    // `krt_…` (AUD3-04). Se borran en la misma operación: si la sesión ya no vale,
+    // la credencial de automatización tampoco.
+    await this.app.prisma.apiToken.deleteMany({ where: { userId } });
     return result.count;
   }
 

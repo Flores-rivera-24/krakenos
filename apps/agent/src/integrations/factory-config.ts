@@ -341,7 +341,9 @@ export function resolveCameraConfig(
     kind: record.kind === 'rtsp' ? 'rtsp' : record.kind === 'frigate' ? 'frigate' : 'mock',
     rtsp: {
       ...base.rtsp,
-      ffmpegPath: str(v.ffmpegPath, base.rtsp.ffmpegPath),
+      // `ffmpegPath` se toma SIEMPRE de `.env` (AUD3-07): un valor guardado desde la
+      // UI elegiría qué binario ejecuta el agente. Se ignora aunque venga en la fila
+      // (config antigua) — el borde ya no lo ofrece.
       transport: str(v.transport, base.rtsp.transport),
     },
     // Frigate (US-214): la URL viene de la UI; el borde ya la validó (egress).
