@@ -427,7 +427,15 @@ describe('rutas de sistema', () => {
       expect(bundle.recentAudit[0]).toHaveProperty('action');
     }
 
-    const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.support-bundle' } });
-    expect(audit).not.toBeNull();
+    // `app.audit` es fire-and-forget (no bloquea la respuesta): la fila puede llegar
+    // un tick después, así que se espera en vez de leer una sola vez. Misma carrera
+    // latente que ya se corrigió en `system.update.apply` (US-220), que el cambio de
+    // temporización de WAL (US-228) volvió a destapar aquí.
+    await eventually(async () => {
+      const audit = await app.prisma.auditLog.findFirst({
+        where: { action: 'system.support-bundle' },
+      });
+      expect(audit).not.toBeNull();
+    });
   });
 });

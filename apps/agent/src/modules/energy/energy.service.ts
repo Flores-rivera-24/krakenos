@@ -8,6 +8,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEFAULT_ENERGY_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
+import { asNumber } from '../../db/sql-aggregate.js';
 
 /** Error de validación de la configuración de energía (precio inválido). */
 export class EnergyConfigError extends Error {
@@ -86,11 +87,13 @@ export class EnergyService {
     );
     const cutoff = new Date(Date.now() - days * DAY_MS);
 
-    for (const [deviceId, a] of entries) {
-      if (a.count === 0) continue;
-      await this.app.prisma.energySample.create({
-        data: { deviceId, powerW: a.sumPower / a.count },
-      });
+    // `createMany` en vez de N `create` (US-228): una transacción por barrido en vez
+    // de una por aparato — en microSD, cada transacción son 2 fsync.
+    const samples = entries
+      .filter(([, a]) => a.count > 0)
+      .map(([deviceId, a]) => ({ deviceId, powerW: a.sumPower / a.count }));
+    if (samples.length > 0) {
+      await this.app.prisma.energySample.createMany({ data: samples });
     }
     await this.app.prisma.energySample.deleteMany({ where: { timestamp: { lt: cutoff } } });
   }
@@ -146,14 +149,20 @@ export class EnergyService {
     return this.getConfig();
   }
 
-  /** Suma de energía (Wh) persistida en la ventana `[since, until)`. */
+  /**
+   * Suma de energía (Wh) persistida en la ventana `[since, until)`.
+   *
+   * Sumado por la base (US-228): traía todas las filas del periodo para reducirlas
+   * con un `reduce` — con retención de 90 días y 6 medidores, `range=month` eran
+   * ~260.000 filas **solo para la comparativa** del periodo anterior.
+   */
   private async energyBetween(since: Date, until: Date): Promise<number> {
-    const rows = await this.app.prisma.energySample.findMany({
+    const agg = await this.app.prisma.energySample.aggregate({
       where: { timestamp: { gte: since, lt: until } },
-      select: { powerW: true },
+      _sum: { powerW: true },
     });
     const rollupHours = this.rollupMs / 1000 / 3600;
-    const wh = rows.reduce((s, r) => s + r.powerW * rollupHours, 0);
+    const wh = (agg._sum.powerW ?? 0) * rollupHours;
     return Math.round(wh * 100) / 100;
   }
 
@@ -166,12 +175,27 @@ export class EnergyService {
     const now = Date.now();
     const windowMs = RANGE_MS[range];
     const since = new Date(now - windowMs);
-    const rows = await this.app.prisma.energySample.findMany({
-      where: { timestamp: { gte: since } },
-      orderBy: { timestamp: 'asc' },
-    });
-
     const bucketMs = BUCKET_MS[range];
+
+    // Agregado en SQL (US-228/AUD3-13): `range=month` con 10 enchufes medidores
+    // cargaba ~864.000 filas, y el snapshot de MQTT llama a `getStats('day')` **cada
+    // 30 s**. Ahora salen `dispositivos × buckets` filas.
+    const rows = await this.app.prisma.$queryRaw<
+      {
+        deviceId: string;
+        bucket: number | bigint;
+        sumPower: number;
+        samples: number | bigint;
+      }[]
+    >`
+      SELECT deviceId,
+             (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+             SUM(powerW) AS sumPower,
+             COUNT(*) AS samples
+      FROM EnergySample
+      WHERE timestamp >= ${since.getTime()}
+      GROUP BY deviceId, bucket
+      ORDER BY deviceId ASC, bucket ASC`;
     const rollupHours = this.rollupMs / 1000 / 3600;
     const { pricePerKwh: price, currency } = await this.getConfig();
 
@@ -185,38 +209,46 @@ export class EnergyService {
     const live = await this.iot.listDevices().catch(() => []);
     const meta = new Map(live.map((d) => [d.id, { name: d.name, room: d.room }]));
 
-    // Agregación por dispositivo y del hogar en paralelo.
-    const byDevice = new Map<string, Map<number, { sumPower: number; n: number; energyWh: number }>>();
-    const home = new Map<number, { sumPower: number; n: number; energyWh: number }>();
+    // Agregación por dispositivo y del hogar. Cada fila viene ya agrupada por
+    // (dispositivo, bucket) con la SUMA de potencias y el número de muestras, de
+    // modo que la media por bucket sale igual que cuando se hacía en JS: para un
+    // dispositivo `sumPower/samples`, y para el hogar la media **ponderada**
+    // `Σ sumPower / Σ samples` (idéntica a promediar todas las muestras del bucket,
+    // también si un aparato aportó menos muestras que otro).
+    interface BucketAcc {
+      sumPower: number;
+      samples: number;
+      energyWh: number;
+    }
+    const byDevice = new Map<string, Map<number, BucketAcc>>();
+    const home = new Map<number, BucketAcc>();
 
     for (const row of rows) {
-      const bucketStart = Math.floor(row.timestamp.getTime() / bucketMs) * bucketMs;
-      const energyWh = row.powerW * rollupHours;
+      const bucketStart = asNumber(row.bucket);
+      const sumPower = asNumber(row.sumPower);
+      const samples = asNumber(row.samples);
+      const energyWh = sumPower * rollupHours;
 
       let dev = byDevice.get(row.deviceId);
       if (!dev) {
         dev = new Map();
         byDevice.set(row.deviceId, dev);
       }
-      const dCur = dev.get(bucketStart) ?? { sumPower: 0, n: 0, energyWh: 0 };
-      dCur.sumPower += row.powerW;
-      dCur.n += 1;
-      dCur.energyWh += energyWh;
-      dev.set(bucketStart, dCur);
+      dev.set(bucketStart, { sumPower, samples, energyWh });
 
-      const hCur = home.get(bucketStart) ?? { sumPower: 0, n: 0, energyWh: 0 };
-      hCur.sumPower += row.powerW;
-      hCur.n += 1;
+      const hCur = home.get(bucketStart) ?? { sumPower: 0, samples: 0, energyWh: 0 };
+      hCur.sumPower += sumPower;
+      hCur.samples += samples;
       hCur.energyWh += energyWh;
       home.set(bucketStart, hCur);
     }
 
-    const toBuckets = (m: Map<number, { sumPower: number; n: number; energyWh: number }>): EnergyBucket[] =>
+    const toBuckets = (m: Map<number, BucketAcc>): EnergyBucket[] =>
       [...m.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([start, { sumPower, n, energyWh }]) => ({
+        .map(([start, { sumPower, samples, energyWh }]) => ({
           timestamp: new Date(start).toISOString(),
-          powerW: Math.round((sumPower / n) * 10) / 10,
+          powerW: Math.round((sumPower / samples) * 10) / 10,
           energyWh: Math.round(energyWh * 100) / 100,
         }));
 

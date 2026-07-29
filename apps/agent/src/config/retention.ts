@@ -22,6 +22,7 @@ type PrismaLike = Pick<
   | 'automationRun'
   | 'presenceEvent'
   | 'energySample'
+  | 'surveyScan'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
@@ -29,6 +30,25 @@ export const AUTOMATION_RUN_RETENTION_DAYS = 30;
 
 /** Retención fija del timeline de llegadas/salidas (US-169): dato sensible, corto. */
 export const PRESENCE_EVENT_RETENTION_DAYS = 30;
+
+/**
+ * Retención del rollup **por dispositivo** (`DeviceTrafficSample`, US-46).
+ *
+ * Es deliberadamente más corta que la del hogar: el rango máximo que se puede
+ * consultar per-device es `week` (`traffic.schemas.ts`, y `wellbeing` igual), así
+ * que conservar los 30 días de la serie agregada dejaba el **77 % de la tabla más
+ * grande del sistema** en filas que ninguna consulta puede alcanzar (AUD3-12). Es
+ * además la tabla que más crece: 1 fila/min **por MAC**.
+ */
+export const DEVICE_TRAFFIC_RETENTION_DAYS = 7;
+
+/**
+ * Retención de las muestras de un recorrido de cobertura (`SurveySample`, US-157).
+ * Un recorrido son hasta 10.000 muestras (~1,8 MB) y hasta ahora **no se podaban
+ * nunca** salvo al borrar su plano (AUD3-14): el histórico de mediciones de hace un
+ * año no dice nada útil sobre la casa de hoy.
+ */
+export const SURVEY_SAMPLE_RETENTION_DAYS = 180;
 
 /**
  * Margen (días tras `expiresAt`) durante el que se conservan los refresh tokens
@@ -115,5 +135,21 @@ export async function prunePresenceEvents(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.presenceEvent.deleteMany({ where: { createdAt: { lt: cutoff } } });
+  return res.count;
+}
+
+/**
+ * Poda los **recorridos** de cobertura antiguos (US-228/AUD3-14). Se borra el
+ * `SurveyScan`, no sus muestras sueltas: las filas de `SurveySample` caen en
+ * cascada y no queda un recorrido vacío en la lista. Hasta ahora nada los podaba
+ * —solo se iban al borrar su plano—, y cada recorrido son hasta 10.000 muestras
+ * (~1,8 MB) que además encarecen el heatmap interpolado.
+ */
+export async function pruneSurveyScans(
+  prisma: PrismaLike,
+  days: number = SURVEY_SAMPLE_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.surveyScan.deleteMany({ where: { createdAt: { lt: cutoff } } });
   return res.count;
 }

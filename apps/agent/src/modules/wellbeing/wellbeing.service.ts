@@ -1,5 +1,6 @@
 import type { PersonUsage, UsageBucket, WellbeingRange, WellbeingUsage } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { asNumber } from '../../db/sql-aggregate.js';
 
 /** Ventana temporal de cada rango, en milisegundos. */
 const RANGE_MS: Record<WellbeingRange, number> = {
@@ -43,13 +44,23 @@ export class WellbeingService {
     const devices = await this.app.prisma.device.findMany({ select: { mac: true, ownerId: true } });
     const ownerByMac = new Map(devices.map((d) => [d.mac.toLowerCase(), d.ownerId]));
 
-    const rows = await this.app.prisma.deviceTrafficSample.findMany({
-      where: { timestamp: { gte: since } },
-      orderBy: { timestamp: 'asc' },
-    });
-
     const rollupSeconds = this.rollupMs / 1000;
     const bucketMs = BUCKET_MS[range];
+
+    // Agregado en SQL (US-228/AUD3-13): con 40 aparatos, `range=week` traía ~403.000
+    // filas (~100 MB de heap) para pintar 7 puntos por persona — y esta lectura la
+    // puede pedir **cualquier rol**. Ahora salen `macs × buckets` filas.
+    const rows = await this.app.prisma.$queryRaw<
+      { mac: string; bucket: number | bigint; sumRx: number; sumTx: number }[]
+    >`
+      SELECT mac,
+             (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+             SUM(rxBytesPerSec) AS sumRx,
+             SUM(txBytesPerSec) AS sumTx
+      FROM DeviceTrafficSample
+      WHERE timestamp >= ${since.getTime()}
+      GROUP BY mac, bucket
+      ORDER BY mac ASC, bucket ASC`;
 
     interface Acc {
       rx: number;
@@ -66,12 +77,12 @@ export class WellbeingService {
       if (!isAdmin && owner !== viewer.sub) continue;
 
       const acc = byOwner.get(key) ?? { rx: 0, tx: 0, macs: new Set(), buckets: new Map() };
-      const rxBytes = row.rxBytesPerSec * rollupSeconds;
-      const txBytes = row.txBytesPerSec * rollupSeconds;
+      const rxBytes = asNumber(row.sumRx) * rollupSeconds;
+      const txBytes = asNumber(row.sumTx) * rollupSeconds;
       acc.rx += rxBytes;
       acc.tx += txBytes;
       acc.macs.add(row.mac.toLowerCase());
-      const bucketStart = Math.floor(row.timestamp.getTime() / bucketMs) * bucketMs;
+      const bucketStart = asNumber(row.bucket);
       acc.buckets.set(bucketStart, (acc.buckets.get(bucketStart) ?? 0) + rxBytes + txBytes);
       byOwner.set(key, acc);
     }

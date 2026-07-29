@@ -116,6 +116,50 @@ describe('RecordingService (US-187)', () => {
     expect(oldest).toBeGreaterThanOrEqual(3 * DAY_MS);
   });
 
+  /**
+   * AUD3-14: el presupuesto solo pesaba el mp4, pero el **snapshot en base64** vive
+   * en la fila, dentro de SQLite (~300 kB por evento). El «2 GB» que configura el
+   * usuario se quedaba corto en ~123 MB invisibles.
+   */
+  it('el presupuesto de tamaño cuenta también el snapshot guardado en la base', async () => {
+    const cameras = new FakeCameras();
+    cameras.clipBytesPerSec = 533_334; // 3 s → ~1,6 MB de vídeo por clip
+    const service = rec(undefined, cameras);
+    // 10 MB es el mínimo que admite `normalizeRecordingConfig`.
+    await service.setConfig({ maxTotalMb: 10, clipSeconds: 3, retentionDays: 365 });
+
+    const snapshot = `data:image/jpeg;base64,${'A'.repeat(690_000)}`; // ~0,69 MB
+    for (let i = 1; i <= 6; i++) {
+      await service.record({
+        cameraId: 'cam-1',
+        cameraName: 'E',
+        detectedAt: new Date(i * 1000).toISOString(),
+        snapshot,
+      });
+    }
+
+    // Contando solo el vídeo, los 6 clips caben (9,6 MB < 10 MB) y no se podaría
+    // nada. Contando el snapshot, cada evento pesa ~2,3 MB y sobran.
+    const list = await service.list();
+    expect(list.length).toBeLessThan(6);
+    expect(list.length).toBeGreaterThan(0);
+  });
+
+  it('un snapshot desproporcionado no se guarda en la base (el clip sí)', async () => {
+    const service = rec();
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'E',
+      detectedAt: new Date(0).toISOString(),
+      snapshot: `data:image/jpeg;base64,${'A'.repeat(1_000_000)}`,
+    });
+
+    const rows = await app.prisma.recording.findMany();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.snapshot).toBeNull();
+    expect(rows[0]?.sizeBytes).toBeGreaterThan(0);
+  });
+
   it('absPath rechaza una ruta que se salga del directorio de clips (AUD3-05)', async () => {
     const service = rec();
     await service.record({

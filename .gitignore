@@ -25,6 +25,9 @@ var/
 # Database
 *.db
 *.db-journal
+# Ficheros del modo WAL (US-228): acompañan a cualquier *.db abierto.
+*.db-wal
+*.db-shm
 *.sqlite
 *.sqlite3
 prisma/dev.db*
