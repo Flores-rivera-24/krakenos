@@ -10,6 +10,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type { IotSchedule as DbIotSchedule } from '@prisma/client';
 import type { FastifyBaseLogger, FastifyInstance } from 'fastify';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import type { SceneService } from '../scenes/scenes.service.js';
 import { type HomeLocation, dueSchedules } from './schedule-eval.js';
 
@@ -60,7 +61,7 @@ function toSchedule(row: DbIotSchedule, log?: FastifyBaseLogger): IotSchedule {
  * "atrasados" al arrancar.
  */
 export class IotScheduleService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   /** Instante del barrido anterior; el disparo es por cruce (prev, now]. */
   private prevTick: Date | null = null;
 
@@ -156,35 +157,35 @@ export class IotScheduleService {
   /** Aplica los horarios que cruzan su hora entre el barrido anterior y `now`. */
   async tick(now: Date = new Date()): Promise<void> {
     const prev = this.prevTick;
+    // Las lecturas van ANTES de mover la ventana (US-229 / AUD3-18): si la DB
+    // falla, este minuto se reintenta en el ciclo siguiente en vez de perderse
+    // en silencio («las luces no se encendieron a las 20:00 y no hay error»).
+    const schedules = await this.list();
+    const home = await this.homeLocation();
     this.prevTick = now;
     if (!prev) return; // primer barrido: fija la base, no dispara nada atrasado
 
-    const schedules = await this.list();
-    const home = await this.homeLocation();
     for (const schedule of dueSchedules(schedules, prev, now, home)) {
       await this.fire(schedule);
     }
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.error({ err }, '[iot-schedule] el barrido falló; se omite este ciclo');
-    }
-  }
-
   start(intervalMs = 60_000): void {
-    if (this.timer) return;
-    void this.tickCycle(); // fija prevTick
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs,
+      immediate: true, // fija prevTick
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.error({ err }, '[iot-schedule] el barrido falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[iot-schedule] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

@@ -13,6 +13,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type { AutomationRule as DbAutomationRule, AutomationRun as DbAutomationRun } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import {
   describeEvent,
@@ -98,7 +99,7 @@ export interface AutomationDeps {
  * se registra cada ejecución en `AutomationRun`.
  */
 export class AutomationService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   /** Instante del barrido horario anterior (disparo por cruce, como US-168). */
   private prevTick: Date | null = null;
   /** Último disparo por regla (cooldown). En memoria: un reinicio lo resetea. */
@@ -185,11 +186,13 @@ export class AutomationService {
   /** Barrido por minuto para los disparadores de hora (cruce, como US-168). */
   async tick(now: Date = new Date()): Promise<void> {
     const prev = this.prevTick;
+    // La lectura va ANTES de mover la ventana (US-229 / AUD3-18): si falla, el
+    // minuto se reintenta en vez de quedarse sin disparar y sin error visible.
+    const rules = await this.list();
     this.prevTick = now;
     if (!prev) return; // primer barrido: fija la base, no dispara nada atrasado
 
-    const due = dueTimeRules(await this.list(), prev, now, this.lastFired);
-    for (const rule of due) {
+    for (const rule of dueTimeRules(rules, prev, now, this.lastFired)) {
       await this.fire(rule, null, now);
     }
   }
@@ -285,25 +288,22 @@ export class AutomationService {
     }
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.error({ err }, '[automations] el barrido horario falló; se omite este ciclo');
-    }
-  }
-
   start(intervalMs = 60_000): void {
-    if (this.timer) return;
-    void this.tickCycle(); // fija prevTick
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs,
+      immediate: true, // fija prevTick
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.error({ err }, '[automations] el barrido horario falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[automations] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

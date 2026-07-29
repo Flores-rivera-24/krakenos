@@ -102,6 +102,30 @@ describe('AlarmService (US-188)', () => {
     auditSpy.mockRestore();
   });
 
+  it('el fail-safe no sondea el hardware en cada barrido de 1 s (US-229)', async () => {
+    // El barrido corre cada segundo porque las cuentas atrás lo exigen, pero
+    // consultaba el IoT en cada ciclo: 60 `listDevices()` por minuto solo desde
+    // la alarma, de los ~71 que medía la auditoría (AUD3-18).
+    const iot = new FakeIot();
+    let clock = 0;
+    const { service } = build(iot, () => clock);
+    await service.setConfig({ sensorDeviceIds: ['sensor-door'], exitDelaySec: 0 });
+    await service.armAlarm('away', 'ana@x');
+    const listSpy = vi.spyOn(iot, 'listDevices');
+
+    for (let i = 0; i < 10; i++) {
+      clock += 1_000;
+      await service.tick();
+    }
+    expect(listSpy).toHaveBeenCalledTimes(1);
+
+    clock += 30_000; // pasada la ventana, vuelve a comprobar los sensores
+    await service.tick();
+    expect(listSpy).toHaveBeenCalledTimes(2);
+
+    listSpy.mockRestore();
+  });
+
   it('auto-armado: el hogar en modo away arma si autoArmAway está activo', async () => {
     const iot = new FakeIot();
     const { service, bus } = build(iot, () => 0);

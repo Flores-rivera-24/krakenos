@@ -3,6 +3,7 @@ import { DIGEST_FREQUENCIES } from '@krakenos/types';
 import type { PrismaClient } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { ALERT_EVENTS } from './alert-config.js';
+import { createTickLoop, type TickLoop } from '../system/tick-loop.js';
 
 /**
  * Resumen del hogar (US-180): un mensaje diario o semanal con lo relevante del
@@ -116,7 +117,7 @@ export interface DigestChannels {
 }
 
 export class DigestService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   /** Instante del barrido anterior; el envío es por cruce de las 08:00. */
   private prevTick: Date | null = null;
 
@@ -145,10 +146,13 @@ export class DigestService {
 
   async tick(now: Date = new Date()): Promise<void> {
     const prev = this.prevTick;
+    // La lectura va ANTES de mover la ventana (US-229 / AUD3-18): si la DB falla
+    // justo en el barrido que cruza las 08:00, el resumen se reintenta al ciclo
+    // siguiente en vez de perderse ese día sin dejar rastro.
+    const frequency = await this.frequency();
     this.prevTick = now;
     if (!prev) return; // primer barrido: fija la base, no envía nada atrasado
 
-    const frequency = await this.frequency();
     if (!DigestService.due(frequency, prev, now)) return;
 
     const days = frequency === 'weekly' ? 7 : 1;
@@ -172,25 +176,21 @@ export class DigestService {
     this.app.log.info('[digest] resumen del hogar enviado');
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.error({ err }, '[digest] el barrido falló; se omite este ciclo');
-    }
-  }
-
   start(intervalMs = 60 * 60 * 1000): void {
-    if (this.timer) return;
-    void this.tickCycle(); // fija prevTick
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs,
+      immediate: true, // fija prevTick
+      tick: () => this.tick(),
+      onError: (err) => this.app.log.error({ err }, '[digest] el barrido falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[digest] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

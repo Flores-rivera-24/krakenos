@@ -1,6 +1,6 @@
 import type { CameraKind, CameraManager } from '@krakenos/types';
 import { safeFetch } from '../net/egress.js';
-import { createFfmpegExec } from './ffmpeg.js';
+import { createFfmpegExec, MOTION_FRAME_TIMEOUT_MS } from './ffmpeg.js';
 import { FrigateCameraManager } from './frigate.cameras.js';
 import { MockCameraManager } from './mock.cameras.js';
 import { RtspCameraManager } from './rtsp.cameras.js';
@@ -65,6 +65,9 @@ export function createCameraManager(config: CameraConfig): CameraManager {
         exec: createFfmpegExec(rtsp.ffmpegPath),
         // Clips (US-187): más timeout (dura varios s) y buffer (pesa más) que un snapshot.
         clipExec: createFfmpegExec(rtsp.ffmpegPath, 30_000, 64 * 1024 * 1024),
+        // Fotograma de movimiento (US-229): timeout por debajo del barrido de 5 s
+        // del `MotionService` (antes 10 s, el doble del intervalo → apilamiento).
+        motionExec: createFfmpegExec(rtsp.ffmpegPath, MOTION_FRAME_TIMEOUT_MS),
         transport: rtsp.transport,
         // Streaming HLS (US-185): solo si hay `hls.baseDir` configurado.
         hls: config.hls

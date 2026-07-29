@@ -61,6 +61,11 @@ export class CiscoNetconfDriver implements HardwareDriver {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SSH/NETCONF persistente del transporte (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.transport.dispose?.();
+  }
+
   async healthcheck(): Promise<boolean> {
     try {
       await this.opts.transport.get(arpFilter());

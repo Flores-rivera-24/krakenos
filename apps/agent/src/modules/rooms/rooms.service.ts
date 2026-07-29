@@ -14,6 +14,7 @@ import type { Room as DbRoom } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import { settleWithLimit } from '../../iot/batch.js';
 import type { InventoryService } from '../inventory/inventory.service.js';
 
 function toRoom(row: DbRoom): Room {
@@ -193,20 +194,25 @@ export class RoomService {
     if (!room) return null;
 
     const members = await this.app.prisma.iotRoomMember.findMany({ where: { roomId } });
-    const result: RoomActionResult = { applied: 0, failed: [] };
 
-    for (const member of members) {
-      try {
-        // Con timeout: un dispositivo colgado cuenta como fallo y no frena el resto (US-203).
-        const device = await withActionTimeout(() => this.iot.setState(member.iotDeviceId, action));
-        this.app.io.to(IOT_ROOM).emit('iot:device-updated', device);
+    // En paralelo acotado, con su timeout por dispositivo (US-229 / AUD3-19):
+    // «apaga el salón» con 6 aparatos y el bridge caído tardaba 60 s en responder.
+    const outcomes = await settleWithLimit(members, (member) =>
+      withActionTimeout(() => this.iot.setState(member.iotDeviceId, action)),
+    );
+
+    const result: RoomActionResult = { applied: 0, failed: [] };
+    outcomes.forEach((outcome, i) => {
+      if (outcome.status === 'fulfilled') {
+        this.app.io.to(IOT_ROOM).emit('iot:device-updated', outcome.value);
         result.applied += 1;
-      } catch (err) {
-        // Un sensor (no controlable) o un dispositivo caído no debe abortar el resto.
-        const message = err instanceof IotError ? err.message : 'error al aplicar la acción';
-        result.failed.push({ deviceId: member.iotDeviceId, error: message });
+        return;
       }
-    }
+      // Un sensor (no controlable) o un dispositivo caído no debe abortar el resto.
+      const err: unknown = outcome.reason;
+      const message = err instanceof IotError ? err.message : 'error al aplicar la acción';
+      result.failed.push({ deviceId: members[i]!.iotDeviceId, error: message });
+    });
     return result;
   }
 }

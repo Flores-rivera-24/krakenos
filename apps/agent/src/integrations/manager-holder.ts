@@ -54,20 +54,30 @@ export function createManagerHolder<T extends object>(
 }
 
 /**
- * Limpieza best-effort de un manager saliente: si expone `stop`/`close`/`dispose`
- * (zigbee/govee/meross mantienen conexiones en segundo plano), lo invoca y traga
- * cualquier fallo o rechazo para no afectar al swap.
+ * Limpieza best-effort de un manager saliente, **esperando** a que termine: si
+ * expone `stop`/`close`/`dispose` (zigbee/govee/meross mantienen conexiones en
+ * segundo plano; los drivers de red y los de VLAN cierran su sesión SSH/SNMP
+ * desde US-229), lo invoca y traga cualquier fallo o rechazo.
+ *
+ * Úsala donde se pueda esperar (prueba de conexión, cierre del agente); el swap
+ * en caliente usa {@link disposeManager}, que no bloquea.
  */
-export function disposeManager(old: unknown): void {
+export async function stopManager(old: unknown): Promise<void> {
   const m = old as { stop?: () => unknown; close?: () => unknown; dispose?: () => unknown };
   const fn = m.stop ?? m.close ?? m.dispose;
   if (typeof fn !== 'function') return;
   try {
-    const result = fn.call(m) as unknown;
-    if (result && typeof (result as Promise<unknown>).catch === 'function') {
-      (result as Promise<unknown>).catch(() => undefined);
-    }
+    await fn.call(m);
   } catch {
-    /* ignore */
+    /* best-effort: cerrar una conexión ya rota no es un error que reportar */
   }
+}
+
+/**
+ * Variante fire-and-forget de {@link stopManager} para el swap en caliente: no
+ * se espera al cierre de la instancia saliente (nadie la usa ya) para no frenar
+ * la recarga de la integración.
+ */
+export function disposeManager(old: unknown): void {
+  void stopManager(old);
 }

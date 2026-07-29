@@ -17,6 +17,7 @@ import {
   type MqttClientOptions,
   type MqttTransport,
 } from '../../iot/mqtt.transport.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import {
   buildDiscoveryConfigs,
   buildStateMessages,
@@ -96,7 +97,7 @@ export class MqttPublisher {
   private readonly egressPolicy: EgressPolicy;
   private readonly now: () => Date;
   private transport: MqttTransport | null = null;
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   private connected = false;
   private lastPublishAt: Date | null = null;
   private lastError: string | null = null;
@@ -146,7 +147,7 @@ export class MqttPublisher {
 
   getStatus(): MqttPublishStatus {
     return {
-      enabled: this.timer !== null,
+      enabled: this.loop !== null,
       connected: this.connected,
       lastPublishAt: this.lastPublishAt?.toISOString() ?? null,
       lastError: this.lastError,
@@ -217,11 +218,17 @@ export class MqttPublisher {
       }
     }
 
-    const tick = () => void this.publishOnce();
-    this.timer = setInterval(tick, c.intervalSec * 1000);
-    this.timer.unref?.();
-    // Primera publicación inmediata.
-    tick();
+    // `publishOnce` no lanza; el bucle aporta el guard de re-entrada (US-229):
+    // el snapshot consulta IoT y energía, y con un broker lento dos publicaciones
+    // podían solaparse. `immediate` mantiene la primera publicación inmediata.
+    this.loop = createTickLoop({
+      intervalMs: c.intervalSec * 1000,
+      immediate: true,
+      tick: () => this.publishOnce(),
+      onSkip: () =>
+        this.deps.onError?.('La publicación MQTT anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   /** Publica una foto del estado en los topics. No lanza. */
@@ -278,10 +285,8 @@ export class MqttPublisher {
 
   /** Cierra la conexión y detiene el barrido (US-201: managers persistentes). */
   async stop(): Promise<void> {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
     if (this.transport) {
       await this.transport.dispose?.().catch(() => undefined);
       this.transport = null;

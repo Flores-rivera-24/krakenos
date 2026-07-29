@@ -87,6 +87,11 @@ export class OpenWrtDriver implements HardwareDriver {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SSH persistente del transporte (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.transport.dispose?.();
+  }
+
   /** Ejecuta un comando y devuelve stdout; lanza si el código de salida no es 0. */
   private async run(command: string): Promise<string> {
     const { stdout, stderr, code } = await this.opts.transport.exec(command);

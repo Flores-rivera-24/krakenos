@@ -10,6 +10,7 @@ import type {
 import { MOTION_SENSITIVITIES } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { detectMotion, isArmed, sensitivityToThresholds } from '../../cameras/motion.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 
 /** Clave del `Setting` con el mapa `{ [cameraId]: MotionConfig }` (US-186). */
@@ -98,7 +99,7 @@ export function normalizeMotionConfig(raw: unknown, base: MotionConfig = DEFAULT
  * cámara (fotograma previo, último disparo) es en memoria.
  */
 export class MotionService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   private readonly prevFrames = new Map<string, Uint8Array>();
   private readonly lastFiredMs = new Map<string, number>();
   private readonly events: MotionEvent[] = [];
@@ -216,8 +217,13 @@ export class MotionService {
    */
   private async tickNative(now: Date): Promise<void> {
     const since = this.lastPollMs ?? this.now() - this.intervalMs;
-    this.lastPollMs = this.now();
+    // El corte se toma ANTES de sondear (para no perder lo que llegue durante la
+    // petición) pero la ventana solo avanza si el NVR respondió (US-229 /
+    // AUD3-18): si falla, el ciclo siguiente vuelve a pedir desde `since` en vez
+    // de saltarse esos eventos para siempre.
+    const polledAt = this.now();
     const events = await this.cameras.pollEvents!(since);
+    this.lastPollMs = polledAt;
     if (events.length === 0) return;
     const configs = await this.readAll();
     for (const native of events) {
@@ -268,24 +274,24 @@ export class MotionService {
     this.app.log.info(`[motion] movimiento en ${detail}`);
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.warn({ err }, '[motion] el barrido de movimiento falló; se omite este ciclo');
-    }
-  }
-
   start(): void {
-    if (this.timer) return;
-    this.timer = setInterval(() => void this.tickCycle(), this.intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs: this.intervalMs,
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.warn({ err }, '[motion] el barrido de movimiento falló; se omite este ciclo'),
+      // El caso que motivó el guard (AUD3-18): barrido cada 5 s invocando ffmpeg
+      // en serie por cámara. Con una cámara lenta esto se ve en el log en vez de
+      // apilar procesos en silencio.
+      onSkip: () =>
+        this.app.log.warn('[motion] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

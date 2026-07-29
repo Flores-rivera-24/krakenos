@@ -9,6 +9,7 @@ import type {
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEFAULT_ENERGY_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
 import { asNumber } from '../../db/sql-aggregate.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /** Error de validación de la configuración de energía (precio inválido). */
 export class EnergyConfigError extends Error {
@@ -46,8 +47,8 @@ interface DeviceAcc {
  * un dispositivo sin `powerW` numérico se omite sin romper nada.
  */
 export class EnergyService {
-  private timer: NodeJS.Timeout | null = null;
-  private rollupTimer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
+  private rollupLoop: TickLoop | null = null;
 
   /** Acumulador del rollup por dispositivo: id → sumas de potencia. */
   private acc = new Map<string, DeviceAcc>();
@@ -304,21 +305,29 @@ export class EnergyService {
   }
 
   start(): void {
-    if (this.timer) return;
-    this.timer = setInterval(() => void this.sampleCycle(), this.intervalMs);
-    this.rollupTimer = setInterval(() => void this.flushCycle(), this.rollupMs);
-    this.timer.unref();
-    this.rollupTimer.unref();
+    if (this.loop) return;
+    // Como en tráfico: los `*Cycle` ya absorben su error; el bucle aporta el
+    // guard de re-entrada (un sondeo IoT lento no debe apilar ciclos) y el unref.
+    this.loop = createTickLoop({
+      intervalMs: this.intervalMs,
+      tick: () => this.sampleCycle(),
+      onSkip: () =>
+        this.app.log.warn('[energy] el muestreo anterior sigue en curso; se salta este ciclo'),
+    });
+    this.rollupLoop = createTickLoop({
+      intervalMs: this.rollupMs,
+      tick: () => this.flushCycle(),
+      onSkip: () =>
+        this.app.log.warn('[energy] el rollup anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
+    this.rollupLoop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-    if (this.rollupTimer) {
-      clearInterval(this.rollupTimer);
-      this.rollupTimer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
+    this.rollupLoop?.stop();
+    this.rollupLoop = null;
   }
 }

@@ -68,6 +68,11 @@ export class CiscoIosDriver implements HardwareDriver {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SSH persistente del transporte (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.transport.dispose?.();
+  }
+
   private async tryRun(command: string): Promise<string | null> {
     try {
       return await this.opts.transport.execute(command);

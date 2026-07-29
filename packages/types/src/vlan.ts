@@ -53,4 +53,9 @@ export interface VlanManager {
   createVlan(input: CreateVlanRequest): Promise<Vlan>;
   updateVlan(id: Id, patch: UpdateVlanRequest): Promise<Vlan | null>;
   removeVlan(id: Id): Promise<boolean>;
+  /**
+   * Libera la conexión persistente del transporte (SSH de Cisco, sesión SNMP) si
+   * la hay. Mismo contrato que `HardwareDriver.stop` (US-229, AUD3-16).
+   */
+  stop?(): Promise<void>;
 }

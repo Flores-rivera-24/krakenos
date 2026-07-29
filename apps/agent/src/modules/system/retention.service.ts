@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import {
   DEFAULT_ENERGY_RETENTION_DAYS,
   pruneAuditLog,
@@ -24,7 +25,7 @@ const DEFAULT_SWEEP_MS = 6 * 60 * 60 * 1000;
  * inventario; no se arranca en los tests (sin timers).
  */
 export class RetentionService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -83,16 +84,21 @@ export class RetentionService {
   }
 
   start(): void {
-    if (this.timer) return;
-    void this.pruneOnce();
-    this.timer = setInterval(() => void this.pruneOnce(), this.intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs: this.intervalMs,
+      immediate: true,
+      // `pruneOnce` ya no propaga errores; el guard evita solapar dos podas
+      // largas (la de tráfico recorre la tabla mayor).
+      tick: () => this.pruneOnce(),
+      onSkip: () =>
+        this.app.log.warn('[retention] la poda anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

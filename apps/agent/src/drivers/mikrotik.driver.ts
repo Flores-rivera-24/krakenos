@@ -69,6 +69,11 @@ export class MikrotikDriver implements HardwareDriver {
     this.now = opts.now ?? Date.now;
   }
 
+  /** Cierra la sesión SSH persistente del transporte, si el modo la usa (US-229). */
+  async stop(): Promise<void> {
+    await this.opts.transport.dispose?.();
+  }
+
   /**
    * Llama a `transport.list` validando que la respuesta sea una **lista**
    * (frontera del transporte, US-100): un RouterOS/transporte que devuelve algo

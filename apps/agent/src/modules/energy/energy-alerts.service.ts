@@ -8,6 +8,7 @@ import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import type { IotManager } from '@krakenos/types';
 import { evaluate, initialState, type RuleState } from './energy-alerts.eval.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /** Convierte una fila de Prisma a la vista de dominio, saneando el enum. */
 function toRule(row: {
@@ -44,7 +45,7 @@ function toRule(row: {
  * alimentan las magnitudes observadas (potencia actual / energía del día).
  */
 export class EnergyAlertService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   private readonly state = new Map<string, RuleState>();
 
   constructor(
@@ -160,24 +161,21 @@ export class EnergyAlertService {
     this.app.log.info(`[energy] alerta de consumo: ${rule.deviceId} ${Math.round(value)}${unit}`);
   }
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.warn({ err }, '[energy] la evaluación de alertas falló; se omite este ciclo');
-    }
-  }
-
   start(): void {
-    if (this.timer) return;
-    this.timer = setInterval(() => void this.tickCycle(), this.intervalMs);
-    this.timer.unref();
+    if (this.loop) return;
+    this.loop = createTickLoop({
+      intervalMs: this.intervalMs,
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.warn({ err }, '[energy] la evaluación de alertas falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[energy] la evaluación anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

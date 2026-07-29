@@ -10,7 +10,12 @@ import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import { settleWithLimit } from '../../iot/batch.js';
 import { advance, arm, disarm, disarmedState, isActive, trigger } from '../../alarm/state-machine.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
+
+/** Periodo del fail-safe de sensores (el barrido en sí corre cada segundo). */
+const FAIL_SAFE_INTERVAL_MS = 30_000;
 
 const CONFIG_KEY = 'alarm.config';
 const STATE_KEY = 'alarm.state';
@@ -62,8 +67,10 @@ export function normalizeAlarmConfig(raw: unknown): Omit<AlarmConfig, 'hasPin'> 
  */
 export class AlarmService {
   private state: AlarmState;
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   private readonly faultNotified = new Set<string>();
+  /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
+  private lastFailSafeMs = Number.NEGATIVE_INFINITY;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -192,12 +199,17 @@ export class AlarmService {
     const config = await this.getConfig();
     this.app.audit({ action: 'alarm.triggered', detail: by });
     this.app.log.warn(`[alarm] ¡ALARMA! disparada por ${by}`);
-    await this.setSiren(true);
-    for (const id of config.lightDeviceIds) {
-      await withActionTimeout(() => this.iot.setState(id, { on: true })).catch((err) =>
-        this.app.log.warn({ err }, `[alarm] no se pudo encender la luz ${id}`),
-      );
-    }
+    // Sirena y luces **a la vez** (US-229 / AUD3-19): en serie, con 4 luces y el
+    // bridge caído la sirena de una alarma disparada podía tardar 50 s en sonar.
+    // La sirena va aparte del lote: es la acción que no puede esperar cola.
+    await Promise.all([
+      this.setSiren(true),
+      settleWithLimit(config.lightDeviceIds, (id) =>
+        withActionTimeout(() => this.iot.setState(id, { on: true })).catch((err: unknown) =>
+          this.app.log.warn({ err }, `[alarm] no se pudo encender la luz ${id}`),
+        ),
+      ),
+    ]);
   }
 
   private async setSiren(on: boolean): Promise<void> {
@@ -217,7 +229,14 @@ export class AlarmService {
       await this.persist();
       if (justTriggered) await this.fireActions(state.triggeredBy ?? 'sensor');
     }
-    await this.failSafeCheck();
+    // El barrido corre cada segundo (las cuentas atrás de entrada/salida lo
+    // exigen), pero el fail-safe consulta el hardware IoT: a 1/s eran 60
+    // `listDevices()` por minuto solo desde aquí (US-229 / AUD3-18). Un sensor
+    // caído se detecta igual de bien con granularidad de 30 s.
+    if (nowMs - this.lastFailSafeMs >= FAIL_SAFE_INTERVAL_MS) {
+      this.lastFailSafeMs = nowMs;
+      await this.failSafeCheck();
+    }
   }
 
   /**
@@ -248,24 +267,22 @@ export class AlarmService {
 
   // ---- Cableado del bus ----
 
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.warn({ err }, '[alarm] el barrido falló; se omite este ciclo');
-    }
-  }
-
   start(): void {
-    if (this.timer) return;
+    if (this.loop) return;
     // Movimiento de cámara vigilada / sensor IoT vigilado / modo away (auto-armado).
     this.bus.subscribe((event) => {
       void this.onBusEvent(event).catch((err) =>
         this.app.log.warn({ err }, '[alarm] fallo procesando un evento del hogar'),
       );
     });
-    this.timer = setInterval(() => void this.tickCycle(), this.opts.intervalMs ?? 1000);
-    this.timer.unref();
+    this.loop = createTickLoop({
+      intervalMs: this.opts.intervalMs ?? 1000,
+      tick: () => this.tick(),
+      onError: (err) => this.app.log.warn({ err }, '[alarm] el barrido falló; se omite este ciclo'),
+      onSkip: () =>
+        this.app.log.warn('[alarm] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   /** Procesa un evento del bus del hogar (US-167). Público para tests. */
@@ -288,10 +305,8 @@ export class AlarmService {
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }
 

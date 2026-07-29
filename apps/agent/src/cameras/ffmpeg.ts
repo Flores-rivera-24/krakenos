@@ -230,6 +230,14 @@ function releaseFfmpegSlot(): void {
  * **clip** (US-187) dura varios segundos y pesa más → necesita más margen. Todas
  * las ejecuciones comparten el semáforo de arriba.
  */
+/**
+ * Timeout del fotograma de movimiento: **por debajo** del barrido de 5 s del
+ * `MotionService` (US-229). Con el default de 10 s, una cámara que no respondía
+ * dejaba el ciclo colgado el doble del intervalo y el siguiente barrido entraba
+ * encima; ahora el ciclo termina (y se registra el fallo) antes del siguiente.
+ */
+export const MOTION_FRAME_TIMEOUT_MS = 4_000;
+
 export function createFfmpegExec(
   ffmpegPath = 'ffmpeg',
   timeoutMs = 10_000,
@@ -242,7 +250,17 @@ export function createFfmpegExec(
         execFile(
           ffmpegPath,
           args,
-          { encoding: 'buffer', timeout: timeoutMs, maxBuffer: maxBufferBytes },
+          {
+            encoding: 'buffer',
+            timeout: timeoutMs,
+            maxBuffer: maxBufferBytes,
+            // SIGKILL, no el SIGTERM por defecto (US-229 / AUD3-18): ffmpeg lo
+            // **ignora** mientras espera un stream RTSP que no responde, así que
+            // el `timeout` no mataba nada y el proceso quedaba vivo indefinidamente
+            // mientras el barrido lanzaba otro cada 5 s. El spawner de streaming
+            // ya usaba SIGKILL por esta misma razón (ver `createFfmpegStreamSpawner`).
+            killSignal: 'SIGKILL',
+          },
           (err, stdout) => {
             const out = (stdout as Buffer | undefined) ?? Buffer.alloc(0);
             const code =

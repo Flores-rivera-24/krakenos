@@ -7,6 +7,7 @@ import type {
 import type { AccessSchedule as DbAccessSchedule } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { activeBlockedMacs } from './schedule-eval.js';
+import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 function toSchedule(row: DbAccessSchedule): AccessSchedule {
   let days: number[] = [];
@@ -38,7 +39,7 @@ const MANAGED_BLOCKED_KEY = 'access.managedBlocked';
  * empieza/termina, y **nunca** desbloquea un dispositivo bloqueado a mano.
  */
 export class AccessScheduleService {
-  private timer: NodeJS.Timeout | null = null;
+  private loop: TickLoop | null = null;
   /**
    * MACs que este servicio bloqueó por horario o pausa (para no pisar bloqueos
    * manuales). Se **persiste** en `Setting` y se recarga en `reconcile()` al
@@ -240,28 +241,25 @@ export class AccessScheduleService {
   }
 
   /** Barrido sin propagar errores (para el timer). */
-  private async tickCycle(): Promise<void> {
-    try {
-      await this.tick();
-    } catch (err) {
-      this.app.log.error({ err }, '[access] el barrido de horarios falló; se omite');
-    }
-  }
-
   start(intervalMs = 60_000): void {
-    if (this.timer) return;
+    if (this.loop) return;
     // El primer barrido reconcilia con lo persistido antes del reinicio (US-197).
     void this.reconcile().catch((err: unknown) => {
       this.app.log.error({ err }, '[access] la reconciliación al arrancar falló; se omite');
     });
-    this.timer = setInterval(() => void this.tickCycle(), intervalMs);
-    this.timer.unref();
+    this.loop = createTickLoop({
+      intervalMs,
+      tick: () => this.tick(),
+      onError: (err) =>
+        this.app.log.error({ err }, '[access] el barrido de horarios falló; se omite'),
+      onSkip: () =>
+        this.app.log.warn('[access] el barrido anterior sigue en curso; se salta este ciclo'),
+    });
+    this.loop.start();
   }
 
   stop(): void {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    this.loop?.stop();
+    this.loop = null;
   }
 }

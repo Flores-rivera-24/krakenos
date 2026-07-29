@@ -42,6 +42,19 @@ export interface DriverConfig {
 export interface HardwareDriver {
   readonly kind: DriverKind;
 
+  /**
+   * Libera la conexión persistente del transporte (SSH/SNMP/sesión HTTP) si la
+   * hay. Lo invoca `disposeManager` al recargar la integración en caliente y al
+   * cerrar el agente, además de la prueba de conexión del asistente —que crea un
+   * manager transitorio y lo tira—. Un driver sin conexión persistente lo omite.
+   *
+   * Antes de US-229 esto no existía: `disposeManager` buscaba `stop`/`close`/
+   * `dispose` **en el manager**, los drivers no lo tenían y su `dispose()` vivía
+   * en el transporte, así que cada «Probar conexión» dejaba una sesión SSH
+   * abierta contra el router del usuario (AUD3-16).
+   */
+  stop?(): Promise<void>;
+
   /** Verifica conectividad/credenciales contra el dispositivo. */
   healthcheck(): Promise<boolean>;
 
