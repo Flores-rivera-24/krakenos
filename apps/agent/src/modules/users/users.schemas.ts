@@ -20,6 +20,8 @@ const userSummary = {
     lastLoginAt: { type: ['string', 'null'] },
     expiresAt: { type: ['string', 'null'] },
     createdAt: { type: 'string' },
+    // Solo en el listado (US-227): tokens de API vivos del usuario.
+    apiTokenCount: { type: 'integer', minimum: 0 },
   },
 } as const;
 

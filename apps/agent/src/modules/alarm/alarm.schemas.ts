@@ -56,7 +56,8 @@ export const disarmAlarmSchema = {
     additionalProperties: false,
     properties: { pin: { type: 'string', minLength: 1, maxLength: 32 } },
   },
-  response: { 200: alarmStateResponse, 401: errorResponse },
+  // 429: lockout del PIN tras N intentos fallidos (AUD3-03).
+  response: { 200: alarmStateResponse, 401: errorResponse, 429: errorResponse },
 } as const;
 
 export const getAlarmConfigSchema = {

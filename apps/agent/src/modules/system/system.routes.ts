@@ -128,11 +128,23 @@ function readStats(): SystemStats {
   };
 }
 
+/** Ajustes que revelan **dónde** está la casa: solo para admin (AUD3-02). */
+const LOCATION_SETTING_KEYS = ['homeLatitude', 'homeLongitude'] as const satisfies readonly SystemSettingKey[];
+
 export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, opts) => {
   const { driver } = opts;
 
-  /** Lee los ajustes editables (allowlist) fusionando defaults + `Setting`. */
-  async function readSettings(): Promise<SystemSettingsResponse> {
+  /**
+   * Lee los ajustes editables (allowlist) fusionando defaults + `Setting`.
+   *
+   * `includeLocation: false` vacía las coordenadas del hogar: son la **ubicación
+   * física de la casa** —la misma PII que el bundle de soporte omite a propósito
+   * (US-192)— y hasta US-227 las devolvía a cualquier rol autenticado, invitados
+   * incluidos (AUD3-02). Solo las ve quien puede editarlas: admin.
+   */
+  async function readSettings(
+    { includeLocation }: { includeLocation: boolean } = { includeLocation: true },
+  ): Promise<SystemSettingsResponse> {
     const rows = await app.prisma.setting.findMany({
       where: { key: { in: [...SYSTEM_SETTING_KEYS] } },
     });
@@ -140,6 +152,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     const settings = Object.fromEntries(
       SYSTEM_SETTING_KEYS.map((k) => [k, stored[k] ?? DEFAULT_SETTINGS[k]]),
     ) as Record<SystemSettingKey, string>;
+    if (!includeLocation) {
+      for (const key of LOCATION_SETTING_KEYS) settings[key] = '';
+    }
     return {
       settings,
       info: {
@@ -283,8 +298,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     },
   );
 
-  app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async () =>
-    readSettings(),
+  app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async (req) =>
+    readSettings({ includeLocation: req.user.role === 'admin' }),
   );
 
   app.patch<{ Body: UpdateSettingRequest }>(

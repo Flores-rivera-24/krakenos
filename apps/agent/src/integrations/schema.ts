@@ -219,7 +219,10 @@ export const INTEGRATION_SCHEMA: Record<
           { value: 'udp', label: 'UDP' },
         ],
       }),
-      opt('ffmpegPath', 'text', { default: 'ffmpeg' }),
+      // `ffmpegPath` NO se expone aquí a propósito (AUD3-07): era el único campo de
+      // la UI que acababa en `execFile`/`spawn`, es decir, elegir qué binario ejecuta
+      // el agente desde una sesión de admin. Como el resto de rutas de despliegue
+      // (`helperPath`, stores, `distPath`), vive solo en `.env` → `FFMPEG_PATH`.
     ]),
     // NVR delegado (US-214): detección de objetos, pre-roll y grabación viven
     // en Frigate; KrakenOS lista, avisa y sirve por proxy autenticado.

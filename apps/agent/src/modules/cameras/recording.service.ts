@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 import type { CameraManager, Recording, RecordingConfig } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import type { MotionRecorder } from './motion.service.js';
@@ -149,9 +149,22 @@ export class RecordingService implements MotionRecorder {
     return this.app.prisma.recording.findUnique({ where: { id } });
   }
 
-  /** Ruta absoluta del fichero de un clip (para servirlo). */
+  /**
+   * Ruta absoluta del fichero de un clip (para servirlo o borrarlo), **contenida**
+   * en `baseDir`.
+   *
+   * `row.path` viene de la DB, y la DB es un destino legítimo de restauración: un
+   * backup preparado con `path: "../../keys/jwt-private.pem"` convertía la descarga
+   * de un clip en lectura arbitraria de ficheros y `remove()` en borrado arbitrario
+   * (AUD3-05). Por eso se valida al **usar** la ruta, no solo al desempaquetar.
+   */
   absPath(row: RecordingRow): string {
-    return join(this.baseDir, row.path);
+    const root = resolve(this.baseDir);
+    const abs = resolve(root, row.path);
+    if (abs !== root && !abs.startsWith(root + sep)) {
+      throw new Error(`ruta de grabación fuera del directorio de clips: ${row.path}`);
+    }
+    return abs;
   }
 
   async remove(id: string): Promise<boolean> {

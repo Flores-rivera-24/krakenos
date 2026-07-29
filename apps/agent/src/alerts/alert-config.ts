@@ -16,6 +16,7 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'camera.motion', label: 'Movimiento detectado' },
   { event: 'alarm.triggered', label: '¡Alarma disparada!' },
   { event: 'alarm.sensor_fault', label: 'Sensor de alarma caído' },
+  { event: 'alarm.disarm_denied', label: 'PIN de alarma incorrecto' },
 ];
 
 const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));

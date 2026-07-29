@@ -116,6 +116,37 @@ describe('RecordingService (US-187)', () => {
     expect(oldest).toBeGreaterThanOrEqual(3 * DAY_MS);
   });
 
+  it('absPath rechaza una ruta que se salga del directorio de clips (AUD3-05)', async () => {
+    const service = rec();
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'E',
+      detectedAt: new Date(0).toISOString(),
+      snapshot: null,
+    });
+    const id = (await service.list())[0]!.id;
+
+    // La fila viene de la DB, y la DB es un destino legítimo de restauración: un
+    // backup preparado con esta ruta convertía la descarga de un clip en lectura
+    // arbitraria de ficheros (`keys/jwt-private.pem`) y `remove()` en borrado
+    // arbitrario. Se valida al USAR la ruta, no solo al desempaquetar el backup.
+    for (const evil of [
+      '../../../keys/jwt-private.pem',
+      '/etc/passwd',
+      'cam-1/../../../.env',
+    ]) {
+      await app.prisma.recording.update({ where: { id }, data: { path: evil } });
+      const row = await service.getRow(id);
+      expect(() => service.absPath(row!)).toThrow(/fuera del directorio de clips/);
+      await expect(service.remove(id)).rejects.toThrow(/fuera del directorio de clips/);
+    }
+
+    // Una ruta normal sigue resolviendo dentro del directorio base.
+    await app.prisma.recording.update({ where: { id }, data: { path: 'cam-1/clip.mp4' } });
+    const ok = await service.getRow(id);
+    expect(service.absPath(ok!)).toContain('cam-1');
+  });
+
   it('remove borra fichero y fila; inexistente → false', async () => {
     const service = rec();
     await service.record({ cameraId: 'cam-1', cameraName: 'E', detectedAt: new Date(0).toISOString(), snapshot: null });

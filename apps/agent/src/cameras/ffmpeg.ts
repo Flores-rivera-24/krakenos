@@ -192,31 +192,71 @@ export function buildClipArgs(
 }
 
 /**
+ * Procesos ffmpeg de un solo disparo (snapshot / fotograma de movimiento / clip)
+ * simultáneos. `GET /api/cameras/:id/snapshot` lanza uno por petición y no tenía
+ * cota ni rate-limit: 200 peticiones concurrentes desde cualquier rol dejaban 200
+ * procesos decodificando RTSP con hasta 16 MB de buffer cada uno, en una máquina
+ * cuyo mínimo declarado son 900 MB de RAM (AUD3-07). El streaming HLS ya tenía su
+ * propio límite (`maxConcurrent`); esto cierra la otra puerta.
+ */
+export const FFMPEG_MAX_CONCURRENT = 4;
+
+/** Permisos libres; las peticiones que no caben esperan en `waiters`. */
+let ffmpegSlots = FFMPEG_MAX_CONCURRENT;
+const ffmpegWaiters: (() => void)[] = [];
+
+/** Reserva un hueco de ejecución (espera si no hay). */
+async function acquireFfmpegSlot(): Promise<void> {
+  if (ffmpegSlots > 0) {
+    ffmpegSlots -= 1;
+    return;
+  }
+  await new Promise<void>((resolve) => ffmpegWaiters.push(resolve));
+}
+
+/** Devuelve el hueco y despierta al siguiente en cola. */
+function releaseFfmpegSlot(): void {
+  const next = ffmpegWaiters.shift();
+  if (next) {
+    next();
+    return;
+  }
+  ffmpegSlots = Math.min(FFMPEG_MAX_CONCURRENT, ffmpegSlots + 1);
+}
+
+/**
  * Ejecución real de ffmpeg vía `execFile` (binario del sistema). `timeoutMs` y
  * `maxBufferBytes` se parametrizan: los snapshots son pequeños y rápidos, pero un
- * **clip** (US-187) dura varios segundos y pesa más → necesita más margen.
+ * **clip** (US-187) dura varios segundos y pesa más → necesita más margen. Todas
+ * las ejecuciones comparten el semáforo de arriba.
  */
 export function createFfmpegExec(
   ffmpegPath = 'ffmpeg',
   timeoutMs = 10_000,
   maxBufferBytes = 16 * 1024 * 1024,
 ): FfmpegExec {
-  return (args) =>
-    new Promise((resolve) => {
-      execFile(
-        ffmpegPath,
-        args,
-        { encoding: 'buffer', timeout: timeoutMs, maxBuffer: maxBufferBytes },
-        (err, stdout) => {
-          const out = (stdout as Buffer | undefined) ?? Buffer.alloc(0);
-          const code =
-            err && typeof (err as { code?: unknown }).code === 'number'
-              ? (err as { code: number }).code
-              : err
-                ? 1
-                : 0;
-          resolve({ stdout: out, code });
-        },
-      );
-    });
+  return async (args) => {
+    await acquireFfmpegSlot();
+    try {
+      return await new Promise<FfmpegResult>((resolve) => {
+        execFile(
+          ffmpegPath,
+          args,
+          { encoding: 'buffer', timeout: timeoutMs, maxBuffer: maxBufferBytes },
+          (err, stdout) => {
+            const out = (stdout as Buffer | undefined) ?? Buffer.alloc(0);
+            const code =
+              err && typeof (err as { code?: unknown }).code === 'number'
+                ? (err as { code: number }).code
+                : err
+                  ? 1
+                  : 0;
+            resolve({ stdout: out, code });
+          },
+        );
+      });
+    } finally {
+      releaseFfmpegSlot();
+    }
+  };
 }

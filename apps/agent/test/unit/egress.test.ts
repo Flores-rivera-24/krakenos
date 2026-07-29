@@ -102,6 +102,35 @@ describe('assertHostAllowed (literales, sin DNS)', () => {
       EgressBlockedError,
     );
   });
+
+  /**
+   * Regresión (US-227): `new URL(...).hostname` devuelve las IPv6 **entre
+   * corchetes**. Sin quitarlos, `isIP()` daba 0 y el host se trataba como nombre
+   * DNS: con `allowUnresolvable` (el borde de configuración) el destino pasaba,
+   * incluida la metadata IPv6 de nube.
+   */
+  it('reconoce IPv6 entre corchetes como literal, no como nombre DNS', async () => {
+    const bracketed = [
+      '[fd00:ec2::254]', // metadata IPv6 (IMDSv6)
+      '[fe80::1]', // link-local
+      '[::]', // no especificada
+      '[::ffff:169.254.169.254]', // IPv4-mapeada (forma con puntos)
+      '[::ffff:a9fe:a9fe]', // la MISMA, en la forma hexadecimal que normaliza Node
+    ];
+    for (const host of bracketed) {
+      await expect(assertHostAllowed(host, LENIENT, { allowUnresolvable: true })).rejects.toBeInstanceOf(
+        EgressBlockedError,
+      );
+    }
+    // Loopback y privadas: permitidas por la política LAN-friendly, bloqueadas en
+    // estricta — también escritas en hexadecimal mapeado (`::ffff:7f00:1` = 127.0.0.1).
+    for (const loopback of ['[::1]', '[::ffff:7f00:1]']) {
+      await expect(assertHostAllowed(loopback, LENIENT)).resolves.toBeUndefined();
+      await expect(
+        assertHostAllowed(loopback, STRICT, { allowUnresolvable: true }),
+      ).rejects.toBeInstanceOf(EgressBlockedError);
+    }
+  });
 });
 
 describe('assertHostAllowed (nombres DNS, lookup mockeado)', () => {

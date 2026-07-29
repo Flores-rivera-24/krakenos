@@ -229,6 +229,14 @@ export function UsersSection() {
                         {isSelf && <span className="ml-1 text-kr-xs text-kr-muted">(tú)</span>}
                       </div>
                       <div className="text-kr-xs text-kr-muted">{u.email}</div>
+                      {/* Credenciales de automatización vivas (US-227): un admin debe
+                          poder verlas. Deshabilitar la cuenta o cambiarle el rol las
+                          revoca en cascada. */}
+                      {(u.apiTokenCount ?? 0) > 0 && (
+                        <div className="text-kr-xs text-kr-muted">
+                          {u.apiTokenCount} {u.apiTokenCount === 1 ? 'token de API' : 'tokens de API'}
+                        </div>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">
                       <select

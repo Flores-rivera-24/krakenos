@@ -310,6 +310,9 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
     it('toda ruta de escritura /api está clasificada', () => {
       const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
         .collectedRoutes;
+      // Guard: si `onRoute` dejara de poblar la tabla (upgrade de Fastify), la lista
+      // quedaría vacía y este barrido pasaría **sin comprobar nada** (AUD3-32).
+      expect(collected.length).toBeGreaterThan(50);
       const classified = new Set<string>([
         ...ADMIN_WRITES.map((w) => toPattern(w.method, w.url)),
         ...AUTHED_WRITES.map((w) => toPattern(w.method, w.url)),
@@ -324,6 +327,116 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
         .filter((key) => !classified.has(key));
 
       expect(unclassified).toEqual([]);
+    });
+  });
+
+  /**
+   * Lecturas sensibles (AUD3-02, US-227).
+   *
+   * El barrido de escrituras de arriba (AUD-22) dejó fuera **las lecturas**, y por
+   * ahí se coló que `GET /api/cameras/*` sirviera vídeo en vivo, eventos con
+   * snapshot y grabaciones a **cualquier** autenticado —`kid`, `guest` y cualquier
+   * token de API—: la navegación del cliente lo ocultaba, el servidor no. Aquí se
+   * clasifica cada lectura de cámaras y se comprueba dónde manda: en el servidor.
+   */
+  describe('lecturas sensibles (AUD3-02)', () => {
+    /** Lecturas de vídeo: exigen la capacidad `home.cameras`. */
+    const CAMERA_READS = [
+      { url: '/api/cameras', pattern: 'GET /api/cameras' },
+      { url: '/api/cameras/cam-entrada/snapshot', pattern: 'GET /api/cameras/:p/snapshot' },
+      { url: '/api/cameras/motion/events', pattern: 'GET /api/cameras/motion/events' },
+      { url: '/api/cameras/cam-entrada/motion', pattern: 'GET /api/cameras/:p/motion' },
+      { url: '/api/cameras/recordings', pattern: 'GET /api/cameras/recordings' },
+      { url: '/api/cameras/recordings/config', pattern: 'GET /api/cameras/recordings/config' },
+      { url: '/api/cameras/recordings/x/download', pattern: 'GET /api/cameras/recordings/:p/download' },
+    ];
+
+    /**
+     * Playlist y segmentos: NO llevan preHandler de sesión a propósito (US-185) —
+     * los autentica el token de stream de `?st=`, que solo emite `POST /:id/stream`,
+     * que sí exige la capacidad. Se listan aquí para que el barrido no las marque
+     * como sin clasificar.
+     */
+    const STREAM_TOKEN_READS = [
+      'GET /api/cameras/:p/stream/index.m3u8',
+      'GET /api/cameras/:p/stream/:p',
+    ];
+
+    const normalizeRoute = (method: string, url: string): string =>
+      `${method.toUpperCase()} ${url.replace(/:[^/]+/g, ':p')}`;
+
+    it('toda lectura de /api/cameras está clasificada', () => {
+      const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
+        .collectedRoutes;
+      expect(collected.length).toBeGreaterThan(50);
+      const classified = new Set<string>([
+        ...CAMERA_READS.map((r) => r.pattern),
+        ...STREAM_TOKEN_READS,
+      ]);
+
+      const unclassified = collected
+        .filter((r) => r.method.toUpperCase() === 'GET' && r.url.startsWith('/api/cameras'))
+        .map((r) => normalizeRoute(r.method, r.url))
+        .filter((key, i, arr) => arr.indexOf(key) === i)
+        .filter((key) => !classified.has(key));
+
+      expect(unclassified).toEqual([]);
+    });
+
+    it('kid y guest no pueden leer nada de cámaras (403)', async () => {
+      for (const role of ['kid', 'guest'] as const) {
+        const token = signAccess(app, await seedUser(app, { email: `${role}@cam.test`, role }));
+        for (const { url } of CAMERA_READS) {
+          const res = await app.inject({ method: 'GET', url, headers: authHeader(token) });
+          expect(`${role} ${url} → ${res.statusCode}`).toBe(`${role} ${url} → 403`);
+        }
+      }
+    });
+
+    it('un viewer sigue viendo las cámaras (no es una regresión de solo-lectura)', async () => {
+      const token = signAccess(app, await seedUser(app, { email: 'viewer@cam.test', role: 'viewer' }));
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/cameras',
+        headers: authHeader(token),
+      });
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('la ubicación del hogar solo viaja a un admin', async () => {
+      await app.prisma.setting.upsert({
+        where: { key: 'homeLatitude' },
+        create: { key: 'homeLatitude', value: '40.4168' },
+        update: { value: '40.4168' },
+      });
+      await app.prisma.setting.upsert({
+        where: { key: 'homeLongitude' },
+        create: { key: 'homeLongitude', value: '-3.7038' },
+        update: { value: '-3.7038' },
+      });
+
+      const kid = signAccess(app, await seedUser(app, { email: 'kid@loc.test', role: 'kid' }));
+      const asKid = await app.inject({
+        method: 'GET',
+        url: '/api/system/settings',
+        headers: authHeader(kid),
+      });
+      expect(asKid.statusCode).toBe(200);
+      const kidBody = asKid.json() as { settings: Record<string, string> };
+      expect(kidBody.settings.homeLatitude).toBe('');
+      expect(kidBody.settings.homeLongitude).toBe('');
+      // No basta con mirar el campo: la coordenada no puede estar en ninguna parte.
+      expect(asKid.body).not.toContain('40.4168');
+      expect(asKid.body).not.toContain('-3.7038');
+
+      const admin = signAccess(app, await seedUser(app, { email: 'admin@loc.test', role: 'admin' }));
+      const asAdmin = await app.inject({
+        method: 'GET',
+        url: '/api/system/settings',
+        headers: authHeader(admin),
+      });
+      const adminBody = asAdmin.json() as { settings: Record<string, string> };
+      expect(adminBody.settings.homeLatitude).toBe('40.4168');
     });
   });
 });

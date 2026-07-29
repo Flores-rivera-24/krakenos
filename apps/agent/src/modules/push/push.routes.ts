@@ -1,5 +1,7 @@
 import type { PushSubscriptionPayload } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
+import { EgressBlockedError } from '../../net/egress.js';
+import { assertPushEndpointAllowed } from '../../push/endpoint.js';
 import type { PushService } from './push.service.js';
 import { subscribeSchema, unsubscribeSchema, vapidPublicKeySchema } from './push.schemas.js';
 
@@ -23,6 +25,20 @@ export const pushRoutes: FastifyPluginAsync<PushRoutesOpts> = async (app, opts) 
     { schema: subscribeSchema },
     async (req, reply) => {
       const { endpoint, keys } = req.body;
+      // El endpoint es un destino al que el agente hará POST: se valida contra la
+      // política de egress ANTES de persistirlo (AUD3-01). Sin esto, cualquier rol
+      // podía apuntar los avisos del hogar a un servidor propio o a la LAN.
+      try {
+        await assertPushEndpointAllowed(endpoint);
+      } catch (err) {
+        if (err instanceof EgressBlockedError) {
+          return reply.code(400).send({
+            code: 'PUSH_ENDPOINT_INVALID',
+            message: 'El endpoint de notificaciones no es un destino permitido.',
+          });
+        }
+        throw err;
+      }
       await app.prisma.pushSubscription.upsert({
         where: { endpoint },
         create: { userId: req.user.sub, endpoint, p256dh: keys.p256dh, auth: keys.auth },

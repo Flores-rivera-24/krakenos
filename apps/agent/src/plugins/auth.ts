@@ -157,9 +157,14 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
     if (row.expiresAt && row.expiresAt.getTime() < Date.now()) return unauthorized(reply);
     const owner = await app.prisma.user.findUnique({
       where: { id: row.userId },
-      select: { email: true, role: true, status: true },
+      select: { email: true, role: true, status: true, expiresAt: true },
     });
     if (!owner || owner.status !== 'active') return unauthorized(reply);
+    // La caducidad del **usuario** (invitado, US-179) también corta el token: sin
+    // esto, un `guest` se creaba un token sin caducidad durante su estancia y
+    // conservaba acceso indefinido cuando su cuenta ya no servía para entrar
+    // (login/refresh/2FA sí lo comprobaban; el token de API no) — AUD3-04.
+    if (owner.expiresAt && owner.expiresAt.getTime() < Date.now()) return unauthorized(reply);
     const role = owner.role as UserRole;
     req.user = { sub: row.userId, email: owner.email, role, type: 'access', iat: 0, exp: 0 };
     // Los scopes guardados se re-acotan al rol vigente (nunca lo superan).
