@@ -29,6 +29,13 @@ Environment=NODE_ENV=production
 ExecStart=/usr/bin/node /opt/krakenos/apps/agent/dist/index.js
 Restart=on-failure
 RestartSec=5
+# IMPRESCINDIBLE para la actualización one-click (US-190/US-232): el actualizador
+# corre como proceso hijo del agente y el paso `restart` reinicia ESTA unidad. Con
+# el `KillMode` por defecto (control-group) systemd mataría también al actualizador
+# a mitad de su secuencia — nunca habría healthcheck ni rollback. Con `process`
+# solo se señaliza al proceso principal. Contrapartida: al parar el servicio,
+# systemd no barre procesos hijos; el agente cierra los suyos (ffmpeg) en onClose.
+KillMode=process
 # Endurecimiento básico (ajusta si usas integraciones que tocan el sistema):
 NoNewPrivileges=false
 ProtectSystem=full

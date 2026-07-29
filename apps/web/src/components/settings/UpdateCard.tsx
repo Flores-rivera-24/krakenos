@@ -1,4 +1,4 @@
-import type { ApplyUpdateResponse, UpdatePlan } from '@krakenos/types';
+import type { ApplyUpdateResponse, CancelUpdateResponse, UpdatePlan } from '@krakenos/types';
 import { AlertTriangle, ArrowUpCircle, CheckCircle2, RefreshCw, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,7 @@ export function UpdateCard() {
   const [plan, setPlan] = useState<UpdatePlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const aliveRef = useRef(true);
 
   const load = useCallback(async () => {
@@ -72,6 +73,25 @@ export function UpdateCard() {
     }
   };
 
+  /**
+   * Libera el lock de «en curso» (US-232). La caducidad automática ya cubre al
+   * actualizador muerto; esto es para el que sigue vivo pero atascado, que antes
+   * dejaba la función bloqueada sin más salida que borrar el fichero por SSH.
+   */
+  const cancel = async () => {
+    setCancelling(true);
+    try {
+      const res = await api.post<CancelUpdateResponse>('/system/update/cancel');
+      if (res.cancelled) toast.success(t('settings.update.cancelled'));
+      else toast.error(res.message || t('settings.update.cancelError'));
+      await load();
+    } catch (err) {
+      toast.error(describeError(err, t('settings.update.cancelError')));
+    } finally {
+      if (aliveRef.current) setCancelling(false);
+    }
+  };
+
   const canApply =
     isAdmin && plan?.canSelfUpdate && plan.updateAvailable && !plan.inProgress && !applying;
 
@@ -96,10 +116,24 @@ export function UpdateCard() {
             {t('settings.update.disabled', { env: 'UPDATE_CHECK_REPO' })}
           </p>
         ) : plan.inProgress ? (
-          <p className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
-            {t('settings.update.inProgress')}
-          </p>
+          <div className="space-y-2">
+            <p className="flex items-center gap-2 text-kr-sm text-kr-secondary">
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+              {t('settings.update.inProgress')}
+            </p>
+            {plan.inProgressSince && (
+              <p className="text-kr-xs text-kr-muted">
+                {t('settings.update.inProgressSince', {
+                  time: new Date(plan.inProgressSince).toLocaleTimeString(),
+                })}
+              </p>
+            )}
+            {isAdmin && (
+              <Button variant="outline" onClick={() => void cancel()} disabled={cancelling}>
+                {cancelling ? t('settings.update.cancelling') : t('settings.update.cancel')}
+              </Button>
+            )}
+          </div>
         ) : plan.updateAvailable ? (
           <div className="space-y-3">
             <div className="flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-kr-sm text-warning">

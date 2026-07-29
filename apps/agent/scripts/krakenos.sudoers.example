@@ -20,8 +20,16 @@
 
 krakenos ALL=(root) NOPASSWD: /usr/local/bin/krakenos-helper
 
-# Actualización one-click con rollback (US-190): la actualización desde la UI
-# reinicia el servicio del agente. Descomenta SOLO si usas esa función y ajusta el
-# nombre de la unidad (por defecto `krakenos`). Es un ámbito acotado a reiniciar ESA
+# Actualización one-click con rollback (US-190/US-232): la actualización desde la UI
+# reinicia el servicio del agente, y el rollback lo para y lo arranca.
+#
+# NO hace falta descomentar esto si instalaste con `scripts/install.sh`: genera
+# `/etc/sudoers.d/krakenos-update` con estas mismas reglas (parametrizadas con el
+# nombre real de tu unidad y validadas con `visudo -cf`). Descomenta SOLO en una
+# instalación manual, ajustando usuario y nombre de unidad. Ámbito acotado a ESA
 # unidad, no a `systemctl` en general.
+#
+# Sin estas reglas el paso `restart` falla y la actualización se revierte siempre.
 # krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl restart krakenos
+# krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl stop krakenos
+# krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl start krakenos

@@ -13,12 +13,22 @@
 #   install.sh --uninstall [--purge]   desinstala el servicio (conserva los datos salvo --purge)
 #
 # Opciones:
-#   --yes            no pregunta (los extras opcionales se OMITEN; instálalos aparte)
+#   --yes            no pregunta (con los extras se decide por banderas, no por prompt)
 #   --dry-run        imprime el plan sin ejecutar nada que mute el sistema
 #   --dir DIR        directorio de instalación (por defecto /opt/krakenos)
 #   --from-local P   instala desde una copia local del repo en vez de clonar (CI/dev)
 #   --branch REF     rama/tag a instalar (por defecto: la última etiqueta v*, o main)
 #   --no-service     no crea la unidad systemd (contenedores/CI; arranque manual)
+#
+# Extras (OPT-IN explícito; sin bandera no se instalan y se avisa al final):
+#   --with-helper    helper privilegiado + sudoers → VPN WireGuard, firewall, QoS
+#   --with-ffmpeg    ffmpeg → cámaras RTSP (vídeo en vivo, movimiento, grabación)
+#   --with-deps      deps opcionales de integraciones (node-ssh, mqtt, net-snmp, ws)
+#   --with-all       las tres anteriores
+#
+# En `curl | sudo bash` stdin ES la tubería, así que no hay TTY para preguntar: por
+# eso los extras se piden por bandera. Antes se «ofrecían» y siempre salían que no,
+# dejando la instalación sin cámaras ni VPN en silencio (AUD3-23).
 #
 # Variables (tests/CI): KRAKENOS_REPO · KRAKENOS_INSTALL_DIR · KRAKENOS_SERVICE_NAME ·
 #   KRAKENOS_SERVICE_USER · KRAKENOS_OS_ID · KRAKENOS_ARCH · KRAKENOS_MIN_RAM_MB ·
@@ -42,6 +52,16 @@ NO_SERVICE=0
 PURGE=0
 FROM_LOCAL=""
 BRANCH=""
+WITH_HELPER=0
+WITH_FFMPEG=0
+WITH_DEPS=0
+# Resumen final: lo que quedó desactivado se dice en voz alta, no en silencio.
+SUMMARY=()
+
+# Los secretos que se generan aquí (.env, claves RS256, credenciales en data/) no
+# deben nacer legibles por todo el sistema: root instala con umask 022 y el
+# `chown -R` posterior NO cambia el modo (AUD3-06).
+umask 077
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf 'AVISO: %s\n' "$*" >&2; }
@@ -57,8 +77,9 @@ run() {
   fi
 }
 
-# Pregunta sí/no (por defecto NO): los extras son opt-in honesto. Con --yes o
-# sin TTY no pregunta y responde que no.
+# Pregunta sí/no (por defecto NO). Solo se usa para confirmaciones DESTRUCTIVAS
+# (--purge): los extras van por bandera, porque en `curl | sudo bash` no hay TTY y
+# esto siempre respondía que no en silencio (AUD3-23).
 confirm() {
   local prompt="$1"
   if [[ $ASSUME_YES -eq 1 || ! -t 0 ]]; then return 1; fi
@@ -67,7 +88,7 @@ confirm() {
   [[ "$answer" == "s" || "$answer" == "S" ]]
 }
 
-usage() { sed -n '3,27p' "$0" 2>/dev/null || true; }
+usage() { sed -n '3,31p' "$0" 2>/dev/null || true; }
 
 # ---------------------------------------------------------------- argumentos
 parse_args() {
@@ -91,6 +112,14 @@ parse_args() {
         shift
         ;;
       --no-service) NO_SERVICE=1 ;;
+      --with-helper) WITH_HELPER=1 ;;
+      --with-ffmpeg) WITH_FFMPEG=1 ;;
+      --with-deps) WITH_DEPS=1 ;;
+      --with-all)
+        WITH_HELPER=1
+        WITH_FFMPEG=1
+        WITH_DEPS=1
+        ;;
       --update) MODE=update ;;
       --uninstall) MODE=uninstall ;;
       --purge) PURGE=1 ;;
@@ -187,8 +216,14 @@ ensure_node() {
   if node_major_installed; then
     log "    Node $(node --version) ya presente"
   else
-    run bash -c "curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash -"
+    # `set -o pipefail` DENTRO del bash -c: el `set -euo pipefail` de arriba no se
+    # hereda en el subshell, así que un fallo de NodeSource quedaba enmascarado por
+    # el éxito de `bash -` y la instalación seguía con el Node 18 de Debian (AUD3-23).
+    run bash -c "set -o pipefail; curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash -"
     run apt-get install -y -qq nodejs
+    if [[ $DRY_RUN -eq 0 ]] && ! node_major_installed; then
+      die "no se pudo instalar Node ${NODE_MAJOR} (NodeSource falló). Instálalo a mano y reintenta."
+    fi
   fi
 }
 
@@ -250,10 +285,80 @@ build_and_configure() {
   if [[ ! -f "$agent/keys/jwt-private.pem" ]]; then
     run bash "$agent/scripts/gen-keys.sh"
   fi
+  # Comprobación de actualizaciones (US-116) activa en una instalación real: sin
+  # esto no hay releases → 0 tags → el update one-click no puede funcionar y toda
+  # instalación corre la punta de `main` (AUD3-20). En dev sigue apagada: la línea
+  # de `.env.example` está comentada y solo el instalador la activa.
+  if [[ $DRY_RUN -eq 0 ]] && ! grep -q '^UPDATE_CHECK_REPO=' "$agent/.env" 2>/dev/null; then
+    printf 'UPDATE_CHECK_REPO=%s\n' "$REPO" >> "$agent/.env"
+    log "    UPDATE_CHECK_REPO=$REPO (comprobación de actualizaciones activada)"
+  elif [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ añadir UPDATE_CHECK_REPO=%s a %s\n' "$REPO" "$agent/.env"
+  fi
   run bash -c "cd '$INSTALL_DIR' && pnpm install --frozen-lockfile"
   run bash -c "cd '$INSTALL_DIR' && pnpm --filter @krakenos/agent exec prisma generate"
   run bash -c "cd '$INSTALL_DIR' && pnpm --filter @krakenos/agent exec prisma migrate deploy"
   run bash -c "cd '$INSTALL_DIR' && pnpm build"
+}
+
+# Puerto real del agente (respeta PORT del .env; por defecto 3001).
+agent_port() {
+  local env_file="$INSTALL_DIR/apps/agent/.env" port=""
+  if [[ -r "$env_file" ]]; then
+    port="$(sed -n 's/^PORT=\([0-9]\{1,5\}\).*/\1/p' "$env_file" | tail -1)"
+  fi
+  printf '%s' "${port:-3001}"
+}
+
+# Los secretos no deben quedar legibles por cualquier cuenta del sistema (AUD3-06).
+# `umask 077` cubre lo que se crea AHORA; esto además repara una instalación previa
+# hecha con la versión antigua del instalador (el `chown -R` no cambia el modo).
+harden_permissions() {
+  local agent="$INSTALL_DIR/apps/agent" d
+  log "    Permisos de secretos (600 .env · 700 keys/ y data/)…"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    # El plan se imprime completo aunque los ficheros aún no existan.
+    printf 'dry-run$ chmod 600 %s/.env\n' "$agent"
+    printf 'dry-run$ chmod 700 %s/keys %s/data %s/var\n' "$agent" "$agent" "$agent"
+    printf 'dry-run$ chmod 600 %s/keys/* %s/prisma/*.db\n' "$agent" "$agent"
+    return 0
+  fi
+  [[ -f "$agent/.env" ]] && chmod 600 "$agent/.env"
+  for d in "$agent/keys" "$agent/data" "$agent/var"; do
+    [[ -d "$d" ]] && chmod 700 "$d"
+  done
+  find "$agent/keys" -type f -exec chmod 600 {} + 2> /dev/null || true
+  find "$agent/prisma" -maxdepth 1 -name '*.db*' -exec chmod 600 {} + 2> /dev/null || true
+}
+
+# Instala un fichero de sudoers VALIDÁNDOLO antes de ponerlo en su sitio: un
+# /etc/sudoers.d con error de sintaxis rompe `sudo` en toda la máquina (AUD3-06),
+# así que se valida una copia temporal y solo entonces se mueve.
+install_sudoers() {
+  local dest="$1" content="$2"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ install %s (validado con visudo -cf)\n' "$dest"
+    return 0
+  fi
+  # Un contenido vacío (fichero de origen ausente o ilegible) instalaría una regla
+  # que no concede nada, y el usuario lo descubriría al fallar la VPN.
+  if [[ -z "${content//[[:space:]]/}" ]]; then
+    warn "no se pudo generar la regla sudoers $dest (contenido vacío)"
+    SUMMARY+=("regla sudoers $dest NO instalada (no se pudo generar)")
+    return 1
+  fi
+  local tmp
+  tmp="$(mktemp)"
+  printf '%s\n' "$content" > "$tmp"
+  chmod 0440 "$tmp"
+  if ! visudo -cf "$tmp" > /dev/null 2>&1; then
+    rm -f "$tmp"
+    warn "regla sudoers inválida, NO se instala $dest (sudo queda intacto)"
+    SUMMARY+=("regla sudoers $dest NO instalada (falló visudo -cf)")
+    return 1
+  fi
+  install -m 0440 "$tmp" "$dest"
+  rm -f "$tmp"
 }
 
 # ---------------------------------------------------------------- servicio
@@ -288,6 +393,11 @@ Environment=NODE_ENV=production
 ExecStart=$node_bin $INSTALL_DIR/apps/agent/dist/index.js
 Restart=on-failure
 RestartSec=5
+# Imprescindible para la actualización one-click (US-232): el actualizador es un
+# hijo del agente y el paso 'restart' reinicia esta unidad. Con el KillMode por
+# defecto (control-group) systemd lo mataría a mitad de su propia secuencia y
+# nunca habría healthcheck ni rollback.
+KillMode=process
 NoNewPrivileges=false
 ProtectSystem=full
 ProtectHome=true
@@ -296,8 +406,38 @@ ProtectHome=true
 WantedBy=multi-user.target
 UNIT
   fi
+  # Regla sudoers de la actualización one-click (US-190/US-232): el paso `restart`
+  # reinicia ESTA unidad y el agente no corre como root. Se instalaba **comentada**
+  # en el ejemplo, así que el update fallaba siempre en el último paso (AUD3-20).
+  # Ámbito mínimo: reiniciar esa unidad concreta, nada más.
+  local systemctl_bin
+  systemctl_bin="$(command -v systemctl || echo /usr/bin/systemctl)"
+  if install_sudoers "/etc/sudoers.d/krakenos-update" \
+    "# KrakenOS — actualización one-click (US-232). Generado por install.sh.
+# Ámbito mínimo: reiniciar SOLO la unidad del agente. Sin esto, el paso 'restart'
+# del actualizador falla y la actualización se revierte.
+$SERVICE_USER ALL=(root) NOPASSWD: $systemctl_bin restart $SERVICE_NAME
+$SERVICE_USER ALL=(root) NOPASSWD: $systemctl_bin stop $SERVICE_NAME
+$SERVICE_USER ALL=(root) NOPASSWD: $systemctl_bin start $SERVICE_NAME"; then
+    log "    sudoers de actualización instalado (restart/stop/start de $SERVICE_NAME)"
+  fi
+
   run systemctl daemon-reload
   run systemctl enable --now "$SERVICE_NAME"
+  # No basta con que `enable --now` devuelva 0: si el agente se cae al arrancar
+  # (puerto ocupado, .env inválido) la unidad queda en 'failed' y el instalador
+  # decía "Listo" igualmente.
+  if [[ $DRY_RUN -eq 0 ]]; then
+    local i
+    for i in $(seq 1 20); do
+      systemctl is-active --quiet "$SERVICE_NAME" && break
+      sleep 1
+    done
+    if ! systemctl is-active --quiet "$SERVICE_NAME"; then
+      warn "el servicio $SERVICE_NAME no está activo. Revisa: journalctl -u $SERVICE_NAME -n 50"
+      SUMMARY+=("servicio $SERVICE_NAME NO activo — revisa el journal")
+    fi
+  fi
 }
 
 print_setup_url() {
@@ -307,10 +447,12 @@ print_setup_url() {
     return
   fi
   # Espera al readiness y saca del journal la URL de configuración (AUD-26:
-  # el agente la imprime por stdout, legible en journald).
-  local i
+  # el agente la imprime por stdout, legible en journald). El puerto sale del .env:
+  # con PORT distinto de 3001 esto sondeaba un puerto que nadie escucha.
+  local i port
+  port="$(agent_port)"
   for i in $(seq 1 30); do
-    if curl -fsS "http://127.0.0.1:3001/health/ready" > /dev/null 2>&1; then break; fi
+    if curl -fsS "http://127.0.0.1:${port}/health/ready" > /dev/null 2>&1; then break; fi
     sleep 1
   done
   local setup_lines
@@ -326,25 +468,65 @@ print_setup_url() {
 }
 
 # ---------------------------------------------------------------- extras opt-in
-offer_extras() {
-  [[ $DRY_RUN -eq 1 ]] && return 0
-  if confirm "¿Instalar el helper privilegiado + sudoers (VPN WireGuard, firewall, QoS)?"; then
+# Deps opcionales de integraciones: no están en package.json (CI con lockfile
+# congelado) y se cargan con import perezoso. Se anotan en data/extra-deps.json
+# para que el actualizador las reinstale (US-232): `pnpm install --frozen-lockfile`
+# las poda en cada update y el usuario perdía su hardware sin ningún aviso (AUD3-22).
+EXTRA_DEPS=(node-ssh mqtt net-snmp ws)
+
+install_extras() {
+  log "Extras (opt-in por bandera)…"
+  if [[ $WITH_HELPER -eq 1 ]]; then
     run install -m 0755 "$INSTALL_DIR/apps/agent/scripts/krakenos-helper.sh" /usr/local/bin/krakenos-helper
-    run install -m 0440 "$INSTALL_DIR/apps/agent/scripts/krakenos.sudoers.example" /etc/sudoers.d/krakenos
+    install_sudoers "/etc/sudoers.d/krakenos" "$(sed 's/^krakenos ALL=/'"$SERVICE_USER"' ALL=/' "$INSTALL_DIR/apps/agent/scripts/krakenos.sudoers.example" 2> /dev/null || true)"
     run apt-get install -y -qq wireguard-tools iptables iproute2
+    log "    helper privilegiado instalado (VPN/firewall/QoS operativos)"
   else
-    log "Extras de red omitidos (VPN/firewall/QoS necesitan el helper: README → Operaciones privilegiadas)"
+    SUMMARY+=("sin helper privilegiado → VPN WireGuard, firewall y QoS NO funcionan (reinstala con --with-helper)")
   fi
-  if confirm "¿Instalar ffmpeg (cámaras RTSP: vídeo en vivo, movimiento, grabación)?"; then
+
+  if [[ $WITH_FFMPEG -eq 1 ]]; then
     run apt-get install -y -qq ffmpeg
+    log "    ffmpeg instalado (cámaras RTSP operativas)"
   else
-    log "ffmpeg omitido (las cámaras RTSP no operarán hasta instalarlo)"
+    SUMMARY+=("sin ffmpeg → las cámaras RTSP (vídeo en vivo, movimiento, grabación) NO funcionan (--with-ffmpeg)")
   fi
-  if confirm "¿Instalar las dependencias opcionales de integraciones (node-ssh, mqtt, net-snmp, ws)?"; then
-    run bash -c "cd '$INSTALL_DIR/apps/agent' && pnpm add node-ssh mqtt net-snmp ws"
+
+  if [[ $WITH_DEPS -eq 1 ]]; then
+    run bash -c "cd '$INSTALL_DIR/apps/agent' && pnpm add ${EXTRA_DEPS[*]}"
+    write_extra_deps_manifest
+    log "    deps de integraciones instaladas (${EXTRA_DEPS[*]})"
   else
-    log "Deps de integraciones omitidas (se instalan al conectar cada equipo: guías en docs/)"
+    SUMMARY+=("sin deps de integraciones → routers por SSH, MQTT/zigbee2mqtt, SNMP y Matter NO conectarán (--with-deps)")
   fi
+}
+
+# Manifiesto que sobrevive al `git checkout` del actualizador (va en data/, que es
+# untracked y se conserva entre updates).
+write_extra_deps_manifest() {
+  local manifest="$INSTALL_DIR/apps/agent/data/extra-deps.json"
+  local json
+  json="$(printf '"%s",' "${EXTRA_DEPS[@]}")"
+  json="[${json%,}]"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ escribir %s con %s\n' "$manifest" "$json"
+    return 0
+  fi
+  mkdir -p "$(dirname "$manifest")"
+  printf '%s\n' "$json" > "$manifest"
+}
+
+# Lo que quedó desactivado se dice EN VOZ ALTA al final: antes se omitía en
+# silencio y el usuario descubría por su cuenta que no tenía cámaras ni VPN.
+print_summary() {
+  [[ ${#SUMMARY[@]} -eq 0 ]] && return 0
+  printf '\n──────────────── Qué quedó FUERA de esta instalación ────────────────\n'
+  local item
+  for item in "${SUMMARY[@]}"; do
+    printf '  · %s\n' "$item"
+  done
+  printf '  Todo junto:  install.sh --with-all\n'
+  printf '─────────────────────────────────────────────────────────────────────\n\n'
 }
 
 # ---------------------------------------------------------------- update / uninstall
@@ -360,15 +542,36 @@ do_update() {
   local version="${tag#v}"
   log "Actualizando a ${tag:-<última etiqueta>} vía el orquestador (US-190: backup → apply → migrate → restart → healthcheck, con rollback)…"
   # Reusa EXACTAMENTE el camino del update one-click: mismo proceso one-shot.
-  run bash -c "cd '$INSTALL_DIR/apps/agent' && node dist/update-runner.js '${version:-0.0.0}'"
+  #
+  # Como el USUARIO DEL SERVICIO, no como root: corriéndolo como root, `pnpm` y el
+  # build dejaban node_modules/dist propiedad de root sobre un árbol chowneado y el
+  # agente ya no podía escribir (AUD3-23). Además la regla sudoers de `restart` está
+  # a nombre del usuario del servicio, así que como root tampoco es equivalente.
+  local as_user=""
+  if [[ "$(id -u)" -eq 0 ]] && id -u "$SERVICE_USER" > /dev/null 2>&1; then
+    as_user="runuser -u $SERVICE_USER -- "
+    log "    ejecutando como $SERVICE_USER (no como root: no rompe los permisos del árbol)"
+  fi
+  run bash -c "cd '$INSTALL_DIR/apps/agent' && ${as_user}node dist/update-runner.js '${version:-0.0.0}'"
   log "Resultado en $INSTALL_DIR/apps/agent/var/update-result.json (y en la card de Ajustes → Sistema)."
 }
 
+# ¿Hay systemd de verdad? En un contenedor `systemctl` existe pero no hay PID 1 de
+# systemd: sus llamadas fallan y con `set -e` tumbaban el desinstalador entero antes
+# de enumerar los datos conservados.
+has_systemd() { [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null; }
+
 do_uninstall() {
   log "Desinstalando el servicio $SERVICE_NAME…"
-  run systemctl disable --now "$SERVICE_NAME" || true
-  run rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
-  run systemctl daemon-reload
+  if has_systemd; then
+    run systemctl disable --now "$SERVICE_NAME" || true
+    run rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+    run systemctl daemon-reload || true
+  else
+    log "    sin systemd en este sistema: solo se limpia la unidad si existe"
+    run rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
+  fi
+  run rm -f "/etc/sudoers.d/krakenos-update"
   if [[ $PURGE -eq 1 ]]; then
     if confirm "¿Borrar TAMBIÉN $INSTALL_DIR (base de datos, claves y credenciales)? Es irreversible" || [[ $ASSUME_YES -eq 1 ]]; then
       run rm -rf "$INSTALL_DIR"
@@ -411,10 +614,12 @@ main() {
   ensure_pnpm
   fetch_source
   build_and_configure
+  harden_permissions
   install_service
-  offer_extras
+  install_extras
   print_setup_url
   log "Listo. Documentación: README y docs/ del repo."
+  print_summary
 }
 
 main "$@"

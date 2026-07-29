@@ -39,6 +39,7 @@ import {
   systemStatsSchema,
   telemetrySchema,
   updateApplySchema,
+  updateCancelSchema,
   updateCheckSchema,
   updatePlanSchema,
   updateSettingSchema,
@@ -297,6 +298,26 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       return result;
     },
   );
+
+  // Liberar el lock de «en curso» (US-232). La caducidad automática (proceso
+  // muerto o TTL) cubre al actualizador que murió; esto cubre al que está VIVO
+  // pero atascado (p. ej. `pnpm install` esperando una red que no vuelve), que
+  // antes solo se arreglaba borrando el fichero por SSH.
+  app.post('/update/cancel', { preHandler: app.requireActiveAdmin, schema: updateCancelSchema }, async (req) => {
+    const cancelled = await updateService.cancel();
+    app.audit({
+      action: 'system.update.cancel',
+      userId: req.user.sub,
+      detail: cancelled ? 'lock liberado' : 'sin actualización en curso',
+      ip: req.ip,
+    });
+    return {
+      cancelled,
+      message: cancelled
+        ? 'Actualización cancelada. Ya puedes volver a intentarlo.'
+        : 'No hay ninguna actualización en curso.',
+    };
+  });
 
   app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async (req) =>
     readSettings({ includeLocation: req.user.role === 'admin' }),
