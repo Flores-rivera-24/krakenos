@@ -28,6 +28,12 @@ export const SETTING_BOUNDS = {
   /** Retención del registro de auditoría en días (US-102). Mín 1, máx 10 años. */
   auditRetentionDays: { min: 1, max: 3650 },
   /**
+   * Copias automáticas a conservar (US-233). Mín 1 (conservar 0 dejaría el aparato
+   * sin red de seguridad justo después de hacerla); máx 60 — cada copia pesa como la
+   * base entera y viven en el mismo disco que puede morir.
+   */
+  autoBackupRetention: { min: 1, max: 60 },
+  /**
    * Intervalo del barrido de inventario en segundos. Mín 5 s: sin cota, un valor
    * fraccionario (`0.001`) o desbordado (Node normaliza delays > 2^31-1 a 1 ms)
    * convertía `setInterval` en un bucle apretado que martillea el driver/hardware

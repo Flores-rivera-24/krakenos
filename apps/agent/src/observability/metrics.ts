@@ -11,6 +11,13 @@
  * tamaño fijo): observar el estado nunca debe hacer crecer la memoria sin límite.
  */
 
+// Los tipos del snapshot son COMPARTIDOS (`@krakenos/types`): estaban duplicados
+// aquí, y al añadir el disco (US-233) habría que tocar dos sitios sin que nada
+// avisara si divergen.
+import type { ManagerMetric, MetricsSnapshot, StorageInfo } from '@krakenos/types';
+
+export type { ManagerMetric, MetricsSnapshot };
+
 /** Ventana de muestras recientes para percentiles de latencia y lag del loop. */
 const HTTP_SAMPLES = 512;
 const LAG_SAMPLES = 64;
@@ -21,46 +28,6 @@ interface OpStat {
   errors: number;
   totalMs: number;
   maxMs: number;
-}
-
-export interface ManagerMetric {
-  name: string;
-  count: number;
-  errors: number;
-  avgLatencyMs: number;
-  maxLatencyMs: number;
-}
-
-export interface MetricsSnapshot {
-  /** Uptime del proceso del agente en segundos. */
-  uptimeSeconds: number;
-  memory: {
-    rssBytes: number;
-    heapUsedBytes: number;
-    heapTotalBytes: number;
-  };
-  http: {
-    total: number;
-    /** Respuestas 5xx. */
-    errors: number;
-    /** Errores / total en [0, 1] (0 si no hubo peticiones). */
-    errorRate: number;
-    avgLatencyMs: number;
-    p95LatencyMs: number;
-    /** Peticiones en curso ahora mismo (gauge de concurrencia = «cola»). */
-    inFlight: number;
-  };
-  eventLoop: {
-    /** Retraso medio reciente del event loop en ms. */
-    lagMs: number;
-    /** Retraso máximo reciente en ms. */
-    maxLagMs: number;
-  };
-  /** Clientes WebSocket conectados. */
-  websocketClients: number;
-  /** Latencia/errores por manager (p. ej. el driver de red). */
-  managers: ManagerMetric[];
-  timestamp: string;
 }
 
 /** Media de un array (0 si está vacío). */
@@ -130,6 +97,8 @@ export class MetricsRegistry {
     uptimeSeconds: number;
     memory: { rssBytes: number; heapUsedBytes: number; heapTotalBytes: number };
     websocketClients: number;
+    /** Disco y tamaño de la base (US-233); lo mide y cachea el llamante. */
+    storage: StorageInfo;
   }): MetricsSnapshot {
     const managers: ManagerMetric[] = [...this.ops.entries()]
       .map(([name, s]) => ({
@@ -157,6 +126,7 @@ export class MetricsRegistry {
         maxLagMs: this.lags.length > 0 ? Math.max(...this.lags) : 0,
       },
       websocketClients: input.websocketClients,
+      storage: input.storage,
       managers,
       timestamp: this.now().toISOString(),
     };

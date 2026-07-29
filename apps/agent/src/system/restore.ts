@@ -7,13 +7,16 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, open, rename, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import {
+  ENVELOPE_HEADER_LEN,
   type ArchiveEntry,
+  createArchiveDecryptor,
   decryptArchive,
   decryptArchiveAsync,
   isSafeEntryName,
+  parseManifestHeader,
   unpackArchive,
 } from './backup.js';
 
@@ -82,13 +85,162 @@ export async function stageRestoreAsync(
 
 /** Validación compartida: nombres seguros (anti path-traversal) y DB presente. */
 function validateEntries(entries: ArchiveEntry[]): void {
-  for (const e of entries) {
-    if (!isSafeEntryName(e.name)) {
-      throw new Error(`El backup contiene una ruta no válida: ${e.name}`);
+  validateEntryNames(entries.map((e) => e.name));
+}
+
+/** Igual, sobre solo los nombres (el lector por streaming valida antes de escribir). */
+function validateEntryNames(names: string[]): void {
+  for (const name of names) {
+    if (!isSafeEntryName(name)) {
+      throw new Error(`El backup contiene una ruta no válida: ${name}`);
     }
   }
-  if (!entries.some((e) => e.name === 'db/app.db')) {
+  if (!names.includes('db/app.db')) {
     throw new Error('El backup no contiene la base de datos');
+  }
+}
+
+/**
+ * Escritor incremental del staging: recibe texto claro por trozos, saca el manifest
+ * de los primeros bytes y va escribiendo cada entrada a disco sin acumularla en
+ * memoria (US-233).
+ *
+ * Escribe a un directorio **temporal**: el texto claro que entrega GCM antes de
+ * `final()` no está autenticado, así que nada puede aparecer en el staging
+ * definitivo hasta que el archivo se verifique (`commit()`).
+ */
+class StagedArchiveWriter {
+  private pending: Buffer = Buffer.alloc(0);
+  private entries: { name: string; length: number }[] | null = null;
+  private index = 0;
+  private remaining = 0;
+  private handle: FileHandle | null = null;
+
+  constructor(private readonly tmpDir: string) {}
+
+  /** Consume texto claro (no autenticado todavía). */
+  async push(chunk: Buffer): Promise<void> {
+    if (!this.entries) {
+      this.pending = this.pending.length === 0 ? chunk : Buffer.concat([this.pending, chunk]);
+      const head = parseManifestHeader(this.pending);
+      if (head.status === 'need-more') return;
+      validateEntryNames(head.entries.map((e) => e.name));
+      this.entries = head.entries;
+      const rest = this.pending.subarray(head.consumed);
+      this.pending = Buffer.alloc(0);
+      this.remaining = this.entries[0]?.length ?? 0;
+      await this.consume(rest);
+      return;
+    }
+    await this.consume(chunk);
+  }
+
+  private async currentHandle(): Promise<FileHandle | null> {
+    const entry = this.entries?.[this.index];
+    if (!entry) return null;
+    if (!this.handle) {
+      const dest = join(this.tmpDir, entry.name);
+      await mkdir(dirname(dest), { recursive: true });
+      this.handle = await open(dest, 'w', 0o600);
+    }
+    return this.handle;
+  }
+
+  private async advance(): Promise<void> {
+    if (this.handle) {
+      await this.handle.close();
+      this.handle = null;
+    }
+    this.index += 1;
+    this.remaining = this.entries?.[this.index]?.length ?? 0;
+  }
+
+  private async consume(buf: Buffer): Promise<void> {
+    let rest = buf;
+    while (this.entries && this.index < this.entries.length) {
+      // Crea el fichero aunque la entrada esté vacía (un `data/x.json` de 0 bytes
+      // debe restaurarse como fichero vacío, no desaparecer).
+      const fh = await this.currentHandle();
+      if (!fh) return;
+      if (this.remaining === 0) {
+        await this.advance();
+        continue;
+      }
+      if (rest.length === 0) return;
+      const take = Math.min(this.remaining, rest.length);
+      await fh.write(rest.subarray(0, take));
+      this.remaining -= take;
+      rest = rest.subarray(take);
+      if (this.remaining === 0) await this.advance();
+    }
+    if (rest.length > 0) throw new Error('Backup dañado (bytes de más)');
+  }
+
+  /**
+   * Cierra el último fichero y mueve el staging temporal al definitivo. Solo debe
+   * llamarse **después** de que `final()` del descifrador haya autenticado.
+   */
+  async commit(stagingDir: string): Promise<string[]> {
+    if (this.handle) {
+      await this.handle.close();
+      this.handle = null;
+    }
+    if (!this.entries) throw new Error('Backup dañado (cabecera incompleta)');
+    if (this.index < this.entries.length || this.remaining > 0) {
+      throw new Error('Backup dañado (payload truncado)');
+    }
+    await rm(stagingDir, { recursive: true, force: true });
+    await mkdir(dirname(stagingDir), { recursive: true });
+    await rename(this.tmpDir, stagingDir);
+    return this.entries.map((e) => e.name);
+  }
+
+  /** Cierra sin publicar nada (fallo de autenticación, archivo dañado…). */
+  async discard(): Promise<void> {
+    if (this.handle) {
+      await this.handle.close().catch(() => undefined);
+      this.handle = null;
+    }
+    await rm(this.tmpDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Prepara un restore leyendo el archivo **de disco por trozos** (US-233): la ruta de
+ * subida ya no bufferiza el archivo en base64 (que además lo inflaba un 33 % y
+ * topaba con el `bodyLimit` de 64 MB, así que se podía crear un backup **más grande
+ * de lo que se podía restaurar** — AUD3-15).
+ *
+ * Orden de seguridad: se valida el manifest (anti path-traversal) antes de escribir
+ * nada, se escribe a un staging **temporal**, y solo cuando GCM autentica el archivo
+ * completo se publica en `stagingDir`.
+ */
+export async function stageRestoreFromFileAsync(
+  archivePath: string,
+  passphrase: string,
+  stagingDir: string,
+): Promise<string[]> {
+  const source = await open(archivePath, 'r');
+  const writer = new StagedArchiveWriter(`${stagingDir}.incoming`);
+  try {
+    await rm(`${stagingDir}.incoming`, { recursive: true, force: true });
+    const header = Buffer.alloc(ENVELOPE_HEADER_LEN);
+    const { bytesRead } = await source.read(header, 0, header.length, 0);
+    if (bytesRead < header.length) throw new Error('Archivo de backup no reconocido');
+    const decryptor = await createArchiveDecryptor(header, passphrase);
+
+    const stream = source.createReadStream({ start: header.length, autoClose: false });
+    for await (const chunk of stream) {
+      await writer.push(decryptor.update(chunk as Buffer));
+    }
+    // Autentica ANTES de publicar: hasta aquí lo escrito es texto claro sin verificar.
+    await writer.push(decryptor.final());
+    return await writer.commit(stagingDir);
+  } catch (err) {
+    await writer.discard();
+    throw err;
+  } finally {
+    await source.close();
   }
 }
 

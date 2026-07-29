@@ -1,6 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
+import { createReadStream, createWriteStream, readFileSync } from 'node:fs';
+import { mkdir, rm } from 'node:fs/promises';
 import os from 'node:os';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
   ConnectivityTestResult,
@@ -18,22 +21,28 @@ import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
 import { detectDeployMode } from '../../system/deploy-mode.js';
-import { stageRestoreAsync } from '../../system/restore.js';
+import { resolveDbFile, stageRestoreAsync, stageRestoreFromFileAsync } from '../../system/restore.js';
+import { readStorageInfo } from '../../system/storage.js';
 import { UpdateChecker } from '../../system/update-check.js';
 import { createUpdateSpawner } from '../../system/update-spawner.js';
 import { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
-import { createSecretbox, generateSecretboxKey } from '../../config/secretbox.js';
-import type { MetricsSnapshot } from '@krakenos/types';
+import { createSecretbox, generateSecretboxKey, type Secretbox } from '../../config/secretbox.js';
+import { AutoBackupService } from './auto-backup.service.js';
+import type { MetricsSnapshot, StorageInfo } from '@krakenos/types';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import { SupportService } from './support.service.js';
 import { UpdateService, type UpdateSpawner } from './update.service.js';
 import {
+  autoBackupPassphraseSchema,
+  autoBackupRevealSchema,
+  autoBackupStatusSchema,
   backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
   metricsSchema,
   regenKeysSchema,
   restoreSchema,
+  restoreUploadSchema,
   supportBundleSchema,
   systemInfoSchema,
   systemStatsSchema,
@@ -57,7 +66,25 @@ interface SystemRoutesOpts {
   updateVarDir?: string;
   /** Store de integraciones para el bundle de soporte (US-192; opcional). */
   integrationStore?: IntegrationConfigStore;
+  /** Tope de la subida de restauración (US-233; por defecto 2 GB). Tests. */
+  maxRestoreBytes?: number;
+  /** Secretbox real para la contraseña de la copia automática (US-233). */
+  secretbox?: Secretbox;
+  /** Servicio de copias automáticas ya construido (US-233; server.ts lo comparte). */
+  autoBackupService?: AutoBackupService;
+  /** Directorio de copias automáticas (US-233; por defecto `data/backups`). Tests. */
+  autoBackupDir?: string;
 }
+
+/**
+ * Tope de la subida de restauración (US-233). Sin `bodyLimit` el límite lo pone
+ * esto: muy por encima de la base proyectada (~305 MB) pero acotado para que una
+ * subida hostil no llene el disco.
+ */
+const MAX_RESTORE_BYTES = 2 * 1024 * 1024 * 1024;
+
+/** Marca de «subida demasiado grande» para responder 413 y no 400. */
+class RestoreTooLargeError extends Error {}
 
 /** Valores por defecto de los ajustes editables (cuando no hay fila en `Setting`). */
 const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
@@ -75,6 +102,8 @@ const DEFAULT_SETTINGS: Record<SystemSettingKey, string> = {
   presenceLeaveSweeps: '2',
   presenceNightSuppress: '',
   digestFrequency: 'off',
+  autoBackupFrequency: 'off',
+  autoBackupRetention: '7',
   updateMaintenanceWindow: '',
   telemetryEnabled: 'off',
 };
@@ -100,6 +129,9 @@ const AGENT_VERSION = readAgentVersion();
 
 /** No sondear el driver para métricas más de una vez cada 30 s (US-191). */
 const DRIVER_SAMPLE_THROTTLE_MS = 30_000;
+
+/** Ni medir el disco más de una vez cada 15 s (US-233): `statfs` toca el sistema. */
+const STORAGE_SAMPLE_THROTTLE_MS = 15_000;
 
 /**
  * Comprobador de actualizaciones compartido (US-116). Instancia única a nivel de
@@ -182,6 +214,24 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     readStats(),
   );
 
+  // Disco y tamaño de la base (US-233 / AUD3-21): el fallo más probable de un
+  // aparato sobre SD es quedarse sin espacio, y no lo publicaba nada. Se cachea con
+  // throttle porque el panel de salud sondea cada 5 s y `statfs` toca el sistema.
+  const dbFile = resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db');
+  let storageCache: StorageInfo = {
+    dbBytes: null,
+    diskFreeBytes: null,
+    diskTotalBytes: null,
+    diskUsedPercent: null,
+  };
+  let lastStorageAt = 0;
+  const refreshStorage = async (): Promise<void> => {
+    const now = Date.now();
+    if (now - lastStorageAt < STORAGE_SAMPLE_THROTTLE_MS) return;
+    lastStorageAt = now;
+    storageCache = await readStorageInfo(dbFile);
+  };
+
   /** Instantánea de métricas (US-191), compartida por la ruta y el bundle. */
   function metricsSnapshot(): MetricsSnapshot {
     const mem = process.memoryUsage();
@@ -189,6 +239,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       uptimeSeconds: Math.round(process.uptime()),
       memory: { rssBytes: mem.rss, heapUsedBytes: mem.heapUsed, heapTotalBytes: mem.heapTotal },
       websocketClients: app.io?.sockets?.sockets?.size ?? 0,
+      storage: storageCache,
     });
   }
 
@@ -210,6 +261,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       }
       app.metrics.recordOp(`driver:${driver.kind}`, Date.now() - start, ok);
     }
+    await refreshStorage();
     return metricsSnapshot();
   });
 
@@ -247,6 +299,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     '/support-bundle',
     { preHandler: app.requireActiveAdmin, schema: supportBundleSchema },
     async (req, reply) => {
+      // El disco es lo primero que se mira en un informe de soporte: que vaya fresco.
+      await refreshStorage();
       const bundle = await supportService.buildBundle();
       app.audit({ action: 'system.support-bundle', userId: req.user.sub, ip: req.ip });
       return reply
@@ -407,12 +461,20 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     '/backup',
     { preHandler: app.requireActiveAdmin, schema: backupSchema },
     async (req, reply) => {
-      const archive = await backupService.create(req.body.passphrase);
+      // El archivo se escribe a un temporal y se sirve por **stream** (US-233): en la
+      // escala proyectada, bufferizarlo costaba ~3 copias de la base en RAM (AUD3-15).
+      const tmpFile = resolve('var', `backup-${randomUUID()}.kbk`);
+      await backupService.createToFile(req.body.passphrase, tmpFile);
       app.audit({ action: 'system.backup', userId: req.user.sub, ip: req.ip });
+      const stream = createReadStream(tmpFile);
+      // El temporal se borra en cuanto la respuesta termina (o si el cliente aborta).
+      const cleanup = (): void => void rm(tmpFile, { force: true }).catch(() => undefined);
+      stream.on('close', cleanup);
+      stream.on('error', cleanup);
       return reply
         .header('content-type', 'application/octet-stream')
         .header('content-disposition', 'attachment; filename="krakenos-backup.kbk"')
-        .send(archive);
+        .send(stream);
     },
   );
 
@@ -434,7 +496,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       } catch (err) {
         return reply.code(400).send({
           code: 'RESTORE_INVALID',
-          message: err instanceof Error ? err.message : 'Backup inválido',
+          message: err instanceof Error ? err.message : 'La copia de seguridad no es válida.',
         });
       }
       app.audit({
@@ -444,6 +506,133 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         ip: req.ip,
       });
       return reply.send({ staged: staged.length, restartRequired: true });
+    },
+  );
+
+  // Copias automáticas (US-233 / AUD3-21): hasta ahora la única copia era el botón
+  // manual, o sea que un aparato 24/7 sobre una SD dependía de que el usuario se
+  // acordara. Admin en todo (lectura incluida): es superficie de seguridad, no
+  // telemetría, y la ubicación de las copias no debe filtrarse a otros roles.
+  const autoBackup =
+    opts.autoBackupService ??
+    new AutoBackupService({
+      prisma: app.prisma,
+      secretbox: opts.secretbox ?? createSecretbox(generateSecretboxKey()),
+      backupService,
+      backupDir: opts.autoBackupDir,
+      warn: (message, err) => app.log.warn({ err }, message),
+    });
+
+  app.get(
+    '/backup/auto',
+    { preHandler: app.requireRole('admin'), schema: autoBackupStatusSchema },
+    () => autoBackup.getStatus(),
+  );
+
+  app.post(
+    '/backup/auto/run',
+    { preHandler: app.requireActiveAdmin, schema: autoBackupStatusSchema },
+    async (req) => {
+      const status = await autoBackup.runNow();
+      app.audit({
+        action: 'system.backup.auto',
+        userId: req.user.sub,
+        detail: status.lastError ? `fallo: ${status.lastError}` : `${status.count} copias`,
+        ip: req.ip,
+      });
+      return status;
+    },
+  );
+
+  app.post<{ Body: { passphrase?: string } }>(
+    '/backup/auto/passphrase',
+    { preHandler: app.requireActiveAdmin, schema: autoBackupPassphraseSchema },
+    async (req) => {
+      const { generated } = await autoBackup.setPassphrase(req.body?.passphrase);
+      app.audit({
+        action: 'system.backup.passphrase',
+        userId: req.user.sub,
+        detail: generated ? 'generada' : 'fijada por el admin',
+        ip: req.ip,
+      });
+      return { passphraseSet: true, generated };
+    },
+  );
+
+  // Revelar la contraseña es necesario: una copia que nadie puede descifrar no es una
+  // copia. No concede nada nuevo (un admin ya puede crear una copia con la
+  // contraseña que quiera), pero queda auditado por si acaso.
+  app.post(
+    '/backup/auto/passphrase/reveal',
+    { preHandler: app.requireActiveAdmin, schema: autoBackupRevealSchema },
+    async (req) => {
+      const passphrase = await autoBackup.revealPassphrase();
+      app.audit({ action: 'system.backup.passphrase.reveal', userId: req.user.sub, ip: req.ip });
+      return { passphrase };
+    },
+  );
+
+  // Restauración por **streaming** (US-233): el archivo sube en binario y se escribe
+  // a un temporal, sin base64 (que lo inflaba un 33 %) ni el `bodyLimit` de 64 MB de
+  // la ruta de arriba — se podía crear un backup más grande de lo que se podía
+  // restaurar (AUD3-15). La passphrase va en cabecera, NO en la URL (acabaría en los
+  // logs del proxy). El parser de octet-stream está acotado a este módulo.
+  app.addContentTypeParser(
+    'application/octet-stream',
+    (_req, payload, done) => done(null, payload),
+  );
+  app.post(
+    '/restore/upload',
+    { preHandler: app.requireActiveAdmin, schema: restoreUploadSchema },
+    async (req, reply) => {
+      const passphrase = req.headers['x-restore-passphrase'];
+      if (typeof passphrase !== 'string' || passphrase.length === 0) {
+        return reply
+          .code(400)
+          .send({ code: 'RESTORE_INVALID', message: 'Falta la contraseña de la copia de seguridad.' });
+      }
+      const maxBytes = opts.maxRestoreBytes ?? MAX_RESTORE_BYTES;
+      const tmpFile = resolve('var', `restore-upload-${randomUUID()}.kbk`);
+      await mkdir(dirname(tmpFile), { recursive: true });
+      try {
+        let bytes = 0;
+        const out = createWriteStream(tmpFile, { mode: 0o600 });
+        try {
+          for await (const chunk of req.body as AsyncIterable<Buffer>) {
+            bytes += chunk.length;
+            // Cota propia: sin `bodyLimit`, el tope lo pone esto (y no el disco).
+            if (bytes > maxBytes) throw new RestoreTooLargeError();
+            if (!out.write(chunk)) {
+              await once(out, 'drain');
+            }
+          }
+        } finally {
+          out.end();
+          await once(out, 'close');
+        }
+
+        const staged = await stageRestoreFromFileAsync(tmpFile, passphrase, restoreStagingDir);
+        app.audit({
+          action: 'system.restore.staged',
+          userId: req.user.sub,
+          detail: `${staged.length} ficheros (subida directa)`,
+          ip: req.ip,
+        });
+        return reply.send({ staged: staged.length, restartRequired: true });
+      } catch (err) {
+        if (err instanceof RestoreTooLargeError) {
+          return reply.code(413).send({
+            code: 'RESTORE_TOO_LARGE',
+            message: 'La copia supera el tamaño máximo admitido.',
+          });
+        }
+        return reply.code(400).send({
+          code: 'RESTORE_INVALID',
+          message: err instanceof Error ? err.message : 'La copia de seguridad no es válida.',
+        });
+      } finally {
+        await rm(tmpFile, { force: true });
+      }
     },
   );
 };

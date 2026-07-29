@@ -9,6 +9,8 @@ import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
+import { AutoBackupService } from './modules/system/auto-backup.service.js';
+import { BackupService } from './system/backup.service.js';
 import { SETTING_BOUNDS, clampToBound } from './config/settings-bounds.js';
 import { IntegrationConfigStore } from './integrations/integration-config.store.js';
 import { buildIntegrationRuntime } from './integrations/runtime.js';
@@ -280,12 +282,26 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.
   await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
+  // Copias automáticas (US-233 / AUD3-21): un aparato 24/7 sobre una SD no puede
+  // depender de que alguien se acuerde de pulsar «Copia de seguridad». Se construye
+  // aquí (con el secretbox REAL, para que la contraseña sobreviva a un reinicio) y se
+  // comparte con las rutas.
+  const autoBackupService = new AutoBackupService({
+    prisma: app.prisma,
+    secretbox,
+    backupService: new BackupService(app.prisma),
+    warn: (message, err) => app.log.warn({ err }, message),
+  });
   await app.register(systemRoutes, {
     prefix: '/api/system',
     driver,
     inventoryService,
     integrationStore,
+    secretbox,
+    autoBackupService,
   });
+  autoBackupService.start();
+  app.addHook('onClose', async () => autoBackupService.stop());
   await app.register(vpnRoutes, {
     prefix: '/api/vpn',
     vpn,

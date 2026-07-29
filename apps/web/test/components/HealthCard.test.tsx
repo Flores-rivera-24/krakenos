@@ -13,6 +13,12 @@ const snapshot: MetricsSnapshot = {
   http: { total: 42, errors: 3, errorRate: 3 / 42, avgLatencyMs: 12.4, p95LatencyMs: 55, inFlight: 2 },
   eventLoop: { lagMs: 4, maxLagMs: 9 },
   websocketClients: 5,
+  storage: {
+    dbBytes: 42 * 1024 * 1024,
+    diskFreeBytes: 3 * 1024 ** 3,
+    diskTotalBytes: 12 * 1024 ** 3,
+    diskUsedPercent: 75,
+  },
   managers: [{ name: 'driver:mock', count: 7, errors: 1, avgLatencyMs: 8.2, maxLatencyMs: 20 }],
   timestamp: '2026-07-13T10:00:00.000Z',
 };
@@ -31,6 +37,22 @@ describe('HealthCard — observabilidad (US-191)', () => {
     expect(screen.getByText('12 / 55 ms')).toBeInTheDocument();
     expect(screen.getByText('driver:mock')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/system/metrics');
+  });
+
+  // US-233: el disco es el fallo más probable de un aparato sobre tarjeta SD.
+  it('muestra el disco libre y el tamaño de la base', async () => {
+    render(<HealthCard />);
+    expect(await screen.findByText('3.0 GB · 75%')).toBeInTheDocument();
+    expect(screen.getByText('42 MB')).toBeInTheDocument();
+  });
+
+  it('no se rompe si el agente no manda el bloque de almacenamiento', async () => {
+    const { storage: _omitted, ...withoutStorage } = snapshot;
+    apiMock.get.mockReset().mockResolvedValue(withoutStorage);
+    render(<HealthCard />);
+    // La tarjeta sigue pintando el resto y el disco sale como desconocido.
+    expect(await screen.findByText('1 h 2 min')).toBeInTheDocument();
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0);
   });
 
   it('muestra un error si no se pueden cargar las métricas', async () => {

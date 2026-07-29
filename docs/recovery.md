@@ -71,19 +71,30 @@ energía, grabaciones de cámara o backups viejos en disco.
 **Síntoma:** no puedes entrar como administrador y no hay otro admin activo.
 
 **Realidad (sin inventar features):** KrakenOS **no** tiene un "olvidé mi contraseña" por email
-—no depende de la nube—. **No hay reset self-service sin acceso a la base de datos.** El cambio de
-contraseña propio (Ajustes → Cuenta) exige la contraseña actual.
+—no depende de la nube— ni un endpoint de reset: eso sería una puerta abierta en un panel de
+administración de red. La recuperación se hace **en el servidor**, donde ya tienes control total.
 
-**Vías de recuperación:**
+**Vías de recuperación, en orden:**
 
-- **Otro admin.** Si existe otro usuario con rol admin activo, que entre y te resetee la
-  contraseña desde **Ajustes → Usuarios**.
-- **Acceso a la DB (control físico del servidor).** Con acceso al host puedes recrear el admin
-  reejecutando el *seed* sobre una base sin usuarios, o crear/ajustar el usuario admin
-  directamente en la tabla `User` de SQLite (la contraseña es un hash; hay que escribir un hash
-  válido, no texto plano). Esto es deliberadamente manual: quien controla el disco controla la
-  instancia.
-- **Restaurar** un backup `.kbk` anterior a la pérdida (§1) si en él recuerdas la contraseña.
+1. **Otro admin.** Si existe otro usuario con rol admin activo, que entre y te resetee la
+   contraseña desde **Ajustes → Usuarios**.
+2. **`reset-admin` en el servidor** (US-233). Crea el admin si no existe, o resetea el que hay
+   —contraseña, rol `admin` y cuenta **activa**— y revoca sus sesiones abiertas:
+
+   ```bash
+   cd /opt/krakenos/apps/agent
+   sudo -u krakenos node dist/reset-admin.js tu@correo.com            # genera una contraseña temporal
+   sudo -u krakenos node dist/reset-admin.js tu@correo.com 'MiClave1' # o la que tú digas (≥10, con letra y dígito)
+   ```
+
+   Imprime la contraseña temporal por pantalla; cámbiala al entrar (Ajustes → Cuenta). Corre con
+   el **usuario del servicio** para no dejar ficheros propiedad de root. No hace falta parar el
+   agente. En Docker: `docker compose exec krakenos node dist/reset-admin.js tu@correo.com`.
+3. **Restaurar** un backup `.kbk` anterior a la pérdida (§1), si en él recuerdas la contraseña.
+
+> Lo que **no** funciona (y antes esta guía sugería): reejecutar `pnpm db:seed`. El seed hace un
+> `upsert` con `update: {}`, así que si el usuario ya existe **no cambia nada**; y sobre una base
+> con usuarios el wizard `/setup` responde 409.
 
 ---
 
@@ -110,6 +121,77 @@ arranque y auditoría.
   (`docker compose up -d`). A partir de ahí Docker rota solo.
 - Para vaciar de inmediato un log ya enorme, recrear el contenedor (`docker compose down && up -d`)
   arranca con logs limpios.
+
+---
+
+---
+
+## 5. La tarjeta SD se ha quedado en solo-lectura
+
+**Síntoma:** la app carga y se ve, pero **nada se guarda**: los cambios de ajustes no persisten,
+la auditoría no crece, las copias fallan. `/health/ready` responde **503** (desde US-233 escribe un
+canario, así que detecta esto; antes respondía 200 alegremente). En el journal:
+`SQLITE_READONLY` o `attempt to write a readonly database`.
+
+**Causa:** es el final típico de una microSD gastada — el kernel detecta errores de escritura y
+remonta el sistema de ficheros como `ro` para protegerlo.
+
+**Qué hacer:**
+
+1. Confirma el diagnóstico:
+
+   ```bash
+   mount | grep ' / '                 # ¿aparece "ro," en las opciones?
+   dmesg | tail -30                   # errores de E/S de la tarjeta
+   journalctl -u krakenos -n 50       # el aviso del canario de readiness
+   ```
+
+2. **No reescribas la tarjeta.** Copia lo que puedas a otro medio (en solo-lectura se puede leer):
+   el `.db` (con su `-wal`), `keys/` y `data/`, más las copias de `data/backups/` si las hay.
+3. Graba una tarjeta nueva, instala KrakenOS y **restaura** desde el `.kbk` más reciente (§1) o
+   coloca a mano el `.db`/`keys/`/`data/` que rescataste.
+4. Para la próxima: activa las **copias automáticas** (Ajustes → Sistema → Copia de seguridad) y
+   llévate los `.kbk` fuera del servidor. Una copia que vive en el disco que muere no es una copia.
+
+---
+
+## 6. La actualización se quedó «en curso» y no avanza
+
+**Síntoma:** la tarjeta de Actualizaciones dice «Actualización en curso…» y no cambia.
+
+**Causa:** el proceso actualizador murió (o se atascó, p. ej. `pnpm install` esperando una red que
+no vuelve) dejando su lock en `var/update.lock`.
+
+**Qué hacer:** desde **Ajustes → Sistema → Actualizaciones**, pulsa **«Cancelar actualización»**
+(libera el lock; no mata el proceso, así que si sigue vivo terminará y escribirá su resultado). El
+lock además **caduca solo** si su proceso ya no existe o pasan 20 minutos, así que muchas veces basta
+con esperar y recargar. Como último recurso, con el servicio parado: `rm /opt/krakenos/apps/agent/var/update.lock`.
+El resultado de la última actualización está en `var/update-result.json`.
+
+---
+
+## 7. Se ha perdido `secretbox.key`
+
+**Síntoma:** el agente arranca, pero las integraciones configuradas desde la UI dejan de conectar y
+en el log aparecen fallos al descifrar secretos. La contraseña de las copias automáticas tampoco se
+puede leer.
+
+**Causa:** `keys/secretbox.key` es la clave que cifra **en reposo** los secretos guardados en la
+base (credenciales de router, contraseña del broker MQTT, contraseña de la copia automática). Sin
+ella, esos valores son bytes sin sentido: no hay puerta trasera, y eso es a propósito.
+
+**Qué hacer:**
+
+1. Si tienes un backup `.kbk`, **restáuralo** (§1): el archivo incluye `keys/`, así que recupera la
+   clave y con ella los secretos.
+2. Si no lo tienes, la base sigue siendo válida: lo único perdido son los **secretos cifrados**. El
+   agente genera una `secretbox.key` nueva al arrancar; entra y **vuelve a introducir** las
+   credenciales de cada integración (Conectar → cada integración → Guardar) y regenera la
+   contraseña de las copias automáticas. Usuarios, dispositivos, histórico, reglas y planos no se
+   pierden.
+
+> No borres nunca `keys/` "para empezar de cero" sin haber exportado antes una copia: ahí viven
+> también las claves RS256 de las sesiones.
 
 ---
 

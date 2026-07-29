@@ -111,6 +111,10 @@ export interface BuildTestAppOptions {
   tailscale?: TailscaleTransport;
   /** Registra `@fastify/rate-limit` (global:false) como en producción. */
   rateLimit?: boolean;
+  /** Tope de la subida de restauración (US-233): permite probar el 413 sin 2 GB. */
+  maxRestoreBytes?: number;
+  /** Directorio de copias automáticas (US-233): un temporal por test. */
+  autoBackupDir?: string;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
   /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
@@ -148,7 +152,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   await app.register(metricsPlugin);
   await app.register(authPlugin);
   await app.register(socketioPlugin);
-  await app.register(healthRoutes);
+  // Throttle a 0: los tests necesitan observar la escritura del canario (US-233).
+  await app.register(healthRoutes, { readinessThrottleMs: 0 });
 
   if (opts.routes) {
     // Mismo envoltorio que producción: fallos del driver → 502 tipados (US-98).
@@ -220,7 +225,13 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
-    await app.register(systemRoutes, { prefix: '/api/system', driver, inventoryService });
+    await app.register(systemRoutes, {
+      prefix: '/api/system',
+      driver,
+      inventoryService,
+      maxRestoreBytes: opts.maxRestoreBytes,
+      autoBackupDir: opts.autoBackupDir,
+    });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     // Tailscale (US-215): por defecto "socket ausente" (ENOENT → not-installed);
     // los tests de comportamiento inyectan su transporte falso.

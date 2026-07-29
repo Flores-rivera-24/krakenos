@@ -159,6 +159,8 @@ export const es = {
   'settings.health.latency': 'Latencia (media / p95)',
   'settings.health.inFlight': 'En curso',
   'settings.health.loopLag': 'Retraso del bucle',
+  'settings.health.disk': 'Disco libre',
+  'settings.health.dbSize': 'Base de datos',
   'settings.health.wsClients': 'Clientes en tiempo real',
   'settings.health.managers': 'Managers',
   'settings.health.noManagers': 'Aún sin muestras de manager.',
