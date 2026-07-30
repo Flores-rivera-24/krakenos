@@ -49,5 +49,16 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'] },
     },
+    // Proyecto en INGLÉS (US-261). El `locale: 'es-ES'` global es necesario para
+    // que los selectores en español funcionen, pero tenía un efecto secundario
+    // caro: **ninguna regresión de i18n era detectable** — el catálogo `en.ts`
+    // podía quedarse a medias y la suite seguía verde. Este proyecto es el único
+    // que corre en `en-US`, y por eso vive en su propio `testDir`.
+    {
+      name: 'chromium-en',
+      testDir: './tests-en',
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], locale: 'en-US' },
+    },
   ],
 });
