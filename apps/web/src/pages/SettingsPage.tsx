@@ -20,6 +20,7 @@ import { MobileAccessCard } from '@/components/vpn/MobileAccessCard';
 import { UiModeCard } from '@/components/settings/UiModeCard';
 import { HealthCard } from '@/components/settings/HealthCard';
 import { SupportCard } from '@/components/settings/SupportCard';
+import { TlsCard } from '@/components/settings/TlsCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
@@ -407,6 +408,10 @@ export function SettingsPage() {
                   </Setting>
                 </CardContent>
               </Card>
+
+              {/* TLS (US-241): tres features entregadas quedaban inertes sin
+                  contexto seguro y nada lo decía. */}
+              <TlsCard />
 
               <UpdateCard />
 

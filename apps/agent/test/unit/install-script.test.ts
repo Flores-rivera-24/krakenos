@@ -175,7 +175,7 @@ describe('install.sh --dry-run (US-216)', () => {
     }
   });
 
-  it('--with-all instala los tres extras y no hay nada que avisar', async () => {
+  it('--with-all instala los tres extras, pero el TLS sigue faltando y se avisa', async () => {
     const { code, stdout } = await runInstaller([
       '--dry-run',
       '--yes',
@@ -189,7 +189,54 @@ describe('install.sh --dry-run (US-216)', () => {
     expect(stdout).toContain('pnpm add node-ssh mqtt net-snmp ws');
     // El manifiesto que el actualizador reinstala tras cada update (AUD3-22).
     expect(stdout).toContain('extra-deps.json');
-    expect(stdout).not.toContain('Qué quedó FUERA');
+    // US-241: el TLS NO es un extra más — `--with-all` no lo incluye a propósito,
+    // porque implica elegir entre Tailscale y autofirmado. Y sin él se dice qué
+    // deja de funcionar, en vez de dar la instalación por completa.
+    expect(stdout).toContain('Qué quedó FUERA');
+    expect(stdout).toContain('sin HTTPS');
+  });
+
+  it('--tls self deja la instalación sin nada que avisar', async () => {
+    const { code, stdout } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--with-all',
+      '--tls',
+      'self',
+      '--dir',
+      '/tmp/kraken-x',
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('gen-cert.sh');
+    expect(stdout).toContain('HTTPS_ENABLED=true');
+    // Con TLS y los tres extras ya no queda nada pendiente… salvo el aviso propio
+    // del autofirmado, que es información, no una carencia silenciada.
+    expect(stdout).toContain('cada móvil avisará');
+  });
+
+  it('--tls tailscale se PARA si Tailscale no está listo, en vez de dejarlo a medias', async () => {
+    // Degradar en silencio a HTTP dejaría al usuario creyendo que tiene HTTPS.
+    const { code, stdout, stderr } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--tls',
+      'tailscale',
+      '--dir',
+      '/tmp/kraken-x',
+    ]);
+    const salida = stdout + stderr;
+    if (code !== 0) {
+      expect(salida).toContain('Tailscale');
+    } else {
+      // Si el entorno SÍ tiene tailscale, debe haber emitido el certificado.
+      expect(salida).toContain('tailscale cert');
+    }
+  });
+
+  it('--tls rechaza un valor que no existe', async () => {
+    const { code, stderr } = await runInstaller(['--dry-run', '--tls', 'lo-que-sea']);
+    expect(code).not.toBe(0);
+    expect(stderr).toContain('--tls admite');
   });
 
   it('cada extra se activa por separado', async () => {

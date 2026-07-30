@@ -17,6 +17,9 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'alarm.triggered', label: '¡Alarma disparada!' },
   { event: 'alarm.sensor_fault', label: 'Sensor de alarma caído' },
   { event: 'alarm.disarm_denied', label: 'PIN de alarma incorrecto' },
+  // US-241: el certificado caduca en silencio y se lleva por delante la PWA, los
+  // avisos y las passkeys. Enterarse cuando el móvil deja de conectar es tarde.
+  { event: 'system.tls_expiring', label: 'El certificado HTTPS va a caducar' },
 ];
 
 const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));

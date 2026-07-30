@@ -41,6 +41,7 @@ import { BackupCodeService } from './webauthn/backup-codes.service.js';
 import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.service.js';
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
+import { TlsService } from './modules/system/tls.service.js';
 import { accessRoutes } from './modules/access/access.routes.js';
 import { AccessScheduleService } from './modules/access/access.service.js';
 import { peopleRoutes } from './modules/people/people.routes.js';
@@ -308,6 +309,14 @@ export async function buildServer(): Promise<FastifyInstance> {
     backupService: new BackupService(app.prisma),
     warn: (message, err) => app.log.warn({ err }, message),
   });
+  // Vigilancia del certificado TLS (US-241): lo relee del disco, lo aplica en
+  // caliente cuando Tailscale lo renueva (dura 90 días) y avisa antes de que
+  // caduque. Sin esto, la instalación se rompía sola a los tres meses.
+  const tlsService = new TlsService(app, {
+    certPath: env.tlsCertPath,
+    keyPath: env.tlsKeyPath,
+    behindProxy: env.behindProxy,
+  });
   await app.register(systemRoutes, {
     prefix: '/api/system',
     driver,
@@ -315,9 +324,12 @@ export async function buildServer(): Promise<FastifyInstance> {
     integrationStore,
     secretbox,
     autoBackupService,
+    tlsService,
   });
   autoBackupService.start();
   app.addHook('onClose', async () => autoBackupService.stop());
+  tlsService.start();
+  app.addHook('onClose', async () => tlsService.stop());
   await app.register(vpnRoutes, {
     prefix: '/api/vpn',
     vpn,

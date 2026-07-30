@@ -26,6 +26,14 @@
 #   --with-deps      deps opcionales de integraciones (node-ssh, mqtt, net-snmp, ws)
 #   --with-all       las tres anteriores
 #
+# TLS (US-241) — sin HTTPS el navegador no da «contexto seguro» y se caen la app
+# instalable (PWA), los avisos push y las passkeys:
+#   --tls tailscale  certificado de Let's Encrypt vía Tailscale para *.ts.net
+#                    (el móvil confía sin instalar nada) + renovación por timer
+#   --tls self       certificado autofirmado: cifra, pero cada dispositivo avisará
+#                    salvo que instales la CA a mano
+#   --tls none       (por defecto) HTTP plano; se avisa al final de lo que pierdes
+#
 # En `curl | sudo bash` stdin ES la tubería, así que no hay TTY para preguntar: por
 # eso los extras se piden por bandera. Antes se «ofrecían» y siempre salían que no,
 # dejando la instalación sin cámaras ni VPN en silencio (AUD3-23).
@@ -55,6 +63,7 @@ BRANCH=""
 WITH_HELPER=0
 WITH_FFMPEG=0
 WITH_DEPS=0
+TLS_MODE=none
 # Resumen final: lo que quedó desactivado se dice en voz alta, no en silencio.
 SUMMARY=()
 
@@ -112,6 +121,14 @@ parse_args() {
         shift
         ;;
       --no-service) NO_SERVICE=1 ;;
+      --tls)
+        [[ $# -ge 2 ]] || die "--tls necesita un valor: tailscale | self | none"
+        case "$2" in
+          tailscale | self | none) TLS_MODE="$2" ;;
+          *) die "--tls admite tailscale | self | none (recibido: $2)" ;;
+        esac
+        shift
+        ;;
       --with-helper) WITH_HELPER=1 ;;
       --with-ffmpeg) WITH_FFMPEG=1 ;;
       --with-deps) WITH_DEPS=1 ;;
@@ -467,6 +484,132 @@ print_setup_url() {
   fi
 }
 
+
+# Escribe un fichero completo respetando --dry-run (mismo patrón que la unidad
+# systemd: en plan solo se anuncia).
+write_file() {
+  local path="$1" content="$2"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ write %s\n' "$path"
+    return 0
+  fi
+  printf '%s\n' "$content" > "$path"
+}
+
+# ---------------------------------------------------------------- TLS (US-241)
+# Sin HTTPS el navegador no considera «seguro» el origen y se caen tres cosas ya
+# entregadas: la app instalable (service worker), los avisos push y las passkeys.
+# No es una mejora estética: es el flujo diario en el móvil.
+
+# Escribe (o reemplaza) una clave en el .env del agente.
+set_env_var() {
+  local key="$1" value="$2" env_file="$INSTALL_DIR/apps/agent/.env"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ %s=%s en %s\n' "$key" "$value" "$env_file"
+    return 0
+  fi
+  if grep -q "^${key}=" "$env_file" 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$env_file"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$env_file"
+  fi
+}
+
+# Nombre MagicDNS de esta máquina, leído de la propia CLI de Tailscale.
+tailscale_fqdn() {
+  tailscale status --json 2>/dev/null | sed -n 's/.*"DNSName": *"\([^"]*\)\..*/\1/p' | head -1
+}
+
+# Certificado de Let's Encrypt vía Tailscale: el móvil confía sin instalar nada.
+setup_tls_tailscale() {
+  local certs="$INSTALL_DIR/apps/agent/certs" fqdn
+  command -v tailscale > /dev/null 2>&1 ||
+    die "--tls tailscale necesita Tailscale instalado y con sesión iniciada (ver docs/remote-access.md)"
+  fqdn="$(tailscale_fqdn || true)"
+  # Sin FQDN no se puede emitir nada: se para en vez de dejar a medias una
+  # instalación que el usuario creería con HTTPS.
+  [[ -n "$fqdn" || $DRY_RUN -eq 1 ]] ||
+    die "Tailscale no reporta nombre MagicDNS: haz 'tailscale up' y activa MagicDNS + HTTPS en la consola del tailnet"
+  fqdn="${fqdn:-ejemplo.tailnet.ts.net}"
+
+  run mkdir -p "$certs"
+  log "    emitiendo certificado para $fqdn (Let's Encrypt vía Tailscale)…"
+  run tailscale cert --cert-file "$certs/agent-cert.pem" --key-file "$certs/agent-key.pem" "$fqdn"
+  run chown -R "$SERVICE_USER":"$SERVICE_USER" "$certs"
+  run chmod 600 "$certs/agent-key.pem"
+
+  set_env_var HTTPS_ENABLED true
+  set_env_var TLS_CERT_PATH "./certs/agent-cert.pem"
+  set_env_var TLS_KEY_PATH "./certs/agent-key.pem"
+  set_env_var WEB_ORIGIN "https://${fqdn}"
+  install_tls_renew_timer "$fqdn"
+
+  # Certificate Transparency: el nombre queda publicado en un registro PÚBLICO y
+  # permanente. No filtra la IP ni el contenido, pero se dice — enterarse después
+  # es enterarse mal.
+  SUMMARY+=("TLS por Tailscale: el nombre «$fqdn» queda publicado en los registros públicos de Certificate Transparency (no tu IP ni tus datos)")
+}
+
+# Renovación: el cert de Let's Encrypt dura 90 días. `tailscale cert` es idempotente
+# y solo renueva cuando toca; el agente detecta el fichero nuevo y lo aplica EN
+# CALIENTE (no hace falta reiniciar el servicio).
+install_tls_renew_timer() {
+  local fqdn="$1" certs="$INSTALL_DIR/apps/agent/certs"
+  [[ $NO_SERVICE -eq 1 ]] && {
+    SUMMARY+=("sin systemd: el certificado NO se renovará solo — programa 'tailscale cert' cada mes")
+    return 0
+  }
+  write_file "/etc/systemd/system/${SERVICE_NAME}-cert.service" "$(
+    cat << UNIT
+[Unit]
+Description=Renueva el certificado TLS de KrakenOS (Tailscale)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env tailscale cert --cert-file ${certs}/agent-cert.pem --key-file ${certs}/agent-key.pem ${fqdn}
+ExecStartPost=/usr/bin/env chown ${SERVICE_USER}:${SERVICE_USER} ${certs}/agent-cert.pem ${certs}/agent-key.pem
+UNIT
+  )"
+  write_file "/etc/systemd/system/${SERVICE_NAME}-cert.timer" "$(
+    cat << 'UNIT'
+[Unit]
+Description=Renovacion semanal del certificado TLS de KrakenOS
+
+[Timer]
+OnCalendar=weekly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+  )"
+  run systemctl daemon-reload
+  run systemctl enable --now "${SERVICE_NAME}-cert.timer"
+  log "    renovación automática programada (timer semanal; el agente recarga el cert sin reiniciar)"
+}
+
+# Autofirmado: cifra el tráfico, pero NINGÚN dispositivo confía en él de serie.
+setup_tls_self_signed() {
+  local agent="$INSTALL_DIR/apps/agent"
+  run bash "$agent/scripts/gen-cert.sh"
+  run chown -R "$SERVICE_USER":"$SERVICE_USER" "$agent/certs"
+  set_env_var HTTPS_ENABLED true
+  set_env_var TLS_CERT_PATH "./certs/agent-cert.pem"
+  set_env_var TLS_KEY_PATH "./certs/agent-key.pem"
+  SUMMARY+=("TLS autofirmado: cada móvil avisará de «sitio no seguro» hasta que instales la CA en él. Para que confíe sin tocar nada: reinstala con --tls tailscale")
+}
+
+setup_tls() {
+  log "TLS (US-241)…"
+  case "$TLS_MODE" in
+    tailscale) setup_tls_tailscale ;;
+    self) setup_tls_self_signed ;;
+    none)
+      SUMMARY+=("sin HTTPS → NO funcionan la app instalable (PWA), los avisos push ni las passkeys: el navegador exige contexto seguro (--tls tailscale)")
+      ;;
+  esac
+}
+
 # ---------------------------------------------------------------- extras opt-in
 # Deps opcionales de integraciones: no están en package.json (CI con lockfile
 # congelado) y se cargan con import perezoso. Se anotan en data/extra-deps.json
@@ -614,6 +757,10 @@ main() {
   ensure_pnpm
   fetch_source
   build_and_configure
+  # TLS antes de arrancar el servicio: el agente lee el cert al iniciar, así que
+  # emitirlo después dejaría la primera ejecución en HTTP hasta el siguiente
+  # reinicio (US-241).
+  setup_tls
   harden_permissions
   install_service
   install_extras

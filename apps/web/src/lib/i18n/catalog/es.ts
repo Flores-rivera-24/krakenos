@@ -834,6 +834,32 @@ export const es = {
     'Corte indefinido de un dispositivo. Solo vuelve cuando alguien lo desbloquea.',
   'access.kinds.note': 'Son independientes y se suman: mientras quede una activa, no hay internet.',
 
+  // --- TLS de la instalación (US-241) ---
+  'settings.tls.title': 'Conexión segura (HTTPS)',
+  'settings.tls.on': 'Tu instalación se sirve por HTTPS.',
+  'settings.tls.off': 'Tu instalación se sirve por HTTP, sin cifrar.',
+  'settings.tls.behindProxy': 'el cifrado lo termina el proxy que tienes delante',
+  'settings.tls.disabledTitle': 'Sin HTTPS hay funciones que el navegador no deja arrancar',
+  'settings.tls.feature.pwa': 'Instalar KrakenOS como app en el móvil.',
+  'settings.tls.feature.push': 'Recibir avisos en el móvil.',
+  'settings.tls.feature.passkeys': 'Entrar con passkey (segundo factor).',
+  'settings.tls.howTo':
+    'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador con «--tls tailscale» y tu móvil confiará sin instalar nada.',
+  'settings.tls.sourceLabel': 'Certificado',
+  'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
+  'settings.tls.source.selfSigned': 'Autofirmado',
+  'settings.tls.source.unknown': 'Desconocido',
+  'settings.tls.expiresLabel': 'Caduca',
+  'settings.tls.daysLeft': '(quedan {n} días)',
+  'settings.tls.expiringTitle': 'El certificado va a caducar',
+  'settings.tls.expiringDesc':
+    'Quedan {n} días. Si se renueva solo, KrakenOS lo aplicará sin reiniciar; si no, vuelve a emitirlo antes de esa fecha o nadie podrá entrar.',
+  'settings.tls.expiredTitle': 'El certificado ha caducado',
+  'settings.tls.expiredDesc':
+    'Los navegadores ya están rechazando la conexión. Emite uno nuevo: KrakenOS lo detecta y lo aplica sin reiniciar.',
+  'settings.tls.selfSignedNote':
+    'Al ser autofirmado, cada dispositivo avisará de «sitio no seguro» hasta que instales la CA en él.',
+
   // --- Energía (US-182) ---
   'energy.loadError': 'No se pudo cargar el consumo',
   'energy.title': 'Energía',

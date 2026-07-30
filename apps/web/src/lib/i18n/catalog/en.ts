@@ -825,6 +825,32 @@ export const en: Record<TranslationKey, string> = {
     'An open-ended cut on one device. It only comes back when someone unblocks it.',
   'access.kinds.note': 'They are independent and they stack: while any one is on, there is no internet.',
 
+  // --- Installation TLS (US-241) ---
+  'settings.tls.title': 'Secure connection (HTTPS)',
+  'settings.tls.on': 'Your installation is served over HTTPS.',
+  'settings.tls.off': 'Your installation is served over plain HTTP.',
+  'settings.tls.behindProxy': 'encryption is terminated by the proxy in front of it',
+  'settings.tls.disabledTitle': 'Without HTTPS the browser refuses to start some features',
+  'settings.tls.feature.pwa': 'Installing KrakenOS as an app on your phone.',
+  'settings.tls.feature.push': 'Receiving alerts on your phone.',
+  'settings.tls.feature.passkeys': 'Signing in with a passkey (second factor).',
+  'settings.tls.howTo':
+    'This is not an in-app setting: it is decided at install time. Re-run the installer with «--tls tailscale» and your phone will trust it without installing anything.',
+  'settings.tls.sourceLabel': 'Certificate',
+  'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
+  'settings.tls.source.selfSigned': 'Self-signed',
+  'settings.tls.source.unknown': 'Unknown',
+  'settings.tls.expiresLabel': 'Expires',
+  'settings.tls.daysLeft': '({n} days left)',
+  'settings.tls.expiringTitle': 'The certificate is about to expire',
+  'settings.tls.expiringDesc':
+    '{n} days left. If it renews on its own, KrakenOS will apply it without restarting; if not, reissue it before that date or nobody will be able to get in.',
+  'settings.tls.expiredTitle': 'The certificate has expired',
+  'settings.tls.expiredDesc':
+    'Browsers are already refusing the connection. Issue a new one: KrakenOS picks it up and applies it without restarting.',
+  'settings.tls.selfSignedNote':
+    'Being self-signed, every device will warn about an «insecure site» until you install the CA on it.',
+
   // --- Energy (US-182) ---
   'energy.loadError': 'Could not load consumption',
   'energy.title': 'Energy',

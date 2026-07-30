@@ -173,12 +173,17 @@ const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
  * scripts/gen-cert.sh). En desarrollo se deja en HTTP.
  */
 const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
-const https = httpsEnabled
-  ? {
-      key: readFileSync(resolve(required('TLS_KEY_PATH')), 'utf8'),
-      cert: readFileSync(resolve(required('TLS_CERT_PATH')), 'utf8'),
-    }
-  : null;
+// Las RUTAS se conservan además del contenido (US-241): el certificado se renueva
+// solo (Tailscale, cada 90 días) y hay que poder releerlo del disco sin reiniciar.
+const tlsCertPath = httpsEnabled ? resolve(required('TLS_CERT_PATH')) : null;
+const tlsKeyPath = httpsEnabled ? resolve(required('TLS_KEY_PATH')) : null;
+const https =
+  tlsCertPath && tlsKeyPath
+    ? {
+        key: readFileSync(tlsKeyPath, 'utf8'),
+        cert: readFileSync(tlsCertPath, 'utf8'),
+      }
+    : null;
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -478,6 +483,8 @@ export const env = {
 
   /** Config TLS (`{ key, cert }`) o `null` si el agente corre en HTTP. */
   https,
+  tlsCertPath,
+  tlsKeyPath,
 
   /**
    * `trustProxy` de Fastify (US-76, F2). Configúralo si el agente corre tras un
