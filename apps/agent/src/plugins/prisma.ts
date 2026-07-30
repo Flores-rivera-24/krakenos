@@ -30,27 +30,64 @@ declare module 'fastify' {
  * - `foreign_keys=ON`: Prisma ya lo activa por conexión; se deja explícito para que
  *   una consulta cruda no dependa de ese detalle.
  */
-const SQLITE_PRAGMAS = [
+export const SQLITE_PRAGMAS = [
   'PRAGMA journal_mode = WAL',
   'PRAGMA synchronous = NORMAL',
   'PRAGMA busy_timeout = 5000',
   'PRAGMA foreign_keys = ON',
 ];
 
+/** Cliente mínimo que necesita `applySqlitePragmas` (facilita testearlo aislado). */
+export interface PragmaRunner {
+  $queryRawUnsafe(query: string): Promise<unknown>;
+}
+
+/**
+ * Aplica los PRAGMAs a una conexión ya abierta. Exportado **para poder probarlo
+ * contra una base nueva**: el test de contrato anterior (`sqlite-pragmas.test.ts`)
+ * consultaba `journal_mode` sobre `prisma/test.db`, que **ya venía en WAL** de
+ * ejecuciones anteriores (el modo es persistente en el fichero), así que no podía
+ * distinguir «el plugin lo aplicó» de «el fichero ya estaba así» — el mismo falso
+ * verde que US-230 fue a cazar.
+ *
+ * Devuelve los PRAGMAs que fallaron, para que el llamante decida qué registrar.
+ */
+export async function applySqlitePragmas(
+  client: PragmaRunner,
+  onError?: (pragma: string, err: unknown) => void,
+): Promise<string[]> {
+  const fallidos: string[] = [];
+  for (const pragma of SQLITE_PRAGMAS) {
+    try {
+      // ⚠️ `$queryRawUnsafe`, NO `$executeRawUnsafe`. `PRAGMA journal_mode = WAL`
+      // **devuelve una fila** (`{journal_mode: 'wal'}`) y `executeRaw` la rechaza
+      // con «Execute returned results, which is not allowed in SQLite».
+      //
+      // El efecto ocurría igualmente —SQLite ejecuta el pragma y Prisma se queja
+      // después—, así que WAL acababa activo; pero el arranque registraba «No se
+      // pudo aplicar el PRAGMA» en CADA inicio: un aviso **falso** que hacía
+      // indistinguible el fallo real. Y dependía de un detalle de implementación:
+      // si Prisma envolviera la sentencia en algo que revierte, WAL dejaría de
+      // aplicarse y el log diría exactamente lo mismo que ahora.
+      await client.$queryRawUnsafe(pragma);
+    } catch (err) {
+      fallidos.push(pragma);
+      onError?.(pragma, err);
+    }
+  }
+  return fallidos;
+}
+
 /** Expone un único `PrismaClient` y lo cierra al apagar el servidor. */
 export const prismaPlugin = fp(async (app: FastifyInstance) => {
   const prisma = new PrismaClient();
   await prisma.$connect();
 
-  // Best-effort: si un PRAGMA falla (base en un FS raro, permisos), se registra y se
-  // sigue — es una optimización de I/O, no un requisito de arranque.
-  for (const pragma of SQLITE_PRAGMAS) {
-    try {
-      await prisma.$executeRawUnsafe(pragma);
-    } catch (err) {
-      app.log.warn({ err, pragma }, 'No se pudo aplicar el PRAGMA de SQLite');
-    }
-  }
+  // Best-effort: si un PRAGMA falla de verdad (FS raro, permisos), se registra y
+  // se sigue — es una optimización de I/O, no un requisito de arranque.
+  await applySqlitePragmas(prisma, (pragma, err) => {
+    app.log.warn({ err, pragma }, 'No se pudo aplicar el PRAGMA de SQLite');
+  });
 
   app.decorate('prisma', prisma);
 
