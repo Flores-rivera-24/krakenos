@@ -5,6 +5,7 @@ import { describeError } from '@/lib/errors';
 import { cn } from '@/lib/utils';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   kind: FavoriteKind;
@@ -20,6 +21,7 @@ interface Props {
  * toast. Reusa el patrón de feedback de US-96.
  */
 export function FavoriteButton({ kind, ref_, label, className }: Props) {
+  const t = useT();
   const isFav = useFavoritesStore((s) => s.isFavorite(kind, ref_));
   const toggle = useFavoritesStore((s) => s.toggle);
   const [busy, setBusy] = useState(false);
@@ -31,7 +33,7 @@ export function FavoriteButton({ kind, ref_, label, className }: Props) {
       const now = await toggle(kind, ref_);
       toast.success(now ? `Fijado: ${label}` : `Quitado de favoritos: ${label}`);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo actualizar favoritos'));
+      toast.error(describeError(err, t('ui.favorite.failed')));
     } finally {
       setBusy(false);
     }
@@ -47,7 +49,7 @@ export function FavoriteButton({ kind, ref_, label, className }: Props) {
       disabled={busy}
       aria-pressed={isFav}
       aria-label={isFav ? `Quitar ${label} de favoritos` : `Fijar ${label} como favorito`}
-      title={isFav ? 'Quitar de favoritos' : 'Fijar como favorito'}
+      title={isFav ? t('ui.favorite.remove') : t('ui.favorite.add')}
       className={cn(
         'inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
         isFav ? 'text-kr-accent' : 'text-kr-muted hover:text-kr-secondary',

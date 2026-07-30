@@ -16,6 +16,7 @@ import {
 } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { type TranslationKey, useT } from '@/lib/i18n';
+import { useIsMobile } from '@/lib/use-is-mobile';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -30,19 +31,6 @@ const FILTERS: { value: ActiveFilter; key: TranslationKey }[] = [
   { value: 'unknown', key: 'inventory.filter.unknown' },
 ];
 
-/** En <768px se fuerza la vista de tarjetas; por defecto (jsdom/SSR) asume escritorio. */
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mq = window.matchMedia('(max-width: 767px)');
-    const update = () => setMobile(mq.matches);
-    update();
-    mq.addEventListener('change', update);
-    return () => mq.removeEventListener('change', update);
-  }, []);
-  return mobile;
-}
 
 function loadGroupsOpen(): Record<string, boolean> {
   try {

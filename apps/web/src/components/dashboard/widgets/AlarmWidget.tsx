@@ -15,14 +15,16 @@ import { canControlHome } from '@/lib/roles';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { useT } from '@/lib/i18n';
 
-const PHASE_LABEL: Record<AlarmPhase, string> = {
-  disarmed: 'Desarmada',
-  arming: 'Armándose…',
-  armed: 'Armada',
-  entry: 'Entrada — desarma',
-  triggered: '¡ALARMA!',
-};
+/** Clave i18n de la etiqueta por fase (US-239). Se traduce al renderizar. */
+const PHASE_LABEL_KEY = {
+  disarmed: 'widget.alarm.phase.disarmed',
+  arming: 'widget.alarm.phase.arming',
+  armed: 'widget.alarm.phase.armed',
+  entry: 'widget.alarm.phase.entry',
+  triggered: 'widget.alarm.phase.triggered',
+} as const satisfies Record<AlarmPhase, string>;
 
 const PHASE_CLASS: Record<AlarmPhase, string> = {
   disarmed: 'text-kr-secondary',
@@ -78,6 +80,7 @@ function useCountdown(endsAt: string | null): number | null {
  * requiere `home.control` (kid/guest no). Config (sirena/sensores/PIN) para admin.
  */
 export function AlarmWidget() {
+  const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const canControl = canControlHome(role);
   const isAdmin = role === 'admin';
@@ -123,7 +126,7 @@ export function AlarmWidget() {
     try {
       setState(await armAlarm(mode));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo armar la alarma'));
+      toast.error(describeError(err, t('widget.alarm.armFailed')));
     } finally {
       setBusy(false);
     }
@@ -144,9 +147,9 @@ export function AlarmWidget() {
         // primero servía para «descubrir» que hacía falta PIN. Ahora el campo ya
         // está ahí (`requiresPin`), así que un 401 con PIN escrito significa
         // exactamente una cosa y hay que decirla.
-        if (pin.length > 0) toast.error('PIN incorrecto');
+        if (pin.length > 0) toast.error(t('widget.alarm.badPin'));
       } else {
-        toast.error(describeError(err, 'No se pudo desarmar la alarma'));
+        toast.error(describeError(err, t('widget.alarm.disarmFailed')));
       }
     } finally {
       setBusy(false);
@@ -156,13 +159,13 @@ export function AlarmWidget() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-2 pb-2">
-        <CardTitle>Alarma</CardTitle>
+        <CardTitle>{t('widget.alarm.title')}</CardTitle>
         {isAdmin && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setSettingsOpen(true)}
-            aria-label="Ajustes de alarma"
+            aria-label={t('widget.alarm.settings')}
           >
             <Settings className="h-4 w-4" aria-hidden />
           </Button>
@@ -183,7 +186,7 @@ export function AlarmWidget() {
           <>
             <div className={cn('flex items-center gap-2 text-lg font-semibold', PHASE_CLASS[state.phase])}>
               <PhaseIcon phase={state.phase} />
-              <span>{PHASE_LABEL[state.phase]}</span>
+              <span>{t(PHASE_LABEL_KEY[state.phase])}</span>
               {countdown !== null && <span className="text-kr-sm font-normal">({countdown}s)</span>}
             </div>
             {state.triggeredBy && (state.phase === 'entry' || state.phase === 'triggered') && (
@@ -220,10 +223,10 @@ export function AlarmWidget() {
                     <Input
                       type="password"
                       inputMode="numeric"
-                      placeholder="PIN de desarme"
+                      placeholder={t('widget.alarm.pinLabel')}
                       value={pin}
                       onChange={(e) => setPin(e.target.value)}
-                      aria-label="PIN de desarme"
+                      aria-label={t('widget.alarm.pinLabel')}
                     />
                   )}
                   <Button
@@ -237,7 +240,7 @@ export function AlarmWidget() {
                 </div>
               )
             ) : (
-              <p className="text-kr-xs text-kr-muted">Tu rol no permite armar o desarmar la alarma.</p>
+              <p className="text-kr-xs text-kr-muted">{t('widget.alarm.noPermission')}</p>
             )}
           </>
         )}

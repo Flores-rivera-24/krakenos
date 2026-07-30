@@ -6,7 +6,6 @@ import { Toaster } from '@/components/ui/toast';
 import { useT } from '@/lib/i18n';
 import { useFocusTrap } from '@/lib/use-focus-trap';
 import { useRouteAnnounce } from '@/lib/use-route-announce';
-import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
@@ -125,7 +124,6 @@ function MobileBottomNav() {
 export function AppLayout() {
   const t = useT();
   const logout = useAuthStore((s) => s.logout);
-  const stats = useSidebarStats();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(COLLAPSE_KEY) === '1');
 
@@ -151,7 +149,7 @@ export function AppLayout() {
       >
         Saltar al contenido
       </a>
-      <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} stats={stats} />
+      <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
 
       {/* Columna principal */}
       <div className="flex min-w-0 flex-1 flex-col">

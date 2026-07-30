@@ -18,6 +18,7 @@ import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { useT } from '@/lib/i18n';
 
 /**
  * Modos del hogar + presencia (US-169): selector de modo (En casa / Fuera /
@@ -25,6 +26,7 @@ import { toast } from '@/store/toast.store';
  * de personas y el timeline llegan ya acotados por rol desde el servidor.
  */
 export function HomeModeWidget() {
+  const t = useT();
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [state, setState] = useState<PresenceState | null>(null);
   const [timeline, setTimeline] = useState<PresenceEvent[]>([]);
@@ -64,7 +66,7 @@ export function HomeModeWidget() {
     try {
       setState(await setHomeMode(mode));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el modo'));
+      toast.error(describeError(err, t('widget.homeMode.failed')));
     } finally {
       setChanging(false);
     }
@@ -73,7 +75,7 @@ export function HomeModeWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Modo del hogar</CardTitle>
+        <CardTitle>{t('widget.homeMode.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (

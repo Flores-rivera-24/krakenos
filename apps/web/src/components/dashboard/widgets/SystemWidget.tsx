@@ -5,6 +5,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { formatUptime } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 
 function Meter({ label, percent, detail }: { label: string; percent: number; detail: string }) {
   return (
@@ -25,6 +26,7 @@ function Meter({ label, percent, detail }: { label: string; percent: number; det
 
 /** Estado del servidor: uptime, CPU%, RAM%. */
 export function SystemWidget() {
+  const t = useT();
   const [stats, setStats] = useState<SystemStats | null>(null);
   // US-234: sin esto, un `.catch(() => undefined)` dejaba `stats` en null y el
   // widget giraba para siempre — indistinguible de «todavía cargando».
@@ -53,7 +55,7 @@ export function SystemWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Sistema</CardTitle>
+        <CardTitle>{t('widget.system.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {failed && !stats ? (

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 /**
  * Spinner de carga (US-160). Anillo de acento que gira — el gesto de "trabajo en
@@ -25,13 +26,17 @@ const SIZES: Record<NonNullable<SpinnerProps['size']>, string> = {
   xl: 'h-10 w-10 border-[3px]',
 };
 
-export function Spinner({ size = 'md', className, label = 'Cargando…' }: SpinnerProps) {
+export function Spinner({ size = 'md', className, label }: SpinnerProps) {
+  // El texto por defecto se resuelve en el cuerpo: un hook no puede vivir en un
+  // valor por defecto de parámetro (US-239).
+  const t = useT();
+  const texto = label ?? t('ui.loading');
   const decorative = label === '';
   return (
     <span
       role={decorative ? undefined : 'status'}
       aria-hidden={decorative || undefined}
-      aria-label={decorative ? undefined : label}
+      aria-label={decorative ? undefined : texto}
       className={cn(
         'inline-block shrink-0 animate-spin rounded-full border-kr-elevated border-t-kr-accent motion-reduce:animate-none',
         SIZES[size],

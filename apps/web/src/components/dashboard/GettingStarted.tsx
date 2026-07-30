@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { getIntegrations } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/lib/i18n';
 
 const DISMISS_KEY = 'krakenos-onboarding-dismissed';
 
@@ -22,6 +23,7 @@ interface Step {
  * (red + un IoT) ya está conectado. Solo para administradores (quien da de alta equipos).
  */
 export function GettingStarted() {
+  const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -63,29 +65,29 @@ export function GettingStarted() {
   const steps: Step[] = [
     {
       id: 'router',
-      label: 'Conecta tu red',
-      description: 'Tu router o punto de acceso, para ver y controlar tus dispositivos.',
+      label: t('gettingStarted.network.title'),
+      description: t('gettingStarted.network.desc'),
       to: '/connect',
       done: routerDone,
     },
     {
       id: 'iot',
-      label: 'Añade una luz o un enchufe',
-      description: 'Philips Hue, Govee, TP-Link, Shelly y más — con guía paso a paso.',
+      label: t('gettingStarted.iot.title'),
+      description: t('gettingStarted.iot.desc'),
       to: '/connect',
       done: iotDone,
     },
     {
       id: 'wifi',
-      label: 'Revisa tu WiFi',
-      description: 'Nombre de red, contraseña y red de invitados.',
+      label: t('gettingStarted.wifi.title'),
+      description: t('gettingStarted.wifi.desc'),
       to: '/wifi',
       done: false,
     },
     {
       id: 'camera',
-      label: 'Añade una cámara',
-      description: 'Mira tus cámaras IP dentro de la app.',
+      label: t('gettingStarted.camera.title'),
+      description: t('gettingStarted.camera.desc'),
       to: '/cameras',
       done: false,
     },
