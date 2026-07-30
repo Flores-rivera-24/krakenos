@@ -1,9 +1,20 @@
 import type { AuthTokens, LoginResponse, LoginResult, User } from '@krakenos/types';
 import { create } from 'zustand';
 
+/**
+ * Por qué falló el último `refresh()`. Distinguirlo es el arreglo de AUD3-25:
+ *  - `expired`     — el agente contestó 401/403: la cookie ya no vale. Hay que
+ *                    volver al login.
+ *  - `unreachable` — no se pudo hablar con el agente (fallo de red o 5xx). La
+ *                    sesión **sigue siendo válida**; solo no se pudo comprobar.
+ */
+export type RefreshFailure = 'expired' | 'unreachable';
+
 interface AuthState {
   user: User | null;
   tokens: AuthTokens | null;
+  /** Motivo del último `refresh()` fallido; `null` si el último fue bien. */
+  lastRefreshFailure: RefreshFailure | null;
   /**
    * Inicia sesión con email + contraseña. Si el usuario tiene passkey, devuelve
    * `{ requiresWebAuthn: true }` sin establecer la sesión (el 2FA se completa
@@ -67,19 +78,32 @@ async function postJson<T>(path: string, body?: unknown): Promise<T> {
   return res.status === 204 ? (undefined as T) : (res.json() as Promise<T>);
 }
 
+/**
+ * ¿Este fallo significa de verdad «ya no tienes sesión»? Solo un 401/403 lo
+ * significa. Un fallo de red o un 5xx significan «no pude preguntar», que es
+ * otra cosa muy distinta — y tratarlos igual es lo que echaba al usuario al
+ * login cada vez que el túnel parpadeaba o el agente se reiniciaba (justo lo
+ * que hace el propio actualizador de US-190).
+ */
+export function clasificarFalloDeRefresh(err: unknown): RefreshFailure {
+  if (err instanceof HttpError && (err.status === 401 || err.status === 403)) return 'expired';
+  return 'unreachable';
+}
+
 export const useAuthStore = create<AuthState>()((set) => ({
   user: null,
   tokens: null,
+  lastRefreshFailure: null,
 
   login: async (email, password) => {
     const data = await postJson<LoginResult>('/auth/login', { email, password });
     if (!('requiresWebAuthn' in data)) {
-      set({ user: data.user, tokens: data.tokens });
+      set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null });
     }
     return data;
   },
 
-  setSession: (data) => set({ user: data.user, tokens: data.tokens }),
+  setSession: (data) => set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null }),
 
   refresh: async () => {
     // Si ya hay un refresco en vuelo, reutiliza su promesa (single-flight, US-56).
@@ -88,10 +112,15 @@ export const useAuthStore = create<AuthState>()((set) => ({
       try {
         // Sin cuerpo: el refresh token viaja en la cookie httpOnly (US-91).
         const tokens = await postJson<AuthTokens>('/auth/refresh');
-        set({ tokens });
+        set({ tokens, lastRefreshFailure: null });
         return true;
-      } catch {
-        set({ user: null, tokens: null });
+      } catch (err) {
+        const motivo = clasificarFalloDeRefresh(err);
+        // US-234 (AUD3-25): SOLO se borra la sesión si el agente dijo que no vale.
+        // Antes el `catch` era ciego y un `HttpError(0)` limpiaba el store igual
+        // que un 401 → recargar durante un reinicio del agente te devolvía al
+        // login con la cookie todavía buena.
+        set(motivo === 'expired' ? { user: null, tokens: null, lastRefreshFailure: motivo } : { lastRefreshFailure: motivo });
         return false;
       } finally {
         refreshInFlight = null;
@@ -103,7 +132,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   logout: async () => {
     // El servidor revoca el refresh de la cookie y la borra.
     await postJson('/auth/logout').catch(() => undefined);
-    set({ user: null, tokens: null });
+    set({ user: null, tokens: null, lastRefreshFailure: null });
     // Estado por-usuario que no debe sobrevivir al cambio de cuenta (AUD-14).
     const { useFavoritesStore } = await import('./favorites.store');
     useFavoritesStore.getState().reset();

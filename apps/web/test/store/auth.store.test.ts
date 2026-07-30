@@ -88,6 +88,52 @@ describe('useAuthStore', () => {
     expect(ok).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().tokens).toBeNull();
+    expect(useAuthStore.getState().lastRefreshFailure).toBe('expired');
+  });
+
+  /**
+   * US-234 (AUD3-25) — el `catch` de `refresh()` era **ciego**: trataba un
+   * `HttpError(0)` (la red) igual que un 401 (la sesión). Recargar mientras el
+   * agente se reinicia —que es literalmente lo que hace el actualizador de
+   * US-190— o un parpadeo del túnel te devolvían al login **con la cookie
+   * todavía buena**.
+   */
+  describe('un fallo de red NO es una sesión caducada (US-234)', () => {
+    it('la sesión sobrevive a un fallo de red', async () => {
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      // `fetch` rechaza: servidor inaccesible, no hay respuesta HTTP.
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+      expect(await useAuthStore.getState().refresh()).toBe(false);
+      expect(useAuthStore.getState().user).toEqual(USER); // ← lo que antes se perdía
+      expect(useAuthStore.getState().lastRefreshFailure).toBe('unreachable');
+    });
+
+    it('la sesión sobrevive a un 5xx (el agente arrancando)', async () => {
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(503, { code: 'X', message: 'no' })));
+
+      expect(await useAuthStore.getState().refresh()).toBe(false);
+      expect(useAuthStore.getState().user).toEqual(USER);
+      expect(useAuthStore.getState().lastRefreshFailure).toBe('unreachable');
+    });
+
+    it('un 403 SÍ cierra la sesión (cuenta deshabilitada o rol retirado)', async () => {
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(403, { code: 'X', message: 'no' })));
+
+      expect(await useAuthStore.getState().refresh()).toBe(false);
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().lastRefreshFailure).toBe('expired');
+    });
+
+    it('un refresh correcto borra la marca de fallo anterior', async () => {
+      useAuthStore.setState({ user: USER, lastRefreshFailure: 'unreachable' });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, TOKENS)));
+
+      expect(await useAuthStore.getState().refresh()).toBe(true);
+      expect(useAuthStore.getState().lastRefreshFailure).toBeNull();
+    });
   });
 
   it('logout revoca el refresh y limpia la sesión', async () => {

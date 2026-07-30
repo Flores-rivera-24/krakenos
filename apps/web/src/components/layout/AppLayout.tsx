@@ -76,7 +76,10 @@ function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface md:hidden">
+      {/* `pb-[env(safe-area-inset-bottom)]` (US-234): en iPhone con la app
+          instalada, sin esto las celdas quedan BAJO el home indicator y la
+          última fila de iconos es intocable. */}
+      <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-kr bg-kr-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         {primary.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
@@ -118,7 +121,7 @@ export function AppLayout() {
       {/* Columna principal */}
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar — solo móvil */}
-        <header className="flex items-center justify-between border-b border-kr bg-kr-surface px-4 py-3 md:hidden">
+        <header className="flex items-center justify-between border-b border-kr bg-kr-surface px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] md:hidden">
           <span className="flex items-center gap-2">
             <LogoMark className="h-6 w-6 text-kr-accent" />
             <span className="text-kr-lg font-semibold text-kr-primary">KrakenOS</span>
@@ -135,7 +138,7 @@ export function AppLayout() {
 
         {/* La `key` por ruta reinicia el fade en cada navegación (transición sutil,
             US-160). motion-reduce desactiva el desplazamiento. */}
-        <main key={location.pathname} className="flex-1 animate-kr-fade-up pb-20 md:pb-0">
+        <main key={location.pathname} className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
           <Outlet />
         </main>
 

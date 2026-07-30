@@ -21,7 +21,15 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
-/** Registra el service worker, pide permiso y suscribe el endpoint en el agente. */
+/**
+ * Pide permiso y suscribe el endpoint en el agente.
+ *
+ * El service worker **ya se registra en el arranque** (`lib/pwa.ts`, US-234), así
+ * que aquí solo se espera a que esté listo. Antes este era el único sitio donde
+ * se registraba, y de ahí venía que la PWA solo existiese para quien activaba las
+ * notificaciones; se mantiene el `register()` como red de seguridad idempotente
+ * por si el arranque no pudo (el navegador devuelve el registro existente).
+ */
 export async function subscribeToPush(): Promise<void> {
   const registration = await navigator.serviceWorker.register('/sw.js');
   await navigator.serviceWorker.ready;

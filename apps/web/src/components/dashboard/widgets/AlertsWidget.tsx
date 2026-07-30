@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 
@@ -12,6 +13,10 @@ const SEEN_KEY = 'krakenos-alerts-seen';
 export function AlertsWidget() {
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
   const [unread, setUnread] = useState(0);
+  // US-234: el `catch` de abajo pinta el estado vacío para un viewer sin permiso
+  // (legítimo) pero también para un agente caído (mentira). Se distinguen.
+  const [failed, setFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -23,11 +28,17 @@ export function AlertsWidget() {
         const lastSeen = localStorage.getItem(SEEN_KEY) ?? '';
         setUnread(list.filter((e) => e.createdAt > lastSeen).length);
       })
-      .catch(() => active && setEntries([])); // p. ej. un viewer no puede leer el audit
+      .catch((err: unknown) => {
+        if (!active) return;
+        // 403 = un viewer no puede leer el audit: eso NO es un fallo, es su rol.
+        const status = (err as { status?: number } | null)?.status;
+        if (status === 403) setEntries([]);
+        else setFailed(true);
+      });
     return () => {
       active = false;
     };
-  }, []);
+  }, [intento]);
 
   const markSeen = () => {
     if (entries && entries[0]) localStorage.setItem(SEEN_KEY, entries[0].createdAt);
@@ -47,7 +58,9 @@ export function AlertsWidget() {
         )}
       </CardHeader>
       <CardContent>
-        {entries === null ? (
+        {failed && entries === null ? (
+          <WidgetError what="la actividad reciente" onRetry={() => setIntento((n) => n + 1)} />
+        ) : entries === null ? (
           <LoadingLine />
         ) : entries.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">Sin actividad registrada.</p>

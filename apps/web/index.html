@@ -2,13 +2,22 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- `viewport-fit=cover` (US-234): sin él, en iPhone la app instalada deja
+         franjas y la bottom-nav queda BAJO el home indicator. Habilita además las
+         variables `env(safe-area-inset-*)` que usa el layout. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>KrakenOS</title>
     <!-- Marca / PWA (assets en public/, fuente en Icons/). -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0d1117" />
+    <!-- iOS no lee el manifest: necesita sus propias metas para abrirse como app
+         sin barra de Safari y con la barra de estado integrada en el tema oscuro. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="KrakenOS" />
     <!-- Anti-flash de tema e idioma: scripts externos (no inline) para compatibilidad con CSP estricta. -->
     <script src="/theme-init.js"></script>
     <script src="/locale-init.js"></script>
