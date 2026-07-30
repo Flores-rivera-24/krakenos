@@ -132,13 +132,19 @@ export function AlarmWidget() {
   const disarm = async () => {
     setBusy(true);
     try {
-      setState(await disarmAlarm(pinNeeded ? pin : undefined));
+      // US-235: el PIN se manda si el servidor lo pide (`requiresPin`) o si un
+      // 401 previo lo revelo; ya no hay que fallar una vez para descubrirlo.
+      setState(await disarmAlarm(pin.length > 0 ? pin : undefined));
       setPinNeeded(false);
       setPin('');
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 401) {
         setPinNeeded(true); // el servidor exige PIN
-        if (pinNeeded) toast.error('PIN incorrecto');
+        // US-235: antes el aviso solo salía en el SEGUNDO intento, porque el
+        // primero servía para «descubrir» que hacía falta PIN. Ahora el campo ya
+        // está ahí (`requiresPin`), así que un 401 con PIN escrito significa
+        // exactamente una cosa y hay que decirla.
+        if (pin.length > 0) toast.error('PIN incorrecto');
       } else {
         toast.error(describeError(err, 'No se pudo desarmar la alarma'));
       }
@@ -210,7 +216,7 @@ export function AlarmWidget() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {pinNeeded && (
+                  {(pinNeeded || state.requiresPin) && (
                     <Input
                       type="password"
                       inputMode="numeric"
@@ -223,7 +229,7 @@ export function AlarmWidget() {
                   <Button
                     variant="destructive"
                     className="w-full"
-                    disabled={busy || (pinNeeded && pin.length === 0)}
+                    disabled={busy || ((pinNeeded || state.requiresPin) && pin.length === 0)}
                     onClick={() => void disarm()}
                   >
                     Desarmar

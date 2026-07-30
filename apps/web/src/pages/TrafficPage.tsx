@@ -21,6 +21,7 @@ import { isSampleStale, useNow } from '@/lib/realtime';
 import { getSocket } from '@/lib/socket';
 import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
+import { filaAbrible } from '@/lib/a11y';
 
 const MAX_POINTS = 60;
 
@@ -396,8 +397,8 @@ export function TrafficPage() {
                     return (
                       <tr
                         key={d.mac}
-                        onClick={() => setSelectedMac(d.mac)}
-                        className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
+                        {...filaAbrible(() => setSelectedMac(d.mac), `Ver ${name}`)}
+                        className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
                       >
                         <td className="py-2 text-foreground">{name}</td>
                         <td className="py-2 font-mono text-xs text-muted-foreground">

@@ -89,6 +89,7 @@ export const es = {
   'login.submitting': 'Entrando…',
   'login.error.credentials': 'Correo o contraseña incorrectos.',
   'login.error.connection': 'No se pudo conectar con el servidor. Inténtalo de nuevo.',
+  'login.error.tooManyAttempts': 'Demasiados intentos. Espera un minuto e inténtalo de nuevo.',
   'login.lastAccess': 'Último acceso',
   'login.tagline': 'Acceso local · Sin nube · Sin terceros',
   'login.mfa.title': 'Verifica tu identidad con tu dispositivo',

@@ -1,11 +1,4 @@
-import type {
-  AlarmConfig,
-  AlarmMode,
-  AlarmState,
-  HomeEvent,
-  IotManager,
-  UpdateAlarmConfigRequest,
-} from '@krakenos/types';
+import type { AlarmConfig, AlarmMachineState, AlarmMode, AlarmState, HomeEvent, IotManager, UpdateAlarmConfigRequest } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
@@ -66,7 +59,9 @@ export function normalizeAlarmConfig(raw: unknown): Omit<AlarmConfig, 'hasPin'> 
  * en silencio. El desarme se audita.
  */
 export class AlarmService {
-  private state: AlarmState;
+  // `requiresPin` NO vive aquí: es una propiedad de la CONFIG (¿hay PIN puesto?),
+  // no del estado de la máquina. Se compone al salir por la API (US-235).
+  private state: AlarmMachineState;
   private loop: TickLoop | null = null;
   private readonly faultNotified = new Set<string>();
   /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
@@ -129,7 +124,17 @@ export class AlarmService {
 
   // ---- Estado ----
 
-  getState(): AlarmState {
+  /**
+   * Estado público de la alarma. Incluye `requiresPin` (US-235) para que la UI
+   * pueda pedir el PIN **antes** de intentarlo, en vez de descubrirlo con un 401
+   * mientras suena la sirena. Es un booleano: el PIN sigue sin salir nunca.
+   */
+  async getState(): Promise<AlarmState> {
+    return { ...this.state, requiresPin: await this.hasPin() };
+  }
+
+  /** Estado en memoria, sin consultar el PIN. Para los caminos internos. */
+  getStateSync(): AlarmMachineState {
     return this.state;
   }
 
@@ -162,7 +167,7 @@ export class AlarmService {
     await this.persist();
     // El armado manual lo audita la ruta (con actor+ip); el auto-armado por modo sí aquí.
     if (by === 'modo away') this.app.audit({ action: 'alarm.armed', detail: `${mode} · ${by}` });
-    return this.state;
+    return this.getState();
   }
 
   /** Verifica el PIN (si lo hay) y desarma. Lanza `AlarmPinError` si el PIN falla. */
@@ -179,7 +184,7 @@ export class AlarmService {
     // Al desarmar, apaga la sirena si estaba sonando (best-effort).
     if (wasActive) await this.setSiren(false);
     // El desarme lo audita la ruta (con actor+ip).
-    return this.state;
+    return this.getState();
   }
 
   // ---- Disparo ----

@@ -1,6 +1,7 @@
 import type { UpdateWifiRequest, WifiBand, WifiNetwork, WifiSecurity } from '@krakenos/types';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { GlossaryHint } from '@/components/ui/glossary-hint';
 import { HelpHint } from '@/components/ui/help-hint';
@@ -61,6 +62,19 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
       setSaving(false);
     }
   };
+
+  // Qué está a punto de cortar la red. Se nombra en el aviso para que sea concreto
+  // («al cambiar el nombre de la red») en vez de un genérico.
+  const motivos: string[] = [];
+  if (ssid !== network.ssid) motivos.push('el nombre de la red (SSID)');
+  if (password.length > 0) motivos.push('la contraseña');
+  if (security !== network.security) motivos.push('el tipo de seguridad');
+  const cambioQueDesconecta =
+    motivos.length === 0
+      ? null
+      : motivos.length === 1
+        ? motivos[0]
+        : `${motivos.slice(0, -1).join(', ')} y ${motivos[motivos.length - 1]}`;
 
   return (
     <Card>
@@ -155,6 +169,19 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
           <p className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}>
             {feedback.msg}
           </p>
+        )}
+
+        {/* US-235 (AUD3-29): cambiar el SSID o la contraseña **desconecta la casa
+            entera** —incluido el móvil desde el que se está haciendo— y la app no
+            lo mencionaba en ningún sitio (0 coincidencias de «se desconectará» o
+            «reconectar» fuera de las guías). El aviso aparece solo cuando de
+            verdad hay un cambio que corta la red, no en cada visita. */}
+        {isAdmin && cambioQueDesconecta && (
+          <Callout variant="warning" title="Esto desconectará todos tus dispositivos">
+            Al cambiar {cambioQueDesconecta}, todo lo conectado a esta red se cae y hay que volver
+            a conectarlo con los datos nuevos — incluido el teléfono o el portátil desde el que
+            estás ahora. Si entras por WiFi, perderás el acceso hasta reconectar.
+          </Callout>
         )}
 
         {isAdmin && (

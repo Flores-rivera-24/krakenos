@@ -19,6 +19,7 @@ import { type TranslationKey, useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
+import { filaAbrible } from '@/lib/a11y';
 
 const GROUPS_OPEN_KEY = 'kr-groups-open';
 
@@ -118,8 +119,11 @@ function DeviceTable({
             return (
               <tr
                 key={d.id}
-                onClick={() => onSelect(d.id)}
-                className="cursor-pointer border-t border-kr hover:bg-kr-elevated"
+                {...filaAbrible(
+                  () => onSelect(d.id),
+                  `Ver ${d.label ?? d.hostname ?? d.mac}`,
+                )}
+                className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
               >
                 <td className="px-3 py-2 text-kr-primary">{d.label ?? d.hostname ?? d.mac}</td>
                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.ip}</td>

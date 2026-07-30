@@ -18,7 +18,11 @@ export const ALARM_MODES = ['away', 'night'] as const;
 export type AlarmPhase = 'disarmed' | 'arming' | 'armed' | 'entry' | 'triggered';
 
 /** Estado observable de la alarma. */
-export interface AlarmState {
+/**
+ * Estado de la **máquina de estados pura** (`alarm/state-machine.ts`): solo la
+ * fase y sus datos. No incluye nada derivado de la configuración.
+ */
+export interface AlarmMachineState {
   phase: AlarmPhase;
   /** Modo cuando está armada/armándose; `null` si está desarmada. */
   mode: AlarmMode | null;
@@ -28,6 +32,18 @@ export interface AlarmState {
   countdownEndsAt: IsoDateTime | null;
   /** Qué disparó `entry`/`triggered` (nombre legible), o `null`. */
   triggeredBy: string | null;
+}
+
+/** Estado que devuelve la API: la máquina más lo derivado de la config. */
+export interface AlarmState extends AlarmMachineState {
+  /**
+   * ¿El desarme exige PIN? (US-235). **No expone el PIN**, solo si hay uno puesto.
+   *
+   * Sin esto, la UI descubría que hacía falta **fallando**: el primer «Desarmar»
+   * iba sin PIN, el 401 revelaba el campo y el mensaje no llegaba a mostrarse. Con
+   * la sirena sonando, eso son dos viajes y cero explicación.
+   */
+  requiresPin: boolean;
 }
 
 /**

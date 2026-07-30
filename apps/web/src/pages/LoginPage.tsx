@@ -113,10 +113,18 @@ export function LoginPage() {
       }
     } catch (err) {
       // US-55: un 401 es credenciales; cualquier otro fallo (red, 5xx) es de conexión.
+      // US-235: el 429 tenía que salir de ese «cualquier otro fallo». Lo descubrí
+      // depurando la suite e2e: al crecer de 5 a 13 flujos empezó a saltar el
+      // rate-limit de login y la pantalla decía «No se pudo conectar con el
+      // servidor» — mandando a mirar el cable cuando el problema era el reloj.
+      // Le pasa igual a quien se equivoca de contraseña varias veces seguidas.
+      const status = err instanceof HttpError ? err.status : 0;
       setError(
-        err instanceof HttpError && err.status === 401
+        status === 401
           ? t('login.error.credentials')
-          : t('login.error.connection'),
+          : status === 429
+            ? t('login.error.tooManyAttempts')
+            : t('login.error.connection'),
       );
     } finally {
       setLoading(false);

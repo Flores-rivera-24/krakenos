@@ -49,18 +49,31 @@ export interface CalloutProps extends VariantProps<typeof calloutVariants> {
   title?: ReactNode;
   children?: ReactNode;
   className?: string;
+  /**
+   * `true` cuando el aviso es **permanente** (una advertencia que siempre está
+   * ahí), no algo que acaba de pasar.
+   *
+   * `role="alert"` es una live region **asertiva**: interrumpe al lector de
+   * pantalla. Es correcto para «la operación falló», y equivocado para «esto es
+   * peligroso», que lleva en la página desde que se cargó — se anunciaría al
+   * montar, competiría con los errores de verdad y, si hay dos en la misma
+   * pantalla, ni siquiera se puede localizar «el» alert (US-235). En ese caso se
+   * degrada a `note`, que se lee al llegar y calla el resto del tiempo.
+   */
+  standing?: boolean;
 }
 
 /**
  * Caja de nota con variantes `info | success | warning | danger`, cada una con
  * su icono y color semántico. Usa solo tokens `kr-*`/semánticos. `role="note"`
- * salvo `danger`, que usa `role="alert"`.
+ * salvo `danger`, que usa `role="alert"` — salvo que se marque `standing`, para
+ * advertencias permanentes que no deben interrumpir (ver la prop).
  */
-export function Callout({ variant, title, children, className }: CalloutProps) {
+export function Callout({ variant, title, children, className, standing }: CalloutProps) {
   const key: CalloutVariant = variant ?? 'info';
   const Icon = ICONS[key];
   return (
-    <div role={ROLE[key]} className={cn(calloutVariants({ variant, className }))}>
+    <div role={standing ? 'note' : ROLE[key]} className={cn(calloutVariants({ variant, className }))}>
       <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', ICON_COLOR[key])} aria-hidden />
       <div className="min-w-0 space-y-1">
         {title && <p className="font-semibold text-kr-primary">{title}</p>}

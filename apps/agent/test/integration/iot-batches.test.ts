@@ -140,7 +140,7 @@ describe('lotes IoT en paralelo (US-229)', () => {
     clock = 1_000;
     await service.tick();
 
-    expect(service.getState().phase).toBe('triggered');
+    expect(service.getStateSync().phase).toBe('triggered');
     // Sirena + 3 luces: la sirena no espera a que respondan las luces.
     expect(iot.maxInFlight).toBe(4);
     expect(iot.calls).toContain('sirena');

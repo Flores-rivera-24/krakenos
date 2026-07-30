@@ -183,4 +183,29 @@ describe('rutas de alarma (US-188)', () => {
     }
     expect((await disarm('4321')).statusCode).toBe(200);
   });
+
+  /**
+   * US-235 (AUD3-29): la UI descubría que hacía falta PIN **fallando** — el primer
+   * «Desarmar» iba sin PIN, el 401 revelaba el campo y el mensaje ni se mostraba.
+   * Con la sirena sonando, dos viajes y cero explicación. Ahora el estado lo dice.
+   */
+  it('el estado expone `requiresPin` sin filtrar el PIN', async () => {
+    const admin = await token('admin', 'pin@krakenos.test');
+
+    const sinPin = await app.inject({ method: 'GET', url: '/api/alarm', headers: authHeader(admin) });
+    expect(sinPin.statusCode).toBe(200);
+    expect(sinPin.json().requiresPin).toBe(false);
+
+    await app.inject({
+      method: 'PUT',
+      url: '/api/alarm/config',
+      headers: authHeader(admin),
+      payload: { pin: '4271' },
+    });
+
+    const conPin = await app.inject({ method: 'GET', url: '/api/alarm', headers: authHeader(admin) });
+    expect(conPin.json().requiresPin).toBe(true);
+    // Lo que NO puede pasar: que el PIN salga por ningún lado.
+    expect(JSON.stringify(conPin.json())).not.toContain('4271');
+  });
 });

@@ -193,7 +193,9 @@ describe('CamerasPage', () => {
     render(<CamerasPage />);
     await screen.findByText('Garaje');
 
+    // US-235: los borrados piden confirmación explícita (dos pasos).
     await user.click(screen.getByRole('button', { name: 'Eliminar Garaje' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/cameras/cam-garaje'));
     await waitFor(() => expect(toastMessages()).toContain('Cámara eliminada'));
   });

@@ -52,16 +52,16 @@ describe('AlarmService (US-188)', () => {
     await service.setConfig({ sirenDeviceId: 'siren', cameraIds: ['cam-1'], exitDelaySec: 0, entryDelaySec: 10 });
 
     await service.armAlarm('away', 'ana@x');
-    expect(service.getState().phase).toBe('armed');
+    expect(service.getStateSync().phase).toBe('armed');
 
     // Movimiento de una cámara vigilada → entra en la cuenta de entrada.
     bus.publish({ type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' });
-    await vi.waitFor(() => expect(service.getState().phase).toBe('entry'));
+    await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
 
     // Vence la entrada → dispara: sirena ON + auditoría.
     clock = 11_000;
     await service.tick();
-    expect(service.getState().phase).toBe('triggered');
+    expect(service.getStateSync().phase).toBe('triggered');
     expect(iot.setCalls).toContainEqual({ id: 'siren', on: true });
     expect(auditSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'alarm.triggered' }));
 
@@ -134,8 +134,8 @@ describe('AlarmService (US-188)', () => {
     await service.setConfig({ autoArmAway: true, exitDelaySec: 0 });
 
     bus.publish({ type: 'mode-changed', mode: 'away', prevMode: 'home' });
-    await vi.waitFor(() => expect(service.getState().phase).toBe('armed'));
-    expect(service.getState().mode).toBe('away');
+    await vi.waitFor(() => expect(service.getStateSync().phase).toBe('armed'));
+    expect(service.getStateSync().mode).toBe('away');
     service.stop();
   });
 
@@ -147,9 +147,9 @@ describe('AlarmService (US-188)', () => {
     await service.armAlarm('night', 'ana@x');
 
     const fresh = new AlarmService(app, iot, new HomeEventBus(), { now: () => 0 });
-    expect(fresh.getState().phase).toBe('disarmed');
+    expect(fresh.getStateSync().phase).toBe('disarmed');
     await fresh.reconcile();
-    expect(fresh.getState().phase).toBe('armed');
-    expect(fresh.getState().mode).toBe('night');
+    expect(fresh.getStateSync().phase).toBe('armed');
+    expect(fresh.getStateSync().mode).toBe('night');
   });
 });

@@ -29,6 +29,8 @@ export function SystemBackupCard() {
   const fileInput = useRef<HTMLInputElement>(null);
   const [restoreFile, setRestoreFile] = useState<File | null>(null);
   const [restorePass, setRestorePass] = useState('');
+  // US-235: confirmación escrita para la acción más destructiva de la app.
+  const [restoreConfirm, setRestoreConfirm] = useState('');
   const [restoreBusy, setRestoreBusy] = useState(false);
 
   const runRestore = async () => {
@@ -146,18 +148,40 @@ export function SystemBackupCard() {
               />
             </div>
           </div>
+          {/* US-235 (AUD3-29): el aviso va ENCIMA del botón, no debajo. Es la acción
+              más destructiva de la app —sustituye base, claves y datos— y estaba a
+              un clic, con botón `outline` (el mismo que «Descargar copia») y el
+              aviso donde nadie lo lee: después de haber pulsado. */}
+          <Callout variant="danger" standing title="Esto sustituye tus datos actuales">
+            Restaurar reemplaza la base de datos, las claves y las credenciales por las de la
+            copia. Lo actual se respalda antes, pero <strong>todo lo que hayas hecho desde esa
+            copia se pierde</strong>. Se aplica al reiniciar el agente.
+          </Callout>
+          <div className="space-y-1.5">
+            <Label htmlFor="bk-confirm">
+              Para continuar, escribe <strong>RESTAURAR</strong>
+            </Label>
+            <Input
+              id="bk-confirm"
+              value={restoreConfirm}
+              onChange={(e) => setRestoreConfirm(e.target.value)}
+              autoComplete="off"
+              className="max-w-xs"
+            />
+          </div>
           <Button
             size="sm"
-            variant="outline"
+            variant="destructive"
             onClick={() => void runRestore()}
-            disabled={restoreBusy || !restoreFile || restorePass.length < 12}
+            disabled={
+              restoreBusy ||
+              !restoreFile ||
+              restorePass.length < 12 ||
+              restoreConfirm.trim().toUpperCase() !== 'RESTAURAR'
+            }
           >
             {restoreBusy ? 'Preparando…' : 'Restaurar copia'}
           </Button>
-          <Callout variant="warning" title="Ojo">
-            Restaurar sustituye la base de datos, las claves y los datos actuales por los de la
-            copia. Reinicia el agente para completar el proceso.
-          </Callout>
         </div>
 
         <AutoBackupSection />

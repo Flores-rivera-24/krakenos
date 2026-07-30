@@ -8,8 +8,10 @@ const alarmStateResponse = {
     since: { type: 'string', format: 'date-time' },
     countdownEndsAt: { type: ['string', 'null'] },
     triggeredBy: { type: ['string', 'null'] },
+    // US-235: solo el booleano; el PIN nunca sale por la API (US-188).
+    requiresPin: { type: 'boolean' },
   },
-  required: ['phase', 'mode', 'since', 'countdownEndsAt', 'triggeredBy'],
+  required: ['phase', 'mode', 'since', 'countdownEndsAt', 'triggeredBy', 'requiresPin'],
 } as const;
 
 const alarmConfigResponse = {
