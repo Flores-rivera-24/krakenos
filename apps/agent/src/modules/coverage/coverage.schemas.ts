@@ -86,6 +86,19 @@ const heatmapResponse = {
     values: { type: 'array', items: { type: ['number', 'null'] } },
     minDbm: { type: 'number' },
     maxDbm: { type: 'number' },
+    // US-237: de dónde sale el exponente de pérdida. `null` = constante genérica.
+    // Fastify serializa SOLO lo declarado: sin esto el campo se perdería en silencio.
+    calibration: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      properties: {
+        pathLossExponent: { type: 'number' },
+        sampleCount: { type: 'integer' },
+        rmseDb: { type: 'number' },
+        baselineRmseDb: { type: 'number' },
+      },
+      required: ['pathLossExponent', 'sampleCount', 'rmseDb', 'baselineRmseDb'],
+    },
   },
   required: [
     'band',

@@ -1002,6 +1002,19 @@ export const en: Record<TranslationKey, string> = {
   'coverage.calibrate.needLine': 'Draw the reference line over the plan.',
   'coverage.calibrate.done': 'Scale calibrated: {width} × {height} m',
   // Assisted wall detection (US-195)
+  'coverage.survey.rssiTitle': 'Signal is measured by the access point',
+  'coverage.survey.rssiNote':
+    'Signal strength is measured by the access point, not by your phone: it is how loudly the router hears the device. For what matters — where coverage is good and where it is not — it works the same, but it is not the number your phone shows.',
+  'coverage.model.calibrated':
+    'Model fitted to your home from {n} measurements (average error {rmse} dB).',
+  'coverage.model.generic':
+    'Generic model: it uses textbook constants, not measurements from your home. Run a measurement walk to fit it.',
+  'coverage.model.predictedNote':
+    'This is a prediction computed over the floor plan, not a measurement: it does not change if an access point goes down.',
+  'coverage.wall.selected': 'Selected wall · material:',
+  'coverage.wall.materialLabel': 'Material of the selected wall',
+  'coverage.wall.deselect': 'Clear selection',
+  'coverage.wall.hint': 'Tap a wall on the plan to change its material.',
   'coverage.detect.button': 'Detect walls',
   'coverage.detect.detecting': 'Detecting…',
   'coverage.detect.title': 'Plan walls',

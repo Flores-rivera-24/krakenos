@@ -184,6 +184,14 @@ export function ApPalette({
                     style={{ accentColor: 'var(--kr-accent)' }}
                     aria-label={`Potencia de ${ap.name} en dBm`}
                   />
+                  {/* Honestidad (US-237): 20 dBm es un valor por defecto asumido, no
+                      una lectura del equipo. El contrato del driver no reporta la
+                      potencia real de un AP, así que el mapa vale lo que valga este
+                      número; si el usuario la sabe, que la ponga. */}
+                  <span className="mt-1 block text-kr-xs text-kr-muted">
+                    Valor asumido, no leído del punto de acceso. Si conoces su potencia
+                    real, ajústala: el mapa depende directamente de ella.
+                  </span>
                 </label>
 
                 <div className="mb-2">

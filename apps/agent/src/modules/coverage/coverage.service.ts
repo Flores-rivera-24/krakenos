@@ -31,6 +31,10 @@ import { createHash } from 'node:crypto';
 import { computePredictedHeatmapAsync } from '../../coverage/propagation.js';
 import { computeMeasuredHeatmapAsync } from '../../coverage/interpolation.js';
 import { HeatmapCache } from '../../coverage/heatmap-cache.js';
+import {
+  calibratePathLossExponent,
+  type CalibrationResult,
+} from '../../coverage/calibration.js';
 
 /** Firma corta y estable del contenido que determina un heatmap (para la clave de caché). */
 function signature(payload: unknown): string {
@@ -186,21 +190,60 @@ export class CoverageService {
     const row = await this.app.prisma.floorPlan.findUnique({ where: { id } });
     if (!row) return null;
     const plan = this.toFloorPlan(row);
+
+    // US-237: si esta casa ya se ha medido, el exponente de pérdida se **ajusta a
+    // ella** en vez de usar la constante de libro (n=3.0). Un `n` equivocado en 1
+    // punto son ~10 dB de error a 10 m: suficiente para pintar zona muerta donde
+    // hay cobertura. Con pocas muestras la calibración se niega y se usa el
+    // valor por defecto — ajustar cuatro lecturas sería ruido con pinta de rigor.
+    const calibration = await this.calibrationFor(plan, band);
+
     // Clave content-addressed: firma del contenido que determina el mapa (dims,
     // paredes, APs, banda). Inmune a la resolución del reloj y además reutiliza el
     // resultado si una edición se revierte al mismo estado. `backgroundImage` no
-    // entra porque no afecta al cálculo.
+    // entra porque no afecta al cálculo. El exponente calibrado SÍ entra: si no,
+    // añadir un recorrido no invalidaría el mapa cacheado.
     const key = `pred:${plan.id}:${band}:${signature({
       w: plan.widthM,
       h: plan.heightM,
       walls: plan.walls,
       aps: plan.accessPoints,
+      n: calibration?.pathLossExponent ?? null,
     })}`;
-    return this.heatmapCache.get(key, () =>
+    const heatmap = await this.heatmapCache.get(key, () =>
       computePredictedHeatmapAsync(plan.widthM, plan.heightM, plan.accessPoints, plan.walls, {
         band,
+        ...(calibration ? { pathLossExponent: calibration.pathLossExponent } : {}),
       }),
     );
+    return { ...heatmap, calibration };
+  }
+
+  /**
+   * Ajusta el exponente de pérdida con las muestras de los recorridos de **esta
+   * banda** en este plano (US-237). `null` si no hay datos suficientes.
+   */
+  private async calibrationFor(
+    plan: FloorPlan,
+    band: WifiBand,
+  ): Promise<CalibrationResult | null> {
+    try {
+      const scans = await this.app.prisma.surveyScan.findMany({
+        where: { floorPlanId: plan.id, band },
+        include: { samples: { select: { x: true, y: true, rssiDbm: true } } },
+      });
+      const samples = scans.flatMap((s) => s.samples);
+      return calibratePathLossExponent({
+        samples,
+        aps: plan.accessPoints,
+        walls: plan.walls,
+        band,
+      });
+    } catch (err) {
+      // Un fallo calibrando NUNCA debe dejar sin mapa: se cae al modelo genérico.
+      this.app.log.warn({ err }, '[coverage] no se pudo calibrar; se usa el exponente por defecto');
+      return null;
+    }
   }
 
   /** Mapa de calor **medido** (interpolación de las muestras del survey). `null` si el survey no existe. */
