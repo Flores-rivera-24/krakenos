@@ -24,6 +24,25 @@ export const PROC_NET_DEV = 'cat /proc/net/dev';
 /** Comando trivial para el healthcheck (uptime del kernel). */
 export const UPTIME = 'cat /proc/uptime';
 
+/**
+ * ¿Está `nlbw` (cliente de nlbwmon) instalado en el router? (US-251).
+ *
+ * `command -v` es POSIX y lo trae el `ash` de BusyBox — `which` no está garantizado
+ * en una imagen mínima de OpenWrt. Se responde por **stdout** y no por código de
+ * salida porque el driver ya trata el código ≠ 0 como error de transporte, y aquí
+ * «no está instalado» no es un fallo: es una respuesta.
+ */
+export const NLBW_PRESENT = 'command -v nlbw >/dev/null 2>&1 && echo si || echo no';
+
+/**
+ * Contadores acumulados por dispositivo, agrupados por MAC e IP (US-251).
+ *
+ * `nlbwmon` acumula por **periodo de contabilidad** (mensual por defecto), así que
+ * esto son totales del periodo, no tasas: el driver deriva bytes/seg restando dos
+ * lecturas, igual que hace con `/proc/net/dev`.
+ */
+export const NLBW_JSON = 'nlbw -c json -g mac,ip';
+
 /** Concesiones DHCP de dnsmasq (hostnames); puede no existir. */
 export const DHCP_LEASES = 'cat /tmp/dhcp.leases 2>/dev/null';
 

@@ -1,6 +1,7 @@
 import type {
   DeviceTrafficReport,
   DeviceTrafficStats,
+  PerDeviceTrafficCapability,
   TrafficRange,
   TrafficSample,
   TrafficStats,
@@ -23,7 +24,7 @@ import { getSocket } from '@/lib/socket';
 import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
-import { Callout } from '@/components/ui/callout';
+import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
 
 const MAX_POINTS = 60;
 
@@ -62,7 +63,9 @@ export function TrafficPage() {
 
   // Tráfico por dispositivo (US-46): rango propio + orden + slideover de detalle.
   const [devStats, setDevStats] = useState<DeviceTrafficStats[] | null>(null);
-  const [perDeviceSupported, setPerDeviceSupported] = useState(true);
+  // US-251: la capacidad tiene tres estados. Se asume disponible hasta saber lo
+  // contrario, para no acusar al router mientras carga.
+  const [perDevice, setPerDevice] = useState<PerDeviceTrafficCapability>({ status: 'supported' });
   const [devRange, setDevRange] = useState<TrafficRange>('hour');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [selectedMac, setSelectedMac] = useState<string | null>(null);
@@ -80,7 +83,7 @@ export function TrafficPage() {
       .then((r) => {
         if (!active) return;
         setDevStats(r?.devices ?? []);
-        setPerDeviceSupported(r?.perDeviceTrafficSupported !== false);
+        setPerDevice(r?.perDeviceTraffic ?? { status: 'supported' });
       })
       .catch((err) => {
         if (!active) return;
@@ -346,7 +349,7 @@ export function TrafficPage() {
           muestra igualmente con la explicación: antes desaparecía sin más y el
           usuario nunca se enteraba de por qué su bienestar digital estaba vacío
           (US-263). Si sí lo reporta pero aún no hay datos, no hay nada que decir. */}
-      {(sortedDev.length > 0 || (devStats !== null && !perDeviceSupported)) && (
+      {(sortedDev.length > 0 || (devStats !== null && perDevice.status !== 'supported')) && (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>{t('traffic.byDevice')}</CardTitle>
@@ -369,10 +372,12 @@ export function TrafficPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {!perDeviceSupported ? (
-              <Callout variant="warning" standing title={t('traffic.perDeviceUnsupported')}>
-                {t('traffic.perDeviceUnsupportedDesc')}
-              </Callout>
+            {perDevice.status !== 'supported' ? (
+              <PerDeviceTrafficNotice
+                capability={perDevice}
+                unsupportedTitle={t('traffic.perDeviceUnsupported')}
+                unsupportedDesc={t('traffic.perDeviceUnsupportedDesc')}
+              />
             ) : (
             /* Scroll horizontal en móvil en vez de desbordar la página (US-97). */
             <div className="overflow-x-auto">

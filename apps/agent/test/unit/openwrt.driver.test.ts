@@ -38,8 +38,17 @@ class FakeTransport implements OpenWrtTransport {
   /** Salidas en cola para un mismo comando (p. ej. dos lecturas de /proc/net/dev). */
   private queues = new Map<string, string[]>();
 
+  /**
+   * Registra la respuesta a un comando. **Reemplaza** la regla anterior con el
+   * mismo `match` en vez de apilarla: un test que cambia la respuesta a mitad
+   * —el usuario instala un paquete, el SSH se cae— espera que la nueva mande, y
+   * apilar dejaba ganando siempre a la primera (US-251).
+   */
   on(match: string, stdout: string, code = 0): this {
-    this.rules.push({ match, out: { stdout, code } });
+    const existing = this.rules.findIndex((r) => r.match === match);
+    const rule = { match, out: { stdout, code } };
+    if (existing === -1) this.rules.push(rule);
+    else this.rules[existing] = rule;
     return this;
   }
 
@@ -70,6 +79,7 @@ class FakeTransport implements OpenWrtTransport {
 
 function baseTransport(): FakeTransport {
   return new FakeTransport()
+    .on('command -v nlbw', 'no\n') // sin nlbwmon: el estado de fábrica de OpenWrt
     .on('cat /proc/uptime', '1234.5 5678.9')
     .on('cat /proc/net/arp', ARP)
     .on('uci show wireless', UCI)
@@ -123,6 +133,155 @@ describe('OpenWrtDriver', () => {
     const second = await driver.getTrafficSample();
     // rx: (3_000_000 - 1_000_000)/2 = 1_000_000 ; tx: (600_000 - 200_000)/2 = 200_000
     expect(second.wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
+  });
+
+
+  // ---- Contabilidad por dispositivo con nlbwmon (US-251) ----
+
+  /** Salida de nlbwmon con dos lecturas del mismo aparato, para derivar la tasa. */
+  const NLBW_1 = JSON.stringify({
+    columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+    data: [['f0:18:98:aa:bb:cc', '192.168.1.42', 1_000_000, 100_000]],
+  });
+  const NLBW_2 = JSON.stringify({
+    columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+    data: [['f0:18:98:aa:bb:cc', '192.168.1.42', 3_000_000, 300_000]],
+  });
+
+  /** Router con nlbwmon instalado y dos lecturas encoladas. */
+  function conNlbw(lecturas: string[] = [NLBW_1, NLBW_2]): void {
+    t.on('command -v nlbw', 'si\n');
+    t.queue('nlbw -c json', lecturas);
+    t.queue('cat /proc/net/dev', [NET_DEV_1, NET_DEV_2, NET_DEV_2]);
+  }
+
+  it('sin nlbwmon: no hay desglose y la capacidad dice CÓMO arreglarlo', async () => {
+    t.on('cat /proc/net/dev', NET_DEV_1);
+    const driver = makeDriver();
+    const sample = await driver.getTrafficSample();
+    expect(sample.devices).toEqual([]);
+    // «requires-setup», no «unsupported»: el router sí puede, le falta el paquete.
+    expect(await driver.perDeviceTrafficCapability()).toEqual({
+      status: 'requires-setup',
+      setup: 'nlbwmon',
+    });
+    // Y no se llega a pedir el dato que no existe.
+    expect(t.ran('nlbw -c json')).toBe(false);
+  });
+
+  it('con nlbwmon: deriva bytes/seg por dispositivo entre dos lecturas', async () => {
+    conNlbw();
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+
+    // Primera lectura: solo fija la base, todavía no hay tasa que calcular.
+    expect((await driver.getTrafficSample()).devices).toEqual([]);
+
+    clock += 2_000; // +2 s
+    const second = await driver.getTrafficSample();
+    // rx: (3_000_000 - 1_000_000)/2 = 1_000_000 ; tx: (300_000 - 100_000)/2 = 100_000
+    expect(second.devices).toEqual([
+      {
+        mac: 'f0:18:98:aa:bb:cc',
+        ip: '192.168.1.42',
+        rxBytesPerSec: 1_000_000,
+        txBytesPerSec: 100_000,
+      },
+    ]);
+    expect(await driver.perDeviceTrafficCapability()).toEqual({ status: 'supported' });
+  });
+
+  it('un contador que BAJA es un reinicio de periodo, no tráfico negativo', async () => {
+    // nlbwmon acumula por periodo (mensual por defecto) y el demonio se reinicia:
+    // sin este guard, el cambio de mes pintaría un pico absurdo en el bienestar.
+    const NLBW_REINICIADO = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [['f0:18:98:aa:bb:cc', '192.168.1.42', 5_000, 500]],
+    });
+    conNlbw([NLBW_2, NLBW_REINICIADO, NLBW_2]);
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+
+    await driver.getTrafficSample(); // base alta
+    clock += 2_000;
+    expect((await driver.getTrafficSample()).devices).toEqual([]); // contador reiniciado
+
+    // Y la base se rehace con el valor nuevo: la muestra siguiente vuelve a contar.
+    clock += 2_000;
+    const tercera = await driver.getTrafficSample();
+    expect(tercera.devices?.[0]?.rxBytesPerSec).toBe((3_000_000 - 5_000) / 2);
+  });
+
+  it('olvida el aparato que deja de aparecer, en vez de acumularlo para siempre', async () => {
+    const SOLO_OTRO = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [['dc:a6:32:de:ad:02', '192.168.1.50', 10, 10]],
+    });
+    conNlbw([NLBW_1, SOLO_OTRO, NLBW_1]);
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+
+    await driver.getTrafficSample();
+    clock += 2_000;
+    await driver.getTrafficSample(); // el primero desaparece del informe
+    clock += 2_000;
+    // Al volver, arranca de cero: NO se compara contra una lectura de hace dos ciclos.
+    expect((await driver.getTrafficSample()).devices).toEqual([]);
+  });
+
+  it('el sondeo de nlbw se cachea: no se pregunta en cada muestra', async () => {
+    conNlbw([NLBW_1, NLBW_2, NLBW_2]);
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+
+    await driver.getTrafficSample();
+    clock += 2_000;
+    await driver.getTrafficSample();
+    await driver.perDeviceTrafficCapability();
+
+    // El muestreo corre cada 2 s: sin caché esto volvería a machacar el router por
+    // SSH, que es justo el sondeo que US-229 quitó.
+    const sondeos = t.calls.filter((c) => c.startsWith('command -v nlbw')).length;
+    expect(sondeos).toBe(1);
+  });
+
+  it('el sondeo caduca, para que instalar el paquete se note sin reiniciar', async () => {
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+    expect(await driver.perDeviceTrafficCapability()).toMatchObject({ status: 'requires-setup' });
+
+    // El usuario instala nlbwmon tras leer el aviso.
+    t.on('command -v nlbw', 'si\n');
+    clock += 6 * 60_000; // pasa el TTL de 5 min
+    expect(await driver.perDeviceTrafficCapability()).toEqual({ status: 'supported' });
+  });
+
+  it('un fallo de SSH no se convierte en «tu router no puede»', async () => {
+    // Acusar al hardware de un problema de red mandaría al usuario a perseguir el
+    // problema equivocado: se deja sin cachear y se reintenta.
+    t.on('command -v nlbw', '', 1);
+    // Reloj fijo a propósito: sin TTL de por medio, lo que se prueba es que el
+    // fallo NO se cacheó, no que haya caducado.
+    const clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+    await driver.perDeviceTrafficCapability();
+
+    t.on('command -v nlbw', 'si\n');
+    expect(await driver.perDeviceTrafficCapability()).toEqual({ status: 'supported' });
+  });
+
+  it('nlbw que responde basura no tumba el muestreo de la WAN', async () => {
+    t.on('command -v nlbw', 'si\n');
+    t.on('nlbw -c json', '<html>error</html>');
+    t.queue('cat /proc/net/dev', [NET_DEV_1, NET_DEV_2]);
+    let clock = 1_000_000;
+    const driver = makeDriver(() => clock);
+
+    await driver.getTrafficSample();
+    clock += 2_000;
+    const second = await driver.getTrafficSample();
+    expect(second.wan.rxBytesPerSec).toBe(1_000_000);
+    expect(second.devices).toEqual([]);
   });
 
   it('blockDevice ejecuta la regla iptables de la MAC', async () => {

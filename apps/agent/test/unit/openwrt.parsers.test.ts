@@ -5,6 +5,7 @@ import {
   parseArpTable,
   parseDhcpLeases,
   parseIwinfoAssoc,
+  parseNlbwJson,
   parseProcNetDev,
   parseUciWireless,
   parseUmdnsHosts,
@@ -130,5 +131,90 @@ describe('parseUmdnsHosts', () => {
       { hostname: 'pi', ip: '192.168.1.50' },
     ]);
     expect(parseUmdnsHosts({ 'sin-ip.local': {} })).toEqual([]);
+  });
+});
+
+describe('parseNlbwJson (US-251)', () => {
+  /** Salida típica de `nlbw -c json -g mac,ip`. */
+  const NLBW = JSON.stringify({
+    columns: ['mac', 'ip', 'conns', 'rx_bytes', 'rx_pkts', 'tx_bytes', 'tx_pkts'],
+    data: [
+      ['F0:18:98:AA:BB:CC', '192.168.1.42', 12, 5_000_000, 400, 250_000, 300],
+      ['dc:a6:32:de:ad:02', '192.168.1.50', 3, 1_000, 10, 2_000, 20],
+    ],
+  });
+
+  it('extrae MAC (minúsculas), IP y contadores', () => {
+    expect(parseNlbwJson(NLBW)).toEqual([
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rxBytes: 5_000_000, txBytes: 250_000 },
+      { mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50', rxBytes: 1_000, txBytes: 2_000 },
+    ]);
+  });
+
+  it('resuelve las columnas por NOMBRE, no por posición', () => {
+    // Mismo contenido con las columnas en otro orden: un `opkg upgrade` del router
+    // no puede convertir los bytes de subida en los de bajada.
+    const reordenado = JSON.stringify({
+      columns: ['rx_bytes', 'tx_bytes', 'ip', 'mac'],
+      data: [[5_000_000, 250_000, '192.168.1.42', 'f0:18:98:aa:bb:cc']],
+    });
+    expect(parseNlbwJson(reordenado)).toEqual([
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rxBytes: 5_000_000, txBytes: 250_000 },
+    ]);
+  });
+
+  it('acepta filas como objeto (builds que lo emiten así)', () => {
+    const objetos = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [{ mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rx_bytes: 10, tx_bytes: 20 }],
+    });
+    expect(parseNlbwJson(objetos)).toEqual([
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rxBytes: 10, txBytes: 20 },
+    ]);
+  });
+
+  it('suma las filas de una misma MAC y conserva la IPv4', () => {
+    // Un aparato con IPv4 + IPv6 sale en dos filas y es el mismo dispositivo.
+    const dosFilas = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [
+        ['f0:18:98:aa:bb:cc', 'fe80::1', 100, 200],
+        ['f0:18:98:aa:bb:cc', '192.168.1.42', 300, 400],
+      ],
+    });
+    expect(parseNlbwJson(dosFilas)).toEqual([
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rxBytes: 400, txBytes: 600 },
+    ]);
+  });
+
+  it('descarta la MAC cero: es tráfico no atribuible, no un dispositivo', () => {
+    const conCero = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [
+        ['00:00:00:00:00:00', '0.0.0.0', 9_999, 9_999],
+        ['f0:18:98:aa:bb:cc', '192.168.1.42', 1, 2],
+      ],
+    });
+    expect(parseNlbwJson(conCero).map((r) => r.mac)).toEqual(['f0:18:98:aa:bb:cc']);
+  });
+
+  it('no lanza con entrada corrupta: devuelve lista vacía', () => {
+    // El muestreo corre cada 2 s; un router que responde raro no puede tumbarlo.
+    expect(parseNlbwJson('')).toEqual([]);
+    expect(parseNlbwJson('esto no es json')).toEqual([]);
+    expect(parseNlbwJson('null')).toEqual([]);
+    expect(parseNlbwJson('{"columns":[]}')).toEqual([]);
+    expect(parseNlbwJson('{"data":"nope"}')).toEqual([]);
+    expect(parseNlbwJson('{"columns":["mac"],"data":[["no-es-una-mac"]]}')).toEqual([]);
+  });
+
+  it('trata un contador ausente o absurdo como cero, sin inventar tráfico', () => {
+    const raro = JSON.stringify({
+      columns: ['mac', 'ip', 'rx_bytes', 'tx_bytes'],
+      data: [['f0:18:98:aa:bb:cc', '192.168.1.42', null, -5]],
+    });
+    expect(parseNlbwJson(raro)).toEqual([
+      { mac: 'f0:18:98:aa:bb:cc', ip: '192.168.1.42', rxBytes: 0, txBytes: 0 },
+    ]);
   });
 });

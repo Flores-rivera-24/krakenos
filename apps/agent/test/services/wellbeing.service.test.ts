@@ -91,16 +91,17 @@ describe('WellbeingService (US-184)', () => {
 
   // --- US-263: la capacidad viaja con el informe ---
 
-  it('con el mock (que sí reporta el desglose) la capacidad sale a true', async () => {
+  it('con el mock (que sí reporta el desglose) la capacidad sale disponible', async () => {
     const svc = new WellbeingService(app, new MockDriver());
     const out = await svc.usageByPerson('week', { sub: 'x', role: 'admin' });
-    expect(out.perDeviceTrafficSupported).toBe(true);
+    expect(out.perDeviceTraffic).toEqual({ status: 'supported' });
   });
 
-  it('con un driver REAL el informe se declara no disponible, aunque haya dueños', async () => {
-    // Un driver de verdad (openwrt) devuelve `devices: []`, así que este informe
-    // está vacío SIEMPRE. Asignar dueños no lo arregla, y la UI debe decir eso.
-    const openwrt = { ...new MockDriver(), kind: 'openwrt' as const };
+  it('con un driver que NO puede, el informe se declara no disponible aunque haya dueños', async () => {
+    // UniFi devuelve `devices: []`, así que este informe está vacío SIEMPRE.
+    // Asignar dueños no lo arregla, y la UI debe decir eso en vez de culpar al
+    // usuario por no haberlos asignado.
+    const unifi = { ...new MockDriver(), kind: 'unifi' as const };
     const user = await app.prisma.user.create({
       data: { email: 'due@no.local', passwordHash: 'x', displayName: 'Due', role: 'admin' },
     });
@@ -108,12 +109,27 @@ describe('WellbeingService (US-184)', () => {
       data: { mac: 'aa:bb:cc:00:0d:01', ip: '10.0.0.9', ownerId: user.id },
     });
 
-    const svc = new WellbeingService(app, openwrt as unknown as MockDriver);
+    const svc = new WellbeingService(app, unifi as unknown as MockDriver);
     const out = await svc.usageByPerson('week', { sub: user.id, role: 'admin' });
 
-    expect(out.perDeviceTrafficSupported).toBe(false);
+    expect(out.perDeviceTraffic).toEqual({ status: 'unsupported' });
     // Hay un dueño asignado: la UI no debe culpar a la configuración del usuario.
     expect(out.devicesWithOwner).toBe(1);
     expect(out.people).toEqual([]);
+  });
+
+  it('con OpenWrt sin nlbwmon el informe dice que FALTA UN PASO, no que no se puede', async () => {
+    // US-251: los dos casos se ven igual (informe vacío) y no tienen nada que ver.
+    // Este es el único que el usuario puede arreglar, así que no puede confundirse
+    // con «tu router no reparte el tráfico», que le haría cambiar de router.
+    const openwrt = {
+      ...new MockDriver(),
+      kind: 'openwrt' as const,
+      perDeviceTrafficCapability: () =>
+        Promise.resolve({ status: 'requires-setup' as const, setup: 'nlbwmon' as const }),
+    };
+    const svc = new WellbeingService(app, openwrt as unknown as MockDriver);
+    const out = await svc.usageByPerson('week', { sub: 'x', role: 'admin' });
+    expect(out.perDeviceTraffic).toEqual({ status: 'requires-setup', setup: 'nlbwmon' });
   });
 });

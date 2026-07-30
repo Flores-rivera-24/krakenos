@@ -1,6 +1,6 @@
-import type { PersonUsage, WellbeingRange } from '@krakenos/types';
+import type { PerDeviceTrafficCapability, PersonUsage, WellbeingRange } from '@krakenos/types';
 import { useEffect, useState } from 'react';
-import { Callout } from '@/components/ui/callout';
+import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -15,9 +15,9 @@ export function WellbeingCard() {
   const t = useT();
   const [range, setRange] = useState<WellbeingRange>('week');
   const [people, setPeople] = useState<PersonUsage[] | null>(null);
-  // US-263: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume que sí
-  // hasta saber lo contrario, para no acusar al router mientras carga.
-  const [supported, setSupported] = useState(true);
+  // US-263/US-251: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume
+  // disponible hasta saber lo contrario, para no acusar al router mientras carga.
+  const [perDevice, setPerDevice] = useState<PerDeviceTrafficCapability>({ status: 'supported' });
   const [withOwner, setWithOwner] = useState(0);
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function WellbeingCard() {
       .then((u) => {
         if (!active) return;
         setPeople(Array.isArray(u?.people) ? u.people : []);
-        setSupported(u?.perDeviceTrafficSupported !== false);
+        setPerDevice(u?.perDeviceTraffic ?? { status: 'supported' });
         setWithOwner(u?.devicesWithOwner ?? 0);
       })
       .catch(() => active && setPeople([]));
@@ -68,10 +68,12 @@ export function WellbeingCard() {
           /* Tres motivos MUY distintos para no ver nada, y hasta US-263 los tres
              decían «asigna un dueño a los dispositivos» — mandando al usuario a
              configurar algo que no arreglaba nada. */
-          !supported ? (
-            <Callout variant="warning" standing title={t('wellbeing.unsupported')}>
-              {t('wellbeing.unsupportedDesc')}
-            </Callout>
+          perDevice.status !== 'supported' ? (
+            <PerDeviceTrafficNotice
+              capability={perDevice}
+              unsupportedTitle={t('wellbeing.unsupported')}
+              unsupportedDesc={t('wellbeing.unsupportedDesc')}
+            />
           ) : withOwner === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.noOwners')}</p>
           ) : (

@@ -23,6 +23,18 @@ const personUsage = {
   required: ['userId', 'name', 'rxBytes', 'txBytes', 'totalBytes', 'deviceCount', 'buckets'],
 } as const;
 
+const perDeviceTraffic = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['status'],
+  properties: {
+    // US-251: tres estados, no un booleano. `requires-setup` es el único que el
+    // usuario puede arreglar, y la UI necesita poder decirle cómo.
+    status: { type: 'string', enum: ['supported', 'unsupported', 'requires-setup'] },
+    setup: { type: 'string', enum: ['nlbwmon'] },
+  },
+} as const;
+
 export const wellbeingUsageSchema = {
   querystring: {
     type: 'object',
@@ -40,10 +52,10 @@ export const wellbeingUsageSchema = {
         people: { type: 'array', items: personUsage },
         // US-263: sin desglose por dispositivo, `people` sale vacío SIEMPRE, por
         // mucho dueño que se asigne. La UI necesita distinguirlo.
-        perDeviceTrafficSupported: { type: 'boolean' },
+        perDeviceTraffic,
         devicesWithOwner: { type: 'integer' },
       },
-      required: ['range', 'people', 'perDeviceTrafficSupported', 'devicesWithOwner'],
+      required: ['range', 'people', 'perDeviceTraffic', 'devicesWithOwner'],
     },
   },
 } as const;

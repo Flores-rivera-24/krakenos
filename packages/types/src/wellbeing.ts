@@ -1,4 +1,5 @@
 import type { IsoDateTime } from './common.js';
+import type { PerDeviceTrafficCapability } from './traffic.js';
 
 /**
  * Bienestar digital (US-184): informe de uso de internet por persona, agregando
@@ -38,11 +39,11 @@ export interface WellbeingUsage {
   /** Personas con uso en la ventana (orden descendente por total). */
   people: PersonUsage[];
   /**
-   * ¿El driver activo reporta el tráfico **por dispositivo**? (US-263). Es la
-   * fuente única de este informe: sin ella `people` sale vacío **siempre**, por
-   * mucho dueño que se asigne. Hoy solo el `mock`. Arreglo de fondo: US-251.
+   * Capacidad de desglose por dispositivo del driver activo (US-263/US-251). Es
+   * la fuente única de este informe: sin ella `people` sale vacío **siempre**,
+   * por mucho dueño que se asigne.
    */
-  perDeviceTrafficSupported: boolean;
+  perDeviceTraffic: PerDeviceTrafficCapability;
   /**
    * Cuántos dispositivos del inventario tienen dueño asignado. Permite distinguir
    * «no hay dueños» de «hay dueños pero aún no hay datos» sin adivinar en la UI.

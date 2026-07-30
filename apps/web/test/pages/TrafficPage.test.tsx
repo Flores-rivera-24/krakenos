@@ -1,4 +1,9 @@
-import type { DeviceTrafficStats, TrafficSample, TrafficStats } from '@krakenos/types';
+import type {
+  DeviceTrafficStats,
+  PerDeviceTrafficCapability,
+  TrafficSample,
+  TrafficStats,
+} from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -30,17 +35,17 @@ function mockApi({
   history = [],
   stats = EMPTY_STATS,
   devices = [],
-  perDeviceTrafficSupported = true,
+  perDeviceTraffic = { status: 'supported' as const },
 }: {
   history?: TrafficSample[];
   stats?: TrafficStats;
   devices?: DeviceTrafficStats[];
-  perDeviceTrafficSupported?: boolean;
+  perDeviceTraffic?: PerDeviceTrafficCapability;
 } = {}) {
   apiMock.get.mockImplementation((url: string) => {
     if (url.startsWith('/traffic/stats')) return Promise.resolve(stats);
     if (url.startsWith('/traffic/devices'))
-      return Promise.resolve({ devices, perDeviceTrafficSupported });
+      return Promise.resolve({ devices, perDeviceTraffic });
     return Promise.resolve(history);
   });
 }
@@ -184,7 +189,7 @@ describe('TrafficPage', () => {
   });
 
   it('driver sin desglose: la tabla se sustituye por la explicación, no desaparece (US-263)', async () => {
-    mockApi({ devices: [], perDeviceTrafficSupported: false });
+    mockApi({ devices: [], perDeviceTraffic: { status: 'unsupported' } });
     render(<TrafficPage />);
     // Antes la tarjeta simplemente no se pintaba y el usuario nunca sabía por qué
     // su bienestar digital estaba vacío.
@@ -192,7 +197,7 @@ describe('TrafficPage', () => {
   });
 
   it('driver con desglose pero sin datos: no se inventa una tarjeta vacía', async () => {
-    mockApi({ devices: [], perDeviceTrafficSupported: true });
+    mockApi({ devices: [], perDeviceTraffic: { status: 'supported' } });
     render(<TrafficPage />);
     await screen.findByText(/Tráfico/i);
     expect(screen.queryByText(/no reparte el tráfico por dispositivo/i)).not.toBeInTheDocument();

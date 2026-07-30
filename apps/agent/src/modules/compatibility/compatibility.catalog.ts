@@ -47,6 +47,12 @@ const EXTRA_DEP_KINDS = new Set<string>([
   'cameras:rtsp',
 ]);
 
+/**
+ * Kinds cuya capacidad de **tráfico por dispositivo** depende de un paquete en el
+ * ROUTER (US-251), no en el servidor. Hoy solo OpenWrt con `nlbwmon`.
+ */
+const ROUTER_PACKAGE_KINDS = new Set<string>(['driver:openwrt']);
+
 /** Deriva los requisitos de puesta en marcha de los campos del schema. */
 function deriveRequirements(id: string, fields: IntegrationField[]): CompatRequirement[] {
   const reqs = new Set<CompatRequirement>();
@@ -55,6 +61,7 @@ function deriveRequirements(id: string, fields: IntegrationField[]): CompatRequi
     else if (f.required && (f.type === 'host' || f.type === 'url')) reqs.add('address');
   }
   if (EXTRA_DEP_KINDS.has(id)) reqs.add('extra-dependency');
+  if (ROUTER_PACKAGE_KINDS.has(id)) reqs.add('router-package');
   return [...reqs];
 }
 
@@ -73,6 +80,10 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
       // US-263: honestidad de catálogo. El desglose por aparato NO es lo mismo que
       // medir el tráfico del hogar; declararlo solo donde de verdad existe evita
       // prometer un bienestar digital que saldría vacío.
+      // US-251: OpenWrt ya lo tiene, pero **a través de `nlbwmon`**, que es un
+      // paquete aparte del router. Se declara la capacidad y se marca el requisito,
+      // porque «lo soporta» sin decir «hay que instalar algo» sería la misma media
+      // verdad que esta capacidad vino a quitar.
       if (category === 'driver' && reportsPerDeviceTraffic(kind as DriverKind)) {
         capabilities.push('traffic-per-device');
       }

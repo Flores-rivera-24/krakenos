@@ -739,6 +739,9 @@ export const en: Record<TranslationKey, string> = {
   'traffic.perDeviceUnsupportedDesc':
     'It only reports the household total, so per-device usage and per-person usage cannot be shown. This is not a setting on your side.',
   'wellbeing.unassigned': 'Unassigned',
+  'perDeviceTraffic.setup.title': 'Your router can report this, but it is missing a package',
+  'perDeviceTraffic.setup.nlbwmon':
+    'Install «nlbwmon» on the router: in LuCI, System → Software → Update lists and search for «nlbwmon»; or over SSH, «opkg update && opkg install nlbwmon luci-app-nlbwmon». KrakenOS picks it up on its own within a few minutes and starts counting from then.',
   'wellbeing.devices': '{n} device(s)',
 
   // --- People (US-240) ---
@@ -928,6 +931,7 @@ export const en: Record<TranslationKey, string> = {
   'compat.req.address': 'an address on your network',
   'compat.req.credentials': 'username and password',
   'compat.req.extra-dependency': 'an extra package on the server',
+  'compat.req.router-package': 'an extra package on the router',
 
   // --- Settings ---
   'settings.title': 'Settings',

@@ -7,7 +7,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { asNumber } from '../../db/sql-aggregate.js';
-import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
+import { resolvePerDeviceTraffic } from '../../drivers/capabilities.js';
 
 /** Ventana temporal de cada rango, en milisegundos. */
 const RANGE_MS: Record<WellbeingRange, number> = {
@@ -126,7 +126,7 @@ export class WellbeingService {
     return {
       range,
       people,
-      perDeviceTrafficSupported: reportsPerDeviceTraffic(this.driver.kind),
+      perDeviceTraffic: await resolvePerDeviceTraffic(this.driver),
       devicesWithOwner,
     };
   }

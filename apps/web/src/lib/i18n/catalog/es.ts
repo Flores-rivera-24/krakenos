@@ -746,6 +746,10 @@ export const es = {
   'traffic.perDeviceUnsupportedDesc':
     'Solo informa del total de la casa, así que no se puede mostrar cuánto consume cada dispositivo ni el uso por persona. No es cosa de tu configuración.',
   'wellbeing.unassigned': 'Sin asignar',
+  // US-251: el estado que SÍ se arregla, y por eso lleva instrucción concreta.
+  'perDeviceTraffic.setup.title': 'Tu router puede dar este dato, pero le falta un paquete',
+  'perDeviceTraffic.setup.nlbwmon':
+    'Instala «nlbwmon» en el router: en LuCI, Sistema → Software → Actualizar listas y buscar «nlbwmon»; o por SSH, «opkg update && opkg install nlbwmon luci-app-nlbwmon». KrakenOS lo detecta solo en unos minutos y empieza a contar desde ese momento.',
   'wellbeing.devices': '{n} dispositivo(s)',
 
   // --- Personas (US-240) ---
@@ -936,6 +940,9 @@ export const es = {
   'compat.req.address': 'dirección en tu red',
   'compat.req.credentials': 'usuario y contraseña',
   'compat.req.extra-dependency': 'un paquete extra en el servidor',
+  // US-251: en el ROUTER, no en el servidor. Quien lo lee necesita saber dónde
+  // teclea el comando.
+  'compat.req.router-package': 'un paquete extra en el router',
 
   // --- Ajustes (US-47) ---
   'settings.title': 'Ajustes',
