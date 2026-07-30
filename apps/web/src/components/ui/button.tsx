@@ -12,10 +12,15 @@ const buttonVariants = cva(
         outline: 'border border-kr bg-transparent text-kr-primary hover:bg-kr-elevated',
         ghost: 'text-kr-primary hover:bg-kr-elevated',
       },
+      // US-235: objetivos táctiles de 44 px en móvil (WCAG 2.5.8 pide 24 y las
+      // guías de iOS/Android recomiendan 44-48). En pantallas con puntero fino se
+      // vuelve a las alturas compactas, que es donde la densidad estilo UniFi
+      // importa y donde el ratón no falla. `sm` era 36 px: se toca mal con el
+      // pulgar, y es el tamaño de los botones de borrar de cada fila.
       size: {
-        default: 'h-10 px-4 py-2',
-        sm: 'h-9 px-3',
-        icon: 'h-10 w-10',
+        default: 'min-h-11 px-4 py-2 md:h-10 md:min-h-0',
+        sm: 'min-h-11 px-3 md:h-9 md:min-h-0',
+        icon: 'h-11 w-11 md:h-10 md:w-10',
       },
     },
     defaultVariants: { variant: 'default', size: 'default' },

@@ -1,9 +1,11 @@
 import { MoreHorizontal, X } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
 import { useT } from '@/lib/i18n';
+import { useFocusTrap } from '@/lib/use-focus-trap';
+import { useRouteAnnounce } from '@/lib/use-route-announce';
 import { useSidebarStats } from '@/lib/sidebar-stats';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -30,23 +32,43 @@ function MobileBottomNav() {
   const role = useAuthStore((s) => s.user?.role);
   const uiMode = useAuthStore((s) => s.user?.uiMode);
   const { primary, secondary } = mobileNavForRole(role, uiMode);
+  const panelRef = useFocusTrap<HTMLDivElement>(moreOpen);
+
+  // Escape cierra el panel (US-235): antes solo se podía cerrar tocando fuera o
+  // la X, y con teclado no había salida.
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [moreOpen]);
+
   return (
     <>
       {/* Panel "Más" — resto de secciones */}
       {moreOpen && (
         <div className="fixed inset-0 z-20 md:hidden" onClick={() => setMoreOpen(false)}>
-          <div className="absolute inset-0 bg-black/30" />
+          <div className="absolute inset-0 bg-black/30" aria-hidden="true" />
+          {/* US-235: era un `div` suelto — sin rol, sin nombre y sin Escape. Ahora
+              es un diálogo de verdad: se anuncia como tal, atrapa el foco (mismo
+              hook que Slideover/Dialog, US-62) y se cierra con Escape. */}
           <div
-            className="absolute inset-x-0 bottom-14 rounded-t-xl border-t border-kr bg-kr-elevated p-4"
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mas-secciones-titulo"
+            className="absolute inset-x-0 bottom-14 rounded-t-xl border-t border-kr bg-kr-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-kr-base font-semibold text-kr-primary">{t('layout.moreSections')}</span>
+              <span id="mas-secciones-titulo" className="text-kr-base font-semibold text-kr-primary">{t('layout.moreSections')}</span>
               <button
                 type="button"
                 aria-label={t('common.close')}
                 onClick={() => setMoreOpen(false)}
-                className="text-kr-secondary"
+                className="-m-2 p-2 text-kr-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -114,8 +136,21 @@ export function AppLayout() {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
 
+  // Título del documento + foco al contenido en cada navegación (US-235). En una
+  // SPA el navegador no hace ninguna de las dos cosas por su cuenta.
+  const mainRef = useRef<HTMLElement>(null);
+  useRouteAnnounce(mainRef);
+
   return (
     <div className="flex min-h-screen bg-kr-base text-kr-primary">
+      {/* Skip-link (US-235): con teclado había que tabular por toda la navegación
+          en CADA vista antes de llegar al contenido. Invisible hasta enfocarlo. */}
+      <a
+        href="#contenido"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-md focus:bg-kr-accent focus:px-4 focus:py-2 focus:text-white"
+      >
+        Saltar al contenido
+      </a>
       <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} stats={stats} />
 
       {/* Columna principal */}
@@ -138,7 +173,16 @@ export function AppLayout() {
 
         {/* La `key` por ruta reinicia el fade en cada navegación (transición sutil,
             US-160). motion-reduce desactiva el desplazamiento. */}
-        <main key={location.pathname} className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+        {/* `tabIndex={-1}`: enfocable por código (al cambiar de ruta) pero no en el
+            orden de tabulación. `outline-none` porque el foco aquí es programático
+            y un halo alrededor de toda la página sería ruido visual. */}
+        <main
+          id="contenido"
+          ref={mainRef}
+          tabIndex={-1}
+          key={location.pathname}
+          className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none md:pb-0"
+        >
           <Outlet />
         </main>
 

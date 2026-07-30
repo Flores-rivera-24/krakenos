@@ -83,6 +83,7 @@ export const en: Record<TranslationKey, string> = {
   'login.submitting': 'Signing in…',
   'login.error.credentials': 'Incorrect email or password.',
   'login.error.connection': 'Could not reach the server. Try again.',
+  'login.error.tooManyAttempts': 'Too many attempts. Wait a minute and try again.',
   'login.lastAccess': 'Last access',
   'login.tagline': 'Local access · No cloud · No third parties',
   'login.mfa.title': 'Verify your identity with your device',

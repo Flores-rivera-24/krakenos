@@ -431,7 +431,7 @@ export async function buildServer(): Promise<FastifyInstance> {
       const devicesOnline = await app.prisma.device.count({ where: { online: true } }).catch(() => 0);
       // Privacidad (US-169): del hogar viaja SOLO el modo, nunca las personas.
       const homeMode = await presenceService.getMode().catch(() => null);
-      const alarmPhase = alarmService.getState().phase;
+      const alarmPhase = alarmService.getStateSync().phase;
       return {
         iot: iotDevices.map((d) => ({
           id: d.id,

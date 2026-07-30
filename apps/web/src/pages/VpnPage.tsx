@@ -18,6 +18,7 @@ import { describeError } from '@/lib/errors';
 import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import { filaAbrible } from '@/lib/a11y';
 
 export function VpnPage() {
   const t = useT();
@@ -181,8 +182,8 @@ export function VpnPage() {
                   peers.map((p) => (
                     <tr
                       key={p.id}
-                      className="cursor-pointer border-t border-border hover:bg-secondary/40"
-                      onClick={() => setSelected({ peer: p })}
+                      className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                      {...filaAbrible(() => setSelected({ peer: p }), `Ver el peer ${p.name}`)}
                     >
                       <td className="px-3 py-2">{p.name}</td>
                       <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
