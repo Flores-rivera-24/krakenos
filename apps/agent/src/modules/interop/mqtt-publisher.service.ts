@@ -19,11 +19,16 @@ import {
 } from '../../iot/mqtt.transport.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import {
+  AVAILABILITY_ONLINE,
+  availabilityTopic,
   buildDiscoveryConfigs,
   buildStateMessages,
   commandFilters,
+  offlineMessage,
   parseInboundCommand,
   removalMessage,
+  willMessage,
+  type ControlFlags,
   type StateSnapshot,
 } from './ha-discovery.js';
 
@@ -47,6 +52,9 @@ export type MqttTransportFactory = (opts: MqttClientOptions) => MqttTransport;
 /** Aplica un comando entrante (US-213): `setState` + anti-bucle + auditoría. */
 export type CommandHandler = (deviceId: string, state: UpdateIotStateRequest) => Promise<void>;
 
+/** Aplica una pausa de internet entrante (US-236): `deviceId` es `Device.id`, no la MAC. */
+export type PauseHandler = (deviceId: string, minutes: number) => Promise<void>;
+
 interface StoredConfig {
   enabled: boolean;
   url: string;
@@ -57,8 +65,16 @@ interface StoredConfig {
   intervalSec: number;
   /** MQTT Discovery de HA (US-213). */
   discovery: boolean;
-  /** Control entrante (US-213); separado de `discovery`. */
+  /** Control entrante de IoT (US-213); separado de `discovery`. */
   control: boolean;
+  /**
+   * Control entrante de **pausa de internet** (US-236). Toggle **propio** y OFF por
+   * defecto: `control` significa «HA puede tocar mis aparatos IoT», no «HA puede
+   * cortarle internet a mi hija». La ruta HTTP equivalente es admin-only y rechaza
+   * tokens de API, y el broker **no tiene sujeto**, así que mezclarlos sería una
+   * escalada de privilegio.
+   */
+  pauseControl: boolean;
 }
 
 const SETTING_KEY = 'interop.mqtt';
@@ -71,6 +87,7 @@ const DEFAULTS: StoredConfig = {
   intervalSec: 30,
   discovery: false,
   control: false,
+  pauseControl: false,
 };
 const MIN_INTERVAL_SEC = 5;
 const MAX_INTERVAL_SEC = 3600;
@@ -90,6 +107,12 @@ export interface MqttPublisherDeps {
    * auditoría. Sin él, el control entrante no hace nada aunque esté activado.
    */
   onCommand?: CommandHandler;
+  /**
+   * Aplica una pausa de internet entrante (US-236). El server la cablea a
+   * `AccessScheduleService.pause` + auditoría con **actor `mqtt`**. Sin él, el
+   * botón de HA no hace nada aunque su toggle esté activo.
+   */
+  onPause?: PauseHandler;
 }
 
 export class MqttPublisher {
@@ -101,8 +124,14 @@ export class MqttPublisher {
   private connected = false;
   private lastPublishAt: Date | null = null;
   private lastError: string | null = null;
-  /** Topics de config de discovery publicados (para limpiar retenidos al quitar). */
-  private lastConfigTopics = new Set<string>();
+  /**
+   * Configs de discovery ya publicadas (topic → payload). Sirve para dos cosas:
+   * limpiar los retenidos de lo que desaparece **y** no reenviar en cada tick una
+   * config que no ha cambiado. Con 40 dispositivos son ~99 configs: republicarlas
+   * cada 30 s era ruido puro contra el broker. Se vacía al (re)conectar, así que
+   * cada conexión nueva resincroniza todo.
+   */
+  private lastConfigs = new Map<string, string>();
 
   constructor(private readonly deps: MqttPublisherDeps) {
     this.transportFactory = deps.transportFactory ?? ((opts) => new MqttClientTransport(opts));
@@ -125,6 +154,7 @@ export class MqttPublisher {
         intervalSec: clampInterval(parsed.intervalSec),
         discovery: parsed.discovery === true,
         control: parsed.control === true,
+        pauseControl: parsed.pauseControl === true,
       };
     } catch {
       return { ...DEFAULTS };
@@ -142,6 +172,7 @@ export class MqttPublisher {
       intervalSec: c.intervalSec,
       discovery: c.discovery,
       control: c.control,
+      pauseControl: c.pauseControl,
     };
   }
 
@@ -171,6 +202,7 @@ export class MqttPublisher {
       intervalSec: req.intervalSec !== undefined ? clampInterval(req.intervalSec) : cur.intervalSec,
       discovery: req.discovery ?? cur.discovery,
       control: req.control ?? cur.control,
+      pauseControl: req.pauseControl ?? cur.pauseControl,
     };
     await this.deps.prisma.setting.upsert({
       where: { key: SETTING_KEY },
@@ -197,25 +229,39 @@ export class MqttPublisher {
       return;
     }
 
+    // Conexión nueva ⇒ se republica todo el discovery (por si el broker perdió
+    // los retenidos), y a partir de ahí solo lo que cambie.
+    this.lastConfigs = new Map();
     const password = c.passwordEnc ? this.safeDecrypt(c.passwordEnc) : undefined;
+    const will = willMessage(c.topicPrefix);
     this.transport = this.transportFactory({
       url: c.url,
       username: c.username || undefined,
       password,
+      // Testamento (US-236): si el agente muere de golpe, el broker publica
+      // `offline` por nosotros y HA deja de mostrar la casa como disponible. Se
+      // declara en el CONNECT, así que tiene que ir aquí y no al publicar.
+      will: { topic: will.topic, payload: will.payload, retain: true },
     });
     this.lastError = null;
 
-    // Control entrante (US-213): OFF por defecto y separado de la publicación.
-    // Suscribe a `<prefijo>/iot/<id>/set` (+ brightness/rgb) y delega en onCommand.
-    if (c.control && this.deps.onCommand) {
-      for (const filter of commandFilters(c.topicPrefix)) {
-        await this.transport.subscribe(filter, (topic, payload) => {
-          const cmd = parseInboundCommand(topic, payload, c.topicPrefix);
-          if (cmd) void this.deps.onCommand?.(cmd.deviceId, cmd.state).catch((err) => {
-            this.deps.onError?.(err instanceof Error ? err.message : 'Error al aplicar comando MQTT');
-          });
+    // Control entrante: cada superficie con su propio toggle, ambos OFF por
+    // defecto. Solo se suscriben los filtros de lo que está activado — con un
+    // broker sin sujeto, NO suscribirse es la única garantía real.
+    const flags = this.controlFlags(c);
+    const filters = commandFilters(c.topicPrefix, flags);
+    for (const filter of filters) {
+      await this.transport.subscribe(filter, (topic, payload) => {
+        const cmd = parseInboundCommand(topic, payload, c.topicPrefix);
+        if (!cmd) return;
+        const applied =
+          cmd.kind === 'iot'
+            ? this.deps.onCommand?.(cmd.deviceId, cmd.state)
+            : this.deps.onPause?.(cmd.deviceId, cmd.minutes);
+        void applied?.catch((err: unknown) => {
+          this.deps.onError?.(err instanceof Error ? err.message : 'Error al aplicar comando MQTT');
         });
-      }
+      });
     }
 
     // `publishOnce` no lanza; el bucle aporta el guard de re-entrada (US-229):
@@ -238,7 +284,9 @@ export class MqttPublisher {
       const snap = await this.deps.snapshot();
       const c = await this.readStored();
       const p = c.topicPrefix;
-      await this.transport.publish(`${p}/status`, 'online');
+      // Retenido: es el topic de disponibilidad que respalda el LWT, así que un HA
+      // que se conecte después debe encontrarlo (antes iba sin `retain`).
+      await this.transport.publish(availabilityTopic(p), AVAILABILITY_ONLINE, { retain: true });
       for (const d of snap.iot) {
         await this.transport.publish(
           `${p}/iot/${encodeTopic(d.id)}`,
@@ -252,26 +300,31 @@ export class MqttPublisher {
       // limpieza de los retenidos que ya no aplican (dispositivo quitado o discovery
       // desactivado). Se publica además de los topics legados de US-174.
       if (c.discovery) {
-        const configs = buildDiscoveryConfigs(snap, p, c.control);
-        for (const m of configs) await this.transport.publish(m.topic, m.payload, { retain: true });
+        const configs = buildDiscoveryConfigs(snap, p, this.controlFlags(c));
+        // Solo lo que cambió: una config idéntica ya está retenida en el broker.
+        for (const m of configs) {
+          if (this.lastConfigs.get(m.topic) === m.payload) continue;
+          await this.transport.publish(m.topic, m.payload, { retain: true });
+        }
+        // El ESTADO sí va siempre: es lo que se mueve.
         for (const m of buildStateMessages(snap, p)) {
           await this.transport.publish(m.topic, m.payload, { retain: !!m.retain });
         }
-        const current = new Set(configs.map((m) => m.topic));
-        for (const topic of this.lastConfigTopics) {
+        const current = new Map(configs.map((m) => [m.topic, m.payload]));
+        for (const topic of this.lastConfigs.keys()) {
           if (!current.has(topic)) {
             const rm = removalMessage(topic);
             await this.transport.publish(rm.topic, rm.payload, { retain: true });
           }
         }
-        this.lastConfigTopics = current;
-      } else if (this.lastConfigTopics.size > 0) {
+        this.lastConfigs = current;
+      } else if (this.lastConfigs.size > 0) {
         // Discovery recién desactivado: borra todas las configs retenidas.
-        for (const topic of this.lastConfigTopics) {
+        for (const topic of this.lastConfigs.keys()) {
           const rm = removalMessage(topic);
           await this.transport.publish(rm.topic, rm.payload, { retain: true });
         }
-        this.lastConfigTopics = new Set();
+        this.lastConfigs = new Map();
       }
       this.connected = true;
       this.lastPublishAt = this.now();
@@ -283,11 +336,29 @@ export class MqttPublisher {
     }
   }
 
-  /** Cierra la conexión y detiene el barrido (US-201: managers persistentes). */
+  /** Superficies de control entrante activas. Cada una es un toggle propio. */
+  private controlFlags(c: StoredConfig): ControlFlags {
+    return { iot: c.control && !!this.deps.onCommand, pause: c.pauseControl && !!this.deps.onPause };
+  }
+
+  /**
+   * Cierra la conexión y detiene el barrido (US-201: managers persistentes).
+   *
+   * Se **despide** publicando `offline` retenido antes de desconectar: el LWT solo
+   * lo publica el broker ante una caída **abrupta**, así que un apagado ordenado
+   * dejaría a HA viendo la casa disponible hasta el siguiente arranque (US-236).
+   */
   async stop(): Promise<void> {
     this.loop?.stop();
     this.loop = null;
     if (this.transport) {
+      try {
+        const { topicPrefix } = await this.readStored();
+        const bye = offlineMessage(topicPrefix);
+        await this.transport.publish(bye.topic, bye.payload, { retain: true });
+      } catch {
+        // Un adiós fallido no debe impedir cerrar: para eso está el LWT.
+      }
       await this.transport.dispose?.().catch(() => undefined);
       this.transport = null;
     }

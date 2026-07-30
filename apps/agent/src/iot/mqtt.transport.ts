@@ -40,11 +40,25 @@ export function topicMatches(filter: string, topic: string): boolean {
   return f.length === t.length;
 }
 
+/**
+ * *Last Will and Testament*: lo que el **broker** publica en nuestro nombre si la
+ * conexión se corta sin despedirse (agente caído, cable, OOM). Sin esto, un cliente
+ * como Home Assistant sigue viendo el último estado retenido —«online»— para
+ * siempre (US-236).
+ */
+export interface MqttWill {
+  topic: string;
+  payload: string;
+  retain?: boolean;
+}
+
 export interface MqttClientOptions {
   /** URL del broker, p. ej. `mqtt://localhost:1883`. */
   url: string;
   username?: string;
   password?: string;
+  /** Testamento; lo publica el broker si perdemos la conexión de forma abrupta. */
+  will?: MqttWill;
 }
 
 interface Subscription {
@@ -80,6 +94,17 @@ export class MqttClientTransport implements MqttTransport {
       const client = mqtt.connect(this.opts.url, {
         username: this.opts.username,
         password: this.opts.password,
+        // El testamento se declara en el CONNECT: no se puede añadir después.
+        ...(this.opts.will
+          ? {
+              will: {
+                topic: this.opts.will.topic,
+                payload: this.opts.will.payload,
+                retain: this.opts.will.retain === true,
+                qos: 0,
+              },
+            }
+          : {}),
       }) as {
         on: (ev: string, cb: (topic: string, payload: Uint8Array) => void) => void;
         subscribe: (filter: string) => void;

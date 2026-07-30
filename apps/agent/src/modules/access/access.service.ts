@@ -7,7 +7,21 @@ import type {
 import type { AccessSchedule as DbAccessSchedule } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { activeBlockedMacs } from './schedule-eval.js';
+import { evaluateBlocked, groupSchedulesByMac, type BlockReason } from './blocked-eval.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
+
+/**
+ * Vista publicable del bloqueo efectivo de un dispositivo (US-236). **Sin MAC ni
+ * IP**: viaja a MQTT/HA, donde el nombre acaba además en el registro de entidades.
+ */
+export interface BlockedDeviceView {
+  /** `Device.id` (cuid, no-PII). */
+  id: string;
+  /** `label ?? hostname ?? «Dispositivo xxxxxx»` — nunca la MAC. */
+  name: string;
+  blocked: boolean;
+  reasons: BlockReason[];
+}
 
 function toSchedule(row: DbAccessSchedule): AccessSchedule {
   let days: number[] = [];
@@ -108,8 +122,48 @@ export class AccessScheduleService {
   }
 
   /**
-   * ¿Debe estar bloqueado ahora este MAC por horario **o pausa**? Lo usa el
-   * inventario al desbloquear a mano (para que horario/pausa prevalezcan).
+   * «¿Está bloqueado ahora y **por qué**?» para todos los dispositivos conocidos
+   * (US-236). Resuelve N dispositivos en **2 consultas** y **cero llamadas al
+   * driver** (el contrato `HardwareDriver` solo sabe *escribir* bloqueos, no
+   * leerlos); la decisión la toma `evaluateBlocked`, que es puro.
+   *
+   * ⚠️ **La MAC no sale de aquí**: es PII y esta vista alimenta la publicación
+   * MQTT (US-236). Se identifica por `Device.id` y se nombra por
+   * `label ?? hostname`; un dispositivo sin nombre humano recibe uno genérico en
+   * vez de su MAC.
+   */
+  async blockedViews(now: Date = new Date()): Promise<BlockedDeviceView[]> {
+    const [devices, schedules] = await Promise.all([
+      this.app.prisma.device.findMany({
+        select: { id: true, mac: true, label: true, hostname: true, isBlocked: true, pausedUntil: true },
+        orderBy: { mac: 'asc' },
+      }),
+      this.app.prisma.accessSchedule.findMany({ where: { enabled: true } }),
+    ]);
+    const byMac = groupSchedulesByMac(schedules.map(toSchedule));
+
+    return devices.map((d) => {
+      const state = evaluateBlocked({
+        isBlocked: d.isBlocked,
+        pausedUntil: d.pausedUntil,
+        schedules: byMac.get(d.mac) ?? [],
+        mac: d.mac,
+        now,
+      });
+      return {
+        id: d.id,
+        name: d.label ?? d.hostname ?? `Dispositivo ${d.id.slice(-6)}`,
+        blocked: state.blocked,
+        reasons: state.reasons,
+      };
+    });
+  }
+
+  /**
+   * ¿Lo mantienen bloqueado **horario o pausa**? Deliberadamente **ignora el
+   * bloqueo manual**: su consumidor es el desbloqueo a mano, que ya conoce el
+   * manual y pregunta «si lo desbloqueo, ¿algo más debería mantenerlo cortado?».
+   * Para el bloqueo **efectivo** (las tres fuentes) usa `blockedViews`.
    */
   async isBlockedNow(mac: string, now: Date = new Date()): Promise<boolean> {
     const device = await this.app.prisma.device.findUnique({

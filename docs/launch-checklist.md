@@ -66,9 +66,27 @@ más que 50 historias nuevas — a partir de aquí, el backlog lo ordena la real
 > (network-level parental controls), WiFi presence without cloud geofencing, per-person usage, and
 > a full network stack (inventory/VPN/VLAN/QoS/DNS).
 >
-> The HA integration is native MQTT Discovery: lights, plugs, energy, home mode and alarm state
-> appear as entities automatically (state publishing and inbound control are **separate opt-ins**,
-> both off by default). Home mode only — never the list of people (privacy rule).
+> The HA integration is native MQTT Discovery. Besides lights, plugs, energy, home mode and alarm
+> state, it exposes **the things HA doesn't have natively** — which is the actual reason to run it
+> alongside HA:
+>
+> - a `binary_sensor` per device: **"internet blocked"**, derived from all three sources (manual
+>   block, schedule, one-tap pause), with the reason in its attributes;
+> - a `sensor` per room: the **worst WiFi signal** among the devices connected in that room (dBm,
+>   measured by the AP — a room with nothing connected reports *unavailable*, never a made-up value);
+> - a `button` per device: **"pause internet 30 min"**.
+>
+> State publishing, IoT control and internet-pausing are **three separate opt-ins**, all off by
+> default — letting HA toggle a lamp and letting it cut someone off are not the same permission, and
+> an MQTT broker has no notion of *who* is asking. Every pause coming in this way is audited.
+>
+> Honest about what is **not** there: home mode only, **never the list of people** (privacy rule);
+> no per-person internet usage yet (the routers KrakenOS supports don't report per-device traffic, so
+> that sensor would publish zero forever — it ships when the data is real); and the coverage heatmap
+> stays out of HA because it's a *predicted model*, not a measurement.
+>
+> If the agent dies, HA finds out: everything hangs off an availability topic backed by an MQTT
+> **LWT**, so the broker marks the house unavailable on our behalf.
 >
 > If you run Frigate: KrakenOS connects to it for cameras and inherits object detection labels in
 > its automations ("if a *person* is detected at the entrance → …").

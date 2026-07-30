@@ -17,6 +17,8 @@ const SNAP: StateSnapshot = {
   devicesOnline: 5,
   homeMode: 'home',
   alarmPhase: 'disarmed',
+  blockedDevices: [{ id: 'dev-abc', name: 'Tablet', blocked: true, reasons: ['paused'] }],
+  roomSignals: [{ id: 'room-1', name: 'Salon', worstDbm: -70 }],
 };
 
 interface Sent {
@@ -229,6 +231,122 @@ describe('MqttPublisher (US-174)', () => {
     await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa' });
     try {
       expect(transport.subscribe).not.toHaveBeenCalled();
+    } finally {
+      await pub.stop();
+    }
+  });
+
+  // --- Disponibilidad honesta y pausa entrante (US-236) ---
+
+  it('declara el testamento (LWT) al conectar: sin él HA nunca ve la casa caída', async () => {
+    const { transport } = fakeTransport();
+    let opts: { will?: { topic: string; payload: string; retain?: boolean } } | null = null;
+    const pub = new MqttPublisher({
+      prisma: app.prisma,
+      secretbox: createSecretbox(generateSecretboxKey()),
+      snapshot: async () => SNAP,
+      transportFactory: (o) => {
+        opts = o;
+        return transport;
+      },
+    });
+    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa' });
+    try {
+      expect(opts).not.toBeNull();
+      expect(opts!.will).toEqual({ topic: 'casa/status', payload: 'offline', retain: true });
+    } finally {
+      await pub.stop();
+    }
+  });
+
+  it('se despide con `offline` retenido al parar (el LWT solo cubre la caída abrupta)', async () => {
+    const { transport, published } = fakeTransport();
+    const pub = makePublisher(app, transport);
+    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa' });
+    published.length = 0;
+    await pub.stop();
+    const bye = published.find((p) => p.topic === 'casa/status');
+    expect(bye).toEqual({ topic: 'casa/status', payload: 'offline', retain: true });
+  });
+
+  it('pausa OFF por defecto: no se suscribe al botón aunque el control de IoT esté ON', async () => {
+    const { transport, handlers } = fakeTransport();
+    const pub = new MqttPublisher({
+      prisma: app.prisma,
+      secretbox: createSecretbox(generateSecretboxKey()),
+      snapshot: async () => SNAP,
+      transportFactory: () => transport,
+      onCommand: vi.fn(async () => undefined),
+      onPause: vi.fn(async () => undefined),
+    });
+    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', control: true });
+    try {
+      expect(handlers.has('casa/iot/+/set')).toBe(true);
+      expect(handlers.has('casa/device/+/pause/set')).toBe(false);
+    } finally {
+      await pub.stop();
+    }
+  });
+
+  it('pausa ON: el botón de HA aplica la pausa por su propio toggle', async () => {
+    const { transport, handlers } = fakeTransport();
+    const onPause = vi.fn(async () => undefined);
+    const pub = new MqttPublisher({
+      prisma: app.prisma,
+      secretbox: createSecretbox(generateSecretboxKey()),
+      snapshot: async () => SNAP,
+      transportFactory: () => transport,
+      onPause,
+    });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      pauseControl: true,
+    });
+    try {
+      const h = handlers.get('casa/device/+/pause/set');
+      expect(h).toBeDefined();
+      h?.('casa/device/dev-abc/pause/set', '30');
+      await new Promise((r) => setImmediate(r));
+      expect(onPause).toHaveBeenCalledWith('dev-abc', 30);
+    } finally {
+      await pub.stop();
+    }
+  });
+
+  it('publica la cuña: bloqueo por dispositivo y señal por habitación', async () => {
+    const { transport, published } = fakeTransport();
+    const pub = makePublisher(app, transport);
+    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    try {
+      await pub.publishOnce();
+      const topics = published.map((p) => p.topic);
+      expect(topics).toContain('homeassistant/binary_sensor/krakenos/device_dev-abc_blocked/config');
+      expect(topics).toContain('homeassistant/sensor/krakenos/room_room-1_signal/config');
+      expect(published.find((p) => p.topic === 'casa/device/dev-abc/blocked')?.payload).toBe('ON');
+      expect(published.find((p) => p.topic === 'casa/room/room-1/signal')?.payload).toBe('-70');
+      // Sin el toggle de pausa, ningún botón.
+      expect(topics.some((t) => t.includes('/button/'))).toBe(false);
+    } finally {
+      await pub.stop();
+    }
+  });
+
+  it('no reenvía una config que no ha cambiado, pero el estado sí va siempre', async () => {
+    const { transport, published } = fakeTransport();
+    const pub = makePublisher(app, transport);
+    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    try {
+      await pub.publishOnce();
+      const configsPrimera = published.filter((p) => p.topic.startsWith('homeassistant/')).length;
+      expect(configsPrimera).toBeGreaterThan(0);
+
+      published.length = 0;
+      await pub.publishOnce(); // nada ha cambiado
+      expect(published.filter((p) => p.topic.startsWith('homeassistant/'))).toHaveLength(0);
+      // El estado, en cambio, se republica: es lo que se mueve.
+      expect(published.some((p) => p.topic === 'casa/device/dev-abc/blocked')).toBe(true);
     } finally {
       await pub.stop();
     }

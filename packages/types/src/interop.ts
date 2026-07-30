@@ -29,6 +29,18 @@ export interface MqttPublishConfig {
    * **separado** de `discovery`: publicar estados no implica aceptar órdenes.
    */
   control: boolean;
+  /**
+   * Control entrante de **pausa de internet** (US-236): expone en HA un botón
+   * «pausar internet 30 min» por dispositivo. Off por defecto y **con toggle
+   * propio**, distinto de `control`.
+   *
+   * ⚠️ No se fusiona con `control` a propósito: «HA puede tocar mis aparatos IoT»
+   * y «HA puede cortarle internet a alguien de casa» son permisos distintos. La
+   * ruta HTTP equivalente (`POST /api/access/pause`) es admin-only y rechaza
+   * tokens de API; el broker **no tiene sujeto**, así que cada acción sensible
+   * necesita su propio consentimiento explícito y queda auditada con actor `mqtt`.
+   */
+  pauseControl: boolean;
 }
 
 /** Cuerpo de `PUT /api/interop/mqtt`. Campos omitidos = sin cambio. */
@@ -42,6 +54,7 @@ export interface UpdateMqttPublishRequest {
   intervalSec?: number;
   discovery?: boolean;
   control?: boolean;
+  pauseControl?: boolean;
 }
 
 /** Estado en vivo de la publicación MQTT. */

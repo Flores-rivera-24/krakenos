@@ -34,6 +34,7 @@ import { authRoutes } from './modules/auth/auth.routes.js';
 import { tokensRoutes } from './modules/tokens/tokens.routes.js';
 import { interopRoutes } from './modules/interop/interop.routes.js';
 import { MqttPublisher } from './modules/interop/mqtt-publisher.service.js';
+import { createSignalCollector, worstSignalByRoom } from './modules/interop/room-signal.js';
 import { compatibilityRoutes } from './modules/compatibility/compatibility.routes.js';
 import { webauthnRoutes } from './modules/webauthn/webauthn.routes.js';
 import { BackupCodeService } from './webauthn/backup-codes.service.js';
@@ -416,6 +417,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   // contraseña cifrada en reposo. Discovery y control entrante son toggles
   // separados y OFF por defecto. Se cablea tras la alarma/presencia porque el
   // snapshot publica su estado. Conexión persistente cerrada en onClose (US-201).
+  // Señal WiFi con TTL + single-flight (patrón US-229): la publicación puede ir a
+  // 5 s y el router no debe pagarlo — la señal no cambia tan rápido.
+  const signalCollector = createSignalCollector(driver);
   const mqttPublisher = new MqttPublisher({
     prisma: app.prisma,
     secretbox,
@@ -432,6 +436,24 @@ export async function buildServer(): Promise<FastifyInstance> {
       // Privacidad (US-169): del hogar viaja SOLO el modo, nunca las personas.
       const homeMode = await presenceService.getMode().catch(() => null);
       const alarmPhase = alarmService.getStateSync().phase;
+
+      // La cuña (US-236). Cada fuente con su PROPIO `.catch()`: un throw suelto
+      // aquí abortaría el ciclo entero de publicación y HA se quedaría con el
+      // último estado retenido, que es justo la mentira que esta historia arregla.
+      const blockedDevices = await accessService.blockedViews().catch(() => []);
+      const roomSignals = await (async () => {
+        try {
+          const [rooms, devs, signalByMac] = await Promise.all([
+            app.prisma.room.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+            app.prisma.device.findMany({ select: { mac: true, roomId: true, online: true } }),
+            signalCollector.get(),
+          ]);
+          return worstSignalByRoom(rooms, devs, signalByMac);
+        } catch {
+          return [];
+        }
+      })();
+
       return {
         iot: iotDevices.map((d) => ({
           id: d.id,
@@ -446,6 +468,8 @@ export async function buildServer(): Promise<FastifyInstance> {
         devicesOnline,
         homeMode,
         alarmPhase,
+        blockedDevices,
+        roomSignals,
       };
     },
     // Control entrante (US-213): setState con timeout + publicación al bus con
@@ -460,7 +484,24 @@ export async function buildServer(): Promise<FastifyInstance> {
       }
       app.audit({ action: 'interop.mqtt.command', detail: device.id });
     },
-    onError: (msg) => app.log.warn({ msg }, 'MQTT interop (US-174/US-213)'),
+    // Pausa de internet entrante (US-236). Va tras su PROPIO toggle
+    // (`pauseControl`, OFF por defecto): la ruta HTTP equivalente es admin-only y
+    // rechaza tokens de API, y el broker no tiene sujeto. Se audita con el origen
+    // explícito porque no hay usuario al que atribuirlo.
+    onPause: async (deviceId, minutes) => {
+      // Llega el `Device.id` (cuid), nunca la MAC: la MAC es PII y no viaja a MQTT.
+      const device = await app.prisma.device.findUnique({
+        where: { id: deviceId },
+        select: { mac: true, label: true, hostname: true },
+      });
+      if (!device) return; // id desconocido: se ignora en silencio, no se adivina
+      await accessService.pause(device.mac, minutes);
+      app.audit({
+        action: 'interop.mqtt.pause',
+        detail: `origen:mqtt · ${device.label ?? device.hostname ?? deviceId} · ${minutes} min`,
+      });
+    },
+    onError: (msg) => app.log.warn({ msg }, 'MQTT interop (US-174/US-213/US-236)'),
   });
   await app.register(interopRoutes, { prefix: '/api/interop', publisher: mqttPublisher });
   await mqttPublisher.start();
