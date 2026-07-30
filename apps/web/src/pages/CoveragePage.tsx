@@ -8,6 +8,7 @@ import type {
   WallMaterial,
   WifiBand,
 } from '@krakenos/types';
+import { WALL_MATERIALS } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { MapPinned, Pencil } from 'lucide-react';
 import { ApPalette } from '@/components/coverage/ApPalette';
@@ -15,6 +16,7 @@ import { CoverageToolbar } from '@/components/coverage/CoverageToolbar';
 import { FloorPlanFormSlideover } from '@/components/coverage/FloorPlanFormSlideover';
 import { FloorPlanStage, type CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { HeatmapLegend } from '@/components/coverage/HeatmapLegend';
+import { WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
 import { SurveyPanel } from '@/components/coverage/SurveyPanel';
 import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
@@ -36,6 +38,7 @@ import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { Callout } from '@/components/ui/callout';
 
 /** Vistas del lienzo de cobertura. */
 type CoverageView = 'edit' | 'predict' | 'survey';
@@ -77,6 +80,8 @@ export function CoveragePage() {
 
   // Estado del editor (se siembra al seleccionar plano; se persiste al Guardar).
   const [editWalls, setEditWalls] = useState<Wall[]>([]);
+  /** Pared seleccionada para cambiarle el material (US-237). */
+  const [selectedWallId, setSelectedWallId] = useState<string | null>(null);
   const [editAps, setEditAps] = useState<ApPlacement[]>([]);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -132,6 +137,7 @@ export function CoveragePage() {
   useEffect(() => {
     if (!selectedPlan) {
       setEditWalls([]);
+      setSelectedWallId(null);
       setEditAps([]);
       setDirty(false);
       seededPlanId.current = null;
@@ -140,6 +146,7 @@ export function CoveragePage() {
     if (seededPlanId.current === selectedPlan.id) return;
     seededPlanId.current = selectedPlan.id;
     setEditWalls(selectedPlan.walls);
+    setSelectedWallId(null);
     setEditAps(selectedPlan.accessPoints);
     setProposed(null); // las propuestas de detección pertenecen al plano anterior
     setDirty(false);
@@ -478,7 +485,57 @@ export function CoveragePage() {
               />
             )}
 
+            {/* Material POR PARED (US-237). Antes se elegía uno solo para todo el
+                lote detectado, así que un piso con tabiques y muro de carga se
+                modelaba entero con la atenuación de uno de los dos. */}
+            {view === 'edit' && isAdmin && selectedWallId && (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-kr bg-kr-surface p-3 text-kr-sm">
+                <span className="text-kr-secondary">{t('coverage.wall.selected')}</span>
+                <select
+                  aria-label={t('coverage.wall.materialLabel')}
+                  value={editWalls.find((w) => w.id === selectedWallId)?.material ?? 'drywall'}
+                  onChange={(e) => {
+                    const material = e.target.value as WallMaterial;
+                    setEditWalls((prev) =>
+                      prev.map((w) => (w.id === selectedWallId ? { ...w, material } : w)),
+                    );
+                  }}
+                  className="h-8 rounded-md border border-kr bg-kr-bg px-2 text-kr-primary"
+                >
+                  {WALL_MATERIALS.map((m) => (
+                    <option key={m} value={m}>
+                      {WALL_MATERIAL_LABELS[m]}
+                    </option>
+                  ))}
+                </select>
+                <Button size="sm" variant="outline" onClick={() => setSelectedWallId(null)}>
+                  {t('coverage.wall.deselect')}
+                </Button>
+              </div>
+            )}
+
             {view === 'predict' && heatmapError && <ErrorBanner>{heatmapError}</ErrorBanner>}
+
+            {/* Honestidad del modelo (US-237). Un mapa PREDICHO no es una medida, y
+                uno ajustado a las medidas de esta casa no merece la misma confianza
+                que uno con constantes de libro: se dice cuál de los dos es. */}
+            {view === 'predict' && !heatmapLoading && heatmap && (
+              <Callout variant="info" standing title={t('coverage.model.predictedNote')}>
+                {heatmap.calibration
+                  ? t('coverage.model.calibrated', {
+                      n: heatmap.calibration.sampleCount,
+                      rmse: heatmap.calibration.rmseDb.toFixed(1),
+                    })
+                  : t('coverage.model.generic')}
+              </Callout>
+            )}
+
+            {/* El RSSI lo mide el AP, no el móvil: decirlo donde se mide (US-237). */}
+            {view === 'survey' && (
+              <Callout variant="info" standing title={t('coverage.survey.rssiTitle')}>
+                {t('coverage.survey.rssiNote')}
+              </Callout>
+            )}
 
             <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
               <div className="space-y-3">
@@ -495,6 +552,8 @@ export function CoveragePage() {
                           : null
                     }
                     walls={editWalls}
+                    selectedWallId={selectedWallId}
+                    onSelectWall={view === 'edit' && isAdmin ? setSelectedWallId : undefined}
                     proposedWalls={view === 'edit' ? (proposed ?? undefined) : undefined}
                     accessPoints={editAps}
                     surveySamples={view === 'survey' ? activeScan?.samples : undefined}

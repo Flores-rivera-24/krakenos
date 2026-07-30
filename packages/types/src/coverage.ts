@@ -137,6 +137,18 @@ export interface CoverageHeatmap {
   /** Cotas para la leyenda (dBm). */
   minDbm: number;
   maxDbm: number;
+  /**
+   * Solo en el mapa **predicho** (US-237): de dónde sale el exponente de pérdida.
+   * `null` = constante genérica de libro; si viene, el modelo está **ajustado a
+   * esta casa** con las medidas de su recorrido. La UI debe decirlo: un mapa
+   * calibrado y uno genérico no merecen la misma confianza.
+   */
+  calibration?: {
+    pathLossExponent: number;
+    sampleCount: number;
+    rmseDb: number;
+    baselineRmseDb: number;
+  } | null;
 }
 
 // ---- Survey (medición real) ----

@@ -1009,6 +1009,19 @@ export const es = {
   'coverage.calibrate.needLine': 'Traza la línea de referencia sobre el plano.',
   'coverage.calibrate.done': 'Escala calibrada: {width} × {height} m',
   // Detección asistida de paredes (US-195)
+  'coverage.survey.rssiTitle': 'La señal la mide el punto de acceso',
+  'coverage.survey.rssiNote':
+    'La señal la mide el punto de acceso, no tu móvil: es la fuerza con la que el router oye al dispositivo. Para lo que importa —dónde llega bien y dónde no— sirve igual, pero no es el mismo número que muestra el móvil.',
+  'coverage.model.calibrated':
+    'Modelo ajustado a tu casa con {n} mediciones (error medio {rmse} dB).',
+  'coverage.model.generic':
+    'Modelo genérico: usa constantes de libro, no medidas de tu casa. Haz un recorrido de medición para ajustarlo.',
+  'coverage.model.predictedNote':
+    'Esto es una predicción calculada sobre el plano, no una medición: no cambia si un punto de acceso se apaga.',
+  'coverage.wall.selected': 'Pared seleccionada · material:',
+  'coverage.wall.materialLabel': 'Material de la pared seleccionada',
+  'coverage.wall.deselect': 'Quitar selección',
+  'coverage.wall.hint': 'Toca una pared del plano para cambiar su material.',
   'coverage.detect.button': 'Detectar paredes',
   'coverage.detect.detecting': 'Detectando…',
   'coverage.detect.title': 'Paredes del plano',

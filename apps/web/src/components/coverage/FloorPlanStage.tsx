@@ -35,6 +35,9 @@ interface Props {
   onPlacePoint?: (x: number, y: number) => void;
   /** Selección de un AP existente (click con la herramienta `select`). */
   onSelectAp?: (id: string) => void;
+  /** Pared seleccionada para editar su material (US-237). */
+  selectedWallId?: string | null;
+  onSelectWall?: (id: string) => void;
   /** Escala fija píxeles/metro; si se omite, se ajusta al ancho del contenedor. */
   pxPerM?: number;
   /** Solo lectura: sin arrastres ni altas (p. ej. para `viewer`). */
@@ -78,6 +81,8 @@ export function FloorPlanStage({
   onAddAp,
   onPlacePoint,
   onSelectAp,
+  selectedWallId,
+  onSelectWall,
   pxPerM: pxPerMProp,
   readOnly = false,
 }: Props) {
@@ -249,20 +254,55 @@ export function FloorPlanStage({
           <MeterGrid widthM={plan.widthM} heightM={plan.heightM} pxPerM={pxPerM} />
 
           {/* Paredes / obstáculos */}
-          {walls.map((w) => (
-            <line
-              key={w.id}
-              x1={w.x1 * pxPerM}
-              y1={w.y1 * pxPerM}
-              x2={w.x2 * pxPerM}
-              y2={w.y2 * pxPerM}
-              stroke="var(--kr-text-secondary)"
-              strokeWidth={WALL_STROKE_WIDTH[w.material]}
-              strokeLinecap="round"
-            >
-              <title>{WALL_MATERIAL_LABELS[w.material]}</title>
-            </line>
-          ))}
+          {walls.map((w) => {
+            const seleccionable = !!onSelectWall && !readOnly;
+            const activa = selectedWallId === w.id;
+            const linea = (
+              <line
+                x1={w.x1 * pxPerM}
+                y1={w.y1 * pxPerM}
+                x2={w.x2 * pxPerM}
+                y2={w.y2 * pxPerM}
+                stroke={activa ? 'var(--kr-accent)' : 'var(--kr-text-secondary)'}
+                strokeWidth={WALL_STROKE_WIDTH[w.material] + (activa ? 2 : 0)}
+                strokeLinecap="round"
+              >
+                <title>{WALL_MATERIAL_LABELS[w.material]}</title>
+              </line>
+            );
+            if (!seleccionable) return <g key={w.id}>{linea}</g>;
+            // Mismo patrón accesible que los APs: `<g role="button">` con teclado.
+            // Una pared es fina, así que se le añade una banda transparente más
+            // ancha para poder acertarle con el dedo (objetivo táctil, US-235).
+            return (
+              <g
+                key={w.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`${WALL_MATERIAL_LABELS[w.material]} — ${Math.round(w.x1)},${Math.round(w.y1)} a ${Math.round(w.x2)},${Math.round(w.y2)} m`}
+                aria-pressed={activa}
+                className="cursor-pointer"
+                onClick={() => onSelectWall?.(w.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onSelectWall?.(w.id);
+                  }
+                }}
+              >
+                <line
+                  x1={w.x1 * pxPerM}
+                  y1={w.y1 * pxPerM}
+                  x2={w.x2 * pxPerM}
+                  y2={w.y2 * pxPerM}
+                  stroke="transparent"
+                  strokeWidth={14}
+                  strokeLinecap="round"
+                />
+                {linea}
+              </g>
+            );
+          })}
 
           {/* Paredes propuestas por la detección (US-195): punteadas, sin confirmar */}
           {proposedWalls?.map((w, i) => (

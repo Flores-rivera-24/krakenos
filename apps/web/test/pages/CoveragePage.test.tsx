@@ -173,4 +173,68 @@ describe('CoveragePage', () => {
     render(<CoveragePage />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
+
+  // --- US-237: honestidad del modelo y material por pared ---
+
+  it('avisa de que la predicción NO es una medida, y de si el modelo está calibrado', async () => {
+    setRole('admin');
+    render(<CoveragePage />);
+    await screen.findByRole('option', { name: 'Planta baja' });
+    await userEvent.click(screen.getByRole('button', { name: 'Predicción' }));
+
+    // Sin calibración: se dice que usa constantes de libro.
+    expect(await screen.findByText(/no una medición/i)).toBeInTheDocument();
+    expect(screen.getByText(/Modelo genérico/i)).toBeInTheDocument();
+  });
+
+  it('con recorrido, dice que el modelo está ajustado a esta casa', async () => {
+    setRole('admin');
+    coverageMock.getPredictedHeatmap.mockResolvedValue({
+      ...HEATMAP,
+      calibration: { pathLossExponent: 3.4, sampleCount: 24, rmseDb: 2.1, baselineRmseDb: 6.8 },
+    });
+    render(<CoveragePage />);
+    await screen.findByRole('option', { name: 'Planta baja' });
+    await userEvent.click(screen.getByRole('button', { name: 'Predicción' }));
+    expect(await screen.findByText(/ajustado a tu casa con 24 mediciones/i)).toBeInTheDocument();
+  });
+
+  it('la vista de Medición dice que el RSSI lo mide el punto de acceso, no el móvil', async () => {
+    setRole('admin');
+    render(<CoveragePage />);
+    await screen.findByRole('option', { name: 'Planta baja' });
+    await userEvent.click(screen.getByRole('button', { name: 'Medición' }));
+    // Aparece en el título y en el cuerpo del aviso.
+    expect((await screen.findAllByText(/la mide el punto de acceso/i)).length).toBeGreaterThan(0);
+  });
+
+  it('permite cambiar el material de UNA pared concreta (no de todo el lote)', async () => {
+    setRole('admin');
+    const conParedes = {
+      ...PLAN,
+      walls: [
+        { id: 'w1', x1: 0, y1: 0, x2: 5, y2: 0, material: 'drywall' as const },
+        { id: 'w2', x1: 0, y1: 4, x2: 5, y2: 4, material: 'drywall' as const },
+      ],
+    };
+    // El editor toma las paredes del plano SELECCIONADO, que sale del listado.
+    coverageMock.listFloorPlans.mockResolvedValue([conParedes]);
+    coverageMock.getFloorPlan.mockResolvedValue(conParedes);
+    render(<CoveragePage />);
+    await screen.findByRole('option', { name: 'Planta baja' });
+
+    // Cada pared es un control accesible con su material en el nombre.
+    const paredes = await screen.findAllByRole('button', { name: /Pladur/i });
+    expect(paredes.length).toBeGreaterThanOrEqual(2);
+    await userEvent.click(paredes[0]!);
+
+    const selector = await screen.findByLabelText(/Material de la pared seleccionada/i);
+    await userEvent.selectOptions(selector, 'concrete');
+
+    // Solo la seleccionada cambia: la otra sigue siendo pladur.
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: /Hormigón/i }).length).toBe(1);
+    });
+    expect(screen.getAllByRole('button', { name: /Pladur/i }).length).toBeGreaterThanOrEqual(1);
+  });
 });
