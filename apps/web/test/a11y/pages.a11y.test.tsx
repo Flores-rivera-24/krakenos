@@ -38,6 +38,7 @@ import { SetupPage } from '@/pages/SetupPage';
 import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
+import { PeoplePage } from '@/pages/PeoplePage';
 import { WifiPage } from '@/pages/WifiPage';
 import { CoveragePage } from '@/pages/CoveragePage';
 import { VpnPage } from '@/pages/VpnPage';
@@ -239,6 +240,25 @@ function apiGet(path: string): Promise<unknown> {
         { userId: 'u1', name: 'Ana', rxBytes: 1000, txBytes: 500, totalBytes: 1500, deviceCount: 2, buckets: [] },
       ],
     });
+  if (path === '/people')
+    return Promise.resolve({
+      people: [
+        {
+          userId: 'u1',
+          name: 'Ana',
+          role: 'kid',
+          devices: [
+            { id: 'd1', name: 'Tablet', online: true, blocked: true, reasons: ['schedule'], pausedUntil: null },
+          ],
+          onlineCount: 1,
+          blockedCount: 1,
+          pausedUntil: null,
+          bedtime: { enabled: true, days: [1, 2], startMinute: 1320, endMinute: 420, appliedTo: 1 },
+        },
+      ],
+      fullHome: true,
+      unassignedDevices: 2,
+    });
   if (path === '/energy/config') return Promise.resolve({ pricePerKwh: 0.15, currency: '€' });
   if (path.startsWith('/energy/stats'))
     return Promise.resolve({
@@ -284,6 +304,7 @@ const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Connect', el: <ConnectPage /> },
   { name: 'Dashboard', el: <DashboardPage /> },
   { name: 'Inventory', el: <InventoryPage /> },
+  { name: 'People', el: <PeoplePage /> },
   { name: 'Wifi', el: <WifiPage /> },
   { name: 'Coverage', el: <CoveragePage /> },
   { name: 'Vpn', el: <VpnPage /> },

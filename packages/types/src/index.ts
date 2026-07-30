@@ -25,6 +25,7 @@ export * from './push.js';
 export * from './webauthn.js';
 export * from './coverage.js';
 export * from './access.js';
+export * from './person.js';
 export * from './alert.js';
 export * from './room.js';
 export * from './favorite.js';

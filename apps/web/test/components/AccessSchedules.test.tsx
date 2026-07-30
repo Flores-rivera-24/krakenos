@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({
@@ -22,6 +23,7 @@ const SCHEDULE = {
   days: [1],
   startMinute: 21 * 60,
   endMinute: 7 * 60,
+  personId: null,
   createdAt: '',
 };
 
@@ -57,6 +59,23 @@ describe('AccessSchedules — control parental (US-108)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Eliminar Noche' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/access/schedules/s1'));
+  });
+
+  it('un horario que pone la persona no se edita desde el dispositivo (US-240)', async () => {
+    apiMock.get.mockResolvedValue([{ ...SCHEDULE, name: 'Hora de dormir', personId: 'u-marta' }]);
+    render(
+      <MemoryRouter>
+        <AccessSchedules mac="aa:bb" canEdit />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Hora de dormir');
+
+    // Se dice de dónde viene y se manda al sitio donde SÍ se cambia…
+    expect(screen.getByText(/lo pone la persona dueña/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Personas' })).toHaveAttribute('href', '/people');
+    // …y no se ofrecen controles que lo descuadrarían del resto de sus aparatos.
+    expect(screen.queryByRole('button', { name: /Eliminar/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
   });
 
   it('un viewer no ve controles de edición', async () => {

@@ -85,7 +85,7 @@ export const accessRoutes: FastifyPluginAsync<AccessRoutesOpts> = async (app, op
     '/pause',
     { schema: pauseSchema, preHandler: adminOnly },
     async (req, reply) => {
-      const pausedUntil = await service.pause(req.body.mac, req.body.minutes);
+      const { pausedUntil } = await service.pause(req.body.mac, req.body.minutes);
       app.audit({
         action: 'access.pause',
         userId: req.user.sub,

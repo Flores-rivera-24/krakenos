@@ -15,6 +15,7 @@ import {
   Radar,
   Settings,
   ShieldAlert,
+  UserRound,
   Video,
   Wifi,
   Workflow,
@@ -55,6 +56,7 @@ const DEVICES: NavItem = { to: '/inventory', labelKey: 'nav.devices', icon: Netw
 const WIFI: NavItem = { to: '/wifi', labelKey: 'nav.wifi', icon: Wifi };
 const COVERAGE: NavItem = { to: '/coverage', labelKey: 'nav.coverage', icon: Radar };
 const TRAFFIC: NavItem = { to: '/traffic', labelKey: 'nav.traffic', icon: Activity };
+const PEOPLE: NavItem = { to: '/people', labelKey: 'nav.people', icon: UserRound };
 const ROOMS: NavItem = { to: '/rooms', labelKey: 'nav.rooms', icon: Home };
 const SCENES: NavItem = { to: '/scenes', labelKey: 'nav.scenes', icon: Clapperboard };
 const AUTOMATIONS: NavItem = { to: '/automations', labelKey: 'nav.automations', icon: Workflow };
@@ -75,7 +77,11 @@ const SETTINGS: NavItem = { to: '/settings', labelKey: 'nav.settings', icon: Set
 export const NAV_GROUPS: NavGroup[] = [
   { label: 'General', labelKey: 'nav.group.general', items: [CONNECT, DASHBOARD] },
   { label: 'Red', labelKey: 'nav.group.network', items: [DEVICES, WIFI, COVERAGE, TRAFFIC] },
-  { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, AUTOMATIONS, IOT, ENERGY, CAMERAS] },
+  {
+    label: 'Hogar',
+    labelKey: 'nav.group.home',
+    items: [PEOPLE, ROOMS, SCENES, AUTOMATIONS, IOT, ENERGY, CAMERAS],
+  },
   { label: 'Red avanzada', labelKey: 'nav.group.advanced', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
   { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
 ];
@@ -95,6 +101,9 @@ export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_PRIMA
  * - `admin`/`viewer`: todo (viewer ya ve solo-lectura).
  * - `member`: sin «Red avanzada» (opera el hogar, no gestiona la red).
  * - `kid`/`guest`: UI reducida — Dashboard, Hogar básico y Ajustes (su perfil).
+ *   Incluye **Personas** (US-240): ahí solo se ven a sí mismos (el servidor no les
+ *   da el resto) y es donde encuentran la respuesta a «¿por qué no tengo
+ *   internet?» sin tener que preguntársela a un adulto.
  * - `uiMode === 'simple'`: además, sin «Red avanzada» para cualquier rol
  *   (VPN/Firewall/VLAN/QoS/DNS son jerga de red). Ausente = `advanced`.
  */
@@ -105,7 +114,7 @@ export function navGroupsForRole(role?: string, uiMode?: string): NavGroup[] {
   if (role === 'kid' || role === 'guest') {
     return [
       { label: 'General', labelKey: 'nav.group.general', items: [DASHBOARD] },
-      { label: 'Hogar', labelKey: 'nav.group.home', items: [ROOMS, SCENES, IOT] },
+      { label: 'Hogar', labelKey: 'nav.group.home', items: [PEOPLE, ROOMS, SCENES, IOT] },
       { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
     ];
   }

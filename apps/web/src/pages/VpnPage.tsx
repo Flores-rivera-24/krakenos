@@ -10,7 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
-import { MobileAccessCard } from '@/components/vpn/MobileAccessCard';
 import { TailscaleCard } from '@/components/vpn/TailscaleCard';
 import { VpnPeerSlideover } from '@/components/vpn/VpnPeerSlideover';
 import { api } from '@/lib/api';
@@ -207,11 +206,10 @@ export function VpnPage() {
         </CardContent>
       </Card>
 
-      {/* Acceso remoto sin puertos (US-215): Tailscale para CGNAT + guía móvil. */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <TailscaleCard />
-        <MobileAccessCard />
-      </div>
+      {/* Acceso remoto sin puertos (US-215): Tailscale para CGNAT. La guía «Tu móvil
+          en 3 pasos» se mudó a Ajustes → Cuenta en US-240: aquí solo la veía quien
+          tiene «Red avanzada», que es justo quien no la necesita. */}
+      <TailscaleCard />
 
       {selected && (
         <VpnPeerSlideover

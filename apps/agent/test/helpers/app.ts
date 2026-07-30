@@ -26,6 +26,8 @@ import { inventoryRoutes } from '../../src/modules/inventory/inventory.routes.js
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { accessRoutes } from '../../src/modules/access/access.routes.js';
 import { AccessScheduleService } from '../../src/modules/access/access.service.js';
+import { peopleRoutes } from '../../src/modules/people/people.routes.js';
+import { PeopleService } from '../../src/modules/people/people.service.js';
 import { roomsRoutes } from '../../src/modules/rooms/rooms.routes.js';
 import { RoomService } from '../../src/modules/rooms/rooms.service.js';
 import { favoritesRoutes } from '../../src/modules/favorites/favorites.routes.js';
@@ -177,9 +179,17 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       backupCodes: new BackupCodeService(app.prisma),
     });
     await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
+    const accessServiceForTests = new AccessScheduleService(app, driver);
     await app.register(accessRoutes, {
       prefix: '/api/access',
-      service: new AccessScheduleService(app, driver),
+      service: accessServiceForTests,
+    });
+    // Personas del hogar (US-240). Comparte el servicio de acceso con las rutas de
+    // `/api/access`, como en producción: si no, la pausa por persona y la pausa por
+    // dispositivo tendrían estados `managedBlocked` distintos.
+    await app.register(peopleRoutes, {
+      prefix: '/api/people',
+      service: new PeopleService(app, accessServiceForTests),
     });
     // Habitaciones/grupos (US-165) + favoritos (US-170). El `RoomService` comparte
     // el mismo `MockIotManager` que las rutas IoT para que la acción de grupo y el

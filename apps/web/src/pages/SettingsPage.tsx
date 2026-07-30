@@ -16,6 +16,7 @@ import { ReportsCard } from '@/components/settings/ReportsCard';
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
+import { MobileAccessCard } from '@/components/vpn/MobileAccessCard';
 import { UiModeCard } from '@/components/settings/UiModeCard';
 import { HealthCard } from '@/components/settings/HealthCard';
 import { SupportCard } from '@/components/settings/SupportCard';
@@ -532,6 +533,12 @@ export function SettingsPage() {
                   </dl>
                 </CardContent>
               </Card>
+
+              {/* «Tu móvil en 3 pasos» (US-215) vive aquí desde US-240: en /vpn
+                  quedaba dentro de «Red avanzada», invisible para member/kid/guest
+                  y para el modo sencillo — justo quien necesita la guía. Ajustes →
+                  Cuenta lo ve cualquier rol. */}
+              <MobileAccessCard />
 
               <LanguageCard />
 

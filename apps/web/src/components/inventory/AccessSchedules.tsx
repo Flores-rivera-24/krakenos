@@ -1,5 +1,6 @@
 import type { AccessSchedule } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -132,9 +133,14 @@ export function AccessSchedules({ mac, canEdit }: Props) {
               <p className="text-kr-xs text-kr-muted">
                 {minutesToHHMM(s.startMinute)}–{minutesToHHMM(s.endMinute)} ·{' '}
                 {(Array.isArray(s.days) ? s.days : []).map((d) => DAY_LABELS[d]).join(' ')}
+                {/* US-240: un horario de persona se gobierna desde Personas y el
+                    servidor lo replica a todos sus aparatos. Editarlo aquí lo
+                    dejaría descuadrado con el resto sin avisar, así que se marca y
+                    no se toca desde el dispositivo. */}
+                {s.personId && ' · lo pone la persona dueña'}
               </p>
             </div>
-            {canEdit && (
+            {canEdit && !s.personId && (
               <>
                 <Switch
                   checked={s.enabled}
@@ -150,6 +156,11 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                   ✕
                 </button>
               </>
+            )}
+            {s.personId && (
+              <Link to="/people" className="text-kr-xs text-kr-accent hover:underline">
+                Personas
+              </Link>
             )}
           </li>
         ))}

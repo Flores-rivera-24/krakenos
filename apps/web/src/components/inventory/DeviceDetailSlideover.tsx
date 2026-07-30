@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AccessKindsHelp } from '@/components/access/AccessKindsHelp';
 import { AccessSchedules } from '@/components/inventory/AccessSchedules';
 import { PauseInternet } from '@/components/inventory/PauseInternet';
 import { RoomSelect } from '@/components/rooms/RoomSelect';
@@ -316,8 +317,12 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
       )}
 
-      {/* Pausa de internet (US-111) + control parental / horarios (US-108) */}
+      {/* Pausa de internet (US-111) + control parental / horarios (US-108).
+          Las tres formas de cortar internet conviven aquí —pausa, horario y el
+          botón de bloqueo del pie— y hasta US-240 nada decía en qué se
+          diferencian: la única diferencia real es cuándo vuelve. */}
       <div className="mb-4 space-y-3 rounded-lg border border-kr bg-kr-elevated p-3">
+        <AccessKindsHelp />
         <PauseInternet device={device} canEdit={isAdmin} />
         <div className="border-t border-kr-muted" />
         <AccessSchedules mac={device.mac} canEdit={isAdmin} />

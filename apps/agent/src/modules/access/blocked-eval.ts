@@ -1,4 +1,4 @@
-import type { AccessSchedule } from '@krakenos/types';
+import type { AccessSchedule, BlockReason } from '@krakenos/types';
 import { activeBlockedMacs } from './schedule-eval.js';
 
 /**
@@ -33,8 +33,13 @@ import { activeBlockedMacs } from './schedule-eval.js';
  * propósito**, porque su consumidor (desbloquear a mano) ya conoce el manual.
  */
 
-/** Por qué está sin internet un dispositivo. Un bloqueo puede tener varias razones a la vez. */
-export type BlockReason = 'manual' | 'schedule' | 'paused';
+/**
+ * Por qué está sin internet un dispositivo. Un bloqueo puede tener varias razones
+ * a la vez. El tipo vive en `@krakenos/types` (US-240) porque también viaja a la
+ * web en la vista de personas; se re-exporta aquí por comodidad de los consumidores
+ * del evaluador.
+ */
+export type { BlockReason };
 
 export interface BlockedState {
   /** Bloqueo **efectivo**: manual OR horario OR pausa. */
