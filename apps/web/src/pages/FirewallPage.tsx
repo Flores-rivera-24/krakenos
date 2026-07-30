@@ -269,7 +269,7 @@ export function FirewallPage() {
                       <td className="px-3 py-2">{r.name}</td>
                       <td className="px-3 py-2">
                         <span
-                          className={r.action === 'deny' ? 'text-destructive' : 'text-green-500'}
+                          className={r.action === 'deny' ? 'text-destructive' : 'text-success'}
                         >
                           {actionLabel[r.action]}
                         </span>

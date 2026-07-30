@@ -98,12 +98,18 @@ import { vpnRoutes } from './modules/vpn/vpn.routes.js';
 import { createTailscaleTransport } from './vpn/tailscale.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 import { coverageRoutes } from './modules/coverage/coverage.routes.js';
+import { serializarPeticion } from './observability/log-redact.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
 export async function buildServer(): Promise<FastifyInstance> {
   const logger = {
     level: env.isProd ? 'info' : 'debug',
     transport: env.isProd ? undefined : { target: 'pino-pretty' },
+    // US-231 (AUD3-08): el token de stream de cámaras viaja en `?st=` (ni hls.js
+    // ni el <video> nativo pueden mandar cabeceras en los segmentos) y el token de
+    // setup en `/setup?token=`. Fastify registra `req.url` tal cual, así que ambos
+    // acababan en un log que la plantilla de bug pide pegar en un issue público.
+    serializers: { req: serializarPeticion },
   };
 
   // TLS opcional: si hay cert/clave, el agente sirve HTTPS.

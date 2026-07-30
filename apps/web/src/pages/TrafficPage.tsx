@@ -183,7 +183,7 @@ export function TrafficPage() {
           title={t('traffic.download')}
           value={last ? formatRate(last.rxBytesPerSec) : '—'}
           icon={ArrowDownToLine}
-          accent="text-green-500"
+          accent="text-success"
           hint="rx"
         />
         <StatCard
@@ -274,7 +274,7 @@ export function TrafficPage() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">{t('traffic.totalDownloaded')}</p>
-              <p className="font-semibold text-green-500">
+              <p className="font-semibold text-success">
                 {stats ? formatBytes(stats.totalRxBytes) : '—'}
               </p>
             </div>
@@ -403,7 +403,7 @@ export function TrafficPage() {
                         <td className="py-2 font-mono text-xs text-muted-foreground">
                           {d.ip || '—'}
                         </td>
-                        <td className="py-2 text-green-500">{formatBytes(d.rxTotal)}</td>
+                        <td className="py-2 text-success">{formatBytes(d.rxTotal)}</td>
                         <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
                       </tr>
                     );

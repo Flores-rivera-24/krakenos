@@ -21,6 +21,10 @@ on:
       - 'docker/**'
       - 'docker-compose.yml'
       - '.dockerignore'
+      # US-231 (AUD3-33): estaba en `push.paths` pero NO aquí, así que un PR que
+      # añadiera una dependencia nunca construía la imagen y el fallo aparecía ya
+      # publicado en GHCR.
+      - 'pnpm-lock.yaml'
       - '.github/workflows/docker.yml'
   workflow_dispatch:
 

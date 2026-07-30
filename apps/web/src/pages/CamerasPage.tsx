@@ -75,7 +75,7 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
           </div>
         )}
         {camera.online && !live && (
-          <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-red-400">
+          <span className="absolute right-2 top-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-danger">
             {t('cameras.live')}
           </span>
         )}

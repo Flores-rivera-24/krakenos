@@ -56,6 +56,15 @@ jobs:
       - name: Bundle budget (web)
         run: pnpm --filter @krakenos/web budget
 
+      # Contraste WCAG AA de los tokens de la paleta (US-95 · US-231/AUD3-30).
+      # BLOQUEANTE y, sobre todo, **correcto**: hasta US-231 el medidor leía `:root`
+      # mientras la app renderiza con `<html class="dark">`, así que publicaba ✅
+      # sobre valores que el usuario no ve (`kr-text-muted` daba 4,26:1 real, por
+      # debajo del 4,5:1 de AA). Ahora compone cada tema como lo hace el navegador
+      # y además corre aquí — antes ni siquiera se ejecutaba en CI.
+      - name: Contraste WCAG de la paleta (web)
+        run: node apps/web/scripts/check-contrast.mjs --check
+
       - name: Test (con coverage informativo)
         run: pnpm test:coverage
 
@@ -293,3 +302,19 @@ jobs:
               --metrics off \
               --disable-version-check \
               apps/agent/src apps/web/src packages/types/src
+
+      # (3) shellcheck sobre los scripts de shell (US-231/AUD3-32). `install.sh`
+      # son 400+ líneas que se ejecutan **como root** por `curl | sudo bash`, y
+      # hasta ahora no pasaban por semgrep (acotado a `src/`) ni por ningún linter
+      # de shell. El helper privilegiado va igual: es la última frontera antes de
+      # root. BLOQUEANTE.
+      - name: Shellcheck (scripts que corren como root)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck --version
+          shellcheck --severity=warning \
+            scripts/install.sh \
+            apps/agent/scripts/krakenos-helper.sh \
+            apps/agent/scripts/gen-keys.sh \
+            apps/agent/scripts/rotate-keys.sh \
+            docker/entrypoint.sh

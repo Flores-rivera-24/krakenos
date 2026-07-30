@@ -127,7 +127,7 @@ export function EnergyPage() {
           title={t('energy.totalConsumption')}
           value={stats ? formatEnergy(stats.totalEnergyWh) : '—'}
           icon={Zap}
-          accent="text-yellow-500"
+          accent="text-warning"
         />
         <StatCard
           title={t('energy.estimatedCost')}
@@ -139,7 +139,7 @@ export function EnergyPage() {
           title={t('energy.vsPrevious')}
           value={change === null ? '—' : `${change > 0 ? '+' : ''}${change}%`}
           icon={change !== null && change > 0 ? TrendingUp : TrendingDown}
-          accent={change !== null && change > 0 ? 'text-red-500' : 'text-green-500'}
+          accent={change !== null && change > 0 ? 'text-danger' : 'text-success'}
         />
       </div>
 
@@ -217,7 +217,7 @@ export function EnergyPage() {
                     <tr key={d.deviceId} className="border-t border-kr">
                       <td className="py-2 text-foreground">{d.name ?? d.deviceId}</td>
                       <td className="py-2 text-muted-foreground">{d.room ?? '—'}</td>
-                      <td className="py-2 text-yellow-500">{formatEnergy(d.energyWh)}</td>
+                      <td className="py-2 text-warning">{formatEnergy(d.energyWh)}</td>
                       <td className="py-2 text-primary">{formatCost(d.cost, stats.currency)}</td>
                     </tr>
                   ))}

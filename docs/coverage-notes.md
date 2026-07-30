@@ -23,11 +23,11 @@ no era deuda, era **inercia**. Se excluyen solo los entrypoints (`main.tsx`,
 
 | Paquete | Medición | Statements | Branches | Functions | Lines |
 |---------|----------|-----------:|---------:|----------:|------:|
-| **agente** (`apps/agent`) | `all: true` | **91.99%** | **86.26%** | **91.10%** | **91.99%** |
+| **agente** (`apps/agent`) | `all: true` | **92.00%** | **86.27%** | **91.11%** | **92.00%** |
 | **web** (`apps/web`)      | `all: true` | 88.28% | 79.84% | **65.99%** | 88.28% |
 
-Medido el 2026-07-29 (tras US-230): agente **2234 tests** (237 ficheros), web **629
-tests** (118 ficheros). Suite completa en verde.
+Medido el 2026-07-29 (tras US-231): agente **2291 tests** (240 ficheros), web **631
+tests** (119 ficheros). Suite completa en verde.
 
 > ⚠️ **El número de statements de la web está inflado y conviene saberlo.** Los
 > catálogos i18n (`lib/i18n/catalog/`) y las 25 guías del asistente (`lib/guides/`)
