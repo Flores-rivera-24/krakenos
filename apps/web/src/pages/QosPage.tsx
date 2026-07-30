@@ -19,9 +19,9 @@ import { toast } from '@/store/toast.store';
 const PRIORITIES: QosPriority[] = ['high', 'normal', 'low'];
 
 const PRIORITY_CLASS: Record<QosPriority, string> = {
-  high: 'text-green-500',
+  high: 'text-success',
   normal: 'text-muted-foreground',
-  low: 'text-amber-500',
+  low: 'text-warning',
 };
 
 const EMPTY: CreateQosRuleRequest = { name: '', target: '', priority: 'normal' };

@@ -2,10 +2,13 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   DAY_MS,
+  DEFAULT_ENERGY_RETENTION_DAYS,
   pruneAuditLog,
   pruneAutomationRuns,
+  pruneEnergySamples,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
+  prunePresenceEvents,
   pruneSurveyScans,
   retentionDays,
 } from '../../src/config/retention.js';
@@ -218,5 +221,64 @@ describe('retención de datos (US-102)', () => {
     await new RetentionService(app).pruneOnce();
 
     expect(await app.prisma.surveyScan.count()).toBe(0);
+  });
+
+  /**
+   * US-230 (AUD3-31) — **efectos sin observador.** La poda de `PresenceEvent` es
+   * PII (el timeline de quién entra y sale de casa, US-169) con retención fija de
+   * 30 días. En la prueba de mutación de la 3ª auditoría, **eliminarla entera
+   * sobrevivió a los 2.641 tests**: sus líneas se ejecutaban en `pruneOnce` y
+   * nadie comprobaba el resultado. Lo mismo con los rollups de energía. Estos dos
+   * tests son los observadores que faltaban.
+   */
+  describe('efectos que nadie observaba (US-230)', () => {
+    const seedPresence = async (userId: string, kind: 'arrived' | 'left', ageDays: number) =>
+      app.prisma.presenceEvent.create({
+        data: { userId, kind, createdAt: new Date(Date.now() - ageDays * DAY_MS) },
+      });
+
+    const seedEnergy = (deviceId: string, ageDays: number, powerW = 42) =>
+      app.prisma.energySample.create({
+        data: { deviceId, powerW, timestamp: new Date(Date.now() - ageDays * DAY_MS) },
+      });
+
+    it('prunePresenceEvents borra el timeline viejo y conserva el reciente', async () => {
+      const user = await seedUser(app, { email: 'marta@krakenos.test' });
+      await seedPresence(user.id, 'left', 45); // fuera de los 30 días
+      await seedPresence(user.id, 'arrived', 31); // justo fuera
+      await seedPresence(user.id, 'arrived', 29); // dentro
+      await seedPresence(user.id, 'left', 1); // dentro
+
+      const removed = await prunePresenceEvents(app.prisma);
+
+      expect(removed).toBe(2);
+      const quedan = await app.prisma.presenceEvent.findMany({ orderBy: { createdAt: 'asc' } });
+      expect(quedan).toHaveLength(2);
+      expect(quedan.map((e) => e.kind)).toEqual(['arrived', 'left']);
+    });
+
+    it('pruneEnergySamples respeta el ajuste energyRetentionDays', async () => {
+      await seedEnergy('hue:1', 120);
+      await seedEnergy('hue:1', 91);
+      await seedEnergy('hue:1', 10);
+
+      // Con el default (90 d) caen los dos viejos.
+      expect(await pruneEnergySamples(app.prisma, DEFAULT_ENERGY_RETENTION_DAYS)).toBe(2);
+      expect(await app.prisma.energySample.count()).toBe(1);
+    });
+
+    it('pruneOnce poda TAMBIÉN presencia y energía, no solo lo que ya se probaba', async () => {
+      const user = await seedUser(app, { email: 'pablo@krakenos.test' });
+      await seedPresence(user.id, 'left', 60);
+      await seedPresence(user.id, 'arrived', 2);
+      await seedEnergy('shelly:plug', 200);
+      await seedEnergy('shelly:plug', 3);
+
+      await new RetentionService(app).pruneOnce();
+
+      // Lo viejo se fue; lo reciente sigue (una poda que se lleva todo tampoco vale).
+      expect(await app.prisma.presenceEvent.count()).toBe(1);
+      expect(await app.prisma.energySample.count()).toBe(1);
+    });
   });
 });

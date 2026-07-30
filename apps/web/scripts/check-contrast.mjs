@@ -13,23 +13,35 @@ const docPath = resolve(here, '../../../docs/accessibility.md');
 
 const css = readFileSync(cssPath, 'utf8');
 
-/** Extrae `--kr-*: #hex;` del primer bloque que empieza por `selector {`. */
-function parseBlock(selector) {
-  const start = css.indexOf(selector);
-  if (start === -1) return {};
-  const open = css.indexOf('{', start);
-  const close = css.indexOf('}', open);
-  const body = css.slice(open + 1, close);
+/**
+ * Extrae `--kr-*: #hex;` del bloque de un selector. El selector se busca **al
+ * principio de línea** a propósito: `indexOf('.dark')` casaba antes con la mención
+ * `:root:not(.dark)` que hay dentro de un comentario, no con el bloque real.
+ */
+function parseBlock(selectorRegex) {
+  const m = new RegExp(`^\\s*${selectorRegex}\\s*\\{`, 'm').exec(css);
+  if (!m) return {};
+  const body = css.slice(m.index + m[0].length, css.indexOf('}', m.index + m[0].length));
   const tokens = {};
-  for (const m of body.matchAll(/--(kr-[\w-]+):\s*(#[0-9a-fA-F]{3,6})\s*;/g)) {
-    tokens[m[1]] = m[2];
+  for (const t of body.matchAll(/--(kr-[\w-]+):\s*(#[0-9a-fA-F]{3,6})\s*;/g)) {
+    tokens[t[1]] = t[2];
   }
   return tokens;
 }
 
-// El tema oscuro es el default en `:root`; el claro sobreescribe en `html:not(.dark)`.
-const darkTokens = parseBlock(':root');
-const lightTokens = { ...darkTokens, ...parseBlock('html:not(.dark)') };
+/**
+ * US-231 (AUD3-30) — **este medidor daba falso verde.**
+ *
+ * Medía solo `:root` mientras la app renderiza con `<html class="dark">`, y `.dark`
+ * **sobreescribe** algún token: `kr-text-muted` vale `#868f9a` en `:root` pero
+ * `#7d8590` en `.dark`. CI publicaba ✅ sobre un valor que el usuario nunca ve.
+ * Ahora se compone cada tema como lo compone el navegador:
+ *   · oscuro (default) = `:root` + `.dark` encima
+ *   · claro            = `:root` + `html:not(.dark)` encima
+ */
+const rootTokens = parseBlock(':root');
+const darkTokens = { ...rootTokens, ...parseBlock('\\.dark') };
+const lightTokens = { ...rootTokens, ...parseBlock('html:not\\(\\.dark\\)') };
 
 function hexToRgb(hex) {
   let h = hex.replace('#', '');
@@ -68,6 +80,9 @@ function buildPairs(tokens) {
   // normal se usa `kr-link`. Como FONDO de botón, el texto blanco encima.
   pairs.push({ fg: 'kr-accent', bg: 'kr-bg-surface', large: true });
   pairs.push({ fg: '#ffffff', bg: 'kr-accent', large: false, fgName: 'white' });
+  // US-231: faltaba `kr-offline`, el color del `StatusDot` de «desconectado» —el
+  // indicador más repetido de toda la app—. Es gráfico, no texto: umbral 3:1.
+  for (const bg of BG) pairs.push({ fg: 'kr-offline', bg, large: true });
   return pairs.map((p) => {
     const fgHex = p.fg.startsWith('#') ? p.fg : tokens[p.fg];
     const bgHex = tokens[p.bg];

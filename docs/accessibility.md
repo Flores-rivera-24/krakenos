@@ -30,6 +30,9 @@ con la fórmula de luminancia relativa sRGB sobre los pares fondo/texto reales d
 | `kr-danger` #f85149 | `kr-bg-surface` #161b22 | 5.16:1 | 4.5:1 | ✅ AA |
 | `kr-accent` #2563eb | `kr-bg-surface` #161b22 | 3.35:1 | 3:1 | ✅ AA |
 | `white` #ffffff | `kr-accent` #2563eb | 5.17:1 | 4.5:1 | ✅ AA |
+| `kr-offline` #666d76 | `kr-bg-base` #0d1117 | 3.62:1 | 3:1 | ✅ AA |
+| `kr-offline` #666d76 | `kr-bg-surface` #161b22 | 3.31:1 | 3:1 | ✅ AA |
+| `kr-offline` #666d76 | `kr-bg-elevated` #1c2230 | 3.04:1 | 3:1 | ✅ AA |
 
 ### Tema claro
 
@@ -53,6 +56,9 @@ con la fórmula de luminancia relativa sRGB sobre los pares fondo/texto reales d
 | `kr-danger` #cf222e | `kr-bg-surface` #ffffff | 5.36:1 | 4.5:1 | ✅ AA |
 | `kr-accent` #2563eb | `kr-bg-surface` #ffffff | 5.17:1 | 3:1 | ✅ AA |
 | `white` #ffffff | `kr-accent` #2563eb | 5.17:1 | 4.5:1 | ✅ AA |
+| `kr-offline` #848b94 | `kr-bg-base` #f6f8fa | 3.23:1 | 3:1 | ✅ AA |
+| `kr-offline` #848b94 | `kr-bg-surface` #ffffff | 3.44:1 | 3:1 | ✅ AA |
+| `kr-offline` #848b94 | `kr-bg-elevated` #eef1f4 | 3.04:1 | 3:1 | ✅ AA |
 
 
 ## Cobertura por herramienta (axe-core)

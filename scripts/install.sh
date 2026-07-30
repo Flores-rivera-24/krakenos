@@ -428,8 +428,7 @@ $SERVICE_USER ALL=(root) NOPASSWD: $systemctl_bin start $SERVICE_NAME"; then
   # (puerto ocupado, .env inválido) la unidad queda en 'failed' y el instalador
   # decía "Listo" igualmente.
   if [[ $DRY_RUN -eq 0 ]]; then
-    local i
-    for i in $(seq 1 20); do
+    for _ in $(seq 1 20); do
       systemctl is-active --quiet "$SERVICE_NAME" && break
       sleep 1
     done
@@ -449,9 +448,10 @@ print_setup_url() {
   # Espera al readiness y saca del journal la URL de configuración (AUD-26:
   # el agente la imprime por stdout, legible en journald). El puerto sale del .env:
   # con PORT distinto de 3001 esto sondeaba un puerto que nadie escucha.
-  local i port
+  local port
   port="$(agent_port)"
-  for i in $(seq 1 30); do
+  # `_` en vez de `i`: la variable no se usa dentro del bucle (shellcheck SC2034).
+  for _ in $(seq 1 30); do
     if curl -fsS "http://127.0.0.1:${port}/health/ready" > /dev/null 2>&1; then break; fi
     sleep 1
   done

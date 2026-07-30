@@ -29,6 +29,16 @@ function wrap(ui: React.ReactNode) {
   return render(<MemoryRouter>{ui}</MemoryRouter>);
 }
 
+/**
+ * Lee el número que acompaña a una etiqueta en los contadores del dashboard
+ * (`<StatusDot/><span>{valor}</span><span>{etiqueta}</span>`). Asertar el valor
+ * **junto a su etiqueta** —y no un `getByText('3')` suelto— es lo que impide que
+ * un contador equivocado pase por estar el número en pantalla por otro motivo.
+ */
+function statValue(label: string): string {
+  return screen.getByText(label).previousElementSibling?.textContent ?? '';
+}
+
 describe('Dashboard widgets', () => {
   const STATS = {
     uptimeSeconds: 3600,
@@ -49,6 +59,33 @@ describe('Dashboard widgets', () => {
   it('DeviceCountWidget rinde con el store vacío', () => {
     wrap(<DeviceCountWidget />);
     expect(screen.getByText('Dispositivos')).toBeInTheDocument();
+    expect(statValue('total')).toBe('0');
+  });
+
+  /**
+   * US-230 (AUD3-31) — el test de arriba es un **smoke**: solo comprueba que el
+   * título aparece. El fichero estaba al **100 % de cobertura** y aun así la
+   * mutación «contar `!d.online` en vez de `d.online`» sobrevivió a los 2.641
+   * tests. Cobertura no es aserción: aquí se comprueban los cuatro números.
+   *
+   * Los conteos son **asimétricos a propósito** (3 en línea / 1 fuera): con 2 y 2,
+   * invertir la condición daría el mismo número y la mutación volvería a colarse.
+   */
+  it('DeviceCountWidget cuenta en línea, total, desconocidos y bloqueados', () => {
+    useInventoryStore.setState({
+      devices: {
+        d1: device({ id: 'd1', online: true, type: 'computer' }),
+        d2: device({ id: 'd2', online: true, type: 'unknown' }),
+        d3: device({ id: 'd3', online: true, type: 'mobile', isBlocked: true }),
+        d4: device({ id: 'd4', online: false, type: 'unknown' }),
+      },
+    });
+    wrap(<DeviceCountWidget />);
+
+    expect(statValue('en línea')).toBe('3'); // invertir la condición daría 1
+    expect(statValue('total')).toBe('4');
+    expect(statValue('desconocidos')).toBe('2');
+    expect(statValue('bloqueados')).toBe('1');
   });
 
   it('SystemWidget muestra el estado de carga sin datos', () => {
@@ -61,6 +98,34 @@ describe('Dashboard widgets', () => {
     expect(screen.getByText('IoT')).toBeInTheDocument();
   });
 
+  /**
+   * US-230: agrupa por prefijo de backend (el composite usa `<backend>:<id>`) y
+   * cuenta los **alcanzables**. Se asertan los conteos, no solo que pinte algo.
+   */
+  it('IotStatusWidget agrupa por backend y cuenta los alcanzables', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices'
+        ? Promise.resolve([
+            { id: 'hue:1', name: 'Salón', kind: 'light', on: true, reachable: true },
+            { id: 'hue:2', name: 'Cocina', kind: 'light', on: false, reachable: true },
+            { id: 'hue:3', name: 'Baño', kind: 'light', on: false, reachable: false },
+            { id: 'shelly:a', name: 'Enchufe', kind: 'plug', on: true, reachable: false },
+          ])
+        : Promise.resolve([]),
+    );
+    wrap(<IotStatusWidget />);
+
+    expect(await screen.findByText('Hue')).toBeInTheDocument();
+    expect(screen.getByText('2/3 en línea')).toBeInTheDocument(); // 1 inalcanzable
+    expect(screen.getByText('shelly')).toBeInTheDocument(); // sin etiqueta bonita: cae al prefijo
+    expect(screen.getByText('0/1 en línea')).toBeInTheDocument();
+  });
+
+  it('IotStatusWidget dice «sin dispositivos» cuando la lista viene vacía', async () => {
+    wrap(<IotStatusWidget />);
+    expect(await screen.findByText('Sin dispositivos IoT.')).toBeInTheDocument();
+  });
+
   it('WifiStatusWidget rinde su título', () => {
     wrap(<WifiStatusWidget />);
     expect(screen.getByText('WiFi')).toBeInTheDocument();
@@ -69,6 +134,31 @@ describe('Dashboard widgets', () => {
   it('AlertsWidget rinde su título', () => {
     wrap(<AlertsWidget />);
     expect(screen.getByText('Alertas recientes')).toBeInTheDocument();
+  });
+
+  /**
+   * US-230: el widget lista las últimas acciones y marca cuántas son posteriores a
+   * la última vez que se miraron (`localStorage`). Antes solo se comprobaba el
+   * título, así que ni la lista ni el contador de no leídas tenían observador.
+   */
+  it('AlertsWidget lista las acciones y cuenta las no leídas desde la última visita', async () => {
+    localStorage.setItem('krakenos-alerts-seen', '2026-07-20T00:00:00.000Z');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/audit')
+        ? Promise.resolve([
+            { id: 'a1', action: 'wifi.update', createdAt: '2026-07-22T10:00:00.000Z' },
+            { id: 'a2', action: 'device.block', createdAt: '2026-07-21T10:00:00.000Z' },
+            { id: 'a3', action: 'auth.login', createdAt: '2026-07-19T10:00:00.000Z' },
+          ])
+        : Promise.resolve([]),
+    );
+    wrap(<AlertsWidget />);
+
+    expect(await screen.findByText('wifi.update')).toBeInTheDocument();
+    expect(screen.getByText('device.block')).toBeInTheDocument();
+    expect(screen.getByText('auth.login')).toBeInTheDocument();
+    // Dos son posteriores al `lastSeen`; la tercera no.
+    expect(screen.getByText('2 nuevas')).toBeInTheDocument();
   });
 
   it('TrafficWidget espera muestras cuando no hay datos', () => {

@@ -111,7 +111,7 @@ export function DnsPage() {
           title={t('dns.stat.blockedPercent')}
           value={stats ? `${stats.blockedPercent}%` : '—'}
           icon={ShieldCheck}
-          accent="text-green-500"
+          accent="text-success"
         />
         <StatCard
           title={t('dns.stat.domains')}
@@ -232,7 +232,7 @@ export function DnsPage() {
                           {q.client}
                         </td>
                         <td className="px-3 py-2">
-                          <span className={q.blocked ? 'text-destructive' : 'text-green-500'}>
+                          <span className={q.blocked ? 'text-destructive' : 'text-success'}>
                             {q.blocked ? t('dns.blocked') : t('dns.allowed')}
                           </span>
                         </td>

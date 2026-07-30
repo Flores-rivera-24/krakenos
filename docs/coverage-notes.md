@@ -16,18 +16,27 @@ aparte), no unit-testables sin arrancar el proceso. Sorpresa honesta: medido de
 verdad, el árbol está **mejor** cubierto que el 85% decorativo anterior — la suite
 ejercita casi todo, y el hardware sin test es una fracción pequeña.
 
-**La web sigue con `all: false`** (mide lo que los tests importan). Migrarla a
-`all: true` es deuda aparte (arrastraría muchos componentes de widgets/páginas no
-testados; ver la brecha de i18n de widgets del dashboard) — pendiente de una US
-futura.
+**La web también mide con `all: true` desde US-230.** Era deuda declarada… hasta que
+la 3ª auditoría la midió: con `all: true` ya pasaba el umbral, así que el `all: false`
+no era deuda, era **inercia**. Se excluyen solo los entrypoints (`main.tsx`,
+`vite-env.d.ts`), misma política que el agente.
 
 | Paquete | Medición | Statements | Branches | Functions | Lines |
 |---------|----------|-----------:|---------:|----------:|------:|
-| **agente** (`apps/agent`) | `all: true` | **91.97%** | **86.20%** | **91.10%** | **91.97%** |
-| **web** (`apps/web`)      | `all: false` | 88.60% | 79.73% | 66.02% | 88.60% |
+| **agente** (`apps/agent`) | `all: true` | **92.00%** | **86.27%** | **91.11%** | **92.00%** |
+| **web** (`apps/web`)      | `all: true` | 88.28% | 79.84% | **65.99%** | 88.28% |
 
-Medido el 2026-07-29 (tras US-233): agente **2225 tests** (237 ficheros), web **625
-tests** (118 ficheros). Suite completa en verde.
+Medido el 2026-07-29 (tras US-231): agente **2291 tests** (240 ficheros), web **631
+tests** (119 ficheros). Suite completa en verde.
+
+> ⚠️ **El número de statements de la web está inflado y conviene saberlo.** Los
+> catálogos i18n (`lib/i18n/catalog/`) y las 25 guías del asistente (`lib/guides/`)
+> son `export const` de **texto**: v8 los marca como cubiertos solo con importarse.
+> **El número que dice la verdad sobre la web es el de funciones (~66 %)**, que mide
+> handlers y callbacks realmente disparados. Por eso su suelo se sube aparte y el
+> aviso está también en `apps/web/vitest.config.ts`. No se excluyen esos ficheros
+> para no desviarse de la política del agente («solo entrypoints»), pero al leer el
+> 88 % hay que descontarlos mentalmente.
 
 Entrypoints excluidos (efectos secundarios, no unit-testables sin arrancar el
 proceso): `src/index.ts`, `src/update-runner.ts` y `src/reset-admin.ts` (US-233).
@@ -41,7 +50,7 @@ anti-regresión** ~1–2 pts **por debajo** del número real medido (no un objet
 decorativo del 85%):
 
 - **agente** (`all: true`): stmts **89** · branches **83** · funcs **90** · lines **89**
-- **web** (`all: false`): stmts 85 · branches 78 · funcs **60** · lines 85
+- **web** (`all: true`, US-230): stmts 85 · branches 78 · funcs **64** · lines 85
 
 Avisan si una rama hoy bien probada deja de estarlo. El margen de ~1–2 pts absorbe
 la variabilidad del árbol completo y **no bloquea** por los caminos de hardware

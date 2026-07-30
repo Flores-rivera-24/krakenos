@@ -11,8 +11,6 @@ export default tseslint.config(
       '**/.claude/**',
       '**/*.config.js',
       '**/prisma/**',
-      // Scripts de utilidad Node sueltos (.mjs con globals de Node, p. ej. medición de contraste).
-      '**/scripts/**',
       // Assets estáticos servidos tal cual (script anti-flash de tema, sw.js, etc.).
       'apps/web/public/**',
     ],
@@ -30,6 +28,35 @@ export default tseslint.config(
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+  // US-231 (AUD3-32): `scripts/**` estaba en `ignores`, así que el gate de
+  // dependencias y el medidor de contraste —código que decide si CI pasa— no
+  // pasaban por ningún lint. Ahora sí; solo hace falta declararles los globals de
+  // Node, que no son ambiente por defecto en la config compartida.
+  // US-231 (AUD3-32): ESLint usaba `recommended`, NO `recommendedTypeChecked`, así
+  // que `no-floating-promises` —la regla que caza un `await` olvidado— no existía.
+  // Evaluada sobre `apps/agent/src`: **cero infracciones**, así que se activa sin
+  // deuda. Solo esa regla (no el preset típado entero) para no pagar el coste de
+  // lint con tipos en todo el monorepo por reglas de estilo.
+  {
+    files: ['apps/agent/src/**/*.ts'],
+    languageOptions: {
+      parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname },
+    },
+    rules: { '@typescript-eslint/no-floating-promises': 'error' },
+  },
+  {
+    files: ['**/scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        URL: 'readonly',
+        __dirname: 'readonly',
+        fetch: 'readonly',
+      },
     },
   },
 );

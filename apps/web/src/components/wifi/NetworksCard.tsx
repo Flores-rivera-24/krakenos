@@ -71,7 +71,7 @@ export function NetworksCard() {
               className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
             >
               {ap.name} · {ap.ip}{' '}
-              <span className={ap.online ? 'text-green-500' : 'text-destructive'}>
+              <span className={ap.online ? 'text-success' : 'text-destructive'}>
                 {ap.online ? '●' : '○'}
               </span>
             </span>

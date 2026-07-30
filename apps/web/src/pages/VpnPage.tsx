@@ -104,7 +104,7 @@ export function VpnPage() {
               <>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">{t('vpn.status')}</span>
-                  <span className={status.enabled ? 'text-green-500' : 'text-muted-foreground'}>
+                  <span className={status.enabled ? 'text-success' : 'text-muted-foreground'}>
                     {status.enabled ? t('vpn.status.active') : t('vpn.status.inactive')}
                   </span>
                 </div>

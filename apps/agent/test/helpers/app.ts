@@ -341,6 +341,11 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.iotSchedule.deleteMany();
   await app.prisma.automationRun.deleteMany();
   await app.prisma.automationRule.deleteMany();
+  // US-230 (AUD3-34): faltaban 2 de las 29 tablas. Sin limpiarlas, las filas de
+  // energía se filtraban de un test a otro (el rollup y las alertas comparten
+  // `deviceId` entre suites) y un fallo aparecía en el test equivocado.
+  await app.prisma.energySample.deleteMany();
+  await app.prisma.energyAlertRule.deleteMany();
   await app.prisma.recording.deleteMany();
   await app.prisma.presenceEvent.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
