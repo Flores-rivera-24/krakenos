@@ -18,8 +18,21 @@ export interface AccessSchedule {
   startMinute: number;
   /** Minutos desde medianoche (0–1439) del fin. Si ≤ start, cruza medianoche. */
   endMinute: number;
+  /**
+   * Persona a la que pertenece el horario (US-240), o `null` si se creó sobre un
+   * dispositivo suelto. Un horario **de persona** se gobierna desde `/people` y se
+   * replica a todos sus dispositivos; editarlo por dispositivo lo saca de ese
+   * grupo, así que la UI del dispositivo lo marca como heredado.
+   */
+  personId: Id | null;
   createdAt: IsoDateTime;
 }
+
+/**
+ * Por qué está sin internet un dispositivo. Las tres fuentes son independientes y
+ * se acumulan; la evaluación **pura** vive en `access/blocked-eval.ts` (US-236).
+ */
+export type BlockReason = 'manual' | 'schedule' | 'paused';
 
 export interface CreateAccessScheduleRequest {
   name: string;

@@ -181,7 +181,13 @@ describe('AutoBackupService', () => {
 
   it('marca `stale` sin copias, lo quita con una fresca y lo vuelve a marcar si envejece', async () => {
     // Reloj mutable: la señal `stale` depende de la EDAD de la copia más reciente.
-    let now = new Date('2026-07-29T12:00:00.000Z');
+    //
+    // ⚠️ El reloj inyectado NO controla la mitad del cálculo: la edad se mide contra
+    // el **mtime real** del fichero (`listBackups` lo lee del disco), así que el
+    // «ahora» del test tiene que ir referido al reloj real y no a una fecha fija.
+    // Con fechas absolutas el test caducaba: pasaba mientras el calendario iba por
+    // detrás de ellas y empezaba a fallar solo al alcanzarlas (2026-07-30).
+    let now = new Date(Date.now());
     const backupDir = join(mkdtempSync(join(tmpdir(), 'krakenos-auto-')), 'backups');
     const service = new AutoBackupService({
       prisma: fakePrisma({ autoBackupFrequency: 'daily' }),
@@ -199,7 +205,7 @@ describe('AutoBackupService', () => {
     expect((await service.getStatus()).stale).toBe(false);
 
     // Cinco días después, esa misma copia ya no vale como reciente.
-    now = new Date('2026-08-03T12:00:00.000Z');
+    now = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
     const aged = await service.getStatus();
     expect(aged.count).toBe(1);
     expect(aged.stale).toBe(true);
@@ -207,7 +213,9 @@ describe('AutoBackupService', () => {
 
   it('en semanal el margen es más ancho que en diaria', async () => {
     const backupDir = join(mkdtempSync(join(tmpdir(), 'krakenos-auto-')), 'backups');
-    let now = new Date('2026-07-29T12:00:00.000Z');
+    // Referido al reloj real por lo mismo que el test de arriba: la edad se mide
+    // contra el mtime del fichero, que lo pone el sistema de archivos.
+    let now = new Date(Date.now());
     const rows: Record<string, string> = { autoBackupFrequency: 'daily' };
     const service = new AutoBackupService({
       prisma: fakePrisma(rows),
@@ -220,7 +228,7 @@ describe('AutoBackupService', () => {
     await service.runNow();
 
     // A los 3 días: en diaria ya es vieja…
-    now = new Date('2026-08-01T12:00:00.000Z');
+    now = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
     expect((await service.getStatus()).stale).toBe(true);
     // …pero en semanal todavía no.
     rows.autoBackupFrequency = 'weekly';

@@ -34,6 +34,8 @@ model User {
   pushSubscriptions PushSubscription[]
   /// Llegadas/salidas derivadas de la presencia WiFi (US-169).
   presenceEvents PresenceEvent[]
+  /// Horarios de acceso definidos **por persona** (US-240); se replican a sus dispositivos.
+  accessSchedules AccessSchedule[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
@@ -413,9 +415,16 @@ model AccessSchedule {
   days        String // JSON: array de 0-6 (Dom-Sáb)
   startMinute Int // minutos desde medianoche (0-1439)
   endMinute   Int // si <= startMinute, cruza medianoche
+  /// Persona dueña del horario (US-240): el parental se define por persona y el
+  /// servidor lo replica a todos sus dispositivos (una fila por MAC). null = horario
+  /// creado sobre un dispositivo suelto. Cascade: un horario de persona sin persona
+  /// es basura que seguiría cortando internet a un aparato heredado.
+  personId    String?
+  person      User?    @relation(fields: [personId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
 
   @@index([mac])
+  @@index([personId])
 }
 
 /// Regla de automatización «si X entonces Y» (US-167). `trigger`/`condition`/

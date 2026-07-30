@@ -23,7 +23,8 @@ export interface BlockedDeviceView {
   reasons: BlockReason[];
 }
 
-function toSchedule(row: DbAccessSchedule): AccessSchedule {
+/** Fila de DB → contrato público (los `days` van como JSON string, US-63). */
+export function toSchedule(row: DbAccessSchedule): AccessSchedule {
   let days: number[] = [];
   try {
     days = JSON.parse(row.days) as number[];
@@ -38,6 +39,7 @@ function toSchedule(row: DbAccessSchedule): AccessSchedule {
     days,
     startMinute: row.startMinute,
     endMinute: row.endMinute,
+    personId: row.personId,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -62,10 +64,24 @@ export class AccessScheduleService {
    */
   private readonly managedBlocked = new Set<string>();
 
+  /**
+   * Reconciliación de los horarios **de persona** contra el parque real (US-240),
+   * inyectada para no acoplar este servicio al de personas (mismo patrón que
+   * `inventoryService.setScheduleGuard`). Corre **antes** de aplicar el barrido:
+   * una fila que ya no corresponde a su dueño no debe cortar internet ni un ciclo
+   * más.
+   */
+  private reconcilePeople: (() => Promise<void>) | null = null;
+
   constructor(
     private readonly app: FastifyInstance,
     private readonly driver: HardwareDriver,
   ) {}
+
+  /** Inyecta el reconciliador de horarios de persona (US-240). */
+  setPersonReconciler(fn: () => Promise<void>): void {
+    this.reconcilePeople = fn;
+  }
 
   // ---- CRUD ----
 
@@ -213,8 +229,16 @@ export class AccessScheduleService {
 
   // ---- Pausa de internet de un toque (US-111) ----
 
-  /** Pausa el internet de un dispositivo `minutes` minutos. Devuelve el fin de la pausa. */
-  async pause(mac: string, minutes: number): Promise<Date> {
+  /**
+   * Pausa el internet de un dispositivo `minutes` minutos.
+   *
+   * `applied` dice si el **driver** aceptó el corte ya (US-240). No cambia la
+   * semántica de reintento —si falla, la MAC queda activa pero no gestionada y el
+   * barrido lo reintenta cada minuto—, pero sin exponerlo, una acción sobre los
+   * seis aparatos de una persona no puede reportar el parcial real y acabaría
+   * prometiendo un corte que aún no existe.
+   */
+  async pause(mac: string, minutes: number): Promise<{ pausedUntil: Date; applied: boolean }> {
     const pausedUntil = new Date(Date.now() + minutes * 60_000);
     await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil } });
     // Solo se marca como gestionado tras el éxito del driver: si falla, la MAC
@@ -224,14 +248,19 @@ export class AccessScheduleService {
       await this.driver.blockDevice(mac);
       this.managedBlocked.add(mac);
       await this.persistManaged();
+      return { pausedUntil, applied: true };
     } catch (err) {
       this.app.log.error({ err, mac }, '[access] no se pudo pausar el dispositivo; se reintenta');
+      return { pausedUntil, applied: false };
     }
-    return pausedUntil;
   }
 
-  /** Reanuda el internet de un dispositivo. Si un horario sigue activo, permanece bloqueado. */
-  async resume(mac: string): Promise<void> {
+  /**
+   * Reanuda el internet de un dispositivo. Si un horario o el bloqueo manual
+   * siguen activos, permanece bloqueado (y eso **no** es un fallo: `applied`
+   * queda en `true` porque no había nada que pedirle al driver).
+   */
+  async resume(mac: string): Promise<{ applied: boolean }> {
     await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil: null } });
     const device = await this.app.prisma.device.findUnique({ where: { mac } });
     const manual = device?.isBlocked ?? false;
@@ -246,14 +275,26 @@ export class AccessScheduleService {
         await this.persistManaged();
       } catch (err) {
         this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo; se reintenta');
+        return { applied: false };
       }
     }
+    return { applied: true };
   }
 
   // ---- Enforcement ----
 
   /** Aplica el estado de bloqueo por horario en el instante `now`. */
   async tick(now: Date = new Date()): Promise<void> {
+    // US-240: primero se ajustan los horarios de persona al inventario vigente; si
+    // no, un aparato que cambió de dueño arrastraría el corte del anterior. Un
+    // fallo aquí no puede tumbar el enforcement, que es lo importante del barrido.
+    if (this.reconcilePeople) {
+      try {
+        await this.reconcilePeople();
+      } catch (err) {
+        this.app.log.error({ err }, '[access] la reconciliación de horarios de persona falló');
+      }
+    }
     const rows = await this.app.prisma.accessSchedule.findMany({ where: { enabled: true } });
     const active = activeBlockedMacs(rows.map(toSchedule), now);
     // La pausa de internet (US-111) cuenta como bloqueo activo hasta que expira; el

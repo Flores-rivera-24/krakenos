@@ -13,6 +13,7 @@ export const en: Record<TranslationKey, string> = {
   'nav.wifi': 'WiFi',
   'nav.coverage': 'WiFi coverage',
   'nav.traffic': 'Traffic',
+  'nav.people': 'People',
   'nav.rooms': 'Rooms',
   'nav.scenes': 'Scenes',
   'nav.automations': 'Automations',
@@ -739,6 +740,87 @@ export const en: Record<TranslationKey, string> = {
     'It only reports the household total, so per-device usage and per-person usage cannot be shown. This is not a setting on your side.',
   'wellbeing.unassigned': 'Unassigned',
   'wellbeing.devices': '{n} device(s)',
+
+  // --- People (US-240) ---
+  'people.title': 'People',
+  'people.subtitle':
+    'Parental controls by person: whatever you do here applies to all of their devices.',
+  'people.loadError': 'Could not load the list of people',
+  'people.onlyYou':
+    'You only see your own devices. The rest of the home is managed by users with the admin role.',
+  'people.empty': 'No devices are assigned to people yet.',
+  'people.emptyHint':
+    'Open a device under «Devices» and give it an owner; it will show up here grouped by person.',
+  'people.unassigned': 'Unassigned',
+  'people.withoutOwner': 'without an owner',
+  'people.noDevices': 'No devices assigned.',
+  'people.device.one': 'device',
+  'people.device.other': 'devices',
+  'people.onlineCount': '{n} online',
+  'people.blockedCount': '{n} without internet',
+  'people.reason.manual': 'Blocked by hand',
+  'people.reason.schedule': 'On a schedule',
+  'people.reason.paused': 'Paused',
+  'people.state.online': 'Online',
+  'people.state.offline': 'Offline',
+  'people.role.admin': 'Administrator',
+  'people.role.member': 'Member',
+  'people.role.kid': 'Child',
+  'people.role.guest': 'Guest',
+  'people.role.viewer': 'Viewer',
+
+  // Pause by person
+  'people.pause': 'Pause internet',
+  'people.pauseAria': 'Pause internet for {name} for {minutes} minutes',
+  'people.resume': 'Give internet back',
+  'people.resumeAria': 'Give internet back to {name}',
+  'people.pausedUntil': 'No internet until {time}',
+  'people.paused': 'Internet paused',
+  'people.resumed': 'Internet restored',
+  'people.pausePartial': '{applied} of {total} devices paused. The rest will retry on their own.',
+  'people.resumePartial': '{applied} of {total} devices resumed. The rest will retry on their own.',
+  'people.pauseError': 'Could not pause the internet',
+  'people.resumeError': 'Could not give the internet back',
+
+  // Bedtime
+  'people.bedtime': 'Bedtime',
+  'people.bedtime.none': 'No bedtime set.',
+  'people.bedtime.window': 'No internet from {start} to {end}',
+  'people.bedtime.disabled': '(off)',
+  'people.bedtime.appliedTo': 'Applied to {applied} of {total} devices.',
+  'people.bedtime.set': 'Set a bedtime',
+  'people.bedtime.edit': 'Change bedtime',
+  'people.bedtime.remove': 'Remove bedtime',
+  'people.bedtime.title': 'Bedtime for {name}',
+  'people.bedtime.desc':
+    'Cuts the internet on all of their devices during that window, every week. Devices added later inherit it.',
+  'people.bedtime.days': 'Days',
+  'people.bedtime.dayAria': '{label} day',
+  'people.bedtime.from': 'From',
+  'people.bedtime.to': 'to',
+  'people.bedtime.enabled': 'On',
+  'people.bedtime.noDays': 'Pick at least one day.',
+  'people.bedtime.saved': 'Bedtime saved',
+  'people.bedtime.cleared': 'Bedtime removed',
+  'people.bedtime.saveError': 'Could not save the bedtime',
+  'people.bedtime.clearError': 'Could not remove the bedtime',
+  'people.bedtime.noDevices':
+    'This person has no devices assigned, so a bedtime would not cut anything.',
+  'people.save': 'Save',
+  'people.saving': 'Saving…',
+  'people.cancel': 'Cancel',
+
+  // The three ways to cut internet (US-240)
+  'access.kinds.title': 'The three ways to cut internet',
+  'access.kinds.pause': 'Pause',
+  'access.kinds.pauseDesc': 'One-tap cut. It comes back on its own after the minutes you pick.',
+  'access.kinds.schedule': 'Schedule',
+  'access.kinds.scheduleDesc':
+    'A window that repeats every week. It comes back on its own when the window ends.',
+  'access.kinds.block': 'Block',
+  'access.kinds.blockDesc':
+    'An open-ended cut on one device. It only comes back when someone unblocks it.',
+  'access.kinds.note': 'They are independent and they stack: while any one is on, there is no internet.',
 
   // --- Energy (US-182) ---
   'energy.loadError': 'Could not load consumption',

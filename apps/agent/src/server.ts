@@ -43,6 +43,8 @@ import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { accessRoutes } from './modules/access/access.routes.js';
 import { AccessScheduleService } from './modules/access/access.service.js';
+import { peopleRoutes } from './modules/people/people.routes.js';
+import { PeopleService } from './modules/people/people.service.js';
 import { roomsRoutes } from './modules/rooms/rooms.routes.js';
 import { RoomService } from './modules/rooms/rooms.service.js';
 import { favoritesRoutes } from './modules/favorites/favorites.routes.js';
@@ -247,6 +249,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   }
   await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
   await app.register(accessRoutes, { prefix: '/api/access', service: accessService });
+  // Personas del hogar (US-240): el mismo control parental, pero por persona en vez
+  // de por MAC. Le presta al barrido de acceso la reconciliación de sus horarios
+  // contra el inventario (un aparato que cambia de dueño no puede seguir cortado
+  // por el horario del dueño anterior).
+  const peopleService = new PeopleService(app, accessService);
+  accessService.setPersonReconciler(() => peopleService.reconcile());
+  await app.register(peopleRoutes, { prefix: '/api/people', service: peopleService });
   // Habitaciones y grupos (US-165): organiza los dispositivos por estancia + acción
   // de grupo sobre los IoT. Reusa el inventario para asignar dispositivos de red.
   const roomService = new RoomService(app, iot, inventoryService);

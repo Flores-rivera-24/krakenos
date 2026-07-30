@@ -58,6 +58,16 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/access/schedules/x' },
   { method: 'POST', url: '/api/access/pause', payload: { mac: 'aa:bb:cc:dd:ee:ff', minutes: 30 } },
   { method: 'POST', url: '/api/access/resume', payload: { mac: 'aa:bb:cc:dd:ee:ff' } },
+  // personas: el mismo parental, por persona (US-240). Admin, no `home.control`:
+  // dejar a alguien sin internet no es «operar lo cotidiano» del hogar.
+  { method: 'POST', url: '/api/people/x/pause', payload: { minutes: 30 } },
+  { method: 'POST', url: '/api/people/x/resume' },
+  {
+    method: 'PUT',
+    url: '/api/people/x/bedtime',
+    payload: { days: [1], startMinute: 1260, endMinute: 420 },
+  },
+  { method: 'DELETE', url: '/api/people/x/bedtime' },
   // reglas de alerta (US-112)
   { method: 'PATCH', url: '/api/alerts/rules/device.block', payload: { email: true } },
 

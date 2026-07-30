@@ -17,7 +17,17 @@ const minute = { type: 'integer', minimum: 0, maximum: 1439 } as const;
 const scheduleResponse = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'name', 'mac', 'enabled', 'days', 'startMinute', 'endMinute', 'createdAt'],
+  required: [
+    'id',
+    'name',
+    'mac',
+    'enabled',
+    'days',
+    'startMinute',
+    'endMinute',
+    'personId',
+    'createdAt',
+  ],
   properties: {
     id: { type: 'string' },
     name: { type: 'string' },
@@ -26,6 +36,10 @@ const scheduleResponse = {
     days: { type: 'array', items: { type: 'integer' } },
     startMinute: { type: 'integer' },
     endMinute: { type: 'integer' },
+    // US-240: quién manda sobre este horario. La UI del dispositivo lo necesita
+    // para marcarlo como heredado de la persona en vez de dejar que el usuario
+    // lo edite creyendo que solo toca este aparato.
+    personId: { type: ['string', 'null'] },
     createdAt: { type: 'string' },
   },
 } as const;
