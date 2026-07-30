@@ -166,6 +166,51 @@ describe('Dashboard widgets', () => {
     expect(screen.getByText('Esperando muestras…')).toBeInTheDocument();
   });
 
+  /**
+   * US-234 (AUD3-24) — los widgets tragaban el error y se quedaban con los datos
+   * en `null`: unos giraban para siempre (`SystemWidget`, `AlarmWidget`) y otros
+   * pintaban el fallo como estado vacío («Sin dispositivos IoT»), que en un panel
+   * del hogar se lee como «todo tranquilo» justo cuando no se sabe nada.
+   */
+  describe('estado de fallo explícito (US-234)', () => {
+    it('SystemWidget dice que no pudo cargar en vez de girar para siempre', async () => {
+      apiMock.get.mockReset().mockRejectedValue(new Error('agente caído'));
+      wrap(<SystemWidget />);
+
+      expect(await screen.findByText('No se pudo cargar el estado del sistema.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Reintentar/ })).toBeInTheDocument();
+      expect(screen.queryByText('Cargando…')).not.toBeInTheDocument();
+    });
+
+    it('IotStatusWidget NO dice «sin dispositivos» cuando en realidad falló', async () => {
+      apiMock.get.mockReset().mockRejectedValue(new Error('agente caído'));
+      wrap(<IotStatusWidget />);
+
+      expect(await screen.findByText('No se pudo cargar la lista de dispositivos IoT.')).toBeInTheDocument();
+      // La distinción que importa: fallo ≠ casa sin dispositivos.
+      expect(screen.queryByText('Sin dispositivos IoT.')).not.toBeInTheDocument();
+    });
+
+    it('«Reintentar» vuelve a pedir los datos y se recupera', async () => {
+      apiMock.get.mockReset().mockRejectedValueOnce(new Error('caído')).mockResolvedValue(STATS);
+      wrap(<SystemWidget />);
+
+      const boton = await screen.findByRole('button', { name: /Reintentar/ });
+      boton.click();
+
+      expect(await screen.findByText('Uptime')).toBeInTheDocument();
+    });
+
+    it('AlertsWidget distingue «sin permiso» (403) de «no se pudo cargar»', async () => {
+      // Un viewer sin acceso al audit es un caso legítimo: estado vacío, no error.
+      apiMock.get.mockReset().mockRejectedValue(Object.assign(new Error('403'), { status: 403 }));
+      wrap(<AlertsWidget />);
+
+      expect(await screen.findByText('Sin actividad registrada.')).toBeInTheDocument();
+      expect(screen.queryByText(/No se pudo cargar/)).not.toBeInTheDocument();
+    });
+  });
+
   it('NetworkTopologyWidget muestra el estado vacío sin dispositivos', () => {
     wrap(<NetworkTopologyWidget />);
     expect(screen.getByText('Sin dispositivos en la red.')).toBeInTheDocument();

@@ -7,6 +7,7 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { WidgetError } from '@/components/ui/widget-error';
 import { armAlarm, disarmAlarm, getAlarmState } from '@/lib/alarm';
 import { ApiRequestError } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -82,6 +83,10 @@ export function AlarmWidget() {
   const isAdmin = role === 'admin';
   const [state, setState] = useState<AlarmState | null>(null);
   const [loading, setLoading] = useState(true);
+  // US-234: el `.catch(() => {})` dejaba `state` en null con `loading` ya false →
+  // spinner infinito. Ahora el fallo se distingue de «todavía cargando».
+  const [failed, setFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pinNeeded, setPinNeeded] = useState(false);
   const [pin, setPin] = useState('');
@@ -98,8 +103,12 @@ export function AlarmWidget() {
     let active = true;
     const load = () =>
       getAlarmState()
-        .then((s) => active && setState(s))
-        .catch(() => {})
+        .then((s) => {
+          if (!active) return;
+          setState(s);
+          setFailed(false);
+        })
+        .catch(() => active && setFailed(true))
         .finally(() => active && setLoading(false));
     void load();
     const id = setInterval(load, 3000); // refleja cuentas atrás y disparos
@@ -107,7 +116,7 @@ export function AlarmWidget() {
       active = false;
       clearInterval(id);
     };
-  }, []);
+  }, [intento]);
 
   const arm = async (mode: 'away' | 'night') => {
     setBusy(true);
@@ -154,7 +163,15 @@ export function AlarmWidget() {
         )}
       </CardHeader>
       <CardContent className="space-y-4">
-        {loading || !state ? (
+        {failed && !state ? (
+          <WidgetError
+            what="el estado de la alarma"
+            onRetry={() => {
+              setLoading(true);
+              setIntento((n) => n + 1);
+            }}
+          />
+        ) : loading || !state ? (
           <LoadingLine />
         ) : (
           <>
