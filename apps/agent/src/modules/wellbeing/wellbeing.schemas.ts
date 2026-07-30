@@ -38,8 +38,12 @@ export const wellbeingUsageSchema = {
       properties: {
         range: { type: 'string', enum: ['day', 'week'] },
         people: { type: 'array', items: personUsage },
+        // US-263: sin desglose por dispositivo, `people` sale vacío SIEMPRE, por
+        // mucho dueño que se asigne. La UI necesita distinguirlo.
+        perDeviceTrafficSupported: { type: 'boolean' },
+        devicesWithOwner: { type: 'integer' },
       },
-      required: ['range', 'people'],
+      required: ['range', 'people', 'perDeviceTrafficSupported', 'devicesWithOwner'],
     },
   },
 } as const;

@@ -10,7 +10,11 @@
 export const COMPAT_CAPABILITIES = [
   'inventory', // ver dispositivos de la red
   'block', // bloquear el acceso de un dispositivo
-  'traffic', // medir tráfico
+  'traffic', // medir tráfico del hogar (WAN)
+  // Desglose POR APARATO (US-263). Es una capacidad aparte de `traffic`: hoy
+  // ningún driver real la tiene, y de ella dependen la tabla «Por dispositivo» y
+  // todo el bienestar digital. Arreglo de fondo: US-251.
+  'traffic-per-device',
   'wifi', // gestionar la WiFi (SSID/contraseña)
   'control', // encender/apagar/atenuar (IoT)
   'vpn', // acceso remoto (VPN)

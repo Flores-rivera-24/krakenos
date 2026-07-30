@@ -1,4 +1,5 @@
 import type {
+  DeviceTrafficReport,
   DeviceTrafficStats,
   TrafficRange,
   TrafficSample,
@@ -22,6 +23,7 @@ import { getSocket } from '@/lib/socket';
 import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
+import { Callout } from '@/components/ui/callout';
 
 const MAX_POINTS = 60;
 
@@ -60,6 +62,7 @@ export function TrafficPage() {
 
   // Tráfico por dispositivo (US-46): rango propio + orden + slideover de detalle.
   const [devStats, setDevStats] = useState<DeviceTrafficStats[] | null>(null);
+  const [perDeviceSupported, setPerDeviceSupported] = useState(true);
   const [devRange, setDevRange] = useState<TrafficRange>('hour');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [selectedMac, setSelectedMac] = useState<string | null>(null);
@@ -73,8 +76,12 @@ export function TrafficPage() {
     let active = true;
     setDevStats(null);
     void api
-      .get<DeviceTrafficStats[]>(`/traffic/devices?range=${devRange}`)
-      .then((s) => active && setDevStats(s))
+      .get<DeviceTrafficReport>(`/traffic/devices?range=${devRange}`)
+      .then((r) => {
+        if (!active) return;
+        setDevStats(r?.devices ?? []);
+        setPerDeviceSupported(r?.perDeviceTrafficSupported !== false);
+      })
       .catch((err) => {
         if (!active) return;
         setDevStats([]);
@@ -335,8 +342,11 @@ export function TrafficPage() {
         </CardContent>
       </Card>
 
-      {/* Tráfico por dispositivo (US-46): solo si el driver lo reporta. */}
-      {sortedDev.length > 0 && (
+      {/* Tráfico por dispositivo (US-46). Si el driver NO lo reporta, la tarjeta se
+          muestra igualmente con la explicación: antes desaparecía sin más y el
+          usuario nunca se enteraba de por qué su bienestar digital estaba vacío
+          (US-263). Si sí lo reporta pero aún no hay datos, no hay nada que decir. */}
+      {(sortedDev.length > 0 || (devStats !== null && !perDeviceSupported)) && (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>{t('traffic.byDevice')}</CardTitle>
@@ -359,7 +369,12 @@ export function TrafficPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {/* Scroll horizontal en móvil en vez de desbordar la página (US-97). */}
+            {!perDeviceSupported ? (
+              <Callout variant="warning" standing title={t('traffic.perDeviceUnsupported')}>
+                {t('traffic.perDeviceUnsupportedDesc')}
+              </Callout>
+            ) : (
+            /* Scroll horizontal en móvil en vez de desbordar la página (US-97). */
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <caption className="sr-only">{t('traffic.deviceCaption')}</caption>
@@ -412,6 +427,7 @@ export function TrafficPage() {
                 </tbody>
               </table>
             </div>
+            )}
           </CardContent>
         </Card>
       )}

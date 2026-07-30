@@ -5,8 +5,9 @@ import {
   type CompatRequirement,
   COMPAT_CATEGORIES,
 } from '@krakenos/types';
-import type { IntegrationField } from '@krakenos/types';
+import type { DriverKind, IntegrationField } from '@krakenos/types';
 import { INTEGRATION_SCHEMA } from '../../integrations/schema.js';
+import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
 
 /**
  * Catálogo de compatibilidad (US-208) **derivado del código**: recorre el catálogo
@@ -69,6 +70,12 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
       const id = `${category}:${kind}`;
       const capabilities: CompatCapability[] = [...CATEGORY_CAPABILITIES[category]];
       if (category === 'driver' && schema.wifiSupported) capabilities.push('wifi');
+      // US-263: honestidad de catálogo. El desglose por aparato NO es lo mismo que
+      // medir el tráfico del hogar; declararlo solo donde de verdad existe evita
+      // prometer un bienestar digital que saldría vacío.
+      if (category === 'driver' && reportsPerDeviceTraffic(kind as DriverKind)) {
+        capabilities.push('traffic-per-device');
+      }
       entries.push({
         id,
         category,

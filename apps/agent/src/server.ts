@@ -510,7 +510,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Bienestar digital (US-184): uso de internet por persona (privacidad por rol).
   await app.register(wellbeingRoutes, {
     prefix: '/api/wellbeing',
-    service: new WellbeingService(app),
+    service: new WellbeingService(app, driver),
   });
 
   // Puente Matter (US-171): expone los IoT elegidos a Alexa/Google/Apple. `mock`

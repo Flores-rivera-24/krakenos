@@ -64,3 +64,20 @@ export interface DeviceTrafficStats {
   /** Serie agregada en buckets (orden cronológico) para la mini-gráfica. */
   samples: TrafficBucket[];
 }
+
+/**
+ * Respuesta de `GET /api/traffic/devices` (US-263).
+ *
+ * Lleva la capacidad además de los datos porque **una lista vacía es ambigua**: no
+ * es lo mismo «tu router no sabe repartir el tráfico por aparato» que «todavía no
+ * ha pasado nada». Sin esta distinción la UI culpaba de todo a la configuración del
+ * usuario y le mandaba a perseguir el problema equivocado.
+ */
+export interface DeviceTrafficReport {
+  devices: DeviceTrafficStats[];
+  /**
+   * ¿El driver activo reporta el desglose por dispositivo? Hoy **solo el `mock`**;
+   * los ocho drivers reales devuelven la lista vacía. Arreglo de fondo: US-251.
+   */
+  perDeviceTrafficSupported: boolean;
+}

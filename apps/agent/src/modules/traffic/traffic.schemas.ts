@@ -70,6 +70,15 @@ export const deviceTrafficSchema = {
     },
   },
   response: {
-    200: { type: 'array', items: deviceStats },
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        devices: { type: 'array', items: deviceStats },
+        // US-263: la capacidad viaja con los datos; una lista vacía sola es ambigua.
+        perDeviceTrafficSupported: { type: 'boolean' },
+      },
+      required: ['devices', 'perDeviceTrafficSupported'],
+    },
   },
 } as const;

@@ -733,7 +733,17 @@ export const es = {
   'wellbeing.subtitle': 'Uso de internet agregado por persona del hogar. Solo tú y los administradores veis el detalle de cada uno.',
   'wellbeing.rangeLabel': 'Rango',
   'wellbeing.loading': 'Cargando…',
-  'wellbeing.empty': 'Sin datos de uso todavía. Asigna un dueño a los dispositivos en su detalle.',
+  'wellbeing.empty': 'Todavía no hay datos de uso en este periodo.',
+  'wellbeing.noOwners':
+    'Sin datos de uso todavía. Asigna un dueño a los dispositivos en su detalle.',
+  'wellbeing.unsupported':
+    'Tu router no reparte el tráfico por dispositivo',
+  'wellbeing.unsupportedDesc':
+    'Esta función necesita que el router informe de cuántos datos consume cada dispositivo, y el tuyo solo informa del total de la casa. No es cosa de tu configuración: asignar dueños no lo arregla. Estamos trabajando en obtener ese dato de los routers que lo permiten.',
+  'traffic.perDeviceUnsupported':
+    'Tu router no reparte el tráfico por dispositivo',
+  'traffic.perDeviceUnsupportedDesc':
+    'Solo informa del total de la casa, así que no se puede mostrar cuánto consume cada dispositivo ni el uso por persona. No es cosa de tu configuración.',
   'wellbeing.unassigned': 'Sin asignar',
   'wellbeing.devices': '{n} dispositivo(s)',
 

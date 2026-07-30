@@ -13,6 +13,8 @@ const usage: WellbeingUsage = {
     { userId: 'u1', name: 'Ana', rxBytes: 2_000_000, txBytes: 500_000, totalBytes: 2_500_000, deviceCount: 3, buckets: [] },
     { userId: null, name: 'Sin asignar', rxBytes: 100, txBytes: 0, totalBytes: 100, deviceCount: 1, buckets: [] },
   ],
+  perDeviceTrafficSupported: true,
+  devicesWithOwner: 4,
 };
 
 describe('WellbeingCard (US-184)', () => {
@@ -37,5 +39,46 @@ describe('WellbeingCard (US-184)', () => {
     apiMock.get.mockResolvedValue({});
     render(<WellbeingCard />);
     expect(await screen.findByText(/Sin datos de uso todavía/)).toBeInTheDocument();
+  });
+
+  // --- US-263: tres motivos distintos para no ver nada ---
+
+  it('driver SIN desglose: dice que el router no lo reporta, NO «asigna un dueño»', async () => {
+    apiMock.get.mockResolvedValue({
+      range: 'week',
+      people: [],
+      perDeviceTrafficSupported: false,
+      devicesWithOwner: 0,
+    });
+    render(<WellbeingCard />);
+    expect(await screen.findByText(/no reparte el tráfico por dispositivo/i)).toBeInTheDocument();
+    // Lo que esta historia arregla: ya NO se manda al usuario a asignar dueños,
+    // porque asignarlos no cambiaría nada.
+    expect(screen.queryByText(/Asigna un dueño/i)).not.toBeInTheDocument();
+  });
+
+  it('driver CON desglose y sin dueños: sí pide asignar dueños', async () => {
+    apiMock.get.mockResolvedValue({
+      range: 'week',
+      people: [],
+      perDeviceTrafficSupported: true,
+      devicesWithOwner: 0,
+    });
+    render(<WellbeingCard />);
+    expect(await screen.findByText(/Asigna un dueño/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no reparte el tráfico/i)).not.toBeInTheDocument();
+  });
+
+  it('driver CON desglose y con dueños: solo «todavía no hay datos»', async () => {
+    apiMock.get.mockResolvedValue({
+      range: 'week',
+      people: [],
+      perDeviceTrafficSupported: true,
+      devicesWithOwner: 3,
+    });
+    render(<WellbeingCard />);
+    expect(await screen.findByText(/Todavía no hay datos de uso/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Asigna un dueño/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/no reparte el tráfico/i)).not.toBeInTheDocument();
   });
 });

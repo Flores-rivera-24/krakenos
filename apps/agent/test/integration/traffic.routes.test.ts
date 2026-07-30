@@ -79,10 +79,13 @@ describe('rutas de tráfico', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(Array.isArray(body)).toBe(true);
-    expect(body).toHaveLength(1);
-    expect(body[0].mac).toBe('aa:bb:cc:00:00:09');
-    expect(body[0].label).toBe('TV');
-    expect(body[0].rxTotal).toBeGreaterThan(0);
+    expect(Array.isArray(body.devices)).toBe(true);
+    expect(body.devices).toHaveLength(1);
+    expect(body.devices[0].mac).toBe('aa:bb:cc:00:00:09');
+    expect(body.devices[0].label).toBe('TV');
+    expect(body.devices[0].rxTotal).toBeGreaterThan(0);
+    // US-263: la capacidad viaja con los datos, para que una lista vacía no sea
+    // ambigua. El arnés usa el mock, que sí reporta el desglose.
+    expect(body.perDeviceTrafficSupported).toBe(true);
   });
 });
