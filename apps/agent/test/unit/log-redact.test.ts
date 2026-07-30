@@ -8,14 +8,14 @@ import { REDACTADO, redactUrl, serializarPeticion } from '../../src/observabilit
  */
 describe('redactUrl', () => {
   it('redacta el token de stream de cámaras conservando el resto', () => {
-    const url = '/api/cameras/cam-1/stream/seg-004.ts?st=eyJhbGciOiJSUzI1NiJ9.secreto.firma';
+    const url = '/api/cameras/cam-1/stream/seg-004.ts?st=no-es-un-secreto-token-de-stream';
     const out = redactUrl(url);
     expect(out).toBe(`/api/cameras/cam-1/stream/seg-004.ts?st=${REDACTADO}`);
-    expect(out).not.toContain('secreto');
+    expect(out).not.toContain('no-es-un-secreto');
   });
 
   it('redacta el token de configuración del primer arranque', () => {
-    expect(redactUrl('/setup?token=abc123def456')).toBe(`/setup?token=${REDACTADO}`);
+    expect(redactUrl('/setup?token=no-es-un-secreto-setup')).toBe(`/setup?token=${REDACTADO}`);
   });
 
   it('conserva los parámetros que SÍ sirven para depurar', () => {

@@ -33,4 +33,15 @@ paths = [
 regexes = [
   '''abcdef0123456789''',
   '''0123456789abcdef''',
+  # Convención para fixtures de test (US-234): todo valor falso que simule un
+  # secreto lleva este marcador. Los tests de `log-redact` existen precisamente
+  # para meter tokens en URLs y comprobar que se redactan, así que sus fixtures
+  # SIEMPRE van a parecer secretos; el marcador los distingue sin abrir la mano
+  # con un allowlist por ruta (que dejaría pasar un secreto de verdad).
+  '''no-es-un-secreto''',
+  # Entrada puntual: este fixture viajó en el commit 3f42d3c antes de adoptarse
+  # el marcador, y gitleaks escanea TODO el historial (`fetch-depth: 0`), así que
+  # cambiarlo en el árbol de trabajo no lo borra del pasado. No es un secreto:
+  # era el `?token=` de ejemplo de un test de redacción.
+  '''abc123def456''',
 ]
