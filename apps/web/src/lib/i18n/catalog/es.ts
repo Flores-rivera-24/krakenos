@@ -225,6 +225,9 @@ export const es = {
   'settings.mqtt.control': 'Aceptar órdenes desde MQTT',
   'settings.mqtt.controlDesc':
     'Permite encender/apagar y atenuar tus dispositivos desde Home Assistant. Publicar estados no lo activa; es un permiso aparte.',
+  'settings.mqtt.pauseControl': 'Permitir pausar internet desde MQTT',
+  'settings.mqtt.pauseControlDesc':
+    'Añade en Home Assistant un botón por dispositivo para cortarle internet 30 minutos. Es un permiso distinto del anterior: aquel permite tocar tus dispositivos, este permite dejar sin internet a alguien de casa. Cada uso queda en la auditoría.',
   'settings.mqtt.save': 'Guardar',
   'settings.mqtt.saving': 'Guardando…',
   'settings.mqtt.saved': 'Configuración MQTT guardada',

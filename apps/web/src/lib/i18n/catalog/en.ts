@@ -218,6 +218,9 @@ export const en: Record<TranslationKey, string> = {
   'settings.mqtt.control': 'Accept commands over MQTT',
   'settings.mqtt.controlDesc':
     'Lets you turn devices on/off and dim them from Home Assistant. Publishing states does not enable this; it is a separate permission.',
+  'settings.mqtt.pauseControl': 'Allow pausing internet over MQTT',
+  'settings.mqtt.pauseControlDesc':
+    'Adds a per-device button in Home Assistant to cut its internet for 30 minutes. This is a separate permission from the one above: that one lets it touch your devices, this one lets it cut someone off. Every use is audited.',
   'settings.mqtt.save': 'Save',
   'settings.mqtt.saving': 'Saving…',
   'settings.mqtt.saved': 'MQTT configuration saved',

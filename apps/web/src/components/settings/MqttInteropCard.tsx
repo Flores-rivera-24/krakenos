@@ -26,6 +26,7 @@ export function MqttInteropCard() {
   const [interval, setIntervalSec] = useState('30');
   const [discovery, setDiscovery] = useState(false);
   const [control, setControl] = useState(false);
+  const [pauseControl, setPauseControl] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -41,6 +42,7 @@ export function MqttInteropCard() {
         setIntervalSec(String(s.config.intervalSec));
         setDiscovery(s.config.discovery);
         setControl(s.config.control);
+        setPauseControl(s.config.pauseControl);
       })
       .catch(() => undefined);
     return () => {
@@ -61,6 +63,7 @@ export function MqttInteropCard() {
         intervalSec: Number(interval),
         discovery,
         control,
+        pauseControl,
       });
       setState(next);
       setPassword('');
@@ -150,6 +153,18 @@ export function MqttInteropCard() {
             <span>
               {t('settings.mqtt.control')}
               <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.controlDesc')}</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-2 text-kr-sm text-kr-secondary">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={pauseControl}
+              onChange={(e) => setPauseControl(e.target.checked)}
+            />
+            <span>
+              {t('settings.mqtt.pauseControl')}
+              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.pauseControlDesc')}</span>
             </span>
           </label>
         </div>

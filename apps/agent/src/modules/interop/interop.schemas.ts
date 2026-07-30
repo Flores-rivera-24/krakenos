@@ -10,6 +10,7 @@ const mqttConfig = {
     intervalSec: { type: 'number' },
     discovery: { type: 'boolean' },
     control: { type: 'boolean' },
+    pauseControl: { type: 'boolean' },
   },
   required: [
     'enabled',
@@ -20,6 +21,7 @@ const mqttConfig = {
     'intervalSec',
     'discovery',
     'control',
+    'pauseControl',
   ],
 } as const;
 
@@ -60,6 +62,7 @@ export const updateMqttSchema = {
       intervalSec: { type: 'integer', minimum: 5, maximum: 3600 },
       discovery: { type: 'boolean' },
       control: { type: 'boolean' },
+      pauseControl: { type: 'boolean' },
     },
   },
   response: { 200: mqttResponse },
