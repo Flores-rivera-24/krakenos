@@ -1,7 +1,7 @@
 import type { AlertRule } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { AlertConfigService } from '../../src/alerts/alert-config.js';
+import { ALERT_EVENTS, AlertConfigService } from '../../src/alerts/alert-config.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 /** Reglas de alerta configurables (US-112). */
@@ -32,10 +32,14 @@ describe('reglas de alerta (US-112)', () => {
     });
     expect(res.statusCode).toBe(200);
     const rules = res.json() as AlertRule[];
-    // Catálogo fijo (US-112) + energy.threshold (US-183) + camera.motion (US-186) +
-    // alarma (US-188) + PIN incorrecto (US-227: antes se auditaba en silencio, así
-    // que una fuerza bruta del PIN no avisaba a nadie).
-    expect(rules).toHaveLength(10);
+    // El catálogo es FIJO y vive en `alerts/alert-config.ts`: se compara contra él
+    // en vez de contra un número escrito a mano, que había que recordar tocar en
+    // cada historia que añadía un evento (US-183, US-186, US-188, US-227, US-241).
+    expect(rules).toHaveLength(ALERT_EVENTS.length);
+    // Guard de tamaño: si la importación se rompiera, la lista saldría vacía y la
+    // comparación pasaría sola.
+    expect(ALERT_EVENTS.length).toBeGreaterThan(8);
+    expect(rules.map((r) => r.event).sort()).toEqual(ALERT_EVENTS.map((e) => e.event).sort());
     const block = rules.find((r) => r.event === 'device.block');
     expect(block).toMatchObject({ push: true, email: false });
     expect(rules.some((r) => r.event === 'energy.threshold')).toBe(true);

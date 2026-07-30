@@ -31,6 +31,37 @@ KrakenOS **no administra** el tailnet (iniciar sesión es interactivo): detecta,
 > El agente consulta el socket local de `tailscaled` (`TAILSCALE_SOCKET`, por defecto
 > `/var/run/tailscale/tailscaled.sock`). Es una consulta **local**: nada sale a la red.
 
+## HTTPS con un certificado en el que tu móvil confía (US-241)
+
+**Es un prerrequisito, no un extra.** Sobre HTTP el navegador no considera el origen «seguro» y
+se caen tres cosas que la app ya trae: la **PWA instalable**, los **avisos push** y las
+**passkeys**. Con Tailscale ya montado, resolverlo son dos minutos:
+
+```bash
+# En el servidor, una vez montado Tailscale (arriba)
+sudo /opt/krakenos/scripts/install.sh --tls tailscale
+```
+
+Eso emite un certificado de **Let's Encrypt** para tu nombre `*.ts.net` —en el que cualquier
+móvil confía **sin instalar nada**—, lo apunta en el `.env` y programa un timer semanal que lo
+renueva. El agente **detecta el fichero renovado y lo aplica en caliente**, sin reiniciar el
+servicio ni cortar sesiones.
+
+Tres cosas que conviene saber antes:
+
+- **Hay que activarlo en el tailnet.** En la consola de Tailscale: *DNS → MagicDNS* y
+  *HTTPS Certificates*. Sin eso, `tailscale cert` no emite nada.
+- **El nombre queda público.** Todo certificado de Let's Encrypt se publica en los registros de
+  **Certificate Transparency**, que son públicos y permanentes: cualquiera puede descubrir que
+  existe `tu-maquina.tailnet-abc.ts.net`. No revela tu IP, ni tus datos, ni da acceso — pero es
+  un nombre menos privado que antes, y se dice.
+- **Dura 90 días.** Con el timer instalado se renueva solo. Si lo montas a mano, KrakenOS avisa
+  en Ajustes → Sistema **21 días antes** y por el canal de alertas que tengas configurado.
+
+¿Sin Tailscale? `--tls self` genera un autofirmado: cifra el tráfico, pero **cada dispositivo**
+avisará de «sitio no seguro» hasta que instales la CA en él, y algunos navegadores siguen
+negando las passkeys. Es la opción de último recurso, no la recomendada.
+
 ## Tu móvil en 3 pasos (cualquiera de las dos vías)
 
 1. **Instala la app (PWA).** Abre KrakenOS en el navegador del teléfono y añádela a la

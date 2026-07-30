@@ -1,6 +1,39 @@
 import { AUTO_BACKUP_FREQUENCIES, SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
+/** `GET /api/system/tls` — estado del certificado (US-241). */
+export const systemTlsSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: [
+        'enabled',
+        'behindProxy',
+        'source',
+        'notAfter',
+        'daysLeft',
+        'expiring',
+        'expired',
+        'disabledFeatures',
+      ],
+      properties: {
+        enabled: { type: 'boolean' },
+        behindProxy: { type: 'boolean' },
+        source: { type: ['string', 'null'], enum: ['tailscale', 'self-signed', 'unknown', null] },
+        notAfter: { type: ['string', 'null'] },
+        daysLeft: { type: ['integer', 'null'] },
+        expiring: { type: 'boolean' },
+        expired: { type: 'boolean' },
+        disabledFeatures: {
+          type: 'array',
+          items: { type: 'string', enum: ['pwa', 'push', 'passkeys'] },
+        },
+      },
+    },
+  },
+} as const;
+
 export const systemStatsSchema = {
   response: {
     200: {

@@ -28,6 +28,8 @@ import { createUpdateSpawner } from '../../system/update-spawner.js';
 import { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
 import { createSecretbox, generateSecretboxKey, type Secretbox } from '../../config/secretbox.js';
 import { AutoBackupService } from './auto-backup.service.js';
+import type { TlsService } from './tls.service.js';
+import { disabledWithoutTls } from '../../system/tls.js';
 import type { MetricsSnapshot, StorageInfo } from '@krakenos/types';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import { SupportService } from './support.service.js';
@@ -46,6 +48,7 @@ import {
   supportBundleSchema,
   systemInfoSchema,
   systemStatsSchema,
+  systemTlsSchema,
   telemetrySchema,
   updateApplySchema,
   updateCancelSchema,
@@ -74,6 +77,8 @@ interface SystemRoutesOpts {
   autoBackupService?: AutoBackupService;
   /** Directorio de copias automáticas (US-233; por defecto `data/backups`). Tests. */
   autoBackupDir?: string;
+  /** Vigilancia del certificado TLS (US-241; `server.ts` la comparte). */
+  tlsService?: TlsService;
 }
 
 /**
@@ -212,6 +217,28 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
 
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
     readStats(),
+  );
+
+  /**
+   * Estado del TLS (US-241). **Lectura autenticada, no admin**: no hay secreto que
+   * proteger —el certificado se presenta en cada handshake, es público por
+   * definición— y la información que da («tu passkey no funciona porque no hay
+   * HTTPS») le hace falta a cualquiera que use la app, no solo a quien la
+   * administra.
+   */
+  app.get('/tls', { preHandler: app.authenticate, schema: systemTlsSchema }, async () =>
+    opts.tlsService
+      ? opts.tlsService.getStatus()
+      : {
+          enabled: env.https !== null,
+          behindProxy: env.behindProxy,
+          source: null,
+          notAfter: null,
+          daysLeft: null,
+          expiring: false,
+          expired: false,
+          disabledFeatures: disabledWithoutTls(env.https !== null || env.behindProxy),
+        },
   );
 
   // Disco y tamaño de la base (US-233 / AUD3-21): el fallo más probable de un

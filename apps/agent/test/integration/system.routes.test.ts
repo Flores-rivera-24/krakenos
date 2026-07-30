@@ -46,6 +46,32 @@ describe('rutas de sistema', () => {
     }
   });
 
+  // --- TLS (US-241) ---
+
+  it('GET /api/system/tls exige autenticación (401)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/system/tls' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('GET /api/system/tls dice qué funciones caen sin contexto seguro', async () => {
+    // Los tests corren en HTTP: es exactamente el caso que la tarjeta explica.
+    const user = await seedUser(app, { role: 'kid' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/system/tls',
+      headers: authHeader(signAccess(app, user)),
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.enabled).toBe(false);
+    // Lo lee cualquier rol a propósito: «tu passkey no va porque no hay HTTPS» le
+    // hace falta a quien usa la app, no solo a quien la administra.
+    expect(body.disabledFeatures).toEqual(['pwa', 'push', 'passkeys']);
+    expect(body.expiring).toBe(false);
+    expect(body.notAfter).toBeNull();
+  });
+
   it('GET /api/system/stats exige autenticación (401)', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/system/stats' });
     expect(res.statusCode).toBe(401);
