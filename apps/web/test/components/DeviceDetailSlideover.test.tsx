@@ -178,7 +178,7 @@ describe('DeviceDetailSlideover', () => {
       if (url.startsWith('/traffic/devices')) {
         // US-263: el endpoint devuelve un informe, no un array pelado.
         return Promise.resolve({
-          perDeviceTrafficSupported: true,
+          perDeviceTraffic: { status: 'supported' },
           devices: [
             {
               mac: 'aa:bb:cc:dd:ee:01',

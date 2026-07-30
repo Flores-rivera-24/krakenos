@@ -1,8 +1,10 @@
 import type {
   AccessPoint,
+  DeviceTrafficSample,
   DiscoveredDevice,
   GuestNetwork,
   HardwareDriver,
+  PerDeviceTrafficCapability,
   TrafficSampleResult,
   UpdateGuestNetworkRequest,
   UpdateWifiNetworkRequest,
@@ -14,6 +16,8 @@ import type {
 import {
   ARP_TABLE,
   DHCP_LEASES,
+  NLBW_JSON,
+  NLBW_PRESENT,
   PROC_NET_DEV,
   SYSTEM_HOSTNAME,
   UCI_COMMIT_WIRELESS,
@@ -36,6 +40,7 @@ import {
   parseArpTable,
   parseDhcpLeases,
   parseIwinfoAssoc,
+  parseNlbwJson,
   parseProcNetDev,
   parseUciWireless,
   parseUmdnsHosts,
@@ -64,6 +69,16 @@ interface Counters {
   t: number;
 }
 
+/** Contadores acumulados de un dispositivo en la última lectura de nlbwmon. */
+type DeviceCounters = Counters;
+
+/**
+ * Cada cuánto se vuelve a comprobar si `nlbw` está instalado (US-251). Cinco
+ * minutos: suficiente para no sondear en cada muestra de tráfico (2 s) y poco
+ * bastante para que instalar el paquete se note sin reiniciar el agente.
+ */
+const NLBW_PROBE_TTL_MS = 5 * 60_000;
+
 /**
  * Driver real para routers **OpenWrt**, vía SSH+UCI. Opera contra un
  * `OpenWrtTransport` inyectable (comandos de shell en el router): descubrimiento
@@ -81,6 +96,12 @@ export class OpenWrtDriver implements HardwareDriver {
   private readonly guestNetwork: string;
   private readonly now: () => number;
   private lastCounters: Counters | null = null;
+  /** Última lectura de nlbwmon por MAC, para derivar tasas (US-251). */
+  private lastDeviceCounters = new Map<string, DeviceCounters>();
+  /** Resultado cacheado del sondeo de `nlbw`, con su instante. */
+  private nlbwProbe: { present: boolean; at: number } | null = null;
+  /** Sondeo en curso (single-flight): el muestreo corre cada 2 s. */
+  private nlbwProbeInFlight: Promise<boolean> | null = null;
 
   constructor(private readonly opts: OpenWrtDriverOptions) {
     this.guestNetwork = opts.guestNetwork ?? 'guest';
@@ -169,8 +190,87 @@ export class OpenWrtDriver implements HardwareDriver {
         rxBytesPerSec: prev ? rate(counters.rxBytes, prev.rxBytes) : 0,
         txBytesPerSec: prev ? rate(counters.txBytes, prev.txBytes) : 0,
       },
-      devices: [], // este driver no reporta tráfico por dispositivo
+      devices: await this.sampleDevices(t),
     };
+  }
+
+  // ---- Contabilidad por dispositivo con nlbwmon (US-251) ----
+
+  /**
+   * ¿Tiene el router `nlbw`? Se sondea **una vez cada `NLBW_PROBE_TTL_MS`** y con
+   * single-flight (patrón de US-229/US-236): la respuesta la piden el muestreo de
+   * tráfico —cada 2 s— y cada carga de las pantallas de Tráfico y Bienestar, y sin
+   * caché sería volver a machacar el router por SSH que es justo lo que US-229
+   * quitó. El TTL existe para que instalar el paquete se note **sin reiniciar el
+   * agente**: es lo primero que hará el usuario después de leer el aviso.
+   */
+  private async nlbwAvailable(): Promise<boolean> {
+    const now = this.now();
+    if (this.nlbwProbe && now - this.nlbwProbe.at < NLBW_PROBE_TTL_MS) {
+      return this.nlbwProbe.present;
+    }
+    if (this.nlbwProbeInFlight) return this.nlbwProbeInFlight;
+
+    this.nlbwProbeInFlight = (async () => {
+      // Un fallo de transporte NO es «no está instalado»: se deja sin cachear para
+      // reintentar en la siguiente muestra en vez de acusar al router durante el
+      // resto del TTL.
+      const out = await this.tryRun(NLBW_PRESENT);
+      const present = out !== null && out.trim() === 'si';
+      if (out !== null) this.nlbwProbe = { present, at: this.now() };
+      return present;
+    })().finally(() => {
+      this.nlbwProbeInFlight = null;
+    });
+    return this.nlbwProbeInFlight;
+  }
+
+  async perDeviceTrafficCapability(): Promise<PerDeviceTrafficCapability> {
+    return (await this.nlbwAvailable())
+      ? { status: 'supported' }
+      : { status: 'requires-setup', setup: 'nlbwmon' };
+  }
+
+  /**
+   * Desglose por dispositivo derivado de los contadores acumulados de nlbwmon.
+   *
+   * Tres cosas que este método existe para no hacer mal:
+   *
+   * 1. **Son contadores, no tasas.** Se restan dos lecturas, igual que la WAN.
+   * 2. **Los contadores se reinician**: nlbwmon acumula por periodo (mensual por
+   *    defecto) y el demonio puede reiniciarse. Un contador que baja no es tráfico
+   *    negativo: se descarta esa muestra y se vuelve a partir de la nueva base, o
+   *    el rollover de mes pintaría un pico absurdo en el bienestar de alguien.
+   * 3. **Un dispositivo que deja de aparecer se olvida**, para no acumular estado
+   *    de cada aparato que pasó por casa alguna vez.
+   */
+  private async sampleDevices(t: number): Promise<DeviceTrafficSample[]> {
+    if (!(await this.nlbwAvailable())) return [];
+    const raw = await this.tryRun(NLBW_JSON);
+    if (raw === null) return [];
+
+    const rows = parseNlbwJson(raw);
+    const prev = this.lastDeviceCounters;
+    const next = new Map<string, DeviceCounters>();
+    const out: DeviceTrafficSample[] = [];
+
+    for (const row of rows) {
+      next.set(row.mac, { rxBytes: row.rxBytes, txBytes: row.txBytes, t });
+      const before = prev.get(row.mac);
+      if (!before) continue; // primera vez que se ve: aún no hay base para la tasa
+      const dt = (t - before.t) / 1000;
+      if (dt <= 0) continue;
+      if (row.rxBytes < before.rxBytes || row.txBytes < before.txBytes) continue; // reinicio
+      out.push({
+        mac: row.mac,
+        ip: row.ip,
+        rxBytesPerSec: Math.round((row.rxBytes - before.rxBytes) / dt),
+        txBytesPerSec: Math.round((row.txBytes - before.txBytes) / dt),
+      });
+    }
+
+    this.lastDeviceCounters = next;
+    return out;
   }
 
   async blockDevice(mac: string): Promise<void> {

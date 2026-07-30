@@ -86,6 +86,6 @@ describe('rutas de tráfico', () => {
     expect(body.devices[0].rxTotal).toBeGreaterThan(0);
     // US-263: la capacidad viaja con los datos, para que una lista vacía no sea
     // ambigua. El arnés usa el mock, que sí reporta el desglose.
-    expect(body.perDeviceTrafficSupported).toBe(true);
+    expect(body.perDeviceTraffic).toEqual({ status: 'supported' });
   });
 });

@@ -109,8 +109,8 @@ describe('TrafficService', () => {
 
       const report = await svc.getDeviceStats('day');
       expect(report.devices).toHaveLength(1);
-      // El mock SÍ reporta el desglose; los 8 drivers reales no (US-263).
-      expect(report.perDeviceTrafficSupported).toBe(true);
+      // El mock SÍ reporta el desglose (US-263/US-251).
+      expect(report.perDeviceTraffic).toEqual({ status: 'supported' });
       const [first] = report.devices;
       expect(first?.mac).toBe('aa:bb:cc:00:00:01');
       expect(first?.label).toBe('NAS');

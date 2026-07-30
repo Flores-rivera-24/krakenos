@@ -32,6 +32,10 @@ export const COMPAT_REQUIREMENTS = [
   'address', // dirección del equipo (host/URL) en la LAN
   'credentials', // usuario/contraseña o clave de API
   'extra-dependency', // paquete/servicio opcional a instalar en el servidor
+  // US-251: distinto de `extra-dependency` a propósito — esto se instala en el
+  // ROUTER, no en el servidor de KrakenOS, y quien lo lee necesita saber dónde
+  // tiene que teclear el comando.
+  'router-package', // paquete a instalar en el router (p. ej. nlbwmon en OpenWrt)
 ] as const;
 export type CompatRequirement = (typeof COMPAT_REQUIREMENTS)[number];
 

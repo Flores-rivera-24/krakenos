@@ -61,6 +61,18 @@ const deviceStats = {
   required: ['mac', 'ip', 'label', 'rxTotal', 'txTotal', 'samples'],
 } as const;
 
+const perDeviceTraffic = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['status'],
+  properties: {
+    // US-251: tres estados, no un booleano. `requires-setup` es el único que el
+    // usuario puede arreglar, y la UI necesita poder decirle cómo.
+    status: { type: 'string', enum: ['supported', 'unsupported', 'requires-setup'] },
+    setup: { type: 'string', enum: ['nlbwmon'] },
+  },
+} as const;
+
 export const deviceTrafficSchema = {
   querystring: {
     type: 'object',
@@ -76,9 +88,9 @@ export const deviceTrafficSchema = {
       properties: {
         devices: { type: 'array', items: deviceStats },
         // US-263: la capacidad viaja con los datos; una lista vacía sola es ambigua.
-        perDeviceTrafficSupported: { type: 'boolean' },
+        perDeviceTraffic,
       },
-      required: ['devices', 'perDeviceTrafficSupported'],
+      required: ['devices', 'perDeviceTraffic'],
     },
   },
 } as const;

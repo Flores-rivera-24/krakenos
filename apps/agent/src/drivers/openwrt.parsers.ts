@@ -73,6 +73,95 @@ export function parseProcNetDev(stdout: string, iface: string): IfaceCounters | 
   return null;
 }
 
+// ---- nlbwmon (contabilidad por dispositivo, US-251) ----
+
+/** Contadores acumulados de un dispositivo en el periodo de contabilidad. */
+export interface NlbwCounters {
+  mac: string;
+  ip: string;
+  /** Bytes **recibidos por el dispositivo** (descarga). */
+  rxBytes: number;
+  /** Bytes **enviados por el dispositivo** (subida). */
+  txBytes: number;
+}
+
+/** MAC que `nlbwmon` usa para el tráfico que no puede atribuir a ningún host. */
+const UNKNOWN_MAC = '00:00:00:00:00:00';
+
+/**
+ * Parsea la salida de `nlbw -c json -g mac,ip` (US-251).
+ *
+ * El formato es `{"columns":[...],"data":[[...],[...]]}`. Se resuelve **por el
+ * nombre de la columna**, nunca por posición fija: el orden y el conjunto de
+ * columnas dependen del `-g` que se pase y de la versión de nlbwmon, y este
+ * parser tiene que sobrevivir a un `opkg upgrade` del router. Por lo mismo se
+ * aceptan filas como objeto además de como array — hay builds que lo emiten así.
+ *
+ * Defensivo por contrato (US-63): cualquier cosa inesperada devuelve `[]` en vez
+ * de lanzar. Un router que responde raro no puede tumbar el muestreo de tráfico
+ * del hogar, que es una tarea que corre cada 2 segundos.
+ *
+ * Agrega por MAC: con `-g mac,ip` un dispositivo con varias IPs (renovó DHCP,
+ * IPv4+IPv6) sale en varias filas, y para el desglose por aparato son el mismo.
+ * Se descarta la MAC cero, que es como nlbwmon marca el tráfico no atribuible:
+ * publicarla sería inventarse un dispositivo que no existe.
+ */
+export function parseNlbwJson(raw: string): NlbwCounters[] {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return [];
+  }
+  if (typeof parsed !== 'object' || parsed === null) return [];
+  const { columns, data } = parsed as { columns?: unknown; data?: unknown };
+  if (!Array.isArray(data)) return [];
+
+  const index = new Map<string, number>();
+  if (Array.isArray(columns)) {
+    columns.forEach((name, i) => {
+      if (typeof name === 'string') index.set(name, i);
+    });
+  }
+
+  const byMac = new Map<string, NlbwCounters>();
+  for (const row of data) {
+    const cell = (name: string): unknown => {
+      if (Array.isArray(row)) {
+        const i = index.get(name);
+        return i === undefined ? undefined : row[i];
+      }
+      if (typeof row === 'object' && row !== null) return (row as Record<string, unknown>)[name];
+      return undefined;
+    };
+
+    const mac = typeof cell('mac') === 'string' ? (cell('mac') as string).toLowerCase() : '';
+    if (!/^([0-9a-f]{2}:){5}[0-9a-f]{2}$/.test(mac) || mac === UNKNOWN_MAC) continue;
+
+    const rxBytes = toCount(cell('rx_bytes'));
+    const txBytes = toCount(cell('tx_bytes'));
+    const ipRaw = cell('ip');
+    const ip = typeof ipRaw === 'string' ? ipRaw : '';
+
+    const prev = byMac.get(mac);
+    if (prev) {
+      prev.rxBytes += rxBytes;
+      prev.txBytes += txBytes;
+      // Se conserva la primera IPv4 vista: es la que casa con el inventario.
+      if (!prev.ip.includes('.') && ip.includes('.')) prev.ip = ip;
+    } else {
+      byMac.set(mac, { mac, ip, rxBytes, txBytes });
+    }
+  }
+  return [...byMac.values()];
+}
+
+/** Número no negativo y finito, o 0. nlbwmon emite números, pero no se confía. */
+function toCount(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 // ---- uci show wireless ----
 
 /** Una sección de la config wireless (radio `wifi-device` o iface `wifi-iface`). */

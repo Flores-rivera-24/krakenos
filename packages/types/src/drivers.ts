@@ -1,5 +1,5 @@
 import type { DiscoveredDevice } from './inventory.js';
-import type { TrafficSampleResult } from './traffic.js';
+import type { PerDeviceTrafficCapability, TrafficSampleResult } from './traffic.js';
 import type {
   AccessPoint,
   GuestNetwork,
@@ -70,6 +70,19 @@ export interface HardwareDriver {
    * `devices: []`.
    */
   getTrafficSample(): Promise<TrafficSampleResult>;
+
+  /**
+   * Estado **real** de la capacidad de desglose por dispositivo (US-251).
+   *
+   * Opcional a propósito: para casi todos los drivers la respuesta es estática y
+   * la da el mapa declarado de `drivers/capabilities.ts`. Solo la implementan los
+   * que dependen de algo del router —OpenWrt necesita `nlbwmon` instalado—, donde
+   * la respuesta correcta **no se puede saber sin preguntarle al aparato**.
+   *
+   * Debe ser barata de llamar (cachear el sondeo dentro del driver): la invocan
+   * las rutas de tráfico y de bienestar en cada carga de página.
+   */
+  perDeviceTrafficCapability?(): Promise<PerDeviceTrafficCapability>;
 
   /** Bloquea el acceso a la red del dispositivo con esa MAC. */
   blockDevice(mac: string): Promise<void>;

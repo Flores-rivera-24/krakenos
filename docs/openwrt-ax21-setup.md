@@ -125,6 +125,40 @@ el agente (ver `apps/agent/src/config/env.ts`) son:
 > **Nota de seguridad**: lo ideal es usar **clave SSH** (`OPENWRT_SSH_KEY_PATH`) en vez de
 > contraseña. Si usas contraseña, mantén el `.env` fuera de git (ya está en `.gitignore`).
 
+## 6.b. Tráfico por dispositivo: instalar `nlbwmon` en el router (US-251)
+
+**Opcional, pero es lo que hace que «Uso por persona» y la tabla «Por dispositivo» tengan datos.**
+Sin esto, KrakenOS mide el tráfico **total del hogar** (lo saca de `/proc/net/dev`) pero no puede
+repartirlo por aparato, y las dos pantallas salen vacías **con un aviso que lo explica** — no es un
+fallo, es que el dato no existe.
+
+El reparto por aparato lo aporta **nlbwmon**, un contador de tráfico por MAC del propio OpenWrt:
+
+```bash
+# Por SSH, en el router
+opkg update
+opkg install nlbwmon luci-app-nlbwmon
+```
+
+(`luci-app-nlbwmon` es opcional: solo añade la vista en LuCI. KrakenOS usa el comando `nlbw`.)
+
+KrakenOS **lo detecta solo**: comprueba si `nlbw` está disponible cada 5 minutos, así que no hace
+falta reiniciar el agente. La tarjeta pasa de «te falta un paquete» a mostrar datos por sí sola.
+
+Tres cosas que conviene saber antes de fiarte de los números:
+
+- **Cuenta desde que se instala.** nlbwmon no sabe lo que pasó antes; el histórico empieza en cero.
+- **Acumula por periodo** (mensual por defecto). KrakenOS resta lecturas consecutivas para sacar la
+  tasa, y **descarta** la muestra cuando el contador baja (cambio de periodo o reinicio del demonio),
+  en vez de pintar un pico falso.
+- **Mide el tráfico que atraviesa el router.** Lo que dos aparatos se manden entre ellos dentro de la
+  LAN puede no aparecer, y el tráfico que nlbwmon no logra atribuir a ninguna MAC se **descarta** en
+  vez de repartirse: es preferible un total por aparato algo bajo a inventarle consumo a alguien.
+
+> ⚠️ **Sin verificar con hardware real todavía** (US-86). El parseo está probado contra la salida
+> documentada de `nlbw -c json` y resuelve las columnas por nombre, pero la primera instalación real
+> es la que manda: si los números no cuadran con los de LuCI, es un bug y hay que reportarlo.
+
 ## 7. Probar
 
 ```bash
@@ -134,6 +168,9 @@ pnpm dev            # agente :3001 · web :5173
 - **Inventario** (`/inventory`): deben aparecer los dispositivos reales de la LAN (ARP + leases).
 - **Bloquear** un dispositivo desde el modal → se aplica una regla iptables de MAC en el router.
 - **WiFi** (`/wifi`): cambiar el SSID debe reflejarse en el router (`uci show wireless`).
+- **Tráfico por dispositivo** (`/traffic` y «Uso por persona»): con `nlbwmon` instalado (§6.b), la
+  tabla se rellena a los pocos minutos; sin él, ambas tarjetas deben decir **qué falta y cómo
+  instalarlo**, no «todavía no hay datos». Contrasta los totales con LuCI → Estado → nlbwmon.
 
 Si algo falla, revisa los logs del agente (errores de SSH/UCI) y confirma que el usuario SSH
 tiene permisos para `uci`/`iptables` en el router (root los tiene).
