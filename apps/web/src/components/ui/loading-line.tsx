@@ -1,5 +1,6 @@
 import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 /**
  * Línea de carga compacta (US-162): un spinner de acento + texto, centrada. Unifica
@@ -7,12 +8,13 @@ import { cn } from '@/lib/utils';
  * `role="status"` la anuncia; el spinner queda decorativo (el texto ya informa).
  */
 export function LoadingLine({
-  label = 'Cargando…',
+  label,
   className,
 }: {
   label?: string;
   className?: string;
 }) {
+  const t = useT();
   return (
     <div
       role="status"
@@ -22,7 +24,7 @@ export function LoadingLine({
       )}
     >
       <Spinner size="sm" label="" />
-      <span>{label}</span>
+      <span>{label ?? t('ui.loading')}</span>
     </div>
   );
 }

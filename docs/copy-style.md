@@ -5,9 +5,21 @@ de una voz inventada. Toda historia nueva que añada texto visible debe seguir e
 
 ## Idioma
 
-- **Todo el texto visible de la app es español (es-ES)**: páginas, componentes, toasts, errores,
-  aria-labels, guías y glosario. No existe un «chrome en inglés»: un string en inglés dentro de la
-  UI es un bug de copy, salvo los términos retenidos de abajo.
+- **El español (es-ES) es la FUENTE del copy, no el único idioma.** La app es bilingüe desde US-177:
+  el catálogo `lib/i18n/catalog/es.ts` es la fuente canónica y `en.ts` está tipado como
+  `Record<TranslationKey, string>`, así que **falta o sobra de clave = error de typecheck**. Añadir
+  copy nuevo es añadir la clave a **ambos** catálogos.
+- Esta guía describe cómo se escribe el **valor en español**. El inglés lo sigue en espíritu
+  (sentence case, sin florituras, honestidad de errores), no al pie de la letra: sus convenciones de
+  puntuación son otras.
+- **Dónde vive el copy hoy** (actualizado en US-239): shell, auth, las 17 páginas, las 25 guías, el
+  glosario, **las primitivas de `components/ui/`**, **los 12 widgets del dashboard** y
+  «Primeros pasos» ya pasan por `t()`. Queda pendiente el *chrome* del `IntegrationWizard`
+  (→ US-262). Un componente que aún no esté migrado se escribe **en español, sin `t()`**: meter una
+  sola clave suelta en un componente español deja media tarjeta en inglés, que es peor que no
+  traducir (decisión de US-212).
+- Un string en inglés dentro de un componente **en español** es un bug de copy, salvo los términos
+  retenidos de abajo.
 - `manifest.json` conserva el nombre de marca `KrakenOS — Home Control` (tagline de producto).
 - Los **comentarios de código** y los identificadores no cuentan como copy.
 

@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInventoryStore } from '@/store/inventory.store';
+import { useT } from '@/lib/i18n';
 
 const MAX_NODES = 10;
 const WIDTH = 520;
@@ -24,6 +25,7 @@ function dotColor(d: Device): string {
  * partir del inventario real; los nodos de dispositivo abren el Slideover.
  */
 export function NetworkTopologyWidget() {
+  const t = useT();
   const devices = useInventoryStore((s) => Object.values(s.devices));
   const [selected, setSelected] = useState<Device | null>(null);
 
@@ -43,17 +45,17 @@ export function NetworkTopologyWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Topología de red</CardTitle>
+        <CardTitle>{t('widget.topology.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         {devices.length === 0 ? (
-          <p className="py-12 text-center text-kr-sm text-kr-muted">Sin dispositivos en la red.</p>
+          <p className="py-12 text-center text-kr-sm text-kr-muted">{t('widget.topology.empty')}</p>
         ) : (
           <svg
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="h-auto w-full"
             role="img"
-            aria-label="Diagrama de la red"
+            aria-label={t('widget.topology.diagram')}
           >
             {/* Enlaces ISP→Router y Router→dispositivos */}
             <line x1={ispX} y1={midY} x2={routerX} y2={midY} stroke="var(--kr-border)" strokeWidth={2} />

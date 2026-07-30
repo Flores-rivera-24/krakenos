@@ -1,6 +1,7 @@
 import { HelpCircle } from 'lucide-react';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 export interface HelpHintProps {
   /** Explicación en lenguaje sencillo que revela la burbuja. */
@@ -25,12 +26,13 @@ export interface HelpHintProps {
  */
 export function HelpHint({
   content,
-  label = 'Más información',
+  label,
   children,
   placement = 'top',
   triggerClassName,
   className,
 }: HelpHintProps) {
+  const t = useT();
   const bubbleId = useId();
   const containerRef = useRef<HTMLSpanElement>(null);
   // El estado se deriva de tres fuentes independientes: ratón, foco y clic
@@ -79,7 +81,7 @@ export function HelpHint({
     >
       <button
         type="button"
-        aria-label={children == null ? label : undefined}
+        aria-label={children == null ? (label ?? t('ui.moreInfo')) : undefined}
         aria-expanded={open}
         aria-describedby={open ? bubbleId : undefined}
         onClick={() => setPinned((p) => !p)}

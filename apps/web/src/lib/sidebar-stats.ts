@@ -1,6 +1,7 @@
 import type { FirewallRule, IotDevice, SystemStats } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { api } from '@/lib/api';
+import { usePolling } from '@/lib/use-polling';
 
 interface HealthResponse {
   status: string;
@@ -34,41 +35,41 @@ const EMPTY: SidebarStats = {
  * Sondea `/health`, `/system/stats`, `/firewall/rules` e `/iot/devices`
  * para alimentar la sidebar. Tolera errores (devuelve valores previos).
  */
-export function useSidebarStats(pollMs = 8000): SidebarStats {
+/**
+ * Sondea `/health`, `/system/stats`, `/firewall/rules` e `/iot/devices` para
+ * alimentar la barra lateral. Tolera errores (conserva los valores previos).
+ *
+ * **`enabled`** (US-239 / AUD3-27): la barra lateral es `hidden md:flex`, así que
+ * en móvil no se pinta — y aun así este hook estaba sondeando **4 endpoints cada
+ * 8 segundos** para datos que nadie veía. Ahora lo llama `AppSidebar`, que es
+ * quien sabe si está en pantalla, en vez de `AppLayout`, que lo hacía siempre.
+ * Además el sondeo se detiene con la pestaña oculta (ver `usePolling`).
+ */
+export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
   const [stats, setStats] = useState<SidebarStats>(EMPTY);
 
-  useEffect(() => {
-    let active = true;
-
+  const load = useCallback(async () => {
     const fetchHealth = (): Promise<HealthResponse | null> =>
       fetch('/health')
         .then((r) => (r.ok ? (r.json() as Promise<HealthResponse>) : null))
         .catch(() => null);
 
-    const load = async () => {
-      const [health, system, firewall, iot] = await Promise.all([
-        fetchHealth(),
-        api.get<SystemStats>('/system/stats').catch(() => null),
-        api.get<FirewallRule[]>('/firewall/rules').catch(() => null),
-        api.get<IotDevice[]>('/iot/devices').catch(() => null),
-      ]);
-      if (!active) return;
-      setStats((prev) => ({
-        driver: health?.driver ?? prev.driver,
-        online: health ? health.status === 'ok' : false,
-        uptimeSeconds: system?.uptimeSeconds ?? prev.uptimeSeconds,
-        firewallActive: firewall ? firewall.filter((r) => r.enabled).length : prev.firewallActive,
-        iotOffline: iot ? iot.filter((d) => !d.reachable).length : prev.iotOffline,
-      }));
-    };
+    const [health, system, firewall, iot] = await Promise.all([
+      fetchHealth(),
+      api.get<SystemStats>('/system/stats').catch(() => null),
+      api.get<FirewallRule[]>('/firewall/rules').catch(() => null),
+      api.get<IotDevice[]>('/iot/devices').catch(() => null),
+    ]);
+    setStats((prev) => ({
+      driver: health?.driver ?? prev.driver,
+      online: health ? health.status === 'ok' : false,
+      uptimeSeconds: system?.uptimeSeconds ?? prev.uptimeSeconds,
+      firewallActive: firewall ? firewall.filter((r) => r.enabled).length : prev.firewallActive,
+      iotOffline: iot ? iot.filter((d) => !d.reachable).length : prev.iotOffline,
+    }));
+  }, []);
 
-    void load();
-    const id = setInterval(() => void load(), pollMs);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [pollMs]);
+  usePolling(load, pollMs, { enabled });
 
   return stats;
 }

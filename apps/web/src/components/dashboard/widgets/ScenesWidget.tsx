@@ -8,9 +8,11 @@ import { listScenes, runScene, sceneGlyph } from '@/lib/scenes';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { useT } from '@/lib/i18n';
 
 /** Ejecuta escenas de un toque desde el dashboard (US-166). */
 export function ScenesWidget() {
+  const t = useT();
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const [scenes, setScenes] = useState<Scene[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -35,7 +37,7 @@ export function ScenesWidget() {
         toast.success(`Escena «${scene.name}» activada`);
       }
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo activar la escena'));
+      toast.error(describeError(err, t('widget.scenes.runFailed')));
     } finally {
       setBusy(null);
     }
@@ -44,7 +46,7 @@ export function ScenesWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Escenas</CardTitle>
+        <CardTitle>{t('widget.scenes.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
         {scenes === null ? (
@@ -68,7 +70,7 @@ export function ScenesWidget() {
                 <span aria-hidden className="text-lg">
                   {sceneGlyph(scene.icon)}
                 </span>
-                {busy === scene.id ? 'Activando…' : scene.name}
+                {busy === scene.id ? t('widget.scenes.running') : scene.name}
               </button>
             ))}
           </div>

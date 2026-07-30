@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 /** SSIDs activos y clientes conectados por red. */
 export function WifiStatusWidget() {
+  const t = useT();
   const [networks, setNetworks] = useState<WifiNetworkInfo[] | null>(null);
 
   useEffect(() => {
@@ -30,7 +32,7 @@ export function WifiStatusWidget() {
         {networks === null ? (
           <LoadingLine />
         ) : networks.length === 0 ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Sin redes WiFi.</p>
+          <p className="py-4 text-center text-kr-sm text-kr-muted">{t('widget.wifi.empty')}</p>
         ) : (
           <>
             {networks.map((n) => (

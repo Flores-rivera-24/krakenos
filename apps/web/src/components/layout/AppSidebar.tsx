@@ -6,7 +6,8 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 import { formatUptime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
-import type { SidebarStats } from '@/lib/sidebar-stats';
+import { useSidebarStats, type SidebarStats } from '@/lib/sidebar-stats';
+import { useIsMobile } from '@/lib/use-is-mobile';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -94,10 +95,14 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
 interface AppSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
-  stats: SidebarStats;
 }
 
-export function AppSidebar({ collapsed, onToggle, stats }: AppSidebarProps) {
+export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
+  // US-239 (AUD3-27): el sondeo vivía en `AppLayout`, que se monta SIEMPRE, así
+  // que en móvil se pedían 4 endpoints cada 8 s para una barra lateral que es
+  // `hidden md:flex` y no se pinta. Ahora lo pide quien lo usa, y solo si se ve.
+  const esMovil = useIsMobile();
+  const stats = useSidebarStats(8000, !esMovil);
   const t = useT();
   const user = useAuthStore((s) => s.user);
   // UI reducida por rol (US-179) y por modo sencillo (US-176).

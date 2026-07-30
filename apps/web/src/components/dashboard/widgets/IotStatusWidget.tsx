@@ -6,6 +6,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 interface BackendSummary {
   name: string;
@@ -38,6 +39,7 @@ function summarize(devices: IotDevice[]): BackendSummary[] {
 
 /** Estado de los backends IoT activos (Hue/Govee/Tuya…) con conteos. */
 export function IotStatusWidget() {
+  const t = useT();
   const [devices, setDevices] = useState<IotDevice[] | null>(null);
   // US-234: antes el fallo hacía `setDevices([])`, así que un agente caído se leía
   // como «no tienes dispositivos IoT» — en un panel del hogar eso es mentir.
@@ -72,7 +74,7 @@ export function IotStatusWidget() {
         ) : devices === null ? (
           <LoadingLine />
         ) : backends.length === 0 ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Sin dispositivos IoT.</p>
+          <p className="py-4 text-center text-kr-sm text-kr-muted">{t('widget.iot.empty')}</p>
         ) : (
           <>
             {backends.map((b) => (

@@ -1,6 +1,7 @@
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useT } from '@/lib/i18n';
 
 export interface CopyButtonProps {
   /** Texto que se copia al portapapeles. */
@@ -28,13 +29,15 @@ const DEFAULT_FEEDBACK_MS = 1500;
  */
 export function CopyButton({
   value,
-  label = 'Copiar',
+  label,
   copiedLabel = '¡Copiado!',
   showLabel = false,
   feedbackMs = DEFAULT_FEEDBACK_MS,
   onCopied,
   className,
 }: CopyButtonProps) {
+  const t = useT();
+  const textoCopiar = label ?? t('ui.copy');
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -62,7 +65,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={() => void handleCopy()}
-      aria-label={copied ? copiedLabel : label}
+      aria-label={copied ? copiedLabel : textoCopiar}
       data-copied={copied}
       className={cn(
         'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
@@ -71,7 +74,7 @@ export function CopyButton({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      {showLabel && <span>{copied ? copiedLabel : label}</span>}
+      {showLabel && <span>{copied ? copiedLabel : textoCopiar}</span>}
     </button>
   );
 }

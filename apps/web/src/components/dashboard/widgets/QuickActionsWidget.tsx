@@ -15,6 +15,7 @@ import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
+import { useT } from '@/lib/i18n';
 
 /** Un favorito resuelto contra el estado vivo, listo para pintar el tile. */
 interface ResolvedTile {
@@ -92,6 +93,7 @@ function resolveTiles(
  * en móvil) para operar lo cotidiano en un toque.
  */
 export function QuickActionsWidget() {
+  const t = useT();
   // Operar lo cotidiano también para `member` (US-179); la autoridad es del servidor.
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const favorites = useFavoritesStore((s) => s.favorites);
@@ -141,7 +143,7 @@ export function QuickActionsWidget() {
         toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
       else toast.success(`Escena «${name}» activada`);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo activar la escena'));
+      toast.error(describeError(err, t('widget.scenes.runFailed')));
     } finally {
       setRunningScene(null);
     }
@@ -152,7 +154,7 @@ export function QuickActionsWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Acciones rápidas</CardTitle>
+        <CardTitle>{t('widget.quickActions.title')}</CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -185,8 +187,11 @@ export function QuickActionsWidget() {
                     checked={tile.iot.on}
                     onToggle={(next) => api.patch(`/iot/devices/${tile.iot!.id}`, { on: next })}
                     disabled={!canControl}
-                    errorMessage={`No se pudo cambiar ${tile.label}`}
-                    aria-label={`${tile.iot.on ? 'Apagar' : 'Encender'} ${tile.label}`}
+                    errorMessage={t('widget.quickActions.toggleFailed', { name: tile.label })}
+                    aria-label={t('widget.quickActions.toggle', {
+                      action: tile.iot.on ? t('widget.toggle.off') : t('widget.toggle.on'),
+                      name: tile.label,
+                    })}
                   />
                 )}
                 {tile.sceneId && (
@@ -196,7 +201,7 @@ export function QuickActionsWidget() {
                     disabled={!canControl || runningScene === tile.sceneId}
                     onClick={() => void runFavoriteScene(tile.sceneId!, tile.label)}
                   >
-                    {runningScene === tile.sceneId ? 'Activando…' : 'Activar'}
+                    {runningScene === tile.sceneId ? t('widget.scenes.running') : t('widget.scenes.run')}
                   </Button>
                 )}
               </li>

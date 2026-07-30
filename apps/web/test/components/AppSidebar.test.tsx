@@ -12,6 +12,13 @@ const themeMock = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/theme', () => themeMock);
 
+// US-239: la sidebar ya no recibe `stats` por prop — los pide ella con
+// `useSidebarStats`, para no sondear 4 endpoints en móvil donde no se pinta.
+const statsMock = vi.hoisted(() => ({ current: null as unknown }));
+vi.mock('@/lib/sidebar-stats', () => ({
+  useSidebarStats: () => statsMock.current,
+}));
+
 import { AppSidebar } from '@/components/layout/AppSidebar';
 import type { SidebarStats } from '@/lib/sidebar-stats';
 import { useAuthStore } from '@/store/auth.store';
@@ -46,13 +53,10 @@ function device(over: Partial<Device>): Device {
 }
 
 function renderSidebar(props: { collapsed: boolean; stats?: SidebarStats }) {
+  statsMock.current = props.stats ?? STATS;
   return render(
     <MemoryRouter>
-      <AppSidebar
-        collapsed={props.collapsed}
-        onToggle={vi.fn()}
-        stats={props.stats ?? STATS}
-      />
+      <AppSidebar collapsed={props.collapsed} onToggle={vi.fn()} />
     </MemoryRouter>,
   );
 }

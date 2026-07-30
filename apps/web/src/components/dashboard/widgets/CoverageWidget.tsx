@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { getPredictedHeatmap, listFloorPlans } from '@/lib/coverage';
 import { SIGNAL_QUALITY_LABELS, signalQuality, signalQualityColorVar } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 /** Categorías en orden de mejor a peor, para la barra de distribución. */
 const QUALITIES: SignalQuality[] = ['excellent', 'good', 'fair', 'weak', 'none'];
@@ -15,6 +16,7 @@ const QUALITIES: SignalQuality[] = ['excellent', 'good', 'fair', 'weak', 'none']
  * mejor, con una barra de distribución por calidad. Enlaza a la página completa.
  */
 export function CoverageWidget() {
+  const t = useT();
   // `undefined` = cargando · `null` = sin planos.
   const [plan, setPlan] = useState<FloorPlan | null | undefined>(undefined);
   const [heatmap, setHeatmap] = useState<CoverageHeatmap | null>(null);
@@ -65,7 +67,7 @@ export function CoverageWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Cobertura WiFi</CardTitle>
+        <CardTitle>{t('widget.coverage.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {plan === undefined ? (

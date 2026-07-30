@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, Settings2 } from 'lucide-react';
-import { useEffect, useState, type ComponentType } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useState, type ComponentType } from 'react';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
 import { CoverageWidget } from '@/components/dashboard/widgets/CoverageWidget';
@@ -7,25 +7,42 @@ import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWid
 import { AlarmWidget } from '@/components/dashboard/widgets/AlarmWidget';
 import { HomeModeWidget } from '@/components/dashboard/widgets/HomeModeWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
-import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTopologyWidget';
 import { QuickActionsWidget } from '@/components/dashboard/widgets/QuickActionsWidget';
 import { ScenesWidget } from '@/components/dashboard/widgets/ScenesWidget';
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
-import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
 import { Button } from '@/components/ui/button';
+import { LoadingLine } from '@/components/ui/loading-line';
 import {
   loadLayout,
   moveWidget,
   saveLayout,
   toggleHidden,
   WIDGETS,
+  widgetsForUser,
   type DashboardLayout,
   type WidgetId,
 } from '@/lib/dashboard';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
+
+/**
+ * US-239 (AUD3-27): `TrafficWidget` importa **Recharts (98,7 kB gzip)** de forma
+ * estática, así que se descargaba al abrir el dashboard **aunque el widget
+ * estuviera oculto** — y ahora también cuando el rol ni siquiera lo ve. La
+ * topología es un SVG grande con su propia lógica. Ambos pasan a `lazy()`: su
+ * chunk se pide solo si el widget se va a pintar de verdad.
+ */
+const TrafficWidget = lazy(() =>
+  import('@/components/dashboard/widgets/TrafficWidget').then((m) => ({ default: m.TrafficWidget })),
+);
+const NetworkTopologyWidget = lazy(() =>
+  import('@/components/dashboard/widgets/NetworkTopologyWidget').then((m) => ({
+    default: m.NetworkTopologyWidget,
+  })),
+);
 
 const WIDGET_COMPONENTS: Record<WidgetId, ComponentType> = {
   quickActions: QuickActionsWidget,
@@ -52,6 +69,16 @@ export function DashboardPage() {
 
   const [layout, setLayout] = useState(loadLayout);
   const [editing, setEditing] = useState(false);
+
+  // US-239 (AUD3-28): el dashboard ignoraba rol y modo sencillo. El layout
+  // guardado en localStorage sigue conservando TODOS los widgets —si el rol
+  // cambia, reaparecen sin perder el orden—; aquí solo se filtra lo que se pinta.
+  const role = useAuthStore((s) => s.user?.role);
+  const uiMode = useAuthStore((s) => s.user?.uiMode);
+  const permitidos = useMemo(
+    () => new Set(widgetsForUser(role, uiMode).map((w) => w.id)),
+    [role, uiMode],
+  );
 
   const update = (next: DashboardLayout) => {
     setLayout(next);
@@ -84,7 +111,7 @@ export function DashboardPage() {
           const meta = WIDGET_META[id];
           const Widget = WIDGET_COMPONENTS[id];
           const hidden = layout.hidden.includes(id);
-          if (!meta || (hidden && !editing)) return null;
+          if (!meta || !permitidos.has(id) || (hidden && !editing)) return null;
 
           return (
             <div key={id} className={cn(meta.span === 2 && 'lg:col-span-2', hidden && 'opacity-50')}>
@@ -123,7 +150,9 @@ export function DashboardPage() {
                   </div>
                 </div>
               )}
-              <Widget />
+              <Suspense fallback={<LoadingLine />}>
+                <Widget />
+              </Suspense>
             </div>
           );
         })}

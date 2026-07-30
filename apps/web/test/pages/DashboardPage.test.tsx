@@ -9,6 +9,7 @@ const fakeSocket = vi.hoisted(() => ({ connected: true, on: vi.fn(), off: vi.fn(
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { DashboardPage } from '@/pages/DashboardPage';
+import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 function renderDashboard() {
@@ -29,6 +30,9 @@ describe('DashboardPage', () => {
 
   beforeEach(() => {
     localStorage.clear();
+    // El rol se arrastraría entre tests (el store es singleton) y el filtrado de
+    // widgets de US-239 depende de él.
+    useAuthStore.setState({ user: null });
     useInventoryStore.setState({ devices: {}, connected: true, recentEvents: [] });
     apiMock.get
       .mockReset()
@@ -43,13 +47,46 @@ describe('DashboardPage', () => {
     expect(screen.getByText('En tiempo real · conectado')).toBeInTheDocument();
   });
 
-  it('renderiza los widgets por defecto', () => {
+  it('renderiza los widgets por defecto', async () => {
     renderDashboard();
     expect(screen.getByText('Dispositivos')).toBeInTheDocument();
     expect(screen.getByText('Sistema')).toBeInTheDocument();
-    expect(screen.getByText('Tráfico WAN')).toBeInTheDocument();
-    expect(screen.getByText('Topología de red')).toBeInTheDocument();
     expect(screen.getByText('Alertas recientes')).toBeInTheDocument();
+    // US-239: Tráfico y Topología son `lazy()` (Recharts son 98,7 kB que ya no
+    // viajan en el chunk del dashboard), así que llegan en un tick posterior.
+    expect(await screen.findByText('Tráfico WAN')).toBeInTheDocument();
+    expect(await screen.findByText('Topología de red')).toBeInTheDocument();
+  });
+
+  /**
+   * US-239 (AUD3-28): el dashboard ignoraba el rol y el modo sencillo — los 12
+   * widgets se renderizaban para todos, así que un `kid` aterrizaba en CPU, RAM,
+   * uptime, topología y tráfico WAN, justo lo que el modo sencillo oculta en la
+   * barra lateral de esa misma sesión.
+   */
+  it('un `kid` no ve los widgets de red avanzada', async () => {
+    useAuthStore.setState({
+      user: { id: 'u2', email: 'k@b.c', displayName: 'K', role: 'kid', uiMode: 'advanced' } as never,
+    });
+    renderDashboard();
+
+    // Lo suyo sí.
+    expect(screen.getByText('Dispositivos')).toBeInTheDocument();
+    // Lo de operar la red, no.
+    expect(screen.queryByText('Sistema')).toBeNull();
+    expect(screen.queryByText('Tráfico WAN')).toBeNull();
+    expect(screen.queryByText('Topología de red')).toBeNull();
+    expect(screen.queryByText('Alertas recientes')).toBeNull();
+  });
+
+  it('el modo sencillo oculta lo avanzado aunque el rol sea admin', () => {
+    useAuthStore.setState({
+      user: { id: 'u3', email: 'a@b.c', displayName: 'A', role: 'admin', uiMode: 'simple' } as never,
+    });
+    renderDashboard();
+
+    expect(screen.getByText('Dispositivos')).toBeInTheDocument();
+    expect(screen.queryByText('Tráfico WAN')).toBeNull();
   });
 
   it('el modo Personalizar muestra los controles de orden/visibilidad', async () => {

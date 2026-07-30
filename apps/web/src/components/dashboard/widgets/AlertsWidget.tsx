@@ -6,11 +6,13 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 
 const SEEN_KEY = 'krakenos-alerts-seen';
 
 /** Últimas 5 acciones del audit log, con badge de no leídas. */
 export function AlertsWidget() {
+  const t = useT();
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
   const [unread, setUnread] = useState(0);
   // US-234: el `catch` de abajo pinta el estado vacío para un viewer sin permiso
@@ -48,9 +50,9 @@ export function AlertsWidget() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Alertas recientes</CardTitle>
+        <CardTitle>{t('widget.alerts.title')}</CardTitle>
         {unread > 0 && (
-          <button type="button" onClick={markSeen} aria-label="Marcar como leídas">
+          <button type="button" onClick={markSeen} aria-label={t('widget.alerts.markRead')}>
             <Badge variant="warning">
               {unread} {unread === 1 ? 'nueva' : 'nuevas'}
             </Badge>
@@ -63,7 +65,7 @@ export function AlertsWidget() {
         ) : entries === null ? (
           <LoadingLine />
         ) : entries.length === 0 ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">Sin actividad registrada.</p>
+          <p className="py-4 text-center text-kr-sm text-kr-muted">{t('widget.alerts.empty')}</p>
         ) : (
           <ul className="space-y-2 text-kr-sm">
             {entries.slice(0, 5).map((e) => (

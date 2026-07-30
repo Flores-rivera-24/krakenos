@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
 import { useInventoryStore } from '@/store/inventory.store';
+import { useT } from '@/lib/i18n';
 
 function Stat({
   status,
@@ -23,6 +24,7 @@ function Stat({
 
 /** Contadores de dispositivos: online / total / desconocidos / bloqueados. */
 export function DeviceCountWidget() {
+  const t = useT();
   const devices = useInventoryStore((s) => Object.values(s.devices));
   const online = devices.filter((d) => d.online).length;
   const unknown = devices.filter((d) => d.type === 'unknown').length;
@@ -31,7 +33,7 @@ export function DeviceCountWidget() {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle>Dispositivos</CardTitle>
+        <CardTitle>{t('widget.devices.title')}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
         <Stat status="online" label="en línea" value={online} />

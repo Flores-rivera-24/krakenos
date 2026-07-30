@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatRate } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
+import { useT } from '@/lib/i18n';
 
 const MAX_POINTS = 120;
 const TOOLTIP_STYLE = {
@@ -16,6 +17,7 @@ const TOOLTIP_STYLE = {
 
 /** Gráfica de área rx/tx en tiempo real (vía WebSocket `traffic:sample`). */
 export function TrafficWidget() {
+  const t = useT();
   const [samples, setSamples] = useState<TrafficSample[]>([]);
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export function TrafficWidget() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Tráfico WAN</CardTitle>
+        <CardTitle>{t('widget.traffic.title')}</CardTitle>
         {last && (
           <span className="text-kr-sm text-kr-secondary">
             ↓ {formatRate(last.rxBytesPerSec)} · ↑ {formatRate(last.txBytesPerSec)}
@@ -60,7 +62,7 @@ export function TrafficWidget() {
       </CardHeader>
       <CardContent>
         {data.length < 2 ? (
-          <p className="py-12 text-center text-kr-sm text-kr-muted">Esperando muestras…</p>
+          <p className="py-12 text-center text-kr-sm text-kr-muted">{t('widget.traffic.waiting')}</p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={data}>
@@ -85,8 +87,8 @@ export function TrafficWidget() {
                 contentStyle={TOOLTIP_STYLE}
                 formatter={(v: number) => formatRate(v)}
               />
-              <Area type="monotone" dataKey="rx" name="Descarga" stroke="var(--kr-accent)" fill="url(#rx)" />
-              <Area type="monotone" dataKey="tx" name="Subida" stroke="var(--kr-success)" fill="url(#tx)" />
+              <Area type="monotone" dataKey="rx" name={t('widget.traffic.down')} stroke="var(--kr-accent)" fill="url(#rx)" />
+              <Area type="monotone" dataKey="tx" name={t('widget.traffic.up')} stroke="var(--kr-success)" fill="url(#tx)" />
             </AreaChart>
           </ResponsiveContainer>
         )}

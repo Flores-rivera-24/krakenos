@@ -18,6 +18,17 @@ export interface WidgetDef {
   title: string;
   /** Columnas que ocupa en el grid de 2 (1 = media fila, 2 = fila completa). */
   span: 1 | 2;
+  /**
+   * `true` = solo para quien opera la red. Se oculta a `kid`/`guest` y en **modo
+   * sencillo** (US-176), igual que hace `navGroupsForRole` con el grupo «Red
+   * avanzada» de la barra lateral.
+   *
+   * Sin esto (AUD3-28) el dashboard **ignoraba el rol y el modo**: los 12 widgets
+   * se renderizaban para todos, así que un `kid` de 13 años aterrizaba en CPU,
+   * RAM, uptime, topología y tráfico WAN — exactamente lo que el modo sencillo
+   * oculta a dos clicks de distancia, en la misma sesión.
+   */
+  advancedOnly?: boolean;
 }
 
 /** Registro de widgets disponibles, en su orden por defecto. */
@@ -27,14 +38,35 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'alarm', title: 'Alarma', span: 2 },
   { id: 'scenes', title: 'Escenas', span: 2 },
   { id: 'devices', title: 'Dispositivos', span: 1 },
-  { id: 'system', title: 'Sistema', span: 1 },
-  { id: 'traffic', title: 'Tráfico WAN', span: 2 },
-  { id: 'topology', title: 'Topología de red', span: 2 },
+  { id: 'system', title: 'Sistema', span: 1, advancedOnly: true },
+  { id: 'traffic', title: 'Tráfico WAN', span: 2, advancedOnly: true },
+  { id: 'topology', title: 'Topología de red', span: 2, advancedOnly: true },
   { id: 'iot', title: 'IoT', span: 1 },
   { id: 'wifi', title: 'WiFi', span: 1 },
-  { id: 'coverage', title: 'Cobertura WiFi', span: 1 },
-  { id: 'alerts', title: 'Alertas recientes', span: 1 },
+  { id: 'coverage', title: 'Cobertura WiFi', span: 1, advancedOnly: true },
+  { id: 'alerts', title: 'Alertas recientes', span: 1, advancedOnly: true },
 ];
+
+/**
+ * Widgets que este usuario debe ver, según su rol y su modo de interfaz.
+ *
+ * Es **presentación**, igual que `navGroupsForRole` (US-176/179): la autoridad
+ * sigue siendo del servidor en cada ruta. Ocultar el widget de Sistema no impide
+ * llamar a `/api/system/stats`; lo que hace es no plantarle CPU y RAM en la cara
+ * a quien no las va a usar nunca.
+ */
+export function widgetsForUser(role?: string, uiMode?: string): WidgetDef[] {
+  // Mismos criterios que `navGroupsForRole` (US-176/179), a propósito: sería
+  // incoherente que la barra lateral escondiera «Red avanzada» a un `member` y el
+  // dashboard le plantara la topología de red en la primera pantalla.
+  //   · `member`, `kid` y `guest` no ven lo avanzado.
+  //   · el modo sencillo tampoco, sea cual sea el rol.
+  //   · un rol desconocido o aún sin cargar ve todo, igual que la nav: filtrar por
+  //     defecto haría parpadear el dashboard del admin en cada arranque.
+  const restringido =
+    role === 'member' || role === 'kid' || role === 'guest' || uiMode === 'simple';
+  return restringido ? WIDGETS.filter((w) => !w.advancedOnly) : WIDGETS;
+}
 
 const WIDGET_IDS = WIDGETS.map((w) => w.id);
 const STORAGE_KEY = 'krakenos-dashboard-layout';
