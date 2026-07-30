@@ -107,9 +107,11 @@ describe('TrafficService', () => {
         data: { mac: 'aa:bb:cc:00:00:01', rxBytesPerSec: 3000, txBytesPerSec: 1500 },
       });
 
-      const stats = await svc.getDeviceStats('day');
-      expect(stats).toHaveLength(1);
-      const [first] = stats;
+      const report = await svc.getDeviceStats('day');
+      expect(report.devices).toHaveLength(1);
+      // El mock SÍ reporta el desglose; los 8 drivers reales no (US-263).
+      expect(report.perDeviceTrafficSupported).toBe(true);
+      const [first] = report.devices;
       expect(first?.mac).toBe('aa:bb:cc:00:00:01');
       expect(first?.label).toBe('NAS');
       expect(first?.ip).toBe('192.168.1.5');

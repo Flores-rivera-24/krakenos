@@ -1,5 +1,6 @@
 import type { PersonUsage, WellbeingRange } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -14,12 +15,21 @@ export function WellbeingCard() {
   const t = useT();
   const [range, setRange] = useState<WellbeingRange>('week');
   const [people, setPeople] = useState<PersonUsage[] | null>(null);
+  // US-263: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume que sí
+  // hasta saber lo contrario, para no acusar al router mientras carga.
+  const [supported, setSupported] = useState(true);
+  const [withOwner, setWithOwner] = useState(0);
 
   useEffect(() => {
     let active = true;
     setPeople(null);
     void fetchWellbeingUsage(range)
-      .then((u) => active && setPeople(Array.isArray(u?.people) ? u.people : []))
+      .then((u) => {
+        if (!active) return;
+        setPeople(Array.isArray(u?.people) ? u.people : []);
+        setSupported(u?.perDeviceTrafficSupported !== false);
+        setWithOwner(u?.devicesWithOwner ?? 0);
+      })
       .catch(() => active && setPeople([]));
     return () => {
       active = false;
@@ -55,7 +65,18 @@ export function WellbeingCard() {
         {people === null ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.loading')}</p>
         ) : people.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.empty')}</p>
+          /* Tres motivos MUY distintos para no ver nada, y hasta US-263 los tres
+             decían «asigna un dueño a los dispositivos» — mandando al usuario a
+             configurar algo que no arreglaba nada. */
+          !supported ? (
+            <Callout variant="warning" standing title={t('wellbeing.unsupported')}>
+              {t('wellbeing.unsupportedDesc')}
+            </Callout>
+          ) : withOwner === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.noOwners')}</p>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.empty')}</p>
+          )
         ) : (
           <ul className="space-y-3">
             {people.map((p) => (

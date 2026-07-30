@@ -1,4 +1,5 @@
 import type {
+  DeviceTrafficReport,
   DeviceTrafficStats,
   HardwareDriver,
   TrafficBucket,
@@ -10,6 +11,7 @@ import { TRAFFIC_ROOM } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEVICE_TRAFFIC_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
 import { asNumber } from '../../db/sql-aggregate.js';
+import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
 import { normalizeTrafficSample } from './normalize.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
@@ -197,7 +199,11 @@ export class TrafficService {
    * buckets + totales estimados, combinado con `Device.label`/`ip` de Prisma.
    * Ordenado por descarga total descendente. (US-46)
    */
-  async getDeviceStats(range: TrafficRange): Promise<DeviceTrafficStats[]> {
+  /**
+   * Desglose por dispositivo + **si el driver puede darlo** (US-263). La capacidad
+   * viaja con los datos porque una lista vacía, sola, es ambigua.
+   */
+  async getDeviceStats(range: TrafficRange): Promise<DeviceTrafficReport> {
     const sinceMs = Date.now() - RANGE_MS[range];
     const bucketMs = BUCKET_MS[range];
     const rollupSeconds = this.rollupMs / 1000;
@@ -224,7 +230,12 @@ export class TrafficService {
       WHERE timestamp >= ${sinceMs}
       GROUP BY mac, bucket
       ORDER BY mac ASC, bucket ASC`;
-    if (rows.length === 0) return [];
+    // Sin filas es justo el caso que US-263 viene a explicar: la capacidad tiene
+    // que viajar igualmente, o la UI vuelve a no poder distinguir «tu router no
+    // sabe» de «todavía no ha pasado nada».
+    if (rows.length === 0) {
+      return { devices: [], perDeviceTrafficSupported: reportsPerDeviceTraffic(this.driver.kind) };
+    }
 
     interface Acc {
       rxTotal: number;
@@ -264,7 +275,7 @@ export class TrafficService {
     });
 
     stats.sort((a, b) => b.rxTotal - a.rxTotal);
-    return stats;
+    return { devices: stats, perDeviceTrafficSupported: reportsPerDeviceTraffic(this.driver.kind) };
   }
 
   /**

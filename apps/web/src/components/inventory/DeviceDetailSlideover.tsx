@@ -1,6 +1,7 @@
 import type {
   Device,
   DeviceIcon,
+  DeviceTrafficReport,
   DeviceTrafficStats,
   DeviceType,
   RoomWithState,
@@ -104,9 +105,11 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   // Histórico de tráfico de la última hora para este dispositivo (US-46).
   useEffect(() => {
     void api
-      .get<DeviceTrafficStats[]>('/traffic/devices?range=hour')
-      .then((rows) => {
-        const found = rows.find((r) => r.mac.toLowerCase() === device.mac.toLowerCase());
+      .get<DeviceTrafficReport>('/traffic/devices?range=hour')
+      .then((report) => {
+        const found = (report?.devices ?? []).find(
+          (r) => r.mac.toLowerCase() === device.mac.toLowerCase(),
+        );
         setTraffic(found ?? null);
       })
       .catch(() => setTraffic(null));

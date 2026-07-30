@@ -272,7 +272,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     });
     await app.register(wellbeingRoutes, {
       prefix: '/api/wellbeing',
-      service: new WellbeingService(app),
+      service: new WellbeingService(app, driver),
     });
     // Puente Matter (US-171): stack mock; comparte el IoT de las rutas IoT.
     await app.register(matterBridgeRoutes, {

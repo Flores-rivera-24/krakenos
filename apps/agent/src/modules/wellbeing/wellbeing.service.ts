@@ -1,6 +1,13 @@
-import type { PersonUsage, UsageBucket, WellbeingRange, WellbeingUsage } from '@krakenos/types';
+import type {
+  HardwareDriver,
+  PersonUsage,
+  UsageBucket,
+  WellbeingRange,
+  WellbeingUsage,
+} from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { asNumber } from '../../db/sql-aggregate.js';
+import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
 
 /** Ventana temporal de cada rango, en milisegundos. */
 const RANGE_MS: Record<WellbeingRange, number> = {
@@ -33,6 +40,7 @@ export interface Viewer {
 export class WellbeingService {
   constructor(
     private readonly app: FastifyInstance,
+    private readonly driver: HardwareDriver,
     private readonly rollupMs = 60_000,
   ) {}
 
@@ -43,6 +51,7 @@ export class WellbeingService {
     // mac → ownerId (los aparatos sin fila de inventario o sin dueño → sin asignar).
     const devices = await this.app.prisma.device.findMany({ select: { mac: true, ownerId: true } });
     const ownerByMac = new Map(devices.map((d) => [d.mac.toLowerCase(), d.ownerId]));
+    const devicesWithOwner = devices.filter((d) => d.ownerId !== null).length;
 
     const rollupSeconds = this.rollupMs / 1000;
     const bucketMs = BUCKET_MS[range];
@@ -111,6 +120,14 @@ export class WellbeingService {
     });
 
     people.sort((a, b) => b.totalBytes - a.totalBytes);
-    return { range, people };
+    // US-263: la capacidad viaja con el informe. Sin desglose por dispositivo esto
+    // está vacío SIEMPRE, y culpar de ello a los dueños sin asignar era mandar al
+    // usuario a arreglar lo que no estaba roto.
+    return {
+      range,
+      people,
+      perDeviceTrafficSupported: reportsPerDeviceTraffic(this.driver.kind),
+      devicesWithOwner,
+    };
   }
 }

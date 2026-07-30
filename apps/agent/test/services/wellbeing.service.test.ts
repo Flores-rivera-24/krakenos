@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { WellbeingService } from '../../src/modules/wellbeing/wellbeing.service.js';
 import { buildTestApp } from '../helpers/app.js';
+import { MockDriver } from '../../src/drivers/mock.driver.js';
 
 describe('WellbeingService (US-184)', () => {
   let app: FastifyInstance;
@@ -46,7 +47,7 @@ describe('WellbeingService (US-184)', () => {
 
   it('un admin ve todo el hogar, incluidos los aparatos sin dueño', async () => {
     const { ana } = await seed();
-    const svc = new WellbeingService(app);
+    const svc = new WellbeingService(app, new MockDriver());
     const { people } = await svc.usageByPerson('week', { sub: 'admin-x', role: 'admin' });
 
     expect(people).toHaveLength(3); // Ana, Leo, Sin asignar
@@ -59,7 +60,7 @@ describe('WellbeingService (US-184)', () => {
 
   it('un no-admin solo ve su propio uso (privacidad por rol)', async () => {
     const { ana } = await seed();
-    const svc = new WellbeingService(app);
+    const svc = new WellbeingService(app, new MockDriver());
     const { people } = await svc.usageByPerson('week', { sub: ana.id, role: 'member' });
 
     expect(people).toHaveLength(1);
@@ -71,7 +72,7 @@ describe('WellbeingService (US-184)', () => {
 
   it('un no-admin sin aparatos propios no ve nada', async () => {
     await seed();
-    const svc = new WellbeingService(app);
+    const svc = new WellbeingService(app, new MockDriver());
     const { people } = await svc.usageByPerson('week', { sub: 'nadie', role: 'viewer' });
     expect(people).toHaveLength(0);
   });
@@ -82,9 +83,37 @@ describe('WellbeingService (US-184)', () => {
     await app.prisma.deviceTrafficSample.create({
       data: { mac: 'aa:aa:aa:00:00:09', rxBytesPerSec: 10, txBytesPerSec: 10 },
     });
-    const svc = new WellbeingService(app);
+    const svc = new WellbeingService(app, new MockDriver());
     const { people } = await svc.usageByPerson('week', { sub: ana.id, role: 'member' });
     expect(people[0]?.deviceCount).toBe(2);
     expect((people[0]?.buckets.length ?? 0) >= 1).toBe(true);
+  });
+
+  // --- US-263: la capacidad viaja con el informe ---
+
+  it('con el mock (que sí reporta el desglose) la capacidad sale a true', async () => {
+    const svc = new WellbeingService(app, new MockDriver());
+    const out = await svc.usageByPerson('week', { sub: 'x', role: 'admin' });
+    expect(out.perDeviceTrafficSupported).toBe(true);
+  });
+
+  it('con un driver REAL el informe se declara no disponible, aunque haya dueños', async () => {
+    // Un driver de verdad (openwrt) devuelve `devices: []`, así que este informe
+    // está vacío SIEMPRE. Asignar dueños no lo arregla, y la UI debe decir eso.
+    const openwrt = { ...new MockDriver(), kind: 'openwrt' as const };
+    const user = await app.prisma.user.create({
+      data: { email: 'due@no.local', passwordHash: 'x', displayName: 'Due', role: 'admin' },
+    });
+    await app.prisma.device.create({
+      data: { mac: 'aa:bb:cc:00:0d:01', ip: '10.0.0.9', ownerId: user.id },
+    });
+
+    const svc = new WellbeingService(app, openwrt as unknown as MockDriver);
+    const out = await svc.usageByPerson('week', { sub: user.id, role: 'admin' });
+
+    expect(out.perDeviceTrafficSupported).toBe(false);
+    // Hay un dueño asignado: la UI no debe culpar a la configuración del usuario.
+    expect(out.devicesWithOwner).toBe(1);
+    expect(out.people).toEqual([]);
   });
 });

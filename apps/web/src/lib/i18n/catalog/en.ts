@@ -726,7 +726,17 @@ export const en: Record<TranslationKey, string> = {
   'wellbeing.subtitle': 'Internet usage aggregated per household member. Only you and admins see each person’s detail.',
   'wellbeing.rangeLabel': 'Range',
   'wellbeing.loading': 'Loading…',
-  'wellbeing.empty': 'No usage data yet. Assign an owner to devices in their detail view.',
+  'wellbeing.empty': 'No usage data for this period yet.',
+  'wellbeing.noOwners':
+    'No usage data yet. Assign an owner to your devices from their detail panel.',
+  'wellbeing.unsupported':
+    'Your router does not break traffic down per device',
+  'wellbeing.unsupportedDesc':
+    'This feature needs the router to report how much data each device uses, and yours only reports the household total. This is not a setting on your side: assigning owners will not fix it. We are working on getting that data from the routers that allow it.',
+  'traffic.perDeviceUnsupported':
+    'Your router does not break traffic down per device',
+  'traffic.perDeviceUnsupportedDesc':
+    'It only reports the household total, so per-device usage and per-person usage cannot be shown. This is not a setting on your side.',
   'wellbeing.unassigned': 'Unassigned',
   'wellbeing.devices': '{n} device(s)',
 

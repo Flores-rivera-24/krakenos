@@ -176,19 +176,23 @@ describe('DeviceDetailSlideover', () => {
     asRole('viewer');
     apiMock.get.mockImplementation((url: string) => {
       if (url.startsWith('/traffic/devices')) {
-        return Promise.resolve([
-          {
-            mac: 'aa:bb:cc:dd:ee:01',
-            ip: '192.168.1.10',
-            label: null,
-            rxTotal: 100,
-            txTotal: 50,
-            samples: [
-              { timestamp: '2026-01-01T00:00:00.000Z', rxBytesPerSec: 10, txBytesPerSec: 5 },
-              { timestamp: '2026-01-01T00:01:00.000Z', rxBytesPerSec: 20, txBytesPerSec: 8 },
-            ],
-          },
-        ]);
+        // US-263: el endpoint devuelve un informe, no un array pelado.
+        return Promise.resolve({
+          perDeviceTrafficSupported: true,
+          devices: [
+            {
+              mac: 'aa:bb:cc:dd:ee:01',
+              ip: '192.168.1.10',
+              label: null,
+              rxTotal: 100,
+              txTotal: 50,
+              samples: [
+                { timestamp: '2026-01-01T00:00:00.000Z', rxBytesPerSec: 10, txBytesPerSec: 5 },
+                { timestamp: '2026-01-01T00:01:00.000Z', rxBytesPerSec: 20, txBytesPerSec: 8 },
+              ],
+            },
+          ],
+        });
       }
       return Promise.resolve([]); // GET /vlans
     });
