@@ -5,6 +5,9 @@
  * es inyectable para testear el contrato sin un bridge real.
  */
 
+import { safeFetch } from '../net/egress.js';
+import { initConTlsDeLan } from '../net/lan-tls.js';
+
 export interface HttpResponse {
   status: number;
   ok: boolean;
@@ -20,8 +23,16 @@ export interface HttpRequestInit {
 
 export type HttpFetch = (url: string, init?: HttpRequestInit) => Promise<HttpResponse>;
 
+/**
+ * El bridge Hue sirve HTTPS con **certificado autofirmado** (es una IP de LAN: no
+ * puede tener uno público). Hasta US-259 eso se resolvía pidiéndole al usuario
+ * `NODE_TLS_REJECT_UNAUTHORIZED=0`, que apaga la validación TLS del **proceso
+ * entero** — incluidos Telegram, el update-check y el Web Push. Ahora la excepción
+ * va en el `dispatcher` de esta petición y solo si el destino resuelve a una IP
+ * privada. Contra un host público se verifica como siempre.
+ */
 const defaultFetch: HttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, await initConTlsDeLan(url, init ?? {}));
   return { status: res.status, ok: res.ok, json: () => res.json(), text: () => res.text() };
 };
 

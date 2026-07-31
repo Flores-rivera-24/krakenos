@@ -86,9 +86,15 @@ export interface KasaIotConfig {
   kasaIps?: string[];
   /** IPs Tapo configuradas (Gen3+). */
   tapoIps?: string[];
-  /** Email de la cuenta Tapo (credencial local KLAP). */
+  /**
+   * Credencial KLAP ya derivada (hex de 64). **Forma preferida** desde US-259: es
+   * lo único que el protocolo usa, así que guardar la contraseña de la cuenta
+   * TP-Link —la del portal del fabricante, la que se reutiliza— era guardar de más.
+   */
+  tapoAuthHash?: string;
+  /** Email de la cuenta Tapo. Camino **legado**: solo sirve para derivar el hash. */
   tapoEmail?: string;
-  /** Contraseña de la cuenta Tapo. */
+  /** Contraseña de la cuenta Tapo. Camino **legado**, ver `tapoEmail`. */
   tapoPassword?: string;
 }
 
@@ -219,14 +225,19 @@ function buildIotManager(
     }
     case 'kasa': {
       const kasa = config.kasa ?? {};
+      // Hay Tapo si está el hash derivado (forma preferida, US-259), la pareja
+      // email+contraseña (legado) o IPs declaradas a mano.
       const hasTapo =
-        Boolean(kasa.tapoEmail && kasa.tapoPassword) || (kasa.tapoIps?.length ?? 0) > 0;
+        Boolean(kasa.tapoAuthHash) ||
+        Boolean(kasa.tapoEmail && kasa.tapoPassword) ||
+        (kasa.tapoIps?.length ?? 0) > 0;
       return new KasaIotManager({
         kasa: new NetKasaTransport({ configuredIps: kasa.kasaIps }),
         tapo: hasTapo
           ? new KlapTapoTransport({
-              email: kasa.tapoEmail ?? '',
-              password: kasa.tapoPassword ?? '',
+              authHash: kasa.tapoAuthHash,
+              email: kasa.tapoEmail,
+              password: kasa.tapoPassword,
               configuredIps: kasa.tapoIps,
             })
           : undefined,

@@ -71,6 +71,9 @@ importers:
       socket.io:
         specifier: ^4.7.5
         version: 4.8.3
+      undici:
+        specifier: ^7.28.0
+        version: 7.28.0
       web-push:
         specifier: ^3.6.7
         version: 3.6.7

@@ -9,6 +9,8 @@
  * este código puro).
  */
 
+import { safeFetch } from '../net/egress.js';
+
 export interface OmadaHttpResponse {
   status: number;
   ok: boolean;
@@ -29,7 +31,7 @@ export type OmadaHttpFetch = (
 ) => Promise<OmadaHttpResponse>;
 
 const defaultFetch: OmadaHttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, init);
   return {
     status: res.status,
     ok: res.ok,

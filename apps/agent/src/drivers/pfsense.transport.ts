@@ -5,6 +5,8 @@
  * El transporte es inyectable para testear el contrato sin un pfSense real.
  */
 
+import { safeFetch } from '../net/egress.js';
+
 export interface HttpResponse {
   status: number;
   ok: boolean;
@@ -22,7 +24,7 @@ export interface HttpRequestInit {
 export type HttpFetch = (url: string, init?: HttpRequestInit) => Promise<HttpResponse>;
 
 const defaultFetch: HttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, init);
   return { status: res.status, ok: res.ok, json: () => res.json(), text: () => res.text() };
 };
 

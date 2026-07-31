@@ -1,4 +1,5 @@
 import { parseTerse } from './mikrotik.parsers.js';
+import { safeFetch } from '../net/egress.js';
 
 /**
  * Transporte para RouterOS (MikroTik) abstraído como operaciones sobre "menús"
@@ -44,7 +45,7 @@ export type MikrotikHttpFetch = (
 ) => Promise<MikrotikHttpResponse>;
 
 const defaultFetch: MikrotikHttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, init);
   return { status: res.status, ok: res.ok, json: () => res.json(), text: () => res.text() };
 };
 

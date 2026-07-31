@@ -70,7 +70,11 @@ export function IntegrationWizard({
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';
   const esCommunity = isIot && IOT_SUPPORT_LEVEL[kind as IotKind] === 'community';
-  const fields = kindSchema.fields;
+  // Los campos `derived` los calcula y guarda el servidor a partir de los demás
+  // (US-259: la credencial KLAP de Tapo se deriva del email y la contraseña, y es
+  // lo único que acaba en disco). El usuario no los teclea, así que no se pintan —
+  // ni cuentan para `formReady`, o el botón de guardar no se habilitaría nunca.
+  const fields = kindSchema.fields.filter((f) => !f.derived);
   // Los `kind` sin config (mock/demo) saltan directamente a "Prueba y guarda".
   const skipConnect = kindSchema.zeroConfig === true || fields.length === 0;
 

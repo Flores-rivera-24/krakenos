@@ -37,6 +37,14 @@ export interface IntegrationField {
   required: boolean;
   /** Secreto → se cifra en reposo y jamás se devuelve por la API. */
   secret?: boolean;
+  /**
+   * Campo **derivado**: lo calcula y guarda el servidor a partir de otros, y el
+   * usuario **nunca** lo teclea, así que no se pinta en el formulario (US-259).
+   * Existe en el esquema —y no solo en el código del store— para que herede el
+   * cifrado en reposo: `isSecretKey` resuelve contra estos campos, y un derivado
+   * sin registrar se guardaría en claro.
+   */
+  derived?: boolean;
   /** Valor por defecto sugerido. */
   default?: string | number | boolean;
   /** Opciones para `type: 'select'`. */

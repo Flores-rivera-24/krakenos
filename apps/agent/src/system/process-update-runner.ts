@@ -19,6 +19,7 @@ import { execFile } from 'node:child_process';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { EXTRA_DEPS_FILE, parseExtraDeps } from './extra-deps.js';
+import { safeFetch } from '../net/egress.js';
 import type { UpdateRunner } from './update-orchestrator.js';
 
 const execFileAsync = promisify(execFile);
@@ -121,7 +122,13 @@ export class ProcessUpdateRunner implements UpdateRunner {
 
   constructor(private readonly opts: ProcessUpdateRunnerOptions) {
     this.exec = opts.exec ?? defaultExec;
-    this.fetchFn = opts.fetchFn ?? ((url) => fetch(url).then((r) => ({ ok: r.ok })));
+    // `safeFetch` también aquí (US-259). La política por defecto es LAN-friendly y
+    // **permite loopback**, que es justo lo que necesita este healthcheck: apunta al
+    // `/health/ready` del propio agente. Lo que sí bloquea es que un `healthUrl`
+    // manipulado apunte a la metadata de nube, que es el objetivo clásico de SSRF y
+    // aquí sería especialmente jugoso: este proceso corre fuera del agente y en
+    // mitad de una actualización.
+    this.fetchFn = opts.fetchFn ?? ((url) => safeFetch(url).then((r) => ({ ok: r.ok })));
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.useSudo = opts.useSudo ?? true;
     this.agentDir = opts.agentDir ?? resolve(opts.repoDir, 'apps/agent');

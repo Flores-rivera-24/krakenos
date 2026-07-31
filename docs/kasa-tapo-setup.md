@@ -43,7 +43,35 @@ TAPO_DEVICES=[{"ip":"192.168.1.61","deviceType":"bulb"}]
 ```
 
 - Asigna **IP fija** a cada Tapo en tu router.
-- Las credenciales se guardan solo en el `.env` del servidor.
+
+### Mejor aún: no guardes tu contraseña (US-259)
+
+La contraseña de Tapo es la de tu **cuenta TP-Link**, no una clave de los enchufes: es la del
+portal del fabricante y probablemente la reutilizas en otros sitios. Guardarla entera es guardar
+de más, porque **KLAP no la usa**: todo el handshake se construye sobre un único valor derivado.
+
+Si configuras Tapo **desde la app** (Conectar → TP-Link Kasa / Tapo), esto ya pasa solo: escribes
+tu correo y tu contraseña, KrakenOS deriva la credencial y **la contraseña no llega al disco**.
+
+Si prefieres el `.env`, calcula el valor una vez y guarda solo eso:
+
+```bash
+node -e "const c=require('node:crypto');const s=b=>c.createHash('sha256').update(b).digest();console.log(s(Buffer.concat([s(Buffer.from(process.argv[1])),s(Buffer.from(process.argv[2]))])).toString('hex'))" 'tu-correo@ejemplo.com' 'TU_PASSWORD'
+```
+
+```bash
+# Pega los 64 caracteres que imprime el comando de arriba:
+TAPO_AUTH_HASH=
+TAPO_DEVICES=[{"ip":"192.168.1.61","deviceType":"bulb"}]
+```
+
+Con `TAPO_AUTH_HASH` puesto, `TAPO_EMAIL` y `TAPO_PASSWORD` **sobran** (se ignoran). Las
+instalaciones que ya los tenían siguen funcionando sin tocar nada.
+
+> ⚠️ **Qué protege y qué no.** El valor derivado sigue siendo sensible: quien lo tenga puede
+> controlar tus enchufes, porque es justo lo que el protocolo pide. Lo que se evita es que un
+> volcado de la configuración —o una copia de seguridad mal guardada— entregue **la contraseña de
+> tu cuenta TP-Link**, que abre bastante más que unos enchufes.
 
 ## 3. Configurar el `.env` del agente
 

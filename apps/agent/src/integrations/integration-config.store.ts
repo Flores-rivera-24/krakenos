@@ -8,6 +8,40 @@ import type { Secretbox } from '../config/secretbox.js';
 import { isEncrypted } from '../config/secretbox.js';
 import type { DomainRecord } from './factory-config.js';
 import { isSecretKey } from './schema.js';
+import { deriveTapoAuthHash, isTapoAuthHash } from '../iot/tapo-auth.js';
+
+/**
+ * Cambia credenciales por material **derivado** antes de que nada se guarde
+ * (US-259). Hoy solo aplica a Tapo, que es el único backend cuyo secreto es la
+ * contraseña de la **cuenta del fabricante** —la del portal TP-Link, la que se
+ * reutiliza en otros sitios— en vez de una clave del propio aparato.
+ *
+ * KLAP solo usa `sha256(sha256(email) ‖ sha256(password))`, así que se guarda eso
+ * y la contraseña **no llega al disco**. Es una función aparte y pura sobre los
+ * valores: así el recorte ocurre **antes** del cifrado y no depende de que quien
+ * llame se acuerde. Si mañana otro backend admite lo mismo, se añade aquí.
+ */
+function derivarCredenciales(
+  domain: IntegrationDomain,
+  values: IntegrationConfigValues,
+): { values: IntegrationConfigValues; descartadas: Set<string> } {
+  const descartadas = new Set<string>();
+  if (domain !== 'iot') return { values, descartadas };
+  const email = values['kasa.tapoEmail'];
+  const password = values['kasa.tapoPassword'];
+  if (typeof email !== 'string' || typeof password !== 'string') return { values, descartadas };
+  if (email === '' || password === '') return { values, descartadas };
+  // Una contraseña que ya es un hash no se vuelve a derivar (derivar dos veces
+  // rompería el handshake sin un solo error visible).
+  if (isTapoAuthHash(password)) return { values, descartadas };
+
+  const out = { ...values };
+  out['kasa.tapoAuthHash'] = deriveTapoAuthHash(email, password);
+  // Y aquí está el punto de la historia: la contraseña no llega al disco.
+  delete out['kasa.tapoPassword'];
+  descartadas.add('kasa.tapoPassword');
+  return { values: out, descartadas };
+}
 
 /**
  * Persistencia de la configuración de integraciones (US-140).
@@ -92,8 +126,9 @@ export class IntegrationConfigStore {
     enabled = true,
   ): Promise<void> {
     const existing = await this.getRaw(domain);
+    const { values: entrantes, descartadas } = derivarCredenciales(domain, values);
     const stored: IntegrationConfigValues = {};
-    for (const [key, val] of Object.entries(values)) {
+    for (const [key, val] of Object.entries(entrantes)) {
       if (isSecretKey(domain, kind, key)) {
         if (typeof val === 'string' && val !== '') {
           stored[key] = this.secretbox.encrypt(val);
@@ -105,6 +140,12 @@ export class IntegrationConfigStore {
     }
     if (existing && existing.kind === kind) {
       for (const [key, val] of Object.entries(existing.values)) {
+        // ⚠️ Una credencial que `derivarCredenciales` acaba de descartar NO se
+        // preserva: si no, la contraseña vieja de una instalación legada
+        // sobreviviría para siempre a su propia sustitución —el usuario habría
+        // hecho justo lo que se le pide (volver a guardar) y el secreto seguiría
+        // en disco—, que es el fallo exacto que esta historia viene a cerrar.
+        if (descartadas.has(key)) continue;
         if (
           isSecretKey(domain, kind, key) &&
           !(key in stored) &&

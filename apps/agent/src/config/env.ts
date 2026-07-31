@@ -336,6 +336,10 @@ export const env = {
     kasa: {
       kasaIps: jsonDeviceIps('KASA_DEVICES'),
       tapoIps: jsonDeviceIps('TAPO_DEVICES'),
+      // Preferido (US-259): la credencial KLAP ya derivada, para no tener la
+      // contraseña de la cuenta TP-Link en un fichero del disco. `TAPO_EMAIL` +
+      // `TAPO_PASSWORD` siguen funcionando para no romper lo ya instalado.
+      tapoAuthHash: process.env.TAPO_AUTH_HASH || undefined,
       tapoEmail: process.env.TAPO_EMAIL || undefined,
       tapoPassword: process.env.TAPO_PASSWORD || undefined,
     },

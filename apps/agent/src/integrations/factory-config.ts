@@ -260,6 +260,9 @@ export function resolveIotConfig(
         cfg.kasa = {
           kasaIps: has('kasa.kasaDeviceIps') ? csvIps(g('kasa', 'kasaDeviceIps')) : base.kasa.kasaIps,
           tapoIps: has('kasa.tapoDeviceIps') ? csvIps(g('kasa', 'tapoDeviceIps')) : base.kasa.tapoIps,
+          // US-259: el hash derivado es lo que el store guarda desde ahora; el par
+          // email+contraseña sobrevive para las configs que ya existían.
+          tapoAuthHash: optStr(g('kasa', 'tapoAuthHash')) ?? base.kasa.tapoAuthHash,
           tapoEmail: optStr(g('kasa', 'tapoEmail')) ?? base.kasa.tapoEmail,
           tapoPassword: optStr(g('kasa', 'tapoPassword')) ?? base.kasa.tapoPassword,
         };
