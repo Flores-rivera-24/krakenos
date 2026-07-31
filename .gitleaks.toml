@@ -44,4 +44,11 @@ regexes = [
   # cambiarlo en el árbol de trabajo no lo borra del pasado. No es un secreto:
   # era el `?token=` de ejemplo de un test de redacción.
   '''abc123def456''',
+  # Clave de la tabla `Setting` que marca hecha la migración de ids IoT (US-243).
+  # La regla `generic-api-key` la caza por el patrón `key: '…'` / `KEY = '…'`, pero
+  # es un NOMBRE de ajuste, no una credencial: su valor es literalmente `'true'`.
+  # No se arregla renombrando la constante — dos de los tres aciertos son
+  # `where: { key: … }`, que es la API de Prisma, y el commit f09923e ya está en el
+  # historial que gitleaks vuelve a escanear entero en cada ejecución.
+  '''iot\.idsPrefixed\.v1''',
 ]

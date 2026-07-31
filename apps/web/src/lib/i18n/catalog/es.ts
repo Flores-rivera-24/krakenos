@@ -191,6 +191,15 @@ export const es = {
   'settings.feedback.feature': 'Proponer una mejora',
   'settings.support.error': 'No se pudo generar el paquete de soporte',
 
+  // --- Ajustes → Sistema → Acerca de (US-257) ---
+  'settings.about.title': 'Acerca de KrakenOS',
+  'settings.about.license': 'KrakenOS es software libre, publicado bajo la licencia {license}.',
+  'settings.about.source': 'Ver el código fuente',
+  'settings.about.licenseText': 'Leer la licencia',
+  'settings.about.newTab': '{label} (se abre en una pestaña nueva)',
+  'settings.about.copyleft':
+    'Puedes usarlo en tu casa sin ninguna obligación. Si modificas KrakenOS y se lo ofreces a otras personas a través de la red, tienes que darles también tu código.',
+
   // --- Ajustes → Tokens de API (US-174) ---
   'settings.apiTokens.title': 'Tokens de API',
   'settings.apiTokens.desc': 'Da acceso a Home Assistant, Node-RED u otras apps sin darles tu contraseña. Los tokens leen el estado y, opcionalmente, controlan dispositivos; nunca administran.',

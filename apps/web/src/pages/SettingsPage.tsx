@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { AboutCard } from '@/components/settings/AboutCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { ApiTokensCard } from '@/components/settings/ApiTokensCard';
@@ -424,6 +425,11 @@ export function SettingsPage() {
               {isAdmin && <AlertRulesCard />}
 
               <ReportsCard />
+
+              {/* Acerca de (US-257): la oferta de código fuente que exige la §13
+                  de la AGPL. Va SIN `isAdmin` a propósito — la licencia se le
+                  ofrece a quien usa el programa, no a quien lo administra. */}
+              <AboutCard />
             </>
           )}
 
