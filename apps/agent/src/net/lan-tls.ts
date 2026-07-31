@@ -31,6 +31,27 @@ import { DEFAULT_EGRESS_POLICY, blockedReason, extractHost } from './egress.js';
 let agenteLan: Agent | null = null;
 
 function dispatcherLan(): Agent {
+  // Supresión **deliberada y acotada a esta línea** (US-259). Se silencia aquí y no
+  // con un `--exclude-rule` en el workflow a propósito: excluir la regla apagaría la
+  // detección en TODO el repo y el próximo bypass —ese sí accidental— pasaría
+  // callado. La regla tiene razón en el caso general; este es el caso concreto en
+  // que el proyecto la asume, y por eso lleva su porqué al lado:
+  //
+  //  - El destino es un bridge Philips Hue en una IP privada. Un certificado
+  //    públicamente válido para `https://192.168.1.50` **no existe**, así que no hay
+  //    «usa un cert bien emitido» posible aquí.
+  //  - Lo que había antes era PEOR y es lo que esto sustituye: las guías pedían
+  //    `NODE_TLS_REJECT_UNAUTHORIZED=0`, que apaga la validación del proceso entero
+  //    —Telegram, update-check y Web Push incluidos—. Esto lo baja a una conexión.
+  //  - `initConTlsDeLan` solo entrega este dispatcher si el host resuelve a una IP
+  //    privada; contra internet la verificación sigue intacta.
+  //  - Riesgo residual, asumido y escrito en `docs/hue-setup.md`: dentro de la LAN el
+  //    bridge no queda autenticado. Cerrarlo es fijar el certificado (TOFU o CA de
+  //    Philips) y necesita hardware real (US-86).
+  //
+  // ⚠️ El marcador va en la línea INMEDIATAMENTE anterior al hallazgo: semgrep solo
+  // mira esa (o la propia línea). Con la explicación en medio no suprime nada.
+  // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
   agenteLan ??= new Agent({ connect: { rejectUnauthorized: false } });
   return agenteLan;
 }
