@@ -29,6 +29,23 @@ import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
  * leer no es una copia. Ojo con lo obvio: quien tenga el disco tiene ambas cosas, así
  * que el valor real está en **llevarse las copias fuera del servidor**, y eso lo dice
  * la UI.
+ *
+ * **La copia SÍ lleva la actividad por aparato, y es lo correcto** (decisión de
+ * US-250, tercer criterio). La copia es un `VACUUM INTO` de la base entera, así que
+ * `DeviceTrafficSample` —y mañana el histórico DNS de US-252— viajan dentro. No se
+ * excluyen por tres razones, en este orden:
+ *
+ *  1. Una copia que omite tablas **restaura una casa incompleta**, y lo hace en
+ *     silencio: el usuario se entera el día que la necesita, que es el peor día.
+ *  2. La copia **se queda en casa**; el bundle de soporte es el que sale. Son
+ *     artefactos distintos con destinos distintos, y por eso la decisión de US-250
+ *     es opuesta en cada uno (ver `support.service.ts`).
+ *  3. El control ya existe y es proporcionado: el archivo va cifrado
+ *     (scrypt + AES-256-GCM), **todas** las rutas de copia automática son admin
+ *     —incluida la de lectura— y revelar la contraseña queda auditado.
+ *
+ * Lo que sí exige es no confundir los dos caminos: si alguna vez se ofrece «mandar
+ * una copia a soporte», eso NO es este artefacto.
  */
 
 /** Hora local a la que se lanza la copia (minuto del día): 03:00. */

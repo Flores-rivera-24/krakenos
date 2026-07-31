@@ -64,7 +64,9 @@ describe('rutas de tráfico', () => {
   });
 
   it('GET /api/traffic/devices devuelve el desglose por dispositivo (US-46)', async () => {
-    const user = await seedUser(app, { role: 'viewer' });
+    // Desde US-250 esta lectura exige `home.activity` (solo admin): el desglose por
+    // MAC cruzado con la etiqueta del inventario es el uso de internet por persona.
+    const user = await seedUser(app, { email: 'admin@devtraffic.test' });
     await app.prisma.device.create({
       data: { mac: 'aa:bb:cc:00:00:09', ip: '192.168.1.9', label: 'TV' },
     });
@@ -87,5 +89,25 @@ describe('rutas de tráfico', () => {
     // US-263: la capacidad viaja con los datos, para que una lista vacía no sea
     // ambigua. El arnés usa el mock, que sí reporta el desglose.
     expect(body.perDeviceTraffic).toEqual({ status: 'supported' });
+  });
+
+  it('el desglose por dispositivo lo niega a todo el que no sea admin (US-250)', async () => {
+    // El total WAN sigue siendo lectura de la casa; el desglose por aparato no.
+    // Se comprueban los dos en la misma iteración para que quede atado que la
+    // historia acotó **una** ruta y no cerró el tráfico entero de paso.
+    for (const role of ['member', 'viewer', 'kid', 'guest'] as const) {
+      const user = await seedUser(app, { email: `${role}@devtraffic.test`, role });
+      const headers = authHeader(signAccess(app, user));
+
+      const devices = await app.inject({
+        method: 'GET',
+        url: '/api/traffic/devices?range=hour',
+        headers,
+      });
+      expect(`${role} devices → ${devices.statusCode}`).toBe(`${role} devices → 403`);
+
+      const wan = await app.inject({ method: 'GET', url: '/api/traffic/stats', headers });
+      expect(`${role} stats → ${wan.statusCode}`).toBe(`${role} stats → 200`);
+    }
   });
 });

@@ -21,6 +21,15 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
   // Lectura: cualquier usuario autenticado. Escritura: solo admin.
   app.addHook('preHandler', app.authenticate);
   const adminOnly = app.requireRole('admin');
+  /**
+   * El registro de consultas es la excepción (US-250): lo que se ve ahí es a qué
+   * dominios habla cada aparato, o sea el historial de navegación del hogar. Sale
+   * de «lectura autenticada» y pasa a la capacidad `home.activity` (solo admin, y
+   * fuera del alcance de cualquier token de API). Los agregados de esta ruta
+   * —totales, blocklist y feeds— se quedan como lectura autenticada: son cifras y
+   * configuración, no el comportamiento de una persona.
+   */
+  const canSeeActivity = app.requireCapability('home.activity');
 
   app.get('/stats', { schema: dnsStatsSchema }, async () => {
     return dns.getStats();
@@ -32,7 +41,7 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
 
   app.get<{ Querystring: { limit?: number } }>(
     '/queries',
-    { schema: recentQueriesSchema },
+    { schema: recentQueriesSchema, preHandler: canSeeActivity },
     async (req) => {
       return dns.recentQueries(req.query.limit);
     },

@@ -496,4 +496,49 @@ describe('rutas de sistema', () => {
       expect(audit).not.toBeNull();
     });
   });
+
+  /**
+   * US-250, tercer criterio: decidir qué actividad entra en el bundle de soporte.
+   * **Decisión: ninguna.** El bundle está hecho para pegarse en un canal de soporte
+   * —la plantilla de issue de US-218 lo pide explícitamente—, así que es el único
+   * artefacto del producto pensado para **salir de casa**. La actividad por aparato
+   * es justo lo que US-250 acaba de cerrar a `kid` y `guest`: mandarla a un tercero
+   * mientras se le niega al invitado no tendría defensa.
+   *
+   * Hoy no la incluye, así que el test no arregla nada — **ata**. Y ata lo que va a
+   * apretar de verdad en US-252, cuando exista una tabla de consultas DNS y añadirla
+   * «para diagnosticar por qué no resuelve» sea el movimiento natural.
+   */
+  it('el bundle de soporte NO lleva actividad por aparato (US-250)', async () => {
+    await app.prisma.device.create({
+      data: { mac: 'aa:bb:cc:dd:ee:f0', ip: '192.168.1.77', label: 'Tablet de Marta' },
+    });
+    await app.prisma.deviceTrafficSample.create({
+      data: { mac: 'aa:bb:cc:dd:ee:f0', rxBytesPerSec: 123456, txBytesPerSec: 654321 },
+    });
+
+    const admin = await seedUser(app, { email: 'admin@bundleact.test', role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/support-bundle',
+      headers: authHeader(signAccess(app, admin)),
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+
+    const raw = res.body;
+    // Ni la MAC, ni la IP, ni el nombre del aparato, ni sus cifras de consumo.
+    expect(raw).not.toContain('aa:bb:cc:dd:ee:f0');
+    expect(raw).not.toContain('192.168.1.77');
+    expect(raw).not.toContain('Tablet de Marta');
+    expect(raw).not.toContain('123456');
+    expect(raw).not.toContain('654321');
+
+    // Y no por estar vacío: el bundle sí trae lo suyo. Sin esto, un bundle roto
+    // que devolviera `{}` pasaría las cinco aserciones de arriba.
+    const bundle = res.json();
+    expect(bundle.version).toBeTruthy();
+    expect(bundle.metrics).toBeDefined();
+    expect(Object.keys(bundle.settings).length).toBeGreaterThan(0);
+  });
 });

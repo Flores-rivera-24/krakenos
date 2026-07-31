@@ -449,6 +449,10 @@ export const es = {
   'dns.col.client': 'Cliente',
   'dns.col.status': 'Estado',
   'dns.queries.empty': 'Aún no hay consultas recientes.',
+  // US-250: «no hay consultas» sería mentira cuando lo que falta es el permiso.
+  'dns.queries.adminOnly': 'Solo el administrador ve las consultas recientes',
+  'dns.queries.adminOnlyDesc':
+    'El registro dice a qué dominios se conecta cada dispositivo de la casa, así que se reserva a quien administra la instalación. Las cifras de arriba y la lista de bloqueo las puede ver cualquiera.',
   'dns.blocked': 'Bloqueada',
   'dns.allowed': 'Permitida',
   'dns.loadError': 'No se pudo cargar el DNS',
@@ -754,6 +758,12 @@ export const es = {
     'Tu router no reparte el tráfico por dispositivo',
   'traffic.perDeviceUnsupportedDesc':
     'Solo informa del total de la casa, así que no se puede mostrar cuánto consume cada dispositivo ni el uso por persona. No es cosa de tu configuración.',
+  // US-250: cuarto estado del vacío, y el único que no es del router. No lleva
+  // instrucción a propósito: no es un ajuste pendiente, es un permiso, y pedirle al
+  // usuario que lo arregle sería mandarlo a pelearse con algo que no depende de él.
+  'traffic.perDeviceAdminOnly': 'Solo el administrador ve el consumo por dispositivo',
+  'traffic.perDeviceAdminOnlyDesc':
+    'Cuánto consume cada dispositivo permite deducir qué hace cada persona de la casa, así que el detalle se reserva a quien administra la instalación. Tu propio uso sí lo tienes más abajo, en «Uso por persona».',
   'wellbeing.unassigned': 'Sin asignar',
   // US-251: el estado que SÍ se arregla, y por eso lleva instrucción concreta.
   'perDeviceTraffic.setup.title': 'Tu router puede dar este dato, pero le falta un paquete',

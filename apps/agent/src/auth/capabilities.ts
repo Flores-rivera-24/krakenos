@@ -21,6 +21,23 @@ export const CAPABILITIES = [
    * sin que el servidor lo impusiera).
    */
   'home.cameras',
+  /**
+   * Ver la **actividad de red por aparato** (US-250): a qué dominios habla cada
+   * dispositivo (`GET /api/dns/queries`) y cuánto consume cada uno
+   * (`GET /api/traffic/devices`). Como `home.cameras`, es una lectura que **no**
+   * es «lectura general» y por eso sale de `home.view`.
+   *
+   * A diferencia de `home.cameras`, esta es **solo de admin**, y no por ser más
+   * invasiva en abstracto sino por coherencia con una decisión ya entregada:
+   * US-184 (bienestar digital) decidió que un no-admin ve **solo su propio** uso
+   * (`wellbeing.service.ts::usageByPerson`). Pero `/traffic/devices` devuelve el
+   * desglose por MAC y el inventario da la etiqueta del aparato («Tablet de
+   * Marta»), así que dársela a `member`/`viewer` reconstruiría por la puerta de
+   * atrás exactamente lo que el bienestar les niega por la principal. La vista
+   * con privacidad ya existe y es `GET /api/wellbeing/usage`: quien no es admin
+   * va por ahí y ve lo suyo.
+   */
+  'home.activity',
   /** Gestionar la red (WiFi, VPN, firewall, VLAN, QoS, DNS, integraciones). */
   'network.manage',
   /** Gestionar usuarios del hogar. */
@@ -31,6 +48,13 @@ export const CAPABILITIES = [
 
 export type Capability = (typeof CAPABILITIES)[number];
 
+/**
+ * ⚠️ `home.activity` la tiene **solo `admin`**, y la omisión en los otros cuatro
+ * roles es deliberada, no un olvido (US-250): ver el historial de navegación y el
+ * consumo aparato a aparato es vigilar a la familia, no usar la casa. El no-admin
+ * que quiera saber cuánto ha gastado **él** tiene `GET /api/wellbeing/usage`, que
+ * ya filtra por rol en el servidor.
+ */
 const MATRIX: Record<UserRole, ReadonlySet<Capability>> = {
   admin: new Set(CAPABILITIES),
   member: new Set(['home.view', 'home.control', 'home.cameras']),

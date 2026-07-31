@@ -282,4 +282,25 @@ describe('tokens de API (US-174)', () => {
       expect(`${url} → ${res.statusCode}`).toBe(`${url} → 403`);
     }
   });
+
+  it('un token de API no alcanza la actividad por aparato (US-250)', async () => {
+    // Mismo motivo que las cámaras: `home.activity` no es un scope de token, así
+    // que ni siquiera un token emitido por un **admin** lee el historial de
+    // navegación del hogar. El token vive años pegado en un script; la sesión no.
+    const admin = await seedUser(app, { email: 'admin@acttok.test', role: 'admin' });
+    const session = signAccess(app, admin);
+    const token = await createToken(app, session, ['home.view', 'home.control']);
+
+    for (const url of ['/api/dns/queries', '/api/traffic/devices']) {
+      const res = await app.inject({ method: 'GET', url, headers: tokenHeader(token) });
+      expect(`${url} → ${res.statusCode}`).toBe(`${url} → 403`);
+    }
+
+    // Y el mismo admin, con su sesión, sí las lee: lo que corta es la credencial,
+    // no el rol. Sin esto el test pasaría igual con la ruta rota para todos.
+    for (const url of ['/api/dns/queries', '/api/traffic/devices']) {
+      const res = await app.inject({ method: 'GET', url, headers: authHeader(session) });
+      expect(`${url} (sesión) → ${res.statusCode}`).toBe(`${url} (sesión) → 200`);
+    }
+  });
 });

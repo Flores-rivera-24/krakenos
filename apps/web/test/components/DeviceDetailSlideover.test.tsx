@@ -173,7 +173,9 @@ describe('DeviceDetailSlideover', () => {
   });
 
   it('renderiza el sparkline cuando hay datos de tráfico (US-46)', async () => {
-    asRole('viewer');
+    // Admin y no viewer desde US-250: el tráfico por dispositivo exige
+    // `home.activity`, así que a un viewer ya no se le pide ni se le pinta.
+    asRole('admin');
     apiMock.get.mockImplementation((url: string) => {
       if (url.startsWith('/traffic/devices')) {
         // US-263: el endpoint devuelve un informe, no un array pelado.
@@ -203,6 +205,20 @@ describe('DeviceDetailSlideover', () => {
     await waitFor(() =>
       expect(screen.getAllByRole('img', { name: 'Tendencia' })).toHaveLength(2),
     );
+  });
+
+  it('a un viewer no se le pide el tráfico y no se le dice «sin datos» (US-250)', async () => {
+    asRole('viewer');
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+
+    // «Sin datos de tráfico disponibles» sería mentira: puede haberlos.
+    expect(
+      await screen.findByText(/Solo el administrador ve el tráfico de cada aparato/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Sin datos de tráfico disponibles/)).not.toBeInTheDocument();
+
+    const pedidas = apiMock.get.mock.calls.map((c) => String(c[0]));
+    expect(pedidas.some((u) => u.startsWith('/traffic/devices'))).toBe(false);
   });
 
   it('un admin asigna una VLAN: PUT con el tag', async () => {
