@@ -1,6 +1,7 @@
 # KrakenOS
 
 [![CI](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml/badge.svg)](https://github.com/Flores-rivera-24/krakenos/actions/workflows/ci.yml)
+[![Licencia: AGPL v3](https://img.shields.io/badge/licencia-AGPL--3.0--or--later-blue.svg)](LICENSE)
 
 **El cerebro de red de tu hogar.** KrakenOS reúne en un solo producto **local** lo que ningún
 otro tiene junto: **cobertura WiFi sobre el plano de tu casa**, **control parental de red de
@@ -418,3 +419,29 @@ construye la imagen y hace un *smoke test* de `/health` cuando cambia el empaque
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier (formatea en lugar) |
 | `pnpm clean` | limpiar dist/, node_modules |
+
+---
+
+## Licencia
+
+Copyright © 2026 Jose Luis Flores.
+
+KrakenOS se publica bajo la **GNU Affero General Public License v3.0 o posterior**
+(`AGPL-3.0-or-later`). El texto íntegro está en [`LICENSE`](LICENSE).
+
+En corto, y sin que esto sustituya a la licencia:
+
+- **Úsalo en tu casa sin obligación ninguna.** El copyleft solo entra en juego si **distribuyes** el
+  programa o si ofreces una versión **modificada** a otras personas a través de la red. Montarlo para
+  tu familia no te obliga a nada.
+- **Puedes estudiarlo, modificarlo y compartirlo.** Si distribuyes tu versión —o la ofreces por red—,
+  tienes que publicar tu código bajo la misma licencia y dar acceso a él a quien la use. Eso es la
+  §13 de la AGPL, y es la razón de elegirla: que este proyecto no pueda cerrarse.
+- **La app lo cumple de serie:** Ajustes → Sistema → *Acerca de* enseña la licencia y el enlace al
+  código fuente a cualquiera que la use, no solo al administrador.
+
+Las **dependencias de terceros conservan sus propias licencias** (MIT, ISC, Apache-2.0, BSD, MPL-2.0
+y equivalentes; ninguna incompatible con AGPL — inventario verificado en el ADR).
+
+El porqué de la elección, lo que cuesta y cuándo habría que revisarla:
+[ADR de licencia](docs/adr-licencia.md).

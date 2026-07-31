@@ -184,6 +184,15 @@ export const en: Record<TranslationKey, string> = {
   'settings.feedback.feature': 'Suggest an improvement',
   'settings.support.error': 'Could not generate the support bundle',
 
+  // --- Settings → System → About (US-257) ---
+  'settings.about.title': 'About KrakenOS',
+  'settings.about.license': 'KrakenOS is free software, released under the {license} license.',
+  'settings.about.source': 'View the source code',
+  'settings.about.licenseText': 'Read the license',
+  'settings.about.newTab': '{label} (opens in a new tab)',
+  'settings.about.copyleft':
+    'You can run it at home with no obligations. If you modify KrakenOS and offer it to other people over a network, you must give them your code as well.',
+
   // --- Settings → API tokens (US-174) ---
   'settings.apiTokens.title': 'API tokens',
   'settings.apiTokens.desc': 'Give Home Assistant, Node-RED or other apps access without sharing your password. Tokens read state and, optionally, control devices; they never administer.',

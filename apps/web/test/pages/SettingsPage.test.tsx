@@ -99,4 +99,17 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Emilio')).toBeInTheDocument();
     expect(screen.getByText('admin@krakenos.local')).toBeInTheDocument();
   });
+
+  // US-257: la §13 de la AGPL ofrece el código a quien **usa** el programa, no a
+  // quien lo administra. Si «Acerca de» acabara detrás de `isAdmin` como sus
+  // tarjetas vecinas, la instalación dejaría de cumplir su propia licencia para
+  // todo el mundo menos el admin — y nadie lo notaría.
+  it('la licencia y el enlace al código se ven sin ser admin', () => {
+    setUser('viewer');
+    render(<SettingsPage />);
+    expect(screen.getByText(/AGPL-3\.0-or-later/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /código fuente/i })).toBeInTheDocument();
+    // Contraste: lo que sí es admin-only sigue oculto para este mismo usuario.
+    expect(screen.queryByText('Enviar feedback')).not.toBeInTheDocument();
+  });
 });

@@ -82,6 +82,10 @@ const RUTAS_QUE_DEBEN_ENTRAR = [
   'apps/agent/prisma/schema.prisma',
   'apps/agent/scripts/gen-keys.sh',
   'docker/entrypoint.sh',
+  // US-257: la imagen es una vía de distribución, y la AGPL exige que el texto
+  // de la licencia viaje CON el programa. Excluirlo aquí sería incumplirla en
+  // el único artefacto que se publica ya construido.
+  'LICENSE',
 ];
 
 /** Rutas que NO deben acabar nunca en la imagen (secretos, estado, docs internos). */
