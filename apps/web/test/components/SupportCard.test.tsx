@@ -45,13 +45,22 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
     const btn = await screen.findByRole('button', { name: 'Activar' });
     apiMock.get.mockResolvedValueOnce(ON); // el refetch tras activar
     fireEvent.click(btn);
-    await waitFor(() =>
-      expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
-        key: 'telemetryEnabled',
-        value: 'on',
-      }),
+    // Margen explícito sobre el 1 s por defecto de `waitFor`: el toast llega tras
+    // DOS promesas encadenadas (PATCH → refetch), y con los 129 ficheros de la
+    // suite en paralelo este worker se queda sin CPU el tiempo suficiente para
+    // agotarlo. Falla ~1 de cada 5 pasadas completas y 0 de 5 en aislamiento, así
+    // que es hambruna de worker, no una condición de carrera del componente —por
+    // eso se amplía la espera y no se toca la lógica.
+    const ESPERA_CARGADA = { timeout: 5_000 };
+    await waitFor(
+      () =>
+        expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
+          key: 'telemetryEnabled',
+          value: 'on',
+        }),
+      ESPERA_CARGADA,
     );
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalled(), ESPERA_CARGADA);
   });
 
   it('descarga el bundle de soporte', async () => {
