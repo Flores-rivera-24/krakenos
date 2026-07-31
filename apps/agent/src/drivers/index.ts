@@ -108,6 +108,36 @@ export interface CreateDriverConfig {
 }
 
 /**
+ * Kinds retirados por US-238. Existen **solo** para dar un error que se entienda:
+ * quien tenía `DRIVER_KIND=cisco-ios` en su `.env` se encuentra el agente sin
+ * arrancar al actualizar, y «Driver desconocido» no le dice qué hacer.
+ *
+ * NO se degradan a `mock` a propósito: mock enseña una casa inventada, así que el
+ * usuario vería dispositivos que no existen y creería que su red está gestionada.
+ * Parar en seco y explicar por qué es lo honesto.
+ *
+ * ⚠️ El fallback a `.env` de `integrations/runtime.ts::tryBuild` **no cubre este
+ * caso**: solo protege de una config guardada en la DB que falle, y aquí el valor
+ * retirado está justo en el `.env` que hace de red de seguridad.
+ */
+const KINDS_RETIRADOS: Record<string, string> = {
+  'cisco-ios': 'US-238',
+  'cisco-netconf': 'US-238',
+};
+
+/** Mensaje de un kind retirado, o `null` si no lo es. */
+function mensajeDeRetirada(kind: string, soportados: string): string | null {
+  const historia = KINDS_RETIRADOS[kind];
+  if (!historia) return null;
+  return (
+    `El driver «${kind}» se retiró en ${historia}: era equipo de empresa, sin usuarios ` +
+    `domésticos y sin una sola verificación con hardware real. Cambia DRIVER_KIND en tu .env ` +
+    `por uno soportado (${soportados}). No se cae a «mock» automáticamente a propósito: te ` +
+    `enseñaría una casa inventada como si fuera la tuya.`
+  );
+}
+
+/**
  * Construye el driver de hardware adecuado según la configuración. El resto del
  * agente sólo conoce la interfaz `HardwareDriver`. `mock` simula en memoria;
  * `openwrt` opera un router real vía SSH+UCI. `pfsense` queda pendiente.
@@ -212,8 +242,10 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
       });
     }
     default: {
-      const exhaustive: never = config.kind;
-      throw new Error(`Driver desconocido: ${String(exhaustive)}`);
+      const kind = String(config.kind as string);
+      const retirado = mensajeDeRetirada(kind, 'mock, openwrt, pfsense, unifi, mikrotik, omada, asus');
+      if (retirado) throw new Error(retirado);
+      throw new Error(`Driver desconocido: ${kind}`);
     }
   }
 }

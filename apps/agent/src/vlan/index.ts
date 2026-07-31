@@ -39,8 +39,15 @@ export function createVlanManager(config: VlanConfig): VlanManager {
       });
     }
     default: {
-      const exhaustive: never = config.kind;
-      throw new Error(`Gestor de VLANs desconocido: ${String(exhaustive)}`);
+      const kind = String(config.kind as string);
+      // US-238 retiró `cisco`: se apoyaba en el transporte SSH del driver Cisco.
+      if (kind === 'cisco') {
+        throw new Error(
+          'El gestor de VLANs «cisco» se retiró en US-238 junto con el driver del que dependía. ' +
+            'Un switch gestionado sigue cubierto por VLAN_KIND=switch (SNMP), que no depende de fabricante.',
+        );
+      }
+      throw new Error(`Gestor de VLANs desconocido: ${kind}`);
     }
   }
 }

@@ -140,3 +140,32 @@ describe('createDriver', () => {
     expect(() => createDriver({ kind: 'desconocido' as 'mock' })).toThrow(/desconocido/i);
   });
 });
+
+/**
+ * US-238 — quien tenía `DRIVER_KIND=cisco-ios` en su `.env` se encuentra el
+ * agente sin arrancar al actualizar. El fallback a `.env` de `tryBuild` **no** le
+ * cubre (el valor retirado está justo en el `.env`), así que lo único que le
+ * queda es el mensaje: tiene que decir qué pasó y qué teclear.
+ */
+describe('kinds retirados (US-238)', () => {
+  it('nombra la historia, propone alternativas y explica por qué no cae a mock', () => {
+    for (const kind of ['cisco-ios', 'cisco-netconf'] as const) {
+      let mensaje = '';
+      try {
+        createDriver({ kind } as never);
+      } catch (err) {
+        mensaje = err instanceof Error ? err.message : String(err);
+      }
+      expect(mensaje).toContain(kind);
+      expect(mensaje).toContain('US-238');
+      expect(mensaje).toContain('openwrt');
+      // Lo que impide el arreglo tentador: degradar a mock enseñaría una casa
+      // inventada. Si alguien lo "arregla" así, este test lo caza.
+      expect(mensaje).toMatch(/mock/i);
+    }
+  });
+
+  it('un kind desconocido cualquiera sigue fallando, sin mensaje inventado', () => {
+    expect(() => createDriver({ kind: 'inexistente' } as never)).toThrow(/Driver desconocido/);
+  });
+});
