@@ -13,8 +13,7 @@ export type IotKind =
   | 'tuya'
   | 'kasa'
   | 'shelly'
-  | 'meross'
-  | 'switchbot';
+  | 'meross';
 
 /** Lectura de un sensor (temperatura, humedad…). */
 export interface IotReading {
@@ -118,7 +117,7 @@ export type MatterCommissionErrorCode =
   | 'failed';
 
 /** Versiones del protocolo local Tuya soportadas. */
-export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4';
+export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4' | '3.5';
 
 /** Vista pública de un foco Tuya registrado: **nunca** incluye `localKey` (US-32/42). */
 export interface TuyaDeviceView {

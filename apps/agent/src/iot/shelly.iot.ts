@@ -1,5 +1,6 @@
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
 import { IotError } from './mock.iot.js';
+import { unreachableDevice } from './unreachable.js';
 import {
   type ShellyDeviceConfig,
   gen1LightPath,
@@ -36,9 +37,26 @@ export class ShellyIotManager implements IotManager {
 
   async listDevices(): Promise<IotDevice[]> {
     const lists = await Promise.all(
-      [...this.byIp.values()].map((cfg) => this.readDevice(cfg).catch(() => [])),
+      // US-242: un Shelly configurado que no responde ya NO desaparece de la lista.
+      // Desaparecer hacía indistinguible «apagado» de «desenchufado», que es justo
+      // lo que el usuario necesita saber.
+      [...this.byIp.values()].map((cfg) =>
+        this.readDevice(cfg).catch(() => this.unreachableChannels(cfg)),
+      ),
     );
     return lists.flat();
+  }
+
+  /** Un marcador por canal configurado, con `reachable:false`. */
+  private unreachableChannels(cfg: ShellyDeviceConfig): IotDevice[] {
+    const channels = cfg.channels ?? 1;
+    return Array.from({ length: channels }, (_, ch) =>
+      unreachableDevice({
+        id: `shelly:${cfg.ip}:${ch}`,
+        name: cfg.name ? (channels > 1 ? `${cfg.name} ${ch + 1}` : cfg.name) : `Shelly ${cfg.ip}`,
+        kind: 'plug',
+      }),
+    );
   }
 
   async getDevice(id: string): Promise<IotDevice | null> {

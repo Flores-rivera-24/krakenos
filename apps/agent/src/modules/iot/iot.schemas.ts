@@ -25,6 +25,12 @@ const deviceResponse = {
       },
       required: ['metric', 'value', 'unit'],
     },
+    // US-242: el driver los calculaba y el schema de respuesta los podaba, así que
+    // el consumo instantáneo de un enchufe medidor no llegaba nunca a la UI. Van
+    // como opcionales: la mayoría de aparatos no los miden y `null` es la respuesta
+    // honesta (US-181).
+    powerW: { type: ['number', 'null'] },
+    energyWh: { type: ['number', 'null'] },
   },
   required: ['id', 'name', 'kind', 'room', 'reachable', 'on', 'brightness', 'color', 'reading'],
 } as const;

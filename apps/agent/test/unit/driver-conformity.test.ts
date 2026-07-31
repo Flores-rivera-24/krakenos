@@ -7,11 +7,10 @@ import { UnifiDriver } from '../../src/drivers/unifi.driver.js';
 import { KasaIotManager } from '../../src/iot/kasa.iot.js';
 import { MerossIotManager } from '../../src/iot/meross.iot.js';
 import { ShellyIotManager } from '../../src/iot/shelly.iot.js';
-import { SwitchBotIotManager } from '../../src/iot/switchbot.iot.js';
 
 /**
  * Suite de conformidad de drivers (US-100). Cada driver real (UniFi/MikroTik/
- * Omada/ASUS) e integración IoT (Kasa-Tapo/Shelly/Meross/SwitchBot) se prueba al
+ * Omada/ASUS) e integración IoT (Kasa-Tapo/Shelly/Meross) se prueba al
  * mismo **contrato de fallo**, sobre su transporte inyectable mockeado para que
  * **falle** de tres formas. Sin hardware real (e2e → US-86).
  *
@@ -126,7 +125,6 @@ const SUBJECTS: Subject[] = [
   ),
   iotSubject('shelly', (b) => new ShellyIotManager({ transport: failingTransport(b), devices: [{ ip: '10.0.0.7', gen: 1 }] }), 'shelly:10.0.0.7:0'),
   iotSubject('meross', (b) => new MerossIotManager({ transport: failingTransport(b), devices: [{ uuid: 'u1', key: 'k' }] }), 'meross:u1:0'),
-  iotSubject('switchbot', (b) => new SwitchBotIotManager({ transport: failingTransport(b) }), 'switchbot:dev1'),
 ];
 
 const BEHAVIORS: Behavior[] = ['timeout', 'cut', 'garbage'];

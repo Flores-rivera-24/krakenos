@@ -21,7 +21,7 @@ capacidades de red del host. Por tanto:
 
 > El resto de integraciones sí funcionan en Docker: drivers de red por SSH/REST (OpenWrt,
 > pfSense, UniFi, MikroTik, Cisco…), IoT por API/MQTT local (Hue, Govee, Kasa/Tapo, Shelly,
-> Meross, SwitchBot, Tuya, zigbee2mqtt, Matter), DNS/Pi-hole por HTTP, copias de seguridad,
+> Meross, Tuya, zigbee2mqtt, Matter), DNS/Pi-hole por HTTP, copias de seguridad,
 > usuarios, automatizaciones, energía, etc. — nada de eso depende de binarios del host.
 
 ## Cómo habilitarlas de todas formas

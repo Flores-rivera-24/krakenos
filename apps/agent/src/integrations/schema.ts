@@ -202,11 +202,6 @@ export const INTEGRATION_SCHEMA: Record<
       // La lista de dispositivos incluye la `key` de cada uno → todo el campo es secreto.
       secret('devices', { type: 'text' }),
     ]),
-    switchbot: schema('iot', 'switchbot', 'SwitchBot', [
-      req('hubHost', 'host'),
-      opt('hubPort', 'number', { default: 8123 }),
-      secret('token'),
-    ]),
   },
 
   cameras: {

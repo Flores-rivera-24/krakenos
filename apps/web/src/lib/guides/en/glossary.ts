@@ -134,7 +134,7 @@ export const GLOSSARY_EN: GlossaryTranslations = {
   token: {
     term: 'Token',
     short: 'A long, automatic password a service gives you so other apps can identify themselves without using your username and password.',
-    long: 'Instead of entering your username and password, some devices (like the SwitchBot hub) give you a token: a string of letters and numbers that authorizes access. Treat it like a password and do not share it.',
+    long: 'Instead of entering your username and password, some devices give you a token: a string of letters and numbers that authorizes access. Treat it like a password and do not share it.',
   },
   ssh: {
     term: 'SSH',

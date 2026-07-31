@@ -315,13 +315,6 @@ export function resolveIotConfig(
           devices: has('meross.devices') ? parseMerossDevices(g('meross', 'devices')) : base.meross.devices,
         };
         break;
-      case 'switchbot':
-        cfg.switchbot = {
-          host: str(g('switchbot', 'hubHost'), base.switchbot.host),
-          port: num(g('switchbot', 'hubPort'), base.switchbot.port),
-          token: optStr(g('switchbot', 'token')) ?? base.switchbot.token,
-        };
-        break;
       default:
         // 'tuya' (gestor de dispositivos propio) y 'mock' no llevan config aquí.
         break;

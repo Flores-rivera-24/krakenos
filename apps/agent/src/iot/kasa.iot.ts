@@ -15,6 +15,7 @@ import {
 } from './kasa.parsers.js';
 import type { KasaTransport, TapoTransport } from './kasa.transport.js';
 import { IotError } from './mock.iot.js';
+import { unreachableDevice } from './unreachable.js';
 
 export interface KasaIotOptions {
   /** Transporte Kasa (Gen1/2). */
@@ -58,7 +59,9 @@ export class KasaIotManager implements IotManager {
     for (const ip of this.opts.kasaIps ?? []) {
       if (seenKasa.has(ip)) continue;
       const dev = await this.fetchKasa(ip).catch(() => null);
-      if (dev) devices.push(dev);
+      // US-242: una IP configurada a mano existe aunque hoy no conteste; se muestra
+      // como no disponible en vez de desaparecer, que se confundía con «apagado».
+      devices.push(dev ?? unreachableDevice({ id: `kasa:${ip}`, name: `Kasa ${ip}`, kind: 'plug' }));
     }
 
     // --- Tapo: descubrimiento + IPs configuradas ---
@@ -71,7 +74,12 @@ export class KasaIotManager implements IotManager {
       }
       for (const ip of tapoIps) {
         const dev = await this.fetchTapo(ip).catch(() => null);
+        // Igual que en Kasa, pero SOLO las declaradas: una IP que solo salió del
+        // descubrimiento y hoy no responde no consta que exista.
         if (dev) devices.push(dev);
+        else if ((this.opts.tapoIps ?? []).includes(ip)) {
+          devices.push(unreachableDevice({ id: `tapo:${ip}`, name: `Tapo ${ip}`, kind: 'plug' }));
+        }
       }
     }
 

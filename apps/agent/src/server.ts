@@ -42,6 +42,7 @@ import { WebAuthnService, webauthnConfigWarnings } from './webauthn/webauthn.ser
 import { inventoryRoutes } from './modules/inventory/inventory.routes.js';
 import { InventoryService } from './modules/inventory/inventory.service.js';
 import { TlsService } from './modules/system/tls.service.js';
+import { IotIdMigrationService } from './modules/iot/id-migration.service.js';
 import { accessRoutes } from './modules/access/access.routes.js';
 import { AccessScheduleService } from './modules/access/access.service.js';
 import { peopleRoutes } from './modules/people/people.routes.js';
@@ -278,6 +279,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   inventoryService.setEventSink((event) => homeBus.publish(event));
   const iotWatcher = new IotWatcher(iotPolled, homeBus, app.log);
+  // US-242: los cambios que NO origina la app (el interruptor de pared, la app del
+  // fabricante, una automatización del propio bridge) llegan al socket desde aquí.
+  iotWatcher.setDeviceSink((device) => app.io.to(IOT_ROOM).emit('iot:device-updated', device));
   const automationService = new AutomationService(app, {
     iot,
     scenes: sceneService,
@@ -303,6 +307,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   // depender de que alguien se acuerde de pulsar «Copia de seguridad». Se construye
   // aquí (con el secretbox REAL, para que la contraseña sobreviva a un reinicio) y se
   // comparte con las rutas.
+  // US-243: reescritura única de los ids IoT persistidos al formato con prefijo.
+  // Va antes de que nada lea escenas/horarios/energía, para que el primer barrido
+  // ya opere sobre los ids nuevos.
+  await new IotIdMigrationService({ app, iot, kinds: runtime.iotKinds }).run();
+
   const autoBackupService = new AutoBackupService({
     prisma: app.prisma,
     secretbox,

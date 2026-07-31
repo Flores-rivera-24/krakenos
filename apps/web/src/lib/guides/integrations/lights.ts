@@ -213,6 +213,7 @@ const tuya: IntegrationGuide = {
         { value: '3.1', label: '3.1' },
         { value: '3.3', label: '3.3 (habitual)' },
         { value: '3.4', label: '3.4' },
+        { value: '3.5', label: '3.5' },
       ],
     },
   ],

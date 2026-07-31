@@ -5,6 +5,7 @@ import type {
   FirewallManager,
   HardwareDriver,
   IntegrationDomain,
+  IotKind,
   IotManager,
   QosManager,
   VlanManager,
@@ -66,6 +67,8 @@ export interface IntegrationRuntime {
   dns: ManagerHolder<DnsManager>;
   /** Store de dispositivos Tuya, compartido con las rutas `/api/iot/tuya` (US-63). */
   tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
+  /** Backends IoT activos al arrancar. Los usa la migración de ids (US-243). */
+  iotKinds: IotKind[];
   /**
    * Reconstruye e intercambia en caliente el manager de `domain` desde la config
    * actual. Devuelve `fallback: true` si la config guardada no se pudo aplicar y
@@ -127,6 +130,7 @@ export async function buildIntegrationRuntime(
   startIotManager(initialIot.manager, onIotError);
   const iot = createManagerHolder<IotManager>(initialIot.manager, disposeManager);
   const tuyaStore = initialIot.tuyaStore;
+  const iotKinds = initialIot.kinds;
   const cameras = createManagerHolder<CameraManager>(
     (await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r)))).value,
     disposeManager,
@@ -217,5 +221,18 @@ export async function buildIntegrationRuntime(
     );
   }
 
-  return { driver, vpn, iot, cameras, firewall, vlan, qos, dns, tuyaStore, reconfigure, stopAll };
+  return {
+    driver,
+    vpn,
+    iot,
+    cameras,
+    firewall,
+    vlan,
+    qos,
+    dns,
+    tuyaStore,
+    iotKinds,
+    reconfigure,
+    stopAll,
+  };
 }

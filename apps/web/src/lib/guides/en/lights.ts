@@ -157,6 +157,7 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
           '3.1': '3.1',
           '3.3': '3.3 (common)',
           '3.4': '3.4',
+          '3.5': '3.5',
         },
       },
     },
