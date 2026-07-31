@@ -1,6 +1,8 @@
 # ADR — Control total: KrakenOS contra la app del fabricante (Fase 8)
 
-- **Estado:** Aceptado (2026-07-29)
+- **Estado:** Aceptado (2026-07-29) · **ratificado por el dueño y mergeado el 2026-07-30**. Hasta esa
+  fecha vivió en la rama `fase8/adr-control-total` **sin mergear**, y `CLAUDE.md` bloqueaba la Fase 8
+  a la espera de esta lectura. Ese bloqueo queda **levantado**.
 - **Sustituye parcialmente a:** [`adr-positioning.md`](adr-positioning.md) — se conserva su tesis
   central («complemento de Home Assistant») y se **revierten** tres decisiones concretas: IoT como
   vertical «suficiente», la interop como exclusivamente saliente, y la opción de convertirse en
