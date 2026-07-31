@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { describeError } from '@/lib/errors';
-import { setLocale, useT, type TranslationKey } from '@/lib/i18n';
+import { changeLocale, useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useState } from 'react';
@@ -32,7 +32,10 @@ export function LanguageCard() {
       useAuthStore.setState({ user: updated });
       // Aplica y persiste en el dispositivo de inmediato (el efecto de App
       // también reaccionaría, pero así el toast ya sale en el idioma nuevo).
-      setLocale(locale);
+      // `changeLocale` espera al catálogo antes de activarlo (US-262): con
+      // `setLocale` a secas, el toast de «idioma cambiado» saldría en el idioma
+      // viejo justo al cambiarlo, que es el peor sitio para fallar.
+      await changeLocale(locale);
       toast.success(t('settings.language.changed'));
     } catch (err) {
       toast.error(describeError(err, t('settings.language.error')));

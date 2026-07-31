@@ -1,8 +1,9 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { en } from '@/lib/i18n/catalog/en';
 import { es } from '@/lib/i18n/catalog/es';
 import {
   detectBrowserLocale,
+  ensureCatalog,
   getLocale,
   plural,
   resolveInitialLocale,
@@ -11,6 +12,13 @@ import {
 } from '@/lib/i18n';
 import { ApiRequestError } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+
+// US-262: `en` ya no viaja en el bundle, así que importarlo arriba (para la
+// prueba de paridad) NO lo registra como catálogo activo. Este es el único
+// fichero que asierta texto en inglés tras un `setLocale` síncrono, y por eso la
+// precarga vive aquí y no en el setup global (medido: allí costaba +19 % de
+// setup en los 129 ficheros para arreglar 3 tests de este).
+beforeAll(() => ensureCatalog('en'));
 
 // El idioma es estado global de módulo: cada test lo restaura para no contaminar.
 afterEach(() => setLocale('es', { persist: false }));
