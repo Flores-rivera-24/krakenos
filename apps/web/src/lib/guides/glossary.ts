@@ -155,7 +155,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   token: {
     term: 'Token',
     short: 'Una contraseña larga y automática que un servicio te da para que otras apps se identifiquen sin usar tu usuario y clave.',
-    long: 'En vez de meter tu usuario y contraseña, algunos aparatos (como el hub de SwitchBot) te dan un token: una cadena de letras y números que autoriza el acceso. Trátalo como una contraseña y no lo compartas.',
+    long: 'En vez de meter tu usuario y contraseña, algunos aparatos te dan un token: una cadena de letras y números que autoriza el acceso. Trátalo como una contraseña y no lo compartas.',
   },
   ssh: {
     term: 'SSH',

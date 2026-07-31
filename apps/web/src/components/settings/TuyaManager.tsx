@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
 import { ApiRequestError, api } from '@/lib/api';
 
-const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4'];
+const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
 const EMPTY: CreateTuyaDeviceRequest = { deviceId: '', localKey: '', ip: '', name: '', version: '3.3' };
 
 interface Props {

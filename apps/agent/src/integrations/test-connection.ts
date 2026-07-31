@@ -90,7 +90,26 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
     case 'iot': {
       const { manager } = createIotManager(resolveIotConfig(record));
       try {
+        // US-242: **hay que arrancar el manager**. Sin esto, los backends con
+        // conexión persistente (zigbee2mqtt, Matter, Meross) devolvían su lista
+        // vacía en memoria sin haber hablado con nadie, y «Probar conexión»
+        // respondía «Conectado. 0 dispositivos» con el broker apagado — el peor
+        // resultado posible: el usuario da por buena una integración muerta.
+        const startable = manager as { start?: () => Promise<void> };
+        if (startable.start) {
+          await withTimeout(startable.start(), PROBE_TIMEOUT_MS);
+        }
         const devices = await manager.listDevices();
+        if (devices.length === 0) {
+          // Cero aparatos no es un fallo (un zigbee2mqtt recién montado no tiene
+          // ninguno emparejado), pero tampoco es un «conectado» a secas: se dice
+          // exactamente lo que se sabe.
+          return {
+            ok: true,
+            message: 'Conectado, pero no hay ningún dispositivo todavía. Empareja alguno y vuelve a probar.',
+            details: { dispositivos: 0 },
+          };
+        }
         return {
           ok: true,
           message: `Conectado. ${devices.length} dispositivo(s) detectado(s).`,

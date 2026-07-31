@@ -1,4 +1,6 @@
-const VERSION_ENUM = ['3.1', '3.3', '3.4'] as const;
+// US-242: 3.4 y 3.5 (AES-GCM, framing 0x00006699) las soporta `tuyapi` 7.7.x
+// desde hace más de un año; lo único que las bloqueaba eran estas uniones.
+const VERSION_ENUM = ['3.1', '3.3', '3.4', '3.5'] as const;
 
 /** Vista pública de un dispositivo Tuya: **nunca** incluye `localKey`. */
 const publicDeviceResponse = {

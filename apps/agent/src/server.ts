@@ -279,6 +279,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   );
   inventoryService.setEventSink((event) => homeBus.publish(event));
   const iotWatcher = new IotWatcher(iotPolled, homeBus, app.log);
+  // US-242: los cambios que NO origina la app (el interruptor de pared, la app del
+  // fabricante, una automatización del propio bridge) llegan al socket desde aquí.
+  iotWatcher.setDeviceSink((device) => app.io.to(IOT_ROOM).emit('iot:device-updated', device));
   const automationService = new AutomationService(app, {
     iot,
     scenes: sceneService,

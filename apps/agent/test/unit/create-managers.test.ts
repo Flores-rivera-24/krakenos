@@ -11,7 +11,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, SwitchBotIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -124,16 +124,11 @@ describe('createIotManager', () => {
     );
   });
 
-  it('construye un SwitchBotIotManager con su configuración', () => {
-    expect(
-      backendDe({ kind: 'switchbot', switchbot: { host: '192.168.1.90', port: 8123 } }),
-    ).toBeInstanceOf(SwitchBotIotManager);
-  });
-
-  it('lanza si falta el host del Hub SwitchBot', () => {
-    expect(() => createIotManager({ kind: 'switchbot', switchbot: { host: '' } })).toThrow(
-      /SWITCHBOT_HUB_HOST/,
-    );
+  it('el backend SwitchBot ya NO existe: se retiró en US-242', () => {
+    // Pedía la API de NUBE v1.0 con el host cambiado por una IP de LAN (y 8123 es
+    // el puerto de Home Assistant): no hay API REST local en el Hub Mini ni en el
+    // Hub 2, así que no podía funcionar. Un Hub 2 va por Matter.
+    expect(() => createIotManager({ kind: 'switchbot' as 'mock' })).toThrow(/desconocida/i);
   });
 
   it('con varios kinds (lista) devuelve un CompositeIotManager', () => {

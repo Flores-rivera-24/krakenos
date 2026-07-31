@@ -1,7 +1,7 @@
 import type { Identifiable, JsonStore } from '../store/json-store.js';
 
 /** Versión del protocolo Tuya local. */
-export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4';
+export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4' | '3.5';
 
 /**
  * Configuración de un foco Tuya físico. La `localKey` es la clave AES (16 bytes)

@@ -2,7 +2,7 @@ import type { IntegrationGuide } from '../types';
 
 /**
  * Guías de enchufes e interruptores inteligentes (dominio 'iot', categoría 'plugs'):
- * Kasa, Tapo, Shelly, Meross y SwitchBot. Internalizadas de sus docs y reescritas
+ * Kasa, Tapo, Shelly y Meross. Internalizadas de sus docs y reescritas
  * en español llano para el asistente.
  */
 
@@ -272,75 +272,8 @@ const meross: IntegrationGuide = {
   ],
 };
 
-const switchbot: IntegrationGuide = {
-  id: 'switchbot',
-  domain: 'iot',
-  kind: 'switchbot',
-  category: 'plugs',
-  displayName: 'SwitchBot',
-  vendor: 'SwitchBot',
-  icon: 'Plug',
-  tier: 2,
-  intro:
-    'SwitchBot tiene dispositivos muy versátiles: desde el "Bot" que pulsa físicamente un botón hasta enchufes y bombillas de colores. KrakenOS los controla a través del Hub Mini o Hub 2 de SwitchBot, usando su acceso local (sin la nube). Necesitas activar ese acceso en la app y copiar un "token" que hace de llave.',
-  prerequisites: [
-    'Un Hub Mini o Hub 2 de SwitchBot (los otros modelos de hub no sirven aquí).',
-    'La app SwitchBot para activar el control local y obtener el token.',
-    'Que el hub tenga una IP fija en tu router.',
-  ],
-  steps: [
-    {
-      title: 'Activa el control local en la app',
-      body: 'Abre la app SwitchBot, entra en tu Hub Mini/Hub 2 y activa la opción de "API en LAN" o "control local" (el nombre varía según la versión). Asegúrate de que el hub tiene una IP fija reservada en tu router.',
-      external: true,
-    },
-    {
-      title: 'Copia el token',
-      body: 'En la app SwitchBot, ve a "Perfil → Preferencias → Modo desarrollador" y copia el "Token". Es una llave larga que autoriza el acceso, como una contraseña. Guárdalo a mano para el siguiente paso.',
-      note: 'Trata el token como una contraseña: no lo compartas. Se guarda cifrado.',
-      external: true,
-    },
-    {
-      title: 'Conecta KrakenOS',
-      body: 'Introduce la dirección del hub, su puerto (por defecto 8123) y el token. Al guardar, aparecen los dispositivos compatibles (Bot, Plug Mini, bombillas de color, tiras...). Los sensores y cerraduras no se muestran en esta versión.',
-    },
-  ],
-  fields: [
-    {
-      key: 'hubHost',
-      label: 'Dirección del hub',
-      help: 'La IP del Hub Mini/Hub 2 en tu red, por ejemplo 192.168.1.90. Conviene que sea fija.',
-      type: 'host',
-      placeholder: '192.168.1.90',
-      required: true,
-    },
-    {
-      key: 'hubPort',
-      label: 'Puerto del hub',
-      help: 'La "puerta" por la que responde el hub. Por defecto es 8123.',
-      type: 'number',
-      required: false,
-      defaultValue: 8123,
-    },
-    {
-      key: 'token',
-      label: 'Token',
-      help: 'La llave que copiaste del modo desarrollador de la app SwitchBot. Se guarda cifrada.',
-      type: 'password',
-      required: true,
-      secret: true,
-    },
-  ],
-  troubleshooting: [
-    {
-      q: 'No aparece ningún dispositivo.',
-      a: 'Confirma que activaste el control local en el hub, que el token es correcto y que la dirección y el puerto del hub son los correctos. Recuerda que hace falta un Hub Mini o Hub 2.',
-    },
-    {
-      q: 'No veo mi sensor o mi cerradura.',
-      a: 'Esta versión solo muestra enchufes y luces (Bot, Plug Mini, Color Bulb, Strip Light, Ceiling Light). Los sensores, cortinas y cerraduras se filtran por ahora.',
-    },
-  ],
-};
-
-export const PLUG_GUIDES: IntegrationGuide[] = [kasa, tapo, shelly, meross, switchbot];
+// US-242: la guía de SwitchBot se retira con su backend. Prometía «sin la app ni la
+// nube» y en el paso 1 mandaba abrir la app — porque el backend pedía la API de
+// NUBE v1.0 con el host cambiado por una IP de LAN. Un Hub 2 se integra por Matter,
+// que sí funciona y no necesita adaptador propio.
+export const PLUG_GUIDES: IntegrationGuide[] = [kasa, tapo, shelly, meross];

@@ -23,6 +23,19 @@ function transitions(before: IotDevice | undefined, after: IotDevice): HomeEvent
   return events;
 }
 
+/** ¿Cambió algo que la UI pinte? Comparación estable, sin sorpresas de orden. */
+function cambio(before: IotDevice, after: IotDevice): boolean {
+  return (
+    before.on !== after.on ||
+    before.brightness !== after.brightness ||
+    before.reachable !== after.reachable ||
+    before.color?.hex !== after.color?.hex ||
+    before.color?.temperatureK !== after.color?.temperatureK ||
+    (before.reading?.value ?? null) !== (after.reading?.value ?? null) ||
+    (before.powerW ?? null) !== (after.powerW ?? null)
+  );
+}
+
 /**
  * Observador de estado IoT (US-167): sondea `listDevices()` periódicamente y
  * publica en el bus las **transiciones** (encendido/apagado, lectura de sensor
@@ -34,12 +47,25 @@ function transitions(before: IotDevice | undefined, after: IotDevice): HomeEvent
 export class IotWatcher {
   private loop: TickLoop | null = null;
   private baseline: Map<string, IotDevice> | null = null;
+  /**
+   * Sumidero de cambios observados **desde fuera** de la app (US-242). Los seis
+   * emisores de `iot:device-updated` que había eran todos de origen interno, así
+   * que encender un foco desde el interruptor de pared no llegaba a la UI hasta
+   * recargar — justo el escenario que «sustituir a la app del fabricante» exige
+   * que funcione. Inyectado para no acoplar el watcher a Socket.io.
+   */
+  private deviceSink: ((device: IotDevice) => void) | null = null;
 
   constructor(
     private readonly iot: IotManager,
     private readonly bus: HomeEventBus,
     private readonly log?: FastifyBaseLogger,
   ) {}
+
+  /** Registra a quién avisar de un cambio observado (US-242). */
+  setDeviceSink(sink: (device: IotDevice) => void): void {
+    this.deviceSink = sink;
+  }
 
   /** Un barrido: difiere el snapshot actual contra la línea base y publica transiciones. */
   async tick(): Promise<void> {
@@ -52,6 +78,13 @@ export class IotWatcher {
     for (const device of current.values()) {
       for (const event of transitions(prev.get(device.id), device)) {
         this.bus.publish(event);
+      }
+      // El sumidero va aparte de las transiciones **a propósito**: el bus solo
+      // modela encendido/apagado y lecturas, pero la UI también pinta brillo,
+      // color y disponibilidad. Se avisa de cualquier cambio observable.
+      const before = prev.get(device.id);
+      if (this.deviceSink && before && cambio(before, device)) {
+        this.deviceSink(device);
       }
     }
   }
