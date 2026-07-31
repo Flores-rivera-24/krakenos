@@ -5,6 +5,7 @@ import type {
   IntegrationKindSchema,
   IntegrationTestResult,
 } from '@krakenos/types';
+import { IOT_SUPPORT_LEVEL, type IotKind } from '@krakenos/types';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ export function IntegrationWizard({
   const guide = getGuideByKind(kind);
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';
+  const esCommunity = isIot && IOT_SUPPORT_LEVEL[kind as IotKind] === 'community';
   const fields = kindSchema.fields;
   // Los `kind` sin config (mock/demo) saltan directamente a "Prueba y guarda".
   const skipConnect = kindSchema.zeroConfig === true || fields.length === 0;
@@ -191,6 +193,18 @@ export function IntegrationWizard({
 
   const prepare = (
     <div className="space-y-4">
+      {/* US-238: el aviso va ANTES del intro y de los pasos. Enterarse de que un
+          backend no lleva garantía después de haber seguido diez pasos es
+          enterarse tarde. Sale del mismo mapa que el catálogo de compatibilidad
+          (`IOT_SUPPORT_LEVEL`), así que no pueden discrepar. */}
+      {esCommunity && (
+        <Callout variant="warning" title="Soporte de la comunidad, sin garantía" standing>
+          Para dar de alta {displayName} hace falta su app o su nube al menos una vez, así que
+          KrakenOS no puede prometer que siga funcionando si el fabricante cambia algo. El código se
+          mantiene, pero sin garantía. Si buscas independencia de verdad, los aparatos Zigbee, Matter
+          o Shelly se emparejan contra tu propio servidor.
+        </Callout>
+      )}
       <p className="text-kr-sm text-kr-secondary">
         {guide?.intro ?? `Vamos a configurar ${kindSchema.label}.`}
       </p>

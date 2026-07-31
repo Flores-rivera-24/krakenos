@@ -42,6 +42,46 @@ describe('buildCompatibilityCatalog (US-208)', () => {
     expect(catalog.every((e) => e.verified === false)).toBe(true);
   });
 
+  // --- Nivel de soporte (US-238) ---
+
+  it('marca community lo que necesita la app del fabricante, y core lo demás', () => {
+    // El criterio es el de `docs/adr-control-total.md`: protocolo abierto o
+    // emparejamiento local = core; app/nube del fabricante = community.
+    const nivel = (id: string) => byId(id)?.support;
+    expect(nivel('iot:tuya')).toBe('community');
+    expect(nivel('iot:govee')).toBe('community');
+    expect(nivel('iot:meross')).toBe('community');
+    expect(nivel('iot:zigbee')).toBe('core');
+    expect(nivel('iot:matter')).toBe('core');
+    expect(nivel('iot:hue')).toBe('core');
+    expect(nivel('iot:shelly')).toBe('core');
+    expect(nivel('iot:kasa')).toBe('core');
+  });
+
+  it('los dominios que no son IoT son core: hablan protocolos abiertos', () => {
+    const noIot = catalog.filter((e) => e.category !== 'iot');
+    // Guard de recolección: si el filtro dejara de recoger, la aserción de abajo
+    // pasaría sobre una lista vacía sin comprobar nada.
+    expect(noIot.length).toBeGreaterThan(5);
+    expect(noIot.every((e) => e.support === 'core')).toBe(true);
+  });
+
+  it('TODA entrada declara su nivel: ninguna se queda sin clasificar', () => {
+    // Es el fallo que el mapa exhaustivo evita en compilación; aquí se comprueba
+    // también en ejecución, porque un `as` mal puesto lo dejaría en `undefined`
+    // y la UI simplemente no pintaría el aviso — un fallo silencioso.
+    const sinNivel = catalog.filter((e) => e.support !== 'core' && e.support !== 'community');
+    expect(sinNivel.map((e) => e.id)).toEqual([]);
+  });
+
+  it('community NO es un cajón de sastre: la mayoría del catálogo sigue siendo core', () => {
+    // Si algún día casi todo acabara en community, el catálogo dejaría de
+    // informar. Que salte el test es la señal para replantear el producto.
+    const community = catalog.filter((e) => e.support === 'community');
+    expect(community.length).toBeGreaterThan(0);
+    expect(community.length).toBeLessThan(catalog.length / 2);
+  });
+
   it('ordena por nombre y no está vacío', () => {
     expect(catalog.length).toBeGreaterThan(5);
     const labels = catalog.map((e) => e.label);

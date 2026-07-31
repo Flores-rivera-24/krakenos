@@ -5,7 +5,7 @@ import {
   type CompatRequirement,
   COMPAT_CATEGORIES,
 } from '@krakenos/types';
-import type { DriverKind, IntegrationField } from '@krakenos/types';
+import { IOT_SUPPORT_LEVEL, type DriverKind, type IntegrationField, type IotKind } from '@krakenos/types';
 import { INTEGRATION_SCHEMA } from '../../integrations/schema.js';
 import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
 
@@ -92,6 +92,10 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
         requirements: deriveRequirements(id, schema.fields),
         // Nada verificado con hardware real todavía (checklist US-86).
         verified: false,
+        // Fuente única en `@krakenos/types`: el asistente de la web lee el mismo
+        // mapa, así que no pueden discrepar. Los demás dominios (SSH, REST local,
+        // SNMP, RTSP, WireGuard, tc, Pi-hole) son protocolo abierto por construcción.
+        support: category === 'iot' ? IOT_SUPPORT_LEVEL[kind as IotKind] : 'core',
       });
     }
   }

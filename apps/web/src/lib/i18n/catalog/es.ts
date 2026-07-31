@@ -951,6 +951,7 @@ export const es = {
   'compat.none': 'No encontramos ese equipo. Que no esté en la lista no significa que no funcione: muchos routers con OpenWrt o dispositivos estándar valen igual.',
   'compat.verified': 'Verificado con hardware',
   'compat.unverified': 'Soportado por código',
+  'compat.community': 'Community · sin garantía: necesita la app del fabricante para el alta y puede dejar de funcionar si la cambian.',
   'compat.needs': 'Necesita:',
   'compat.cat.driver': 'Routers y puntos de acceso',
   'compat.cat.iot': 'Dispositivos inteligentes',

@@ -942,6 +942,7 @@ export const en: Record<TranslationKey, string> = {
   'compat.none': "We couldn't find that equipment. Not being listed doesn't mean it won't work: many routers with OpenWrt or standard devices work fine.",
   'compat.verified': 'Verified with hardware',
   'compat.unverified': 'Supported in code',
+  'compat.community': 'Community · no guarantee: it needs the manufacturer app to set up and may break if they change it.',
   'compat.needs': 'Needs:',
   'compat.cat.driver': 'Routers and access points',
   'compat.cat.iot': 'Smart devices',
