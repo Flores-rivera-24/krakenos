@@ -13,8 +13,6 @@ import { createMerossTransport } from './meross.transport.js';
 import { ShellyIotManager } from './shelly.iot.js';
 import type { ShellyDeviceConfig } from './shelly.parsers.js';
 import { FetchShellyTransport } from './shelly.transport.js';
-import { SwitchBotIotManager } from './switchbot.iot.js';
-import { FetchSwitchBotTransport } from './switchbot.transport.js';
 import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
@@ -58,16 +56,6 @@ export interface GoveeIotConfig {
 export interface TuyaIotConfig {
   /** Ruta al fichero de config de dispositivos (id/localKey/ip por dispositivo). */
   configPath: string;
-}
-
-/** Config para la integración SwitchBot (`kind: 'switchbot'`, API local del Hub). */
-export interface SwitchBotIotConfig {
-  /** Host del Hub Mini/Hub 2. */
-  host: string;
-  /** Puerto de la API local (por defecto 8123). */
-  port?: number;
-  /** Token de autorización (header `Authorization`). */
-  token?: string;
 }
 
 /** Config para la integración Meross (`kind: 'meross'`, MQTT local). */
@@ -123,8 +111,6 @@ export interface IotConfig {
   shelly?: ShellyIotConfig;
   /** Requerido cuando `kind === 'meross'`. */
   meross?: MerossIotConfig;
-  /** Requerido cuando `kind === 'switchbot'`. */
-  switchbot?: SwitchBotIotConfig;
 }
 
 /**
@@ -137,13 +123,16 @@ export interface IotConfig {
 export interface IotManagerBundle {
   manager: IotManager;
   tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
+  /** Backends activos, en orden. Los usa la migración de ids (US-243). */
+  kinds: IotKind[];
 }
 
 /**
  * Construye la integración IoT. `kind` puede ser un único valor o una **lista
- * separada por comas** (`hue,govee`): con varios, se envuelven en un
- * `CompositeIotManager` que enruta por prefijo de id. El resto del agente solo
- * conoce la interfaz `IotManager`.
+ * separada por comas** (`hue,govee`). Se envuelve **siempre** en un
+ * `CompositeIotManager` que enruta por prefijo de id — también con uno solo, para
+ * que el id de un aparato no cambie al añadir el segundo backend (US-243). El
+ * resto del agente solo conoce la interfaz `IotManager`.
  *
  * El `tuyaStore` (fuente de verdad de la config Tuya) se crea aquí una sola vez
  * y se inyecta tanto en el manager `tuya` como, vía el bundle, en sus rutas de
@@ -165,14 +154,20 @@ export function createIotManager(
     deps.tuyaStore ??
     (config.tuya ? new FileJsonStore<TuyaDeviceRecord>(config.tuya.configPath) : undefined);
 
-  const manager =
-    kinds.length <= 1
-      ? buildIotManager(kinds[0] ?? 'mock', config, tuyaStore)
-      : new CompositeIotManager(
-          kinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config, tuyaStore) })),
-        );
+  // US-243: se prefija SIEMPRE, también con un solo backend. Antes el manager iba
+  // directo con uno y envuelto en `CompositeIotManager` a partir de dos, así que
+  // añadir el segundo backend re-prefijaba TODOS los ids — y esos ids están
+  // persistidos crudos y sin FK en seis sitios. El camino natural del usuario
+  // («empiezo con Hue, luego añado los Tapo») le vaciaba escenas, habitaciones,
+  // horarios, favoritos y el histórico de energía sin un solo error en pantalla.
+  // Ahora el id **no depende de cuántas integraciones haya**, que es la propiedad
+  // que faltaba; las instalaciones existentes las reescribe `IotIdMigrationService`.
+  const activeKinds: IotKind[] = kinds.length > 0 ? kinds : ['mock'];
+  const manager = new CompositeIotManager(
+    activeKinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config, tuyaStore) })),
+  );
 
-  return { manager, tuyaStore };
+  return { manager, tuyaStore, kinds: activeKinds };
 }
 
 /** Construye un único manager para un `kind` concreto. */
@@ -265,17 +260,6 @@ function buildIotManager(
         devices: meross.devices,
       });
     }
-    case 'switchbot': {
-      const sb = config.switchbot;
-      if (!sb) throw new Error('Falta la configuración SwitchBot (IotConfig.switchbot)');
-      if (!sb.host) throw new Error('La integración SwitchBot requiere SWITCHBOT_HUB_HOST');
-      return new SwitchBotIotManager({
-        transport: new FetchSwitchBotTransport({
-          baseUrl: `http://${sb.host}:${sb.port ?? 8123}`,
-          token: sb.token,
-        }),
-      });
-    }
     default: {
       const exhaustive: never = kind;
       throw new Error(`Integración IoT desconocida: ${String(exhaustive)}`);
@@ -307,6 +291,4 @@ export { ShellyIotManager } from './shelly.iot.js';
 export { FetchShellyTransport } from './shelly.transport.js';
 export { MerossIotManager } from './meross.iot.js';
 export { createMerossTransport } from './meross.transport.js';
-export { SwitchBotIotManager } from './switchbot.iot.js';
-export { FetchSwitchBotTransport } from './switchbot.transport.js';
 export { CompositeIotManager } from './composite.iot.js';

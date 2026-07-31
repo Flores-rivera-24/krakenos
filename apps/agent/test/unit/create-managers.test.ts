@@ -51,40 +51,71 @@ describe('createVpnManager', () => {
 });
 
 describe('createIotManager', () => {
+  /**
+   * US-243: el manager va SIEMPRE envuelto en el composite, también con un solo
+   * backend, para que el id de un aparato no cambie al añadir el segundo. Estos
+   * tests miran el miembro de dentro, que es lo que la factoría construye.
+   */
+  function backendDe(config: Parameters<typeof createIotManager>[0]) {
+    const { manager } = createIotManager(config);
+    expect(manager).toBeInstanceOf(CompositeIotManager);
+    return (manager as CompositeIotManager).members[0]?.manager;
+  }
+
+  it('prefija SIEMPRE, también con un único backend (US-243)', async () => {
+    // El invariante de la historia: el id no depende de cuántas integraciones
+    // haya configuradas. Antes, añadir la segunda re-prefijaba todos los ids y
+    // orfanaba escenas, habitaciones, horarios, favoritos y energía.
+    const { manager, kinds } = createIotManager({ kind: 'mock' });
+    expect(kinds).toEqual(['mock']);
+    const devices = await manager.listDevices();
+    expect(devices.length).toBeGreaterThan(0);
+    expect(devices.every((d) => d.id.startsWith('mock:'))).toBe(true);
+  });
+
+  it('sin kind configurado cae a `mock`, y también prefijado', () => {
+    const { kinds } = createIotManager({ kind: '' });
+    expect(kinds).toEqual(['mock']);
+  });
+
   it('devuelve un MockIotManager para kind "mock"', () => {
-    expect(createIotManager({ kind: 'mock' }).manager).toBeInstanceOf(MockIotManager);
+    expect(backendDe({ kind: 'mock' })).toBeInstanceOf(MockIotManager);
   });
 
   it('construye un ZigbeeIotManager con su configuración MQTT', () => {
-    const iot = createIotManager({ kind: 'zigbee', zigbee: { url: 'mqtt://localhost:1883' } });
-    expect(iot.manager).toBeInstanceOf(ZigbeeIotManager);
+    expect(backendDe({ kind: 'zigbee', zigbee: { url: 'mqtt://localhost:1883' } })).toBeInstanceOf(
+      ZigbeeIotManager,
+    );
   });
 
   it('construye un MatterIotManager con su configuración WebSocket', () => {
-    const iot = createIotManager({ kind: 'matter', matter: { url: 'ws://localhost:5580/ws' } });
-    expect(iot.manager).toBeInstanceOf(MatterIotManager);
+    expect(backendDe({ kind: 'matter', matter: { url: 'ws://localhost:5580/ws' } })).toBeInstanceOf(
+      MatterIotManager,
+    );
   });
 
   it('construye un HueIotManager con su configuración', () => {
-    const iot = createIotManager({ kind: 'hue', hue: { url: 'https://192.168.1.50', appKey: 'k' } });
-    expect(iot.manager).toBeInstanceOf(HueIotManager);
+    expect(
+      backendDe({ kind: 'hue', hue: { url: 'https://192.168.1.50', appKey: 'k' } }),
+    ).toBeInstanceOf(HueIotManager);
   });
 
   it('construye un GoveeIotManager (config opcional)', () => {
-    expect(createIotManager({ kind: 'govee' }).manager).toBeInstanceOf(GoveeIotManager);
+    expect(backendDe({ kind: 'govee' })).toBeInstanceOf(GoveeIotManager);
   });
 
   it('construye un KasaIotManager (config opcional)', () => {
-    expect(createIotManager({ kind: 'kasa' }).manager).toBeInstanceOf(KasaIotManager);
+    expect(backendDe({ kind: 'kasa' })).toBeInstanceOf(KasaIotManager);
   });
 
   it('construye un ShellyIotManager (config opcional)', () => {
-    expect(createIotManager({ kind: 'shelly' }).manager).toBeInstanceOf(ShellyIotManager);
+    expect(backendDe({ kind: 'shelly' })).toBeInstanceOf(ShellyIotManager);
   });
 
   it('construye un MerossIotManager con su configuración', () => {
-    const iot = createIotManager({ kind: 'meross', meross: { brokerHost: '192.168.1.5', devices: [] } });
-    expect(iot.manager).toBeInstanceOf(MerossIotManager);
+    expect(
+      backendDe({ kind: 'meross', meross: { brokerHost: '192.168.1.5', devices: [] } }),
+    ).toBeInstanceOf(MerossIotManager);
   });
 
   it('lanza si falta el broker Meross', () => {
@@ -94,8 +125,9 @@ describe('createIotManager', () => {
   });
 
   it('construye un SwitchBotIotManager con su configuración', () => {
-    const iot = createIotManager({ kind: 'switchbot', switchbot: { host: '192.168.1.90', port: 8123 } });
-    expect(iot.manager).toBeInstanceOf(SwitchBotIotManager);
+    expect(
+      backendDe({ kind: 'switchbot', switchbot: { host: '192.168.1.90', port: 8123 } }),
+    ).toBeInstanceOf(SwitchBotIotManager);
   });
 
   it('lanza si falta el host del Hub SwitchBot', () => {

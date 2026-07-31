@@ -31,6 +31,15 @@ export class CompositeIotManager implements IotManager {
 
   constructor(private readonly entries: CompositeEntry[]) {}
 
+  /**
+   * Miembros del composite. Desde US-243 **todo** manager va envuelto aquí —
+   * también cuando hay un solo backend— así que esta es la única vía para saber
+   * qué integración concreta hay detrás (diagnóstico y tests).
+   */
+  get members(): readonly CompositeEntry[] {
+    return this.entries;
+  }
+
   /** Arranca en segundo plano los miembros que lo necesiten (no bloquea). */
   async start(): Promise<void> {
     for (const { manager } of this.entries) {
