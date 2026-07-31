@@ -200,42 +200,6 @@ export function resolveDriverConfig(
           lanInterface: str(v.lanInterface, base.pfsense.lanInterface),
         },
       };
-    case 'cisco-ios':
-      return {
-        ...base,
-        kind,
-        host,
-        ciscoIos: {
-          ...base.ciscoIos,
-          interface: str(v.interface, base.ciscoIos.interface),
-          vlan: str(v.vlan, base.ciscoIos.vlan),
-          ssh: {
-            ...base.ciscoIos.ssh,
-            host,
-            port: num(v.sshPort, base.ciscoIos.ssh.port),
-            username: str(v.username, base.ciscoIos.ssh.username),
-            password: optStr(v.password) ?? base.ciscoIos.ssh.password,
-            enablePassword: optStr(v.enablePassword) ?? base.ciscoIos.ssh.enablePassword,
-          },
-        },
-      };
-    case 'cisco-netconf':
-      return {
-        ...base,
-        kind,
-        host,
-        ciscoNetconf: {
-          ...base.ciscoNetconf,
-          interface: str(v.interface, base.ciscoNetconf.interface),
-          netconf: {
-            ...base.ciscoNetconf.netconf,
-            host,
-            port: num(v.port, base.ciscoNetconf.netconf.port),
-            username: str(v.username, base.ciscoNetconf.netconf.username),
-            password: optStr(v.password) ?? base.ciscoNetconf.netconf.password,
-          },
-        },
-      };
     default:
       return { ...base, kind };
   }
@@ -366,7 +330,7 @@ export function resolveVlanConfig(
 ): VlanConfigArg {
   if (!record) return base;
   const v = record.values;
-  const kind = record.kind === 'switch' || record.kind === 'cisco' ? record.kind : 'mock';
+  const kind = record.kind === 'switch' ? record.kind : 'mock';
   return {
     ...base,
     kind,
@@ -375,14 +339,6 @@ export function resolveVlanConfig(
       host: str(v.host, base.switch.host),
       community: str(v.community, base.switch.community),
       port: num(v.port, base.switch.port),
-    },
-    cisco: {
-      ...base.cisco,
-      host: str(v.host, base.cisco.host),
-      port: num(v.port, base.cisco.port),
-      username: str(v.username, base.cisco.username),
-      password: optStr(v.password) ?? base.cisco.password,
-      enablePassword: optStr(v.enablePassword) ?? base.cisco.enablePassword,
     },
   };
 }

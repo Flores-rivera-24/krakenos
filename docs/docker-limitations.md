@@ -20,7 +20,7 @@ capacidades de red del host. Por tanto:
 | **Auto-descubrimiento** (mDNS / SSDP) | Multicast UDP en la LAN del host | El bridge de red de Docker aísla el contenedor del multicast de la LAN, así que no llegan los anuncios de los dispositivos. |
 
 > El resto de integraciones sí funcionan en Docker: drivers de red por SSH/REST (OpenWrt,
-> pfSense, UniFi, MikroTik, Cisco…), IoT por API/MQTT local (Hue, Govee, Kasa/Tapo, Shelly,
+> pfSense, UniFi, MikroTik, Omada…), IoT por API/MQTT local (Hue, Govee, Kasa/Tapo, Shelly,
 > Meross, Tuya, zigbee2mqtt, Matter), DNS/Pi-hole por HTTP, copias de seguridad,
 > usuarios, automatizaciones, energía, etc. — nada de eso depende de binarios del host.
 

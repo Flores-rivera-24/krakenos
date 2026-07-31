@@ -160,7 +160,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
   ssh: {
     term: 'SSH',
     short: 'Una forma segura de darle órdenes por texto a un aparato de la red (un router, un servidor) desde otro.',
-    long: 'SSH abre una "consola remota" cifrada. Algunos routers (OpenWrt, MikroTik, Cisco) permiten que KrakenOS los gestione por SSH con un usuario y contraseña. Es texto puro, sin ventanas.',
+    long: 'SSH abre una "consola remota" cifrada. Algunos routers (OpenWrt, MikroTik) permiten que KrakenOS los gestione por SSH con un usuario y contraseña. Es texto puro, sin ventanas.',
   },
   firmware: {
     term: 'Firmware',

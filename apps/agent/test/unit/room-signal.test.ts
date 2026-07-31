@@ -95,7 +95,7 @@ describe('collectSignalByMac (US-236)', () => {
     expect(driver.listNetworkClients).toHaveBeenCalledTimes(2);
   });
 
-  it('un driver sin WiFi (pfSense/Cisco) no rompe la publicación: mapa vacío', async () => {
+  it('un driver sin WiFi (pfSense) no rompe la publicación: mapa vacío', async () => {
     const driver = fakeDriver({
       listWifiNetworks: vi.fn(async () => {
         throw new Error('WiFi no soportado');

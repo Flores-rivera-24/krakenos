@@ -11,13 +11,17 @@ import type {
   WifiNetworkInfo,
 } from './wifi.js';
 
-/** Implementaciones de driver de hardware disponibles. */
+/**
+ * Implementaciones de driver de hardware disponibles.
+ *
+ * US-238 retiró `cisco-ios` y `cisco-netconf`: ~1.600 LOC de equipo de empresa,
+ * cero usuarios domésticos y cero verificaciones con hardware real. Un hogar con
+ * un Catalyst es un caso que este proyecto no puede sostener ni comprobar.
+ */
 export type DriverKind =
   | 'mock'
   | 'openwrt'
   | 'pfsense'
-  | 'cisco-ios'
-  | 'cisco-netconf'
   | 'unifi'
   | 'mikrotik'
   | 'omada'

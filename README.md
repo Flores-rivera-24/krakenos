@@ -43,7 +43,7 @@ existir best-in-class gratuito hace inútil competir (cámaras → Frigate, voz 
 - **Seguridad de red**: inventario en tiempo real (ARP/mDNS, OUI, bloqueo), VPN WireGuard propia
   (con QR), firewall, VLANs, QoS y DNS/bloqueo con **listas por categoría** (publicidad, malware,
   rastreo). **Arquitectura por drivers**: el mismo código funciona con OpenWrt, pfSense, UniFi,
-  MikroTik, Cisco… sin tocar la API ni el frontend.
+  MikroTik, Omada, ASUS… sin tocar la API ni el frontend.
 - **Energía**: medición de consumo (W/kWh), panel con histórico y **coste estimado**, con alertas
   por potencia sostenida o consumo diario.
 
@@ -304,15 +304,12 @@ Gobiernan inventario, tráfico, bloqueo y WiFi del router/switch.
 | `mock` | — (desarrollo) | — | — | — |
 | `openwrt` | OpenWrt (SSH+UCI) | `DRIVER_HOST`, `OPENWRT_*` | `node-ssh` | `docs/openwrt-ax21-setup.md` |
 | `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | — |
-| `cisco-ios` | Catalyst (SSH+CLI) | `DRIVER_HOST`, `CISCO_*` | `node-ssh` | `docs/cisco-ios-setup.md` |
-| `cisco-netconf` | IOS-XE 16.6+ (NETCONF) | `CISCO_NETCONF_*` | `node-ssh` | `docs/cisco-netconf-setup.md` |
 | `unifi` | Ubiquiti UniFi (REST local) | `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD` | — | `docs/unifi-setup.md` |
 | `mikrotik` | RouterOS 7 (REST o SSH) | `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD` | `node-ssh` (SSH) | `docs/mikrotik-setup.md` |
 | `omada` | TP-Link Omada (Controller local) | `OMADA_URL`, `OMADA_USERNAME`, `OMADA_PASSWORD` | — | `docs/omada-setup.md` |
 | `asus` | ASUS / Merlin (`appGet.cgi`) | `ASUS_HOST`, `ASUS_USERNAME`, `ASUS_PASSWORD` | — | `docs/asus-setup.md` |
 
-> pfSense y Cisco no gestionan WiFi (los AP van aparte). Las VLANs en Cisco usan
-> `VLAN_KIND=cisco` (reusa el transporte SSH del driver).
+> pfSense no gestiona WiFi (los AP van aparte).
 
 ### IoT (`IOT_KIND`)
 
@@ -341,7 +338,7 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 | Firewall | `FIREWALL_KIND=iptables` + `FW_*` | helper sudoers | cadena dedicada `KRAKENOS` |
 | QoS | `QOS_KIND=tc` + `TC_*` | helper sudoers | jerarquía HTB |
 | DNS / Pi-hole | `DNS_KIND=pihole` + `PIHOLE_URL`, `PIHOLE_PASSWORD` | HTTP (REST v6) | sin helper |
-| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*` | SNMP | `net-snmp`; o `VLAN_KIND=cisco` |
+| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*` | SNMP | `net-snmp` |
 | Cámaras | `CAMERAS_KIND=rtsp` + `CAMERAS_CONFIG` | ffmpeg | inventario + snapshot |
 
 ### Operaciones privilegiadas (helper sudoers)

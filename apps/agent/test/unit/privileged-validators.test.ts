@@ -1,14 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   InvalidArgumentError,
-  assertCiscoInterface,
   assertInterfaceName,
   assertIpv4,
   assertIpv4Cidr,
   assertNonNegativeInteger,
   assertVlanName,
   assertVlanTag,
-  assertVlanTagString,
   assertWireguardKey,
 } from '../../src/privileged/validators.js';
 
@@ -40,18 +38,6 @@ describe('validadores anti-inyección (US-73)', () => {
     });
   });
 
-  describe('assertCiscoInterface', () => {
-    it('acepta puertos Cisco con "/"', () => {
-      expect(assertCiscoInterface('GigabitEthernet0/1')).toBe('GigabitEthernet0/1');
-      expect(assertCiscoInterface('Gi1/0/24')).toBe('Gi1/0/24');
-    });
-    it('rechaza inyección de bandera, espacios y saltos de línea', () => {
-      for (const bad of ['-x', 'Gi0/1 shut', 'Gi0/1\nshutdown', '../x']) {
-        expect(() => assertCiscoInterface(bad)).toThrow(InvalidArgumentError);
-      }
-    });
-  });
-
   describe('assertWireguardKey', () => {
     it('acepta una clave base64 de 32 bytes', () => {
       const key = `${'A'.repeat(43)}=`;
@@ -79,18 +65,14 @@ describe('validadores anti-inyección (US-73)', () => {
     });
   });
 
-  describe('assertVlanTag / assertVlanTagString', () => {
+  describe('assertVlanTag', () => {
     it('acepta tags 802.1Q en rango', () => {
       expect(assertVlanTag(1)).toBe(1);
       expect(assertVlanTag(4094)).toBe(4094);
-      expect(assertVlanTagString('100')).toBe('100');
     });
-    it('rechaza fuera de rango, no enteros y cadenas no numéricas', () => {
+    it('rechaza fuera de rango y no enteros', () => {
       for (const bad of [0, 4095, -1, 1.5, Number.NaN]) {
         expect(() => assertVlanTag(bad)).toThrow(InvalidArgumentError);
-      }
-      for (const bad of ['0', '5000', 'abc', '1 drop', '1\nreload']) {
-        expect(() => assertVlanTagString(bad)).toThrow(InvalidArgumentError);
       }
     });
   });

@@ -253,28 +253,6 @@ export const env = {
       wanInterface: process.env.PFSENSE_WAN_IFACE ?? 'wan',
       lanInterface: process.env.PFSENSE_LAN_IFACE ?? 'lan',
     },
-    // Solo se usa cuando DRIVER_KIND=cisco-ios (driver real vía SSH+CLI de IOS).
-    ciscoIos: {
-      interface: process.env.CISCO_INTERFACE ?? 'GigabitEthernet0/0',
-      vlan: process.env.CISCO_BLOCK_VLAN ?? '1',
-      ssh: {
-        host: process.env.DRIVER_HOST ?? '',
-        port: int('CISCO_SSH_PORT', 22),
-        username: process.env.CISCO_USER ?? 'admin',
-        password: process.env.CISCO_PASSWORD || undefined,
-        enablePassword: process.env.CISCO_ENABLE_PASSWORD || undefined,
-      },
-    },
-    // Solo se usa cuando DRIVER_KIND=cisco-netconf (IOS-XE 16.6+ vía NETCONF, puerto 830).
-    ciscoNetconf: {
-      interface: process.env.CISCO_INTERFACE ?? 'GigabitEthernet1',
-      netconf: {
-        host: process.env.CISCO_NETCONF_HOST ?? process.env.DRIVER_HOST ?? '',
-        port: int('CISCO_NETCONF_PORT', 830),
-        username: process.env.CISCO_NETCONF_USER ?? process.env.CISCO_USER ?? 'admin',
-        password: process.env.CISCO_NETCONF_PASSWORD || process.env.CISCO_PASSWORD || undefined,
-      },
-    },
     // Solo se usa cuando DRIVER_KIND=unifi (API local del controller UniFi Network).
     unifi: {
       url: process.env.UNIFI_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
@@ -413,21 +391,12 @@ export const env = {
   },
 
   vlan: {
-    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch' | 'cisco',
+    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
     // Solo se usa cuando VLAN_KIND=switch (switch gestionado vía SNMP).
     switch: {
       host: process.env.VLAN_SWITCH_HOST ?? '',
       community: process.env.VLAN_SWITCH_COMMUNITY ?? 'private',
       port: int('VLAN_SWITCH_SNMP_PORT', 161),
-      storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
-    },
-    // Solo se usa cuando VLAN_KIND=cisco (switch Cisco IOS vía SSH+CLI, reusa CISCO_*).
-    cisco: {
-      host: process.env.DRIVER_HOST ?? '',
-      port: int('CISCO_SSH_PORT', 22),
-      username: process.env.CISCO_USER ?? 'admin',
-      password: process.env.CISCO_PASSWORD || undefined,
-      enablePassword: process.env.CISCO_ENABLE_PASSWORD || undefined,
       storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
     },
   },

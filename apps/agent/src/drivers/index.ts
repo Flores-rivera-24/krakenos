@@ -1,8 +1,4 @@
 import type { DriverKind, HardwareDriver } from '@krakenos/types';
-import { CiscoIosDriver } from './cisco-ios.driver.js';
-import { SshCiscoTransport } from './cisco-ios.transport.js';
-import { CiscoNetconfDriver } from './cisco-netconf.driver.js';
-import { SshNetconfTransport } from './cisco-netconf.transport.js';
 import { MockDriver } from './mock.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
@@ -42,34 +38,6 @@ export interface PfSenseDriverConfig {
   wanInterface?: string;
   /** Interfaz donde se crean las reglas de bloqueo (por defecto `lan`). */
   lanInterface?: string;
-}
-
-/** Config SSH+CLI para el driver Cisco IOS real (`kind: 'cisco-ios'`). */
-export interface CiscoIosDriverConfig {
-  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet0/0`. */
-  interface: string;
-  /** VLAN por defecto para las entradas de bloqueo (por defecto `1`). */
-  vlan?: string;
-  ssh: {
-    host: string;
-    port?: number;
-    username: string;
-    password?: string;
-    /** Contraseña de `enable` (modo privilegiado), si aplica. */
-    enablePassword?: string;
-  };
-}
-
-/** Config NETCONF para el driver Cisco IOS-XE real (`kind: 'cisco-netconf'`). */
-export interface CiscoNetconfDriverConfig {
-  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet1`. */
-  interface: string;
-  netconf: {
-    host: string;
-    port?: number;
-    username: string;
-    password?: string;
-  };
 }
 
 /** Modo de transporte del driver MikroTik. */
@@ -129,10 +97,6 @@ export interface CreateDriverConfig {
   openwrt?: OpenWrtDriverConfig;
   /** Requerido cuando `kind === 'pfsense'`. */
   pfsense?: PfSenseDriverConfig;
-  /** Requerido cuando `kind === 'cisco-ios'`. */
-  ciscoIos?: CiscoIosDriverConfig;
-  /** Requerido cuando `kind === 'cisco-netconf'`. */
-  ciscoNetconf?: CiscoNetconfDriverConfig;
   /** Requerido cuando `kind === 'unifi'`. */
   unifi?: UnifiDriverConfig;
   /** Requerido cuando `kind === 'mikrotik'`. */
@@ -172,27 +136,6 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         client: new PfSenseClient({ baseUrl: pf.baseUrl, apiKey: pf.apiKey }),
         wanInterface: pf.wanInterface,
         lanInterface: pf.lanInterface,
-      });
-    }
-    case 'cisco-ios': {
-      const ci = config.ciscoIos;
-      if (!ci) throw new Error('Falta la configuración Cisco IOS (CreateDriverConfig.ciscoIos)');
-      if (!ci.ssh.host) throw new Error('El driver Cisco IOS requiere DRIVER_HOST (host SSH del switch)');
-      return new CiscoIosDriver({
-        transport: new SshCiscoTransport(ci.ssh),
-        interface: ci.interface,
-        vlan: ci.vlan,
-        host: config.host ?? ci.ssh.host,
-      });
-    }
-    case 'cisco-netconf': {
-      const cn = config.ciscoNetconf;
-      if (!cn) throw new Error('Falta la configuración Cisco NETCONF (CreateDriverConfig.ciscoNetconf)');
-      if (!cn.netconf.host) throw new Error('El driver Cisco NETCONF requiere CISCO_NETCONF_HOST');
-      return new CiscoNetconfDriver({
-        transport: new SshNetconfTransport(cn.netconf),
-        interface: cn.interface,
-        host: config.host ?? cn.netconf.host,
       });
     }
     case 'unifi': {
@@ -280,10 +223,6 @@ export { OpenWrtDriver } from './openwrt.driver.js';
 export { SshTransport } from './openwrt.transport.js';
 export { PfSenseDriver } from './pfsense.driver.js';
 export { PfSenseClient } from './pfsense.transport.js';
-export { CiscoIosDriver } from './cisco-ios.driver.js';
-export { SshCiscoTransport, MockCiscoTransport } from './cisco-ios.transport.js';
-export { CiscoNetconfDriver } from './cisco-netconf.driver.js';
-export { SshNetconfTransport, MockNetconfTransport } from './cisco-netconf.transport.js';
 export { UnifiDriver } from './unifi.driver.js';
 export { UnifiClient } from './unifi.transport.js';
 export { MikrotikDriver, FeatureNotSupportedError } from './mikrotik.driver.js';

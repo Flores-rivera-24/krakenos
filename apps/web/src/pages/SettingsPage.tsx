@@ -513,7 +513,7 @@ export function SettingsPage() {
 
           {section === 'integraciones' && data && (
             <div className="space-y-6">
-              <IntegrationsSection driver={data.info.driver} isAdmin={isAdmin} />
+              <IntegrationsSection isAdmin={isAdmin} />
               <MatterBridgeCard isAdmin={isAdmin} />
               {isAdmin && <MqttInteropCard />}
             </div>

@@ -135,22 +135,6 @@ export const INTEGRATION_SCHEMA: Record<
       opt('wanInterface', 'text', { default: 'wan' }),
       opt('lanInterface', 'text', { default: 'lan' }),
     ]),
-    'cisco-ios': schema('driver', 'cisco-ios', 'Cisco IOS', [
-      req('host', 'host'),
-      opt('sshPort', 'number', { default: 22 }),
-      opt('username', 'text', { default: 'admin' }),
-      secret('password'),
-      secret('enablePassword', { required: false }),
-      opt('interface', 'text', { default: 'GigabitEthernet0/0' }),
-      opt('vlan', 'text', { default: '1' }),
-    ]),
-    'cisco-netconf': schema('driver', 'cisco-netconf', 'Cisco IOS-XE (NETCONF)', [
-      req('host', 'host'),
-      opt('port', 'number', { default: 830 }),
-      opt('username', 'text', { default: 'admin' }),
-      secret('password'),
-      opt('interface', 'text', { default: 'GigabitEthernet1' }),
-    ]),
   },
 
   vpn: {
@@ -240,13 +224,6 @@ export const INTEGRATION_SCHEMA: Record<
       req('host', 'host'),
       opt('community', 'text', { default: 'private' }),
       opt('port', 'number', { default: 161 }),
-    ]),
-    cisco: schema('vlan', 'cisco', 'Switch Cisco (SSH)', [
-      req('host', 'host'),
-      opt('port', 'number', { default: 22 }),
-      opt('username', 'text', { default: 'admin' }),
-      secret('password'),
-      secret('enablePassword', { required: false }),
     ]),
   },
 

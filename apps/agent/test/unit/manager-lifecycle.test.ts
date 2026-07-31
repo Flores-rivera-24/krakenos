@@ -1,13 +1,10 @@
 import type { HardwareDriver, Vlan } from '@krakenos/types';
 import { describe, expect, it, vi } from 'vitest';
-import { CiscoIosDriver } from '../../src/drivers/cisco-ios.driver.js';
-import { CiscoNetconfDriver } from '../../src/drivers/cisco-netconf.driver.js';
 import { wrapDriverErrors } from '../../src/drivers/driver-error.js';
 import { MikrotikDriver } from '../../src/drivers/mikrotik.driver.js';
 import { OpenWrtDriver } from '../../src/drivers/openwrt.driver.js';
 import { disposeManager, stopManager } from '../../src/integrations/manager-holder.js';
 import { MemoryJsonStore } from '../../src/store/json-store.js';
-import { CiscoVlanManager } from '../../src/vlan/cisco.vlan.js';
 import { SwitchVlanManager } from '../../src/vlan/switch.vlan.js';
 
 /**
@@ -59,47 +56,11 @@ describe('stop() de los managers de red (US-229)', () => {
     expect(t.disposed()).toBe(1);
   });
 
-  it('CiscoIosDriver.stop() cierra la sesión SSH del transporte', async () => {
-    const t = countingTransport();
-    const driver = new CiscoIosDriver({
-      transport: { execute: vi.fn(), executePrivileged: vi.fn(), dispose: t.dispose },
-      interface: 'GigabitEthernet0/0',
-    });
-
-    await driver.stop();
-
-    expect(t.disposed()).toBe(1);
-  });
-
-  it('CiscoNetconfDriver.stop() cierra la sesión NETCONF del transporte', async () => {
-    const t = countingTransport();
-    const driver = new CiscoNetconfDriver({
-      transport: { get: vi.fn(), editConfig: vi.fn(), dispose: t.dispose },
-      interface: 'GigabitEthernet1',
-    });
-
-    await driver.stop();
-
-    expect(t.disposed()).toBe(1);
-  });
-
   it('SwitchVlanManager.stop() cierra la sesión SNMP', async () => {
     const t = countingTransport();
     const vlans = new SwitchVlanManager({
       store: new MemoryJsonStore<Vlan>(),
       snmp: { get: vi.fn(), set: vi.fn(), walk: vi.fn(), dispose: t.dispose },
-    });
-
-    await vlans.stop();
-
-    expect(t.disposed()).toBe(1);
-  });
-
-  it('CiscoVlanManager.stop() cierra la sesión SSH compartida con el driver', async () => {
-    const t = countingTransport();
-    const vlans = new CiscoVlanManager({
-      store: new MemoryJsonStore<Vlan>(),
-      transport: { execute: vi.fn(), executePrivileged: vi.fn(), dispose: t.dispose },
     });
 
     await vlans.stop();

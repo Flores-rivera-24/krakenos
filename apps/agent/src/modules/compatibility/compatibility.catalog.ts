@@ -34,8 +34,6 @@ const CATEGORY_CAPABILITIES: Record<CompatCategory, CompatCapability[]> = {
  */
 const EXTRA_DEP_KINDS = new Set<string>([
   'driver:openwrt',
-  'driver:cisco-ios',
-  'driver:cisco-netconf',
   'driver:mikrotik',
   'driver:asus',
   'iot:zigbee',
@@ -43,7 +41,6 @@ const EXTRA_DEP_KINDS = new Set<string>([
   'iot:matter',
   'iot:tuya',
   'vlan:switch',
-  'vlan:cisco',
   'cameras:rtsp',
 ]);
 

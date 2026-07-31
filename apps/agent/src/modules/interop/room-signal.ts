@@ -32,7 +32,7 @@ export interface RoomRow {
  * fuerte con la que algún AP lo oye. Un barrido por AP en vez de uno por
  * dispositivo: con 40 aparatos y 3 redes eran 120 llamadas al router.
  *
- * No lanza: un driver sin WiFi (pfSense, Cisco) o un fallo puntual devuelven un
+ * No lanza: un driver sin WiFi (pfSense) o un fallo puntual devuelven un
  * mapa vacío, y las habitaciones quedan «sin dato» en vez de tumbar la publicación.
  */
 export async function collectSignalByMac(driver: HardwareDriver): Promise<Map<string, number>> {
