@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
 import { IntegrationConfigStore } from '../../src/integrations/integration-config.store.js';
+import { deriveTapoAuthHash } from '../../src/iot/tapo-auth.js';
 import { buildTestApp } from '../helpers/app.js';
 
 describe('IntegrationConfigStore — persistencia con secretos cifrados (US-140)', () => {
@@ -88,5 +89,79 @@ describe('IntegrationConfigStore — persistencia con secretos cifrados (US-140)
     await store.save('driver', 'openwrt', { host: '1.2.3.4', password: 'x' }, false);
     const dec = await store.getDecrypted('driver');
     expect(dec!.enabled).toBe(false);
+  });
+
+  /**
+   * US-259: la contraseña de Tapo es la de la **cuenta TP-Link**, no una clave del
+   * aparato, así que guardarla es guardar la credencial que el usuario reutiliza en
+   * otros sitios. KLAP solo necesita el hash derivado; se guarda eso.
+   */
+  describe('Tapo: se guarda la credencial derivada, no la contraseña (US-259)', () => {
+    const EMAIL = 'duenyo@example.com';
+    const PASSWORD = 'ContrasenaDeLaCuentaTPLink!';
+
+    it('al guardar, la contraseña no llega al disco y sí el authHash', async () => {
+      await store.save('iot', 'kasa', {
+        'kasa.tapoEmail': EMAIL,
+        'kasa.tapoPassword': PASSWORD,
+      });
+
+      const row = await app.prisma.integrationConfig.findUnique({ where: { domain: 'iot' } });
+      // Ni en claro ni cifrada: la clave entera desaparece de la fila.
+      expect(row!.config).not.toContain(PASSWORD);
+      expect(JSON.parse(row!.config)).not.toHaveProperty('kasa.tapoPassword');
+
+      const dec = await store.getDecrypted('iot');
+      expect(dec!.values['kasa.tapoPassword']).toBeUndefined();
+      expect(dec!.values['kasa.tapoAuthHash']).toBe(deriveTapoAuthHash(EMAIL, PASSWORD));
+      // Y el derivado va cifrado como cualquier otro secreto (no en claro).
+      expect(row!.config).not.toContain(deriveTapoAuthHash(EMAIL, PASSWORD));
+    });
+
+    it('una instalación legada que vuelve a guardar PIERDE la contraseña vieja', async () => {
+      // Estado heredado: la contraseña guardada tal cual, como hasta US-259.
+      await store.save('iot', 'kasa', { 'kasa.tapoPassword': PASSWORD });
+      expect((await store.getDecrypted('iot'))!.values['kasa.tapoPassword']).toBe(PASSWORD);
+
+      // El usuario hace justo lo que se le pide: volver a guardar con su email.
+      await store.save('iot', 'kasa', {
+        'kasa.tapoEmail': EMAIL,
+        'kasa.tapoPassword': PASSWORD,
+      });
+
+      // La trampa que esto ata: `save` **preserva** los secretos omitidos, así que
+      // sin el descarte explícito la contraseña vieja sobreviviría a su propia
+      // sustitución y el usuario creería haberla quitado.
+      const dec = await store.getDecrypted('iot');
+      expect(dec!.values['kasa.tapoPassword']).toBeUndefined();
+      expect(dec!.values['kasa.tapoAuthHash']).toBe(deriveTapoAuthHash(EMAIL, PASSWORD));
+      const row = await app.prisma.integrationConfig.findUnique({ where: { domain: 'iot' } });
+      expect(row!.config).not.toContain(PASSWORD);
+    });
+
+    it('sin email no se deriva: no se rompe una config a medio rellenar', async () => {
+      await store.save('iot', 'kasa', { 'kasa.tapoPassword': PASSWORD });
+      const dec = await store.getDecrypted('iot');
+      expect(dec!.values['kasa.tapoPassword']).toBe(PASSWORD);
+      expect(dec!.values['kasa.tapoAuthHash']).toBeUndefined();
+    });
+
+    it('no re-deriva sobre algo que ya es un hash', async () => {
+      const hash = deriveTapoAuthHash(EMAIL, PASSWORD);
+      await store.save('iot', 'kasa', {
+        'kasa.tapoEmail': EMAIL,
+        'kasa.tapoPassword': hash,
+      });
+      // Derivar dos veces daría un valor que ningún aparato acepta, y sin error.
+      const dec = await store.getDecrypted('iot');
+      expect(dec!.values['kasa.tapoAuthHash']).toBeUndefined();
+      expect(dec!.values['kasa.tapoPassword']).toBe(hash);
+    });
+
+    it('otros dominios no se tocan', async () => {
+      await store.save('driver', 'openwrt', { host: '1.2.3.4', password: PASSWORD });
+      const dec = await store.getDecrypted('driver');
+      expect(dec!.values.password).toBe(PASSWORD);
+    });
   });
 });

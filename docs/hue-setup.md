@@ -54,20 +54,26 @@ HUE_BRIDGE_URL=https://192.168.1.50   # IP del bridge Hue (con https://)
 HUE_APP_KEY=AbCdEf...laAppKey...
 ```
 
-## 4. Certificado autofirmado del bridge (importante)
+## 4. Certificado autofirmado del bridge
 
-El bridge sirve HTTPS con un **certificado autofirmado**. El `HueClient` usa el `fetch` global
-de Node, que **rechaza** ese certificado por defecto, así que necesitas un *workaround* en LAN:
+El bridge sirve HTTPS con un **certificado autofirmado** (es una IP de tu red: no puede tener
+uno público). **No tienes que hacer nada**: desde US-259 KrakenOS lo gestiona solo.
 
-```env
-# ⚠️ Solo en LAN/confiable: desactiva la verificación TLS de Node por completo.
-NODE_TLS_REJECT_UNAUTHORIZED=0
-```
-
-> **Advertencia de seguridad**: `NODE_TLS_REJECT_UNAUTHORIZED=0` desactiva la validación TLS
-> de **todo** el proceso Node, no solo del bridge. Úsalo únicamente en un servidor de
-> confianza dentro de tu LAN. Una mejora futura sería que `HueClient` confíe en el cert del
-> bridge de forma puntual (CA pinneada) en lugar de apagar TLS globalmente.
+> **Ya no hace falta `NODE_TLS_REJECT_UNAUTHORIZED=0`. Si lo tienes puesto, quítalo.** Esa
+> variable desactivaba la validación TLS de **todo** el proceso Node —no solo del bridge—, así
+> que con ella puesta tampoco se verificaba a quién hablaban los avisos de Telegram, la
+> comprobación de actualizaciones ni el Web Push. Un aparato de tu casa acababa bajando la
+> guardia de todo lo demás.
+>
+> **Qué hace ahora en su lugar:** la excepción se aplica **solo a la conexión con el bridge**, y
+> únicamente si la dirección configurada resuelve a una IP privada de tu red. Si `HUE_BRIDGE_URL`
+> apuntara a un host de internet, el certificado se verifica con normalidad.
+>
+> ⚠️ **Lo que sigue sin cubrirse, dicho claro:** dentro de tu LAN el bridge no queda
+> *autenticado*. Quien pueda suplantar su IP en tu red podría hacerse pasar por él. Cerrar eso
+> exige fijar el certificado del bridge la primera vez que se empareja, y está pendiente. Lo que
+> se ha ganado es el radio del problema: antes era «todo lo que hace el servidor», ahora es «esta
+> conexión a esta IP de mi red».
 
 ## 5. Probar
 

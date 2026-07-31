@@ -33,6 +33,7 @@
     "fastify-plugin": "^5.0.1",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.5",
+    "undici": "^7.28.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

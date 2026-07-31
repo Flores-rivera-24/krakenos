@@ -1,9 +1,11 @@
 /**
  * Transporte HTTP para **Shelly** (ambas generaciones). El manager no conoce
  * `fetch`: opera contra esta interfaz, lo que permite testear el contrato con un
- * transporte falso (sin dispositivos ni red). La implementación real usa `fetch`
- * (global de Node 20, sin dependencia npm) y añade Basic Auth si está activado.
+ * transporte falso (sin dispositivos ni red). La implementación real va por
+ * `safeFetch` (US-259) y añade Basic Auth si está activado.
  */
+
+import { safeFetch } from '../net/egress.js';
 
 export interface ShellyTransport {
   /** GET `http://<ip><path>` → JSON (Gen1: `/relay/0?turn=on`, `/status`). */
@@ -38,7 +40,7 @@ export class ShellyApiError extends Error {
 }
 
 const defaultFetch: HttpFetchLike = (url, init) =>
-  fetch(url, init).then((res) => ({ ok: res.ok, status: res.status, json: () => res.json() }));
+  safeFetch(url, init).then((res) => ({ ok: res.ok, status: res.status, json: () => res.json() }));
 
 /**
  * Transporte Shelly real sobre `fetch`. Gen1 va por GET a rutas REST; Gen2 por

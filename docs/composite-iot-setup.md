@@ -19,10 +19,11 @@ IOT_KIND=hue,govee
 HUE_BRIDGE_URL=https://192.168.1.50
 HUE_APP_KEY=tu-application-key
 GOVEE_LISTEN_PORT=4002
-
-# Recuerda el workaround TLS del bridge Hue (solo LAN):
-NODE_TLS_REJECT_UNAUTHORIZED=0
 ```
+
+> El bridge Hue va con certificado autofirmado y KrakenOS lo gestiona solo desde US-259: **no
+> añadas `NODE_TLS_REJECT_UNAUTHORIZED=0`**, y si lo tienes de una instalación anterior, quítalo
+> (apagaba la validación TLS de todo el proceso). Detalle en `docs/hue-setup.md`.
 
 ## Ejemplo: Hue + Govee + Tuya
 

@@ -7,6 +7,8 @@
  * `rejectUnauthorized: false`, fuera de este código puro).
  */
 
+import { safeFetch } from '../net/egress.js';
+
 export interface UnifiHttpResponse {
   status: number;
   ok: boolean;
@@ -29,7 +31,7 @@ export type UnifiHttpFetch = (
 ) => Promise<UnifiHttpResponse>;
 
 const defaultFetch: UnifiHttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, init);
   return {
     status: res.status,
     ok: res.ok,

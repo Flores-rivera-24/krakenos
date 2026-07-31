@@ -5,6 +5,8 @@
  * transporte es inyectable para testear el contrato sin un router real.
  */
 
+import { safeFetch } from '../net/egress.js';
+
 export interface AsusHttpResponse {
   status: number;
   ok: boolean;
@@ -20,7 +22,7 @@ export interface AsusHttpRequestInit {
 export type AsusHttpFetch = (url: string, init?: AsusHttpRequestInit) => Promise<AsusHttpResponse>;
 
 const defaultFetch: AsusHttpFetch = async (url, init) => {
-  const res = await fetch(url, init);
+  const res = await safeFetch(url, init);
   return { status: res.status, ok: res.ok, text: () => res.text() };
 };
 

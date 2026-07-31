@@ -99,10 +99,22 @@ export class NetKasaTransport implements KasaTransport {
 // ---- Implementación real Tapo / KLAP (node:http + node:crypto, import perezoso) ----
 
 export interface KlapTapoOptions {
-  /** Email de la cuenta Tapo (credencial local KLAP). */
-  email: string;
-  /** Contraseña de la cuenta Tapo. */
-  password: string;
+  /**
+   * Credencial KLAP **ya derivada** (`sha256(sha256(email) ‖ sha256(password))`,
+   * hex). Es la forma **preferida** desde US-259: KLAP no necesita nada más, así
+   * que guardar el email y la contraseña de la cuenta TP-Link era guardar de más.
+   * Si viene, `email`/`password` se ignoran.
+   */
+  authHash?: string;
+  /**
+   * Email de la cuenta Tapo. **Camino legado**: solo se usa para derivar el
+   * `authHash` cuando no lo hay. Se conserva porque las instalaciones que ya
+   * tienen `TAPO_EMAIL`/`TAPO_PASSWORD` en su `.env` deben seguir funcionando sin
+   * tocar nada.
+   */
+  email?: string;
+  /** Contraseña de la cuenta Tapo. **Camino legado**, ver `email`. */
+  password?: string;
   /** IPs configuradas manualmente (`TAPO_DEVICES`). */
   configuredIps?: string[];
   /** Puerto HTTP del dispositivo (por defecto 80). */
@@ -152,10 +164,20 @@ export class KlapTapoTransport implements TapoTransport {
     });
   }
 
+  /**
+   * Credencial KLAP. Con `authHash` configurado se usa tal cual —es lo único que
+   * el protocolo necesita—; si no, se deriva del email y la contraseña (camino
+   * legado, US-259). La derivación es la misma fórmula en los dos casos, así que
+   * una instalación vieja y una nueva hablan con el mismo aparato igual.
+   */
   private async authHash(crypto: typeof NodeCrypto): Promise<Buffer> {
+    if (this.opts.authHash) return Buffer.from(this.opts.authHash, 'hex');
     const sha256 = (b: Buffer) => crypto.createHash('sha256').update(b).digest();
     return sha256(
-      Buffer.concat([sha256(Buffer.from(this.opts.email)), sha256(Buffer.from(this.opts.password))]),
+      Buffer.concat([
+        sha256(Buffer.from(this.opts.email ?? '')),
+        sha256(Buffer.from(this.opts.password ?? '')),
+      ]),
     );
   }
 

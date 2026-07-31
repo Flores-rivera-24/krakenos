@@ -172,6 +172,11 @@ export const INTEGRATION_SCHEMA: Record<
       opt('kasaDeviceIps', 'text'),
       opt('tapoEmail', 'text'),
       secret('tapoPassword', { required: false }),
+      // US-259: lo que acaba GUARDADO es esto, no la contraseña. El usuario sigue
+      // tecleando su email y su contraseña arriba; el store deriva la credencial
+      // KLAP y tira la contraseña, que es la de la cuenta del fabricante. Va en el
+      // esquema (y no solo en el store) para heredar el cifrado en reposo.
+      secret('tapoAuthHash', { required: false, derived: true }),
       opt('tapoDeviceIps', 'text'),
     ]),
     shelly: schema('iot', 'shelly', 'Shelly', [
