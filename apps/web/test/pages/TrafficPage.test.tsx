@@ -15,6 +15,7 @@ const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() 
 vi.mock('@/lib/socket', () => ({ getSocket: () => socketMock }));
 
 import { TOOLTIP_STYLE, TRAFFIC_CHART_COLORS, TrafficPage } from '@/pages/TrafficPage';
+import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 
 const SAMPLE: TrafficSample = {
@@ -50,11 +51,23 @@ function mockApi({
   });
 }
 
+/**
+ * El desglose por dispositivo exige `home.activity` desde US-250 (solo admin), así
+ * que el rol deja de ser irrelevante para esta página y hay que fijarlo.
+ */
+function setRole(role: 'admin' | 'member' | 'viewer') {
+  useAuthStore.setState({
+    user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
+    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+  });
+}
+
 describe('TrafficPage', () => {
   beforeEach(() => {
     apiMock.get.mockReset();
     socketMock.on.mockReset();
     socketMock.off.mockReset();
+    setRole('admin');
   });
 
   it('muestra el estado de espera sin muestras y se suscribe al socket', async () => {
@@ -201,5 +214,45 @@ describe('TrafficPage', () => {
     render(<TrafficPage />);
     await screen.findByText(/Tráfico/i);
     expect(screen.queryByText(/no reparte el tráfico por dispositivo/i)).not.toBeInTheDocument();
+  });
+
+  describe('desglose por dispositivo acotado por rol (US-250)', () => {
+    it.each(['member', 'viewer'] as const)(
+      'un %s ve la explicación y NO se pide el desglose',
+      async (role) => {
+        setRole(role);
+        mockApi({ devices: [{ mac: 'aa:bb:cc:dd:ee:ff' } as DeviceTrafficStats] });
+        render(<TrafficPage />);
+
+        expect(await screen.findByText(/Solo el administrador ve el consumo/i)).toBeInTheDocument();
+        // Y no se pide: pedirlo para pintar un 403 sería enseñar un fallo que no lo es.
+        await waitFor(() => expect(apiMock.get).toHaveBeenCalled());
+        const pedidas = apiMock.get.mock.calls.map((c) => String(c[0]));
+        expect(pedidas.some((u) => u.startsWith('/traffic/devices'))).toBe(false);
+        // El total de la casa sí se sigue pidiendo: la historia acota una tarjeta,
+        // no la página. Sin esta aserción, una página rota pasaría el test.
+        expect(pedidas.some((u) => u.startsWith('/traffic/stats'))).toBe(true);
+      },
+    );
+
+    it('un admin sí pide el desglose y ve la tabla', async () => {
+      setRole('admin');
+      mockApi({
+        devices: [
+          {
+            mac: 'aa:bb:cc:dd:ee:ff',
+            ip: '192.168.1.9',
+            label: 'TV del salón',
+            rxTotal: 2_000_000,
+            txTotal: 500_000,
+            samples: [],
+          } as unknown as DeviceTrafficStats,
+        ],
+      });
+      render(<TrafficPage />);
+
+      expect(await screen.findByText('TV del salón')).toBeInTheDocument();
+      expect(screen.queryByText(/Solo el administrador ve el consumo/i)).not.toBeInTheDocument();
+    });
   });
 });

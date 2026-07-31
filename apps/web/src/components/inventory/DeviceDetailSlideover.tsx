@@ -103,8 +103,15 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     }
   };
 
-  // Histórico de tráfico de la última hora para este dispositivo (US-46).
+  // Histórico de tráfico de la última hora para este dispositivo (US-46). Desde
+  // US-250 la fuente exige `home.activity` (solo admin), así que a los demás ni se
+  // les pide: el `catch` de abajo lo dejaría en «sin datos», que es justo la
+  // confusión que hay que evitar —no es que no haya, es que no se les enseña—.
   useEffect(() => {
+    if (!isAdmin) {
+      setTraffic(null);
+      return;
+    }
     void api
       .get<DeviceTrafficReport>('/traffic/devices?range=hour')
       .then((report) => {
@@ -114,7 +121,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         setTraffic(found ?? null);
       })
       .catch(() => setTraffic(null));
-  }, [device.mac]);
+  }, [device.mac, isAdmin]);
 
   // Bloqueo optimista con reversión (US-96): el botón refleja el estado al
   // instante y vuelve atrás + toast si la petición falla; la verdad la confirma
@@ -313,8 +320,13 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             </div>
           </div>
         </div>
-      ) : (
+      ) : isAdmin ? (
         <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
+      ) : (
+        /* «Sin datos» sería mentira: puede haberlos y no se enseñan (US-250). */
+        <p className="mb-4 text-kr-xs text-kr-muted">
+          Solo el administrador ve el tráfico de cada aparato.
+        </p>
       )}
 
       {/* Pausa de internet (US-111) + control parental / horarios (US-108).

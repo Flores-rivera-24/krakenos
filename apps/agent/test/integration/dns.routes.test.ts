@@ -29,7 +29,7 @@ describe('rutas de DNS', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('un viewer puede ver stats/blocklist/consultas pero no bloquear', async () => {
+  it('un viewer ve stats y blocklist, pero NO las consultas ni bloquea (US-250)', async () => {
     const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
     const token = signAccess(app, viewer);
 
@@ -41,8 +41,10 @@ describe('rutas de DNS', () => {
     expect(list.statusCode).toBe(200);
     expect(Array.isArray(list.json())).toBe(true);
 
+    // El registro de consultas es el historial de navegación del hogar: sale de
+    // «lectura autenticada» y pasa a `home.activity` (US-250). Antes daba 200.
     const queries = await app.inject({ method: 'GET', url: '/api/dns/queries', headers: authHeader(token) });
-    expect(queries.statusCode).toBe(200);
+    expect(queries.statusCode).toBe(403);
 
     const add = await app.inject({
       method: 'POST',
@@ -51,6 +53,17 @@ describe('rutas de DNS', () => {
       payload: { domain: 'nope.example.com' },
     });
     expect(add.statusCode).toBe(403);
+  });
+
+  it('un admin sí lee el registro de consultas (US-250)', async () => {
+    const admin = await seedUser(app, { email: 'a@dnsq.test' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/dns/queries',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(Array.isArray(res.json())).toBe(true);
   });
 
   it('admin bloquea un dominio (201), lo audita, y rechaza duplicados (409)', async () => {

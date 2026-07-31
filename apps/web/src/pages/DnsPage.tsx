@@ -3,6 +3,7 @@ import { Ban, Globe, ShieldCheck, ListFilter } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { DnsFeeds } from '@/components/dns/DnsFeeds';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -23,6 +24,14 @@ import { toast } from '@/store/toast.store';
 export function DnsPage() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  /**
+   * US-250: el registro de consultas exige `home.activity` (solo admin) porque es
+   * el historial de navegación del hogar. No hace falta un tercer estado para «rol
+   * aún sin cargar»: `App` no monta ninguna ruta hasta que `bootstrapSession()`
+   * resuelve y `RequireAuth` redirige al login sin usuario, así que aquí el rol ya
+   * está siempre resuelto.
+   */
+  const activityDenied = !isAdmin;
   const [stats, setStats] = useState<DnsStats | null>(null);
   const [blocklist, setBlocklist] = useState<BlockedDomain[]>([]);
   const [queries, setQueries] = useState<DnsQuery[]>([]);
@@ -31,22 +40,38 @@ export function DnsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () =>
-    Promise.all([
-      api.get<DnsStats>('/dns/stats'),
-      api.get<BlockedDomain[]>('/dns/blocklist'),
-      api.get<DnsQuery[]>('/dns/queries?limit=20'),
-    ])
-      .then(([s, b, q]) => {
+  /**
+   * Cifras y blocklist: lectura de cualquier rol. Va **aparte** del registro de
+   * consultas a propósito (US-250): si las tres siguieran en un solo `Promise.all`,
+   * el 403 del registro tumbaría también estas dos y un `viewer` vería la página
+   * entera en blanco por una restricción que solo afecta a una tarjeta.
+   */
+  const loadShared = () =>
+    Promise.all([api.get<DnsStats>('/dns/stats'), api.get<BlockedDomain[]>('/dns/blocklist')])
+      .then(([s, b]) => {
         setStats(s);
         setBlocklist(b);
-        setQueries(q);
       })
       .catch((err) => setError(describeError(err, t('dns.loadError'))));
 
+  const loadQueries = () =>
+    api
+      .get<DnsQuery[]>('/dns/queries?limit=20')
+      .then(setQueries)
+      .catch((err) => setError(describeError(err, t('dns.loadError'))));
+
+  /** Refresco completo tras una mutación (siempre la hace un admin). */
+  const load = () => Promise.all([loadShared(), isAdmin ? loadQueries() : Promise.resolve()]);
+
   useEffect(() => {
-    void load().finally(() => setLoading(false));
+    void loadShared().finally(() => setLoading(false));
   }, []);
+
+  // El registro solo se pide cuando ya se sabe que quien mira es admin: sin permiso
+  // no se pide para luego pintar el error, porque no es un fallo.
+  useEffect(() => {
+    if (isAdmin) void loadQueries();
+  }, [isAdmin]);
 
   const addDomain = async (e: FormEvent) => {
     e.preventDefault();
@@ -206,6 +231,14 @@ export function DnsPage() {
             <CardTitle className="text-base text-foreground">{t('dns.queries.title')}</CardTitle>
           </CardHeader>
           <CardContent>
+            {activityDenied ? (
+              /* La tarjeta se queda y explica por qué está vacía (US-263). No se
+                 dice «no hay consultas» —sería mentira— ni se pide al usuario que
+                 configure nada: lo que falta es un permiso, no un ajuste. */
+              <Callout variant="info" standing title={t('dns.queries.adminOnly')}>
+                {t('dns.queries.adminOnlyDesc')}
+              </Callout>
+            ) : (
             <div className="overflow-x-auto rounded-md border border-border">
               <table className="w-full text-sm">
                 <thead className="bg-secondary text-secondary-foreground">
@@ -242,6 +275,7 @@ export function DnsPage() {
                 </tbody>
               </table>
             </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -86,6 +86,31 @@ describe('DnsPage', () => {
     expect(screen.queryByRole('button', { name: 'Quitar' })).not.toBeInTheDocument();
   });
 
+  describe('registro de consultas acotado por rol (US-250)', () => {
+    it('un viewer ve la explicación, y las cifras y la lista siguen ahí', async () => {
+      setRole('viewer');
+      render(<DnsPage />);
+
+      expect(await screen.findByText(/Solo el administrador ve las consultas/i)).toBeInTheDocument();
+      expect(screen.queryByText('github.com')).not.toBeInTheDocument();
+      // La regresión que hay que evitar: las tres peticiones vivían en un mismo
+      // `Promise.all`, así que el 403 del registro habría dejado la página entera
+      // en blanco por una restricción que solo afecta a una tarjeta.
+      expect(screen.getByText('24%')).toBeInTheDocument();
+      expect(screen.getByText('ads.doubleclick.net')).toBeInTheDocument();
+      // Y ni se pide el registro.
+      expect(apiMock.get).not.toHaveBeenCalledWith('/dns/queries?limit=20');
+    });
+
+    it('no dice «no hay consultas» cuando lo que falta es el permiso', async () => {
+      setRole('viewer');
+      render(<DnsPage />);
+      await screen.findByText(/Solo el administrador ve las consultas/i);
+      // «Aún no hay consultas recientes» sería mentira: puede haberlas.
+      expect(screen.queryByText(/Aún no hay consultas recientes/)).not.toBeInTheDocument();
+    });
+  });
+
   it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
     apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
     render(<DnsPage />);

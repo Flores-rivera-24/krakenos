@@ -442,6 +442,9 @@ export const en: Record<TranslationKey, string> = {
   'dns.col.client': 'Client',
   'dns.col.status': 'Status',
   'dns.queries.empty': 'No recent queries yet.',
+  'dns.queries.adminOnly': 'Only the administrator sees recent queries',
+  'dns.queries.adminOnlyDesc':
+    'The log shows which domains each device at home connects to, so it is limited to whoever administers the installation. The figures above and the block list are visible to everyone.',
   'dns.blocked': 'Blocked',
   'dns.allowed': 'Allowed',
   'dns.loadError': 'Could not load DNS',
@@ -747,6 +750,9 @@ export const en: Record<TranslationKey, string> = {
     'Your router does not break traffic down per device',
   'traffic.perDeviceUnsupportedDesc':
     'It only reports the household total, so per-device usage and per-person usage cannot be shown. This is not a setting on your side.',
+  'traffic.perDeviceAdminOnly': 'Only the administrator sees per-device usage',
+  'traffic.perDeviceAdminOnlyDesc':
+    'How much each device uses reveals what each person at home does, so the breakdown is limited to whoever administers the installation. Your own usage is still below, under «Usage by person».',
   'wellbeing.unassigned': 'Unassigned',
   'perDeviceTraffic.setup.title': 'Your router can report this, but it is missing a package',
   'perDeviceTraffic.setup.nlbwmon':

@@ -10,6 +10,15 @@
  *    **omite el nombre y la ubicación del hogar** (PII) y no incluye ni IP ni
  *    actor de la auditoría. Los logs reales viven en journald/docker, no aquí.
  *
+ * ⚠️ **El bundle NO lleva actividad por aparato y no debe llevarla nunca** (US-250):
+ * ni consultas DNS, ni el desglose de tráfico por MAC, ni nada que diga qué hizo un
+ * dispositivo concreto. Este es el único artefacto del producto pensado para **salir
+ * de casa** (la plantilla de issue de US-218 pide pegarlo), y esa es exactamente la
+ * lectura que US-250 acaba de cerrar a `kid`, `guest` y a los tokens de API: no se
+ * puede negar al invitado y mandársela a un desconocido en el mismo día. Lo que se
+ * añada aquí para «diagnosticar mejor» pasa por esa pregunta primero. Atado en
+ * `test/integration/system.routes.test.ts`.
+ *
  * Los helpers de sanitización son **puros** (testeables sin DB); el ensamblado
  * recibe sus dependencias inyectadas.
  */

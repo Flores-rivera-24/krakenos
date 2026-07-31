@@ -12,6 +12,7 @@ import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'rec
 import { StatCard } from '@/components/dashboard/StatCard';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
+import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -21,6 +22,7 @@ import { formatBytes, formatRate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { isSampleStale, useNow } from '@/lib/realtime';
 import { getSocket } from '@/lib/socket';
+import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
@@ -72,10 +74,23 @@ export function TrafficPage() {
   const [error, setError] = useState<string | null>(null);
   const devices = useInventoryStore((s) => s.devices);
   const subscribe = useInventoryStore((s) => s.subscribe);
+  /**
+   * US-250: el desglose por dispositivo exige `home.activity` (solo admin). No hace
+   * falta un tercer estado para «rol aún sin cargar»: `App` no monta ninguna ruta
+   * hasta que `bootstrapSession()` resuelve y `RequireAuth` redirige al login sin
+   * usuario, así que cuando esta página se monta el rol ya está resuelto.
+   */
+  const activityDenied = useAuthStore((s) => s.user?.role !== 'admin');
 
   useEffect(() => subscribe(), [subscribe]);
 
   useEffect(() => {
+    if (activityDenied) {
+      // Ni se pide: la tarjeta lo explica. Pedir para enseñar el error sería
+      // enseñarle al usuario un fallo que no lo es.
+      setDevStats([]);
+      return;
+    }
     let active = true;
     setDevStats(null);
     void api
@@ -93,7 +108,7 @@ export function TrafficPage() {
     return () => {
       active = false;
     };
-  }, [devRange]);
+  }, [devRange, activityDenied]);
 
   const deviceByMac = useMemo(() => {
     const map: Record<string, (typeof devices)[string]> = {};
@@ -349,30 +364,43 @@ export function TrafficPage() {
           muestra igualmente con la explicación: antes desaparecía sin más y el
           usuario nunca se enteraba de por qué su bienestar digital estaba vacío
           (US-263). Si sí lo reporta pero aún no hay datos, no hay nada que decir. */}
-      {(sortedDev.length > 0 || (devStats !== null && perDevice.status !== 'supported')) && (
+      {(sortedDev.length > 0 ||
+        activityDenied ||
+        (devStats !== null && perDevice.status !== 'supported')) && (
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>{t('traffic.byDevice')}</CardTitle>
-            <div className="flex gap-1" role="group" aria-label={t('traffic.deviceRangeLabel')}>
-              {RANGES.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setDevRange(r.value)}
-                  aria-pressed={devRange === r.value}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                    devRange === r.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
+            {/* Sin permiso no hay nada que acotar por rango: el selector sobra. */}
+            {!activityDenied && (
+              <div className="flex gap-1" role="group" aria-label={t('traffic.deviceRangeLabel')}>
+                {RANGES.map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => setDevRange(r.value)}
+                    aria-pressed={devRange === r.value}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      devRange === r.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </CardHeader>
           <CardContent>
-            {perDevice.status !== 'supported' ? (
+            {activityDenied ? (
+              /* La tarjeta se muestra diciendo por qué está vacía, en vez de
+                 desaparecer (US-263): que falte sin explicación se lee como un
+                 fallo. Y el motivo no es del router ni del usuario, así que no se
+                 le pide que arregle nada — se le dice quién puede verlo. */
+              <Callout variant="info" standing title={t('traffic.perDeviceAdminOnly')}>
+                {t('traffic.perDeviceAdminOnlyDesc')}
+              </Callout>
+            ) : perDevice.status !== 'supported' ? (
               <PerDeviceTrafficNotice
                 capability={perDevice}
                 unsupportedTitle={t('traffic.perDeviceUnsupported')}

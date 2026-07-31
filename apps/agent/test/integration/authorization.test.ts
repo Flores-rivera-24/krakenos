@@ -454,4 +454,86 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       expect(adminBody.settings.homeLatitude).toBe('40.4168');
     });
   });
+
+  /**
+   * US-250 — GATE del epic K5. Mismo fallo que AUD3-02 con las cámaras, en otra
+   * superficie: el registro de consultas DNS y el desglose de tráfico por aparato
+   * los leía **cualquier autenticado** (incluidos `kid` y `guest`) y cualquier
+   * token de API con `home.view`. Juntos son el historial de navegación de la
+   * familia; la UI lo escondía y el servidor no.
+   *
+   * Se clasifica por sensibilidad en vez de cerrar los dos módulos enteros: los
+   * agregados (totales WAN, cifras de DNS, blocklist, feeds) son cifras y
+   * configuración y siguen siendo lectura autenticada. Lo que se acota es lo que
+   * habla de **una persona**.
+   */
+  describe('actividad por aparato: DNS y tráfico (US-250)', () => {
+    /** Lecturas que exigen `home.activity` (solo admin). */
+    const ACTIVITY_READS = [
+      { url: '/api/dns/queries', pattern: 'GET /api/dns/queries' },
+      { url: '/api/traffic/devices', pattern: 'GET /api/traffic/devices' },
+    ];
+
+    /**
+     * Agregados que **siguen** siendo lectura autenticada. Se enumeran para que el
+     * barrido de abajo falle si alguien mueve una de ellas de lado sin decidirlo, y
+     * para dejar por escrito que la historia acotó dos rutas, no dos módulos.
+     */
+    const AGGREGATE_READS = [
+      'GET /api/dns/stats',
+      'GET /api/dns/blocklist',
+      'GET /api/dns/feeds',
+      'GET /api/traffic/history',
+      'GET /api/traffic/stats',
+    ];
+
+    it('toda lectura de /api/dns y /api/traffic está clasificada', () => {
+      const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
+        .collectedRoutes;
+      expect(collected.length).toBeGreaterThan(50);
+      const classified = new Set<string>([
+        ...ACTIVITY_READS.map((r) => r.pattern),
+        ...AGGREGATE_READS,
+      ]);
+
+      const unclassified = collected
+        .filter(
+          (r) =>
+            r.method.toUpperCase() === 'GET' &&
+            (r.url.startsWith('/api/dns') || r.url.startsWith('/api/traffic')),
+        )
+        .map((r) => `${r.method.toUpperCase()} ${r.url.replace(/:[^/]+/g, ':p')}`)
+        .filter((key, i, arr) => arr.indexOf(key) === i)
+        .filter((key) => !classified.has(key));
+
+      expect(unclassified).toEqual([]);
+    });
+
+    it('ningún rol salvo admin lee la actividad por aparato (403)', async () => {
+      for (const role of ['member', 'viewer', 'kid', 'guest'] as const) {
+        const token = signAccess(app, await seedUser(app, { email: `${role}@act.test`, role }));
+        for (const { url } of ACTIVITY_READS) {
+          const res = await app.inject({ method: 'GET', url, headers: authHeader(token) });
+          expect(`${role} ${url} → ${res.statusCode}`).toBe(`${role} ${url} → 403`);
+        }
+      }
+    });
+
+    it('un admin sí la lee (la historia acota, no rompe la función)', async () => {
+      const token = signAccess(app, await seedUser(app, { email: 'admin@act.test', role: 'admin' }));
+      for (const { url } of ACTIVITY_READS) {
+        const res = await app.inject({ method: 'GET', url, headers: authHeader(token) });
+        expect(`${url} → ${res.statusCode}`).toBe(`${url} → 200`);
+      }
+    });
+
+    it('los agregados siguen siendo lectura de cualquier autenticado', async () => {
+      const token = signAccess(app, await seedUser(app, { email: 'kid@agg.test', role: 'kid' }));
+      for (const pattern of AGGREGATE_READS) {
+        const url = pattern.slice('GET '.length);
+        const res = await app.inject({ method: 'GET', url, headers: authHeader(token) });
+        expect(`${url} → ${res.statusCode}`).toBe(`${url} → 200`);
+      }
+    });
+  });
 });

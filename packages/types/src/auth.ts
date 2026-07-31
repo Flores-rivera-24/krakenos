@@ -188,6 +188,15 @@ export interface LoginRequest {
  * dispositivos. La administración (red/usuarios/sistema) **nunca** se concede por
  * token — esas rutas siguen exigiendo una sesión con contraseña. Un token nunca
  * supera el rol de quien lo emite (se valida al crear).
+ *
+ * ⚠️ **Esta lista es una allowlist, y lo que NO está en ella es inalcanzable por
+ * token**, incluso para un admin: `requireCapability` exige que la capacidad esté
+ * entre los `apiScopes` cuando la petición viene con token
+ * (`plugins/auth.ts::requireCapability`). Por eso `home.cameras` (US-227) y
+ * `home.activity` (US-250) no aparecen aquí: el vídeo del salón y el historial de
+ * navegación de la familia no se leen con una credencial de larga vida pegada en
+ * un script. Añadir una capacidad a esta lista es conceder esa lectura a todos los
+ * tokens que ya existen y cuyo rol la permita — decisión consciente, nunca de paso.
  */
 export const API_TOKEN_SCOPES = ['home.view', 'home.control'] as const;
 export type ApiTokenScope = (typeof API_TOKEN_SCOPES)[number];
