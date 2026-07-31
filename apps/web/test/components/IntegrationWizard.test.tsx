@@ -59,6 +59,31 @@ describe('IntegrationWizard', () => {
     expect(screen.getByText('Qué necesitas')).toBeInTheDocument();
   });
 
+  // --- Nivel de soporte (US-238) ---
+
+  it('avisa de «sin garantía» ANTES de los pasos en un backend community', () => {
+    render(
+      <IntegrationWizard
+        domain="iot"
+        kind="tuya"
+        kindSchema={{ ...HUE_SCHEMA, kind: 'tuya', label: 'Tuya / Smart Life' }}
+        current={null}
+        onDone={vi.fn()}
+      />,
+    );
+    const aviso = screen.getByText('Soporte de la comunidad, sin garantía');
+    expect(aviso).toBeInTheDocument();
+    // Va ANTES del contenido de la guía en el orden del documento: enterarse
+    // después de haber seguido diez pasos es enterarse tarde.
+    const intro = screen.getByText('Qué necesitas');
+    expect(aviso.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('un backend core NO lleva el aviso (Hue empareja en local)', () => {
+    renderHue();
+    expect(screen.queryByText('Soporte de la comunidad, sin garantía')).not.toBeInTheDocument();
+  });
+
   it('gatea "Siguiente" hasta rellenar los campos obligatorios', async () => {
     const user = userEvent.setup();
     renderHue();

@@ -139,7 +139,7 @@ export const GLOSSARY_EN: GlossaryTranslations = {
   ssh: {
     term: 'SSH',
     short: 'A secure way to give text commands to a device on the network (a router, a server) from another one.',
-    long: 'SSH opens an encrypted “remote console”. Some routers (OpenWrt, MikroTik, Cisco) let KrakenOS manage them over SSH with a username and password. It is plain text, no windows.',
+    long: 'SSH opens an encrypted “remote console”. Some routers (OpenWrt, MikroTik) let KrakenOS manage them over SSH with a username and password. It is plain text, no windows.',
   },
   firmware: {
     term: 'Firmware',

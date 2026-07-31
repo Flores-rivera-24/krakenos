@@ -44,8 +44,6 @@ export const PER_DEVICE_TRAFFIC_BY_KIND: Record<DriverKind, boolean> = {
   // MikroTik, `stat/sta` en UniFi (que además mide LAN+WAN, no solo internet),
   // pfSense necesita pfflowd/ntopng. Se harán con su historia y su verificación.
   pfsense: false,
-  'cisco-ios': false,
-  'cisco-netconf': false,
   unifi: false,
   mikrotik: false,
   omada: false,

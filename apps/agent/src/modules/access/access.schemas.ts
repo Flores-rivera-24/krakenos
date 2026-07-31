@@ -2,7 +2,7 @@
 
 // MAC en los cuerpos de entrada: acepta hex separado por `:`/`-` (todos los
 // formatos reales), y rechaza control/`;`/espacios. Defensa temprana; el driver
-// re-normaliza antes de tocar el hardware (`normalizeMac`/`toCiscoMac`).
+// re-normaliza antes de tocar el hardware (`normalizeMac`).
 const MAC_PATTERN = '^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$';
 
 const days = {

@@ -1,7 +1,14 @@
 import type { Id, IsoDateTime } from './common.js';
 
-/** Implementaciones de gestor de VLANs disponibles. */
-export type VlanKind = 'mock' | 'switch' | 'cisco';
+/**
+ * Implementaciones de gestor de VLANs disponibles.
+ *
+ * US-238 retiró `cisco`: se apoyaba en el transporte SSH + CLI del driver
+ * `cisco-ios`, así que amputar aquel se lo llevaba por delante. Un switch
+ * gestionado sigue cubierto por `switch` (SNMP q-bridge), que es la vía genérica
+ * y no depende de un fabricante.
+ */
+export type VlanKind = 'mock' | 'switch';
 
 /**
  * VLAN (segmento de red 802.1Q). El `tag` (1-4094) es la clave natural por la
@@ -54,8 +61,8 @@ export interface VlanManager {
   updateVlan(id: Id, patch: UpdateVlanRequest): Promise<Vlan | null>;
   removeVlan(id: Id): Promise<boolean>;
   /**
-   * Libera la conexión persistente del transporte (SSH de Cisco, sesión SNMP) si
-   * la hay. Mismo contrato que `HardwareDriver.stop` (US-229, AUD3-16).
+   * Libera la conexión persistente del transporte (sesión SNMP) si la hay. Mismo
+   * contrato que `HardwareDriver.stop` (US-229, AUD3-16).
    */
   stop?(): Promise<void>;
 }

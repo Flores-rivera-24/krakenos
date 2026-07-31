@@ -30,7 +30,7 @@ describe('IntegrationsSection', () => {
   });
 
   it('renderiza las cards de Hue/Govee/Tuya con datos de /iot/devices', async () => {
-    render(<IntegrationsSection driver="mock" isAdmin />);
+    render(<IntegrationsSection isAdmin />);
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/iot/devices'));
     expect(screen.getByText('Philips Hue')).toBeInTheDocument();
     expect(screen.getByText('Govee')).toBeInTheDocument();
@@ -40,16 +40,9 @@ describe('IntegrationsSection', () => {
     expect(screen.getByText('0/1 en línea')).toBeInTheDocument();
   });
 
-  it('la card de Cisco solo aparece con un driver cisco-*', async () => {
-    const { rerender } = render(<IntegrationsSection driver="mock" isAdmin />);
-    expect(screen.queryByText('Cisco')).not.toBeInTheDocument();
-    rerender(<IntegrationsSection driver="cisco-ios" isAdmin />);
-    expect(screen.getByText('Cisco')).toBeInTheDocument();
-  });
-
   it('"Gestionar focos" despliega el gestor Tuya (admin)', async () => {
     const user = userEvent.setup();
-    render(<IntegrationsSection driver="mock" isAdmin />);
+    render(<IntegrationsSection isAdmin />);
     await screen.findByText('Tuya');
     await user.click(screen.getByRole('button', { name: 'Gestionar focos' }));
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/iot/tuya/devices'));
@@ -58,7 +51,7 @@ describe('IntegrationsSection', () => {
 
   it('"Añadir integración" abre el modal con las guías', async () => {
     const user = userEvent.setup();
-    render(<IntegrationsSection driver="mock" isAdmin />);
+    render(<IntegrationsSection isAdmin />);
     await user.click(screen.getByRole('button', { name: /Añadir integración/ }));
     expect(screen.getByRole('heading', { name: 'Añadir integración' })).toBeInTheDocument();
     expect(screen.getByText('docs/tuya-setup.md')).toBeInTheDocument();

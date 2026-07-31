@@ -8,12 +8,24 @@ vi.mock('@/lib/compatibility', () => compatMock);
 import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
 
 const CATALOG: CompatibilityEntry[] = [
-  { id: 'driver:openwrt', category: 'driver', label: 'Router OpenWrt', capabilities: ['inventory', 'wifi'], requirements: ['address', 'credentials'], verified: false },
-  { id: 'iot:hue', category: 'iot', label: 'Philips Hue', capabilities: ['control'], requirements: ['address', 'credentials'], verified: false },
-  { id: 'dns:pihole', category: 'dns', label: 'Pi-hole', capabilities: ['dns-block'], requirements: ['address'], verified: false },
+  { id: 'driver:openwrt', category: 'driver', label: 'Router OpenWrt', capabilities: ['inventory', 'wifi'], requirements: ['address', 'credentials'], verified: false, support: 'core' },
+  { id: 'iot:hue', category: 'iot', label: 'Philips Hue', capabilities: ['control'], requirements: ['address', 'credentials'], verified: false, support: 'core' },
+  { id: 'dns:pihole', category: 'dns', label: 'Pi-hole', capabilities: ['dns-block'], requirements: ['address'], verified: false, support: 'core' },
+  // US-238: uno solo en community, a propósito — con todo igual, invertir la
+  // condición del aviso daría el mismo recuento y el test no probaría nada.
+  { id: 'iot:tuya', category: 'iot', label: 'Tuya / Smart Life', capabilities: ['control'], requirements: ['extra-dependency'], verified: false, support: 'community' },
 ];
 
 describe('CompatibilitySection (US-208)', () => {
+  it('avisa de «sin garantía» SOLO en los backends community (US-238)', async () => {
+    render(<CompatibilitySection />);
+    await screen.findByText('Tuya / Smart Life');
+    const avisos = screen.getAllByText(/sin garantía/i);
+    // Uno y solo uno: el aviso va pegado a Tuya, no a Hue ni al router.
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]!.closest('li')).toHaveTextContent('Tuya / Smart Life');
+  });
+
   beforeEach(() => {
     compatMock.listCompatibility.mockReset().mockResolvedValue(CATALOG);
   });

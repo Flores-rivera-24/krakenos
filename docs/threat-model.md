@@ -393,7 +393,7 @@ servidor; validadores anti-inyección y helper por ámbito sólidos.
 | 7 | 🟠 Media | `inventory:rescan` sin throttle → amplificación a hardware | Coalescing (`isScanning`) en `scanCycle` |
 | 8 | 🟠 Media | Inyección CLI RouterOS: SSID sin escapar en `cliProps` (modo SSH de MikroTik) | Entrecomillado+escape siempre; pattern anti-control en SSID |
 | 9 | 🟡 Baja | `rtspUrl` sin esquema → LFI/SSRF vía protocolos de ffmpeg | `pattern:'^rtsps?://'` |
-| 10 | 🟡 Baja | Interfaz WAN Cisco interpolada sin validar | `assertCiscoInterface` en el builder |
+| 10 | 🟡 Baja | Interfaz WAN Cisco interpolada sin validar | `assertCiscoInterface` en el builder. ⚠️ **US-238 (2026-07-30) retiró los drivers `cisco-ios`/`cisco-netconf` y el gestor de VLANs Cisco**, así que tanto el vector como su validador dejaron de existir: la mitigación vigente es que **la superficie ya no está** |
 | 11 | 🟡 Baja | `backgroundImage` de coverage sin cota; MAC de acceso sin pattern | `maxLength`+`data:image/`; pattern MAC |
 | 12 | 🟡 Baja | Cookie sin `Secure` en prod sin TLS/proxy (silencioso) | Aviso al arrancar |
 | 13 | 🟠 Media | **Heatmap de cobertura congela el event loop** (síncrono O(celdas·APs·paredes), hasta ~250k celdas): cualquier autenticado bloqueaba el proceso decenas de segundos pidiendo el heatmap de un plano grande | Cómputo **asíncrono cooperativo** (cede el loop cada 32 filas) + **caché content-addressed** con single-flight y límite de concurrencia. Verificado empíricamente: 24 s de bloqueo del loop → 0 (responsivo durante el cálculo) |

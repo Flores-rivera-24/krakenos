@@ -1,8 +1,8 @@
 /**
  * Validadores **puros** anti-inyección para los argumentos que llegan a una
  * operación privilegiada — el helper sudoers (`wg`/`iptables`/`tc`, vía
- * {@link file://./runner.ts SudoHelperRunner}) o una sesión CLI/SNMP de Cisco
- * (`cisco-ios.commands.ts`, `q-bridge.ts`).
+ * {@link file://./runner.ts SudoHelperRunner}) o una sesión SNMP contra un switch
+ * gestionado (`q-bridge.ts`).
  *
  * **Rechazan, no sanean:** un valor sospechoso lanza `InvalidArgumentError` y
  * aborta la operación **antes** de cualquier `exec`/sesión; nunca se "arregla"
@@ -13,10 +13,13 @@
  *   `exec wg "$@"` (sin re-split), así que **no** hay inyección de shell por el
  *   runner. El vector real es la **inyección de banderas**: un argv que empieza
  *   por `-`/`--` que `wg`/`iptables`/`tc` interpretarían como opción.
- * - La VLAN Cisco se aplica por **CLI multi-línea sobre SSH**
- *   (`transport.executePrivileged([...])`): aquí un salto de línea o retorno de
- *   carro dentro de un nombre **inyecta comandos IOS adicionales** en la sesión
- *   privilegiada. Por eso se rechazan también los caracteres de control.
+ * - El nombre de VLAN viaja como **OctetString SNMP** a un switch gestionado, así
+ *   que se rechazan también los caracteres de control: no hay shell donde
+ *   inyectar, pero sí un campo de longitud fija que un valor raro puede corromper.
+ *   ⚠️ US-238 retiró el camino que era **CLI multi-línea sobre SSH** (VLANs Cisco);
+ *   si alguna vez vuelve un transporte de ese tipo, vuelve con él el vector de
+ *   inyectar comandos adicionales con un salto de línea, y esta allowlist es la
+ *   que lo tapa.
  *
  * Las validaciones viven en los **constructores de argv/CLI** (el cuello de
  * botella justo antes de ejecutar), de modo que protegen *todas* las rutas de
@@ -73,19 +76,6 @@ export function assertInterfaceName(value: string, label = 'interfaz'): string {
   return value;
 }
 
-/**
- * Nombre de interfaz Cisco (`GigabitEthernet0/1`, `Gi1/0/24`…): admite `/` y es
- * más largo que una interfaz de Linux. Sigue rechazando espacios, control y `-` inicial.
- */
-export function assertCiscoInterface(value: string, label = 'puerto Cisco'): string {
-  assertCleanString(value, label);
-  if (value.startsWith('-')) fail(label, value, 'empieza por "-" (posible inyección de bandera)');
-  if (!/^[A-Za-z0-9][A-Za-z0-9/._-]{0,31}$/.test(value)) {
-    fail(label, value, 'no es un nombre de interfaz Cisco válido');
-  }
-  return value;
-}
-
 /** Clave pública/privada WireGuard: base64 de 32 bytes (`[A-Za-z0-9+/]{43}=`). */
 export function assertWireguardKey(value: string, label = 'clave WireGuard'): string {
   assertCleanString(value, label);
@@ -127,18 +117,9 @@ export function assertVlanTag(value: number, label = 'tag de VLAN'): number {
   return value;
 }
 
-/** Tag 802.1Q recibido como cadena (p. ej. variable de entorno): solo dígitos, 1..4094. */
-export function assertVlanTagString(value: string, label = 'tag de VLAN'): string {
-  assertCleanString(value, label);
-  if (!/^\d{1,4}$/.test(value)) fail(label, value, 'no es un tag 802.1Q numérico');
-  assertVlanTag(Number(value), label);
-  return value;
-}
-
 /**
- * Nombre de VLAN para CLI IOS / OctetString SNMP. Allowlist estricta
- * (`[A-Za-z0-9_.-]`, 1..32): rechaza espacios, control y metacaracteres, lo que
- * cierra tanto la inyección de comandos IOS por salto de línea como argumentos raros.
+ * Nombre de VLAN para el OctetString SNMP. Allowlist estricta
+ * (`[A-Za-z0-9_.-]`, 1..32): rechaza espacios, control y metacaracteres.
  */
 export function assertVlanName(value: string, label = 'nombre de VLAN'): string {
   assertCleanString(value, label);

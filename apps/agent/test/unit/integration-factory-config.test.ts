@@ -49,15 +49,22 @@ describe('factory-config — precedencia DB sobre .env y mapeo plano→factory (
     expect(cfg.govee!.listenPort).toBe(5000);
   });
 
-  it('dns pihole y vlan cisco mapean sus campos', () => {
+  it('dns pihole y vlan switch mapean sus campos', () => {
     const dns = resolveDnsConfig({ kind: 'pihole', values: { baseUrl: 'http://pi.casa', password: 'pw' } });
     expect(dns.kind).toBe('pihole');
     expect(dns.pihole!.baseUrl).toBe('http://pi.casa');
     expect(dns.pihole!.password).toBe('pw');
 
-    const vlan = resolveVlanConfig({ kind: 'cisco', values: { host: '10.0.0.1', password: 'p' } });
-    expect(vlan.kind).toBe('cisco');
-    expect(vlan.cisco!.host).toBe('10.0.0.1');
-    expect(vlan.cisco!.password).toBe('p');
+    const vlan = resolveVlanConfig({ kind: 'switch', values: { host: '10.0.0.1', community: 'privada' } });
+    expect(vlan.kind).toBe('switch');
+    expect(vlan.switch!.host).toBe('10.0.0.1');
+    expect(vlan.switch!.community).toBe('privada');
+  });
+
+  // US-238: `cisco` dejó de ser un VlanKind. Un registro guardado en la DB de una
+  // instalación anterior no puede resucitarlo ni tumbar el arranque: cae a `mock`.
+  it('un kind de VLAN retirado (cisco) cae a mock en vez de romper', () => {
+    const vlan = resolveVlanConfig({ kind: 'cisco', values: { host: '10.0.0.1' } });
+    expect(vlan.kind).toBe('mock');
   });
 });

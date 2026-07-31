@@ -1,8 +1,4 @@
 import type { DriverKind, HardwareDriver } from '@krakenos/types';
-import { CiscoIosDriver } from './cisco-ios.driver.js';
-import { SshCiscoTransport } from './cisco-ios.transport.js';
-import { CiscoNetconfDriver } from './cisco-netconf.driver.js';
-import { SshNetconfTransport } from './cisco-netconf.transport.js';
 import { MockDriver } from './mock.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
@@ -42,34 +38,6 @@ export interface PfSenseDriverConfig {
   wanInterface?: string;
   /** Interfaz donde se crean las reglas de bloqueo (por defecto `lan`). */
   lanInterface?: string;
-}
-
-/** Config SSH+CLI para el driver Cisco IOS real (`kind: 'cisco-ios'`). */
-export interface CiscoIosDriverConfig {
-  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet0/0`. */
-  interface: string;
-  /** VLAN por defecto para las entradas de bloqueo (por defecto `1`). */
-  vlan?: string;
-  ssh: {
-    host: string;
-    port?: number;
-    username: string;
-    password?: string;
-    /** Contraseña de `enable` (modo privilegiado), si aplica. */
-    enablePassword?: string;
-  };
-}
-
-/** Config NETCONF para el driver Cisco IOS-XE real (`kind: 'cisco-netconf'`). */
-export interface CiscoNetconfDriverConfig {
-  /** Interfaz WAN para el muestreo de tráfico, p. ej. `GigabitEthernet1`. */
-  interface: string;
-  netconf: {
-    host: string;
-    port?: number;
-    username: string;
-    password?: string;
-  };
 }
 
 /** Modo de transporte del driver MikroTik. */
@@ -129,10 +97,6 @@ export interface CreateDriverConfig {
   openwrt?: OpenWrtDriverConfig;
   /** Requerido cuando `kind === 'pfsense'`. */
   pfsense?: PfSenseDriverConfig;
-  /** Requerido cuando `kind === 'cisco-ios'`. */
-  ciscoIos?: CiscoIosDriverConfig;
-  /** Requerido cuando `kind === 'cisco-netconf'`. */
-  ciscoNetconf?: CiscoNetconfDriverConfig;
   /** Requerido cuando `kind === 'unifi'`. */
   unifi?: UnifiDriverConfig;
   /** Requerido cuando `kind === 'mikrotik'`. */
@@ -141,6 +105,36 @@ export interface CreateDriverConfig {
   omada?: OmadaDriverConfig;
   /** Requerido cuando `kind === 'asus'`. */
   asus?: AsusDriverConfig;
+}
+
+/**
+ * Kinds retirados por US-238. Existen **solo** para dar un error que se entienda:
+ * quien tenía `DRIVER_KIND=cisco-ios` en su `.env` se encuentra el agente sin
+ * arrancar al actualizar, y «Driver desconocido» no le dice qué hacer.
+ *
+ * NO se degradan a `mock` a propósito: mock enseña una casa inventada, así que el
+ * usuario vería dispositivos que no existen y creería que su red está gestionada.
+ * Parar en seco y explicar por qué es lo honesto.
+ *
+ * ⚠️ El fallback a `.env` de `integrations/runtime.ts::tryBuild` **no cubre este
+ * caso**: solo protege de una config guardada en la DB que falle, y aquí el valor
+ * retirado está justo en el `.env` que hace de red de seguridad.
+ */
+const KINDS_RETIRADOS: Record<string, string> = {
+  'cisco-ios': 'US-238',
+  'cisco-netconf': 'US-238',
+};
+
+/** Mensaje de un kind retirado, o `null` si no lo es. */
+function mensajeDeRetirada(kind: string, soportados: string): string | null {
+  const historia = KINDS_RETIRADOS[kind];
+  if (!historia) return null;
+  return (
+    `El driver «${kind}» se retiró en ${historia}: era equipo de empresa, sin usuarios ` +
+    `domésticos y sin una sola verificación con hardware real. Cambia DRIVER_KIND en tu .env ` +
+    `por uno soportado (${soportados}). No se cae a «mock» automáticamente a propósito: te ` +
+    `enseñaría una casa inventada como si fuera la tuya.`
+  );
 }
 
 /**
@@ -172,27 +166,6 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
         client: new PfSenseClient({ baseUrl: pf.baseUrl, apiKey: pf.apiKey }),
         wanInterface: pf.wanInterface,
         lanInterface: pf.lanInterface,
-      });
-    }
-    case 'cisco-ios': {
-      const ci = config.ciscoIos;
-      if (!ci) throw new Error('Falta la configuración Cisco IOS (CreateDriverConfig.ciscoIos)');
-      if (!ci.ssh.host) throw new Error('El driver Cisco IOS requiere DRIVER_HOST (host SSH del switch)');
-      return new CiscoIosDriver({
-        transport: new SshCiscoTransport(ci.ssh),
-        interface: ci.interface,
-        vlan: ci.vlan,
-        host: config.host ?? ci.ssh.host,
-      });
-    }
-    case 'cisco-netconf': {
-      const cn = config.ciscoNetconf;
-      if (!cn) throw new Error('Falta la configuración Cisco NETCONF (CreateDriverConfig.ciscoNetconf)');
-      if (!cn.netconf.host) throw new Error('El driver Cisco NETCONF requiere CISCO_NETCONF_HOST');
-      return new CiscoNetconfDriver({
-        transport: new SshNetconfTransport(cn.netconf),
-        interface: cn.interface,
-        host: config.host ?? cn.netconf.host,
       });
     }
     case 'unifi': {
@@ -269,8 +242,10 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
       });
     }
     default: {
-      const exhaustive: never = config.kind;
-      throw new Error(`Driver desconocido: ${String(exhaustive)}`);
+      const kind = String(config.kind as string);
+      const retirado = mensajeDeRetirada(kind, 'mock, openwrt, pfsense, unifi, mikrotik, omada, asus');
+      if (retirado) throw new Error(retirado);
+      throw new Error(`Driver desconocido: ${kind}`);
     }
   }
 }
@@ -280,10 +255,6 @@ export { OpenWrtDriver } from './openwrt.driver.js';
 export { SshTransport } from './openwrt.transport.js';
 export { PfSenseDriver } from './pfsense.driver.js';
 export { PfSenseClient } from './pfsense.transport.js';
-export { CiscoIosDriver } from './cisco-ios.driver.js';
-export { SshCiscoTransport, MockCiscoTransport } from './cisco-ios.transport.js';
-export { CiscoNetconfDriver } from './cisco-netconf.driver.js';
-export { SshNetconfTransport, MockNetconfTransport } from './cisco-netconf.transport.js';
 export { UnifiDriver } from './unifi.driver.js';
 export { UnifiClient } from './unifi.transport.js';
 export { MikrotikDriver, FeatureNotSupportedError } from './mikrotik.driver.js';

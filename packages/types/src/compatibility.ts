@@ -6,6 +6,8 @@
  * soportada por código.
  */
 
+import type { IotKind } from './iot.js';
+
 /** Capacidad concreta que ofrece una integración. */
 export const COMPAT_CAPABILITIES = [
   'inventory', // ver dispositivos de la red
@@ -52,6 +54,50 @@ export const COMPAT_CATEGORIES = [
 ] as const;
 export type CompatCategory = (typeof COMPAT_CATEGORIES)[number];
 
+/**
+ * Nivel de soporte de una integración (US-238, criterio de `docs/adr-control-total.md`).
+ *
+ * - `core`: habla un **protocolo abierto** o empareja **en local** (Zigbee, Matter,
+ *   Hue, Shelly, Kasa, y todo lo que no sea IoT: SSH, REST local, SNMP, RTSP…).
+ *   Es lo que el proyecto se compromete a mantener y a arreglar.
+ * - `community`: **necesita la app o la nube del fabricante** al menos una vez —para
+ *   emparejar, para sacar una clave o para habilitar el control local—. Se conserva
+ *   el código, pero **sin garantía**: puede romperse cuando el fabricante cambie algo,
+ *   y un mantenedor único no puede prometer perseguir eso.
+ *
+ * No es lo mismo que `verified` (US-86, «¿se ha probado con el aparato físico?») ni
+ * que el `tier` de las guías, que mide **dificultad** para quien lo instala.
+ */
+export const SUPPORT_LEVELS = ['core', 'community'] as const;
+export type SupportLevel = (typeof SUPPORT_LEVELS)[number];
+
+/**
+ * Nivel de soporte por backend IoT. **Fuente única** (US-238): lo consumen el
+ * catálogo de compatibilidad del agente y el asistente de la web, que si no se
+ * desincronizarían — y el fallo sería mostrar «sin garantía» en un sitio y no en
+ * el otro, que es peor que no decirlo.
+ *
+ * Exhaustivo sobre `IotKind` a propósito: **un backend nuevo no compila hasta
+ * clasificarlo**, en vez de heredar «soportado» por omisión.
+ */
+export const IOT_SUPPORT_LEVEL: Record<IotKind, SupportLevel> = {
+  // Protocolo abierto o emparejamiento contra el servidor propio.
+  mock: 'core',
+  zigbee: 'core',
+  matter: 'core',
+  hue: 'core',
+  shelly: 'core',
+  // ⚠️ Kasa es local (XOR), pero **Tapo comparte backend** y sí pide la cuenta
+  // TP-Link. `adr-control-total.md` lo lista en primera clase y se respeta; que la
+  // ficha lo diga aparato a aparato es US-258, y no guardar la contraseña entera
+  // es US-259.
+  kasa: 'core',
+  // Necesitan la app del fabricante al menos una vez.
+  tuya: 'community', // la `localKey` la emite el emparejamiento contra su nube
+  govee: 'community', // «LAN Control» se activa aparato a aparato desde su app
+  meross: 'community', // empareja por su app; el control local exige redirigir DNS
+};
+
 export interface CompatibilityEntry {
   /** Id estable `<categoría>:<kind>` (p. ej. `driver:openwrt`). */
   id: string;
@@ -65,4 +111,6 @@ export interface CompatibilityEntry {
    * código pero aún sin verificar en un despliegue con el equipo físico.
    */
   verified: boolean;
+  /** Compromiso de mantenimiento: ver {@link SupportLevel}. */
+  support: SupportLevel;
 }

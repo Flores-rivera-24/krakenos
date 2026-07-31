@@ -97,6 +97,12 @@ export function CompatibilitySection() {
                   <Badge key={c}>{t(`compat.cap.${c}` as TranslationKey)}</Badge>
                 ))}
               </div>
+              {/* US-238: solo se marca lo `community`. Poner también un sello a lo
+                  `core` convertiría la distinción en decoración — lo que hay que
+                  ver de un vistazo es qué NO lleva garantía. */}
+              {e.support === 'community' && (
+                <p className="text-kr-xs text-warning">{t('compat.community')}</p>
+              )}
               {e.requirements.length > 0 && (
                 <p className="text-kr-xs text-kr-muted">
                   {t('compat.needs')}{' '}
