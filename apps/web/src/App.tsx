@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Splash } from '@/components/ui/splash';
-import { setLocale, useT } from '@/lib/i18n';
+import { changeLocale, useT } from '@/lib/i18n';
 import { bootstrapSession } from '@/lib/session';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -70,7 +70,10 @@ export function App() {
   // dispositivo (US-177): al iniciar/restaurar sesión, aplica y persiste su
   // idioma. Sin sesión, se mantiene el resuelto en el arranque.
   useEffect(() => {
-    if (userLocale) setLocale(userLocale);
+    // `changeLocale` y no `setLocale`: el catálogo del idioma del usuario puede
+    // no estar cargado todavía (US-262), y activarlo antes dejaría la primera
+    // pantalla tras el login en español.
+    if (userLocale) void changeLocale(userLocale);
   }, [userLocale]);
 
   if (!ready) return <Splash label={t('app.booting')} />;
