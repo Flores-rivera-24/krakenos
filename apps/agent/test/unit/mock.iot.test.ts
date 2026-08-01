@@ -33,7 +33,7 @@ describe('MockIotManager', () => {
     expect(byId.get('plug-tv')?.powerW).toBeGreaterThan(0); // nace encendido
     expect(byId.get('plug-cafetera')?.powerW).toBe(0); // nace apagado
     // Los sensores no miden potencia.
-    expect(byId.get('sensor-temp')?.powerW).toBeNull();
+    expect(byId.get('sensor-clima')?.powerW).toBeNull();
   });
 
   it('encender un enchufe le da potencia; apagarlo la lleva a 0 (US-181)', async () => {

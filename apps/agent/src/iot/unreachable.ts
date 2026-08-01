@@ -33,7 +33,7 @@ export function unreachableDevice(input: {
     on: null,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
     powerW: null,
     energyWh: null,
   };

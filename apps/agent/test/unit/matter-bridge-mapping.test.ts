@@ -20,7 +20,7 @@ function device(over: Partial<IotDevice>): IotDevice {
     on: true,
     brightness: 50,
     color: null,
-    reading: null,
+    readings: [],
     ...over,
   };
 }

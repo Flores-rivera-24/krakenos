@@ -24,7 +24,7 @@ const IOT: IotDevice = {
   on: true,
   brightness: 80,
   color: null,
-  reading: null,
+  readings: [],
 };
 
 function renderWidget() {

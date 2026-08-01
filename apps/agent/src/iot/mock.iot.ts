@@ -1,4 +1,5 @@
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
+import { isControllableKind } from '@krakenos/types';
 
 /** Error de dominio IoT con código estable. */
 export class IotError extends Error {
@@ -43,12 +44,18 @@ export class MockIotManager implements IotManager {
 
   constructor() {
     const seed: IotDevice[] = [
-      { id: 'light-salon', name: 'Luz salón', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, color: { hex: '#ffae42', temperatureK: null }, reading: null },
-      { id: 'light-dormitorio', name: 'Luz dormitorio', kind: 'light', room: 'Dormitorio', reachable: true, on: false, brightness: 50, color: { hex: null, temperatureK: 2700 }, reading: null },
-      { id: 'plug-cafetera', name: 'Cafetera', kind: 'plug', room: 'Cocina', reachable: true, on: false, brightness: null, color: null, reading: null },
-      { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, color: null, reading: null },
-      { id: 'sensor-temp', name: 'Temperatura salón', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'temperatura', value: 21.5, unit: '°C' } },
-      { id: 'sensor-hum', name: 'Humedad', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, reading: { metric: 'humedad', value: 45, unit: '%' } },
+      { id: 'light-salon', name: 'Luz salón', kind: 'light', room: 'Salón', reachable: true, on: true, brightness: 80, color: { hex: '#ffae42', temperatureK: null }, readings: [] },
+      { id: 'light-dormitorio', name: 'Luz dormitorio', kind: 'light', room: 'Dormitorio', reachable: true, on: false, brightness: 50, color: { hex: null, temperatureK: 2700 }, readings: [] },
+      { id: 'plug-cafetera', name: 'Cafetera', kind: 'plug', room: 'Cocina', reachable: true, on: false, brightness: null, color: null, readings: [] },
+      { id: 'plug-tv', name: 'TV', kind: 'plug', room: 'Salón', reachable: true, on: true, brightness: null, color: null, readings: [] },
+      // Un solo aparato con DOS lecturas: es el caso que el contrato viejo no
+      // podía representar y por el que `readings` es una lista (US-244).
+      { id: 'sensor-clima', name: 'Clima salón', kind: 'sensor', room: 'Salón', reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'temperature', value: 21.5, unit: '°C' }, { metric: 'humidity', value: 45, unit: '%' }] },
+      // Categorías nuevas de US-244, para que el modo `mock` las enseñe sin hardware.
+      { id: 'contact-puerta', name: 'Puerta de entrada', kind: 'contact', room: 'Entrada', reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'contact', value: 0, unit: '' }, { metric: 'battery', value: 92, unit: '%' }] },
+      { id: 'smoke-cocina', name: 'Detector de humo', kind: 'smoke', room: 'Cocina', reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'smoke', value: 0, unit: '' }, { metric: 'battery', value: 78, unit: '%' }] },
+      { id: 'cover-salon', name: 'Persiana salón', kind: 'cover', room: 'Salón', reachable: true, on: null, brightness: null, color: null, readings: [], position: 60 },
+      { id: 'climate-salon', name: 'Termostato', kind: 'climate', room: 'Salón', reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'temperature', value: 20.5, unit: '°C' }], targetC: 21 },
     ];
     for (const d of seed) {
       const withPower = withSimulatedPower(d);
@@ -67,12 +74,21 @@ export class MockIotManager implements IotManager {
   async setState(id: string, input: UpdateIotStateRequest): Promise<IotDevice> {
     const device = this.devices.get(id);
     if (!device) throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
-    if (device.kind === 'sensor') {
-      throw new IotError('IOT_NOT_CONTROLLABLE', 'Un sensor no se puede controlar');
+    // US-244: la lista de lo controlable vive en `@krakenos/types`, no aquí. Antes
+    // se comprobaba `kind === 'sensor'`, así que las categorías nuevas habrían
+    // pasado el filtro por omisión — incluida `lock`, que es la que no debe.
+    if (!isControllableKind(device.kind)) {
+      throw new IotError('IOT_NOT_CONTROLLABLE', 'Este dispositivo no se puede controlar');
     }
 
     const next: IotDevice = { ...device };
-    if (input.on !== undefined) next.on = input.on;
+    if (input.position !== undefined && device.kind === 'cover') {
+      next.position = Math.max(0, Math.min(100, input.position));
+    }
+    if (input.targetC !== undefined && device.kind === 'climate') next.targetC = input.targetC;
+    if (input.on !== undefined && (device.kind === 'light' || device.kind === 'plug')) {
+      next.on = input.on;
+    }
     if (input.brightness !== undefined && device.kind === 'light') {
       next.brightness = input.brightness;
       // Ajustar brillo enciende la luz.

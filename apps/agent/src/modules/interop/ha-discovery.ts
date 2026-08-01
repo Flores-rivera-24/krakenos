@@ -161,7 +161,12 @@ export type IotExposure =
   | { component: 'light'; brightness: boolean; color: boolean };
 
 export function exposureFor(dev: SnapshotIotDevice, controlEnabled: boolean): IotExposure | null {
-  if (dev.kind === 'sensor' || dev.on === null) return null; // sensores no son on/off
+  // Sensores y, desde US-244, también `contact`/`smoke`/`cover`/`climate`/`lock`:
+  // ninguno es on/off, así que `on === null` los descarta a todos. **Es correcto
+  // pero no es completo**: HA tiene `binary_sensor` y `cover` nativos y publicar
+  // ahí un sensor de apertura sería útil. Se deja fuera a propósito de esta
+  // historia —que amplía el contrato, no la interop— y está anotado en el backlog.
+  if (dev.kind === 'sensor' || dev.on === null) return null;
   if (dev.kind === 'light' && controlEnabled) {
     return { component: 'light', brightness: dev.brightness !== null, color: dev.color !== null };
   }

@@ -102,9 +102,13 @@ export function nodeToIotDevice(node: MatterNode): IotDevice {
   const temp = findAttribute(attrs, TEMP_CLUSTER, MEASURED_VALUE_ATTR)?.value;
   const humidity = findAttribute(attrs, HUMIDITY_CLUSTER, MEASURED_VALUE_ATTR)?.value;
 
-  let reading: IotReading | null = null;
-  if (typeof temp === 'number') reading = { metric: 'temperatura', value: temp / 100, unit: '°C' };
-  else if (typeof humidity === 'number') reading = { metric: 'humedad', value: humidity / 100, unit: '%' };
+  // US-244: se acumulan TODAS las lecturas. Con el `else if` anterior, un nodo
+  // que reporta temperatura y humedad perdía la humedad sin decirlo.
+  const readings: IotReading[] = [];
+  if (typeof temp === 'number') readings.push({ metric: 'temperature', value: temp / 100, unit: '°C' });
+  if (typeof humidity === 'number') {
+    readings.push({ metric: 'humidity', value: humidity / 100, unit: '%' });
+  }
 
   return {
     id: String(node.node_id),
@@ -116,7 +120,7 @@ export function nodeToIotDevice(node: MatterNode): IotDevice {
     brightness: kind === 'light' && typeof levelValue === 'number' ? levelToPercent(levelValue) : null,
     // El color de Matter (cluster Color Control) no se mapea aún (baseline).
     color: null,
-    reading: kind === 'sensor' ? reading : null,
+    readings: kind === 'sensor' ? readings : [],
   };
 }
 

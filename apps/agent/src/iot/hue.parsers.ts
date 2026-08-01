@@ -103,7 +103,7 @@ export function lightToIotDevice(light: unknown): IotDevice | null {
     // Hue v2 ya da el brillo en 0-100.
     brightness: typeof dimming.brightness === 'number' ? Math.round(dimming.brightness) : null,
     color: lightColor(l),
-    reading: null,
+    readings: [],
   };
 }
 

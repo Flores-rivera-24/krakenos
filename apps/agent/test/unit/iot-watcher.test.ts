@@ -12,7 +12,7 @@ function device(over: Partial<IotDevice> & { id: string }): IotDevice {
     on: false,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
     ...over,
   };
 }
@@ -56,12 +56,19 @@ describe('IotWatcher', () => {
   });
 
   it('publica sensor-reading con la lectura previa al cambiar el valor', async () => {
-    const sensor = device({ id: 's', kind: 'sensor', on: null, reading: { metric: 'temperatura', value: 20 } });
+    const sensor = device({
+      id: 's',
+      kind: 'sensor',
+      on: null,
+      readings: [{ metric: 'temperature', value: 20, unit: '°C' }],
+    });
     const { watcher, events, setDevices } = setup([sensor]);
     await watcher.tick();
-    setDevices([{ ...sensor, reading: { metric: 'temperatura', value: 25 } }]);
+    setDevices([{ ...sensor, readings: [{ metric: 'temperature', value: 25, unit: '°C' }] }]);
     await watcher.tick();
-    expect(events).toEqual([{ type: 'sensor-reading', deviceId: 's', value: 25, prevValue: 20 }]);
+    expect(events).toEqual([
+      { type: 'sensor-reading', deviceId: 's', metric: 'temperature', value: 25, prevValue: 20 },
+    ]);
 
     // Sin cambio de valor → no publica.
     await watcher.tick();

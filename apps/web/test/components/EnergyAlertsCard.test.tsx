@@ -20,7 +20,7 @@ const DEVICES: IotDevice[] = [
     on: true,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
     powerW: 120,
   },
   {
@@ -32,7 +32,7 @@ const DEVICES: IotDevice[] = [
     on: null,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
   },
 ];
 

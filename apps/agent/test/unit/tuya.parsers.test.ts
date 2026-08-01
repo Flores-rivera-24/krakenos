@@ -36,7 +36,7 @@ describe('tuya.parsers — dpsToIotDevice', () => {
       on: true,
       brightness: 100,
       color: null,
-      reading: null,
+      readings: [],
     });
   });
 

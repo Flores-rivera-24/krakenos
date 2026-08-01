@@ -1,4 +1,5 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { IotMetric } from './iot.js';
 import type { HomeMode } from './presence.js';
 
 /**
@@ -114,7 +115,19 @@ export type HomeEvent = (
   | { type: 'device-offline'; mac: string }
   | { type: 'iot-on'; deviceId: Id }
   | { type: 'iot-off'; deviceId: Id }
-  | { type: 'sensor-reading'; deviceId: Id; value: number; prevValue: number | null }
+  /**
+   * Una lectura de un dispositivo cambió. `metric` (US-244) es lo que permite a
+   * un consumidor saber **qué** cambió: sin él, «una puerta se ha abierto» y
+   * «este enchufe consume 5 W» eran el mismo evento con distinto número, y la
+   * alarma —que solo podía mirar el número— se disparaba con una lámpara.
+   */
+  | {
+      type: 'sensor-reading';
+      deviceId: Id;
+      metric: IotMetric;
+      value: number;
+      prevValue: number | null;
+    }
   /**
    * Un dispositivo cruza su umbral de consumo (US-183). `metric` distingue
    * potencia sostenida (W) de energía diaria (Wh); `value` es la magnitud

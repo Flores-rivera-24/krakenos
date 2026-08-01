@@ -131,7 +131,9 @@ function RuleEditor({
   const t = useT();
   const editing = rule !== null;
   const controllable = iotDevices.filter((d) => d.on !== null);
-  const sensors = iotDevices.filter((d) => d.reading !== null);
+  // US-244: un aparato puede reportar varias lecturas; sirve como origen de un
+  // disparador si reporta al menos una.
+  const sensors = iotDevices.filter((d) => d.readings.length > 0);
 
   const [name, setName] = useState(rule?.name ?? '');
   const [triggerType, setTriggerType] = useState<TriggerType>(rule?.trigger.type ?? 'device-new');

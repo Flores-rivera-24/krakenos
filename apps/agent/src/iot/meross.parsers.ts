@@ -190,7 +190,7 @@ export function merossToIotDevice(
     on: state?.on ?? false,
     brightness: state?.brightness ?? null,
     color: state?.color ?? null,
-    reading: null,
+    readings: [],
   };
 }
 

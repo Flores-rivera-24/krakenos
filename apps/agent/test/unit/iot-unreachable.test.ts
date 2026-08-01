@@ -19,7 +19,7 @@ describe('unreachableDevice (US-242)', () => {
       on: null,
       brightness: null,
       color: null,
-      reading: null,
+      readings: [],
     });
     // El último valor conocido sería una mentira con pinta de dato fresco.
     expect(d.powerW).toBeNull();

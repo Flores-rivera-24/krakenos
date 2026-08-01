@@ -150,7 +150,7 @@ const IOT_LIGHT = {
   on: true,
   brightness: 80,
   color: { hex: '#ff8800', temperatureK: null },
-  reading: null,
+  readings: [],
 };
 const CAMERA = { id: 'cam', name: 'Entrada', room: 'Exterior', model: 'X', online: false };
 const FLOOR_PLAN = {

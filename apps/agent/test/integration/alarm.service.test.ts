@@ -9,7 +9,7 @@ import { buildTestApp, resetDb } from '../helpers/app.js';
 class FakeIot implements IotManager {
   setCalls: { id: string; on?: boolean }[] = [];
   devices: IotDevice[] = [
-    { id: 'siren', name: 'Sirena', kind: 'plug', room: null, reachable: true, on: false, brightness: null, color: null, reading: null },
+    { id: 'siren', name: 'Sirena', kind: 'plug', room: null, reachable: true, on: false, brightness: null, color: null, readings: [] },
     { id: 'sensor-door', name: 'Puerta', kind: 'sensor', room: null, reachable: true, on: null, brightness: null, color: null, reading: { metric: 'contact', value: 0, unit: '' } },
   ];
   async listDevices() {
@@ -67,6 +67,84 @@ describe('AlarmService (US-188)', () => {
 
     service.stop();
     auditSpy.mockRestore();
+  });
+
+  /**
+   * US-244 — la consecuencia grave que la historia cierra. Antes, la alarma
+   * disparaba con **cualquier** `sensor-reading` cuyo valor cruzara 1, así que:
+   *
+   *  - un sensor de contacto no la disparaba nunca (z2m no producía la lectura), y
+   *  - un canal Shelly metido en `sensorDeviceIds` la disparaba al encender una
+   *    lámpara, porque su potencia pasaba de 0 W a 5 W.
+   *
+   * Ahora manda la **métrica**, no el número.
+   */
+  describe('qué dispara y qué no (US-244)', () => {
+    const armada = async (iot: FakeIot) => {
+      // Reloj fijo: estos tests comprueban qué entra en `entry` y qué no, no el
+      // vencimiento de la cuenta atrás (eso ya lo cubre el test de arriba).
+      const clock = 0;
+      const { service, bus } = build(iot, () => clock);
+      service.start();
+      await service.setConfig({
+        sirenDeviceId: 'siren',
+        sensorDeviceIds: ['sensor-1'],
+        exitDelaySec: 0,
+        entryDelaySec: 10,
+      });
+      await service.armAlarm('away', 'ana@x');
+      expect(service.getStateSync().phase).toBe('armed');
+      return { service, bus };
+    };
+
+    it('una puerta que se abre la dispara', async () => {
+      const { service, bus } = await armada(new FakeIot());
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'sensor-1',
+        metric: 'contact',
+        value: 1,
+        prevValue: 0,
+      });
+      await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+      service.stop();
+    });
+
+    it('⚠️ un enchufe medidor NO la dispara al encender una lámpara', async () => {
+      const { service, bus } = await armada(new FakeIot());
+      // Mismo salto de 0 a 5 que antes la disparaba: lo único distinto es que la
+      // métrica dice que es potencia, no un suceso.
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'sensor-1',
+        metric: 'power',
+        value: 5,
+        prevValue: 0,
+      });
+      // Se espera un poco: el fallo sería que cambiara de fase, no que tardara.
+      await new Promise((r) => setTimeout(r, 30));
+      expect(service.getStateSync().phase).toBe('armed');
+      service.stop();
+    });
+
+    it('tampoco la disparan temperatura ni batería', async () => {
+      const { service, bus } = await armada(new FakeIot());
+      for (const metric of ['temperature', 'battery', 'humidity', 'illuminance'] as const) {
+        bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric, value: 22, prevValue: 0 });
+      }
+      await new Promise((r) => setTimeout(r, 30));
+      expect(service.getStateSync().phase).toBe('armed');
+      service.stop();
+    });
+
+    it('humo y CO sí la disparan', async () => {
+      for (const metric of ['smoke', 'co'] as const) {
+        const { service, bus } = await armada(new FakeIot());
+        bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric, value: 1, prevValue: 0 });
+        await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+        service.stop();
+      }
+    });
   });
 
   it('desarmar exige el PIN correcto (kid/guest no llegan aquí); apaga la sirena', async () => {

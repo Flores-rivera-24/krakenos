@@ -1,7 +1,43 @@
 import type { Id } from './common.js';
 
-/** Categoría de dispositivo IoT. */
-export type IotDeviceKind = 'light' | 'plug' | 'sensor';
+/**
+ * Categoría de dispositivo IoT (US-244). Deriva del array para que los enums de
+ * las rutas y los schemas no se re-tecleen (convención del proyecto).
+ *
+ * `contact` y `smoke` son categorías propias y **no** `sensor` genérico a
+ * propósito: son las que la alarma vigila, y mezclarlas con «un número que
+ * cambia» es justo lo que hacía que un enchufe con medidor de consumo pudiera
+ * dispararla. Un `sensor` mide magnitudes (temperatura, humedad, luz); un
+ * `contact` dice si algo está abierto.
+ */
+export const IOT_DEVICE_KINDS = [
+  'light',
+  'plug',
+  'sensor',
+  'climate',
+  'cover',
+  'lock',
+  'contact',
+  'smoke',
+] as const;
+export type IotDeviceKind = (typeof IOT_DEVICE_KINDS)[number];
+
+/**
+ * Categorías que aceptan **escritura** (US-244). El resto son de solo lectura: un
+ * sensor de contacto o un detector de humo no se «apagan».
+ *
+ * ⚠️ **`lock` no está aquí a propósito, y no es un olvido**: se lee pero no se
+ * escribe hasta que US-246 decida la política de desbloqueo. Un fallo en esa ruta
+ * abre la puerta de la calle, así que la superficie no existe en vez de existir
+ * sin haberla pensado. Añadir `lock` a esta lista es **la** decisión de US-246.
+ */
+export const CONTROLLABLE_IOT_KINDS = ['light', 'plug', 'cover', 'climate'] as const;
+export type ControllableIotKind = (typeof CONTROLLABLE_IOT_KINDS)[number];
+
+/** ¿Acepta este tipo de dispositivo órdenes de cambio de estado? */
+export function isControllableKind(kind: IotDeviceKind): kind is ControllableIotKind {
+  return (CONTROLLABLE_IOT_KINDS as readonly string[]).includes(kind);
+}
 
 /** Implementaciones de integración IoT disponibles. */
 export type IotKind =
@@ -15,9 +51,49 @@ export type IotKind =
   | 'shelly'
   | 'meross';
 
-/** Lectura de un sensor (temperatura, humedad…). */
+/**
+ * Magnitudes que puede reportar un dispositivo (US-244). Unión **cerrada**, y ese
+ * es el punto de la historia: `metric` era antes un `string` libre con el nombre
+ * en español («temperatura»), así que ningún consumidor podía distinguir «se ha
+ * abierto una puerta» de «este enchufe consume 5 W». La alarma lo resolvía
+ * mirando si el número cruzaba 1 — y encendía con una lámpara.
+ *
+ * Las cuatro últimas son **de seguridad** (`METRICAS_DE_SEGURIDAD`): significan un
+ * suceso, no una magnitud. El resto son medidas y no disparan nada por sí solas.
+ */
+export const IOT_METRICS = [
+  'temperature',
+  'humidity',
+  'power',
+  'energy',
+  'battery',
+  'illuminance',
+  'contact',
+  'occupancy',
+  'smoke',
+  'co',
+] as const;
+export type IotMetric = (typeof IOT_METRICS)[number];
+
+/**
+ * Métricas que representan un **suceso vigilable** y no una magnitud: son las
+ * únicas que pueden disparar la alarma (US-244). `1` = activo (abierto, presencia
+ * detectada, humo), `0` = reposo.
+ */
+export const SECURITY_METRICS = ['contact', 'occupancy', 'smoke', 'co'] as const;
+export type SecurityMetric = (typeof SECURITY_METRICS)[number];
+
+/** ¿Es esta métrica un suceso de seguridad y no una simple medida? */
+export function isSecurityMetric(metric: IotMetric): metric is SecurityMetric {
+  return (SECURITY_METRICS as readonly string[]).includes(metric);
+}
+
+/**
+ * Lectura de un dispositivo. `unit` es solo presentación (la UI la pinta tal
+ * cual); quien tenga que **decidir** algo mira `metric`, nunca `unit`.
+ */
 export interface IotReading {
-  metric: string;
+  metric: IotMetric;
   value: number;
   unit: string;
 }
@@ -48,8 +124,27 @@ export interface IotDevice {
   brightness: number | null;
   /** Color (luces con color); `null` si la luz no soporta color o no es luz. */
   color: IotColor | null;
-  /** Última lectura (sensor); `null` si no aplica. */
-  reading: IotReading | null;
+  /**
+   * Lecturas actuales (US-244). Es una **lista** y no una lectura suelta porque
+   * un aparato real reporta varias a la vez —un sensor de clima da temperatura,
+   * humedad y batería— y con un solo hueco se perdían todas menos la primera. Un
+   * aparato sin nada que medir tiene `[]`, nunca `null`: distinguir «lista vacía»
+   * de «no aplica» no le servía a ningún consumidor.
+   */
+  readings: IotReading[];
+  /**
+   * Posición de una persiana/toldo, 0 (cerrada) a 100 (abierta). `null` si no es
+   * un `cover` o el backend no la reporta.
+   */
+  position?: number | null;
+  /** Temperatura objetivo en °C de un `climate`; `null` si no aplica. */
+  targetC?: number | null;
+  /**
+   * ¿Está echada la cerradura? `null` si no es un `lock` o se desconoce.
+   * ⚠️ Solo **lectura**: abrir una cerradura por API no se expone hasta que
+   * US-246 decida la política (un fallo aquí abre la puerta de la calle).
+   */
+  locked?: boolean | null;
   /**
    * Potencia instantánea en vatios, si el dispositivo la mide (Shelly, Tapo/Kasa,
    * Meross, el mock la simula); `undefined`/`null` si el backend no la reporta
@@ -63,12 +158,22 @@ export interface IotDevice {
   energyWh?: number | null;
 }
 
-/** Cambios de estado aplicables a un dispositivo controlable (light/plug). */
+/**
+ * Cambios de estado aplicables a un dispositivo controlable (US-244).
+ *
+ * ⚠️ **No hay campo para la cerradura.** `lock` se lee pero no se escribe hasta
+ * que US-246 decida la política de desbloqueo: un fallo aquí abre la puerta de la
+ * calle, así que la superficie no existe en vez de existir sin decidir.
+ */
 export interface UpdateIotStateRequest {
   on?: boolean;
   brightness?: number;
   /** Cambia el color (hex `#rrggbb`) o la temperatura (Kelvin); excluyentes. */
   color?: { hex?: string; temperatureK?: number };
+  /** Posición objetivo de un `cover`, 0 (cerrar) a 100 (abrir). */
+  position?: number;
+  /** Temperatura objetivo de un `climate`, en °C. */
+  targetC?: number;
 }
 
 /**
