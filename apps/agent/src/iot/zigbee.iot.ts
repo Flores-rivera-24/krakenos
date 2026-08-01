@@ -91,11 +91,21 @@ export class ZigbeeIotManager implements IotManager {
       kind,
       room: null,
       reachable,
-      on: kind === 'sensor' ? null : state.on,
+      // US-244: solo `light` y `plug` tienen encendido. Un `contact`, un `smoke` o
+      // un `sensor` no se encienden, y una persiana/cerradura tampoco —su estado
+      // vive en `position`/`locked`—: dejarles `on` pintaría un interruptor que no
+      // hace nada.
+      on: kind === 'light' || kind === 'plug' ? state.on : null,
       brightness: kind === 'light' ? state.brightness : null,
       // El color de zigbee2mqtt no se mapea aún (baseline); las luces Hue van por IOT_KIND=hue.
       color: null,
-      reading: kind === 'sensor' ? state.reading : null,
+      // Las lecturas se pasan tal cual: son del aparato, no de su categoría. Un
+      // enchufe con medidor reporta potencia y un sensor de clima temperatura, y
+      // filtrarlas por `kind` era lo que tiraba la batería de un sensor de contacto.
+      readings: state.readings,
+      position: kind === 'cover' ? state.position : null,
+      targetC: kind === 'climate' ? state.targetC : null,
+      locked: kind === 'lock' ? state.locked : null,
     };
   }
 

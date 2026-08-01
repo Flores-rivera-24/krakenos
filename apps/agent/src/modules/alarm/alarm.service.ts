@@ -1,4 +1,5 @@
 import type { AlarmConfig, AlarmMachineState, AlarmMode, AlarmState, HomeEvent, IotManager, UpdateAlarmConfigRequest } from '@krakenos/types';
+import { isSecurityMetric } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
@@ -298,10 +299,15 @@ export class AlarmService {
     } else if (
       event.type === 'sensor-reading' &&
       config.sensorDeviceIds.includes(event.deviceId) &&
+      // ⚠️ US-244: la métrica manda, NO el número. Antes bastaba con que el valor
+      // cruzara 1, así que un canal Shelly en la lista de sensores disparaba la
+      // alarma al encender una lámpara (0 W → 5 W). Una medida no es un suceso:
+      // solo `contact`/`occupancy`/`smoke`/`co` significan «ha pasado algo».
+      isSecurityMetric(event.metric) &&
       event.value >= 1 &&
       (event.prevValue === null || event.prevValue < 1)
     ) {
-      // Sensor de apertura/movimiento: activación (flanco de subida a ≥1).
+      // Sensor de apertura/presencia/humo: activación (flanco de subida a ≥1).
       const dev = (await this.iot.listDevices().catch(() => [])).find((d) => d.id === event.deviceId);
       await this.onTrigger(dev?.name ?? event.deviceId);
     } else if (event.type === 'mode-changed' && event.mode === 'away' && config.autoArmAway) {

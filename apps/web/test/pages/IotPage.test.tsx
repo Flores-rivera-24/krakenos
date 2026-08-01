@@ -25,7 +25,7 @@ const DEVICES: IotDevice[] = [
     on: true,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
   },
   {
     id: 'sensor-temp',
@@ -36,7 +36,10 @@ const DEVICES: IotDevice[] = [
     on: null,
     brightness: null,
     color: null,
-    reading: { metric: 'temperatura', value: 21.5, unit: '°C' },
+    readings: [
+      { metric: 'temperature', value: 21.5, unit: '°C' },
+      { metric: 'humidity', value: 45, unit: '%' },
+    ],
   },
   {
     id: 'light-hue',
@@ -47,7 +50,7 @@ const DEVICES: IotDevice[] = [
     on: true,
     brightness: 80,
     color: { hex: '#ff8800', temperatureK: null },
-    reading: null,
+    readings: [],
   },
 ];
 

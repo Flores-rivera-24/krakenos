@@ -3,7 +3,7 @@ import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/typ
 import { CompositeIotManager } from '../../src/iot/composite.iot.js';
 
 function device(id: string, name = id): IotDevice {
-  return { id, name, kind: 'light', room: null, reachable: true, on: false, brightness: 0, color: null, reading: null };
+  return { id, name, kind: 'light', room: null, reachable: true, on: false, brightness: 0, color: null, readings: [] };
 }
 
 /** Manager falso con dispositivos en memoria. */

@@ -81,7 +81,7 @@ export class TuyaIotManager implements IotManager {
         on: null,
         brightness: null,
         color: null,
-        reading: null,
+        readings: [],
       };
     }
   }

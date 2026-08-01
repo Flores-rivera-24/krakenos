@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FavoriteButton } from '@/components/ui/favorite-button';
 import { HelpHint } from '@/components/ui/help-hint';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { METRIC_LABEL, describeReading } from '@/lib/iot-readings';
 import { assignRoom, listRooms } from '@/lib/rooms';
 import { ProductArt, iotKindToArtKind } from '@/components/ui/product-art';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -87,12 +88,48 @@ function DeviceCard({
       <CardContent>
         <p className="mb-2 text-xs text-muted-foreground">{device.room ?? t('iot.noRoom')}</p>
 
-        {device.kind === 'sensor' && device.reading && (
-          <p className="text-2xl font-bold">
-            {device.reading.value}
-            <span className="ml-1 text-sm font-normal text-muted-foreground">
-              {device.reading.unit}
-            </span>
+        {/* US-244: se pintan TODAS las lecturas, no solo la primera, y para
+            cualquier categoría — un enchufe medidor o un sensor de contacto con
+            batería también tienen algo que enseñar. La primera va grande porque es
+            la principal del aparato; el resto, en línea. */}
+        {device.readings.length > 0 && (
+          <div className="space-y-1">
+            {(() => {
+              const principal = describeReading(device.readings[0]!, t);
+              return (
+                <p className="text-2xl font-bold">
+                  {principal.value}
+                  {principal.unit && (
+                    <span className="ml-1 text-sm font-normal text-muted-foreground">
+                      {principal.unit}
+                    </span>
+                  )}
+                </p>
+              );
+            })()}
+            {device.readings.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                {device.readings
+                  .slice(1)
+                  .map((r) => {
+                    const d = describeReading(r, t);
+                    return `${t(METRIC_LABEL[r.metric])} ${d.value}${d.unit}`;
+                  })
+                  .join(' · ')}
+              </p>
+            )}
+          </div>
+        )}
+
+        {device.kind === 'cover' && device.position !== null && device.position !== undefined && (
+          <p className="text-sm text-muted-foreground">
+            {t('iot.cover.position', { position: String(device.position) })}
+          </p>
+        )}
+
+        {device.kind === 'climate' && device.targetC !== null && device.targetC !== undefined && (
+          <p className="text-sm text-muted-foreground">
+            {t('iot.climate.target', { target: String(device.targetC) })}
           </p>
         )}
 

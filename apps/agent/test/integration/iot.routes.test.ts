@@ -65,13 +65,50 @@ describe('rutas de IoT', () => {
     });
   });
 
-  it('controlar un sensor devuelve 400', async () => {
+  it('controlar lo que no es controlable devuelve 400 (US-244)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    // Un sensor no se enciende — y desde US-244 tampoco un sensor de contacto ni
+    // un detector de humo, que antes habrían pasado el filtro `kind === 'sensor'`.
+    for (const id of ['sensor-clima', 'contact-puerta', 'smoke-cocina']) {
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/iot/devices/${id}`,
+        headers: authHeader(signAccess(app, admin)),
+        payload: { on: true },
+      });
+      expect(`${id} → ${res.statusCode}`).toBe(`${id} → 400`);
+    }
+  });
+
+  it('una persiana y un termostato SÍ se controlan (US-244)', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const persiana = await app.inject({
+      method: 'PATCH',
+      url: '/api/iot/devices/cover-salon',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { position: 30 },
+    });
+    expect(persiana.statusCode).toBe(200);
+    expect(persiana.json().position).toBe(30);
+
+    const termostato = await app.inject({
+      method: 'PATCH',
+      url: '/api/iot/devices/climate-salon',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { targetC: 22 },
+    });
+    expect(termostato.statusCode).toBe(200);
+    expect(termostato.json().targetC).toBe(22);
+  });
+
+  it('mezclar campos de categorías distintas es 400 (bolsa + if/then, US-244)', async () => {
     const admin = await seedUser(app, { role: 'admin' });
     const res = await app.inject({
       method: 'PATCH',
-      url: '/api/iot/devices/sensor-temp',
+      url: '/api/iot/devices/cover-salon',
       headers: authHeader(signAccess(app, admin)),
-      payload: { on: true },
+      // Una persiana no tiene brillo: el schema lo rechaza antes de llegar al manager.
+      payload: { position: 30, brightness: 50 },
     });
     expect(res.statusCode).toBe(400);
   });

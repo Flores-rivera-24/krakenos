@@ -22,7 +22,7 @@ class StubIot implements IotManager {
         on: true,
         brightness: null,
         color: null,
-        reading: null,
+        readings: [],
         powerW: this.power,
       },
     ];
@@ -109,7 +109,7 @@ describe('EnergyAlertService (US-183)', () => {
           on: true,
           brightness: null,
           color: null,
-          reading: null,
+          readings: [],
           powerW: null,
         },
       ],

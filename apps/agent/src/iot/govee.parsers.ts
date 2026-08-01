@@ -98,6 +98,6 @@ export function goveeToIotDevice(dev: GoveeDevice): IotDevice {
     on: onOff === 1 ? true : onOff === 0 ? false : null,
     brightness: typeof brightness === 'number' ? brightness : null,
     color: deviceColor(dev.state),
-    reading: null,
+    readings: [],
   };
 }

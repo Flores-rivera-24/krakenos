@@ -34,7 +34,7 @@ describe('shelly.parsers', () => {
     const devices = parseGen1Status({ ip: '192.168.1.80', name: 'Shelly 2.5', gen: 1, channels: 2 }, status);
     expect(devices).toHaveLength(2);
     expect(devices[0]).toMatchObject({ id: 'shelly:192.168.1.80:0', kind: 'plug', on: true });
-    expect(devices[0]!.reading).toEqual({ metric: 'potencia', value: 12.3, unit: 'W' });
+    expect(devices[0]!.readings).toEqual([{ metric: 'power', value: 12.3, unit: 'W' }]);
     // powerW estructurado para la medición de energía (US-181).
     expect(devices[0]!.powerW).toBe(12.3);
     expect(devices[1]).toMatchObject({ id: 'shelly:192.168.1.80:1', on: false, powerW: 0 });
@@ -49,7 +49,7 @@ describe('shelly.parsers', () => {
   it('parseGen2Channel mapea output/apower/brightness', () => {
     const plug = parseGen2Channel({ ip: '192.168.1.82', gen: 2, type: 'relay' }, 0, { output: true, apower: 7.7 });
     expect(plug).toMatchObject({ id: 'shelly:192.168.1.82:0', kind: 'plug', on: true });
-    expect(plug.reading).toEqual({ metric: 'potencia', value: 7.7, unit: 'W' });
+    expect(plug.readings).toEqual([{ metric: 'power', value: 7.7, unit: 'W' }]);
     expect(plug.powerW).toBe(7.7);
 
     const light = parseGen2Channel({ ip: '192.168.1.83', gen: 2, type: 'light' }, 0, { output: false, brightness: 40 });

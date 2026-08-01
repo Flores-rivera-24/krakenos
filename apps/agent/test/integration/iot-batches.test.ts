@@ -34,7 +34,7 @@ class ConcurrencyProbe implements IotManager {
     on: false,
     brightness: null,
     color: null,
-    reading: null,
+    readings: [],
   };
 
   async listDevices(): Promise<IotDevice[]> {

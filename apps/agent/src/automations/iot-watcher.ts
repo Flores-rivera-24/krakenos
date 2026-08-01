@@ -12,15 +12,31 @@ function transitions(before: IotDevice | undefined, after: IotDevice): HomeEvent
       after.on ? { type: 'iot-on', deviceId: after.id } : { type: 'iot-off', deviceId: after.id },
     );
   }
-  if (after.reading && after.reading.value !== (before.reading?.value ?? null)) {
-    events.push({
-      type: 'sensor-reading',
-      deviceId: after.id,
-      value: after.reading.value,
-      prevValue: before.reading?.value ?? null,
-    });
+  // Una transición **por métrica** (US-244). Antes solo se miraba `reading`, una
+  // sola lectura: un sensor que reporta temperatura y contacto a la vez perdía la
+  // segunda, y el evento no decía de qué magnitud hablaba.
+  const antes = new Map(before.readings.map((r) => [r.metric, r.value]));
+  for (const r of after.readings) {
+    const prevValue = antes.get(r.metric) ?? null;
+    if (r.value !== prevValue) {
+      events.push({
+        type: 'sensor-reading',
+        deviceId: after.id,
+        metric: r.metric,
+        value: r.value,
+        prevValue,
+      });
+    }
   }
   return events;
+}
+
+/** Firma estable de las lecturas para comparar sin depender del orden. */
+function firmaDeLecturas(device: IotDevice): string {
+  return [...device.readings]
+    .map((r) => `${r.metric}=${r.value}`)
+    .sort()
+    .join('|');
 }
 
 /** ¿Cambió algo que la UI pinte? Comparación estable, sin sorpresas de orden. */
@@ -31,7 +47,10 @@ function cambio(before: IotDevice, after: IotDevice): boolean {
     before.reachable !== after.reachable ||
     before.color?.hex !== after.color?.hex ||
     before.color?.temperatureK !== after.color?.temperatureK ||
-    (before.reading?.value ?? null) !== (after.reading?.value ?? null) ||
+    firmaDeLecturas(before) !== firmaDeLecturas(after) ||
+    (before.position ?? null) !== (after.position ?? null) ||
+    (before.targetC ?? null) !== (after.targetC ?? null) ||
+    (before.locked ?? null) !== (after.locked ?? null) ||
     (before.powerW ?? null) !== (after.powerW ?? null)
   );
 }

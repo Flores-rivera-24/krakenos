@@ -69,7 +69,7 @@ export function dpsToIotDevice(config: TuyaDeviceConfig, dps: Record<string, unk
     brightness: typeof brightRaw === 'number' ? scaleBrightnessFromDps(brightRaw) : null,
     // El modo de color (DP_MODE_*) se ignora por ahora; el contrato lo deja en null.
     color: null,
-    reading: null,
+    readings: [],
   };
 }
 

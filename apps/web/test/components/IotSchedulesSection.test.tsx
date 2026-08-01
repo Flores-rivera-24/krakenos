@@ -19,7 +19,7 @@ const LIGHT: IotDevice = {
   on: true,
   brightness: 80,
   color: null,
-  reading: null,
+  readings: [],
 };
 const SCENE: Scene = { id: 's1', name: 'Cine', icon: 'movie', actions: [], order: 0, createdAt: '' };
 

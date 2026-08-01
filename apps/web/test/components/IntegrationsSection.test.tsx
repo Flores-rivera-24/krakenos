@@ -11,7 +11,7 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 function iot(over: Partial<IotDevice>): IotDevice {
   return {
     id: 'x', name: 'Luz', kind: 'light', room: null, reachable: true, on: true,
-    brightness: 80, color: null, reading: null, ...over,
+    brightness: 80, color: null, readings: [], ...over,
   };
 }
 

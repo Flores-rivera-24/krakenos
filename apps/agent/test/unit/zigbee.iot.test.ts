@@ -59,9 +59,13 @@ describe('ZigbeeIotManager', () => {
     mqtt.emit('zigbee2mqtt/sensor_temp', { temperature: 21.5 });
 
     const luz = await iot.getDevice('luz_salon');
-    expect(luz).toMatchObject({ on: true, brightness: 100, reading: null });
+    expect(luz).toMatchObject({ on: true, brightness: 100, readings: [] });
     const sensor = await iot.getDevice('sensor_temp');
-    expect(sensor).toMatchObject({ on: null, brightness: null, reading: { metric: 'temperatura', value: 21.5 } });
+    expect(sensor).toMatchObject({
+      on: null,
+      brightness: null,
+      readings: [{ metric: 'temperature', value: 21.5, unit: '°C' }],
+    });
   });
 
   it('refleja la disponibilidad en reachable', async () => {

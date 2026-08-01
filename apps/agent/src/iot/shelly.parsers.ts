@@ -84,8 +84,17 @@ export function gen2LightGetStatus(channel: number): RpcCommand {
 
 // ---- Parseo a IotDevice ----
 
-function powerReading(power: number | null): IotReading | null {
-  return power !== null ? { metric: 'potencia', value: Math.round(power * 10) / 10, unit: 'W' } : null;
+/**
+ * Lecturas de un canal Shelly (US-244). Devuelve una **lista** porque el contrato
+ * ya no admite una lectura suelta; hoy solo hay potencia.
+ *
+ * ⚠️ `power` es una **medida**, no un suceso: desde US-244 no puede disparar la
+ * alarma aunque el canal esté en `alarm.config.sensorDeviceIds`, que es justo lo
+ * que pasaba antes al encender una lámpara enchufada aquí.
+ */
+function powerReadings(power: number | null): IotReading[] {
+  if (power === null) return [];
+  return [{ metric: 'power', value: Math.round(power * 10) / 10, unit: 'W' }];
 }
 
 /** Potencia redondeada a 1 decimal para `IotDevice.powerW` (US-181), o `null`. */
@@ -128,7 +137,7 @@ export function parseGen1Status(cfg: ShellyDeviceConfig, status: unknown): IotDe
         on: l.ison === true,
         brightness: num(l.brightness),
         color: null,
-        reading: powerReading(power),
+        readings: powerReadings(power),
         powerW: powerW(power),
       });
     } else {
@@ -142,7 +151,7 @@ export function parseGen1Status(cfg: ShellyDeviceConfig, status: unknown): IotDe
         on: r.ison === true,
         brightness: null,
         color: null,
-        reading: powerReading(power),
+        readings: powerReadings(power),
         powerW: powerW(power),
       });
     }
@@ -167,7 +176,7 @@ export function parseGen2Channel(cfg: ShellyDeviceConfig, channel: number, resul
     on: r.output === true,
     brightness: isLight ? num(r.brightness) : null,
     color: null,
-    reading: powerReading(num(r.apower)),
+    readings: powerReadings(num(r.apower)),
     powerW: powerW(num(r.apower)),
   };
 }

@@ -52,7 +52,7 @@ describe('nodeToIotDevice', () => {
       on: true,
       brightness: 100,
       color: null,
-      reading: null,
+      readings: [],
     });
   });
 
@@ -62,7 +62,7 @@ describe('nodeToIotDevice', () => {
       kind: 'sensor',
       reachable: false,
       on: null,
-      reading: { metric: 'temperatura', value: 21.5, unit: '°C' },
+      readings: [{ metric: 'temperature', value: 21.5, unit: '°C' }],
     });
   });
 });

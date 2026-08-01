@@ -140,7 +140,7 @@ export function kasaToIotDevice(s: KasaState): IotDevice {
     on: s.on,
     brightness: s.brightness,
     color: s.color,
-    reading: null,
+    readings: [],
   };
 }
 
@@ -213,7 +213,7 @@ export function tapoToIotDevice(s: TapoState): IotDevice {
     on: s.on,
     brightness: s.brightness,
     color: s.color,
-    reading: null,
+    readings: [],
   };
 }
 
