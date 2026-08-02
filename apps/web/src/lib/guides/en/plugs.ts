@@ -210,4 +210,70 @@ export const PLUGS_GUIDES_EN: GuideTranslations = {
       },
     ],
   },
+  mqtt: {
+    displayName: 'MQTT Discovery (ESPHome, Tasmota…)',
+    intro:
+      'This is not a single brand’s integration: it is the open door. Many devices — the ones running ESPHome or Tasmota, cheap plugs freed with OpenBeken, your Z-Wave network or your zigbee2mqtt — know how to announce themselves over an open convention. Connect KrakenOS to an MQTT broker on your network and they all show up, without anyone having to write an adapter for your exact model.',
+    prerequisites: [
+      'An MQTT broker on your network (Mosquitto is the usual one): the “postman” your devices’ messages go through. The same one you already use for zigbee2mqtt works.',
+      'Your devices set up to publish to it, with automatic announcement enabled.',
+      'The "mqtt" package installed on the KrakenOS server (or having installed with the extra dependencies option).',
+    ],
+    steps: [
+      {
+        title: 'Have an MQTT broker at home',
+        body: 'Devices do not talk to KrakenOS directly: they leave their messages on an MQTT broker on your network — the “postman” — and KrakenOS reads them from there. If you already have one for zigbee2mqtt or Meross, that same one works.',
+      },
+      {
+        title: 'Tell each device to announce itself',
+        body: 'In ESPHome, with the "mqtt" block in its configuration. In Tasmota, with a command in its console. In OpenBeken, with the button that sends the announcement. In zigbee2mqtt and Z-Wave JS UI, by enabling their automatic announcement option.',
+        note: 'The example command is the Tasmota one. The steps for each firmware are in the full guide.',
+      },
+      {
+        title: 'Connect KrakenOS to the broker',
+        body: 'Type your MQTT broker’s address below and, if you protected it, its username and password. Test the connection and save.',
+      },
+      {
+        title: 'Watch them show up',
+        body: 'The devices appear under “IoT devices” within seconds, with their name and category. A plug with a meter shows up as a plug with its consumption reading, not as two separate things.',
+        note: 'If none show up, it is almost always that the device is not publishing its announcement: check step 2.',
+      },
+    ],
+    fields: {
+      brokerUrl: {
+        label: 'MQTT broker address',
+        help: 'The address of your MQTT broker on the network, with its port. It is usually 1883.',
+      },
+      discoveryPrefix: {
+        label: 'Announcement prefix',
+        help: 'Leave it as it is unless you changed the prefix on your devices. It is named that way because it is the name chosen by whoever invented the convention; KrakenOS does not talk to Home Assistant for this.',
+      },
+      username: {
+        label: 'Username (optional)',
+        help: 'Only if your broker asks for a username and password.',
+      },
+      password: {
+        label: 'Password (optional)',
+        help: 'Only if your broker asks for a username and password. It is stored encrypted and never shown again.',
+      },
+    },
+    troubleshooting: [
+      {
+        q: 'No devices show up.',
+        a: 'Most likely they are not publishing their announcement. Check it from the server with: mosquitto_sub -h YOUR_SERVER -t \'homeassistant/#\' -v. If nothing comes out there, the problem is between the device and the broker.',
+      },
+      {
+        q: 'The device shows up but not its state.',
+        a: 'Some firmwares describe their values with a formula that KrakenOS deliberately does not interpret (it would mean running instructions that arrive over the network). The device is still listed, but that reading stays empty. It may also be that it has not published its state yet: restart it.',
+      },
+      {
+        q: 'I have a lock and cannot open it from the app.',
+        a: 'That is deliberate: locks are read but not opened from KrakenOS until their security policy is decided. A failure in that path opens your front door.',
+      },
+      {
+        q: 'Will my devices be duplicated if I also use Home Assistant?',
+        a: 'No. KrakenOS ignores what it publishes itself, so it does not ingest itself. And whatever Home Assistant publishes does not come in either: only the devices’ own announcements are read here.',
+      },
+    ],
+  },
 };

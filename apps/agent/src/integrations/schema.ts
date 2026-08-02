@@ -152,6 +152,14 @@ export const INTEGRATION_SCHEMA: Record<
     mock: schema('iot', 'mock', 'Modo demostración', [], { zeroConfig: true }),
     hue: schema('iot', 'hue', 'Philips Hue', [req('bridgeUrl', 'url'), secret('appKey')]),
     govee: schema('iot', 'govee', 'Govee', [opt('listenPort', 'number', { default: 4002 })]),
+    // US-248: ingesta por PROTOCOLO, no por marca. Un solo backend da de alta lo
+    // que publique cualquier aparato que hable MQTT Discovery.
+    mqtt: schema('iot', 'mqtt', 'Descubrimiento MQTT (ESPHome, Tasmota…)', [
+      req('brokerUrl', 'url', { default: 'mqtt://localhost:1883' }),
+      opt('discoveryPrefix', 'text', { default: 'homeassistant' }),
+      opt('username', 'text'),
+      secret('password', { required: false }),
+    ]),
     zigbee: schema('iot', 'zigbee', 'Zigbee2MQTT', [
       req('brokerUrl', 'url', { default: 'mqtt://localhost:1883' }),
       opt('baseTopic', 'text', { default: 'zigbee2mqtt' }),

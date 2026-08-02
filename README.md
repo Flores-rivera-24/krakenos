@@ -65,6 +65,10 @@ existir best-in-class gratuito hace inútil competir (cámaras → Frigate, voz 
   (ver [ADR de voz](docs/adr-voice.md)).
 - **Tokens de API + MQTT saliente**: publica el estado del hogar a un broker MQTT local para
   integrarlo con **Home Assistant** o Node-RED, con permisos acotados por scope.
+- **Ingesta abierta por MQTT Discovery**: los cacharros que se anuncian solos —ESPHome, Tasmota,
+  OpenBeken, Z-Wave JS UI, zigbee2mqtt— entran **sin un adaptador por marca**. Es la vía para el
+  hardware barato liberado, y la que hace que no dependas de que alguien escriba el driver de tu
+  modelo.
 
 ### Operación
 
@@ -116,10 +120,16 @@ KrakenOS aporta lo que HA no tiene de serie:
 | Automatizaciones avanzadas | **✓✓** (YAML/Node-RED) | básicas por frases |
 | Cámaras con ML | vía Frigate | básico → **Frigate** (US-214) |
 
-**Cómo conviven:** KrakenOS publica el estado del hogar (luces, enchufes, energía, modo, alarma) a
-un broker MQTT local que HA descubre solo (MQTT Discovery, en camino con la Fase 6). Usas HA para lo
-que HA hace mejor y KrakenOS para su cuña, sin elegir. Ver el
-[ADR de posicionamiento](docs/adr-positioning.md).
+**Cómo conviven:** KrakenOS publica el estado del hogar (luces, enchufes, energía, modo, alarma) a un
+broker MQTT local que HA descubre solo (**MQTT Discovery**), y expone además lo que HA no tiene de
+serie: un `binary_sensor` de «internet bloqueado» por dispositivo, la peor señal WiFi por habitación
+y un botón de «pausar internet 30 min». Publicar, aceptar órdenes y permitir pausas son **tres
+permisos distintos**, los tres desactivados por defecto. Detalle en [`docs/interop.md`](docs/interop.md).
+
+En la otra dirección, KrakenOS **también lee** esa misma convención: `IOT_KIND=mqtt` da de alta los
+aparatos que se anuncian solos (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI…) sin un adaptador por
+marca — se consume el protocolo, no Home Assistant
+([ADR](docs/adr-ingesta-mqtt.md) · [guía](docs/mqtt-discovery-setup.md)).
 
 ---
 
@@ -317,6 +327,7 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 
 | `IOT_KIND` | Ecosistema | Variables clave | Dep | Guía |
 |---|---|---|---|---|
+| `mqtt` | **MQTT Discovery** — cualquier aparato que se anuncie (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI, zigbee2mqtt) | `MQTT_DISCOVERY_URL` | `mqtt` | `docs/mqtt-discovery-setup.md` |
 | `zigbee` | zigbee2mqtt (MQTT) | `ZIGBEE2MQTT_URL` | `mqtt` | — |
 | `matter` | python-matter-server (WS) | `MATTER_SERVER_URL` | `ws` | — |
 | `hue` | Philips Hue (CLIP v2 local) | `HUE_BRIDGE_URL`, `HUE_APP_KEY` | — | `docs/hue-setup.md` |
@@ -325,7 +336,10 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 | `kasa` | TP-Link Kasa/Tapo (local) | `KASA_DEVICES`, `TAPO_EMAIL`, `TAPO_PASSWORD` | — | `docs/kasa-tapo-setup.md` |
 | `shelly` | Shelly (REST Gen1 / RPC Gen2) | `SHELLY_DEVICES` | — | `docs/shelly-setup.md` |
 | `meross` | Meross (MQTT local) | `MEROSS_BROKER_HOST`, `MEROSS_DEVICES` | `mqtt` | `docs/meross-setup.md` |
-| `switchbot` | SwitchBot Hub (REST local) | `SWITCHBOT_HUB_HOST`, `SWITCHBOT_TOKEN` | — | `docs/switchbot-setup.md` |
+
+> **`switchbot` ya no existe.** El backend pedía la API de **nube** de SwitchBot con el host cambiado
+> por una IP de la LAN: no hay API local en el Hub Mini ni en el Hub 2, así que no podía funcionar.
+> Un Hub 2 se integra por **Matter** (`IOT_KIND=matter`), que sí es local y ya está soportado.
 
 > Los focos Tuya se registran (deviceId/localKey por foco) desde **Ajustes → Integraciones**;
 > el `localKey` nunca se devuelve en un GET.
