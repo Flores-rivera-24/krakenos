@@ -42,14 +42,31 @@ export function disarm(now: number): AlarmMachineState {
   return disarmedState(now);
 }
 
+/** Matices del disparo (US-245). */
+export interface TriggerOptions {
+  /**
+   * Salta el retardo de entrada y dispara ya. El retardo existe para darte tiempo
+   * a entrar y teclear el PIN, así que solo tiene sentido ante una **intrusión**:
+   * ante humo o CO no hay nada que desarmar y esos 30 s son 30 s de sirena
+   * callada mientras arde la cocina.
+   */
+  sinRetardoDeEntrada?: boolean;
+}
+
 /**
  * Un sensor/cámara disparó. Solo tiene efecto si está **armada** (en `arming` la
  * cuenta de salida ignora los disparos; en `entry`/`triggered` ya está en curso).
  * Con `entryDelaySec > 0` pasa a `entry` (gracia para desarmar); si no, dispara.
  */
-export function trigger(state: AlarmMachineState, by: string, now: number, config: AlarmConfig): MachineResult {
+export function trigger(
+  state: AlarmMachineState,
+  by: string,
+  now: number,
+  config: AlarmConfig,
+  opts: TriggerOptions = {},
+): MachineResult {
   if (state.phase !== 'armed') return { state, justTriggered: false };
-  const entryMs = Math.max(0, config.entryDelaySec) * 1000;
+  const entryMs = opts.sinRetardoDeEntrada ? 0 : Math.max(0, config.entryDelaySec) * 1000;
   if (entryMs > 0) {
     return {
       state: {
