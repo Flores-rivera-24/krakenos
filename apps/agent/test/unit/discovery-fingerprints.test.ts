@@ -48,27 +48,51 @@ describe('discovery/fingerprints', () => {
     expect(byServer[0]?.kind).toBe('hue');
   });
 
-  it('reconoce Shelly por servicio propio o por nombre, con la IP en devices', () => {
+  it('⚠️ Shelly se precarga como LISTA JSON, no como una IP suelta (US-249)', () => {
+    // El campo `devices` del backend se parsea con `JSON.parse`: con la IP a secas
+    // el usuario seguía la sugerencia, guardaba y se quedaba con cero aparatos.
     const gen2 = matchFingerprints([
-      mdns({ service: '_shelly._tcp.local', name: 'ShellyPlus1-A8032AB._shelly._tcp.local', ip: '192.168.1.60' }),
+      mdns({
+        service: '_shelly._tcp.local',
+        name: 'ShellyPlus1-A8032AB._shelly._tcp.local',
+        ip: '192.168.1.60',
+        txt: { gen: '2' },
+      }),
     ]);
-    expect(gen2[0]).toMatchObject({ kind: 'shelly', prefill: { devices: '192.168.1.60' } });
+    expect(JSON.parse(gen2[0]?.prefill.devices ?? '')).toEqual([
+      { ip: '192.168.1.60', name: 'ShellyPlus1-A8032AB', gen: 2 },
+    ]);
     expect(gen2[0]?.label).toContain('ShellyPlus1');
 
+    // La generación la dice el propio anuncio; sin `gen` en el TXT se asume la 1,
+    // que es el defecto del parser del backend (no se inventa).
     const gen1 = matchFingerprints([
       mdns({ name: 'shelly1-B4E842._http._tcp.local', ip: '192.168.1.61' }),
     ]);
     expect(gen1[0]?.kind).toBe('shelly');
+    expect(JSON.parse(gen1[0]?.prefill.devices ?? '')[0]).toMatchObject({ gen: 1 });
   });
 
-  it('un broker MQTT sugiere zigbee2mqtt con la URL precargada', () => {
+  it('un broker MQTT ofrece las DOS vías que lo aprovechan (US-249)', () => {
+    // El broker no dice para qué se usa: adivinar una sola dejaba fuera la ingesta
+    // genérica de US-248, que es la que sirve con cualquier cacharro liberado.
     const out = matchFingerprints([
       mdns({ service: '_mqtt._tcp.local', name: 'mosquitto._mqtt._tcp.local', ip: '192.168.1.10', port: 1883 }),
     ]);
-    expect(out[0]).toMatchObject({
-      kind: 'zigbee',
-      prefill: { brokerUrl: 'mqtt://192.168.1.10:1883' },
-    });
+    expect(out.map((m) => m.kind).sort()).toEqual(['mqtt', 'zigbee']);
+    for (const match of out) {
+      expect(match.prefill).toEqual({ brokerUrl: 'mqtt://192.168.1.10:1883' });
+    }
+  });
+
+  it('un ESPHome sugiere la ingesta genérica, y sin prefill a propósito (US-249)', () => {
+    const out = matchFingerprints([
+      mdns({ service: '_esphomelib._tcp.local', name: 'salon-rele._esphomelib._tcp.local', ip: '192.168.1.90' }),
+    ]);
+    expect(out[0]).toMatchObject({ kind: 'mqtt', prefill: {} });
+    // El aparato no dice cuál es su broker, así que esta sugerencia NO puede ser
+    // de un toque: abre el asistente, que explica qué hace falta.
+    expect(out[0]?.label).toContain('ESPHome');
   });
 
   it('distingue Kasa y Tapo por nombre y precarga el campo de IPs correcto', () => {

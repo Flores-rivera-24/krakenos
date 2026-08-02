@@ -966,6 +966,11 @@ export const es = {
   'connect.detected.empty':
     'Nada detectado por ahora. Pulsa «Buscar dispositivos» o conecta algo abajo a mano.',
   'connect.connect': 'Conectar',
+  'connect.adopt': 'Añadir',
+  'connect.adoptLabel': 'Añadir {label} a tus integraciones',
+  'connect.adoptOk': 'Ya está en tus integraciones',
+  'connect.adoptError': 'No se pudo añadir el dispositivo',
+  'connect.configure': 'Configurar',
   'connect.dismissLabel': 'Descartar {label}',
   'connect.dismiss': 'Descartar',
   'connect.wizardTitle': 'Conectar {name}',

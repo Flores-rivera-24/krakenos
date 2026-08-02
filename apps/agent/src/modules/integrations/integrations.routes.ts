@@ -8,6 +8,7 @@ import { env } from '../../config/env.js';
 import { assertConfigEgressAllowed } from '../../integrations/config-egress.js';
 import type { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
 import type { IntegrationRuntime } from '../../integrations/runtime.js';
+import { saveDomainConfig } from '../../integrations/save-domain-config.js';
 import { EgressBlockedError, type EgressPolicy } from '../../net/egress.js';
 import {
   INTEGRATION_DOMAINS,
@@ -70,32 +71,6 @@ async function mergeStoredSecrets(
     }
   }
   return merged;
-}
-
-/**
- * Guarda la config de un dominio. `iot` es **aditivo**: como un hogar puede tener
- * varios backends a la vez (luces + enchufes…), guardar un backend lo **une** al CSV
- * de kinds y conserva los valores (y secretos ya descifrados) del resto de backends,
- * en vez de reemplazar todo el dominio. El resto de dominios se guardan tal cual.
- */
-async function saveDomainConfig(
-  store: IntegrationConfigStore,
-  domain: IntegrationDomain,
-  kind: string,
-  config: IntegrationConfigValues,
-  enabled: boolean,
-): Promise<void> {
-  if (domain !== 'iot') {
-    await store.save(domain, kind, config, enabled);
-    return;
-  }
-  const existing = await store.getDecrypted('iot');
-  const backends = new Set<string>(existing ? iotBackends(existing.kind) : []);
-  for (const backend of iotBackends(kind)) backends.add(backend);
-  // Parte de los valores ya descifrados (secretos en claro) y superpone los nuevos;
-  // `store.save` los vuelve a cifrar, así ningún backend previo pierde su secreto.
-  const mergedValues: IntegrationConfigValues = { ...(existing?.values ?? {}), ...config };
-  await store.save('iot', [...backends].join(','), mergedValues, enabled);
 }
 
 /**

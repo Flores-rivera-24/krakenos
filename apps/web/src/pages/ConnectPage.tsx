@@ -16,7 +16,8 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { ProductArt, type ProductArtKind } from '@/components/ui/product-art';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
-import { dismissSuggestion, getDiscovery, scanDiscovery } from '@/lib/discovery';
+import { adoptSuggestion, dismissSuggestion, getDiscovery, scanDiscovery } from '@/lib/discovery';
+import { ApiRequestError } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { type TranslationKey, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
@@ -138,6 +139,7 @@ export function ConnectPage() {
   // página funciona igual (solo desaparece la sección "Detectados en tu red").
   const [suggestions, setSuggestions] = useState<DiscoverySuggestion[]>([]);
   const [scanning, setScanning] = useState(false);
+  const [adopting, setAdopting] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -184,6 +186,30 @@ export function ConnectPage() {
       setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
     } catch (err) {
       toast.error(describeError(err, t('connect.dismissError')));
+    }
+  };
+
+  /**
+   * Alta **de un toque** (US-249): sin abrir el asistente. Solo se ofrece cuando el
+   * servidor dice que la sugerencia es `adoptable`; si aun así responde que faltan
+   * datos (la config cambió entre medias), se abre el asistente en vez de enseñar
+   * un error que el usuario no puede resolver desde ahí.
+   */
+  const adopt = async (s: DiscoverySuggestion) => {
+    setAdopting(s.id);
+    try {
+      const status = await adoptSuggestion(s.id);
+      setSuggestions(Array.isArray(status.suggestions) ? status.suggestions : []);
+      toast.success(t('connect.adoptOk'));
+      void load();
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.body?.code === 'DISCOVERY_NEEDS_INPUT') {
+        onSuggestionClick(s);
+        return;
+      }
+      toast.error(describeError(err, t('connect.adoptError')));
+    } finally {
+      setAdopting(null);
     }
   };
 
@@ -324,9 +350,25 @@ export function ConnectPage() {
                       {s.hostname ? ` · ${s.hostname}` : ''}
                     </span>
                     <span className="flex gap-2 pt-1">
-                      <Button size="sm" onClick={() => onSuggestionClick(s)}>
-                        {t('connect.connect')}
-                      </Button>
+                      {s.adoptable && isAdmin ? (
+                        <>
+                          <Button
+                            size="sm"
+                            disabled={adopting === s.id}
+                            aria-label={t('connect.adoptLabel', { label: s.label })}
+                            onClick={() => void adopt(s)}
+                          >
+                            {t('connect.adopt')}
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => onSuggestionClick(s)}>
+                            {t('connect.configure')}
+                          </Button>
+                        </>
+                      ) : (
+                        <Button size="sm" onClick={() => onSuggestionClick(s)}>
+                          {t('connect.connect')}
+                        </Button>
+                      )}
                       {isAdmin && (
                         <Button
                           size="sm"
