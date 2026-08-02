@@ -135,17 +135,28 @@ export interface TopicDeConfig {
   objectId: string;
 }
 
+/**
+ * Normaliza el prefijo configurado: sin barras al final. Lo teclea una persona, y
+ * `homeassistant/` —copiado tal cual de un fichero de configuración— no casaría con
+ * **ningún** topic: cero aparatos y ni un error. Se admite también un prefijo de
+ * varios niveles, que la convención permite.
+ */
+export function normalizaPrefijo(prefix: string): string {
+  return prefix.replace(/\/+$/, '');
+}
+
 /** Parsea un topic de config, o `null` si no lo es (defensivo: no lanza). */
 export function parseDiscoveryTopic(topic: string, prefix: string): TopicDeConfig | null {
-  const partes = topic.split('/');
-  if (partes[0] !== prefix) return null;
+  const base = normalizaPrefijo(prefix);
+  if (base === '' || !topic.startsWith(`${base}/`)) return null;
+  const partes = topic.slice(base.length + 1).split('/');
   if (partes[partes.length - 1] !== 'config') return null;
-  if (partes.length === 4) {
-    const [, component, objectId] = partes;
+  if (partes.length === 3) {
+    const [component, objectId] = partes;
     return component && objectId ? { component, nodeId: null, objectId } : null;
   }
-  if (partes.length === 5) {
-    const [, component, nodeId, objectId] = partes;
+  if (partes.length === 4) {
+    const [component, nodeId, objectId] = partes;
     return component && nodeId && objectId ? { component, nodeId, objectId } : null;
   }
   return null;
