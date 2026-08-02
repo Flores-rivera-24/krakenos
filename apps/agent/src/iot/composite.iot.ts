@@ -4,6 +4,7 @@ import type {
   MatterCommissionResult,
   UpdateIotStateRequest,
 } from '@krakenos/types';
+import { isControllableKind } from '@krakenos/types';
 import { IotError } from './mock.iot.js';
 
 /** Una integración miembro del composite, con su prefijo de id. */
@@ -81,10 +82,34 @@ export class CompositeIotManager implements IotManager {
     return device ? this.prefixed(entry.prefix, device) : null;
   }
 
+  /**
+   * Enruta la orden al backend dueño del id… **después** de comprobar que la
+   * categoría del aparato acepta órdenes (US-246, `docs/adr-cerraduras.md`).
+   *
+   * El guard vive aquí y no en cada backend porque desde US-243 **todo** manager
+   * va envuelto en el composite, también cuando hay uno solo: este es el único
+   * punto por el que pasan las órdenes de las rutas, las escenas, los horarios,
+   * las automatizaciones y el control entrante de Home Assistant. Ponerlo en cada
+   * backend obligaba a nueve copias de la misma regla —y ocho de ellas ni
+   * siquiera tienen el `kind` a mano en `setState`, así que la copia habría sido
+   * decorativa—; peor aún, un backend nuevo heredaría «controlable» por omisión,
+   * que es exactamente como se abre una puerta sin que nadie decida abrirla.
+   *
+   * Se consulta el aparato para conocer su categoría. Si no se puede leer, la
+   * orden **pasa**: negar por un fallo de lectura dejaría la casa sin control cada
+   * vez que un bridge tarde en responder, y el backend sigue teniendo la última
+   * palabra sobre lo que acepta.
+   */
   async setState(id: string, input: UpdateIotStateRequest): Promise<IotDevice> {
     const split = splitId(id);
     const entry = split && this.entries.find((e) => e.prefix === split.prefix);
     if (!split || !entry) throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
+
+    const device = await entry.manager.getDevice(split.bareId).catch(() => null);
+    if (device && !isControllableKind(device.kind)) {
+      throw new IotError('IOT_NOT_CONTROLLABLE', 'Este dispositivo no se puede controlar');
+    }
+
     return this.prefixed(entry.prefix, await entry.manager.setState(split.bareId, input));
   }
 
