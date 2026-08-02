@@ -112,6 +112,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   // auto-descubrimiento (US-175)
   { method: 'POST', url: '/api/discovery/scan' },
   { method: 'DELETE', url: '/api/discovery/suggestions/hue%3A192.168.1.2' },
+  // alta de un toque (US-249): escribe config de integración → admin, como el asistente
+  { method: 'POST', url: '/api/discovery/suggestions/hue%3A192.168.1.2/adopt' },
   // iot
   { method: 'PATCH', url: '/api/iot/devices/x', payload: { on: true } },
   // comisionado Matter (US-172): admin-only (el mock no lo soporta → 409, no 403)
@@ -309,6 +311,7 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       'POST /api/integrations/:p/test',
       'DELETE /api/integrations/:p',
       'DELETE /api/discovery/suggestions/:p',
+      'POST /api/discovery/suggestions/:p/adopt',
     ]);
 
     /** Normaliza una URL concreta de las listas a su patrón (`:p` en los params). */

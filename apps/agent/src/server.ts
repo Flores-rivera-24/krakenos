@@ -298,7 +298,15 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(presenceRoutes, { prefix: '/api/presence', service: presenceService });
   // Auto-descubrimiento de IoT (US-175): sondeo mDNS/SSDP solo-LAN con huellas
   // por integración; alimenta las tarjetas de sugerencia de «Conectar».
-  const discoveryService = new DiscoveryService(app, new DgramDiscoveryTransport());
+  // US-249: recibe el store y el runtime para poder **dar de alta** una sugerencia
+  // de un toque, reusando el mismo camino que el asistente (aditivo + en caliente).
+  const discoveryService = new DiscoveryService(
+    app,
+    new DgramDiscoveryTransport(),
+    undefined,
+    integrationStore,
+    runtime,
+  );
   await app.register(discoveryRoutes, { prefix: '/api/discovery', service: discoveryService });
   await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
   // Cobertura WiFi (US-151…159): planos + heatmap predicho + survey de medición real.

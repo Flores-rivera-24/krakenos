@@ -26,6 +26,14 @@ export interface DiscoverySuggestion {
   prefill: Record<string, string>;
   source: 'mdns' | 'ssdp';
   lastSeen: IsoDateTime;
+  /**
+   * ¿Se puede dar de alta **de un toque**, sin abrir el asistente? (US-249). Lo
+   * calcula el servidor: hay prefill, cubre los campos obligatorios y ninguno de
+   * ellos es un secreto —el bridge Hue pide su `appKey` pulsando un botón físico,
+   * y un prefill nunca lleva secretos—. Viaja con la sugerencia para que la UI **no
+   * pinte un botón que no puede funcionar**.
+   */
+  adoptable: boolean;
 }
 
 /** Respuesta de `GET /api/discovery` y de `POST /api/discovery/scan`. */

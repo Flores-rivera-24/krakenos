@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type { DiscoveryService } from './discovery.service.js';
+import { AdopcionNoPosibleError, type DiscoveryService } from './discovery.service.js';
 import {
+  adoptSuggestionSchema,
   dismissSuggestionSchema,
   getDiscoverySchema,
   scanDiscoverySchema,
@@ -31,6 +32,46 @@ export const discoveryRoutes: FastifyPluginAsync<DiscoveryRoutesOpts> = async (a
     app.audit({ action: 'discovery.scan', userId: req.user.sub, ip: req.ip });
     return service.status();
   });
+
+  /**
+   * Alta **de un toque** desde el propio aviso (US-249). Hasta aquí el
+   * descubrimiento solo proponía y el usuario tecleaba la dirección que la app
+   * acababa de enseñarle. Reusa el camino del asistente (`saveDomainConfig` +
+   * `reconfigure`), así que hereda el cifrado de secretos, la semántica **aditiva**
+   * de `iot` y la recarga en caliente.
+   */
+  app.post<{ Params: { id: string } }>(
+    '/suggestions/:id/adopt',
+    { schema: adoptSuggestionSchema, preHandler: adminOnly },
+    async (req, reply) => {
+      try {
+        const adopted = await service.adopt(req.params.id);
+        if (!adopted) {
+          return reply.code(404).send({
+            code: 'SUGGESTION_NOT_FOUND',
+            message: 'Esa sugerencia ya no está disponible. Vuelve a buscar dispositivos.',
+          });
+        }
+        app.audit({
+          action: 'discovery.adopt',
+          userId: req.user.sub,
+          detail: `${adopted.domain}:${adopted.kind} · ${req.params.id}`,
+          ip: req.ip,
+        });
+        return service.status();
+      } catch (err) {
+        if (err instanceof AdopcionNoPosibleError) {
+          // No es un fallo: es que ese aparato necesita algo que no se puede
+          // descubrir (el bridge Hue, su botón). La UI abre el asistente.
+          return reply.code(400).send({
+            code: 'DISCOVERY_NEEDS_INPUT',
+            message: 'Este dispositivo necesita datos que solo puedes dar tú. Ábrelo en el asistente.',
+          });
+        }
+        throw err;
+      }
+    },
+  );
 
   app.delete<{ Params: { id: string } }>(
     '/suggestions/:id',

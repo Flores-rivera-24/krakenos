@@ -227,11 +227,30 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       prefix: '/api/presence',
       service: new PresenceService(app, homeBus),
     });
+    // Configuración de integraciones (US-142): runtime + store propios para el test app.
+    // Se crean AQUÍ (antes del descubrimiento) porque la adopción de un toque
+    // (US-249) escribe config de integración reusando ambos, igual que en producción.
+    const integrationStore = new IntegrationConfigStore(
+      app.prisma,
+      createSecretbox(generateSecretboxKey()),
+    );
+    const runtime = await buildIntegrationRuntime(app, integrationStore);
     // Auto-descubrimiento (US-175) con transporte inerte: los tests nunca abren
     // sockets multicast reales (los de comportamiento inyectan un fake propio).
+    // Respuestas SSDP que un test puede sembrar antes de `POST /api/discovery/scan`
+    // para ejercitar el descubrimiento y la adopción (US-249) **por HTTP**, sin
+    // abrir un socket multicast real.
+    const discoveryProbes: { data: Buffer; from: string }[] = [];
+    app.decorate('discoveryProbes', discoveryProbes);
     await app.register(discoveryRoutes, {
       prefix: '/api/discovery',
-      service: new DiscoveryService(app, { probe: async () => [] }),
+      service: new DiscoveryService(
+        app,
+        { probe: async (group: string) => (group === '239.255.255.250' ? discoveryProbes : []) },
+        1,
+        integrationStore,
+        runtime,
+      ),
     });
     await app.register(wifiRoutes, { prefix: '/api/wifi', driver });
     await app.register(coverageRoutes, { prefix: '/api/coverage', driver });
@@ -316,12 +335,6 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
     await app.register(dnsRoutes, { prefix: '/api/dns', dns: new MockDnsManager() });
-    // Configuración de integraciones (US-142): runtime + store propios para el test app.
-    const integrationStore = new IntegrationConfigStore(
-      app.prisma,
-      createSecretbox(generateSecretboxKey()),
-    );
-    const runtime = await buildIntegrationRuntime(app, integrationStore);
     await app.register(integrationsRoutes, {
       prefix: '/api/integrations',
       runtime,

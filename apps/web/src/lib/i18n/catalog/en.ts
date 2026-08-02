@@ -951,6 +951,11 @@ export const en: Record<TranslationKey, string> = {
   'connect.detected.empty':
     'Nothing detected for now. Press «Search for devices» or connect something below by hand.',
   'connect.connect': 'Connect',
+  'connect.adopt': 'Add',
+  'connect.adoptLabel': 'Add {label} to your integrations',
+  'connect.adoptOk': 'Now in your integrations',
+  'connect.adoptError': 'Could not add the device',
+  'connect.configure': 'Configure',
   'connect.dismissLabel': 'Dismiss {label}',
   'connect.dismiss': 'Dismiss',
   'connect.wizardTitle': 'Connect {name}',
