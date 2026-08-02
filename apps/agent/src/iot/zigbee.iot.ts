@@ -1,4 +1,5 @@
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
+import { isControllableKind } from '@krakenos/types';
 import { IotError } from './mock.iot.js';
 import type { MqttTransport } from './mqtt.transport.js';
 import {
@@ -120,8 +121,14 @@ export class ZigbeeIotManager implements IotManager {
   async setState(id: string, input: UpdateIotStateRequest): Promise<IotDevice> {
     const meta = this.meta.get(id);
     if (!meta) throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
-    if (meta.kind === 'sensor') {
-      throw new IotError('IOT_NOT_CONTROLLABLE', 'Un sensor no se puede controlar');
+    // El guard es el CONTRATO, no una lista propia (US-246). Con `kind === 'sensor'`
+    // —lo que había— este backend aceptaba una orden sobre una **cerradura** y
+    // publicaba `{"state":"OFF"}` en su topic: que zigbee2mqtt espere ahí
+    // `LOCK`/`UNLOCK` y probablemente lo descarte no es una defensa, es depender
+    // del conversor de un tercero para que no se abra una puerta. Un `contact` y
+    // un `smoke` entraban por el mismo hueco.
+    if (!isControllableKind(meta.kind)) {
+      throw new IotError('IOT_NOT_CONTROLLABLE', 'Este dispositivo no se puede controlar');
     }
 
     await this.opts.transport.publish(`${this.base}/${id}/set`, buildSetPayload(input, meta.kind));
