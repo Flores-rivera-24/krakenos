@@ -77,7 +77,13 @@ jobs:
       # (cubre también la auditoría informativa de US-60).
       - name: Audit dependencies via OSV (blocking on prod critical)
         run: |
-          curl -sSfL -o /tmp/osv-scanner https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64
+          # Con reintentos: la descarga falló con `curl: (35) Recv failure` y puso
+          # `main` en rojo por la red del runner, no por el código. Un gate que se
+          # cae solo enseña a ignorar el rojo, que es como se llega a cinco pushes
+          # rotos sin que nadie lo mire.
+          curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
+            -o /tmp/osv-scanner \
+            https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64
           chmod +x /tmp/osv-scanner
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
