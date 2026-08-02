@@ -11,6 +11,7 @@ import {
   extraerValor,
   lecturaDeBinario,
   lecturaDeSensor,
+  normalizaPrefijo,
   normalizarEnergia,
   parseDiscoveryConfig,
   parseDiscoveryTopic,
@@ -59,7 +60,9 @@ export class MqttDiscoveryIotManager implements IotManager {
   private avisoDeTope = false;
 
   constructor(private readonly opts: MqttDiscoveryOptions) {
-    this.prefix = opts.discoveryPrefix ?? DEFAULT_DISCOVERY_PREFIX;
+    // Se normaliza aquí para que la suscripción y el parseo usen el MISMO prefijo:
+    // un `homeassistant/` tecleado a mano no debe dejar la casa vacía en silencio.
+    this.prefix = normalizaPrefijo(opts.discoveryPrefix ?? DEFAULT_DISCOVERY_PREFIX);
     this.maxEntidades = opts.maxEntidades ?? MAX_ENTIDADES;
   }
 

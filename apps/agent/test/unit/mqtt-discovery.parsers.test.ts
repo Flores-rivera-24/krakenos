@@ -71,6 +71,22 @@ describe('parseDiscoveryTopic', () => {
     });
   });
 
+  it('aguanta un prefijo tecleado con barra final o de varios niveles', () => {
+    // Copiar «homeassistant/» de un fichero de configuración es lo normal, y sin
+    // normalizar no casaría NINGÚN topic: cero aparatos y ni un error.
+    expect(parseDiscoveryTopic('homeassistant/switch/relay1/config', 'homeassistant/')).toEqual({
+      component: 'switch',
+      nodeId: null,
+      objectId: 'relay1',
+    });
+    expect(parseDiscoveryTopic('casa/ha/switch/relay1/config', 'casa/ha')).toEqual({
+      component: 'switch',
+      nodeId: null,
+      objectId: 'relay1',
+    });
+    expect(parseDiscoveryTopic('homeassistant/switch/relay1/config', '')).toBeNull();
+  });
+
   it('ignora lo que no es una config o va en otro prefijo', () => {
     // `homeassistant/status` es el birth/will de un consumidor: llega por el mismo
     // comodín `#` y no debe interpretarse como un aparato.
