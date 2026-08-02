@@ -1,4 +1,10 @@
-import type { IotColor, IotDeviceKind, UpdateIotStateRequest } from '@krakenos/types';
+import type {
+  IotColor,
+  IotDeviceKind,
+  IotMetric,
+  IotReading,
+  UpdateIotStateRequest,
+} from '@krakenos/types';
 
 /**
  * MQTT Discovery de Home Assistant (US-213), **puro y testeable**. Traduce la foto
@@ -23,6 +29,14 @@ export interface SnapshotIotDevice {
   brightness: number | null;
   color: IotColor | null;
   powerW?: number | null;
+  /** Lecturas del aparato (US-247): de aquí salen sus entidades de sensor en HA. */
+  readings?: IotReading[];
+  /** Posición de una persiana, 0 (cerrada) a 100 (abierta). */
+  position?: number | null;
+  /** Consigna de un termostato en °C. */
+  targetC?: number | null;
+  /** ¿Está echada la cerradura? Solo lectura mientras US-246 no decida. */
+  locked?: boolean | null;
 }
 
 /**
@@ -158,15 +172,96 @@ function objectId(id: string): string {
  */
 export type IotExposure =
   | { component: 'switch'; controllable: boolean }
-  | { component: 'light'; brightness: boolean; color: boolean };
+  | { component: 'light'; brightness: boolean; color: boolean }
+  | { component: 'cover'; controllable: boolean }
+  | { component: 'binary_sensor'; deviceClass: 'lock' };
 
+/**
+ * Entidad HA derivada de una **lectura** (US-247), aparte de la entidad principal
+ * del aparato. Un detector combinado publica humo y CO por separado, y un sensor
+ * de clima su temperatura, humedad y batería: son entidades distintas en HA
+ * porque son magnitudes distintas, no atributos de una sola.
+ */
+export interface ReadingEntity {
+  metric: IotMetric;
+  component: 'binary_sensor' | 'sensor';
+  deviceClass: string;
+  /** Solo en `sensor`; un `binary_sensor` no lleva unidad. */
+  unit?: string;
+  /** Sufijo del topic y del `object_id` (estable por métrica). */
+  slug: string;
+}
+
+/** Etiqueta en español del sufijo de la entidad, para el nombre visible en HA. */
+const ETIQUETA_DE_LECTURA: Partial<Record<IotMetric, string>> = {
+  contact: 'apertura',
+  occupancy: 'presencia',
+  smoke: 'humo',
+  co: 'CO',
+  temperature: 'temperatura',
+  humidity: 'humedad',
+  battery: 'batería',
+  illuminance: 'luz',
+};
+
+/** Mapa métrica → entidad HA. Las que no están aquí no se publican. */
+const ENTIDAD_POR_METRICA: Partial<Record<IotMetric, Omit<ReadingEntity, 'metric'>>> = {
+  // Sucesos: `binary_sensor`, que es lo que HA sabe pintar como abierto/cerrado y
+  // encadenar a una automatización suya.
+  contact: { component: 'binary_sensor', deviceClass: 'door', slug: 'contact' },
+  occupancy: { component: 'binary_sensor', deviceClass: 'occupancy', slug: 'occupancy' },
+  smoke: { component: 'binary_sensor', deviceClass: 'smoke', slug: 'smoke' },
+  co: { component: 'binary_sensor', deviceClass: 'carbon_monoxide', slug: 'co' },
+  // Magnitudes.
+  temperature: { component: 'sensor', deviceClass: 'temperature', unit: '°C', slug: 'temperature' },
+  humidity: { component: 'sensor', deviceClass: 'humidity', unit: '%', slug: 'humidity' },
+  battery: { component: 'sensor', deviceClass: 'battery', unit: '%', slug: 'battery' },
+  illuminance: { component: 'sensor', deviceClass: 'illuminance', unit: 'lx', slug: 'illuminance' },
+  // ⚠️ `power` y `energy` NO están aquí a propósito: la potencia ya tiene su
+  // entidad desde `powerW` (US-213) y publicarla otra vez desde la lectura daría
+  // dos entidades para el mismo vatio, que en HA se ven como dos aparatos.
+};
+
+/**
+ * Entidades de sensor de un aparato, derivadas de sus lecturas. Puro y estable:
+ * el orden lo fija el mapa, no el orden en que llegue el aparato.
+ */
+export function readingEntitiesFor(dev: SnapshotIotDevice): ReadingEntity[] {
+  const vistas = new Set<IotMetric>();
+  const out: ReadingEntity[] = [];
+  for (const r of dev.readings ?? []) {
+    const def = ENTIDAD_POR_METRICA[r.metric];
+    // Una métrica repetida (dos endpoints del mismo aparato) es UNA entidad: dos
+    // configs con el mismo `unique_id` hacen que HA descarte la segunda.
+    if (!def || vistas.has(r.metric)) continue;
+    vistas.add(r.metric);
+    out.push({ metric: r.metric, ...def });
+  }
+  return out;
+}
+
+/**
+ * Entidad **principal** de un aparato en HA, la que representa lo que el aparato
+ * *es*. Sus lecturas van aparte (`readingEntitiesFor`).
+ *
+ * US-247 cierra lo que US-244 dejó anotado: hasta aquí `on === null` descartaba de
+ * un plumazo a `contact`, `smoke`, `cover`, `climate` y `lock` —correcto, porque
+ * ninguno es on/off, pero incompleto: HA tiene `cover` y `binary_sensor` nativos
+ * y sin ellos media casa se quedaba fuera de la interop—.
+ */
 export function exposureFor(dev: SnapshotIotDevice, controlEnabled: boolean): IotExposure | null {
-  // Sensores y, desde US-244, también `contact`/`smoke`/`cover`/`climate`/`lock`:
-  // ninguno es on/off, así que `on === null` los descarta a todos. **Es correcto
-  // pero no es completo**: HA tiene `binary_sensor` y `cover` nativos y publicar
-  // ahí un sensor de apertura sería útil. Se deja fuera a propósito de esta
-  // historia —que amplía el contrato, no la interop— y está anotado en el backlog.
-  if (dev.kind === 'sensor' || dev.on === null) return null;
+  // Una persiana es un `cover` de verdad en HA (posición incluida).
+  if (dev.kind === 'cover') return { component: 'cover', controllable: controlEnabled };
+  // Una cerradura se publica de SOLO LECTURA aunque el control entrante esté
+  // activo: `lock` no está en `CONTROLLABLE_IOT_KINDS` mientras US-246 no decida
+  // la política, y exponer un `lock` de HA con `command_topic` sería tomar esa
+  // decisión de refilón — con la puerta de la calle de por medio.
+  if (dev.kind === 'lock' && dev.locked !== null && dev.locked !== undefined) {
+    return { component: 'binary_sensor', deviceClass: 'lock' };
+  }
+  // `contact`, `smoke`, `climate` y `sensor` no tienen entidad principal: lo que
+  // tienen que contar son sus lecturas, y esas van por `readingEntitiesFor`.
+  if (dev.on === null) return null;
   if (dev.kind === 'light' && controlEnabled) {
     return { component: 'light', brightness: dev.brightness !== null, color: dev.color !== null };
   }
@@ -211,6 +306,32 @@ export function buildDiscoveryConfigs(
       if (exp.component === 'switch') {
         if (exp.controllable) base.command_topic = `${t}/set`;
         msgs.push({ topic: configTopic('switch', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
+      } else if (exp.component === 'cover') {
+        // Una persiana en HA lleva su posición: `state_topic` con open/closed y
+        // `position_topic` con el 0-100, que es la misma orientación del contrato.
+        delete base.payload_on;
+        delete base.payload_off;
+        base.device_class = 'shade';
+        base.state_topic = `${t}/cover_state`;
+        base.position_topic = `${t}/position`;
+        if (exp.controllable) {
+          base.command_topic = `${t}/set`;
+          base.set_position_topic = `${t}/position/set`;
+          // El contrato IoT no sabe parar una persiana a media altura, así que se
+          // declara que no hay `stop` en vez de dejar que HA pinte un botón que
+          // manda un `STOP` al vacío.
+          base.payload_stop = null;
+        }
+        msgs.push({ topic: configTopic('cover', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
+      } else if (exp.component === 'binary_sensor') {
+        // Cerradura: **sin `command_topic`**. Ver `exposureFor`.
+        base.device_class = exp.deviceClass;
+        base.state_topic = `${t}/locked`;
+        msgs.push({
+          topic: configTopic('binary_sensor', `iot_${objectId(dev.id)}_lock`),
+          payload: JSON.stringify(base),
+          retain: true,
+        });
       } else {
         base.command_topic = `${t}/set`; // el light siempre es controlable aquí
         if (exp.brightness) {
@@ -225,6 +346,52 @@ export function buildDiscoveryConfigs(
         msgs.push({ topic: configTopic('light', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
       }
     }
+    // Entidades derivadas de las lecturas (US-247): contacto, presencia, humo, CO,
+    // temperatura, humedad, batería y luz. Son entidades propias porque son
+    // magnitudes propias; el `via_device` las agrupa bajo el mismo aparato en HA.
+    for (const ent of readingEntitiesFor(dev)) {
+      const config: Record<string, unknown> = {
+        name: `${dev.name} ${ETIQUETA_DE_LECTURA[ent.metric] ?? ent.slug}`,
+        unique_id: `krakenos_iot_${objectId(dev.id)}_${ent.slug}`,
+        state_topic: `${t}/${ent.slug}`,
+        device_class: ent.deviceClass,
+        ...avail,
+        device: iotDevice(dev),
+      };
+      if (ent.component === 'binary_sensor') {
+        config.payload_on = 'ON';
+        config.payload_off = 'OFF';
+      } else {
+        config.unit_of_measurement = ent.unit;
+        config.state_class = 'measurement';
+      }
+      msgs.push({
+        topic: configTopic(ent.component, `iot_${objectId(dev.id)}_${ent.slug}`),
+        payload: JSON.stringify(config),
+        retain: true,
+      });
+    }
+
+    // Consigna de un termostato: se publica como **sensor**, no como `climate`.
+    // Un `climate` de HA exige modos (heat/cool/auto) que el contrato no tiene, y
+    // rellenarlos a ojo sería inventarse la mitad del aparato.
+    if (dev.kind === 'climate' && dev.targetC !== undefined && dev.targetC !== null) {
+      msgs.push({
+        topic: configTopic('sensor', `iot_${objectId(dev.id)}_target`),
+        payload: JSON.stringify({
+          name: `${dev.name} consigna`,
+          unique_id: `krakenos_iot_${objectId(dev.id)}_target`,
+          state_topic: `${t}/target`,
+          unit_of_measurement: '°C',
+          device_class: 'temperature',
+          state_class: 'measurement',
+          ...avail,
+          device: iotDevice(dev),
+        }),
+        retain: true,
+      });
+    }
+
     // Sensor de potencia instantánea, si el aparato la mide.
     if (dev.powerW !== undefined && dev.powerW !== null) {
       msgs.push({
@@ -403,6 +570,38 @@ export function buildStateMessages(snapshot: StateSnapshot, prefix: string): Mqt
     if (dev.powerW !== undefined && dev.powerW !== null) {
       msgs.push({ topic: `${t}/power`, payload: String(dev.powerW), retain: true });
     }
+
+    // Estado de las categorías nuevas (US-247).
+    if (dev.kind === 'cover' && dev.position !== undefined && dev.position !== null) {
+      msgs.push({ topic: `${t}/position`, payload: String(dev.position), retain: true });
+      // HA espera las palabras `open`/`closed` en el `state_topic` de un `cover`.
+      msgs.push({
+        topic: `${t}/cover_state`,
+        payload: dev.position > 0 ? 'open' : 'closed',
+        retain: true,
+      });
+    }
+    if (dev.kind === 'climate' && dev.targetC !== undefined && dev.targetC !== null) {
+      msgs.push({ topic: `${t}/target`, payload: String(dev.targetC), retain: true });
+    }
+    if (dev.kind === 'lock' && dev.locked !== undefined && dev.locked !== null) {
+      // ⚠️ `device_class: 'lock'` en HA significa **ON = abierta**, al revés que
+      // `locked`. Publicarlo sin invertir enseñaría la puerta abierta cuando está
+      // echada la llave — el mismo error de polaridad que el contacto de US-244.
+      msgs.push({ topic: `${t}/locked`, payload: dev.locked ? 'OFF' : 'ON', retain: true });
+    }
+
+    // Lecturas: un topic por entidad publicada.
+    const porMetrica = new Map((dev.readings ?? []).map((r) => [r.metric, r.value]));
+    for (const ent of readingEntitiesFor(dev)) {
+      const valor = porMetrica.get(ent.metric);
+      if (valor === undefined) continue;
+      msgs.push({
+        topic: `${t}/${ent.slug}`,
+        payload: ent.component === 'binary_sensor' ? (valor >= 1 ? 'ON' : 'OFF') : String(valor),
+        retain: true,
+      });
+    }
   }
   if (snapshot.energy) {
     msgs.push({ topic: `${prefix}/energy/today_kwh`, payload: snapshot.energy.todayKwh.toFixed(3), retain: true });
@@ -448,7 +647,16 @@ export function buildStateMessages(snapshot: StateSnapshot, prefix: string): Mqt
 export function commandFilters(prefix: string, control: ControlFlags): string[] {
   const filters: string[] = [];
   if (control.iot) {
-    filters.push(`${prefix}/iot/+/set`, `${prefix}/iot/+/brightness/set`, `${prefix}/iot/+/rgb/set`);
+    filters.push(
+      `${prefix}/iot/+/set`,
+      `${prefix}/iot/+/brightness/set`,
+      `${prefix}/iot/+/rgb/set`,
+      // US-247: sin este filtro, la persiana publicada con `set_position_topic`
+      // se vería controlable en HA y no pasaría nada al arrastrar el mando. **No
+      // suscribirse es la única garantía real** (US-236), así que el filtro nace
+      // aquí, atado al mismo toggle que el resto del control entrante.
+      `${prefix}/iot/+/position/set`,
+    );
   }
   if (control.pause) filters.push(`${prefix}/device/+/pause/set`);
   return filters;
@@ -491,9 +699,23 @@ export function parseInboundCommand(
 
   if (rest === 'set') {
     const v = body.toUpperCase();
-    if (v === 'ON' || v === 'TRUE' || v === '1') return { kind: 'iot', deviceId, state: { on: true } };
-    if (v === 'OFF' || v === 'FALSE' || v === '0') return { kind: 'iot', deviceId, state: { on: false } };
+    // `OPEN`/`CLOSE` es lo que manda HA por el `command_topic` de un `cover`
+    // (US-247). Cada manager traduce ese `on` al vocabulario de su protocolo:
+    // `OPEN`/`CLOSE` en zigbee2mqtt, `UpOrOpen`/`DownOrClose` en Matter.
+    if (v === 'ON' || v === 'TRUE' || v === '1' || v === 'OPEN') {
+      return { kind: 'iot', deviceId, state: { on: true } };
+    }
+    if (v === 'OFF' || v === 'FALSE' || v === '0' || v === 'CLOSE') {
+      return { kind: 'iot', deviceId, state: { on: false } };
+    }
+    // `STOP` no se acepta: el contrato IoT no sabe parar una persiana a medias, y
+    // por eso la config declara `payload_stop: null` para que HA ni pinte el botón.
     return null;
+  }
+  if (rest === 'position/set') {
+    const n = Number(body);
+    if (!Number.isFinite(n)) return null;
+    return { kind: 'iot', deviceId, state: { position: Math.max(0, Math.min(100, Math.round(n))) } };
   }
   if (rest === 'brightness/set') {
     const n = Number(body);

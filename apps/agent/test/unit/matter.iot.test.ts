@@ -75,3 +75,62 @@ describe('MatterIotManager', () => {
     expect(ws.disposed).toBe(1);
   });
 });
+
+/** US-247 — control de las categorías nuevas, y la que sigue cerrada a propósito. */
+describe('MatterIotManager · categorías nuevas (US-247)', () => {
+  const NUEVOS = [
+    { node_id: 12, available: true, attributes: { '1/258/8': 30, '1/6/0': true } },
+    { node_id: 13, available: true, attributes: { '1/513/18': 2000 } },
+    { node_id: 14, available: true, attributes: { '1/257/0': 1 } },
+    { node_id: 15, available: true, attributes: { '1/69/0': true } },
+  ];
+  let ws: FakeWs;
+  let iot: MatterIotManager;
+
+  beforeEach(() => {
+    ws = new FakeWs();
+    ws.result = (command) => (command === 'get_nodes' ? NUEVOS : null);
+    iot = new MatterIotManager({ transport: ws });
+  });
+
+  it('mover una persiana manda GoToLiftPercentage con el porcentaje invertido', async () => {
+    const dev = await iot.setState('12', { position: 70 });
+    expect(ws.sent.at(-1)).toMatchObject({
+      command: 'device_command',
+      args: { cluster_id: 258, command_name: 'GoToLiftPercentage', payload: { liftPercent100thsValue: 3000 } },
+    });
+    expect(dev.position).toBe(70);
+  });
+
+  it('abrir/cerrar una persiana NO manda On/Off del cluster OnOff', async () => {
+    // El nodo expone OnOff, así que el camino genérico habría «funcionado» sin
+    // mover la persiana: es el fallo que no da error.
+    await iot.setState('12', { on: false });
+    expect(ws.sent.at(-1)).toMatchObject({
+      args: { cluster_id: 258, command_name: 'DownOrClose' },
+    });
+  });
+
+  it('la consigna del termostato va por write_attribute, no por device_command', async () => {
+    const dev = await iot.setState('13', { targetC: 21.5 });
+    expect(ws.sent.at(-1)).toMatchObject({
+      command: 'write_attribute',
+      args: { node_id: 13, attribute_path: '1/513/18', value: 2150 },
+    });
+    expect(dev.targetC).toBe(21.5);
+  });
+
+  it('⚠️ una cerradura NO se puede abrir por API (esa decisión es de otra historia)', async () => {
+    await expect(iot.setState('14', { on: false })).rejects.toMatchObject({
+      code: 'IOT_NOT_CONTROLLABLE',
+    });
+    // Y no se manda nada al controlador: el rechazo va antes que el comando.
+    expect(ws.sent.filter((s) => s.command === 'device_command')).toHaveLength(0);
+  });
+
+  it('un sensor de contacto tampoco acepta órdenes', async () => {
+    await expect(iot.setState('15', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_CONTROLLABLE',
+    });
+  });
+});
