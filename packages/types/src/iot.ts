@@ -97,6 +97,26 @@ export function isSecurityMetric(metric: IotMetric): metric is SecurityMetric {
 }
 
 /**
+ * Métricas de **riesgo vital** (US-245): humo y monóxido de carbono. Son un
+ * subconjunto de las de seguridad —el `satisfies` lo ata: una métrica que no sea
+ * de seguridad aquí no compila— y se tratan distinto en un punto concreto: el
+ * aviso **no depende de que la alarma esté armada** ni de que el aparato esté en
+ * su lista de vigilancia.
+ *
+ * El porqué es asimetría de daño. Una puerta que se abre solo importa si no
+ * esperabas a nadie, y eso es exactamente lo que significa «armada». El humo y el
+ * CO importan **más** con la casa llena y la alarma desarmada: de noche, con todo
+ * el mundo durmiendo, que es cuando el CO mata.
+ */
+export const LIFE_SAFETY_METRICS = ['smoke', 'co'] as const satisfies readonly SecurityMetric[];
+export type LifeSafetyMetric = (typeof LIFE_SAFETY_METRICS)[number];
+
+/** ¿Es esta métrica un riesgo vital (humo/CO) y no solo un suceso vigilable? */
+export function isLifeSafetyMetric(metric: IotMetric): metric is LifeSafetyMetric {
+  return (LIFE_SAFETY_METRICS as readonly string[]).includes(metric);
+}
+
+/**
  * Lectura de un dispositivo. `unit` es solo presentación (la UI la pinta tal
  * cual); quien tenga que **decidir** algo mira `metric`, nunca `unit`.
  */

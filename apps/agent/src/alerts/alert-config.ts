@@ -15,6 +15,11 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'energy.threshold', label: 'Consumo eléctrico anómalo' },
   { event: 'camera.motion', label: 'Movimiento detectado' },
   { event: 'alarm.triggered', label: '¡Alarma disparada!' },
+  // US-245: humo y CO son eventos propios y NO variantes de «alarma disparada»,
+  // porque avisan aunque la alarma esté desarmada — meterlos bajo el mismo evento
+  // haría que desactivar el aviso de intrusión apagara también el de incendio.
+  { event: 'alarm.smoke', label: '¡Humo detectado!' },
+  { event: 'alarm.co', label: '¡Monóxido de carbono detectado!' },
   { event: 'alarm.sensor_fault', label: 'Sensor de alarma caído' },
   { event: 'alarm.disarm_denied', label: 'PIN de alarma incorrecto' },
   // US-241: el certificado caduca en silencio y se lleva por delante la PWA, los

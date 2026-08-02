@@ -121,7 +121,14 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
 
   const plugs = devices.filter((d) => d.kind === 'plug' || d.kind === 'light');
   const lights = devices.filter((d) => d.kind === 'light' || d.kind === 'plug');
-  const sensors = devices.filter((d) => d.kind === 'sensor');
+  // US-244 partió el `sensor` genérico en categorías propias (`contact`, `smoke`),
+  // y esta lista se quedó filtrando solo por la vieja: desde entonces un sensor de
+  // apertura **desaparecía** de aquí, así que la alarma no se podía configurar con
+  // lo único que la dispara. Se filtra por lo que NO se controla ni mide nada más.
+  const sensors = devices.filter(
+    (d) => d.kind === 'sensor' || d.kind === 'contact' || d.kind === 'smoke',
+  );
+  const detectores = devices.filter((d) => d.kind === 'smoke');
 
   const footer = (
     <div className="space-y-2">
@@ -168,11 +175,22 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             onToggle={(id) => toggle('lightDeviceIds', id)}
           />
           <CheckList
-            label="Sensores vigilados (apertura/movimiento)"
+            label="Sensores vigilados (apertura, movimiento, humo)"
             items={sensors}
             selected={cfg.sensorDeviceIds}
             onToggle={(id) => toggle('sensorDeviceIds', id)}
           />
+
+          <Callout variant="info" title="El humo y el CO avisan siempre" standing>
+            {detectores.length === 1
+              ? 'Tienes 1 detector de humo o CO. '
+              : detectores.length > 1
+                ? `Tienes ${detectores.length} detectores de humo o CO. `
+                : ''}
+            Un detector de humo o CO avisa aunque la alarma esté desarmada y aunque no esté marcado
+            arriba: de noche, con la casa llena, es cuando más importa. Marcarlo aquí añade la sirena
+            y las luces cuando la alarma esté armada.
+          </Callout>
           <CheckList
             label="Cámaras que arman el disparo"
             items={cameras}

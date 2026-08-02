@@ -83,12 +83,48 @@ export function pushNotificationForAudit(
         url: '/',
         audience: 'home',
       };
+    // US-245: llegan con la alarma desarmada, así que el cuerpo no puede dar por
+    // hecho que haya una alarma sonando ni mandar a desarmarla.
+    case 'alarm.smoke':
+      return {
+        title: '🔥 ¡Humo detectado!',
+        body: detail ?? 'Un detector de humo se ha activado',
+        url: '/iot',
+        audience: 'home',
+      };
+    case 'alarm.co':
+      return {
+        title: '☠️ ¡Monóxido de carbono!',
+        body: detail ?? 'Un detector de CO se ha activado. Ventila y sal de casa.',
+        url: '/iot',
+        audience: 'home',
+      };
     case 'alarm.sensor_fault':
       return {
         title: 'Sensor de alarma caído',
         body: detail ? `${detail} no responde estando armada` : 'Un sensor no responde',
         url: '/',
         audience: 'home',
+      };
+    // ⚠️ Estos dos estaban en el catálogo de alertas SIN contenido aquí (US-245).
+    // Como esta función es la fuente de contenido de los **tres** canales —push,
+    // email y Telegram la llaman antes de mirar `channelsFor`—, devolver `null`
+    // no degradaba a «solo email»: no se enviaba nada por ningún canal. El usuario
+    // veía sus conmutadores en Ajustes → Alertas, los activaba, y no llegaba nunca
+    // un aviso. Lo ata ahora `test/unit/alert-content-coverage.test.ts`.
+    case 'energy.threshold':
+      return {
+        title: 'Consumo eléctrico anómalo',
+        body: detail ?? 'Un dispositivo cruzó su umbral de consumo',
+        url: '/energy',
+        audience: 'home',
+      };
+    case 'system.tls_expiring':
+      return {
+        title: 'El certificado HTTPS va a caducar',
+        body: detail ?? 'Renueva el certificado o la app dejará de funcionar en el móvil',
+        url: '/settings',
+        audience: 'admin',
       };
     // Desarme fallido: alguien está probando PINes en la casa (AUD3-03). Antes se
     // auditaba en silencio, así que un ataque de fuerza bruta no avisaba a nadie.

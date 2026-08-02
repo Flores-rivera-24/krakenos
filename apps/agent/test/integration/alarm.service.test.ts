@@ -10,7 +10,10 @@ class FakeIot implements IotManager {
   setCalls: { id: string; on?: boolean }[] = [];
   devices: IotDevice[] = [
     { id: 'siren', name: 'Sirena', kind: 'plug', room: null, reachable: true, on: false, brightness: null, color: null, readings: [] },
-    { id: 'sensor-door', name: 'Puerta', kind: 'sensor', room: null, reachable: true, on: null, brightness: null, color: null, reading: { metric: 'contact', value: 0, unit: '' } },
+    // ⚠️ Este fixture llevaba un `reading:` suelto —el campo que US-244 sustituyó
+    // por la lista `readings`— y nadie se enteró: `apps/agent/tsconfig.json` solo
+    // incluye `src`, así que los tests del agente **tampoco** se typecheckean.
+    { id: 'sensor-door', name: 'Puerta', kind: 'contact', room: null, reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'contact', value: 0, unit: '' }] },
   ];
   async listDevices() {
     return this.devices;
@@ -137,13 +140,175 @@ describe('AlarmService (US-188)', () => {
       service.stop();
     });
 
-    it('humo y CO sí la disparan', async () => {
+    it('humo y CO sí la disparan, y SIN retardo de entrada (US-245)', async () => {
+      // El retardo de entrada es la gracia para entrar y teclear el PIN. Ante humo
+      // no hay nada que desarmar: esos 30 s serían 30 s de sirena callada. Antes
+      // pasaba por `entry` como una puerta cualquiera.
       for (const metric of ['smoke', 'co'] as const) {
         const { service, bus } = await armada(new FakeIot());
         bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric, value: 1, prevValue: 0 });
-        await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+        await vi.waitFor(() => expect(service.getStateSync().phase).toBe('triggered'));
         service.stop();
       }
+    });
+
+    it('una puerta SÍ conserva su retardo de entrada', async () => {
+      // El contrapunto del anterior: si se hubiera quitado el retardo para todos,
+      // entrar en tu propia casa dispararía la alarma antes de llegar al teclado.
+      const { service, bus } = await armada(new FakeIot());
+      bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric: 'contact', value: 1, prevValue: 0 });
+      await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+      service.stop();
+    });
+  });
+
+  /**
+   * US-245 — el agujero que cierra la historia. Un detector de humo tenía que
+   * cruzar **dos** puertas de un sistema **antirrobo** para que pasara algo:
+   * estar en `sensorDeviceIds` y que la alarma estuviese armada. De noche, con la
+   * casa llena y la alarma desarmada —que es cuando el CO mata— no producía nada:
+   * ni aviso, ni registro, ni traza.
+   */
+  describe('humo y CO avisan SIEMPRE (US-245)', () => {
+    /** Detector de humo que NO está en la lista de vigilancia de la alarma. */
+    const conDetector = () => {
+      const iot = new FakeIot();
+      iot.devices.push({
+        id: 'humo-cocina',
+        name: 'Detector de la cocina',
+        kind: 'smoke',
+        room: null,
+        reachable: true,
+        on: null,
+        brightness: null,
+        color: null,
+        readings: [{ metric: 'smoke', value: 0, unit: '' }],
+      });
+      return iot;
+    };
+
+    const avisos = (spy: ReturnType<typeof vi.spyOn>, accion: string) =>
+      spy.mock.calls.filter((c) => (c[0] as { action: string }).action === accion);
+
+    it('con la alarma DESARMADA y el detector fuera de la lista, avisa igual', async () => {
+      const iot = conDetector();
+      const { service, bus } = build(iot, () => 0);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      service.start();
+      // Config vacía a propósito: nada vigilado, nada armado. El caso real de
+      // alguien que acaba de emparejar su detector y no ha tocado la alarma.
+      await service.setConfig({ sensorDeviceIds: [], exitDelaySec: 0 });
+      expect(service.getStateSync().phase).toBe('disarmed');
+
+      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+
+      await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(1));
+      expect(avisos(auditSpy, 'alarm.smoke')[0]![0]).toMatchObject({
+        detail: 'Humo detectado en Detector de la cocina',
+      });
+      // Y no toca la máquina de estados: la alarma sigue desarmada.
+      expect(service.getStateSync().phase).toBe('disarmed');
+      service.stop();
+      auditSpy.mockRestore();
+    });
+
+    it('el CO tiene su propio evento (desactivar uno no apaga el otro)', async () => {
+      const iot = conDetector();
+      const { service, bus } = build(iot, () => 0);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      service.start();
+      await service.setConfig({ exitDelaySec: 0 });
+
+      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'co', value: 1, prevValue: 0 });
+
+      await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.co')).toHaveLength(1));
+      expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(0);
+      service.stop();
+      auditSpy.mockRestore();
+    });
+
+    it('⚠️ una puerta abierta con la alarma desarmada NO avisa', async () => {
+      // El contrapunto que impide que esto se convierta en «todo avisa siempre»:
+      // una puerta que se abre con la casa llena es la vida normal.
+      const iot = conDetector();
+      const { service, bus } = build(iot, () => 0);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      service.start();
+      await service.setConfig({ exitDelaySec: 0 });
+
+      bus.publish({ type: 'sensor-reading', deviceId: 'sensor-door', metric: 'contact', value: 1, prevValue: 0 });
+      await new Promise((r) => setTimeout(r, 30));
+
+      expect(auditSpy.mock.calls.filter((c) => String((c[0] as { action: string }).action).startsWith('alarm.'))).toHaveLength(0);
+      service.stop();
+      auditSpy.mockRestore();
+    });
+
+    it('un detector que oscila no genera un aviso por parpadeo', async () => {
+      const iot = conDetector();
+      let clock = 0;
+      const { service, bus } = build(iot, () => clock);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      service.start();
+      await service.setConfig({ exitDelaySec: 0 });
+
+      for (let i = 0; i < 4; i++) {
+        clock += 10_000; // cuatro activaciones en 40 s, dentro de la ventana
+        bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+        await new Promise((r) => setTimeout(r, 10));
+      }
+      expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(1);
+
+      clock += 5 * 60_000; // pasada la ventana de rearme, el riesgo sigue: vuelve a avisar
+      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+      await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(2));
+
+      service.stop();
+      auditSpy.mockRestore();
+    });
+
+    it('un detector de humo caído avisa aunque la alarma esté desarmada', async () => {
+      // Mismo invariante que el aviso: un detector desconectado no avisa de nada,
+      // y «no ha sonado» es indistinguible de «no hay humo» hasta que es tarde.
+      const iot = conDetector();
+      let clock = 0;
+      const { service } = build(iot, () => clock);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      await service.setConfig({ sensorDeviceIds: [], exitDelaySec: 0 });
+      expect(service.getStateSync().phase).toBe('disarmed');
+
+      iot.devices.find((d) => d.id === 'humo-cocina')!.reachable = false;
+      await service.tick();
+      // El reloj avanza más allá de la ventana del fail-safe: si no, el segundo
+      // barrido ni siquiera lo ejecutaría y «no repite» pasaría solo.
+      clock += 31_000;
+      await service.tick();
+
+      const faults = avisos(auditSpy, 'alarm.sensor_fault');
+      expect(faults).toHaveLength(1);
+      expect(faults[0]![0]).toMatchObject({ detail: expect.stringContaining('detector de humo/CO') });
+      auditSpy.mockRestore();
+    });
+
+    it('el detector que vuelve y se vuelve a caer avisa otra vez', async () => {
+      const iot = conDetector();
+      let clock = 0;
+      const { service } = build(iot, () => clock);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      await service.setConfig({ exitDelaySec: 0 });
+      const det = iot.devices.find((d) => d.id === 'humo-cocina')!;
+
+      det.reachable = false;
+      await service.tick();
+      det.reachable = true;
+      clock += 31_000;
+      await service.tick();
+      det.reachable = false;
+      clock += 31_000;
+      await service.tick();
+
+      expect(avisos(auditSpy, 'alarm.sensor_fault')).toHaveLength(2);
+      auditSpy.mockRestore();
     });
   });
 

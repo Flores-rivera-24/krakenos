@@ -1,11 +1,12 @@
-import type { AlarmConfig, AlarmMachineState, AlarmMode, AlarmState, HomeEvent, IotManager, UpdateAlarmConfigRequest } from '@krakenos/types';
-import { isSecurityMetric } from '@krakenos/types';
+import type { AlarmConfig, AlarmMachineState, AlarmMode, AlarmState, HomeEvent, IotDevice, IotManager, UpdateAlarmConfigRequest } from '@krakenos/types';
+import { isLifeSafetyMetric, isSecurityMetric } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
 import { settleWithLimit } from '../../iot/batch.js';
-import { advance, arm, disarm, disarmedState, isActive, trigger } from '../../alarm/state-machine.js';
+import { advance, arm, disarm, disarmedState, isActive, trigger, type TriggerOptions } from '../../alarm/state-machine.js';
+import { decideAvisoVital, detalleDeAviso } from '../../alarm/life-safety.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /** Periodo del fail-safe de sensores (el barrido en sí corre cada segundo). */
@@ -65,6 +66,11 @@ export class AlarmService {
   private state: AlarmMachineState;
   private loop: TickLoop | null = null;
   private readonly faultNotified = new Set<string>();
+  /** Fail-safe de los detectores de humo/CO (US-245): dedupe propio, porque su
+   *  vigilancia **no** se limpia al desarmar como la de los sensores de intrusión. */
+  private readonly faultNotifiedVital = new Set<string>();
+  /** Último aviso de humo/CO por aparato+métrica (ms), para la ventana de rearme. */
+  private readonly ultimosAvisosVitales = new Map<string, number>();
   /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
   private lastFailSafeMs = Number.NEGATIVE_INFINITY;
 
@@ -191,9 +197,9 @@ export class AlarmService {
   // ---- Disparo ----
 
   /** Un sensor/cámara vigilado se activó. Solo dispara si está armada. */
-  private async onTrigger(by: string): Promise<void> {
+  private async onTrigger(by: string, opts: TriggerOptions = {}): Promise<void> {
     const config = await this.getConfig();
-    const { state, justTriggered } = trigger(this.state, by, this.now(), config);
+    const { state, justTriggered } = trigger(this.state, by, this.now(), config, opts);
     if (state === this.state) return; // sin cambio (no armada)
     this.state = state;
     await this.persist();
@@ -248,17 +254,26 @@ export class AlarmService {
   /**
    * Fail-safe (US-188): estando la alarma activa, un sensor IoT vigilado que se
    * cae (no `reachable`) **no** se ignora — se avisa una vez (`alarm.sensor_fault`).
+   *
+   * US-245 añade el segundo frente: los **detectores de humo/CO** (`kind: 'smoke'`,
+   * que incluye los de CO por la clasificación de US-244) se comprueban **siempre**,
+   * armada o no y estén en la lista de vigilancia o no. Es el mismo invariante que
+   * el aviso: un detector desconectado no avisa de nada, y esa es exactamente la
+   * avería que hay que contar en voz alta. Ojo con el modo de fallo que se evita:
+   * «no ha sonado» es indistinguible de «no hay humo» hasta que es tarde.
    */
   private async failSafeCheck(): Promise<void> {
-    if (!isActive(this.state)) {
-      this.faultNotified.clear();
-      return;
-    }
+    const activa = isActive(this.state);
+    if (!activa) this.faultNotified.clear();
     const config = await this.getConfig();
-    if (config.sensorDeviceIds.length === 0) return;
-    const devices = await this.iot.listDevices().catch(() => []);
+    const vigilados = activa ? config.sensorDeviceIds : [];
+    // La lista se pide igualmente para los detectores de humo: va por la vista
+    // cacheada de US-229 (TTL 5 s + single-flight), compartida con los otros
+    // barridos, así que no añade tráfico real contra el bridge o el broker.
+    const devices = await this.iot.listDevices().catch(() => [] as IotDevice[]);
     const byId = new Map(devices.map((d) => [d.id, d]));
-    for (const id of config.sensorDeviceIds) {
+
+    for (const id of vigilados) {
       const dev = byId.get(id);
       const down = !dev || !dev.reachable;
       if (down && !this.faultNotified.has(id)) {
@@ -267,6 +282,17 @@ export class AlarmService {
         this.app.log.warn(`[alarm] sensor caído estando armada: ${dev?.name ?? id}`);
       } else if (!down) {
         this.faultNotified.delete(id);
+      }
+    }
+
+    for (const dev of devices) {
+      if (dev.kind !== 'smoke') continue;
+      if (!dev.reachable && !this.faultNotifiedVital.has(dev.id)) {
+        this.faultNotifiedVital.add(dev.id);
+        this.app.audit({ action: 'alarm.sensor_fault', detail: `${dev.name} (detector de humo/CO)` });
+        this.app.log.warn(`[alarm] detector de humo/CO caído: ${dev.name}`);
+      } else if (dev.reachable) {
+        this.faultNotifiedVital.delete(dev.id);
       }
     }
   }
@@ -291,8 +317,36 @@ export class AlarmService {
     this.loop.start();
   }
 
+  /**
+   * Aviso de riesgo vital (US-245): humo o CO **siempre** avisan, esté la alarma
+   * armada o no y esté el detector en `sensorDeviceIds` o no.
+   *
+   * Va **antes** y **fuera** de la cadena de la alarma a propósito: aquélla es
+   * antirrobo —dos puertas, «lo vigilo» y «estoy armada»— y las dos son
+   * irrelevantes para un incendio. Este camino no toca la máquina de estados; el
+   * disparo de la alarma, si además procede, lo decide la cadena de abajo.
+   */
+  private async avisoVital(event: HomeEvent): Promise<void> {
+    const aviso = decideAvisoVital(event, this.ultimosAvisosVitales, this.now());
+    if (!aviso) return;
+    this.ultimosAvisosVitales.set(aviso.clave, this.now());
+    const nombre = await this.nombreDeAparato(aviso.deviceId);
+    const detalle = detalleDeAviso(aviso.metric, nombre);
+    // La auditoría es la que dispara el aviso multicanal (push/email/Telegram)
+    // según el catálogo de alertas: no hay un segundo camino de notificación.
+    this.app.audit({ action: aviso.accion, detail: detalle });
+    this.app.log.warn(`[alarm] ${detalle}`);
+  }
+
+  /** Nombre legible de un aparato IoT; su id si no se puede resolver. */
+  private async nombreDeAparato(id: string): Promise<string> {
+    const devices = await this.iot.listDevices().catch(() => [] as IotDevice[]);
+    return devices.find((d) => d.id === id)?.name ?? id;
+  }
+
   /** Procesa un evento del bus del hogar (US-167). Público para tests. */
   async onBusEvent(event: HomeEvent): Promise<void> {
+    await this.avisoVital(event);
     const config = await this.getConfig();
     if (event.type === 'motion-detected' && config.cameraIds.includes(event.cameraId)) {
       await this.onTrigger(event.cameraName);
@@ -308,8 +362,11 @@ export class AlarmService {
       (event.prevValue === null || event.prevValue < 1)
     ) {
       // Sensor de apertura/presencia/humo: activación (flanco de subida a ≥1).
-      const dev = (await this.iot.listDevices().catch(() => [])).find((d) => d.id === event.deviceId);
-      await this.onTrigger(dev?.name ?? event.deviceId);
+      // El retardo de entrada es la gracia para entrar y teclear el PIN: ante humo
+      // o CO no hay nada que desarmar, así que se dispara ya (US-245).
+      await this.onTrigger(await this.nombreDeAparato(event.deviceId), {
+        sinRetardoDeEntrada: isLifeSafetyMetric(event.metric),
+      });
     } else if (event.type === 'mode-changed' && event.mode === 'away' && config.autoArmAway) {
       if (this.state.phase === 'disarmed') await this.armAlarm('away', 'modo away');
     }
