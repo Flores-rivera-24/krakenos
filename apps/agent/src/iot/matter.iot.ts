@@ -5,10 +5,16 @@ import type {
   MatterCommissionResult,
   UpdateIotStateRequest,
 } from '@krakenos/types';
+import { isControllableKind } from '@krakenos/types';
 import {
+  THERMOSTAT_CLUSTER,
+  WINDOW_COVERING_CLUSTER,
   buildCommissionArgs,
+  buildCoverOpenCloseArgs,
+  buildCoverPositionArgs,
   buildLevelArgs,
   buildOnOffArgs,
+  buildSetpointWriteArgs,
   classifyCommissionError,
   endpointForCluster,
   nodeToIotDevice,
@@ -100,8 +106,45 @@ export class MatterIotManager implements IotManager {
     const node = (await this.nodes()).find((n) => String(n.node_id) === id);
     if (!node) throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
     const device = nodeToIotDevice(node);
-    if (device.kind === 'sensor') {
-      throw new IotError('IOT_NOT_CONTROLLABLE', 'Un sensor no se puede controlar');
+    // La lista de categorías escribibles es la del contrato, no una propia: así
+    // una cerradura Matter **no** se puede abrir por API mientras `lock` siga
+    // fuera de `CONTROLLABLE_IOT_KINDS` (esa es la decisión de US-246, no un
+    // detalle de este backend), y un sensor o un detector de humo tampoco.
+    if (!isControllableKind(device.kind)) {
+      throw new IotError('IOT_NOT_CONTROLLABLE', 'Este dispositivo no se puede controlar');
+    }
+
+    // Persiana: su `on` no es OnOff sino abrir/cerrar, y la posición va por su
+    // propio cluster con el porcentaje invertido (US-247).
+    if (device.kind === 'cover') {
+      const ep = endpointForCluster(node, WINDOW_COVERING_CLUSTER);
+      if (input.position !== undefined) {
+        await this.client.request(
+          'device_command',
+          buildCoverPositionArgs(node.node_id, ep, input.position),
+        );
+      } else if (input.on !== undefined) {
+        await this.client.request(
+          'device_command',
+          buildCoverOpenCloseArgs(node.node_id, ep, input.on),
+        );
+      }
+      const next: IotDevice = { ...device };
+      if (input.position !== undefined) next.position = input.position;
+      else if (input.on !== undefined) next.position = input.on ? 100 : 0;
+      return next;
+    }
+
+    // Termostato: la consigna es un **atributo**, no un comando (ver el parser).
+    if (device.kind === 'climate') {
+      if (input.targetC !== undefined) {
+        const ep = endpointForCluster(node, THERMOSTAT_CLUSTER);
+        await this.client.request(
+          'write_attribute',
+          buildSetpointWriteArgs(node.node_id, ep, input.targetC),
+        );
+      }
+      return { ...device, targetC: input.targetC ?? device.targetC };
     }
 
     if (input.on !== undefined) {

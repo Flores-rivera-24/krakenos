@@ -493,6 +493,10 @@ export async function buildServer(): Promise<FastifyInstance> {
       })();
 
       return {
+        // El mapeo es explícito a propósito (privacidad: solo sale lo que se
+        // decide que salga), así que **una categoría nueva del contrato no llega
+        // aquí sola**: US-247 tuvo que añadir las cuatro líneas de abajo o
+        // persianas, termostatos, cerraduras y sensores se publicaban vacíos.
         iot: iotDevices.map((d) => ({
           id: d.id,
           name: d.name,
@@ -501,6 +505,10 @@ export async function buildServer(): Promise<FastifyInstance> {
           brightness: d.brightness,
           color: d.color,
           powerW: d.powerW ?? null,
+          readings: d.readings,
+          position: d.position ?? null,
+          targetC: d.targetC ?? null,
+          locked: d.locked ?? null,
         })),
         energy,
         devicesOnline,
