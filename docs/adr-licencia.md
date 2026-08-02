@@ -99,11 +99,11 @@ licencia «JSON» del *shall be used for Good, not Evil*, que sí habría sido u
 ## Reevaluar si…
 
 - **Llega una contribución externa que se quiera mergear** → decidir DCO/CLA **antes** del merge.
-- **La bifurcación del `BACKLOG.md` acaba en la opción C** (archivar como pieza de portfolio) →
+- **La bifurcación de producto acaba en la opción C** (archivar como pieza de portfolio) →
   entonces una permisiva maximiza la utilidad de lo escrito y ya no hay Fase C que proteger.
 - **Aparece una dependencia imprescindible con licencia incompatible** → el gate de
   `apps/agent/test/unit/license.test.ts` lo cazará al añadirla, no meses después.
 
 > Relacionados: [`adr-control-total.md`](adr-control-total.md) (por qué el control del usuario es la
 > tesis del producto) · [`adr-distribution.md`](adr-distribution.md) (cómo se distribuye) ·
-> `LICENSE` (el texto íntegro) · `BACKLOG.md → US-257`.
+> `LICENSE` (el texto íntegro).

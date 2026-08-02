@@ -131,4 +131,4 @@ cualquiera con credenciales del broker puede publicar una config.
 > Relacionados: [`adr-control-total.md`](adr-control-total.md) (el pivote que lo encarga) ·
 > [`adr-positioning.md`](adr-positioning.md) (la decisión que revierte) ·
 > [`interop.md`](interop.md) (la dirección saliente, US-213/236) ·
-> [`mqtt-discovery-setup.md`](mqtt-discovery-setup.md) (cómo se usa) · `BACKLOG.md → US-248`.
+> [`mqtt-discovery-setup.md`](mqtt-discovery-setup.md) (cómo se usa).

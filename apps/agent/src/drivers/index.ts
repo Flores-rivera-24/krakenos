@@ -108,7 +108,7 @@ export interface CreateDriverConfig {
 }
 
 /**
- * Kinds retirados por US-238. Existen **solo** para dar un error que se entienda:
+ * Kinds retirados (US-238). Existen **solo** para dar un error que se entienda:
  * quien tenía `DRIVER_KIND=cisco-ios` en su `.env` se encuentra el agente sin
  * arrancar al actualizar, y «Driver desconocido» no le dice qué hacer.
  *
@@ -120,20 +120,22 @@ export interface CreateDriverConfig {
  * caso**: solo protege de una config guardada en la DB que falle, y aquí el valor
  * retirado está justo en el `.env` que hace de red de seguridad.
  */
-const KINDS_RETIRADOS: Record<string, string> = {
-  'cisco-ios': 'US-238',
-  'cisco-netconf': 'US-238',
-};
+const KINDS_RETIRADOS = new Set(['cisco-ios', 'cisco-netconf']);
 
-/** Mensaje de un kind retirado, o `null` si no lo es. */
+/**
+ * Mensaje de un kind retirado, o `null` si no lo es.
+ *
+ * ⚠️ **Sin identificadores internos en el texto.** Decía «se retiró en US-238», y
+ * quien se encuentra ese error no tiene forma de resolver ese código: no hay
+ * tracker público. El motivo sí es accionable; el número de historia no.
+ */
 function mensajeDeRetirada(kind: string, soportados: string): string | null {
-  const historia = KINDS_RETIRADOS[kind];
-  if (!historia) return null;
+  if (!KINDS_RETIRADOS.has(kind)) return null;
   return (
-    `El driver «${kind}» se retiró en ${historia}: era equipo de empresa, sin usuarios ` +
-    `domésticos y sin una sola verificación con hardware real. Cambia DRIVER_KIND en tu .env ` +
-    `por uno soportado (${soportados}). No se cae a «mock» automáticamente a propósito: te ` +
-    `enseñaría una casa inventada como si fuera la tuya.`
+    `El driver «${kind}» se retiró: era equipo de empresa, sin usuarios domésticos y sin una ` +
+    `sola verificación con hardware real. Cambia DRIVER_KIND en tu .env por uno soportado ` +
+    `(${soportados}). No se cae a «mock» automáticamente a propósito: te enseñaría una casa ` +
+    `inventada como si fuera la tuya.`
   );
 }
 
