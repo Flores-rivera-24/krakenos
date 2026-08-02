@@ -17,6 +17,7 @@ import { MatterIotManager } from './matter.iot.js';
 import { WebSocketTransport } from './matter.transport.js';
 import { MockIotManager } from './mock.iot.js';
 import { MqttClientTransport } from './mqtt.transport.js';
+import { MqttDiscoveryIotManager } from './mqtt-discovery.iot.js';
 import { TuyaIotManager } from './tuya.iot.js';
 import type { TuyaDeviceRecord } from './tuya.store.js';
 import { TuyapiTransport } from './tuya.transport.js';
@@ -28,6 +29,19 @@ export interface ZigbeeIotConfig {
   url: string;
   /** Topic base de zigbee2mqtt (por defecto `zigbee2mqtt`). */
   baseTopic?: string;
+  username?: string;
+  password?: string;
+}
+
+/**
+ * Config de la ingesta genérica por MQTT Discovery (`kind: 'mqtt'`, US-248). No
+ * lleva lista de dispositivos a propósito: los aparatos se **anuncian solos**.
+ */
+export interface MqttDiscoveryIotConfig {
+  /** URL del broker MQTT, p. ej. `mqtt://localhost:1883`. */
+  url: string;
+  /** Prefijo del namespace de anuncio (por defecto `homeassistant`). */
+  discoveryPrefix?: string;
   username?: string;
   password?: string;
 }
@@ -103,6 +117,8 @@ export interface IotConfig {
   kind: string;
   /** Requerido cuando `kind === 'zigbee'`. */
   zigbee?: ZigbeeIotConfig;
+  /** Requerido cuando `kind === 'mqtt'` (ingesta genérica, US-248). */
+  mqtt?: MqttDiscoveryIotConfig;
   /** Requerido cuando `kind === 'matter'`. */
   matter?: MatterIotConfig;
   /** Requerido cuando `kind === 'hue'`. */
@@ -192,6 +208,20 @@ function buildIotManager(
       return new ZigbeeIotManager({
         transport: new MqttClientTransport({ url: zb.url, username: zb.username, password: zb.password }),
         baseTopic: zb.baseTopic,
+      });
+    }
+    case 'mqtt': {
+      const mq = config.mqtt;
+      if (!mq) throw new Error('Falta la configuración MQTT Discovery (IotConfig.mqtt)');
+      if (!mq.url) throw new Error('La ingesta MQTT requiere MQTT_DISCOVERY_URL');
+      // La conexión MQTT la arranca `startIotManager` (lifecycle en server.ts).
+      return new MqttDiscoveryIotManager({
+        transport: new MqttClientTransport({
+          url: mq.url,
+          username: mq.username,
+          password: mq.password,
+        }),
+        discoveryPrefix: mq.discoveryPrefix,
       });
     }
     case 'matter': {
@@ -292,6 +322,7 @@ export function startIotManager(manager: IotManager, onError: (message: string) 
 
 export { MockIotManager, IotError } from './mock.iot.js';
 export { ZigbeeIotManager } from './zigbee.iot.js';
+export { MqttDiscoveryIotManager } from './mqtt-discovery.iot.js';
 export { MatterIotManager } from './matter.iot.js';
 export { HueIotManager } from './hue.iot.js';
 export { GoveeIotManager } from './govee.iot.js';

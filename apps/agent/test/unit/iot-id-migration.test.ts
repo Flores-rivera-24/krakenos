@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { IOT_SUPPORT_LEVEL } from '@krakenos/types';
 import {
+  IOT_KINDS,
   isPrefixed,
   planIdMigration,
   remapIdsInJson,
@@ -135,5 +137,29 @@ describe('remapIdsInJson (US-243)', () => {
   it('un JSON corrupto se deja tal cual, sin lanzar', () => {
     // Parseo defensivo (US-63): una fila corrupta no puede tumbar el arranque.
     expect(remapIdsInJson('{roto', ['deviceId'], mapping)).toBe('{roto');
+  });
+});
+
+describe('gate: la lista de prefijos conocidos cubre todos los backends (US-248)', () => {
+  it('cada `IotKind` vigente está registrado en IOT_KINDS', () => {
+    // `IOT_SUPPORT_LEVEL` es un `Record<IotKind, …>`: el tipo lo obliga a ser
+    // exhaustivo, así que sus claves SON la unión entera en tiempo de ejecución.
+    // Encadenando ambas cosas, añadir un backend no compila hasta clasificarlo y
+    // luego no pasa este gate hasta registrarlo aquí. Sin esto, `isPrefixed` no
+    // reconocería sus ids y la migración volvería a prefijarlos
+    // (`mqtt:x` → `mock:mqtt:x`): exactamente el desastre que cerró US-243, con la
+    // diferencia de que la lista de abajo se escribe a mano y nadie lo notaría.
+    for (const kind of Object.keys(IOT_SUPPORT_LEVEL)) {
+      expect(IOT_KINDS, `falta el backend ${kind}`).toContain(kind);
+    }
+  });
+
+  it('guard de tamaño: la fuente de la que deriva no se ha vaciado', () => {
+    expect(Object.keys(IOT_SUPPORT_LEVEL).length).toBeGreaterThanOrEqual(9);
+  });
+
+  it('conserva los kinds RETIRADOS, que no están en el tipo', () => {
+    // Una instalación vieja puede tener ids `switchbot:algo` persistidos (US-242).
+    expect(IOT_KINDS).toContain('switchbot');
   });
 });

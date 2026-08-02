@@ -11,7 +11,7 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, MqttDiscoveryIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -86,6 +86,29 @@ describe('createIotManager', () => {
     expect(backendDe({ kind: 'zigbee', zigbee: { url: 'mqtt://localhost:1883' } })).toBeInstanceOf(
       ZigbeeIotManager,
     );
+  });
+
+  it('construye la ingesta genérica por MQTT Discovery (US-248)', () => {
+    expect(
+      backendDe({ kind: 'mqtt', mqtt: { url: 'mqtt://localhost:1883' } }),
+    ).toBeInstanceOf(MqttDiscoveryIotManager);
+  });
+
+  it('lanza si falta el broker de la ingesta MQTT', () => {
+    expect(() => createIotManager({ kind: 'mqtt' })).toThrow(/MQTT Discovery/i);
+    expect(() => createIotManager({ kind: 'mqtt', mqtt: { url: '' } })).toThrow(/MQTT_DISCOVERY_URL/);
+  });
+
+  it('la ingesta MQTT convive con un backend por marca (mqtt,hue)', () => {
+    // Es el caso de US-248: los cacharros liberados entran por protocolo y los
+    // Hue siguen por el suyo, sin que los ids de unos pisen a los de los otros.
+    const iot = createIotManager({
+      kind: 'mqtt,hue',
+      mqtt: { url: 'mqtt://localhost:1883' },
+      hue: { url: 'https://x', appKey: 'k' },
+    });
+    expect(iot.kinds).toEqual(['mqtt', 'hue']);
+    expect((iot.manager as CompositeIotManager).members.map((m) => m.prefix)).toEqual(['mqtt', 'hue']);
   });
 
   it('construye un MatterIotManager con su configuración WebSocket', () => {

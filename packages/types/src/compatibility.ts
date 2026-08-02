@@ -83,6 +83,9 @@ export type SupportLevel = (typeof SUPPORT_LEVELS)[number];
 export const IOT_SUPPORT_LEVEL: Record<IotKind, SupportLevel> = {
   // Protocolo abierto o emparejamiento contra el servidor propio.
   mock: 'core',
+  // US-248: es la definición misma de «protocolo abierto» — el aparato se anuncia
+  // contra un broker del usuario y no hay app ni nube de fabricante en el camino.
+  mqtt: 'core',
   zigbee: 'core',
   matter: 'core',
   hue: 'core',

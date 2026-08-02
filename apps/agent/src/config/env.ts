@@ -315,6 +315,14 @@ export const env = {
       username: process.env.ZIGBEE2MQTT_USERNAME || undefined,
       password: process.env.ZIGBEE2MQTT_PASSWORD || undefined,
     },
+    // Solo se usa cuando IOT_KIND=mqtt (ingesta genérica por MQTT Discovery, US-248).
+    // Puede ser el MISMO broker que zigbee2mqtt o Meross: son namespaces distintos.
+    mqtt: {
+      url: process.env.MQTT_DISCOVERY_URL ?? 'mqtt://localhost:1883',
+      discoveryPrefix: process.env.MQTT_DISCOVERY_PREFIX ?? 'homeassistant',
+      username: process.env.MQTT_DISCOVERY_USERNAME || undefined,
+      password: process.env.MQTT_DISCOVERY_PASSWORD || undefined,
+    },
     // Solo se usa cuando IOT_KIND=matter (python-matter-server, API WebSocket).
     matter: {
       url: process.env.MATTER_SERVER_URL ?? 'ws://localhost:5580/ws',

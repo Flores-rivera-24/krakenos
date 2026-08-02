@@ -272,8 +272,105 @@ const meross: IntegrationGuide = {
   ],
 };
 
+/**
+ * US-248: no es una marca, es la puerta abierta. Va en «Enchufes e interruptores»
+ * porque es donde busca quien acaba de liberar un enchufe barato, que es el caso
+ * de uso que la historia persigue.
+ */
+const mqttDiscovery: IntegrationGuide = {
+  id: 'mqtt',
+  domain: 'iot',
+  kind: 'mqtt',
+  category: 'plugs',
+  displayName: 'Descubrimiento MQTT (ESPHome, Tasmota…)',
+  icon: 'Radio',
+  tier: 3,
+  intro:
+    'Esta no es la integración de una marca: es la puerta abierta. Muchos cacharros —los que llevan ESPHome o Tasmota, los enchufes baratos liberados con OpenBeken, tu red Z-Wave o tu zigbee2mqtt— saben anunciarse solos en una convención abierta. Si conectas KrakenOS a un broker MQTT de tu red, aparecen todos sin que nadie tenga que escribir un adaptador para tu modelo concreto.',
+  prerequisites: [
+    'Un broker MQTT en tu red (Mosquitto es el habitual): el "cartero" por el que pasan los mensajes. Sirve el mismo que ya uses para zigbee2mqtt.',
+    'Tus aparatos configurados para publicar en él, con el anuncio automático activado.',
+    'El paquete "mqtt" instalado en el servidor de KrakenOS (o haber instalado con la opción de dependencias extra).',
+  ],
+  steps: [
+    {
+      title: 'Ten un broker MQTT en casa',
+      body: 'Los aparatos no hablan directamente con KrakenOS: dejan sus mensajes en un broker MQTT de tu red —el "cartero"— y KrakenOS los lee de ahí. Si ya tienes uno para zigbee2mqtt o para Meross, vale ese mismo.',
+      external: true,
+    },
+    {
+      title: 'Dile a cada aparato que se anuncie',
+      body: 'En ESPHome, con el bloque "mqtt" en su configuración. En Tasmota, con un comando en su consola. En OpenBeken, con el botón de enviar el anuncio. En zigbee2mqtt y Z-Wave JS UI, activando su opción de anuncio automático.',
+      command: 'Backlog MqttHost 192.168.1.10; MqttUser krakenos; MqttPassword TU_PASSWORD; SetOption19 1',
+      note: 'El comando de ejemplo es el de Tasmota. Los pasos de cada firmware están en la guía completa.',
+      external: true,
+    },
+    {
+      title: 'Conecta KrakenOS al broker',
+      body: 'Escribe abajo la dirección de tu broker MQTT y, si lo has protegido, su usuario y contraseña. Prueba la conexión y guarda.',
+    },
+    {
+      title: 'Míralos aparecer',
+      body: 'Los aparatos salen en «Dispositivos IoT» en segundos, con su nombre y su categoría. Un enchufe con medidor aparece como un enchufe con su lectura de consumo, no como dos cacharros distintos.',
+      note: 'Si no aparece ninguno, casi siempre es que el aparato no está publicando su anuncio: revisa el paso 2.',
+    },
+  ],
+  fields: [
+    {
+      key: 'brokerUrl',
+      label: 'Dirección del broker MQTT',
+      help: 'La dirección de tu broker MQTT en la red, con el puerto. Suele ser el 1883.',
+      type: 'url',
+      placeholder: 'mqtt://192.168.1.10:1883',
+      required: true,
+    },
+    {
+      key: 'discoveryPrefix',
+      label: 'Prefijo del anuncio',
+      help: 'Déjalo como está salvo que hayas cambiado el prefijo en tus aparatos. Se llama así porque es el nombre que le puso quien inventó la convención; KrakenOS no habla con Home Assistant para esto.',
+      type: 'text',
+      placeholder: 'homeassistant',
+      required: false,
+      defaultValue: 'homeassistant',
+    },
+    {
+      key: 'username',
+      label: 'Usuario (opcional)',
+      help: 'Solo si tu broker pide usuario y contraseña.',
+      type: 'text',
+      required: false,
+    },
+    {
+      key: 'password',
+      label: 'Contraseña (opcional)',
+      help: 'Solo si tu broker pide usuario y contraseña. Se guarda cifrada y no se vuelve a mostrar.',
+      type: 'password',
+      required: false,
+      secret: true,
+    },
+  ],
+  troubleshooting: [
+    {
+      q: 'No aparece ningún aparato.',
+      a: 'Lo más probable es que no estén publicando su anuncio. Compruébalo desde el servidor con: mosquitto_sub -h TU_SERVIDOR -t \'homeassistant/#\' -v. Si ahí no sale nada, el problema está entre el aparato y el broker.',
+    },
+    {
+      q: 'Aparece el aparato pero no su estado.',
+      a: 'Algunos firmwares describen sus valores con una fórmula que KrakenOS no interpreta a propósito (sería ejecutar instrucciones que llegan por la red). El aparato se sigue viendo, pero esa lectura queda vacía. También puede ser que aún no haya publicado su estado: reinícialo.',
+    },
+    {
+      q: 'Tengo una cerradura y no puedo abrirla desde la app.',
+      a: 'Es deliberado: las cerraduras se leen pero no se abren desde KrakenOS mientras no esté decidida su política de seguridad. Un fallo en esa función abre la puerta de tu calle.',
+    },
+    {
+      q: '¿Se van a duplicar mis aparatos si también uso Home Assistant?',
+      a: 'No. KrakenOS ignora lo que publica él mismo, así que no se ingiere a sí mismo. Y lo que publique Home Assistant tampoco entra: aquí solo se leen los anuncios de los propios aparatos.',
+    },
+  ],
+};
+
 // US-242: la guía de SwitchBot se retira con su backend. Prometía «sin la app ni la
 // nube» y en el paso 1 mandaba abrir la app — porque el backend pedía la API de
 // NUBE v1.0 con el host cambiado por una IP de LAN. Un Hub 2 se integra por Matter,
 // que sí funciona y no necesita adaptador propio.
-export const PLUG_GUIDES: IntegrationGuide[] = [kasa, tapo, shelly, meross];
+export const PLUG_GUIDES: IntegrationGuide[] = [kasa, tapo, shelly, meross, mqttDiscovery];

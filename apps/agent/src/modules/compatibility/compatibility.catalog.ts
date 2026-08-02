@@ -37,6 +37,7 @@ const EXTRA_DEP_KINDS = new Set<string>([
   'driver:mikrotik',
   'driver:asus',
   'iot:zigbee',
+  'iot:mqtt',
   'iot:meross',
   'iot:matter',
   'iot:tuya',

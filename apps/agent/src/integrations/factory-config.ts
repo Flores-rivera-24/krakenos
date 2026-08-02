@@ -253,6 +253,14 @@ export function resolveIotConfig(
           password: optStr(g('zigbee', 'password')) ?? base.zigbee.password,
         };
         break;
+      case 'mqtt':
+        cfg.mqtt = {
+          url: str(g('mqtt', 'brokerUrl'), base.mqtt.url),
+          discoveryPrefix: str(g('mqtt', 'discoveryPrefix'), base.mqtt.discoveryPrefix),
+          username: optStr(g('mqtt', 'username')) ?? base.mqtt.username,
+          password: optStr(g('mqtt', 'password')) ?? base.mqtt.password,
+        };
+        break;
       case 'matter':
         cfg.matter = { url: str(g('matter', 'serverUrl'), base.matter.url) };
         break;

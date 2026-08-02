@@ -59,9 +59,12 @@ Escala utilitaria (`text-kr-*`):
 ## Componentes base
 
 - **`StatusDot`** (`components/ui/status-dot.tsx`) — punto de 8px con `status`
-  `'online' | 'offline' | 'warning' | 'danger'`. Lleva `role="status"` + `aria-label`
+  `'online' | 'offline' | 'warning' | 'danger'`. Lleva **`role="img"`** + `aria-label`
   (etiqueta por defecto en español, sobreescribible con `label`). Usado en toda la app
   para estado de dispositivos, drivers e integraciones.
+  > ⚠️ **`role="img"`, NO `role="status"`** (US-235): `status` es una *live region*, y 40
+  > dispositivos en una tabla eran 40 regiones parloteando cada vez que una cambiaba. Un
+  > indicador se anuncia cuando el usuario llega a él, no cuando cambia.
 - **`Badge`** (`components/ui/badge.tsx`) — variantes `default`, `online`, `offline`,
   `warning`, `danger`. Superficie `bg-kr-elevated` + texto/borde semántico.
 - **`Card`** (`components/ui/card.tsx`) — `rounded-xl border border-kr bg-kr-surface`,

@@ -87,8 +87,12 @@ export class MqttClientTransport implements MqttTransport {
     if (!this.client) {
       const moduleName = 'mqtt';
       const mqtt = (await import(moduleName).catch(() => {
+        // El mensaje nombraba a Zigbee, pero este transporte lo comparten ya tres
+        // integraciones (zigbee2mqtt, Meross y la ingesta genérica de US-248):
+        // decirle a quien configura MQTT Discovery que «la integración Zigbee»
+        // necesita algo lo manda a buscar donde no es.
         throw new Error(
-          'La integración Zigbee requiere el paquete "mqtt". Instálalo en el servidor (pnpm add mqtt).',
+          'Esta integración requiere el paquete "mqtt". Instálalo en el servidor (pnpm add mqtt).',
         );
       })) as { connect: (url: string, opts: Record<string, unknown>) => unknown };
       const client = mqtt.connect(this.opts.url, {

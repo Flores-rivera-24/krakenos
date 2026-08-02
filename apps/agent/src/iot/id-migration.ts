@@ -36,6 +36,7 @@ import type { IotKind } from '@krakenos/types';
  */
 export const IOT_KINDS: readonly string[] = [
   'mock',
+  'mqtt',
   'zigbee',
   'matter',
   'hue',

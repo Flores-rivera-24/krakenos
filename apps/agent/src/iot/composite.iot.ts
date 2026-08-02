@@ -40,12 +40,19 @@ export class CompositeIotManager implements IotManager {
     return this.entries;
   }
 
-  /** Arranca en segundo plano los miembros que lo necesiten (no bloquea). */
+  /**
+   * Arranca los miembros que lo necesiten.
+   *
+   * ⚠️ **Espera a que terminen** (best-effort: un miembro que falle no tumba al
+   * resto). Antes lanzaba sin `await`, y como desde US-243 **todo** manager va
+   * envuelto aquí, eso devolvía el control al instante y reabría por detrás lo que
+   * US-242 cerró: «Probar conexión» respondía sin haber arrancado el backend.
+   * Quien no quiera bloquearse —el arranque del servidor— ya lo llama sin esperar.
+   */
   async start(): Promise<void> {
-    for (const { manager } of this.entries) {
-      const startable = manager as { start?: () => Promise<void> };
-      startable.start?.().catch(() => undefined);
-    }
+    await Promise.allSettled(
+      this.entries.map(({ manager }) => (manager as { start?: () => Promise<void> }).start?.()),
+    );
   }
 
   /** Libera las conexiones de todos los miembros, best-effort (US-201). */

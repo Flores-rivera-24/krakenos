@@ -39,9 +39,17 @@ export function isControllableKind(kind: IotDeviceKind): kind is ControllableIot
   return (CONTROLLABLE_IOT_KINDS as readonly string[]).includes(kind);
 }
 
-/** Implementaciones de integración IoT disponibles. */
+/**
+ * Implementaciones de integración IoT disponibles.
+ *
+ * `mqtt` es la ingesta **genérica por protocolo** (US-248): no es una marca sino
+ * el consumidor de MQTT Discovery, así que da de alta lo que publique cualquier
+ * aparato que hable esa convención (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI,
+ * zigbee2mqtt) sin escribir un backend nuevo.
+ */
 export type IotKind =
   | 'mock'
+  | 'mqtt'
   | 'zigbee'
   | 'matter'
   | 'hue'

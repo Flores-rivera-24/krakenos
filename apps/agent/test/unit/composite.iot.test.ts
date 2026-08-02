@@ -72,6 +72,35 @@ describe('CompositeIotManager', () => {
     expect(hue.started && govee.started).toBe(true);
   });
 
+  it('start ESPERA a que los miembros terminen de arrancar (US-248)', async () => {
+    // Lanzarlo sin `await` devolvía el control al instante, y como desde US-243
+    // TODO manager va envuelto en el composite, eso reabría por detrás lo que
+    // US-242 cerró: «Probar conexión» respondía sin haber arrancado el backend.
+    const lento = new FakeManager([]);
+    let arrancado = false;
+    lento.start = async () => {
+      await new Promise((r) => setTimeout(r, 5));
+      arrancado = true;
+    };
+    const composite = new CompositeIotManager([{ prefix: 'lento', manager: lento }]);
+    await composite.start();
+    expect(arrancado).toBe(true);
+  });
+
+  it('un miembro que falla al arrancar no impide arrancar a los demás', async () => {
+    const roto = new FakeManager([]);
+    roto.start = async () => {
+      throw new Error('broker caído');
+    };
+    const bueno = new FakeManager([]);
+    const composite = new CompositeIotManager([
+      { prefix: 'roto', manager: roto },
+      { prefix: 'bueno', manager: bueno },
+    ]);
+    await expect(composite.start()).resolves.toBeUndefined();
+    expect(bueno.started).toBe(true);
+  });
+
   it('stop libera todos los miembros aunque uno falle (US-201)', async () => {
     const { composite, hue, govee } = makeComposite();
     hue.stop = async () => {
