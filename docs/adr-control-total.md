@@ -1,7 +1,7 @@
 # ADR — Control total: KrakenOS contra la app del fabricante (Fase 8)
 
 - **Estado:** Aceptado (2026-07-29) · **ratificado por el dueño y mergeado el 2026-07-30**. Hasta esa
-  fecha vivió en la rama `fase8/adr-control-total` **sin mergear**, y `CLAUDE.md` bloqueaba la Fase 8
+  fecha vivió en la rama `fase8/adr-control-total` **sin mergear**, y la planificación interna bloqueaba la Fase 8
   a la espera de esta lectura. Ese bloqueo queda **levantado**.
 - **Sustituye parcialmente a:** [`adr-positioning.md`](adr-positioning.md) — se conserva su tesis
   central («complemento de Home Assistant») y se **revierten** tres decisiones concretas: IoT como
@@ -46,8 +46,8 @@ razones verificadas:
 | §64-70: la interop es **MQTT Discovery saliente**; un consumidor entrante «invertiría la relación» | Se construye un **consumidor MQTT Discovery entrante genérico** (`homeassistant/#`) que da de alta lo que publiquen ESPHome, Tasmota, OpenBeken, Z-Wave JS UI y zigbee2mqtt. **No** se consume HA como fuente | Es el mejor coste/beneficio del análisis: un manager y KrakenOS ingiere cualquier cacharro liberado, sin un backend por marca. Es exactamente donde acaba un Tuya flasheado. El transporte MQTT y el formato ya existen (`ha-discovery.ts`) |
 | §56: cámaras → Frigate, voz → Matter | **Se ratifica sin cambios** | «Ver cámaras» ya funciona (HLS propio + Frigate). Nada del pivote justifica reabrir el NVR ni una skill de voz de nube, que rompería el local-first que el propio pivote exige |
 | §83-85: el instalador es la puerta de entrada recomendada | **Deja de ser válida sin TLS.** El instalador ofrece la ruta Tailscale (`*.ts.net` con Let's Encrypt) o genera el cert, y avisa por escrito de lo que se pierde sin él | Hoy `install.sh` copia `.env.example` con `HTTPS_ENABLED=false` (`.env.example:211`). Sobre HTTP en una IP de LAN no hay service worker, ni Web Push, ni WebAuthn: el flujo diario en el móvil **no arranca** |
-| `BACKLOG.md`, bifurcación opción B: convertirse en add-on de HA | **Descartada por decisión del dueño.** Se anota como coste aceptado, no como opción abierta | No se puede pedir «que se conecten a MI aplicación» y guardar la salida de ser un add-on de la aplicación de otro |
-| `BACKLOG.md` US-238: congelar el epic F6 (US-221…226) | **Se descongela parcialmente.** US-223 (contrato `climate\|cover\|lock` + `contact\|smoke`) sube a **habilitante** y entra antes que el recorte. El recorte de marcas se mantiene | Recorte y pivote no se contradicen: uno quita marcas, el otro añade categorías. Sin `contact`, un sensor de apertura no genera ningún evento y la alarma está ciega para todo lo que no sea una bombilla |
+| Bifurcación de producto, opción B: convertirse en add-on de HA | **Descartada por decisión del dueño.** Se anota como coste aceptado, no como opción abierta | No se puede pedir «que se conecten a MI aplicación» y guardar la salida de ser un add-on de la aplicación de otro |
+| Congelar el epic de IoT ampliado | **Se descongela parcialmente.** US-223 (contrato `climate\|cover\|lock` + `contact\|smoke`) sube a **habilitante** y entra antes que el recorte. El recorte de marcas se mantiene | Recorte y pivote no se contradicen: uno quita marcas, el otro añade categorías. Sin `contact`, un sensor de apertura no genera ningún evento y la alarma está ciega para todo lo que no sea una bombilla |
 | §78-90: los cuatro avisos de honestidad | **Se añade un quinto, y va en la UI**, no solo en un doc: «este backend necesita la app del fabricante para el alta» | El mensaje sube de agresividad, así que la honestidad sube en la misma proporción o el primer usuario desmiente el lanzamiento |
 | (sin decisión escrita) El repo **no tiene fichero `LICENSE`** | Elegir y commitear una licencia **antes** de la Fase 8 | «Open source mío» hoy es legalmente «todos los derechos reservados», y sin licencia no se puede razonar sobre integrar componentes GPL/AGPL del mundo OpenWrt |
 
@@ -149,7 +149,7 @@ Cinco defectos existentes que hoy son tolerables y con el pivote dejan de serlo:
   `modules/traffic/traffic.routes.ts:31-37`). Con histórico DNS eso sería el historial de navegación
   de la familia abierto al invitado, y viajando dentro de la copia cifrada que el usuario puede
   acabar mandando a soporte. **Se arregla antes de persistir un solo registro.**
-- **Nueve llamadas salientes se saltan `safeFetch`**, contra el invariante que el propio `CLAUDE.md`
+- **Nueve llamadas salientes se saltan `safeFetch`**, contra el invariante que el propio proyecto
   declara: `pihole.dns.ts:29`, `mikrotik.transport.ts:47`, `hue.transport.ts:24`,
   `omada.transport.ts:32`, `unifi.transport.ts:32`, `pfsense.transport.ts:25`, `asus.transport.ts:23`,
   `switchbot.transport.ts:26-27` y `process-update-runner.ts:124`. Verificado:
@@ -190,5 +190,5 @@ en la UI, con la opción de redondear la ubicación. Autohospedar Open-Meteo que
 
 > Relacionados: [`adr-positioning.md`](adr-positioning.md) (lo que se conserva) ·
 > [`adr-distribution.md`](adr-distribution.md) · [`interop.md`](interop.md) ·
-> `BACKLOG.md → Fase 8` (las historias) · US-86 (verificación con hardware real, prerrequisito
+> La verificación con hardware real sigue siendo el prerrequisito transversal (prerrequisito
 > transversal: los cinco hallazgos graves de este análisis salieron de leer código, no de ejecutarlo).

@@ -71,7 +71,7 @@ no forzar test-por-cobertura sobre ellos.
 ### 1. No testeables aquí: hardware/IO real → US-86
 
 Sin binarios de red ni root, el transporte real solo se puede verificar en el
-despliegue con hardware (`BACKLOG.md → Checklist`). Estos ficheros quedan
+despliegue con hardware real. Estos ficheros quedan
 deliberadamente fríos (su lógica **pura** —parsers/builders— sí está cubierta):
 
 - **Transportes de driver/IoT/VLAN** (`*.transport.ts`): SSH (`node-ssh`), REST,

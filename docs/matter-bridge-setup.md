@@ -44,4 +44,4 @@ de verdad). En un despliegue real:
 La lógica de mapeo IoT↔Matter está cubierta por tests unitarios. La verificación
 **end-to-end con Alexa/Google/Apple reales** (comisionado, control por voz, altas/bajas
 en caliente) se hace en el despliegue, como el resto de integraciones de hardware
-(ver `BACKLOG.md → Checklist`).
+(pendiente de verificación con hardware real).

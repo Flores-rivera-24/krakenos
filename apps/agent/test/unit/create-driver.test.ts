@@ -148,7 +148,12 @@ describe('createDriver', () => {
  * queda es el mensaje: tiene que decir qué pasó y qué teclear.
  */
 describe('kinds retirados (US-238)', () => {
-  it('nombra la historia, propone alternativas y explica por qué no cae a mock', () => {
+  it('explica qué pasó, propone alternativas y no cae a mock — SIN dar un código interno', () => {
+    // ⚠️ Este test exigía antes que el mensaje **nombrara la historia** («US-238»),
+    // y eso cambió a propósito el 2026-08-02: quien se encuentra este error no
+    // tiene forma de resolver ese código —no hay tracker público—, así que era
+    // ruido en el único texto que le queda para saber qué teclear. El motivo sí es
+    // accionable y se sigue exigiendo abajo.
     for (const kind of ['cisco-ios', 'cisco-netconf'] as const) {
       let mensaje = '';
       try {
@@ -157,7 +162,8 @@ describe('kinds retirados (US-238)', () => {
         mensaje = err instanceof Error ? err.message : String(err);
       }
       expect(mensaje).toContain(kind);
-      expect(mensaje).toContain('US-238');
+      expect(mensaje).not.toMatch(/\bUS-\d{2,3}\b/);
+      expect(mensaje).toMatch(/se retiró/i);
       expect(mensaje).toContain('openwrt');
       // Lo que impide el arreglo tentador: degradar a mock enseñaría una casa
       // inventada. Si alguien lo "arregla" así, este test lo caza.
