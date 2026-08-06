@@ -3,7 +3,7 @@
 > Generado por `apps/web/scripts/check-contrast.mjs` a partir de los tokens kr-* de
 > `apps/web/src/index.css`. Reejecuta el script tras tocar la paleta.
 
-## Contraste WCAG 2.1 (US-95)
+## Contraste WCAG 2.1
 
 Umbrales AA: **4.5:1** texto normal · **3:1** texto grande / componentes. Ratios calculados
 con la fórmula de luminancia relativa sRGB sobre los pares fondo/texto reales de la paleta.
