@@ -42,8 +42,11 @@ describe('LanguageCard (US-177)', () => {
       expect(apiMock.patch).toHaveBeenCalledWith('/auth/locale', { locale: 'en' }),
     );
     expect(useAuthStore.getState().user?.locale).toBe('en');
-    // El título de la propia tarjeta ya está en inglés tras aplicar el idioma.
-    expect(screen.getByText('Language')).toBeInTheDocument();
+    // El título de la propia tarjeta acaba en inglés tras aplicar el idioma. Va en
+    // `waitFor` porque desde la i18n perezosa el cambio en caliente **espera a un
+    // `import()`**: el catálogo que no es el fuente llega por chunk, así que
+    // asertar síncrono aquí es competir con esa promesa. Pasaba en CI por timing.
+    await waitFor(() => expect(screen.getByText('Language')).toBeInTheDocument());
   });
 
   it('si el servidor falla, el idioma no cambia', async () => {
