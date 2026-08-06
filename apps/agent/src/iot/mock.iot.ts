@@ -1,5 +1,5 @@
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
-import { isControllableKind } from '@krakenos/types';
+import { isControllableKind, isSwitchableKind } from '@krakenos/types';
 
 /** Error de dominio IoT con código estable. */
 export class IotError extends Error {
@@ -86,9 +86,7 @@ export class MockIotManager implements IotManager {
       next.position = Math.max(0, Math.min(100, input.position));
     }
     if (input.targetC !== undefined && device.kind === 'climate') next.targetC = input.targetC;
-    if (input.on !== undefined && (device.kind === 'light' || device.kind === 'plug')) {
-      next.on = input.on;
-    }
+    if (input.on !== undefined && isSwitchableKind(device.kind)) next.on = input.on;
     if (input.brightness !== undefined && device.kind === 'light') {
       next.brightness = input.brightness;
       // Ajustar brillo enciende la luz.

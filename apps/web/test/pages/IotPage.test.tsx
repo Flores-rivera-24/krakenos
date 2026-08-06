@@ -54,6 +54,72 @@ const DEVICES: IotDevice[] = [
   },
 ];
 
+/**
+ * US-265. Las categorías que US-244 añadió al contrato: se listan aparte porque
+ * la mayoría de los tests de arriba cuentan interruptores por posición y meterlas
+ * en `DEVICES` los desplazaría.
+ */
+const CATEGORIAS_NUEVAS: IotDevice[] = [
+  {
+    id: 'cover-salon',
+    name: 'Persiana salón',
+    kind: 'cover',
+    room: 'Salón',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [],
+    position: 60,
+  },
+  {
+    id: 'climate-salon',
+    name: 'Termostato',
+    kind: 'climate',
+    room: 'Salón',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [{ metric: 'temperature', value: 20.5, unit: '°C' }],
+    targetC: 21,
+  },
+  {
+    id: 'lock-puerta',
+    name: 'Cerradura',
+    kind: 'lock',
+    room: 'Entrada',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [],
+    locked: true,
+  },
+  {
+    id: 'smoke-cocina',
+    name: 'Detector de humo',
+    kind: 'smoke',
+    room: 'Cocina',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [{ metric: 'smoke', value: 0, unit: '' }],
+  },
+  {
+    id: 'contact-puerta',
+    name: 'Sensor de puerta',
+    kind: 'contact',
+    room: 'Entrada',
+    reachable: true,
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [{ metric: 'contact', value: 0, unit: '' }],
+  },
+];
+
 function setRole(role: 'admin' | 'member' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
@@ -222,5 +288,191 @@ describe('IotPage', () => {
     render(<IotPage />);
     await screen.findByText('TV');
     expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * US-265. Hoy Home Assistant podía mover una persiana **a través de** KrakenOS y
+ * KrakenOS no: la API acepta `position`/`targetC` desde US-244 y los backends los
+ * escriben desde US-247, pero la página solo los pintaba como texto.
+ */
+describe('IotPage · persianas y termostatos (US-265)', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset().mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve(CATEGORIAS_NUEVAS) : Promise.resolve([]),
+    );
+    apiMock.patch.mockReset().mockResolvedValue(CATEGORIAS_NUEVAS[0]);
+    apiMock.put.mockReset().mockResolvedValue(undefined);
+    socketMock.on.mockReset();
+    socketMock.off.mockReset();
+    useConnectionStore.setState({ status: 'connected' });
+    useToastStore.setState({ toasts: [] });
+  });
+
+  it('mueve una persiana a una posición concreta (PATCH position)', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Persiana salón');
+
+    const slider = screen.getByLabelText('Posición de Persiana salón');
+    expect(slider).toHaveValue('60');
+
+    // Draft + commit, igual que el brillo: el arrastre no manda una petición por píxel.
+    fireEvent.change(slider, { target: { value: '25' } });
+    expect(apiMock.patch).not.toHaveBeenCalled();
+    fireEvent.pointerUp(slider);
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/cover-salon', { position: 25 });
+  });
+
+  it('abrir y cerrar van por `on`, que es el camino que funciona sin control de posición', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Persiana salón');
+
+    fireEvent.click(screen.getByLabelText('Abrir Persiana salón'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/cover-salon', { on: true });
+
+    fireEvent.click(screen.getByLabelText('Cerrar Persiana salón'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/cover-salon', { on: false });
+  });
+
+  it('una persiana sin posición reportada NO pinta el deslizador, pero sí abrir/cerrar', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices'
+        ? Promise.resolve([{ ...CATEGORIAS_NUEVAS[0]!, position: null }])
+        : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('Persiana salón');
+
+    // Un deslizador a 0 sobre un aparato que no publica su posición sería inventarse una medida.
+    expect(screen.queryByLabelText('Posición de Persiana salón')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Abrir Persiana salón')).toBeInTheDocument();
+  });
+
+  it('sube y baja la consigna del termostato en pasos de medio grado (PATCH targetC)', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Termostato');
+    expect(screen.getByText('Objetivo 21 °C')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Subir la temperatura objetivo de Termostato'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/climate-salon', { targetC: 21.5 });
+
+    fireEvent.click(screen.getByLabelText('Bajar la temperatura objetivo de Termostato'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/climate-salon', { targetC: 20.5 });
+  });
+
+  it('la consigna se manda SOLA: el borde rechaza `targetC` junto a `on` o `brightness`', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Termostato');
+
+    fireEvent.click(screen.getByLabelText('Subir la temperatura objetivo de Termostato'));
+    const [, body] = apiMock.patch.mock.calls[0]!;
+    expect(Object.keys(body as object)).toEqual(['targetC']);
+  });
+
+  it('no deja pasar de los límites del contrato (4-35 °C)', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices'
+        ? Promise.resolve([
+            { ...CATEGORIAS_NUEVAS[1]!, id: 'c-max', name: 'Tope alto', targetC: 35 },
+            { ...CATEGORIAS_NUEVAS[1]!, id: 'c-min', name: 'Tope bajo', targetC: 4 },
+          ])
+        : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('Tope alto');
+
+    // Deshabilitados en el extremo: pulsarlos produciría un 400 que el usuario no puede resolver.
+    expect(screen.getByLabelText('Subir la temperatura objetivo de Tope alto')).toBeDisabled();
+    expect(screen.getByLabelText('Bajar la temperatura objetivo de Tope alto')).toBeEnabled();
+    expect(screen.getByLabelText('Bajar la temperatura objetivo de Tope bajo')).toBeDisabled();
+    expect(screen.getByLabelText('Subir la temperatura objetivo de Tope bajo')).toBeEnabled();
+  });
+
+  it('un termostato sin consigna lo DICE en vez de estrenar un número inventado', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices'
+        ? Promise.resolve([{ ...CATEGORIAS_NUEVAS[1]!, targetC: null }])
+        : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('Termostato');
+
+    expect(screen.getByText(/no informa de su temperatura objetivo/)).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText('Subir la temperatura objetivo de Termostato'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('un member también opera persianas y termostatos (home.control, US-179)', async () => {
+    setRole('member');
+    render(<IotPage />);
+    await screen.findByText('Persiana salón');
+
+    fireEvent.click(screen.getByLabelText('Abrir Persiana salón'));
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/cover-salon', { on: true });
+  });
+
+  it('un viewer ve los controles deshabilitados, no ausentes', async () => {
+    setRole('viewer');
+    render(<IotPage />);
+    await screen.findByText('Persiana salón');
+
+    expect(screen.getByLabelText('Abrir Persiana salón')).toBeDisabled();
+    expect(screen.getByLabelText('Posición de Persiana salón')).toBeDisabled();
+    expect(screen.getByLabelText('Subir la temperatura objetivo de Termostato')).toBeDisabled();
+  });
+
+  it('⚠️ NI una cerradura, NI un detector de humo, NI un sensor de contacto pintan interruptor', async () => {
+    setRole('admin');
+    render(<IotPage />);
+    await screen.findByText('Cerradura');
+
+    // La página pintaba un interruptor para todo lo que no fuese `sensor`, así que
+    // una cerradura ofrecía «Encender Cerradura». El contrato lo rechaza, pero un
+    // control que no puede funcionar no debe existir — y menos ese
+    // (`docs/adr-cerraduras.md`: la ausencia de la superficie ES la garantía).
+    expect(screen.queryAllByRole('switch')).toHaveLength(0);
+    expect(screen.queryByLabelText('Encender Cerradura')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Encender Detector de humo')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Encender Sensor de puerta')).not.toBeInTheDocument();
+  });
+
+  it('⚠️ una cerradura no ofrece NINGÚN control de escritura (adr-cerraduras)', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve([CATEGORIAS_NUEVAS[2]!]) : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('Cerradura');
+
+    // Ni interruptor ni deslizador, y ningún botón que escriba en el aparato: los
+    // únicos que quedan son el favorito (preferencia del usuario) y la ayuda de la
+    // página, que no mandan nada a la cerradura.
+    expect(screen.queryAllByRole('switch')).toHaveLength(0);
+    expect(screen.queryAllByRole('slider')).toHaveLength(0);
+    const nombres = screen
+      .queryAllByRole('button')
+      .map((b) => b.getAttribute('aria-label') ?? b.textContent ?? '');
+    expect(nombres).toEqual(['¿Qué es IoT?', 'Fijar Cerradura como favorito']);
+  });
+
+  it('la luz y el enchufe SÍ conservan su interruptor (guard de que el filtro no se pasó de listo)', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('TV');
+
+    // Asimétrico a propósito: 2 conmutables (TV, Foco) de 3 dispositivos, así que
+    // invertir la condición no da el mismo número.
+    expect(screen.getAllByRole('switch')).toHaveLength(2);
   });
 });

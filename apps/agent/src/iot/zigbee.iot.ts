@@ -1,5 +1,5 @@
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
-import { isControllableKind } from '@krakenos/types';
+import { isControllableKind, isSwitchableKind } from '@krakenos/types';
 import { IotError } from './mock.iot.js';
 import type { MqttTransport } from './mqtt.transport.js';
 import {
@@ -95,8 +95,8 @@ export class ZigbeeIotManager implements IotManager {
       // US-244: solo `light` y `plug` tienen encendido. Un `contact`, un `smoke` o
       // un `sensor` no se encienden, y una persiana/cerradura tampoco —su estado
       // vive en `position`/`locked`—: dejarles `on` pintaría un interruptor que no
-      // hace nada.
-      on: kind === 'light' || kind === 'plug' ? state.on : null,
+      // hace nada. La lista vive en el contrato desde US-265, no aquí.
+      on: isSwitchableKind(kind) ? state.on : null,
       brightness: kind === 'light' ? state.brightness : null,
       // El color de zigbee2mqtt no se mapea aún (baseline); las luces Hue van por IOT_KIND=hue.
       color: null,
