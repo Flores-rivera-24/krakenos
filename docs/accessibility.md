@@ -66,7 +66,7 @@ con la fórmula de luminancia relativa sRGB sobre los pares fondo/texto reales d
 `test/a11y/pages.a11y.test.tsx` monta cada página y exige **cero violaciones** de las reglas
 WCAG 2.0/2.1 A y AA de axe-core (nombres accesibles de controles, roles, labels de formulario,
 etc.). El contraste de color no se puede medir en jsdom (sin layout real), por eso se calcula
-aparte con este script. Cubre el trabajo previo de US-62 (labels de iconos/formularios, captions
+aparte con este script. Cubre el trabajo previo (labels de iconos/formularios, captions
 y `scope` en tablas, `aria-sort`, focus-trap en Slideover/Dialog) sin rehacerlo.
 
 _Última verificación: todos los pares cumplen AA._

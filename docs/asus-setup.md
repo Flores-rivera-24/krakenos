@@ -1,6 +1,6 @@
 # Activar el driver ASUS / Asuswrt-Merlin
 
-El driver `asus` (US-70) lee el inventario y gestiona la WiFi de routers ASUS (RT-AX88U,
+El driver `asus` lee el inventario y gestiona la WiFi de routers ASUS (RT-AX88U,
 RT-AX86U, ZenWifi AX XT8, TUF-AX5400…) a través de `appGet.cgi` (lectura) y `applyapp.cgi`
 (escritura), con **Basic Auth**, sobre un transporte inyectable. Funciona con el firmware
 **stock de ASUS** y con **Asuswrt-Merlin**.

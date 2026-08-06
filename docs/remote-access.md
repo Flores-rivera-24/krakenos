@@ -1,4 +1,4 @@
-# Acceso remoto — árbol de decisión (US-215)
+# Acceso remoto — árbol de decisión
 
 KrakenOS nunca expone la UI a internet: desde fuera de casa se entra por un **túnel**. Hay dos
 vías, y cuál te toca depende de una sola pregunta: **¿tu conexión tiene IP pública?**
@@ -7,7 +7,7 @@ vías, y cuál te toca depende de una sola pregunta: **¿tu conexión tiene IP p
 > «cuál es mi IP» desde un navegador de casa, tienes IP pública. Si no coincide (o tu
 > operador es 5G/fibra compartida), estás tras **CGNAT** y no puedes abrir puertos.
 
-| | WireGuard propio (integrado) | Tailscale (detección US-215) |
+| | WireGuard propio (integrado) | Tailscale (detección) |
 |---|---|---|
 | Requiere IP pública | **Sí** (+ abrir el puerto UDP en el router) | No — atraviesa CGNAT |
 | Quién lo gestiona | KrakenOS (peers con QR desde `/vpn`) | Tú, con la cuenta de Tailscale (gratis hasta 3 usuarios) |
@@ -31,7 +31,7 @@ KrakenOS **no administra** el tailnet (iniciar sesión es interactivo): detecta,
 > El agente consulta el socket local de `tailscaled` (`TAILSCALE_SOCKET`, por defecto
 > `/var/run/tailscale/tailscaled.sock`). Es una consulta **local**: nada sale a la red.
 
-## HTTPS con un certificado en el que tu móvil confía (US-241)
+## HTTPS con un certificado en el que tu móvil confía
 
 **Es un prerrequisito, no un extra.** Sobre HTTP el navegador no considera el origen «seguro» y
 se caen tres cosas que la app ya trae: la **PWA instalable**, los **avisos push** y las

@@ -1,8 +1,8 @@
-# KrakenOS — Sistema de diseño (US-33)
+# KrakenOS — Sistema de diseño
 
 Referente visual: **UniFi Network**. Filosofía: datos en tiempo real siempre visibles,
 operaciones sin cambio de contexto, densidad de información sin sacrificar claridad.
-El **tema oscuro es el default**; el tema claro (US-41) sobreescribe los tokens.
+El **tema oscuro es el default**; el tema claro sobreescribe los tokens.
 
 Los tokens viven como **CSS custom properties** en `apps/web/src/index.css` (`:root` y `.dark`)
 y se exponen como utilidades de Tailwind en `apps/web/tailwind.config.ts`. **Nunca** hardcodear
@@ -62,7 +62,7 @@ Escala utilitaria (`text-kr-*`):
   `'online' | 'offline' | 'warning' | 'danger'`. Lleva **`role="img"`** + `aria-label`
   (etiqueta por defecto en español, sobreescribible con `label`). Usado en toda la app
   para estado de dispositivos, drivers e integraciones.
-  > ⚠️ **`role="img"`, NO `role="status"`** (US-235): `status` es una *live region*, y 40
+  > ⚠️ **`role="img"`, NO `role="status"`**: `status` es una *live region*, y 40
   > dispositivos en una tabla eran 40 regiones parloteando cada vez que una cambiaba. Un
   > indicador se anuncia cuando el usuario llega a él, no cuando cambia.
 - **`Badge`** (`components/ui/badge.tsx`) — variantes `default`, `online`, `offline`,

@@ -1,4 +1,4 @@
-# MQTT Discovery: los cacharros liberados, sin adaptador por marca (US-248)
+# MQTT Discovery: los cacharros liberados, sin adaptador por marca
 
 `IOT_KIND=mqtt` no es una integración de una marca: es la **puerta abierta**. KrakenOS escucha el
 namespace de anuncio de un broker MQTT de tu casa y da de alta **lo que publique cualquier aparato
@@ -107,7 +107,7 @@ de energía como la de cualquier otro.
 ## Lo que NO hace, dicho claro
 
 - **No abre cerraduras.** Una `lock` se lee (echada / no echada) y no acepta órdenes: esa decisión
-  tiene su propia historia pendiente (US-246). Un fallo ahí abre la puerta de la calle.
+  tiene su propia historia pendiente. Un fallo ahí abre la puerta de la calle.
 - **No interpreta plantillas complicadas.** El formato permite plantillas Jinja2 para sacar un valor
   de un mensaje; KrakenOS entiende las formas normales (`{{ value }}` y rutas como
   `{{ value_json.ENERGY.Power }}`) y **no ejecuta** las demás — sería ejecutar código que llega por
@@ -140,6 +140,6 @@ de energía como la de cualquier otro.
    subconjunto soportado, o que el aparato publica su estado **sin retener** y aún no ha vuelto a
    emitir. Reinícialo y mira si llega.
 
-> **Verificación con hardware real:** pendiente (US-86). Esta integración está probada contra el
+> **Verificación con hardware real:** pendiente. Esta integración está probada contra el
 > formato documentado y contra la salida real del publicador propio, no contra un ESPHome ni un
 > Tasmota físicos.

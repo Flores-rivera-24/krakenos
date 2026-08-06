@@ -1,6 +1,6 @@
 # Varios backends IoT a la vez (CompositeIotManager)
 
-KrakenOS puede gestionar **varios ecosistemas IoT simultáneamente** (US-30). La factory acepta
+KrakenOS puede gestionar **varios ecosistemas IoT simultáneamente**. La factory acepta
 `IOT_KIND` como **lista separada por comas**: con más de un valor, envuelve los managers en un
 `CompositeIotManager` que enruta cada operación al backend correcto.
 
@@ -21,7 +21,7 @@ HUE_APP_KEY=tu-application-key
 GOVEE_LISTEN_PORT=4002
 ```
 
-> El bridge Hue va con certificado autofirmado y KrakenOS lo gestiona solo desde US-259: **no
+> El bridge Hue va con certificado autofirmado y KrakenOS lo gestiona solo: **no
 > añadas `NODE_TLS_REJECT_UNAUTHORIZED=0`**, y si lo tienes de una instalación anterior, quítalo
 > (apagaba la validación TLS de todo el proceso). Detalle en `docs/hue-setup.md`.
 

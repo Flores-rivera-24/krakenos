@@ -1,4 +1,4 @@
-# ADR — Ingesta por MQTT Discovery: consumir el protocolo, no Home Assistant (US-248)
+# ADR — Ingesta por MQTT Discovery: consumir el protocolo, no Home Assistant
 
 - **Estado:** Aceptado (2026-08-01)
 - **Contexto de la decisión:** [`adr-control-total.md`](adr-control-total.md) revierte la postura de
@@ -44,19 +44,19 @@ porque sí invertiría la relación.
 
 ## El bucle que había que cerrar antes de escribir una línea
 
-KrakenOS **ya publica** en ese mismo namespace desde US-213 (`homeassistant/<componente>/krakenos/
+KrakenOS **ya publica** en ese mismo namespace (`homeassistant/<componente>/krakenos/
 <objeto>/config`). Contra el broker de casa —que es el caso normal, porque es el mismo broker— un
 consumidor ingenuo se ingiere a sí mismo:
 
 - cada aparato aparecería **dos veces**, una real y otra `mqtt:…`;
 - la energía se contaría **por duplicado**;
 - y encender la copia publicaría en **nuestro propio `command_topic`**, cerrando un bucle de órdenes
-  con el anti-bucle de automatizaciones (US-167) fuera de juego, porque para el motor sería un
+  con el anti-bucle de automatizaciones fuera de juego, porque para el motor sería un
   aparato distinto.
 
 Se excluye por **tres** señales (nodo `krakenos`, `unique_id` con prefijo `krakenos_`, identificador
 de aparato con ese prefijo) y lo ata un test que alimenta al consumidor con la **salida real del
-publicador**: si un día cambia el formato de US-213, el test lo caza antes que producción.
+publicador**: si un día cambia el formato del publicador, el test lo caza antes que producción.
 
 ## La plantilla que no se ejecuta
 
@@ -71,25 +71,25 @@ no encaja se marca `no-soportada`: el aparato **se sigue listando** y esa lectur
 inventa un valor y no se ejecuta nada.
 
 Es la misma familia de decisión que el resto del proyecto: una capacidad que no existe **se
-declara**, no se deduce de un hueco (US-263).
+declara**, no se deduce de un hueco.
 
 ## Lo que NO se construye
 
 1. **Un intérprete de Jinja2.** Ver arriba.
 2. **Lectura de la API de Home Assistant** (REST o WebSocket). Sería el cruce de la línea.
 3. **Publicar en el namespace de discovery** desde este backend. Solo se **lee**; lo que KrakenOS
-   anuncia lo sigue haciendo el publicador de US-213, con su propio toggle.
+   anuncia lo sigue haciendo el publicador saliente, con su propio toggle.
 4. **Componentes fuera del contrato IoT** (`fan`, `vacuum`, `number`, `select`, `siren`, `button`…).
    Se ignoran en silencio en vez de mapearlos a la fuerza: un ventilador expuesto como enchufe
    miente sobre lo que hace. Cuando el contrato crezca, crecerá el mapeo.
-5. **Escritura en cerraduras.** `lock` se lee y no se escribe (US-244); abrir la puerta de la calle
-   por API es la decisión de **US-246**, no un efecto colateral de esta ingesta.
+5. **Escritura en cerraduras.** `lock` se lee y no se escribe; abrir la puerta de la calle
+   por API es la decisión de [`adr-cerraduras.md`](adr-cerraduras.md), no un efecto colateral de esta ingesta.
 6. **Descubrir el broker solo.** La URL la pone el usuario. Sondear la LAN buscando brokers sería
-   una sonda activa nueva, y `src/discovery/` tiene sus propias reglas (US-175).
+   una sonda activa nueva, y `src/discovery/` tiene sus propias reglas.
 
 ## Seguridad: el broker no tiene sujeto
 
-Es el mismo principio que US-236 aplicó al control entrante, ahora en la dirección de la lectura:
+Es el mismo principio que ya se aplicó al control entrante, ahora en la dirección de la lectura:
 cualquiera con credenciales del broker puede publicar una config.
 
 - **Tope de entidades** (500 por defecto) y **de tamaño de payload** (32 KB): la memoria del agente
@@ -107,14 +107,14 @@ cualquiera con credenciales del broker puede publicar una config.
 - **A favor:** el parque «liberado» (ESPHome, Tasmota, OpenBeken) deja de necesitar un adaptador por
   marca, que es la única forma sostenible de subir IoT a core con un mantenedor único. Un Tuya
   flasheado con cloudcutter aterriza aquí sin escribir código. Y la ingesta reutiliza el transporte
-  MQTT y el contrato ampliado de US-244, así que trae persianas, termostatos y sensores, no solo
+  MQTT y el contrato IoT ampliado, así que trae persianas, termostatos y sensores, no solo
   luces y enchufes.
 - **En contra:** se añade superficie justo después de una fase de recorte —el precio ya lo declara
   `adr-control-total.md`—; el color no se mapea en este baseline; y los aparatos cuya plantilla no
   encaje se verán sin lecturas hasta que alguien amplíe el subconjunto. Además, el estado depende de
   **retenidos**: un broker configurado sin `retain` en los aparatos dará una casa vacía hasta que
   cada uno publique, y eso es del broker, no de KrakenOS.
-- **Sin verificar con hardware real** (US-86): probado contra el formato documentado y contra la
+- **Sin verificar con hardware real**: probado contra el formato documentado y contra la
   salida real de nuestro propio publicador, **no** contra un ESPHome ni un Tasmota físicos. Es la
   misma reserva que arrastran las demás integraciones y la primera instalación real es la que manda.
 
@@ -130,5 +130,5 @@ cualquiera con credenciales del broker puede publicar una config.
 
 > Relacionados: [`adr-control-total.md`](adr-control-total.md) (el pivote que lo encarga) ·
 > [`adr-positioning.md`](adr-positioning.md) (la decisión que revierte) ·
-> [`interop.md`](interop.md) (la dirección saliente, US-213/236) ·
+> [`interop.md`](interop.md) (la dirección saliente) ·
 > [`mqtt-discovery-setup.md`](mqtt-discovery-setup.md) (cómo se usa).

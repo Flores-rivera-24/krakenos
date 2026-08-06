@@ -1,4 +1,4 @@
-# Presencia por WiFi: límite físico y mitigaciones (US-169 · US-220)
+# Presencia por WiFi: límite físico y mitigaciones
 
 KrakenOS deriva la presencia («¿quién está en casa?») de la señal WiFi de los dispositivos
 personales de cada persona (`Device.ownerId`), **sin geofence ni nube**. Es privado y local, pero
@@ -20,10 +20,10 @@ KrakenOS confirma una salida solo cuando se cumplen **todas** estas condiciones:
 
 1. **Ventana de gracia** (`presenceGraceMin`, por defecto 10 min): quedarse sin señal no marca la
    salida al momento; arma una salida **pendiente** que el barrido confirma pasado este tiempo.
-2. **Histéresis de barridos** (`presenceLeaveSweeps`, por defecto 2, US-220): además de la gracia,
+2. **Histéresis de barridos** (`presenceLeaveSweeps`, por defecto 2): además de la gracia,
    se exigen **N barridos consecutivos** que re-confirmen el offline contra la base de datos. Si el
    dispositivo reaparece en cualquier barrido, se **rompe la racha** y no hay salida.
-3. **Supresión nocturna** opcional (`presenceNightSuppress`, p. ej. `23:00-07:00`, US-220): dentro de
+3. **Supresión nocturna** opcional (`presenceNightSuppress`, p. ej. `23:00-07:00`): dentro de
    esa franja, una desaparición WiFi **no** confirma la salida (el patrón real del sueño del móvil).
    Vacío = desactivada. Cruza medianoche.
 
@@ -36,9 +36,9 @@ La API de presencia (`GET /api/presence`, **acotada por rol**) marca cada person
 - `fresh` — su dispositivo responde ahora.
 - `stale` — se le mantiene «en casa» pero su WiFi dejó de responder (salida pendiente de confirmar).
 
-El propio usuario ve su señal débil en el widget de **Modo del hogar**. Por privacidad (US-169), la
+El propio usuario ve su señal débil en el widget de **Modo del hogar**. Por privacidad, la
 señal y la lista de personas **nunca** viajan por el socket broadcast: solo por la API acotada por
-rol. El auto-armado de la alarma (US-188) se dispara por el modo `away`, que solo se alcanza tras
+rol. El auto-armado de la alarma se dispara por el modo `away`, que solo se alcanza tras
 confirmar la salida con las mitigaciones de arriba → **una falsa desaparición nocturna no arma la
 casa**.
 
@@ -52,4 +52,4 @@ no comprometidas:
 - **BLE** (balizas Bluetooth) para presencia por habitación, más granular que el WiFi.
 
 Ninguna se implementa ahora: aumentarían la superficie y la fricción sin evidencia de que el hogar
-las necesite. Se reabren si los usuarios reales (US-218) lo piden.
+las necesite. Se reabren si los usuarios reales lo piden.

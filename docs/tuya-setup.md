@@ -1,4 +1,4 @@
-# Activar Tuya (focos genéricos de Amazon: EASYTAO y similares) — US-32
+# Activar Tuya (focos genéricos de Amazon: EASYTAO y similares)
 
 Muchos focos "inteligentes" baratos de Amazon (EASYTAO, etc.) son dispositivos **Tuya** de
 marca blanca. KrakenOS los controla **localmente** (LAN, sin nube) con el protocolo Tuya sobre

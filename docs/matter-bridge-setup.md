@@ -1,4 +1,4 @@
-# Puente Matter — exponer KrakenOS a Alexa / Google / Apple (US-171)
+# Puente Matter — exponer KrakenOS a Alexa / Google / Apple
 
 KrakenOS puede actuar como un **puente Matter** (bridge): los dispositivos IoT que
 elijas aparecen en Alexa, Google Home o Apple Home como si fueran un hub más, y se
@@ -39,7 +39,7 @@ de verdad). En un despliegue real:
 - **Superficie acotada**: un comando entrante para un dispositivo no expuesto se ignora.
 - Activar/desactivar y elegir dispositivos es **solo admin** y auditado.
 
-## Verificación con asistentes reales — pendiente (US-86)
+## Verificación con asistentes reales — pendiente
 
 La lógica de mapeo IoT↔Matter está cubierta por tests unitarios. La verificación
 **end-to-end con Alexa/Google/Apple reales** (comisionado, control por voz, altas/bajas

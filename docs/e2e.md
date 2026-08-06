@@ -1,4 +1,4 @@
-# Suite e2e de navegador (Playwright) — US-189
+# Suite e2e de navegador (Playwright)
 
 Pruebas end-to-end de los **flujos críticos** de KrakenOS contra la app **construida**
 (agente sirviendo el frontend) con **managers mock** (sin hardware). Complementan a los
@@ -7,20 +7,20 @@ navegador real".
 
 ## Qué se prueba
 
-**12 flujos activos** (eran 4 hasta US-261).
+**12 flujos activos** (eran 4 hasta).
 
 | # | Flujo | Cubre |
 |---|-------|-------|
-| 1 | **Setup** con el token out-of-band → crea el primer admin | onboarding US-81/105, auth, DB |
+| 1 | **Setup** con el token out-of-band → crea el primer admin | onboarding, auth, DB |
 | 2 | **Login** por formulario → dashboard | auth, sesión |
-| 3 | **Crear una habitación** (US-165) | escritura del hogar, slideover |
+| 3 | **Crear una habitación** | escritura del hogar, slideover |
 | 4 | **Escanear inventario + bloquear** un dispositivo | driver mock, escritura, auditoría |
-| 5 | **Crear una escena** desde plantilla y **ejecutarla** (US-166) | escenas, IoT mock, ejecución |
-| 6-8 | **Alarma**: armar → desarmar con PIN · PIN incorrecto no desarma · un `kid` no puede armar (US-261) | US-188, capacidad `home.control`, PIN bcrypt |
-| 9-10 | **Rol `member`**: enciende un IoT · no ve «Red avanzada» (US-261) | US-179, `home.control` vs `requireRole('admin')` |
-| 11-12 | **Inglés** (proyecto `chromium-en`): sin sesión manda el navegador · con sesión manda `User.locale` (US-261) | US-177, catálogo `en.ts` |
+| 5 | **Crear una escena** desde plantilla y **ejecutarla** | escenas, IoT mock, ejecución |
+| 6-8 | **Alarma**: armar → desarmar con PIN · PIN incorrecto no desarma · un `kid` no puede armar | capacidad `home.control`, PIN bcrypt |
+| 9-10 | **Rol `member`**: enciende un IoT · no ve «Red avanzada» | `home.control` vs `requireRole('admin')` |
+| 11-12 | **Inglés** (proyecto `chromium-en`): sin sesión manda el navegador · con sesión manda `User.locale` | i18n, catálogo `en.ts` |
 
-Los flujos de US-261 se eligieron por dónde duele: la alarma es lo único que puede
+Los flujos se eligieron por dónde duele: la alarma es lo único que puede
 sonar de madrugada y la 3ª auditoría encontró dos fallos justo ahí; el `member` es el
 usuario mayoritario y su capacidad `home.control` se rompe con un refactor que la
 suite de autorización (que prueba *viewer*) no detecta; y el inglés **no tenía ni un
@@ -28,7 +28,7 @@ flujo**, así que el catálogo `en.ts` podía quedarse a medias sin que nada avi
 
 Un **bug real** encontrado por esta suite: los `POST`/`DELETE` **sin cuerpo** enviaban
 `Content-Type: application/json`, y Fastify rechaza el JSON vacío con **400** — rompía
-bloquear/desbloquear, rescan, logout y la **restauración de sesión al recargar** (US-91).
+bloquear/desbloquear, rescan, logout y la **restauración de sesión al recargar**.
 Corregido en `apps/web/src/lib/api.ts` y `store/auth.store.ts` (no declarar JSON sin cuerpo).
 
 ## Cómo funciona
@@ -43,10 +43,10 @@ Corregido en `apps/web/src/lib/api.ts` y `store/auth.store.ts` (no declarar JSON
   (`lib/auth.ts`). No se reutiliza `storageState` porque Chromium no envía cookies
   `SameSite=Strict` inyectadas en el primer fetch de bootstrap.
 - La navegación entre páginas usa **clicks en la nav** (React Router, client-side): un
-  `page.goto` recargaría y perdería el access token en memoria (US-91).
+  `page.goto` recargaría y perdería el access token en memoria.
 - El contexto del navegador va **fijado a `locale: 'es-ES'`** (`playwright.config.ts`): la suite
   asevera la UI en español (fuente canónica del copy), y sin fijarlo Chromium arranca en `en-US` y
-  la detección de idioma (US-177) renderiza la app en inglés → todos los selectores fallan. Si un
+  la detección de idioma renderiza la app en inglés → todos los selectores fallan. Si un
   día se quiere un flujo e2e en inglés, será un proyecto aparte con su propio `locale`.
 
 ## Ejecutar
@@ -93,22 +93,22 @@ En **CI no hace falta**: el job usa `--with-deps`.
 
 - **`retries: 1`** en CI (un reintento); local sin reintentos.
 - `workers: 1` + `mode: serial`: los flujos comparten una sola DB, así que el orden importa.
-- ⚠️ **El rate-limit de login lo agota una suite que crece** (US-261). Cada flujo hace su
+- ⚠️ **El rate-limit de login lo agota una suite que crece**. Cada flujo hace su
   propio login por UI —a propósito: `storageState` no funciona con la cookie
-  `SameSite=Strict`— y el límite real son **10/min por IP** (US-47). Al pasar de 5 a 13
+  `SameSite=Strict`— y el límite real son **10/min por IP**. Al pasar de 5 a 13
   flujos, la tanda empezó a recibir **429** y varios tests caían con «No se pudo conectar
   con el servidor». Dos mitigaciones: `auth.setup.ts` sube `loginRateLimit` a 1000 **solo en
   el arnés** (el límite real se prueba en `rate-limit.test.ts` del agente), y los helpers de
   `lib/api.ts` **cachean el token de admin** en vez de loguearse en cada llamada. Si añades
   flujos y ves fallos de login aleatorios, es esto.
 - ⚠️ **Un 429 se ve como «No se pudo conectar con el servidor»** en la pantalla de login:
-  `LoginPage` solo distingue el 401 (credenciales) del resto (US-55). Cuesta diagnosticar
-  porque parece un problema de red. Anotado como deuda de copy en US-235.
+  `LoginPage` solo distingue el 401 (credenciales) del resto. Cuesta diagnosticar
+  porque parece un problema de red. Anotado como deuda de copy.
 - **Cuarentena explícita** con `test.fixme` (no se ejecutan, quedan listados) y su motivo:
   - **2FA con passkey** (virtual authenticator vía CDP WebAuthn): requiere cablear la
     ceremonia registro+login con un autenticador virtual; se activará con el endurecimiento
     de WebAuthn en e2e.
-  - (El flujo de **escenas** de US-166 ya está **activo**; salió de cuarentena al llegar su UI.)
+  - (El flujo de **escenas** ya está **activo**; salió de cuarentena al llegar su UI.)
 
 Si un test se vuelve flaky, se marca `test.fixme` con un comentario del motivo y un issue de
 seguimiento, en vez de dejarlo parpadeando en rojo.

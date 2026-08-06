@@ -1,6 +1,6 @@
 # Activar el driver TP-Link Omada Controller
 
-El driver `omada` (US-67) gestiona una red de APs/switches/gateways TP-Link Omada (EAP225,
+El driver `omada` gestiona una red de APs/switches/gateways TP-Link Omada (EAP225,
 EAP670, EAP773…) a través de la **API local del Omada Controller** (software, o hardware
 OC200/OC300), sobre un transporte inyectable. **Solo controller local** — no se usa el portal
 cloud de Omada.

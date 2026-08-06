@@ -1,6 +1,6 @@
 # Activar la integración Shelly
 
-La integración `shelly` (US-69) controla relés, enchufes y dimmers Shelly **localmente** (sin
+La integración `shelly` controla relés, enchufes y dimmers Shelly **localmente** (sin
 nube), cubriendo las dos familias de firmware:
 
 | Generación | Modelos | Protocolo local |

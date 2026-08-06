@@ -118,7 +118,7 @@ KrakenOS aporta lo que HA no tiene de serie:
 | Presencia + bienestar por persona | trackers | **✓** (WiFi local + privacidad por rol) |
 | Seguridad de red (inventario/DNS/VLAN/QoS/firewall/VPN) | parcial | **✓** integrado |
 | Automatizaciones avanzadas | **✓✓** (YAML/Node-RED) | básicas por frases |
-| Cámaras con ML | vía Frigate | básico → **Frigate** (US-214) |
+| Cámaras con ML | vía Frigate | básico → **Frigate** |
 
 **Cómo conviven:** KrakenOS publica el estado del hogar (luces, enchufes, energía, modo, alarma) a un
 broker MQTT local que HA descubre solo (**MQTT Discovery**), y expone además lo que HA no tiene de

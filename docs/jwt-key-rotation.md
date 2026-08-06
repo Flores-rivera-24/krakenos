@@ -1,4 +1,4 @@
-# Rotación de claves RS256 (JWT) — guía de operación (US-64)
+# Rotación de claves RS256 (JWT) — guía de operación
 
 KrakenOS firma los JWT (access, refresh y `mfa-pending`) con un par de claves
 **RS256**: privada en disco para firmar, pública para verificar (`keys/`,
@@ -17,7 +17,7 @@ ese par —por caducidad periódica o porque la clave privada se vea comprometid
 - Durante el **solape** de una rotación, los tokens aún válidos firmados con la
   clave anterior siguen verificando contra su clave pública previa. Así un
   refresh token de 30 días emitido antes de rotar **no** se invalida de golpe.
-- Un token **sin** `kid` (emitido antes de US-64) cae a la clave actual, de modo
+- Un token **sin** `kid` (emitido antes de) cae a la clave actual, de modo
   que el primer despliegue de esta versión no cierra sesiones.
 
 Variables de entorno (ver `.env.example`):

@@ -1,4 +1,4 @@
-# Actualizaciones (US-116 comprobación · US-190 one-click con rollback · US-232 cadena real)
+# Actualizaciones (comprobación · one-click con rollback · cadena real)
 
 KrakenOS puede avisarte cuando hay una versión más nueva publicada como *release* en
 GitHub. La comprobación es **opcional**: sin configuración, el agente **no hace
@@ -7,7 +7,7 @@ ninguna llamada externa** (coherente con la postura "sin nube de terceros").
 ## Activarlo
 
 Si instalaste con `scripts/install.sh`, **ya está activo**: el instalador escribe
-`UPDATE_CHECK_REPO` en el `.env` que genera (US-232), porque sin él no hay releases
+`UPDATE_CHECK_REPO` en el `.env` que genera, porque sin él no hay releases
 que comparar y la actualización one-click no puede funcionar. En un `.env` copiado a
 mano de `.env.example` está comentado (desarrollo = cero llamadas externas).
 
@@ -32,9 +32,9 @@ Con esa variable, **Ajustes → Sistema → Actualizaciones** muestra:
 - Cualquier fallo de red o respuesta inesperada **degrada en silencio** a "sin datos"
   (`latest: null`), nunca rompe la página.
 - El endpoint (`GET /api/system/update-check`) es **lectura autenticada**; no expone
-  la versión a usuarios no autenticados (ver `PUBLIC_VERSION`, US-83).
+  la versión a usuarios no autenticados (ver `PUBLIC_VERSION`).
 
-## Aplicar la actualización one-click (US-190)
+## Aplicar la actualización one-click
 
 Desde **Ajustes → Sistema → Actualizaciones**, un admin puede aplicar la actualización
 sin tocar la terminal. El comportamiento depende del **modo de despliegue** (se detecta
@@ -47,7 +47,7 @@ Al pulsar **«Actualizar ahora»**, el agente lanza un **proceso actualizador ap
 `update-orchestrator.ts`, verificado en tests con un runner inyectable):
 
 1. **backup** — snapshot consistente de la base SQLite a `<db>.pre-update` con
-   `VACUUM INTO` (US-232: con WAL activo —US-228— una copia del fichero a secas se
+   `VACUUM INTO` (con WAL activo, una copia del fichero a secas se
    dejaría atrás lo que aún no está en el fichero principal) y anota el commit actual.
 2. **fetch** — `git fetch --tags` y verifica que existe la etiqueta `v<versión>`.
 3. **apply** — `git checkout` de la etiqueta + `pnpm install --frozen-lockfile` +
@@ -68,7 +68,7 @@ al volver.
 ### Requisitos en el servidor
 
 Si instalaste con `scripts/install.sh`, los dos primeros **ya están puestos**. La
-ejecución real se verifica en despliegue (US-86).
+ejecución real se verifica en despliegue.
 
 - **`KillMode=process` en la unidad systemd. Imprescindible.** El actualizador es un
   proceso hijo del agente y el paso 5 reinicia esa misma unidad: con el `KillMode` por
@@ -94,7 +94,7 @@ ejecución real se verifica en despliegue (US-86).
 
 `node-ssh`, `mqtt`, `net-snmp`, `ws`, `tuyapi` y `@matter/main` no están en
 `package.json` a propósito, así que `pnpm install --frozen-lockfile` **las poda** en
-cada actualización: antes de US-232 el usuario perdía su router SSH o su zigbee2mqtt
+cada actualización: antes el usuario perdía su router SSH o su zigbee2mqtt
 sin ningún aviso. Ahora la lista vive en `apps/agent/data/extra-deps.json` (untracked,
 sobrevive al `git checkout`) y el paso `apply` la reinstala.
 
@@ -106,7 +106,7 @@ sobrevive al `git checkout`) y el paso `apply` la reinstala.
 
 ### Si se queda «en curso» para siempre
 
-El lock de `var/update.lock` lleva **PID y hora** (US-232): si el actualizador murió,
+El lock de `var/update.lock` lleva **PID y hora**: si el actualizador murió,
 o lleva más de 20 minutos, deja de contar como «en curso» y puedes volver a intentarlo.
 Para el caso contrario —un actualizador **vivo pero atascado**, p. ej. un `pnpm install`
 esperando a una red que no vuelve— la tarjeta ofrece **«Cancelar actualización»**
@@ -132,4 +132,4 @@ docker compose pull && docker compose up -d
 
 Aunque el bare-metal hace un snapshot de la DB para el rollback, haz también una
 **copia de seguridad cifrada** antes de una actualización importante (Ajustes → Sistema
-→ Copia de seguridad, US-103): es exportable y cubre también `keys/` y `data/`.
+→ Copia de seguridad): es exportable y cubre también `keys/` y `data/`.

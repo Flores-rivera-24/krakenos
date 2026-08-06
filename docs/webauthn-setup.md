@@ -1,4 +1,4 @@
-# WebAuthn / passkeys (2FA) — guía de configuración (US-50)
+# WebAuthn / passkeys (2FA) — guía de configuración
 
 KrakenOS soporta **passkeys** (huella, Face ID, Windows Hello o llaves de hardware
 tipo YubiKey) como **segundo factor opcional** al iniciar sesión.
@@ -73,7 +73,7 @@ Pi-hole**, sin proxy inverso:
 **Alternativa (Escenario B):** si ya tienes un proxy inverso (nginx) terminando TLS,
 pon `TRUST_PROXY=1` (el nº de proxies delante; **no** `true`, que confía en el
 `X-Forwarded-For` de cualquier origen y permite falsificar la IP de auditoría —
-`.env.example`/US-76), `WEBAUTHN_ORIGIN=https://krakenos.local` (sin puerto, 443) y deja
+`.env.example`), `WEBAUTHN_ORIGIN=https://krakenos.local` (sin puerto, 443) y deja
 el agente en HTTP detrás del proxy.
 
 > El agente valida esta configuración al arrancar y registra un `WARN [webauthn]` si
@@ -93,7 +93,7 @@ Necesitas un **hostname**:
 
 Y ajusta `WEBAUTHN_ORIGIN` al origen exacto del navegador (mismo esquema y puerto).
 
-### Relación con la CSP (US-48)
+### Relación con la CSP
 
 WebAuthn opera vía APIs nativas del navegador (`navigator.credentials`), **sin scripts
 externos**, así que **no requiere cambios en la Content-Security-Policy** existente.

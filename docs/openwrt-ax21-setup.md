@@ -1,6 +1,6 @@
 # Activar el driver OpenWrt en el TP-Link Archer AX21
 
-El código del driver `openwrt` ya existe en KrakenOS (US-22): habla con el router por
+El código del driver `openwrt` ya existe en KrakenOS: habla con el router por
 **SSH + UCI** contra un transporte inyectable. No hay nada que programar — solo hay que
 **instalar OpenWrt** en el Archer AX21 y **configurar el `.env`** del agente.
 
@@ -125,7 +125,7 @@ el agente (ver `apps/agent/src/config/env.ts`) son:
 > **Nota de seguridad**: lo ideal es usar **clave SSH** (`OPENWRT_SSH_KEY_PATH`) en vez de
 > contraseña. Si usas contraseña, mantén el `.env` fuera de git (ya está en `.gitignore`).
 
-## 6.b. Tráfico por dispositivo: instalar `nlbwmon` en el router (US-251)
+## 6.b. Tráfico por dispositivo: instalar `nlbwmon` en el router
 
 **Opcional, pero es lo que hace que «Uso por persona» y la tabla «Por dispositivo» tengan datos.**
 Sin esto, KrakenOS mide el tráfico **total del hogar** (lo saca de `/proc/net/dev`) pero no puede
@@ -155,7 +155,7 @@ Tres cosas que conviene saber antes de fiarte de los números:
   LAN puede no aparecer, y el tráfico que nlbwmon no logra atribuir a ninguna MAC se **descarta** en
   vez de repartirse: es preferible un total por aparato algo bajo a inventarle consumo a alguien.
 
-> ⚠️ **Sin verificar con hardware real todavía** (US-86). El parseo está probado contra la salida
+> ⚠️ **Sin verificar con hardware real todavía**. El parseo está probado contra la salida
 > documentada de `nlbw -c json` y resuelve las columnas por nombre, pero la primera instalación real
 > es la que manda: si los números no cuadran con los de LuCI, es un bug y hay que reportarlo.
 
