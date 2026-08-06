@@ -1,4 +1,4 @@
-# Checklist de lanzamiento a primeros usuarios (US-218)
+# Checklist de lanzamiento a primeros usuarios
 
 Objetivo: **10 usuarios reales** y un canal de feedback con mínima fricción. 10 usuarios enseñan
 más que 50 historias nuevas — a partir de aquí, el backlog lo ordena la realidad.
@@ -8,9 +8,9 @@ más que 50 historias nuevas — a partir de aquí, el backlog lo ordena la real
 - [ ] **Activar Discussions** en el repo de GitHub (Settings → General → Features → Discussions).
       _(Ajuste de la UI de GitHub; lo hace el dueño del repo — las plantillas de issue ya están
       en `.github/ISSUE_TEMPLATE/`.)_
-- [ ] Crear al menos **una release etiquetada** (`v0.1.0`): el instalador (US-216) instala la
-      última etiqueta `v*` y el update-check (US-116) compara contra releases.
-- [ ] Pasada real del **checklist de hardware** (US-86) en tu propia casa: cada `verified:true`
+- [ ] Crear al menos **una release etiquetada** (`v0.1.0`): el instalador instala la
+      última etiqueta `v*` y el update-check compara contra releases.
+- [ ] Pasada real del **checklist de hardware** en tu propia casa: cada `verified:true`
       que puedas afirmar en el post vale oro; lo que no esté verificado se dice tal cual.
 - [ ] Releer `README.md` con ojos de recién llegado: el quickstart es un comando, «Qué NO es»
       está arriba, y ninguna promesa supera lo verificado.
@@ -18,10 +18,10 @@ más que 50 historias nuevas — a partir de aquí, el backlog lo ordena la real
 ## Criterios de éxito (medibles, 4–6 semanas)
 
 - **10 instalaciones reales** (personas que llegan al wizard `/setup` en su hardware).
-- **5 informes de hardware verificado** (plantilla `hardware-report.yml` → catálogo US-208 pasa
+- **5 informes de hardware verificado** (plantilla `hardware-report.yml` → el catálogo de compatibilidad pasa
   `verified:false → true` con evidencia comunitaria).
 - **Todo issue respondido en <48 h** (compromiso de respuesta; ver abajo).
-- Señales del ADR de distribución (US-217) recogidas: ¿instalan?, ¿actualizan?, ¿CGNAT?
+- Señales del ADR de distribución recogidas: ¿instalan?, ¿actualizan?, ¿CGNAT?
 
 ## Compromiso de respuesta
 

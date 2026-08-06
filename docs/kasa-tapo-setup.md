@@ -1,6 +1,6 @@
 # Activar la integración TP-Link Kasa / Tapo
 
-La integración `kasa` (US-68) controla enchufes, interruptores y focos TP-Link **sin nube** y sin
+La integración `kasa` controla enchufes, interruptores y focos TP-Link **sin nube** y sin
 la app TP-Link, hablando el protocolo **local** de cada dispositivo. Cubre dos subfamilias con
 protocolos distintos:
 
@@ -44,7 +44,7 @@ TAPO_DEVICES=[{"ip":"192.168.1.61","deviceType":"bulb"}]
 
 - Asigna **IP fija** a cada Tapo en tu router.
 
-### Mejor aún: no guardes tu contraseña (US-259)
+### Mejor aún: no guardes tu contraseña
 
 La contraseña de Tapo es la de tu **cuenta TP-Link**, no una clave de los enchufes: es la del
 portal del fabricante y probablemente la reutilizas en otros sitios. Guardarla entera es guardar

@@ -1,4 +1,4 @@
-# Interop abierta: tokens de API + MQTT (US-174)
+# Interop abierta: tokens de API + MQTT
 
 KrakenOS se integra con Home Assistant, Node-RED u otras herramientas **sin darles tu
 contraseña** ni depender de la nube: un **token de API** con permisos acotados para
@@ -43,7 +43,7 @@ hogar a un **broker MQTT local**. Es **opt-in y off por defecto**.
   la API ni aparece en ningún payload.
 - Requiere el paquete `mqtt` en el servidor (`pnpm add mqtt`); es una dependencia
   opcional de runtime (no viaja en la imagen por defecto). La conexión real se verifica
-  en el despliegue (checklist US-86).
+  en el despliegue (checklist de verificación con hardware).
 
 ### Topics publicados
 
@@ -59,7 +59,7 @@ Con prefijo configurable (por defecto `krakenos`) y cada `intervalSec` segundos:
 Los payloads **no contienen secretos ni PII cruda** (ni credenciales, ni MAC/IP por
 dispositivo). Pensado para automatizaciones de HA/Node-RED sobre el estado del hogar.
 
-## MQTT Discovery de Home Assistant (US-213)
+## MQTT Discovery de Home Assistant
 
 Además de los topics de arriba, KrakenOS puede publicar la **convención de discovery** de
 Home Assistant para que HA **descubra tus dispositivos solo**, sin mapear topics a mano.
@@ -73,17 +73,17 @@ Son **dos toggles separados** en **Ajustes → Integraciones → Publicar a MQTT
   - sensores del hogar: **energía** (kWh), **modo del hogar**, **estado de la alarma** y
     **dispositivos en línea**.
   - Del modo del hogar viaja **solo el modo** (`home`/`away`/`night`), **nunca las
-    personas** (regla de privacidad US-169).
+    personas** (regla de privacidad).
   - Al **quitar** un dispositivo (o desactivar el discovery), su config retenida se
     **limpia** (se publica un payload vacío retenido).
 - **Aceptar órdenes desde MQTT** — «publicar estados **≠** aceptar órdenes». Este permiso,
   **aparte** y también off por defecto, suscribe a `<prefijo>/iot/<id>/set` (+
   `…/brightness/set`, `…/rgb/set`) y aplica el comando con `setState`, con **timeout** de
-  acción, marcado con `origin:'mqtt'` para el **anti-bucle** de automatizaciones (US-167) y
+  acción, marcado con `origin:'mqtt'` para el **anti-bucle** de automatizaciones y
   **auditado** (`interop.mqtt.command`). Sin este toggle, las entidades de HA son de
   **solo lectura** (un `light` requiere control; sin él se expone como `switch` de lectura).
 
-## Lo que solo KrakenOS sabe (US-236)
+## Lo que solo KrakenOS sabe
 
 Con el descubrimiento activo, además de luces y enchufes aparecen en HA las tres cosas
 que **Home Assistant no tiene de serie** — que son la razón de instalar KrakenOS junto a él:
@@ -137,7 +137,7 @@ por un **LWT** (*last will and testament*): si KrakenOS muere de golpe, es el **
 quien publica `offline` en su nombre y HA marca las entidades como no disponibles. En un
 apagado ordenado, el agente se despide él mismo antes de desconectar.
 
-Sin esto —como ocurría hasta US-236— HA seguía mostrando la casa entera disponible, con su
+Sin esto —como ocurría antes— HA seguía mostrando la casa entera disponible, con su
 último valor retenido, indefinidamente.
 
 ### Receta rápida
@@ -149,7 +149,7 @@ Sin esto —como ocurría hasta US-236— HA seguía mostrando la casa entera di
    Assistant** y, si quieres controlar desde HA, **Aceptar órdenes desde MQTT** y/o
    **Permitir pausar internet desde MQTT** (son permisos distintos).
 3. En HA, **Ajustes → Dispositivos y servicios → MQTT** → aparecerá el dispositivo
-   **KrakenOS** con sus entidades. (Verificación con un HA real: checklist US-86.)
+   **KrakenOS** con sus entidades. (Verificación con un HA real: pendiente de hardware.)
 
 > El prefijo de discovery de HA es `homeassistant/` por convención; los estados viven bajo
-> tu `<prefijo>` (por defecto `krakenos`). Ambos coexisten con los topics legados de US-174.
+> tu `<prefijo>` (por defecto `krakenos`). Ambos coexisten con los topics legados del publicador original.

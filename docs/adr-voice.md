@@ -1,8 +1,8 @@
-# ADR — Control por voz: ¿puente Matter o skill de nube? (US-173)
+# ADR — Control por voz: ¿puente Matter o skill de nube?
 
 - **Estado:** Aceptado (2026-07-10)
-- **Contexto de la decisión:** tras entregar el **puente Matter** (US-171) y el
-  **comisionado Matter** (US-172), decidir con datos si KrakenOS necesita además una
+- **Contexto de la decisión:** tras entregar el **puente Matter** y el
+  **comisionado Matter**, decidir con datos si KrakenOS necesita además una
   *smart-home skill* de Alexa o una *Google Home Action* de nube.
 - **Decisión en una línea:** **No** se construye skill/Action de nube. El puente
   Matter cubre los casos de voz relevantes **sin romper el principio local-first**.
@@ -15,7 +15,7 @@ Alexa/Google?». Hay dos vías para responder que sí:
 
 1. **Puente Matter (local).** KrakenOS se expone como un hub Matter en la LAN; Alexa,
    Google Home y Apple Home ya hablan Matter **localmente** y descubren sus
-   dispositivos sin nube. Es lo entregado en US-171/172.
+   dispositivos sin nube. Es lo ya entregado por el puente y el comisionado Matter.
 2. **Skill / Action de nube.** Publicar una *smart-home skill* (Alexa) o una *Home
    Action* (Google) que el asistente invoca **por internet**.
 
@@ -39,7 +39,7 @@ expuestos, sin nube) a cambio de una función que el puente Matter ya da.
 
 ## Qué cubre el puente Matter (y qué no)
 
-**Cubierto por Matter local (US-171/172), suficiente para el 95% de los casos:**
+**Cubierto por Matter local, suficiente para el 95% de los casos:**
 
 - Control por voz de luces y enchufes: «apaga la luz del salón», «pon la lámpara al
   20%», «pon la tira RGB en azul» → On/Off, Dimmable, Color.
@@ -51,18 +51,17 @@ expuestos, sin nube) a cambio de una función que el puente Matter ya da.
 **Fuera del alcance de Matter (lo que una skill *sí* podría añadir):**
 
 - **Intenciones de voz «a medida»** más allá de los tipos de dispositivo Matter (p. ej.
-  «¿cuánto he consumido esta semana?» leyendo el panel de energía US-182, o «¿quién está
-  en casa?» US-169). Matter no modela esas consultas; requerirían *custom intents*.
+  «¿cuánto he consumido esta semana?» leyendo el panel de energía, o «¿quién está
+  en casa?» por la presencia). Matter no modela esas consultas; requerirían *custom intents*.
 - **Anuncios/notificaciones proactivas** por voz («se ha detectado movimiento en la
   entrada»). Matter es control de dispositivos, no un canal de anuncios.
-- **Escenas propias de KrakenOS (US-166) por nombre exacto** invocadas por voz. Mitigación
+- **Escenas propias de KrakenOS por nombre exacto** invocadas por voz. Mitigación
   local: exponer una escena como un enchufe/interruptor Matter virtual «pseudo-dispositivo»
   y meterla en una rutina del asistente — sin nube.
 
 ## Decisión y alcance
 
-- **No implementar** skill de Alexa ni Home Action de Google por ahora. El puente Matter
-  (US-171) + comisionado (US-172) es la vía oficial de «funciona con Alexa/Google/Apple».
+- **No implementar** skill de Alexa ni Home Action de Google por ahora. El puente Matter + comisionado es la vía oficial de «funciona con Alexa/Google/Apple».
 - Las consultas de datos por voz (energía, presencia) y los anuncios proactivos quedan
   **explícitamente fuera** de la promesa de voz; si el mercado los exige, se abren como
   historias nuevas con su propio ADR de coste/beneficio.
@@ -89,4 +88,4 @@ expuestos, sin nube) a cambio de una función que el puente Matter ya da.
 En ese caso, este ADR se sustituye por uno nuevo con el diseño concreto y su análisis de
 coste/beneficio.
 
-> Verificación con asistentes reales del puente Matter: checklist de hardware (US-86).
+> Verificación con asistentes reales del puente Matter: checklist de hardware.

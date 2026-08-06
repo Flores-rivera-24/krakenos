@@ -1,23 +1,23 @@
 # Guía de estilo de copy — KrakenOS web
 
-Baseline **derivado de lo que la app ya hace mayoritariamente** (auditoría US-209, 2026-07-09), no
+Baseline **derivado de lo que la app ya hace mayoritariamente** (auditoría, 2026-07-09), no
 de una voz inventada. Toda historia nueva que añada texto visible debe seguir esta guía.
 
 ## Idioma
 
-- **El español (es-ES) es la FUENTE del copy, no el único idioma.** La app es bilingüe desde US-177:
+- **El español (es-ES) es la FUENTE del copy, no el único idioma.** La app es bilingüe:
   el catálogo `lib/i18n/catalog/es.ts` es la fuente canónica y `en.ts` está tipado como
   `Record<TranslationKey, string>`, así que **falta o sobra de clave = error de typecheck**. Añadir
   copy nuevo es añadir la clave a **ambos** catálogos.
 - Esta guía describe cómo se escribe el **valor en español**. El inglés lo sigue en espíritu
   (sentence case, sin florituras, honestidad de errores), no al pie de la letra: sus convenciones de
   puntuación son otras.
-- **Dónde vive el copy hoy** (actualizado en US-239): shell, auth, las 17 páginas, las 25 guías, el
+- **Dónde vive el copy hoy** (actualizado en): shell, auth, las 17 páginas, las 25 guías, el
   glosario, **las primitivas de `components/ui/`**, **los 12 widgets del dashboard** y
   «Primeros pasos» ya pasan por `t()`. Queda pendiente el *chrome* del `IntegrationWizard`
-  (→ US-262). Un componente que aún no esté migrado se escribe **en español, sin `t()`**: meter una
+  (deuda anotada). Un componente que aún no esté migrado se escribe **en español, sin `t()`**: meter una
   sola clave suelta en un componente español deja media tarjeta en inglés, que es peor que no
-  traducir (decisión de US-212).
+  traducir (decisión de).
 - Un string en inglés dentro de un componente **en español** es un bug de copy, salvo los términos
   retenidos de abajo.
 - `manifest.json` conserva el nombre de marca `KrakenOS — Home Control` (tagline de producto).
@@ -29,7 +29,7 @@ de una voz inventada. Toda historia nueva que añada texto visible debe seguir e
 |---|---|---|
 | Dashboard | nav + título de página | nombre de producto del panel (estilo UniFi) |
 | Firewall | título de página; el cuerpo usa «cortafuegos» al explicar | término establecido; el asistente lo glosa |
-| Driver, Uptime, CPU, RAM | sidebar avanzada, widget Sistema | jerga deliberada de modo avanzado; el modo sencillo la oculta (US-176) |
+| Driver, Uptime, CPU, RAM | sidebar avanzada, widget Sistema | jerga deliberada de modo avanzado; el modo sencillo la oculta |
 | Endpoint, handshake | VPN (WireGuard) | vocabulario propio de WireGuard; glosado en guías |
 | passkey | login/seguridad | término de producto WebAuthn en español coloquial |
 | WiFi, IoT, VLAN, QoS, DNS, SSID, MAC, IP/CIDR, RTSP, ONVIF, SSH, SMTP | global | siglas/estándares; el asistente y el glosario los explican |
@@ -57,10 +57,10 @@ En **bloques de comandos** de las guías, los placeholders van en ASCII (`TU_PAS
 | estado de red de un dispositivo | **En línea / Desconectado / Bloqueado** | |
 | alcanzabilidad IoT | **disponible / sin señal** | distinto del estado de red, a propósito |
 | presencia de personas | **en casa / fuera** | |
-| stream en tiempo real (socket) | **En tiempo real / Reconectando… / Sin conexión** | estados US-93/94; no inventar variantes |
+| stream en tiempo real (socket) | **En tiempo real / Reconectando… / Sin conexión** | estados de conexión; no inventar variantes |
 | datos no en vivo | **Datos obsoletos** (+ tooltip «Sin datos en vivo…») | |
 | escanear inventario de red | **Escanear la red** (Inventario) | acción distinta de… |
-| buscar IoT (descubrimiento US-175) | **Buscar dispositivos** (Conectar) | …que se llama así a propósito |
+| buscar IoT (descubrimiento) | **Buscar dispositivos** (Conectar) | …que se llama así a propósito |
 | firewall: acción de regla | **Bloquear / Permitir** (valor de API `deny`/`allow` nunca visible) | |
 | protocolo `any` | **Cualquiera** | TCP/UDP en mayúsculas |
 | seguridad WiFi `open` | **Abierta (sin contraseña)** | |
@@ -92,7 +92,7 @@ En **bloques de comandos** de las guías, los placeholders van en ASCII (`TU_PAS
 
 - Patrón de fallo: **«No se pudo + infinitivo»** («No se pudo eliminar el horario»). El fallback de
   `describeError` añade `(error N).` cuando el agente no manda mensaje; no filtrar jamás el
-  `statusText` en inglés del navegador (fix US-209 en `lib/api.ts`).
+  `statusText` en inglés del navegador (se corrige en `lib/api.ts`).
 - Fallo de red ≠ error del servidor: «No se pudo conectar con el servidor. Revisa tu conexión.»
   solo cuando la petición no llegó.
 - Reintento: **«Inténtalo de nuevo.»** (formal, con punto); botón **«Reintentar»**.
@@ -106,11 +106,11 @@ En **bloques de comandos** de las guías, los placeholders van en ASCII (`TU_PAS
 
 - aria-label / sr-only / title son copy de primera: mismas reglas e idioma (español).
 - El aria-label de un control **debe describir la acción real en su estado actual**: un
-  interruptor de encendido anuncia «Apagar X» cuando está encendido (fix US-209).
+  interruptor de encendido anuncia «Apagar X» cuando está encendido.
 - Concordancia de número computada, no «1 clientes»: `{n} {n === 1 ? 'cliente' : 'clientes'}`. El
   patrón «aplicado(s)» se tolera solo en toasts de resultado parcial ya establecidos.
 
-## Propuestas debatibles (NO aplicadas en US-209 — decidir en historia propia)
+## Propuestas debatibles (NO aplicadas — decidir en historia propia)
 
 - Renombrar «Dashboard» → «Panel» (ripple en nav, tests y hábito UniFi).
 - Distinguir «Sin conexión» (stream) de «Sin conexión con el router» (driver) con wording propio

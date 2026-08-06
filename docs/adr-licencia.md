@@ -1,7 +1,7 @@
 # ADR — Licencia del proyecto: AGPL-3.0-or-later
 
 - **Estado:** Aceptado (2026-07-30)
-- **Origen:** US-257. Hasta esta fecha el repositorio **no tenía fichero `LICENSE`** ni campo
+- **Origen:** hasta esta fecha el repositorio **no tenía fichero `LICENSE`** ni campo
   `license` en ningún `package.json`. Sin declaración expresa, el derecho de autor por defecto es
   **«todos los derechos reservados»**: nadie —ni siquiera quien clonaba el repo público— tenía
   permiso formal para usarlo, modificarlo ni redistribuirlo. «Open source mío» no significaba nada.
@@ -29,7 +29,7 @@ de la FSF en `LICENSE`.
    distingue a esta licencia de la GPL— es exactamente lo que lo impide. **Al dueño no le limita**:
    quien tiene el copyright no necesita licenciarse a sí mismo.
 3. **Es la única familia que permite integrar componentes GPL/AGPL de terceros**, que es lo que
-   US-257 dice desbloquear. La compatibilidad va en un solo sentido: código Apache-2.0 o MIT **entra**
+   se quiere desbloquear. La compatibilidad va en un solo sentido: código Apache-2.0 o MIT **entra**
    en un proyecto AGPL, pero código GPL/AGPL **no entra** en uno Apache o MIT.
 4. **Coherencia con lo que el producto dice ser.** `adr-control-total.md` declara que el enemigo es
    la app del fabricante y que el usuario debe tener el control de su casa. Una licencia que permite
@@ -91,7 +91,7 @@ licencia «JSON» del *shall be used for Good, not Evil*, que sí habría sido u
 
 | Alternativa | Por qué no |
 |---|---|
-| **MIT / Apache-2.0** | Regala la Fase C (cualquiera puede ofrecerlo como SaaS sin devolver nada) y **cierra** la integración de componentes GPL/AGPL, que es justo lo que US-257 quería abrir. Es también la opción irreversible |
+| **MIT / Apache-2.0** | Regala la Fase C (cualquiera puede ofrecerlo como SaaS sin devolver nada) y **cierra** la integración de componentes GPL/AGPL, que es justo lo que esta decisión quería abrir. Es también la opción irreversible |
 | **GPL-3.0** | No cubre el uso **por red**, que es exactamente la forma en que se usa este producto: un panel web. Bajo GPL, un tercero puede hospedarlo modificado y no publicar nada |
 | **BUSL / Elastic License / SSPL** | No son licencias de código abierto. Contradicen «open source mío» y las rechazan tanto la OSI como buena parte del público self-hoster al que va dirigido |
 | **Seguir sin licencia** | El statu quo: «todos los derechos reservados». Nadie puede colaborar, empaquetar ni recomendar el proyecto con confianza jurídica |

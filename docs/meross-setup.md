@@ -1,6 +1,6 @@
 # Activar la integración Meross
 
-La integración `meross` (US-71) controla enchufes e interruptores Meross (MSS110, MSS210,
+La integración `meross` controla enchufes e interruptores Meross (MSS110, MSS210,
 MSS310, regletas MSS425…) **sin la app ni la nube de Meross**, hablando con ellos a través de un
 **broker MQTT local**. Requiere el paquete `mqtt` en el servidor (import perezoso, igual que
 zigbee2mqtt).

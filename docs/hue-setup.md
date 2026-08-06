@@ -1,6 +1,6 @@
 # Activar Philips Hue (CLIP API v2 local)
 
-El `HueIotManager` ya existe (US-28): habla con el **bridge Hue** por su **CLIP API v2 local**
+El `HueIotManager` ya existe: habla con el **bridge Hue** por su **CLIP API v2 local**
 (sin nube). Solo hace falta encontrar la IP del bridge, generar una *application key* y
 configurar el `.env`.
 
@@ -57,7 +57,7 @@ HUE_APP_KEY=AbCdEf...laAppKey...
 ## 4. Certificado autofirmado del bridge
 
 El bridge sirve HTTPS con un **certificado autofirmado** (es una IP de tu red: no puede tener
-uno público). **No tienes que hacer nada**: desde US-259 KrakenOS lo gestiona solo.
+uno público). **No tienes que hacer nada**: KrakenOS lo gestiona solo.
 
 > **Ya no hace falta `NODE_TLS_REJECT_UNAUTHORIZED=0`. Si lo tienes puesto, quítalo.** Esa
 > variable desactivaba la validación TLS de **todo** el proceso Node —no solo del bridge—, así
@@ -82,7 +82,7 @@ pnpm dev
 ```
 
 - Ve a **`/iot`**: deben aparecer tus focos Hue.
-- Prueba **on/off**, **brillo** y **color** (el contrato IoT incluye color desde US-28).
+- Prueba **on/off**, **brillo** y **color** (el contrato IoT incluye color desde).
 
 Si no aparecen: confirma la IP del bridge, que la `HUE_APP_KEY` es correcta y que el
 *workaround* TLS está activo. Los errores de conexión salen en los logs del agente.

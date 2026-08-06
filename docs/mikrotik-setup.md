@@ -1,6 +1,6 @@
 # Activar el driver MikroTik RouterOS
 
-El driver `mikrotik` (US-66) gestiona routers MikroTik (hEX, RB4011, CRS, CCR…) en **dos
+El driver `mikrotik` gestiona routers MikroTik (hEX, RB4011, CRS, CCR…) en **dos
 modos** seleccionables por `.env`, sobre un transporte inyectable:
 
 | Modo | `MIKROTIK_MODE` | Requisito | Recomendado para |

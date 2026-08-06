@@ -1,7 +1,7 @@
-# ADR — Certificación del puente Matter: el muro real (US-212)
+# ADR — Certificación del puente Matter: el muro real
 
 - **Estado:** Aceptado (2026-07-13)
-- **Contexto de la decisión:** el puente Matter (US-171) y el comisionado (US-172) exponen los
+- **Contexto de la decisión:** el puente Matter y el comisionado exponen los
   dispositivos de KrakenOS a Alexa/Google/Apple **en LAN, sin nube**. Funciona, pero hay una
   fricción que el usuario descubre al escanear el QR: el ecosistema le avisa de que el dispositivo
   **«no está certificado»**. Esta decisión documenta ese muro y por qué **no** se cruza ahora.
@@ -51,7 +51,7 @@ reales que la pidan sería invertir miles de dólares contra una demanda no demo
    - Un **callout de aviso en `MatterBridgeCard`** advierte, antes de escanear el QR, de que el
      asistente puede marcar el dispositivo como «no certificado» y que es esperable.
    - La documentación de setup (`matter-bridge-setup.md`) y el README lo recogen.
-3. El puente **es opt-in y está OFF por defecto** (US-171): quien no lo activa nunca ve la fricción.
+3. El puente **es opt-in y está OFF por defecto**: quien no lo activa nunca ve la fricción.
 
 ## Consecuencias
 
@@ -63,12 +63,12 @@ reales que la pidan sería invertir miles de dólares contra una demanda no demo
 
 ## Reevaluar si…
 
-- Un número relevante de usuarios reales (US-218) reporta que la advertencia de «no certificado» es
+- Un número relevante de usuarios reales reporta que la advertencia de «no certificado» es
   un **bloqueante de adopción** (no una molestia), **y**
-- Existe un **modelo de sostenibilidad** (caja de hardware propia, US-217, o ingresos) que absorba el
+- Existe un **modelo de sostenibilidad** (caja de hardware propia o ingresos) que absorba el
   coste de la membresía CSA y el ciclo de recertificación, **o**
 - La CSA introduce una **vía de certificación para software/self-hosted** con coste proporcionado.
 
 En ese caso, este ADR se sustituye por uno nuevo con el plan de certificación y su presupuesto.
 
-> Verificación de las advertencias reales con asistentes físicos: checklist de hardware (US-86).
+> Verificación de las advertencias reales con asistentes físicos: checklist de hardware.

@@ -17,6 +17,10 @@ import { createDriver } from '../../src/drivers/index.js';
  * 2. **Docs publicados que apuntan a docs internos.** `CLAUDE.md`, `BACKLOG.md`,
  *    `SPECS.md` y `docs/history.md` están gitignored: una guía publicada que
  *    remite a ellos es un enlace roto para cualquiera que clone el repo.
+ * 3. **La prosa de los docs publicados.** «✅ Mitigado (US-74): el helper acota…»
+ *    obliga a quien lee desde fuera a resolver un código que no puede resolver.
+ *    Lo que la frase quiere decir cabe sin el id, y si no cabe es que el id
+ *    estaba haciendo de explicación.
  */
 
 const RAIZ = resolve(__dirname, '../../../..');
@@ -81,5 +85,24 @@ describe('identificadores internos fuera de las superficies públicas', () => {
         });
     }
     expect(ofensas, `Enlaces rotos para quien clona:\n${ofensas.join('\n')}`).toEqual([]);
+  });
+
+  it('ningún doc publicado nombra una historia en su prosa', () => {
+    // A diferencia del código, estos ficheros los lee alguien de fuera, que no
+    // tiene tracker donde resolver el id. La regla se sostiene con este test y
+    // no con acordarse: la limpieza de 2026-08-06 quitó ~300 de una sentada.
+    const ofensas: string[] = [];
+    for (const relativo of [...ficherosPublicados('docs/*.md'), 'README.md']) {
+      readFileSync(join(RAIZ, relativo), 'utf8')
+        .split('\n')
+        .forEach((linea, i) => {
+          if (ID_DE_HISTORIA.test(linea)) ofensas.push(`${relativo}:${i + 1} → ${linea.trim()}`);
+        });
+    }
+    expect(
+      ofensas,
+      `Un id interno no significa nada fuera del equipo. Reescribe la frase sin él ` +
+        `(la trazabilidad vive en los docs internos):\n${ofensas.join('\n')}`,
+    ).toEqual([]);
   });
 });

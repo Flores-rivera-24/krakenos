@@ -78,7 +78,7 @@ administración de red. La recuperación se hace **en el servidor**, donde ya ti
 
 1. **Otro admin.** Si existe otro usuario con rol admin activo, que entre y te resetee la
    contraseña desde **Ajustes → Usuarios**.
-2. **`reset-admin` en el servidor** (US-233). Crea el admin si no existe, o resetea el que hay
+2. **`reset-admin` en el servidor**. Crea el admin si no existe, o resetea el que hay
    —contraseña, rol `admin` y cuenta **activa**— y revoca sus sesiones abiertas:
 
    ```bash
@@ -129,7 +129,7 @@ arranque y auditoría.
 ## 5. La tarjeta SD se ha quedado en solo-lectura
 
 **Síntoma:** la app carga y se ve, pero **nada se guarda**: los cambios de ajustes no persisten,
-la auditoría no crece, las copias fallan. `/health/ready` responde **503** (desde US-233 escribe un
+la auditoría no crece, las copias fallan. `/health/ready` responde **503** (escribe un
 canario, así que detecta esto; antes respondía 200 alegremente). En el journal:
 `SQLITE_READONLY` o `attempt to write a readonly database`.
 

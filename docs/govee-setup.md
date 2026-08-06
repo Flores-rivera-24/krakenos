@@ -1,6 +1,6 @@
 # Activar Govee (API LAN por UDP, local)
 
-El `GoveeIotManager` ya existe (US-29): controla las luces Govee **localmente** por la **API
+El `GoveeIotManager` ya existe: controla las luces Govee **localmente** por la **API
 LAN** (UDP multicast), sin pasar por la nube. Solo hay que habilitar "LAN Control" en cada
 dispositivo y configurar el `.env`.
 

@@ -47,7 +47,7 @@ razones verificadas:
 | §56: cámaras → Frigate, voz → Matter | **Se ratifica sin cambios** | «Ver cámaras» ya funciona (HLS propio + Frigate). Nada del pivote justifica reabrir el NVR ni una skill de voz de nube, que rompería el local-first que el propio pivote exige |
 | §83-85: el instalador es la puerta de entrada recomendada | **Deja de ser válida sin TLS.** El instalador ofrece la ruta Tailscale (`*.ts.net` con Let's Encrypt) o genera el cert, y avisa por escrito de lo que se pierde sin él | Hoy `install.sh` copia `.env.example` con `HTTPS_ENABLED=false` (`.env.example:211`). Sobre HTTP en una IP de LAN no hay service worker, ni Web Push, ni WebAuthn: el flujo diario en el móvil **no arranca** |
 | Bifurcación de producto, opción B: convertirse en add-on de HA | **Descartada por decisión del dueño.** Se anota como coste aceptado, no como opción abierta | No se puede pedir «que se conecten a MI aplicación» y guardar la salida de ser un add-on de la aplicación de otro |
-| Congelar el epic de IoT ampliado | **Se descongela parcialmente.** US-223 (contrato `climate\|cover\|lock` + `contact\|smoke`) sube a **habilitante** y entra antes que el recorte. El recorte de marcas se mantiene | Recorte y pivote no se contradicen: uno quita marcas, el otro añade categorías. Sin `contact`, un sensor de apertura no genera ningún evento y la alarma está ciega para todo lo que no sea una bombilla |
+| Congelar el epic de IoT ampliado | **Se descongela parcialmente.** El contrato `climate\|cover\|lock` + `contact\|smoke`) sube a **habilitante** y entra antes que el recorte. El recorte de marcas se mantiene | Recorte y pivote no se contradicen: uno quita marcas, el otro añade categorías. Sin `contact`, un sensor de apertura no genera ningún evento y la alarma está ciega para todo lo que no sea una bombilla |
 | §78-90: los cuatro avisos de honestidad | **Se añade un quinto, y va en la UI**, no solo en un doc: «este backend necesita la app del fabricante para el alta» | El mensaje sube de agresividad, así que la honestidad sube en la misma proporción o el primer usuario desmiente el lanzamiento |
 | (sin decisión escrita) El repo **no tiene fichero `LICENSE`** | Elegir y commitear una licencia **antes** de la Fase 8 | «Open source mío» hoy es legalmente «todos los derechos reservados», y sin licencia no se puede razonar sobre integrar componentes GPL/AGPL del mundo OpenWrt |
 
@@ -81,7 +81,7 @@ como tal, **no** como producto).
 - **TLS**: con el 95 % del tráfico cifrado se obtiene IP, ASN, volumen y hora — nunca contenido. Con
   DoH y ECH, ni siquiera el dominio.
 - **Coste de operación**: poner el servidor en el camino convierte cada `systemctl restart` del
-  actualizador (US-232) en un corte de internet para toda la casa.
+  actualizador en un corte de internet para toda la casa.
 - **Riesgo**: un pcap del hogar sería el fichero más peligroso que este producto haya escrito, y hoy
   no hay ni retención ni cifrado en reposo para algo así.
 
@@ -103,7 +103,7 @@ el inventario + aviso de destino nuevo**. Se vende como lo que es, no como Wires
    convertir «no veo el panel» en «no funciona nada en casa». Se controla mejor lo que ya hay.
 3. **Nube local propia (fotos/ficheros/streaming).** `install.sh:45` admite máquinas de 900 MB;
    Immich pide 6 GB. Y hay una trampa peor: un panel que muestre Immich «dentro» de KrakenOS hará
-   creer que la copia automática de US-233 protege esas fotos. No las protege. Se **integra** (ingress
+   creer que la copia automática protege esas fotos. No las protege. Se **integra** (ingress
    con la sesión existente + tarjeta de estado), no se construye.
 4. **Catálogo/app-store de servicios tipo CasaOS o Umbrel.** Mantener el catálogo *es* el producto, y
    es trabajo perpetuo.
@@ -175,12 +175,11 @@ en la UI, con la opción de redondear la ubicación. Autohospedar Open-Meteo que
 - **En contra:** se acepta que el parque WiFi propietario actual exige la app al menos una vez, y que
   la independencia total se compra cambiando hardware; se renuncia a la captura de paquetes; se
   renuncia a la salida «convertirse en add-on de HA»; y la superficie crece en categorías (climate,
-  cover, lock, contact, smoke) justo cuando la auditoría pedía recortarla — el recorte por marcas
-  (US-238) es lo que paga esa cuenta.
+  cover, lock, contact, smoke) justo cuando la auditoría pedía recortarla — el recorte por marcas es lo que paga esa cuenta.
 
 ## Reevaluar si…
 
-- La primera tanda de **US-86** (hardware real) revela que los backends degradados a «community»
+- La primera tanda de **verificación con hardware real** revela que los backends degradados a «community»
   fallan más de lo previsto → adelantar el borrado en vez de la degradación.
 - El usuario decide **no** cambiar hardware hacia Zigbee/Matter → entonces el pivote se reduce a
   «gestionar bien lo propietario» y este ADR se rebaja a mejora de UX, porque la independencia

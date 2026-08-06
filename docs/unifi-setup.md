@@ -1,6 +1,6 @@
 # Activar el driver Ubiquiti UniFi Network
 
-El driver `unifi` (US-65) habla con tu controller UniFi por su **API local** (HTTPS, sobre
+El driver `unifi` habla con tu controller UniFi por su **API local** (HTTPS, sobre
 un transporte inyectable) — no usa la nube de Ubiquiti ni el portal `unifi.ui.com`. No hay
 nada que programar: solo **crear una cuenta local** en el controller y **configurar el
 `.env`** del agente.
