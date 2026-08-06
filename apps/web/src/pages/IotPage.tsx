@@ -1,8 +1,14 @@
 import type { IotDevice, RoomWithState } from '@krakenos/types';
+import {
+  CLIMATE_TARGET_MAX_C,
+  CLIMATE_TARGET_MIN_C,
+  CLIMATE_TARGET_STEP_C,
+  isSwitchableKind,
+} from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { RoomSelect } from '@/components/rooms/RoomSelect';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FavoriteButton } from '@/components/ui/favorite-button';
 import { HelpHint } from '@/components/ui/help-hint';
@@ -40,23 +46,42 @@ function DeviceCard({
   onAssignRoom: (deviceId: string, roomId: string | null) => void;
 }) {
   const t = useT();
-  const [draft, setDraft] = useState<number | null>(null);
+  const [brightnessDraft, setBrightnessDraft] = useState<number | null>(null);
+  const [positionDraft, setPositionDraft] = useState<number | null>(null);
 
   // El on/off va por `OptimisticSwitch`: se mueve ya y revierte si falla (US-96).
-  // El brillo/color confirman con la lectura del socket (`iot:device-updated`);
-  // si el PATCH falla se avisa con un toast y la UI sigue mostrando la verdad.
+  // El brillo/color/posición/consigna confirman con la lectura del socket
+  // (`iot:device-updated`); si el PATCH falla se avisa con un toast y la UI sigue
+  // mostrando la verdad.
   const patch = (body: unknown) =>
     api.patch(`/iot/devices/${device.id}`, body).catch((err) => {
       toast.error(describeError(err, t('iot.patchError')));
     });
 
   const commitBrightness = () => {
-    if (draft !== null) {
-      void patch({ brightness: draft });
-      setDraft(null);
+    if (brightnessDraft !== null) {
+      void patch({ brightness: brightnessDraft });
+      setBrightnessDraft(null);
     }
   };
   const commitColor = (hex: string) => void patch({ color: { hex } });
+  // US-265: mismo patrón que el brillo — el arrastre no manda una petición por
+  // píxel, se confirma al soltar.
+  const commitPosition = () => {
+    if (positionDraft !== null) {
+      void patch({ position: positionDraft });
+      setPositionDraft(null);
+    }
+  };
+
+  // La consigna se manda SOLA: el borde rechaza `targetC` junto a `on`/`brightness`
+  // /`color`, y los límites son los del contrato para que un botón no pueda
+  // producir un 400.
+  const target = device.targetC;
+  const setTarget = (next: number) => {
+    const acotado = Math.min(CLIMATE_TARGET_MAX_C, Math.max(CLIMATE_TARGET_MIN_C, next));
+    void patch({ targetC: Math.round(acotado * 2) / 2 });
+  };
 
   return (
     <Card>
@@ -65,7 +90,10 @@ function DeviceCard({
           <span
             className={cn(
               'flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-kr-muted bg-kr-elevated',
-              device.kind !== 'sensor' && !device.on && 'opacity-50',
+              // Solo se atenúa lo que de verdad está apagado: una persiana y un
+              // termostato tienen `on: null` por contrato, así que la condición
+              // vieja (`kind !== 'sensor'`) los pintaba apagados para siempre.
+              isSwitchableKind(device.kind) && !device.on && 'opacity-50',
             )}
           >
             <ProductArt kind={iotKindToArtKind(device.kind)} className="h-6 w-6" />
@@ -74,7 +102,12 @@ function DeviceCard({
         </div>
         <div className="flex items-center gap-1">
           <FavoriteButton kind="iot" ref_={device.id} label={device.name} />
-          {device.kind !== 'sensor' && (
+          {/* US-265: el interruptor es de `light`/`plug` y la lista vive en el
+              contrato. Antes se pintaba para todo lo que no fuese `sensor`, así que
+              una cerradura, un detector de humo y un sensor de contacto tenían un
+              interruptor que el propio contrato rechaza — y una persiana uno que
+              volvía solo a «apagado», porque su estado no es `on`. */}
+          {isSwitchableKind(device.kind) && (
             <OptimisticSwitch
               checked={device.on ?? false}
               onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
@@ -121,32 +154,108 @@ function DeviceCard({
           </div>
         )}
 
-        {device.kind === 'cover' && device.position !== null && device.position !== undefined && (
-          <p className="text-sm text-muted-foreground">
-            {t('iot.cover.position', { position: String(device.position) })}
-          </p>
+        {/* Persiana (US-265). La posición solo se pinta si el backend la reporta:
+            un deslizador a 0 sobre un aparato que no la publica sería inventarse
+            una medida. «Abrir»/«Cerrar» van por `on`, que es el camino que también
+            funciona en los aparatos que declaran orden de apertura pero no de
+            posición. */}
+        {device.kind === 'cover' && (
+          <div className="space-y-2">
+            {device.position !== null && device.position !== undefined && (
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{t('iot.cover.positionLabel')}</span>
+                  <span>{positionDraft ?? device.position}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={positionDraft ?? device.position}
+                  disabled={!canControl}
+                  aria-label={t('iot.cover.positionOf', { name: device.name })}
+                  onChange={(e) => setPositionDraft(Number(e.target.value))}
+                  onPointerUp={commitPosition}
+                  onKeyUp={commitPosition}
+                  className="w-full accent-primary disabled:opacity-50"
+                />
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={!canControl}
+                aria-label={t('iot.cover.openOf', { name: device.name })}
+                onClick={() => void patch({ on: true })}
+              >
+                {t('iot.cover.open')}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={!canControl}
+                aria-label={t('iot.cover.closeOf', { name: device.name })}
+                onClick={() => void patch({ on: false })}
+              >
+                {t('iot.cover.close')}
+              </Button>
+            </div>
+          </div>
         )}
 
-        {device.kind === 'climate' && device.targetC !== null && device.targetC !== undefined && (
-          <p className="text-sm text-muted-foreground">
-            {t('iot.climate.target', { target: String(device.targetC) })}
-          </p>
+        {/* Termostato (US-265). Sin consigna conocida no se ofrecen los
+            incrementos: no hay desde dónde sumar, y estrenar uno inventado
+            movería la calefacción de la casa a un número que no eligió nadie. */}
+        {device.kind === 'climate' && (
+          <div className="space-y-1">
+            <span className="text-xs text-muted-foreground">{t('iot.climate.targetLabel')}</span>
+            {target !== null && target !== undefined ? (
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canControl || target <= CLIMATE_TARGET_MIN_C}
+                  aria-label={t('iot.climate.cooler', { name: device.name })}
+                  onClick={() => setTarget(target - CLIMATE_TARGET_STEP_C)}
+                >
+                  −
+                </Button>
+                <span className="text-lg font-semibold tabular-nums">
+                  {t('iot.climate.target', { target: String(target) })}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={!canControl || target >= CLIMATE_TARGET_MAX_C}
+                  aria-label={t('iot.climate.warmer', { name: device.name })}
+                  onClick={() => setTarget(target + CLIMATE_TARGET_STEP_C)}
+                >
+                  +
+                </Button>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{t('iot.climate.noTarget')}</p>
+            )}
+          </div>
         )}
 
         {device.kind === 'light' && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>{t('iot.brightness')}</span>
-              <span>{draft ?? device.brightness ?? 0}%</span>
+              <span>{brightnessDraft ?? device.brightness ?? 0}%</span>
             </div>
             <input
               type="range"
               min={0}
               max={100}
-              value={draft ?? device.brightness ?? 0}
+              value={brightnessDraft ?? device.brightness ?? 0}
               disabled={!canControl}
               aria-label={t('iot.brightnessOf', { name: device.name })}
-              onChange={(e) => setDraft(Number(e.target.value))}
+              onChange={(e) => setBrightnessDraft(Number(e.target.value))}
               onPointerUp={commitBrightness}
               onKeyUp={commitBrightness}
               className="w-full accent-primary disabled:opacity-50"

@@ -1,4 +1,9 @@
-import { IOT_DEVICE_KINDS, IOT_METRICS } from '@krakenos/types';
+import {
+  CLIMATE_TARGET_MAX_C,
+  CLIMATE_TARGET_MIN_C,
+  IOT_DEVICE_KINDS,
+  IOT_METRICS,
+} from '@krakenos/types';
 
 const deviceResponse = {
   type: 'object',
@@ -118,7 +123,10 @@ export const updateIotSchema = {
         },
       },
       position: { type: 'integer', minimum: 0, maximum: 100 },
-      targetC: { type: 'number', minimum: 4, maximum: 35 },
+      // Los límites vienen del contrato (US-265): la UI acota sus incrementos con
+      // los mismos, y con dos copias el día que una cambie el usuario se encuentra
+      // un botón que produce un 400.
+      targetC: { type: 'number', minimum: CLIMATE_TARGET_MIN_C, maximum: CLIMATE_TARGET_MAX_C },
     },
     allOf: [
       {

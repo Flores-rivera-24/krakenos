@@ -1,10 +1,15 @@
 import {
+  CLIMATE_TARGET_MAX_C,
+  CLIMATE_TARGET_MIN_C,
+  CLIMATE_TARGET_STEP_C,
   CONTROLLABLE_IOT_KINDS,
   IOT_DEVICE_KINDS,
   IOT_METRICS,
   SECURITY_METRICS,
+  SWITCHABLE_IOT_KINDS,
   isControllableKind,
   isSecurityMetric,
+  isSwitchableKind,
 } from '@krakenos/types';
 import type { IotDeviceKind, IotMetric } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
@@ -47,6 +52,53 @@ describe('categorías de dispositivo IoT (US-244)', () => {
     for (const kind of ['sensor', 'contact', 'smoke'] as IotDeviceKind[]) {
       expect(isControllableKind(kind), kind).toBe(false);
     }
+  });
+});
+
+/**
+ * US-265. «Controlable» y «se enciende» no son lo mismo, y confundirlos es lo que
+ * pintaba un interruptor en una persiana, en un termostato y —lo peor— en una
+ * cerradura y en un detector de humo. La distinción vive en el contrato para que
+ * no vuelva a estar escrita a mano en cada backend y en la web.
+ */
+describe('categorías con encendido/apagado (US-265)', () => {
+  it('solo la luz y el enchufe se encienden', () => {
+    expect([...SWITCHABLE_IOT_KINDS]).toEqual(['light', 'plug']);
+    for (const kind of IOT_DEVICE_KINDS) {
+      const esperado = (['light', 'plug'] as string[]).includes(kind);
+      expect(isSwitchableKind(kind), `${kind} conmutable`).toBe(esperado);
+    }
+  });
+
+  it('una persiana y un termostato se OPERAN pero no se encienden', () => {
+    // Es justo el par que rompía: son controlables (`position`/`targetC`) y por eso
+    // pasaban el único filtro que había, que era el de controlabilidad.
+    for (const kind of ['cover', 'climate'] as IotDeviceKind[]) {
+      expect(isControllableKind(kind), kind).toBe(true);
+      expect(isSwitchableKind(kind), kind).toBe(false);
+    }
+  });
+
+  it('lo conmutable es un subconjunto de lo controlable', () => {
+    for (const kind of SWITCHABLE_IOT_KINDS) {
+      expect(isControllableKind(kind), kind).toBe(true);
+    }
+  });
+});
+
+describe('límites de la consigna de un termostato (US-265)', () => {
+  it('son los que acotan el borde HTTP y los incrementos de la UI', () => {
+    // Una sola fuente: si estos cambian sin que cambie el schema, un botón de la
+    // UI produce un 400 del que el usuario no puede hacer nada.
+    expect(CLIMATE_TARGET_MIN_C).toBe(4);
+    expect(CLIMATE_TARGET_MAX_C).toBe(35);
+    expect(CLIMATE_TARGET_STEP_C).toBe(0.5);
+  });
+
+  it('el paso es exacto en binario: sumarlo no arrastra ruido de coma flotante', () => {
+    let v = CLIMATE_TARGET_MIN_C;
+    while (v < CLIMATE_TARGET_MAX_C) v += CLIMATE_TARGET_STEP_C;
+    expect(v).toBe(CLIMATE_TARGET_MAX_C);
   });
 });
 

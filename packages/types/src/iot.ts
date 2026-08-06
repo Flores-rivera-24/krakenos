@@ -40,6 +40,42 @@ export function isControllableKind(kind: IotDeviceKind): kind is ControllableIot
 }
 
 /**
+ * Categorías que tienen **encendido/apagado** (US-265). Es un subconjunto propio
+ * de lo controlable, y esa diferencia es justo lo que se operaba mal: una
+ * persiana y un termostato **se operan** (`position`/`targetC`) pero no se
+ * «encienden», así que pintarles un interruptor da un control que manda una
+ * orden que ningún backend real sabe ejecutar. El `satisfies` lo ata: una
+ * categoría que no sea controlable no compila aquí.
+ *
+ * Vive en el contrato porque la condición estaba escrita a mano en tres sitios
+ * (el mock, zigbee2mqtt y la web), que es como acaban divergiendo.
+ */
+export const SWITCHABLE_IOT_KINDS = [
+  'light',
+  'plug',
+] as const satisfies readonly ControllableIotKind[];
+export type SwitchableIotKind = (typeof SWITCHABLE_IOT_KINDS)[number];
+
+/** ¿Se enciende y se apaga este tipo de dispositivo? */
+export function isSwitchableKind(kind: IotDeviceKind): kind is SwitchableIotKind {
+  return (SWITCHABLE_IOT_KINDS as readonly string[]).includes(kind);
+}
+
+/**
+ * Límites de la consigna de un termostato, en °C (US-265). Viven en el contrato
+ * porque los usan **el borde HTTP** (que rechaza con 400 lo que se salga) y **la
+ * UI** (que acota los incrementos): con dos copias, el día que una cambie el
+ * usuario se encuentra un botón que produce un error del servidor.
+ *
+ * El paso es de medio grado a propósito: es el incremento que usan los
+ * termostatos domésticos y además es exacto en binario, así que sumarlo no
+ * arrastra ruido de coma flotante.
+ */
+export const CLIMATE_TARGET_MIN_C = 4;
+export const CLIMATE_TARGET_MAX_C = 35;
+export const CLIMATE_TARGET_STEP_C = 0.5;
+
+/**
  * Implementaciones de integración IoT disponibles.
  *
  * `mqtt` es la ingesta **genérica por protocolo** (US-248): no es una marca sino
