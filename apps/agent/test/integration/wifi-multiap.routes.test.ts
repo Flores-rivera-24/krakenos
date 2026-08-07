@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 describe('rutas de WiFi multi-AP', () => {
   let app: FastifyInstance;
@@ -67,10 +67,8 @@ describe('rutas de WiFi multi-AP', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ id: 'net-salon-guest', enabled: true });
 
-    await eventually(async () => {
-      const audited = await app.prisma.auditLog.findMany({ where: { action: 'wifi.network.update' } });
-      expect(audited.length).toBe(1);
-    });
+    const audited = await esperarAuditoria(app, { action: 'wifi.network.update' });
+    expect(audited).toHaveLength(1);
   });
 
   it('lista los clientes de una red y 404 si no existe', async () => {

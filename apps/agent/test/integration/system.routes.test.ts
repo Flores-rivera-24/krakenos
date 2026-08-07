@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { rateLimitStore } from '../../src/plugins/rate-limit-store.js';
-import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de sistema', () => {
   let app: FastifyInstance;
@@ -322,11 +323,8 @@ describe('rutas de sistema', () => {
     expect(body.mode).toBe('systemd');
     expect(typeof body.message).toBe('string');
 
-    // Queda auditado (el audit es fire-and-forget: se espera a que se persista).
-    await eventually(async () => {
-      const audit = await app.prisma.auditLog.findFirst({ where: { action: 'system.update.apply' } });
-      expect(audit).not.toBeNull();
-    });
+    // Queda auditado (el audit es fire-and-forget: el helper espera a que se persista).
+    await esperarUnaAuditoria(app, { action: 'system.update.apply' });
   });
 
   // Cancelar la actualización (US-232): sin lock no hay nada que cancelar, pero la
@@ -352,12 +350,7 @@ describe('rutas de sistema', () => {
     expect(res.json().cancelled).toBe(false);
     expect(typeof res.json().message).toBe('string');
 
-    await eventually(async () => {
-      const audit = await app.prisma.auditLog.findFirst({
-        where: { action: 'system.update.cancel' },
-      });
-      expect(audit).not.toBeNull();
-    });
+    await esperarUnaAuditoria(app, { action: 'system.update.cancel' });
   });
 
   // Observabilidad (US-191): lectura autenticada; /health sigue mínimo.
@@ -505,12 +498,7 @@ describe('rutas de sistema', () => {
     // un tick después, así que se espera en vez de leer una sola vez. Misma carrera
     // latente que ya se corrigió en `system.update.apply` (US-220), que el cambio de
     // temporización de WAL (US-228) volvió a destapar aquí.
-    await eventually(async () => {
-      const audit = await app.prisma.auditLog.findFirst({
-        where: { action: 'system.support-bundle' },
-      });
-      expect(audit).not.toBeNull();
-    });
+    await esperarUnaAuditoria(app, { action: 'system.support-bundle' });
   });
 
   /**

@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { FAILURE_THRESHOLD, loginLockout } from '../../src/auth/login-lockout.js';
 import { rateLimitStore } from '../../src/plugins/rate-limit-store.js';
-import { buildTestApp, eventually, resetDb, seedUser } from '../helpers/app.js';
+import { buildTestApp, resetDb, seedUser } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 const PASSWORD = 'password123';
 
@@ -71,9 +72,7 @@ describe('lockout por cuenta en login (US-77, F3)', () => {
     for (let i = 0; i < FAILURE_THRESHOLD; i++) {
       await attempt(app, 'audit@krakenos.test', 'wrong-pass');
     }
-    await eventually(async () => {
-      const count = await app.prisma.auditLog.count({ where: { action: 'auth.login_locked' } });
-      expect(count).toBeGreaterThan(0);
-    });
+    const bloqueos = await esperarAuditoria(app, { action: 'auth.login_locked' });
+    expect(bloqueos.length).toBeGreaterThan(0);
   });
 });

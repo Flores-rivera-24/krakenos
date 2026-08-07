@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de firewall', () => {
   let app: FastifyInstance;
@@ -91,14 +91,9 @@ describe('rutas de firewall', () => {
     expect(rule.port).toBe(554);
     expect(rule.enabled).toBe(true);
 
-    await eventually(async () => {
-      // Filtra por detail: la auditoría es fire-and-forget y otra prueba del fichero
-      // también crea 'firewall.rule.add', cuya escritura podría caer tras el resetDb.
-      const log = await app.prisma.auditLog.findFirst({
-        where: { action: 'firewall.rule.add', detail: 'Bloquear cámara' },
-      });
-      expect(log).not.toBeNull();
-    });
+    // Filtra por detail: la auditoría es fire-and-forget y otra prueba del fichero
+    // también crea 'firewall.rule.add', cuya escritura podría caer tras el resetDb.
+    await esperarUnaAuditoria(app, { action: 'firewall.rule.add', detail: 'Bloquear cámara' });
   });
 
   it('actualiza una regla y devuelve 404 si no existe', async () => {

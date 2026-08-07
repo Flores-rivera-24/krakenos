@@ -1,9 +1,10 @@
 import type { HomeEvent, IotDevice, IotManager } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
 import { EnergyAlertService } from '../../src/modules/energy/energy-alerts.service.js';
 import { buildTestApp } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /** IoT mínimo con potencia controlable por el test. */
 class StubIot implements IotManager {
@@ -87,10 +88,7 @@ describe('EnergyAlertService (US-183)', () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({ type: 'energy-threshold', deviceId: 'plug-x', metric: 'sustained-power' });
     // Audita como `energy.threshold` (despacho multicanal US-180).
-    await vi.waitFor(async () => {
-      const audit = await app.prisma.auditLog.findFirst({ where: { action: 'energy.threshold' } });
-      expect(audit).not.toBeNull();
-    });
+    await esperarUnaAuditoria(app, { action: 'energy.threshold' });
   });
 
   it('no dispara si el dispositivo no reporta potencia', async () => {

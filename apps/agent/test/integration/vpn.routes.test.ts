@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 describe('rutas de VPN', () => {
   let app: FastifyInstance;
@@ -88,9 +88,7 @@ describe('rutas de VPN', () => {
     const headers = authHeader(signAccess(app, admin));
     await app.inject({ method: 'POST', url: '/api/vpn/peers', headers, payload: { name: 'X' } });
 
-    await eventually(async () => {
-      const entries = await app.prisma.auditLog.findMany({ where: { action: 'vpn.peer.add' } });
-      expect(entries.length).toBe(1);
-    });
+    const entries = await esperarAuditoria(app, { action: 'vpn.peer.add' });
+    expect(entries).toHaveLength(1);
   });
 });

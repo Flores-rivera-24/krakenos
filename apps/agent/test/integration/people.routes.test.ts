@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /**
  * Personas del hogar (US-240): el control parental por persona. Lo que se ata
@@ -194,11 +194,9 @@ describe('rutas de personas (US-240)', () => {
         headers: authHeader(signAccess(app, admin)),
         payload: { minutes: 30 },
       });
-      // La auditoría es fire-and-forget con reintento (US-85).
-      await eventually(async () => {
-        const log = await app.prisma.auditLog.findFirst({ where: { action: 'people.pause' } });
-        expect(log?.detail).toContain('1/1');
-      });
+      // La auditoría es fire-and-forget con reintento (US-85): el helper la espera.
+      const log = await esperarUnaAuditoria(app, { action: 'people.pause' });
+      expect(log.detail).toContain('1/1');
     });
   });
 

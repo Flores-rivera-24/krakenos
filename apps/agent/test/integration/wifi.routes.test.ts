@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas WiFi', () => {
   let app: FastifyInstance;
@@ -47,10 +48,8 @@ describe('rutas WiFi', () => {
       expect(res.json().band).toBe('2.4GHz');
       expect(res.json()).not.toHaveProperty('password');
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'wifi.update' } });
-        expect(entry?.userId).toBe(admin.id);
-      });
+      const entry = await esperarUnaAuditoria(app, { action: 'wifi.update' });
+      expect(entry.userId).toBe(admin.id);
     });
 
     it('PUT por viewer da 403', async () => {
@@ -117,12 +116,8 @@ describe('rutas WiFi', () => {
       expect(res.json().enabled).toBe(true);
       expect(res.json().bandwidthLimitMbps).toBe(20);
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({
-          where: { action: 'wifi.guest.update' },
-        });
-        expect(entry?.userId).toBe(admin.id);
-      });
+      const entry = await esperarUnaAuditoria(app, { action: 'wifi.guest.update' });
+      expect(entry.userId).toBe(admin.id);
     });
 
     it('PUT por viewer da 403', async () => {

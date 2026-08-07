@@ -11,12 +11,12 @@ import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbo
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
   sleep,
 } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 /** Respuesta SSDP sintética (más simple de fabricar que un datagrama DNS). */
 function ssdp(headers: string, from: string): DiscoveryProbeResponse {
@@ -221,10 +221,8 @@ describe('auto-descubrimiento (US-175)', () => {
     });
     expect(dismiss.statusCode).toBe(204);
 
-    await eventually(async () => {
-      expect(await app.prisma.auditLog.count({ where: { action: 'discovery.scan' } })).toBe(1);
-      expect(await app.prisma.auditLog.count({ where: { action: 'discovery.dismiss' } })).toBe(1);
-    });
+    expect(await esperarAuditoria(app, { action: 'discovery.scan' })).toHaveLength(1);
+    expect(await esperarAuditoria(app, { action: 'discovery.dismiss' })).toHaveLength(1);
   });
 });
 
@@ -285,9 +283,7 @@ describe('alta de un toque desde el descubrimiento (US-249)', () => {
       expect.objectContaining({ ip: '192.168.1.80' }),
     ]);
 
-    await eventually(async () => {
-      expect(await app.prisma.auditLog.count({ where: { action: 'discovery.adopt' } })).toBe(1);
-    });
+    expect(await esperarAuditoria(app, { action: 'discovery.adopt' })).toHaveLength(1);
   });
 
   it('⚠️ adoptar el segundo AÑADE, no reemplaza', async () => {

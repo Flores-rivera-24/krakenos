@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /** Inserta un dispositivo directamente en la DB y devuelve su id. */
 async function seedDevice(app: FastifyInstance, mac = 'aa:bb:cc:dd:ee:01'): Promise<string> {
@@ -105,11 +105,9 @@ describe('rutas de inventario', () => {
       expect(blocked.statusCode).toBe(200);
       expect(blocked.json().isBlocked).toBe(true);
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'device.block' } });
-        expect(entry?.userId).toBe(admin.id);
-        expect(entry?.detail).toBe('aa:bb:cc:dd:ee:02');
-      });
+      const entry = await esperarUnaAuditoria(app, { action: 'device.block' });
+      expect(entry.userId).toBe(admin.id);
+      expect(entry.detail).toBe('aa:bb:cc:dd:ee:02');
 
       const unblocked = await app.inject({
         method: 'DELETE',
@@ -119,10 +117,7 @@ describe('rutas de inventario', () => {
       expect(unblocked.statusCode).toBe(200);
       expect(unblocked.json().isBlocked).toBe(false);
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'device.unblock' } });
-        expect(entry).not.toBeNull();
-      });
+      await esperarUnaAuditoria(app, { action: 'device.unblock' });
     });
 
     it('viewer recibe 403', async () => {
@@ -171,10 +166,7 @@ describe('rutas de inventario', () => {
       expect(cleared.statusCode).toBe(200);
       expect(cleared.json().vlanTag).toBeNull();
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'device.vlan' } });
-        expect(entry).not.toBeNull();
-      });
+      await esperarUnaAuditoria(app, { action: 'device.vlan' });
     });
 
     it('viewer recibe 403', async () => {

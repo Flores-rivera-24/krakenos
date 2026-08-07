@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de QoS', () => {
   let app: FastifyInstance;
@@ -65,13 +65,8 @@ describe('rutas de QoS', () => {
     expect(rule.downloadKbps).toBe(0);
     expect(rule.enabled).toBe(true);
 
-    await eventually(async () => {
-      // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'qos.rule.add').
-      const log = await app.prisma.auditLog.findFirst({
-        where: { action: 'qos.rule.add', detail: 'Prioridad trabajo' },
-      });
-      expect(log).not.toBeNull();
-    });
+    // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'qos.rule.add').
+    await esperarUnaAuditoria(app, { action: 'qos.rule.add', detail: 'Prioridad trabajo' });
   });
 
   it('actualiza una regla y 404 si no existe', async () => {

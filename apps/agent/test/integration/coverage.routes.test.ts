@@ -12,7 +12,8 @@ import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { prismaPlugin } from '../../src/plugins/prisma.js';
 import { coverageRoutes } from '../../src/modules/coverage/coverage.routes.js';
-import { authHeader, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { authHeader, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /**
  * Driver de pruebas con datos deterministas para cobertura. La MAC del "teléfono"
@@ -147,10 +148,8 @@ describe('rutas de cobertura', () => {
       expect(got.json().walls).toHaveLength(1);
       expect(got.json().accessPoints).toHaveLength(1);
 
-      await eventually(async () => {
-        const entry = await app.prisma.auditLog.findFirst({ where: { action: 'coverage.floorplan.create' } });
-        expect(entry?.userId).toBe(admin.id);
-      });
+      const entry = await esperarUnaAuditoria(app, { action: 'coverage.floorplan.create' });
+      expect(entry.userId).toBe(admin.id);
     });
 
     it('valida la imagen de fondo por contenido (US-194): acepta PNG real, rechaza disfraz', async () => {
