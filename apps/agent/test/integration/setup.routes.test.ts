@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { clearStaleSetupClaim } from '../../src/modules/setup/setup.routes.js';
 import { setupToken } from '../../src/modules/setup/setup-token.js';
 import { authHeader, buildTestApp, eventually, resetDb } from '../helpers/app.js';
 
@@ -96,6 +97,52 @@ describe('rutas de setup', () => {
     expect(await app.prisma.user.count()).toBe(1);
     const settings = await app.prisma.setting.findMany({ where: { key: 'homeName' } });
     expect(settings).toHaveLength(1);
+  });
+
+  // ---- Restos de una instalación anterior (regresión: setup imposible) ----
+
+  it('un homeName de una instalación anterior NO bloquea el setup y se sobrescribe', async () => {
+    // Estado real que dejó la instalación bloqueada: cero usuarios, pero el ajuste
+    // `homeName` sobrevivió al borrado. Cuando hacía de candado, `/init` devolvía
+    // 409 «ya está configurado» para siempre, sin ningún usuario con quien entrar.
+    await app.prisma.setting.create({ data: { key: 'homeName', value: 'Casa vieja' } });
+
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.statusCode).toBe(200);
+    expect(await app.prisma.user.count()).toBe(1);
+
+    const setting = await app.prisma.setting.findUnique({ where: { key: 'homeName' } });
+    expect(setting?.value).toBe('Hogar Kraken');
+  });
+
+  it('el candado del primer admin se libera al arrancar si no queda ningún usuario', async () => {
+    await app.prisma.setting.create({ data: { key: 'setup.claimed', value: 'true' } });
+
+    expect(await clearStaleSetupClaim(app.prisma)).toBe(true);
+    expect(await app.prisma.setting.findUnique({ where: { key: 'setup.claimed' } })).toBeNull();
+
+    // Y con el candado suelto, el wizard vuelve a funcionar.
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('con usuarios, el candado NO se libera al arrancar (sigue cerrando la carrera)', async () => {
+    await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+
+    expect(await clearStaleSetupClaim(app.prisma)).toBe(false);
+    expect(await app.prisma.setting.findUnique({ where: { key: 'setup.claimed' } })).not.toBeNull();
+  });
+
+  it('candado obsoleto sin usuarios → 409 que lo dice, no «ya está configurado»', async () => {
+    // Los usuarios se borraron con el agente vivo, así que el candado sigue puesto y
+    // nadie lo ha soltado todavía. El wizard no puede seguir, pero el mensaje tiene
+    // que decir la verdad (reiniciar) y no afirmar que hay una cuenta que no existe.
+    await app.prisma.setting.create({ data: { key: 'setup.claimed', value: 'true' } });
+
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('SETUP_LOCK_STALE');
+    expect(await app.prisma.user.count()).toBe(0);
   });
 
   it('400 con payload incompleto o contraseña corta', async () => {
