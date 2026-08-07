@@ -1,0 +1,31 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "Pruebas de mutación (Stryker). Miden algo que la cobertura NO mide: si los tests DETECTAN un cambio de comportamiento, no solo si ejecutan la línea. Acotado a la lógica pura crítica — autorización por rol, tokens de API, lockout de login y la máquina de estados de la alarma — porque es donde un test que pasa por la línea sin comprobar nada es más caro. Ver docs/qa.md.",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "_comment_plugins": "Explícito a propósito: el descubrimiento por defecto hace glob de `@stryker-mutator/*` y con el node_modules simbolizado de pnpm no resuelve nada («no TestRunner plugins were loaded»). Nombrarlo evita depender del layout del gestor de paquetes.",
+  "plugins": ["@stryker-mutator/vitest-runner"],
+  "vitest": {
+    "configFile": "vitest.mutation.config.ts"
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/auth/capabilities.ts",
+    "src/auth/api-token.ts",
+    "src/auth/login-lockout.ts",
+    "src/auth/attempt-lockout.ts",
+    "src/alarm/state-machine.ts",
+    "src/alarm/life-safety.ts"
+  ],
+  "reporters": ["html", "clear-text", "progress"],
+  "htmlReporter": {
+    "fileName": "../../qa-reports/mutation/index.html"
+  },
+  "thresholds": {
+    "high": 90,
+    "low": 80,
+    "break": 75
+  },
+  "timeoutMS": 20000,
+  "concurrency": 4
+}

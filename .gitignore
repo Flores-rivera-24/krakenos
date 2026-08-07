@@ -37,6 +37,14 @@ prisma/dev.db*
 npm-debug.log*
 pnpm-debug.log*
 
+# Informes de QA (mutación, rendimiento): son RESULTADOS de una ejecución, se
+# regeneran con `pnpm qa:*` y cambian en cada máquina. Lo que sí se versiona es
+# el umbral que deben superar, que vive en la config de cada herramienta.
+/qa-reports/
+# Sandboxes temporales de Stryker: copia del árbol por mutante. Se limpian solos
+# al terminar bien, pero una ejecución interrumpida los deja atrás.
+.stryker-tmp/
+
 # Editor / OS
 .DS_Store
 .idea/

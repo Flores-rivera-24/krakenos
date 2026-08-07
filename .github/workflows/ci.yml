@@ -68,6 +68,22 @@ jobs:
       - name: Test (con coverage informativo)
         run: pnpm test:coverage
 
+      # Pruebas de MUTACIÓN (Stryker). BLOQUEANTE al 75 %.
+      #
+      # Mide lo que la cobertura no puede: si los tests **detectan** un cambio de
+      # comportamiento, o solo pasan por la línea sin comprobar nada. Cambia el
+      # código a propósito (un `>` por `>=`, un `&&` por `||`) y exige que algún
+      # test se entere. Un mutante que sobrevive es una línea que se ejecuta pero
+      # no se vigila — y esas son invisibles para el porcentaje de coverage.
+      #
+      # Acotado a la lógica pura crítica (autorización por rol, tokens de API,
+      # lockout anti-fuerza-bruta y máquina de estados de la alarma) con su propia
+      # config de Vitest: la campaña entera tarda ~15 s. Sin acotar, Stryker
+      # re-ejecutaría los ~5 min de suite del agente **por cada mutante**.
+      # Ver docs/qa.md § Mutación.
+      - name: Mutation testing (lógica crítica de auth y alarma)
+        run: pnpm qa:mutation
+
       # Auditoría de dependencias (AUD-23): una CVE **crítica** en dependencias de
       # PRODUCCIÓN bloquea el pipeline. Datos de **OSV** (binario pineado): npm
       # retiró sus endpoints legacy de audit (410 desde 2026-07-15) y pnpm aún no
