@@ -65,7 +65,7 @@ import { DiscoveryService } from './modules/discovery/discovery.service.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
-import { setupRoutes } from './modules/setup/setup.routes.js';
+import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
 import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -661,6 +661,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   // configuración y lo imprime en el log/CLI (canal out-of-band). `/setup/init`
   // lo exigirá, de modo que solo quien tiene acceso al servidor crea el admin.
   if ((await app.prisma.user.count()) === 0) {
+    // Sin usuarios, la instalación está SIN configurar: suelta el candado del primer
+    // admin si quedó de un arranque anterior, o `/setup/init` fallaría siempre y no
+    // habría forma de entrar (ni wizard ni login). Único momento sin concurrencia.
+    if (await clearStaleSetupClaim(app.prisma)) {
+      app.log.warn('Candado de configuración obsoleto (sin usuarios): liberado');
+    }
+
     const token = setupToken.ensure();
     const setupUrl = buildSetupUrl({
       scheme: env.https ? 'https' : 'http',

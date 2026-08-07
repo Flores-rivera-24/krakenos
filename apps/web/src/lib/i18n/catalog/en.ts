@@ -52,8 +52,15 @@ export const en: Record<TranslationKey, string> = {
   'errors.code.AUTH_INVALID_CREDENTIALS': 'Incorrect credentials.',
   'errors.code.RATE_LIMITED': 'Too many attempts. Wait a moment and try again.',
   'errors.code.VALIDATION': 'Check the details and try again.',
+  'errors.code.SETUP_ALREADY_DONE': 'This system is already set up',
+  'errors.code.SETUP_LOCK_STALE':
+    'Setup was left locked by an earlier attempt. Restart the agent and try again.',
 
   // --- Setup / wizard ---
+  'setup.checking': 'Checking this installation…',
+  'setup.statusUnknown':
+    'We could not check whether this installation already has an administrator. You can continue.',
+  'setup.goToLogin': 'Go to sign in',
   'setup.welcome': 'Welcome to KrakenOS',
   'setup.subtitle': 'Set up your administrator to get started.',
   'setup.defaultHomeName': 'My home',

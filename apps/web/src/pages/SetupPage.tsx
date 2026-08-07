@@ -7,7 +7,8 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogoMark } from '@/components/ui/logo';
-import { api } from '@/lib/api';
+import { Splash } from '@/components/ui/splash';
+import { ApiRequestError, api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { t as translate, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
@@ -29,7 +30,13 @@ export function SetupPage() {
   );
   const [requiresToken, setRequiresToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Un 409 no es un error más: significa que aquí no hay nada que hacer y el sitio
+  // del usuario es el login. Sin la salida a mano, el wizard es un callejón.
+  const [alreadyDone, setAlreadyDone] = useState(false);
   const [loading, setLoading] = useState(false);
+  // El formulario no se pinta hasta saber si hace falta: pintarlo antes deja a la
+  // gente rellenando seis campos que quizá se descarten al llegar la respuesta.
+  const [checking, setChecking] = useState<'checking' | 'needed' | 'unknown'>('checking');
 
   // Si el sistema ya está configurado, no tiene sentido el wizard.
   useEffect(() => {
@@ -39,9 +46,16 @@ export function SetupPage() {
       .then((s) => {
         if (!active) return;
         if (!s.needsSetup) navigate('/login', { replace: true });
-        else setRequiresToken(s.requiresToken);
+        else {
+          setRequiresToken(s.requiresToken);
+          setChecking('needed');
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        // Sin respuesta no se puede afirmar ni negar: se deja continuar, pero
+        // diciéndolo. Tragarse el fallo deja el wizard en pie sin explicar nada.
+        if (active) setChecking('unknown');
+      });
     return () => {
       active = false;
     };
@@ -72,10 +86,15 @@ export function SetupPage() {
       navigate('/', { replace: true });
     } catch (err) {
       setError(describeError(err, t('setup.error.generic')));
+      if (err instanceof ApiRequestError && err.body?.code === 'SETUP_ALREADY_DONE') {
+        setAlreadyDone(true);
+      }
     } finally {
       setLoading(false);
     }
   };
+
+  if (checking === 'checking') return <Splash label={t('setup.checking')} />;
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-kr-base p-4">
@@ -127,11 +146,23 @@ export function SetupPage() {
           </div>
         )}
 
+        {checking === 'unknown' && <ErrorBanner>{t('setup.statusUnknown')}</ErrorBanner>}
         {error && <ErrorBanner>{error}</ErrorBanner>}
 
         <Button type="submit" className="w-full" disabled={loading}>
           {loading ? t('setup.submitting') : t('setup.submit')}
         </Button>
+
+        {alreadyDone && (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate('/login', { replace: true })}
+          >
+            {t('setup.goToLogin')}
+          </Button>
+        )}
       </form>
     </div>
   );
