@@ -1,16 +1,16 @@
 # Verificación de montaje: `pnpm dev` y `pnpm prod` bajo Playwright
 
 Suite de navegador que corre **los mismos flujos contra los dos montajes reales**
-del proyecto. Vive en `e2e/stacks/` y es independiente de la suite de US-189
-(`e2e/`, `docs/e2e.md`), que sigue siendo el gate rápido de CI.
+del proyecto. Vive en `e2e/stacks/` y es independiente de la suite de flujos
+principal (`e2e/`, ver `docs/e2e.md`), que sigue siendo el gate rápido de CI.
 
 ## Por qué existe
 
-La suite de US-189 corre contra un montaje **propio**: `dist/index.js` con
+La suite principal corre contra un montaje **propio**: `dist/index.js` con
 `NODE_ENV=test`, `SERVE_WEB=true` y un puerto fijo. Es determinista, y por eso
 mismo no ejerce ninguno de los dos montajes que usa una persona de verdad:
 
-| | `pnpm dev` | `pnpm prod` | arnés de US-189 |
+| | `pnpm dev` | `pnpm prod` | arnés de la suite principal |
 |---|---|---|---|
 | Quién sirve la UI | Vite (:5173) | el agente | el agente |
 | API | proxy de Vite → :3001 | mismo puerto | mismo puerto |
@@ -21,7 +21,9 @@ mismo no ejerce ninguno de los dos montajes que usa una persona de verdad:
 
 Cada diferencia de esa tabla es un sitio donde algo puede fallar **solo en uno de
 los dos** y ninguna suite lo vería. Todos los fallos que encontró esta suite en su
-primera tanda estaban en esa columna.
+primera tanda estaban en esa columna: la fuente bloqueada por la CSP solo en
+producción, el service worker sirviendo código viejo solo en desarrollo, y una
+excepción del dashboard que solo aparecía sobre el build minificado.
 
 ## Cómo se corre
 
@@ -42,7 +44,7 @@ propio admin recorriendo el wizard de verdad. Todos los managers van en `mock`.
 
 ### Si Chromium no arranca
 
-Mismo problema y misma solución que la suite de US-189 — ver
+Mismo problema y misma solución que la suite principal — ver
 `docs/e2e.md → «Si Chromium no arranca»` (paquetes `libnspr4`, `libnss3` y
 `libasound2t64` desempaquetados en `$HOME` sin root, y `LD_LIBRARY_PATH`).
 
@@ -62,7 +64,7 @@ Mismo problema y misma solución que la suite de US-189 — ver
 Cada test engancha `observarProblemas(page)` **antes** del primer `goto` y al
 final asevera tres listas vacías: errores de consola, peticiones caídas y
 respuestas 4xx/5xx. Eso es lo que convierte «la página se ve bien» en «la página
-no está rota por dentro» — el fallo del dashboard (`t is not iterable`) no se
+no está rota por dentro» — la excepción del dashboard (`t is not iterable`) no se
 notaba mirando la pantalla.
 
 El ruido conocido se filtra en `lib/harness.ts::RUIDO_CONSOLA`, con el motivo
@@ -75,9 +77,8 @@ ver**: se añaden con cuentagotas y nunca para «poner el test en verde».
   se llama «Firewall 2». Se buscan por `href` (`lib/harness.ts::enlaceDeNav`).
 - **No se puede aseverar sobre `<h1>`**: solo 3 de las 19 páginas tienen uno, la
   mayoría titula con `<h2>` y `/inventory`, `/people` y `/dns` no tienen **ningún**
-  encabezado. `esperarContenido()` mira que `<main>` tenga contenido. Queda
-  anotado en `BACKLOG.md` como hallazgo de accesibilidad.
+  encabezado. `esperarContenido()` mira que `<main>` tenga contenido.
 - **Cada stack necesita subir su `loginRateLimit`**: cada flujo hace su propio
-  login por UI (misma razón que en US-261).
+  login por UI y, con dos docenas de flujos, la tanda se come el límite por IP.
 - **`vite` y el agente se lanzan `detached`** y se matan por grupo: si no, dejan
   hijos vivos ocupando el puerto para la siguiente tanda.
