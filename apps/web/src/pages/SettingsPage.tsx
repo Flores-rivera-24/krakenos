@@ -23,6 +23,7 @@ import { HealthCard } from '@/components/settings/HealthCard';
 import { SupportCard } from '@/components/settings/SupportCard';
 import { TlsCard } from '@/components/settings/TlsCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
+import { WeatherCard } from '@/components/settings/WeatherCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -516,6 +517,9 @@ export function SettingsPage() {
               <IntegrationsSection isAdmin={isAdmin} />
               <MatterBridgeCard isAdmin={isAdmin} />
               {isAdmin && <MqttInteropCard />}
+              {/* El tiempo exterior es lo único que manda un dato del hogar a un
+                  tercero: solo un admin puede consentirlo (US-254). */}
+              {isAdmin && <WeatherCard />}
             </div>
           )}
 

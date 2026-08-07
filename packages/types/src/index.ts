@@ -34,5 +34,6 @@ export * from './scene.js';
 export * from './iot-schedule.js';
 export * from './automation.js';
 export * from './presence.js';
+export * from './weather.js';
 export * from './discovery.js';
 export * from './alarm.js';
