@@ -58,6 +58,8 @@ import { HomeEventBus } from './automations/event-bus.js';
 import { IotWatcher } from './automations/iot-watcher.js';
 import { AutomationService } from './modules/automations/automations.service.js';
 import { automationsRoutes } from './modules/automations/automations.routes.js';
+import { WeatherService } from './modules/weather/weather.service.js';
+import { weatherRoutes } from './modules/weather/weather.routes.js';
 import { PresenceService } from './modules/presence/presence.service.js';
 import { presenceRoutes } from './modules/presence/presence.routes.js';
 import { DgramDiscoveryTransport } from './discovery/transport.js';
@@ -292,6 +294,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     watcher: iotWatcher,
   });
   await app.register(automationsRoutes, { prefix: '/api/automations', service: automationService });
+  // Tiempo exterior como disparador (US-254). Va DESPUÉS del bus porque publica
+  // en él. Opt-in duro: apagado no hace ninguna petición saliente.
+  const weatherService = new WeatherService(app, { bus: homeBus });
+  await app.register(weatherRoutes, { prefix: '/api/weather', service: weatherService });
   // Modos del hogar + presencia por WiFi (US-169): deriva llegadas/salidas de los
   // eventos device-online/offline del bus sobre `Device.ownerId`, con ventana de
   // gracia; el modo es estado global observable y trigger de automatización.
@@ -631,6 +637,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   app.addHook('onClose', async () => iotWatcher.stop());
   automationService.start();
   app.addHook('onClose', async () => automationService.stop());
+
+  // Tiempo exterior (US-254): barrido horario. `start()` no consulta nada por sí
+  // mismo — cada ciclo relee el opt-in, así que apagado es apagado también aquí.
+  weatherService.start();
+  app.addHook('onClose', async () => weatherService.stop());
 
   // Presencia (US-169): reconcilia el timeline al arrancar y confirma salidas
   // pendientes (ventana de gracia) cada minuto.

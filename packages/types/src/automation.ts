@@ -1,6 +1,7 @@
 import type { Id, IsoDateTime } from './common.js';
 import type { IotMetric } from './iot.js';
 import type { HomeMode } from './presence.js';
+import type { WeatherMetric } from './weather.js';
 
 /**
  * Automatizaciones «si X entonces Y» (US-167). El motor es local (sin nube):
@@ -28,6 +29,15 @@ export type AutomationTrigger =
    * (`person`/`car`/…); sin `label` = cualquier detección.
    */
   | { type: 'motion-detected'; cameraId?: Id; label?: string }
+  /**
+   * El tiempo exterior cruza un umbral (US-254). Dispara **al cruzar**, no
+   * sostenido —igual que `sensor-threshold`—: con una lectura horaria, un
+   * disparador sostenido ejecutaría la regla cada hora mientras durase el frío.
+   *
+   * Requiere el opt-in de `WeatherConfig`; sin él no llega ninguna lectura y
+   * una regla con este disparador **nunca** dispara (la UI lo declara).
+   */
+  | { type: 'weather-threshold'; metric: WeatherMetric; op: 'gt' | 'lt'; value: number }
   /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
   | { type: 'time'; days: number[]; minute: number }
   /** Una persona llega/se va de casa (US-169). Sin `userId` = cualquiera. */
@@ -156,6 +166,18 @@ export type HomeEvent = (
    * el log de ejecuciones sea legible sin otra consulta.
    */
   | { type: 'motion-detected'; cameraId: Id; cameraName: string; label?: string }
+  /**
+   * Lectura del tiempo exterior (US-254). Lleva `prevValue` —como
+   * `sensor-reading`— porque el flanco lo calcula el motor: es él quien sabe qué
+   * umbral pide cada regla, y guardarlo por regla en el servicio duplicaría ese
+   * estado en dos sitios.
+   */
+  | {
+      type: 'weather-reading';
+      metric: WeatherMetric;
+      value: number;
+      prevValue: number | null;
+    }
   /**
    * Presencia y modos del hogar (US-169). `name` acompaña al id para que el log
    * de ejecuciones sea legible sin otra consulta.

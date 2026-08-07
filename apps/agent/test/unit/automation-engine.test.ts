@@ -67,6 +67,44 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger(lt, reading(4, 5))).toBe(false);
   });
 
+  it('weather-threshold dispara al CRUZAR, no cada hora mientras dure el frío (US-254)', () => {
+    const trigger = { type: 'weather-threshold', metric: 'temperature', op: 'lt', value: 5 } as const;
+    const lectura = (value: number, prevValue: number | null): HomeEvent => ({
+      type: 'weather-reading',
+      metric: 'temperature',
+      value,
+      prevValue,
+    });
+    expect(matchesTrigger(trigger, lectura(3, 9))).toBe(true); // cruza hacia abajo
+    // El caso que justifica el flanco: con lectura horaria, «sostenido» dispararía
+    // la regla cada hora durante toda la noche.
+    expect(matchesTrigger(trigger, lectura(2, 3))).toBe(false);
+    expect(matchesTrigger(trigger, lectura(3, null))).toBe(true); // primera lectura
+    expect(matchesTrigger(trigger, lectura(9, 3))).toBe(false); // vuelve a subir
+  });
+
+  it('weather-threshold solo mira SU magnitud', () => {
+    // Sin el filtro por métrica, «si llueve» dispararía con la temperatura: es el
+    // mismo fallo que la alarma con una lámpara antes de US-244.
+    const lluvia = { type: 'weather-threshold', metric: 'precipitation', op: 'gt', value: 0 } as const;
+    expect(
+      matchesTrigger(lluvia, {
+        type: 'weather-reading',
+        metric: 'temperature',
+        value: 30,
+        prevValue: 0,
+      }),
+    ).toBe(false);
+    expect(
+      matchesTrigger(lluvia, {
+        type: 'weather-reading',
+        metric: 'precipitation',
+        value: 2,
+        prevValue: 0,
+      }),
+    ).toBe(true);
+  });
+
   it('energy-threshold: sin deviceId casa con cualquiera; con deviceId, solo ese (US-183)', () => {
     const ev: HomeEvent = {
       type: 'energy-threshold',

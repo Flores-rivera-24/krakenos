@@ -3,7 +3,16 @@ import type {
   AutomationRule,
   AutomationTrigger,
   HomeEvent,
+  WeatherMetric,
 } from '@krakenos/types';
+import { WEATHER_UNITS } from '@krakenos/types';
+
+/** Nombre de cada magnitud en el log de ejecuciones (español, como el resto). */
+const DESCRIPCION_METRICA: Record<WeatherMetric, string> = {
+  temperature: 'temperatura',
+  precipitation: 'lluvia',
+  wind: 'viento',
+};
 
 /**
  * Motor de automatizaciones (US-167) — **puro y testeable**: decide qué reglas
@@ -37,6 +46,13 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
         event.type === 'energy-threshold' &&
         (!trigger.deviceId || event.deviceId === trigger.deviceId)
       );
+    case 'weather-threshold': {
+      if (event.type !== 'weather-reading' || event.metric !== trigger.metric) return false;
+      // Mismo flanco que `sensor-threshold`: cruzar, no sostener. Con lectura
+      // horaria, «sostenido» sería disparar cada hora mientras siga helando.
+      const satisfies = (v: number) => (trigger.op === 'gt' ? v > trigger.value : v < trigger.value);
+      return satisfies(event.value) && (event.prevValue === null || !satisfies(event.prevValue));
+    }
     case 'motion-detected':
       return (
         event.type === 'motion-detected' &&
@@ -141,11 +157,13 @@ export function eventSubject(event: HomeEvent): { mac?: string; deviceId?: strin
     case 'sensor-reading':
     case 'energy-threshold':
       return { deviceId: event.deviceId };
-    // La presencia, el modo y el movimiento no aportan un dispositivo objetivo.
+    // La presencia, el modo, el movimiento y el tiempo no aportan un dispositivo
+    // objetivo: una regla del tiempo debe nombrar a quién apaga o enciende.
     case 'person-arrived':
     case 'person-left':
     case 'mode-changed':
     case 'motion-detected':
+    case 'weather-reading':
       return {};
   }
 }
@@ -184,5 +202,9 @@ export function describeEvent(event: HomeEvent): string {
       return event.label
         ? `${event.label} en ${event.cameraName}`
         : `movimiento en ${event.cameraName}`;
+    // Magnitud y valor, nunca la ubicación: `AutomationRun.event` lo lee cualquier
+    // autenticado y las coordenadas del hogar solo las ve un admin (AUD3-02).
+    case 'weather-reading':
+      return `tiempo exterior: ${DESCRIPCION_METRICA[event.metric]} ${event.value} ${WEATHER_UNITS[event.metric]}`;
   }
 }

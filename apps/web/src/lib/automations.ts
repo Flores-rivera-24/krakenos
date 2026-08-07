@@ -8,8 +8,20 @@ import type {
   IotDevice,
   Scene,
   UpdateAutomationRuleRequest,
+  WeatherMetric,
 } from '@krakenos/types';
+import { WEATHER_UNITS } from '@krakenos/types';
 import { api } from '@/lib/api';
+
+/**
+ * Frase de cada magnitud del tiempo (US-254). «la temperatura baja de 5 °C» se
+ * lee como una frase; «temperature lt 5» no.
+ */
+export const WEATHER_METRIC_PHRASES: Record<WeatherMetric, string> = {
+  temperature: 'la temperatura exterior',
+  precipitation: 'la lluvia',
+  wind: 'el viento',
+};
 import { DAY_LABELS, minuteToTimeString } from '@/lib/iot-schedules';
 import { MODE_LABELS } from '@/lib/presence';
 
@@ -55,6 +67,8 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${iotName(ctx, trigger.deviceId)} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value}`;
     case 'energy-threshold':
       return `${trigger.deviceId ? iotName(ctx, trigger.deviceId) : 'un aparato'} supera su umbral de consumo`;
+    case 'weather-threshold':
+      return `${WEATHER_METRIC_PHRASES[trigger.metric]} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value} ${WEATHER_UNITS[trigger.metric]}`;
     case 'time':
       return `a las ${minuteToTimeString(trigger.minute)} (${trigger.days.map((d) => DAY_LABELS[d]).join(' ')})`;
     case 'person-arrived':

@@ -39,6 +39,8 @@ import { IotScheduleService } from '../../src/modules/iot-schedule/iot-schedule.
 import { HomeEventBus } from '../../src/automations/event-bus.js';
 import { automationsRoutes } from '../../src/modules/automations/automations.routes.js';
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
+import { weatherRoutes } from '../../src/modules/weather/weather.routes.js';
+import { WeatherService } from '../../src/modules/weather/weather.service.js';
 import { presenceRoutes } from '../../src/modules/presence/presence.routes.js';
 import { PresenceService } from '../../src/modules/presence/presence.service.js';
 import { discoveryRoutes } from '../../src/modules/discovery/discovery.routes.js';
@@ -221,6 +223,13 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
         access: new AccessScheduleService(app, driver),
         bus: homeBus,
       }),
+    });
+    // Tiempo exterior (US-254). Sin `start()`: el barrido es horario y los tests
+    // llaman a `refresh()` a mano. El fetch por defecto no se usa porque el
+    // opt-in viene apagado — que es justo lo que comprueba su test.
+    await app.register(weatherRoutes, {
+      prefix: '/api/weather',
+      service: new WeatherService(app, { bus: homeBus }),
     });
     // Presencia + modos del hogar (US-169). Sin timers: los tests llaman a
     // `onEvent()`/`tick()` a mano o publican en el bus.

@@ -9,8 +9,9 @@ import type {
   IotDevice,
   Scene,
   UserSummary,
+  WeatherMetric,
 } from '@krakenos/types';
-import { HOME_MODES } from '@krakenos/types';
+import { HOME_MODES, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -34,7 +35,7 @@ import {
 } from '@/lib/automations';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
-import { useT } from '@/lib/i18n';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
 import { MODE_LABELS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
@@ -151,11 +152,16 @@ function RuleEditor({
       ? trg.deviceId
       : (controllable[0]?.id ?? ''),
   );
+  // El operador y el valor los comparten el umbral de sensor y el del tiempo:
+  // es la misma pregunta y el editor solo muestra uno de los dos a la vez.
   const [sensorOp, setSensorOp] = useState<'gt' | 'lt'>(
-    trg?.type === 'sensor-threshold' ? trg.op : 'gt',
+    trg?.type === 'sensor-threshold' || trg?.type === 'weather-threshold' ? trg.op : 'gt',
   );
   const [sensorValue, setSensorValue] = useState(
-    trg?.type === 'sensor-threshold' ? trg.value : 30,
+    trg?.type === 'sensor-threshold' || trg?.type === 'weather-threshold' ? trg.value : 30,
+  );
+  const [weatherMetric, setWeatherMetric] = useState<WeatherMetric>(
+    trg?.type === 'weather-threshold' ? trg.metric : 'temperature',
   );
   const [timeDays, setTimeDays] = useState<number[]>(
     trg?.type === 'time' ? trg.days : ALL_DAYS,
@@ -217,6 +223,11 @@ function RuleEditor({
         // El umbral concreto vive en la regla de alerta de energía (US-183);
         // aquí solo se elige el dispositivo objetivo (vacío = cualquiera).
         return { type: 'energy-threshold', ...(triggerDevice ? { deviceId: triggerDevice } : {}) };
+      case 'weather-threshold':
+        // Reutiliza el operador y el valor del umbral de sensor: es la misma
+        // pregunta («¿supera o baja de?») y duplicar el estado sería duplicar
+        // también el sitio donde se olvida validarlo.
+        return { type: 'weather-threshold', metric: weatherMetric, op: sensorOp, value: sensorValue };
       case 'time':
         return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
       case 'person-arrived':
@@ -361,6 +372,7 @@ function RuleEditor({
             <option value="iot-off">{t('automations.trigger.iotOff')}</option>
             <option value="sensor-threshold">{t('automations.trigger.sensorThreshold')}</option>
             <option value="energy-threshold">{t('automations.trigger.energyThreshold')}</option>
+            <option value="weather-threshold">{t('automations.trigger.weatherThreshold')}</option>
             <option value="motion-detected">{t('automations.trigger.motionDetected')}</option>
             <option value="time">{t('automations.trigger.time')}</option>
             <option value="person-arrived">{t('automations.trigger.personArrived')}</option>
@@ -442,6 +454,45 @@ function RuleEditor({
               </select>
             </div>
           )}
+          {triggerType === 'weather-threshold' && (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label={t('automations.editor.weatherMetricAria')}
+                  className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                  value={weatherMetric}
+                  onChange={(e) => setWeatherMetric(e.target.value as WeatherMetric)}
+                >
+                  {WEATHER_METRICS.map((m) => (
+                    <option key={m} value={m}>
+                      {t(`automations.weather.${m}` as TranslationKey)}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label={t('automations.editor.comparisonAria')}
+                  className={cn(SELECT_CLASS, 'w-auto')}
+                  value={sensorOp}
+                  onChange={(e) => setSensorOp(e.target.value as 'gt' | 'lt')}
+                >
+                  <option value="gt">{t('automations.editor.opGt')}</option>
+                  <option value="lt">{t('automations.editor.opLt')}</option>
+                </select>
+                <Input
+                  type="number"
+                  aria-label={t('automations.editor.thresholdAria')}
+                  value={sensorValue}
+                  onChange={(e) => setSensorValue(Number(e.target.value))}
+                  className="w-24"
+                />
+                <span className="text-kr-sm text-kr-fg-muted">{WEATHER_UNITS[weatherMetric]}</span>
+              </div>
+              {/* Sin el opt-in no llega ninguna lectura y la regla NUNCA
+                  dispararía. Decirlo aquí evita que parezca un fallo de la regla. */}
+              <p className="text-kr-xs text-kr-fg-muted">{t('automations.weather.needsOptIn')}</p>
+            </div>
+          )}
+
           {triggerType === 'sensor-threshold' && (
             <div className="flex flex-wrap items-center gap-2">
               <select

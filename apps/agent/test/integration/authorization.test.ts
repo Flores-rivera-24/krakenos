@@ -111,6 +111,9 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   },
   { method: 'PATCH', url: '/api/automations/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/automations/x' },
+  // tiempo exterior (US-254): activar esto manda la ubicación del hogar a un
+  // tercero, así que es admin — aunque la LECTURA del estado sea de cualquier rol.
+  { method: 'PUT', url: '/api/weather', payload: { enabled: false } },
   // auto-descubrimiento (US-175)
   { method: 'POST', url: '/api/discovery/scan' },
   { method: 'DELETE', url: '/api/discovery/suggestions/hue%3A192.168.1.2' },
