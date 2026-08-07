@@ -86,6 +86,8 @@ function toAction(row: DraftAction): AutomationAction {
       return { type: 'scene-run', sceneId: row.sceneId };
     case 'device-block':
       return { type: 'device-block', ...(row.mac ? { mac: row.mac } : {}) };
+    case 'device-unblock':
+      return { type: 'device-unblock', ...(row.mac ? { mac: row.mac } : {}) };
     case 'device-pause':
       return { type: 'device-pause', minutes: row.minutes, ...(row.mac ? { mac: row.mac } : {}) };
     case 'notify':
@@ -101,6 +103,7 @@ function fromAction(action: AutomationAction, base: DraftAction): DraftAction {
     case 'scene-run':
       return { ...row, sceneId: action.sceneId };
     case 'device-block':
+    case 'device-unblock':
       return { ...row, mac: action.mac ?? '' };
     case 'device-pause':
       return { ...row, mac: action.mac ?? '', minutes: action.minutes };
@@ -577,6 +580,7 @@ function RuleEditor({
                     <option value="iot-set">{t('automations.action.iotSet')}</option>
                     <option value="scene-run">{t('automations.action.sceneRun')}</option>
                     <option value="device-block">{t('automations.action.deviceBlock')}</option>
+                    <option value="device-unblock">{t('automations.action.deviceUnblock')}</option>
                     <option value="device-pause">{t('automations.action.devicePause')}</option>
                     <option value="notify">{t('automations.action.notify')}</option>
                   </select>
@@ -632,7 +636,9 @@ function RuleEditor({
                     ))}
                   </select>
                 )}
-                {(row.type === 'device-block' || row.type === 'device-pause') && (
+                {(row.type === 'device-block' ||
+                  row.type === 'device-unblock' ||
+                  row.type === 'device-pause') && (
                   <div className="space-y-2">
                     <select
                       aria-label={t('automations.editor.actionTargetAria', { n: i + 1 })}

@@ -57,6 +57,17 @@ export type AutomationAction =
   | { type: 'iot-set'; deviceId?: Id; on?: boolean; brightness?: number }
   | { type: 'scene-run'; sceneId: Id }
   | { type: 'device-block'; mac?: string }
+  /**
+   * Quita el bloqueo **manual** de un dispositivo. Existe porque sin ella solo se
+   * podía escribir media rutina: el motor sabía cortar y no sabía devolver, así que
+   * «bloquéalo cuando salga de casa» dejaba el aparato cortado para siempre salvo
+   * que alguien entrase a mano.
+   *
+   * ⚠️ No fuerza el acceso: si un **horario** o una **pausa** siguen activos, el
+   * dispositivo sigue bloqueado — el bloqueo efectivo son tres fuentes en OR
+   * (`access/blocked-eval.ts`) y esta acción solo suelta la suya.
+   */
+  | { type: 'device-unblock'; mac?: string }
   | { type: 'device-pause'; mac?: string; minutes: number }
   | { type: 'notify'; message: string };
 

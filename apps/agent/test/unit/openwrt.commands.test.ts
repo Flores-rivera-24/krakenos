@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   blockMacCommand,
+  parseFirewallStack,
   normalizeMac,
   shellArg,
   uciBandFromBand,
@@ -31,6 +32,45 @@ describe('block/unblock MAC commands', () => {
     const cmd = unblockMacCommand('f0:18:98:aa:bb:cc');
     expect(cmd).toContain('-D FORWARD -m mac --mac-source f0:18:98:aa:bb:cc -j DROP');
     expect(cmd).toContain('|| true');
+  });
+
+  // --- Camino nftables (US-255) ---
+  //
+  // OpenWrt 22.03+ trae fw4/nftables y ya no instala `iptables` de serie. El
+  // proyecto lo daba por resuelto en un COMENTARIO («compat iptables-nft») que
+  // nada instalaba ni comprobaba: en un router moderno el bloqueo fallaba.
+
+  it('el bloqueo cae a nft cuando no hay iptables', () => {
+    const cmd = blockMacCommand('f0:18:98:aa:bb:cc');
+    expect(cmd).toContain('command -v iptables');
+    expect(cmd).toContain('nft insert rule inet fw4 forward ether saddr f0:18:98:aa:bb:cc drop');
+  });
+
+  it('nft INSERTA, no añade: al final de la cadena fw4 ya ha aceptado el paquete', () => {
+    // `add` pondría la regla detrás de las de aceptación de fw4, así que el
+    // bloqueo «se aplicaría» sin cortar nada — un fallo mudo, que es el peor.
+    const cmd = blockMacCommand('f0:18:98:aa:bb:cc');
+    expect(cmd).toContain('nft insert rule');
+    expect(cmd).not.toContain('nft add rule');
+  });
+
+  it('el desbloqueo por nft resuelve el handle: no hay borrado por contenido', () => {
+    const cmd = unblockMacCommand('f0:18:98:aa:bb:cc');
+    expect(cmd).toContain('nft -a list chain inet fw4 forward');
+    expect(cmd).toContain('nft delete rule inet fw4 forward handle');
+    // Sin regla no hay handle, y eso no es un error.
+    expect(cmd).toContain('|| true');
+  });
+
+  it('la pila desconocida se lee como `none`: falla cerrado', () => {
+    expect(parseFirewallStack('iptables\n')).toBe('iptables');
+    expect(parseFirewallStack('nft')).toBe('nft');
+    expect(parseFirewallStack('none')).toBe('none');
+    // Salida rara o transporte caído → `none`. Suponer que hay cortafuegos es lo
+    // que deja el panel diciendo «Bloqueado» sin nada que corte.
+    expect(parseFirewallStack('')).toBe('none');
+    expect(parseFirewallStack(null)).toBe('none');
+    expect(parseFirewallStack('ash: nft: not found')).toBe('none');
   });
 });
 

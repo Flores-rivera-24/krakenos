@@ -105,6 +105,94 @@ describe('horarios de acceso (US-108)', () => {
     expect(calls).toContain(`unblock:${mac}`);
   });
 
+  it('reafirma el bloqueo contra el driver aunque el estado deseado no cambie (US-255)', async () => {
+    // El fallo que cierra: las reglas viven en el ROUTER y el barrido solo llamaba
+    // al driver cuando el estado deseado cambiaba, así que un reinicio del router
+    // se las llevaba y KrakenOS no se enteraba nunca. Aquí se cuenta cuántas veces
+    // se ordena el bloqueo: con el bug, la segunda tanda no produce ninguna.
+    const calls: string[] = [];
+    const fakeDriver = {
+      blockDevice: async (mac: string) => {
+        calls.push(`block:${mac}`);
+      },
+      unblockDevice: async (mac: string) => {
+        calls.push(`unblock:${mac}`);
+      },
+    } as unknown as HardwareDriver;
+    const service = new AccessScheduleService(app, fakeDriver);
+
+    const mac = 'aa:bb:cc:dd:ee:01';
+    const dentro = new Date(2026, 6, 6, 22, 0, 0);
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.21' } });
+    await app.prisma.accessSchedule.create({
+      data: {
+        name: 'noche',
+        mac,
+        enabled: true,
+        days: JSON.stringify([dentro.getDay()]),
+        startMinute: 21 * 60,
+        endMinute: 23 * 60,
+      },
+    });
+
+    await service.tick(dentro);
+    const trasElPrimero = calls.filter((c) => c === `block:${mac}`).length;
+    expect(trasElPrimero).toBeGreaterThan(0);
+
+    // Un minuto después, sin cambio de estado: NO toca reafirmar todavía.
+    await service.tick(new Date(dentro.getTime() + 60_000));
+    expect(calls.filter((c) => c === `block:${mac}`)).toHaveLength(trasElPrimero);
+
+    // Pasado el intervalo, vuelve a ordenarlo aunque nada haya cambiado.
+    await service.tick(new Date(dentro.getTime() + 11 * 60_000));
+    expect(calls.filter((c) => c === `block:${mac}`).length).toBeGreaterThan(trasElPrimero);
+  });
+
+  it('reafirma también el bloqueo MANUAL, que el reinicio del router se lleva igual (US-255)', async () => {
+    const calls: string[] = [];
+    const fakeDriver = {
+      blockDevice: async (mac: string) => {
+        calls.push(mac);
+      },
+      unblockDevice: async () => undefined,
+    } as unknown as HardwareDriver;
+    const service = new AccessScheduleService(app, fakeDriver);
+
+    // Sin horario ni pausa: solo `isBlocked`. Reafirmar únicamente lo gestionado
+    // por horario dejaría este caso con el mismo agujero, solo que más pequeño.
+    const mac = 'aa:bb:cc:dd:ee:02';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.22', isBlocked: true } });
+
+    await service.tick(new Date(2026, 6, 6, 12, 0, 0));
+    expect(calls).toContain(mac);
+  });
+
+  it('si el driver falla, la marca no avanza y se reintenta en el barrido siguiente (US-255)', async () => {
+    let fallar = true;
+    const calls: string[] = [];
+    const fakeDriver = {
+      blockDevice: async (mac: string) => {
+        calls.push(mac);
+        if (fallar) throw new Error('router inalcanzable');
+      },
+      unblockDevice: async () => undefined,
+    } as unknown as HardwareDriver;
+    const service = new AccessScheduleService(app, fakeDriver);
+
+    const mac = 'aa:bb:cc:dd:ee:03';
+    await app.prisma.device.create({ data: { mac, ip: '192.168.1.23', isBlocked: true } });
+
+    const t0 = new Date(2026, 6, 6, 12, 0, 0);
+    await service.tick(t0);
+    expect(calls).toHaveLength(1);
+
+    // Un minuto después: como el anterior falló, sigue vencida y se reintenta ya,
+    // sin esperar el intervalo completo. Darla por reafirmada sería lo peligroso.
+    fallar = false;
+    await service.tick(new Date(t0.getTime() + 60_000));
+    expect(calls).toHaveLength(2);
+  });
+
   it('pausa y reanuda el internet de un dispositivo (US-111)', async () => {
     const mac = 'aa:bb:cc:dd:ee:ff';
     await app.prisma.device.create({ data: { mac, ip: '192.168.1.9' } });

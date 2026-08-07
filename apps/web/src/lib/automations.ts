@@ -99,6 +99,14 @@ export function describeAction(action: AutomationAction, ctx: NameContext = {}):
       return `activa la escena ${ctx.scenes?.find((s) => s.id === action.sceneId)?.name ?? action.sceneId}`;
     case 'device-block':
       return `bloquea ${action.mac ? macName(ctx, action.mac) : 'el dispositivo del evento'}`;
+    // «quita el bloqueo de» y no «desbloquea» a propósito: la acción suelta la
+    // fuente manual, no garantiza acceso. Un horario o una pausa activos siguen
+    // cortando, y el verbo tiene que prometer solo lo que hace.
+    case 'device-unblock':
+      // La contracción va dentro de cada rama: «de» + «el dispositivo…» daría
+      // «de el», que no es español. Las otras acciones no lo notan porque su verbo
+      // rige objeto directo («bloquea el dispositivo del evento»).
+      return `quita el bloqueo ${action.mac ? `de ${macName(ctx, action.mac)}` : 'del dispositivo del evento'}`;
     case 'device-pause':
       return `pausa ${action.mac ? macName(ctx, action.mac) : 'el dispositivo del evento'} ${action.minutes} min`;
     case 'notify':

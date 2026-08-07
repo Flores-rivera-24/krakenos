@@ -24,8 +24,11 @@ import {
   UCI_SHOW_WIRELESS,
   UPTIME,
   WIFI_RELOAD,
+  FIREWALL_STACK_PROBE,
   blockMacCommand,
   iwinfoAssoc,
+  parseFirewallStack,
+  type FirewallStack,
   normalizeMac,
   uciBandFromBand,
   uciEncryptionFromSecurity,
@@ -131,8 +134,20 @@ export class OpenWrtDriver implements HardwareDriver {
     }
   }
 
+  /**
+   * Vivo = se puede hablar con el router. **No** depende de que haya pila de
+   * filtrado a propósito (US-255): un router sin `iptables` ni `nft` sigue dando
+   * inventario, tráfico y WiFi, y devolver `false` lo apagaría entero por una
+   * capacidad que la mayoría de pantallas no usa. El sondeo se refresca aquí para
+   * que instalar el paquete en el router se note sin reiniciar el agente, y la
+   * ausencia la reporta `firewallStack()`, y quien intente bloquear recibe un
+   * error que nombra el paquete a instalar.
+   */
   async healthcheck(): Promise<boolean> {
-    return (await this.tryRun(UPTIME)) !== null;
+    const vivo = (await this.tryRun(UPTIME)) !== null;
+    if (!vivo) return false;
+    this.stack = parseFirewallStack(await this.tryRun(FIREWALL_STACK_PROBE));
+    return true;
   }
 
   async scanArp(): Promise<DiscoveredDevice[]> {
@@ -273,7 +288,32 @@ export class OpenWrtDriver implements HardwareDriver {
     return out;
   }
 
+  /**
+   * Pila de filtrado del router, sondeada una vez y cacheada (US-255).
+   *
+   * OpenWrt 22.03+ trae fw4/nftables y **ya no instala `iptables` de serie**. El
+   * comando de bloqueo cubre las dos, pero si no hay ninguna no corta nada: sin
+   * este sondeo, el fallo aparecería como un error de shell críptico o —peor— como
+   * un comando que devuelve 0 sin hacer nada. Se cachea porque no cambia salvo que
+   * alguien instale un paquete, y se sondea en cada `healthcheck` para que reflejar
+   * ese cambio no exija reiniciar el agente.
+   */
+  private stack: FirewallStack | null = null;
+
+  async firewallStack(): Promise<FirewallStack> {
+    this.stack ??= parseFirewallStack(await this.tryRun(FIREWALL_STACK_PROBE));
+    return this.stack;
+  }
+
   async blockDevice(mac: string): Promise<void> {
+    const stack = await this.firewallStack();
+    if (stack === 'none') {
+      // Se nombra el paquete: el usuario puede arreglarlo en un comando, y un
+      // error que no dice qué instalar obliga a buscarlo fuera del producto.
+      throw new Error(
+        'el router no tiene ni iptables ni nft: no se puede bloquear. Instala `iptables-nft` o `nftables` en el router',
+      );
+    }
     await this.run(blockMacCommand(normalizeMac(mac)));
   }
 
