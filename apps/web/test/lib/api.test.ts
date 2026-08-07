@@ -3,11 +3,32 @@ import { ApiRequestError, api, request } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useAuthStore } from '@/store/auth.store';
 
+/**
+ * Respuesta falsa con `text()`, que es lo que lee `rawRequest`. Antes solo tenía
+ * `json()`: el doble no se parecía a una `Response` de verdad, así que al cambiar
+ * el cliente para distinguir «no es JSON» de «no se pudo LEER el cuerpo» todos
+ * estos tests se rompieron por el doble, no por el código.
+ */
 function jsonResponse(status: number, body: unknown): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
+    text: async () => (body === undefined ? '' : JSON.stringify(body)),
     json: async () => body,
+  } as Response;
+}
+
+/** Respuesta cuyo cuerpo NO se puede leer (petición abortada a media lectura). */
+function cuerpoIlegible(status: number): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => {
+      throw new TypeError('network error');
+    },
+    json: async () => {
+      throw new TypeError('network error');
+    },
   } as Response;
 }
 
@@ -95,6 +116,8 @@ describe('cliente API', () => {
       vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
+        // Un 500 que devuelve HTML (o nada) en vez del `ApiError` del agente.
+        text: async () => '<html>Internal Server Error</html>',
         json: async () => {
           throw new Error('sin cuerpo');
         },
@@ -174,5 +197,47 @@ describe('cliente API', () => {
 
     await expect(api.get('/system/stats')).rejects.toBeInstanceOf(ApiRequestError);
     expect(useAuthStore.getState().tokens).toBeNull(); // refresh fallido limpió sesión
+  });
+
+  /**
+   * Un 200 cuyo cuerpo no se puede LEER no es un dato vacío: es un error.
+   *
+   * Antes `rawRequest` hacía `res.json().catch(() => null)` y devolvía ese `null`
+   * como si fuera la respuesta —tipado con el genérico, que es un cast—. El caso
+   * real es una petición **abortada** al cambiar de página: las cabeceras ya
+   * llegaron (200), pero el cuerpo no. El store de favoritos guardaba `null` y el
+   * dashboard reventaba con `TypeError: … is not iterable`, de forma intermitente
+   * y solo en el build de producción, con la excepción atribuida a la página que
+   * se estuviera abriendo. Lo cazó la suite de montaje (`e2e/stacks`).
+   */
+  it('un 200 con el cuerpo ilegible falla, NUNCA devuelve null como si fuera el dato', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(cuerpoIlegible(200)));
+
+    await expect(api.get('/favorites')).rejects.toBeTruthy();
+  });
+
+  it('un 200 con cuerpo que no es JSON falla en vez de colar null', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        text: async () => '<html>no soy json</html>',
+      } as unknown as Response),
+    );
+
+    await expect(api.get('/favorites')).rejects.toBeInstanceOf(ApiRequestError);
+  });
+
+  it('un 200 sin cuerpo devuelve undefined (escrituras que no responden nada)', async () => {
+    useAuthStore.setState({ tokens: TOKENS });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, status: 200, text: async () => '' } as Response),
+    );
+
+    await expect(api.post('/inventory/rescan')).resolves.toBeUndefined();
   });
 });

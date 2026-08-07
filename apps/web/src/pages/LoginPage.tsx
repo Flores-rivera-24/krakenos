@@ -196,11 +196,18 @@ export function LoginPage() {
           <div className="space-y-4 px-5 py-6 text-center">
             <Fingerprint size={32} className="mx-auto text-kr-accent" />
             <h1 className="text-kr-lg font-medium text-kr-primary">{t('login.mfa.title')}</h1>
+            {/* Igual que el error de contraseña: el resultado de la ceremonia con
+                la passkey es lo que acaba de pasar, y sin anunciarlo el paso de
+                2FA es un callejón sin salida para un lector de pantalla. */}
             {passkeyStatus === 'cancelled' && (
-              <p className="text-[13px] text-danger">{t('login.mfa.cancelled')}</p>
+              <p role="alert" className="text-[13px] text-danger">
+                {t('login.mfa.cancelled')}
+              </p>
             )}
             {passkeyStatus === 'error' && (
-              <p className="text-[13px] text-danger">{t('login.mfa.error')}</p>
+              <p role="alert" className="text-[13px] text-danger">
+                {t('login.mfa.error')}
+              </p>
             )}
             <Button
               type="button"
@@ -308,7 +315,16 @@ export function LoginPage() {
               {loading ? t('login.submitting') : t('login.submit')}
             </Button>
 
-            {error && <p className="text-[13px] text-danger">{error}</p>}
+            {/* `role="alert"` porque es exactamente lo que ACABA de pasar al
+                pulsar «Iniciar sesión» (misma regla que `ui/callout.tsx`). Sin
+                él, quien usa lector de pantalla teclea mal la contraseña y no se
+                entera de nada: el formulario se queda igual y el mensaje aparece
+                en un `<p>` que nadie anuncia. */}
+            {error && (
+              <p role="alert" className="text-[13px] text-danger">
+                {error}
+              </p>
+            )}
           </form>
         )}
 

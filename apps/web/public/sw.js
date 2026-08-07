@@ -43,6 +43,30 @@ function esSoloRed(url) {
   );
 }
 
+/**
+ * ¿Es esta URL **inmutable**, o sea seguro servirla de caché sin revalidar?
+ *
+ * «Caché primero» solo es correcto cuando un cambio de contenido implica un
+ * cambio de URL. Eso lo cumple `/assets/*` —Vite emite el hash del contenido en
+ * el nombre— y nada más: el resto de estáticos (`/theme-init.js`,
+ * `/locale-init.js`, los iconos) mantienen su URL entre versiones, así que van
+ * por red primero y solo caen a la caché si no hay conexión.
+ *
+ * ⚠️ Antes esta distinción no existía: el handler cacheaba «primero caché»
+ * cualquier GET del mismo origen. En producción casi colaba (casi todo es
+ * `/assets/*`), pero se quedaba con `/theme-init.js` de la versión anterior; y
+ * en `pnpm dev` era claramente dañino, porque allí el SW **también** se registra
+ * (`localhost` es contexto seguro) y las URL de los módulos de Vite son
+ * **estables**: `/src/App.tsx`, `/@vite/client`, `/node_modules/.vite/deps/*`.
+ * El SW se quedaba con la primera versión de cada módulo y al recargar servía
+ * código viejo —el cambio recién guardado no aparecía— sin ningún error que lo
+ * explicara. Eso se cierra por dos sitios: aquí, y no registrando el SW en
+ * desarrollo (`lib/pwa.ts`). Lo fija `e2e/stacks/specs/service-worker.spec.ts`.
+ */
+function esInmutable(url) {
+  return url.pathname.startsWith('/assets/');
+}
+
 /** Página de cortesía cuando no hay red NI copia en caché. */
 function paginaSinConexion() {
   const html = [
@@ -122,24 +146,35 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Estáticos: caché primero (los nombres llevan hash → inmutables).
+  /** Guarda una copia en caché sin bloquear la respuesta. */
+  const guardar = (res) => {
+    if (res.ok && res.type === 'basic') {
+      const copia = res.clone();
+      caches
+        .open(CACHE)
+        .then((c) => c.put(req, copia))
+        .catch(() => undefined);
+    }
+    return res;
+  };
+
+  // Estáticos inmutables: caché primero (los nombres llevan hash del contenido).
+  if (esInmutable(url)) {
+    e.respondWith(
+      caches
+        .match(req)
+        .then((hit) => hit ?? fetch(req).then(guardar).catch(() => Response.error())),
+    );
+    return;
+  }
+
+  // El resto de estáticos (URL estable): **red primero**, caché solo como red de
+  // seguridad sin conexión. Así la copia offline sigue existiendo, pero estando
+  // en línea nunca se sirve una versión vieja.
   e.respondWith(
-    caches.match(req).then(
-      (hit) =>
-        hit ??
-        fetch(req)
-          .then((res) => {
-            if (res.ok && res.type === 'basic') {
-              const copia = res.clone();
-              caches
-                .open(CACHE)
-                .then((c) => c.put(req, copia))
-                .catch(() => undefined);
-            }
-            return res;
-          })
-          .catch(() => Response.error()),
-    ),
+    fetch(req)
+      .then(guardar)
+      .catch(() => caches.match(req).then((hit) => hit ?? Response.error())),
   );
 });
 

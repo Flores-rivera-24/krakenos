@@ -1,4 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Inter AUTOALOJADA (variable, eje de peso 100–900).
+ *
+ * Antes esto era `@import url('https://fonts.googleapis.com/css2?family=Inter…')`,
+ * y eso estaba roto de dos formas opuestas según el montaje:
+ *
+ *  · En **producción** la CSP del propio agente (`style-src 'self' 'unsafe-inline'`,
+ *    `font-src 'self'`) bloqueaba la hoja, así que la fuente del sistema de diseño
+ *    **no se aplicaba nunca**: la app se veía con `system-ui` mientras
+ *    `docs/design-system.md` prometía Inter.
+ *  · En **desarrollo** no hay CSP, así que sí cargaba — pidiéndole la fuente a
+ *    Google en cada arranque. Un panel de administración de la red de casa que
+ *    presume de no depender de terceros no puede filtrar a Google la IP de quien
+ *    lo abre, y encima es la única petición que sale de la LAN.
+ *
+ * Y en los dos: una instalación sin salida a internet (que es el caso normal aquí)
+ * se comía el tiempo de espera de la petición antes de pintar texto.
+ *
+ * Autoalojarla arregla los dos casos a la vez. `unicode-range` hace que el
+ * navegador solo descargue el subconjunto que necesita (latino: 48 kB); Vite emite
+ * los `.woff2` con hash en el nombre, así que son inmutables y cachearlos es
+ * correcto. No cuenta para el presupuesto de bundle, que mide solo JS. */
+@import '@fontsource-variable/inter/wght.css';
 
 @tailwind base;
 @tailwind components;
@@ -134,7 +155,10 @@
     @apply border-border;
   }
   body {
+    /* `Inter Variable` es el nombre que declara el paquete autoalojado; `Inter` a
+       secas queda detrás por si quien mira la tiene instalada en el sistema. */
     font-family:
+      'Inter Variable',
       'Inter',
       system-ui,
       -apple-system,
