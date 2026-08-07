@@ -80,6 +80,70 @@ export const recentQueriesSchema = {
   },
 } as const;
 
+/**
+ * Histórico DNS persistido (US-252). Nótese lo que **no** viaja: la IP del
+ * cliente. Se guarda en la fila para diagnóstico, pero publicarla en una vista que
+ * cualquier rol puede pedir daría el mapa IP→persona justo en la respuesta pensada
+ * para no darlo. El aparato se identifica por MAC y se nombra por su etiqueta.
+ */
+const historyEntry = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'timestamp', 'domain', 'blocked', 'mac', 'deviceLabel'],
+  properties: {
+    id: { type: 'string' },
+    timestamp: { type: 'string', format: 'date-time' },
+    domain: { type: 'string' },
+    blocked: { type: 'boolean' },
+    mac: { type: ['string', 'null'] },
+    deviceLabel: { type: ['string', 'null'] },
+  },
+} as const;
+
+export const dnsHistorySchema = {
+  querystring: {
+    type: 'object',
+    additionalProperties: false,
+    properties: {
+      limit: { type: 'integer', minimum: 1, maximum: 500, default: 100 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['entries', 'coverage'],
+      properties: {
+        entries: { type: 'array', items: historyEntry },
+        // La cobertura viaja CON los datos, no en un endpoint aparte: es lo que
+        // impide leer una tabla corta como «no salió nada de casa».
+        coverage: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['recording', 'silentDevices', 'onlineDevices', 'retentionDays'],
+          properties: {
+            recording: { type: 'boolean' },
+            silentDevices: { type: 'integer' },
+            onlineDevices: { type: 'integer' },
+            retentionDays: { type: 'integer' },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+export const clearDnsHistorySchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['removed'],
+      properties: { removed: { type: 'integer' } },
+    },
+  },
+} as const;
+
 /** Feed de categoría (adlist) — US-114. */
 const feed = {
   type: 'object',

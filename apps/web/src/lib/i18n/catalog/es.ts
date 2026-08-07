@@ -479,7 +479,22 @@ export const es = {
   'dns.queries.title': 'Consultas recientes',
   'dns.col.client': 'Cliente',
   'dns.col.status': 'Estado',
+  'dns.col.time': 'Hora',
+  'dns.col.device': 'Dispositivo',
   'dns.queries.empty': 'Aún no hay consultas recientes.',
+  'dns.history.title': 'Histórico por dispositivo',
+  'dns.history.subtitle.admin': 'A qué dominios ha hablado cada dispositivo del hogar.',
+  'dns.history.subtitle.own': 'A qué dominios han hablado tus dispositivos.',
+  'dns.history.unknownDevice': 'Sin identificar',
+  'dns.history.empty.notYet': 'Aún no se ha registrado ninguna consulta.',
+  'dns.history.empty.none': 'Tus dispositivos no han hecho consultas en este periodo.',
+  'dns.history.retention': 'Se conservan {days} días y luego se eliminan solas.',
+  'dns.history.silentTitle': 'Hay dispositivos que no pasan por aquí',
+  'dns.history.silentDesc':
+    '{silent} de tus {online} dispositivos en línea no han hecho ni una consulta. O llevan un rato sin actividad, o resuelven por su cuenta (DoH o un DNS fijo) y de esos no se ve nada desde aquí.',
+  'dns.history.clear': 'Eliminar el histórico',
+  'dns.history.cleared': 'Histórico eliminado',
+  'dns.history.clearError': 'No se pudo eliminar el histórico',
   // US-250: «no hay consultas» sería mentira cuando lo que falta es el permiso.
   'dns.queries.adminOnly': 'Solo el administrador ve las consultas recientes',
   'dns.queries.adminOnlyDesc':

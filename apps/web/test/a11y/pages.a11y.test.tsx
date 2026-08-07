@@ -190,6 +190,13 @@ function apiGet(path: string): Promise<unknown> {
       memory: { totalBytes: 8 * 1024 ** 3, usedBytes: 4 * 1024 ** 3, usedPercent: 50 },
       timestamp: '',
     });
+  // Histórico DNS (US-252): la respuesta lleva `entries` **y** `coverage`; un mock
+  // que devuelva solo una lista no se parece al contrato y prueba otra cosa.
+  if (path.startsWith('/dns/history'))
+    return Promise.resolve({
+      entries: [],
+      coverage: { recording: false, silentDevices: 0, onlineDevices: 0, retentionDays: 7 },
+    });
   if (path === '/wifi') return Promise.resolve(WIFI);
   if (path === '/wifi/guest') return Promise.resolve(GUEST);
   if (path === '/wifi/networks')

@@ -4,6 +4,7 @@ import {
   DEFAULT_ENERGY_RETENTION_DAYS,
   pruneAuditLog,
   pruneAutomationRuns,
+  pruneDnsQueryLog,
   pruneEnergySamples,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
@@ -77,6 +78,13 @@ export class RetentionService {
       const scans = await pruneSurveyScans(this.app.prisma);
       if (scans > 0) {
         this.app.log.info(`[retention] podados ${scans} recorridos de cobertura antiguos`);
+      }
+      // Histórico DNS (US-252): la tabla más sensible del sistema. La ingesta ya
+      // poda en su propio barrido; esto es la red de seguridad para cuando la
+      // ingesta esté parada y el historial viejo se quede en disco.
+      const dns = await pruneDnsQueryLog(this.app.prisma);
+      if (dns > 0) {
+        this.app.log.info(`[retention] podadas ${dns} consultas DNS del histórico`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

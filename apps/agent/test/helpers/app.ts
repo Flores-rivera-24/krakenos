@@ -18,6 +18,7 @@ import { webauthnRoutes } from '../../src/modules/webauthn/webauthn.routes.js';
 import { BackupCodeService } from '../../src/webauthn/backup-codes.service.js';
 import { WebAuthnService } from '../../src/webauthn/webauthn.service.js';
 import { camerasRoutes } from '../../src/modules/cameras/cameras.routes.js';
+import { DnsHistoryService } from '../../src/modules/dns/dns-history.service.js';
 import { dnsRoutes } from '../../src/modules/dns/dns.routes.js';
 import { firewallRoutes } from '../../src/modules/firewall/firewall.routes.js';
 import { qosRoutes } from '../../src/modules/qos/qos.routes.js';
@@ -334,7 +335,13 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
-    await app.register(dnsRoutes, { prefix: '/api/dns', dns: new MockDnsManager() });
+    const dnsManager = new MockDnsManager();
+    await app.register(dnsRoutes, {
+      prefix: '/api/dns',
+      dns: dnsManager,
+      // Sin arrancar su barrido: los tests siembran las filas que necesitan.
+      history: new DnsHistoryService(app, dnsManager),
+    });
     await app.register(integrationsRoutes, {
       prefix: '/api/integrations',
       runtime,
@@ -371,6 +378,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.energyAlertRule.deleteMany();
   await app.prisma.recording.deleteMany();
   await app.prisma.presenceEvent.deleteMany();
+  await app.prisma.dnsQueryLog.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample
