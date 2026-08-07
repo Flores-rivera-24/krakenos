@@ -7,7 +7,9 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        // 'Inter Variable' = la autoalojada (@fontsource-variable/inter); 'Inter'
+        // detrás por si está instalada en el sistema. Ver el porqué en index.css.
+        sans: ['Inter Variable', 'Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       // Escala tipográfica del sistema de diseño (US-33). [size, lineHeight]
       fontSize: {

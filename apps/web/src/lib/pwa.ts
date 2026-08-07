@@ -30,9 +30,31 @@ export function soportaServiceWorker(): boolean {
 export async function registrarServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!soportaServiceWorker()) return null;
   if (typeof window !== 'undefined' && !window.isSecureContext) return null;
+  if (!esCompilacionDeProduccion()) return null;
   try {
     return await navigator.serviceWorker.register('/sw.js');
   } catch {
     return null;
   }
+}
+
+/**
+ * ¿Estamos en una compilación de producción? En `pnpm dev` no se registra el SW.
+ *
+ * ⚠️ Esto no es una optimización: era un fallo de flujo. `localhost` es contexto
+ * seguro, así que en desarrollo el SW se registraba igual que en producción y se
+ * ponía por delante de los módulos que sirve Vite. Como sus URL no llevan hash
+ * (`/src/App.tsx`, `/@vite/client`), la app quedaba clavada en la versión que se
+ * cacheó primero: al recargar no aparecía el último cambio, el HMR parecía
+ * funcionar «a veces» y no había ningún error en pantalla que lo explicara. El
+ * único arreglo estable es que en desarrollo el service worker no exista.
+ *
+ * La PWA es para quien **usa** la app instalada, no para quien la desarrolla:
+ * `pnpm prod` y la imagen Docker sirven un build de producción, así que ahí sigue
+ * registrándose igual que antes.
+ */
+function esCompilacionDeProduccion(): boolean {
+  // `import.meta.env` lo inyecta Vite; en Vitest (jsdom) `PROD` es false, que es
+  // lo correcto: los tests no deben registrar un service worker de verdad.
+  return import.meta.env.PROD;
 }

@@ -39,7 +39,16 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     inFlight = api
       .get<Favorite[]>('/favorites')
       .then((favorites) => {
-        set({ favorites, loaded: true });
+        // El genérico de `api.get` es un CAST, no una comprobación: se verifica
+        // la forma antes de guardarla, o un cuerpo inesperado deja el estado con
+        // algo que no es una lista y revienta en el `for…of` de quien lo pinte.
+        if (Array.isArray(favorites)) set({ favorites, loaded: true });
+      })
+      .catch(() => {
+        // Una carga que falla (red caída, o la petición abortada al cambiar de
+        // página) deja los favoritos como estaban y se reintenta la próxima vez;
+        // no se marca `loaded`. Sin este `catch`, además, cada navegación rápida
+        // dejaba una promesa rechazada sin dueño.
       })
       .finally(() => {
         inFlight = null;

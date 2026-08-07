@@ -1,0 +1,4 @@
+# Artefactos y estado efímero de la suite de verificación de montaje.
+.stacks-state.json
+/playwright-report/
+/test-results/

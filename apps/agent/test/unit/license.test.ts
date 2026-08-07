@@ -41,6 +41,13 @@ const COMPATIBLES = new Set([
   'MIT AND ISC',
   'MIT-0',
   'MPL-2.0',
+  // SIL Open Font License 1.1 — la de Inter, que se autoaloja desde US-266 para
+  // no pedírsela a Google en cada arranque. Es permisiva y la propia FSF la
+  // considera compatible con la GPL: permite redistribuir e incrustar la fuente
+  // en cualquier obra, y su única condición fuerte (no vender la fuente **sola**
+  // y conservar el nombre reservado si se modifica) no afecta a distribuir la
+  // app. La fuente no se enlaza con el código: viaja como asset.
+  'OFL-1.1',
   'Python-2.0',
   'Unlicense',
 ]);
