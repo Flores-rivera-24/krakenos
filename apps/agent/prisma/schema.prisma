@@ -460,6 +460,31 @@ model PresenceEvent {
   @@index([createdAt])
 }
 
+/// Histórico de consultas DNS por aparato (US-252). Es el dato **más sensible**
+/// que escribe el producto: el historial de navegación del hogar. De ahí sus tres
+/// propiedades, que no son opcionales:
+///   1. Retención **propia y corta** (`DNS_QUERY_RETENTION_DAYS`), no la del tráfico.
+///   2. La `mac` se resuelve **en la ingesta**, no al leer: las IP se reasignan por
+///      DHCP y resolver a posteriori atribuye la navegación de ayer a quien tenga
+///      esa IP hoy.
+///   3. La lectura va acotada por rol en el servidor (admin ve el hogar; el resto,
+///      solo sus propios aparatos), igual que el bienestar digital.
+/// Nunca sale en el bundle de soporte, que está pensado para salir de casa.
+model DnsQueryLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime
+  domain    String
+  /// IP del cliente tal cual la reportó el resolver (se conserva para diagnóstico).
+  client    String
+  blocked   Boolean
+  /// MAC del aparato en el momento de la consulta; null si esa IP no era del inventario.
+  mac       String?
+
+  // La poda filtra solo por timestamp; la lectura por aparato filtra por (mac, timestamp).
+  @@index([timestamp])
+  @@index([mac, timestamp])
+}
+
 /// Ejecución registrada de una regla (log de automatizaciones, US-167). Se poda
 /// por edad en el barrido de retención.
 model AutomationRun {

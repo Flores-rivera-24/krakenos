@@ -72,6 +72,7 @@ import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
 import { RecordingService } from './modules/cameras/recording.service.js';
+import { DnsHistoryService } from './modules/dns/dns-history.service.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -401,7 +402,8 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });
-  await app.register(dnsRoutes, { prefix: '/api/dns', dns });
+  const dnsHistoryService = new DnsHistoryService(app, dns);
+  await app.register(dnsRoutes, { prefix: '/api/dns', dns, history: dnsHistoryService });
   // Configuración de integraciones desde la UI (US-142): catálogo + guardar + probar
   // conexión + revertir; recarga el manager en caliente vía el runtime (US-141).
   await app.register(integrationsRoutes, {
@@ -609,6 +611,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   const retentionService = new RetentionService(app);
   retentionService.start();
   app.addHook('onClose', async () => retentionService.stop());
+
+  // Histórico DNS (US-252): sondea el resolver cada minuto, cruza la IP con el
+  // inventario **en ese momento** y poda por su retención propia (7 días), que es
+  // la más corta del sistema porque es el dato más sensible que se escribe.
+  dnsHistoryService.start();
+  app.addHook('onClose', async () => dnsHistoryService.stop());
 
   // Aplica los horarios de control parental cada minuto (US-108).
   accessService.start();

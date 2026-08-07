@@ -23,6 +23,7 @@ type PrismaLike = Pick<
   | 'presenceEvent'
   | 'energySample'
   | 'surveyScan'
+  | 'dnsQueryLog'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
@@ -30,6 +31,20 @@ export const AUTOMATION_RUN_RETENTION_DAYS = 30;
 
 /** Retención fija del timeline de llegadas/salidas (US-169): dato sensible, corto. */
 export const PRESENCE_EVENT_RETENTION_DAYS = 30;
+
+/**
+ * Retención del histórico DNS (`DnsQueryLog`, US-252). **La más corta del
+ * sistema**, y a propósito: es el historial de navegación del hogar, o sea el
+ * dato más sensible que escribe el producto. Es más corta incluso que la de
+ * presencia (30 d) porque responde a una pregunta operativa —«¿con quién habla
+ * este aparato?»— que se contesta con días, no con meses; conservar más sería
+ * acumular riesgo sin comprar respuesta.
+ *
+ * Es fija y no un ajuste, igual que la de presencia: un desplegable que permita
+ * subirla a un año convierte una decisión de diseño en un descuido de
+ * configuración.
+ */
+export const DNS_QUERY_RETENTION_DAYS = 7;
 
 /**
  * Retención del rollup **por dispositivo** (`DeviceTrafficSample`, US-46).
@@ -125,6 +140,21 @@ export async function pruneEnergySamples(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.energySample.deleteMany({ where: { timestamp: { lt: cutoff } } });
+  return res.count;
+}
+
+/**
+ * Borra las consultas DNS más antiguas que la retención (US-252). Es la poda de
+ * la tabla más sensible del sistema, así que corre en el barrido de retención
+ * **además** de acotarse en la ingesta: si el barrido se para, la ingesta sola no
+ * puede dejar el historial creciendo indefinidamente.
+ */
+export async function pruneDnsQueryLog(
+  prisma: PrismaLike,
+  days: number = DNS_QUERY_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.dnsQueryLog.deleteMany({ where: { timestamp: { lt: cutoff } } });
   return res.count;
 }
 

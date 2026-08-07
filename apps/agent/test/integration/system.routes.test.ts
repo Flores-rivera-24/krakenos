@@ -454,6 +454,21 @@ describe('rutas de sistema', () => {
       },
     });
 
+    // Histórico DNS (US-252): el bundle está pensado para SALIR de casa —la
+    // plantilla de issue pide pegarlo—, así que no puede llevar el historial de
+    // navegación que a un invitado se le acaba de negar. Hoy no lo lleva porque el
+    // bundle enumera tablas explícitas; esto lo ata para el día que alguien lo
+    // haga genérico.
+    await app.prisma.dnsQueryLog.create({
+      data: {
+        timestamp: new Date(),
+        domain: 'sitio-privado-de-casa.example',
+        client: '192.168.1.10',
+        blocked: false,
+        mac: 'aa:00',
+      },
+    });
+
     const admin = await seedUser(app, { role: 'admin' });
     const res = await app.inject({
       method: 'POST',
@@ -466,6 +481,7 @@ describe('rutas de sistema', () => {
     expect(raw).not.toContain('SUPER-SECRETO-123'); // el secreto NO aparece
     expect(raw).not.toContain('Casa de Prueba'); // el nombre del hogar (PII) NO aparece
     expect(raw).not.toContain('40.4168'); // la ubicación (PII) NO aparece
+    expect(raw).not.toContain('sitio-privado-de-casa.example'); // el histórico DNS NO aparece
 
     const bundle = res.json();
     // La integración aparece pero solo con qué secretos hay puestos (no el valor).

@@ -1,4 +1,4 @@
-import type { BlockedDomain, DnsQuery, DnsStats } from '@krakenos/types';
+import type { BlockedDomain, DnsHistoryResponse, DnsQuery, DnsStats } from '@krakenos/types';
 import { Ban, Globe, ShieldCheck, ListFilter } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -35,6 +35,7 @@ export function DnsPage() {
   const [stats, setStats] = useState<DnsStats | null>(null);
   const [blocklist, setBlocklist] = useState<BlockedDomain[]>([]);
   const [queries, setQueries] = useState<DnsQuery[]>([]);
+  const [history, setHistory] = useState<DnsHistoryResponse | null>(null);
   const [domain, setDomain] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -60,11 +61,42 @@ export function DnsPage() {
       .then(setQueries)
       .catch((err) => setError(describeError(err, t('dns.loadError'))));
 
+  /**
+   * Histórico persistido (US-252). Va **aparte** de las otras dos cargas por lo
+   * mismo que el registro en vivo: un fallo suyo no puede dejar en blanco las
+   * cifras y la lista de bloqueo, que son de otra tarjeta.
+   */
+  const loadHistory = () =>
+    api
+      .get<DnsHistoryResponse>('/dns/history?limit=100')
+      .then(setHistory)
+      .catch((err) => setError(describeError(err, t('dns.loadError'))));
+
+  const clearHistory = async () => {
+    try {
+      await api.del('/dns/history');
+      toast.success(t('dns.history.cleared'));
+      void loadHistory();
+    } catch (err) {
+      toast.error(describeError(err, t('dns.history.clearError')));
+    }
+  };
+
+  /**
+   * La cobertura, defendida de una respuesta que no tenga la forma esperada. El
+   * genérico de `api.get<T>()` es un **cast**, no una comprobación, y aquí el
+   * coste de fiarse no es un dato raro: es que la excepción tumbe la página
+   * entera, incluidas las cifras y la lista de bloqueo, que son de otra tarjeta y
+   * de otro permiso. Es la misma regresión que US-250 arregló partiendo el
+   * `Promise.all`, por otra vía.
+   */
+  const cobertura = history?.coverage as DnsHistoryResponse['coverage'] | undefined;
+
   /** Refresco completo tras una mutación (siempre la hace un admin). */
   const load = () => Promise.all([loadShared(), isAdmin ? loadQueries() : Promise.resolve()]);
 
   useEffect(() => {
-    void loadShared().finally(() => setLoading(false));
+    void Promise.all([loadShared(), loadHistory()]).finally(() => setLoading(false));
   }, []);
 
   // El registro solo se pide cuando ya se sabe que quien mira es admin: sin permiso
@@ -279,6 +311,90 @@ export function DnsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Histórico persistido (US-252). A diferencia del registro en vivo de
+          arriba, esta tarjeta la ve CUALQUIER rol: el servidor filtra a los
+          aparatos de quien mira, así que no hace falta negarla entera. */}
+      <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="text-base text-foreground">{t('dns.history.title')}</CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isAdmin ? t('dns.history.subtitle.admin') : t('dns.history.subtitle.own')}
+            </p>
+          </div>
+          {isAdmin && (history?.entries?.length ?? 0) > 0 && (
+            <DeleteButton onDelete={clearHistory} variant="outline">
+              {t('dns.history.clear')}
+            </DeleteButton>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Lo que el histórico NO ve va ANTES de la tabla: leer primero una lista
+              corta y enterarse después de que faltan aparatos es enterarse tarde. */}
+          {cobertura !== undefined && cobertura.silentDevices > 0 && (
+            <Callout variant="warning" standing title={t('dns.history.silentTitle')}>
+              {t('dns.history.silentDesc', {
+                silent: String(cobertura.silentDevices),
+                online: String(cobertura.onlineDevices),
+              })}
+            </Callout>
+          )}
+
+          <div className="overflow-x-auto rounded-md border border-border">
+            <table className="w-full text-sm">
+              <thead className="bg-secondary text-secondary-foreground">
+                <tr>
+                  <th className="px-3 py-2 text-left">{t('dns.col.time')}</th>
+                  <th className="px-3 py-2 text-left">{t('dns.col.device')}</th>
+                  <th className="px-3 py-2 text-left">{t('dns.col.domain')}</th>
+                  <th className="px-3 py-2 text-left">{t('dns.col.status')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <SkeletonRows cols={4} />
+                ) : (history?.entries?.length ?? 0) === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-3 py-8 text-center text-kr-muted">
+                      {/* «Aún no se ha registrado nada» y «tus aparatos no han
+                          consultado» son cosas distintas y llevan a sitios distintos. */}
+                      {cobertura?.recording === false
+                        ? t('dns.history.empty.notYet')
+                        : t('dns.history.empty.none')}
+                    </td>
+                  </tr>
+                ) : (
+                  history!.entries.map((e) => (
+                    <tr key={e.id} className="border-t border-border">
+                      <td className="px-3 py-2 text-xs text-muted-foreground">
+                        {new Date(e.timestamp).toLocaleTimeString()}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {e.deviceLabel ?? (
+                          <span className="text-kr-muted">{t('dns.history.unknownDevice')}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-xs">{e.domain}</td>
+                      <td className="px-3 py-2">
+                        <span className={e.blocked ? 'text-destructive' : 'text-success'}>
+                          {e.blocked ? t('dns.blocked') : t('dns.allowed')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {cobertura !== undefined && (
+            <p className="text-xs text-kr-muted">
+              {t('dns.history.retention', { days: String(cobertura.retentionDays) })}
+            </p>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

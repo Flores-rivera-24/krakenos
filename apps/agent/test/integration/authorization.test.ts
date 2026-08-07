@@ -48,6 +48,8 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/dns/blocklist', payload: { domain: 'ads.example.com' } },
   { method: 'DELETE', url: '/api/dns/blocklist/x' },
   { method: 'PATCH', url: '/api/dns/feeds/ads', payload: { enabled: true } },
+  // Borrar el histórico de navegación del hogar es gestión, no operar el hogar (US-252).
+  { method: 'DELETE', url: '/api/dns/history' },
   // access schedules / control parental (US-108)
   {
     method: 'POST',
@@ -490,6 +492,15 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       'GET /api/traffic/stats',
     ];
 
+    /**
+     * Tercera categoría (US-252): lectura de **cualquier rol** cuya privacidad la
+     * aplica el servidor, filtrando a los aparatos de quien pregunta. No es un
+     * agregado —habla de personas— pero tampoco puede exigir `home.activity`, o el
+     * dueño de un aparato no podría ver ni lo suyo. Es el reparto del bienestar
+     * digital, y quien lo ejerce es `dns-history.routes.test.ts`.
+     */
+    const OWNER_FILTERED_READS = ['GET /api/dns/history'];
+
     it('toda lectura de /api/dns y /api/traffic está clasificada', () => {
       const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
         .collectedRoutes;
@@ -497,6 +508,7 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       const classified = new Set<string>([
         ...ACTIVITY_READS.map((r) => r.pattern),
         ...AGGREGATE_READS,
+        ...OWNER_FILTERED_READS,
       ]);
 
       const unclassified = collected

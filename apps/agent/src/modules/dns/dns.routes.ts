@@ -1,8 +1,11 @@
 import type { AddBlockedDomainRequest, DnsManager, UpdateDnsFeedRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { DnsError } from '../../dns/mock.dns.js';
+import type { DnsHistoryService } from './dns-history.service.js';
 import {
   addBlockedSchema,
+  clearDnsHistorySchema,
+  dnsHistorySchema,
   dnsStatsSchema,
   listBlockedSchema,
   listFeedsSchema,
@@ -13,10 +16,11 @@ import {
 
 interface DnsRoutesOpts {
   dns: DnsManager;
+  history: DnsHistoryService;
 }
 
 export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) => {
-  const { dns } = opts;
+  const { dns, history } = opts;
 
   // Lectura: cualquier usuario autenticado. Escritura: solo admin.
   app.addHook('preHandler', app.authenticate);
@@ -46,6 +50,36 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
       return dns.recentQueries(req.query.limit);
     },
   );
+
+  /**
+   * Histórico persistido (US-252). Es lectura **autenticada de cualquier rol** a
+   * propósito, y no `home.activity`: la privacidad la aplica el servicio, que
+   * enseña a un no-admin **solo sus propios aparatos**. Es el mismo reparto que
+   * el bienestar digital — `home.activity` protege el registro **en vivo**, que
+   * va por IP y no tiene forma de acotarse por dueño.
+   */
+  app.get<{ Querystring: { limit?: number } }>(
+    '/history',
+    { schema: dnsHistorySchema },
+    async (req) =>
+      history.history({ sub: req.user.sub, role: req.user.role }, req.query.limit),
+  );
+
+  /**
+   * Borrado manual del histórico. Existe porque un registro de navegación cuya
+   * única vía de desaparición es esperar a la retención es una responsabilidad
+   * sin interruptor: quien lo administra tiene que poder retirarlo hoy.
+   */
+  app.delete('/history', { schema: clearDnsHistorySchema, preHandler: adminOnly }, async (req) => {
+    const removed = await history.clear();
+    app.audit({
+      action: 'dns.history.clear',
+      userId: req.user.sub,
+      detail: String(removed),
+      ip: req.ip,
+    });
+    return { removed };
+  });
 
   app.post<{ Body: AddBlockedDomainRequest }>(
     '/blocklist',
