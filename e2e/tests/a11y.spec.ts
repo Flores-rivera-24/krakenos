@@ -59,17 +59,26 @@ async function esperarPintado(page: Page): Promise<void> {
   // un fallo de accesibilidad sin serlo.
   await expect(page.getByRole('main')).toBeVisible();
   // Ni un solo esqueleto en pantalla: mientras haya, hay texto sin su fondo final.
-  await expect(page.locator('.kr-shimmer')).toHaveCount(0, { timeout: 15_000 });
+  //
+  // Los márgenes son anchos porque esta espera corre también en Firefox
+  // (`pnpm qa:compat`), donde Ajustes —la página más cargada— tarda bastante más
+  // en asentarse: con 15 s fallaba una de cada tres. Y el fallo era el peor
+  // posible, un timeout disfrazado de violación de accesibilidad. Esperar de más
+  // solo cuesta segundos; medir antes de tiempo cuesta credibilidad.
+  await expect(page.locator('.kr-shimmer')).toHaveCount(0, { timeout: 30_000 });
   // Y ninguna animación de entrada a medias (opacidad/transform en curso).
   await page.waitForFunction(
     () => document.getAnimations().every((a) => a.playState !== 'running'),
     undefined,
-    { timeout: 15_000 },
+    { timeout: 30_000 },
   );
 }
 
 for (const enlace of PAGINAS) {
   test(`a11y: «${enlace}» no tiene violaciones WCAG A/AA`, async ({ page }) => {
+    // El timeout global de 30 s no da para «esperar a que asiente» + analizar la
+    // página entera con axe, sobre todo en Firefox. `slow()` lo triplica.
+    test.slow();
     await page.getByRole('link', { name: enlace }).first().click();
     await esperarPintado(page);
 

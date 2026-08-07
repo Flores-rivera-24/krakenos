@@ -94,6 +94,12 @@ export async function startServer(): Promise<ChildProcess> {
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
+  // El PID se anota **ya**, no al final. Si el arranque falla a medias, el proceso
+  // existe igual y hay que poder esperarlo antes de borrar la base en el siguiente
+  // intento; anotarlo solo tras el éxito dejaba justo ese caso sin rastro.
+  if (!existsSync(dirname(PID_FILE))) mkdirSync(dirname(PID_FILE), { recursive: true });
+  writeFileSync(PID_FILE, String(child.pid));
+
   let output = '';
   let setupToken = '';
   const capture = (buf: Buffer) => {
@@ -124,22 +130,56 @@ export async function startServer(): Promise<ChildProcess> {
   }
 
   if (!setupToken) {
-    child.kill('SIGKILL');
+    // Por `stopServer`, no con un `kill` suelto: hay que ESPERAR a que muera antes
+    // de que el siguiente intento borre la base, o su WAL a medio volcar reaparece
+    // encima y vuelve a dejar la instalación «ya configurada».
+    stopServer();
     throw new Error(`No se capturó el token de configuración en 60 s.\n${output}`);
   }
 
   if (!existsSync(dirname(STATE_FILE))) mkdirSync(dirname(STATE_FILE), { recursive: true });
   const state: E2EState = { baseURL: BASE_URL, setupToken };
   writeFileSync(STATE_FILE, JSON.stringify(state));
-  writeFileSync(PID_FILE, String(child.pid));
   return child;
 }
 
-/** Detiene el agente e2e (por PID persistido) y limpia los ficheros de estado. */
+/** Pausa síncrona (no hay `await` disponible: `stopServer` es sync por contrato). */
+function esperarSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
+/**
+ * Detiene el agente e2e (por PID persistido) y limpia los ficheros de estado.
+ *
+ * **Espera a que el proceso haya muerto de verdad**, no solo a haber mandado la
+ * señal. `process.kill()` vuelve de inmediato: el agente sigue vivo unos
+ * milisegundos y SQLite puede estar volcando su WAL. Si mientras tanto el
+ * siguiente arranque borra `e2e.db` y aplica las migraciones, esas páginas caen
+ * **encima de la base recién creada** y le devuelven el usuario admin del run
+ * anterior. Y con usuarios, el agente ya no imprime el token de configuración,
+ * así que `startServer` agota sus 60 s y la suite entera muere en el
+ * `globalSetup` con «No se capturó el token de configuración» — un error que no
+ * se parece en nada a su causa. Pasaba al encadenar dos ejecuciones seguidas
+ * (2 de 9 en una tarde).
+ */
 export function stopServer(): void {
   try {
     const pid = Number(readFileSync(PID_FILE, 'utf8'));
-    if (pid) process.kill(pid, 'SIGKILL');
+    if (pid) {
+      process.kill(pid, 'SIGKILL');
+      // `kill(pid, 0)` no envía señal: solo consulta si el proceso existe, y
+      // lanza ESRCH cuando ya no. Techo de 5 s para no colgar la suite si el
+      // PID quedó huérfano o lo reusó otro proceso.
+      const limite = Date.now() + 5_000;
+      while (Date.now() < limite) {
+        try {
+          process.kill(pid, 0);
+        } catch {
+          break; // ya no existe
+        }
+        esperarSync(25);
+      }
+    }
   } catch {
     // ya no existe / ya murió
   }
