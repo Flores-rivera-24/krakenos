@@ -5,7 +5,12 @@ import type {
   IntegrationKindSchema,
   IntegrationTestResult,
 } from '@krakenos/types';
-import { IOT_SUPPORT_LEVEL, type IotKind } from '@krakenos/types';
+import {
+  IOT_SUPPORT_LEVEL,
+  MANUFACTURER_APP,
+  type IotKind,
+  type ManufacturerAppDependency,
+} from '@krakenos/types';
 import { useMemo, useState, type ReactNode } from 'react';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
@@ -70,6 +75,11 @@ export function IntegrationWizard({
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';
   const esCommunity = isIot && IOT_SUPPORT_LEVEL[kind as IotKind] === 'community';
+  // US-258: lo que hace falta de la app del fabricante es una pregunta DISTINTA de
+  // si el backend lleva garantía, y por eso no cuelga de `esCommunity`. Kasa es
+  // `core` y aun así los Tapo piden la cuenta TP-Link: colgándolo del sello, ese
+  // aviso no aparecía en ningún sitio.
+  const dependenciaApp = isIot ? MANUFACTURER_APP[kind as IotKind] : null;
   // Los campos `derived` los calcula y guarda el servidor a partir de los demás
   // (US-259: la credencial KLAP de Tapo se deriva del email y la contraseña, y es
   // lo único que acaba en disco). El usuario no los teclea, así que no se pintan —
@@ -201,12 +211,18 @@ export function IntegrationWizard({
           backend no lleva garantía después de haber seguido diez pasos es
           enterarse tarde. Sale del mismo mapa que el catálogo de compatibilidad
           (`IOT_SUPPORT_LEVEL`), así que no pueden discrepar. */}
+      {/* US-258: va ANTES del sello de garantía porque es lo que hay que hacer para
+          que esto funcione, no una advertencia sobre el futuro. */}
+      {dependenciaApp && (
+        <Callout variant="warning" title="Vas a necesitar la app del fabricante" standing>
+          {textoDependenciaApp(dependenciaApp, displayName)}
+        </Callout>
+      )}
       {esCommunity && (
         <Callout variant="warning" title="Soporte de la comunidad, sin garantía" standing>
-          Para dar de alta {displayName} hace falta su app o su nube al menos una vez, así que
-          KrakenOS no puede prometer que siga funcionando si el fabricante cambia algo. El código se
-          mantiene, pero sin garantía. Si buscas independencia de verdad, los aparatos Zigbee, Matter
-          o Shelly se emparejan contra tu propio servidor.
+          KrakenOS no puede prometer que {displayName} siga funcionando si el fabricante cambia algo:
+          el código se mantiene, pero sin garantía. Si buscas independencia de verdad, los aparatos
+          Zigbee, Matter o Shelly se emparejan contra tu propio servidor.
         </Callout>
       )}
       <p className="text-kr-sm text-kr-secondary">
@@ -338,6 +354,28 @@ export function IntegrationWizard({
 }
 
 /** «appKey» → «App key»: separa camelCase y capitaliza la primera palabra. */
+/**
+ * Qué decirle al usuario sobre la app del fabricante (US-258), por motivo.
+ *
+ * Cada motivo pide algo distinto —emparejar una vez, dar la cuenta, o entrar aparato
+ * a aparato— y meterlos en una frase genérica («necesita su app») dejaría al usuario
+ * sin saber qué le van a pedir ni cuándo. `scope: 'some'` se dice aparte y nombrando
+ * la gama: decirle a alguien con enchufes Kasa que necesita la cuenta de TP-Link
+ * sería tan falso como no avisar a quien tiene Tapo.
+ */
+export function textoDependenciaApp(
+  dep: ManufacturerAppDependency,
+  displayName: string,
+): string {
+  const base =
+    dep.reason === 'pairing'
+      ? `Hay que emparejar el aparato con la app del fabricante al menos una vez: la clave que permite controlarlo desde tu red la emite ese emparejamiento contra su nube.`
+      : dep.reason === 'account'
+        ? `Para controlar ${displayName} hace falta la cuenta del fabricante.`
+        : `Hay que abrir la app del fabricante y activar el control local en cada aparato; hasta que lo hagas no responde dentro de tu red.`;
+  return dep.scope === 'some' && dep.devices ? `${base} Solo afecta a los ${dep.devices}.` : base;
+}
+
 function humanizeFieldKey(key: string): string {
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase();
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);

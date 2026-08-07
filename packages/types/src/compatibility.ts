@@ -91,15 +91,86 @@ export const IOT_SUPPORT_LEVEL: Record<IotKind, SupportLevel> = {
   hue: 'core',
   shelly: 'core',
   // ⚠️ Kasa es local (XOR), pero **Tapo comparte backend** y sí pide la cuenta
-  // TP-Link. `adr-control-total.md` lo lista en primera clase y se respeta; que la
-  // ficha lo diga aparato a aparato es US-258, y no guardar la contraseña entera
-  // es US-259.
+  // TP-Link. `adr-control-total.md` lo lista en primera clase y se respeta: el
+  // compromiso de mantenimiento se sostiene. Lo que Tapo necesita de la app se
+  // declara aparte, en `MANUFACTURER_APP` (US-258), porque son dos cosas distintas.
   kasa: 'core',
   // Necesitan la app del fabricante al menos una vez.
   tuya: 'community', // la `localKey` la emite el emparejamiento contra su nube
   govee: 'community', // «LAN Control» se activa aparato a aparato desde su app
   meross: 'community', // empareja por su app; el control local exige redirigir DNS
 };
+
+/**
+ * Para qué hace falta la app del fabricante (US-258). Unión **cerrada**: cada valor
+ * es una cosa distinta que el usuario tiene que hacer, y la UI las explica una a una.
+ *
+ * - `pairing`: el emparejamiento se hace **contra su nube**, y de ahí sale el secreto
+ *   que necesita el control local (la `localKey` de Tuya, que además **cambia** en
+ *   cada re-emparejamiento).
+ * - `account`: hace falta la **cuenta del fabricante** para hablar con el aparato.
+ * - `enable-local`: el control local viene **apagado** y se enciende desde su app,
+ *   **aparato a aparato** (el «LAN Control» de Govee).
+ */
+export const APP_DEPENDENCY_REASONS = ['pairing', 'account', 'enable-local'] as const;
+export type AppDependencyReason = (typeof APP_DEPENDENCY_REASONS)[number];
+
+/**
+ * Dependencia de la app del fabricante de un backend IoT.
+ *
+ * `scope` existe por un caso real y no por simetría: **Kasa y Tapo comparten
+ * backend**. Un enchufe Kasa clásico se controla en local sin cuenta, y un Tapo
+ * exige las credenciales TP-Link. Sin este campo solo caben dos mentiras —marcar
+ * todo el backend (falso para Kasa) o no marcar nada (falso para Tapo, y es lo que
+ * había)—, así que se dice «solo algunos» y se nombra cuáles.
+ */
+export interface ManufacturerAppDependency {
+  reason: AppDependencyReason;
+  /** `all` = todo lo que cubre el backend; `some` = solo parte, descrita en `devices`. */
+  scope: 'all' | 'some';
+  /** Con `scope: 'some'`, qué parte del parque la necesita (p. ej. `'Tapo'`). */
+  devices?: string;
+}
+
+/**
+ * Qué backends IoT necesitan la app del fabricante, y para qué (US-258).
+ *
+ * **No es lo mismo que `community`**, y confundirlos es lo que dejaba a Kasa/Tapo
+ * sin marca: `community` es un compromiso de **mantenimiento** («puede romperse y
+ * no prometo perseguirlo») y esto es un **requisito práctico** que se paga antes de
+ * comprar («vas a tener que abrir su app»). Casi siempre van juntos, pero Kasa es
+ * `core` —se mantiene— y aun así Tapo pide la cuenta.
+ *
+ * Exhaustivo sobre `IotKind`: un backend nuevo **no compila** hasta declarar si
+ * necesita la app o no, en vez de heredar «no» por omisión, que es el valor que
+ * miente a favor del producto.
+ */
+export const MANUFACTURER_APP: Record<IotKind, ManufacturerAppDependency | null> = {
+  mock: null,
+  mqtt: null,
+  zigbee: null,
+  matter: null,
+  hue: null,
+  shelly: null,
+  // El único `core` con dependencia: el backend cubre las dos gamas de TP-Link y
+  // solo una la necesita. Ver `scope` arriba.
+  kasa: { reason: 'account', scope: 'some', devices: 'Tapo' },
+  tuya: { reason: 'pairing', scope: 'all' },
+  govee: { reason: 'enable-local', scope: 'all' },
+  meross: { reason: 'pairing', scope: 'all' },
+};
+
+/**
+ * Fecha (ISO `YYYY-MM-DD`) de la última verificación **con el aparato físico**,
+ * por id de catálogo (US-86).
+ *
+ * ⚠️ **Vacío a propósito**: hoy son **cero** verificaciones, y esa es justo la cifra
+ * que el proyecto no quiere disimular. Un mapa vacío hace que la ficha diga «sin
+ * verificar» sola; rellenar una entrada aquí es afirmar que alguien enchufó el
+ * cacharro y lo probó, así que se toca **después** de la tanda de hardware, nunca
+ * para que la tabla se vea mejor.
+ */
+export const HARDWARE_VERIFIED_AT: Record<string, string> = {};
 
 export interface CompatibilityEntry {
   /** Id estable `<categoría>:<kind>` (p. ej. `driver:openwrt`). */
@@ -110,10 +181,20 @@ export interface CompatibilityEntry {
   capabilities: CompatCapability[];
   requirements: CompatRequirement[];
   /**
-   * `true` si está verificada con hardware real (US-86); `false` = soportada por
-   * código pero aún sin verificar en un despliegue con el equipo físico.
+   * Fecha de la última verificación con hardware real (US-86), o `null` si nunca se
+   * ha probado con el aparato físico.
+   *
+   * Es una **fecha y no un booleano** (US-258) porque «verificado» sin cuándo
+   * envejece mal: una comprobación de hace dos años sobre un firmware que ya no
+   * existe se lee igual que una de ayer. Y al ser un solo campo no puede darse el
+   * estado imposible de `verified: true` sin fecha.
    */
-  verified: boolean;
+  verifiedAt: string | null;
   /** Compromiso de mantenimiento: ver {@link SupportLevel}. */
   support: SupportLevel;
+  /**
+   * Qué necesita de la app del fabricante, o `null` si nada (US-258).
+   * Ver {@link MANUFACTURER_APP} para por qué no basta con `support`.
+   */
+  appDependency: ManufacturerAppDependency | null;
 }
