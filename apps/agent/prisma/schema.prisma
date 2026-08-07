@@ -523,3 +523,25 @@ model Recording {
   @@index([cameraId, startedAt])
   @@index([startedAt])
 }
+
+/// Destinos ya vistos por aparato (US-253), para poder decir «nunca había
+/// contactado con esto». Existe porque `DnsQueryLog` se poda a los 7 días y
+/// sobre esa ventana «nunca» no es sabible.
+///
+/// Guarda el **dominio registrable** (`example.com`), NO el FQDN: sirve para
+/// detectar un cambio de comportamiento y deja de servir para reconstruir
+/// navegación, que es lo que protege la retención corta del histórico. Tiene su
+/// propia retención, más larga y declarada (`KNOWN_DESTINATION_RETENTION_DAYS`).
+model KnownDestination {
+  id          String   @id @default(cuid())
+  mac         String
+  /// Dominio registrable (eTLD+1), ya normalizado a minúsculas.
+  domain      String
+  firstSeenAt DateTime @default(now())
+  /// Se refresca en cada visita: la poda mide desde la ÚLTIMA vez, no desde la
+  /// primera — si no, un destino habitual caducaría y volvería a avisar solo.
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([mac, domain])
+  @@index([lastSeenAt])
+}

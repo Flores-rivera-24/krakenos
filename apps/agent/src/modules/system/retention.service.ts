@@ -5,6 +5,7 @@ import {
   pruneAuditLog,
   pruneAutomationRuns,
   pruneDnsQueryLog,
+  pruneKnownDestinations,
   pruneEnergySamples,
   pruneExpiredRefreshTokens,
   pruneExpiredWebAuthnChallenges,
@@ -85,6 +86,13 @@ export class RetentionService {
       const dns = await pruneDnsQueryLog(this.app.prisma);
       if (dns > 0) {
         this.app.log.info(`[retention] podadas ${dns} consultas DNS del histórico`);
+      }
+      // Destinos conocidos (US-253): memoria larga y declarada, pero no eterna.
+      // Se mide desde la última visita, así que solo cae lo que el aparato dejó
+      // de visitar hace meses.
+      const destinos = await pruneKnownDestinations(this.app.prisma);
+      if (destinos > 0) {
+        this.app.log.info(`[retention] olvidados ${destinos} destinos que ya no se visitan`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

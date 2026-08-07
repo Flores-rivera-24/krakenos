@@ -388,6 +388,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.recording.deleteMany();
   await app.prisma.presenceEvent.deleteMany();
   await app.prisma.dnsQueryLog.deleteMany();
+  await app.prisma.knownDestination.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample

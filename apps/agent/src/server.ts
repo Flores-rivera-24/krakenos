@@ -75,6 +75,7 @@ import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
 import { RecordingService } from './modules/cameras/recording.service.js';
 import { DnsHistoryService } from './modules/dns/dns-history.service.js';
+import { NewDestinationService } from './modules/dns/new-destination.service.js';
 import { dnsRoutes } from './modules/dns/dns.routes.js';
 import { integrationsRoutes } from './modules/integrations/integrations.routes.js';
 import { firewallRoutes } from './modules/firewall/firewall.routes.js';
@@ -408,7 +409,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
   await app.register(qosRoutes, { prefix: '/api/qos', qos });
-  const dnsHistoryService = new DnsHistoryService(app, dns);
+  // Aviso de destino nuevo (US-253): se alimenta de la tanda que acaba de
+  // atribuir la ingesta del histórico, no de una relectura de la tabla.
+  const newDestinationService = new NewDestinationService(app);
+  const dnsHistoryService = new DnsHistoryService(app, dns, undefined, undefined, newDestinationService);
   await app.register(dnsRoutes, { prefix: '/api/dns', dns, history: dnsHistoryService });
   // Configuración de integraciones desde la UI (US-142): catálogo + guardar + probar
   // conexión + revertir; recarga el manager en caliente vía el runtime (US-141).
