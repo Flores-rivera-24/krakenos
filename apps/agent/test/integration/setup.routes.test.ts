@@ -2,7 +2,8 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { clearStaleSetupClaim } from '../../src/modules/setup/setup.routes.js';
 import { setupToken } from '../../src/modules/setup/setup-token.js';
-import { authHeader, buildTestApp, eventually, resetDb } from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 const baseBody = {
   homeName: 'Hogar Kraken',
@@ -55,10 +56,8 @@ describe('rutas de setup', () => {
     expect(setting?.value).toBe('Hogar Kraken');
 
     // Acción auditada.
-    await eventually(async () => {
-      const entry = await app.prisma.auditLog.findFirst({ where: { action: 'setup.init' } });
-      expect(entry?.userId).toBe(body.user.id);
-    });
+    const entry = await esperarUnaAuditoria(app, { action: 'setup.init' });
+    expect(entry.userId).toBe(body.user.id);
 
     // El access token devuelto sirve para una ruta protegida.
     const status = await app.inject({

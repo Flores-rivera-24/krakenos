@@ -18,6 +18,7 @@ import {
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 const T0 = new Date(2026, 6, 9, 18, 0, 0);
 const min = (n: number) => new Date(T0.getTime() + n * 60_000);
@@ -212,10 +213,8 @@ describe('presencia y modos del hogar (US-169)', () => {
     const state = res.json() as PresenceState;
     expect(state.mode).toBe('night');
     expect(state.modeSource).toBe('manual');
-    await eventually(async () => {
-      const audit = await app.prisma.auditLog.findFirst({ where: { action: 'presence.mode.set' } });
-      expect(audit?.detail).toBe('night');
-    });
+    const audit = await esperarUnaAuditoria(app, { action: 'presence.mode.set' });
+    expect(audit.detail).toBe('night');
   });
 
   it('kid, guest y viewer no cambian el modo (403)', async () => {

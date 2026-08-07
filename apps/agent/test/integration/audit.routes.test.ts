@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { hashEmail } from '../../src/plugins/audit.js';
 import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de auditoría', () => {
   let app: FastifyInstance;
@@ -75,11 +76,7 @@ describe('rutas de auditoría', () => {
       payload: { email: 'victima@krakenos.test', password: 'incorrecta' },
     });
 
-    const row = await eventually(async () => {
-      const r = await app.prisma.auditLog.findFirst({ where: { action: 'auth.login_failed' } });
-      if (!r) throw new Error('aún sin escribir');
-      return r;
-    });
+    const row = await esperarUnaAuditoria(app, { action: 'auth.login_failed' });
     expect(row.detail).toBe(hashEmail('victima@krakenos.test'));
     expect(row.detail).not.toContain('victima@krakenos.test'); // sin PII en claro
   });
@@ -87,11 +84,7 @@ describe('rutas de auditoría', () => {
   it('trunca audit.detail a 1 KB antes de persistir (US-58)', async () => {
     app.audit({ action: 'test.big', detail: 'x'.repeat(5000) });
 
-    const row = await eventually(async () => {
-      const r = await app.prisma.auditLog.findFirst({ where: { action: 'test.big' } });
-      if (!r) throw new Error('aún sin escribir');
-      return r;
-    });
+    const row = await esperarUnaAuditoria(app, { action: 'test.big' });
     expect(row.detail).toHaveLength(1024);
     expect(row.detail).toBe('x'.repeat(1024));
   });

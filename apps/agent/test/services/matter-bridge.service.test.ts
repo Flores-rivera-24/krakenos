@@ -4,6 +4,7 @@ import { MockIotManager } from '../../src/iot/mock.iot.js';
 import { MockMatterBridgeStack } from '../../src/iot/matter-bridge/stack.js';
 import { MatterBridgeService } from '../../src/modules/matter-bridge/matter-bridge.service.js';
 import { buildTestApp } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('MatterBridgeService (US-171)', () => {
   let app: FastifyInstance;
@@ -66,10 +67,8 @@ describe('MatterBridgeService (US-171)', () => {
       const dev = await iot.getDevice('plug-tv');
       expect(dev?.on).toBe(false);
     });
-    await vi.waitFor(async () => {
-      const audit = await app.prisma.auditLog.findFirst({ where: { action: 'matter.command' } });
-      expect(audit?.detail).toContain('origen:matter');
-    });
+    const audit = await esperarUnaAuditoria(app, { action: 'matter.command' });
+    expect(audit.detail).toContain('origen:matter');
   });
 
   it('ignora comandos para dispositivos no expuestos (superficie acotada)', async () => {

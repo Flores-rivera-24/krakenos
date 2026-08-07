@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 describe('rutas de IoT', () => {
   let app: FastifyInstance;
@@ -59,10 +59,8 @@ describe('rutas de IoT', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ brightness: 30, on: true });
 
-    await eventually(async () => {
-      const audited = await app.prisma.auditLog.findMany({ where: { action: 'iot.device.update' } });
-      expect(audited.length).toBe(1);
-    });
+    const audited = await esperarAuditoria(app, { action: 'iot.device.update' });
+    expect(audited).toHaveLength(1);
   });
 
   it('controlar lo que no es controlable devuelve 400 (US-244)', async () => {

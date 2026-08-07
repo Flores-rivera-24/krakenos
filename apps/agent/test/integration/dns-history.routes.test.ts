@@ -3,6 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DnsHistoryService } from '../../src/modules/dns/dns-history.service.js';
 import { pruneDnsQueryLog } from '../../src/config/retention.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /**
  * US-252. El histórico DNS es el historial de navegación del hogar, así que lo
@@ -142,8 +143,8 @@ describe('histórico DNS', () => {
     expect(res.json().removed).toBe(3);
     expect(await app.prisma.dnsQueryLog.count()).toBe(0);
 
-    const audit = await app.prisma.auditLog.findFirst({ where: { action: 'dns.history.clear' } });
-    expect(audit).not.toBeNull();
+    const audit = await esperarUnaAuditoria(app, { action: 'dns.history.clear' });
+    expect(audit.userId).toBe(admin.id);
   });
 });
 

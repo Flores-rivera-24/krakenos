@@ -3,11 +3,11 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de DNS', () => {
   let app: FastifyInstance;
@@ -79,13 +79,8 @@ describe('rutas de DNS', () => {
     expect(res.statusCode).toBe(201);
     expect(res.json().domain).toBe('malware.example.com');
 
-    await eventually(async () => {
-      // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'dns.block.add').
-      const log = await app.prisma.auditLog.findFirst({
-        where: { action: 'dns.block.add', detail: 'malware.example.com' },
-      });
-      expect(log).not.toBeNull();
-    });
+    // Filtra por detail (auditoría fire-and-forget; otras pruebas crean 'dns.block.add').
+    await esperarUnaAuditoria(app, { action: 'dns.block.add', detail: 'malware.example.com' });
 
     const dup = await app.inject({
       method: 'POST',

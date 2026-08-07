@@ -2,12 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   buildTestApp,
-  eventually,
   refreshCookie,
   refreshCookieHeader,
   resetDb,
   seedUser,
 } from '../helpers/app.js';
+import { esperarAuditoria } from '../helpers/audit.js';
 
 const PASSWORD = 'password123';
 
@@ -85,10 +85,8 @@ describe('detección de reuso de refresh (US-78, F4)', () => {
     await refresh(app, parent); // rota
     await refresh(app, parent); // reuso
 
-    await eventually(async () => {
-      const count = await app.prisma.auditLog.count({ where: { action: 'auth.refresh_reuse' } });
-      expect(count).toBeGreaterThan(0);
-    });
+    const reusos = await esperarAuditoria(app, { action: 'auth.refresh_reuse' });
+    expect(reusos.length).toBeGreaterThan(0);
   });
 
   it('reusar un token revocado por LOGOUT no es reuso: rechazo simple, sin tocar otras sesiones', async () => {

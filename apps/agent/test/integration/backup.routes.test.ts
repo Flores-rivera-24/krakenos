@@ -7,11 +7,11 @@ import { decryptArchive, unpackArchive } from '../../src/system/backup.js';
 import {
   authHeader,
   buildTestApp,
-  eventually,
   resetDb,
   seedUser,
   signAccess,
 } from '../helpers/app.js';
+import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /** Copia de seguridad real (US-103): el endpoint produce un archivo cifrado restaurable. */
 describe('backup del sistema (US-103)', () => {
@@ -154,12 +154,7 @@ describe('copias de seguridad automáticas (US-233)', () => {
     expect(entries.some((e) => e.name === 'db/app.db')).toBe(true);
 
     // Queda auditado (fire-and-forget).
-    await eventually(async () => {
-      const audit = await app.prisma.auditLog.findFirst({
-        where: { action: 'system.backup.passphrase' },
-      });
-      expect(audit).not.toBeNull();
-    });
+    await esperarUnaAuditoria(app, { action: 'system.backup.passphrase' });
   });
 
   it('sin contraseña, «copiar ahora» responde el fallo en vez de romper', async () => {
