@@ -78,18 +78,25 @@ export function CompatibilitySection() {
             <li key={e.id} className="space-y-2 rounded-lg border border-kr bg-kr-surface p-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium text-kr-primary">{e.label}</span>
+                {/* US-258: la verificación es una FECHA, no un sí/no. «Verificado»
+                    sin cuándo envejece mal: una prueba de hace dos años sobre un
+                    firmware que ya no existe se lee igual que una de ayer. */}
                 <span
                   className={cn(
                     'flex items-center gap-1 text-kr-xs',
-                    e.verified ? 'text-success' : 'text-kr-muted',
+                    e.verifiedAt ? 'text-success' : 'text-kr-muted',
                   )}
                 >
-                  {e.verified ? (
+                  {e.verifiedAt ? (
                     <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
                   ) : (
                     <CircleDot className="h-3.5 w-3.5" aria-hidden />
                   )}
-                  {e.verified ? t('compat.verified') : t('compat.unverified')}
+                  {e.verifiedAt
+                    ? t('compat.verifiedOn', {
+                        date: new Date(e.verifiedAt).toLocaleDateString(),
+                      })
+                    : t('compat.unverified')}
                 </span>
               </div>
               <div className="flex flex-wrap gap-1">
@@ -102,6 +109,19 @@ export function CompatibilitySection() {
                   ver de un vistazo es qué NO lleva garantía. */}
               {e.support === 'community' && (
                 <p className="text-kr-xs text-warning">{t('compat.community')}</p>
+              )}
+              {/* US-258: línea APARTE del sello de arriba, y no dentro de él, porque
+                  son dos cosas distintas: aquello es el compromiso de mantenimiento
+                  y esto es lo que vas a tener que hacer. Kasa es `core` —se
+                  mantiene— y aun así los Tapo piden la cuenta del fabricante; con
+                  una sola línea, ese caso no tenía dónde decirse. */}
+              {e.appDependency && (
+                <p className="text-kr-xs text-warning">
+                  {t(`compat.app.${e.appDependency.reason}` as TranslationKey)}
+                  {e.appDependency.scope === 'some' && e.appDependency.devices ? (
+                    <> {t('compat.app.only', { devices: e.appDependency.devices })}</>
+                  ) : null}
+                </p>
               )}
               {e.requirements.length > 0 && (
                 <p className="text-kr-xs text-kr-muted">

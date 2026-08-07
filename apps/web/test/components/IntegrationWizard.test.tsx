@@ -84,6 +84,37 @@ describe('IntegrationWizard', () => {
     expect(screen.queryByText('Soporte de la comunidad, sin garantía')).not.toBeInTheDocument();
   });
 
+  // --- Dependencia de la app del fabricante (US-258) ---
+
+  it('un backend `core` con dependencia SÍ avisa de la app (Kasa/Tapo)', () => {
+    render(
+      <IntegrationWizard
+        domain="iot"
+        kind="kasa"
+        kindSchema={{ ...HUE_SCHEMA, kind: 'kasa', label: 'TP-Link Kasa / Tapo' }}
+        current={null}
+        onDone={vi.fn()}
+      />,
+    );
+    // El caso que se perdía: al colgar el aviso del sello `community`, un backend
+    // mantenido que necesita la cuenta del fabricante no lo decía en ningún sitio.
+    const aviso = screen.getByText('Vas a necesitar la app del fabricante');
+    expect(aviso).toBeInTheDocument();
+    expect(screen.getByText(/hace falta la cuenta del fabricante/)).toBeInTheDocument();
+    // Y acota la gama: quien tiene enchufes Kasa clásicos no necesita ninguna cuenta.
+    expect(screen.getByText(/Solo afecta a los Tapo/)).toBeInTheDocument();
+    // Sigue sin ser community: el sello de garantía no aparece.
+    expect(screen.queryByText('Soporte de la comunidad, sin garantía')).not.toBeInTheDocument();
+    // Y va antes de los pasos, por lo mismo que el otro aviso.
+    const intro = screen.getByText('Qué necesitas');
+    expect(aviso.compareDocumentPosition(intro) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('Hue no depende de ninguna app y no lo insinúa', () => {
+    renderHue();
+    expect(screen.queryByText('Vas a necesitar la app del fabricante')).not.toBeInTheDocument();
+  });
+
   it('gatea "Siguiente" hasta rellenar los campos obligatorios', async () => {
     const user = userEvent.setup();
     renderHue();

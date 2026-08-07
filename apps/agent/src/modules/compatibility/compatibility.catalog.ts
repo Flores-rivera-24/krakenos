@@ -5,7 +5,14 @@ import {
   type CompatRequirement,
   COMPAT_CATEGORIES,
 } from '@krakenos/types';
-import { IOT_SUPPORT_LEVEL, type DriverKind, type IntegrationField, type IotKind } from '@krakenos/types';
+import {
+  HARDWARE_VERIFIED_AT,
+  IOT_SUPPORT_LEVEL,
+  MANUFACTURER_APP,
+  type DriverKind,
+  type IntegrationField,
+  type IotKind,
+} from '@krakenos/types';
 import { INTEGRATION_SCHEMA } from '../../integrations/schema.js';
 import { reportsPerDeviceTraffic } from '../../drivers/capabilities.js';
 
@@ -91,8 +98,15 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
         label: schema.label,
         capabilities,
         requirements: deriveRequirements(id, schema.fields),
-        // Nada verificado con hardware real todavía (checklist US-86).
-        verified: false,
+        // Fecha real o `null` (US-258): el mapa está **vacío a propósito** mientras
+        // las verificaciones con hardware sigan siendo cero (US-86), así que hoy
+        // esto devuelve `null` para todo y la ficha lo dice.
+        verifiedAt: HARDWARE_VERIFIED_AT[id] ?? null,
+        // Lo que hace falta de la app del fabricante (US-258). Solo aplica a IoT:
+        // el resto de dominios habla protocolo abierto y no tiene app de por medio.
+        // ⚠️ Es independiente de `support`: Kasa es `core` y aun así Tapo pide la
+        // cuenta TP-Link, que era justo el caso sin marca.
+        appDependency: category === 'iot' ? MANUFACTURER_APP[kind as IotKind] : null,
         // Fuente única en `@krakenos/types`: el asistente de la web lee el mismo
         // mapa, así que no pueden discrepar. Los demás dominios (SSH, REST local,
         // SNMP, RTSP, WireGuard, tc, Pi-hole) son protocolo abierto por construcción.

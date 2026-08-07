@@ -1,10 +1,22 @@
-import { COMPAT_CATEGORIES } from '@krakenos/types';
+import { APP_DEPENDENCY_REASONS, COMPAT_CATEGORIES, SUPPORT_LEVELS } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { buildCompatibilityCatalog } from './compatibility.catalog.js';
 
 /** El catálogo es estático (derivado del código): se construye una vez. */
 const CATALOG = buildCompatibilityCatalog();
 
+/**
+ * ⚠️ `additionalProperties: false` en una respuesta **poda** lo que no esté aquí, y
+ * eso ya costó una feature entera: `support` se añadió al contrato (US-238) y no a
+ * este schema, así que el sello «community · necesita la app del fabricante» **nunca
+ * llegó al navegador**. El test de la web pasaba porque su fixture sí lo traía y
+ * `api.get<T>()` es un cast, no una comprobación.
+ *
+ * Por eso hay un test de contrato (`compatibility.routes.test.ts`) que compara las
+ * claves que **de verdad** salen por la ruta con las que produce el catálogo: un
+ * campo nuevo en `CompatibilityEntry` que se olvide aquí pone el test en rojo en vez
+ * de desaparecer en silencio.
+ */
 const compatibilitySchema = {
   response: {
     200: {
@@ -18,9 +30,29 @@ const compatibilitySchema = {
           label: { type: 'string' },
           capabilities: { type: 'array', items: { type: 'string' } },
           requirements: { type: 'array', items: { type: 'string' } },
-          verified: { type: 'boolean' },
+          verifiedAt: { type: ['string', 'null'] },
+          support: { type: 'string', enum: [...SUPPORT_LEVELS] },
+          appDependency: {
+            type: ['object', 'null'],
+            additionalProperties: false,
+            properties: {
+              reason: { type: 'string', enum: [...APP_DEPENDENCY_REASONS] },
+              scope: { type: 'string', enum: ['all', 'some'] },
+              devices: { type: 'string' },
+            },
+            required: ['reason', 'scope'],
+          },
         },
-        required: ['id', 'category', 'label', 'capabilities', 'requirements', 'verified'],
+        required: [
+          'id',
+          'category',
+          'label',
+          'capabilities',
+          'requirements',
+          'verifiedAt',
+          'support',
+          'appDependency',
+        ],
       },
     },
   },
