@@ -1321,6 +1321,7 @@ export const en: Record<TranslationKey, string> = {
   'automations.action.iotSet': 'Turn a device on/off',
   'automations.action.sceneRun': 'Activate a scene',
   'automations.action.deviceBlock': 'Block internet',
+  'automations.action.deviceUnblock': 'Remove the block',
   'automations.action.devicePause': 'Pause internet',
   'automations.action.notify': 'Notify me',
 

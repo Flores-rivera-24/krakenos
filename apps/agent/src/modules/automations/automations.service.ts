@@ -269,6 +269,19 @@ export class AutomationService {
         await this.deps.inventory.setBlocked(row.id, true);
         return;
       }
+      case 'device-unblock': {
+        const mac = action.mac ?? subject.mac;
+        if (!mac) throw new Error('la regla no aporta un dispositivo de red objetivo');
+        const row = await this.app.prisma.device.findUnique({ where: { mac } });
+        if (!row) throw new Error(`dispositivo ${mac} no encontrado`);
+        // Suelta SOLO el bloqueo manual. Si un horario o una pausa siguen activos,
+        // el aparato sigue sin internet: el bloqueo efectivo es un OR de tres
+        // fuentes (`blocked-eval.ts`) y esta acción no puede —ni debe— pisar las
+        // otras dos. Prometer «desbloquear» y saltarse la hora de dormir de un
+        // menor sería justo la clase de sorpresa que el parental no puede dar.
+        await this.deps.inventory.setBlocked(row.id, false);
+        return;
+      }
       case 'device-pause': {
         const mac = action.mac ?? subject.mac;
         if (!mac) throw new Error('la regla no aporta un dispositivo de red objetivo');

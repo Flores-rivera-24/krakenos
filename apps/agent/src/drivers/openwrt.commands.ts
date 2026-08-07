@@ -76,13 +76,62 @@ export const WIFI_RELOAD = 'wifi reload';
 export function blockMacCommand(mac: string): string {
   const m = normalizeMac(mac);
   // `-C` evita duplicar la regla; si no existe, `-I` la inserta.
-  return `iptables -w -C FORWARD -m mac --mac-source ${m} -j DROP 2>/dev/null || iptables -w -I FORWARD -m mac --mac-source ${m} -j DROP`;
+  const ipt = `iptables -w -C FORWARD -m mac --mac-source ${m} -j DROP 2>/dev/null || iptables -w -I FORWARD -m mac --mac-source ${m} -j DROP`;
+  return `if command -v iptables >/dev/null 2>&1; then ${ipt}; else ${nftInsert(m)}; fi`;
 }
 
 /** Quita la regla de bloqueo de una MAC (idempotente). */
 export function unblockMacCommand(mac: string): string {
   const m = normalizeMac(mac);
-  return `iptables -w -D FORWARD -m mac --mac-source ${m} -j DROP 2>/dev/null || true`;
+  const ipt = `iptables -w -D FORWARD -m mac --mac-source ${m} -j DROP 2>/dev/null || true`;
+  return `if command -v iptables >/dev/null 2>&1; then ${ipt}; else ${nftDelete(m)}; fi`;
+}
+
+/**
+ * Tabla y cadena de **fw4**, el cortafuegos por defecto de OpenWrt desde 22.03.
+ * Se inserta en su cadena `forward` en vez de crear una propia: una cadena nuestra
+ * no la salta nadie salvo que además la enganchemos, y enganchar cadenas en el
+ * cortafuegos de otro es la clase de cambio que sobrevive a la desinstalación.
+ */
+const NFT_CHAIN = 'inet fw4 forward';
+
+/**
+ * Inserta la regla de descarte con nftables, de forma idempotente.
+ *
+ * `insert` y no `add`: `add` la pone al **final** de la cadena, detrás de las
+ * reglas de aceptación que fw4 ya trae, así que el paquete se aceptaría antes de
+ * llegar a la nuestra y el bloqueo «se aplicaría» sin cortar nada. Es el mismo
+ * motivo por el que la rama iptables usa `-I` y no `-A`.
+ */
+function nftInsert(m: string): string {
+  return `nft list chain ${NFT_CHAIN} 2>/dev/null | grep -q ${shellArg(m)} || nft insert rule ${NFT_CHAIN} ether saddr ${m} drop`;
+}
+
+/**
+ * Borra la regla por **handle**, que es la única forma que da nftables: no existe
+ * un `-D` que case por contenido. `nft -a` imprime `… # handle N` al final de cada
+ * línea, de ahí el `$NF`. Si no hay handle, no había regla y no es un error.
+ */
+function nftDelete(m: string): string {
+  return `h=$(nft -a list chain ${NFT_CHAIN} 2>/dev/null | awk ${shellArg(`/${m}/ {print $NF}`)} | head -n1); [ -n "$h" ] && nft delete rule ${NFT_CHAIN} handle "$h" || true`;
+}
+
+/**
+ * Qué pila de filtrado tiene el router. OpenWrt 22.03+ trae **fw4/nftables** y ya
+ * no instala `iptables` de serie; la compatibilidad `iptables-nft` existe pero
+ * **nadie garantiza que esté**, que es justo lo que este proyecto daba por hecho en
+ * un comentario. Sin ninguna de las dos, bloquear no corta nada y hay que decirlo
+ * en vez de dejar el panel diciendo «Bloqueado».
+ */
+export const FIREWALL_STACK_PROBE =
+  'if command -v iptables >/dev/null 2>&1; then echo iptables; elif command -v nft >/dev/null 2>&1; then echo nft; else echo none; fi';
+
+export type FirewallStack = 'iptables' | 'nft' | 'none';
+
+/** Lee la salida de {@link FIREWALL_STACK_PROBE}. Desconocido → `none` (falla cerrado). */
+export function parseFirewallStack(out: string | null): FirewallStack {
+  const v = (out ?? '').trim();
+  return v === 'iptables' || v === 'nft' ? v : 'none';
 }
 
 /** Mapea la seguridad de KrakenOS al valor `encryption` de UCI. */

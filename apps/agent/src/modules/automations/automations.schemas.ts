@@ -95,7 +95,9 @@ const action = {
   additionalProperties: false,
   required: ['type'],
   properties: {
-    type: { enum: ['iot-set', 'scene-run', 'device-block', 'device-pause', 'notify'] },
+    type: {
+      enum: ['iot-set', 'scene-run', 'device-block', 'device-unblock', 'device-pause', 'notify'],
+    },
     deviceId,
     on: { type: 'boolean' },
     brightness: { type: 'integer', minimum: 0, maximum: 100 },

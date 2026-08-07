@@ -8,6 +8,7 @@ import type { AccessSchedule as DbAccessSchedule } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { activeBlockedMacs } from './schedule-eval.js';
 import { evaluateBlocked, groupSchedulesByMac, type BlockReason } from './blocked-eval.js';
+import { planDeReafirmacion } from '../../access/reaffirm.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /**
@@ -63,6 +64,13 @@ export class AccessScheduleService {
    * nadie que lo retire al terminar la ventana (US-197 / AUD-01).
    */
   private readonly managedBlocked = new Set<string>();
+  /**
+   * Última reafirmación correcta por MAC (ms). **En memoria a propósito**: tras un
+   * reinicio del agente no consta que el router siga teniendo sus reglas, así que
+   * empezar con el mapa vacío hace que todo se reafirme en los primeros barridos.
+   * Persistirlo ahorraría unos comandos y reintroduciría justo el agujero.
+   */
+  private readonly reafirmadas = new Map<string, number>();
 
   /**
    * Reconciliación de los horarios **de persona** contra el parque real (US-240),
@@ -333,6 +341,51 @@ export class AccessScheduleService {
       }
     }
     if (changed) await this.persistManaged();
+    await this.reafirmarBloqueos(now);
+  }
+
+  /**
+   * Reafirma periódicamente contra el driver lo que **debe** estar bloqueado
+   * (US-255).
+   *
+   * El bucle de arriba solo llama al driver cuando el estado deseado **cambia**, y
+   * las reglas no viven aquí: viven en el router. Un reinicio del router, un
+   * `fw4 restart` o una restauración de su config se las llevan, y sin esto
+   * KrakenOS no se entera nunca — el panel sigue diciendo «Bloqueado» con el
+   * aparato navegando. Es el único fallo de esta clase que **no** se manifiesta
+   * como un error.
+   *
+   * Cubre las **tres** fuentes (manual ∪ horario ∪ pausa) y no solo las nuestras:
+   * el reinicio se lleva también las reglas del bloqueo manual, así que reafirmar
+   * solo lo gestionado dejaría el mismo agujero un poco más pequeño.
+   *
+   * Solo reafirma **bloqueos**, nunca desbloqueos: lo que un reinicio del router
+   * produce es «debería estar cortado y no lo está», y el caso contrario ya lo
+   * cierra el bucle de arriba. Reafirmar los dos sentidos doblaría el tráfico SSH
+   * para cubrir un fallo que no ocurre.
+   */
+  private async reafirmarBloqueos(now: Date): Promise<void> {
+    const manuales = await this.app.prisma.device.findMany({
+      where: { isBlocked: true },
+      select: { mac: true },
+    });
+    const deseadas = new Set<string>([...this.managedBlocked, ...manuales.map((d) => d.mac)]);
+    const plan = planDeReafirmacion(deseadas, this.reafirmadas, now.getTime());
+
+    for (const mac of plan.olvidar) this.reafirmadas.delete(mac);
+    for (const mac of plan.reafirmar) {
+      try {
+        await this.driver.blockDevice(mac);
+        // La marca avanza SOLO tras el éxito: con el router caído, la MAC sigue
+        // vencida y se reintenta en el barrido siguiente en vez de darse por
+        // reafirmada durante todo un intervalo.
+        this.reafirmadas.set(mac, now.getTime());
+      } catch (err) {
+        // No se audita ni se alerta: reafirmar es rutina y el fallo puntual ya lo
+        // reporta el log. Lo que importa es que la marca no avance.
+        this.app.log.warn({ err, mac }, '[access] no se pudo reafirmar el bloqueo; se reintenta');
+      }
+    }
   }
 
   /** Barrido sin propagar errores (para el timer). */

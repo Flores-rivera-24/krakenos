@@ -1338,6 +1338,7 @@ export const es = {
   'automations.action.iotSet': 'Encender/apagar un dispositivo',
   'automations.action.sceneRun': 'Activar una escena',
   'automations.action.deviceBlock': 'Bloquear internet',
+  'automations.action.deviceUnblock': 'Quitar el bloqueo',
   'automations.action.devicePause': 'Pausar internet',
   'automations.action.notify': 'Avisarme',
 

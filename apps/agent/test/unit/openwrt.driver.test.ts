@@ -80,6 +80,8 @@ class FakeTransport implements OpenWrtTransport {
 function baseTransport(): FakeTransport {
   return new FakeTransport()
     .on('command -v nlbw', 'no\n') // sin nlbwmon: el estado de fábrica de OpenWrt
+    // Router con iptables: el caso clásico. Los tests de la pila lo sobrescriben.
+    .on('if command -v iptables', 'iptables\n')
     .on('cat /proc/uptime', '1234.5 5678.9')
     .on('cat /proc/net/arp', ARP)
     .on('uci show wireless', UCI)
@@ -286,7 +288,44 @@ describe('OpenWrtDriver', () => {
 
   it('blockDevice ejecuta la regla iptables de la MAC', async () => {
     await makeDriver().blockDevice('F0:18:98:AA:BB:CC');
-    expect(t.ran('iptables -w -C FORWARD -m mac --mac-source f0:18:98:aa:bb:cc')).toBe(true);
+    // El comando va envuelto en el `if` que elige pila (US-255), así que se busca
+    // por contenido y no por prefijo.
+    expect(
+      t.calls.some((c) =>
+        c.includes('iptables -w -C FORWARD -m mac --mac-source f0:18:98:aa:bb:cc'),
+      ),
+    ).toBe(true);
+  });
+
+  // --- Pila de filtrado del router (US-255) ---
+
+  it('un router sin iptables ni nft NO finge que bloquea: lo dice y nombra el paquete', async () => {
+    // Es el fallo que esta historia cierra por el lado del driver: OpenWrt 22.03+
+    // no trae iptables de serie, y sin pila el comando no cortaba nada mientras el
+    // panel seguía diciendo «Bloqueado».
+    t.on('if command -v iptables', 'none\n');
+    await expect(makeDriver().blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow(
+      /no se puede bloquear/,
+    );
+    // Y no se llegó a mandar ninguna regla.
+    expect(t.calls.some((c) => c.includes('insert rule') || c.includes('-I FORWARD'))).toBe(false);
+  });
+
+  it('con solo nft, bloquea por nftables', async () => {
+    t.on('if command -v iptables', 'nft\n');
+    await makeDriver().blockDevice('f0:18:98:aa:bb:cc');
+    expect(t.calls.some((c) => c.includes('nft insert rule inet fw4 forward'))).toBe(true);
+  });
+
+  it('el healthcheck re-sondea la pila: instalar el paquete se nota sin reiniciar', async () => {
+    const driver = makeDriver();
+    t.on('if command -v iptables', 'none\n');
+    expect(await driver.firewallStack()).toBe('none');
+
+    // El usuario instala nftables en el router y vuelve a pasar el healthcheck.
+    t.on('if command -v iptables', 'nft\n');
+    expect(await driver.healthcheck()).toBe(true);
+    expect(await driver.firewallStack()).toBe('nft');
   });
 
   it('getWifi mapea la iface principal (no invitados)', async () => {

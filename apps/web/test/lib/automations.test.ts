@@ -51,6 +51,16 @@ describe('lib/automations (US-167)', () => {
     expect(describeAction({ type: 'iot-set', on: true }, CTX)).toBe('enciende el dispositivo del evento');
     expect(describeAction({ type: 'scene-run', sceneId: 's1' }, CTX)).toBe('activa la escena Cine');
     expect(describeAction({ type: 'device-block' }, CTX)).toBe('bloquea el dispositivo del evento');
+    // US-255: «quita el bloqueo», no «desbloquea». La acción suelta la fuente
+    // manual; un horario o una pausa activos siguen cortando, así que el verbo no
+    // puede prometer acceso.
+    expect(describeAction({ type: 'device-unblock', mac: 'aa:bb' }, CTX)).toBe(
+      'quita el bloqueo de Móvil de Ana',
+    );
+    // Y la contracción, que es donde se cuela el «de el».
+    expect(describeAction({ type: 'device-unblock' }, CTX)).toBe(
+      'quita el bloqueo del dispositivo del evento',
+    );
     expect(describeAction({ type: 'device-pause', mac: 'aa:bb', minutes: 30 }, CTX)).toBe(
       'pausa Móvil de Ana 30 min',
     );
