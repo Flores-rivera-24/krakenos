@@ -69,6 +69,17 @@ export function pushNotificationForAudit(
       return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory', audience: 'admin' };
     case 'inventory.unknown_device':
       return { title: 'Dispositivo desconocido', body: 'Nueva MAC en la red', url: '/inventory', audience: 'admin' };
+    // US-253. Audiencia `admin` y no `home`: el aviso nombra aparato y dominio, o
+    // sea **actividad por aparato** — la misma que `home.activity` cerró a los
+    // demás roles (US-250). Mandárselo a `member` por push reabriría por detrás
+    // lo que la API cierra por delante.
+    case 'dns.new_destination':
+      return {
+        title: 'Destino nuevo',
+        body: detail ?? 'Un aparato ha contactado con un destino nuevo',
+        url: '/dns',
+        audience: 'admin',
+      };
     case 'camera.motion':
       return {
         title: 'Movimiento detectado',

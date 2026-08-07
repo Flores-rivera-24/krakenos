@@ -9,6 +9,7 @@ import {
   type MarcaDeIngesta,
 } from '../../dns/history.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
+import type { NewDestinationService } from './new-destination.service.js';
 
 /** Cada cuánto se pregunta al resolver por sus consultas recientes. */
 const DEFAULT_INGEST_MS = 60_000;
@@ -53,6 +54,8 @@ export class DnsHistoryService {
     private readonly dns: DnsManager,
     private readonly intervalMs = DEFAULT_INGEST_MS,
     private readonly batch = DEFAULT_BATCH,
+    /** Aviso de destino nuevo (US-253). Opcional: sin él la ingesta funciona igual. */
+    private readonly destinos?: NewDestinationService,
   ) {}
 
   /** Ingiere una tanda. No propaga errores: un resolver caído no tumba el barrido. */
@@ -82,6 +85,23 @@ export class DnsHistoryService {
       // La marca avanza DESPUÉS de que la escritura haya salido bien: moverla antes
       // deja ese tramo sin ingerir para siempre y sin un solo error visible.
       this.marca = marca;
+
+      // Aviso de destino nuevo (US-253) sobre ESTA tanda, ya atribuida: releer la
+      // tabla obligaría a rehacer el cruce IP→MAC, que no se puede rehacer sin
+      // atribuirle a alguien la navegación de otro. No puede tumbar la ingesta.
+      if (this.destinos) {
+        const atribuidas = nuevas
+          .map((q) => ({
+            mac: macDelCliente(q.client, macPorIp),
+            domain: q.domain,
+            // `timestamp` viaja como ISO; el núcleo puro trabaja en ms epoch.
+            at: new Date(q.timestamp).getTime(),
+          }))
+          // Una consulta sin MAC no se puede atribuir a un aparato, y un aviso que
+          // no dice de quién es no sirve para nada.
+          .filter((c): c is { mac: string; domain: string; at: number } => c.mac !== null);
+        await this.destinos.procesar(atribuidas);
+      }
       return nuevas.length;
     } catch (err) {
       this.app.log.error({ err }, '[dns-history] la ingesta de consultas falló');

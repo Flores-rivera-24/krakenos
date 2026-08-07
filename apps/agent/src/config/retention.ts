@@ -24,6 +24,7 @@ type PrismaLike = Pick<
   | 'energySample'
   | 'surveyScan'
   | 'dnsQueryLog'
+  | 'knownDestination'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
@@ -45,6 +46,22 @@ export const PRESENCE_EVENT_RETENTION_DAYS = 30;
  * configuración.
  */
 export const DNS_QUERY_RETENTION_DAYS = 7;
+
+/**
+ * Retención de los **destinos conocidos** por aparato (`KnownDestination`, US-253).
+ *
+ * Es mucho más larga que la del histórico (7 d) **a propósito y declarándolo**:
+ * sin memoria larga no se puede decir «nunca había contactado con esto», que es
+ * justo lo que pide el aviso. Lo que la hace aceptable no es el número sino el
+ * **dato**: aquí solo vive el dominio registrable (`example.com`), nunca el FQDN
+ * ni la hora de cada consulta, así que sirve para «este aparato empezó a hablar
+ * con alguien nuevo» y **no** para reconstruir a dónde navega nadie.
+ *
+ * Se mide desde `lastSeenAt`, no desde `firstSeenAt`: contando desde la primera
+ * vez, un destino que el aparato visita a diario caducaría a los 90 días y
+ * volvería a avisar solo, como si fuera nuevo.
+ */
+export const KNOWN_DESTINATION_RETENTION_DAYS = 90;
 
 /**
  * Retención del rollup **por dispositivo** (`DeviceTrafficSample`, US-46).
@@ -155,6 +172,21 @@ export async function pruneDnsQueryLog(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.dnsQueryLog.deleteMany({ where: { timestamp: { lt: cutoff } } });
+  return res.count;
+}
+
+/**
+ * Olvida los destinos que un aparato no visita desde hace la retención (US-253).
+ * Un destino olvidado que reaparezca vuelve a avisar, y es correcto: tras tres
+ * meses sin hablar con alguien, volver a hacerlo **es** un cambio de
+ * comportamiento.
+ */
+export async function pruneKnownDestinations(
+  prisma: PrismaLike,
+  days: number = KNOWN_DESTINATION_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.knownDestination.deleteMany({ where: { lastSeenAt: { lt: cutoff } } });
   return res.count;
 }
 

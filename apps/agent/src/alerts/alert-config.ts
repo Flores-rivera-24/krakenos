@@ -12,6 +12,11 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'auth.refresh_reuse', label: 'Posible robo de sesión' },
   { event: 'device.block', label: 'Dispositivo bloqueado' },
   { event: 'inventory.unknown_device', label: 'Dispositivo desconocido' },
+  // US-253: un aparato que empieza a hablar con alguien nuevo. Es evento propio y
+  // no una variante de «dispositivo desconocido»: aquel avisa de que APARECE un
+  // aparato, este de que uno que ya estaba CAMBIA de comportamiento — apagar uno
+  // no debe apagar el otro.
+  { event: 'dns.new_destination', label: 'Un aparato contacta con un destino nuevo' },
   { event: 'energy.threshold', label: 'Consumo eléctrico anómalo' },
   { event: 'camera.motion', label: 'Movimiento detectado' },
   { event: 'alarm.triggered', label: '¡Alarma disparada!' },
