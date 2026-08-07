@@ -63,4 +63,31 @@ describe('paridad de rutas server real ↔ test-app (AUD-21)', () => {
     const missing = [...realApiRoutes].filter((r) => !testAppRoutes.has(r));
     expect({ missing }).toEqual({ missing: [] });
   });
+
+  it('arrancar sin usuarios libera el candado de configuración obsoleto', async () => {
+    // El efecto que REPARA la instalación bloqueada vive en el arranque, no en una
+    // ruta: sin este test, borrar esa llamada de `buildServer` no rompería nada y
+    // una instalación sin usuarios volvería a quedarse sin wizard y sin login.
+    const seeder = await buildTestApp({});
+    try {
+      await seeder.prisma.user.deleteMany();
+      await seeder.prisma.setting.upsert({
+        where: { key: 'setup.claimed' },
+        create: { key: 'setup.claimed', value: 'true' },
+        update: { value: 'true' },
+      });
+    } finally {
+      await seeder.close();
+    }
+
+    const arrancado = await buildServer();
+    try {
+      const candado = await arrancado.prisma.setting.findUnique({
+        where: { key: 'setup.claimed' },
+      });
+      expect(candado).toBeNull();
+    } finally {
+      await arrancado.close();
+    }
+  });
 });
