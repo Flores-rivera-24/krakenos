@@ -105,10 +105,10 @@ export function GettingStarted() {
           </span>
           <div>
             <h3 id="onboarding-title" className="text-kr-lg font-semibold text-kr-primary">
-              ¡Bienvenido a KrakenOS!
+              {t('gettingStarted.welcome')}
             </h3>
             <p className="text-kr-sm text-kr-secondary">
-              Conecta tus dispositivos en unos minutos. Te guiamos en cada paso.
+              {t('gettingStarted.intro')}
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { downloadReport } from '@/lib/reports';
+import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 const REPORTS = [
@@ -12,6 +13,7 @@ const REPORTS = [
 
 /** Exportación de informes en CSV (US-109) — para una revisión mensual o un auditor. */
 export function ReportsCard() {
+  const t = useT();
   const [busy, setBusy] = useState<string | null>(null);
 
   const run = async (r: (typeof REPORTS)[number]) => {
@@ -19,7 +21,7 @@ export function ReportsCard() {
     try {
       await downloadReport(r.path, r.file);
     } catch {
-      toast.error('No se pudo generar el informe');
+      toast.error(t('reports.generateError'));
     } finally {
       setBusy(null);
     }
@@ -28,11 +30,11 @@ export function ReportsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Informes (CSV)</CardTitle>
+        <CardTitle>{t('reports.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-kr-sm text-kr-secondary">
-          Exporta tus datos para una revisión mensual o para un auditor.
+          {t('reports.intro')}
         </p>
         <div className="flex flex-wrap gap-2">
           {REPORTS.map((r) => (

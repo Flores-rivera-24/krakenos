@@ -9,6 +9,7 @@ import type {
 import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 /** Herramienta activa del lienzo. */
 export type CoverageTool = 'select' | 'wall' | 'ap' | 'measure';
@@ -86,6 +87,7 @@ export function FloorPlanStage({
   pxPerM: pxPerMProp,
   readOnly = false,
 }: Props) {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -245,7 +247,7 @@ export function FloorPlanStage({
           className="absolute inset-0 touch-none select-none"
           style={{ cursor }}
           role="img"
-          aria-label={`Plano ${plan.name}: ${plan.widthM}×${plan.heightM} m con ${accessPoints.length} punto(s) de acceso`}
+          aria-label={t('coverage.plan.aria', { name: plan.name, w: plan.widthM, h: plan.heightM, aps: accessPoints.length })}
           onPointerDown={onBackgroundPointerDown}
           onPointerMove={onSvgPointerMove}
           onPointerUp={onSvgPointerUp}

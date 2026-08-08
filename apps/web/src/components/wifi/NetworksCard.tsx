@@ -1,6 +1,7 @@
 import type { AccessPoint, WifiClient, WifiNetworkInfo } from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { useT } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
@@ -9,6 +10,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 export function NetworksCard() {
+  const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   // Apodos del inventario por MAC (US-178): la lista de clientes usa el nombre
   // amable que la persona ya puso, no el hostname críptico.
@@ -61,7 +63,7 @@ export function NetworksCard() {
   return (
     <Card className="lg:col-span-2">
       <CardHeader>
-        <CardTitle className="text-base text-foreground">Puntos de acceso y redes</CardTitle>
+        <CardTitle className="text-base text-foreground">{t('wifi.networks.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2">
