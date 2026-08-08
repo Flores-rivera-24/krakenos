@@ -25,7 +25,14 @@ const fakeSocket = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 vi.mock('@/lib/api', () => ({
-  api: { get: () => Promise.resolve([]), patch: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() },
+  api: {
+    get: () => Promise.resolve([]),
+    getList: () => Promise.resolve([]),
+    patch: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  },
   ApiRequestError: class extends Error {},
 }));
 

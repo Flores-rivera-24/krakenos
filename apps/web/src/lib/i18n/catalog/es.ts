@@ -813,6 +813,7 @@ export const es = {
   'scenes.empty.cta': 'Crear escena',
 
   // --- Inventario (US-14) ---
+  'inventory.title': 'Dispositivos',
   'inventory.filter.online': 'En línea',
   'inventory.filter.offline': 'Desconectados',
   'inventory.filter.blocked': 'Bloqueados',

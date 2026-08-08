@@ -33,7 +33,7 @@ export function saveEnergyConfig(input: {
 // --- Alertas de consumo (US-183) ---
 
 export function fetchEnergyAlerts(): Promise<EnergyAlertRule[]> {
-  return api.get<EnergyAlertRule[]>('/energy/alerts');
+  return api.getList<EnergyAlertRule>('/energy/alerts');
 }
 
 export function createEnergyAlert(input: CreateEnergyAlertRuleRequest): Promise<EnergyAlertRule> {

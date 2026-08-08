@@ -3,7 +3,7 @@ import { api } from '@/lib/api';
 
 export const getPresence = () => api.get<PresenceState>('/presence');
 export const getPresenceTimeline = (limit = 20) =>
-  api.get<PresenceEvent[]>(`/presence/timeline?limit=${limit}`);
+  api.getList<PresenceEvent>(`/presence/timeline?limit=${limit}`);
 export const setHomeMode = (mode: HomeMode) =>
   api.post<PresenceState>('/presence/mode', { mode });
 

@@ -25,14 +25,14 @@ export const WEATHER_METRIC_PHRASES: Record<WeatherMetric, string> = {
 import { DAY_LABELS, formatSunOffset, minuteToTimeString } from '@/lib/schedule-format';
 import { MODE_LABELS } from '@/lib/presence';
 
-export const listAutomations = () => api.get<AutomationRule[]>('/automations');
+export const listAutomations = () => api.getList<AutomationRule>('/automations');
 export const createAutomation = (body: CreateAutomationRuleRequest) =>
   api.post<AutomationRule>('/automations', body);
 export const updateAutomation = (id: string, body: UpdateAutomationRuleRequest) =>
   api.patch<AutomationRule>(`/automations/${id}`, body);
 export const deleteAutomation = (id: string) => api.del<void>(`/automations/${id}`);
 export const listAutomationRuns = (ruleId?: string) =>
-  api.get<AutomationRun[]>(`/automations/runs${ruleId ? `?ruleId=${encodeURIComponent(ruleId)}` : ''}`);
+  api.getList<AutomationRun>(`/automations/runs${ruleId ? `?ruleId=${encodeURIComponent(ruleId)}` : ''}`);
 
 /** Contexto para resolver ids a nombres humanos en las frases. */
 export interface NameContext {

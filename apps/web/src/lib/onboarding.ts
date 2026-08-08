@@ -14,7 +14,12 @@ import { api } from '@/lib/api';
 
 /** Cliente de las dos vías de alta (US-267 invitaciones · US-268 solicitudes). */
 
-export const listInvitations = (): Promise<Invitation[]> => api.get<Invitation[]>('/invitations');
+// `getList` y no un GET con genérico de lista: el genérico es un cast que no
+// comprueba nada en runtime, así que un 200 con otra forma se asignaría al estado y
+// reventaría en el `.map()` de la tarjeta, lejos de la causa.
+// (El literal del patrón prohibido no se escribe aquí: el gate `get-lista` busca por
+// texto y no distingue código de comentario, así que citarlo se delata a sí mismo.)
+export const listInvitations = (): Promise<Invitation[]> => api.getList<Invitation>('/invitations');
 
 export const createInvitation = (body: CreateInvitationRequest): Promise<CreateInvitationResponse> =>
   api.post<CreateInvitationResponse>('/invitations', body);
@@ -26,7 +31,7 @@ export const previewInvitation = (token: string): Promise<InvitationPreview> =>
   api.get<InvitationPreview>(`/invitations/redeem/${token}`, { anonymous: true });
 
 export const listAccessRequests = (status?: AccessRequestStatus): Promise<AccessRequest[]> =>
-  api.get<AccessRequest[]>(`/access-requests${status ? `?status=${status}` : ''}`);
+  api.getList<AccessRequest>(`/access-requests${status ? `?status=${status}` : ''}`);
 
 export const decideAccessRequest = (
   id: string,

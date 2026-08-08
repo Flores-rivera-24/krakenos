@@ -48,7 +48,7 @@ export function DnsPage() {
    * entera en blanco por una restricción que solo afecta a una tarjeta.
    */
   const loadShared = () =>
-    Promise.all([api.get<DnsStats>('/dns/stats'), api.get<BlockedDomain[]>('/dns/blocklist')])
+    Promise.all([api.get<DnsStats>('/dns/stats'), api.getList<BlockedDomain>('/dns/blocklist')])
       .then(([s, b]) => {
         setStats(s);
         setBlocklist(b);
@@ -136,7 +136,7 @@ export function DnsPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold">{t('dns.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('dns.title')}</h1>
           <GlossaryHint termKey="dns" />
         </div>
         <p className="text-sm text-muted-foreground">

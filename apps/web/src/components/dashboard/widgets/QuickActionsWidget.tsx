@@ -111,10 +111,10 @@ export function QuickActionsWidget() {
 
     void Promise.all([
       loadFavorites(),
-      api.get<IotDevice[]>('/iot/devices').catch(() => [] as IotDevice[]),
-      api.get<Device[]>('/inventory/devices').catch(() => [] as Device[]),
-      api.get<RoomWithState[]>('/rooms').catch(() => [] as RoomWithState[]),
-      api.get<Scene[]>('/scenes').catch(() => [] as Scene[]),
+      api.getList<IotDevice>('/iot/devices').catch(() => [] as IotDevice[]),
+      api.getList<Device>('/inventory/devices').catch(() => [] as Device[]),
+      api.getList<RoomWithState>('/rooms').catch(() => [] as RoomWithState[]),
+      api.getList<Scene>('/scenes').catch(() => [] as Scene[]),
     ])
       .then(([, iotList, devList, roomList, sceneList]) => {
         if (!active) return;

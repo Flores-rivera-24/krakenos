@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
 import {
   createAutomation,
@@ -354,7 +355,7 @@ function RuleEditor({
       title={editing ? t('automations.editor.editTitle') : t('automations.new')}
       footer={
         <div className="space-y-2">
-          {error && <p className="text-kr-sm text-danger">{error}</p>}
+          {error && <FormError>{error}</FormError>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
             {saving ? t('automations.editor.saving') : t('automations.editor.save')}
           </Button>
@@ -844,7 +845,7 @@ export function AutomationsPage() {
 
   useEffect(() => {
     reload();
-    void api.get<IotDevice[]>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
+    void api.getList<IotDevice>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
     void api
       .get<Device[]>('/inventory/devices')
       .then(setNetworkDevices)
@@ -863,7 +864,7 @@ export function AutomationsPage() {
   // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
   useEffect(() => {
     if (!isAdmin) return;
-    void api.get<UserSummary[]>('/users').then(setUsers).catch(() => setUsers([]));
+    void api.getList<UserSummary>('/users').then(setUsers).catch(() => setUsers([]));
   }, [isAdmin]);
 
   const ctx: NameContext = useMemo(
@@ -902,7 +903,7 @@ export function AutomationsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{t('automations.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('automations.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('automations.subtitle')}</p>
         </div>
         {isAdmin && (

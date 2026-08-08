@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
@@ -101,7 +102,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
 
   const footer = (
     <div className="space-y-2">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
       <Button onClick={() => void submit()} disabled={saving || loading} className="w-full">
         {saving ? t('cameras.motion.saving') : t('cameras.motion.save')}
       </Button>

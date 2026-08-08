@@ -794,6 +794,7 @@ export const en: Record<TranslationKey, string> = {
   'scenes.empty.cta': 'Create scene',
 
   // --- Inventario (US-14) ---
+  'inventory.title': 'Devices',
   'inventory.filter.online': 'Online',
   'inventory.filter.offline': 'Offline',
   'inventory.filter.blocked': 'Blocked',

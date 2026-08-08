@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { getAlarmConfig, updateAlarmConfig } from '@/lib/alarm';
 import { api } from '@/lib/api';
 import { listCameras } from '@/lib/cameras';
@@ -66,7 +67,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
     let active = true;
     void Promise.all([
       getAlarmConfig(),
-      api.get<IotDevice[]>('/iot/devices').catch(() => [] as IotDevice[]),
+      api.getList<IotDevice>('/iot/devices').catch(() => [] as IotDevice[]),
       listCameras().catch(() => [] as Camera[]),
     ])
       .then(([c, d, cams]) => {
@@ -132,7 +133,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
 
   const footer = (
     <div className="space-y-2">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
       <Button onClick={() => void submit()} disabled={saving || loading} className="w-full">
         {saving ? 'Guardando…' : 'Guardar'}
       </Button>

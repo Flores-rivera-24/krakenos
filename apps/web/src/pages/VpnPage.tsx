@@ -31,7 +31,7 @@ export function VpnPage() {
   const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
   const load = () =>
-    Promise.all([api.get<VpnStatus>('/vpn/status'), api.get<VpnPeer[]>('/vpn/peers')])
+    Promise.all([api.get<VpnStatus>('/vpn/status'), api.getList<VpnPeer>('/vpn/peers')])
       .then(([s, p]) => {
         setStatus(s);
         setPeers(p);
@@ -74,7 +74,7 @@ export function VpnPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold">{t('vpn.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('vpn.title')}</h1>
           <GlossaryHint termKey="vpn" />
         </div>
         <p className="text-sm text-muted-foreground">

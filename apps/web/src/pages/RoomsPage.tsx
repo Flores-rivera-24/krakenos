@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
+import { FormError } from '@/components/ui/form-error';
 import {
   ROOM_ICONS,
   createRoom,
@@ -195,7 +196,7 @@ function RoomEditor({
       title={editing ? t('rooms.editTitle') : t('rooms.newTitle')}
       footer={
         <div className="space-y-2">
-          {error && <p className="text-kr-sm text-danger">{error}</p>}
+          {error && <FormError>{error}</FormError>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
             {saving ? t('rooms.saving') : t('rooms.save')}
           </Button>
@@ -277,7 +278,7 @@ export function RoomsPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{t('rooms.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('rooms.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('rooms.subtitle')}</p>
         </div>
         {isAdmin && (

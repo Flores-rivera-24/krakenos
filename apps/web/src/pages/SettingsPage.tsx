@@ -194,7 +194,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-kr-xl font-semibold text-kr-primary">{t('settings.title')}</h2>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('settings.title')}</h1>
         <p className="text-kr-sm text-kr-secondary">{t('settings.subtitle')}</p>
       </div>
 

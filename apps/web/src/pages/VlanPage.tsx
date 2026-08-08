@@ -29,7 +29,7 @@ export function VlanPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    Promise.all([api.get<VlanWithCount[]>('/vlans'), api.get<Device[]>('/inventory/devices')])
+    Promise.all([api.getList<VlanWithCount>('/vlans'), api.getList<Device>('/inventory/devices')])
       .then(([v, d]) => {
         setVlans(v);
         setDevices(d);
@@ -89,7 +89,7 @@ export function VlanPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h2 className="text-xl font-semibold">{t('vlan.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('vlan.title')}</h1>
           <GlossaryHint termKey="vlan" />
         </div>
         <p className="text-sm text-muted-foreground">{t('vlan.subtitle')}</p>

@@ -307,7 +307,15 @@ export function LoginPage() {
                     autoComplete="one-time-code"
                     autoCapitalize="none"
                   />
-                  {backupError && <p className="text-[13px] text-danger">{backupError}</p>}
+                  {backupError && (
+                    // `role="alert"` (viene de main, «un error en pantalla se
+                    // anuncia»): el resultado de canjear un código de recuperación
+                    // es lo que acaba de pasar, igual que el error de contraseña.
+                    // Sin él, el paso falla en silencio para quien no ve la pantalla.
+                    <p role="alert" className="text-[13px] text-danger">
+                      {backupError}
+                    </p>
+                  )}
                   <Button
                     type="button"
                     variant="outline"

@@ -194,6 +194,12 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-4 p-6">
+      {/* Esta página abría directamente en la barra de herramientas: para un
+          lector de pantalla era una pantalla SIN título, y el atajo «ir al
+          encabezado principal» no llevaba a ninguna parte. El título va visible
+          y con el mismo texto que su entrada del menú, como sus 17 hermanas. */}
+      <h1 className="text-kr-xl font-semibold text-kr-primary">{t('inventory.title')}</h1>
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative w-64">
