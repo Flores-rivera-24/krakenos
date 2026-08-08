@@ -8,7 +8,7 @@ import type {
 } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
 
 /** Herramienta activa del lienzo. */
@@ -269,7 +269,7 @@ export function FloorPlanStage({
                 strokeWidth={WALL_STROKE_WIDTH[w.material] + (activa ? 2 : 0)}
                 strokeLinecap="round"
               >
-                <title>{WALL_MATERIAL_LABELS[w.material]}</title>
+                <title>{t(WALL_MATERIAL_KEYS[w.material])}</title>
               </line>
             );
             if (!seleccionable) return <g key={w.id}>{linea}</g>;
@@ -281,7 +281,13 @@ export function FloorPlanStage({
                 key={w.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`${WALL_MATERIAL_LABELS[w.material]} — ${Math.round(w.x1)},${Math.round(w.y1)} a ${Math.round(w.x2)},${Math.round(w.y2)} m`}
+                aria-label={t('coverage.wall.aria', {
+                  material: t(WALL_MATERIAL_KEYS[w.material]),
+                  x1: Math.round(w.x1),
+                  y1: Math.round(w.y1),
+                  x2: Math.round(w.x2),
+                  y2: Math.round(w.y2),
+                })}
                 aria-pressed={activa}
                 className="cursor-pointer"
                 onClick={() => onSelectWall?.(w.id)}

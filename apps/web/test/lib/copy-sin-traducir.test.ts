@@ -60,10 +60,6 @@ const FUERA_DE_ALCANCE = ['lib/i18n/catalog/', 'lib/guides/'];
  */
 const DEUDA: Record<string, number> = {
   'components/cameras/CameraFormSlideover.tsx': 4,
-  'components/coverage/ApPalette.tsx': 8,
-  'components/coverage/HeatmapLegend.tsx': 3,
-  'components/coverage/SurveyPanel.tsx': 12,
-  'components/dashboard/widgets/CoverageWidget.tsx': 4,
   'components/dashboard/widgets/HomeModeWidget.tsx': 4,
   'components/dns/DnsFeeds.tsx': 3,
   'components/vpn/VpnPeerSlideover.tsx': 4,

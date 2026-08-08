@@ -4,7 +4,7 @@ import { MousePointer2, Ruler, Save, Slash, Wifi } from 'lucide-react';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import type { CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { Button } from '@/components/ui/button';
-import { WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -82,7 +82,7 @@ export function CoverageToolbar({
           >
             {WALL_MATERIALS.map((m) => (
               <option key={m} value={m}>
-                {WALL_MATERIAL_LABELS[m]}
+                {t(WALL_MATERIAL_KEYS[m])}
               </option>
             ))}
           </select>

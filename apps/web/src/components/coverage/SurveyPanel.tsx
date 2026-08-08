@@ -15,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createScan, deleteScan, getMeasuredHeatmap, getScan, listScans } from '@/lib/coverage';
 import { describeError } from '@/lib/errors';
+import { plural, useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
@@ -62,6 +63,7 @@ export function SurveyPanel({
   onManualRssiChange,
   canEdit,
 }: Props) {
+  const t = useT();
   const [scans, setScans] = useState<SurveyScan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export function SurveyPanel({
     void listScans(floorPlanId)
       .then((list) => active && setScans(list))
       .catch(
-        (err) => active && setError(describeError(err, 'No se pudieron cargar los recorridos')),
+        (err) => active && setError(describeError(err, t('survey.loadError'))),
       )
       .finally(() => active && setLoading(false));
     return () => {
@@ -115,7 +117,7 @@ export function SurveyPanel({
         const detail = await getScan(id);
         onActiveScanChange(detail);
       } catch (err) {
-        toast.error(describeError(err, 'No se pudo abrir el recorrido'));
+        toast.error(describeError(err, t('survey.openError')));
       }
     },
     [onActiveScanChange, onMeasuredHeatmapChange, onShowMeasuredChange],
@@ -136,7 +138,7 @@ export function SurveyPanel({
       toast.success('Recorrido creado');
       await handleSelectScan(scan.id);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el recorrido'));
+      toast.error(describeError(err, t('survey.createError')));
     } finally {
       setCreating(false);
     }
@@ -154,7 +156,7 @@ export function SurveyPanel({
         }
         toast.success('Recorrido eliminado');
       } catch (err) {
-        toast.error(describeError(err, 'No se pudo eliminar el recorrido'));
+        toast.error(describeError(err, t('survey.deleteError')));
       }
     },
     [activeScan, onActiveScanChange, onMeasuredHeatmapChange, onShowMeasuredChange],
@@ -172,7 +174,7 @@ export function SurveyPanel({
       onMeasuredHeatmapChange(heatmap);
       onShowMeasuredChange(true);
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo calcular el mapa medido'));
+      toast.error(describeError(err, t('survey.heatmapError')));
     } finally {
       setHeatmapLoading(false);
     }
@@ -196,13 +198,19 @@ export function SurveyPanel({
           </div>
           <p className="mb-3 flex items-center gap-1.5 text-kr-sm text-kr-secondary">
             <MapPin className="h-4 w-4 text-kr-muted" aria-hidden />
-            {sampleCount} {sampleCount === 1 ? 'muestra' : 'muestras'}
+            {t('survey.samples', {
+              n: sampleCount,
+              unidad: plural(sampleCount, {
+                one: t('survey.sample.one'),
+                other: t('survey.sample.other'),
+              }),
+            })}
           </p>
           {canEdit ? (
             activeScan.deviceMac == null ? (
               <div className="mb-3 space-y-1.5 rounded-md bg-kr-elevated px-2.5 py-2">
                 <Label htmlFor="manual-rssi" className="text-kr-xs text-kr-secondary">
-                  Señal a registrar (dBm)
+                  {t('survey.rssiLabel')}
                 </Label>
                 <Input
                   id="manual-rssi"
@@ -213,21 +221,15 @@ export function SurveyPanel({
                   onChange={(e) => onManualRssiChange(Number(e.target.value))}
                   className="h-8"
                 />
-                <p className="text-kr-xs text-kr-muted">
-                  Recorrido manual: escribe la señal que marca tu móvil (p. ej. −58) y toca el plano en
-                  ese punto para registrarla.
-                </p>
+                <p className="text-kr-xs text-kr-muted">{t('survey.manualHint')}</p>
               </div>
             ) : (
               <p className="mb-3 rounded-md bg-kr-elevated px-2.5 py-2 text-kr-xs text-kr-secondary">
-                Modo medir activo: toca el plano donde estés para registrar la señal real de{' '}
-                {activeScan.deviceMac} en ese punto.
+                {t('survey.liveHint', { mac: activeScan.deviceMac })}
               </p>
             )
           ) : (
-            <p className="mb-3 text-kr-xs text-kr-muted">
-              Solo un administrador puede registrar mediciones.
-            </p>
+            <p className="mb-3 text-kr-xs text-kr-muted">{t('survey.adminOnly')}</p>
           )}
           <div className="flex flex-wrap gap-2">
             <Button
@@ -237,10 +239,10 @@ export function SurveyPanel({
               onClick={() => void handleToggleMeasured()}
             >
               {heatmapLoading
-                ? 'Calculando…'
+                ? t('survey.computing')
                 : showMeasured
-                  ? 'Ver puntos'
-                  : 'Ver mapa medido'}
+                  ? t('survey.seePoints')
+                  : t('survey.seeMeasured')}
             </Button>
             <Button
               size="sm"
@@ -251,13 +253,11 @@ export function SurveyPanel({
                 onShowMeasuredChange(false);
               }}
             >
-              Cerrar recorrido
+              {t('survey.close')}
             </Button>
           </div>
           {measuredHeatmap && showMeasured && sampleCount === 0 && (
-            <p className="mt-2 text-kr-xs text-kr-muted">
-              Aún no hay muestras: mide algunos puntos para ver el mapa.
-            </p>
+            <p className="mt-2 text-kr-xs text-kr-muted">{t('survey.noSamples')}</p>
           )}
         </div>
       )}
@@ -265,11 +265,11 @@ export function SurveyPanel({
       {/* Lista de surveys */}
       <div className="rounded-xl border border-kr bg-kr-surface p-4">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <p className="text-kr-sm font-medium text-kr-primary">Recorridos de medición</p>
+          <p className="text-kr-sm font-medium text-kr-primary">{t('survey.title')}</p>
           {canEdit && !showForm && (
             <Button size="sm" variant="outline" onClick={() => setShowForm(true)}>
               <Plus className="h-4 w-4" aria-hidden />
-              Nuevo
+              {t('survey.new')}
             </Button>
           )}
         </div>
@@ -277,17 +277,17 @@ export function SurveyPanel({
         {showForm && (
           <div className="mb-3 space-y-3 rounded-md border border-kr bg-kr-bg p-3">
             <div className="space-y-1.5">
-              <Label htmlFor="survey-name">Nombre</Label>
+              <Label htmlFor="survey-name">{t('users.name')}</Label>
               <Input
                 id="survey-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="p. ej. Recorrido planta baja"
+                placeholder={t('survey.namePlaceholder')}
                 maxLength={64}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="survey-band">Banda</Label>
+              <Label htmlFor="survey-band">{t('survey.band')}</Label>
               <select
                 id="survey-band"
                 value={band}
@@ -302,23 +302,21 @@ export function SurveyPanel({
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="survey-device">Dispositivo itinerante</Label>
+              <Label htmlFor="survey-device">{t('survey.device')}</Label>
               <select
                 id="survey-device"
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
                 className="h-9 w-full rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary"
               >
-                <option value="">Manual (introduzco los valores)</option>
+                <option value="">{t('survey.manualOption')}</option>
                 {devices.map((d) => (
                   <option key={d.id} value={d.mac}>
                     {deviceName(d)}
                   </option>
                 ))}
               </select>
-              <p className="text-kr-xs text-kr-muted">
-                Su señal en vivo se registrará al tocar el plano. Elige «Manual» si no aparece.
-              </p>
+              <p className="text-kr-xs text-kr-muted">{t('survey.deviceHint')}</p>
             </div>
             <div className="flex gap-2">
               <Button
@@ -326,10 +324,10 @@ export function SurveyPanel({
                 disabled={creating || name.trim() === ''}
                 onClick={() => void handleCreate()}
               >
-                {creating ? 'Creando…' : 'Crear recorrido'}
+                {creating ? t('users.creating') : t('survey.create')}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setShowForm(false)}>
-                Cancelar
+                {t('common.cancel')}
               </Button>
             </div>
           </div>
@@ -343,9 +341,7 @@ export function SurveyPanel({
         ) : error ? (
           <ErrorBanner>{error}</ErrorBanner>
         ) : scans.length === 0 ? (
-          <p className="text-kr-sm text-kr-muted">
-            Aún no hay recorridos. Crea uno para empezar a medir la cobertura real.
-          </p>
+          <p className="text-kr-sm text-kr-muted">{t('survey.empty')}</p>
         ) : (
           <ul className="space-y-1.5">
             {scans.map((scan) => {
@@ -367,14 +363,16 @@ export function SurveyPanel({
                     <span className="block truncate text-kr-sm text-kr-primary">{scan.name}</span>
                     <span className="block truncate text-kr-xs text-kr-muted">
                       {scan.band}
-                      {scan.deviceMac ? ` · ${scan.deviceMac}` : ' · manual'}
+                      {scan.deviceMac
+                        ? t('survey.scanMac', { mac: scan.deviceMac })
+                        : t('survey.scanManual')}
                     </span>
                   </button>
                   {canEdit && (
                     <button
                       type="button"
                       onClick={() => void handleDelete(scan.id)}
-                      aria-label={`Eliminar ${scan.name}`}
+                      aria-label={t('survey.deleteAria', { name: scan.name })}
                       className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
