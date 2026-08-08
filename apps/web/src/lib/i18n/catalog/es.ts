@@ -110,6 +110,25 @@ export const es = {
   'login.backup.invalid': 'Código inválido o ya usado.',
   'login.backup.prompt': '¿Perdiste tu dispositivo? Usar un código de recuperación',
 
+  // --- Portada pública (US-266) ---
+  // Los tres reclamos son hechos comprobables del repositorio, no medidas de una
+  // casa que quien lee todavía no tiene. En particular NO se dice «sin cuentas de
+  // fabricante»: hay integraciones que las piden y la tabla de compatibilidad lo
+  // declara, así que prometerlo aquí sería contradecir al propio sistema.
+  'welcome.eyebrow': 'KrakenOS · Servidor doméstico',
+  'welcome.title': 'Tu red deja de ser una caja negra.',
+  'welcome.subtitle':
+    'Quién se conecta, con quién habla, cuánto gasta y a qué hora se apaga. Todo se mide en tu casa y se guarda en tu disco.',
+  'welcome.enter': 'Entrar',
+  'welcome.createAdmin': 'Crear administrador',
+  'welcome.needsSetupHint': 'Esta instalación todavía no tiene administrador.',
+  'welcome.claim.local': 'Corre en tu casa',
+  'welcome.claim.localDetail': 'El servidor es tuyo. Se entra por la red local o por VPN.',
+  'welcome.claim.noFee': 'Sin suscripción',
+  'welcome.claim.noFeeDetail': 'No hay plan de pago ni funciones detrás de una cuota.',
+  'welcome.claim.source': 'Código abierto',
+  'welcome.claim.sourceDetail': 'Licencia AGPL-3.0: puedes leer el código y modificarlo.',
+
   // --- Ajustes → Cuenta: modo de la interfaz (US-176) ---
   'settings.uiMode.title': 'Modo de la aplicación',
   'settings.uiMode.simple': 'Sencillo',

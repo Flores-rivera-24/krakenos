@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Splash } from '@/components/ui/splash';
 import { changeLocale, useT } from '@/lib/i18n';
@@ -10,6 +10,9 @@ import { useAuthStore } from '@/store/auth.store';
 // (Dashboard) del bundle inicial.
 const LoginPage = lazy(() => import('@/pages/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SetupPage = lazy(() => import('@/pages/SetupPage').then((m) => ({ default: m.SetupPage })));
+const WelcomePage = lazy(() =>
+  import('@/pages/WelcomePage').then((m) => ({ default: m.WelcomePage })),
+);
 const DashboardPage = lazy(() =>
   import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
@@ -50,10 +53,22 @@ const SettingsPage = lazy(() =>
   import('@/pages/SettingsPage').then((m) => ({ default: m.SettingsPage })),
 );
 
-/** Protege rutas: redirige a /login si no hay sesión. */
+/**
+ * Protege rutas. Sin sesión manda al login **salvo en la raíz**, donde manda a la
+ * portada (US-266).
+ *
+ * La distinción importa: quien escribe la dirección a secas no ha pedido nada
+ * concreto y la portada le dice qué es esto y en qué estado está la instalación.
+ * Quien venía a `/iot` sí ha pedido algo, y mandarlo a una portada en vez de al
+ * formulario le añade un clic y le esconde lo que quería. La portada no es un
+ * peaje: en cuanto hay sesión (la cookie del refresh la restaura al arrancar), la
+ * raíz vuelve a ser el dashboard sin pasar por ella.
+ */
 function RequireAuth() {
   const user = useAuthStore((s) => s.user);
-  return user ? <Outlet /> : <Navigate to="/login" replace />;
+  const { pathname } = useLocation();
+  if (user) return <Outlet />;
+  return <Navigate to={pathname === '/' ? '/bienvenida' : '/login'} replace />;
 }
 
 export function App() {
@@ -83,6 +98,7 @@ export function App() {
       <Routes>
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/bienvenida" element={<WelcomePage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route index element={<DashboardPage />} />

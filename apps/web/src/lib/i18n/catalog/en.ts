@@ -104,6 +104,21 @@ export const en: Record<TranslationKey, string> = {
   'login.backup.invalid': 'Invalid or already used code.',
   'login.backup.prompt': 'Lost your device? Use a recovery code',
 
+  // --- Public landing (US-266) ---
+  'welcome.eyebrow': 'KrakenOS · Home server',
+  'welcome.title': 'Your network stops being a black box.',
+  'welcome.subtitle':
+    'Who connects, who they talk to, how much they use and when they switch off. All measured in your home and stored on your disk.',
+  'welcome.enter': 'Sign in',
+  'welcome.createAdmin': 'Create administrator',
+  'welcome.needsSetupHint': 'This installation has no administrator yet.',
+  'welcome.claim.local': 'Runs in your home',
+  'welcome.claim.localDetail': 'The server is yours. You reach it over the local network or VPN.',
+  'welcome.claim.noFee': 'No subscription',
+  'welcome.claim.noFeeDetail': 'There is no paid plan and no feature behind a fee.',
+  'welcome.claim.source': 'Open source',
+  'welcome.claim.sourceDetail': 'AGPL-3.0 licensed: you can read the code and modify it.',
+
   // --- Settings → Account: interface mode ---
   'settings.uiMode.title': 'App mode',
   'settings.uiMode.simple': 'Simple',

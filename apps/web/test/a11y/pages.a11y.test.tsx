@@ -35,6 +35,7 @@ vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { LoginPage } from '@/pages/LoginPage';
 import { SetupPage } from '@/pages/SetupPage';
+import { WelcomePage } from '@/pages/WelcomePage';
 import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { InventoryPage } from '@/pages/InventoryPage';
@@ -308,6 +309,9 @@ function apiGet(path: string): Promise<unknown> {
 const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Login', el: <LoginPage /> },
   { name: 'Setup', el: <SetupPage /> },
+  // US-266: la portada es pública y es la primera pantalla de la instalación, así
+  // que entra en el barrido con el mismo rasero que el resto.
+  { name: 'Welcome', el: <WelcomePage /> },
   { name: 'Connect', el: <ConnectPage /> },
   { name: 'Dashboard', el: <DashboardPage /> },
   { name: 'Inventory', el: <InventoryPage /> },
