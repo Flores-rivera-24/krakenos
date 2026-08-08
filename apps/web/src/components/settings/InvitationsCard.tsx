@@ -29,7 +29,7 @@ const STATUS_LABEL: Record<Invitation['status'], string> = {
 };
 
 /**
- * Invitaciones y solicitudes de acceso (US-267 / US-268). Admin-only; el servidor
+ * Invitaciones y solicitudes de acceso (US-272 / US-273). Admin-only; el servidor
  * impone la autorización de todos modos.
  *
  * Sustituye al alta en la que el admin tecleaba él la contraseña y se la mandaba a

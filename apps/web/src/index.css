@@ -211,7 +211,7 @@
     animation: kr-shimmer 1.6s ease-in-out infinite;
   }
 
-  /* Arranque del isotipo en la pantalla de acceso (US-266): los tentáculos se
+  /* Arranque del isotipo en la pantalla de acceso (US-269): los tentáculos se
      dibujan y después aparecen los nodos. `stroke-dasharray` fijo (48 cubre el
      más largo de los seis trazos) en vez de medir con JS: es un icono de tamaño
      conocido y así la animación es puramente declarativa. */

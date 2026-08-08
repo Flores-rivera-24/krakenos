@@ -389,7 +389,7 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.dnsQueryLog.deleteMany();
   await app.prisma.knownDestination.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
-  // US-267/268. Mismo motivo que la nota de arriba sobre energía: sin limpiarlas, la
+  // US-272/268. Mismo motivo que la nota de arriba sobre energía: sin limpiarlas, la
   // solicitud de un test reaparece en el siguiente y el fallo sale en el test
   // equivocado. `AccessRequest.email` es UNIQUE, así que además rompía por 409.
   await app.prisma.invitation.deleteMany();

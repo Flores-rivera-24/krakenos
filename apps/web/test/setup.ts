@@ -17,7 +17,7 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
-// jsdom tampoco implementa matchMedia, y desde US-266 hay componentes que
+// jsdom tampoco implementa matchMedia, y desde US-269 hay componentes que
 // consultan `prefers-reduced-motion` para decidir si animan. Responde `false`
 // («no lo he pedido»), que es el caso por defecto de un navegador real: así los
 // tests ejercitan el camino CON movimiento, que es el que corre en producción.

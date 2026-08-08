@@ -56,7 +56,7 @@ const SettingsPage = lazy(() =>
 
 /**
  * Protege rutas. Sin sesión manda al login **salvo en la raíz**, donde manda a la
- * portada (US-266).
+ * portada (US-269).
  *
  * La distinción importa: quien escribe la dirección a secas no ha pedido nada
  * concreto y la portada le dice qué es esto y en qué estado está la instalación.
@@ -100,7 +100,7 @@ export function App() {
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/bienvenida" element={<WelcomePage />} />
-        {/* Pública: quien abre una invitación todavía no tiene cuenta (US-267). */}
+        {/* Pública: quien abre una invitación todavía no tiene cuenta (US-272). */}
         <Route path="/invitacion/:token" element={<InvitePage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>

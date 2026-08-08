@@ -19,7 +19,7 @@ import { env } from '../config/env.js';
  *   en dev (HTTP) se desactiva para que la cookie funcione.
  * - `path: /api/auth`: solo se envía a las rutas de auth, no en cada llamada a la API.
  * - `maxAge`: la vida del refresh token (rotatorio) — **solo si el usuario marcó
- *   «Mantener sesión iniciada»** (US-266). Sin marcar se omite, y entonces es una
+ *   «Mantener sesión iniciada»** (US-269). Sin marcar se omite, y entonces es una
  *   *cookie de sesión*: el navegador la borra al cerrarse. El refresh token sigue
  *   teniendo su propia expiración en la base; esto solo decide cuánto dura su
  *   transporte en el cliente.

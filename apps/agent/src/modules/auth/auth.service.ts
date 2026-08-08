@@ -34,7 +34,7 @@ export interface IssuedTokens {
   refreshToken: string;
   expiresIn: number;
   /**
-   * «Mantener sesión iniciada» (US-266): decide si la cookie del refresh lleva
+   * «Mantener sesión iniciada» (US-269): decide si la cookie del refresh lleva
    * `maxAge`. Viaja con los tokens porque la rotación lo lee de la fila anterior,
    * y así la ruta no tiene que volver a preguntárselo al cliente en cada refresco.
    */
@@ -287,7 +287,7 @@ export class AuthService {
   issueMfaPendingToken(userId: string, persistent = true): string {
     return this.app.jwt.sign(
       // `keep` lleva la elección de «Mantener sesión iniciada» hecha en el paso de
-      // la contraseña hasta el que emite la sesión (US-266). Sin viajar aquí, quien
+      // la contraseña hasta el que emite la sesión (US-269). Sin viajar aquí, quien
       // tiene passkey vería su elección ignorada: el segundo paso no la conoce.
       { sub: userId, type: 'mfa-pending', jti: randomUUID(), keep: persistent },
       { expiresIn: MFA_PENDING_TTL_SEC },
@@ -297,7 +297,7 @@ export class AuthService {
   /**
    * Lee la elección de «Mantener sesión iniciada» de un token `mfa-pending`. No lo
    * consume (eso lo hace `consumeMfaPendingToken`). Un token viejo sin el claim
-   * —emitido antes de US-266, dentro de su ventana de 120 s— cae a `true`, que es
+   * —emitido antes de US-269, dentro de su ventana de 120 s— cae a `true`, que es
    * el comportamiento anterior.
    */
   keepSignedInFromMfaToken(token: string): boolean {

@@ -38,7 +38,7 @@ function toAccessRequest(row: AccessRequestRow): AccessRequest {
 }
 
 /**
- * Solicitudes de acceso al hogar (US-268).
+ * Solicitudes de acceso al hogar (US-273).
  *
  * Quien vive en la casa pide entrada desde la propia pantalla de acceso; el admin
  * decide, y decide también el rol. No es autorregistro: sin la aprobación no existe

@@ -66,7 +66,7 @@ export function pushNotificationForAudit(
       return { title: 'Cuenta bloqueada', body: 'Demasiados intentos de login fallidos', url: '/settings', audience: 'admin' };
     case 'auth.refresh_reuse':
       return { title: 'Posible robo de sesión', body: 'Refresh token reutilizado; sesiones revocadas', url: '/settings', audience: 'admin' };
-    // US-266: alguien ha entrado SIN la contraseña, con un código de recuperación.
+    // US-269: alguien ha entrado SIN la contraseña, con un código de recuperación.
     // Es el aviso más importante de los tres de auth: un login fallido es ruido
     // cotidiano, pero esto es un acceso concedido por una vía excepcional.
     case 'auth.recovery_used':

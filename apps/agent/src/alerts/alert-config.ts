@@ -10,7 +10,7 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'auth.login_failed', label: 'Login fallido' },
   { event: 'auth.login_locked', label: 'Cuenta bloqueada' },
   { event: 'auth.refresh_reuse', label: 'Posible robo de sesión' },
-  // US-266: entrar con un código de recuperación es saltarse la contraseña. Es
+  // US-269: entrar con un código de recuperación es saltarse la contraseña. Es
   // legítimo (para eso están los códigos) y a la vez es justo lo que querría hacer
   // quien te robó la libreta donde los apuntaste.
   { event: 'auth.recovery_used', label: 'Acceso con código de recuperación' },

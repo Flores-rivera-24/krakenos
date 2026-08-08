@@ -1,4 +1,4 @@
--- US-266 · «Mantener sesión iniciada».
+-- US-269 · «Mantener sesión iniciada».
 --
 -- La casilla existía en la pantalla de login desde su primera versión y no estaba
 -- conectada a nada: se pintaba, se marcaba y no viajaba al servidor. Ahora decide

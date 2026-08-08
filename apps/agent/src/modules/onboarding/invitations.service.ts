@@ -68,7 +68,7 @@ function toInvitation(row: InvitationRow, now = new Date()): Invitation {
 }
 
 /**
- * Invitaciones de un solo uso (US-267).
+ * Invitaciones de un solo uso (US-272).
  *
  * Solo se guarda el hash del token: ni el servidor puede volver a enseñarlo después
  * de crearlo. Es deliberado y es el mismo trato que reciben los refresh y los

@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 
 /**
- * Portada pública (US-266). Es lo que ve en `/` quien no tiene sesión.
+ * Portada pública (US-269). Es lo que ve en `/` quien no tiene sesión.
  *
  * Existe por dos motivos, y el segundo es el que la justifica:
  *

@@ -27,7 +27,7 @@ const HEALTH_DOT: Record<HealthState, DotStatus> = {
 type PasskeyStatus = 'idle' | 'verifying' | 'cancelled' | 'error';
 
 /**
- * Pantalla de acceso (US-266).
+ * Pantalla de acceso (US-269).
  *
  * Composición partida: el formulario vive en un panel sólido a la izquierda y la
  * derecha es un escenario oscuro con la marca y el fondo generativo. Sustituye a la
@@ -48,7 +48,7 @@ export function LoginPage() {
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
-  // Sin prefijar (US-266): venía con `admin@krakenos.local` escrito, que es la
+  // Sin prefijar (US-269): venía con `admin@krakenos.local` escrito, que es la
   // cuenta del `seed` de desarrollo. En una instalación real anunciaba el usuario
   // administrador por defecto a cualquiera que abriera la página, y a quien había
   // instalado de verdad le mostraba un correo que no era el suyo.
@@ -73,14 +73,14 @@ export function LoginPage() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
 
-  // Entrar sin la contraseña con un código de recuperación (US-266). Es un camino
+  // Entrar sin la contraseña con un código de recuperación (US-269). Es un camino
   // distinto del de arriba: aquel completa un 2FA cuya contraseña YA se verificó;
   // este sustituye a la contraseña.
   const [recoverCode, setRecoverCode] = useState('');
   const [recoverBusy, setRecoverBusy] = useState(false);
   const [recoverError, setRecoverError] = useState<string | null>(null);
 
-  // Pedir acceso al hogar (US-268). No crea nada: lo aprueba un admin.
+  // Pedir acceso al hogar (US-273). No crea nada: lo aprueba un admin.
   const [reqName, setReqName] = useState('');
   const [reqNote, setReqNote] = useState('');
   const [reqBusy, setReqBusy] = useState(false);

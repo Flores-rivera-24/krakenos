@@ -29,7 +29,7 @@ function renderPage() {
   );
 }
 
-describe('InvitePage — aceptar una invitación (US-267)', () => {
+describe('InvitePage — aceptar una invitación (US-272)', () => {
   beforeEach(() => {
     navigate.mockClear();
     onboardingMock.previewInvitation.mockReset().mockResolvedValue({

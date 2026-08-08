@@ -12,7 +12,7 @@ import type {
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 
-/** Cliente de las dos vías de alta (US-267 invitaciones · US-268 solicitudes). */
+/** Cliente de las dos vías de alta (US-272 invitaciones · US-273 solicitudes). */
 
 // `getList` y no un GET con genérico de lista: el genérico es un cast que no
 // comprueba nada en runtime, así que un 200 con otra forma se asignaría al estado y

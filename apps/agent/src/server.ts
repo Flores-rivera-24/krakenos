@@ -236,7 +236,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(tokensRoutes, { prefix: '/api/tokens' });
   // Gestión de usuarios (US-101): alta/edición/baja + roles, admin-only y auditada.
   await app.register(usersRoutes, { prefix: '/api/users' });
-  // Las dos vías de alta sin que el admin teclee la contraseña de nadie (US-267/268).
+  // Las dos vías de alta sin que el admin teclee la contraseña de nadie (US-272/268).
   await app.register(invitationsRoutes, { prefix: '/api/invitations' });
   await app.register(accessRequestsRoutes, { prefix: '/api/access-requests' });
   const webAuthnService = new WebAuthnService(app.prisma, {

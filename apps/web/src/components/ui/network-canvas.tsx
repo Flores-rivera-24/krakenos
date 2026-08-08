@@ -3,7 +3,7 @@ import { prefersReducedMotion } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 
 /**
- * Fondo generativo de las pantallas de entrada (US-266).
+ * Fondo generativo de las pantallas de entrada (US-269).
  *
  * Dos variantes, ambas dibujadas en `<canvas>` en vez de SVG a mano: la geometría
  * es aleatoria y se recalcula al redimensionar, así que no hay nada que versionar

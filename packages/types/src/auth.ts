@@ -156,10 +156,10 @@ export interface MfaPendingTokenClaims {
    */
   jti: Id;
   /**
-   * «Mantener sesión iniciada» elegido en el paso de la contraseña (US-266). El
+   * «Mantener sesión iniciada» elegido en el paso de la contraseña (US-269). El
    * paso que emite la sesión es otro endpoint, así que sin viajar aquí la elección
    * se perdería para quien tiene passkey. Opcional: un token emitido antes de
-   * US-266 y aún dentro de su ventana de 120 s se lee como `true`.
+   * US-269 y aún dentro de su ventana de 120 s se lee como `true`.
    */
   keep?: boolean;
   iat: number;
@@ -188,7 +188,7 @@ export interface LoginRequest {
   email: string;
   password: string;
   /**
-   * «Mantener sesión iniciada» (US-266). Con `true` (el defecto, y lo que hacía
+   * «Mantener sesión iniciada» (US-269). Con `true` (el defecto, y lo que hacía
    * el sistema antes) la cookie del refresh lleva `maxAge` y sobrevive a cerrar el
    * navegador; con `false` es una cookie de sesión y muere con él.
    */

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
  * (p. ej. `text-kr-accent`). Decorativo por defecto (`aria-hidden`): el nombre
  * accesible lo aporta el wordmark "KrakenOS" contiguo. Fuente: `Icons/logo-mark-mono.svg`.
  *
- * Con `draw` (US-266) el isotipo se **dibuja al montarse**: primero los seis
+ * Con `draw` (US-269) el isotipo se **dibuja al montarse**: primero los seis
  * tentáculos, trazo a trazo, y después los nodos. Es la secuencia de arranque de
  * la pantalla de acceso; se usa una sola vez por carga, no en la marca del
  * `sidebar`, donde repetirla en cada navegación sería ruido. Las clases viven en

@@ -3,7 +3,7 @@ import type { UserRole } from './auth.js';
 
 /**
  * Las dos formas de que alguien nuevo entre en el hogar, sin abrir la puerta a
- * cualquiera (US-267 / US-268).
+ * cualquiera (US-272 / US-273).
  *
  * El autorregistro está descartado a propósito: KrakenOS controla el firewall, las
  * cámaras y las cerraduras, y hasta un rol `viewer` ve el inventario de red entero.
@@ -11,14 +11,14 @@ import type { UserRole } from './auth.js';
  * en el WiFi, un aparato IoT comprometido— se da de alta solo. Así que hay dos
  * caminos y en los dos **decide un administrador**:
  *
- * - **Invitación** (US-267): el admin la emite y comparte el enlace. Quien lo abre
+ * - **Invitación** (US-272): el admin la emite y comparte el enlace. Quien lo abre
  *   elige *su* contraseña.
- * - **Solicitud** (US-268): la persona la pide desde la pantalla de entrada y el
+ * - **Solicitud** (US-273): la persona la pide desde la pantalla de entrada y el
  *   admin la aprueba eligiendo el rol.
  */
 
 // ---------------------------------------------------------------------------
-// Invitaciones (US-267)
+// Invitaciones (US-272)
 // ---------------------------------------------------------------------------
 
 /** Invitación tal y como la ve el admin en la lista. Nunca incluye el token. */
@@ -78,7 +78,7 @@ export interface AcceptInvitationRequest {
 }
 
 // ---------------------------------------------------------------------------
-// Solicitudes de acceso (US-268)
+// Solicitudes de acceso (US-273)
 // ---------------------------------------------------------------------------
 
 export type AccessRequestStatus = 'pending' | 'approved' | 'rejected';

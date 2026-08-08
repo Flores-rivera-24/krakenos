@@ -36,13 +36,13 @@ model User {
   presenceEvents PresenceEvent[]
   /// Horarios de acceso definidos **por persona** (US-240); se replican a sus dispositivos.
   accessSchedules AccessSchedule[]
-  /// Invitaciones que ESTE usuario ha emitido (US-267).
+  /// Invitaciones que ESTE usuario ha emitido (US-272).
   invitationsSent Invitation[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 }
 
-/// Invitación de un solo uso para dar de alta a alguien de la casa (US-267).
+/// Invitación de un solo uso para dar de alta a alguien de la casa (US-272).
 ///
 /// Lo que sustituye: el admin creaba la cuenta tecleando ÉL una contraseña y se la
 /// mandaba a la persona por WhatsApp — la contraseña más reutilizada de la casa
@@ -71,7 +71,7 @@ model Invitation {
   @@index([email])
 }
 
-/// Solicitud de acceso al hogar hecha desde la propia pantalla de entrada (US-268).
+/// Solicitud de acceso al hogar hecha desde la propia pantalla de entrada (US-273).
 ///
 /// Existe para que la pantalla deje de ser un callejón sin abrir la puerta: el
 /// autorregistro está descartado a propósito —KrakenOS controla firewall, cámaras y
@@ -169,7 +169,7 @@ model RefreshToken {
   /// Distingue un token revocado por rotación de uno revocado por logout/admin:
   /// solo el reuso de un token rotado dispara la detección de reuso (US-78, F4).
   rotatedAt DateTime?
-  /// «Mantener sesión iniciada» (US-266). Decide si la cookie del refresh lleva
+  /// «Mantener sesión iniciada» (US-269). Decide si la cookie del refresh lleva
   /// `maxAge` (sobrevive a cerrar el navegador) o es de sesión (muere con él).
   /// Vive AQUÍ y no en una cookie aparte porque el servidor no puede distinguir
   /// una cookie de sesión de una persistente cuando llega: sin esta columna, la

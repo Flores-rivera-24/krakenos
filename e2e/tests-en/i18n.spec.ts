@@ -33,7 +33,7 @@ test('sin sesión, la app sigue el idioma del navegador (en-US)', async ({ page 
   // ⚠️ `exact: true` en el botón, igual que en la etiqueta de la contraseña: el
   // `name` de `getByRole` casa por SUBCADENA e ignora mayúsculas, así que
   // «Sign in» también encuentra el enlace «Can't sign in?» de la recuperación
-  // (US-266) y el locator revienta por strict mode. En español no colisionaba
+  // (US-269) y el locator revienta por strict mode. En español no colisionaba
   // —«¿No puedes entrar?» no contiene «Iniciar sesión»—, así que el fallo solo
   // salía en el proyecto `chromium-en`.
   await expect(page.getByLabel('Email')).toBeVisible();

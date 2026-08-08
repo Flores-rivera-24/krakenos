@@ -15,7 +15,7 @@ function renderPage() {
   );
 }
 
-describe('WelcomePage — portada pública (US-266)', () => {
+describe('WelcomePage — portada pública (US-269)', () => {
   beforeEach(() => {
     apiMock.get.mockReset().mockResolvedValue({ needsSetup: false });
   });

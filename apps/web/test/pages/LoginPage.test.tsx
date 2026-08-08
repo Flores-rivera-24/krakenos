@@ -68,7 +68,7 @@ describe('LoginPage', () => {
   });
 
   /**
-   * Rellena el formulario. El correo ya **no** viene prefijado (US-266), así que
+   * Rellena el formulario. El correo ya **no** viene prefijado (US-269), así que
    * todo test que envíe el formulario tiene que escribirlo: sin él, el `required`
    * del campo impide el envío y la aserción falla por un motivo que no es el suyo.
    */
@@ -96,7 +96,7 @@ describe('LoginPage', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
-  // US-266. La pantalla venía con `admin@krakenos.local` escrito en el campo: es
+  // US-269. La pantalla venía con `admin@krakenos.local` escrito en el campo: es
   // la cuenta del `seed` de desarrollo, así que en una instalación real anunciaba
   // el usuario administrador por defecto a cualquiera que abriese la página.
   it('no prefija ningún correo en el campo', async () => {
@@ -105,7 +105,7 @@ describe('LoginPage', () => {
     expect(screen.getByLabelText('Correo electrónico')).toHaveValue('');
   });
 
-  // US-266. La casilla existía desde la primera versión de la pantalla y no
+  // US-269. La casilla existía desde la primera versión de la pantalla y no
   // viajaba a ningún sitio: se marcaba y no cambiaba absolutamente nada.
   it('manda «Mantener sesión iniciada» al servidor, marcada y sin marcar', async () => {
     const login = vi.fn().mockResolvedValue(undefined);
@@ -181,10 +181,10 @@ describe('LoginPage', () => {
   });
 
   /**
-   * US-266. Antes no había NADA aquí: quien perdía la contraseña se quedaba
+   * US-269. Antes no había NADA aquí: quien perdía la contraseña se quedaba
    * mirando el formulario, sin saber que existían vías de vuelta.
    */
-  describe('entrar sin la contraseña (US-266)', () => {
+  describe('entrar sin la contraseña (US-269)', () => {
     async function abrirPanel(user: ReturnType<typeof userEvent.setup>) {
       renderPage();
       await user.click(await screen.findByRole('button', { name: '¿No puedes entrar?' }));
@@ -242,11 +242,11 @@ describe('LoginPage', () => {
   });
 
   /**
-   * US-268. No es autorregistro: no se crea ninguna cuenta hasta que un admin
+   * US-273. No es autorregistro: no se crea ninguna cuenta hasta que un admin
    * aprueba. La pantalla tiene que decirlo, para no prometer un acceso que quizá
    * no llegue.
    */
-  describe('solicitar acceso al hogar (US-268)', () => {
+  describe('solicitar acceso al hogar (US-273)', () => {
     it('envía la solicitud y acusa recibo sin prometer una cuenta', async () => {
       const user = userEvent.setup();
       renderPage();

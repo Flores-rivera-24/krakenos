@@ -21,14 +21,14 @@ interface AuthState {
    * aparte); en otro caso establece la sesión y devuelve `{ user, tokens }`.
    */
   /**
-   * `keepSignedIn` (US-266) decide si la cookie del refresh sobrevive a cerrar el
+   * `keepSignedIn` (US-269) decide si la cookie del refresh sobrevive a cerrar el
    * navegador. Se manda al servidor, que es quien pone (o no) el `maxAge`: la
    * casilla existía desde la primera versión de la pantalla y no viajaba a ningún
    * sitio.
    */
   login: (email: string, password: string, keepSignedIn?: boolean) => Promise<LoginResult>;
   /**
-   * Entrar con un código de recuperación, sin la contraseña (US-266). Emite una
+   * Entrar con un código de recuperación, sin la contraseña (US-269). Emite una
    * sesión completa, así que actualiza el store igual que `login`.
    */
   recoverWithCode: (email: string, code: string) => Promise<void>;

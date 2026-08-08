@@ -527,7 +527,7 @@ export function SettingsPage() {
           {section === 'usuarios' && isAdmin && (
             <>
               <UsersSection />
-              {/* US-267/268: dar de alta sin teclear la contraseña de nadie. */}
+              {/* US-272/268: dar de alta sin teclear la contraseña de nadie. */}
               <InvitationsCard />
             </>
           )}

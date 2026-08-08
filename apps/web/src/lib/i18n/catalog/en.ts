@@ -104,7 +104,7 @@ export const en: Record<TranslationKey, string> = {
   'login.backup.invalid': 'Invalid or already used code.',
   'login.backup.prompt': 'Lost your device? Use a recovery code',
 
-  // --- Signing in without the password (US-266) ---
+  // --- Signing in without the password (US-269) ---
   'login.recover.prompt': "Can't sign in?",
   'login.recover.title': 'Sign in without your password',
   'login.recover.intro':
@@ -116,7 +116,7 @@ export const en: Record<TranslationKey, string> = {
     'Another administrator can set a new password for you under Settings → Users. If you are the only administrator, it has to be done on the server: the recovery guide explains how.',
   'login.recover.back': 'Back',
 
-  // --- Requesting access to the home (US-268) ---
+  // --- Requesting access to the home (US-273) ---
   'login.request.prompt': 'Request access',
   'login.request.title': 'Request access to the home',
   'login.request.intro':
@@ -129,7 +129,7 @@ export const en: Record<TranslationKey, string> = {
     'Request sent. If you are granted access, you will get a link to create your account.',
   'login.request.error': 'The request could not be sent. Please try again.',
 
-  // --- Accepting an invitation (US-267) ---
+  // --- Accepting an invitation (US-272) ---
   'invite.checking': 'Checking the invitation…',
   'invite.title': 'You have been invited to {home}',
   'invite.intro': 'Choose your password. Nobody else will see it, not even whoever invited you.',
@@ -147,7 +147,7 @@ export const en: Record<TranslationKey, string> = {
     'Invitations expire and can only be used once. Ask whoever administers the home for a new one.',
   'invite.goToLogin': 'Go to sign in',
 
-  // --- Public landing (US-266) ---
+  // --- Public landing (US-269) ---
   'welcome.eyebrow': 'KrakenOS · Home server',
   'welcome.title': 'Your network stops being a black box.',
   'welcome.subtitle':

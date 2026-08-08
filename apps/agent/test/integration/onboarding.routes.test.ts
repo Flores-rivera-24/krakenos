@@ -4,7 +4,7 @@ import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../help
 
 /**
  * Las dos vías de alta sin que el admin teclee la contraseña de nadie
- * (US-267 invitaciones · US-268 solicitudes de acceso).
+ * (US-272 invitaciones · US-273 solicitudes de acceso).
  */
 describe('alta de usuarios: invitaciones y solicitudes', () => {
   let app: FastifyInstance;
@@ -38,7 +38,7 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
     return res.json() as { token: string; path: string; invitation: { id: string } };
   }
 
-  describe('invitaciones (US-267)', () => {
+  describe('invitaciones (US-272)', () => {
     /**
      * El punto de toda la historia. Antes, el alta era que el admin tecleara ÉL una
      * contraseña y se la mandara por WhatsApp: la contraseña más reutilizada de la
@@ -153,7 +153,7 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
     });
   });
 
-  describe('solicitudes de acceso (US-268)', () => {
+  describe('solicitudes de acceso (US-273)', () => {
     async function pedir(email = 'quiero@krakenos.test') {
       return app.inject({
         method: 'POST',

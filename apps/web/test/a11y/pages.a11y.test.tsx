@@ -186,7 +186,7 @@ const COVERAGE_HEATMAP = {
 };
 
 function apiGet(path: string): Promise<unknown> {
-  // US-267: la vista previa de una invitación. Se sirve para que la página se pinte
+  // US-272: la vista previa de una invitación. Se sirve para que la página se pinte
   // en su estado ÚTIL (el formulario), no en el de «enlace caducado», que es el que
   // saldría si la llamada fallase y dejaría media pantalla sin auditar.
   if (path.startsWith('/invitations/redeem/'))
@@ -326,7 +326,7 @@ function apiGet(path: string): Promise<unknown> {
 const PAGES: { name: string; el: ReactElement }[] = [
   { name: 'Login', el: <LoginPage /> },
   { name: 'Setup', el: <SetupPage /> },
-  // US-266: la portada es pública y es la primera pantalla de la instalación, así
+  // US-269: la portada es pública y es la primera pantalla de la instalación, así
   // que entra en el barrido con el mismo rasero que el resto.
   { name: 'Welcome', el: <WelcomePage /> },
   { name: 'Invite', el: <InvitePage /> },

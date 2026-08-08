@@ -20,7 +20,7 @@ interface WriteEndpoint {
  * cualquier usuario autenticado (ver `AUTHED_WRITES`).
  */
 const ADMIN_WRITES: WriteEndpoint[] = [
-  // invitaciones y solicitudes de acceso (US-267/268). Conceden acceso al hogar, así
+  // invitaciones y solicitudes de acceso (US-272/268). Conceden acceso al hogar, así
   // que se barren de verdad y no se meten en el allowlist: un `viewer` que pudiera
   // invitar tendría un camino para fabricarse un admin.
   {
@@ -276,7 +276,7 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       // Públicas (sin token; probadas en sus módulos).
       'POST /api/setup/init',
       'POST /api/auth/login',
-      // US-266. Pública por definición: es el camino de quien NO puede
+      // US-269. Pública por definición: es el camino de quien NO puede
       // autenticarse. Su control de acceso es el código de un solo uso, con el
       // mismo límite por IP y lockout por cuenta que el login, y está probada en
       // `auth.routes.test.ts`.
@@ -286,7 +286,7 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       'POST /api/webauthn/authenticate/options',
       'POST /api/webauthn/authenticate/verify',
       'POST /api/webauthn/backup-codes/verify',
-      // US-267/268. Públicas por definición: quien las usa TODAVÍA NO tiene cuenta.
+      // US-272/268. Públicas por definición: quien las usa TODAVÍA NO tiene cuenta.
       // Su control de acceso es el token de un solo uso (invitación) y el hecho de
       // que pedir acceso no concede nada por sí mismo (lo aprueba un admin).
       'POST /api/invitations/redeem/:p',

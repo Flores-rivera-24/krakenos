@@ -1,5 +1,5 @@
 /**
- * Schemas de las dos vías de alta (US-267 / US-268).
+ * Schemas de las dos vías de alta (US-272 / US-273).
  *
  * `additionalProperties: false` en todos los cuerpos: dos de estas rutas son
  * **públicas**, así que lo que no está declarado no entra.

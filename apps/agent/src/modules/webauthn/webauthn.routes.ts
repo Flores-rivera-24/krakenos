@@ -138,7 +138,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
         throw err;
       }
       // La elección de «Mantener sesión iniciada» se hizo en el paso de la
-      // contraseña y viaja en el `mfaToken` (US-266): este endpoint es el que
+      // contraseña y viaja en el `mfaToken` (US-269): este endpoint es el que
       // emite la sesión, así que es el que tiene que respetarla.
       const session = await auth.issueSessionForUserId(
         user.id,

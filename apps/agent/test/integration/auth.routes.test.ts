@@ -110,12 +110,12 @@ describe('rutas de autenticación', () => {
   });
 
   /**
-   * US-266. La casilla «Mantener sesión iniciada» llevaba desde la primera versión
+   * US-269. La casilla «Mantener sesión iniciada» llevaba desde la primera versión
    * de la pantalla pintada y **desconectada**: se marcaba y no cambiaba nada. El
    * efecto observable es el `Max-Age` de la cookie del refresh, así que es lo que
    * se asierta — no que el campo llegue al servidor, que no prueba nada.
    */
-  it('«Mantener sesión iniciada» decide si la cookie persiste, y sobrevive a la rotación (US-266)', async () => {
+  it('«Mantener sesión iniciada» decide si la cookie persiste, y sobrevive a la rotación (US-269)', async () => {
     await seedUser(app, { email: 'keep@krakenos.test', password: 'password123' });
 
     async function cookieDeLogin(keepSignedIn?: boolean) {
@@ -137,7 +137,7 @@ describe('rutas de autenticación', () => {
     // Marcada → cookie persistente: sobrevive a cerrar el navegador.
     expect((await cookieDeLogin(true)).maxAge).toBeGreaterThan(0);
 
-    // Omitida → se comporta como antes de US-266. Un cliente viejo que no manda el
+    // Omitida → se comporta como antes de US-269. Un cliente viejo que no manda el
     // campo no puede cambiar de significado por una historia de la interfaz.
     expect((await cookieDeLogin(undefined)).maxAge).toBeGreaterThan(0);
 
@@ -158,13 +158,13 @@ describe('rutas de autenticación', () => {
   });
 
   /**
-   * US-266 · entrar con un código de recuperación, sin la contraseña.
+   * US-269 · entrar con un código de recuperación, sin la contraseña.
    *
    * Antes no había ninguna vía desde la interfaz: perder la contraseña obligaba a
    * que otro admin la reseteara o a entrar por SSH, y la pantalla no lo mencionaba
    * siquiera.
    */
-  describe('recuperación con código (US-266)', () => {
+  describe('recuperación con código (US-269)', () => {
     /** Genera un lote de códigos para el usuario y devuelve el primero. */
     async function seedConCodigos(email: string) {
       const user = await seedUser(app, { email, password: 'password123' });

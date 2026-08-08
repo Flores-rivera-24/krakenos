@@ -1,5 +1,5 @@
 /**
- * Preferencia de movimiento del usuario (US-266).
+ * Preferencia de movimiento del usuario (US-269).
  *
  * Existe como función única —y no como un `window.matchMedia(...)` repetido en
  * cada componente— por dos motivos:

@@ -32,7 +32,7 @@ async function homeName(app: Parameters<FastifyPluginAsync>[0]): Promise<string>
 }
 
 /**
- * Invitaciones de un solo uso (US-267): `/api/invitations`.
+ * Invitaciones de un solo uso (US-272): `/api/invitations`.
  *
  * Tres rutas de admin y **dos públicas** (abrir el enlace y aceptarlo). Las públicas
  * llevan límite por IP: el token es de 192 bits, así que la fuerza bruta no es una
@@ -134,7 +134,7 @@ export const invitationsRoutes: FastifyPluginAsync = async (app) => {
 };
 
 /**
- * Solicitudes de acceso (US-268): `/api/access-requests`.
+ * Solicitudes de acceso (US-273): `/api/access-requests`.
  *
  * Una ruta pública (pedir) y dos de admin (ver y decidir). Aprobar **no** crea la
  * cuenta con una contraseña puesta a dedo: emite una invitación, de modo que la

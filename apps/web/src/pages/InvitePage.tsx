@@ -14,7 +14,7 @@ import { ROLE_LABELS } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
- * Aceptar una invitación (US-267). Pública: quien la abre todavía no tiene cuenta.
+ * Aceptar una invitación (US-272). Pública: quien la abre todavía no tiene cuenta.
  *
  * El valor está en lo que **no** hace: no le enseña una contraseña que otro haya
  * elegido por ella. La teclea aquí, no la ve nadie más y no viaja por ningún chat.
