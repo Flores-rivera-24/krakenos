@@ -72,7 +72,7 @@ const DEUDA: Record<string, number> = {
   'components/settings/SecuritySection.tsx': 1,
   'components/settings/SystemBackupCard.tsx': 1,
   'components/settings/TuyaManager.tsx': 4,
-  'components/settings/UsersSection.tsx': 16,
+  'components/settings/UsersSection.tsx': 1,
   'components/settings/WeatherCard.tsx': 6,
   'components/vpn/VpnPeerSlideover.tsx': 4,
   'components/wifi/GuestNetworkCard.tsx': 10,
