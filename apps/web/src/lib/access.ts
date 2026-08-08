@@ -39,5 +39,10 @@ export const hhmmToMinutes = (s: string): number => {
   return (h ?? 0) * 60 + (m ?? 0);
 };
 
-/** Etiquetas de un solo carácter por día (0=domingo). */
-export const DAY_LABELS = ['D', 'L', 'M', 'X', 'J', 'V', 'S'] as const;
+/**
+ * Etiquetas de un solo carácter por día. US-270: eran una SEGUNDA constante en
+ * español, distinta de la de `schedule-format.ts`, así que los días salían en
+ * español con la app en inglés y además con dos formatos según la pantalla.
+ * Ahora hay una sola fuente y se traduce; se reexporta para no romper importes.
+ */
+export { diasIniciales } from '@/lib/schedule-format';

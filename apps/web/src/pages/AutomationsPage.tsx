@@ -40,8 +40,8 @@ import { agruparHorariosDeAcceso } from '@/lib/access-routines';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
-import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
-import { MODE_LABELS } from '@/lib/presence';
+import { diasIniciales, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
+import { MODE_LABEL_KEYS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -329,7 +329,7 @@ function RuleEditor({
 
   const dayPicker = (selected: number[], onToggle: (d: number) => void, label: string) => (
     <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
-      {DAY_LABELS.map((text, d) => (
+      {diasIniciales(t).map((text, d) => (
         <button
           key={d}
           type="button"
@@ -623,7 +623,7 @@ function RuleEditor({
             >
               {HOME_MODES.map((m) => (
                 <option key={m} value={m}>
-                  {MODE_LABELS[m]}
+                  {t(MODE_LABEL_KEYS[m])}
                 </option>
               ))}
             </select>
@@ -884,7 +884,8 @@ export function AutomationsPage() {
         personas: new Map(users.map((u) => [u.id, u.displayName])),
         aparatos: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
         personaSinNombre: t('automations.parental.somePerson'),
-      }),
+      },
+      t),
     [accessSchedules, users, networkDevices, t],
   );
 
@@ -948,7 +949,7 @@ export function AutomationsPage() {
       ) : (
         <ul className="space-y-2">
           {rules.map((rule) => {
-            const condition = describeCondition(rule.condition);
+            const condition = describeCondition(rule.condition, t);
             return (
               <li
                 key={rule.id}
@@ -968,9 +969,9 @@ export function AutomationsPage() {
                   </span>
                   <span className="block truncate text-kr-sm text-kr-muted">
                     {t('automations.list.when')}
-                    {describeTrigger(rule.trigger, ctx)}
+                    {describeTrigger(rule.trigger, ctx, t)}
                     {condition ? ` (${condition})` : ''} →{' '}
-                    {rule.actions.map((a) => describeAction(a, ctx)).join(' · ')}
+                    {rule.actions.map((a) => describeAction(a, ctx, t)).join(' · ')}
                   </span>
                 </button>
                 {isAdmin && (

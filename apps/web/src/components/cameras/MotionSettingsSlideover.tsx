@@ -9,7 +9,7 @@ import { FormError } from '@/components/ui/form-error';
 import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
-import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
+import { diasIniciales, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -221,7 +221,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
                         : 'border border-kr text-kr-secondary')
                     }
                   >
-                    {DAY_LABELS[d]}
+                    {diasIniciales(t)[d]}
                   </button>
                 ))}
               </div>

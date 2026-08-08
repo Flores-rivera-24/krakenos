@@ -57,7 +57,9 @@ export async function buildDigest(
     prisma.auditLog.count({
       where: {
         createdAt: { gte: since, lt: now },
-        action: { in: ALERT_EVENTS.map((e) => e.event) },
+        // US-270: `ALERT_EVENTS` pasa a ser la lista de claves (antes cada entrada
+        // era `{ event, label }`, con la etiqueta en español pegada al evento).
+        action: { in: [...ALERT_EVENTS] },
       },
     }),
     prisma.automationRun.count({ where: { createdAt: { gte: since, lt: now } } }),

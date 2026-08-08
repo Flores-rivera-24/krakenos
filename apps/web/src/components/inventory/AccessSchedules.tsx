@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import {
-  DAY_LABELS,
+  diasIniciales,
   createSchedule,
   deleteSchedule,
   hhmmToMinutes,
@@ -15,6 +15,7 @@ import {
   updateSchedule,
 } from '@/lib/access';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
 
@@ -30,6 +31,7 @@ const DEFAULT_DAYS = [1, 2, 3, 4, 5]; // lunes a viernes
  * internet del dispositivo en ventanas recurrentes. Solo `admin` edita.
  */
 export function AccessSchedules({ mac, canEdit }: Props) {
+  const t = useT();
   const [schedules, setSchedules] = useState<AccessSchedule[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -133,7 +135,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
               <p className="truncate text-kr-sm text-kr-primary">{s.name}</p>
               <p className="text-kr-xs text-kr-muted">
                 {minutesToHHMM(s.startMinute)}–{minutesToHHMM(s.endMinute)} ·{' '}
-                {(Array.isArray(s.days) ? s.days : []).map((d) => DAY_LABELS[d]).join(' ')}
+                {(Array.isArray(s.days) ? s.days : []).map((d) => diasIniciales(t)[d]).join(' ')}
                 {/* US-240: un horario de persona se gobierna desde Personas y el
                     servidor lo replica a todos sus aparatos. Editarlo aquí lo
                     dejaría descuadrado con el resto sin avisar, así que se marca y
@@ -176,7 +178,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
             maxLength={60}
           />
           <div className="flex gap-1">
-            {DAY_LABELS.map((label, d) => (
+            {diasIniciales(t).map((label, d) => (
               <button
                 key={d}
                 type="button"

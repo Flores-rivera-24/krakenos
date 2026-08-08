@@ -1,5 +1,5 @@
 import type { IotDevice, Scene } from '@krakenos/types';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -9,6 +9,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { ensureCatalog, setLocale, t } from '@/lib/i18n';
 import {
   createAutomation,
   describeAction,
@@ -86,5 +87,81 @@ describe('lib/automations (US-167)', () => {
     apiMock.get.mockResolvedValue([]);
     await listAutomationRuns('r1');
     expect(apiMock.get).toHaveBeenCalledWith('/automations/runs?ruleId=r1');
+  });
+});
+
+/**
+ * Las frases de las rutinas en inglés (US-270).
+ *
+ * Nacieron concatenando literales españoles (`a las ${hora} (${dias})`), así que
+ * la página de Rutinas enseñaba sus frases y sus días en español con la app en
+ * inglés. Ahora cada frase es **una plantilla completa** del catálogo: se puede
+ * reordenar al traducir, que es justo lo que una frase montada por trozos impide.
+ */
+describe('frases de rutinas en inglés', () => {
+  // El catálogo `en` ya no viaja en el bundle y `setLocale` es SÍNCRONO: sin
+  // precargarlo, el test compite con el `import()` del chunk.
+  beforeAll(() => ensureCatalog('en'));
+  afterEach(() => setLocale('es', { persist: false }));
+
+  const CTX_EN: NameContext = {
+    devices: [{ id: 'light-1', name: 'Hall light' }] as IotDevice[],
+    networkNames: new Map([['aa:bb', "Ana's phone"]]),
+  };
+
+  it('traduce el disparador, incluidos los días', () => {
+    setLocale('en', { persist: false });
+    expect(describeTrigger({ type: 'device-online', mac: 'aa:bb' }, CTX_EN, t)).toBe(
+      "Ana's phone connects",
+    );
+    // El día sale del catálogo, no de una constante en español.
+    expect(describeTrigger({ type: 'time', minute: 450, days: [1, 2] }, {}, t)).toBe(
+      'at 07:30 (Mon Tue)',
+    );
+  });
+
+  it('«supera» y «baja de» son dos plantillas, no una palabra intercambiada', () => {
+    setLocale('en', { persist: false });
+    const arriba = describeTrigger(
+      { type: 'sensor-threshold', deviceId: 'light-1', op: 'gt', value: 20 },
+      CTX_EN,
+      t,
+    );
+    const abajo = describeTrigger(
+      { type: 'sensor-threshold', deviceId: 'light-1', op: 'lt', value: 20 },
+      CTX_EN,
+      t,
+    );
+    expect(arriba).toBe('Hall light goes above 20');
+    expect(abajo).toBe('Hall light drops below 20');
+  });
+
+  it('traduce la acción, y el brillo va en su propia plantilla', () => {
+    setLocale('en', { persist: false });
+    expect(describeAction({ type: 'iot-set', deviceId: 'light-1', on: true }, CTX_EN, t)).toBe(
+      'turn on Hall light',
+    );
+    expect(
+      describeAction({ type: 'iot-set', deviceId: 'light-1', on: true, brightness: 40 }, CTX_EN, t),
+    ).toBe('turn on Hall light at 40%');
+  });
+
+  /**
+   * El copy dice «quita el bloqueo» y no «desbloquea» porque la acción suelta la
+   * fuente manual y no promete acceso: un horario o una pausa siguen cortando.
+   * La traducción tiene que conservar esa promesa acotada.
+   */
+  it('la acción de soltar el bloqueo no promete acceso en inglés tampoco', () => {
+    setLocale('en', { persist: false });
+    const frase = describeAction({ type: 'device-unblock', mac: 'aa:bb' }, CTX_EN, t);
+    expect(frase).toBe("lift the block on Ana's phone");
+    expect(frase).not.toMatch(/unblock/i);
+  });
+
+  it('la condición se traduce', () => {
+    setLocale('en', { persist: false });
+    expect(describeCondition({ days: [1, 2], fromMinute: 480, toMinute: 1080 }, t)).toBe(
+      'only Mon Tue · 08:00–18:00',
+    );
   });
 });

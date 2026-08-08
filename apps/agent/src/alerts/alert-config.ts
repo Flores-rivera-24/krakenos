@@ -1,42 +1,36 @@
-import type { AlertRule, UpdateAlertRuleRequest } from '@krakenos/types';
+import { ALERT_EVENTS, type AlertRule, type UpdateAlertRuleRequest } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 
 /**
  * Catálogo FIJO de eventos alertables (US-112): los eventos de seguridad para los
  * que existe contenido de notificación. El usuario solo decide, por evento, si
  * push y/o email — no puede inventar eventos sin contenido.
+ *
+ * Vive en `@krakenos/types` (US-270) y aquí se reexporta para no tocar a sus
+ * consumidores internos ni al gate de contenido.
+ *
+ * ⚠️ Antes esta lista llevaba **la etiqueta en español pegada al evento**, y esa
+ * etiqueta viajaba en la respuesta de la API. Como el agente no tiene i18n, la
+ * app en inglés enseñaba las trece filas de Ajustes → Alertas en español,
+ * `aria-label` incluidos. Ahora la API devuelve **la clave** y el copy lo pone la
+ * web, que es quien sabe en qué idioma está el usuario.
+ *
+ * Notas del catálogo que conviene no perder:
+ *  - `auth.recovery_used`: entrar con un código de recuperación es saltarse la
+ *    contraseña. Es legítimo (para eso están) y a la vez es justo lo que querría
+ *    hacer quien te robó la libreta donde los apuntaste.
+ *  - `dns.new_destination` NO es una variante de `inventory.unknown_device`:
+ *    aquel avisa de que APARECE un aparato, este de que uno que ya estaba CAMBIA
+ *    de comportamiento — apagar uno no debe apagar el otro.
+ *  - `alarm.smoke`/`alarm.co` son eventos propios y no variantes de
+ *    `alarm.triggered`, porque avisan aunque la alarma esté desarmada: bajo el
+ *    mismo evento, desactivar el aviso de intrusión apagaría el de incendio.
+ *  - `system.tls_expiring`: el certificado caduca en silencio y se lleva por
+ *    delante la PWA, los avisos y las passkeys.
  */
-export const ALERT_EVENTS: { event: string; label: string }[] = [
-  { event: 'auth.login_failed', label: 'Login fallido' },
-  { event: 'auth.login_locked', label: 'Cuenta bloqueada' },
-  { event: 'auth.refresh_reuse', label: 'Posible robo de sesión' },
-  // US-269: entrar con un código de recuperación es saltarse la contraseña. Es
-  // legítimo (para eso están los códigos) y a la vez es justo lo que querría hacer
-  // quien te robó la libreta donde los apuntaste.
-  { event: 'auth.recovery_used', label: 'Acceso con código de recuperación' },
-  { event: 'device.block', label: 'Dispositivo bloqueado' },
-  { event: 'inventory.unknown_device', label: 'Dispositivo desconocido' },
-  // US-253: un aparato que empieza a hablar con alguien nuevo. Es evento propio y
-  // no una variante de «dispositivo desconocido»: aquel avisa de que APARECE un
-  // aparato, este de que uno que ya estaba CAMBIA de comportamiento — apagar uno
-  // no debe apagar el otro.
-  { event: 'dns.new_destination', label: 'Un aparato contacta con un destino nuevo' },
-  { event: 'energy.threshold', label: 'Consumo eléctrico anómalo' },
-  { event: 'camera.motion', label: 'Movimiento detectado' },
-  { event: 'alarm.triggered', label: '¡Alarma disparada!' },
-  // US-245: humo y CO son eventos propios y NO variantes de «alarma disparada»,
-  // porque avisan aunque la alarma esté desarmada — meterlos bajo el mismo evento
-  // haría que desactivar el aviso de intrusión apagara también el de incendio.
-  { event: 'alarm.smoke', label: '¡Humo detectado!' },
-  { event: 'alarm.co', label: '¡Monóxido de carbono detectado!' },
-  { event: 'alarm.sensor_fault', label: 'Sensor de alarma caído' },
-  { event: 'alarm.disarm_denied', label: 'PIN de alarma incorrecto' },
-  // US-241: el certificado caduca en silencio y se lleva por delante la PWA, los
-  // avisos y las passkeys. Enterarse cuando el móvil deja de conectar es tarde.
-  { event: 'system.tls_expiring', label: 'El certificado HTTPS va a caducar' },
-];
+export { ALERT_EVENTS };
 
-const LABEL_BY_EVENT = new Map(ALERT_EVENTS.map((e) => [e.event, e.label]));
+const EVENTOS_DEL_CATALOGO = new Set<string>(ALERT_EVENTS);
 
 /** Canales por defecto de un evento del catálogo: push sí, email/Telegram no. */
 const DEFAULT_CHANNELS = { push: true, email: false, telegram: false };
@@ -53,7 +47,7 @@ export class AlertConfigService {
 
   /** Crea las filas por defecto que falten y carga la caché. Se llama al arrancar. */
   async ensureDefaults(): Promise<void> {
-    for (const { event } of ALERT_EVENTS) {
+    for (const event of ALERT_EVENTS) {
       await this.app.prisma.alertRule.upsert({ where: { event }, create: { event }, update: {} });
     }
     await this.reload();
@@ -74,11 +68,10 @@ export class AlertConfigService {
   async list(): Promise<AlertRule[]> {
     const rows = await this.app.prisma.alertRule.findMany();
     const byEvent = new Map(rows.map((r) => [r.event, r]));
-    return ALERT_EVENTS.map(({ event, label }) => {
+    return ALERT_EVENTS.map((event) => {
       const r = byEvent.get(event);
       return {
         event,
-        label,
         push: r?.push ?? DEFAULT_CHANNELS.push,
         email: r?.email ?? DEFAULT_CHANNELS.email,
         telegram: r?.telegram ?? DEFAULT_CHANNELS.telegram,
@@ -87,8 +80,7 @@ export class AlertConfigService {
   }
 
   async update(event: string, patch: UpdateAlertRuleRequest): Promise<AlertRule | null> {
-    const label = LABEL_BY_EVENT.get(event);
-    if (!label) return null; // fuera del catálogo
+    if (!EVENTOS_DEL_CATALOGO.has(event)) return null; // fuera del catálogo
     const row = await this.app.prisma.alertRule.upsert({
       where: { event },
       create: {
@@ -104,7 +96,7 @@ export class AlertConfigService {
       },
     });
     await this.reload();
-    return { event, label, push: row.push, email: row.email, telegram: row.telegram };
+    return { event, push: row.push, email: row.email, telegram: row.telegram };
   }
 }
 

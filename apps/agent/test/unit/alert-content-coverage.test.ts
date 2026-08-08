@@ -28,7 +28,9 @@ describe('cobertura de contenido del catálogo de alertas (US-245)', () => {
     expect(ALERT_EVENTS.length).toBeGreaterThan(8);
   });
 
-  it.each(ALERT_EVENTS.map((e) => [e.event, e.label] as const))(
+  // US-270: el catálogo pasa a ser una lista de CLAVES; la etiqueta legible ya no
+  // vive aquí, porque el agente no tiene i18n y viajaba en español a la app.
+  it.each(ALERT_EVENTS.map((event) => [event] as const))(
     '«%s» produce un aviso con título, cuerpo, destino y audiencia',
     (event) => {
       const note = pushNotificationForAudit(event, 'detalle de prueba', '10.0.0.5');
@@ -42,7 +44,7 @@ describe('cobertura de contenido del catálogo de alertas (US-245)', () => {
   );
 
   it('sin detalle también hay cuerpo (el aviso no puede quedar vacío)', () => {
-    for (const { event } of ALERT_EVENTS) {
+    for (const event of ALERT_EVENTS) {
       const note = pushNotificationForAudit(event, null, null);
       expect(note?.body, event).toBeTruthy();
     }
