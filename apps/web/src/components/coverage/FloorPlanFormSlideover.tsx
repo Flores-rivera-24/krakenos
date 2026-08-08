@@ -130,11 +130,11 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
     setError(null);
     try {
       await deleteFloorPlan(plan.id);
-      toast.success('Plano eliminado');
+      toast.success(t('coverage.plan.deleted'));
       onDeleted?.(plan.id);
       onClose();
     } catch (err) {
-      const message = describeError(err, 'No se pudo eliminar el plano');
+      const message = describeError(err, t('coverage.plan.deleteError'));
       setError(message);
       toast.error(message);
     } finally {

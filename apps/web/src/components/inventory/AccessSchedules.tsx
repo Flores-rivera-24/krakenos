@@ -46,7 +46,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
     try {
       setSchedules(await listSchedules(mac));
     } catch (err) {
-      setError(describeError(err, 'No se pudieron cargar los horarios'));
+      setError(describeError(err, t('access.loadError')));
     }
   };
   useEffect(() => {
@@ -58,19 +58,19 @@ export function AccessSchedules({ mac, canEdit }: Props) {
 
   const submit = async () => {
     if (days.length === 0) {
-      toast.error('Elige al menos un día.');
+      toast.error(t('access.pickDay'));
       return;
     }
     setBusy(true);
     try {
       await createSchedule({
-        name: name.trim() || 'Sin internet',
+        name: name.trim() || t('access.defaultName'),
         mac,
         days,
         startMinute: hhmmToMinutes(start),
         endMinute: hhmmToMinutes(end),
       });
-      toast.success('Horario creado');
+      toast.success(t('access.created'));
       setName('');
       setAdding(false);
       setDays(DEFAULT_DAYS);
@@ -78,7 +78,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       setEnd('07:00');
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el horario'));
+      toast.error(describeError(err, t('access.createError')));
     } finally {
       setBusy(false);
     }
@@ -89,7 +89,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       await updateSchedule(s.id, { enabled: !s.enabled });
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar el horario'));
+      toast.error(describeError(err, t('access.toggleError')));
     }
   };
 
@@ -98,30 +98,29 @@ export function AccessSchedules({ mac, canEdit }: Props) {
       await deleteSchedule(s.id);
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el horario'));
+      toast.error(describeError(err, t('access.deleteError')));
     }
   };
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-kr-sm font-medium text-kr-primary">Control parental · horarios</h3>
+        <h3 className="text-kr-sm font-medium text-kr-primary">{t('access.title')}</h3>
         {canEdit && !adding && (
           <Button size="sm" variant="outline" onClick={() => setAdding(true)}>
-            Añadir horario
+            {t('access.add')}
           </Button>
         )}
       </div>
       <p className="text-kr-xs text-kr-muted">
-        Corta el acceso a internet de este dispositivo en las ventanas que definas (p. ej.
-        21:00–07:00 de lunes a viernes).
+        {t('access.intro')}
       </p>
 
       {error && <FormError>{error}</FormError>}
 
       {schedules && schedules.length === 0 && !adding && (
         <p className="text-kr-sm text-kr-secondary">
-          Sin horarios: este dispositivo no tiene cortes programados.
+          {t('access.empty')}
         </p>
       )}
 
@@ -140,7 +139,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                     servidor lo replica a todos sus aparatos. Editarlo aquí lo
                     dejaría descuadrado con el resto sin avisar, así que se marca y
                     no se toca desde el dispositivo. */}
-                {s.personId && ' · lo pone la persona dueña'}
+                {s.personId && ` · ${t('access.byPerson')}`}
               </p>
             </div>
             {canEdit && !s.personId && (
@@ -162,7 +161,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
             )}
             {s.personId && (
               <Link to="/people" className="text-kr-xs text-kr-accent hover:underline">
-                Personas
+                {t('nav.people')}
               </Link>
             )}
           </li>
@@ -174,7 +173,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Nombre (p. ej. Hora de dormir)"
+            placeholder={t('access.namePlaceholder')}
             maxLength={60}
           />
           <div className="flex gap-1">
@@ -184,7 +183,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 type="button"
                 onClick={() => toggleDay(d)}
                 aria-pressed={days.includes(d)}
-                aria-label={`Día ${label}`}
+                aria-label={t('access.day', { day: label })}
                 className={cn(
                   'h-8 w-8 rounded-md border text-kr-sm',
                   days.includes(d)
@@ -197,29 +196,29 @@ export function AccessSchedules({ mac, canEdit }: Props) {
             ))}
           </div>
           <div className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-            <span>De</span>
+            <span>{t('access.from')}</span>
             <Input
               type="time"
               value={start}
               onChange={(e) => setStart(e.target.value)}
               className="w-28"
-              aria-label="Hora de inicio"
+              aria-label={t('access.startTime')}
             />
-            <span>a</span>
+            <span>{t('access.to')}</span>
             <Input
               type="time"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
               className="w-28"
-              aria-label="Hora de fin"
+              aria-label={t('access.endTime')}
             />
           </div>
           <div className="flex gap-2">
             <Button size="sm" onClick={() => void submit()} disabled={busy}>
-              {busy ? 'Guardando…' : 'Guardar'}
+              {busy ? t('common.saving') : t('common.save')}
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
           </div>
         </div>

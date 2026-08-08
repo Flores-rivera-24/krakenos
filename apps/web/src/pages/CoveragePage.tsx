@@ -16,7 +16,7 @@ import { CoverageToolbar } from '@/components/coverage/CoverageToolbar';
 import { FloorPlanFormSlideover } from '@/components/coverage/FloorPlanFormSlideover';
 import { FloorPlanStage, type CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { HeatmapLegend } from '@/components/coverage/HeatmapLegend';
-import { WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { SurveyPanel } from '@/components/coverage/SurveyPanel';
 import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
@@ -504,7 +504,7 @@ export function CoveragePage() {
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
-                      {WALL_MATERIAL_LABELS[m]}
+                      {t(WALL_MATERIAL_KEYS[m])}
                     </option>
                   ))}
                 </select>

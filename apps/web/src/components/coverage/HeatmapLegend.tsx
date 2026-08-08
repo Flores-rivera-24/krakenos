@@ -1,5 +1,6 @@
 import type { SignalQuality } from '@krakenos/types';
-import { formatDbm, heatmapRgba, SIGNAL_QUALITY_LABELS, signalQualityColorVar } from '@/lib/coverage-format';
+import { formatDbm, heatmapRgba, SIGNAL_QUALITY_KEYS, signalQualityColorVar } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   /** Cota inferior del degradado (dBm más débil). */
@@ -21,6 +22,7 @@ const GRADIENT_STEPS = 8;
  * puras de `coverage-format` para no duplicar la escala.
  */
 export function HeatmapLegend({ minDbm = -85, maxDbm = -45, className }: Props) {
+  const t = useT();
   // Construye el degradado muestreando la misma función que el canvas.
   const stops: string[] = [];
   for (let i = 0; i <= GRADIENT_STEPS; i++) {
@@ -35,14 +37,17 @@ export function HeatmapLegend({ minDbm = -85, maxDbm = -45, className }: Props) 
     <div className={className}>
       <div className="mb-1 flex items-center justify-between text-kr-xs text-kr-muted">
         <span>{formatDbm(minDbm)}</span>
-        <span>Intensidad de señal</span>
+        <span>{t('coverage.legend.title')}</span>
         <span>{formatDbm(maxDbm)}</span>
       </div>
       <div
         className="h-3 w-full rounded-full border border-kr"
         style={{ background: gradient }}
         role="img"
-        aria-label={`Degradado de señal de ${formatDbm(minDbm)} a ${formatDbm(maxDbm)}`}
+        aria-label={t('coverage.legend.aria', {
+          min: formatDbm(minDbm),
+          max: formatDbm(maxDbm),
+        })}
       />
       <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5">
         {QUALITY_ORDER.map((q) => (
@@ -52,7 +57,7 @@ export function HeatmapLegend({ minDbm = -85, maxDbm = -45, className }: Props) 
               className="inline-block h-2.5 w-2.5 rounded-full"
               style={{ backgroundColor: signalQualityColorVar(q) }}
             />
-            {SIGNAL_QUALITY_LABELS[q]}
+            {t(SIGNAL_QUALITY_KEYS[q])}
           </li>
         ))}
       </ul>

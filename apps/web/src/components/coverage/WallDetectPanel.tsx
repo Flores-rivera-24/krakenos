@@ -1,7 +1,7 @@
 import { WALL_MATERIALS, type WallMaterial } from '@krakenos/types';
 import { ScanLine } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
 import type { ProposedWall } from '@/lib/wall-propose';
 
@@ -76,7 +76,7 @@ export function WallDetectPanel({
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
-                      {WALL_MATERIAL_LABELS[m]}
+                      {t(WALL_MATERIAL_KEYS[m])}
                     </option>
                   ))}
                 </select>

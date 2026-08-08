@@ -12,12 +12,17 @@ de una voz inventada. Toda historia nueva que añada texto visible debe seguir e
 - Esta guía describe cómo se escribe el **valor en español**. El inglés lo sigue en espíritu
   (sentence case, sin florituras, honestidad de errores), no al pie de la letra: sus convenciones de
   puntuación son otras.
-- **Dónde vive el copy hoy** (actualizado en): shell, auth, las 17 páginas, las 25 guías, el
-  glosario, **las primitivas de `components/ui/`**, **los 12 widgets del dashboard** y
-  «Primeros pasos» ya pasan por `t()`. Queda pendiente el *chrome* del `IntegrationWizard`
-  (deuda anotada). Un componente que aún no esté migrado se escribe **en español, sin `t()`**: meter una
-  sola clave suelta en un componente español deja media tarjeta en inglés, que es peor que no
-  traducir (decisión de).
+- **Dónde vive el copy hoy: en el catálogo, y ya no queda nada fuera.** El shell, la auth, las
+  páginas, las guías, el glosario, las primitivas de `components/ui/`, los widgets del dashboard y
+  **las tarjetas, secciones y slideovers** pasan por `t()`. Lo vigila un gate que falla nombrando
+  el fichero (`test/lib/copy-sin-traducir.test.ts`): si aparece copy escrito a pelo, se pone rojo.
+- ⚠️ **Ese gate subestima y hay que saberlo**: reconoce el español por acentos o palabras
+  funcionales, así que no ve el que no tiene ninguna de las dos (`label="Datos obsoletos"`). Que
+  esté en verde no demuestra que no quede copy sin traducir. Por eso, al tocar un componente se
+  migra **entero**, no lo que marque el gate.
+- **Y el copy puede esconderse fuera del componente**: una constante de módulo con el texto ya
+  traducido (un `Record<Material, string>` de etiquetas) se **congela con el idioma que hubiera al
+  importar el módulo** y no cambia nunca. Esas constantes guardan la **clave**, no el texto.
 - Un string en inglés dentro de un componente **en español** es un bug de copy, salvo los términos
   retenidos de abajo.
 - `manifest.json` conserva el nombre de marca `KrakenOS — Home Control` (tagline de producto).

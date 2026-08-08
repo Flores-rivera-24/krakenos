@@ -30,6 +30,7 @@ import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_ICON_LABELS, DEVICE_TYPES, TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
 import { listUsers } from '@/lib/users';
+import { useT } from '@/lib/i18n';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -52,6 +53,7 @@ function Field({ label, value }: { label: string; value: string }) {
 }
 
 export function DeviceDetailSlideover({ device, onClose }: Props) {
+  const t = useT();
   const [label, setLabel] = useState(device.label ?? '');
   const [type, setType] = useState<DeviceType>(device.type);
   // Icono elegido a mano (US-178); null = inferido del tipo.
@@ -95,10 +97,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setRoomBusy(true);
     try {
       await assignRoom({ kind: 'device', ref: device.id, roomId: next });
-      toast.success('Habitación actualizada');
+      toast.success(t('device.roomUpdated'));
     } catch (err) {
       setRoomId(previous); // revertir: no mentir sobre la asignación real
-      toast.error(describeError(err, 'No se pudo asignar la habitación'));
+      toast.error(describeError(err, t('device.roomError')));
     } finally {
       setRoomBusy(false);
     }
@@ -135,7 +137,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         : api.del(`/inventory/devices/${device.id}/block`),
     onSuccess: (next) =>
       toast.success(next ? 'Dispositivo bloqueado' : 'Acceso a la red restaurado'),
-    onError: (err) => toast.error(describeError(err, 'No se pudo cambiar el bloqueo')),
+    onError: (err) => toast.error(describeError(err, t('device.blockError'))),
   });
 
   const assignVlan = async (tag: number | null) => {
@@ -144,10 +146,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setVlanBusy(true);
     try {
       await api.put(`/inventory/devices/${device.id}/vlan`, { tag });
-      toast.success('VLAN actualizada');
+      toast.success(t('device.vlanUpdated'));
     } catch (err) {
       setVlanTag(previous); // revertir: no mentir sobre la asignación real
-      toast.error(describeError(err, 'No se pudo asignar la VLAN'));
+      toast.error(describeError(err, t('device.vlanError')));
     } finally {
       setVlanBusy(false);
     }
@@ -167,25 +169,25 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setOwnerBusy(true);
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, { ownerId: next });
-      toast.success('Dueño actualizado');
+      toast.success(t('device.ownerUpdated'));
     } catch (err) {
       setOwnerId(previous);
-      toast.error(describeError(err, 'No se pudo asignar el dueño'));
+      toast.error(describeError(err, t('device.ownerError')));
     } finally {
       setOwnerBusy(false);
     }
   };
 
   // Identificación asistida (US-178): un toque clasifica el aparato desconocido.
-  const identifyAs = async (t: DeviceType) => {
+  const identifyAs = async (tipo: DeviceType) => {
     const previous = type;
-    setType(t);
+    setType(tipo);
     try {
-      await api.patch<Device>(`/inventory/devices/${device.id}`, { type: t });
-      toast.success(`Identificado como ${TYPE_LABELS[t]}`);
+      await api.patch<Device>(`/inventory/devices/${device.id}`, { type: tipo });
+      toast.success(t('device.identifiedAs', { type: TYPE_LABELS[tipo] }));
     } catch (err) {
       setType(previous);
-      toast.error(describeError(err, 'No se pudo identificar el dispositivo'));
+      toast.error(describeError(err, t('device.identifyError')));
     }
   };
 
@@ -200,7 +202,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     };
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, body);
-      toast.success('Cambios guardados');
+      toast.success(t('device.saved'));
       onClose();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar');
@@ -231,10 +233,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           className="w-full"
         >
           {block.pending
-            ? 'Aplicando…'
+            ? t('device.applying')
             : block.on
-              ? 'Desbloquear acceso a la red'
-              : 'Bloquear acceso a la red'}
+              ? t('device.unblock')
+              : t('device.block')}
         </Button>
       )}
     </div>
@@ -267,26 +269,30 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       {/* Identificación asistida (US-178): la app propone, el usuario confirma. */}
       {type === 'unknown' && (
         <div className="mb-4">
-          <Callout variant="info" title="¿Qué es este aparato?">
+          <Callout variant="info" title={t('device.identify.title')}>
             <p className="mb-2">
               {device.suggestedType
-                ? `Por su fabricante y nombre parece ${TYPE_LABELS[device.suggestedType].toLowerCase()}. ¿Lo es?`
-                : 'Aún no está identificado. Dinos qué es para reconocerlo en toda la app.'}
+                ? t('device.identify.guess', {
+                    type: TYPE_LABELS[device.suggestedType].toLowerCase(),
+                  })
+                : t('device.identify.unknown')}
             </p>
             <div className="flex flex-wrap gap-2">
               {[
                 ...(device.suggestedType ? [device.suggestedType] : []),
                 ...(['tv', 'phone', 'computer', 'iot'] as DeviceType[]).filter(
-                  (t) => t !== device.suggestedType,
+                  (tipo) => tipo !== device.suggestedType,
                 ),
-              ].map((t) => (
+              ].map((tipo) => (
                 <Button
-                  key={t}
+                  key={tipo}
                   size="sm"
-                  variant={t === device.suggestedType ? 'default' : 'outline'}
-                  onClick={() => void identifyAs(t)}
+                  variant={tipo === device.suggestedType ? 'default' : 'outline'}
+                  onClick={() => void identifyAs(tipo)}
                 >
-                  {t === device.suggestedType ? `Sí, es ${TYPE_LABELS[t].toLowerCase()}` : TYPE_LABELS[t]}
+                  {tipo === device.suggestedType
+                    ? t('device.identify.confirm', { type: TYPE_LABELS[tipo].toLowerCase() })
+                    : TYPE_LABELS[tipo]}
                 </Button>
               ))}
             </div>
@@ -298,35 +304,35 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         <Field label="IP" value={device.ip} />
         {!simpleMode && <Field label="MAC" value={device.mac} />}
         <Field label="Hostname" value={device.hostname ?? '—'} />
-        <Field label="Fabricante" value={device.vendor ?? '—'} />
-        {!simpleMode && <Field label="Fuentes" value={device.sources.join(', ') || '—'} />}
-        <Field label="Última vez" value={new Date(device.lastSeen).toLocaleString()} />
+        <Field label={t('device.vendor')} value={device.vendor ?? '—'} />
+        {!simpleMode && <Field label={t('device.sources')} value={device.sources.join(', ') || '—'} />}
+        <Field label={t('device.lastSeen')} value={new Date(device.lastSeen).toLocaleString()} />
       </dl>
 
       {/* Histórico de tráfico de la última hora (US-46). */}
       {traffic && traffic.samples.length >= 2 ? (
         <div className="mb-4 rounded-lg border border-kr bg-kr-elevated p-3">
-          <p className="mb-2 text-kr-xs text-kr-muted">Tráfico (última hora)</p>
+          <p className="mb-2 text-kr-xs text-kr-muted">{t('device.traffic.title')}</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="mb-1 text-kr-xs text-kr-secondary">↓ Descarga</p>
+              <p className="mb-1 text-kr-xs text-kr-secondary">{t('device.traffic.down')}</p>
               <Sparkline
                 points={traffic.samples.map((s) => s.rxBytesPerSec)}
                 className="w-full text-success"
               />
             </div>
             <div>
-              <p className="mb-1 text-kr-xs text-kr-secondary">↑ Subida</p>
+              <p className="mb-1 text-kr-xs text-kr-secondary">{t('device.traffic.up')}</p>
               <Sparkline points={traffic.samples.map((s) => s.txBytesPerSec)} className="w-full" />
             </div>
           </div>
         </div>
       ) : isAdmin ? (
-        <p className="mb-4 text-kr-xs text-kr-muted">Sin datos de tráfico disponibles.</p>
+        <p className="mb-4 text-kr-xs text-kr-muted">{t('device.traffic.empty')}</p>
       ) : (
         /* «Sin datos» sería mentira: puede haberlos y no se enseñan (US-250). */
         <p className="mb-4 text-kr-xs text-kr-muted">
-          Solo el administrador ve el tráfico de cada aparato.
+          {t('device.traffic.adminOnly')}
         </p>
       )}
 
@@ -343,17 +349,17 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="d-label">Nombre</Label>
+          <Label htmlFor="d-label">{t('device.name')}</Label>
           <Input
             id="d-label"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder={device.hostname ?? 'Sin nombre'}
+            placeholder={device.hostname ?? t('device.noName')}
             maxLength={64}
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-type">Tipo</Label>
+          <Label htmlFor="d-type">{t('device.type')}</Label>
           <select
             id="d-type"
             className={SELECT_CLASS}
@@ -368,14 +374,14 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-icon">Icono</Label>
+          <Label htmlFor="d-icon">{t('device.icon')}</Label>
           <select
             id="d-icon"
             className={SELECT_CLASS}
             value={icon ?? ''}
             onChange={(e) => setIcon(e.target.value === '' ? null : (e.target.value as DeviceIcon))}
           >
-            <option value="">Automático (según el tipo)</option>
+            <option value="">{t('device.iconAuto')}</option>
             {DEVICE_ICONS.map((k) => (
               <option key={k} value={k}>
                 {DEVICE_ICON_LABELS[k]}
@@ -384,12 +390,12 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           </select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="d-notes">Notas</Label>
+          <Label htmlFor="d-notes">{t('device.notes')}</Label>
           <Textarea
             id="d-notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notas sobre este dispositivo…"
+            placeholder={t('device.notesPlaceholder')}
             maxLength={500}
           />
         </div>
@@ -406,7 +412,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
         {isAdmin && householdUsers.length > 0 && (
           <div className="space-y-2">
-            <Label htmlFor="d-owner">Dueño</Label>
+            <Label htmlFor="d-owner">{t('device.owner')}</Label>
             <select
               id="d-owner"
               className={SELECT_CLASS}
@@ -414,7 +420,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               disabled={ownerBusy}
               onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
             >
-              <option value="">Sin dueño</option>
+              <option value="">{t('device.noOwner')}</option>
               {householdUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.displayName}
@@ -434,7 +440,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               disabled={vlanBusy}
               onChange={(e) => void assignVlan(e.target.value === '' ? null : Number(e.target.value))}
             >
-              <option value="">Sin VLAN</option>
+              <option value="">{t('device.noVlan')}</option>
               {vlans.map((v) => (
                 <option key={v.id} value={v.tag}>
                   {v.name} (tag {v.tag})

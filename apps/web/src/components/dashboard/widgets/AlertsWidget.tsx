@@ -61,7 +61,7 @@ export function AlertsWidget() {
       </CardHeader>
       <CardContent>
         {failed && entries === null ? (
-          <WidgetError what="la actividad reciente" onRetry={() => setIntento((n) => n + 1)} />
+          <WidgetError what={t('widget.alerts.what')} onRetry={() => setIntento((n) => n + 1)} />
         ) : entries === null ? (
           <LoadingLine />
         ) : entries.length === 0 ? (

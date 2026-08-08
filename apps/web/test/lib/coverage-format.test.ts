@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   formatDbm,
   heatmapRgba,
-  SIGNAL_QUALITY_LABELS,
-  WALL_MATERIAL_LABELS,
+  SIGNAL_QUALITY_KEYS,
+  WALL_MATERIAL_KEYS,
 } from '@/lib/coverage-format';
+import { t } from '@/lib/i18n';
 
 describe('heatmapRgba', () => {
   it('es completamente transparente cuando no hay dato', () => {
@@ -61,21 +62,28 @@ describe('formatDbm', () => {
   });
 });
 
-describe('etiquetas en español', () => {
+/**
+ * Estas etiquetas eran constantes con el texto en español dentro, así que se
+ * congelaban con el idioma que hubiera al importar el módulo y la leyenda del
+ * mapa seguía en español con la app en inglés (US-271). Ahora guardan la
+ * **clave**; el test sigue comparando el mismo español, pero resuelto por el
+ * catálogo, para conservar la red que detecta un cambio accidental de copy.
+ */
+describe('etiquetas traducidas', () => {
   it('cubre todos los materiales de pared', () => {
-    expect(WALL_MATERIAL_LABELS.drywall).toBe('Pladur/tabique');
-    expect(WALL_MATERIAL_LABELS.wood).toBe('Madera');
-    expect(WALL_MATERIAL_LABELS.glass).toBe('Cristal');
-    expect(WALL_MATERIAL_LABELS.brick).toBe('Ladrillo');
-    expect(WALL_MATERIAL_LABELS.concrete).toBe('Hormigón');
-    expect(WALL_MATERIAL_LABELS.metal).toBe('Metal');
+    expect(t(WALL_MATERIAL_KEYS.drywall)).toBe('Pladur/tabique');
+    expect(t(WALL_MATERIAL_KEYS.wood)).toBe('Madera');
+    expect(t(WALL_MATERIAL_KEYS.glass)).toBe('Cristal');
+    expect(t(WALL_MATERIAL_KEYS.brick)).toBe('Ladrillo');
+    expect(t(WALL_MATERIAL_KEYS.concrete)).toBe('Hormigón');
+    expect(t(WALL_MATERIAL_KEYS.metal)).toBe('Metal');
   });
 
   it('cubre todas las categorías de calidad de señal', () => {
-    expect(SIGNAL_QUALITY_LABELS.excellent).toBe('Excelente');
-    expect(SIGNAL_QUALITY_LABELS.good).toBe('Buena');
-    expect(SIGNAL_QUALITY_LABELS.fair).toBe('Aceptable');
-    expect(SIGNAL_QUALITY_LABELS.weak).toBe('Débil');
-    expect(SIGNAL_QUALITY_LABELS.none).toBe('Sin señal');
+    expect(t(SIGNAL_QUALITY_KEYS.excellent)).toBe('Excelente');
+    expect(t(SIGNAL_QUALITY_KEYS.good)).toBe('Buena');
+    expect(t(SIGNAL_QUALITY_KEYS.fair)).toBe('Aceptable');
+    expect(t(SIGNAL_QUALITY_KEYS.weak)).toBe('Débil');
+    expect(t(SIGNAL_QUALITY_KEYS.none)).toBe('Sin señal');
   });
 });

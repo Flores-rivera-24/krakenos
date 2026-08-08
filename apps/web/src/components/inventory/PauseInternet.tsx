@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { pauseInternet, resumeInternet } from '@/lib/access';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -25,6 +26,7 @@ function formatTime(iso: string): string {
  * minutos y se reanuda solo. Estado local sembrado desde `device.pausedUntil`.
  */
 export function PauseInternet({ device, canEdit }: Props) {
+  const t = useT();
   const [pausedUntil, setPausedUntil] = useState<string | null>(device.pausedUntil ?? null);
   const [busy, setBusy] = useState(false);
 
@@ -35,9 +37,9 @@ export function PauseInternet({ device, canEdit }: Props) {
     try {
       const res = await pauseInternet(device.mac, minutes);
       setPausedUntil(res.pausedUntil);
-      toast.success('Internet pausado');
+      toast.success(t('pauseInternet.paused'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo pausar'));
+      toast.error(describeError(err, t('pauseInternet.pauseError')));
     } finally {
       setBusy(false);
     }
@@ -48,9 +50,9 @@ export function PauseInternet({ device, canEdit }: Props) {
     try {
       await resumeInternet(device.mac);
       setPausedUntil(null);
-      toast.success('Internet reanudado');
+      toast.success(t('pauseInternet.resumed'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo reanudar'));
+      toast.error(describeError(err, t('pauseInternet.resumeError')));
     } finally {
       setBusy(false);
     }
@@ -62,16 +64,16 @@ export function PauseInternet({ device, canEdit }: Props) {
     <div className="flex flex-wrap items-center gap-2 text-kr-sm">
       {active ? (
         <>
-          <span className="text-warning">Internet pausado hasta {formatTime(pausedUntil!)}</span>
+          <span className="text-warning">{t('pauseInternet.until', { time: formatTime(pausedUntil!) })}</span>
           {canEdit && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void resume()}>
-              Reanudar
+              {t('pauseInternet.resume')}
             </Button>
           )}
         </>
       ) : (
         <>
-          <span className="text-kr-secondary">Pausar internet:</span>
+          <span className="text-kr-secondary">{t('pauseInternet.label')}</span>
           {OPTIONS.map((o) => (
             <Button
               key={o.minutes}

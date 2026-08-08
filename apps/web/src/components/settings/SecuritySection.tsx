@@ -22,6 +22,7 @@ import { applyTheme, type Theme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
+import { useT } from '@/lib/i18n';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';
@@ -47,11 +48,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
  * mostrarlos.
  */
 function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => void }) {
+  const t = useT();
   return (
     <div className="space-y-3 rounded-md border border-warning bg-kr-elevated p-3">
       <p className="text-kr-sm text-kr-primary">
-        Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez para entrar
-        si pierdes tu passkey. <strong>No se volverán a mostrar.</strong>
+        {t('security.codes.reveal')} <strong>{t('security.codes.onceOnly')}</strong>
       </p>
       <ul className="grid grid-cols-2 gap-1.5 font-mono text-kr-sm text-kr-primary">
         {codes.map((c) => (
@@ -62,7 +63,7 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
       </ul>
       <div className="flex justify-end">
         <Button size="sm" onClick={onDismiss}>
-          Los he guardado
+          {t('security.codes.saved')}
         </Button>
       </div>
     </div>
@@ -75,6 +76,7 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
  * Las passkeys son un segundo factor; la contraseña sigue siendo el primero.
  */
 function PasskeysCard() {
+  const t = useT();
   const supported = isWebAuthnSupported();
   const [passkeys, setPasskeys] = useState<WebAuthnCredentialInfo[] | null>(null);
   const [adding, setAdding] = useState(false);
@@ -123,7 +125,7 @@ function PasskeysCard() {
       setError(
         err instanceof Error && err.message === 'webauthn_cancelled'
           ? 'Registro cancelado.'
-          : 'No se pudo registrar la passkey.',
+          : t('security.passkey.registerError'),
       );
     } finally {
       setBusy(false);
@@ -151,20 +153,17 @@ function PasskeysCard() {
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
         <KeyRound className="h-5 w-5 text-kr-accent" />
-        <CardTitle>Passkeys</CardTitle>
+        <CardTitle>{t('security.passkeys')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         {!supported ? (
-          <p className="text-kr-sm text-kr-muted">Tu navegador no admite passkeys.</p>
+          <p className="text-kr-sm text-kr-muted">{t('security.passkey.unsupported')}</p>
         ) : (
           <>
             {passkeys === null ? (
-              <p className="py-2 text-kr-sm text-kr-muted">Cargando…</p>
+              <p className="py-2 text-kr-sm text-kr-muted">{t('common.loading')}</p>
             ) : passkeys.length === 0 ? (
-              <p className="text-kr-sm text-kr-muted">
-                Sin passkeys registradas. Añade una para activar verificación en dos pasos al
-                iniciar sesión.
-              </p>
+              <p className="text-kr-sm text-kr-muted">{t('security.passkey.empty')}</p>
             ) : (
               <ul className="space-y-2">
                 {passkeys.map((pk) => (
@@ -175,24 +174,30 @@ function PasskeysCard() {
                     <span className="min-w-0">
                       <span className="block truncate text-kr-primary">{pk.name}</span>
                       <span className="text-kr-xs text-kr-muted">
-                        {pk.deviceType} · creada {new Date(pk.createdAt).toLocaleDateString()}
                         {pk.lastUsedAt
-                          ? ` · usada ${new Date(pk.lastUsedAt).toLocaleDateString()}`
-                          : ' · sin uso'}
+                          ? t('security.passkey.metaUsed', {
+                              type: pk.deviceType,
+                              created: new Date(pk.createdAt).toLocaleDateString(),
+                              used: new Date(pk.lastUsedAt).toLocaleDateString(),
+                            })
+                          : t('security.passkey.metaUnused', {
+                              type: pk.deviceType,
+                              created: new Date(pk.createdAt).toLocaleDateString(),
+                            })}
                       </span>
                     </span>
                     {confirmId === pk.id ? (
                       <span className="flex items-center gap-1">
                         <Button variant="destructive" size="sm" onClick={() => void remove(pk.id)}>
-                          Confirmar
+                          {t('common.confirm')}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
-                          Cancelar
+                          {t('common.cancel')}
                         </Button>
                       </span>
                     ) : (
                       <Button variant="ghost" size="sm" onClick={() => setConfirmId(pk.id)}>
-                        Eliminar
+                        {t('common.delete')}
                       </Button>
                     )}
                   </li>
@@ -203,11 +208,11 @@ function PasskeysCard() {
             {adding ? (
               <div className="space-y-2 rounded-md border border-kr p-3">
                 <Label htmlFor="passkey-name" className="text-kr-secondary">
-                  Nombre para esta passkey
+                  {t('security.passkey.name')}
                 </Label>
                 <Input
                   id="passkey-name"
-                  placeholder="MacBook, iPhone, YubiKey…"
+                  placeholder={t('security.passkey.namePlaceholder')}
                   value={name}
                   maxLength={64}
                   onChange={(e) => setName(e.target.value)}
@@ -222,16 +227,16 @@ function PasskeysCard() {
                       setError(null);
                     }}
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </Button>
                   <Button size="sm" disabled={busy} onClick={() => void register()}>
-                    {busy ? 'Registrando…' : 'Registrar'}
+                    {busy ? t('security.passkey.registering') : t('security.passkey.register')}
                   </Button>
                 </div>
               </div>
             ) : (
               <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-                Añadir passkey
+                {t('security.passkey.add')}
               </Button>
             )}
 
@@ -240,13 +245,13 @@ function PasskeysCard() {
             {!newCodes && passkeys && passkeys.length > 0 && (
               <div className="space-y-2 rounded-md border border-kr p-3">
                 <p className="text-kr-sm text-kr-secondary">
-                  Códigos de recuperación
+                  {t('security.codes.title')}
                   {remaining !== null && (
-                    <span className="text-kr-muted"> · te quedan {remaining}</span>
+                    <span className="text-kr-muted"> · {t('security.codes.remaining', { n: remaining })}</span>
                   )}
                 </p>
                 <p className="text-kr-xs text-kr-muted">
-                  Permiten entrar si pierdes tu passkey. Regenerar invalida los anteriores.
+                  {t('security.codes.help')}
                 </p>
                 <Button
                   variant="outline"
@@ -254,7 +259,7 @@ function PasskeysCard() {
                   disabled={regenBusy}
                   onClick={() => void regenerate()}
                 >
-                  {regenBusy ? 'Generando…' : 'Regenerar códigos'}
+                  {regenBusy ? t('security.codes.regenerating') : t('security.codes.regenerate')}
                 </Button>
               </div>
             )}
@@ -266,6 +271,7 @@ function PasskeysCard() {
 }
 
 export function SecuritySection({ settings, patch, isAdmin }: Props) {
+  const t = useT();
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
   const [sessions, setSessions] = useState<AuthSession[] | null>(null);
@@ -310,13 +316,13 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Seguridad</CardTitle>
+          <CardTitle>{t('security.title')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Row label="Duración del access token">
+          <Row label={t('security.tokenTtl')}>
             <select
               className={SELECT_CLASS}
-              aria-label="Duración del access token"
+              aria-label={t('security.tokenTtl')}
               value={settings.accessTokenTtl}
               disabled={!isAdmin}
               onChange={(e) => void patch('accessTokenTtl', e.target.value)}
@@ -326,24 +332,24 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
               <option value="28800">8 horas</option>
             </select>
           </Row>
-          <Row label="Límite de intentos de login">
+          <Row label={t('security.loginLimit')}>
             <select
               className={SELECT_CLASS}
-              aria-label="Límite de intentos de login"
+              aria-label={t('security.loginLimit')}
               value={settings.loginRateLimit}
               disabled={!isAdmin}
               onChange={(e) => void patch('loginRateLimit', e.target.value)}
             >
-              <option value="5">5 por minuto</option>
-              <option value="10">10 por minuto</option>
-              <option value="20">20 por minuto</option>
+              <option value="5">{t('security.perMinute', { n: 5 })}</option>
+              <option value="10">{t('security.perMinute', { n: 10 })}</option>
+              <option value="20">{t('security.perMinute', { n: 20 })}</option>
             </select>
           </Row>
-          <Row label="Tema oscuro">
+          <Row label={t('security.darkTheme')}>
             <Switch
               checked={theme === 'dark'}
               onCheckedChange={(v) => void toggleTheme(v)}
-              aria-label="Tema oscuro"
+              aria-label={t('security.darkTheme')}
             />
           </Row>
         </CardContent>
@@ -351,16 +357,16 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CardTitle>Sesiones activas</CardTitle>
+          <CardTitle>{t('security.sessions')}</CardTitle>
           <Button variant="outline" size="sm" onClick={() => void closeOthers()}>
-            Cerrar todas las sesiones
+            {t('security.closeAllSessions')}
           </Button>
         </CardHeader>
         <CardContent>
           {sessions === null ? (
-            <p className="py-4 text-center text-kr-sm text-kr-muted">Cargando…</p>
+            <p className="py-4 text-center text-kr-sm text-kr-muted">{t('common.loading')}</p>
           ) : sessions.length === 0 ? (
-            <p className="py-4 text-center text-kr-sm text-kr-muted">Sin sesiones activas.</p>
+            <p className="py-4 text-center text-kr-sm text-kr-muted">{t('security.noSessions')}</p>
           ) : (
             <ul className="space-y-2">
               {sessions.map((s) => (
@@ -387,14 +393,14 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
       {isAdmin && (
         <Card className={cn('border-danger')}>
           <CardHeader>
-            <CardTitle className="text-danger">Zona de peligro</CardTitle>
+            <CardTitle className="text-danger">{t('security.danger')}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-3">
             <p className="text-kr-sm text-kr-secondary">
-              Regenerar las claves RS256 cerrará todas las sesiones activas.
+              {t('security.regen.warning')}
             </p>
             <Button variant="destructive" size="sm" onClick={() => setConfirmRegen(true)}>
-              Regenerar claves RS256
+              {t('security.regen.button')}
             </Button>
           </CardContent>
         </Card>
@@ -403,18 +409,17 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
       {confirmRegen && (
         <Dialog open onClose={() => setConfirmRegen(false)} aria-labelledby="dialog-regen-title">
           <h3 id="dialog-regen-title" className="text-kr-lg font-semibold text-kr-primary">
-            ¿Regenerar las claves RS256?
+            {t('security.regen.confirmTitle')}
           </h3>
           <p className="mt-2 text-kr-sm text-kr-secondary">
-            Esto cerrará todas las sesiones activas (incluida la tuya) y tendrás que volver a
-            iniciar sesión. Esta acción no se puede deshacer.
+            {t('security.regen.confirmBody')}
           </p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirmRegen(false)}>
               Cancelar
             </Button>
             <Button variant="destructive" size="sm" onClick={() => void regenKeys()}>
-              Sí, regenerar
+              {t('security.regen.confirm')}
             </Button>
           </div>
         </Dialog>

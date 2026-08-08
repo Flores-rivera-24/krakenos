@@ -9,14 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
-
-/** Explicación llana de WPA2 vs WPA3 (no hay una única clave de glosario para "seguridad"). */
-const SECURITY_HELP =
-  'El candado que protege tu WiFi con contraseña. WPA3 es lo más seguro; WPA2 es compatible con aparatos antiguos; el modo mixto WPA2/WPA3 acepta ambos.';
-
-/** "Red oculta" no está en el glosario: se explica en línea. */
-const HIDDEN_HELP =
-  'Si la activas, tu red no aparece en la lista de WiFi y hay que escribir el nombre a mano para conectarse. No la hace más segura, solo menos visible.';
+import { useT } from '@/lib/i18n';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
@@ -30,6 +23,7 @@ interface Props {
 }
 
 export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
+  const t = useT();
   const [ssid, setSsid] = useState(network.ssid);
   const [password, setPassword] = useState('');
   const [band, setBand] = useState<WifiBand>(network.band);
@@ -54,9 +48,9 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
       const updated = await api.put<WifiNetwork>('/wifi', body);
       onUpdated(updated);
       setPassword('');
-      setFeedback({ ok: true, msg: 'Cambios guardados' });
+      setFeedback({ ok: true, msg: t('wifi.saved') });
     } catch (err) {
-      const msg = err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar';
+      const msg = err instanceof ApiRequestError ? err.body.message : t('wifi.saveError');
       setFeedback({ ok: false, msg });
     } finally {
       setSaving(false);
@@ -66,25 +60,30 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
   // Qué está a punto de cortar la red. Se nombra en el aviso para que sea concreto
   // («al cambiar el nombre de la red») en vez de un genérico.
   const motivos: string[] = [];
-  if (ssid !== network.ssid) motivos.push('el nombre de la red (SSID)');
-  if (password.length > 0) motivos.push('la contraseña');
-  if (security !== network.security) motivos.push('el tipo de seguridad');
+  if (ssid !== network.ssid) motivos.push(t('wifi.reason.ssid'));
+  if (password.length > 0) motivos.push(t('wifi.reason.password'));
+  if (security !== network.security) motivos.push(t('wifi.reason.security'));
+  // La conjuncion final es traducible: enumerar con un « y » cableado deja la
+  // frase en espanol aunque cada motivo este traducido.
   const cambioQueDesconecta =
     motivos.length === 0
       ? null
       : motivos.length === 1
-        ? motivos[0]
-        : `${motivos.slice(0, -1).join(', ')} y ${motivos[motivos.length - 1]}`;
+        ? motivos[0]!
+        : t('wifi.reason.join', {
+            list: motivos.slice(0, -1).join(', '),
+            last: motivos[motivos.length - 1]!,
+          });
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-base text-foreground">Red principal</CardTitle>
+        <CardTitle className="text-base text-foreground">{t('wifi.main.title')}</CardTitle>
         <Switch
           checked={enabled}
           onCheckedChange={setEnabled}
           disabled={!isAdmin}
-          aria-label="Activar red principal"
+          aria-label={t('wifi.main.enableAria')}
         />
       </CardHeader>
       <CardContent className="space-y-4">
@@ -103,12 +102,12 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Contraseña</Label>
+          <Label htmlFor="password">{t('users.password')}</Label>
           <Input
             id="password"
             type="password"
             value={password}
-            placeholder="•••••••• (dejar vacío para no cambiar)"
+            placeholder={t('wifi.passPlaceholder')}
             onChange={(e) => setPassword(e.target.value)}
             disabled={!isAdmin || security === 'open'}
             minLength={8}
@@ -119,7 +118,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="band">Banda</Label>
+              <Label htmlFor="band">{t('survey.band')}</Label>
               <GlossaryHint termKey="banda-24-5-6" />
             </div>
             <select
@@ -138,8 +137,8 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
-              <Label htmlFor="security">Seguridad</Label>
-              <HelpHint content={SECURITY_HELP} label="¿Qué es la seguridad WiFi?" />
+              <Label htmlFor="security">{t('wifi.security')}</Label>
+              <HelpHint content={t('wifi.security.help')} label={t('wifi.security.helpLabel')} />
             </div>
             <select
               id="security"
@@ -150,7 +149,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             >
               {SECURITIES.map((s) => (
                 <option key={s} value={s}>
-                  {s === 'open' ? 'Abierta (sin contraseña)' : s.toUpperCase()}
+                  {s === 'open' ? t('wifi.security.open') : s.toUpperCase()}
                 </option>
               ))}
             </select>
@@ -159,8 +158,8 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <Label htmlFor="hidden">SSID oculto</Label>
-            <HelpHint content={HIDDEN_HELP} label="¿Qué es un SSID oculto?" />
+            <Label htmlFor="hidden">{t('wifi.hidden')}</Label>
+            <HelpHint content={t('wifi.hidden.help')} label={t('wifi.hidden.helpLabel')} />
           </span>
           <Switch id="hidden" checked={hidden} onCheckedChange={setHidden} disabled={!isAdmin} />
         </div>
@@ -183,16 +182,14 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
             «reconectar» fuera de las guías). El aviso aparece solo cuando de
             verdad hay un cambio que corta la red, no en cada visita. */}
         {isAdmin && cambioQueDesconecta && (
-          <Callout variant="warning" title="Esto desconectará todos tus dispositivos">
-            Al cambiar {cambioQueDesconecta}, todo lo conectado a esta red se cae y hay que volver
-            a conectarlo con los datos nuevos — incluido el teléfono o el portátil desde el que
-            estás ahora. Si entras por WiFi, perderás el acceso hasta reconectar.
+          <Callout variant="warning" title={t('wifi.disconnect.title')}>
+            {t('wifi.disconnect.body', { motivos: cambioQueDesconecta })}
           </Callout>
         )}
 
         {isAdmin && (
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving ? t('common.saving') : t('wifi.saveChanges')}
           </Button>
         )}
       </CardContent>

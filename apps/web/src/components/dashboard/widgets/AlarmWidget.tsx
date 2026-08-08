@@ -171,7 +171,7 @@ export function AlarmWidget() {
       <CardContent className="space-y-4">
         {failed && !state ? (
           <WidgetError
-            what="el estado de la alarma"
+            what={t('widget.alarm.what')}
             onRetry={() => {
               setLoading(true);
               void load();
@@ -191,7 +191,7 @@ export function AlarmWidget() {
             )}
 
             {canControl && showDisclaimer && (
-              <Callout variant="warning" title="No sustituye una alarma certificada">
+              <Callout variant="warning" title={t('widget.alarm.disclaimerTitle')}>
                 <div className="space-y-2">
                   <p>
                     Sin batería de respaldo ni conexión de emergencia por red móvil: deja de funcionar

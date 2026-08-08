@@ -24,9 +24,9 @@ export function ScenesWidget() {
     try {
       const result = await runScene(scene.id);
       if (result.failed.length > 0) {
-        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
+        toast.error(t('scenes.partial', { applied: result.applied, failed: result.failed.length }));
       } else {
-        toast.success(`Escena «${scene.name}» activada`);
+        toast.success(t('scenes.ran', { name: scene.name }));
       }
     } catch (err) {
       toast.error(describeError(err, t('widget.scenes.runFailed')));
@@ -46,7 +46,7 @@ export function ScenesWidget() {
         ) : scenes.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">
             <Link to="/scenes" className="text-kr-link hover:underline">
-              Crea tu primera escena →
+              {t('widget.scenes.createFirst')}
             </Link>
           </p>
         ) : (

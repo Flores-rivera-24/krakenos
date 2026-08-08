@@ -55,7 +55,7 @@ export function IotStatusWidget() {
       </CardHeader>
       <CardContent className="space-y-2">
         {error && devices === null ? (
-          <WidgetError what="la lista de dispositivos IoT" onRetry={() => void refetch()} />
+          <WidgetError what={t('widget.iot.what')} onRetry={() => void refetch()} />
         ) : devices === null ? (
           <LoadingLine />
         ) : backends.length === 0 ? (

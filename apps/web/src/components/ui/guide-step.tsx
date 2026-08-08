@@ -2,6 +2,7 @@ import { Smartphone } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Callout } from '@/components/ui/callout';
 import { CopyButton } from '@/components/ui/copy-button';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export interface GuideStepProps {
@@ -37,6 +38,7 @@ export function GuideStep({
   external,
   className,
 }: GuideStepProps) {
+  const t = useT();
   return (
     <li className={cn('flex gap-3', className)}>
       <span
@@ -54,7 +56,7 @@ export function GuideStep({
           {external && (
             <span className="inline-flex items-center gap-1 text-kr-xs text-info">
               <Smartphone className="h-4 w-4" aria-hidden />
-              En tu dispositivo
+              {t('guideStep.onDevice')}
             </span>
           )}
         </div>
