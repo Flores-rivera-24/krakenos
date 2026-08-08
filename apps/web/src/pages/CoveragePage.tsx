@@ -369,7 +369,7 @@ export function CoveragePage() {
     <div className="space-y-4 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{t('coverage.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('coverage.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('coverage.subtitle')}</p>
         </div>
         {isAdmin && plans.length > 0 && (

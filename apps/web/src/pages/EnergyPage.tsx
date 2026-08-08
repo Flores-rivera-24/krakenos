@@ -116,7 +116,7 @@ export function EnergyPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">{t('energy.title')}</h2>
+        <h1 className="text-xl font-semibold">{t('energy.title')}</h1>
         <p className="text-sm text-muted-foreground">{t('energy.subtitle')}</p>
       </div>
 

@@ -89,7 +89,7 @@ export function DashboardPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-kr-xl font-semibold text-kr-primary">{t('dashboard.title')}</h2>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('dashboard.title')}</h1>
           <p className="text-kr-sm text-kr-secondary">
             {connected ? t('dashboard.realtime') : t('dashboard.disconnected')}
           </p>
