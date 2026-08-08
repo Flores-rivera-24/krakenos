@@ -8,12 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
-
-/** "Aislar clientes" y "límite de ancho de banda" no están en el glosario: se explican en línea. */
-const ISOLATION_HELP =
-  'Impide que los aparatos conectados a la red de invitados se vean entre sí. Ideal para que las visitas solo tengan internet y nada más.';
-const LIMIT_HELP =
-  'Velocidad máxima que puede usar la red de invitados, en Mbps (1000 Mbps = 1 Gbps). Déjalo vacío para no poner límite.';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   network: GuestNetwork;
@@ -22,6 +17,7 @@ interface Props {
 }
 
 export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
+  const t = useT();
   const [ssid, setSsid] = useState(network.ssid);
   const [password, setPassword] = useState('');
   const [enabled, setEnabled] = useState(network.enabled);
@@ -46,9 +42,9 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
       const updated = await api.put<GuestNetwork>('/wifi/guest', body);
       onUpdated(updated);
       setPassword('');
-      setFeedback({ ok: true, msg: 'Cambios guardados' });
+      setFeedback({ ok: true, msg: t('wifi.saved') });
     } catch (err) {
-      const msg = err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar';
+      const msg = err instanceof ApiRequestError ? err.body.message : t('wifi.saveError');
       setFeedback({ ok: false, msg });
     } finally {
       setSaving(false);
@@ -59,14 +55,14 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <span className="flex items-center gap-1.5">
-          <CardTitle className="text-base text-foreground">Red de invitados</CardTitle>
+          <CardTitle className="text-base text-foreground">{t('wifi.guest.title')}</CardTitle>
           <GlossaryHint termKey="red-invitados" placement="bottom" />
         </span>
         <Switch
           checked={enabled}
           onCheckedChange={setEnabled}
           disabled={!isAdmin}
-          aria-label="Activar red de invitados"
+          aria-label={t('wifi.guest.enableAria')}
         />
       </CardHeader>
       <CardContent className="space-y-4">
@@ -82,12 +78,12 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="guest-password">Contraseña</Label>
+          <Label htmlFor="guest-password">{t('users.password')}</Label>
           <Input
             id="guest-password"
             type="password"
             value={password}
-            placeholder="•••••••• (dejar vacío para no cambiar)"
+            placeholder={t('wifi.passPlaceholder')}
             onChange={(e) => setPassword(e.target.value)}
             disabled={!isAdmin}
             minLength={8}
@@ -97,8 +93,8 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5">
-            <Label htmlFor="isolation">Aislar clientes entre sí</Label>
-            <HelpHint content={ISOLATION_HELP} label="¿Qué es aislar clientes?" />
+            <Label htmlFor="isolation">{t('wifi.isolation')}</Label>
+            <HelpHint content={t('wifi.isolation.help')} label={t('wifi.isolation.helpLabel')} />
           </span>
           <Switch
             id="isolation"
@@ -110,8 +106,8 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <Label htmlFor="limit">Límite de ancho de banda (Mbps)</Label>
-            <HelpHint content={LIMIT_HELP} label="¿Qué es el límite de ancho de banda?" />
+            <Label htmlFor="limit">{t('wifi.limit')}</Label>
+            <HelpHint content={t('wifi.limit.help')} label={t('wifi.limit.helpLabel')} />
           </div>
           <Input
             id="limit"
@@ -119,7 +115,7 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
             min={1}
             max={10000}
             value={limit}
-            placeholder="Sin límite"
+            placeholder={t('wifi.noLimit')}
             onChange={(e) => setLimit(e.target.value)}
             disabled={!isAdmin}
           />
@@ -139,7 +135,7 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
 
         {isAdmin && (
           <Button onClick={() => void save()} disabled={saving} className="w-full">
-            {saving ? 'Guardando…' : 'Guardar cambios'}
+            {saving ? t('common.saving') : t('wifi.saveChanges')}
           </Button>
         )}
       </CardContent>

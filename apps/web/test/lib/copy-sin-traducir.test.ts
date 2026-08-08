@@ -51,21 +51,6 @@ const SUPERFICIES: { nombre: string; re: RegExp }[] = [
  */
 const FUERA_DE_ALCANCE = ['lib/i18n/catalog/', 'lib/guides/'];
 
-/**
- * Deuda medida el 2026-08-08, fichero a fichero. **Solo puede bajar.**
- *
- * No es una lista de excepciones perdonadas: es el inventario de lo que queda
- * por migrar, con su tamaño, para que se pueda planificar y para que se note
- * cuando alguien lo empeora.
- */
-const DEUDA: Record<string, number> = {
-  'components/cameras/CameraFormSlideover.tsx': 4,
-  'components/dashboard/widgets/HomeModeWidget.tsx': 4,
-  'components/dns/DnsFeeds.tsx': 3,
-  'components/vpn/VpnPeerSlideover.tsx': 4,
-  'components/wifi/GuestNetworkCard.tsx': 10,
-  'components/wifi/MainNetworkCard.tsx': 5,
-};
 
 /** Cuenta las cadenas de copy en español de **un** fichero. */
 function contar(codigo: string): number {
@@ -125,36 +110,23 @@ describe('copy sin traducir (trinquete, US-270)', () => {
     //
     // Son 5 y no 4 con cuatro cadenas: `aria-label=` casa **también** con la
     // superficie `label` (`\blabel=`, y el guion es frontera de palabra), así
-    // que un `aria-label` cuenta doble. Es como el detector lleva contando
-    // desde US-270 y los números de `DEUDA` están medidos con ese sesgo, así
-    // que se deja: corregirlo movería todas las cifras a la vez y no diría nada
-    // nuevo sobre el copy. Queda escrito para que nadie lo lea como un fallo.
+    // que un `aria-label` cuenta doble. Es como cuenta el detector desde
+    // US-270; se deja porque el gate ya está a cero y lo único que importa es
+    // si detecta o no. Queda escrito para que nadie lo lea como un fallo.
     expect(contar(MUESTRA_CON_COPY)).toBe(5);
   });
 
-  it('ningún fichero nuevo escribe copy visible a pelo', () => {
-    const nuevos = [...actual.keys()].filter((f) => !(f in DEUDA));
+  it('ningún componente escribe copy visible a pelo', () => {
+    // Se nombra el fichero **y** cuánto lleva, que es lo que hace falta para
+    // arreglarlo sin volver a medir.
+    const culpables = [...actual.entries()].map(([f, n]) => `${f}: ${n}`);
     expect(
-      nuevos,
-      'Copy visible escrito en el componente. Añade la clave a `catalog/es.ts` y ' +
+      culpables,
+      'Copy visible escrito en el componente. Muévelo a `catalog/es.ts` y ' +
         '`catalog/en.ts` y píntalo con `t()`; el catálogo `en` está tipado, así que ' +
-        'falta de clave no compila.',
-    ).toEqual([]);
-  });
-
-  it('ningún fichero conocido empeora, y el que mejora actualiza su número', () => {
-    const desviados = [...actual.entries()]
-      .filter(([f]) => f in DEUDA)
-      .filter(([f, n]) => n !== DEUDA[f])
-      .map(([f, n]) => `${f}: ${DEUDA[f]} → ${n}`);
-
-    // Los que desaparecen del todo también tienen que salir de la lista: una
-    // entrada que ya no corresponde a nada es sitio libre para reintroducir copy.
-    const desaparecidos = Object.keys(DEUDA).filter((f) => !actual.has(f));
-
-    expect(
-      [...desviados, ...desaparecidos.map((f) => `${f}: ${DEUDA[f]} → 0 (quítalo de DEUDA)`)],
-      'El trinquete aprieta en los dos sentidos: si baja, baja también el número.',
+        'falta de clave no compila. Si el texto lleva marcado en mitad de la frase ' +
+        '(`<strong>`, `<code>`), la frase va **entera** al catálogo y se pinta con ' +
+        '`RichText` — partirla la deja intraducible.',
     ).toEqual([]);
   });
 });

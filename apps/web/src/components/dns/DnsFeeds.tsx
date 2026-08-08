@@ -5,6 +5,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
 /**
@@ -13,13 +14,14 @@ import { toast } from '@/store/toast.store';
  * gestiona por URL.
  */
 export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
+  const t = useT();
   const [feeds, setFeeds] = useState<DnsFeed[] | null>(null);
 
   const load = async () => {
     try {
       setFeeds(await api.getList<DnsFeed>('/dns/feeds'));
     } catch (err) {
-      toast.error(describeError(err, 'No se pudieron cargar las listas'));
+      toast.error(describeError(err, t('dns.feeds.loadError')));
     }
   };
   useEffect(() => {
@@ -31,7 +33,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
     try {
       await api.patch<DnsFeed>(`/dns/feeds/${feed.id}`, { enabled });
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo cambiar la lista'));
+      toast.error(describeError(err, t('dns.feeds.toggleError')));
       await load();
     }
   };
@@ -39,13 +41,10 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base text-foreground">Listas por categoría</CardTitle>
+        <CardTitle className="text-base text-foreground">{t('dns.feeds.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-kr-sm text-kr-secondary">
-          Suscríbete a listas curadas de bloqueo (publicidad, malware, rastreo). Requiere Pi-hole;
-          el resolver las gestiona por URL.
-        </p>
+        <p className="text-kr-sm text-kr-secondary">{t('dns.feeds.hint')}</p>
         {feeds == null ? (
           <LoadingLine />
         ) : (
@@ -63,7 +62,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
                   checked={f.enabled}
                   disabled={!canEdit}
                   onCheckedChange={(v) => void toggle(f, v)}
-                  aria-label={`Activar ${f.name}`}
+                  aria-label={t('coverage.ap.enableAria', { name: f.name })}
                 />
               </li>
             ))}
