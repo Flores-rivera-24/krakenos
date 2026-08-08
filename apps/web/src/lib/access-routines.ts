@@ -1,5 +1,6 @@
 import type { AccessSchedule } from '@krakenos/types';
-import { DAY_LABELS, minutesToHHMM } from '@/lib/access';
+import { minutesToHHMM } from '@/lib/access';
+import { diasIniciales, type Traducir } from '@/lib/schedule-format';
 
 /**
  * Los horarios de acceso (US-108/US-240) vistos como **rutinas**, para que la
@@ -53,13 +54,14 @@ export interface NombresDeAcceso {
 export function agruparHorariosDeAcceso(
   schedules: AccessSchedule[],
   nombres: NombresDeAcceso,
+  t: Traducir,
 ): RutinaDeAcceso[] {
   const filas = new Map<string, RutinaDeAcceso>();
 
   for (const s of schedules) {
     const dias = [...s.days].sort((a, b) => a - b);
     const franja = `${minutesToHHMM(s.startMinute)}–${minutesToHHMM(s.endMinute)}`;
-    const diasTexto = dias.map((d) => DAY_LABELS[d] ?? '?').join(' ');
+    const diasTexto = dias.map((d) => diasIniciales(t)[d] ?? '?').join(' ');
     // La identidad de un horario de persona es la persona + la franja, no la
     // fila: son la misma decisión replicada. La de uno suelto es su aparato.
     // Este agrupador es interno y nunca sale de la función.

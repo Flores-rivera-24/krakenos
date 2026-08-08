@@ -1,3 +1,4 @@
+import { t } from '@/lib/i18n';
 import type { AccessSchedule } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import { agruparHorariosDeAcceso } from '@/lib/access-routines';
@@ -40,6 +41,7 @@ describe('agruparHorariosDeAcceso', () => {
         horario({ id: 'c', personId: 'u1', mac: 'm3' }),
       ],
       NOMBRES,
+      t,
     );
     expect(filas).toHaveLength(1);
     expect(filas[0]).toMatchObject({
@@ -58,6 +60,7 @@ describe('agruparHorariosDeAcceso', () => {
         horario({ id: 'b', personId: 'u1', mac: 'm1', startMinute: 15 * 60, endMinute: 16 * 60 }),
       ],
       NOMBRES,
+      t,
     );
     expect(filas).toHaveLength(2);
   });
@@ -65,19 +68,19 @@ describe('agruparHorariosDeAcceso', () => {
   it('un horario de dispositivo se nombra por su etiqueta, nunca por la MAC', () => {
     // Esta lista la ve cualquier rol autenticado y la MAC identifica al aparato
     // en la red: es justo lo que el resto del producto se cuida de no publicar.
-    const filas = agruparHorariosDeAcceso([horario()], NOMBRES);
+    const filas = agruparHorariosDeAcceso([horario()], NOMBRES, t);
     expect(filas[0]!.sujeto).toBe('Tablet del salón');
     expect(JSON.stringify(filas)).not.toContain('aa:bb:cc:dd:ee:01');
   });
 
   it('sin etiqueta del aparato cae al nombre del horario, no a la MAC', () => {
-    const filas = agruparHorariosDeAcceso([horario({ mac: 'desconocida' })], NOMBRES);
+    const filas = agruparHorariosDeAcceso([horario({ mac: 'desconocida' })], NOMBRES, t);
     expect(filas[0]!.sujeto).toBe('Hora de dormir');
   });
 
   it('sin poder nombrar a la persona no se enseña su id', () => {
     // Un rol que no puede listar usuarios no debe ver un cuid opaco en pantalla.
-    const filas = agruparHorariosDeAcceso([horario({ personId: 'u9' })], NOMBRES);
+    const filas = agruparHorariosDeAcceso([horario({ personId: 'u9' })], NOMBRES, t);
     expect(filas[0]!.sujeto).toBe('Una persona del hogar');
     expect(filas[0]!.sujeto).not.toContain('u9');
   });
@@ -89,17 +92,18 @@ describe('agruparHorariosDeAcceso', () => {
         horario({ id: 'b', personId: 'u1', mac: 'm2', enabled: true }),
       ],
       NOMBRES,
+      t,
     );
     expect(filas[0]!.habilitada).toBe(true);
     expect(filas[0]!.aparatos).toBe(2);
   });
 
   it('ordena los días aunque lleguen desordenados', () => {
-    const filas = agruparHorariosDeAcceso([horario({ days: [5, 0, 3] })], NOMBRES);
+    const filas = agruparHorariosDeAcceso([horario({ days: [5, 0, 3] })], NOMBRES, t);
     expect(filas[0]!.dias).toBe('D X V');
   });
 
   it('sin horarios no hay filas', () => {
-    expect(agruparHorariosDeAcceso([], NOMBRES)).toEqual([]);
+    expect(agruparHorariosDeAcceso([], NOMBRES, t)).toEqual([]);
   });
 });

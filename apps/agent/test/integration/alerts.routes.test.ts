@@ -39,7 +39,7 @@ describe('reglas de alerta (US-112)', () => {
     // Guard de tamaño: si la importación se rompiera, la lista saldría vacía y la
     // comparación pasaría sola.
     expect(ALERT_EVENTS.length).toBeGreaterThan(8);
-    expect(rules.map((r) => r.event).sort()).toEqual(ALERT_EVENTS.map((e) => e.event).sort());
+    expect(rules.map((r) => r.event).sort()).toEqual([...ALERT_EVENTS].sort());
     const block = rules.find((r) => r.event === 'device.block');
     expect(block).toMatchObject({ push: true, email: false });
     expect(rules.some((r) => r.event === 'energy.threshold')).toBe(true);

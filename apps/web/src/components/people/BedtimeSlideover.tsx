@@ -5,7 +5,7 @@ import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
-import { DAY_LABELS, hhmmToMinutes, minutesToHHMM } from '@/lib/access';
+import { diasIniciales, hhmmToMinutes, minutesToHHMM } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { setBedtime } from '@/lib/people';
@@ -78,7 +78,7 @@ export function BedtimeSlideover({ person, onClose, onSaved }: Props) {
         <div className="space-y-2">
           <p className="text-kr-sm font-medium text-kr-primary">{t('people.bedtime.days')}</p>
           <div className="flex flex-wrap gap-1">
-            {DAY_LABELS.map((label, d) => (
+            {diasIniciales(t).map((label, d) => (
               <button
                 key={d}
                 type="button"

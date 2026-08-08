@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StatusDot } from '@/components/ui/status-dot';
-import { DAY_LABELS, minutesToHHMM } from '@/lib/access';
+import { diasIniciales, minutesToHHMM } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
 import { clearBedtime, formatUntil, isPaused, listPeople, pausePerson, resumePerson } from '@/lib/people';
@@ -209,7 +209,7 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
                   end: minutesToHHMM(person.bedtime.endMinute),
                 })}
                 {' · '}
-                {person.bedtime.days.map((d) => DAY_LABELS[d]).join(' ')}
+                {person.bedtime.days.map((d) => diasIniciales(t)[d]).join(' ')}
                 {!person.bedtime.enabled && ` ${t('people.bedtime.disabled')}`}
               </p>
               {/* Si no cubre a todos, se dice: prometer un corte que no ocurre es peor

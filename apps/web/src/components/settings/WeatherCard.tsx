@@ -7,7 +7,8 @@ import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { WEATHER_METRIC_PHRASES } from '@/lib/automations';
+import { WEATHER_METRIC_KEYS } from '@/lib/automations';
+import { useT } from '@/lib/i18n';
 
 /**
  * Tiempo exterior (US-254) — la tarjeta del **consentimiento**.
@@ -18,6 +19,7 @@ import { WEATHER_METRIC_PHRASES } from '@/lib/automations';
  * efecto no es un permiso informado.
  */
 export function WeatherCard() {
+  const t = useT();
   const [status, setStatus] = useState<WeatherStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -153,7 +155,7 @@ export function WeatherCard() {
                   <ul className="flex flex-wrap gap-3 text-kr-sm">
                     {status.readings.map((r) => (
                       <li key={r.metric} className="text-kr-fg-muted">
-                        {WEATHER_METRIC_PHRASES[r.metric]}:{' '}
+                        {t(WEATHER_METRIC_KEYS[r.metric])}:{' '}
                         <span className="text-kr-fg">
                           {r.value} {WEATHER_UNITS[r.metric]}
                         </span>

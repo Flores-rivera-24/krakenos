@@ -1,6 +1,7 @@
+import { t } from '@/lib/i18n';
 import { describe, expect, it } from 'vitest';
 import {
-  DAY_LABELS,
+  diasCortos,
   formatSunOffset,
   minuteToTimeString,
   timeStringToMinute,
@@ -32,22 +33,22 @@ describe('minuteToTimeString / timeStringToMinute', () => {
 
 describe('formatSunOffset', () => {
   it('sin desfase nombra solo el suceso', () => {
-    expect(formatSunOffset('sunrise', 0)).toBe('Amanecer');
-    expect(formatSunOffset('sunset', 0)).toBe('Atardecer');
+    expect(formatSunOffset('sunrise', 0, t)).toBe('Amanecer');
+    expect(formatSunOffset('sunset', 0, t)).toBe('Atardecer');
   });
 
   it('el signo se ve, y el negativo va con el menos tipográfico', () => {
-    expect(formatSunOffset('sunset', -15)).toBe('Atardecer −15 min');
-    expect(formatSunOffset('sunrise', 30)).toBe('Amanecer +30 min');
+    expect(formatSunOffset('sunset', -15, t)).toBe('Atardecer −15 min');
+    expect(formatSunOffset('sunrise', 30, t)).toBe('Amanecer +30 min');
   });
 });
 
-describe('DAY_LABELS', () => {
+describe('diasCortos', () => {
   it('tiene los siete días empezando en domingo', () => {
     // El contrato usa 0=domingo en todas partes (horarios, rutinas, parental):
     // desplazarlo un puesto movería cada regla del usuario un día.
-    expect(DAY_LABELS).toHaveLength(7);
-    expect(DAY_LABELS[0]).toBe('Dom');
-    expect(DAY_LABELS[6]).toBe('Sáb');
+    expect(diasCortos(t)).toHaveLength(7);
+    expect(diasCortos(t)[0]).toBe('Dom');
+    expect(diasCortos(t)[6]).toBe('Sáb');
   });
 });
