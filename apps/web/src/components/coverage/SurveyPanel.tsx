@@ -97,7 +97,7 @@ export function SurveyPanel({
   useEffect(() => {
     let active = true;
     void api
-      .get<Device[]>('/inventory')
+      .getList<Device>('/inventory')
       .then((list) => active && setDevices(list))
       .catch(() => {
         /* silencioso: el desplegable simplemente queda vacío */

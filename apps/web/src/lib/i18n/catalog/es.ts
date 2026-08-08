@@ -1081,6 +1081,49 @@ export const es = {
   'connect.tier.2': 'Fácil',
   'connect.tier.3': 'Intermedio',
   'connect.tier.4': 'Avanzado',
+  // Navegación del `Stepper`. Vive en la primitiva y no en cada asistente: eran
+  // valores por defecto en español escritos en la firma del componente.
+  'stepper.back': 'Atrás',
+  'stepper.next': 'Siguiente',
+  'stepper.finish': 'Finalizar',
+  'stepper.skip': 'Omitir',
+  'stepper.stepOf': 'Paso {n} de {total}',
+  'stepper.stepOfWith': 'Paso {n} de {total}: {title}',
+  // Chrome del asistente de conexión (US-262). El CUERPO de cada guía no vive
+  // aquí: las guías se traducen por superposición según `guide.id` (US-177), que
+  // es otro mecanismo a propósito. Esto son los pasos, los botones y los avisos.
+  'wizard.step.prepare': 'Prepara',
+  'wizard.step.connect': 'Conecta',
+  'wizard.step.save': 'Prueba y guarda',
+  'wizard.finish': 'Guardar y conectar',
+  'wizard.manufacturerApp.title': 'Vas a necesitar la app del fabricante',
+  'wizard.manufacturerApp.pairing':
+    'Hay que emparejar el aparato con la app del fabricante al menos una vez: la clave que permite controlarlo desde tu red la emite ese emparejamiento contra su nube.',
+  'wizard.manufacturerApp.account': 'Para controlar {name} hace falta la cuenta del fabricante.',
+  'wizard.manufacturerApp.localControl':
+    'Hay que abrir la app del fabricante y activar el control local en cada aparato; hasta que lo hagas no responde dentro de tu red.',
+  'wizard.manufacturerApp.some': 'Solo afecta a los {devices}.',
+  'wizard.community.title': 'Soporte de la comunidad, sin garantía',
+  'wizard.community.body':
+    'KrakenOS no puede prometer que {name} siga funcionando si el fabricante cambia algo: el código se mantiene, pero sin garantía. Si buscas independencia de verdad, los aparatos Zigbee, Matter o Shelly se emparejan contra tu propio servidor.',
+  'wizard.introFallback': 'Vamos a configurar {name}.',
+  'wizard.prerequisites': 'Qué necesitas',
+  'wizard.form.introBefore': 'Rellena los datos. Los marcados con ',
+  'wizard.form.introAfter': ' son obligatorios; el resto puedes dejarlos como están.',
+  'wizard.save.intro':
+    'Prueba la conexión para confirmar que todo está bien y luego guarda. Si tu dispositivo no es accesible desde este navegador, puedes guardar sin probar.',
+  'wizard.test': 'Probar conexión',
+  'wizard.testing': 'Probando…',
+  'wizard.saveWithoutTest': 'Guardar sin probar',
+  'wizard.test.ok': 'Conexión correcta',
+  'wizard.test.fail': 'No se pudo conectar',
+  'wizard.troubleshooting': '¿Problemas?',
+  'wizard.secretStored': '•••••• (guardado — deja en blanco para conservar)',
+  'wizard.testError': 'No se pudo probar {name}',
+  'wizard.saveError': 'No se pudo guardar {name}',
+  'wizard.savedFallback':
+    'La configuración de {name} se guardó pero no se pudo aplicar; sigue activa la configuración anterior',
+  'wizard.connected': '¡{name} conectado!',
   // Compatibilidad de hardware (US-208)
   'compat.title': '¿Es compatible tu equipo?',
   'compat.subtitle': 'Busca tu router, cámara o dispositivo y mira qué se puede controlar.',

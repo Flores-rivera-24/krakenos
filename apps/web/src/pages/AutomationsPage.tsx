@@ -847,7 +847,7 @@ export function AutomationsPage() {
     reload();
     void api.getList<IotDevice>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
     void api
-      .get<Device[]>('/inventory/devices')
+      .getList<Device>('/inventory/devices')
       .then(setNetworkDevices)
       .catch(() => setNetworkDevices([]));
     void listScenes().then(setScenes).catch(() => setScenes([]));
@@ -855,7 +855,7 @@ export function AutomationsPage() {
     // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
     // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
     void api
-      .get<AccessSchedule[]>('/access/schedules')
+      .getList<AccessSchedule>('/access/schedules')
       .then((list) => setAccessSchedules(Array.isArray(list) ? list : []))
       .catch(() => setAccessSchedules([]));
   }, [reload]);

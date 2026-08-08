@@ -1,10 +1,11 @@
 import type { Scene } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { describeError } from '@/lib/errors';
-import { listScenes, runScene, sceneGlyph } from '@/lib/scenes';
+import { useScenes } from '@/lib/resources';
+import { runScene, sceneGlyph } from '@/lib/scenes';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -14,18 +15,9 @@ import { useT } from '@/lib/i18n';
 export function ScenesWidget() {
   const t = useT();
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
-  const [scenes, setScenes] = useState<Scene[] | null>(null);
+  // US-262: la misma lista que pide `QuickActionsWidget` en el mismo tick.
+  const { data: scenes } = useScenes();
   const [busy, setBusy] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    listScenes()
-      .then((s) => active && setScenes(s))
-      .catch(() => active && setScenes([]));
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const run = async (scene: Scene) => {
     setBusy(scene.id);

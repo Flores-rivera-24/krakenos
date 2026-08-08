@@ -57,7 +57,7 @@ export function DnsPage() {
 
   const loadQueries = () =>
     api
-      .get<DnsQuery[]>('/dns/queries?limit=20')
+      .getList<DnsQuery>('/dns/queries?limit=20')
       .then(setQueries)
       .catch((err) => setError(describeError(err, t('dns.loadError'))));
 

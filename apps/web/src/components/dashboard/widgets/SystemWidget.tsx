@@ -1,11 +1,9 @@
-import type { SystemStats } from '@krakenos/types';
-import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
-import { api } from '@/lib/api';
 import { formatUptime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useSystemStats } from '@/lib/resources';
 
 function Meter({ label, percent, detail }: { label: string; percent: number; detail: string }) {
   return (
@@ -27,30 +25,19 @@ function Meter({ label, percent, detail }: { label: string; percent: number; det
 /** Estado del servidor: uptime, CPU%, RAM%. */
 export function SystemWidget() {
   const t = useT();
-  const [stats, setStats] = useState<SystemStats | null>(null);
-  // US-234: sin esto, un `.catch(() => undefined)` dejaba `stats` en null y el
-  // widget giraba para siempre — indistinguible de «todavía cargando».
-  const [failed, setFailed] = useState(false);
-  const [intento, setIntento] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    const load = () =>
-      api
-        .get<SystemStats>('/system/stats')
-        .then((s) => {
-          if (!active) return;
-          setStats(s);
-          setFailed(false);
-        })
-        .catch(() => active && setFailed(true));
-    void load();
-    const id = setInterval(load, 5000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [intento]);
+  /**
+   * US-262: dos arreglos en el mismo sitio.
+   *
+   *  - `/system/stats` la pedía **también** la barra lateral, así que abrir el
+   *    dashboard la pedía dos veces en el mismo tick.
+   *  - El sondeo era un `setInterval` a pelo, no `usePolling`: seguía preguntando
+   *    cada 5 s con la pestaña **oculta**, que es exactamente el gasto que US-239
+   *    (AUD3-27) fue a quitar y que este widget se saltaba.
+   *
+   * US-234 sigue vigente: el fallo se distingue de «cargando», o el widget gira
+   * para siempre y nadie sabe que el agente no contesta.
+   */
+  const { data: stats, error, refetch } = useSystemStats({ pollMs: 5000 });
 
   return (
     <Card>
@@ -58,8 +45,8 @@ export function SystemWidget() {
         <CardTitle>{t('widget.system.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {failed && !stats ? (
-          <WidgetError what="el estado del sistema" onRetry={() => setIntento((n) => n + 1)} />
+        {error && !stats ? (
+          <WidgetError what="el estado del sistema" onRetry={() => void refetch()} />
         ) : !stats ? (
           <LoadingLine />
         ) : (

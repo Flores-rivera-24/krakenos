@@ -142,7 +142,7 @@ export function TrafficPage() {
     const socket = getSocket();
 
     void api
-      .get<TrafficSample[]>('/traffic/history')
+      .getList<TrafficSample>('/traffic/history')
       .then((h) => active && setSamples(h))
       .catch((err) => active && setError(describeError(err, t('traffic.loadError'))));
 

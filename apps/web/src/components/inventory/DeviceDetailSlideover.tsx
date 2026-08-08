@@ -77,7 +77,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   // Carga las VLANs disponibles para el selector (best-effort).
   useEffect(() => {
     void api
-      .get<VlanWithCount[]>('/vlans')
+      .getList<VlanWithCount>('/vlans')
       .then(setVlans)
       .catch(() => setVlans([]));
   }, []);

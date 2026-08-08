@@ -1,6 +1,5 @@
-import type { FirewallRule, IotDevice, SystemStats } from '@krakenos/types';
 import { useCallback, useState } from 'react';
-import { api } from '@/lib/api';
+import { useFirewallRules, useIotDevices, useSystemStats } from '@/lib/resources';
 import { usePolling } from '@/lib/use-polling';
 
 interface HealthResponse {
@@ -23,14 +22,6 @@ export interface SidebarStats {
   iotOffline: number;
 }
 
-const EMPTY: SidebarStats = {
-  driver: null,
-  online: false,
-  uptimeSeconds: null,
-  firewallActive: 0,
-  iotOffline: 0,
-};
-
 /**
  * Sondea `/health`, `/system/stats`, `/firewall/rules` e `/iot/devices`
  * para alimentar la sidebar. Tolera errores (devuelve valores previos).
@@ -46,30 +37,39 @@ const EMPTY: SidebarStats = {
  * Además el sondeo se detiene con la pestaña oculta (ver `usePolling`).
  */
 export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
-  const [stats, setStats] = useState<SidebarStats>(EMPTY);
+  // US-262: tres de las cuatro lecturas las comparte con el dashboard
+  // (`/system/stats` con `SystemWidget`, `/iot/devices` con `IotStatusWidget` y
+  // `QuickActionsWidget`). Al pedirlas por su cuenta, abrir el dashboard con la
+  // barra lateral en pantalla pedía `/iot/devices` **tres** veces en el mismo
+  // tick. Ahora comparten caché y una sola petición sirve a los tres.
+  const system = useSystemStats({ enabled, pollMs });
+  const firewall = useFirewallRules({ enabled, pollMs });
+  const iot = useIotDevices({ enabled, pollMs });
 
-  const load = useCallback(async () => {
-    const fetchHealth = (): Promise<HealthResponse | null> =>
-      fetch('/health')
-        .then((r) => (r.ok ? (r.json() as Promise<HealthResponse>) : null))
-        .catch(() => null);
+  // `/health` se queda fuera del caché compartido a propósito: no es `/api`, no
+  // lleva sesión y es la sonda que dice si el agente está vivo. Cachearla sería
+  // arriesgarse a declarar «en línea» a un agente que ya no responde.
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [healthOk, setHealthOk] = useState(false);
 
-    const [health, system, firewall, iot] = await Promise.all([
-      fetchHealth(),
-      api.get<SystemStats>('/system/stats').catch(() => null),
-      api.getList<FirewallRule>('/firewall/rules').catch(() => null),
-      api.getList<IotDevice>('/iot/devices').catch(() => null),
-    ]);
-    setStats((prev) => ({
-      driver: health?.driver ?? prev.driver,
-      online: health ? health.status === 'ok' : false,
-      uptimeSeconds: system?.uptimeSeconds ?? prev.uptimeSeconds,
-      firewallActive: firewall ? firewall.filter((r) => r.enabled).length : prev.firewallActive,
-      iotOffline: iot ? iot.filter((d) => !d.reachable).length : prev.iotOffline,
-    }));
+  const leerHealth = useCallback(async () => {
+    const r = await fetch('/health')
+      .then((res) => (res.ok ? (res.json() as Promise<HealthResponse>) : null))
+      .catch(() => null);
+    setHealth((prev) => r ?? prev);
+    setHealthOk(r !== null && r.status === 'ok');
   }, []);
 
-  usePolling(load, pollMs, { enabled });
+  usePolling(leerHealth, pollMs, { enabled });
 
-  return stats;
+  return {
+    driver: health?.driver ?? null,
+    online: healthOk,
+    // Se conserva el último valor conocido ante un fallo, igual que antes: un
+    // corte de un ciclo no debe poner los badges a cero, que se leería como
+    // «no tienes reglas» en vez de «no he podido preguntar».
+    uptimeSeconds: system.data?.uptimeSeconds ?? null,
+    firewallActive: firewall.data ? firewall.data.filter((r) => r.enabled).length : 0,
+    iotOffline: iot.data ? iot.data.filter((d) => !d.reachable).length : 0,
+  };
 }

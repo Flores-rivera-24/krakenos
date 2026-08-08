@@ -90,7 +90,7 @@ function PasskeysCard() {
 
   const load = () => {
     void api
-      .get<WebAuthnCredentialInfo[]>('/webauthn/credentials')
+      .getList<WebAuthnCredentialInfo>('/webauthn/credentials')
       .then(setPasskeys)
       .catch(() => setPasskeys([]));
     void api
@@ -274,7 +274,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
 
   const loadSessions = () => {
     void api
-      .get<AuthSession[]>('/auth/sessions')
+      .getList<AuthSession>('/auth/sessions')
       .then(setSessions)
       .catch(() => setSessions([]));
   };

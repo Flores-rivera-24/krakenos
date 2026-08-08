@@ -8,6 +8,12 @@ import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import {
+  useInventoryDevices,
+  useIotDevices,
+  useRooms,
+  useScenes,
+} from '@/lib/resources';
 import { roomGlyph } from '@/lib/rooms';
 import { runScene, sceneGlyph } from '@/lib/scenes';
 import { getSocket } from '@/lib/socket';
@@ -98,42 +104,57 @@ export function QuickActionsWidget() {
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
   const favorites = useFavoritesStore((s) => s.favorites);
   const loadFavorites = useFavoritesStore((s) => s.load);
-  const [iot, setIot] = useState<Map<string, IotDevice>>(new Map());
-  const [devices, setDevices] = useState<Map<string, Device>>(new Map());
-  const [rooms, setRooms] = useState<Map<string, RoomWithState>>(new Map());
-  const [scenes, setScenes] = useState<Map<string, Scene>>(new Map());
-  const [loading, setLoading] = useState(true);
   const [runningScene, setRunningScene] = useState<string | null>(null);
 
+  // US-262: las cuatro listas se comparten con otros widgets (`/iot/devices` con
+  // `IotStatusWidget` y la barra lateral, `/scenes` con `ScenesWidget`). Antes
+  // este `Promise.all` las pedía por su cuenta, así que abrir el dashboard las
+  // pedía dos y tres veces en el mismo tick.
+  const iotRes = useIotDevices();
+  const devicesRes = useInventoryDevices();
+  const roomsRes = useRooms();
+  const scenesRes = useScenes();
+
   useEffect(() => {
-    let active = true;
-    const byId = <T,>(list: T[], key: (t: T) => string) => new Map(list.map((t) => [key(t), t]));
+    void loadFavorites();
+  }, [loadFavorites]);
 
-    void Promise.all([
-      loadFavorites(),
-      api.getList<IotDevice>('/iot/devices').catch(() => [] as IotDevice[]),
-      api.getList<Device>('/inventory/devices').catch(() => [] as Device[]),
-      api.getList<RoomWithState>('/rooms').catch(() => [] as RoomWithState[]),
-      api.getList<Scene>('/scenes').catch(() => [] as Scene[]),
-    ])
-      .then(([, iotList, devList, roomList, sceneList]) => {
-        if (!active) return;
-        setIot(byId(iotList, (d) => d.id));
-        setDevices(byId(devList, (d) => d.id));
-        setRooms(byId(roomList, (r) => r.id));
-        setScenes(byId(sceneList, (s) => s.id));
-      })
-      .finally(() => active && setLoading(false));
+  /**
+   * Estado IoT llegado por socket desde el último render (US-94: encender un foco
+   * desde el interruptor de pared se ve sin recargar).
+   *
+   * Se guarda **aparte** de la lista compartida y se superpone al pintar, en vez
+   * de escribir dentro de la caché: la caché la comparten tres consumidores, y un
+   * widget que la mutara estaría decidiendo por los otros dos. Al releer la lista,
+   * el dato del servidor vuelve a mandar sobre las superposiciones ya reflejadas.
+   */
+  const [enVivo, setEnVivo] = useState<Map<string, IotDevice>>(new Map());
 
-    // Estado IoT en vivo: refleja los cambios sin recargar (US-94).
+  useEffect(() => {
     const socket = getSocket();
-    const onUpdated = (d: IotDevice) => setIot((prev) => new Map(prev).set(d.id, d));
+    const onUpdated = (d: IotDevice) => setEnVivo((prev) => new Map(prev).set(d.id, d));
     socket.on('iot:device-updated', onUpdated);
     return () => {
-      active = false;
       socket.off('iot:device-updated', onUpdated);
     };
-  }, [loadFavorites]);
+  }, []);
+
+  const byId = <T,>(list: T[] | null, key: (t: T) => string) =>
+    new Map((list ?? []).map((t) => [key(t), t]));
+
+  const iot = byId(iotRes.data, (d) => d.id);
+  for (const [id, d] of enVivo) iot.set(id, d);
+  const devices = byId(devicesRes.data, (d) => d.id);
+  const rooms = byId(roomsRes.data, (r) => r.id);
+  const scenes = byId(scenesRes.data, (s) => s.id);
+
+  /**
+   * Se deja de esperar cuando cada lectura ha **terminado**, con dato o con fallo.
+   * Mirar solo `data !== null` dejaría el esqueleto puesto para siempre si una de
+   * las cuatro falla — que es peor que el vacío honesto que ya se pinta debajo.
+   */
+  const asentada = (r: { data: unknown; error: unknown }) => r.data !== null || r.error !== null;
+  const loading = ![iotRes, devicesRes, roomsRes, scenesRes].every(asentada);
 
   const runFavoriteScene = async (id: string, name: string) => {
     setRunningScene(id);

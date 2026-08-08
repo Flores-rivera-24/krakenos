@@ -57,7 +57,7 @@ export function FirewallPage() {
 
   const load = () =>
     api
-      .get<FirewallRule[]>('/firewall/rules')
+      .getList<FirewallRule>('/firewall/rules')
       .then(setRules)
       .catch((err) => setError(describeError(err, t('firewall.loadError'))));
 

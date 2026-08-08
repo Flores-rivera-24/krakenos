@@ -23,7 +23,7 @@ export function AlertsWidget() {
   useEffect(() => {
     let active = true;
     api
-      .get<AuditLogEntry[]>('/audit?limit=5')
+      .getList<AuditLogEntry>('/audit?limit=5')
       .then((list) => {
         if (!active) return;
         setEntries(list);

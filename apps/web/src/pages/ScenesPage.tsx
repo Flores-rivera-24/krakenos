@@ -371,7 +371,7 @@ export function ScenesPage() {
   useEffect(() => {
     reload();
     void api
-      .get<IotDevice[]>('/iot/devices')
+      .getList<IotDevice>('/iot/devices')
       .then((list) => {
         setDevices(list);
         setDevicesError(null);

@@ -353,7 +353,7 @@ export function IotPage() {
       .catch(() => active && setRooms([]));
 
     void api
-      .get<IotDevice[]>('/iot/devices')
+      .getList<IotDevice>('/iot/devices')
       .then((list) => active && setDevices(Object.fromEntries(list.map((d) => [d.id, d]))))
       .catch(
         (err) => active && setError(describeError(err, t('iot.loadError'))),

@@ -138,7 +138,7 @@ export function SettingsPage() {
     if (!isAdmin || section !== 'cuenta') return;
     let active = true;
     void api
-      .get<AuditLogEntry[]>('/audit?limit=50')
+      .getList<AuditLogEntry>('/audit?limit=50')
       .then((rows) => active && setAudit(rows))
       .catch(() => active && setAudit([]));
     return () => {

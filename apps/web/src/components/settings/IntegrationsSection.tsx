@@ -62,7 +62,7 @@ export function IntegrationsSection({ isAdmin }: Props) {
   useEffect(() => {
     let active = true;
     api
-      .get<IotDevice[]>('/iot/devices')
+      .getList<IotDevice>('/iot/devices')
       .then((d) => active && setDevices(d))
       .catch(() => undefined);
     return () => {

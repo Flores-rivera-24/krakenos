@@ -15,7 +15,7 @@ export function WifiStatusWidget() {
   useEffect(() => {
     let active = true;
     api
-      .get<WifiNetworkInfo[]>('/wifi/networks')
+      .getList<WifiNetworkInfo>('/wifi/networks')
       .then((n) => active && setNetworks(n))
       .catch(() => active && setNetworks([]));
     return () => {

@@ -1,6 +1,6 @@
 import type { AlarmPhase, AlarmState } from '@krakenos/types';
 import { Settings, ShieldAlert, ShieldCheck, ShieldOff } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AlarmSettingsSlideover } from '@/components/dashboard/AlarmSettingsSlideover';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
@@ -12,6 +12,7 @@ import { armAlarm, disarmAlarm, getAlarmState } from '@/lib/alarm';
 import { ApiRequestError } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { canControlHome } from '@/lib/roles';
+import { usePolling } from '@/lib/use-polling';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -89,7 +90,6 @@ export function AlarmWidget() {
   // US-234: el `.catch(() => {})` dejaba `state` en null con `loading` ya false →
   // spinner infinito. Ahora el fallo se distingue de «todavía cargando».
   const [failed, setFailed] = useState(false);
-  const [intento, setIntento] = useState(0);
   const [busy, setBusy] = useState(false);
   const [pinNeeded, setPinNeeded] = useState(false);
   const [pin, setPin] = useState('');
@@ -102,24 +102,21 @@ export function AlarmWidget() {
     setShowDisclaimer(false);
   };
 
-  useEffect(() => {
-    let active = true;
-    const load = () =>
+  // Refleja cuentas atrás y disparos. US-262: iba con un `setInterval` a pelo, así
+  // que seguía preguntando cada 3 s con la pestaña **oculta** — el gasto que
+  // US-239 (AUD3-27) fue a quitar, del que este widget se había quedado fuera.
+  const load = useCallback(
+    () =>
       getAlarmState()
         .then((s) => {
-          if (!active) return;
           setState(s);
           setFailed(false);
         })
-        .catch(() => active && setFailed(true))
-        .finally(() => active && setLoading(false));
-    void load();
-    const id = setInterval(load, 3000); // refleja cuentas atrás y disparos
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [intento]);
+        .catch(() => setFailed(true))
+        .finally(() => setLoading(false)),
+    [],
+  );
+  usePolling(load, 3000);
 
   const arm = async (mode: 'away' | 'night') => {
     setBusy(true);
@@ -177,7 +174,7 @@ export function AlarmWidget() {
             what="el estado de la alarma"
             onRetry={() => {
               setLoading(true);
-              setIntento((n) => n + 1);
+              void load();
             }}
           />
         ) : loading || !state ? (

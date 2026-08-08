@@ -111,7 +111,7 @@ export function TuyaManager({ reachable }: Props) {
 
   const load = () =>
     void api
-      .get<TuyaDeviceView[]>('/iot/tuya/devices')
+      .getList<TuyaDeviceView>('/iot/tuya/devices')
       .then(setDevices)
       .catch(() => setDevices([]));
 

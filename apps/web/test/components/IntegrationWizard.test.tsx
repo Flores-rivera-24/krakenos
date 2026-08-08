@@ -1,7 +1,9 @@
 import type { IntegrationKindSchema } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { ensureCatalog, setLocale } from '@/lib/i18n';
 
 // El asistente delega la persistencia/prueba en el cliente de integraciones;
 // lo stubbeamos para observar las llamadas y controlar sus resultados.
@@ -194,5 +196,77 @@ describe('IntegrationWizard', () => {
     expect(alert).toHaveTextContent(/No se pudo conectar/);
     expect(screen.getByRole('button', { name: 'Guardar y conectar' })).toBeDisabled();
     expect(integrationsMock.saveIntegration).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * El chrome del asistente en inglés (US-262).
+ *
+ * Era la última pantalla del producto que se quedaba en español con la app en
+ * inglés: los pasos, los botones y los avisos estaban escritos a pelo en el
+ * componente. El **cuerpo de las guías** no entra aquí — ésas se traducen por
+ * superposición según `guide.id`, que es otro mecanismo a propósito (US-177).
+ */
+describe('IntegrationWizard en inglés', () => {
+  // El catálogo `en` ya no viaja en el bundle (US-262), y `setLocale` es
+  // SÍNCRONO: sin precargarlo, la pantalla se queda en español hasta que llegue
+  // el chunk y el test compite con un `import()`.
+  beforeAll(() => ensureCatalog('en'));
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('los pasos y el progreso salen traducidos', async () => {
+    const user = userEvent.setup();
+    setLocale('en', { persist: false });
+    renderHue();
+
+    // El `Stepper` solo pinta el título del paso **activo**, no los tres.
+    expect(await screen.findByText('Prepare')).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 3')).toBeInTheDocument();
+    expect(screen.queryByText('Prepara')).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('Connect')).toBeInTheDocument();
+    expect(screen.getByText('Step 2 of 3')).toBeInTheDocument();
+  });
+
+  it('el aviso de «necesitas la app del fabricante» se traduce', async () => {
+    setLocale('en', { persist: false });
+    // Con Hue NO sale: se empareja con el botón físico del bridge y su entrada en
+    // `MANUFACTURER_APP` es `null`, que es lo correcto. El aviso es de los
+    // backends que sí dependen de la app — Govee enciende «LAN Control» aparato a
+    // aparato desde la suya.
+    render(
+      <IntegrationWizard
+        domain="iot"
+        kind="govee"
+        kindSchema={{
+          domain: 'iot',
+          kind: 'govee',
+          label: 'Govee',
+          fields: [{ key: 'listenPort', type: 'number', required: true }],
+        }}
+        current={null}
+        onDone={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("You'll need the manufacturer's app")).toBeInTheDocument();
+    expect(
+      screen.getByText(/turn on local control on each device/),
+    ).toBeInTheDocument();
+  });
+
+  it('el botón de probar y el de guardar sin probar se traducen', async () => {
+    const user = userEvent.setup();
+    setLocale('en', { persist: false });
+    renderHue();
+
+    await user.click(await screen.findByRole('button', { name: 'Next' }));
+    await user.type(screen.getByLabelText(/bridge/i), 'https://192.168.1.50');
+    await user.type(screen.getByLabelText(/key/i), 'secret-app-key');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+
+    expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save without testing' })).toBeInTheDocument();
   });
 });

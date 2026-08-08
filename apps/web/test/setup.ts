@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterEach } from 'vitest';
+import { limpiarRecursos } from '@/lib/use-resource';
 
 // US-262: `en` dejó de viajar en el bundle y se carga con `import()`. Quien
 // asierta texto en inglés tras un `setLocale('en')` SÍNCRONO tiene que precargar
@@ -35,4 +36,10 @@ globalThis.matchMedia ??= ((query: string) => ({
 // Limpia el DOM entre tests de componentes.
 afterEach(() => {
   cleanup();
+  // US-262: la caché de `useResource` vive en el módulo, así que sin vaciarla el
+  // resultado de un test se filtra al siguiente y **el orden decide quién pasa**.
+  // Va aquí y no en cada fichero por lo mismo que la convención de esperar a la
+  // auditoría acabó en un helper: lo que hay que acordarse de repetir en N sitios
+  // se incumple en uno, y ese uno falla lejos de su causa.
+  limpiarRecursos();
 });
