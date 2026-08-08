@@ -398,7 +398,7 @@ export function ScenesPage() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{t('scenes.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('scenes.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('scenes.subtitle')}</p>
         </div>
         {isAdmin && <Button onClick={() => openNew(null)}>{t('scenes.newTitle')}</Button>}

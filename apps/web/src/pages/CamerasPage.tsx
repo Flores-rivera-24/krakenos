@@ -187,7 +187,7 @@ export function CamerasPage() {
     <div className="space-y-6 p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold">{t('cameras.title')}</h2>
+          <h1 className="text-xl font-semibold">{t('cameras.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('cameras.subtitle')}</p>
         </div>
         {isAdmin && (

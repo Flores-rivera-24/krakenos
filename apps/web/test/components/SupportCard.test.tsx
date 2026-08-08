@@ -43,24 +43,25 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
   it('activa la telemetría vía el ajuste telemetryEnabled', async () => {
     render(<SupportCard />);
     const btn = await screen.findByRole('button', { name: 'Activar' });
-    apiMock.get.mockResolvedValueOnce(ON); // el refetch tras activar
-    fireEvent.click(btn);
-    // Margen explícito sobre el 1 s por defecto de `waitFor`: el toast llega tras
-    // DOS promesas encadenadas (PATCH → refetch), y con los 129 ficheros de la
-    // suite en paralelo este worker se queda sin CPU el tiempo suficiente para
-    // agotarlo. Falla ~1 de cada 5 pasadas completas y 0 de 5 en aislamiento, así
-    // que es hambruna de worker, no una condición de carrera del componente —por
-    // eso se amplía la espera y no se toca la lógica.
-    const ESPERA_CARGADA = { timeout: 5_000 };
-    await waitFor(
-      () =>
-        expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
-          key: 'telemetryEnabled',
-          value: 'on',
-        }),
-      ESPERA_CARGADA,
+    // A partir de aquí el servidor dice que la telemetría está activada. Se
+    // cambia la IMPLEMENTACIÓN, no `mockResolvedValueOnce`: el `Once` va a la
+    // siguiente llamada **sea cual sea la ruta**, y este componente lanza dos al
+    // montar (`/system/update/plan` y la telemetría). Si la del plan aún no había
+    // salido, se comía el `ON` y el refetch posterior recibía `OFF`, así que el
+    // toast no llegaba nunca. Fallaba ~1 de cada 4 pasadas completas y 0 en
+    // aislamiento, y estaba diagnosticado como hambruna de worker y tapado con un
+    // timeout de 5 s — que es justo lo que hace que una carrera parezca lentitud.
+    apiMock.get.mockImplementation((path: string) =>
+      Promise.resolve(path === '/system/update/plan' ? PLAN : ON),
     );
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalled(), ESPERA_CARGADA);
+    fireEvent.click(btn);
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
+        key: 'telemetryEnabled',
+        value: 'on',
+      }),
+    );
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
   });
 
   it('descarga el bundle de soporte', async () => {

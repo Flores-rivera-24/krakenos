@@ -382,7 +382,7 @@ export function IotPage() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-1.5">
-            <h2 className="text-xl font-semibold">{t('iot.title')}</h2>
+            <h1 className="text-xl font-semibold">{t('iot.title')}</h1>
             <HelpHint content={t('iot.help')} label={t('iot.helpLabel')} />
           </div>
           <p className="text-sm text-muted-foreground">

@@ -38,7 +38,7 @@ export function WifiPage() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h2 className="text-xl font-semibold">{t('wifi.title')}</h2>
+        <h1 className="text-xl font-semibold">{t('wifi.title')}</h1>
         <p className="text-sm text-muted-foreground">
           {isAdmin ? t('wifi.subtitle.admin') : t('wifi.subtitle.readonly')}
         </p>

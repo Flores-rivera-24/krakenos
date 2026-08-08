@@ -284,7 +284,7 @@ export function PeoplePage() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-kr-xl font-semibold text-kr-primary">{t('people.title')}</h2>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('people.title')}</h1>
         <p className="text-kr-sm text-kr-secondary">{t('people.subtitle')}</p>
       </div>
 

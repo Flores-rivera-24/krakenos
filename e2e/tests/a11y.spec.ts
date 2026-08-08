@@ -113,3 +113,24 @@ test('a11y: contraste real en el tema que ve el usuario', async ({ page }) => {
   );
   expect(detalle).toEqual([]);
 });
+
+/**
+ * Cada página se presenta con **un** título de primer nivel (US-266).
+ *
+ * Va aparte de la pasada de axe a propósito: `page-has-heading-one` y
+ * `heading-order` son reglas de *best-practice*, no de WCAG A/AA, y activar esa
+ * etiqueta entera aquí traería decenas de hallazgos de otra naturaleza que nadie
+ * ha triado. Esto comprueba **solo** la propiedad que la historia arregla, sobre
+ * el DOM renderizado —que es donde se puede contar, porque el gate estático de
+ * `apps/web/test/lib/encabezados-de-pagina.test.ts` no ve las ramas excluyentes.
+ *
+ * Cubre las 7 páginas que esta suite ya visita; las 19 del admin las recorre
+ * `e2e/stacks` (manual). Se dice para que nadie lea este verde como «todas».
+ */
+for (const enlace of PAGINAS) {
+  test(`a11y: «${enlace}» se presenta con un solo <h1>`, async ({ page }) => {
+    await page.getByRole('link', { name: enlace }).first().click();
+    await esperarPintado(page);
+    await expect(page.locator('h1')).toHaveCount(1);
+  });
+}

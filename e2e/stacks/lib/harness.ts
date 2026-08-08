@@ -123,14 +123,19 @@ export function observarProblemas(page: Page): ProblemasDePagina {
 }
 
 /**
- * Espera a que una página del shell haya **montado su contenido**.
+ * Espera a que una página del shell haya **montado su contenido** y comprueba
+ * que se presenta con **un** título de primer nivel.
  *
- * No se asevera sobre un encabezado, aunque sería lo natural: la jerarquía de
- * encabezados del proyecto no es uniforme —solo 3 de 19 páginas tienen `<h1>`,
- * la mayoría titula con `<h2>` y `/inventory`, `/people` y `/dns` no tienen
- * **ningún** encabezado— así que un `getByRole('heading')` mediría eso y no lo
- * que aquí importa, que es distinguir «la página montó» de «la ruta cambió y no
- * se pintó nada». Queda anotado como hallazgo de accesibilidad aparte.
+ * Lo segundo no se podía aseverar hasta US-266: solo 3 de las 19 páginas tenían
+ * `<h1>`, la mayoría titulaba con un `<h2>` colgando de nada e `/inventory` no
+ * tenía ningún encabezado. Ahora sí, y es la comprobación fuerte: «hay texto en
+ * `<main>`» distingue «montó» de «no pintó nada», pero solo el encabezado
+ * distingue **qué** página montó — que es justo lo que necesita quien navega por
+ * encabezados y no puede leer el menú.
+ *
+ * Se cuenta en el DOM renderizado, que es donde la pregunta tiene sentido: el
+ * gate estático (`apps/web/test/lib/encabezados-de-pagina.test.ts`) no puede
+ * saber cuántos `<h1>` sobreviven a las ramas excluyentes de un componente.
  */
 export async function esperarContenido(page: Page): Promise<void> {
   const main = page.getByRole('main');
@@ -141,6 +146,12 @@ export async function esperarContenido(page: Page): Promise<void> {
       timeout: 25_000,
     })
     .toBeGreaterThan(20);
+  await expect
+    .poll(async () => await page.locator('h1').count(), {
+      message: 'la página debe presentarse con exactamente un <h1>',
+      timeout: 25_000,
+    })
+    .toBe(1);
 }
 
 /**
