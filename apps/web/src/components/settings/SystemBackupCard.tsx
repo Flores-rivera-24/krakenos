@@ -15,6 +15,7 @@ import {
   setAutoBackupPassphrase,
 } from '@/lib/system-backup';
 import { toast } from '@/store/toast.store';
+import { plural, useT } from '@/lib/i18n';
 
 /**
  * Copia de seguridad real (US-103) — reemplaza el falso "backup" que solo exportaba
@@ -22,6 +23,7 @@ import { toast } from '@/store/toast.store';
  * de integraciones. Admin-only (contiene secretos).
  */
 export function SystemBackupCard() {
+  const t = useT();
   const [pass, setPass] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
@@ -38,12 +40,12 @@ export function SystemBackupCard() {
     setRestoreBusy(true);
     try {
       const { staged } = await restoreBackup(restoreFile, restorePass);
-      toast.success(`Restauración preparada (${staged} ficheros). Reinicia el agente para aplicarla.`);
+      toast.success(t('backup.restorePrepared', { staged }));
       setRestoreFile(null);
       setRestorePass('');
       if (fileInput.current) fileInput.current.value = '';
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo restaurar');
+      toast.error(err instanceof Error ? err.message : t('backup.restoreError'));
     } finally {
       setRestoreBusy(false);
     }
@@ -51,7 +53,7 @@ export function SystemBackupCard() {
 
   const run = async () => {
     if (pass !== confirm) {
-      toast.error('Las contraseñas no coinciden');
+      toast.error(t('backup.passMismatch'));
       return;
     }
     setBusy(true);
@@ -63,7 +65,7 @@ export function SystemBackupCard() {
       a.download = `krakenos-backup-${new Date().toISOString().slice(0, 10)}.kbk`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success('Copia de seguridad descargada');
+      toast.success(t('backup.downloaded'));
       setPass('');
       setConfirm('');
     } catch (err) {
@@ -76,17 +78,15 @@ export function SystemBackupCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Copia de seguridad</CardTitle>
+        <CardTitle>{t('backup.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-kr-sm text-kr-secondary">
-          Descarga un archivo <strong>cifrado</strong> con todo lo importante: la base de datos,
-          las claves y los datos de tus integraciones. Guárdalo en un lugar seguro — necesitarás
-          esta contraseña para restaurarlo, y sin ella el archivo es irrecuperable.
+          {t('backup.intro')}
         </p>
         <div className="grid max-w-lg gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="bk-pass">Contraseña de la copia</Label>
+            <Label htmlFor="bk-pass">{t('backup.pass')}</Label>
             <Input
               id="bk-pass"
               type="password"
@@ -98,7 +98,7 @@ export function SystemBackupCard() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="bk-confirm">Confirmar</Label>
+            <Label htmlFor="bk-confirm">{t('backup.confirm')}</Label>
             <Input
               id="bk-confirm"
               type="password"
@@ -117,7 +117,7 @@ export function SystemBackupCard() {
         {/* Restaurar (US-104) */}
         <div className="space-y-3 border-t border-kr pt-4">
           <div>
-            <h4 className="text-kr-base font-medium text-kr-primary">Restaurar</h4>
+            <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.restore')}</h4>
             <p className="text-kr-sm text-kr-secondary">
               Sube un archivo de copia y su contraseña. Se valida y se prepara; se aplica al{' '}
               <strong>reiniciar</strong> el agente (se respalda lo actual por si acaso).
@@ -125,7 +125,7 @@ export function SystemBackupCard() {
           </div>
           <div className="grid max-w-lg gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="bk-file">Archivo de copia</Label>
+              <Label htmlFor="bk-file">{t('backup.file')}</Label>
               <input
                 ref={fileInput}
                 id="bk-file"
@@ -136,7 +136,7 @@ export function SystemBackupCard() {
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="bk-rpass">Contraseña de la copia</Label>
+              <Label htmlFor="bk-rpass">{t('backup.pass')}</Label>
               <Input
                 id="bk-rpass"
                 type="password"
@@ -152,14 +152,12 @@ export function SystemBackupCard() {
               más destructiva de la app —sustituye base, claves y datos— y estaba a
               un clic, con botón `outline` (el mismo que «Descargar copia») y el
               aviso donde nadie lo lee: después de haber pulsado. */}
-          <Callout variant="danger" standing title="Esto sustituye tus datos actuales">
-            Restaurar reemplaza la base de datos, las claves y las credenciales por las de la
-            copia. Lo actual se respalda antes, pero <strong>todo lo que hayas hecho desde esa
-            copia se pierde</strong>. Se aplica al reiniciar el agente.
+          <Callout variant="danger" standing title={t('backup.replaceTitle')}>
+            {t('backup.replaceBody')}
           </Callout>
           <div className="space-y-1.5">
             <Label htmlFor="bk-confirm">
-              Para continuar, escribe <strong>RESTAURAR</strong>
+              {t('backup.typeToConfirm')} <strong>RESTAURAR</strong>
             </Label>
             <Input
               id="bk-confirm"
@@ -203,6 +201,7 @@ function formatBytes(bytes: number): string {
  * fue la última y se avisa si no hay ninguna reciente.
  */
 function AutoBackupSection() {
+  const t = useT();
   const [status, setStatus] = useState<AutoBackupStatus | null>(null);
   const [pass, setPass] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -244,7 +243,7 @@ function AutoBackupSection() {
   return (
     <div className="space-y-3 border-t border-kr pt-4">
       <div>
-        <h4 className="text-kr-base font-medium text-kr-primary">Copias automáticas</h4>
+        <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.auto.title')}</h4>
         <p className="text-kr-sm text-kr-secondary">
           KrakenOS puede guardar una copia cifrada en <code>data/backups/</code> cada día o cada
           semana, a las 03:00. Necesita una contraseña propia (nadie va a teclearla de madrugada).
@@ -253,20 +252,20 @@ function AutoBackupSection() {
 
       <div className="grid max-w-lg gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="bk-auto-freq">Frecuencia</Label>
+          <Label htmlFor="bk-auto-freq">{t('backup.auto.freq')}</Label>
           <select
             id="bk-auto-freq"
             className="h-9 w-full rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary"
             value={status.frequency}
             onChange={(e) => void patchSetting('autoBackupFrequency', e.target.value)}
           >
-            <option value="off">Desactivadas</option>
-            <option value="daily">Cada día</option>
-            <option value="weekly">Cada semana</option>
+            <option value="off">{t('backup.auto.off')}</option>
+            <option value="daily">{t('backup.auto.daily')}</option>
+            <option value="weekly">{t('backup.auto.weekly')}</option>
           </select>
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="bk-auto-keep">Copias que se conservan</Label>
+          <Label htmlFor="bk-auto-keep">{t('backup.auto.keep')}</Label>
           <Input
             id="bk-auto-keep"
             type="number"
@@ -288,7 +287,7 @@ function AutoBackupSection() {
               const res = await setAutoBackupPassphrase();
               setPass(res.generated);
               await load();
-              toast.success('Contraseña generada');
+              toast.success(t('backup.auto.passGenerated'));
             })
           }
         >
@@ -306,7 +305,7 @@ function AutoBackupSection() {
               })
             }
           >
-            Ver contraseña
+            {t('backup.auto.reveal')}
           </Button>
         )}
         <Button
@@ -318,40 +317,44 @@ function AutoBackupSection() {
               const next = await runAutoBackup();
               setStatus(next);
               if (next.lastError) toast.error(next.lastError);
-              else toast.success('Copia creada');
+              else toast.success(t('backup.auto.created'));
             })
           }
         >
-          {busy ? 'Copiando…' : 'Copiar ahora'}
+          {busy ? t('backup.auto.running') : t('backup.auto.runNow')}
         </Button>
       </div>
 
       {pass && (
-        <Callout variant="warning" title="Guarda esta contraseña fuera del servidor">
+        <Callout variant="warning" title={t('backup.auto.keepPassTitle')}>
           <code className="break-all font-mono text-kr-sm">{pass}</code>
           <p className="mt-1">
-            Sin ella, las copias automáticas no se pueden restaurar. Y de nada sirve guardarla en el
-            mismo aparato que quieres poder recuperar: llévate también las copias a otro sitio.
+            {t('backup.auto.keepPassBody')}
           </p>
         </Callout>
       )}
 
       <p className="text-kr-sm text-kr-secondary">
         {status.count === 0
-          ? 'Todavía no hay ninguna copia automática.'
-          : `${status.count} ${status.count === 1 ? 'copia' : 'copias'} en disco · ${formatBytes(status.totalBytes)} · última: ${
-              status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : '—'
-            }`}
+          ? t('backup.auto.none')
+          : t('backup.auto.summary', {
+              n: status.count,
+              unidad: plural(status.count, {
+                one: t('backup.auto.copy'),
+                other: t('backup.auto.copies'),
+              }),
+              size: formatBytes(status.totalBytes),
+              last: status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : '—',
+            })}
       </p>
 
       {status.stale && (
-        <Callout variant="warning" title="No hay una copia reciente">
-          Las copias automáticas están activadas, pero la última es demasiado antigua (o no hay
-          ninguna). Revisa que haya contraseña configurada y espacio en disco.
+        <Callout variant="warning" title={t('backup.auto.staleTitle')}>
+          {t('backup.auto.staleBody')}
         </Callout>
       )}
       {status.lastError && (
-        <Callout variant="danger" title="La última copia automática falló">
+        <Callout variant="danger" title={t('backup.auto.failedTitle')}>
           {status.lastError}
         </Callout>
       )}
