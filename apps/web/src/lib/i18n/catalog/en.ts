@@ -1057,6 +1057,47 @@ export const en: Record<TranslationKey, string> = {
   'connect.tier.2': 'Easy',
   'connect.tier.3': 'Intermediate',
   'connect.tier.4': 'Advanced',
+  // `Stepper` navigation. Lives in the primitive, not in each wizard.
+  'stepper.back': 'Back',
+  'stepper.next': 'Next',
+  'stepper.finish': 'Finish',
+  'stepper.skip': 'Skip',
+  'stepper.stepOf': 'Step {n} of {total}',
+  'stepper.stepOfWith': 'Step {n} of {total}: {title}',
+  // Connection wizard chrome. Guide BODIES are not here: guides are translated by
+  // overlay keyed on `guide.id`, which is a separate mechanism on purpose.
+  'wizard.step.prepare': 'Prepare',
+  'wizard.step.connect': 'Connect',
+  'wizard.step.save': 'Test and save',
+  'wizard.finish': 'Save and connect',
+  'wizard.manufacturerApp.title': "You'll need the manufacturer's app",
+  'wizard.manufacturerApp.pairing':
+    "You have to pair the device with the manufacturer's app at least once: the key that lets you control it from your own network is issued by that pairing, against their cloud.",
+  'wizard.manufacturerApp.account': "Controlling {name} requires the manufacturer's account.",
+  'wizard.manufacturerApp.localControl':
+    "You have to open the manufacturer's app and turn on local control on each device; until you do, it won't answer inside your network.",
+  'wizard.manufacturerApp.some': 'This only affects the {devices}.',
+  'wizard.community.title': 'Community support, no guarantee',
+  'wizard.community.body':
+    'KrakenOS cannot promise that {name} will keep working if the manufacturer changes something: the code is maintained, but without a guarantee. If you want real independence, Zigbee, Matter and Shelly devices pair against your own server.',
+  'wizard.introFallback': "Let's set up {name}.",
+  'wizard.prerequisites': 'What you need',
+  'wizard.form.introBefore': 'Fill in the details. The ones marked with ',
+  'wizard.form.introAfter': ' are required; you can leave the rest as they are.',
+  'wizard.save.intro':
+    'Test the connection to confirm everything is right, then save. If your device is not reachable from this browser, you can save without testing.',
+  'wizard.test': 'Test connection',
+  'wizard.testing': 'Testing…',
+  'wizard.saveWithoutTest': 'Save without testing',
+  'wizard.test.ok': 'Connection successful',
+  'wizard.test.fail': 'Could not connect',
+  'wizard.troubleshooting': 'Having trouble?',
+  'wizard.secretStored': '•••••• (saved — leave blank to keep it)',
+  'wizard.testError': 'Could not test {name}',
+  'wizard.saveError': 'Could not save {name}',
+  'wizard.savedFallback':
+    'The {name} configuration was saved but could not be applied; the previous configuration is still active',
+  'wizard.connected': '{name} connected!',
   // Hardware compatibility (US-208)
   'compat.title': 'Is your equipment compatible?',
   'compat.subtitle': 'Search for your router, camera or device and see what can be controlled.',

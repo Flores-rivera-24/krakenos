@@ -23,7 +23,7 @@ import { Stepper, type StepperStep } from '@/components/ui/stepper';
 import { Switch } from '@/components/ui/switch';
 import { describeError } from '@/lib/errors';
 import { getGuideByKind, type GuideField } from '@/lib/guides';
-import { useLocale } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 import { saveIntegration, testIntegration } from '@/lib/integrations';
 import { toast } from '@/store/toast.store';
 
@@ -32,6 +32,9 @@ const SELECT_CLASS =
 
 /** Valor de un campo del formulario: booleano para `boolean`, texto para el resto. */
 type FieldValue = string | boolean;
+
+/** La función de traducción, para poder pasarla a los helpers puros de este módulo. */
+type TFunction = ReturnType<typeof useT>;
 
 export interface IntegrationWizardProps {
   domain: IntegrationDomain;
@@ -70,7 +73,9 @@ export function IntegrationWizard({
   initialValues,
   onDone,
 }: IntegrationWizardProps) {
-  useLocale(); // re-renderiza al cambiar de idioma: `getGuideByKind` devuelve la guía localizada
+  // `useT` ya se suscribe al idioma (re-renderiza al cambiarlo), que es lo que
+  // además necesita `getGuideByKind` para devolver la guía localizada.
+  const t = useT();
   const guide = getGuideByKind(kind);
   const displayName = guide?.displayName ?? kindSchema.label;
   const isIot = domain === 'iot';
@@ -175,7 +180,7 @@ export function IntegrationWizard({
     try {
       setResult(await testIntegration(domain, { kind, config: buildConfig() }));
     } catch (err) {
-      const message = describeError(err, `No se pudo probar ${displayName}`);
+      const message = describeError(err, t('wizard.testError', { name: displayName }));
       setResult({ ok: false, message });
       toast.error(message);
     } finally {
@@ -189,15 +194,13 @@ export function IntegrationWizard({
       const saved = await saveIntegration(domain, { kind, enabled: true, config: buildConfig() });
       if (saved.fallback) {
         // Guardada pero no aplicada: el manager vivo sigue siendo el de .env (US-205).
-        toast.error(
-          `La configuración de ${displayName} se guardó pero no se pudo aplicar; sigue activa la configuración anterior`,
-        );
+        toast.error(t('wizard.savedFallback', { name: displayName }));
       } else {
-        toast.success(`¡${displayName} conectado!`);
+        toast.success(t('wizard.connected', { name: displayName }));
       }
       onDone();
     } catch (err) {
-      toast.error(describeError(err, `No se pudo guardar ${displayName}`));
+      toast.error(describeError(err, t('wizard.saveError', { name: displayName })));
     } finally {
       setSaving(false);
     }
@@ -214,23 +217,23 @@ export function IntegrationWizard({
       {/* US-258: va ANTES del sello de garantía porque es lo que hay que hacer para
           que esto funcione, no una advertencia sobre el futuro. */}
       {dependenciaApp && (
-        <Callout variant="warning" title="Vas a necesitar la app del fabricante" standing>
-          {textoDependenciaApp(dependenciaApp, displayName)}
+        <Callout variant="warning" title={t('wizard.manufacturerApp.title')} standing>
+          {textoDependenciaApp(dependenciaApp, displayName, t)}
         </Callout>
       )}
       {esCommunity && (
-        <Callout variant="warning" title="Soporte de la comunidad, sin garantía" standing>
-          KrakenOS no puede prometer que {displayName} siga funcionando si el fabricante cambia algo:
-          el código se mantiene, pero sin garantía. Si buscas independencia de verdad, los aparatos
-          Zigbee, Matter o Shelly se emparejan contra tu propio servidor.
+        <Callout variant="warning" title={t('wizard.community.title')} standing>
+          {t('wizard.community.body', { name: displayName })}
         </Callout>
       )}
       <p className="text-kr-sm text-kr-secondary">
-        {guide?.intro ?? `Vamos a configurar ${kindSchema.label}.`}
+        {guide?.intro ?? t('wizard.introFallback', { name: kindSchema.label })}
       </p>
       {guide && guide.prerequisites.length > 0 && (
         <div className="rounded-lg border border-kr bg-kr-elevated p-3">
-          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">Qué necesitas</p>
+          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">
+            {t('wizard.prerequisites')}
+          </p>
           <ul className="list-disc space-y-1 pl-5 text-kr-sm text-kr-secondary">
             {guide.prerequisites.map((p, i) => (
               <li key={i}>{p}</li>
@@ -261,8 +264,9 @@ export function IntegrationWizard({
   const connect = (
     <div className="space-y-4">
       <p className="text-kr-sm text-kr-secondary">
-        Rellena los datos. Los marcados con <span className="text-danger">*</span> son
-        obligatorios; el resto puedes dejarlos como están.
+        {t('wizard.form.introBefore')}
+        <span className="text-danger">*</span>
+        {t('wizard.form.introAfter')}
       </p>
       {fields.map((f) => (
         <FieldRow
@@ -279,13 +283,10 @@ export function IntegrationWizard({
 
   const testSave = (
     <div className="space-y-4">
-      <p className="text-kr-sm text-kr-secondary">
-        Prueba la conexión para confirmar que todo está bien y luego guarda. Si tu dispositivo
-        no es accesible desde este navegador, puedes guardar sin probar.
-      </p>
+      <p className="text-kr-sm text-kr-secondary">{t('wizard.save.intro')}</p>
       <div className="flex flex-wrap items-center gap-3">
         <Button type="button" variant="outline" onClick={() => void runTest()} disabled={busy}>
-          {testing ? 'Probando…' : 'Probar conexión'}
+          {testing ? t('wizard.testing') : t('wizard.test')}
         </Button>
         <button
           type="button"
@@ -293,13 +294,13 @@ export function IntegrationWizard({
           disabled={busy}
           className="text-kr-sm text-kr-secondary underline underline-offset-2 hover:text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
         >
-          Guardar sin probar
+          {t('wizard.saveWithoutTest')}
         </button>
       </div>
       {result && (
         <Callout
           variant={result.ok ? 'success' : 'danger'}
-          title={result.ok ? 'Conexión correcta' : 'No se pudo conectar'}
+          title={result.ok ? t('wizard.test.ok') : t('wizard.test.fail')}
         >
           <p>{result.message}</p>
           {result.ok && result.details && Object.keys(result.details).length > 0 && (
@@ -315,7 +316,9 @@ export function IntegrationWizard({
       )}
       {guide && guide.troubleshooting.length > 0 && (
         <div>
-          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">¿Problemas?</p>
+          <p className="mb-2 text-kr-sm font-semibold text-kr-primary">
+            {t('wizard.troubleshooting')}
+          </p>
           <Accordion>
             {guide.troubleshooting.map((t, i) => (
               <AccordionItem key={i} id={`ts-${i}`} title={t.q}>
@@ -329,14 +332,19 @@ export function IntegrationWizard({
   );
 
   const steps: StepperStep[] = [
-    { id: 'prepare', title: 'Prepara', description: displayName, content: prepare },
+    { id: 'prepare', title: t('wizard.step.prepare'), description: displayName, content: prepare },
   ];
   if (!skipConnect) {
-    steps.push({ id: 'connect', title: 'Conecta', canAdvance: formReady, content: connect });
+    steps.push({
+      id: 'connect',
+      title: t('wizard.step.connect'),
+      canAdvance: formReady,
+      content: connect,
+    });
   }
   steps.push({
     id: 'save',
-    title: 'Prueba y guarda',
+    title: t('wizard.step.save'),
     canAdvance: result?.ok === true,
     content: testSave,
   });
@@ -348,7 +356,7 @@ export function IntegrationWizard({
       onStepChange={setStep}
       onComplete={() => void runSave()}
       busy={busy}
-      finishLabel="Guardar y conectar"
+      finishLabel={t('wizard.finish')}
     />
   );
 }
@@ -366,14 +374,20 @@ export function IntegrationWizard({
 export function textoDependenciaApp(
   dep: ManufacturerAppDependency,
   displayName: string,
+  t: TFunction,
 ): string {
   const base =
     dep.reason === 'pairing'
-      ? `Hay que emparejar el aparato con la app del fabricante al menos una vez: la clave que permite controlarlo desde tu red la emite ese emparejamiento contra su nube.`
+      ? t('wizard.manufacturerApp.pairing')
       : dep.reason === 'account'
-        ? `Para controlar ${displayName} hace falta la cuenta del fabricante.`
-        : `Hay que abrir la app del fabricante y activar el control local en cada aparato; hasta que lo hagas no responde dentro de tu red.`;
-  return dep.scope === 'some' && dep.devices ? `${base} Solo afecta a los ${dep.devices}.` : base;
+        ? t('wizard.manufacturerApp.account', { name: displayName })
+        : t('wizard.manufacturerApp.localControl');
+  // Se componen **dos frases completas e independientes**, no trozos de una: eso
+  // se traduce sin reordenar. Partir una sola frase en fragmentos por variable es
+  // lo que deja copy intraducible, como pasa hoy con las frases de las rutinas.
+  return dep.scope === 'some' && dep.devices
+    ? `${base} ${t('wizard.manufacturerApp.some', { devices: dep.devices })}`
+    : base;
 }
 
 function humanizeFieldKey(key: string): string {
@@ -396,6 +410,7 @@ interface FieldRowProps {
 
 /** Una fila del formulario: etiqueta amable + ayuda contextual + control por tipo. */
 function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps) {
+  const t = useT();
   const id = `intfield-${field.key}`;
   const labelId = `${id}-label`;
   // Sin guía, la clave técnica se humaniza («appKey» → «App key») en vez de
@@ -440,7 +455,7 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={
-          secret && secretStored ? '•••••• (guardado — deja en blanco para conservar)' : placeholder
+          secret && secretStored ? t('wizard.secretStored') : placeholder
         }
         autoComplete={secret ? 'new-password' : undefined}
       />
