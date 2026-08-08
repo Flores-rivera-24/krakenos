@@ -20,6 +20,16 @@ interface WriteEndpoint {
  * cualquier usuario autenticado (ver `AUTHED_WRITES`).
  */
 const ADMIN_WRITES: WriteEndpoint[] = [
+  // invitaciones y solicitudes de acceso (US-272/268). Conceden acceso al hogar, así
+  // que se barren de verdad y no se meten en el allowlist: un `viewer` que pudiera
+  // invitar tendría un camino para fabricarse un admin.
+  {
+    method: 'POST',
+    url: '/api/invitations',
+    payload: { email: 'x@krakenos.test', displayName: 'X', role: 'member' },
+  },
+  { method: 'DELETE', url: '/api/invitations/x' },
+  { method: 'POST', url: '/api/access-requests/x/decide', payload: { decision: 'reject' } },
   // inventory
   { method: 'PATCH', url: '/api/inventory/devices/x', payload: { label: 'Salón' } },
   { method: 'POST', url: '/api/inventory/devices/x/block' },
@@ -266,11 +276,21 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       // Públicas (sin token; probadas en sus módulos).
       'POST /api/setup/init',
       'POST /api/auth/login',
+      // US-269. Pública por definición: es el camino de quien NO puede
+      // autenticarse. Su control de acceso es el código de un solo uso, con el
+      // mismo límite por IP y lockout por cuenta que el login, y está probada en
+      // `auth.routes.test.ts`.
+      'POST /api/auth/recover',
       'POST /api/auth/refresh',
       'POST /api/auth/logout',
       'POST /api/webauthn/authenticate/options',
       'POST /api/webauthn/authenticate/verify',
       'POST /api/webauthn/backup-codes/verify',
+      // US-272/268. Públicas por definición: quien las usa TODAVÍA NO tiene cuenta.
+      // Su control de acceso es el token de un solo uso (invitación) y el hecho de
+      // que pedir acceso no concede nada por sí mismo (lo aprueba un admin).
+      'POST /api/invitations/redeem/:p',
+      'POST /api/access-requests',
       // Capacidad home.control (admin+member): probadas por capacidad.
       'PATCH /api/iot/devices/:p',
       'POST /api/iot/matter/commission',

@@ -10,6 +10,10 @@ export const ALERT_EVENTS: { event: string; label: string }[] = [
   { event: 'auth.login_failed', label: 'Login fallido' },
   { event: 'auth.login_locked', label: 'Cuenta bloqueada' },
   { event: 'auth.refresh_reuse', label: 'Posible robo de sesión' },
+  // US-269: entrar con un código de recuperación es saltarse la contraseña. Es
+  // legítimo (para eso están los códigos) y a la vez es justo lo que querría hacer
+  // quien te robó la libreta donde los apuntaste.
+  { event: 'auth.recovery_used', label: 'Acceso con código de recuperación' },
   { event: 'device.block', label: 'Dispositivo bloqueado' },
   { event: 'inventory.unknown_device', label: 'Dispositivo desconocido' },
   // US-253: un aparato que empieza a hablar con alguien nuevo. Es evento propio y

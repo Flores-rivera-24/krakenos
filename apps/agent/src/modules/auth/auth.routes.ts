@@ -10,9 +10,11 @@ import {
 import { publicDisclosure } from '../../config/env.js';
 import { hashEmail } from '../../plugins/audit.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
+import { BackupCodeService } from '../../webauthn/backup-codes.service.js';
 import { AuthError, AuthService } from './auth.service.js';
 import {
   changePasswordSchema,
+  recoverSchema,
   lastSessionSchema,
   listSessionsSchema,
   loginSchema,
@@ -26,6 +28,7 @@ import {
 
 export const authRoutes: FastifyPluginAsync = async (app) => {
   const service = new AuthService(app);
+  const backupCodes = new BackupCodeService(app.prisma);
 
   // Límite de intentos de login configurable y **en caliente** (US-41/US-47):
   // se inicializa desde la setting `loginRateLimit` y la ruta lo lee del store en
@@ -63,6 +66,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
     const { email } = req.body;
+    // Defecto `true`: es lo que hacía la cookie antes de US-269, así que un
+    // cliente que no manda el campo no cambia de comportamiento.
+    const keepSignedIn = req.body.keepSignedIn !== false;
 
     // Lockout por cuenta con backoff (US-77, F3): además del límite por IP, una
     // cuenta con demasiados fallos consecutivos se bloquea temporalmente. Se
@@ -93,11 +99,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.send({
           requiresWebAuthn: true,
           email: user.email,
-          mfaToken: service.issueMfaPendingToken(user.id),
+          mfaToken: service.issueMfaPendingToken(user.id, keepSignedIn),
         });
       }
 
-      const session = await service.issueSessionForUserId(user.id);
+      const session = await service.issueSessionForUserId(user.id, keepSignedIn);
       app.audit({ action: 'auth.login', userId: session.user.id, ip: req.ip });
       return sendSession(reply, session);
     } catch (err) {
@@ -112,6 +118,86 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       throw err;
     }
   });
+
+  /**
+   * Entrar con un código de recuperación, **sin la contraseña** (US-269).
+   *
+   * El agujero que cierra: perder la contraseña dejaba la instalación inservible
+   * salvo que otro admin la resetease o alguien entrase por SSH a correr
+   * `reset-admin.js`. La pantalla no lo mencionaba siquiera, así que quien la
+   * perdía se quedaba mirando un formulario sin salida visible.
+   *
+   * Por qué códigos y no un enlace por email: SMTP es **opcional y viene apagado**,
+   * así que un «te mandamos un correo» respondería «configura un servidor de
+   * correo primero» en la mayoría de instalaciones. Y hay un motivo de seguridad
+   * encima: con reset por email, quien tome la cuenta de correo se queda con el
+   * firewall y las cámaras de la casa — el correo pasaría a ser un factor más
+   * débil que la propia contraseña. Los códigos ya existían para el 2FA (US-59):
+   * esto **extiende una pieza probada**, no inventa una credencial nueva.
+   *
+   * Un código es una credencial de pleno derecho, así que este camino lleva las
+   * mismas defensas que el login —límite por IP y lockout por cuenta con backoff—
+   * y responde **siempre igual** ante un correo que no existe y un código
+   * incorrecto: si no, sería un oráculo para enumerar cuentas.
+   */
+  app.post<{ Body: { email: string; code: string } }>(
+    '/recover',
+    {
+      schema: recoverSchema,
+      config: { rateLimit: { max: () => rateLimitStore.getCurrent(), timeWindow: '1 minute' } },
+    },
+    async (req, reply) => {
+      const { email, code } = req.body;
+
+      const retryAfter = loginLockout.retryAfterSec(email);
+      if (retryAfter > 0) {
+        app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
+        return reply
+          .code(429)
+          .header('retry-after', String(retryAfter))
+          .send({
+            code: 'AUTH_ACCOUNT_LOCKED',
+            message: `Demasiados intentos. Reintenta en ${retryAfter} s.`,
+            retryAfter,
+          });
+      }
+
+      const fallo = () => {
+        const lockedSec = loginLockout.recordFailure(email);
+        app.audit({ action: 'auth.login_failed', detail: hashEmail(email), ip: req.ip });
+        if (lockedSec > 0) {
+          app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
+        }
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_INVALID_CODE', message: 'Correo o código incorrectos.' });
+      };
+
+      const user = await app.prisma.user.findUnique({ where: { email } });
+      // Mismo camino que un código malo: un 404 aquí diría qué correos existen.
+      if (!user) return fallo();
+
+      const ok = await backupCodes.consume(user.id, code);
+      if (!ok) return fallo();
+
+      loginLockout.recordSuccess(email);
+      try {
+        // Sesión **no persistente** a propósito: se entra a arreglar una cuenta,
+        // no a quedarse. Dura lo que dure el navegador abierto, que es de sobra
+        // para poner una contraseña nueva.
+        const session = await service.issueSessionForUserId(user.id, false);
+        // Evento de seguridad propio, no un `auth.login` más: alguien ha entrado
+        // sin la contraseña. Si no fuiste tú, hay que enterarse.
+        app.audit({ action: 'auth.recovery_used', userId: user.id, ip: req.ip });
+        return sendSession(reply, session);
+      } catch (err) {
+        if (err instanceof AuthError) {
+          return reply.code(401).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
+    },
+  );
 
   app.post(
     '/refresh',
@@ -129,7 +215,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
       try {
         const tokens = await service.refresh(current, req.ip);
-        setRefreshCookie(reply, tokens.refreshToken);
+        setRefreshCookie(reply, tokens.refreshToken, tokens.persistent);
         return reply.send({ accessToken: tokens.accessToken, expiresIn: tokens.expiresIn });
       } catch (err) {
         if (err instanceof AuthError) {

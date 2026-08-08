@@ -17,6 +17,21 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
 
+// jsdom tampoco implementa matchMedia, y desde US-269 hay componentes que
+// consultan `prefers-reduced-motion` para decidir si animan. Responde `false`
+// («no lo he pedido»), que es el caso por defecto de un navegador real: así los
+// tests ejercitan el camino CON movimiento, que es el que corre en producción.
+globalThis.matchMedia ??= ((query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+})) as unknown as typeof window.matchMedia;
+
 // Limpia el DOM entre tests de componentes.
 afterEach(() => {
   cleanup();

@@ -1,0 +1,15 @@
+-- US-269 · «Mantener sesión iniciada».
+--
+-- La casilla existía en la pantalla de login desde su primera versión y no estaba
+-- conectada a nada: se pintaba, se marcaba y no viajaba al servidor. Ahora decide
+-- si la cookie del refresh token lleva `maxAge` (sobrevive a cerrar el navegador)
+-- o es una cookie de sesión (muere con él).
+--
+-- Vive en la fila del refresh token y no en una cookie aparte porque el servidor
+-- **no puede distinguir** una cookie de sesión de una persistente cuando le llega:
+-- sin esta columna, la elección se perdería en la primera rotación de /auth/refresh
+-- y toda sesión acabaría siendo persistente sin que el usuario se enterara.
+--
+-- Defecto `true` = el comportamiento que ya tenían las sesiones vivas, así que las
+-- filas existentes no cambian de significado al migrar.
+ALTER TABLE "RefreshToken" ADD COLUMN "persistent" BOOLEAN NOT NULL DEFAULT true;

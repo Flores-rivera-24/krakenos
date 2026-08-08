@@ -50,6 +50,10 @@ import { AlertConfigService } from '../../src/alerts/alert-config.js';
 import { iotRoutes } from '../../src/modules/iot/iot.routes.js';
 import { tuyaConfigRoutes } from '../../src/modules/iot/tuya-config.routes.js';
 import { setupRoutes } from '../../src/modules/setup/setup.routes.js';
+import {
+  accessRequestsRoutes,
+  invitationsRoutes,
+} from '../../src/modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from '../../src/modules/users/users.routes.js';
 import { systemRoutes } from '../../src/modules/system/system.routes.js';
 import { TrafficService } from '../../src/modules/traffic/traffic.service.js';
@@ -170,6 +174,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(authRoutes, { prefix: '/api/auth' });
     await app.register(tokensRoutes, { prefix: '/api/tokens' });
     await app.register(usersRoutes, { prefix: '/api/users' });
+    await app.register(invitationsRoutes, { prefix: '/api/invitations' });
+    await app.register(accessRequestsRoutes, { prefix: '/api/access-requests' });
     await app.register(webauthnRoutes, {
       prefix: '/api/webauthn',
       service: new WebAuthnService(app.prisma, {
@@ -383,6 +389,11 @@ export async function resetDb(app: FastifyInstance): Promise<void> {
   await app.prisma.dnsQueryLog.deleteMany();
   await app.prisma.knownDestination.deleteMany();
   await app.prisma.accessSchedule.deleteMany();
+  // US-272/268. Mismo motivo que la nota de arriba sobre energía: sin limpiarlas, la
+  // solicitud de un test reaparece en el siguiente y el fallo sale en el test
+  // equivocado. `AccessRequest.email` es UNIQUE, así que además rompía por 409.
+  await app.prisma.invitation.deleteMany();
+  await app.prisma.accessRequest.deleteMany();
   await app.prisma.alertRule.deleteMany();
   await app.prisma.floorPlan.deleteMany(); // cascada a SurveyScan y SurveySample
   await app.prisma.integrationConfig.deleteMany();

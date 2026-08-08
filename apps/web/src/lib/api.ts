@@ -132,7 +132,10 @@ async function getList<T>(path: string): Promise<T[]> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  // `opts` acepta `anonymous` (US-272): la vista previa de una invitación la abre
+  // alguien que TODAVÍA no tiene cuenta, así que no debe mandar `Authorization` ni
+  // intentar refrescar la sesión al recibir un 401.
+  get: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: 'GET' }),
   getList,
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: 'POST', body }),

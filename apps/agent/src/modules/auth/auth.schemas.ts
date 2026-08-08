@@ -38,6 +38,9 @@ export const loginSchema = {
     properties: {
       email: { type: 'string', format: 'email', maxLength: 254 },
       password: { type: 'string', minLength: 8, maxLength: 128 },
+      // «Mantener sesión iniciada» (US-269). Opcional y con defecto `true`: es el
+      // comportamiento que ya tenía la cookie, así que un cliente viejo no cambia.
+      keepSignedIn: { type: 'boolean' },
     },
   },
   response: {
@@ -60,6 +63,31 @@ export const loginSchema = {
         },
       ],
     },
+  },
+} as const;
+
+/**
+ * Entrar con un código de recuperación, sin contraseña (US-269). El código tiene
+ * la forma `a1b2-c3d4-e5f6` que genera `BackupCodeService`; el rango de longitud
+ * es holgado a propósito para no convertir el schema en un oráculo del formato.
+ */
+export const recoverSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['email', 'code'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 254 },
+      code: { type: 'string', minLength: 8, maxLength: 64 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: { user: userResponse, tokens: tokensResponse },
+      required: ['user', 'tokens'],
+    },
+    401: errorResponse,
   },
 } as const;
 

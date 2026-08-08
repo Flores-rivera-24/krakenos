@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { esperarAuditoria } from '../helpers/audit.js';
 import {
   authHeader,
   buildTestApp,
@@ -106,6 +107,125 @@ describe('rutas de autenticación', () => {
     expect(c!.httpOnly).toBe(true); // ilegible por JS → un XSS no roba el refresh
     expect(String(c!.sameSite).toLowerCase()).toBe('strict'); // anti-CSRF
     expect(c!.path).toBe('/api/auth');
+  });
+
+  /**
+   * US-269. La casilla «Mantener sesión iniciada» llevaba desde la primera versión
+   * de la pantalla pintada y **desconectada**: se marcaba y no cambiaba nada. El
+   * efecto observable es el `Max-Age` de la cookie del refresh, así que es lo que
+   * se asierta — no que el campo llegue al servidor, que no prueba nada.
+   */
+  it('«Mantener sesión iniciada» decide si la cookie persiste, y sobrevive a la rotación (US-269)', async () => {
+    await seedUser(app, { email: 'keep@krakenos.test', password: 'password123' });
+
+    async function cookieDeLogin(keepSignedIn?: boolean) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: {
+          email: 'keep@krakenos.test',
+          password: 'password123',
+          ...(keepSignedIn === undefined ? {} : { keepSignedIn }),
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const c = res.cookies.find((x) => x.name === 'krakenos_rt');
+      expect(c).toBeDefined();
+      return c!;
+    }
+
+    // Marcada → cookie persistente: sobrevive a cerrar el navegador.
+    expect((await cookieDeLogin(true)).maxAge).toBeGreaterThan(0);
+
+    // Omitida → se comporta como antes de US-269. Un cliente viejo que no manda el
+    // campo no puede cambiar de significado por una historia de la interfaz.
+    expect((await cookieDeLogin(undefined)).maxAge).toBeGreaterThan(0);
+
+    // Sin marcar → cookie de SESIÓN: sin `Max-Age`, el navegador la borra al cerrarse.
+    const efimera = await cookieDeLogin(false);
+    expect(efimera.maxAge).toBeUndefined();
+
+    // Y la elección sobrevive a la rotación. Sin persistirla junto al token, el
+    // PRIMER /auth/refresh volvería a emitirla con `Max-Age` y convertiría en
+    // permanente una sesión que se pidió efímera, sin que nadie se enterase.
+    const rotado = await app.inject({
+      method: 'POST',
+      url: '/api/auth/refresh',
+      cookies: refreshCookieHeader(efimera.value),
+    });
+    expect(rotado.statusCode).toBe(200);
+    expect(rotado.cookies.find((x) => x.name === 'krakenos_rt')?.maxAge).toBeUndefined();
+  });
+
+  /**
+   * US-269 · entrar con un código de recuperación, sin la contraseña.
+   *
+   * Antes no había ninguna vía desde la interfaz: perder la contraseña obligaba a
+   * que otro admin la reseteara o a entrar por SSH, y la pantalla no lo mencionaba
+   * siquiera.
+   */
+  describe('recuperación con código (US-269)', () => {
+    /** Genera un lote de códigos para el usuario y devuelve el primero. */
+    async function seedConCodigos(email: string) {
+      const user = await seedUser(app, { email, password: 'password123' });
+      const { BackupCodeService } = await import('../../src/webauthn/backup-codes.service.js');
+      const codes = await new BackupCodeService(app.prisma).generate(user.id);
+      return { user, code: codes[0]! };
+    }
+
+    it('un código válido emite sesión sin pedir la contraseña', async () => {
+      const { code } = await seedConCodigos('rec@krakenos.test');
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/recover',
+        payload: { email: 'rec@krakenos.test', code },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().user.email).toBe('rec@krakenos.test');
+      // Sesión NO persistente: se entra a arreglar la cuenta, no a quedarse.
+      expect(res.cookies.find((c) => c.name === 'krakenos_rt')?.maxAge).toBeUndefined();
+    });
+
+    it('el código es de un solo uso', async () => {
+      const { code } = await seedConCodigos('unsolo@krakenos.test');
+      const payload = { email: 'unsolo@krakenos.test', code };
+      expect((await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode).toBe(200);
+      expect((await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode).toBe(401);
+    });
+
+    /**
+     * La propiedad que más importa de esta ruta. Es pública y acepta un correo, así
+     * que si distinguiera «ese correo no existe» de «ese código no vale» sería un
+     * oráculo para enumerar las cuentas de la casa desde fuera, sin credenciales.
+     */
+    it('responde igual ante un correo inexistente que ante un código incorrecto', async () => {
+      await seedConCodigos('existe@krakenos.test');
+
+      const inexistente = await app.inject({
+        method: 'POST',
+        url: '/api/auth/recover',
+        payload: { email: 'nadie@krakenos.test', code: 'aaaa-bbbb-cccc' },
+      });
+      const malCodigo = await app.inject({
+        method: 'POST',
+        url: '/api/auth/recover',
+        payload: { email: 'existe@krakenos.test', code: 'aaaa-bbbb-cccc' },
+      });
+
+      expect(inexistente.statusCode).toBe(malCodigo.statusCode);
+      expect(inexistente.json()).toEqual(malCodigo.json());
+    });
+
+    it('deja rastro en la auditoría: entrar sin contraseña es un evento de seguridad', async () => {
+      const { code, user } = await seedConCodigos('audit@krakenos.test');
+      await app.inject({
+        method: 'POST',
+        url: '/api/auth/recover',
+        payload: { email: 'audit@krakenos.test', code },
+      });
+      const filas = await esperarAuditoria(app, { action: 'auth.recovery_used' });
+      expect(filas[0]?.userId).toBe(user.id);
+    });
   });
 
   it('refresh sin la cookie de refresh devuelve 401 (US-91)', async () => {

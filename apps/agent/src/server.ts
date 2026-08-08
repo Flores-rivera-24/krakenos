@@ -69,6 +69,10 @@ import { PushService } from './modules/push/push.service.js';
 import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
 import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
+import {
+  accessRequestsRoutes,
+  invitationsRoutes,
+} from './modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
@@ -232,6 +236,9 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(tokensRoutes, { prefix: '/api/tokens' });
   // Gestión de usuarios (US-101): alta/edición/baja + roles, admin-only y auditada.
   await app.register(usersRoutes, { prefix: '/api/users' });
+  // Las dos vías de alta sin que el admin teclee la contraseña de nadie (US-272/268).
+  await app.register(invitationsRoutes, { prefix: '/api/invitations' });
+  await app.register(accessRequestsRoutes, { prefix: '/api/access-requests' });
   const webAuthnService = new WebAuthnService(app.prisma, {
     rpName: env.webauthn.rpName,
     rpID: env.webauthn.rpID,

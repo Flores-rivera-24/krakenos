@@ -104,6 +104,64 @@ export const en: Record<TranslationKey, string> = {
   'login.backup.invalid': 'Invalid or already used code.',
   'login.backup.prompt': 'Lost your device? Use a recovery code',
 
+  // --- Signing in without the password (US-269) ---
+  'login.recover.prompt': "Can't sign in?",
+  'login.recover.title': 'Sign in without your password',
+  'login.recover.intro':
+    'If you saved your recovery codes, use one to sign in and change your password under Settings → Account. Each code works once.',
+  'login.recover.submit': 'Sign in with the code',
+  'login.recover.invalid': 'Incorrect email or code.',
+  'login.recover.noCodes': "Don't have any codes?",
+  'login.recover.noCodesHelp':
+    'Another administrator can set a new password for you under Settings → Users. If you are the only administrator, it has to be done on the server: the recovery guide explains how.',
+  'login.recover.back': 'Back',
+
+  // --- Requesting access to the home (US-273) ---
+  'login.request.prompt': 'Request access',
+  'login.request.title': 'Request access to the home',
+  'login.request.intro':
+    'Whoever administers the home will get your request and decide whether to grant access. No account is created until then.',
+  'login.request.name': 'Your name',
+  'login.request.note': 'Note for the administrator (optional)',
+  'login.request.submit': 'Send request',
+  'login.request.sending': 'Sending…',
+  'login.request.sent':
+    'Request sent. If you are granted access, you will get a link to create your account.',
+  'login.request.error': 'The request could not be sent. Please try again.',
+
+  // --- Accepting an invitation (US-272) ---
+  'invite.checking': 'Checking the invitation…',
+  'invite.title': 'You have been invited to {home}',
+  'invite.intro': 'Choose your password. Nobody else will see it, not even whoever invited you.',
+  'invite.displayName': 'Your name',
+  'invite.password': 'Password',
+  'invite.confirm': 'Confirm password',
+  'invite.submit': 'Create my account',
+  'invite.submitting': 'Creating the account…',
+  'invite.error.mismatch': 'The passwords do not match.',
+  'invite.error.short': 'The password must be at least 8 characters long.',
+  'invite.error.generic':
+    'The invitation could not be accepted. The link may already have been used or expired.',
+  'invite.invalid.title': 'This link no longer works',
+  'invite.invalid.body':
+    'Invitations expire and can only be used once. Ask whoever administers the home for a new one.',
+  'invite.goToLogin': 'Go to sign in',
+
+  // --- Public landing (US-269) ---
+  'welcome.eyebrow': 'KrakenOS · Home server',
+  'welcome.title': 'Your network stops being a black box.',
+  'welcome.subtitle':
+    'Who connects, who they talk to, how much they use and when they switch off. All measured in your home and stored on your disk.',
+  'welcome.enter': 'Sign in',
+  'welcome.createAdmin': 'Create administrator',
+  'welcome.needsSetupHint': 'This installation has no administrator yet.',
+  'welcome.claim.local': 'Runs in your home',
+  'welcome.claim.localDetail': 'The server is yours. You reach it over the local network or VPN.',
+  'welcome.claim.noFee': 'No subscription',
+  'welcome.claim.noFeeDetail': 'There is no paid plan and no feature behind a fee.',
+  'welcome.claim.source': 'Open source',
+  'welcome.claim.sourceDetail': 'AGPL-3.0 licensed: you can read the code and modify it.',
+
   // --- Settings → Account: interface mode ---
   'settings.uiMode.title': 'App mode',
   'settings.uiMode.simple': 'Simple',

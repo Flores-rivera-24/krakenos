@@ -33,6 +33,12 @@ export interface IssuedTokens {
   accessToken: string;
   refreshToken: string;
   expiresIn: number;
+  /**
+   * «Mantener sesión iniciada» (US-269): decide si la cookie del refresh lleva
+   * `maxAge`. Viaja con los tokens porque la rotación lo lee de la fila anterior,
+   * y así la ruta no tiene que volver a preguntárselo al cliente en cada refresco.
+   */
+  persistent: boolean;
 }
 
 /** Sesión emitida internamente: usuario + tokens (con refresh para la cookie). */
@@ -106,7 +112,7 @@ export class AuthService {
   }
 
   /** Firma access + refresh y persiste el hash del refresh token. */
-  private async issueTokens(user: DbUser): Promise<IssuedTokens> {
+  private async issueTokens(user: DbUser, persistent: boolean): Promise<IssuedTokens> {
     const accessTtl = await this.accessTtl();
     const accessToken = this.app.jwt.sign(
       {
@@ -133,10 +139,11 @@ export class AuthService {
         userId: user.id,
         tokenHash: hashToken(refreshToken),
         expiresAt: new Date(Date.now() + env.refreshTokenTtl * 1000),
+        persistent,
       },
     });
 
-    return { accessToken, refreshToken, expiresIn: accessTtl };
+    return { accessToken, refreshToken, expiresIn: accessTtl, persistent };
   }
 
   /** Lista las sesiones activas (refresh tokens no revocados ni expirados) de un usuario. */
@@ -277,11 +284,24 @@ export class AuthService {
    * No es un access token (su `type` no es `'access'`), así que `authenticate` lo rechaza.
    * Lleva un `jti` único para poder hacerlo de un solo uso (anti-replay, US-88).
    */
-  issueMfaPendingToken(userId: string): string {
+  issueMfaPendingToken(userId: string, persistent = true): string {
     return this.app.jwt.sign(
-      { sub: userId, type: 'mfa-pending', jti: randomUUID() },
+      // `keep` lleva la elección de «Mantener sesión iniciada» hecha en el paso de
+      // la contraseña hasta el que emite la sesión (US-269). Sin viajar aquí, quien
+      // tiene passkey vería su elección ignorada: el segundo paso no la conoce.
+      { sub: userId, type: 'mfa-pending', jti: randomUUID(), keep: persistent },
       { expiresIn: MFA_PENDING_TTL_SEC },
     );
+  }
+
+  /**
+   * Lee la elección de «Mantener sesión iniciada» de un token `mfa-pending`. No lo
+   * consume (eso lo hace `consumeMfaPendingToken`). Un token viejo sin el claim
+   * —emitido antes de US-269, dentro de su ventana de 120 s— cae a `true`, que es
+   * el comportamiento anterior.
+   */
+  keepSignedInFromMfaToken(token: string): boolean {
+    return this.decodeMfaPendingToken(token).keep !== false;
   }
 
   /**
@@ -330,7 +350,7 @@ export class AuthService {
    * Emite una sesión (user + tokens) para un usuario ya autenticado por otro medio
    * (contraseña verificada, o passkey WebAuthn tras el 2FA).
    */
-  async issueSessionForUserId(userId: string): Promise<IssuedSession> {
+  async issueSessionForUserId(userId: string, persistent = true): Promise<IssuedSession> {
     const row = (await this.app.prisma.user.findUnique({ where: { id: userId } })) as DbUser | null;
     if (!row) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');
@@ -348,12 +368,12 @@ export class AuthService {
     // Registra el último acceso efectivo (US-101): visible para el admin en la
     // gestión de usuarios. Se marca al emitir sesión (login/2FA/setup), no al refrescar.
     await this.app.prisma.user.update({ where: { id: userId }, data: { lastLoginAt: new Date() } });
-    return { user: toUser(row), tokens: await this.issueTokens(row) };
+    return { user: toUser(row), tokens: await this.issueTokens(row, persistent) };
   }
 
-  async login(email: string, password: string): Promise<IssuedSession> {
+  async login(email: string, password: string, persistent = true): Promise<IssuedSession> {
     const user = await this.verifyCredentials(email, password);
-    return this.issueSessionForUserId(user.id);
+    return this.issueSessionForUserId(user.id, persistent);
   }
 
   /**
@@ -441,7 +461,10 @@ export class AuthService {
       throw new AuthError('AUTH_REFRESH_REUSE', 'Refresh token reutilizado; sesiones revocadas');
     }
 
-    return this.issueTokens(user);
+    // La elección de «Mantener sesión iniciada» se hereda de la fila que se acaba
+    // de rotar: si no, el primer refresco convertiría en persistente una sesión
+    // que el usuario pidió que muriera al cerrar el navegador.
+    return this.issueTokens(user, stored.persistent);
   }
 
   /** Revoca un refresh token (logout). Idempotente. */

@@ -20,6 +20,7 @@ export const HIGH_PRIORITY_AUDIT_ACTIONS = [
   'auth.login_failed',
   'auth.login_locked',
   'auth.refresh_reuse',
+  'auth.recovery_used',
   'device.block',
   'inventory.unknown_device',
 ] as const;
@@ -65,6 +66,11 @@ export function pushNotificationForAudit(
       return { title: 'Cuenta bloqueada', body: 'Demasiados intentos de login fallidos', url: '/settings', audience: 'admin' };
     case 'auth.refresh_reuse':
       return { title: 'Posible robo de sesión', body: 'Refresh token reutilizado; sesiones revocadas', url: '/settings', audience: 'admin' };
+    // US-269: alguien ha entrado SIN la contraseña, con un código de recuperación.
+    // Es el aviso más importante de los tres de auth: un login fallido es ruido
+    // cotidiano, pero esto es un acceso concedido por una vía excepcional.
+    case 'auth.recovery_used':
+      return { title: 'Acceso con código de recuperación', body: `Alguien entró sin contraseña desde ${ip ?? 'IP desconocida'}`, url: '/settings', audience: 'admin' };
     case 'device.block':
       return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory', audience: 'admin' };
     case 'inventory.unknown_device':

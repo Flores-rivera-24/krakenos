@@ -71,14 +71,23 @@ energía, grabaciones de cámara o backups viejos en disco.
 **Síntoma:** no puedes entrar como administrador y no hay otro admin activo.
 
 **Realidad (sin inventar features):** KrakenOS **no** tiene un "olvidé mi contraseña" por email
-—no depende de la nube— ni un endpoint de reset: eso sería una puerta abierta en un panel de
-administración de red. La recuperación se hace **en el servidor**, donde ya tienes control total.
+—no depende de la nube, y el correo saliente es opcional y viene apagado— ni un endpoint que
+resetee la contraseña sin credenciales: eso sería una puerta abierta en un panel de administración
+de red. Lo que sí hay es una vía **con una credencial que tú guardaste antes**: los códigos de
+recuperación.
 
 **Vías de recuperación, en orden:**
 
-1. **Otro admin.** Si existe otro usuario con rol admin activo, que entre y te resetee la
+1. **Tu código de recuperación.** En la pantalla de acceso, **«¿No puedes entrar?»** → introduce tu
+   correo y uno de los diez códigos que generaste en **Ajustes → Seguridad**. Entras sin la
+   contraseña y la cambias en **Ajustes → Cuenta**. Cada código sirve **una sola vez**, el intento
+   cuenta para el bloqueo por intentos fallidos igual que una contraseña, y el acceso queda
+   **auditado y avisa por push** — si no fuiste tú, hay que enterarse.
+   > Si nunca generaste códigos, esta vía no existe para ti: genéralos **ahora**, antes de
+   > necesitarlos. Es lo único de esta lista que no requiere ni otro admin ni entrar al servidor.
+2. **Otro admin.** Si existe otro usuario con rol admin activo, que entre y te resetee la
    contraseña desde **Ajustes → Usuarios**.
-2. **`reset-admin` en el servidor**. Crea el admin si no existe, o resetea el que hay
+3. **`reset-admin` en el servidor**. Crea el admin si no existe, o resetea el que hay
    —contraseña, rol `admin` y cuenta **activa**— y revoca sus sesiones abiertas:
 
    ```bash
@@ -90,7 +99,7 @@ administración de red. La recuperación se hace **en el servidor**, donde ya ti
    Imprime la contraseña temporal por pantalla; cámbiala al entrar (Ajustes → Cuenta). Corre con
    el **usuario del servicio** para no dejar ficheros propiedad de root. No hace falta parar el
    agente. En Docker: `docker compose exec krakenos node dist/reset-admin.js tu@correo.com`.
-3. **Restaurar** un backup `.kbk` anterior a la pérdida (§1), si en él recuerdas la contraseña.
+4. **Restaurar** un backup `.kbk` anterior a la pérdida (§1), si en él recuerdas la contraseña.
 
 > Lo que **no** funciona (y antes esta guía sugería): reejecutar `pnpm db:seed`. El seed hace un
 > `upsert` con `update: {}`, así que si el usuario ya existe **no cambia nada**; y sobre una base

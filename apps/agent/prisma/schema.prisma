@@ -36,8 +36,60 @@ model User {
   presenceEvents PresenceEvent[]
   /// Horarios de acceso definidos **por persona** (US-240); se replican a sus dispositivos.
   accessSchedules AccessSchedule[]
+  /// Invitaciones que ESTE usuario ha emitido (US-272).
+  invitationsSent Invitation[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
+}
+
+/// Invitación de un solo uso para dar de alta a alguien de la casa (US-272).
+///
+/// Lo que sustituye: el admin creaba la cuenta tecleando ÉL una contraseña y se la
+/// mandaba a la persona por WhatsApp — la contraseña más reutilizada de la casa
+/// viajando por un chat, y encima conocida por dos personas desde el minuto cero.
+/// Con la invitación, la contraseña la elige quien la va a usar y nadie más la ve.
+///
+/// Solo se guarda el **hash** del token, como con los refresh y los códigos de
+/// recuperación: quien lea la base no puede usar las invitaciones pendientes.
+model Invitation {
+  id          String    @id @default(cuid())
+  /// Hash sha256 del token; el texto plano se enseña UNA vez al crearla.
+  tokenHash   String    @unique
+  email       String
+  displayName String
+  role        String    @default("member")
+  /// Caducidad del acceso de la cuenta que se cree (invitados, US-179); null = sin caducidad.
+  accountExpiresAt DateTime?
+  /// Caducidad de la INVITACIÓN. Distinta de `accountExpiresAt`: un enlace que no
+  /// caduca es una puerta abierta en un chat para siempre.
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+}
+
+/// Solicitud de acceso al hogar hecha desde la propia pantalla de entrada (US-273).
+///
+/// Existe para que la pantalla deje de ser un callejón sin abrir la puerta: el
+/// autorregistro está descartado a propósito —KrakenOS controla firewall, cámaras y
+/// cerraduras, y hasta un rol `viewer` ve el inventario de red entero— así que quien
+/// decide el rol, y si entra siquiera, es siempre un administrador.
+model AccessRequest {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  displayName String
+  /// 'pending' | 'approved' | 'rejected'
+  status      String    @default("pending")
+  /// Nota opcional de quien solicita («soy el del cuarto de arriba»).
+  note        String?
+  decidedAt   DateTime?
+  decidedById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
 }
 
 /// Desafío WebAuthn temporal por ceremonia (US-82). Una fila por ceremonia
@@ -117,6 +169,12 @@ model RefreshToken {
   /// Distingue un token revocado por rotación de uno revocado por logout/admin:
   /// solo el reuso de un token rotado dispara la detección de reuso (US-78, F4).
   rotatedAt DateTime?
+  /// «Mantener sesión iniciada» (US-269). Decide si la cookie del refresh lleva
+  /// `maxAge` (sobrevive a cerrar el navegador) o es de sesión (muere con él).
+  /// Vive AQUÍ y no en una cookie aparte porque el servidor no puede distinguir
+  /// una cookie de sesión de una persistente cuando llega: sin esta columna, la
+  /// elección se perdería en la primera rotación de `/auth/refresh`.
+  persistent Boolean @default(true)
   expiresAt DateTime
   createdAt DateTime @default(now())
 
