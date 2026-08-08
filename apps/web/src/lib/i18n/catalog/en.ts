@@ -104,6 +104,18 @@ export const en: Record<TranslationKey, string> = {
   'login.backup.invalid': 'Invalid or already used code.',
   'login.backup.prompt': 'Lost your device? Use a recovery code',
 
+  // --- Signing in without the password (US-266) ---
+  'login.recover.prompt': "Can't sign in?",
+  'login.recover.title': 'Sign in without your password',
+  'login.recover.intro':
+    'If you saved your recovery codes, use one to sign in and change your password under Settings → Account. Each code works once.',
+  'login.recover.submit': 'Sign in with the code',
+  'login.recover.invalid': 'Incorrect email or code.',
+  'login.recover.noCodes': "Don't have any codes?",
+  'login.recover.noCodesHelp':
+    'Another administrator can set a new password for you under Settings → Users. If you are the only administrator, it has to be done on the server: the recovery guide explains how.',
+  'login.recover.back': 'Back',
+
   // --- Public landing (US-266) ---
   'welcome.eyebrow': 'KrakenOS · Home server',
   'welcome.title': 'Your network stops being a black box.',

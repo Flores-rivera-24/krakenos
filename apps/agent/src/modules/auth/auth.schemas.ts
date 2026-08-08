@@ -66,6 +66,31 @@ export const loginSchema = {
   },
 } as const;
 
+/**
+ * Entrar con un código de recuperación, sin contraseña (US-266). El código tiene
+ * la forma `a1b2-c3d4-e5f6` que genera `BackupCodeService`; el rango de longitud
+ * es holgado a propósito para no convertir el schema en un oráculo del formato.
+ */
+export const recoverSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['email', 'code'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 254 },
+      code: { type: 'string', minLength: 8, maxLength: 64 },
+    },
+  },
+  response: {
+    200: {
+      type: 'object',
+      properties: { user: userResponse, tokens: tokensResponse },
+      required: ['user', 'tokens'],
+    },
+    401: errorResponse,
+  },
+} as const;
+
 // El refresh token llega por la cookie httpOnly (US-91), no por el cuerpo.
 export const refreshSchema = {
   response: {

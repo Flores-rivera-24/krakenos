@@ -43,6 +43,7 @@ type PasskeyStatus = 'idle' | 'verifying' | 'cancelled' | 'error';
 export function LoginPage() {
   const t = useT();
   const login = useAuthStore((s) => s.login);
+  const recoverWithCode = useAuthStore((s) => s.recoverWithCode);
   const setSession = useAuthStore((s) => s.setSession);
   const navigate = useNavigate();
 
@@ -60,7 +61,7 @@ export function LoginPage() {
   // 2FA WebAuthn (US-50/US-51): tras un login con passkey, el formulario da paso a la
   // verificación con el dispositivo. Se guarda el token efímero `mfa-pending` que
   // acredita la contraseña ya superada para reenviarlo al paso de passkey.
-  const [stage, setStage] = useState<'form' | 'webauthn'>('form');
+  const [stage, setStage] = useState<'form' | 'webauthn' | 'recover'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingMfaToken, setPendingMfaToken] = useState('');
   const [passkeyStatus, setPasskeyStatus] = useState<PasskeyStatus>('idle');
@@ -70,6 +71,13 @@ export function LoginPage() {
   const [backupCode, setBackupCode] = useState('');
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupError, setBackupError] = useState<string | null>(null);
+
+  // Entrar sin la contraseña con un código de recuperación (US-266). Es un camino
+  // distinto del de arriba: aquel completa un 2FA cuya contraseña YA se verificó;
+  // este sustituye a la contraseña.
+  const [recoverCode, setRecoverCode] = useState('');
+  const [recoverBusy, setRecoverBusy] = useState(false);
+  const [recoverError, setRecoverError] = useState<string | null>(null);
 
   // Datos públicos (cargan en paralelo, no bloquean el formulario).
   const [homeName, setHomeName] = useState<string | null>(null);
@@ -178,6 +186,23 @@ export function LoginPage() {
     }
   };
 
+  const runRecover = async (e: FormEvent) => {
+    e.preventDefault();
+    setRecoverBusy(true);
+    setRecoverError(null);
+    try {
+      await recoverWithCode(email, recoverCode);
+      navigate('/');
+    } catch {
+      // Un solo mensaje para «ese correo no existe» y «ese código no vale»: el
+      // servidor tampoco los distingue, y distinguirlos aquí convertiría la
+      // pantalla en un oráculo para saber qué cuentas hay en la casa.
+      setRecoverError(t('login.recover.invalid'));
+    } finally {
+      setRecoverBusy(false);
+    }
+  };
+
   const healthLabel =
     health === 'online'
       ? t('login.health.online')
@@ -214,7 +239,7 @@ export function LoginPage() {
             <span className="text-kr-lg font-semibold tracking-tight text-kr-primary">KrakenOS</span>
           </div>
 
-          {stage === 'webauthn' ? (
+          {stage === 'webauthn' && (
             <div className="space-y-4">
               <Fingerprint size={30} className="text-kr-accent" />
               <h1 className="text-kr-xl font-medium text-kr-primary">{t('login.mfa.title')}</h1>
@@ -279,7 +304,9 @@ export function LoginPage() {
                 </button>
               )}
             </div>
-          ) : (
+          )}
+
+          {stage === 'form' && (
             <form onSubmit={onSubmit} className="space-y-4">
               <div className="mb-6 space-y-1">
                 <h1 className="text-kr-2xl font-semibold tracking-tight text-kr-primary">
@@ -352,6 +379,86 @@ export function LoginPage() {
                   {error}
                 </p>
               )}
+
+              {/* La salida que la pantalla no tenía: quien perdía la contraseña se
+                  quedaba mirando el formulario, sin saber que existían vías. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setRecoverError(null);
+                  setStage('recover');
+                }}
+                className="text-kr-xs text-kr-link underline hover:text-kr-primary"
+              >
+                {t('login.recover.prompt')}
+              </button>
+            </form>
+          )}
+
+          {stage === 'recover' && (
+            <form onSubmit={(e) => void runRecover(e)} className="space-y-4">
+              <div className="mb-6 space-y-1">
+                <h1 className="text-kr-xl font-medium text-kr-primary">
+                  {t('login.recover.title')}
+                </h1>
+                <p className="text-kr-sm text-kr-secondary">{t('login.recover.intro')}</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="recover-email" className="text-kr-secondary">
+                  {t('login.email')}
+                </Label>
+                <Input
+                  id="recover-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="recover-code" className="text-kr-secondary">
+                  {t('login.backup.label')}
+                </Label>
+                <Input
+                  id="recover-code"
+                  value={recoverCode}
+                  onChange={(e) => setRecoverCode(e.target.value)}
+                  placeholder="xxxx-xxxx-xxxx"
+                  autoComplete="one-time-code"
+                  autoCapitalize="none"
+                  required
+                />
+              </div>
+
+              <Button type="submit" className="w-full" disabled={recoverBusy}>
+                {recoverBusy ? t('login.verifying') : t('login.recover.submit')}
+              </Button>
+
+              {recoverError && (
+                <p role="alert" className="text-[13px] text-danger">
+                  {recoverError}
+                </p>
+              )}
+
+              {/* Sin códigos guardados, el camino NO está en esta pantalla. Decirlo
+                  es la diferencia entre un callejón y una instrucción. */}
+              <div className="rounded-lg border border-kr bg-kr-elevated p-3">
+                <p className="text-kr-sm font-medium text-kr-primary">
+                  {t('login.recover.noCodes')}
+                </p>
+                <p className="mt-1 text-kr-xs text-kr-secondary">{t('login.recover.noCodesHelp')}</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setStage('form')}
+                className="text-kr-xs text-kr-link underline hover:text-kr-primary"
+              >
+                {t('login.recover.back')}
+              </button>
             </form>
           )}
 

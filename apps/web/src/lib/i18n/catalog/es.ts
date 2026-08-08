@@ -110,6 +110,21 @@ export const es = {
   'login.backup.invalid': 'Código inválido o ya usado.',
   'login.backup.prompt': '¿Perdiste tu dispositivo? Usar un código de recuperación',
 
+  // --- Entrar sin la contraseña (US-266) ---
+  // La pantalla no mencionaba siquiera que hubiera salida, así que quien perdía la
+  // contraseña se quedaba mirando un formulario. El texto nombra las tres vías
+  // reales y no promete un correo de recuperación, que no existe.
+  'login.recover.prompt': '¿No puedes entrar?',
+  'login.recover.title': 'Entrar sin la contraseña',
+  'login.recover.intro':
+    'Si guardaste tus códigos de recuperación, usa uno para entrar y cambia la contraseña en Ajustes → Cuenta. Cada código sirve una sola vez.',
+  'login.recover.submit': 'Entrar con el código',
+  'login.recover.invalid': 'Correo o código incorrectos.',
+  'login.recover.noCodes': '¿No tienes códigos?',
+  'login.recover.noCodesHelp':
+    'Otro administrador puede darte una contraseña nueva en Ajustes → Usuarios. Si eres el único administrador, hay que hacerlo desde el servidor: la guía de recuperación explica cómo.',
+  'login.recover.back': 'Volver',
+
   // --- Portada pública (US-266) ---
   // Los tres reclamos son hechos comprobables del repositorio, no medidas de una
   // casa que quien lee todavía no tiene. En particular NO se dice «sin cuentas de

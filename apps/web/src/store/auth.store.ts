@@ -27,6 +27,11 @@ interface AuthState {
    * sitio.
    */
   login: (email: string, password: string, keepSignedIn?: boolean) => Promise<LoginResult>;
+  /**
+   * Entrar con un código de recuperación, sin la contraseña (US-266). Emite una
+   * sesión completa, así que actualiza el store igual que `login`.
+   */
+  recoverWithCode: (email: string, code: string) => Promise<void>;
   /** Establece la sesión a partir de una respuesta de login (wizard o 2FA WebAuthn). */
   setSession: (data: LoginResponse) => void;
   /** Intenta refrescar el access token. Devuelve `true` si lo consigue. */
@@ -107,6 +112,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
       set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null });
     }
     return data;
+  },
+
+  recoverWithCode: async (email, code) => {
+    const data = await postJson<LoginResponse>('/auth/recover', { email, code });
+    set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null });
   },
 
   setSession: (data) => set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null }),

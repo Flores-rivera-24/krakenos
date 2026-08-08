@@ -171,6 +171,67 @@ describe('LoginPage', () => {
     expect(navigate).toHaveBeenCalledWith('/');
   });
 
+  /**
+   * US-266. Antes no había NADA aquí: quien perdía la contraseña se quedaba
+   * mirando el formulario, sin saber que existían vías de vuelta.
+   */
+  describe('entrar sin la contraseña (US-266)', () => {
+    async function abrirPanel(user: ReturnType<typeof userEvent.setup>) {
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: '¿No puedes entrar?' }));
+    }
+
+    it('el código de recuperación emite sesión y entra', async () => {
+      const recoverWithCode = vi.fn().mockResolvedValue(undefined);
+      useAuthStore.setState({ recoverWithCode });
+      const user = userEvent.setup();
+      await abrirPanel(user);
+
+      await user.type(screen.getByLabelText('Correo electrónico'), 'yo@krakenos.test');
+      await user.type(screen.getByLabelText('Código de recuperación'), 'aaaa-bbbb-cccc');
+      await user.click(screen.getByRole('button', { name: 'Entrar con el código' }));
+
+      await waitFor(() =>
+        expect(recoverWithCode).toHaveBeenCalledWith('yo@krakenos.test', 'aaaa-bbbb-cccc'),
+      );
+      expect(navigate).toHaveBeenCalledWith('/');
+    });
+
+    it('un código incorrecto se anuncia sin decir si el correo existe', async () => {
+      useAuthStore.setState({ recoverWithCode: vi.fn().mockRejectedValue(new HttpError(401, 'no')) });
+      const user = userEvent.setup();
+      await abrirPanel(user);
+
+      await user.type(screen.getByLabelText('Correo electrónico'), 'yo@krakenos.test');
+      await user.type(screen.getByLabelText('Código de recuperación'), 'mal-mal-mal');
+      await user.click(screen.getByRole('button', { name: 'Entrar con el código' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Correo o código incorrectos.');
+      expect(navigate).not.toHaveBeenCalledWith('/');
+    });
+
+    /**
+     * Sin códigos guardados el camino NO está en esta pantalla, y decirlo es la
+     * diferencia entre un callejón sin salida y una instrucción. El panel tiene
+     * que nombrar las dos vías reales: otro admin, o el servidor.
+     */
+    it('dice qué hacer si no se guardaron códigos', async () => {
+      const user = userEvent.setup();
+      await abrirPanel(user);
+      expect(screen.getByText('¿No tienes códigos?')).toBeInTheDocument();
+      expect(screen.getByText(/Ajustes → Usuarios/)).toBeInTheDocument();
+      expect(screen.getByText(/desde el servidor/)).toBeInTheDocument();
+    });
+
+    it('se puede volver al formulario de contraseña', async () => {
+      const user = userEvent.setup();
+      await abrirPanel(user);
+      expect(screen.queryByLabelText('Contraseña')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Volver' }));
+      expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
+    });
+  });
+
   it('muestra el nombre del hogar de system/info', async () => {
     renderPage();
     expect(await screen.findByText('Casa de Test')).toBeInTheDocument();

@@ -266,6 +266,11 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       // Públicas (sin token; probadas en sus módulos).
       'POST /api/setup/init',
       'POST /api/auth/login',
+      // US-266. Pública por definición: es el camino de quien NO puede
+      // autenticarse. Su control de acceso es el código de un solo uso, con el
+      // mismo límite por IP y lockout por cuenta que el login, y está probada en
+      // `auth.routes.test.ts`.
+      'POST /api/auth/recover',
       'POST /api/auth/refresh',
       'POST /api/auth/logout',
       'POST /api/webauthn/authenticate/options',
