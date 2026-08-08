@@ -31,7 +31,7 @@ export function VpnPage() {
   const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
   const load = () =>
-    Promise.all([api.get<VpnStatus>('/vpn/status'), api.get<VpnPeer[]>('/vpn/peers')])
+    Promise.all([api.get<VpnStatus>('/vpn/status'), api.getList<VpnPeer>('/vpn/peers')])
       .then(([s, p]) => {
         setStatus(s);
         setPeers(p);

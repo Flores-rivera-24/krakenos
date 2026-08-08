@@ -35,7 +35,7 @@ export function roomGlyph(icon: RoomIcon): string {
   return GLYPH_BY_ICON.get(icon) ?? '🏠';
 }
 
-export const listRooms = () => api.get<RoomWithState[]>('/rooms');
+export const listRooms = () => api.getList<RoomWithState>('/rooms');
 export const createRoom = (body: CreateRoomRequest) => api.post<Room>('/rooms', body);
 export const updateRoom = (id: string, body: UpdateRoomRequest) =>
   api.patch<Room>(`/rooms/${id}`, body);

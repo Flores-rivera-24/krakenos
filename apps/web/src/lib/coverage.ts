@@ -18,7 +18,7 @@ import { api } from '@/lib/api';
  * de señal por propagación RF y survey de medición real).
  */
 
-export const listFloorPlans = (): Promise<FloorPlan[]> => api.get<FloorPlan[]>('/coverage/floorplans');
+export const listFloorPlans = (): Promise<FloorPlan[]> => api.getList<FloorPlan>('/coverage/floorplans');
 
 export const getFloorPlan = (id: string): Promise<FloorPlan> =>
   api.get<FloorPlan>(`/coverage/floorplans/${id}`);
@@ -36,10 +36,10 @@ export const getPredictedHeatmap = (id: string, band: WifiBand): Promise<Coverag
   api.get<CoverageHeatmap>(`/coverage/floorplans/${id}/heatmap?band=${encodeURIComponent(band)}`);
 
 export const listPlaceableAccessPoints = (): Promise<PlaceableAccessPoint[]> =>
-  api.get<PlaceableAccessPoint[]>('/coverage/access-points');
+  api.getList<PlaceableAccessPoint>('/coverage/access-points');
 
 export const listScans = (floorPlanId: string): Promise<SurveyScan[]> =>
-  api.get<SurveyScan[]>(`/coverage/floorplans/${floorPlanId}/scans`);
+  api.getList<SurveyScan>(`/coverage/floorplans/${floorPlanId}/scans`);
 
 export const createScan = (
   floorPlanId: string,

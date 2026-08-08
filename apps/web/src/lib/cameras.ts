@@ -20,7 +20,7 @@ import { useAuthStore } from '@/store/auth.store';
  * **nunca** la devuelve: por eso `create`/`update` resuelven a `ManagedCamera`
  * (sin URL) y la edición deja el campo en blanco para "conservar la actual".
  */
-export const listCameras = (): Promise<Camera[]> => api.get<Camera[]>('/cameras');
+export const listCameras = (): Promise<Camera[]> => api.getList<Camera>('/cameras');
 
 export const createCamera = (body: CreateCameraRequest): Promise<ManagedCamera> =>
   api.post<ManagedCamera>('/cameras', body);
@@ -63,11 +63,11 @@ export const updateMotionConfig = (
 
 /** Eventos de movimiento recientes (con snapshot), opcionalmente por cámara. */
 export const listMotionEvents = (cameraId?: string): Promise<MotionEvent[]> =>
-  api.get<MotionEvent[]>(`/cameras/motion/events${cameraId ? `?cameraId=${cameraId}` : ''}`);
+  api.getList<MotionEvent>(`/cameras/motion/events${cameraId ? `?cameraId=${cameraId}` : ''}`);
 
 /** Clips grabados (timeline), opcionalmente por cámara (US-187). */
 export const listRecordings = (cameraId?: string): Promise<Recording[]> =>
-  api.get<Recording[]>(`/cameras/recordings${cameraId ? `?cameraId=${cameraId}` : ''}`);
+  api.getList<Recording>(`/cameras/recordings${cameraId ? `?cameraId=${cameraId}` : ''}`);
 
 export const deleteRecording = (id: string): Promise<void> =>
   api.del<void>(`/cameras/recordings/${id}`);

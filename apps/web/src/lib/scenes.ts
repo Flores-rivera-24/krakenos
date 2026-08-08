@@ -43,7 +43,7 @@ export const SCENE_TEMPLATES: SceneTemplate[] = [
   { name: 'Salir de casa', icon: 'leave', preset: { on: false } },
 ];
 
-export const listScenes = () => api.get<Scene[]>('/scenes');
+export const listScenes = () => api.getList<Scene>('/scenes');
 export const createScene = (body: CreateSceneRequest) => api.post<Scene>('/scenes', body);
 export const updateScene = (id: string, body: UpdateSceneRequest) =>
   api.patch<Scene>(`/scenes/${id}`, body);

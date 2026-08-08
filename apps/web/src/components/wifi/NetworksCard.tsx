@@ -32,8 +32,8 @@ export function NetworksCard() {
   useEffect(() => {
     let active = true;
     void Promise.all([
-      api.get<AccessPoint[]>('/wifi/access-points'),
-      api.get<WifiNetworkInfo[]>('/wifi/networks'),
+      api.getList<AccessPoint>('/wifi/access-points'),
+      api.getList<WifiNetworkInfo>('/wifi/networks'),
     ])
       .then(([a, n]) => {
         if (!active) return;
@@ -54,7 +54,7 @@ export function NetworksCard() {
   };
 
   const showClients = async (net: WifiNetworkInfo) => {
-    const clients = await api.get<WifiClient[]>(`/wifi/networks/${net.id}/clients`);
+    const clients = await api.getList<WifiClient>(`/wifi/networks/${net.id}/clients`);
     setClientsOf({ net, clients });
   };
 

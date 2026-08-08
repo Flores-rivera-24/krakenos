@@ -3,7 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), put: vi.fn() }));
+const apiMock = vi.hoisted(() => {
+  // `getList` delega en `get` para que los mocks por ruta que ya existen
+  // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
+  const get = vi.fn();
+  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), put: vi.fn() };
+});
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 const socketMock = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn(), emit: vi.fn() }));

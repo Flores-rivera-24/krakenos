@@ -844,7 +844,7 @@ export function AutomationsPage() {
 
   useEffect(() => {
     reload();
-    void api.get<IotDevice[]>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
+    void api.getList<IotDevice>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
     void api
       .get<Device[]>('/inventory/devices')
       .then(setNetworkDevices)
@@ -863,7 +863,7 @@ export function AutomationsPage() {
   // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
   useEffect(() => {
     if (!isAdmin) return;
-    void api.get<UserSummary[]>('/users').then(setUsers).catch(() => setUsers([]));
+    void api.getList<UserSummary>('/users').then(setUsers).catch(() => setUsers([]));
   }, [isAdmin]);
 
   const ctx: NameContext = useMemo(

@@ -102,8 +102,38 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 }
 
+/**
+ * GET de una **lista**, con la forma comprobada de verdad.
+ *
+ * `api.get<T[]>()` es un **cast**: el genérico no comprueba nada en runtime, así
+ * que cualquier respuesta 200 con otra forma —`{}`, `null`, un objeto de error
+ * que el borde no clasificó— se asigna al estado como si fuera la lista y
+ * revienta más tarde, en el `.map()` de un componente que no tiene nada que ver
+ * con la causa. Ya pasó una vez (`TypeError: t is not iterable` en el
+ * dashboard), y el arreglo de entonces cerró la vía de entrada conocida —un
+ * cuerpo ilegible ya no se entrega como dato— pero dejó 33 sitios sin comprobar
+ * la forma.
+ *
+ * Aquí falla **donde está el problema** y con el nombre del endpoint en el
+ * error, en vez de 200 líneas más allá. Y falla en vez de devolver `[]`: una
+ * lista vacía inventada le diría al usuario «no tienes dispositivos» cuando lo
+ * que pasa es que el servidor contestó algo que no entendemos, que es justo la
+ * clase de mentira que el resto del producto se cuida de no contar.
+ *
+ * El `status` que viaja es el real (la respuesta **fue** un 200): lo que falla
+ * no es el transporte sino el contrato, y eso lo nombra el `code`.
+ */
+async function getList<T>(path: string): Promise<T[]> {
+  const data = await request<unknown>(path, { method: 'GET' });
+  if (!Array.isArray(data)) {
+    throw new ApiRequestError(200, { code: 'RESPUESTA_NO_ES_LISTA', message: '' });
+  }
+  return data as T[];
+}
+
 export const api = {
   get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  getList,
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),

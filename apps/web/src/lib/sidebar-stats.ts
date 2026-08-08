@@ -57,8 +57,8 @@ export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
     const [health, system, firewall, iot] = await Promise.all([
       fetchHealth(),
       api.get<SystemStats>('/system/stats').catch(() => null),
-      api.get<FirewallRule[]>('/firewall/rules').catch(() => null),
-      api.get<IotDevice[]>('/iot/devices').catch(() => null),
+      api.getList<FirewallRule>('/firewall/rules').catch(() => null),
+      api.getList<IotDevice>('/iot/devices').catch(() => null),
     ]);
     setStats((prev) => ({
       driver: health?.driver ?? prev.driver,
