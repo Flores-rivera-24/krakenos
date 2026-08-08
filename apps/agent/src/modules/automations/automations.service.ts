@@ -17,9 +17,11 @@ import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import {
   describeEvent,
+  describeSchedule,
   dueRulesForEvent,
-  dueTimeRules,
+  dueScheduledRules,
   eventSubject,
+  type HomeLocation,
 } from '../../automations/engine.js';
 import type { IotWatcher } from '../../automations/iot-watcher.js';
 import type { AccessScheduleService } from '../access/access.service.js';
@@ -89,6 +91,12 @@ export interface AutomationDeps {
   watcher?: IotWatcher;
   /** Envío de la acción `notify`; por defecto push a todos (US-45). */
   notify?: (title: string, body: string) => Promise<void>;
+  /**
+   * Ubicación del hogar para las reglas solares (US-256). Inyectable como el
+   * resto de bordes con I/O: así el test puede hacerla fallar sin espiar el
+   * cliente de Prisma. Por defecto se lee de `Setting`.
+   */
+  homeLocation?: () => Promise<HomeLocation | null>;
 }
 
 /**
@@ -183,16 +191,35 @@ export class AutomationService {
     }
   }
 
-  /** Barrido por minuto para los disparadores de hora (cruce, como US-168). */
+  /**
+   * Ubicación del hogar desde `Setting`, o `null` si no está configurada o es
+   * inválida. Solo la necesitan las reglas solares; sin ella no disparan y la UI
+   * lo declara antes de dejar guardar una.
+   */
+  private async homeLocation(): Promise<HomeLocation | null> {
+    if (this.deps.homeLocation) return this.deps.homeLocation();
+    const rows = await this.app.prisma.setting.findMany({
+      where: { key: { in: ['homeLatitude', 'homeLongitude'] } },
+    });
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    const lat = Number(map.get('homeLatitude'));
+    const lon = Number(map.get('homeLongitude'));
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+    return { lat, lon };
+  }
+
+  /** Barrido por minuto para los disparadores de calendario (hora fija y sol). */
   async tick(now: Date = new Date()): Promise<void> {
     const prev = this.prevTick;
-    // La lectura va ANTES de mover la ventana (US-229 / AUD3-18): si falla, el
-    // minuto se reintenta en vez de quedarse sin disparar y sin error visible.
+    // Las lecturas van ANTES de mover la ventana (US-229 / AUD3-18): si fallan,
+    // el minuto se reintenta en vez de quedarse sin disparar y sin error visible.
     const rules = await this.list();
+    const home = await this.homeLocation();
     this.prevTick = now;
     if (!prev) return; // primer barrido: fija la base, no dispara nada atrasado
 
-    for (const rule of dueTimeRules(rules, prev, now, this.lastFired)) {
+    for (const rule of dueScheduledRules(rules, prev, now, this.lastFired, home)) {
       await this.fire(rule, null, now);
     }
   }
@@ -215,7 +242,7 @@ export class AutomationService {
       }
     }
 
-    const summary = event ? describeEvent(event) : 'hora programada';
+    const summary = event ? describeEvent(event) : describeSchedule(rule);
     const ok = failures.length === 0;
     try {
       await this.app.prisma.automationRun.create({

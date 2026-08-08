@@ -6,6 +6,13 @@ import type {
   WeatherMetric,
 } from '@krakenos/types';
 import { WEATHER_UNITS } from '@krakenos/types';
+import { sunEventLocalMinutes } from '../iot/solar.js';
+
+/** Ubicación del hogar para el cálculo solar (grados), o `null` si no está configurada. */
+export interface HomeLocation {
+  lat: number;
+  lon: number;
+}
 
 /** Nombre de cada magnitud en el log de ejecuciones (español, como el resto). */
 const DESCRIPCION_METRICA: Record<WeatherMetric, string> = {
@@ -61,8 +68,12 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
         // llevan `label`; una regla con label NO dispara con frame-diff local.
         (!trigger.label || event.label === trigger.label)
       );
+    // Los disparadores de calendario no los produce ningún evento del bus: van
+    // por el barrido (`dueScheduledRules`), que es quien conoce la ventana
+    // (prev, now] y la ubicación del hogar.
     case 'time':
-      return false; // los disparadores de hora van por el barrido (dueTimeRules)
+    case 'sun':
+      return false;
     case 'person-arrived':
       return (
         event.type === 'person-arrived' && (!trigger.userId || event.userId === trigger.userId)
@@ -86,6 +97,18 @@ export function passesCondition(condition: AutomationCondition | undefined, now:
   return from <= to ? minute >= from && minute < to : minute >= from || minute < to;
 }
 
+/** Minuto del día acotado a [0,1439]: un desfase solar no puede saltar de día. */
+function clampMinute(minute: number): number {
+  return Math.min(1439, Math.max(0, minute));
+}
+
+/** Instante local del minuto `minute` en la fecha de `base`. */
+function atMinuteOf(base: Date, minute: number): Date {
+  const at = new Date(base);
+  at.setHours(Math.floor(minute / 60), minute % 60, 0, 0);
+  return at;
+}
+
 /** ¿Un disparador `time` cruza su instante programado en (prev, now]? */
 export function timeTriggerDue(
   trigger: Extract<AutomationTrigger, { type: 'time' }>,
@@ -95,10 +118,51 @@ export function timeTriggerDue(
   // El instante programado puede caer en la fecha de `prev` o en la de `now`
   // (el barrido puede cruzar medianoche); se prueban ambas.
   for (const base of [prev, now]) {
-    const at = new Date(base);
-    at.setHours(Math.floor(trigger.minute / 60), trigger.minute % 60, 0, 0);
+    const at = atMinuteOf(base, trigger.minute);
     if (trigger.days.includes(at.getDay()) && at > prev && at <= now) return true;
   }
+  return false;
+}
+
+/**
+ * ¿Un disparador `sun` cruza su instante en (prev, now]? El minuto solar se
+ * recalcula **para cada fecha candidata**, no una vez para «hoy»: amanecer y
+ * atardecer se mueven cada día, y evaluar el borde de medianoche con la fecha
+ * equivocada adelanta o atrasa el disparo sin que nada falle.
+ *
+ * Sin ubicación del hogar devuelve `false` siempre: es la negación honesta de
+ * una regla que no se puede evaluar, no un fallo. Igual en un día polar, donde
+ * `sunEventLocalMinutes` devuelve `null` porque ese día no hay evento.
+ */
+export function sunTriggerDue(
+  trigger: Extract<AutomationTrigger, { type: 'sun' }>,
+  prev: Date,
+  now: Date,
+  home: HomeLocation | null,
+): boolean {
+  if (!home) return false;
+  for (const base of [prev, now]) {
+    const solar = sunEventLocalMinutes(base, home.lat, home.lon, trigger.event);
+    if (solar === null) continue;
+    const at = atMinuteOf(base, clampMinute(solar + trigger.offsetMin));
+    if (trigger.days.includes(at.getDay()) && at > prev && at <= now) return true;
+  }
+  return false;
+}
+
+/**
+ * ¿Este disparador de **calendario** (hora fija o sol) cruza su instante en
+ * (prev, now]? Punto único: un tercer disparador de calendario se añade aquí y
+ * lo hereda el barrido, en vez de repartirse por el servicio.
+ */
+function scheduledTriggerDue(
+  trigger: AutomationTrigger,
+  prev: Date,
+  now: Date,
+  home: HomeLocation | null,
+): boolean {
+  if (trigger.type === 'time') return timeTriggerDue(trigger, prev, now);
+  if (trigger.type === 'sun') return sunTriggerDue(trigger, prev, now, home);
   return false;
 }
 
@@ -128,21 +192,33 @@ export function dueRulesForEvent(
   );
 }
 
-/** Reglas de hora que cruzan su instante en (prev, now]. */
-export function dueTimeRules(
+/** Reglas de calendario (hora fija o sol) que cruzan su instante en (prev, now]. */
+export function dueScheduledRules(
   rules: AutomationRule[],
   prev: Date,
   now: Date,
   lastFired: LastFiredMap,
+  home: HomeLocation | null,
 ): AutomationRule[] {
   return rules.filter(
     (rule) =>
       rule.enabled &&
-      rule.trigger.type === 'time' &&
-      timeTriggerDue(rule.trigger, prev, now) &&
+      scheduledTriggerDue(rule.trigger, prev, now, home) &&
       passesCondition(rule.condition, now) &&
       cooledDown(rule, lastFired, now),
   );
+}
+
+/**
+ * Resumen del disparo de una regla de calendario para el log de ejecuciones.
+ * «hora programada» sería mentira a medias en una regla solar: el usuario no
+ * programó una hora, programó un suceso que cae a una hora distinta cada día.
+ */
+export function describeSchedule(rule: AutomationRule): string {
+  if (rule.trigger.type === 'sun') {
+    return rule.trigger.event === 'sunrise' ? 'amanecer' : 'atardecer';
+  }
+  return 'hora programada';
 }
 
 /** Objetivo implícito del evento, para acciones sin objetivo explícito. */

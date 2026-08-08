@@ -86,19 +86,6 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'DELETE', url: '/api/scenes/x' },
   { method: 'POST', url: '/api/scenes/x/run' },
 
-  // horarios IoT (US-168)
-  {
-    method: 'POST',
-    url: '/api/iot-schedules',
-    payload: {
-      name: 'Riego',
-      days: [1],
-      time: { kind: 'fixed', minute: 420 },
-      target: { type: 'device', deviceId: 'plug-cafetera', on: true },
-    },
-  },
-  { method: 'PATCH', url: '/api/iot-schedules/x', payload: { enabled: false } },
-  { method: 'DELETE', url: '/api/iot-schedules/x' },
   // automatizaciones (US-167)
   {
     method: 'POST',

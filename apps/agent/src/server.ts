@@ -52,11 +52,10 @@ import { RoomService } from './modules/rooms/rooms.service.js';
 import { favoritesRoutes } from './modules/favorites/favorites.routes.js';
 import { scenesRoutes } from './modules/scenes/scenes.routes.js';
 import { SceneService } from './modules/scenes/scenes.service.js';
-import { iotScheduleRoutes } from './modules/iot-schedule/iot-schedule.routes.js';
-import { IotScheduleService } from './modules/iot-schedule/iot-schedule.service.js';
 import { HomeEventBus } from './automations/event-bus.js';
 import { IotWatcher } from './automations/iot-watcher.js';
 import { AutomationService } from './modules/automations/automations.service.js';
+import { ScheduleAbsorptionService } from './modules/automations/absorb.service.js';
 import { automationsRoutes } from './modules/automations/automations.routes.js';
 import { WeatherService } from './modules/weather/weather.service.js';
 import { weatherRoutes } from './modules/weather/weather.routes.js';
@@ -271,10 +270,6 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Escenas de un toque (US-166): deja N dispositivos IoT en un estado con un toque.
   const sceneService = new SceneService(app, iot);
   await app.register(scenesRoutes, { prefix: '/api/scenes', service: sceneService });
-  // Horarios para IoT/escenas (US-168): CRUD + barrido por minuto que dispara la
-  // acción a hora fija o solar (amanecer/atardecer con la lat/long del hogar).
-  const iotScheduleService = new IotScheduleService(app, iot, sceneService);
-  await app.register(iotScheduleRoutes, { prefix: '/api/iot-schedules', service: iotScheduleService });
   // Automatizaciones «si X→Y» (US-167): bus de eventos del hogar (inventario +
   // watcher IoT) + motor puro + barrido de hora. El inventario publica
   // dispositivo nuevo/online/offline; el watcher, transiciones de estado IoT.
@@ -327,6 +322,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Va antes de que nada lea escenas/horarios/energía, para que el primer barrido
   // ya opere sobre los ids nuevos.
   await new IotIdMigrationService({ app, iot, kinds: runtime.iotKinds }).run();
+
+  // US-256: los horarios IoT (US-168) pasan a ser rutinas del motor. Va DESPUÉS
+  // de la reescritura de ids: al revés, las reglas nacerían con los ids crudos
+  // que la migración acaba de dejar de reconocer (ya no mira esa tabla).
+  await new ScheduleAbsorptionService(app).run();
 
   const autoBackupService = new AutoBackupService({
     prisma: app.prisma,
@@ -631,10 +631,6 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Aplica los horarios de control parental cada minuto (US-108).
   accessService.start();
   app.addHook('onClose', async () => accessService.stop());
-
-  // Dispara los horarios IoT/escenas cada minuto (US-168).
-  iotScheduleService.start();
-  app.addHook('onClose', async () => iotScheduleService.stop());
 
   // Automatizaciones (US-167): sondeo de transiciones IoT + barrido de hora.
   iotWatcher.start();

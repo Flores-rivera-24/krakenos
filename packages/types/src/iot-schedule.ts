@@ -1,8 +1,19 @@
 import type { IsoDateTime } from './common.js';
 
 /**
- * Momento de disparo de un horario IoT (US-168). O una **hora fija** (minutos
- * desde medianoche) o relativo al **sol** (amanecer/atardecer) con un desfase en
+ * ⚠️ **Contrato de archivo.** Los horarios IoT (US-168) los absorbió el motor de
+ * rutinas (US-256): ya no hay endpoints, ni UI, ni barrido. Estos tipos siguen
+ * aquí porque la absorción **lee** la tabla `IotSchedule` al arrancar para
+ * traducir lo que hubiera en instalaciones existentes. Se van con la tabla.
+ *
+ * Por eso ya no están `CreateIotScheduleRequest` ni `UpdateIotScheduleRequest`:
+ * describían dos rutas que no existen, y un tipo de petición sin ruta es una
+ * promesa de API que nadie puede cumplir.
+ */
+
+/**
+ * Momento de disparo de un horario IoT. O una **hora fija** (minutos desde
+ * medianoche) o relativo al **sol** (amanecer/atardecer) con un desfase en
  * minutos (p. ej. atardecer -15). El sol se calcula localmente con la lat/long
  * del hogar, sin llamadas externas.
  */
@@ -30,22 +41,4 @@ export interface IotSchedule {
   time: IotScheduleTime;
   target: IotScheduleTarget;
   createdAt: IsoDateTime;
-}
-
-/** Alta de horario IoT (`POST /api/iot-schedules`). */
-export interface CreateIotScheduleRequest {
-  name: string;
-  enabled?: boolean;
-  days: number[];
-  time: IotScheduleTime;
-  target: IotScheduleTarget;
-}
-
-/** Cambios parciales de un horario IoT (`PATCH /api/iot-schedules/:id`). */
-export interface UpdateIotScheduleRequest {
-  name?: string;
-  enabled?: boolean;
-  days?: number[];
-  time?: IotScheduleTime;
-  target?: IotScheduleTarget;
 }

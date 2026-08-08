@@ -17,7 +17,7 @@ const OFF: TelemetrySnapshot = { enabled: false, version: '1.0.0' };
 const ON: TelemetrySnapshot = {
   enabled: true,
   version: '1.0.0',
-  counts: { devices: 5, rooms: 2, scenes: 1, automations: 3, iotSchedules: 0, users: 2 },
+  counts: { devices: 5, rooms: 2, scenes: 1, automations: 3, users: 2 },
 };
 
 const PLAN = { current: '0.1.0', mode: 'systemd' };

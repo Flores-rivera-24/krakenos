@@ -78,22 +78,21 @@ export class SupportService {
 
   private async gatherCounts(): Promise<NonNullable<TelemetrySnapshot['counts']>> {
     const p = this.deps.prisma;
-    const [devices, rooms, scenes, automations, iotSchedules, users] = await Promise.all([
+    const [devices, rooms, scenes, automations, users] = await Promise.all([
       p.device.count(),
       p.room.count(),
       p.scene.count(),
       p.automationRule.count(),
-      p.iotSchedule.count(),
       p.user.count(),
     ]);
-    return { devices, rooms, scenes, automations, iotSchedules, users };
+    return { devices, rooms, scenes, automations, users };
   }
 
   /** Telemetría anónima; recuentos solo si el opt-in está activo. */
   async getTelemetry(): Promise<TelemetrySnapshot> {
     const enabled = await this.deps.telemetryEnabled();
     // Solo consultamos los recuentos si está activada (opt-in estricto).
-    const counts = enabled ? await this.gatherCounts() : { devices: 0, rooms: 0, scenes: 0, automations: 0, iotSchedules: 0, users: 0 };
+    const counts = enabled ? await this.gatherCounts() : { devices: 0, rooms: 0, scenes: 0, automations: 0, users: 0 };
     return buildTelemetry(enabled, this.deps.version, counts);
   }
 

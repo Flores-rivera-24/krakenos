@@ -250,7 +250,6 @@ export const telemetrySchema = {
             rooms: { type: 'number' },
             scenes: { type: 'number' },
             automations: { type: 'number' },
-            iotSchedules: { type: 'number' },
             users: { type: 'number' },
           },
         },
