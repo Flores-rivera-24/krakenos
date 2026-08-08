@@ -18,30 +18,40 @@ import { env } from '../config/env.js';
  * - `secure`: solo sobre HTTPS (TLS nativo o terminado en un proxy de confianza);
  *   en dev (HTTP) se desactiva para que la cookie funcione.
  * - `path: /api/auth`: solo se envía a las rutas de auth, no en cada llamada a la API.
- * - `maxAge`: la vida del refresh token (rotatorio).
+ * - `maxAge`: la vida del refresh token (rotatorio) — **solo si el usuario marcó
+ *   «Mantener sesión iniciada»** (US-266). Sin marcar se omite, y entonces es una
+ *   *cookie de sesión*: el navegador la borra al cerrarse. El refresh token sigue
+ *   teniendo su propia expiración en la base; esto solo decide cuánto dura su
+ *   transporte en el cliente.
  */
 export const REFRESH_COOKIE = 'krakenos_rt';
 const REFRESH_COOKIE_PATH = '/api/auth';
 
-function cookieOptions(): {
+function cookieOptions(persistent: boolean): {
   httpOnly: true;
   sameSite: 'strict';
   secure: boolean;
   path: string;
-  maxAge: number;
+  maxAge?: number;
 } {
   return {
     httpOnly: true,
     sameSite: 'strict',
     secure: env.https !== null || env.behindProxy,
     path: REFRESH_COOKIE_PATH,
-    maxAge: env.refreshTokenTtl,
+    // Omitir `maxAge` (no ponerlo a 0, que borraría la cookie) es lo que la
+    // convierte en cookie de sesión.
+    ...(persistent ? { maxAge: env.refreshTokenTtl } : {}),
   };
 }
 
-/** Fija la cookie del refresh token en la respuesta. */
-export function setRefreshCookie(reply: FastifyReply, token: string): void {
-  reply.setCookie(REFRESH_COOKIE, token, cookieOptions());
+/**
+ * Fija la cookie del refresh token en la respuesta. `persistent` refleja la
+ * elección del usuario en «Mantener sesión iniciada» y se propaga desde la fila
+ * de `RefreshToken`, de modo que sobreviva a cada rotación.
+ */
+export function setRefreshCookie(reply: FastifyReply, token: string, persistent: boolean): void {
+  reply.setCookie(REFRESH_COOKIE, token, cookieOptions(persistent));
 }
 
 /** Borra la cookie del refresh token (logout). */
@@ -60,7 +70,7 @@ export function readRefreshCookie(req: FastifyRequest): string | null {
  * Lo usan todos los emisores de sesión: login, setup/init, webauthn y backup-codes.
  */
 export function sendSession(reply: FastifyReply, session: IssuedSession): FastifyReply {
-  setRefreshCookie(reply, session.tokens.refreshToken);
+  setRefreshCookie(reply, session.tokens.refreshToken, session.tokens.persistent);
   return reply.send({
     user: session.user,
     tokens: { accessToken: session.tokens.accessToken, expiresIn: session.tokens.expiresIn },

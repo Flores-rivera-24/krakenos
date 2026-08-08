@@ -20,7 +20,13 @@ interface AuthState {
    * `{ requiresWebAuthn: true }` sin establecer la sesión (el 2FA se completa
    * aparte); en otro caso establece la sesión y devuelve `{ user, tokens }`.
    */
-  login: (email: string, password: string) => Promise<LoginResult>;
+  /**
+   * `keepSignedIn` (US-266) decide si la cookie del refresh sobrevive a cerrar el
+   * navegador. Se manda al servidor, que es quien pone (o no) el `maxAge`: la
+   * casilla existía desde la primera versión de la pantalla y no viajaba a ningún
+   * sitio.
+   */
+  login: (email: string, password: string, keepSignedIn?: boolean) => Promise<LoginResult>;
   /** Establece la sesión a partir de una respuesta de login (wizard o 2FA WebAuthn). */
   setSession: (data: LoginResponse) => void;
   /** Intenta refrescar el access token. Devuelve `true` si lo consigue. */
@@ -95,8 +101,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
   tokens: null,
   lastRefreshFailure: null,
 
-  login: async (email, password) => {
-    const data = await postJson<LoginResult>('/auth/login', { email, password });
+  login: async (email, password, keepSignedIn = true) => {
+    const data = await postJson<LoginResult>('/auth/login', { email, password, keepSignedIn });
     if (!('requiresWebAuthn' in data)) {
       set({ user: data.user, tokens: data.tokens, lastRefreshFailure: null });
     }

@@ -117,6 +117,12 @@ model RefreshToken {
   /// Distingue un token revocado por rotación de uno revocado por logout/admin:
   /// solo el reuso de un token rotado dispara la detección de reuso (US-78, F4).
   rotatedAt DateTime?
+  /// «Mantener sesión iniciada» (US-266). Decide si la cookie del refresh lleva
+  /// `maxAge` (sobrevive a cerrar el navegador) o es de sesión (muere con él).
+  /// Vive AQUÍ y no en una cookie aparte porque el servidor no puede distinguir
+  /// una cookie de sesión de una persistente cuando llega: sin esta columna, la
+  /// elección se perdería en la primera rotación de `/auth/refresh`.
+  persistent Boolean @default(true)
   expiresAt DateTime
   createdAt DateTime @default(now())
 

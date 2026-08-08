@@ -180,6 +180,23 @@
   }
 }
 
+@keyframes kr-mark-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes kr-mark-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @layer components {
   /* Barrido de carga de los skeletons — sustituye al pulse plano por un gradiente
      que recorre la superficie (más "en vivo"). Tokens kr-*, adaptado a tema. */
@@ -192,6 +209,21 @@
     );
     background-size: 200% 100%;
     animation: kr-shimmer 1.6s ease-in-out infinite;
+  }
+
+  /* Arranque del isotipo en la pantalla de acceso (US-266): los tentáculos se
+     dibujan y después aparecen los nodos. `stroke-dasharray` fijo (48 cubre el
+     más largo de los seis trazos) en vez de medir con JS: es un icono de tamaño
+     conocido y así la animación es puramente declarativa. */
+  .kr-mark-stroke {
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    animation: kr-mark-draw 0.75s cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
+  }
+  .kr-mark-node {
+    opacity: 0;
+    transform-origin: center;
+    animation: kr-mark-pop 0.45s cubic-bezier(0.16, 0.84, 0.44, 1) forwards;
   }
 
   /* Rejilla técnica de fondo (splash, estados vacíos), desvanecida hacia los bordes. */
@@ -217,5 +249,18 @@
   .animate-kr-fade-up,
   .animate-kr-fade-in {
     animation: none !important;
+  }
+
+  /* ⚠️ Apagar la animación NO basta cuando el estado inicial es invisible: el
+     isotipo se quedaría con los trazos sin dibujar (`dashoffset` completo) y los
+     nodos a `opacity: 0`, o sea, una marca en blanco justo para quien pidió menos
+     movimiento. Hay que devolver el estado FINAL a mano. */
+  .kr-mark-stroke {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+  .kr-mark-node {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }

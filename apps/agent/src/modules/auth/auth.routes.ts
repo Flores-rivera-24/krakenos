@@ -63,6 +63,9 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     },
     async (req, reply) => {
     const { email } = req.body;
+    // Defecto `true`: es lo que hacía la cookie antes de US-266, así que un
+    // cliente que no manda el campo no cambia de comportamiento.
+    const keepSignedIn = req.body.keepSignedIn !== false;
 
     // Lockout por cuenta con backoff (US-77, F3): además del límite por IP, una
     // cuenta con demasiados fallos consecutivos se bloquea temporalmente. Se
@@ -93,11 +96,11 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.send({
           requiresWebAuthn: true,
           email: user.email,
-          mfaToken: service.issueMfaPendingToken(user.id),
+          mfaToken: service.issueMfaPendingToken(user.id, keepSignedIn),
         });
       }
 
-      const session = await service.issueSessionForUserId(user.id);
+      const session = await service.issueSessionForUserId(user.id, keepSignedIn);
       app.audit({ action: 'auth.login', userId: session.user.id, ip: req.ip });
       return sendSession(reply, session);
     } catch (err) {
@@ -129,7 +132,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       }
       try {
         const tokens = await service.refresh(current, req.ip);
-        setRefreshCookie(reply, tokens.refreshToken);
+        setRefreshCookie(reply, tokens.refreshToken, tokens.persistent);
         return reply.send({ accessToken: tokens.accessToken, expiresIn: tokens.expiresIn });
       } catch (err) {
         if (err instanceof AuthError) {

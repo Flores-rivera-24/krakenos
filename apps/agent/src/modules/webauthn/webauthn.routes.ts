@@ -137,7 +137,13 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
         }
         throw err;
       }
-      const session = await auth.issueSessionForUserId(user.id);
+      // La elección de «Mantener sesión iniciada» se hizo en el paso de la
+      // contraseña y viaja en el `mfaToken` (US-266): este endpoint es el que
+      // emite la sesión, así que es el que tiene que respetarla.
+      const session = await auth.issueSessionForUserId(
+        user.id,
+        auth.keepSignedInFromMfaToken(req.body.mfaToken),
+      );
       app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });
       return sendSession(reply, session);
     },
@@ -186,7 +192,10 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
           .code(401)
           .send({ code: 'WEBAUTHN_ERROR', message: 'Código de recuperación inválido' });
       }
-      const session = await auth.issueSessionForUserId(user.id);
+      const session = await auth.issueSessionForUserId(
+        user.id,
+        auth.keepSignedInFromMfaToken(req.body.mfaToken),
+      );
       app.audit({ action: 'auth.login', userId: user.id, ip: req.ip });
       return sendSession(reply, session);
     },

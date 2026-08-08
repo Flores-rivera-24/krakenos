@@ -108,6 +108,54 @@ describe('rutas de autenticación', () => {
     expect(c!.path).toBe('/api/auth');
   });
 
+  /**
+   * US-266. La casilla «Mantener sesión iniciada» llevaba desde la primera versión
+   * de la pantalla pintada y **desconectada**: se marcaba y no cambiaba nada. El
+   * efecto observable es el `Max-Age` de la cookie del refresh, así que es lo que
+   * se asierta — no que el campo llegue al servidor, que no prueba nada.
+   */
+  it('«Mantener sesión iniciada» decide si la cookie persiste, y sobrevive a la rotación (US-266)', async () => {
+    await seedUser(app, { email: 'keep@krakenos.test', password: 'password123' });
+
+    async function cookieDeLogin(keepSignedIn?: boolean) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/login',
+        payload: {
+          email: 'keep@krakenos.test',
+          password: 'password123',
+          ...(keepSignedIn === undefined ? {} : { keepSignedIn }),
+        },
+      });
+      expect(res.statusCode).toBe(200);
+      const c = res.cookies.find((x) => x.name === 'krakenos_rt');
+      expect(c).toBeDefined();
+      return c!;
+    }
+
+    // Marcada → cookie persistente: sobrevive a cerrar el navegador.
+    expect((await cookieDeLogin(true)).maxAge).toBeGreaterThan(0);
+
+    // Omitida → se comporta como antes de US-266. Un cliente viejo que no manda el
+    // campo no puede cambiar de significado por una historia de la interfaz.
+    expect((await cookieDeLogin(undefined)).maxAge).toBeGreaterThan(0);
+
+    // Sin marcar → cookie de SESIÓN: sin `Max-Age`, el navegador la borra al cerrarse.
+    const efimera = await cookieDeLogin(false);
+    expect(efimera.maxAge).toBeUndefined();
+
+    // Y la elección sobrevive a la rotación. Sin persistirla junto al token, el
+    // PRIMER /auth/refresh volvería a emitirla con `Max-Age` y convertiría en
+    // permanente una sesión que se pidió efímera, sin que nadie se enterase.
+    const rotado = await app.inject({
+      method: 'POST',
+      url: '/api/auth/refresh',
+      cookies: refreshCookieHeader(efimera.value),
+    });
+    expect(rotado.statusCode).toBe(200);
+    expect(rotado.cookies.find((x) => x.name === 'krakenos_rt')?.maxAge).toBeUndefined();
+  });
+
   it('refresh sin la cookie de refresh devuelve 401 (US-91)', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/auth/refresh' });
     expect(res.statusCode).toBe(401);

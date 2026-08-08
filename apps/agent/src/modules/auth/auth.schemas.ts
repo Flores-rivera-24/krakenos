@@ -38,6 +38,9 @@ export const loginSchema = {
     properties: {
       email: { type: 'string', format: 'email', maxLength: 254 },
       password: { type: 'string', minLength: 8, maxLength: 128 },
+      // «Mantener sesión iniciada» (US-266). Opcional y con defecto `true`: es el
+      // comportamiento que ya tenía la cookie, así que un cliente viejo no cambia.
+      keepSignedIn: { type: 'boolean' },
     },
   },
   response: {

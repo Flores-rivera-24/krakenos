@@ -155,6 +155,13 @@ export interface MfaPendingTokenClaims {
    * se marca como consumido y un segundo intento con el mismo token se rechaza.
    */
   jti: Id;
+  /**
+   * «Mantener sesión iniciada» elegido en el paso de la contraseña (US-266). El
+   * paso que emite la sesión es otro endpoint, así que sin viajar aquí la elección
+   * se perdería para quien tiene passkey. Opcional: un token emitido antes de
+   * US-266 y aún dentro de su ventana de 120 s se lee como `true`.
+   */
+  keep?: boolean;
   iat: number;
   exp: number;
 }
@@ -180,6 +187,12 @@ export interface StreamTokenClaims {
 export interface LoginRequest {
   email: string;
   password: string;
+  /**
+   * «Mantener sesión iniciada» (US-266). Con `true` (el defecto, y lo que hacía
+   * el sistema antes) la cookie del refresh lleva `maxAge` y sobrevive a cerrar el
+   * navegador; con `false` es una cookie de sesión y muere con él.
+   */
+  keepSignedIn?: boolean;
 }
 
 /**

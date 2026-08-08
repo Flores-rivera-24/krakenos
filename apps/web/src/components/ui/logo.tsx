@@ -6,8 +6,22 @@ import { cn } from '@/lib/utils';
  * cabeza, así que el color se controla con `text-*` en el contenedor
  * (p. ej. `text-kr-accent`). Decorativo por defecto (`aria-hidden`): el nombre
  * accesible lo aporta el wordmark "KrakenOS" contiguo. Fuente: `Icons/logo-mark-mono.svg`.
+ *
+ * Con `draw` (US-266) el isotipo se **dibuja al montarse**: primero los seis
+ * tentáculos, trazo a trazo, y después los nodos. Es la secuencia de arranque de
+ * la pantalla de acceso; se usa una sola vez por carga, no en la marca del
+ * `sidebar`, donde repetirla en cada navegación sería ruido. Las clases viven en
+ * `index.css` y ya están cubiertas por el bloque de `prefers-reduced-motion`: sin
+ * movimiento el isotipo aparece dibujado y quieto, nunca a medias.
  */
-export function LogoMark({ className }: { className?: string }) {
+export function LogoMark({ className, draw = false }: { className?: string; draw?: boolean }) {
+  // Escalonado por índice: los retardos son datos de la animación, no del diseño
+  // del icono, así que se calculan aquí y no se repiten a mano en el marcado.
+  const stroke = (i: number) => (draw ? { animationDelay: `${0.12 + i * 0.08}s` } : undefined);
+  const node = (i: number) => (draw ? { animationDelay: `${0.62 + i * 0.06}s` } : undefined);
+  const strokeClass = draw ? 'kr-mark-stroke' : undefined;
+  const nodeClass = draw ? 'kr-mark-node' : undefined;
+
   return (
     <svg
       viewBox="0 0 120 120"
@@ -17,20 +31,20 @@ export function LogoMark({ className }: { className?: string }) {
       focusable="false"
     >
       <g stroke="currentColor" strokeWidth={2.2} strokeLinecap="round">
-        <path d="M60,44 Q63,29 60,13" />
-        <path d="M73.9,52 Q88,42 99.8,37" />
-        <path d="M73.9,68 Q88,78 99.8,83" />
-        <path d="M60,76 Q57,91 60,107" />
-        <path d="M46.1,68 Q32,78 20.2,83" />
-        <path d="M46.1,52 Q32,42 20.2,37" />
+        <path className={strokeClass} style={stroke(0)} d="M60,44 Q63,29 60,13" />
+        <path className={strokeClass} style={stroke(1)} d="M73.9,52 Q88,42 99.8,37" />
+        <path className={strokeClass} style={stroke(2)} d="M73.9,68 Q88,78 99.8,83" />
+        <path className={strokeClass} style={stroke(3)} d="M60,76 Q57,91 60,107" />
+        <path className={strokeClass} style={stroke(4)} d="M46.1,68 Q32,78 20.2,83" />
+        <path className={strokeClass} style={stroke(5)} d="M46.1,52 Q32,42 20.2,37" />
       </g>
       <g fill="currentColor">
-        <circle cx="60" cy="13" r="3.5" />
-        <circle cx="99.8" cy="37" r="3.5" />
-        <circle cx="99.8" cy="83" r="3.5" />
-        <circle cx="60" cy="107" r="3.5" />
-        <circle cx="20.2" cy="83" r="3.5" />
-        <circle cx="20.2" cy="37" r="3.5" />
+        <circle className={nodeClass} style={node(0)} cx="60" cy="13" r="3.5" />
+        <circle className={nodeClass} style={node(1)} cx="99.8" cy="37" r="3.5" />
+        <circle className={nodeClass} style={node(2)} cx="99.8" cy="83" r="3.5" />
+        <circle className={nodeClass} style={node(3)} cx="60" cy="107" r="3.5" />
+        <circle className={nodeClass} style={node(4)} cx="20.2" cy="83" r="3.5" />
+        <circle className={nodeClass} style={node(5)} cx="20.2" cy="37" r="3.5" />
         <circle cx="60" cy="60" r="16" />
       </g>
       <g fill="#ffffff">
