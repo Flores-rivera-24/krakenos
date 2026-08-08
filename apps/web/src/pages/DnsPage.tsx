@@ -48,7 +48,7 @@ export function DnsPage() {
    * entera en blanco por una restricción que solo afecta a una tarjeta.
    */
   const loadShared = () =>
-    Promise.all([api.get<DnsStats>('/dns/stats'), api.get<BlockedDomain[]>('/dns/blocklist')])
+    Promise.all([api.get<DnsStats>('/dns/stats'), api.getList<BlockedDomain>('/dns/blocklist')])
       .then(([s, b]) => {
         setStats(s);
         setBlocklist(b);

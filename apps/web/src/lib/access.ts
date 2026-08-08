@@ -8,7 +8,7 @@ import { api } from '@/lib/api';
 /** Cliente de los horarios de acceso / control parental (US-108). */
 
 export const listSchedules = (mac: string): Promise<AccessSchedule[]> =>
-  api.get<AccessSchedule[]>(`/access/schedules?mac=${encodeURIComponent(mac)}`);
+  api.getList<AccessSchedule>(`/access/schedules?mac=${encodeURIComponent(mac)}`);
 
 export const createSchedule = (body: CreateAccessScheduleRequest): Promise<AccessSchedule> =>
   api.post<AccessSchedule>('/access/schedules', body);

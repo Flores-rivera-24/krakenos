@@ -2,7 +2,12 @@ import type { WeatherStatus } from '@krakenos/types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiMock = vi.hoisted(() => ({ get: vi.fn(), put: vi.fn() }));
+const apiMock = vi.hoisted(() => {
+  // `getList` delega en `get` para que los mocks por ruta que ya existen
+  // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
+  const get = vi.fn();
+  return { get, getList: vi.fn((path: string) => get(path)), put: vi.fn() };
+});
 vi.mock('@/lib/api', () => ({ api: apiMock }));
 
 import { WeatherCard } from '@/components/settings/WeatherCard';

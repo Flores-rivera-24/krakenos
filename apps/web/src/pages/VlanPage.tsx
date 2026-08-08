@@ -29,7 +29,7 @@ export function VlanPage() {
   const [error, setError] = useState<string | null>(null);
 
   const load = () =>
-    Promise.all([api.get<VlanWithCount[]>('/vlans'), api.get<Device[]>('/inventory/devices')])
+    Promise.all([api.getList<VlanWithCount>('/vlans'), api.getList<Device>('/inventory/devices')])
       .then(([v, d]) => {
         setVlans(v);
         setDevices(d);

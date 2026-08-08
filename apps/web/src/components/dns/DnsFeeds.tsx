@@ -17,7 +17,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
 
   const load = async () => {
     try {
-      setFeeds(await api.get<DnsFeed[]>('/dns/feeds'));
+      setFeeds(await api.getList<DnsFeed>('/dns/feeds'));
     } catch (err) {
       toast.error(describeError(err, 'No se pudieron cargar las listas'));
     }

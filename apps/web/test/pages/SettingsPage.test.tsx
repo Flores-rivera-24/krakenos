@@ -3,7 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const apiMock = vi.hoisted(() => ({ get: vi.fn(), patch: vi.fn(), post: vi.fn() }));
+const apiMock = vi.hoisted(() => {
+  // `getList` delega en `get` para que los mocks por ruta que ya existen
+  // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
+  const get = vi.fn();
+  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn() };
+});
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 import { SettingsPage } from '@/pages/SettingsPage';

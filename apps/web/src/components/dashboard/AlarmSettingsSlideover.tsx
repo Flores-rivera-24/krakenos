@@ -66,7 +66,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
     let active = true;
     void Promise.all([
       getAlarmConfig(),
-      api.get<IotDevice[]>('/iot/devices').catch(() => [] as IotDevice[]),
+      api.getList<IotDevice>('/iot/devices').catch(() => [] as IotDevice[]),
       listCameras().catch(() => [] as Camera[]),
     ])
       .then(([c, d, cams]) => {
