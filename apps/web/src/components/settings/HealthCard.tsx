@@ -1,9 +1,10 @@
 import type { MetricsSnapshot } from '@krakenos/types';
 import { Activity } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import { usePolling } from '@/lib/use-polling';
 
 /**
  * Panel de salud y observabilidad (US-191). Muestra métricas internas del agente
@@ -16,29 +17,23 @@ export function HealthCard() {
   const [metrics, setMetrics] = useState<MetricsSnapshot | null>(null);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    const load = () =>
+  // Refresca en vivo mientras el panel está montado (US-191). US-262: iba con un
+  // `setInterval` a pelo, así que sondeaba también con la pestaña oculta.
+  const load = useCallback(
+    () =>
       api
         .get<MetricsSnapshot>('/system/metrics')
         .then((m) => {
           // Guarda contra una respuesta malformada: solo pintamos si trae la forma.
-          if (active && m && typeof m === 'object' && 'memory' in m && 'http' in m) {
+          if (m && typeof m === 'object' && 'memory' in m && 'http' in m) {
             setMetrics(m);
             setFailed(false);
           }
         })
-        .catch(() => {
-          if (active) setFailed(true);
-        });
-    void load();
-    // Refresca en vivo mientras el panel está montado (US-191).
-    const id = setInterval(() => void load(), 5000);
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, []);
+        .catch(() => setFailed(true)),
+    [],
+  );
+  usePolling(load, 5000);
 
   return (
     <Card>

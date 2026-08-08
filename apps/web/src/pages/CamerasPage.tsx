@@ -14,6 +14,7 @@ import { api } from '@/lib/api';
 import { deleteCamera, listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
@@ -33,22 +34,19 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
   // muestra el snapshot que se refresca cada 3 s; al activarlo transcodifica.
   const [live, setLive] = useState(false);
 
-  useEffect(() => {
-    // El snapshot se pausa mientras se ve el vídeo en vivo (ahorra peticiones).
-    if (!camera.online || live) return;
-    let active = true;
-    const load = () =>
+  // Refresca el snapshot («en vivo»). Se pausa mientras se ve el vídeo real, que
+  // ya trae su propio flujo. US-262: iba con un `setInterval` a pelo, así que
+  // seguía pidiendo una imagen cada 3 s con la pestaña oculta — de los sondeos
+  // que quedaban sueltos era el más caro, porque cada respuesta es una foto.
+  const cargarSnapshot = useCallback(
+    () =>
       api
         .get<CameraSnapshot>(`/cameras/${camera.id}/snapshot`)
-        .then((s) => active && setImage(s.image))
-        .catch(() => active && setImage(null));
-    void load();
-    const id = setInterval(load, 3000); // refresca el snapshot ("en vivo")
-    return () => {
-      active = false;
-      clearInterval(id);
-    };
-  }, [camera.id, camera.online, live]);
+        .then((s) => setImage(s.image))
+        .catch(() => setImage(null)),
+    [camera.id],
+  );
+  usePolling(cargarSnapshot, 3000, { enabled: camera.online && !live });
 
   // Si la cámara pasa a offline mientras se mira, corta el vídeo.
   useEffect(() => {

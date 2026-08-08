@@ -8,6 +8,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 
@@ -49,11 +50,10 @@ export function UpdateCard() {
 
   // Mientras hay una actualización en curso, refresca el plan cada 5 s para ir
   // mostrando el resultado (correcta / revertida) cuando el actualizador termine.
-  useEffect(() => {
-    if (!plan?.inProgress) return;
-    const id = setInterval(() => void load(), 5000);
-    return () => clearInterval(id);
-  }, [plan?.inProgress, load]);
+  // US-262: iba con un `setInterval` a pelo y seguía sondeando con la pestaña
+  // oculta; `usePolling` lo para y **relee al volver**, que es justo el momento en
+  // que alguien vuelve a mirar si la actualización terminó.
+  usePolling(load, 5000, { enabled: Boolean(plan?.inProgress) });
 
   const apply = async () => {
     setApplying(true);

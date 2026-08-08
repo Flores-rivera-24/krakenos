@@ -24,7 +24,7 @@ export function TrafficWidget() {
     let active = true;
     const socket = getSocket();
     void api
-      .get<TrafficSample[]>('/traffic/history')
+      .getList<TrafficSample>('/traffic/history')
       .then((h) => active && setSamples(h.slice(-MAX_POINTS)))
       .catch(() => undefined);
     const onHistory = (h: TrafficSample[]) => setSamples(h.slice(-MAX_POINTS));

@@ -1,6 +1,5 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fuentes } from './_fuentes';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
@@ -81,31 +80,40 @@ describe('api.getList', () => {
  * el agente: se deriva del árbol y falla **nombrando el fichero**.
  */
 describe('ninguna lista se pide con el cast', () => {
-  const SRC = join(process.cwd(), 'src');
+  const codigo = fuentes();
 
-  function ficheros(dir: string): string[] {
-    return readdirSync(dir).flatMap((entrada) => {
-      const ruta = join(dir, entrada);
-      if (statSync(ruta).isDirectory()) return ficheros(ruta);
-      return /\.tsx?$/.test(entrada) ? [ruta] : [];
-    });
-  }
-
-  const fuentes = ficheros(SRC);
+  /**
+   * El patrón, con dos correcciones que costaron caro (US-262):
+   *
+   *  - **Tolera el salto de línea.** El regex original era `api\.get<…>` sobre el
+   *    texto crudo, y Prettier parte esa llamada en dos líneas en cuanto la
+   *    cadena es larga: `api\n      .get<IotDevice[]>(…)`. US-267 dio por
+   *    migrados los 33 sitios y **diez sobrevivieron** —justo los que el
+   *    formateador había partido—, con el gate en verde. Es la misma omisión
+   *    multilínea que ya se había pagado en el barrido de `safeFetch` del agente.
+   *  - **Mira código, no comentarios** (`sinComentarios`), así que ya no hace
+   *    falta exceptuar a mano el fichero que **explica** el patrón. La excepción
+   *    por nombre era el síntoma: si hay que exculpar a la documentación, es que
+   *    el gate está leyendo lo que no debe.
+   */
+  const CAST_DE_LISTA = /\bapi\s*\.\s*get\s*<[^>]*\[\]\s*>/;
 
   it('encuentra el árbol: si el recorrido se rompe, el gate no pasa en vacío', () => {
-    expect(fuentes.length).toBeGreaterThan(100);
+    expect(codigo.length).toBeGreaterThan(100);
   });
 
-  it('no queda ningún `api.get<T[]>`', () => {
-    const culpables = fuentes
-      .filter((ruta) => {
-        // El propio `api.ts` lo nombra en su comentario, explicando por qué no
-        // se usa: es documentación, no una llamada.
-        if (ruta.endsWith(join('lib', 'api.ts'))) return false;
-        return /api\.get<[A-Za-z_][\w]*\[\]>/.test(readFileSync(ruta, 'utf8'));
-      })
-      .map((ruta) => ruta.slice(SRC.length + 1));
+  it('no queda ningún `api.get<T[]>`, ni siquiera partido en dos líneas', () => {
+    const culpables = codigo.filter((f) => CAST_DE_LISTA.test(f.codigo)).map((f) => f.nombre);
     expect(culpables).toEqual([]);
+  });
+
+  it('el patrón ve la llamada que Prettier parte en dos líneas', () => {
+    // El gate se comprueba contra la forma que se le escapó, no solo contra la
+    // que ya cazaba: si no, «arreglado» significa «sigue midiendo lo de antes».
+    expect(CAST_DE_LISTA.test('const d = api\n      .get<IotDevice[]>(ruta)')).toBe(true);
+    expect(CAST_DE_LISTA.test('api.get<IotDevice[]>(ruta)')).toBe(true);
+    // Y no confunde con lo que sí es correcto.
+    expect(CAST_DE_LISTA.test('api.getList<IotDevice>(ruta)')).toBe(false);
+    expect(CAST_DE_LISTA.test('api.get<CameraSnapshot>(ruta)')).toBe(false);
   });
 });

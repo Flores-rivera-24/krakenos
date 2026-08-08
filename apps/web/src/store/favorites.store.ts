@@ -37,7 +37,7 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
     if (get().loaded && !force) return;
     if (inFlight && !force) return inFlight;
     inFlight = api
-      .get<Favorite[]>('/favorites')
+      .getList<Favorite>('/favorites')
       .then((favorites) => {
         // El genérico de `api.get` es un CAST, no una comprobación: se verifica
         // la forma antes de guardarla, o un cuerpo inesperado deja el estado con

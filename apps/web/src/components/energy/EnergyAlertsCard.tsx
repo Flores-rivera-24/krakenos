@@ -34,7 +34,7 @@ export function EnergyAlertsCard() {
       .then(setRules)
       .catch(() => setRules([]));
     void api
-      .get<IotDevice[]>('/iot/devices')
+      .getList<IotDevice>('/iot/devices')
       .then((d) => {
         // Sensores no consumen de forma controlable; se ofrecen luces/enchufes.
         const controllable = d.filter((x) => x.kind !== 'sensor');

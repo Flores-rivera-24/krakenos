@@ -51,7 +51,7 @@ export function QosPage() {
 
   const load = () =>
     api
-      .get<QosRule[]>('/qos/rules')
+      .getList<QosRule>('/qos/rules')
       .then(setRules)
       .catch((err) => setError(describeError(err, t('qos.loadError'))));
 
