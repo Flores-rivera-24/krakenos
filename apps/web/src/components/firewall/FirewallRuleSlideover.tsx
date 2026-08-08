@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 
 const SELECT_CLASS =
@@ -71,7 +72,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
       footer={
         canEdit && (
           <div className="space-y-2">
-            {error && <p className="text-kr-sm text-danger">{error}</p>}
+            {error && <FormError>{error}</FormError>}
             <Button onClick={() => void save()} disabled={saving} className="w-full">
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </Button>

@@ -125,8 +125,14 @@ export function GuestNetworkCard({ network, isAdmin, onUpdated }: Props) {
           />
         </div>
 
+        {/* El mismo elemento acusa el éxito y el fallo, así que el rol va con
+            el resultado: `alert` interrumpe —el guardado falló y hay que
+            enterarse— y `status` es cortés, que es lo que merece un «hecho». */}
         {feedback && (
-          <p className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}>
+          <p
+            role={feedback.ok ? 'status' : 'alert'}
+            className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}
+          >
             {feedback.msg}
           </p>
         )}

@@ -15,6 +15,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { applyTheme, type Theme } from '@/lib/theme';
@@ -211,7 +212,7 @@ function PasskeysCard() {
                   maxLength={64}
                   onChange={(e) => setName(e.target.value)}
                 />
-                {error && <p className="text-kr-sm text-danger">{error}</p>}
+                {error && <FormError>{error}</FormError>}
                 <div className="flex justify-end gap-2">
                   <Button
                     variant="outline"

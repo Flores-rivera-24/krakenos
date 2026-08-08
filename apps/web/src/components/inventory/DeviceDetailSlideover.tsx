@@ -25,6 +25,7 @@ import { Slideover } from '@/components/ui/slideover';
 import { Sparkline } from '@/components/ui/sparkline';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
+import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 import { DEVICE_ICON_LABELS, DEVICE_TYPES, TYPE_LABELS, deviceArtKind } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
@@ -218,7 +219,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
   const footer = (
     <div className="space-y-2">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
       <Button onClick={() => void save()} disabled={saving} className="w-full">
         {saving ? 'Guardando…' : 'Guardar cambios'}
       </Button>

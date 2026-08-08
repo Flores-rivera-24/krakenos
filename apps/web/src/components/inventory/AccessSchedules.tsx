@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import {
   DAY_LABELS,
   createSchedule,
@@ -114,7 +115,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
         21:00–07:00 de lunes a viernes).
       </p>
 
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
 
       {schedules && schedules.length === 0 && !adding && (
         <p className="text-kr-sm text-kr-secondary">

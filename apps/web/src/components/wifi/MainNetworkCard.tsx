@@ -165,8 +165,14 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
           <Switch id="hidden" checked={hidden} onCheckedChange={setHidden} disabled={!isAdmin} />
         </div>
 
+        {/* El mismo elemento acusa el éxito y el fallo, así que el rol va con
+            el resultado: `alert` interrumpe —el guardado falló y hay que
+            enterarse— y `status` es cortés, que es lo que merece un «hecho». */}
         {feedback && (
-          <p className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}>
+          <p
+            role={feedback.ok ? 'status' : 'alert'}
+            className={feedback.ok ? 'text-sm text-success' : 'text-sm text-danger'}
+          >
             {feedback.msg}
           </p>
         )}
