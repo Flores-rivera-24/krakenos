@@ -30,9 +30,15 @@ test('sin sesión, la app sigue el idioma del navegador (en-US)', async ({ page 
   await page.goto('/login');
 
   // Copy del catálogo `en.ts`, no del `es.ts`.
+  // ⚠️ `exact: true` en el botón, igual que en la etiqueta de la contraseña: el
+  // `name` de `getByRole` casa por SUBCADENA e ignora mayúsculas, así que
+  // «Sign in» también encuentra el enlace «Can't sign in?» de la recuperación
+  // (US-266) y el locator revienta por strict mode. En español no colisionaba
+  // —«¿No puedes entrar?» no contiene «Iniciar sesión»—, así que el fallo solo
+  // salía en el proyecto `chromium-en`.
   await expect(page.getByLabel('Email')).toBeVisible();
   await expect(page.getByLabel('Password', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
 
@@ -43,7 +49,7 @@ test('con sesión, manda la preferencia guardada del usuario', async ({ page, re
   await page.goto('/login');
   await page.getByLabel('Email').fill(USUARIO_EN.email);
   await page.getByLabel('Password', { exact: true }).fill(USUARIO_EN.password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await page.waitForURL('**/');
 
   // «Dashboard» es un término retenido (igual en ambos idiomas, ver
