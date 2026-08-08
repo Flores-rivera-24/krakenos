@@ -1,7 +1,7 @@
 import type { IotDevice, Scene, SceneAction, SceneIcon } from '@krakenos/types';
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { IotSchedulesSection } from '@/components/scenes/IotSchedulesSection';
 import { Card, CardContent } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -438,9 +438,15 @@ export function ScenesPage() {
         </div>
       )}
 
-      {/* Programación por horario (US-168): luces/enchufes/escenas a hora fija o solar. */}
+      {/* US-256: programar una escena ya no vive aquí. Se dice a dónde fue en vez
+          de dejar el hueco: quien usaba esta sección tiene que poder encontrarla. */}
       <div className="border-t border-kr-muted pt-6">
-        <IotSchedulesSection devices={devices} scenes={scenes ?? []} isAdmin={isAdmin} />
+        <p className="text-kr-sm text-kr-secondary">
+          {t('scenes.scheduleMoved')}{' '}
+          <Link to="/automations" className="text-kr-link underline underline-offset-2 hover:text-kr-primary">
+            {t('scenes.scheduleMovedLink')}
+          </Link>
+        </p>
       </div>
 
       {editorOpen && (

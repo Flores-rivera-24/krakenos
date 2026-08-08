@@ -246,7 +246,6 @@ export interface TelemetrySnapshot {
     rooms: number;
     scenes: number;
     automations: number;
-    iotSchedules: number;
     users: number;
   };
 }

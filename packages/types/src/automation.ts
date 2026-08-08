@@ -40,6 +40,17 @@ export type AutomationTrigger =
   | { type: 'weather-threshold'; metric: WeatherMetric; op: 'gt' | 'lt'; value: number }
   /** Hora fija en días concretos (0-6, Dom-Sáb), por cruce de minuto. */
   | { type: 'time'; days: number[]; minute: number }
+  /**
+   * Amanecer o atardecer en días concretos, con desfase en minutos (p. ej.
+   * atardecer −15). El sol se calcula **localmente** con la lat/long del hogar
+   * (`iot/solar.ts`, ecuación NOAA), sin una sola llamada externa.
+   *
+   * Sin ubicación configurada no hay cálculo posible y la regla **nunca**
+   * dispara: es una negación honesta, no un fallo silencioso, y la UI la
+   * declara antes de dejar guardar. Mismo criterio en un día polar (sin
+   * amanecer o sin atardecer): ese día no hay instante que cruzar.
+   */
+  | { type: 'sun'; event: 'sunrise' | 'sunset'; offsetMin: number; days: number[] }
   /** Una persona llega/se va de casa (US-169). Sin `userId` = cualquiera. */
   | { type: 'person-arrived'; userId?: Id }
   | { type: 'person-left'; userId?: Id }
@@ -80,6 +91,55 @@ export type AutomationAction =
   | { type: 'device-unblock'; mac?: string }
   | { type: 'device-pause'; mac?: string; minutes: number }
   | { type: 'notify'; message: string };
+
+/**
+ * Tipos de disparador y de acción como **fuente única** para el esquema del
+ * borde. Exhaustivos por construcción: el `Record` no compila si la unión gana
+ * un miembro y aquí no se declara.
+ *
+ * Existen porque la lista vivía copiada a mano en `automations.schemas.ts` y se
+ * quedó corta: `weather-threshold` llegó al contrato, al motor y a la UI, pero
+ * no al enum del borde — así que el disparador del tiempo se ofrecía en el
+ * asistente y se rechazaba al guardar con un 400 que el usuario no podía
+ * resolver. Una lista que hay que acordarse de ampliar en dos sitios se amplía
+ * en uno.
+ */
+const TRIGGER_TYPES: Record<AutomationTrigger['type'], true> = {
+  'device-new': true,
+  'device-online': true,
+  'device-offline': true,
+  'iot-on': true,
+  'iot-off': true,
+  'sensor-threshold': true,
+  'energy-threshold': true,
+  'motion-detected': true,
+  'weather-threshold': true,
+  time: true,
+  sun: true,
+  'person-arrived': true,
+  'person-left': true,
+  'mode-changed': true,
+};
+
+const ACTION_TYPES: Record<AutomationAction['type'], true> = {
+  'iot-set': true,
+  'scene-run': true,
+  'device-block': true,
+  'device-unblock': true,
+  'device-pause': true,
+  notify: true,
+};
+
+export const AUTOMATION_TRIGGER_TYPES = Object.keys(
+  TRIGGER_TYPES,
+) as readonly AutomationTrigger['type'][];
+
+export const AUTOMATION_ACTION_TYPES = Object.keys(
+  ACTION_TYPES,
+) as readonly AutomationAction['type'][];
+
+/** Desfase máximo (minutos) de un disparador solar, a cada lado del suceso. */
+export const SUN_OFFSET_MAX_MIN = 720;
 
 export interface AutomationRule {
   id: Id;

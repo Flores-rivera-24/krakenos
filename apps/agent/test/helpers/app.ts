@@ -34,8 +34,6 @@ import { RoomService } from '../../src/modules/rooms/rooms.service.js';
 import { favoritesRoutes } from '../../src/modules/favorites/favorites.routes.js';
 import { scenesRoutes } from '../../src/modules/scenes/scenes.routes.js';
 import { SceneService } from '../../src/modules/scenes/scenes.service.js';
-import { iotScheduleRoutes } from '../../src/modules/iot-schedule/iot-schedule.routes.js';
-import { IotScheduleService } from '../../src/modules/iot-schedule/iot-schedule.service.js';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
 import { automationsRoutes } from '../../src/modules/automations/automations.routes.js';
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
@@ -205,11 +203,6 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(favoritesRoutes, { prefix: '/api/favorites' });
     const sceneServiceForTests = new SceneService(app, sharedIot);
     await app.register(scenesRoutes, { prefix: '/api/scenes', service: sceneServiceForTests });
-    // Horarios IoT (US-168). No arrancamos el barrido en tests (sin timers).
-    await app.register(iotScheduleRoutes, {
-      prefix: '/api/iot-schedules',
-      service: new IotScheduleService(app, sharedIot, sceneServiceForTests),
-    });
     // Automatizaciones (US-167). Sin timers ni watcher: los tests publican en el
     // bus o llaman a `tick()` a mano. El bus se comparte con presencia (US-169),
     // como en producción.

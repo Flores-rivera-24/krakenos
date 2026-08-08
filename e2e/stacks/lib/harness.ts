@@ -32,7 +32,7 @@ export const ADMIN_ROUTES: { path: string; nav: string }[] = [
   { path: '/people', nav: 'Personas' },
   { path: '/rooms', nav: 'Habitaciones' },
   { path: '/scenes', nav: 'Escenas' },
-  { path: '/automations', nav: 'Automatizaciones' },
+  { path: '/automations', nav: 'Rutinas' },
   { path: '/iot', nav: 'IoT' },
   { path: '/energy', nav: 'Energía' },
   { path: '/cameras', nav: 'Cámaras' },

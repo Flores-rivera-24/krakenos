@@ -1,4 +1,5 @@
 import type {
+  AccessSchedule,
   AutomationAction,
   AutomationRule,
   AutomationRun,
@@ -11,8 +12,9 @@ import type {
   UserSummary,
   WeatherMetric,
 } from '@krakenos/types';
-import { HOME_MODES, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
+import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
@@ -33,10 +35,11 @@ import {
   updateAutomation,
   type NameContext,
 } from '@/lib/automations';
+import { agruparHorariosDeAcceso } from '@/lib/access-routines';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
-import { useT, type TranslationKey } from '@/lib/i18n';
-import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
+import { plural, useT, type TranslationKey } from '@/lib/i18n';
+import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
 import { MODE_LABELS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
@@ -163,12 +166,23 @@ function RuleEditor({
   const [weatherMetric, setWeatherMetric] = useState<WeatherMetric>(
     trg?.type === 'weather-threshold' ? trg.metric : 'temperature',
   );
+  // Los días los comparten la hora fija y el sol: es la misma pregunta y el
+  // editor solo muestra uno de los dos a la vez.
   const [timeDays, setTimeDays] = useState<number[]>(
-    trg?.type === 'time' ? trg.days : ALL_DAYS,
+    trg?.type === 'time' || trg?.type === 'sun' ? trg.days : ALL_DAYS,
   );
   const [timeAt, setTimeAt] = useState(
     trg?.type === 'time' ? minuteToTimeString(trg.minute) : '20:00',
   );
+  const [sunEvent, setSunEvent] = useState<'sunrise' | 'sunset'>(
+    trg?.type === 'sun' ? trg.event : 'sunset',
+  );
+  // El desfase se guarda como TEXTO mientras se teclea. Con `Number()` en cada
+  // pulsación no se puede escribir un negativo: al teclear «−» el input numérico
+  // devuelve cadena vacía, el estado cae a 0 y el siguiente dígito se pega
+  // detrás («01», «015») — el signo se pierde y sale un desfase positivo que el
+  // usuario no pidió. Se convierte al construir el disparador.
+  const [sunOffset, setSunOffset] = useState(String(trg?.type === 'sun' ? trg.offsetMin : 0));
   // Presencia/modos (US-169): '' = cualquier persona.
   const [triggerUserId, setTriggerUserId] = useState(
     trg && (trg.type === 'person-arrived' || trg.type === 'person-left')
@@ -230,6 +244,13 @@ function RuleEditor({
         return { type: 'weather-threshold', metric: weatherMetric, op: sensorOp, value: sensorValue };
       case 'time':
         return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
+      case 'sun': {
+        const crudo = Number(sunOffset);
+        const offsetMin = Number.isFinite(crudo)
+          ? Math.min(SUN_OFFSET_MAX_MIN, Math.max(-SUN_OFFSET_MAX_MIN, Math.trunc(crudo)))
+          : 0;
+        return { type: 'sun', event: sunEvent, offsetMin, days: timeDays };
+      }
       case 'person-arrived':
       case 'person-left':
         return { type: triggerType, ...(triggerUserId ? { userId: triggerUserId } : {}) };
@@ -375,6 +396,7 @@ function RuleEditor({
             <option value="weather-threshold">{t('automations.trigger.weatherThreshold')}</option>
             <option value="motion-detected">{t('automations.trigger.motionDetected')}</option>
             <option value="time">{t('automations.trigger.time')}</option>
+            <option value="sun">{t('automations.trigger.sun')}</option>
             <option value="person-arrived">{t('automations.trigger.personArrived')}</option>
             <option value="person-left">{t('automations.trigger.personLeft')}</option>
             <option value="mode-changed">{t('automations.trigger.modeChanged')}</option>
@@ -538,6 +560,42 @@ function RuleEditor({
                 value={timeAt}
                 onChange={(e) => setTimeAt(e.target.value)}
               />
+            </div>
+          )}
+          {triggerType === 'sun' && (
+            <div className="space-y-2">
+              {dayPicker(
+                timeDays,
+                (d) => setTimeDays((prev) => toggleIn(prev, d)),
+                t('automations.editor.triggerDaysAria'),
+              )}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  aria-label={t('automations.editor.sunEventAria')}
+                  className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                  value={sunEvent}
+                  onChange={(e) => setSunEvent(e.target.value as 'sunrise' | 'sunset')}
+                >
+                  <option value="sunrise">{t('automations.sun.sunrise')}</option>
+                  <option value="sunset">{t('automations.sun.sunset')}</option>
+                </select>
+                <Input
+                  type="number"
+                  aria-label={t('automations.editor.sunOffsetAria')}
+                  value={sunOffset}
+                  min={-SUN_OFFSET_MAX_MIN}
+                  max={SUN_OFFSET_MAX_MIN}
+                  onChange={(e) => setSunOffset(e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-kr-sm text-kr-fg-muted">
+                  {t('automations.sun.offsetUnit')}
+                </span>
+              </div>
+              {/* Sin lat/long del hogar no hay cálculo solar y la regla NUNCA
+                  dispara. Se dice aquí, no cuando el usuario se pregunte por qué
+                  la luz no se encendió anoche. */}
+              <p className="text-kr-xs text-kr-fg-muted">{t('automations.sun.needsLocation')}</p>
             </div>
           )}
           {(triggerType === 'person-arrived' || triggerType === 'person-left') && (
@@ -764,6 +822,7 @@ export function AutomationsPage() {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [users, setUsers] = useState<UserSummary[]>([]);
   const [cameras, setCameras] = useState<Camera[]>([]);
+  const [accessSchedules, setAccessSchedules] = useState<AccessSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -792,6 +851,12 @@ export function AutomationsPage() {
       .catch(() => setNetworkDevices([]));
     void listScenes().then(setScenes).catch(() => setScenes([]));
     void listCameras().then(setCameras).catch(() => setCameras([]));
+    // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
+    // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
+    void api
+      .get<AccessSchedule[]>('/access/schedules')
+      .then((list) => setAccessSchedules(Array.isArray(list) ? list : []))
+      .catch(() => setAccessSchedules([]));
   }, [reload]);
 
   // Personas del hogar para los disparadores de presencia (US-169). El listado
@@ -810,6 +875,16 @@ export function AutomationsPage() {
       cameraNames: new Map(cameras.map((c) => [c.id, c.name])),
     }),
     [iotDevices, scenes, networkDevices, users, cameras],
+  );
+
+  const rutinasDeAcceso = useMemo(
+    () =>
+      agruparHorariosDeAcceso(accessSchedules, {
+        personas: new Map(users.map((u) => [u.id, u.displayName])),
+        aparatos: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
+        personaSinNombre: t('automations.parental.somePerson'),
+      }),
+    [accessSchedules, users, networkDevices, t],
   );
 
   const toggleEnabled = async (rule: AutomationRule, enabled: boolean) => {
@@ -908,6 +983,60 @@ export function AutomationsPage() {
             );
           })}
         </ul>
+      )}
+
+      {/* Los horarios de control parental son rutinas del hogar, pero no son
+          reglas del motor: son ventanas de bloqueo que además se reafirman
+          contra el router. Se enseñan aquí para que «todas mis rutinas» sea
+          cierto, y se ENLAZA a su editor en vez de duplicarlo — dos formularios
+          sobre la misma fila acaban divergiendo. */}
+      {rutinasDeAcceso.length > 0 && (
+        <section className="space-y-2 border-t border-kr-muted pt-6">
+          <h3 className="text-kr-lg font-semibold text-kr-primary">
+            {t('automations.parental.title')}
+          </h3>
+          <p className="text-kr-sm text-kr-muted">{t('automations.parental.subtitle')}</p>
+          <ul className="space-y-2">
+            {rutinasDeAcceso.map((fila) => (
+              <li
+                key={fila.clave}
+                className="flex items-center justify-between gap-3 rounded-xl border border-kr bg-kr-surface px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <span className="block truncate text-kr-base font-medium text-kr-primary">
+                    {fila.sujeto}
+                  </span>
+                  <span className="block truncate text-kr-sm text-kr-muted">
+                    {t('automations.parental.window', {
+                      window: fila.franja,
+                      days: fila.dias,
+                    })}
+                    {fila.dePersona
+                      ? ` · ${t('automations.parental.appliedTo', {
+                          n: String(fila.aparatos),
+                          // Concordancia computada: «llega a 1 dispositivos» es
+                          // el error que la guía de copy prohíbe por su nombre.
+                          unit: plural(fila.aparatos, {
+                            one: t('people.device.one'),
+                            other: t('people.device.other'),
+                          }),
+                        })}`
+                      : ''}
+                    {fila.habilitada ? '' : ` · ${t('automations.parental.disabled')}`}
+                  </span>
+                </div>
+                <Link
+                  to={fila.dePersona ? '/people' : '/inventory'}
+                  className="shrink-0 text-kr-sm text-kr-link underline underline-offset-2 hover:text-kr-primary"
+                >
+                  {fila.dePersona
+                    ? t('automations.parental.editInPeople')
+                    : t('automations.parental.editInDevice')}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {runs.length > 0 && (

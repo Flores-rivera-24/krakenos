@@ -22,7 +22,7 @@ export const WEATHER_METRIC_PHRASES: Record<WeatherMetric, string> = {
   precipitation: 'la lluvia',
   wind: 'el viento',
 };
-import { DAY_LABELS, minuteToTimeString } from '@/lib/iot-schedules';
+import { DAY_LABELS, formatSunOffset, minuteToTimeString } from '@/lib/schedule-format';
 import { MODE_LABELS } from '@/lib/presence';
 
 export const listAutomations = () => api.get<AutomationRule[]>('/automations');
@@ -71,6 +71,12 @@ export function describeTrigger(trigger: AutomationTrigger, ctx: NameContext = {
       return `${WEATHER_METRIC_PHRASES[trigger.metric]} ${trigger.op === 'gt' ? 'supera' : 'baja de'} ${trigger.value} ${WEATHER_UNITS[trigger.metric]}`;
     case 'time':
       return `a las ${minuteToTimeString(trigger.minute)} (${trigger.days.map((d) => DAY_LABELS[d]).join(' ')})`;
+    // Se nombra el suceso, no una hora: el atardecer cae a una hora distinta cada
+    // día y escribir «a las 21:14» sería cierto hoy y falso mañana.
+    case 'sun':
+      return `${formatSunOffset(trigger.event, trigger.offsetMin).toLowerCase()} (${trigger.days
+        .map((d) => DAY_LABELS[d])
+        .join(' ')})`;
     case 'person-arrived':
       return `${trigger.userId ? (ctx.userNames?.get(trigger.userId) ?? trigger.userId) : 'alguien'} llega a casa`;
     case 'person-left':

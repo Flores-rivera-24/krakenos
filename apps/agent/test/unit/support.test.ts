@@ -26,7 +26,7 @@ describe('sanitizeSettings', () => {
 });
 
 describe('buildTelemetry', () => {
-  const counts = { devices: 3, rooms: 2, scenes: 1, automations: 0, iotSchedules: 4, users: 2 };
+  const counts = { devices: 3, rooms: 2, scenes: 1, automations: 0, users: 2 };
 
   it('desactivada: sin recuentos (opt-in estricto)', () => {
     const t = buildTelemetry(false, '1.0.0', counts);

@@ -13,6 +13,12 @@ export default tseslint.config(
       '**/prisma/**',
       // Assets estáticos servidos tal cual (script anti-flash de tema, sw.js, etc.).
       'apps/web/public/**',
+      // Informes y artefactos que ESCRIBE Playwright al correr las suites: no son
+      // fuente. Están gitignored, pero eslint tiene su propia lista y sin esto una
+      // tanda local de `test:e2e:stacks` deja ~4.000 errores en el bundle minificado
+      // del visor de trazas. Un gate que grita sin motivo se acaba silenciando.
+      '**/playwright-report/**',
+      '**/test-results/**',
     ],
   },
   js.configs.recommended,

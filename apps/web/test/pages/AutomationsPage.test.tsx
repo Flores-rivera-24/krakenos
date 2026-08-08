@@ -144,6 +144,83 @@ describe('AutomationsPage (US-167)', () => {
     );
   });
 
+  it('crea una rutina solar y declara que necesita la ubicación (US-256)', async () => {
+    apiMock.post.mockResolvedValue(rule());
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByLabelText('Nombre'), 'Luz al anochecer');
+    await user.selectOptions(within(dialog).getByLabelText('Cuando'), 'sun');
+    await user.selectOptions(within(dialog).getByLabelText('Suceso solar'), 'sunset');
+    const desfase = within(dialog).getByLabelText('Desfase en minutos');
+    await user.clear(desfase);
+    await user.type(desfase, '-15');
+
+    // Sin lat/long no hay cálculo solar posible: se dice ANTES de guardar, no
+    // cuando el usuario se pregunte por qué la luz no se encendió anoche.
+    expect(within(dialog).getByText(/ubicación del hogar/i)).toBeInTheDocument();
+
+    await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        '/automations',
+        expect.objectContaining({
+          trigger: expect.objectContaining({ type: 'sun', event: 'sunset', offsetMin: -15 }),
+        }),
+      ),
+    );
+  });
+
+  it('una rutina solar se lee como el suceso, no como una hora (US-256)', async () => {
+    mockGets({
+      '/automations': [
+        rule({
+          name: 'Luz al anochecer',
+          trigger: { type: 'sun', event: 'sunset', offsetMin: -15, days: [1, 2] },
+        }),
+      ],
+    });
+    renderPage();
+    // «a las 21:14» sería cierto hoy y falso mañana.
+    expect(await screen.findByText(/atardecer −15 min/i)).toBeInTheDocument();
+  });
+
+  it('enseña los horarios de control parental y enlaza a donde se editan (US-256)', async () => {
+    // La tercera superficie: no se convierten en reglas —son ventanas que se
+    // reafirman— pero tienen que VERSE aquí para que «todas mis rutinas» sea cierto.
+    mockGets({
+      '/access/schedules': [
+        {
+          id: 'h1',
+          name: 'Hora de dormir',
+          mac: 'aa:bb:cc:dd:ee:01',
+          enabled: true,
+          days: [1, 2, 3, 4, 5],
+          startMinute: 22 * 60,
+          endMinute: 7 * 60,
+          personId: null,
+          createdAt: '',
+        },
+      ],
+    });
+    renderPage();
+
+    expect(await screen.findByText('Horarios de control parental')).toBeInTheDocument();
+    expect(screen.getByText(/22:00–07:00/)).toBeInTheDocument();
+    const enlace = screen.getByRole('link', { name: 'Editar en el dispositivo' });
+    expect(enlace).toHaveAttribute('href', '/inventory');
+    // La MAC no se publica en esta lista.
+    expect(screen.queryByText(/aa:bb:cc:dd:ee:01/)).not.toBeInTheDocument();
+  });
+
+  it('sin horarios de acceso no se enseña una sección vacía (US-256)', async () => {
+    renderPage();
+    await screen.findByText('Rutinas');
+    expect(screen.queryByText('Horarios de control parental')).not.toBeInTheDocument();
+  });
+
   it('muestra el log de ejecuciones con éxito/fallo', async () => {
     mockGets({
       '/automations': [rule()],

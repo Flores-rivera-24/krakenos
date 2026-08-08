@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
-import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/iot-schedules';
+import { DAY_LABELS, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
 import { toast } from '@/store/toast.store';
 
 interface Props {

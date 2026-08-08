@@ -4,7 +4,6 @@ import type {
   CameraSnapshot,
   IotManager,
   NativeMotionEvent,
-  UpdateIotStateRequest,
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -13,7 +12,6 @@ import { DigestService } from '../../src/alerts/digest.js';
 import { MockIotManager } from '../../src/iot/mock.iot.js';
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
 import { MotionService } from '../../src/modules/cameras/motion.service.js';
-import { IotScheduleService } from '../../src/modules/iot-schedule/iot-schedule.service.js';
 import { SceneService } from '../../src/modules/scenes/scenes.service.js';
 import { buildTestApp, resetDb } from '../helpers/app.js';
 
@@ -41,42 +39,6 @@ describe('los barridos no pierden su ventana si el ciclo falla (US-229)', () => 
   beforeEach(async () => {
     await resetDb(app);
     vi.restoreAllMocks();
-  });
-
-  it('iot-schedule: un fallo de DB al cruzar la hora no se come el disparo', async () => {
-    const calls: UpdateIotStateRequest[] = [];
-    const fakeIot = {
-      setState: async (_id: string, input: UpdateIotStateRequest) => {
-        calls.push(input);
-        return (await new MockIotManager().getDevice('plug-cafetera'))!;
-      },
-      getDevice: async () => null,
-      listDevices: async () => [],
-    } as unknown as IotManager;
-    const service = new IotScheduleService(app, fakeIot, new SceneService(app, fakeIot));
-
-    await app.prisma.iotSchedule.create({
-      data: {
-        name: 'Luces del salón',
-        enabled: true,
-        days: JSON.stringify([0, 1, 2, 3, 4, 5, 6]),
-        time: JSON.stringify({ kind: 'fixed', minute: 20 * 60 }),
-        target: JSON.stringify({ type: 'device', deviceId: 'plug-cafetera', on: true }),
-      },
-    });
-
-    await service.tick(new Date(2026, 5, 21, 19, 59)); // fija la base
-    expect(calls).toHaveLength(0);
-
-    // El barrido que cruza las 20:00 falla al leer los horarios.
-    const list = vi.spyOn(service, 'list').mockRejectedValueOnce(new Error('database is locked'));
-    await expect(service.tick(new Date(2026, 5, 21, 20, 0))).rejects.toThrow();
-    expect(calls).toHaveLength(0);
-    list.mockRestore();
-
-    // El ciclo siguiente recupera el minuto perdido: la ventana sigue en 19:59.
-    await service.tick(new Date(2026, 5, 21, 20, 1));
-    expect(calls).toEqual([{ on: true }]);
   });
 
   it('automations: un fallo de DB al cruzar la hora no se come la regla horaria', async () => {
@@ -112,6 +74,57 @@ describe('los barridos no pierden su ventana si el ciclo falla (US-229)', () => 
     expect(await app.prisma.automationRun.count()).toBe(0);
     list.mockRestore();
 
+    await service.tick(new Date(2026, 5, 21, 20, 1));
+    expect(await app.prisma.automationRun.count()).toBe(1);
+  });
+
+  it('automations: un fallo al leer la UBICACIÓN tampoco se come la regla solar (US-256)', async () => {
+    // El barrido hace DOS lecturas antes de mover la ventana: las reglas y la
+    // ubicación del hogar. La segunda llegó con el disparador solar, y mover
+    // `prevTick` por delante de ella perdería ese minuto sin un solo error —el
+    // fallo se vería como «la luz no se encendió al atardecer», tres meses
+    // después y sin nada en el log.
+    let fallaLaUbicacion = false;
+    const leerUbicacion = async () => {
+      if (fallaLaUbicacion) throw new Error('database is locked');
+      return { lat: 40.4168, lon: -3.7038 };
+    };
+
+    const bus = new HomeEventBus(() => undefined);
+    const fakeIot = {
+      setState: async () => (await new MockIotManager().getDevice('plug-cafetera'))!,
+      getDevice: async () => null,
+      listDevices: async () => [],
+    } as unknown as IotManager;
+    const service = new AutomationService(app, {
+      iot: fakeIot,
+      scenes: new SceneService(app, fakeIot),
+      inventory: { setBlocked: vi.fn() } as never,
+      access: { pause: vi.fn() } as never,
+      bus,
+      notify: vi.fn().mockResolvedValue(undefined),
+      homeLocation: leerUbicacion,
+    });
+
+    await app.prisma.automationRule.create({
+      data: {
+        name: 'Aviso a hora fija',
+        enabled: true,
+        trigger: JSON.stringify({ type: 'time', minute: 20 * 60, days: [0, 1, 2, 3, 4, 5, 6] }),
+        actions: JSON.stringify([{ type: 'notify', message: 'buenas noches' }]),
+      },
+    });
+
+    await service.tick(new Date(2026, 5, 21, 19, 59)); // fija la base
+    expect(await app.prisma.automationRun.count()).toBe(0);
+
+    // Falla SOLO la lectura de la ubicación, no la de las reglas.
+    fallaLaUbicacion = true;
+    await expect(service.tick(new Date(2026, 5, 21, 20, 0))).rejects.toThrow();
+    expect(await app.prisma.automationRun.count()).toBe(0);
+    fallaLaUbicacion = false;
+
+    // El ciclo siguiente recupera el minuto: la ventana seguía en 19:59.
     await service.tick(new Date(2026, 5, 21, 20, 1));
     expect(await app.prisma.automationRun.count()).toBe(1);
   });

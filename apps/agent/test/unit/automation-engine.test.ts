@@ -1,12 +1,18 @@
 import type { AutomationRule, HomeEvent } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
+import { sunEventLocalMinutes } from '../../src/iot/solar.js';
+
+/** Ubicación de referencia para las reglas solares (US-256). */
+const MADRID = { lat: 40.4168, lon: -3.7038 };
 import {
   describeEvent,
+  describeSchedule,
   dueRulesForEvent,
-  dueTimeRules,
+  dueScheduledRules,
   eventSubject,
   matchesTrigger,
   passesCondition,
+  sunTriggerDue,
   timeTriggerDue,
 } from '../../src/automations/engine.js';
 
@@ -238,16 +244,36 @@ describe('automations/engine — dueRulesForEvent / dueTimeRules', () => {
     expect(dueRulesForEvent([r], event, NOW, lastFired)).toHaveLength(1);
   });
 
-  it('dueTimeRules solo considera disparadores de hora', () => {
+  it('dueScheduledRules solo considera disparadores de calendario', () => {
     const timed = rule({ id: 't', trigger: { type: 'time', days: [3], minute: 12 * 60 } });
     const evented = rule({ id: 'e' });
-    const due = dueTimeRules(
+    const due = dueScheduledRules(
       [timed, evented],
       new Date(2026, 6, 8, 11, 59),
       new Date(2026, 6, 8, 12, 0),
       new Map(),
+      null,
     );
     expect(due.map((r) => r.id)).toEqual(['t']);
+  });
+
+  it('dueScheduledRules recoge también las reglas solares (US-256)', () => {
+    // El mismo barrido tiene que ver los dos tipos: si el solar necesitara su
+    // propia llamada, añadir un disparador de calendario nuevo dejaría media
+    // función de rutinas muda y sin un solo error.
+    const solar = rule({
+      id: 's',
+      trigger: { type: 'sun', event: 'sunrise', offsetMin: 0, days: [0, 1, 2, 3, 4, 5, 6] },
+    });
+    const timed = rule({ id: 't', trigger: { type: 'time', days: [3], minute: 12 * 60 } });
+    const due = dueScheduledRules(
+      [solar, timed],
+      new Date(2026, 6, 8, 0, 0),
+      new Date(2026, 6, 8, 23, 59),
+      new Map(),
+      MADRID,
+    );
+    expect(due.map((r) => r.id).sort()).toEqual(['s', 't']);
   });
 });
 
@@ -280,5 +306,124 @@ describe('automations/engine — eventSubject / describeEvent', () => {
     expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toContain('llega');
     expect(describeEvent({ type: 'person-left', userId: 'u1', name: 'Ana' })).toContain('sale');
     expect(describeEvent({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toContain('night');
+  });
+});
+
+/**
+ * Disparador solar (US-256). Lo que se prueba aquí es el **borde**: el cruce de
+ * la ventana, el filtro de días, el desfase y las dos negaciones honestas (sin
+ * ubicación y en día polar). La astronomía es de `iot/solar.ts` y tiene su
+ * propio test contra efemérides; repetir la ecuación aquí solo probaría que sé
+ * copiarla, así que el instante esperado se deriva de ella.
+ */
+describe('automations/engine — sunTriggerDue (US-256)', () => {
+  const TODOS = [0, 1, 2, 3, 4, 5, 6];
+  const DIA = new Date(2026, 6, 8, 12, 0); // miércoles de julio
+
+  /** Instante local del amanecer/atardecer de ese día, con desfase aplicado. */
+  function instante(which: 'sunrise' | 'sunset', offsetMin = 0): Date {
+    const m = sunEventLocalMinutes(DIA, MADRID.lat, MADRID.lon, which);
+    expect(m).not.toBeNull();
+    const at = new Date(DIA);
+    at.setHours(0, 0, 0, 0);
+    at.setMinutes(Math.min(1439, Math.max(0, (m as number) + offsetMin)));
+    return at;
+  }
+
+  it('dispara exactamente en el minuto que cruza el atardecer, y una sola vez', () => {
+    const at = instante('sunset');
+    const trigger = { type: 'sun', event: 'sunset', offsetMin: 0, days: TODOS } as const;
+    expect(sunTriggerDue(trigger, new Date(at.getTime() - 60_000), at, MADRID)).toBe(true);
+    // Un minuto después ya pasó: no se re-dispara mientras siga anocheciendo.
+    expect(sunTriggerDue(trigger, at, new Date(at.getTime() + 60_000), MADRID)).toBe(false);
+  });
+
+  it('el desfase mueve el instante, no lo duplica', () => {
+    const trigger = { type: 'sun', event: 'sunset', offsetMin: -15, days: TODOS } as const;
+    const conDesfase = instante('sunset', -15);
+    expect(
+      sunTriggerDue(trigger, new Date(conDesfase.getTime() - 60_000), conDesfase, MADRID),
+    ).toBe(true);
+    // Y en el instante SIN desfase no cae nada: si el desfase se ignorase, esta
+    // aserción seguiría en verde y la regla dispararía a la hora equivocada.
+    const sinDesfase = instante('sunset');
+    expect(
+      sunTriggerDue(trigger, new Date(sinDesfase.getTime() - 60_000), sinDesfase, MADRID),
+    ).toBe(false);
+  });
+
+  it('respeta los días del disparador', () => {
+    const at = instante('sunrise');
+    const otroDia = (at.getDay() + 1) % 7;
+    expect(
+      sunTriggerDue(
+        { type: 'sun', event: 'sunrise', offsetMin: 0, days: [otroDia] },
+        new Date(at.getTime() - 60_000),
+        at,
+        MADRID,
+      ),
+    ).toBe(false);
+  });
+
+  it('sin ubicación del hogar NO dispara nunca', () => {
+    // Negación honesta: la regla no se puede evaluar y no se inventa un
+    // amanecer. La UI lo declara antes de dejar guardarla.
+    const at = instante('sunrise');
+    expect(
+      sunTriggerDue(
+        { type: 'sun', event: 'sunrise', offsetMin: 0, days: TODOS },
+        new Date(at.getTime() - 60_000),
+        at,
+        null,
+      ),
+    ).toBe(false);
+  });
+
+  it('en noche polar no hay instante que cruzar y no dispara', () => {
+    const svalbard = { lat: 78, lon: 15 };
+    // Barrido de un día entero: aun así no dispara, y sin lanzar.
+    expect(
+      sunTriggerDue(
+        { type: 'sun', event: 'sunrise', offsetMin: 0, days: TODOS },
+        new Date(2026, 11, 21, 0, 0),
+        new Date(2026, 11, 21, 23, 59),
+        svalbard,
+      ),
+    ).toBe(false);
+  });
+
+  it('en un barrido que cruza medianoche, el día lo decide la fecha del INSTANTE', () => {
+    // El evaluador de horarios que esto sustituye resolvía el día —y el cálculo
+    // solar— con la fecha de `now`. En un barrido que cruza medianoche, `now` ya
+    // es el día siguiente, así que un disparo que pertenece a la noche anterior
+    // se atribuía al día equivocado, sin un solo error.
+    //
+    // Ventana larga a propósito (una suspensión del equipo la produce): abarca
+    // el instante solar del MIÉRCOLES y termina ya el jueves. No se fija ninguna
+    // hora concreta porque el minuto solar depende de la zona horaria de la
+    // máquina; lo que se fija es de qué día es el disparo.
+    const miercoles = new Date(2026, 6, 8, 0, 1);
+    const juevesTemprano = new Date(2026, 6, 9, 0, 1);
+    expect(miercoles.getDay()).toBe(3);
+    expect(juevesTemprano.getDay()).toBe(4);
+
+    const soloMiercoles = { type: 'sun', event: 'sunrise', offsetMin: 0, days: [3] } as const;
+    expect(sunTriggerDue(soloMiercoles, miercoles, juevesTemprano, MADRID)).toBe(true);
+
+    // Mismo barrido, mismo instante: si el día se leyera de `now` (jueves), esta
+    // regla dispararía. Su instante es del miércoles, así que no.
+    const soloJueves = { type: 'sun', event: 'sunrise', offsetMin: 0, days: [4] } as const;
+    expect(sunTriggerDue(soloJueves, miercoles, juevesTemprano, MADRID)).toBe(false);
+  });
+
+  it('el log de ejecuciones nombra el suceso, no una hora inventada', () => {
+    expect(
+      describeSchedule(
+        rule({ trigger: { type: 'sun', event: 'sunset', offsetMin: 0, days: TODOS } }),
+      ),
+    ).toBe('atardecer');
+    expect(describeSchedule(rule({ trigger: { type: 'time', days: [1], minute: 60 } }))).toBe(
+      'hora programada',
+    );
   });
 });

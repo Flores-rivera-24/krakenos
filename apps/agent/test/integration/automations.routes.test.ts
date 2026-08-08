@@ -1,4 +1,12 @@
-import type { AutomationRule, AutomationRun, HardwareDriver } from '@krakenos/types';
+import type {
+  AutomationRule,
+  AutomationRun,
+  AutomationTrigger,
+  HardwareDriver,
+} from '@krakenos/types';
+import { AUTOMATION_TRIGGER_TYPES } from '@krakenos/types';
+
+type AutomationTriggerType = AutomationTrigger['type'];
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
@@ -320,5 +328,103 @@ describe('automatizaciones (US-167)', () => {
     });
     expect(res.statusCode).toBe(200);
     expect((res.json() as AutomationRun[])).toHaveLength(1);
+  });
+
+  /**
+   * El esquema del borde tenía la lista de tipos de disparador **copiada a
+   * mano** y se quedó corta: `weather-threshold` llegó al contrato, al motor y
+   * al asistente, pero no al enum, así que la regla del tiempo se ofrecía y se
+   * rechazaba con un 400 que el usuario no podía resolver. El motor sí estaba
+   * probado —en unitarias, sobre la función pura— y el borde no lo probaba
+   * nadie. Esto recorre **todos** los tipos del contrato contra la ruta real.
+   */
+  describe('el borde acepta todos los disparadores del contrato', () => {
+    const EJEMPLOS: Record<AutomationTriggerType, AutomationTrigger> = {
+      'device-new': { type: 'device-new' },
+      'device-online': { type: 'device-online', mac: 'aa:bb:cc:dd:ee:ff' },
+      'device-offline': { type: 'device-offline', mac: 'aa:bb:cc:dd:ee:ff' },
+      'iot-on': { type: 'iot-on', deviceId: 'mock:1' },
+      'iot-off': { type: 'iot-off', deviceId: 'mock:1' },
+      'sensor-threshold': { type: 'sensor-threshold', deviceId: 'mock:1', op: 'gt', value: 20 },
+      'energy-threshold': { type: 'energy-threshold' },
+      'motion-detected': { type: 'motion-detected' },
+      'weather-threshold': {
+        type: 'weather-threshold',
+        metric: 'temperature',
+        op: 'lt',
+        value: 5,
+      },
+      time: { type: 'time', days: [1], minute: 600 },
+      sun: { type: 'sun', event: 'sunset', offsetMin: -15, days: [1, 2] },
+      'person-arrived': { type: 'person-arrived' },
+      'person-left': { type: 'person-left' },
+      'mode-changed': { type: 'mode-changed', mode: 'away' },
+    };
+
+    // Guard de tamaño: si el contrato gana un disparador y el mapa no, esto se
+    // pone rojo aquí en vez de dejar la lista corta otra vez.
+    it('el mapa de ejemplos cubre el contrato entero', () => {
+      expect(Object.keys(EJEMPLOS).sort()).toEqual([...AUTOMATION_TRIGGER_TYPES].sort());
+      expect(AUTOMATION_TRIGGER_TYPES.length).toBeGreaterThan(10);
+    });
+
+    for (const [tipo, trigger] of Object.entries(EJEMPLOS)) {
+      it(`acepta y devuelve intacto el disparador «${tipo}»`, async () => {
+        const res = await app.inject({
+          method: 'POST',
+          url: '/api/automations',
+          headers: authHeader(adminToken),
+          payload: {
+            name: `R ${tipo}`,
+            trigger,
+            actions: [{ type: 'notify', message: 'x' }],
+          },
+        });
+        expect(res.statusCode).toBe(201);
+        // Se compara el disparador COMPLETO: `additionalProperties:false` en la
+        // respuesta poda campos en silencio (US-238), así que un 201 solo no
+        // prueba que el dato haya sobrevivido el viaje.
+        expect((res.json() as AutomationRule).trigger).toEqual(trigger);
+      });
+    }
+  });
+
+  describe('disparador solar (US-256)', () => {
+    it('rechaza un desfase fuera de rango', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/automations',
+        headers: authHeader(adminToken),
+        payload: {
+          name: 'R',
+          trigger: { type: 'sun', event: 'sunset', offsetMin: 5000, days: [1] },
+          actions: [{ type: 'notify', message: 'x' }],
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('exige suceso, desfase y días', async () => {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/automations',
+        headers: authHeader(adminToken),
+        payload: {
+          name: 'R',
+          trigger: { type: 'sun', event: 'sunset' },
+          actions: [{ type: 'notify', message: 'x' }],
+        },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  it('la API de horarios IoT ya no existe: la absorbieron las rutinas (US-256)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/iot-schedules',
+      headers: authHeader(adminToken),
+    });
+    expect(res.statusCode).toBe(404);
   });
 });

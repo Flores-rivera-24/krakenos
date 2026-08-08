@@ -1,4 +1,10 @@
-import { HOME_MODES } from '@krakenos/types';
+import {
+  AUTOMATION_ACTION_TYPES,
+  AUTOMATION_TRIGGER_TYPES,
+  HOME_MODES,
+  SUN_OFFSET_MAX_MIN,
+  WEATHER_METRICS,
+} from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
 /** JSON Schemas de automatizaciones «si X entonces Y» (US-167). */
@@ -22,28 +28,24 @@ const trigger = {
   additionalProperties: false,
   required: ['type'],
   properties: {
-    type: {
-      enum: [
-        'device-new',
-        'device-online',
-        'device-offline',
-        'iot-on',
-        'iot-off',
-        'sensor-threshold',
-        'energy-threshold',
-        'motion-detected',
-        'time',
-        'person-arrived',
-        'person-left',
-        'mode-changed',
-      ],
-    },
+    // Derivado del contrato, no copiado: la copia a mano se quedó sin
+    // `weather-threshold` y la regla del tiempo se ofrecía sin poder guardarse.
+    type: { enum: [...AUTOMATION_TRIGGER_TYPES] },
     mac,
     deviceId,
     op: { enum: ['gt', 'lt'] },
     value: { type: 'number', minimum: -1_000_000, maximum: 1_000_000 },
+    // Magnitud del tiempo exterior (US-254): unión cerrada, como en el contrato.
+    metric: { enum: [...WEATHER_METRICS] },
     days,
     minute: { type: 'integer', minimum: 0, maximum: 1439 },
+    // Disparador solar (US-256): suceso y desfase en minutos a cada lado.
+    event: { enum: ['sunrise', 'sunset'] },
+    offsetMin: {
+      type: 'integer',
+      minimum: -SUN_OFFSET_MAX_MIN,
+      maximum: SUN_OFFSET_MAX_MIN,
+    },
     // Presencia/modos (US-169): `userId` opcional (ausente = cualquier persona).
     userId: { type: 'string', minLength: 1, maxLength: 128 },
     mode: { enum: [...HOME_MODES] },
@@ -67,8 +69,16 @@ const trigger = {
       then: { required: ['deviceId', 'op', 'value'] },
     },
     {
+      if: { properties: { type: { const: 'weather-threshold' } }, required: ['type'] },
+      then: { required: ['metric', 'op', 'value'] },
+    },
+    {
       if: { properties: { type: { const: 'time' } }, required: ['type'] },
       then: { required: ['days', 'minute'] },
+    },
+    {
+      if: { properties: { type: { const: 'sun' } }, required: ['type'] },
+      then: { required: ['event', 'offsetMin', 'days'] },
     },
     {
       if: { properties: { type: { const: 'mode-changed' } }, required: ['type'] },
@@ -95,9 +105,7 @@ const action = {
   additionalProperties: false,
   required: ['type'],
   properties: {
-    type: {
-      enum: ['iot-set', 'scene-run', 'device-block', 'device-unblock', 'device-pause', 'notify'],
-    },
+    type: { enum: [...AUTOMATION_ACTION_TYPES] },
     deviceId,
     on: { type: 'boolean' },
     brightness: { type: 'integer', minimum: 0, maximum: 100 },
