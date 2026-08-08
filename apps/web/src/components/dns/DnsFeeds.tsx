@@ -62,7 +62,7 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
                   checked={f.enabled}
                   disabled={!canEdit}
                   onCheckedChange={(v) => void toggle(f, v)}
-                  aria-label={t('coverage.ap.enableAria', { name: f.name })}
+                  aria-label={t('dns.feeds.enableAria', { name: f.name })}
                 />
               </li>
             ))}

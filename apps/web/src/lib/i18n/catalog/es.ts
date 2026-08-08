@@ -1443,6 +1443,7 @@ export const es = {
   'dns.feeds.title': 'Listas por categoría',
   'dns.feeds.hint':
     'Suscríbete a listas curadas de bloqueo (publicidad, malware, rastreo). Requiere Pi-hole; el resolver las gestiona por URL.',
+  'dns.feeds.enableAria': 'Activar {name}',
   'dns.feeds.loadError': 'No se pudieron cargar las listas',
   'dns.feeds.toggleError': 'No se pudo cambiar la lista',
   'vpn.peer.delete': 'Eliminar dispositivo',

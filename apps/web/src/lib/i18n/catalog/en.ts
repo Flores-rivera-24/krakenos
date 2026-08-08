@@ -1404,6 +1404,7 @@ export const en: Record<TranslationKey, string> = {
   'dns.feeds.title': 'Category lists',
   'dns.feeds.hint':
     'Subscribe to curated blocklists (ads, malware, tracking). Requires Pi-hole; the resolver manages them by URL.',
+  'dns.feeds.enableAria': 'Enable {name}',
   'dns.feeds.loadError': 'Could not load the lists',
   'dns.feeds.toggleError': 'Could not change the list',
   'vpn.peer.delete': 'Delete device',
