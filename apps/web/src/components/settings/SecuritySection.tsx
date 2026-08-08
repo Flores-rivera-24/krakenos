@@ -163,10 +163,7 @@ function PasskeysCard() {
             {passkeys === null ? (
               <p className="py-2 text-kr-sm text-kr-muted">{t('common.loading')}</p>
             ) : passkeys.length === 0 ? (
-              <p className="text-kr-sm text-kr-muted">
-                Sin passkeys registradas. Añade una para activar verificación en dos pasos al
-                iniciar sesión.
-              </p>
+              <p className="text-kr-sm text-kr-muted">{t('security.passkey.empty')}</p>
             ) : (
               <ul className="space-y-2">
                 {passkeys.map((pk) => (
@@ -177,16 +174,22 @@ function PasskeysCard() {
                     <span className="min-w-0">
                       <span className="block truncate text-kr-primary">{pk.name}</span>
                       <span className="text-kr-xs text-kr-muted">
-                        {pk.deviceType} · creada {new Date(pk.createdAt).toLocaleDateString()}
                         {pk.lastUsedAt
-                          ? ` · usada ${new Date(pk.lastUsedAt).toLocaleDateString()}`
-                          : ' · sin uso'}
+                          ? t('security.passkey.metaUsed', {
+                              type: pk.deviceType,
+                              created: new Date(pk.createdAt).toLocaleDateString(),
+                              used: new Date(pk.lastUsedAt).toLocaleDateString(),
+                            })
+                          : t('security.passkey.metaUnused', {
+                              type: pk.deviceType,
+                              created: new Date(pk.createdAt).toLocaleDateString(),
+                            })}
                       </span>
                     </span>
                     {confirmId === pk.id ? (
                       <span className="flex items-center gap-1">
                         <Button variant="destructive" size="sm" onClick={() => void remove(pk.id)}>
-                          Confirmar
+                          {t('common.confirm')}
                         </Button>
                         <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
                           {t('common.cancel')}
@@ -194,7 +197,7 @@ function PasskeysCard() {
                       </span>
                     ) : (
                       <Button variant="ghost" size="sm" onClick={() => setConfirmId(pk.id)}>
-                        Eliminar
+                        {t('common.delete')}
                       </Button>
                     )}
                   </li>
@@ -337,9 +340,9 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
               disabled={!isAdmin}
               onChange={(e) => void patch('loginRateLimit', e.target.value)}
             >
-              <option value="5">5 por minuto</option>
-              <option value="10">10 por minuto</option>
-              <option value="20">20 por minuto</option>
+              <option value="5">{t('security.perMinute', { n: 5 })}</option>
+              <option value="10">{t('security.perMinute', { n: 10 })}</option>
+              <option value="20">{t('security.perMinute', { n: 20 })}</option>
             </select>
           </Row>
           <Row label={t('security.darkTheme')}>
@@ -356,7 +359,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>{t('security.sessions')}</CardTitle>
           <Button variant="outline" size="sm" onClick={() => void closeOthers()}>
-            Cerrar todas las sesiones
+            {t('security.closeAllSessions')}
           </Button>
         </CardHeader>
         <CardContent>

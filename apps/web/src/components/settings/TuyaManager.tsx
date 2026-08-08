@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
 const EMPTY: CreateTuyaDeviceRequest = { deviceId: '', localKey: '', ip: '', name: '', version: '3.3' };
@@ -30,6 +31,7 @@ function FocoForm({
   onSubmit: (v: CreateTuyaDeviceRequest) => Promise<void>;
   onCancel: () => void;
 }) {
+  const t = useT();
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof CreateTuyaDeviceRequest, v: string) => setForm({ ...form, [k]: v });
@@ -37,7 +39,7 @@ function FocoForm({
   return (
     <div className="grid gap-3 rounded-md border border-kr bg-kr-elevated p-3 sm:grid-cols-2">
       <div className="space-y-1">
-        <Label htmlFor="tf-name" className="text-kr-xs">Nombre</Label>
+        <Label htmlFor="tf-name" className="text-kr-xs">{t('tuya.name')}</Label>
         <Input id="tf-name" value={form.name} onChange={(e) => set('name', e.target.value)} maxLength={80} />
       </div>
       <div className="space-y-1">
@@ -60,11 +62,11 @@ function FocoForm({
           type="password"
           value={form.localKey}
           onChange={(e) => set('localKey', e.target.value)}
-          placeholder={initial.deviceId ? 'sin cambios' : ''}
+          placeholder={initial.deviceId ? t('tuya.unchanged') : ''}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-version" className="text-kr-xs">Versión</Label>
+        <Label htmlFor="tf-version" className="text-kr-xs">{t('tuya.version')}</Label>
         <select
           id="tf-version"
           value={form.version}
@@ -91,10 +93,10 @@ function FocoForm({
             }
           }}
         >
-          {busy ? 'Guardando…' : submitLabel}
+          {busy ? t('common.saving') : submitLabel}
         </Button>
         <Button variant="outline" size="sm" onClick={onCancel}>
-          Cancelar
+          {t('common.cancel')}
         </Button>
       </div>
     </div>
@@ -103,6 +105,7 @@ function FocoForm({
 
 /** Gestión inline de los focos Tuya (alta/edición/borrado). Solo admin. */
 export function TuyaManager({ reachable }: Props) {
+  const t = useT();
   const [devices, setDevices] = useState<TuyaDeviceView[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -123,7 +126,7 @@ export function TuyaManager({ reachable }: Props) {
       await fn();
       load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo completar la operación');
+      setError(err instanceof ApiRequestError ? err.body.message : t('tuya.opError'));
     }
   };
 
@@ -135,11 +138,11 @@ export function TuyaManager({ reachable }: Props) {
         <table className="w-full text-kr-sm">
           <thead className="bg-kr-elevated text-kr-secondary">
             <tr>
-              <th className="px-3 py-2 text-left">Estado</th>
-              <th className="px-3 py-2 text-left">Nombre</th>
+              <th className="px-3 py-2 text-left">{t('tuya.col.status')}</th>
+              <th className="px-3 py-2 text-left">{t('tuya.name')}</th>
               <th className="px-3 py-2 text-left">IP</th>
               <th className="px-3 py-2 text-left">Device ID</th>
-              <th className="px-3 py-2 text-right">Acciones</th>
+              <th className="px-3 py-2 text-right">{t('users.col.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -149,7 +152,7 @@ export function TuyaManager({ reachable }: Props) {
                   <td colSpan={5} className="p-3">
                     <FocoForm
                       initial={{ ...EMPTY, deviceId: d.deviceId, ip: d.ip, name: d.name, version: d.version }}
-                      submitLabel="Guardar"
+                      submitLabel={t('common.save')}
                       onCancel={() => setEditingId(null)}
                       onSubmit={(v) =>
                         handle(async () => {
@@ -176,7 +179,7 @@ export function TuyaManager({ reachable }: Props) {
                     <td className="px-3 py-2 text-right">
                       {deletingId === d.deviceId ? (
                         <span className="inline-flex items-center gap-2">
-                          <span className="text-kr-xs text-kr-secondary">¿Eliminar?</span>
+                          <span className="text-kr-xs text-kr-secondary">{t('tuya.deleteQ')}</span>
                           <Button
                             variant="destructive"
                             size="sm"
@@ -187,19 +190,19 @@ export function TuyaManager({ reachable }: Props) {
                               })
                             }
                           >
-                            Sí
+                            {t('common.yes')}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setDeletingId(null)}>
-                            No
+                            {t('common.no')}
                           </Button>
                         </span>
                       ) : (
                         <span className="inline-flex gap-1">
                           <Button variant="ghost" size="sm" onClick={() => setEditingId(d.deviceId)}>
-                            Editar
+                            {t('common.edit')}
                           </Button>
                           <Button variant="ghost" size="sm" onClick={() => setDeletingId(d.deviceId)}>
-                            Eliminar
+                            {t('common.delete')}
                           </Button>
                         </span>
                       )}
@@ -211,7 +214,7 @@ export function TuyaManager({ reachable }: Props) {
             {devices?.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-kr-muted">
-                  Sin focos Tuya registrados.
+                  {t('tuya.empty')}
                 </td>
               </tr>
             )}
@@ -222,7 +225,7 @@ export function TuyaManager({ reachable }: Props) {
       {adding ? (
         <FocoForm
           initial={EMPTY}
-          submitLabel="Añadir foco"
+          submitLabel={t('tuya.add')}
           onCancel={() => setAdding(false)}
           onSubmit={(v) =>
             handle(async () => {
@@ -233,7 +236,7 @@ export function TuyaManager({ reachable }: Props) {
         />
       ) : (
         <Button variant="outline" size="sm" onClick={() => setAdding(true)}>
-          Añadir foco
+          {t('tuya.add')}
         </Button>
       )}
     </div>

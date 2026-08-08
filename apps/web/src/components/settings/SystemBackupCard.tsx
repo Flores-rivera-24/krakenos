@@ -5,6 +5,7 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RichText } from '@/components/ui/rich-text';
 import { api } from '@/lib/api';
 import {
   downloadBackup,
@@ -69,7 +70,7 @@ export function SystemBackupCard() {
       setPass('');
       setConfirm('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo generar la copia');
+      toast.error(err instanceof Error ? err.message : t('backup.generateError'));
     } finally {
       setBusy(false);
     }
@@ -111,7 +112,7 @@ export function SystemBackupCard() {
           </div>
         </div>
         <Button size="sm" onClick={() => void run()} disabled={busy || pass.length < 12}>
-          {busy ? 'Generando…' : 'Descargar copia de seguridad'}
+          {busy ? t('backup.generating') : t('backup.download')}
         </Button>
 
         {/* Restaurar (US-104) */}
@@ -119,8 +120,7 @@ export function SystemBackupCard() {
           <div>
             <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.restore')}</h4>
             <p className="text-kr-sm text-kr-secondary">
-              Sube un archivo de copia y su contraseña. Se valida y se prepara; se aplica al{' '}
-              <strong>reiniciar</strong> el agente (se respalda lo actual por si acaso).
+              <RichText>{t('backup.restoreHint')}</RichText>
             </p>
           </div>
           <div className="grid max-w-lg gap-4 sm:grid-cols-2">
@@ -157,7 +157,7 @@ export function SystemBackupCard() {
           </Callout>
           <div className="space-y-1.5">
             <Label htmlFor="bk-confirm">
-              {t('backup.typeToConfirm')} <strong>RESTAURAR</strong>
+              {t('backup.typeToConfirm')} <strong>{t('backup.confirmWord')}</strong>
             </Label>
             <Input
               id="bk-confirm"
@@ -175,10 +175,10 @@ export function SystemBackupCard() {
               restoreBusy ||
               !restoreFile ||
               restorePass.length < 12 ||
-              restoreConfirm.trim().toUpperCase() !== 'RESTAURAR'
+              restoreConfirm.trim().toUpperCase() !== t('backup.confirmWord').toUpperCase()
             }
           >
-            {restoreBusy ? 'Preparando…' : 'Restaurar copia'}
+            {restoreBusy ? t('backup.preparing') : t('backup.restoreAction')}
           </Button>
         </div>
 
@@ -223,7 +223,7 @@ function AutoBackupSection() {
       await api.patch('/system/settings', { key, value });
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo guardar el ajuste');
+      toast.error(err instanceof Error ? err.message : t('backup.settingError'));
     }
   };
 
@@ -232,7 +232,7 @@ function AutoBackupSection() {
     try {
       await fn();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'No se pudo completar la operación');
+      toast.error(err instanceof Error ? err.message : t('backup.opError'));
     } finally {
       setBusy(false);
     }
@@ -245,8 +245,7 @@ function AutoBackupSection() {
       <div>
         <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.auto.title')}</h4>
         <p className="text-kr-sm text-kr-secondary">
-          KrakenOS puede guardar una copia cifrada en <code>data/backups/</code> cada día o cada
-          semana, a las 03:00. Necesita una contraseña propia (nadie va a teclearla de madrugada).
+          <RichText>{t('backup.auto.hint')}</RichText>
         </p>
       </div>
 
@@ -291,7 +290,7 @@ function AutoBackupSection() {
             })
           }
         >
-          {status.passphraseSet ? 'Generar otra contraseña' : 'Generar contraseña'}
+          {status.passphraseSet ? t('backup.auto.passRegen') : t('backup.auto.passGen')}
         </Button>
         {status.passphraseSet && (
           <Button

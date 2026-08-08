@@ -20,7 +20,7 @@ import {
 } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 
 const EMPTY_FORM = {
   email: '',
@@ -96,7 +96,7 @@ export function UsersSection() {
   };
 
   const remove = async (u: UserSummary) => {
-    if (!confirm(`¿Eliminar a ${u.email}? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(t('users.confirmDelete', { email: u.email }))) return;
     setBusyId(u.id);
     try {
       await deleteUser(u.id);
@@ -132,9 +132,7 @@ export function UsersSection() {
       >
         <div>
           <h3 className="text-kr-lg font-semibold text-kr-primary">{t('users.add')}</h3>
-          <p className="text-kr-sm text-kr-secondary">
-            Da acceso a un familiar o a personal. «Solo lectura» ve el estado pero no cambia nada.
-          </p>
+          <p className="text-kr-sm text-kr-secondary">{t('users.addHint')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -198,7 +196,7 @@ export function UsersSection() {
           )}
         </div>
         <Button type="submit" disabled={creating}>
-          {creating ? 'Creando…' : 'Crear usuario'}
+          {creating ? t('users.creating') : t('users.create')}
         </Button>
       </form>
 
@@ -228,7 +226,9 @@ export function UsersSection() {
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-kr-primary">
                         {u.displayName}
-                        {isSelf && <span className="ml-1 text-kr-xs text-kr-muted">(tú)</span>}
+                        {isSelf && (
+                          <span className="ml-1 text-kr-xs text-kr-muted">{t('users.you')}</span>
+                        )}
                       </div>
                       <div className="text-kr-xs text-kr-muted">{u.email}</div>
                       {/* Credenciales de automatización vivas (US-227): un admin debe
@@ -236,7 +236,13 @@ export function UsersSection() {
                           revoca en cascada. */}
                       {(u.apiTokenCount ?? 0) > 0 && (
                         <div className="text-kr-xs text-kr-muted">
-                          {u.apiTokenCount} {u.apiTokenCount === 1 ? 'token de API' : 'tokens de API'}
+                          {t('users.apiTokens', {
+                            n: u.apiTokenCount ?? 0,
+                            unidad: plural(u.apiTokenCount ?? 0, {
+                              one: t('users.apiToken.one'),
+                              other: t('users.apiToken.other'),
+                            }),
+                          })}
                         </div>
                       )}
                     </td>

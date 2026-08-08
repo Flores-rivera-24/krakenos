@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { TuyaManager } from './TuyaManager';
 
 interface BackendStats {
@@ -27,6 +28,7 @@ function IntegrationCard({
   stats: BackendStats;
   children?: ReactNode;
 }) {
+  const t = useT();
   const active = stats.total > 0;
   return (
     <Card>
@@ -36,7 +38,9 @@ function IntegrationCard({
       </CardHeader>
       <CardContent className="space-y-2">
         <p className="text-kr-sm text-kr-secondary">
-          {active ? `${stats.online}/${stats.total} en línea` : 'No detectada'}
+          {active
+            ? t('integrations.online', { online: stats.online, total: stats.total })
+            : t('integrations.undetected')}
         </p>
         {children}
       </CardContent>
@@ -48,13 +52,20 @@ interface Props {
   isAdmin: boolean;
 }
 
-const DOCS: { name: string; doc: string; hint: string }[] = [
-  { name: 'Philips Hue', doc: 'docs/hue-setup.md', hint: 'Pulsa el botón del bridge y configura HUE_*.' },
-  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'Activa «LAN Control» en la app Govee.' },
-  { name: 'Tuya', doc: 'docs/tuya-setup.md', hint: 'Registra cada foco con su deviceId/localKey.' },
+/**
+ * Ojo: guarda la **clave**, no el texto. Con el copy ya traducido aqui, la
+ * constante se congelaria con el idioma que hubiera al importar el modulo y no
+ * cambiaria al cambiar de idioma (mismo motivo que los dias de la semana en
+ * `schedule-format.ts`).
+ */
+const DOCS: { name: string; doc: string; hint: TranslationKey }[] = [
+  { name: 'Philips Hue', doc: 'docs/hue-setup.md', hint: 'integrations.hue.hint' },
+  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'integrations.govee.hint' },
+  { name: 'Tuya', doc: 'docs/tuya-setup.md', hint: 'integrations.tuya.hint' },
 ];
 
 export function IntegrationsSection({ isAdmin }: Props) {
+  const t = useT();
   const [devices, setDevices] = useState<IotDevice[]>([]);
   const [tuyaOpen, setTuyaOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -82,20 +93,20 @@ export function IntegrationsSection({ isAdmin }: Props) {
       <div className="grid gap-4 sm:grid-cols-2">
         <IntegrationCard title="Philips Hue" stats={hue}>
           {hue.total === 0 && (
-            <p className="text-kr-xs text-kr-muted">Pulsa el botón del bridge para re-vincular.</p>
+            <p className="text-kr-xs text-kr-muted">{t('integrations.hue.relink')}</p>
           )}
         </IntegrationCard>
 
         <IntegrationCard title="Govee" stats={govee}>
           {govee.total === 0 && (
-            <p className="text-kr-xs text-kr-muted">Activa «LAN Control» en la app Govee.</p>
+            <p className="text-kr-xs text-kr-muted">{t('integrations.govee.hint')}</p>
           )}
         </IntegrationCard>
 
         <IntegrationCard title="Tuya" stats={tuya}>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setTuyaOpen((v) => !v)}>
-              {tuyaOpen ? 'Ocultar focos' : 'Gestionar focos'}
+              {tuyaOpen ? t('integrations.tuya.hide') : t('integrations.tuya.manage')}
             </Button>
           )}
         </IntegrationCard>
@@ -107,14 +118,14 @@ export function IntegrationsSection({ isAdmin }: Props) {
           className="flex min-h-[120px] items-center justify-center gap-2 rounded-xl border border-dashed border-kr text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <Plus className="h-5 w-5" />
-          Añadir integración
+          {t('integrations.add')}
         </button>
       </div>
 
       {tuyaOpen && isAdmin && (
         <Card>
           <CardHeader>
-            <CardTitle>Focos Tuya</CardTitle>
+            <CardTitle>{t('integrations.tuya.bulbs')}</CardTitle>
           </CardHeader>
           <CardContent>
             <TuyaManager reachable={reachableTuya} />
@@ -128,23 +139,21 @@ export function IntegrationsSection({ isAdmin }: Props) {
             id="dialog-add-integration-title"
             className="text-kr-lg font-semibold text-kr-primary"
           >
-            Añadir integración
+            {t('integrations.add')}
           </h3>
-          <p className="mt-1 text-kr-sm text-kr-secondary">
-            Configura cada integración con su variable de entorno y consulta su guía en `docs/`.
-          </p>
+          <p className="mt-1 text-kr-sm text-kr-secondary">{t('integrations.addHint')}</p>
           <ul className="mt-4 space-y-3">
             {DOCS.map((d) => (
               <li key={d.name} className="rounded-md border border-kr p-3">
                 <div className="text-kr-base text-kr-primary">{d.name}</div>
-                <div className="text-kr-sm text-kr-secondary">{d.hint}</div>
+                <div className="text-kr-sm text-kr-secondary">{t(d.hint)}</div>
                 <code className="text-kr-xs text-kr-muted">{d.doc}</code>
               </li>
             ))}
           </ul>
           <div className="mt-4 flex justify-end">
             <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>
-              Cerrar
+              {t('common.close')}
             </Button>
           </div>
         </Dialog>

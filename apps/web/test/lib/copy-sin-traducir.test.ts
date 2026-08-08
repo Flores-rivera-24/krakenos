@@ -66,38 +66,54 @@ const DEUDA: Record<string, number> = {
   'components/dashboard/widgets/CoverageWidget.tsx': 4,
   'components/dashboard/widgets/HomeModeWidget.tsx': 4,
   'components/dns/DnsFeeds.tsx': 3,
-  'components/settings/ChangePasswordCard.tsx': 6,
-  'components/settings/IntegrationsSection.tsx': 5,
-  'components/settings/InvitationsCard.tsx': 15,
-  'components/settings/SecuritySection.tsx': 1,
-  'components/settings/SystemBackupCard.tsx': 1,
-  'components/settings/TuyaManager.tsx': 4,
-  'components/settings/UsersSection.tsx': 1,
-  'components/settings/WeatherCard.tsx': 6,
   'components/vpn/VpnPeerSlideover.tsx': 4,
   'components/wifi/GuestNetworkCard.tsx': 10,
   'components/wifi/MainNetworkCard.tsx': 5,
 };
 
+/** Cuenta las cadenas de copy en español de **un** fichero. */
+function contar(codigo: string): number {
+  let n = 0;
+  for (const { re } of SUPERFICIES) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(codigo)) !== null) {
+      const texto = m[1]!.trim();
+      if (!ESPANOL.test(texto)) continue;
+      if (/^[A-Z_]+$/.test(texto)) continue; // constantes, no copy
+      n++;
+    }
+  }
+  return n;
+}
+
 function contarPorFichero(): Map<string, number> {
   const conteo = new Map<string, number>();
   for (const { nombre, codigo } of fuentes()) {
     if (FUERA_DE_ALCANCE.some((p) => nombre.includes(p))) continue;
-    let n = 0;
-    for (const { re } of SUPERFICIES) {
-      re.lastIndex = 0;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(codigo)) !== null) {
-        const texto = m[1]!.trim();
-        if (!ESPANOL.test(texto)) continue;
-        if (/^[A-Z_]+$/.test(texto)) continue; // constantes, no copy
-        n++;
-      }
-    }
+    const n = contar(codigo);
     if (n > 0) conteo.set(nombre, n);
   }
   return conteo;
 }
+
+/**
+ * Fichero sintético con copy a pelo en varias superficies. Es el **control
+ * positivo** del gate: demuestra que el detector sigue detectando.
+ *
+ * Sustituye al guard que exigía «más de 10 ficheros con deuda». Aquel medía la
+ * salud del barrido con el tamaño de la deuda **real**, así que se ponía rojo al
+ * terminar de migrar —justo cuando el gate empieza a valer— y la salida cómoda
+ * habría sido bajarle el número hasta apagarlo. Este no depende de cuánta deuda
+ * quede: si alguien rompe el recorrido o las expresiones, se pone rojo aunque el
+ * árbol esté impecable.
+ */
+const MUESTRA_CON_COPY = [
+  'const a = <button aria-label="Cerrar la sesión" />;',
+  'const b = <Input placeholder="Nombre del hogar" />;',
+  "toast.success('Se guardó el cambio');",
+  'const d = <span>Sin dispositivos todavía</span>;',
+].join('\n');
 
 describe('copy sin traducir (trinquete, US-270)', () => {
   const actual = contarPorFichero();
@@ -106,7 +122,18 @@ describe('copy sin traducir (trinquete, US-270)', () => {
     // Sin este guard, romper el recorrido dejaría el mapa vacío y los dos tests
     // de abajo pasarían **sin haber mirado nada**.
     expect(fuentes().length).toBeGreaterThan(100);
-    expect(actual.size).toBeGreaterThan(10);
+  });
+
+  it('el detector sigue detectando (control positivo)', () => {
+    // Si esto baja a 0, el gate está ciego y los dos tests de abajo son adorno.
+    //
+    // Son 5 y no 4 con cuatro cadenas: `aria-label=` casa **también** con la
+    // superficie `label` (`\blabel=`, y el guion es frontera de palabra), así
+    // que un `aria-label` cuenta doble. Es como el detector lleva contando
+    // desde US-270 y los números de `DEUDA` están medidos con ese sesgo, así
+    // que se deja: corregirlo movería todas las cifras a la vez y no diría nada
+    // nuevo sobre el copy. Queda escrito para que nadie lo lea como un fallo.
+    expect(contar(MUESTRA_CON_COPY)).toBe(5);
   });
 
   it('ningún fichero nuevo escribe copy visible a pelo', () => {
