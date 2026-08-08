@@ -1,12 +1,11 @@
 import type { IotDevice } from '@krakenos/types';
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { WidgetError } from '@/components/ui/widget-error';
-import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import { useIotDevices } from '@/lib/resources';
 
 interface BackendSummary {
   name: string;
@@ -40,26 +39,12 @@ function summarize(devices: IotDevice[]): BackendSummary[] {
 /** Estado de los backends IoT activos (Hue/Govee/Tuya…) con conteos. */
 export function IotStatusWidget() {
   const t = useT();
-  const [devices, setDevices] = useState<IotDevice[] | null>(null);
-  // US-234: antes el fallo hacía `setDevices([])`, así que un agente caído se leía
-  // como «no tienes dispositivos IoT» — en un panel del hogar eso es mentir.
-  const [failed, setFailed] = useState(false);
-  const [intento, setIntento] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .get<IotDevice[]>('/iot/devices')
-      .then((d) => {
-        if (!active) return;
-        setDevices(d);
-        setFailed(false);
-      })
-      .catch(() => active && setFailed(true));
-    return () => {
-      active = false;
-    };
-  }, [intento]);
+  // US-262: la lista la comparten este widget, `QuickActionsWidget` y la barra
+  // lateral; con tres `useEffect` sueltos se pedía tres veces en el mismo tick.
+  // US-234 sigue vigente y por eso el fallo NO se degrada a lista vacía: un
+  // agente caído se leería como «no tienes dispositivos IoT», que en un panel del
+  // hogar es mentir.
+  const { data: devices, error, refetch } = useIotDevices();
 
   const backends = devices ? summarize(devices) : [];
 
@@ -69,8 +54,8 @@ export function IotStatusWidget() {
         <CardTitle>IoT</CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
-        {failed && devices === null ? (
-          <WidgetError what="la lista de dispositivos IoT" onRetry={() => setIntento((n) => n + 1)} />
+        {error && devices === null ? (
+          <WidgetError what="la lista de dispositivos IoT" onRetry={() => void refetch()} />
         ) : devices === null ? (
           <LoadingLine />
         ) : backends.length === 0 ? (
