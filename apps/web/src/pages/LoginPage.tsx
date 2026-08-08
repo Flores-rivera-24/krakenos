@@ -12,6 +12,7 @@ import { api } from '@/lib/api';
 import { formatRelative } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { prefersReducedMotion } from '@/lib/motion';
+import { requestAccess } from '@/lib/onboarding';
 import { completePasskeyLogin, verifyBackupCode } from '@/lib/webauthn';
 import { HttpError, useAuthStore } from '@/store/auth.store';
 
@@ -61,7 +62,7 @@ export function LoginPage() {
   // 2FA WebAuthn (US-50/US-51): tras un login con passkey, el formulario da paso a la
   // verificación con el dispositivo. Se guarda el token efímero `mfa-pending` que
   // acredita la contraseña ya superada para reenviarlo al paso de passkey.
-  const [stage, setStage] = useState<'form' | 'webauthn' | 'recover'>('form');
+  const [stage, setStage] = useState<'form' | 'webauthn' | 'recover' | 'request'>('form');
   const [pendingEmail, setPendingEmail] = useState('');
   const [pendingMfaToken, setPendingMfaToken] = useState('');
   const [passkeyStatus, setPasskeyStatus] = useState<PasskeyStatus>('idle');
@@ -78,6 +79,13 @@ export function LoginPage() {
   const [recoverCode, setRecoverCode] = useState('');
   const [recoverBusy, setRecoverBusy] = useState(false);
   const [recoverError, setRecoverError] = useState<string | null>(null);
+
+  // Pedir acceso al hogar (US-268). No crea nada: lo aprueba un admin.
+  const [reqName, setReqName] = useState('');
+  const [reqNote, setReqNote] = useState('');
+  const [reqBusy, setReqBusy] = useState(false);
+  const [reqSent, setReqSent] = useState(false);
+  const [reqError, setReqError] = useState<string | null>(null);
 
   // Datos públicos (cargan en paralelo, no bloquean el formulario).
   const [homeName, setHomeName] = useState<string | null>(null);
@@ -200,6 +208,22 @@ export function LoginPage() {
       setRecoverError(t('login.recover.invalid'));
     } finally {
       setRecoverBusy(false);
+    }
+  };
+
+  const runRequestAccess = async (e: FormEvent) => {
+    e.preventDefault();
+    setReqBusy(true);
+    setReqError(null);
+    try {
+      await requestAccess({ email, displayName: reqName, ...(reqNote ? { note: reqNote } : {}) });
+      // El servidor responde igual exista ya el correo o no, así que aquí tampoco se
+      // distingue: el acuse es el mismo en los dos casos.
+      setReqSent(true);
+    } catch {
+      setReqError(t('login.request.error'));
+    } finally {
+      setReqBusy(false);
     }
   };
 
@@ -382,16 +406,121 @@ export function LoginPage() {
 
               {/* La salida que la pantalla no tenía: quien perdía la contraseña se
                   quedaba mirando el formulario, sin saber que existían vías. */}
-              <button
-                type="button"
-                onClick={() => {
-                  setRecoverError(null);
-                  setStage('recover');
-                }}
-                className="text-kr-xs text-kr-link underline hover:text-kr-primary"
-              >
-                {t('login.recover.prompt')}
-              </button>
+              <div className="flex flex-wrap justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRecoverError(null);
+                    setStage('recover');
+                  }}
+                  className="text-kr-xs text-kr-link underline hover:text-kr-primary"
+                >
+                  {t('login.recover.prompt')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReqError(null);
+                    setReqSent(false);
+                    setStage('request');
+                  }}
+                  className="text-kr-xs text-kr-link underline hover:text-kr-primary"
+                >
+                  {t('login.request.prompt')}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {stage === 'request' && (
+            <form onSubmit={(e) => void runRequestAccess(e)} className="space-y-4">
+              <div className="mb-6 space-y-1">
+                <h1 className="text-kr-xl font-medium text-kr-primary">
+                  {t('login.request.title')}
+                </h1>
+                <p className="text-kr-sm text-kr-secondary">{t('login.request.intro')}</p>
+              </div>
+
+              {reqSent ? (
+                <>
+                  {/* `role="status"` y no `alert`: es el acuse de algo que salió
+                      bien, no una urgencia que interrumpa lo que se esté leyendo. */}
+                  <p
+                    role="status"
+                    className="rounded-lg border border-kr bg-kr-elevated p-3 text-kr-sm text-kr-primary"
+                  >
+                    {t('login.request.sent')}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setStage('form')}
+                  >
+                    {t('login.recover.back')}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="request-email" className="text-kr-secondary">
+                      {t('login.email')}
+                    </Label>
+                    <Input
+                      id="request-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="request-name" className="text-kr-secondary">
+                      {t('login.request.name')}
+                    </Label>
+                    <Input
+                      id="request-name"
+                      value={reqName}
+                      onChange={(e) => setReqName(e.target.value)}
+                      autoComplete="name"
+                      required
+                      maxLength={80}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="request-note" className="text-kr-secondary">
+                      {t('login.request.note')}
+                    </Label>
+                    <Input
+                      id="request-note"
+                      value={reqNote}
+                      onChange={(e) => setReqNote(e.target.value)}
+                      maxLength={280}
+                    />
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={reqBusy}>
+                    {reqBusy ? t('login.request.sending') : t('login.request.submit')}
+                  </Button>
+
+                  {reqError && (
+                    <p role="alert" className="text-[13px] text-danger">
+                      {reqError}
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setStage('form')}
+                    className="text-kr-xs text-kr-link underline hover:text-kr-primary"
+                  >
+                    {t('login.recover.back')}
+                  </button>
+                </>
+              )}
             </form>
           )}
 

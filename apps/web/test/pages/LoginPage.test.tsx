@@ -19,6 +19,9 @@ const webauthnMock = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/webauthn', () => webauthnMock);
 
+const onboardingMock = vi.hoisted(() => ({ requestAccess: vi.fn() }));
+vi.mock('@/lib/onboarding', () => onboardingMock);
+
 import { LoginPage } from '@/pages/LoginPage';
 import { HttpError, useAuthStore } from '@/store/auth.store';
 
@@ -43,6 +46,7 @@ describe('LoginPage', () => {
     navigate.mockClear();
     apiMock.get.mockReset().mockImplementation(defaultApi);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    onboardingMock.requestAccess.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({ user: null, login: vi.fn().mockResolvedValue(undefined) });
   });
 
@@ -229,6 +233,47 @@ describe('LoginPage', () => {
       expect(screen.queryByLabelText('Contraseña')).not.toBeInTheDocument();
       await user.click(screen.getByRole('button', { name: 'Volver' }));
       expect(screen.getByLabelText('Contraseña')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * US-268. No es autorregistro: no se crea ninguna cuenta hasta que un admin
+   * aprueba. La pantalla tiene que decirlo, para no prometer un acceso que quizá
+   * no llegue.
+   */
+  describe('solicitar acceso al hogar (US-268)', () => {
+    it('envía la solicitud y acusa recibo sin prometer una cuenta', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Solicitar acceso' }));
+
+      expect(screen.getByText(/No se crea ninguna cuenta hasta entonces/)).toBeInTheDocument();
+
+      await user.type(screen.getByLabelText('Correo electrónico'), 'quiero@krakenos.test');
+      await user.type(screen.getByLabelText('Tu nombre'), 'Quien Pide');
+      await user.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
+
+      await waitFor(() =>
+        expect(onboardingMock.requestAccess).toHaveBeenCalledWith({
+          email: 'quiero@krakenos.test',
+          displayName: 'Quien Pide',
+        }),
+      );
+      expect(await screen.findByRole('status')).toHaveTextContent(/Solicitud enviada/);
+    });
+
+    it('si no se pudo enviar, lo dice y no finge que se envió', async () => {
+      onboardingMock.requestAccess.mockRejectedValue(new Error('red'));
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Solicitar acceso' }));
+
+      await user.type(screen.getByLabelText('Correo electrónico'), 'quiero@krakenos.test');
+      await user.type(screen.getByLabelText('Tu nombre'), 'Quien Pide');
+      await user.click(screen.getByRole('button', { name: 'Enviar solicitud' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo enviar la solicitud/);
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
   });
 

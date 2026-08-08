@@ -24,6 +24,7 @@ import { SupportCard } from '@/components/settings/SupportCard';
 import { TlsCard } from '@/components/settings/TlsCard';
 import { UpdateCard } from '@/components/settings/UpdateCard';
 import { WeatherCard } from '@/components/settings/WeatherCard';
+import { InvitationsCard } from '@/components/settings/InvitationsCard';
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -523,7 +524,13 @@ export function SettingsPage() {
             </div>
           )}
 
-          {section === 'usuarios' && isAdmin && <UsersSection />}
+          {section === 'usuarios' && isAdmin && (
+            <>
+              <UsersSection />
+              {/* US-267/268: dar de alta sin teclear la contraseña de nadie. */}
+              <InvitationsCard />
+            </>
+          )}
 
           {section === 'cuenta' && (
             <>

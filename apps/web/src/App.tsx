@@ -13,6 +13,7 @@ const SetupPage = lazy(() => import('@/pages/SetupPage').then((m) => ({ default:
 const WelcomePage = lazy(() =>
   import('@/pages/WelcomePage').then((m) => ({ default: m.WelcomePage })),
 );
+const InvitePage = lazy(() => import('@/pages/InvitePage').then((m) => ({ default: m.InvitePage })));
 const DashboardPage = lazy(() =>
   import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
@@ -99,6 +100,8 @@ export function App() {
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/bienvenida" element={<WelcomePage />} />
+        {/* Pública: quien abre una invitación todavía no tiene cuenta (US-267). */}
+        <Route path="/invitacion/:token" element={<InvitePage />} />
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route index element={<DashboardPage />} />

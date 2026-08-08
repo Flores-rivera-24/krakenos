@@ -125,6 +125,39 @@ export const es = {
     'Otro administrador puede darte una contraseña nueva en Ajustes → Usuarios. Si eres el único administrador, hay que hacerlo desde el servidor: la guía de recuperación explica cómo.',
   'login.recover.back': 'Volver',
 
+  // --- Pedir acceso al hogar (US-268) ---
+  // No es autorregistro: no se crea nada hasta que un admin lo aprueba, y el texto
+  // lo dice para no prometer una cuenta que quizá no llegue.
+  'login.request.prompt': 'Solicitar acceso',
+  'login.request.title': 'Pedir acceso al hogar',
+  'login.request.intro':
+    'Quien administra el hogar recibirá tu petición y decidirá si te da acceso. No se crea ninguna cuenta hasta entonces.',
+  'login.request.name': 'Tu nombre',
+  'login.request.note': 'Nota para quien administra (opcional)',
+  'login.request.submit': 'Enviar solicitud',
+  'login.request.sending': 'Enviando…',
+  'login.request.sent':
+    'Solicitud enviada. Si te dan acceso, recibirás un enlace para crear tu cuenta.',
+  'login.request.error': 'No se pudo enviar la solicitud. Inténtalo de nuevo.',
+
+  // --- Aceptar una invitación (US-267) ---
+  'invite.checking': 'Comprobando la invitación…',
+  'invite.title': 'Te han invitado a {home}',
+  'invite.intro': 'Elige tu contraseña. No la verá nadie más, ni siquiera quien te invitó.',
+  'invite.displayName': 'Tu nombre',
+  'invite.password': 'Contraseña',
+  'invite.confirm': 'Confirmar contraseña',
+  'invite.submit': 'Crear mi cuenta',
+  'invite.submitting': 'Creando la cuenta…',
+  'invite.error.mismatch': 'Las contraseñas no coinciden.',
+  'invite.error.short': 'La contraseña debe tener al menos 8 caracteres.',
+  'invite.error.generic':
+    'No se pudo aceptar la invitación. Puede que el enlace ya se haya usado o haya caducado.',
+  'invite.invalid.title': 'Este enlace ya no sirve',
+  'invite.invalid.body':
+    'Las invitaciones caducan y solo se pueden usar una vez. Pide otra a quien administra el hogar.',
+  'invite.goToLogin': 'Ir a iniciar sesión',
+
   // --- Portada pública (US-266) ---
   // Los tres reclamos son hechos comprobables del repositorio, no medidas de una
   // casa que quien lee todavía no tiene. En particular NO se dice «sin cuentas de

@@ -35,6 +35,7 @@ vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { LoginPage } from '@/pages/LoginPage';
 import { SetupPage } from '@/pages/SetupPage';
+import { InvitePage } from '@/pages/InvitePage';
 import { WelcomePage } from '@/pages/WelcomePage';
 import { ConnectPage } from '@/pages/ConnectPage';
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -179,6 +180,16 @@ const COVERAGE_HEATMAP = {
 };
 
 function apiGet(path: string): Promise<unknown> {
+  // US-267: la vista previa de una invitación. Se sirve para que la página se pinte
+  // en su estado ÚTIL (el formulario), no en el de «enlace caducado», que es el que
+  // saldría si la llamada fallase y dejaría media pantalla sin auditar.
+  if (path.startsWith('/invitations/redeem/'))
+    return Promise.resolve({
+      email: 'nuevo@krakenos.test',
+      displayName: 'Persona Nueva',
+      role: 'member',
+      homeName: 'Casa',
+    });
   if (path === '/setup/status') return Promise.resolve({ needsSetup: false, requiresToken: false });
   if (path === '/system/info') return Promise.resolve({ homeName: 'Casa' });
   if (path === '/auth/last-session') return Promise.resolve(null);
@@ -312,6 +323,7 @@ const PAGES: { name: string; el: ReactElement }[] = [
   // US-266: la portada es pública y es la primera pantalla de la instalación, así
   // que entra en el barrido con el mismo rasero que el resto.
   { name: 'Welcome', el: <WelcomePage /> },
+  { name: 'Invite', el: <InvitePage /> },
   { name: 'Connect', el: <ConnectPage /> },
   { name: 'Dashboard', el: <DashboardPage /> },
   { name: 'Inventory', el: <InventoryPage /> },

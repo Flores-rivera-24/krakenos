@@ -103,7 +103,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  // `opts` acepta `anonymous` (US-267): la vista previa de una invitación la abre
+  // alguien que TODAVÍA no tiene cuenta, así que no debe mandar `Authorization` ni
+  // intentar refrescar la sesión al recibir un 401.
+  get: <T>(path: string, opts?: RequestOptions) => request<T>(path, { ...opts, method: 'GET' }),
   post: <T>(path: string, body?: unknown, opts?: RequestOptions) =>
     request<T>(path, { ...opts, method: 'POST', body }),
   patch: <T>(path: string, body?: unknown) => request<T>(path, { method: 'PATCH', body }),
