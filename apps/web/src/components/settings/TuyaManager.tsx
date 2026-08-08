@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
+import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 
 const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
@@ -128,7 +129,7 @@ export function TuyaManager({ reachable }: Props) {
 
   return (
     <div className="space-y-3">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
 
       <div className="overflow-x-auto rounded-md border border-kr">
         <table className="w-full text-kr-sm">

@@ -6,6 +6,7 @@ import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
+import { FormError } from '@/components/ui/form-error';
 import { createCamera, updateCamera } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { toast } from '@/store/toast.store';
@@ -85,7 +86,7 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
 
   const footer = (
     <div className="space-y-2">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
       <Button onClick={() => void submit()} disabled={saving || !canSubmit} className="w-full">
         {saving ? 'Guardando…' : isEdit ? 'Guardar cambios' : 'Añadir cámara'}
       </Button>

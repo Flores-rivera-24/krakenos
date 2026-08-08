@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
@@ -238,7 +239,7 @@ function SceneEditor({
       title={editing ? t('scenes.editTitle') : t('scenes.newTitle')}
       footer={
         <div className="space-y-2">
-          {error && <p className="text-kr-sm text-danger">{error}</p>}
+          {error && <FormError>{error}</FormError>}
           <Button onClick={() => void save()} disabled={saving} className="w-full">
             {saving ? t('scenes.saving') : t('scenes.save')}
           </Button>

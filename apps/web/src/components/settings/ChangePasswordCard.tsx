@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormError } from '@/components/ui/form-error';
 import { describeError } from '@/lib/errors';
 import { changeOwnPassword } from '@/lib/users';
 import { toast } from '@/store/toast.store';
@@ -82,7 +83,7 @@ export function ChangePasswordCard() {
               autoComplete="new-password"
             />
           </div>
-          {error && <p className="text-kr-sm text-danger">{error}</p>}
+          {error && <FormError>{error}</FormError>}
           <Button type="submit" disabled={busy}>
             {busy ? 'Guardando…' : 'Cambiar contraseña'}
           </Button>

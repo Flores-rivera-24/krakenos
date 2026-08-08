@@ -6,6 +6,7 @@ import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
+import { FormError } from '@/components/ui/form-error';
 import { createFloorPlan, deleteFloorPlan, updateFloorPlan } from '@/lib/coverage';
 import { importPlanFile, PlanImportError, type PlanImportReason } from '@/lib/coverage-import';
 import { describeError } from '@/lib/errors';
@@ -143,7 +144,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
 
   const footer = (
     <div className="space-y-2">
-      {error && <p className="text-kr-sm text-danger">{error}</p>}
+      {error && <FormError>{error}</FormError>}
       <Button
         onClick={() => void submit()}
         disabled={saving || deleting || !canSubmit}
