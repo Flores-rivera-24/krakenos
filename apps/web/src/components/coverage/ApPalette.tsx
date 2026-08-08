@@ -9,6 +9,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { listPlaceableAccessPoints } from '@/lib/coverage';
 import { describeError } from '@/lib/errors';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 /** Bandas seleccionables por AP, en orden. */
@@ -46,6 +47,7 @@ export function ApPalette({
   onRemoveAp,
   canEdit,
 }: Props) {
+  const t = useT();
   const [available, setAvailable] = useState<PlaceableAccessPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function ApPalette({
       .then((list) => active && setAvailable(list))
       .catch(
         (err) =>
-          active && setError(describeError(err, 'No se pudieron cargar los puntos de acceso')),
+          active && setError(describeError(err, t('coverage.ap.loadError'))),
       )
       .finally(() => active && setLoading(false));
     return () => {
@@ -72,10 +74,8 @@ export function ApPalette({
     <div className="space-y-4">
       {/* APs detectados por el driver */}
       <div className="rounded-xl border border-kr bg-kr-surface p-4">
-        <p className="mb-2 text-kr-sm font-medium text-kr-primary">Tus puntos de acceso</p>
-        <p className="mb-3 text-kr-xs text-kr-muted">
-          Detectados en tu red. Añádelos al plano y arrástralos a su sitio real.
-        </p>
+        <p className="mb-2 text-kr-sm font-medium text-kr-primary">{t('coverage.ap.yours')}</p>
+        <p className="mb-3 text-kr-xs text-kr-muted">{t('coverage.ap.yoursHint')}</p>
 
         {loading ? (
           <div className="space-y-2">
@@ -85,9 +85,7 @@ export function ApPalette({
         ) : error ? (
           <ErrorBanner>{error}</ErrorBanner>
         ) : available.length === 0 ? (
-          <p className="text-kr-sm text-kr-muted">
-            No se detectaron puntos de acceso. Puedes añadir uno manual más abajo.
-          </p>
+          <p className="text-kr-sm text-kr-muted">{t('coverage.ap.none')}</p>
         ) : (
           <ul className="space-y-1.5">
             {available.map((ap) => {
@@ -115,7 +113,7 @@ export function ApPalette({
                   {placed ? (
                     <span className="flex items-center gap-1 text-kr-xs text-success">
                       <Check className="h-4 w-4" aria-hidden />
-                      En el plano
+                      {t('coverage.ap.onPlan')}
                     </span>
                   ) : (
                     <Button
@@ -125,7 +123,7 @@ export function ApPalette({
                       onClick={() => onAddAccessPoint(ap)}
                     >
                       <Plus className="h-4 w-4" aria-hidden />
-                      Añadir
+                      {t('coverage.ap.add')}
                     </Button>
                   )}
                 </li>
@@ -137,7 +135,7 @@ export function ApPalette({
         {canEdit && (
           <Button variant="ghost" size="sm" className="mt-3 w-full" onClick={onAddManual}>
             <Plus className="h-4 w-4" aria-hidden />
-            Añadir AP manual
+            {t('coverage.ap.addManual')}
           </Button>
         )}
       </div>
@@ -146,7 +144,7 @@ export function ApPalette({
       {placedAps.length > 0 && (
         <div className="rounded-xl border border-kr bg-kr-surface p-4">
           <p className="mb-3 text-kr-sm font-medium text-kr-primary">
-            En el plano ({placedAps.length})
+            {t('coverage.ap.onPlanCount', { n: placedAps.length })}
           </p>
           <ul className="space-y-3">
             {placedAps.map((ap) => (
@@ -160,7 +158,7 @@ export function ApPalette({
                     type="button"
                     disabled={!canEdit}
                     onClick={() => onRemoveAp(ap.id)}
-                    aria-label={`Quitar ${ap.name}`}
+                    aria-label={t('coverage.ap.remove', { name: ap.name })}
                     className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <Trash2 className="h-4 w-4" aria-hidden />
@@ -169,7 +167,7 @@ export function ApPalette({
 
                 <label className="mb-2 block text-kr-xs text-kr-secondary">
                   <span className="mb-1 flex items-center justify-between">
-                    <span>Potencia (EIRP)</span>
+                    <span>{t('coverage.ap.power')}</span>
                     <span className="tabular-nums text-kr-muted">{ap.txPowerDbm} dBm</span>
                   </span>
                   <input
@@ -182,20 +180,21 @@ export function ApPalette({
                     onChange={(e) => onUpdateAp(ap.id, { txPowerDbm: Number(e.target.value) })}
                     className="w-full disabled:cursor-not-allowed disabled:opacity-50"
                     style={{ accentColor: 'var(--kr-accent)' }}
-                    aria-label={`Potencia de ${ap.name} en dBm`}
+                    aria-label={t('coverage.ap.powerAria', { name: ap.name })}
                   />
                   {/* Honestidad (US-237): 20 dBm es un valor por defecto asumido, no
                       una lectura del equipo. El contrato del driver no reporta la
                       potencia real de un AP, así que el mapa vale lo que valga este
                       número; si el usuario la sabe, que la ponga. */}
                   <span className="mt-1 block text-kr-xs text-kr-muted">
-                    Valor asumido, no leído del punto de acceso. Si conoces su potencia
-                    real, ajústala: el mapa depende directamente de ella.
+                    {t('coverage.ap.powerAssumed')}
                   </span>
                 </label>
 
                 <div className="mb-2">
-                  <span className="mb-1 block text-kr-xs text-kr-secondary">Bandas</span>
+                  <span className="mb-1 block text-kr-xs text-kr-secondary">
+                    {t('coverage.ap.bands')}
+                  </span>
                   <div className="flex flex-wrap gap-2">
                     {ALL_BANDS.map((b) => {
                       const on = ap.bands.includes(b.value);
@@ -224,12 +223,12 @@ export function ApPalette({
                 </div>
 
                 <label className="flex items-center justify-between text-kr-xs text-kr-secondary">
-                  <span>Activo</span>
+                  <span>{t('coverage.ap.enabled')}</span>
                   <Switch
                     checked={ap.enabled}
                     disabled={!canEdit}
                     onCheckedChange={(v) => onUpdateAp(ap.id, { enabled: v })}
-                    aria-label={`Activar ${ap.name}`}
+                    aria-label={t('coverage.ap.enableAria', { name: ap.name })}
                   />
                 </label>
               </li>

@@ -20,6 +20,7 @@ import {
 } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { plural, useT } from '@/lib/i18n';
 
 const EMPTY_FORM = {
   email: '',
@@ -35,6 +36,7 @@ const EMPTY_FORM = {
  * Solo se muestra a admins; el servidor impone la autorización de todos modos.
  */
 export function UsersSection() {
+  const t = useT();
   const currentId = useAuthStore((s) => s.user?.id);
   const [users, setUsers] = useState<UserSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +51,7 @@ export function UsersSection() {
     try {
       setUsers(await listUsers());
     } catch (err) {
-      setError(describeError(err, 'No se pudieron cargar los usuarios'));
+      setError(describeError(err, t('users.loadError')));
     }
   };
 
@@ -69,11 +71,11 @@ export function UsersSection() {
           ? { expiresAt: new Date(expiresAt).toISOString() }
           : {}),
       });
-      toast.success(`Usuario ${form.email} creado`);
+      toast.success(t('users.created', { email: form.email }));
       setForm(EMPTY_FORM);
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear el usuario'));
+      toast.error(describeError(err, t('users.createError')));
     } finally {
       setCreating(false);
     }
@@ -86,7 +88,7 @@ export function UsersSection() {
       toast.success(okMsg);
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo aplicar el cambio'));
+      toast.error(describeError(err, t('users.patchError')));
       await load(); // revierte la UI a la verdad del servidor
     } finally {
       setBusyId(null);
@@ -94,14 +96,14 @@ export function UsersSection() {
   };
 
   const remove = async (u: UserSummary) => {
-    if (!confirm(`¿Eliminar a ${u.email}? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(t('users.confirmDelete', { email: u.email }))) return;
     setBusyId(u.id);
     try {
       await deleteUser(u.id);
-      toast.success(`Usuario ${u.email} eliminado`);
+      toast.success(t('users.deleted', { email: u.email }));
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo eliminar el usuario'));
+      toast.error(describeError(err, t('users.deleteError')));
     } finally {
       setBusyId(null);
     }
@@ -111,11 +113,11 @@ export function UsersSection() {
     setBusyId(id);
     try {
       await resetUserPassword(id, { password: resetValue });
-      toast.success('Contraseña restablecida (se cerraron sus sesiones)');
+      toast.success(t('users.passReset'));
       setResetFor(null);
       setResetValue('');
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo restablecer la contraseña'));
+      toast.error(describeError(err, t('users.passResetError')));
     } finally {
       setBusyId(null);
     }
@@ -129,10 +131,8 @@ export function UsersSection() {
         className="space-y-4 rounded-xl border border-kr bg-kr-surface p-5"
       >
         <div>
-          <h3 className="text-kr-lg font-semibold text-kr-primary">Añadir usuario</h3>
-          <p className="text-kr-sm text-kr-secondary">
-            Da acceso a un familiar o a personal. «Solo lectura» ve el estado pero no cambia nada.
-          </p>
+          <h3 className="text-kr-lg font-semibold text-kr-primary">{t('users.add')}</h3>
+          <p className="text-kr-sm text-kr-secondary">{t('users.addHint')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
@@ -147,7 +147,7 @@ export function UsersSection() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="nu-name">Nombre</Label>
+            <Label htmlFor="nu-name">{t('users.name')}</Label>
             <Input
               id="nu-name"
               value={form.displayName}
@@ -157,7 +157,7 @@ export function UsersSection() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="nu-pass">Contraseña inicial</Label>
+            <Label htmlFor="nu-pass">{t('users.initialPass')}</Label>
             <Input
               id="nu-pass"
               type="password"
@@ -185,7 +185,7 @@ export function UsersSection() {
           </div>
           {form.role === 'guest' && (
             <div className="space-y-1.5">
-              <Label htmlFor="nu-expires">Caduca (invitado)</Label>
+              <Label htmlFor="nu-expires">{t('users.expires')}</Label>
               <Input
                 id="nu-expires"
                 type="datetime-local"
@@ -196,7 +196,7 @@ export function UsersSection() {
           )}
         </div>
         <Button type="submit" disabled={creating}>
-          {creating ? 'Creando…' : 'Crear usuario'}
+          {creating ? t('users.creating') : t('users.create')}
         </Button>
       </form>
 
@@ -204,17 +204,17 @@ export function UsersSection() {
 
       {/* Lista de usuarios */}
       {users === null ? (
-        <LoadingLine label="Cargando usuarios…" />
+        <LoadingLine label={t('users.loading')} />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-kr">
           <table className="w-full text-kr-sm">
             <thead className="bg-kr-elevated text-kr-secondary">
               <tr>
-                <th className="px-3 py-2 text-left">Usuario</th>
-                <th className="px-3 py-2 text-left">Rol</th>
-                <th className="px-3 py-2 text-left">Estado</th>
-                <th className="px-3 py-2 text-left">Último acceso</th>
-                <th className="px-3 py-2 text-right">Acciones</th>
+                <th className="px-3 py-2 text-left">{t('users.col.user')}</th>
+                <th className="px-3 py-2 text-left">{t('users.col.role')}</th>
+                <th className="px-3 py-2 text-left">{t('users.col.status')}</th>
+                <th className="px-3 py-2 text-left">{t('users.col.lastLogin')}</th>
+                <th className="px-3 py-2 text-right">{t('users.col.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -226,7 +226,9 @@ export function UsersSection() {
                     <td className="px-3 py-2.5">
                       <div className="font-medium text-kr-primary">
                         {u.displayName}
-                        {isSelf && <span className="ml-1 text-kr-xs text-kr-muted">(tú)</span>}
+                        {isSelf && (
+                          <span className="ml-1 text-kr-xs text-kr-muted">{t('users.you')}</span>
+                        )}
                       </div>
                       <div className="text-kr-xs text-kr-muted">{u.email}</div>
                       {/* Credenciales de automatización vivas (US-227): un admin debe
@@ -234,17 +236,23 @@ export function UsersSection() {
                           revoca en cascada. */}
                       {(u.apiTokenCount ?? 0) > 0 && (
                         <div className="text-kr-xs text-kr-muted">
-                          {u.apiTokenCount} {u.apiTokenCount === 1 ? 'token de API' : 'tokens de API'}
+                          {t('users.apiTokens', {
+                            n: u.apiTokenCount ?? 0,
+                            unidad: plural(u.apiTokenCount ?? 0, {
+                              one: t('users.apiToken.one'),
+                              other: t('users.apiToken.other'),
+                            }),
+                          })}
                         </div>
                       )}
                     </td>
                     <td className="px-3 py-2.5">
                       <select
-                        aria-label={`Rol de ${u.email}`}
+                        aria-label={t('users.roleOf', { email: u.email })}
                         value={u.role}
                         disabled={busy}
                         onChange={(e) =>
-                          void patch(u.id, { role: e.target.value as UserRole }, 'Rol actualizado')
+                          void patch(u.id, { role: e.target.value as UserRole }, t('users.roleUpdated'))
                         }
                         className="h-8 rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary disabled:opacity-50"
                       >
@@ -262,10 +270,10 @@ export function UsersSection() {
                     </td>
                     <td className="px-3 py-2.5">
                       {u.status === 'active' ? (
-                        <Badge variant="online">Activo</Badge>
+                        <Badge variant="online">{t('users.active')}</Badge>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-kr-secondary">
-                          <StatusDot status="offline" /> Deshabilitado
+                          <StatusDot status="offline" /> {t('users.disabled')}
                         </span>
                       )}
                     </td>
@@ -282,11 +290,11 @@ export function UsersSection() {
                             void patch(
                               u.id,
                               { status: u.status === 'active' ? 'disabled' : 'active' },
-                              u.status === 'active' ? 'Usuario deshabilitado' : 'Usuario habilitado',
+                              u.status === 'active' ? t('users.wasDisabled') : t('users.wasEnabled'),
                             )
                           }
                         >
-                          {u.status === 'active' ? 'Deshabilitar' : 'Habilitar'}
+                          {u.status === 'active' ? t('users.disable') : t('users.enable')}
                         </Button>
                         <Button
                           size="sm"
@@ -297,24 +305,24 @@ export function UsersSection() {
                             setResetValue('');
                           }}
                         >
-                          Contraseña
+                          {t('users.password')}
                         </Button>
                         <Button
                           size="sm"
                           variant="destructive"
                           disabled={busy || isSelf}
-                          title={isSelf ? 'No puedes eliminar tu propia cuenta' : undefined}
+                          title={isSelf ? t('users.cannotDeleteSelf') : undefined}
                           onClick={() => void remove(u)}
                         >
-                          Eliminar
+                          {t('common.delete')}
                         </Button>
                       </div>
                       {resetFor === u.id && (
                         <div className="mt-2 flex justify-end gap-2">
                           <Input
                             type="password"
-                            aria-label={`Nueva contraseña de ${u.email}`}
-                            placeholder="Nueva contraseña"
+                            aria-label={t('users.newPassOf', { email: u.email })}
+                            placeholder={t('users.newPass')}
                             value={resetValue}
                             minLength={8}
                             maxLength={128}
@@ -326,7 +334,7 @@ export function UsersSection() {
                             disabled={busy || resetValue.length < 8}
                             onClick={() => void submitReset(u.id)}
                           >
-                            Guardar
+                            {t('common.save')}
                           </Button>
                         </div>
                       )}

@@ -8,7 +8,8 @@ import type {
 } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_LABELS } from '@/lib/coverage-format';
+import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
+import { useT } from '@/lib/i18n';
 
 /** Herramienta activa del lienzo. */
 export type CoverageTool = 'select' | 'wall' | 'ap' | 'measure';
@@ -86,6 +87,7 @@ export function FloorPlanStage({
   pxPerM: pxPerMProp,
   readOnly = false,
 }: Props) {
+  const t = useT();
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -245,7 +247,7 @@ export function FloorPlanStage({
           className="absolute inset-0 touch-none select-none"
           style={{ cursor }}
           role="img"
-          aria-label={`Plano ${plan.name}: ${plan.widthM}×${plan.heightM} m con ${accessPoints.length} punto(s) de acceso`}
+          aria-label={t('coverage.plan.aria', { name: plan.name, w: plan.widthM, h: plan.heightM, aps: accessPoints.length })}
           onPointerDown={onBackgroundPointerDown}
           onPointerMove={onSvgPointerMove}
           onPointerUp={onSvgPointerUp}
@@ -267,7 +269,7 @@ export function FloorPlanStage({
                 strokeWidth={WALL_STROKE_WIDTH[w.material] + (activa ? 2 : 0)}
                 strokeLinecap="round"
               >
-                <title>{WALL_MATERIAL_LABELS[w.material]}</title>
+                <title>{t(WALL_MATERIAL_KEYS[w.material])}</title>
               </line>
             );
             if (!seleccionable) return <g key={w.id}>{linea}</g>;
@@ -279,7 +281,13 @@ export function FloorPlanStage({
                 key={w.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`${WALL_MATERIAL_LABELS[w.material]} — ${Math.round(w.x1)},${Math.round(w.y1)} a ${Math.round(w.x2)},${Math.round(w.y2)} m`}
+                aria-label={t('coverage.wall.aria', {
+                  material: t(WALL_MATERIAL_KEYS[w.material]),
+                  x1: Math.round(w.x1),
+                  y1: Math.round(w.y1),
+                  x2: Math.round(w.x2),
+                  y2: Math.round(w.y2),
+                })}
                 aria-pressed={activa}
                 className="cursor-pointer"
                 onClick={() => onSelectWall?.(w.id)}

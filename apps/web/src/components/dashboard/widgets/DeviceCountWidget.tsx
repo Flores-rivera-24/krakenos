@@ -36,10 +36,10 @@ export function DeviceCountWidget() {
         <CardTitle>{t('widget.devices.title')}</CardTitle>
       </CardHeader>
       <CardContent className="grid grid-cols-2 gap-3">
-        <Stat status="online" label="en línea" value={online} />
-        <Stat status="offline" label="total" value={devices.length} />
-        <Stat status="warning" label="desconocidos" value={unknown} />
-        <Stat status="danger" label="bloqueados" value={blocked} />
+        <Stat status="online" label={t('widget.devices.online')} value={online} />
+        <Stat status="offline" label={t('widget.devices.total')} value={devices.length} />
+        <Stat status="warning" label={t('widget.devices.unknown')} value={unknown} />
+        <Stat status="danger" label={t('widget.devices.blocked')} value={blocked} />
         <Link to="/inventory" className="col-span-2 text-kr-sm text-kr-link hover:underline">
           Ver inventario →
         </Link>

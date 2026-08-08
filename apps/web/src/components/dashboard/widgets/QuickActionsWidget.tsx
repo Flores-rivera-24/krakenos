@@ -161,8 +161,8 @@ export function QuickActionsWidget() {
     try {
       const result = await runScene(id);
       if (result.failed.length > 0)
-        toast.error(`${result.applied} aplicado(s), ${result.failed.length} sin responder`);
-      else toast.success(`Escena «${name}» activada`);
+        toast.error(t('scenes.partial', { applied: result.applied, failed: result.failed.length }));
+      else toast.success(t('scenes.ran', { name }));
     } catch (err) {
       toast.error(describeError(err, t('widget.scenes.runFailed')));
     } finally {
@@ -182,7 +182,7 @@ export function QuickActionsWidget() {
           <LoadingLine />
         ) : tiles.length === 0 ? (
           <p className="py-4 text-center text-kr-sm text-kr-muted">
-            Fija tus dispositivos y habitaciones favoritos con la estrella ⭐ para tenerlos aquí.
+            {t('widget.quickActions.empty')}
           </p>
         ) : (
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">

@@ -8,7 +8,9 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { RichText } from '@/components/ui/rich-text';
 import { describeError } from '@/lib/errors';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { timeAgo } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/roles';
 import {
@@ -22,10 +24,14 @@ import { toast } from '@/store/toast.store';
 
 const EMPTY = { email: '', displayName: '', role: 'member' as UserRole };
 
-const STATUS_LABEL: Record<Invitation['status'], string> = {
-  pending: 'Pendiente',
-  used: 'Usada',
-  expired: 'Caducada',
+/**
+ * Guarda la **clave**, no el texto: una constante de modulo con el copy ya
+ * traducido se congela con el idioma que hubiera al importarlo.
+ */
+const STATUS_KEY: Record<Invitation['status'], TranslationKey> = {
+  pending: 'invitations.status.pending',
+  used: 'invitations.status.used',
+  expired: 'invitations.status.expired',
 };
 
 /**
@@ -37,6 +43,7 @@ const STATUS_LABEL: Record<Invitation['status'], string> = {
  * un enlace y la elige quien la va a usar.
  */
 export function InvitationsCard() {
+  const t = useT();
   const [invitations, setInvitations] = useState<Invitation[] | null>(null);
   const [requests, setRequests] = useState<AccessRequest[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +65,7 @@ export function InvitationsCard() {
       setRequests(reqs);
       setError(null);
     } catch (err) {
-      setError(describeError(err, 'No se pudieron cargar las invitaciones'));
+      setError(describeError(err, t('invitations.loadError')));
     }
   };
 
@@ -74,10 +81,10 @@ export function InvitationsCard() {
       setFreshLink(`${window.location.origin}${res.path}`);
       setCopied(false);
       setForm(EMPTY);
-      toast.success(`Invitación creada para ${res.invitation.email}`);
+      toast.success(t('invitations.created', { email: res.invitation.email }));
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo crear la invitación'));
+      toast.error(describeError(err, t('invitations.createError')));
     } finally {
       setCreating(false);
     }
@@ -87,10 +94,10 @@ export function InvitationsCard() {
     setBusyId(inv.id);
     try {
       await revokeInvitation(inv.id);
-      toast.success('Invitación revocada');
+      toast.success(t('invitations.revoked'));
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo revocar la invitación'));
+      toast.error(describeError(err, t('invitations.revokeError')));
     } finally {
       setBusyId(null);
     }
@@ -106,13 +113,13 @@ export function InvitationsCard() {
       if (res.invitation) {
         setFreshLink(`${window.location.origin}${res.invitation.path}`);
         setCopied(false);
-        toast.success(`Acceso aprobado. Comparte el enlace con ${req.displayName}`);
+        toast.success(t('invitations.approved', { name: req.displayName }));
       } else {
-        toast.success('Solicitud rechazada');
+        toast.success(t('requests.rejected'));
       }
       await load();
     } catch (err) {
-      toast.error(describeError(err, 'No se pudo decidir la solicitud'));
+      toast.error(describeError(err, t('requests.decideError')));
     } finally {
       setBusyId(null);
     }
@@ -126,7 +133,7 @@ export function InvitationsCard() {
     } catch {
       // Sin permiso de portapapeles el enlace sigue visible y seleccionable: no se
       // pierde nada, así que no merece un error a pantalla completa.
-      toast.error('No se pudo copiar. Selecciona el enlace y cópialo a mano');
+      toast.error(t('invitations.copyError'));
     }
   };
 
@@ -137,11 +144,8 @@ export function InvitationsCard() {
       {/* --- Solicitudes pendientes: lo primero, porque hay alguien esperando --- */}
       {requests !== null && requests.length > 0 && (
         <section className="rounded-xl border border-kr bg-kr-surface p-4">
-          <h3 className="text-kr-lg font-medium text-kr-primary">Solicitudes de acceso</h3>
-          <p className="mt-1 text-kr-sm text-kr-secondary">
-            Han pedido entrar desde la pantalla de acceso. Aprobar no crea la cuenta: genera un
-            enlace para que elijan su propia contraseña.
-          </p>
+          <h3 className="text-kr-lg font-medium text-kr-primary">{t('requests.title')}</h3>
+          <p className="mt-1 text-kr-sm text-kr-secondary">{t('requests.hint')}</p>
           <ul className="mt-3 space-y-2">
             {requests.map((r) => (
               <li
@@ -156,7 +160,7 @@ export function InvitationsCard() {
                   {r.note && <p className="mt-1 text-kr-xs text-kr-muted">«{r.note}»</p>}
                 </div>
                 <select
-                  aria-label={`Rol para ${r.displayName}`}
+                  aria-label={t('requests.roleFor', { name: r.displayName })}
                   value={roleFor[r.id] ?? 'member'}
                   onChange={(e) => setRoleFor((m) => ({ ...m, [r.id]: e.target.value as UserRole }))}
                   className="rounded-lg border border-kr bg-kr-elevated px-2 py-1.5 text-kr-sm text-kr-primary"
@@ -172,7 +176,7 @@ export function InvitationsCard() {
                   onClick={() => void onDecide(r, 'approve')}
                   disabled={busyId === r.id}
                 >
-                  Aprobar
+                  {t('requests.approve')}
                 </Button>
                 <Button
                   type="button"
@@ -180,7 +184,7 @@ export function InvitationsCard() {
                   onClick={() => void onDecide(r, 'reject')}
                   disabled={busyId === r.id}
                 >
-                  Rechazar
+                  {t('requests.reject')}
                 </Button>
               </li>
             ))}
@@ -191,11 +195,9 @@ export function InvitationsCard() {
       {/* --- Enlace recién emitido --- */}
       {freshLink && (
         <section className="rounded-xl border border-kr-accent bg-kr-elevated p-4">
-          <h3 className="text-kr-base font-medium text-kr-primary">Comparte este enlace</h3>
+          <h3 className="text-kr-base font-medium text-kr-primary">{t('invitations.freshTitle')}</h3>
           <p className="mt-1 text-kr-sm text-kr-secondary">
-            Solo se puede usar una vez y caduca en 24 horas.{' '}
-            <strong className="text-kr-primary">No se puede volver a ver</strong>: solo se guarda su
-            huella, así que si lo pierdes tendrás que emitir otro.
+            <RichText>{t('invitations.freshBody')}</RichText>
           </p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <code className="min-w-0 flex-1 overflow-x-auto rounded-lg border border-kr bg-kr-base px-3 py-2 text-kr-xs text-kr-primary">
@@ -203,7 +205,7 @@ export function InvitationsCard() {
             </code>
             <Button type="button" variant="outline" onClick={() => void copy()}>
               {copied ? <Check size={15} /> : <Copy size={15} />}
-              <span className="ml-1.5">{copied ? 'Copiado' : 'Copiar'}</span>
+              <span className="ml-1.5">{copied ? t('common.copied') : t('common.copy')}</span>
             </Button>
             <Button type="button" variant="ghost" onClick={() => setFreshLink(null)}>
               <X size={15} />
@@ -214,14 +216,11 @@ export function InvitationsCard() {
 
       {/* --- Invitar --- */}
       <section className="rounded-xl border border-kr bg-kr-surface p-4">
-        <h3 className="text-kr-lg font-medium text-kr-primary">Invitar a alguien</h3>
-        <p className="mt-1 text-kr-sm text-kr-secondary">
-          Se genera un enlace de un solo uso. La contraseña la elige quien lo abre, así que no tienes
-          que teclearla tú ni mandarla por ningún chat.
-        </p>
+        <h3 className="text-kr-lg font-medium text-kr-primary">{t('invitations.inviteTitle')}</h3>
+        <p className="mt-1 text-kr-sm text-kr-secondary">{t('invitations.inviteHint')}</p>
         <form onSubmit={(e) => void onCreate(e)} className="mt-3 grid gap-3 sm:grid-cols-4">
           <div className="space-y-1.5 sm:col-span-2">
-            <Label htmlFor="inv-email">Correo electrónico</Label>
+            <Label htmlFor="inv-email">{t('invitations.email')}</Label>
             <Input
               id="inv-email"
               type="email"
@@ -231,7 +230,7 @@ export function InvitationsCard() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="inv-name">Nombre</Label>
+            <Label htmlFor="inv-name">{t('users.name')}</Label>
             <Input
               id="inv-name"
               value={form.displayName}
@@ -241,7 +240,7 @@ export function InvitationsCard() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="inv-role">Rol</Label>
+            <Label htmlFor="inv-role">{t('users.col.role')}</Label>
             <select
               id="inv-role"
               value={form.role}
@@ -257,7 +256,7 @@ export function InvitationsCard() {
           </div>
           <div className="sm:col-span-4">
             <Button type="submit" disabled={creating}>
-              {creating ? 'Creando…' : 'Crear invitación'}
+              {creating ? t('users.creating') : t('invitations.create')}
             </Button>
           </div>
         </form>
@@ -265,11 +264,11 @@ export function InvitationsCard() {
 
       {/* --- Invitaciones emitidas --- */}
       <section className="rounded-xl border border-kr bg-kr-surface p-4">
-        <h3 className="text-kr-lg font-medium text-kr-primary">Invitaciones</h3>
+        <h3 className="text-kr-lg font-medium text-kr-primary">{t('invitations.title')}</h3>
         {invitations === null ? (
           <LoadingLine />
         ) : invitations.length === 0 ? (
-          <p className="mt-2 text-kr-sm text-kr-secondary">Sin invitaciones.</p>
+          <p className="mt-2 text-kr-sm text-kr-secondary">{t('invitations.empty')}</p>
         ) : (
           <ul className="mt-3 space-y-2">
             {invitations.map((inv) => (
@@ -280,14 +279,19 @@ export function InvitationsCard() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-kr-base text-kr-primary">{inv.email}</p>
                   <p className="truncate text-kr-xs text-kr-secondary">
-                    {ROLE_LABELS[inv.role]} ·{' '}
-                    {inv.status === 'used'
-                      ? `Usada ${timeAgo(inv.usedAt ?? inv.createdAt)}`
-                      : `Caduca ${timeAgo(inv.expiresAt)}`}
+                    {t('invitations.meta', {
+                      role: ROLE_LABELS[inv.role],
+                      estado:
+                        inv.status === 'used'
+                          ? t('invitations.usedAgo', {
+                              when: timeAgo(inv.usedAt ?? inv.createdAt),
+                            })
+                          : t('invitations.expiresAgo', { when: timeAgo(inv.expiresAt) }),
+                    })}
                   </p>
                 </div>
                 <Badge variant={inv.status === 'pending' ? 'online' : 'offline'}>
-                  {STATUS_LABEL[inv.status]}
+                  {t(STATUS_KEY[inv.status])}
                 </Badge>
                 <Button
                   type="button"
@@ -295,7 +299,7 @@ export function InvitationsCard() {
                   onClick={() => void onRevoke(inv)}
                   disabled={busyId === inv.id}
                 >
-                  {inv.status === 'pending' ? 'Revocar' : 'Quitar'}
+                  {inv.status === 'pending' ? t('invitations.revoke') : t('invitations.remove')}
                 </Button>
               </li>
             ))}

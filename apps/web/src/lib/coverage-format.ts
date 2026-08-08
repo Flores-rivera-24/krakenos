@@ -1,23 +1,35 @@
+import type { TranslationKey } from '@/lib/i18n';
 import type { SignalQuality, WallMaterial } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
 
-/** Etiquetas en español de cada material de pared/obstáculo. */
-export const WALL_MATERIAL_LABELS: Record<WallMaterial, string> = {
-  drywall: 'Pladur/tabique',
-  wood: 'Madera',
-  glass: 'Cristal',
-  brick: 'Ladrillo',
-  concrete: 'Hormigón',
-  metal: 'Metal',
+/**
+ * Etiqueta de cada material de pared/obstaculo. Guarda la **clave**, no el
+ * texto, por lo mismo que `SIGNAL_QUALITY_KEYS`.
+ */
+export const WALL_MATERIAL_KEYS: Record<WallMaterial, TranslationKey> = {
+  drywall: 'coverage.wall.drywall',
+  wood: 'coverage.wall.wood',
+  glass: 'coverage.wall.glass',
+  brick: 'coverage.wall.brick',
+  concrete: 'coverage.wall.concrete',
+  metal: 'coverage.wall.metal',
 };
 
 /** Etiquetas en español de cada categoría de calidad de señal. */
-export const SIGNAL_QUALITY_LABELS: Record<SignalQuality, string> = {
-  excellent: 'Excelente',
-  good: 'Buena',
-  fair: 'Aceptable',
-  weak: 'Débil',
-  none: 'Sin señal',
+/**
+ * Etiqueta de cada categoria de calidad de senal.
+ *
+ * Guarda la **clave**, no el texto: una constante con el copy ya traducido se
+ * congela con el idioma que hubiera al importar el modulo, asi que la leyenda
+ * del mapa y el widget de cobertura seguian en espanol con la app en ingles
+ * (mismo caso que los dias de la semana en `schedule-format.ts`).
+ */
+export const SIGNAL_QUALITY_KEYS: Record<SignalQuality, TranslationKey> = {
+  excellent: 'coverage.quality.excellent',
+  good: 'coverage.quality.good',
+  fair: 'coverage.quality.fair',
+  weak: 'coverage.quality.weak',
+  none: 'coverage.quality.none',
 };
 
 /** Variable CSS `--kr-*` para colorear cada categoría de calidad de señal. */

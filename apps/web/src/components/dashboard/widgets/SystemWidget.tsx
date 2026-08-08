@@ -46,7 +46,7 @@ export function SystemWidget() {
       </CardHeader>
       <CardContent className="space-y-3">
         {error && !stats ? (
-          <WidgetError what="el estado del sistema" onRetry={() => void refetch()} />
+          <WidgetError what={t('widget.system.what')} onRetry={() => void refetch()} />
         ) : !stats ? (
           <LoadingLine />
         ) : (

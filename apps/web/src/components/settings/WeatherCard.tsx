@@ -4,6 +4,7 @@ import { WEATHER_UNITS } from '@krakenos/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
+import { RichText } from '@/components/ui/rich-text';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -29,7 +30,7 @@ export function WeatherCard() {
       setStatus(await api.get<WeatherStatus>('/api/weather'));
       setError(null);
     } catch (err) {
-      setError(describeError(err, 'No se pudo cargar el tiempo exterior.'));
+      setError(describeError(err, t('weather.loadError')));
     }
   }
 
@@ -43,7 +44,7 @@ export function WeatherCard() {
       setStatus(await api.put<WeatherStatus>('/api/weather', patch));
       setError(null);
     } catch (err) {
-      setError(describeError(err, 'No se pudo guardar el ajuste.'));
+      setError(describeError(err, t('weather.saveError')));
     } finally {
       setSaving(false);
     }
@@ -52,13 +53,10 @@ export function WeatherCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Tiempo exterior</CardTitle>
+        <CardTitle>{t('weather.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-kr-sm text-kr-fg-muted">
-          Permite que tus rutinas reaccionen al tiempo: «si la temperatura baja de 5 °C, enciende la
-          calefacción».
-        </p>
+        <p className="text-kr-sm text-kr-fg-muted">{t('weather.intro')}</p>
 
         {error ? <ErrorBanner>{error}</ErrorBanner> : null}
 
@@ -66,26 +64,21 @@ export function WeatherCard() {
           <>
             {/* El aviso va ANTES del interruptor: enterarse después de activarlo
                 es enterarse tarde. */}
-            <Callout variant="warning" standing title="Esto envía la ubicación de tu casa">
-              Para saber el tiempo hay que decir <strong>dónde</strong>. Con esto activado, KrakenOS
-              consulta <code>{status.provider}</code>, un servicio externo. Es la única función que
-              manda un dato del hogar fuera; todo lo demás se queda aquí.
+            <Callout variant="warning" standing title={t('weather.consent.title')}>
+              <RichText>{t('weather.consent.body', { provider: status.provider })}</RichText>
             </Callout>
 
             {!status.locationConfigured ? (
               <Callout variant="info" standing>
-                Todavía no has indicado dónde está la casa. Configúrala en Ajustes → Sistema para
-                poder usar el tiempo en tus rutinas.
+                {t('weather.noLocation')}
               </Callout>
             ) : null}
 
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-kr-sm text-kr-fg">Usar el tiempo en las rutinas</p>
+                <p className="text-kr-sm text-kr-fg">{t('weather.useInRoutines')}</p>
                 <p className="text-kr-xs text-kr-fg-muted">
-                  {status.enabled
-                    ? 'Activado. Se consulta una vez por hora.'
-                    : 'Desactivado. No se hace ninguna petición.'}
+                  {status.enabled ? t('weather.onHint') : t('weather.offHint')}
                 </p>
               </div>
               <Button
@@ -93,26 +86,26 @@ export function WeatherCard() {
                 disabled={saving}
                 onClick={() => void save({ enabled: !status.enabled })}
               >
-                {status.enabled ? 'Desactivar' : 'Activar'}
+                {status.enabled ? t('weather.disable') : t('weather.enable')}
               </Button>
             </div>
 
             {status.enabled ? (
               <>
                 <fieldset className="border-t border-kr pt-3">
-                  <legend className="text-kr-sm text-kr-fg">Precisión de la ubicación</legend>
+                  <legend className="text-kr-sm text-kr-fg">{t('weather.precision')}</legend>
                   <div className="mt-2 flex flex-col gap-2">
                     {(
                       [
                         {
                           value: 'rounded',
-                          label: 'Aproximada (recomendado)',
-                          hint: 'Redondea a unos 11 km. El tiempo es el mismo y no señala tu casa.',
+                          label: t('weather.precision.rounded'),
+                          hint: t('weather.precision.roundedHint'),
                         },
                         {
                           value: 'exact',
-                          label: 'Exacta',
-                          hint: 'Envía las coordenadas tal cual las tienes guardadas.',
+                          label: t('weather.precision.exact'),
+                          hint: t('weather.precision.exactHint'),
                         },
                       ] satisfies Array<{ value: WeatherPrecision; label: string; hint: string }>
                     ).map((opt) => (
@@ -138,7 +131,7 @@ export function WeatherCard() {
                     una promesa que el usuario no puede comprobar. */}
                 {status.sentLatitude !== null && status.sentLongitude !== null ? (
                   <p className="text-kr-xs text-kr-fg-muted">
-                    Se envía exactamente:{' '}
+                    {t('weather.sentExactly')}{' '}
                     <code>
                       {status.sentLatitude}, {status.sentLongitude}
                     </code>

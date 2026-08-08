@@ -1,6 +1,7 @@
 import type { PeerConfig, VpnPeer } from '@krakenos/types';
 import { Button } from '@/components/ui/button';
 import { Slideover } from '@/components/ui/slideover';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   peer: VpnPeer;
@@ -20,6 +21,7 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
+  const t = useT();
   return (
     <Slideover
       open
@@ -36,29 +38,29 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
               onClose();
             }}
           >
-            Eliminar dispositivo
+            {t('vpn.peer.delete')}
           </Button>
         )
       }
     >
       <dl className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
         <Row label="IP VPN" value={peer.allowedIps} />
-        <Row label="Clave pública" value={peer.publicKey} />
-        <Row label="Creado" value={new Date(peer.createdAt).toLocaleString()} />
+        <Row label={t('vpn.peer.publicKey')} value={peer.publicKey} />
+        <Row label={t('vpn.peer.created')} value={new Date(peer.createdAt).toLocaleString()} />
         <Row
-          label="Último handshake"
-          value={peer.lastHandshake ? new Date(peer.lastHandshake).toLocaleString() : 'nunca'}
+          label={t('vpn.peer.lastHandshake')}
+          value={
+            peer.lastHandshake ? new Date(peer.lastHandshake).toLocaleString() : t('vpn.peer.never')
+          }
         />
       </dl>
 
       {config ? (
         <div className="mt-4 space-y-3">
-          <p className="text-kr-sm text-warning">
-            Escanea el QR en la app de WireGuard. Esta config solo se muestra una vez.
-          </p>
+          <p className="text-kr-sm text-warning">{t('vpn.peer.qrHint')}</p>
           <img
             src={config.qr}
-            alt="QR de configuración WireGuard"
+            alt={t('vpn.peer.qrAlt')}
             className="mx-auto h-56 w-56 rounded bg-white p-2"
           />
           <pre className="max-h-48 overflow-auto rounded-md border border-kr bg-kr-base p-3 text-kr-xs text-kr-secondary">
@@ -66,9 +68,7 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
           </pre>
         </div>
       ) : (
-        <p className="mt-4 text-kr-xs text-kr-muted">
-          La configuración y el QR solo están disponibles al crear el dispositivo.
-        </p>
+        <p className="mt-4 text-kr-xs text-kr-muted">{t('vpn.peer.noConfig')}</p>
       )}
     </Slideover>
   );

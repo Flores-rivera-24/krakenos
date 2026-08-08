@@ -51,73 +51,50 @@ const SUPERFICIES: { nombre: string; re: RegExp }[] = [
  */
 const FUERA_DE_ALCANCE = ['lib/i18n/catalog/', 'lib/guides/'];
 
-/**
- * Deuda medida el 2026-08-08, fichero a fichero. **Solo puede bajar.**
- *
- * No es una lista de excepciones perdonadas: es el inventario de lo que queda
- * por migrar, con su tamaño, para que se pueda planificar y para que se note
- * cuando alguien lo empeora.
- */
-const DEUDA: Record<string, number> = {
-  'components/cameras/CameraFormSlideover.tsx': 4,
-  'components/coverage/ApPalette.tsx': 8,
-  'components/coverage/CoverageToolbar.tsx': 2,
-  'components/coverage/FloorPlanFormSlideover.tsx': 1,
-  'components/coverage/FloorPlanStage.tsx': 2,
-  'components/coverage/HeatmapLegend.tsx': 3,
-  'components/coverage/SurveyPanel.tsx': 12,
-  'components/dashboard/AlarmSettingsSlideover.tsx': 15,
-  'components/dashboard/GettingStarted.tsx': 2,
-  'components/dashboard/widgets/AlarmWidget.tsx': 2,
-  'components/dashboard/widgets/AlertsWidget.tsx': 1,
-  'components/dashboard/widgets/CoverageWidget.tsx': 4,
-  'components/dashboard/widgets/DeviceCountWidget.tsx': 1,
-  'components/dashboard/widgets/HomeModeWidget.tsx': 4,
-  'components/dashboard/widgets/IotStatusWidget.tsx': 1,
-  'components/dashboard/widgets/QuickActionsWidget.tsx': 2,
-  'components/dashboard/widgets/ScenesWidget.tsx': 2,
-  'components/dashboard/widgets/SystemWidget.tsx': 1,
-  'components/dns/DnsFeeds.tsx': 3,
-  'components/inventory/AccessSchedules.tsx': 14,
-  'components/inventory/DeviceDetailSlideover.tsx': 16,
-  'components/inventory/PauseInternet.tsx': 2,
-  'components/rooms/RoomSelect.tsx': 2,
-  'components/settings/ChangePasswordCard.tsx': 6,
-  'components/settings/IntegrationsSection.tsx': 5,
-  'components/settings/InvitationsCard.tsx': 15,
-  'components/settings/ReportsCard.tsx': 2,
-  'components/settings/SecuritySection.tsx': 18,
-  'components/settings/SystemBackupCard.tsx': 19,
-  'components/settings/TuyaManager.tsx': 4,
-  'components/settings/UsersSection.tsx': 16,
-  'components/settings/WeatherCard.tsx': 6,
-  'components/ui/guide-step.tsx': 1,
-  'components/ui/stale-badge.tsx': 1,
-  'components/vpn/VpnPeerSlideover.tsx': 4,
-  'components/wifi/GuestNetworkCard.tsx': 10,
-  'components/wifi/MainNetworkCard.tsx': 5,
-  'components/wifi/NetworksCard.tsx': 1,
-};
+
+/** Cuenta las cadenas de copy en español de **un** fichero. */
+function contar(codigo: string): number {
+  let n = 0;
+  for (const { re } of SUPERFICIES) {
+    re.lastIndex = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(codigo)) !== null) {
+      const texto = m[1]!.trim();
+      if (!ESPANOL.test(texto)) continue;
+      if (/^[A-Z_]+$/.test(texto)) continue; // constantes, no copy
+      n++;
+    }
+  }
+  return n;
+}
 
 function contarPorFichero(): Map<string, number> {
   const conteo = new Map<string, number>();
   for (const { nombre, codigo } of fuentes()) {
     if (FUERA_DE_ALCANCE.some((p) => nombre.includes(p))) continue;
-    let n = 0;
-    for (const { re } of SUPERFICIES) {
-      re.lastIndex = 0;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(codigo)) !== null) {
-        const texto = m[1]!.trim();
-        if (!ESPANOL.test(texto)) continue;
-        if (/^[A-Z_]+$/.test(texto)) continue; // constantes, no copy
-        n++;
-      }
-    }
+    const n = contar(codigo);
     if (n > 0) conteo.set(nombre, n);
   }
   return conteo;
 }
+
+/**
+ * Fichero sintético con copy a pelo en varias superficies. Es el **control
+ * positivo** del gate: demuestra que el detector sigue detectando.
+ *
+ * Sustituye al guard que exigía «más de 10 ficheros con deuda». Aquel medía la
+ * salud del barrido con el tamaño de la deuda **real**, así que se ponía rojo al
+ * terminar de migrar —justo cuando el gate empieza a valer— y la salida cómoda
+ * habría sido bajarle el número hasta apagarlo. Este no depende de cuánta deuda
+ * quede: si alguien rompe el recorrido o las expresiones, se pone rojo aunque el
+ * árbol esté impecable.
+ */
+const MUESTRA_CON_COPY = [
+  'const a = <button aria-label="Cerrar la sesión" />;',
+  'const b = <Input placeholder="Nombre del hogar" />;',
+  "toast.success('Se guardó el cambio');",
+  'const d = <span>Sin dispositivos todavía</span>;',
+].join('\n');
 
 describe('copy sin traducir (trinquete, US-270)', () => {
   const actual = contarPorFichero();
@@ -126,32 +103,30 @@ describe('copy sin traducir (trinquete, US-270)', () => {
     // Sin este guard, romper el recorrido dejaría el mapa vacío y los dos tests
     // de abajo pasarían **sin haber mirado nada**.
     expect(fuentes().length).toBeGreaterThan(100);
-    expect(actual.size).toBeGreaterThan(10);
   });
 
-  it('ningún fichero nuevo escribe copy visible a pelo', () => {
-    const nuevos = [...actual.keys()].filter((f) => !(f in DEUDA));
+  it('el detector sigue detectando (control positivo)', () => {
+    // Si esto baja a 0, el gate está ciego y los dos tests de abajo son adorno.
+    //
+    // Son 5 y no 4 con cuatro cadenas: `aria-label=` casa **también** con la
+    // superficie `label` (`\blabel=`, y el guion es frontera de palabra), así
+    // que un `aria-label` cuenta doble. Es como cuenta el detector desde
+    // US-270; se deja porque el gate ya está a cero y lo único que importa es
+    // si detecta o no. Queda escrito para que nadie lo lea como un fallo.
+    expect(contar(MUESTRA_CON_COPY)).toBe(5);
+  });
+
+  it('ningún componente escribe copy visible a pelo', () => {
+    // Se nombra el fichero **y** cuánto lleva, que es lo que hace falta para
+    // arreglarlo sin volver a medir.
+    const culpables = [...actual.entries()].map(([f, n]) => `${f}: ${n}`);
     expect(
-      nuevos,
-      'Copy visible escrito en el componente. Añade la clave a `catalog/es.ts` y ' +
+      culpables,
+      'Copy visible escrito en el componente. Muévelo a `catalog/es.ts` y ' +
         '`catalog/en.ts` y píntalo con `t()`; el catálogo `en` está tipado, así que ' +
-        'falta de clave no compila.',
-    ).toEqual([]);
-  });
-
-  it('ningún fichero conocido empeora, y el que mejora actualiza su número', () => {
-    const desviados = [...actual.entries()]
-      .filter(([f]) => f in DEUDA)
-      .filter(([f, n]) => n !== DEUDA[f])
-      .map(([f, n]) => `${f}: ${DEUDA[f]} → ${n}`);
-
-    // Los que desaparecen del todo también tienen que salir de la lista: una
-    // entrada que ya no corresponde a nada es sitio libre para reintroducir copy.
-    const desaparecidos = Object.keys(DEUDA).filter((f) => !actual.has(f));
-
-    expect(
-      [...desviados, ...desaparecidos.map((f) => `${f}: ${DEUDA[f]} → 0 (quítalo de DEUDA)`)],
-      'El trinquete aprieta en los dos sentidos: si baja, baja también el número.',
+        'falta de clave no compila. Si el texto lleva marcado en mitad de la frase ' +
+        '(`<strong>`, `<code>`), la frase va **entera** al catálogo y se pinta con ' +
+        '`RichText` — partirla la deja intraducible.',
     ).toEqual([]);
   });
 });
