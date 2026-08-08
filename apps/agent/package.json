@@ -37,6 +37,8 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@stryker-mutator/core": "9",
+    "@stryker-mutator/vitest-runner": "9",
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.14.0",
     "@types/qrcode": "^1.5.6",

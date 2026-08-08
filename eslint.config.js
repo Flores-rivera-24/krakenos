@@ -56,6 +56,14 @@ export default tseslint.config(
         URL: 'readonly',
         __dirname: 'readonly',
         fetch: 'readonly',
+        // Temporizadores: los usa cualquier script que espere a un servicio
+        // (p. ej. el arranque del agente en la prueba de carga). Sin declararlos,
+        // `no-undef` los marca como error y el gate de lint se cae por un global
+        // de Node perfectamente legítimo.
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
       },
     },
   },

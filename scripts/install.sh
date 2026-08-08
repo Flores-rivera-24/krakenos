@@ -86,6 +86,23 @@ run() {
   fi
 }
 
+# ¿Hay un checkout de git EN este directorio (no en un padre)?
+#
+# Se comprobaba con `[[ -d "$dir/.git" ]]`, y eso solo es cierto en un clon
+# normal: en un **worktree** de git —y en un clon con `--separate-git-dir`—
+# `.git` es un **fichero** de texto que apunta al repo real. Con la comprobación
+# vieja, `--update` moría con «no hay una instalación git» sobre una instalación
+# perfectamente válida, y `fetch_source` se iba a la rama del `git clone` sobre
+# un directorio no vacío (que falla).
+#
+# `-e` acepta fichero o directorio y, a la vez, exige que el marcador esté
+# **aquí**: descarta un subdirectorio cualquiera de un repo padre, que es lo que
+# dejaría pasar un `rev-parse` a secas. El `rev-parse` confirma que git lo
+# reconoce de verdad (un `.git` suelto y basura no cuela).
+is_git_checkout() {
+  [[ -e "$1/.git" ]] && git -C "$1" rev-parse --is-inside-work-tree > /dev/null 2>&1
+}
+
 # Pregunta sí/no (por defecto NO). Solo se usa para confirmaciones DESTRUCTIVAS
 # (--purge): los extras van por bandera, porque en `curl | sudo bash` no hay TTY y
 # esto siempre respondía que no en silencio (AUD3-23).
@@ -273,7 +290,7 @@ fetch_source() {
     run bash -c "tar -C '$FROM_LOCAL' --exclude=node_modules --exclude=.git --exclude='*.db' --exclude=.env --exclude=keys --exclude=data --exclude=var -cf - . | tar -C '$INSTALL_DIR' -xf -"
     return
   fi
-  if [[ -d "$INSTALL_DIR/.git" ]]; then
+  if is_git_checkout "$INSTALL_DIR"; then
     # Idempotente: repo ya clonado → traer y posicionarse; .env/keys/data son
     # untracked y git no los toca.
     run git -C "$INSTALL_DIR" fetch --tags --prune origin
@@ -674,7 +691,7 @@ print_summary() {
 
 # ---------------------------------------------------------------- update / uninstall
 do_update() {
-  [[ -d "$INSTALL_DIR/.git" ]] || die "no hay una instalación git en $INSTALL_DIR (¿instalaste con --from-local?)"
+  is_git_checkout "$INSTALL_DIR" || die "no hay una instalación git en $INSTALL_DIR (¿instalaste con --from-local?)"
   local runner="$INSTALL_DIR/apps/agent/dist/update-runner.js"
   [[ $DRY_RUN -eq 1 || -f "$runner" ]] || die "falta $runner — completa una instalación antes de actualizar"
   log "Buscando la última versión…"

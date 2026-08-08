@@ -1,0 +1,53 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [
+        "scripts/*.mjs",
+        "scripts/qa/*.mjs",
+        "e2e/playwright.config.ts",
+        "e2e/global-setup.ts",
+        "e2e/global-teardown.ts",
+        "e2e/auth.setup.ts",
+        "e2e/tests/**/*.spec.ts",
+        "e2e/tests-en/**/*.spec.ts",
+        "e2e/stacks/playwright.config.ts",
+        "e2e/stacks/global-setup.ts",
+        "e2e/stacks/global-teardown.ts",
+        "e2e/stacks/setup/**/*.ts",
+        "e2e/stacks/specs/**/*.spec.ts"
+      ]
+    },
+    "apps/agent": {
+      "entry": [
+        "src/index.ts",
+        "src/update-runner.ts",
+        "src/reset-admin.ts",
+        "prisma/seed.ts",
+        "test/**/*.test.ts",
+        "test/globalSetup.ts",
+        "tsup.config.ts",
+        "vitest.config.ts",
+        "vitest.mutation.config.ts"
+      ]
+    },
+    "apps/web": {
+      "entry": [
+        "src/main.tsx",
+        "scripts/*.mjs",
+        "test/**/*.test.{ts,tsx}",
+        "vitest.config.ts",
+        "vite.config.ts"
+      ]
+    }
+  },
+  "ignore": ["**/.stryker-tmp/**", "**/dist/**", "qa-reports/**", "apps/web/public/**"],
+  "ignoreDependencies": [
+    "@stryker-mutator/core",
+    "@stryker-mutator/vitest-runner",
+    "autocannon",
+    "knip",
+    "pino-pretty"
+  ],
+  "ignoreExportsUsedInFile": true
+}

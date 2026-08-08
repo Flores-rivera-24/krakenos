@@ -60,5 +60,25 @@ export default defineConfig({
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], locale: 'en-US' },
     },
+    // Compatibilidad de motor (`pnpm qa:compat`). **Opt-in por variable de
+    // entorno**, no siempre: Chromium y Firefox no comparten motor —Gecko tiene
+    // su propio soporte de CSS moderno y de las APIs de PWA— así que probar en
+    // los dos es la única forma de saber que la app no depende de Blink. Pero
+    // añadirlo al camino por defecto obligaría a CI a descargar un navegador más
+    // en cada ejecución para cazar una clase de fallo que aparece pocas veces al
+    // año. Se paga cuando se quiere mirar, no en cada push.
+    //
+    // Requiere `pnpm exec playwright install firefox` (y sus librerías del
+    // sistema, ver docs/qa.md).
+    ...(process.env.E2E_BROWSERS?.includes('firefox')
+      ? [
+          {
+            name: 'firefox',
+            testDir: './tests',
+            dependencies: ['setup'],
+            use: { ...devices['Desktop Firefox'] },
+          },
+        ]
+      : []),
   ],
 });
