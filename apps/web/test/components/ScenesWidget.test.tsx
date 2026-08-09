@@ -32,7 +32,7 @@ describe('ScenesWidget (US-166)', () => {
   beforeEach(() => {
     useAuthStore.setState({
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });
     apiMock.post.mockReset();

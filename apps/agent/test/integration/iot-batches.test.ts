@@ -76,7 +76,7 @@ describe('lotes IoT en paralelo (US-229)', () => {
     const scenes = new SceneService(app, iot);
     const scene = await scenes.create({
       name: 'Cine',
-      icon: 'sparkles',
+      icon: 'movie',
       actions: ['luz-1', 'luz-2', 'luz-3', 'luz-4'].map((deviceId) => ({ deviceId, on: true })),
     });
 
@@ -92,7 +92,7 @@ describe('lotes IoT en paralelo (US-229)', () => {
   it('la acción de grupo de una habitación aplica a todos sus aparatos a la vez', async () => {
     const iot = new ConcurrencyProbe();
     const rooms = new RoomService(app, iot, { setRoom: vi.fn() } as never);
-    const room = await rooms.create({ name: 'Salón', icon: 'sofa' });
+    const room = await rooms.create({ name: 'Salón', icon: 'living' });
     for (const id of ['luz-1', 'luz-2', 'luz-3']) {
       await app.prisma.iotRoomMember.create({ data: { roomId: room.id, iotDeviceId: id } });
     }
@@ -110,7 +110,7 @@ describe('lotes IoT en paralelo (US-229)', () => {
     const scenes = new SceneService(app, iot);
     const scene = await scenes.create({
       name: 'Toda la casa',
-      icon: 'sparkles',
+      icon: 'scene',
       actions: Array.from({ length: 40 }, (_, i) => ({ deviceId: `luz-${i}`, on: true })),
     });
 

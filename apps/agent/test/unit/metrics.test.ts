@@ -2,8 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { MetricsRegistry } from '../../src/observability/metrics.js';
 
 const memory = { rssBytes: 100, heapUsedBytes: 50, heapTotalBytes: 80 };
+const storage = {
+  dbBytes: 1_000,
+  diskFreeBytes: 2_000,
+  diskTotalBytes: 4_000,
+  diskUsedPercent: 50,
+};
 const snap = (r: MetricsRegistry) =>
-  r.snapshot({ uptimeSeconds: 10, memory, websocketClients: 3 });
+  r.snapshot({ uptimeSeconds: 10, memory, websocketClients: 3, storage });
 
 describe('MetricsRegistry', () => {
   it('cuenta peticiones HTTP y calcula la tasa de error (5xx)', () => {

@@ -40,7 +40,7 @@ describe('AppLayout', () => {
         createdAt: '',
         updatedAt: '',
       },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
       logout,
     });
   });

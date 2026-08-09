@@ -128,7 +128,7 @@ const CATEGORIAS_NUEVAS: IotDevice[] = [
 function setRole(role: 'admin' | 'member' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

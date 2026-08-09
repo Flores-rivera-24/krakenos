@@ -34,7 +34,7 @@ describe('GuestNetworkCard', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     await waitFor(() => expect(apiMock.put).toHaveBeenCalledWith('/wifi/guest', expect.anything()));
-    expect(apiMock.put.mock.calls[0][1]).toMatchObject({
+    expect(apiMock.put.mock.calls[0]![1]).toMatchObject({
       ssid: 'KrakenOS-Invitados',
       clientIsolation: true,
       bandwidthLimitMbps: 50,
@@ -50,6 +50,6 @@ describe('GuestNetworkCard', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     await waitFor(() => expect(apiMock.put).toHaveBeenCalled());
-    expect(apiMock.put.mock.calls[0][1]).toMatchObject({ bandwidthLimitMbps: null });
+    expect(apiMock.put.mock.calls[0]![1]).toMatchObject({ bandwidthLimitMbps: null });
   });
 });

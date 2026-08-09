@@ -153,7 +153,7 @@ describe('ConnectPage — detectados en tu red', () => {
     apiMock.del.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });
   });

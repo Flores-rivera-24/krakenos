@@ -35,7 +35,7 @@ import { useAuthStore } from '@/store/auth.store';
 
 const LOGIN_RESPONSE = {
   user: { id: 'u', email: 'o@k.test', displayName: 'O', role: 'admin' as const, createdAt: '', updatedAt: '' },
-  tokens: { accessToken: 'a', refreshToken: 'r', expiresIn: 900 },
+  tokens: { accessToken: 'a', expiresIn: 900 },
 };
 
 function renderPage() {

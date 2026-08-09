@@ -77,7 +77,7 @@ function mockApi(history: DnsHistoryResponse = HISTORY) {
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

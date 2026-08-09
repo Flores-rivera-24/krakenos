@@ -1,4 +1,4 @@
-import type { AutomationRule, HomeEvent } from '@krakenos/types';
+import type { AutomationRule, AutomationTrigger, HomeEvent } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import { sunEventLocalMinutes } from '../../src/iot/solar.js';
 
@@ -60,6 +60,7 @@ describe('automations/engine — matchesTrigger', () => {
     const reading = (value: number, prevValue: number | null): HomeEvent => ({
       type: 'sensor-reading',
       deviceId: 's',
+      metric: 'temperature',
       value,
       prevValue,
     });
@@ -197,7 +198,11 @@ describe('automations/engine — passesCondition', () => {
 });
 
 describe('automations/engine — timeTriggerDue', () => {
-  const trigger = { type: 'time', days: [3], minute: 12 * 60 } as const; // miércoles 12:00
+  const trigger: Extract<AutomationTrigger, { type: 'time' }> = {
+    type: 'time',
+    days: [3],
+    minute: 12 * 60,
+  }; // miércoles 12:00
 
   it('dispara al cruzar el minuto, no antes ni después', () => {
     expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 59), new Date(2026, 6, 8, 12, 0))).toBe(true);
@@ -209,7 +214,11 @@ describe('automations/engine — timeTriggerDue', () => {
     // Mismo minuto pero jueves → no dispara.
     expect(timeTriggerDue(trigger, new Date(2026, 6, 9, 11, 59), new Date(2026, 6, 9, 12, 0))).toBe(false);
     // 00:00 del jueves con barrido que cruza medianoche desde el miércoles.
-    const midnight = { type: 'time', days: [4], minute: 0 } as const;
+    const midnight: Extract<AutomationTrigger, { type: 'time' }> = {
+      type: 'time',
+      days: [4],
+      minute: 0,
+    };
     expect(
       timeTriggerDue(midnight, new Date(2026, 6, 8, 23, 59, 30), new Date(2026, 6, 9, 0, 0, 30)),
     ).toBe(true);
@@ -281,14 +290,30 @@ describe('automations/engine — eventSubject / describeEvent', () => {
   it('extrae el objetivo implícito del evento', () => {
     expect(eventSubject({ type: 'device-new', mac: 'aa' })).toEqual({ mac: 'aa' });
     expect(eventSubject({ type: 'iot-on', deviceId: 'x' })).toEqual({ deviceId: 'x' });
-    expect(eventSubject({ type: 'sensor-reading', deviceId: 's', value: 1, prevValue: null })).toEqual({
+    expect(
+      eventSubject({
+        type: 'sensor-reading',
+        deviceId: 's',
+        metric: 'temperature',
+        value: 1,
+        prevValue: null,
+      }),
+    ).toEqual({
       deviceId: 's',
     });
   });
 
   it('describe los eventos de forma legible', () => {
     expect(describeEvent({ type: 'device-new', mac: 'aa' })).toContain('aa');
-    expect(describeEvent({ type: 'sensor-reading', deviceId: 's', value: 21, prevValue: 20 })).toBe('s = 21');
+    expect(
+      describeEvent({
+        type: 'sensor-reading',
+        deviceId: 's',
+        metric: 'temperature',
+        value: 21,
+        prevValue: 20,
+      }),
+    ).toBe('s = 21');
   });
 
   it('motion-detected: sin objetivo implícito, resumen con el nombre de la cámara (US-186)', () => {
@@ -407,12 +432,22 @@ describe('automations/engine — sunTriggerDue (US-256)', () => {
     expect(miercoles.getDay()).toBe(3);
     expect(juevesTemprano.getDay()).toBe(4);
 
-    const soloMiercoles = { type: 'sun', event: 'sunrise', offsetMin: 0, days: [3] } as const;
+    const soloMiercoles: Extract<AutomationTrigger, { type: 'sun' }> = {
+      type: 'sun',
+      event: 'sunrise',
+      offsetMin: 0,
+      days: [3],
+    };
     expect(sunTriggerDue(soloMiercoles, miercoles, juevesTemprano, MADRID)).toBe(true);
 
     // Mismo barrido, mismo instante: si el día se leyera de `now` (jueves), esta
     // regla dispararía. Su instante es del miércoles, así que no.
-    const soloJueves = { type: 'sun', event: 'sunrise', offsetMin: 0, days: [4] } as const;
+    const soloJueves: Extract<AutomationTrigger, { type: 'sun' }> = {
+      type: 'sun',
+      event: 'sunrise',
+      offsetMin: 0,
+      days: [4],
+    };
     expect(sunTriggerDue(soloJueves, miercoles, juevesTemprano, MADRID)).toBe(false);
   });
 

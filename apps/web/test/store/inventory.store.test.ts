@@ -37,9 +37,13 @@ function device(over: Partial<Device> = {}): Device {
     type: 'computer',
     isBlocked: false,
     online: true,
+    vlanTag: null,
     sources: ['arp'],
     firstSeen: '2026-01-01T00:00:00.000Z',
     lastSeen: '2026-01-01T00:00:00.000Z',
+    icon: null,
+    roomId: null,
+    ownerId: null,
     ...over,
   };
 }

@@ -11,7 +11,7 @@ function jsonResponse(status: number, body: unknown): Response {
 }
 
 const USER = { id: 'u1', email: 'a@krakenos.test', displayName: 'A', role: 'admin' as const, createdAt: '', updatedAt: '' };
-const TOKENS = { accessToken: 'acc', refreshToken: 'ref', expiresIn: 900 };
+const TOKENS = { accessToken: 'acc', expiresIn: 900 };
 
 describe('useAuthStore', () => {
   beforeEach(() => {
@@ -51,7 +51,7 @@ describe('useAuthStore', () => {
 
   it('refresh exitoso actualiza los tokens', async () => {
     useAuthStore.setState({ user: USER, tokens: TOKENS });
-    const nuevos = { accessToken: 'acc2', refreshToken: 'ref2', expiresIn: 900 };
+    const nuevos = { accessToken: 'acc2', expiresIn: 900 };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, nuevos)));
 
     const ok = await useAuthStore.getState().refresh();
@@ -61,7 +61,7 @@ describe('useAuthStore', () => {
 
   it('refresh concurrente hace un solo POST (single-flight, US-56)', async () => {
     useAuthStore.setState({ user: USER, tokens: TOKENS });
-    const nuevos = { accessToken: 'acc2', refreshToken: 'ref2', expiresIn: 900 };
+    const nuevos = { accessToken: 'acc2', expiresIn: 900 };
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, nuevos));
     vi.stubGlobal('fetch', fetchMock);
 

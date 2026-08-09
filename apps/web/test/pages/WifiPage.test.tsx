@@ -24,7 +24,7 @@ const GUEST: GuestNetwork = {
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

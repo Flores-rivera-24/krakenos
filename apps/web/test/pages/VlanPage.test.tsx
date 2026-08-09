@@ -37,6 +37,9 @@ const DEVICE: Device = {
   hostname: 'cam',
   label: 'Cámara salón',
   notes: null,
+  icon: null,
+  roomId: null,
+  ownerId: null,
   vendor: null,
   type: 'iot',
   isBlocked: false,
@@ -50,7 +53,7 @@ const DEVICE: Device = {
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

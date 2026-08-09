@@ -11,6 +11,7 @@ function sched(partial: Partial<AccessSchedule>): AccessSchedule {
     days: [1],
     startMinute: 8 * 60,
     endMinute: 17 * 60,
+    personId: null,
     createdAt: '2026-07-03T00:00:00.000Z',
     ...partial,
   };

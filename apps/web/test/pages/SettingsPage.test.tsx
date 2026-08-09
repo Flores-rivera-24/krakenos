@@ -21,6 +21,19 @@ const SETTINGS: SystemSettingsResponse = {
     scanIntervalSec: '60',
     trafficRetentionDays: '7',
     auditRetentionDays: '90',
+    accessTokenTtl: '900',
+    loginRateLimit: '5',
+    theme: 'dark',
+    homeLatitude: '',
+    homeLongitude: '',
+    presenceGraceMin: '10',
+    presenceLeaveSweeps: '2',
+    presenceNightSuppress: '',
+    digestFrequency: 'off',
+    autoBackupFrequency: 'off',
+    autoBackupRetention: '7',
+    updateMaintenanceWindow: '',
+    telemetryEnabled: 'off',
   },
   info: { driver: 'mock', host: '192.168.1.1', httpsEnabled: false },
 };
@@ -28,7 +41,7 @@ const SETTINGS: SystemSettingsResponse = {
 function setUser(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'admin@krakenos.local', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

@@ -371,7 +371,7 @@ describe('Accesibilidad — smoke axe por página (US-95)', () => {
         createdAt: '',
         updatedAt: '',
       },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
     useInventoryStore.setState({
       connected: true,
@@ -382,6 +382,9 @@ describe('Accesibilidad — smoke axe por página (US-95)', () => {
           ip: '192.168.1.10',
           hostname: 'macbook',
           label: 'MacBook',
+          icon: null,
+          roomId: null,
+          ownerId: null,
           notes: null,
           vendor: 'Apple',
           type: 'computer',

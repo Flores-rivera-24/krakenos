@@ -7,6 +7,8 @@ const accessClaims = (): AccessTokenClaims => ({
   email: 'u@krakenos.test',
   role: 'admin',
   type: 'access',
+  iat: 1_760_000_000,
+  exp: 1_760_003_600,
 });
 
 describe('re-verificación de sesión de Socket.io (US-80, F7)', () => {
@@ -24,7 +26,7 @@ describe('re-verificación de sesión de Socket.io (US-80, F7)', () => {
     });
 
     it('rechaza un token cuyo type no es access', () => {
-      expect(isSocketTokenValid('tok', () => ({ ...accessClaims(), type: 'refresh' }) as AccessTokenClaims)).toBe(false);
+      expect(isSocketTokenValid('tok', () => ({ ...accessClaims(), type: 'refresh' }) as unknown as AccessTokenClaims)).toBe(false);
     });
   });
 

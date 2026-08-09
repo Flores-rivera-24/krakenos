@@ -9,7 +9,16 @@ import {
 } from '../../src/coverage/calibration.js';
 import { rssiFromAp } from '../../src/coverage/propagation.js';
 
-const AP: ApPlacement = { id: 'ap1', name: 'AP', x: 2, y: 2, txPowerDbm: 20, enabled: true };
+const AP: ApPlacement = {
+  id: 'ap1',
+  apId: null,
+  name: 'AP',
+  x: 2,
+  y: 2,
+  bands: ['5GHz'],
+  txPowerDbm: 20,
+  enabled: true,
+};
 const SIN_PAREDES: Wall[] = [];
 
 /** Genera medidas SINTÉTICAS con un `n` conocido, para poder recuperarlo. */

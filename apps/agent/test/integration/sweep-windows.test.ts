@@ -3,7 +3,7 @@ import type {
   CameraManager,
   CameraSnapshot,
   IotManager,
-  NativeMotionEvent,
+  NativeCameraEvent,
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -188,8 +188,14 @@ describe('los barridos no pierden su ventana si el ciclo falla (US-229)', () => 
   it('motion (detección nativa): un fallo del NVR no se salta sus eventos', async () => {
     const since: number[] = [];
     let failNext = false;
-    const events: NativeMotionEvent[] = [
-      { cameraId: 'cam-1', cameraName: 'Entrada', label: 'person', snapshot: null, detectedAtMs: 0 },
+    const events: NativeCameraEvent[] = [
+      {
+        cameraId: 'cam-1',
+        cameraName: 'Entrada',
+        label: 'person',
+        snapshot: null,
+        detectedAt: '2026-07-29T00:00:00.000Z',
+      },
     ];
     const cameras = {
       listCameras: async (): Promise<Camera[]> => [
@@ -197,11 +203,11 @@ describe('los barridos no pierden su ventana si el ciclo falla (US-229)', () => 
       ],
       getSnapshot: async (id: string): Promise<CameraSnapshot | null> => ({
         cameraId: id,
-        image: null,
+        image: 'data:image/jpeg;base64,/9j/',
         capturedAt: '2026-07-29T00:00:00.000Z',
       }),
       getMotionFrame: async () => null,
-      pollEvents: async (from: number): Promise<NativeMotionEvent[]> => {
+      pollEvents: async (from: number): Promise<NativeCameraEvent[]> => {
         since.push(from);
         if (failNext) throw new Error('el NVR no responde');
         return events.splice(0);

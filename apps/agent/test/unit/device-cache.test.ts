@@ -25,7 +25,11 @@ const LAMP: IotDevice = {
   id: 'lamp',
   name: 'Lámpara',
   kind: 'light',
+  room: null,
   on: false,
+  brightness: null,
+  color: null,
+  readings: [],
   reachable: true,
 };
 
@@ -82,7 +86,7 @@ describe('withDeviceCache (US-229)', () => {
 
   it('un fallo no se cachea: el ciclo siguiente vuelve a intentarlo', async () => {
     const listDevices = vi
-      .fn<[], Promise<IotDevice[]>>()
+      .fn<() => Promise<IotDevice[]>>()
       .mockRejectedValueOnce(new Error('bridge caído'))
       .mockResolvedValue([LAMP]);
     const cached = withDeviceCache({

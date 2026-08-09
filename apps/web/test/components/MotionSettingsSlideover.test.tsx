@@ -18,6 +18,7 @@ const CONFIG: CameraMotionConfig = {
   enabled: false,
   sensitivity: 'medium',
   cooldownSec: 60,
+  record: false,
   arming: { mode: 'always' },
 };
 
