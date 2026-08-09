@@ -100,7 +100,7 @@ describe('SetupPage', () => {
     await user.click(screen.getByRole('button', { name: 'Crear administrador' }));
 
     await waitFor(() => expect(apiMock.post).toHaveBeenCalled());
-    const [path, , opts] = apiMock.post.mock.calls[0];
+    const [path, , opts] = apiMock.post.mock.calls[0]!;
     expect(path).toBe('/setup/init');
     expect(opts).toMatchObject({ anonymous: true });
     expect(setSession).toHaveBeenCalledWith(LOGIN_RESPONSE);

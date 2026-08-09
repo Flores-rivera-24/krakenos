@@ -15,6 +15,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
+    // Sin esto hereda `incremental: true` de la base y reutiliza el
+    // `.tsbuildinfo`: el gate llego a dar VERDE en local con un error dentro,
+    // que CI si vio. Un gate que puede mentir en verde no sirve.
+    "incremental": false,
     "rootDir": "."
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts", "prisma/seed.ts"]

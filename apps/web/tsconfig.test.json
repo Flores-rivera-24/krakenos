@@ -11,6 +11,10 @@
   "compilerOptions": {
     "composite": false,
     "noEmit": true,
+    // Sin esto hereda `incremental: true` de la base y reutiliza el
+    // `.tsbuildinfo`: el gate llego a dar VERDE en local con un error dentro,
+    // que CI si vio. Un gate que puede mentir en verde no sirve.
+    "incremental": false,
     "types": ["node", "@testing-library/jest-dom"]
   },
   "include": ["src", "test", "vitest.config.ts"],
