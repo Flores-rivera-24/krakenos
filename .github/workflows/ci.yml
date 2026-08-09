@@ -10,6 +10,20 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ⚠️ Las acciones van en su mayor actual porque su RUNTIME (el Node con el que
+# GitHub las ejecuta) pasó a `node24`. Las versiones viejas declaraban `node20`,
+# que GitHub ya deprecó: los runners lo forzaban a 24 y lo avisaban en cada
+# ejecución. Es una caducidad con fecha puesta por un tercero — cuando dejara de
+# forzarse, TODOS los workflows habrían fallado a la vez y el fallo no se habría
+# parecido a su causa.
+#
+# Eso es el runtime de la acción y NO la versión de Node del proyecto: `node-version`
+# sigue en 20 a propósito. Subir el Node del producto toca el instalador, el
+# Dockerfile y el soporte declarado, y es una decisión aparte.
+#
+# Requieren Actions Runner ≥ v2.327.1 (los hospedados por GitHub lo cumplen; si
+# algún día se usa un runner propio, hay que actualizarlo antes).
+
 jobs:
   build-test:
     name: Lint · Typecheck · Build · Test
@@ -17,14 +31,14 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # La versión de pnpm se lee de "packageManager" en package.json.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -112,13 +126,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: pnpm
@@ -148,7 +162,7 @@ jobs:
       # Trazas/vídeo/screenshots (solo se generan al fallar) como artefactos.
       - name: Upload report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -168,7 +182,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Run installer (from local tree, no service)
         run: |
@@ -271,7 +285,7 @@ jobs:
     steps:
       # `fetch-depth: 0` para que gitleaks escanee TODO el historial, no solo HEAD.
       - name: Checkout (historial completo)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
