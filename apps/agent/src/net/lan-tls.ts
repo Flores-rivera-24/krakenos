@@ -1,6 +1,6 @@
 import { lookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
-import { Agent } from 'undici';
+import { Agent, Dispatcher1Wrapper } from 'undici';
 import { DEFAULT_EGRESS_POLICY, blockedReason, extractHost } from './egress.js';
 
 /**
@@ -29,8 +29,9 @@ import { DEFAULT_EGRESS_POLICY, blockedReason, extractHost } from './egress.js';
 
 /** Cliente con verificación TLS desactivada. Perezoso y único (cada `Agent` es un pool). */
 let agenteLan: Agent | null = null;
+let envoltorioLan: Dispatcher1Wrapper | null = null;
 
-function dispatcherLan(): Agent {
+function dispatcherLan(): Dispatcher1Wrapper {
   // Supresión **deliberada y acotada a esta línea** (US-259). Se silencia aquí y no
   // con un `--exclude-rule` en el workflow a propósito: excluir la regla apagaría la
   // detección en TODO el repo y el próximo bypass —ese sí accidental— pasaría
@@ -51,9 +52,17 @@ function dispatcherLan(): Agent {
   //
   // ⚠️ El marcador va en la línea INMEDIATAMENTE anterior al hallazgo: semgrep solo
   // mira esa (o la propia línea). Con la explicación en medio no suprime nada.
+  // `allowH2: false`: undici 8 negocia HTTP/2 por defecto y la 7 no; se conserva el
+  // comportamiento anterior (HTTP/1.1) porque el bridge Hue no se ha podido verificar
+  // con HTTP/2 y no hay hardware para hacerlo (US-86).
+  //
   // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
-  agenteLan ??= new Agent({ connect: { rejectUnauthorized: false } });
-  return agenteLan;
+  agenteLan ??= new Agent({ allowH2: false, connect: { rejectUnauthorized: false } });
+  // El `fetch` global de Node trae su propio undici con la API de handlers v1; un
+  // `Agent` de undici 8 (API v2) revienta ahí con «invalid onRequestStart method».
+  // `Dispatcher1Wrapper` es el puente oficial (guía de migración v7→v8, §6).
+  envoltorioLan ??= new Dispatcher1Wrapper(agenteLan);
+  return envoltorioLan;
 }
 
 /** Cierra el pool (tests y apagado limpio). */
@@ -61,6 +70,7 @@ export async function cerrarDispatcherLan(): Promise<void> {
   if (!agenteLan) return;
   const a = agenteLan;
   agenteLan = null;
+  envoltorioLan = null;
   await a.close();
 }
 
