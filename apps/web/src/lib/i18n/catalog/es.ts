@@ -1001,7 +1001,7 @@ export const es = {
   'settings.tls.feature.push': 'Recibir avisos en el móvil.',
   'settings.tls.feature.passkeys': 'Entrar con passkey (segundo factor).',
   'settings.tls.howTo':
-    'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador con «--tls tailscale» y tu móvil confiará sin instalar nada.',
+    'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador sin «--tls none»: usará Tailscale si lo tienes y, si no, una CA propia de KrakenOS.',
   'settings.tls.sourceLabel': 'Certificado',
   'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
   'settings.tls.source.selfSigned': 'Autofirmado',

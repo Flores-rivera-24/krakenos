@@ -55,6 +55,7 @@ Pi-hole**, sin proxy inverso:
 2. **Activa HTTPS y configura el RP** en el `.env` del servidor:
    ```bash
    HTTPS_ENABLED=true
+   # (con el instalador estas rutas ya son /etc/krakenos/tls/…)
    TLS_CERT_PATH=./certs/agent-cert.pem
    TLS_KEY_PATH=./certs/agent-key.pem
    WEBAUTHN_RP_ID=krakenos.local            # dominio, sin puerto

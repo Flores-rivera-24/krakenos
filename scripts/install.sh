@@ -40,6 +40,11 @@
 #   --tls self       OBSOLETO: alias de local
 #   --tls none       HTTP plano, solo si se pide expresamente; se avisa de lo que pierdes
 #
+# El material TLS vive en /etc/krakenos (CA en ca/, 0700 root; lo servido en tls/,
+# root:<servicio> 0750, que el agente lee por grupo) y el script de renovación se
+# ejecuta desde una copia de root en /usr/local/lib/krakenos: root nunca ejecuta ni
+# escribe nada que el servicio pueda modificar.
+#
 # En `curl | sudo bash` stdin ES la tubería, así que no hay TTY para preguntar: por
 # eso los extras se piden por bandera. Antes se «ofrecían» y siempre salían que no,
 # dejando la instalación sin cámaras ni VPN en silencio (AUD3-23).
@@ -54,6 +59,15 @@ REPO="${KRAKENOS_REPO:-Flores-rivera-24/krakenos}"
 INSTALL_DIR="${KRAKENOS_INSTALL_DIR:-/opt/krakenos}"
 SERVICE_NAME="${KRAKENOS_SERVICE_NAME:-krakenos}"
 SERVICE_USER="${KRAKENOS_SERVICE_USER:-krakenos}"
+# Material TLS FUERA del árbol de instalación. Todo lo que `root` ejecuta o escribe
+# (los timers de renovación, la clave de la CA, el script que emite certificados)
+# vive donde el usuario del servicio NO puede modificarlo: el árbol de instalación
+# es suyo (`chown -R`), así que un agente comprometido podría cambiar ahí el script
+# que root ejecutaría al mes siguiente, o plantar un enlace simbólico que un `chown`
+# de root seguiría.
+CA_DIR="${KRAKENOS_CA_DIR:-/etc/krakenos/ca}"         # root:root 0700 — clave de la CA
+TLS_DIR="${KRAKENOS_TLS_DIR:-/etc/krakenos/tls}"      # root:<servicio> 0750 — lo que se sirve
+LIB_DIR="${KRAKENOS_LIB_DIR:-/usr/local/lib/krakenos}" # root:root 0755 — copia de root del script
 PNPM_VERSION="9.12.0" # pinneado = packageManager del repo (patrón AUD-27: sin descargas en runtime)
 NODE_MAJOR=20
 MIN_RAM_MB="${KRAKENOS_MIN_RAM_MB:-900}"
@@ -521,6 +535,9 @@ write_file() {
   local path="$1" content="$2"
   if [[ $DRY_RUN -eq 1 ]]; then
     printf 'dry-run$ write %s\n' "$path"
+    # El contenido también: es lo que root va a ejecutar, y un plan que lo calla no
+    # se puede revisar (ni probar).
+    printf '%s\n' "$content" | sed 's/^/dry-run>   /'
     return 0
   fi
   printf '%s\n' "$content" > "$path"
@@ -550,9 +567,36 @@ tailscale_fqdn() {
   tailscale status --json 2>/dev/null | sed -n 's/.*"DNSName": *"\([^"]*\)\..*/\1/p' | head -1
 }
 
+# Directorios del material TLS, todos de root (ver el comentario de las constantes).
+prepare_tls_dirs() {
+  local with_ca="$1"
+  [[ $DRY_RUN -eq 1 || "$(id -u)" -eq 0 ]] ||
+    die "el material TLS se instala en /etc/krakenos y necesita root (usa sudo)"
+  run install -d -o root -g root -m 0755 "$(dirname "$TLS_DIR")"
+  run install -d -o root -g "$SERVICE_USER" -m 0750 "$TLS_DIR"
+  if [[ "$with_ca" == yes ]]; then
+    run install -d -o root -g root -m 0700 "$CA_DIR"
+  fi
+}
+
+# Copia de root del script que emite certificados: el timer (root) ejecuta ESTA, no
+# la del árbol de instalación, que es del usuario del servicio.
+install_root_script() {
+  local agent="$INSTALL_DIR/apps/agent"
+  run install -d -o root -g root -m 0755 "$LIB_DIR"
+  run install -o root -g root -m 0755 "$agent/scripts/gen-local-ca.sh" "$LIB_DIR/gen-local-ca.sh"
+}
+
+# Rutas del certificado servido en el .env (absolutas, fuera del árbol de instalación).
+set_tls_env_paths() {
+  set_env_var HTTPS_ENABLED true
+  set_env_var TLS_CERT_PATH "$TLS_DIR/agent-cert.pem"
+  set_env_var TLS_KEY_PATH "$TLS_DIR/agent-key.pem"
+}
+
 # Certificado de Let's Encrypt vía Tailscale: el móvil confía sin instalar nada.
 setup_tls_tailscale() {
-  local certs="$INSTALL_DIR/apps/agent/certs" fqdn
+  local fqdn
   command -v tailscale > /dev/null 2>&1 ||
     die "--tls tailscale necesita Tailscale instalado y con sesión iniciada (ver docs/remote-access.md)"
   fqdn="$(tailscale_fqdn || true)"
@@ -562,15 +606,16 @@ setup_tls_tailscale() {
     die "Tailscale no reporta nombre MagicDNS: haz 'tailscale up' y activa MagicDNS + HTTPS en la consola del tailnet"
   fqdn="${fqdn:-ejemplo.tailnet.ts.net}"
 
-  run mkdir -p "$certs"
+  prepare_tls_dirs no
   log "    emitiendo certificado para $fqdn (Let's Encrypt vía Tailscale)…"
-  run tailscale cert --cert-file "$certs/agent-cert.pem" --key-file "$certs/agent-key.pem" "$fqdn"
-  run chown -R "$SERVICE_USER":"$SERVICE_USER" "$certs"
-  run chmod 600 "$certs/agent-key.pem"
+  # root escribe en un directorio de root: el usuario del servicio no puede plantar
+  # un enlace simbólico en esa ruta. Después se da lectura por grupo al servicio.
+  run tailscale cert --cert-file "$TLS_DIR/agent-cert.pem" --key-file "$TLS_DIR/agent-key.pem" "$fqdn"
+  run chgrp "$SERVICE_USER" "$TLS_DIR/agent-cert.pem" "$TLS_DIR/agent-key.pem"
+  run chmod 0644 "$TLS_DIR/agent-cert.pem"
+  run chmod 0640 "$TLS_DIR/agent-key.pem"
 
-  set_env_var HTTPS_ENABLED true
-  set_env_var TLS_CERT_PATH "./certs/agent-cert.pem"
-  set_env_var TLS_KEY_PATH "./certs/agent-key.pem"
+  set_tls_env_paths
   set_env_var WEB_ORIGIN "https://${fqdn}"
   install_tls_renew_timer "$fqdn"
 
@@ -582,9 +627,10 @@ setup_tls_tailscale() {
 
 # Renovación: el cert de Let's Encrypt dura 90 días. `tailscale cert` es idempotente
 # y solo renueva cuando toca; el agente detecta el fichero nuevo y lo aplica EN
-# CALIENTE (no hace falta reiniciar el servicio).
+# CALIENTE (no hace falta reiniciar el servicio). Corre como root SOLO sobre
+# /etc/krakenos/tls (dir de root): ningún `chown` sobre rutas del servicio.
 install_tls_renew_timer() {
-  local fqdn="$1" certs="$INSTALL_DIR/apps/agent/certs"
+  local fqdn="$1"
   [[ $NO_SERVICE -eq 1 ]] && {
     SUMMARY+=("sin systemd: el certificado NO se renovará solo — programa 'tailscale cert' cada mes")
     return 0
@@ -596,8 +642,10 @@ Description=Renueva el certificado TLS de KrakenOS (Tailscale)
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/env tailscale cert --cert-file ${certs}/agent-cert.pem --key-file ${certs}/agent-key.pem ${fqdn}
-ExecStartPost=/usr/bin/env chown ${SERVICE_USER}:${SERVICE_USER} ${certs}/agent-cert.pem ${certs}/agent-key.pem
+ExecStart=/usr/bin/env tailscale cert --cert-file ${TLS_DIR}/agent-cert.pem --key-file ${TLS_DIR}/agent-key.pem ${fqdn}
+ExecStartPost=/usr/bin/env chgrp ${SERVICE_USER} ${TLS_DIR}/agent-cert.pem ${TLS_DIR}/agent-key.pem
+ExecStartPost=/usr/bin/env chmod 0644 ${TLS_DIR}/agent-cert.pem
+ExecStartPost=/usr/bin/env chmod 0640 ${TLS_DIR}/agent-key.pem
 UNIT
   )"
   write_file "/etc/systemd/system/${SERVICE_NAME}-cert.timer" "$(
@@ -626,30 +674,55 @@ local_hostname() {
   printf '%s' "${h:-krakenos}"
 }
 
+# mDNS: `<equipo>.local` solo resuelve si el servidor responde mDNS (Avahi) y el
+# cliente de este equipo lo consulta (libnss-mdns). Sin él, WEB_ORIGIN y las
+# passkeys apuntarían a un nombre que nadie resuelve.
+# No choca con el descubrimiento del agente: éste abre su socket UDP con `bind()`
+# sin puerto (efímero) y `reuseAddr` (`discovery/transport.ts`), así que no compite
+# con Avahi por el 5353.
+install_avahi() {
+  local runlevel=()
+  # Sin systemd (contenedor) el postinst intentaría arrancar el demonio y fallaría;
+  # RUNLEVEL=1 hace que invoke-rc.d no lo intente.
+  has_systemd || runlevel=(RUNLEVEL=1)
+  if ! run env DEBIAN_FRONTEND=noninteractive "${runlevel[@]}" apt-get install -y -qq avahi-daemon libnss-mdns; then
+    warn "no se pudo instalar avahi-daemon: instálalo a mano para que <equipo>.local resuelva"
+    SUMMARY+=("avahi-daemon NO instalado: <equipo>.local no resolverá hasta que lo instales (apt install avahi-daemon libnss-mdns)")
+    return 0
+  fi
+  if has_systemd && [[ $NO_SERVICE -eq 0 ]]; then
+    run systemctl enable --now avahi-daemon || warn "avahi-daemon instalado pero no arrancó"
+    SUMMARY+=("avahi-daemon instalado y activo: el equipo responde como <equipo>.local en la red local")
+  else
+    SUMMARY+=("avahi-daemon instalado pero SIN arrancar (sin systemd o con --no-service): <equipo>.local no resolverá hasta que lo inicies")
+  fi
+}
+
 # CA propia de KrakenOS: el cert de servidor lo firma una CA que el dispositivo
 # instala UNA vez. Sus nameConstraints la limitan a .local/localhost/rangos
 # privados, así que su clave no sirve para suplantar ningún sitio de internet.
+#
+# Dónde vive cada cosa (root nunca ejecuta ni escribe lo que el servicio modifica):
+#   · /usr/local/lib/krakenos/gen-local-ca.sh   copia de root del script
+#   · /etc/krakenos/ca/krakenos-ca-key.pem       clave de la CA, root 0600 en dir 0700
+#   · /etc/krakenos/tls/                         root:<servicio> 0750; el agente lee
+#                                                cert y clave del servidor POR GRUPO
 setup_tls_local() {
-  local agent="$INSTALL_DIR/apps/agent" host port
+  local host port
   host="$(local_hostname)"
   port="$(agent_port)"
 
-  run env KRAKENOS_HOSTNAME="$host" bash "$agent/scripts/gen-local-ca.sh"
-  # La clave de la CA se queda de ROOT: el agente no la necesita (solo sirve el
-  # certificado del servidor) y quien robe el proceso no debe poder emitir nada.
-  run chown root:root "$agent/keys/krakenos-ca-key.pem"
-  run chmod 600 "$agent/keys/krakenos-ca-key.pem"
-  run chown "$SERVICE_USER":"$SERVICE_USER" "$agent/certs" "$agent/certs/agent-cert.pem" \
-    "$agent/certs/agent-key.pem" "$agent/certs/krakenos-ca.pem"
-  run chmod 600 "$agent/certs/agent-key.pem"
+  prepare_tls_dirs yes
+  install_root_script
+  run env KRAKENOS_HOSTNAME="$host" KRAKENOS_CERTS_DIR="$TLS_DIR" KRAKENOS_KEYS_DIR="$CA_DIR" \
+    KRAKENOS_TLS_GROUP="$SERVICE_USER" bash "$LIB_DIR/gen-local-ca.sh"
 
-  set_env_var HTTPS_ENABLED true
-  set_env_var TLS_CERT_PATH "./certs/agent-cert.pem"
-  set_env_var TLS_KEY_PATH "./certs/agent-key.pem"
-  set_env_var TLS_CA_CERT_PATH "./certs/krakenos-ca.pem"
+  set_tls_env_paths
+  set_env_var TLS_CA_CERT_PATH "$TLS_DIR/krakenos-ca.pem"
   set_env_var WEB_ORIGIN "https://${host}.local:${port}"
   # WebAuthn exige un NOMBRE (no una IP) y que el origen coincida con el del
   # navegador; solo se fija si la plantilla del .env los contempla.
+  local agent="$INSTALL_DIR/apps/agent"
   if grep -qE '^#? *WEBAUTHN_RP_ID=' "$agent/.env.example" 2> /dev/null; then
     set_env_var WEBAUTHN_RP_ID "${host}.local"
   fi
@@ -657,16 +730,19 @@ setup_tls_local() {
     set_env_var WEBAUTHN_ORIGIN "https://${host}.local:${port}"
   fi
   install_tls_local_timer "$host"
+  install_avahi
 
   SUMMARY+=("TLS con CA propia: cada dispositivo debe instalar UNA vez el certificado de la CA (descárgalo en https://${host}.local:${port}/api/system/ca-cert o en Ajustes → Conexión segura; en iPhone/iPad hay además que activarlo en Ajustes → General → Información → Confianza de certificados)")
+  SUMMARY+=("la clave de la CA está en ${CA_DIR} (solo root); no la copies ni la compartas")
 }
 
 # Renovación del certificado de servidor (825 días): gen-local-ca.sh solo lo
 # reemite cuando quedan <60 días o cambió la IP; el agente lo recarga en caliente.
+# El timer ejecuta la COPIA DE ROOT del script y no toca nada del árbol del servicio.
 install_tls_local_timer() {
-  local host="$1" agent="$INSTALL_DIR/apps/agent"
+  local host="$1"
   [[ $NO_SERVICE -eq 1 ]] && {
-    SUMMARY+=("sin systemd: el certificado local NO se renovará solo — ejecuta apps/agent/scripts/gen-local-ca.sh antes de que caduque")
+    SUMMARY+=("sin systemd: el certificado local NO se renovará solo — ejecuta ${LIB_DIR}/gen-local-ca.sh (con KRAKENOS_CERTS_DIR/KRAKENOS_KEYS_DIR) antes de que caduque")
     return 0
   }
   write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.service" "$(
@@ -677,8 +753,10 @@ Description=Renueva el certificado TLS local de KrakenOS (CA propia)
 [Service]
 Type=oneshot
 Environment=KRAKENOS_HOSTNAME=${host}
-ExecStart=/usr/bin/env bash ${agent}/scripts/gen-local-ca.sh
-ExecStartPost=/usr/bin/env chown ${SERVICE_USER}:${SERVICE_USER} ${agent}/certs/agent-cert.pem ${agent}/certs/agent-key.pem
+Environment=KRAKENOS_CERTS_DIR=${TLS_DIR}
+Environment=KRAKENOS_KEYS_DIR=${CA_DIR}
+Environment=KRAKENOS_TLS_GROUP=${SERVICE_USER}
+ExecStart=/usr/bin/env bash ${LIB_DIR}/gen-local-ca.sh
 UNIT
   )"
   write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.timer" "$(
@@ -724,6 +802,79 @@ setup_tls() {
       SUMMARY+=("sin HTTPS → NO funcionan la app instalable (PWA), los avisos push ni las passkeys: el navegador exige contexto seguro (reinstala sin --tls none)")
       ;;
   esac
+}
+
+# Copia un fichero del árbol del servicio al directorio TLS de root SIN seguir
+# enlaces simbólicos: el origen es del usuario del servicio, así que un enlace a
+# /etc/shadow no puede convertirse en un fichero legible por él. Devuelve 1 si el
+# origen no existe o no es un fichero normal.
+copy_tls_file() {
+  local src="$1" dst="$2" mode="$3"
+  [[ -f "$src" && ! -L "$src" ]] || return 1
+  # `cp -P` copia el enlace como enlace si lo fuera (carrera entre la comprobación
+  # y la copia); el destino se revalida ya dentro del directorio de root.
+  run cp -P --no-preserve=all "$src" "$dst.nuevo"
+  if [[ $DRY_RUN -eq 0 && ( -L "$dst.nuevo" || ! -f "$dst.nuevo" ) ]]; then
+    rm -f "$dst.nuevo"
+    warn "$src cambió durante la copia (¿enlace simbólico?): se omite"
+    return 1
+  fi
+  run chgrp "$SERVICE_USER" "$dst.nuevo"
+  run chmod "$mode" "$dst.nuevo"
+  run mv -f "$dst.nuevo" "$dst"
+  run rm -f "$src"
+}
+
+# Migración (--update) de quien instaló antes con el material TLS en
+# apps/agent/certs: se mueve a /etc/krakenos/tls, se reescriben las rutas del .env,
+# se refresca la copia de root del script y se reinstalan las unidades de los timers
+# SIN `ExecStartPost=chown` (root hacía chown, siguiendo enlaces, sobre rutas que el
+# servicio controlaba).
+refresh_tls_after_update() {
+  local agent="$INSTALL_DIR/apps/agent" old migrated=0 f
+  old="$agent/certs"
+  local unit_dir=/etc/systemd/system
+
+  if [[ -f "$old/agent-cert.pem" && ! -f "$TLS_DIR/agent-cert.pem" ]]; then
+    log "TLS: migrando el certificado de $old a $TLS_DIR…"
+    prepare_tls_dirs no
+    # Los dos ficheros normales (ni enlaces) ANTES de tocar nada: mover solo uno
+    # dejaría el par partido entre dos rutas.
+    if [[ -f "$old/agent-key.pem" && ! -L "$old/agent-key.pem" && ! -L "$old/agent-cert.pem" ]] &&
+      copy_tls_file "$old/agent-cert.pem" "$TLS_DIR/agent-cert.pem" 0644 &&
+      copy_tls_file "$old/agent-key.pem" "$TLS_DIR/agent-key.pem" 0640; then
+      # Si venía de una CA local anterior, el certificado público la acompaña.
+      copy_tls_file "$old/krakenos-ca.pem" "$TLS_DIR/krakenos-ca.pem" 0644 || true
+      set_tls_env_paths
+      if [[ -f "$TLS_DIR/krakenos-ca.pem" || $DRY_RUN -eq 1 ]] && grep -q '^TLS_CA_CERT_PATH=' "$agent/.env" 2> /dev/null; then
+        set_env_var TLS_CA_CERT_PATH "$TLS_DIR/krakenos-ca.pem"
+      fi
+      migrated=1
+      SUMMARY+=("TLS migrado: el certificado y la clave pasaron de $old a $TLS_DIR (la clave deja de estar en el árbol del servicio)")
+    else
+      warn "no se pudo migrar el certificado de $old (¿faltan ficheros o son enlaces?)"
+      SUMMARY+=("TLS NO migrado: revisa $old — el certificado sigue en la ruta antigua")
+    fi
+  fi
+
+  # Unidades: se reinstalan SIEMPRE que existan, para quitar la versión antigua.
+  if [[ -f "$unit_dir/${SERVICE_NAME}-cert.timer" || $migrated -eq 1 && $DRY_RUN -eq 1 ]]; then
+    local fqdn
+    fqdn="$(tailscale_fqdn || true)"
+    if [[ -n "$fqdn" ]]; then
+      prepare_tls_dirs no
+      install_tls_renew_timer "$fqdn"
+      SUMMARY+=("timer de renovación de Tailscale reinstalado sin ExecStartPost=chown")
+    else
+      warn "no se pudo leer el nombre MagicDNS: el timer de Tailscale se deja como estaba"
+    fi
+  fi
+  if [[ -f "$unit_dir/${SERVICE_NAME}-cert-local.timer" ]]; then
+    f="$(sed -n 's/^Environment=KRAKENOS_HOSTNAME=//p' "$unit_dir/${SERVICE_NAME}-cert-local.service" 2> /dev/null | head -1)"
+    install_root_script
+    install_tls_local_timer "${f:-$(local_hostname)}"
+    SUMMARY+=("copia de root de gen-local-ca.sh refrescada en $LIB_DIR")
+  fi
 }
 
 # ---------------------------------------------------------------- extras opt-in
@@ -812,6 +963,8 @@ do_update() {
     log "    ejecutando como $SERVICE_USER (no como root: no rompe los permisos del árbol)"
   fi
   run bash -c "cd '$INSTALL_DIR/apps/agent' && ${as_user}node dist/update-runner.js '${version:-0.0.0}'"
+  refresh_tls_after_update
+  print_summary
   log "Resultado en $INSTALL_DIR/apps/agent/var/update-result.json (y en la card de Ajustes → Sistema)."
 }
 
@@ -821,6 +974,7 @@ do_update() {
 has_systemd() { [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null; }
 
 do_uninstall() {
+  local u
   log "Desinstalando el servicio $SERVICE_NAME…"
   if has_systemd; then
     run systemctl disable --now "$SERVICE_NAME" || true
@@ -831,9 +985,18 @@ do_uninstall() {
     run rm -f "/etc/systemd/system/${SERVICE_NAME}.service"
   fi
   run rm -f "/etc/sudoers.d/krakenos-update"
+  # Timers de renovación del certificado (los dos modos) y la copia de root.
+  for u in cert cert-local; do
+    if has_systemd; then run systemctl disable --now "${SERVICE_NAME}-${u}.timer" || true; fi
+    run rm -f "/etc/systemd/system/${SERVICE_NAME}-${u}.timer" "/etc/systemd/system/${SERVICE_NAME}-${u}.service"
+  done
+  run rm -f "$LIB_DIR/gen-local-ca.sh"
   if [[ $PURGE -eq 1 ]]; then
     if confirm "¿Borrar TAMBIÉN $INSTALL_DIR (base de datos, claves y credenciales)? Es irreversible" || [[ $ASSUME_YES -eq 1 ]]; then
       run rm -rf "$INSTALL_DIR"
+      # La CA y el certificado servido solo se borran con --purge confirmado: perder
+      # la CA obliga a reinstalar su certificado en cada dispositivo.
+      run rm -rf "$CA_DIR" "$TLS_DIR"
       log "Eliminado $INSTALL_DIR por completo."
     else
       log "Purga cancelada: $INSTALL_DIR queda intacto."

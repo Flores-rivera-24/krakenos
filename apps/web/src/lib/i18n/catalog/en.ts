@@ -977,7 +977,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.tls.feature.push': 'Receiving alerts on your phone.',
   'settings.tls.feature.passkeys': 'Signing in with a passkey (second factor).',
   'settings.tls.howTo':
-    'This is not an in-app setting: it is decided at install time. Re-run the installer with «--tls tailscale» and your phone will trust it without installing anything.',
+    'This is not an in-app setting: it is decided at install time. Re-run the installer without «--tls none»: it will use Tailscale if you have it and, if not, a KrakenOS CA of its own.',
   'settings.tls.sourceLabel': 'Certificate',
   'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
   'settings.tls.source.selfSigned': 'Self-signed',

@@ -1,4 +1,7 @@
-import { execFile } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -209,9 +212,10 @@ describe('install.sh --dry-run (US-216)', () => {
     expect(stdout).toContain('--tls auto → local');
     expect(stdout).toContain('gen-local-ca.sh');
     expect(stdout).toContain('HTTPS_ENABLED=true');
-    expect(stdout).toContain('TLS_CA_CERT_PATH=./certs/krakenos-ca.pem');
+    expect(stdout).toContain('TLS_CA_CERT_PATH=/etc/krakenos/tls/krakenos-ca.pem');
     expect(stdout).toMatch(/WEB_ORIGIN=https:\/\/[a-z0-9-]+\.local:3001/);
-    expect(stdout).toContain('chown root:root /tmp/kraken-x/apps/agent/keys/krakenos-ca-key.pem');
+    expect(stdout).toContain('install -d -o root -g root -m 0700 /etc/krakenos/ca');
+    expect(stdout).toContain('avahi-daemon');
     expect(stdout).toContain('krakenos-cert-local.timer');
     expect(stdout).toContain('/api/system/ca-cert');
     expect(stdout).toContain('Confianza de certificados');
@@ -344,5 +348,143 @@ describe('install.sh --dry-run (US-216)', () => {
     const { code, stderr } = await runInstaller(['--dry-run', '--frobnicar']);
     expect(code).toBe(1);
     expect(stderr).toContain('opción desconocida');
+  });
+});
+
+/**
+ * Root nunca ejecuta ni escribe nada que el usuario del servicio pueda modificar.
+ *
+ * El árbol de instalación es del usuario del servicio (`chown -R`). Los timers de
+ * renovación corren como root: si su `ExecStart` apuntaba a un script de ese árbol,
+ * un agente comprometido lo editaba y obtenía root al mes siguiente; y un
+ * `ExecStartPost=chown` sobre rutas suyas seguía enlaces simbólicos (`ln -sf
+ * /etc/shadow agent-key.pem`). Estos tests habrían cazado ambas cosas.
+ */
+describe('install.sh · root no ejecuta lo que el servicio puede modificar', () => {
+  const INSTALL_DIR = '/tmp/kraken-x';
+
+  /** Unidades de renovación que el plan escribe, con su contenido (`dry-run>`). */
+  function unitsDeRenovacion(stdout: string): { path: string; body: string }[] {
+    const out: { path: string; body: string }[] = [];
+    const lines = stdout.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const m = /^dry-run\$ write (\/etc\/systemd\/system\/\S*-cert\S*\.(?:service|timer))$/.exec(
+        lines[i] ?? '',
+      );
+      if (!m) continue;
+      const body: string[] = [];
+      while ((lines[i + 1] ?? '').startsWith('dry-run>')) body.push((lines[++i] ?? '').slice(11));
+      out.push({ path: m[1] ?? '', body: body.join('\n') });
+    }
+    return out;
+  }
+
+  /** Un `tailscale` falso que responde como un nodo con MagicDNS. */
+  function tailscaleFalso(): string {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-ts-'));
+    const bin = join(dir, 'tailscale');
+    writeFileSync(bin, '#!/bin/sh\necho \'{"Self":{"DNSName": "casa.tailnet-abc.ts.net."}}\'\n');
+    chmodSync(bin, 0o755);
+    return dir;
+  }
+
+  function comprobar(stdout: string, esperaUnidad: string) {
+    const units = unitsDeRenovacion(stdout);
+    const service = units.find((u) => u.path.endsWith(`${esperaUnidad}.service`));
+    expect(service, `falta la unidad ${esperaUnidad}.service en el plan`).toBeDefined();
+    for (const u of units) {
+      // Ninguna unidad ejecuta nada bajo el árbol de instalación…
+      expect(u.body, u.path).not.toContain(INSTALL_DIR);
+      // …ni hace chown (que sigue enlaces) sobre rutas que el servicio controla.
+      expect(u.body, u.path).not.toMatch(/ExecStartPost=.*chown/);
+    }
+    const execStart = /^ExecStart=(.*)$/m.exec(service?.body ?? '')?.[1] ?? '';
+    return execStart;
+  }
+
+  it('modo local: el timer ejecuta la copia de root y todo el TLS vive en /etc/krakenos', async () => {
+    const { code, stdout } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--tls',
+      'local',
+      '--dir',
+      INSTALL_DIR,
+    ]);
+    expect(code).toBe(0);
+    const execStart = comprobar(stdout, 'krakenos-cert-local');
+    expect(execStart).toBe('/usr/bin/env bash /usr/local/lib/krakenos/gen-local-ca.sh');
+    expect(stdout).toContain('Environment=KRAKENOS_CERTS_DIR=/etc/krakenos/tls');
+    expect(stdout).toContain('Environment=KRAKENOS_KEYS_DIR=/etc/krakenos/ca');
+    // La copia de root, con dueño y modo explícitos, en un directorio de root.
+    expect(stdout).toContain('install -d -o root -g root -m 0755 /usr/local/lib/krakenos');
+    expect(stdout).toContain(
+      `install -o root -g root -m 0755 ${INSTALL_DIR}/apps/agent/scripts/gen-local-ca.sh /usr/local/lib/krakenos/gen-local-ca.sh`,
+    );
+    // El servicio lee por grupo: dir 0750 root:servicio, la CA en un dir 0700 de root.
+    expect(stdout).toContain('install -d -o root -g krakenos -m 0750 /etc/krakenos/tls');
+    expect(stdout).toContain('install -d -o root -g root -m 0700 /etc/krakenos/ca');
+    for (const v of ['TLS_CERT_PATH', 'TLS_KEY_PATH', 'TLS_CA_CERT_PATH']) {
+      expect(stdout).toMatch(new RegExp(`${v}=/etc/krakenos/tls/\\S+ en`));
+    }
+    expect(stdout).not.toMatch(/TLS_\w+_PATH=\.\/certs/);
+  });
+
+  it('modo tailscale: renueva escribiendo en /etc/krakenos/tls, sin chown', async () => {
+    const bin = tailscaleFalso();
+    const { code, stdout } = await runInstaller(
+      ['--dry-run', '--yes', '--tls', 'tailscale', '--dir', INSTALL_DIR],
+      { PATH: `${bin}:/usr/bin:/bin` },
+    );
+    expect(code).toBe(0);
+    const execStart = comprobar(stdout, 'krakenos-cert');
+    expect(execStart).toContain('tailscale cert');
+    expect(execStart).toContain('--cert-file /etc/krakenos/tls/agent-cert.pem');
+    expect(execStart).toContain('--key-file /etc/krakenos/tls/agent-key.pem');
+    expect(stdout).toMatch(/TLS_KEY_PATH=\/etc\/krakenos\/tls\/agent-key\.pem en/);
+    expect(stdout).not.toMatch(/chown.*\/etc\/krakenos/);
+  });
+
+  it('auto elige tailscale si hay Tailscale con sesión, y lo dice', async () => {
+    const bin = tailscaleFalso();
+    const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', INSTALL_DIR], {
+      PATH: `${bin}:/usr/bin:/bin`,
+    });
+    expect(stdout).toContain('--tls auto → tailscale');
+    expect(stdout).not.toContain('gen-local-ca.sh');
+  });
+
+  it('--update migra el certificado de la ruta vieja a /etc/krakenos/tls y reescribe el .env', async () => {
+    // Instalación antigua: Tailscale con el material en apps/agent/certs.
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-'));
+    execFileSync('git', ['init', '-q', dir]);
+    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+    writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
+    writeFileSync(
+      join(dir, 'apps/agent/.env'),
+      'HTTPS_ENABLED=true\nTLS_CERT_PATH=./certs/agent-cert.pem\n',
+    );
+    const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('migrando el certificado');
+    expect(stdout).toContain(
+      'mv -f /etc/krakenos/tls/agent-key.pem.nuevo /etc/krakenos/tls/agent-key.pem',
+    );
+    expect(stdout).toContain('chmod 0640 /etc/krakenos/tls/agent-key.pem.nuevo');
+    expect(stdout).toContain('TLS_CERT_PATH=/etc/krakenos/tls/agent-cert.pem');
+    expect(stdout).toContain('TLS_KEY_PATH=/etc/krakenos/tls/agent-key.pem');
+    expect(stdout).toContain('TLS migrado');
+  });
+
+  it('--update NO migra un enlace simbólico (un enlace a /etc/shadow no se vuelve legible)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-ln-'));
+    execFileSync('git', ['init', '-q', dir]);
+    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+    symlinkSync('/etc/shadow', join(dir, 'apps/agent/certs/agent-key.pem'));
+    const { stdout, stderr } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir]);
+    expect(stdout + stderr).toContain('TLS NO migrado');
+    expect(stdout).not.toContain('agent-key.pem.nuevo');
   });
 });

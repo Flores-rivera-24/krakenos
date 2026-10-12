@@ -15,7 +15,14 @@
 #     Apple admite para raíces instaladas por el usuario.
 #
 # Variables (tests/instalador): KRAKENOS_CERTS_DIR · KRAKENOS_KEYS_DIR ·
-#   KRAKENOS_HOSTNAME · KRAKENOS_LAN_IP
+#   KRAKENOS_HOSTNAME · KRAKENOS_LAN_IP · KRAKENOS_TLS_GROUP
+#
+# KRAKENOS_TLS_GROUP: grupo (el del servicio) que debe poder LEER el certificado y
+# la clave del servidor. El instalador ejecuta este script como root desde una copia
+# de root (/usr/local/lib/krakenos) y con los directorios en /etc/krakenos, que el
+# servicio no puede modificar: root nunca ejecuta ni escribe nada que el servicio
+# pueda cambiar. Por eso aquí se rechaza cualquier destino que sea un enlace
+# simbólico y los permisos se ajustan sobre ficheros de directorios de root.
 set -euo pipefail
 
 # Las claves no deben nacer legibles por otros usuarios.
@@ -79,6 +86,12 @@ if [[ -z "$LAN_IP" ]]; then
   warn "no hay una IPv4 privada de LAN: el certificado NO incluirá IP (se entra por ${HOST_NAME}.local)"
 fi
 
+# Ni los directorios ni los ficheros destino pueden ser enlaces simbólicos: openssl,
+# chmod y chgrp los seguirían y escribirían (o abrirían) donde apunte el enlace.
+for target in "$CERTS_DIR" "$KEYS_DIR" "$CA_KEY" "$CA_CERT" "$SRV_KEY" "$SRV_CERT"; do
+  [[ ! -L "$target" ]] || die "$target es un enlace simbólico: me niego a escribir a través de él"
+done
+
 mkdir -p "$CERTS_DIR" "$KEYS_DIR"
 
 # --- CA -------------------------------------------------------------------
@@ -122,7 +135,9 @@ needs_issue() {
 
 if needs_issue; then
   info "Emitiendo el certificado del servidor (SAN: ${san})…"
-  tmp="$(mktemp -d)"
+  # Dentro de CERTS_DIR (no en /tmp): así los `mv` finales son renombrados del
+  # mismo sistema de ficheros, atómicos, y nunca una copia que siga un enlace.
+  tmp="$(mktemp -d "$CERTS_DIR/.emision.XXXXXX")"
   trap 'rm -rf "$tmp"' EXIT
   openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes \
     -keyout "$tmp/key.pem" -out "$tmp/req.csr" -subj "/CN=${HOST_NAME}.local" 2> /dev/null
@@ -144,6 +159,14 @@ if needs_issue; then
   info "Certificado emitido: $SRV_CERT"
 else
   info "El certificado del servidor sigue vigente: no se reemite"
+fi
+
+# Permisos del par servido: el servicio lee por GRUPO, no es dueño. Se reaplican
+# siempre (también si no hubo reemisión) para corregir instalaciones previas.
+if [[ -n "${KRAKENOS_TLS_GROUP:-}" ]]; then
+  chgrp "$KRAKENOS_TLS_GROUP" "$SRV_KEY" "$SRV_CERT" "$CA_CERT"
+  chmod 640 "$SRV_KEY"
+  chmod 644 "$SRV_CERT" "$CA_CERT"
 fi
 
 info "Certificado de la CA (el que cada dispositivo debe instalar): $CA_CERT"

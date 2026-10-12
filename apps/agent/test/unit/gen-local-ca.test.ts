@@ -1,5 +1,13 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, statSync, writeFileSync, readFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -212,6 +220,85 @@ describe('gen-local-ca.sh', () => {
       execFileSync('bash', [SCRIPT], { env });
       rmSync(join(dir, 'k', 'krakenos-ca-key.pem'));
       expect(() => execFileSync('bash', [SCRIPT], { env, stdio: 'pipe' })).toThrow();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // Root ejecuta este script (desde una copia suya y sobre directorios de root). Aun
+  // así no debe escribir a través de un enlace simbólico: openssl, chmod y chgrp
+  // los siguen, y ahí `ln -sf /etc/shadow agent-key.pem` sería un regalo.
+  it.each(['agent-key.pem', 'agent-cert.pem'])(
+    'rechaza un destino que es enlace simbólico (%s)',
+    (nombre) => {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-ca-ln-'));
+      try {
+        const certsDir = join(dir, 'c');
+        mkdirSync(certsDir);
+        const victima = join(dir, 'victima.txt');
+        writeFileSync(victima, 'no me toques');
+        symlinkSync(victima, join(certsDir, nombre));
+        const env = {
+          ...process.env,
+          KRAKENOS_CERTS_DIR: certsDir,
+          KRAKENOS_KEYS_DIR: join(dir, 'k'),
+          KRAKENOS_HOSTNAME: 'casa',
+          KRAKENOS_LAN_IP: '192.168.1.50',
+        };
+        let stderr = '';
+        try {
+          execFileSync('bash', [SCRIPT], { env, stdio: 'pipe' });
+        } catch (e) {
+          stderr = String((e as { stderr?: Buffer }).stderr ?? '');
+        }
+        expect(stderr).toContain('enlace simbólico');
+        expect(readFileSync(victima, 'utf8')).toBe('no me toques');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('rechaza un directorio de claves que es enlace simbólico', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-ca-lnd-'));
+    try {
+      mkdirSync(join(dir, 'real'));
+      symlinkSync(join(dir, 'real'), join(dir, 'k'));
+      expect(() =>
+        execFileSync('bash', [SCRIPT], {
+          env: {
+            ...process.env,
+            KRAKENOS_CERTS_DIR: join(dir, 'c'),
+            KRAKENOS_KEYS_DIR: join(dir, 'k'),
+            KRAKENOS_HOSTNAME: 'casa',
+            KRAKENOS_LAN_IP: '192.168.1.50',
+          },
+          stdio: 'pipe',
+        }),
+      ).toThrow();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('con KRAKENOS_TLS_GROUP la clave del servidor es legible por el grupo (640) y la de la CA no', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-ca-grp-'));
+    try {
+      const grupo = execFileSync('id', ['-gn'], { encoding: 'utf8' }).trim();
+      execFileSync('bash', [SCRIPT], {
+        env: {
+          ...process.env,
+          KRAKENOS_CERTS_DIR: join(dir, 'c'),
+          KRAKENOS_KEYS_DIR: join(dir, 'k'),
+          KRAKENOS_HOSTNAME: 'casa',
+          KRAKENOS_LAN_IP: '192.168.1.50',
+          KRAKENOS_TLS_GROUP: grupo,
+        },
+        stdio: 'pipe',
+      });
+      expect(mode(join(dir, 'c', 'agent-key.pem'))).toBe('640');
+      expect(mode(join(dir, 'c', 'agent-cert.pem'))).toBe('644');
+      expect(mode(join(dir, 'k', 'krakenos-ca-key.pem'))).toBe('600');
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

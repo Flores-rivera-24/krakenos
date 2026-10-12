@@ -204,7 +204,7 @@ jobs:
             # HTTPS por defecto: sin Tailscale el instalador monta la CA local, así
             # que la sonda confía en ESA CA (no -k) y de paso prueba que el
             # certificado del servidor la valida para 127.0.0.1.
-            if curl -fsS --cacert /opt/krakenos/apps/agent/certs/krakenos-ca.pem https://127.0.0.1:3001/health/ready > /dev/null 2>&1; then
+            if curl -fsS --cacert /etc/krakenos/tls/krakenos-ca.pem https://127.0.0.1:3001/health/ready > /dev/null 2>&1; then
               echo "health/ready OK (HTTPS, verificado contra la CA local)"
               exit 0
             fi
@@ -232,9 +232,6 @@ jobs:
           check "$agent/.env" 600
           check "$agent/keys" 700
           for f in "$agent"/keys/*.pem; do check "$f" 600; done
-          check "$agent/certs/agent-key.pem" 600
-          # La clave de la CA es de root: el agente no la necesita.
-          [ "$(stat -c '%U' "$agent/keys/krakenos-ca-key.pem")" = root ] || { echo "::error::la clave de la CA no es de root"; fail=1; }
           for f in "$agent"/prisma/*.db; do [ -e "$f" ] && check "$f" 600; done
           exit $fail
 
@@ -269,19 +266,49 @@ jobs:
           NODE_ENV=production nohup node dist/index.js > /tmp/agent2.log 2>&1 &
           echo $! > /tmp/agent.pid
           for i in $(seq 1 30); do
-            curl -fsS --cacert /opt/krakenos/apps/agent/certs/krakenos-ca.pem https://127.0.0.1:3001/health/ready > /dev/null 2>&1 && exit 0
+            curl -fsS --cacert /etc/krakenos/tls/krakenos-ca.pem https://127.0.0.1:3001/health/ready > /dev/null 2>&1 && exit 0
             sleep 1
           done
           tail -50 /tmp/agent2.log
           exit 1
 
+      # Root nunca ejecuta ni escribe nada que el usuario del servicio pueda modificar:
+      # el árbol de instalación es suyo, así que el script de renovación (que ejecuta
+      # un timer de root) y la clave de la CA viven fuera. Cada comprobación negativa
+      # corre COMO el usuario del servicio.
+      - name: TLS material is out of the service's reach
+        run: |
+          fail=0
+          check() { # ruta propietario:grupo modo
+            actual="$(stat -c '%U:%G %a' "$1")"
+            if [ "$actual" != "$2 $3" ]; then echo "::error::$1 es $actual, se esperaba $2 $3"; fail=1; else echo "OK  $1 → $actual"; fi
+          }
+          check /usr/local/lib/krakenos root:root 755
+          check /usr/local/lib/krakenos/gen-local-ca.sh root:root 755
+          check /etc/krakenos/ca root:root 700
+          check /etc/krakenos/ca/krakenos-ca-key.pem root:root 600
+          check /etc/krakenos/tls root:krakenos 750
+          check /etc/krakenos/tls/agent-key.pem root:krakenos 640
+          # El servicio NO puede leer la clave de la CA ni modificar el script de root…
+          if sudo -u krakenos test -r /etc/krakenos/ca/krakenos-ca-key.pem; then echo "::error::krakenos lee la clave de la CA"; fail=1; fi
+          if sudo -u krakenos test -w /usr/local/lib/krakenos/gen-local-ca.sh; then echo "::error::krakenos puede escribir el script de root"; fail=1; fi
+          if sudo -u krakenos test -w /etc/krakenos/tls; then echo "::error::krakenos puede escribir en /etc/krakenos/tls"; fail=1; fi
+          # …pero SÍ lee la clave del servidor (por grupo) para servir HTTPS.
+          sudo -u krakenos test -r /etc/krakenos/tls/agent-key.pem || { echo "::error::krakenos no lee la clave del servidor"; fail=1; }
+          # El .env apunta fuera del árbol de instalación.
+          grep -q '^TLS_KEY_PATH=/etc/krakenos/tls/agent-key.pem$' /opt/krakenos/apps/agent/.env || { echo "::error::TLS_KEY_PATH no apunta a /etc/krakenos"; fail=1; }
+          # mDNS: el paquete está instalado (en el contenedor no hay systemd/dbus, así
+          # que NO se exige el demonio activo: sería un falso verde o un falso rojo).
+          dpkg -s avahi-daemon > /dev/null 2>&1 || { echo "::error::avahi-daemon no está instalado"; fail=1; }
+          exit $fail
+
       # La CA se publica sin auth (es pública por definición) y NUNCA se filtra una clave.
       - name: CA certificate is served and contains no private key
         run: |
           agent=/opt/krakenos/apps/agent
-          curl -fsS --cacert "$agent/certs/krakenos-ca.pem" https://127.0.0.1:3001/api/system/ca-cert -o /tmp/served-ca.crt
+          curl -fsS --cacert /etc/krakenos/tls/krakenos-ca.pem https://127.0.0.1:3001/api/system/ca-cert -o /tmp/served-ca.crt
           ! grep -q "PRIVATE KEY" /tmp/served-ca.crt
-          cmp /tmp/served-ca.crt "$agent/certs/krakenos-ca.pem"
+          cmp /tmp/served-ca.crt /etc/krakenos/tls/krakenos-ca.pem
           echo "ca-cert servido, idéntico al fichero y sin claves"
 
       # --uninstall conserva los datos (lo que promete) y --purge no deja residuos.

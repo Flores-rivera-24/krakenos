@@ -62,7 +62,7 @@ describe('TlsCard (US-241)', () => {
     expect(screen.getByText('Recibir avisos en el móvil.')).toBeInTheDocument();
     expect(screen.getByText('Entrar con passkey (segundo factor).')).toBeInTheDocument();
     // Y dice que NO se arregla desde la app: se arregla al instalar.
-    expect(screen.getByText(/--tls tailscale/)).toBeInTheDocument();
+    expect(screen.getByText(/sin «--tls none»/)).toBeInTheDocument();
   });
 
   it('avisa antes de que caduque, con los días que quedan', async () => {

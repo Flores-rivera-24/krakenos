@@ -146,6 +146,16 @@ La decisión que quedaba abierta se toma: **el instalador ya no instala sobre HT
   Sistema → Conexión segura, que explica los pasos por sistema.
 - **`none`** solo si se pide expresamente. `--tls self` se mantiene como alias obsoleto de `local`.
 
-Sigue pendiente la parte de resolución de nombres: `<equipo>.local` necesita un respondedor mDNS en
-el servidor (p. ej. Avahi); el certificado incluye también la IP de la LAN, pero las passkeys exigen
-el nombre.
+**Dónde vive el material (root nunca ejecuta ni escribe lo que el servicio puede modificar).** El árbol
+de instalación es del usuario del servicio, y los timers de renovación corren como root. Por eso el
+material TLS sale de él: la clave de la CA en `/etc/krakenos/ca/` (`root:root` 0700), lo que sirve el
+agente en `/etc/krakenos/tls/` (`root:<servicio>` 0750; el agente lee el certificado y la clave por
+grupo, sin ser dueño), y el timer ejecuta una copia de root de `gen-local-ca.sh` en
+`/usr/local/lib/krakenos/`. Los timers no hacen `chown`, el script rechaza destinos que sean enlaces
+simbólicos, y `--update` migra a esa ubicación las instalaciones previas con Tailscale que tenían el
+certificado en `apps/agent/certs`. La copia de root se refresca al volver a ejecutar el instalador.
+
+**Resolución de nombres.** `<equipo>.local` necesita un respondedor mDNS: en modo `local` el
+instalador instala `avahi-daemon` y `libnss-mdns`. El descubrimiento del agente no compite con él por
+el puerto 5353 (abre su socket UDP sin puerto fijo y con `reuseAddr`). El certificado incluye también
+la IP de la LAN, pero las passkeys exigen el nombre.
