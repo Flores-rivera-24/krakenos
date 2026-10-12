@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -32,6 +32,18 @@ describe('DashboardPage', () => {
     memory: { totalBytes: 8 * 1024 ** 3, usedBytes: 4 * 1024 ** 3, usedPercent: 50 },
     timestamp: '',
   };
+
+  // Los widgets `lazy()` arrastran Recharts: la PRIMERA importación del fichero
+  // paga la transformación en frío del módulo, y bajo la carga de la suite
+  // completa eso superó el 1 s de `findByText` (fallo ~1 de cada 6 pasadas, nunca
+  // en aislamiento). Se precalientan aquí, fuera del presupuesto de cualquier
+  // test, para que `lazy()` resuelva con el módulo ya en caché.
+  beforeAll(async () => {
+    await Promise.all([
+      import('@/components/dashboard/widgets/TrafficWidget'),
+      import('@/components/dashboard/widgets/NetworkTopologyWidget'),
+    ]);
+  }, 30_000);
 
   beforeEach(() => {
     localStorage.clear();
