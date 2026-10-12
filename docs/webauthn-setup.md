@@ -47,9 +47,10 @@ KrakenOS sirve API + UI en un solo puerto y gestiona su propia VPN y su propio D
 que el encaje natural es **TLS nativo del agente + hostname resuelto por el propio
 Pi-hole**, sin proxy inverso:
 
-1. **Genera el certificado** (incluye `krakenos.local` en el SAN):
+1. **Genera el certificado** (incluye `krakenos.local` en el SAN). El instalador ya lo hace por
+   defecto; a mano:
    ```bash
-   ./scripts/gen-cert.sh
+   ./scripts/gen-local-ca.sh
    ```
 2. **Activa HTTPS y configura el RP** en el `.env` del servidor:
    ```bash

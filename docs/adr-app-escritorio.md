@@ -128,3 +128,24 @@ da la experiencia de app en el propio servidor.
 
 **Lo que no cambia:** el agente sigue siendo un servicio de Linux, el producto se sigue pudiendo usar
 desde cualquier navegador, y Docker y `systemd` en Linux siguen siendo vías de primera.
+
+## Actualización (2026-10-11): HTTPS por defecto
+
+La decisión que quedaba abierta se toma: **el instalador ya no instala sobre HTTP por defecto.**
+`--tls` pasa a `auto`:
+
+- Si Tailscale está instalado, con sesión y MagicDNS, se usa **`tailscale`** (Let's Encrypt: todos
+  los dispositivos confían sin tocar nada).
+- Si no, **`local`**: una CA propia de KrakenOS que se crea una vez y firma el certificado de
+  servidor (825 días, el máximo que Apple admite para raíces instaladas por el usuario) para
+  `<equipo>.local`, `krakenos.local`, `localhost` y la IPv4 de la LAN. La CA lleva `nameConstraints`
+  críticas (`.local`, `localhost` y rangos privados), de modo que una filtración de su clave no
+  permite suplantar ningún sitio de internet; la clave queda de root en `keys/` y el agente solo
+  conoce el certificado de servidor. Cada dispositivo instala el certificado público de la CA una
+  vez: se descarga de `GET /api/system/ca-cert` (público, sin clave alguna) o de Ajustes →
+  Sistema → Conexión segura, que explica los pasos por sistema.
+- **`none`** solo si se pide expresamente. `--tls self` se mantiene como alias obsoleto de `local`.
+
+Sigue pendiente la parte de resolución de nombres: `<equipo>.local` necesita un respondedor mDNS en
+el servidor (p. ej. Avahi); el certificado incluye también la IP de la LAN, pero las passkeys exigen
+el nombre.
