@@ -171,7 +171,7 @@ export function AlarmWidget() {
       <CardContent className="space-y-4">
         {failed && !state ? (
           <WidgetError
-            what={t('widget.alarm.what')}
+            message={t('widget.alarm.error')}
             onRetry={() => {
               setLoading(true);
               void load();

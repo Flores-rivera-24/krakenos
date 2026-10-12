@@ -1,8 +1,10 @@
 import { RefreshCw } from 'lucide-react';
 
+import { useT } from '@/lib/i18n';
+
 interface WidgetErrorProps {
-  /** Qué no se pudo cargar, en minúscula: «el estado del sistema». */
-  what?: string;
+  /** Frase completa ya traducida («No se pudo cargar el estado del sistema.»). Sin ella, la genérica. */
+  message?: string;
   /** Vuelve a intentar la carga. */
   onRetry?: () => void;
 }
@@ -19,17 +21,14 @@ interface WidgetErrorProps {
  * Es deliberadamente discreto —un widget caído no debe gritar más que una alarma
  * de verdad— pero **inequívoco**: dice que no se pudo cargar y ofrece reintentar.
  *
- * **Idioma:** español a pelo, sin `t()`, y es intencionado. Sus únicos consumidores
- * son los widgets del dashboard, que siguen siendo español-only en el código
- * actual (US-177 migró los 17 cuerpos de página, no los widgets). Meter un `t()`
- * suelto aquí dejaría una tarjeta mitad en inglés dentro de un widget en español.
- * Se migra con el resto en US-239.
+ * La frase va entera al catálogo (una por consumidor): no se compone con un trozo suelto.
  */
-export function WidgetError({ what, onRetry }: WidgetErrorProps) {
+export function WidgetError({ message, onRetry }: WidgetErrorProps) {
+  const t = useT();
   return (
     <div className="flex flex-col items-center gap-2 py-4 text-center">
       <p className="text-kr-sm text-kr-secondary">
-        {what ? `No se pudo cargar ${what}.` : 'No se pudo cargar.'}
+        {message ?? t('widget.error.generic')}
       </p>
       {onRetry && (
         <button
@@ -38,7 +37,7 @@ export function WidgetError({ what, onRetry }: WidgetErrorProps) {
           className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-kr-sm text-kr-link hover:underline"
         >
           <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-          Reintentar
+          {t('ui.retry')}
         </button>
       )}
     </div>
