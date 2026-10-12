@@ -24,6 +24,7 @@ import { detectDeployMode } from '../../system/deploy-mode.js';
 import { resolveDbFile, stageRestoreAsync, stageRestoreFromFileAsync } from '../../system/restore.js';
 import { readStorageInfo } from '../../system/storage.js';
 import { UpdateChecker } from '../../system/update-check.js';
+import { createGitPackageReader } from '../../system/target-package.js';
 import { createUpdateSpawner } from '../../system/update-spawner.js';
 import { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
 import { createSecretbox, generateSecretboxKey, type Secretbox } from '../../config/secretbox.js';
@@ -397,6 +398,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     },
     spawn: opts.updateSpawner ?? createUpdateSpawner(),
     varDir: opts.updateVarDir,
+    readTargetPackageJson: createGitPackageReader(process.env.KRAKENOS_REPO_DIR ?? resolve('../..')),
   });
 
   // Plan de actualización (lectura autenticada): estado + modo + última ejecución.

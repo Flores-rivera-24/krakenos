@@ -36,6 +36,8 @@ const basePlan: UpdatePlan = {
   inProgressSince: null,
   maintenanceWindow: null,
   lastResult: null,
+  blockedReason: null,
+  requiredNode: null,
 };
 
 function setAdmin(role: 'admin' | 'viewer' = 'admin') {
@@ -147,5 +149,30 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     });
     render(<UpdateCard />);
     expect(await screen.findByText(/revertida a 1\.0\.0/)).toBeInTheDocument();
+  });
+
+  it('una versión que exige más Node no ofrece el botón y explica qué hacer', async () => {
+    apiMock.get.mockResolvedValue({ ...basePlan, blockedReason: 'NODE_TOO_OLD', requiredNode: '24' });
+    render(<UpdateCard />);
+    expect(await screen.findByText(/necesita Node 24 o superior/)).toBeInTheDocument();
+    expect(screen.getByText(/sudo bash scripts\/install\.sh --update/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+  });
+
+  it('muestra el motivo cuando la última actualización se negó por el Node', async () => {
+    apiMock.get.mockResolvedValue({
+      ...basePlan,
+      updateAvailable: false,
+      lastResult: {
+        ok: false,
+        rolledBack: false,
+        fromVersion: '1.0.0',
+        targetVersion: '1.2.0',
+        steps: [{ step: 'fetch', status: 'failed', code: 'NODE_TOO_OLD', detail: 'x' }],
+        finishedAt: '2026-07-13T10:00:00.000Z',
+      },
+    });
+    render(<UpdateCard />);
+    expect(await screen.findByText(/necesita un Node más reciente/)).toBeInTheDocument();
   });
 });

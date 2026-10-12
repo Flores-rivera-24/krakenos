@@ -20,6 +20,7 @@ import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { EXTRA_DEPS_FILE, parseExtraDeps } from './extra-deps.js';
 import { safeFetch } from '../net/egress.js';
+import { checkNodeRequirement, NODE_TOO_OLD, readEnginesNode, UpdateBlockedError } from './node-requirement.js';
 import type { UpdateRunner } from './update-orchestrator.js';
 
 const execFileAsync = promisify(execFile);
@@ -99,6 +100,8 @@ export interface ProcessUpdateRunnerOptions {
   dbSnapshot?: DbSnapshot;
   /** Manifiesto de deps opcionales (por defecto `<agentDir>/data/extra-deps.json`). */
   extraDepsFile?: string;
+  /** Versión de Node en ejecución (por defecto `process.version`; inyectable en tests). */
+  nodeVersion?: string;
   /** Canal de avisos del actualizador (por defecto stderr → journald). */
   warn?: (message: string) => void;
 }
@@ -114,6 +117,7 @@ export class ProcessUpdateRunner implements UpdateRunner {
   private readonly agentDir: string;
   private readonly extraDepsFile: string;
   private readonly warn: (message: string) => void;
+  private readonly currentNode: string;
   private readonly snapshot: DbSnapshot;
   /** Commit al que revertir (capturado en `backup`). */
   private previousRef: string | null = null;
@@ -133,6 +137,7 @@ export class ProcessUpdateRunner implements UpdateRunner {
     this.useSudo = opts.useSudo ?? true;
     this.agentDir = opts.agentDir ?? resolve(opts.repoDir, 'apps/agent');
     this.extraDepsFile = opts.extraDepsFile ?? resolve(this.agentDir, EXTRA_DEPS_FILE);
+    this.currentNode = opts.nodeVersion ?? process.version;
     this.warn = opts.warn ?? ((message) => process.stderr.write(`${message}\n`));
     this.snapshot = opts.dbSnapshot ?? createDefaultSnapshot(this.warn);
   }
@@ -191,6 +196,19 @@ export class ProcessUpdateRunner implements UpdateRunner {
     await this.git('fetch', '--tags', '--force');
     // Verifica que la etiqueta existe antes de tocar nada (falla temprano si no).
     await this.git('rev-parse', '--verify', `refs/tags/${this.targetTag}`);
+    await this.assertNodeRequirement();
+  }
+
+  /**
+   * Lee el `engines.node` del `package.json` **de la etiqueta de destino** (no el del
+   * checkout actual, que es el viejo) y lo compara con el Node que corre ahora. Se
+   * hace antes de `apply`, así que si no cumple no se ha tocado el árbol ni el
+   * servicio. Un `package.json` ilegible o sin `engines` no bloquea.
+   */
+  private async assertNodeRequirement(): Promise<void> {
+    const { stdout } = await this.git('show', `${this.targetTag}:package.json`);
+    const check = checkNodeRequirement(readEnginesNode(stdout), this.currentNode);
+    if (!check.ok) throw new UpdateBlockedError(NODE_TOO_OLD, check.message);
   }
 
   async apply(): Promise<void> {

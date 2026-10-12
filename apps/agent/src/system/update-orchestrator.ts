@@ -20,6 +20,7 @@
  */
 
 import type { UpdateResult, UpdateStep, UpdateStepResult } from '@krakenos/types';
+import { UpdateBlockedError } from './node-requirement.js';
 
 /**
  * Ejecuta cada fase de la actualización. Implementaciones: `ProcessUpdateRunner`
@@ -29,7 +30,11 @@ import type { UpdateResult, UpdateStep, UpdateStepResult } from '@krakenos/types
 export interface UpdateRunner {
   /** Snapshot de seguridad previo (copia la DB actual + registra la versión viva). */
   backup(): Promise<void>;
-  /** Descarga/prepara la release `targetVersion` en un área de staging. */
+  /**
+   * Descarga/prepara la release `targetVersion` en un área de staging. Puede lanzar
+   * `UpdateBlockedError` si el destino no es aplicable en este sistema (p. ej. exige
+   * un Node más nuevo): el orquestador aborta sin rollback.
+   */
   fetch(targetVersion: string): Promise<void>;
   /** Coloca la nueva versión en su sitio (swap de artefactos). */
   apply(): Promise<void>;
@@ -112,11 +117,21 @@ export async function orchestrateUpdate(
       if (step === 'backup') backedUp = true;
     } catch (err) {
       const detail = err instanceof Error ? err.message : 'error desconocido';
-      record({ step, status: 'failed', detail });
+      const blocked = err instanceof UpdateBlockedError ? err : null;
+      record(
+        blocked
+          ? { step, status: 'failed', detail, code: blocked.code }
+          : { step, status: 'failed', detail },
+      );
       // Los pasos de avance restantes quedan omitidos.
       for (const rest of FORWARD_STEPS.slice(i + 1)) {
         record({ step: rest as UpdateStep, status: 'skipped' });
       }
+
+      // Una negativa previa a `apply` (el destino exige un Node más nuevo) NO es un
+      // fallo a medias: no se ha tocado el árbol ni el servicio, y el rollback
+      // pararía un servicio sano para «restaurar» lo que no se movió.
+      if (blocked) return finish(false, false);
 
       if (!backedUp) {
         // Falló el backup mismo → abortar sin rollback (nada tocado todavía).

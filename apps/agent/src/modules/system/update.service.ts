@@ -23,6 +23,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import type {
   ApplyUpdateResponse,
+  UpdateBlockedCode,
   DeployMode,
   UpdatePlan,
   UpdateResult,
@@ -36,6 +37,7 @@ import {
   serializeLock,
   type UpdateLock,
 } from '../../system/update-lock.js';
+import { checkNodeRequirement, NODE_TOO_OLD, readEnginesNode } from '../../system/node-requirement.js';
 import type { UpdateChecker } from '../../system/update-check.js';
 
 /**
@@ -56,6 +58,14 @@ export interface UpdateServiceOptions {
   /** Directorio de traspaso (por defecto `var/`). */
   varDir?: string;
   now?: () => Date;
+  /**
+   * Lee el `package.json` del tag de `version` desde el repo local, o `null` si no
+   * se puede (tag aún sin descargar, sin git…). Con él `getPlan()` anticipa que la
+   * versión exige un Node más nuevo; sin él, lo decide el actualizador en su `fetch`.
+   */
+  readTargetPackageJson?: (version: string) => Promise<string | null>;
+  /** Versión de Node en ejecución (por defecto `process.version`; tests). */
+  nodeVersion?: string;
   /** ¿Vive ese PID? Inyectable para tests; por defecto `kill(pid, 0)`. */
   isProcessAlive?: (pid: number) => boolean;
 }
@@ -127,11 +137,33 @@ export class UpdateService {
     }
   }
 
+  /** ¿Se puede aplicar `version` con el Node actual? Desconocido → no bloquea. */
+  private async nodeBlock(
+    version: string | null,
+  ): Promise<{ reason: UpdateBlockedCode; required: string; message: string } | null> {
+    if (!version || !this.opts.readTargetPackageJson) return null;
+    let raw: string | null = null;
+    try {
+      raw = await this.opts.readTargetPackageJson(version);
+    } catch {
+      return null;
+    }
+    if (!raw) return null;
+    const check = checkNodeRequirement(
+      readEnginesNode(raw),
+      this.opts.nodeVersion ?? process.version,
+    );
+    return check.ok
+      ? null
+      : { reason: NODE_TOO_OLD, required: check.required, message: check.message };
+  }
+
   async getPlan(): Promise<UpdatePlan> {
     const status = await this.opts.checker.check();
     const windowRaw = await this.opts.readMaintenanceWindow();
     const window = parseMaintenanceWindow(windowRaw);
     const lock = await this.activeLock();
+    const block = status.updateAvailable ? await this.nodeBlock(status.latest) : null;
     return {
       enabled: status.enabled,
       current: status.current,
@@ -144,6 +176,8 @@ export class UpdateService {
       inProgressSince: lock?.startedAt ?? null,
       maintenanceWindow: window ? windowRaw.trim() : null,
       lastResult: await this.readLastResult(),
+      blockedReason: block?.reason ?? null,
+      requiredNode: block?.required ?? null,
     };
   }
 
@@ -171,6 +205,8 @@ export class UpdateService {
     if (!status.updateAvailable || !status.latest) {
       return { started: false, mode, message: 'Ya estás en la última versión.' };
     }
+    const block = await this.nodeBlock(status.latest);
+    if (block) return { started: false, mode, message: block.message };
     // Solo bloquea un lock VIVO: uno huérfano (el actualizador murió en su propio
     // reinicio, AUD3-20) se pisa en vez de dejar la función inservible.
     if (await this.activeLock()) {

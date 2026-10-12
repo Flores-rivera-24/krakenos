@@ -142,10 +142,16 @@ export function UpdateCard() {
             </div>
 
             {plan.canSelfUpdate ? (
-              isAdmin && (
-                <Button onClick={() => void apply()} disabled={!canApply}>
-                  {applying ? t('settings.update.applying') : t('settings.update.applyNow')}
-                </Button>
+              plan.blockedReason === 'NODE_TOO_OLD' ? (
+                <p role="note" className="text-kr-sm text-kr-secondary">
+                  {t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}
+                </p>
+              ) : (
+                isAdmin && (
+                  <Button onClick={() => void apply()} disabled={!canApply}>
+                    {applying ? t('settings.update.applying') : t('settings.update.applyNow')}
+                  </Button>
+                )
               )
             ) : (
               <div className="space-y-2">
@@ -210,7 +216,9 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       )}
       {result.rolledBack
         ? t('settings.update.lastRolledBack', { from: result.fromVersion })
-        : t('settings.update.lastFailed')}
+        : result.steps.some((s) => s.code === 'NODE_TOO_OLD')
+          ? t('settings.update.lastNodeTooOld')
+          : t('settings.update.lastFailed')}
     </p>
   );
 }
