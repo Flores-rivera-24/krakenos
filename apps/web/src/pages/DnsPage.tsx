@@ -209,7 +209,7 @@ export function DnsPage() {
       <DnsFeeds canEdit={isAdmin} />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base text-foreground">{t('dns.blocklist.title')}</CardTitle>
           </CardHeader>
@@ -258,7 +258,7 @@ export function DnsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="text-base text-foreground">{t('dns.queries.title')}</CardTitle>
           </CardHeader>
