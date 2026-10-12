@@ -7,6 +7,7 @@ import type {
 import { Cpu, Lock, Plug, Server, User, Users } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AboutCard } from '@/components/settings/AboutCard';
+import { InstallAppCard } from '@/components/settings/InstallAppCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { ApiTokensCard } from '@/components/settings/ApiTokensCard';
@@ -200,7 +201,7 @@ export function SettingsPage() {
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         {/* Sidebar de secciones */}
-        <nav className="flex gap-1 overflow-x-auto md:flex-col">
+        <nav className="flex min-w-0 gap-1 overflow-x-auto md:flex-col">
           {SECTIONS.filter((s) => !s.adminOnly || isAdmin).map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
@@ -219,7 +220,7 @@ export function SettingsPage() {
         </nav>
 
         {/* Contenido */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {applied && (
             <div
               role="status"
@@ -431,6 +432,8 @@ export function SettingsPage() {
               {/* Acerca de (US-257): la oferta de código fuente que exige la §13
                   de la AGPL. Va SIN `isAdmin` a propósito — la licencia se le
                   ofrece a quien usa el programa, no a quien lo administra. */}
+              <InstallAppCard />
+
               <AboutCard />
             </>
           )}

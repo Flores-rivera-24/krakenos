@@ -58,9 +58,13 @@ Tres cosas que conviene saber antes:
 - **Dura 90 días.** Con el timer instalado se renueva solo. Si lo montas a mano, KrakenOS avisa
   en Ajustes → Sistema **21 días antes** y por el canal de alertas que tengas configurado.
 
-¿Sin Tailscale? `--tls self` genera un autofirmado: cifra el tráfico, pero **cada dispositivo**
-avisará de «sitio no seguro» hasta que instales la CA en él, y algunos navegadores siguen
-negando las passkeys. Es la opción de último recurso, no la recomendada.
+¿Sin Tailscale? El instalador, sin ninguna bandera (`--tls auto`), monta una **CA propia de
+KrakenOS** (`--tls local`): cifra el tráfico y se renueva sola, pero **cada dispositivo** debe
+instalar una vez el certificado de la CA (Ajustes → Sistema → Conexión segura, o
+`https://<equipo>.local:3001/api/system/ca-cert`); en iPhone y iPad hay además que activar la
+confianza en Ajustes → General → Información → Confianza de certificados. La CA solo puede avalar
+nombres `.local`, `localhost` y rangos privados, así que no sirve para suplantar ningún sitio de
+internet. `--tls self` es ahora un alias obsoleto de `--tls local`.
 
 ## Tu móvil en 3 pasos (cualquiera de las dos vías)
 

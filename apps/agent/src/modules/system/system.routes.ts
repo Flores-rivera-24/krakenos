@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
+import { X509Certificate, randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { createReadStream, createWriteStream, readFileSync } from 'node:fs';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +38,7 @@ import {
   autoBackupPassphraseSchema,
   autoBackupRevealSchema,
   autoBackupStatusSchema,
+  systemCaCertSchema,
   backupSchema,
   connectivityTestSchema,
   getSettingsSchema,
@@ -79,6 +80,8 @@ interface SystemRoutesOpts {
   autoBackupDir?: string;
   /** Vigilancia del certificado TLS (US-241; `server.ts` la comparte). */
   tlsService?: TlsService;
+  /** Ruta del certificado público de la CA local (tests); por defecto `env.tlsCaCertPath`. */
+  caCertPath?: string;
 }
 
 /**
@@ -214,6 +217,44 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       ...(publicDisclosure.version() ? { version: AGENT_VERSION } : {}),
     };
   });
+
+  /**
+   * Certificado PÚBLICO de la CA local de KrakenOS, para instalarlo en cada
+   * dispositivo. **Sin auth a propósito**: un certificado de CA es público por
+   * definición, y quien necesita instalarlo todavía no confía en el servidor (ni
+   * siquiera puede abrir la app sin aviso). Por eso lleva su propio límite.
+   *
+   * Garantía anti-fuga: no se sirve el contenido del fichero tal cual, sino el PEM
+   * RE-EXPORTADO de un X.509 que además debe ser una CA. Si la ruta apuntara por
+   * error a un fichero con una clave privada (o con una anexada), no sale nada
+   * parecido. Nunca se lee nada de `keys/`.
+   */
+  app.get(
+    '/ca-cert',
+    {
+      schema: systemCaCertSchema,
+      config: { rateLimit: { max: 30, timeWindow: '1 minute' } },
+    },
+    async (_req, reply) => {
+      let pem: string | null = null;
+      try {
+        const cert = new X509Certificate(await readFile(opts.caCertPath ?? env.tlsCaCertPath));
+        if (cert.ca) pem = cert.toString();
+      } catch {
+        // Sin fichero o ilegible: se responde igual que si no hubiera CA.
+      }
+      if (!pem) {
+        return reply.code(404).send({
+          code: 'CA_CERT_NOT_FOUND',
+          message: 'Esta instalación no usa una CA local de KrakenOS (HTTPS con Tailscale o sin HTTPS).',
+        });
+      }
+      return reply
+        .header('Content-Type', 'application/x-x509-ca-cert')
+        .header('Content-Disposition', 'attachment; filename="krakenos-ca.crt"')
+        .send(pem);
+    },
+  );
 
   app.get('/stats', { preHandler: app.authenticate, schema: systemStatsSchema }, async () =>
     readStats(),

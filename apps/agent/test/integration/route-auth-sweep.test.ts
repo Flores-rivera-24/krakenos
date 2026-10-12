@@ -50,6 +50,12 @@ describe('barrido de autenticación de lecturas (/api GET)', () => {
     // defecto** (US-83): con `PUBLIC_LAST_SESSION=false` devuelve `null`. Nunca
     // incluye email ni userId.
     'GET /api/auth/last-session',
+    // Certificado PÚBLICO de la CA local de KrakenOS, para instalarlo en cada
+    // dispositivo. Un certificado de CA es público por definición, y quien lo pide
+    // aún no confía en el servidor. Sirve el PEM re-exportado de un X.509 que sea
+    // CA (nunca el fichero crudo) y no lee `keys/`; lleva rate-limit propio. Lo
+    // prueba `ca-cert.routes.test.ts`.
+    'GET /api/system/ca-cert',
   ]);
 
   /**

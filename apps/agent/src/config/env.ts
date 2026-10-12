@@ -192,6 +192,9 @@ const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
 // solo (Tailscale, cada 90 días) y hay que poder releerlo del disco sin reiniciar.
 const tlsCertPath = httpsEnabled ? resolve(required('TLS_CERT_PATH')) : null;
 const tlsKeyPath = httpsEnabled ? resolve(required('TLS_KEY_PATH')) : null;
+// Certificado PÚBLICO de la CA local (si la hay): lo que cada dispositivo instala.
+// Nunca apunta a `keys/`; la clave de la CA no la lee nadie salvo el script.
+const tlsCaCertPath = resolve(process.env.TLS_CA_CERT_PATH ?? './certs/krakenos-ca.pem');
 const https =
   tlsCertPath && tlsKeyPath
     ? {
@@ -475,6 +478,7 @@ export const env = {
   https,
   tlsCertPath,
   tlsKeyPath,
+  tlsCaCertPath,
 
   /**
    * `trustProxy` de Fastify (US-76, F2). Configúralo si el agente corre tras un

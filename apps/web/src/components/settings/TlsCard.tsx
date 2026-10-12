@@ -1,6 +1,8 @@
 import type { TlsDisabledFeature, TlsStatus } from '@krakenos/types';
-import { Lock, LockOpen } from 'lucide-react';
+import { Download, Lock, LockOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Accordion, AccordionItem } from '@/components/ui/accordion';
+import { buttonVariants } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
@@ -23,6 +25,38 @@ const FEATURE_KEY: Record<TlsDisabledFeature, TranslationKey> = {
   pwa: 'settings.tls.feature.pwa',
   push: 'settings.tls.feature.push',
   passkeys: 'settings.tls.feature.passkeys',
+};
+
+/** Pasos por sistema para instalar la CA local: claves del catálogo, en orden. */
+const CA_STEPS: { os: 'windows' | 'macos' | 'android' | 'ios'; steps: TranslationKey[] }[] = [
+  {
+    os: 'windows',
+    steps: [
+      'settings.tls.ca.windows.1',
+      'settings.tls.ca.windows.2',
+      'settings.tls.ca.windows.3',
+      'settings.tls.ca.windows.4',
+    ],
+  },
+  {
+    os: 'macos',
+    steps: ['settings.tls.ca.macos.1', 'settings.tls.ca.macos.2', 'settings.tls.ca.macos.3'],
+  },
+  {
+    os: 'android',
+    steps: ['settings.tls.ca.android.1', 'settings.tls.ca.android.2', 'settings.tls.ca.android.3'],
+  },
+  {
+    os: 'ios',
+    steps: ['settings.tls.ca.ios.1', 'settings.tls.ca.ios.2', 'settings.tls.ca.ios.3'],
+  },
+];
+
+const CA_OS_KEY: Record<'windows' | 'macos' | 'android' | 'ios', TranslationKey> = {
+  windows: 'settings.tls.ca.os.windows',
+  macos: 'settings.tls.ca.os.macos',
+  android: 'settings.tls.ca.os.android',
+  ios: 'settings.tls.ca.os.ios',
 };
 
 export function TlsCard() {
@@ -53,9 +87,11 @@ export function TlsCard() {
   const sourceKey: TranslationKey =
     status.source === 'tailscale'
       ? 'settings.tls.source.tailscale'
-      : status.source === 'self-signed'
-        ? 'settings.tls.source.selfSigned'
-        : 'settings.tls.source.unknown';
+      : status.source === 'local-ca'
+        ? 'settings.tls.source.localCa'
+        : status.source === 'self-signed'
+          ? 'settings.tls.source.selfSigned'
+          : 'settings.tls.source.unknown';
 
   return (
     <Card>
@@ -120,6 +156,36 @@ export function TlsCard() {
             {t('settings.tls.expiringDesc', { n: status.daysLeft ?? 0 })}
           </Callout>
         ) : null}
+
+        {/* CA local: el cert del servidor solo lo avala quien instale la CA. Se
+            descarga con un enlace directo, no con fetch+blob: la ruta es PÚBLICA y
+            responde `Content-Disposition: attachment`, y en iOS Safari la descarga
+            por navegación es la que ofrece instalar el perfil (un blob no). */}
+        {status.source === 'local-ca' && (
+          <section className="space-y-3 border-t border-kr pt-3" aria-labelledby="tls-ca-title">
+            <h3 id="tls-ca-title" className="font-medium text-kr-primary">
+              {t('settings.tls.ca.title')}
+            </h3>
+            <p className="text-kr-secondary">{t('settings.tls.ca.intro')}</p>
+            <a href="/api/system/ca-cert" className={buttonVariants({ variant: 'outline' })}>
+              <Download size={16} aria-hidden />
+              {t('settings.tls.ca.download')}
+            </a>
+            <Accordion type="single">
+              {CA_STEPS.map(({ os, steps }) => (
+                <AccordionItem key={os} id={`tls-ca-${os}`} title={t(CA_OS_KEY[os])}>
+                  <ol className="list-inside list-decimal space-y-1 text-kr-secondary">
+                    {steps.map((k) => (
+                      <li key={k}>{t(k)}</li>
+                    ))}
+                  </ol>
+                </AccordionItem>
+              ))}
+            </Accordion>
+            <p className="text-kr-xs text-kr-muted">{t('settings.tls.ca.firefox')}</p>
+            <p className="text-kr-xs text-kr-muted">{t('settings.tls.ca.scope')}</p>
+          </section>
+        )}
 
         {/* El autofirmado cifra pero no lo avala nadie: decirlo evita el «pues a mí
             me sale que no es seguro» de cada dispositivo nuevo de la casa. */}

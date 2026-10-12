@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   TLS_WARN_DAYS,
@@ -65,6 +66,22 @@ describe('classifyCertificateSource (US-241)', () => {
   it('reconoce un autofirmado: nadie por encima lo avala', () => {
     const validity = readCertificateValidity(generarCert(825));
     expect(classifyCertificateSource(validity!)).toBe('self-signed');
+  });
+
+  it('reconoce el certificado emitido por la CA local (el de gen-local-ca.sh de verdad)', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'krakenos-tls-ca-'));
+    execFileSync('bash', [fileURLToPath(new URL('../../scripts/gen-local-ca.sh', import.meta.url))], {
+      env: {
+        ...process.env,
+        KRAKENOS_CERTS_DIR: join(dir, 'certs'),
+        KRAKENOS_KEYS_DIR: join(dir, 'keys'),
+        KRAKENOS_HOSTNAME: 'casa',
+        KRAKENOS_LAN_IP: '192.168.1.50',
+      },
+      stdio: 'ignore',
+    });
+    const validity = readCertificateValidity(readFileSync(join(dir, 'certs', 'agent-cert.pem'), 'utf8'));
+    expect(classifyCertificateSource(validity!)).toBe('local-ca');
   });
 
   it('no adivina cuando no sabe', () => {
