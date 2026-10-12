@@ -159,3 +159,5 @@ certificado en `apps/agent/certs`. La copia de root se refresca al volver a ejec
 instalador instala `avahi-daemon` y `libnss-mdns`. El descubrimiento del agente no compite con él por
 el puerto 5353 (abre su socket UDP sin puerto fijo y con `reuseAddr`). El certificado incluye también
 la IP de la LAN, pero las passkeys exigen el nombre.
+
+Guía de uso: [`app-escritorio.md`](app-escritorio.md).
