@@ -103,6 +103,11 @@ for (const enlace of PAGINAS) {
  * ✅ sobre colores que el usuario no veía—. Aquí se mide sobre el DOM pintado.
  */
 test('a11y: contraste real en el tema que ve el usuario', async ({ page }) => {
+  test.slow();
+  await esperarPintado(page);
+  // Se mide lo que ve el usuario, no un fotograma de la animación de entrada: en la
+  // CI del 2026-10-12 el texto secundario a media opacidad dio 48 falsos positivos.
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running'));
   const { violations } = await new AxeBuilder({ page })
     .withTags(ETIQUETAS_WCAG)
     .withRules(['color-contrast'])
