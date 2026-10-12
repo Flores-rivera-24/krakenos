@@ -16,9 +16,9 @@ describe('parseTrustProxy (US-76, F2)', () => {
   });
 
   it('entero → nº de hops', () => {
-    expect(parseTrustProxy('1')).toBe(1);
-    expect(parseTrustProxy('3')).toBe(3);
-    expect(parseTrustProxy('0')).toBe(0);
+    expect(parseTrustProxy('1')).toEqual(['loopback']);
+    expect(parseTrustProxy('3')).toEqual(['loopback']);
+    expect(parseTrustProxy('0')).toEqual(['loopback']);
   });
 
   it('lista → array de IPs/CIDRs/keywords sin vacíos', () => {
@@ -37,13 +37,26 @@ describe('parseTrustProxy (US-76, F2)', () => {
 
 describe('trustProxyWarnings (US-76, F2)', () => {
   it('avisa solo cuando es true (confía en cualquiera)', () => {
-    expect(trustProxyWarnings(true)).toHaveLength(1);
-    expect(trustProxyWarnings(true)[0]).toMatch(/X-Forwarded-For/);
+    expect(trustProxyWarnings('true')).toHaveLength(1);
+    expect(trustProxyWarnings('true')[0]).toMatch(/X-Forwarded-For/);
   });
 
   it('no avisa para false / nº de hops / lista', () => {
-    expect(trustProxyWarnings(false)).toEqual([]);
-    expect(trustProxyWarnings(1)).toEqual([]);
-    expect(trustProxyWarnings(['10.0.0.1'])).toEqual([]);
+    expect(trustProxyWarnings('false')).toEqual([]);
+    expect(trustProxyWarnings(undefined)).toEqual([]);
+    expect(trustProxyWarnings('loopback')).toEqual([]);
+    expect(trustProxyWarnings('10.0.0.5')).toEqual([]);
+  });
+});
+
+describe('TRUST_PROXY numérico (nº de saltos)', () => {
+  it('se traduce a loopback, nunca a confiar en cualquiera', () => {
+    expect(parseTrustProxy('2')).toEqual(['loopback']);
+  });
+
+  it('avisa del valor numérico y no de una IP', () => {
+    expect(trustProxyWarnings('1')).toHaveLength(1);
+    expect(trustProxyWarnings('1')[0]).toMatch(/loopback/);
+    expect(trustProxyWarnings('10.0.0.5')).toEqual([]);
   });
 });

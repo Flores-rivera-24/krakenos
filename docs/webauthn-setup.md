@@ -71,7 +71,7 @@ Pi-hole**, sin proxy inverso:
 > resolución del Pi-hole; `home.arpa` (RFC 8375) o `krakenos.lan` lo evitan.
 
 **Alternativa (Escenario B):** si ya tienes un proxy inverso (nginx) terminando TLS,
-pon `TRUST_PROXY=1` (el nº de proxies delante; **no** `true`, que confía en el
+pon `TRUST_PROXY=loopback` (proxy en la misma máquina; si está en otra, la IP del proxy, p. ej. `TRUST_PROXY=10.0.0.5`; un nº de saltos no se usa porque permite falsificar la IP; **no** `true`, que confía en el
 `X-Forwarded-For` de cualquier origen y permite falsificar la IP de auditoría —
 `.env.example`), `WEBAUTHN_ORIGIN=https://krakenos.local` (sin puerto, 443) y deja
 el agente en HTTP detrás del proxy.

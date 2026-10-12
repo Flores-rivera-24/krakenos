@@ -134,7 +134,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   registerErrorHandler(app);
 
   // Aviso si TRUST_PROXY confía en XFF de cualquier origen (US-76, F2).
-  for (const w of trustProxyWarnings(env.trustProxy)) {
+  for (const w of trustProxyWarnings(env.trustProxyRaw)) {
     app.log.warn(`[config] ${w}`);
   }
 

@@ -29,11 +29,11 @@
     "@simplewebauthn/server": "^13.3.1",
     "bcrypt": "^6.0.0",
     "dotenv": "^16.4.5",
-    "fastify": "^5.0.0",
+    "fastify": "^5.12.5",
     "fastify-plugin": "^5.0.1",
     "qrcode": "^1.5.4",
     "socket.io": "^4.7.5",
-    "undici": "^7.28.0",
+    "undici": "^7.30.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
