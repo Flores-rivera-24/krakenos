@@ -83,6 +83,12 @@ interface SystemRoutesOpts {
   tlsService?: TlsService;
   /** Ruta del certificado público de la CA local (tests); por defecto `env.tlsCaCertPath`. */
   caCertPath?: string;
+  /**
+   * Staging de la restauración (por defecto `var/restore-staging`). Tests: el arranque del
+   * agente APLICA lo que haya aquí, así que un test que deje una restauración en el real
+   * sobrescribe la base y las claves del siguiente `pnpm dev`/e2e.
+   */
+  restoreStagingDir?: string;
 }
 
 /**
@@ -553,7 +559,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // (no se puede intercambiar la DB viva de forma segura). Admin activo y auditada.
   // El staging vive en `var/` (FUERA de `data/`), que es un destino de restore — si
   // no, un backup con una entrada `data/restore-staging` colisionaría al aplicar.
-  const restoreStagingDir = resolve('var/restore-staging');
+  const restoreStagingDir = opts.restoreStagingDir ?? resolve('var/restore-staging');
   app.post<{ Body: { passphrase: string; data: string } }>(
     '/restore',
     // 64 MB: evita el OOM de bufferizar base64 gigante en hardware tipo Raspberry Pi.

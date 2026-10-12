@@ -7,7 +7,7 @@ navegador real".
 
 ## Qué se prueba
 
-**27 tests activos** en 6 ficheros (25 en `e2e/tests`, 2 en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`). Recuento con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
+**29 tests activos** en 7 ficheros (27 en `e2e/tests`, 2 en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`) y 1 en cuarentena (2FA con autenticador virtual). Recuento con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
 
 | # | Flujo | Cubre |
 |---|-------|-------|
@@ -19,6 +19,8 @@ navegador real".
 | 6-8 | **Alarma**: armar → desarmar con PIN · PIN incorrecto no desarma · un `kid` no puede armar | capacidad `home.control`, PIN bcrypt |
 | 9-10 | **Rol `member`**: enciende un IoT · no ve «Red avanzada» | `home.control` vs `requireRole('admin')` |
 | 11-12 | **Inglés** (proyecto `chromium-en`): sin sesión manda el navegador · con sesión manda `User.locale` | i18n, catálogo `en.ts` |
+| 13-15 | **PWA**: el manifiesto y sus iconos se sirven · el service worker queda activo en `localhost` · Ajustes enseña la tarjeta de instalación en un estado coherente | manifiesto, `sw.js`, instalación |
+| 16-30 | **Accesibilidad** (`a11y.spec.ts`): axe WCAG A/AA y un solo `<h1>` en 7 páginas, más el contraste real en el tema del usuario | WCAG, estructura de encabezados |
 
 Los flujos se eligieron por dónde duele: la alarma es lo único que puede
 sonar de madrugada y la 3ª auditoría encontró dos fallos justo ahí; el `member` es el

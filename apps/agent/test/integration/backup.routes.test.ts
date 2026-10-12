@@ -1,6 +1,6 @@
-import { mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { decryptArchive, unpackArchive } from '../../src/system/backup.js';
@@ -177,8 +177,14 @@ describe('restauración por subida directa (US-233)', () => {
   let app: FastifyInstance;
   let adminToken: string;
 
+  // Staging propio y a la vista: el real (`var/restore-staging`) lo aplica el siguiente
+  // arranque del agente sobre la base y las claves de desarrollo.
+  const stagingDir = join(mkdtempSync(join(tmpdir(), 'krakenos-restore-test-')), 'staging');
+  const realStagingDir = resolve('var/restore-staging');
+  const realStagingExistia = existsSync(realStagingDir);
+
   beforeAll(async () => {
-    app = await buildTestApp({ routes: true });
+    app = await buildTestApp({ routes: true, restoreStagingDir: stagingDir });
   });
 
   afterAll(async () => {
@@ -220,6 +226,9 @@ describe('restauración por subida directa (US-233)', () => {
     expect(res.json().restartRequired).toBe(true);
     // La copia lleva al menos la DB; keys/ y data/ dependen del entorno de test.
     expect(res.json().staged).toBeGreaterThanOrEqual(1);
+    // Se prepara donde se le dijo, y el staging real del checkout queda intacto.
+    expect(readdirSync(stagingDir).length).toBeGreaterThanOrEqual(1);
+    if (!realStagingExistia) expect(existsSync(realStagingDir)).toBe(false);
   });
 
   it('con la contraseña incorrecta responde 400 sin decir por qué falló el cifrado', async () => {
