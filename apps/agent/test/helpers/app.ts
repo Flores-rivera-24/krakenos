@@ -123,6 +123,12 @@ export interface BuildTestAppOptions {
   maxRestoreBytes?: number;
   /** Directorio de copias automáticas (US-233): un temporal por test. */
   autoBackupDir?: string;
+  /**
+   * Staging de la restauración; por defecto un temporal por app. NUNCA el real
+   * (`var/restore-staging`): el siguiente arranque del agente lo aplicaría sobre la base y
+   * las claves de desarrollo.
+   */
+  restoreStagingDir?: string;
   /** Certificado público de la CA local (`GET /api/system/ca-cert`); por defecto el de `env`. */
   caCertPath?: string;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
@@ -274,6 +280,8 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       maxRestoreBytes: opts.maxRestoreBytes,
       autoBackupDir: opts.autoBackupDir,
       caCertPath: opts.caCertPath,
+      restoreStagingDir:
+        opts.restoreStagingDir ?? join(mkdtempSync(join(tmpdir(), 'krakenos-restore-')), 'staging'),
     });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     // Tailscale (US-215): por defecto "socket ausente" (ENOENT → not-installed);
