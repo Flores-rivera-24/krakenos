@@ -209,6 +209,13 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       </p>
     );
   }
+  if (!result.rolledBack && result.steps.some((s) => s.code === 'NODE_TOO_OLD')) {
+    return (
+      <Callout variant="warning" standing>
+        <RichText>{t('settings.update.lastNodeTooOld')}</RichText>
+      </Callout>
+    );
+  }
   return (
     <p className="flex items-center gap-2 text-kr-xs text-warning">
       {result.rolledBack ? (
@@ -218,9 +225,7 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       )}
       {result.rolledBack
         ? t('settings.update.lastRolledBack', { from: result.fromVersion })
-        : result.steps.some((s) => s.code === 'NODE_TOO_OLD')
-          ? t('settings.update.lastNodeTooOld')
-          : t('settings.update.lastFailed')}
+        : t('settings.update.lastFailed')}
     </p>
   );
 }

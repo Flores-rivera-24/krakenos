@@ -183,6 +183,9 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
       },
     });
     render(<UpdateCard />);
-    expect(await screen.findByText(/necesita un Node más reciente/)).toBeInTheDocument();
+    const aviso = (await screen.findByText(/necesita un Node más reciente/)).closest('[role="note"]');
+    expect(aviso).not.toBeNull();
+    expect(aviso?.querySelector('code')?.textContent).toBe('sudo bash scripts/install.sh --update');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
