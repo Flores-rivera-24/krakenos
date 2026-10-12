@@ -7,7 +7,7 @@ navegador real".
 
 ## Qué se prueba
 
-**12 flujos activos** (eran 4 hasta).
+**27 tests activos** en 6 ficheros (25 en `e2e/tests`, 2 en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`). Recuento con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
 
 | # | Flujo | Cubre |
 |---|-------|-------|

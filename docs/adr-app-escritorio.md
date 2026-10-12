@@ -128,3 +128,5 @@ da la experiencia de app en el propio servidor.
 
 **Lo que no cambia:** el agente sigue siendo un servicio de Linux, el producto se sigue pudiendo usar
 desde cualquier navegador, y Docker y `systemd` en Linux siguen siendo vías de primera.
+
+Guía de uso: [`app-escritorio.md`](app-escritorio.md).
