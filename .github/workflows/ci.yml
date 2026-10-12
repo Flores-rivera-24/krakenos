@@ -24,8 +24,8 @@ concurrency:
 # parecido a su causa.
 #
 # Eso es el runtime de la acción y NO la versión de Node del proyecto: `node-version`
-# sigue en 20 a propósito. Subir el Node del producto toca el instalador, el
-# Dockerfile y el soporte declarado, y es una decisión aparte.
+# es el Node del producto (24 LTS; el 20 está fuera de soporte desde abril de 2026).
+# Subirlo toca el instalador (`NODE_MAJOR`), el Dockerfile, `engines` y `tsup`.
 #
 # Requieren Actions Runner ≥ v2.327.1 (los hospedados por GitHub lo cumplen; si
 # algún día se usa un runner propio, hay que actualizarlo antes).
@@ -46,7 +46,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
@@ -140,7 +140,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies

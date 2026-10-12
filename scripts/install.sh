@@ -69,7 +69,7 @@ CA_DIR="${KRAKENOS_CA_DIR:-/etc/krakenos/ca}"         # root:root 0700 — clave
 TLS_DIR="${KRAKENOS_TLS_DIR:-/etc/krakenos/tls}"      # root:<servicio> 0750 — lo que se sirve
 LIB_DIR="${KRAKENOS_LIB_DIR:-/usr/local/lib/krakenos}" # root:root 0755 — copia de root del script
 PNPM_VERSION="9.12.0" # pinneado = packageManager del repo (patrón AUD-27: sin descargas en runtime)
-NODE_MAJOR=20
+NODE_MAJOR=24
 MIN_RAM_MB="${KRAKENOS_MIN_RAM_MB:-900}"
 MIN_DISK_MB="${KRAKENOS_MIN_DISK_MB:-2000}"
 
@@ -986,6 +986,10 @@ do_update() {
   is_git_checkout "$INSTALL_DIR" || die "no hay una instalación git en $INSTALL_DIR (¿instalaste con --from-local?)"
   local runner="$INSTALL_DIR/apps/agent/dist/update-runner.js"
   [[ $DRY_RUN -eq 1 || -f "$runner" ]] || die "falta $runner — completa una instalación antes de actualizar"
+  # Sube Node si el instalado es anterior al que exige esta versión del instalador:
+  # una release que pasa a pedir un Node más nuevo no se puede aplicar con el viejo,
+  # y es este camino —con root— el único que puede instalarlo.
+  ensure_node
   log "Buscando la última versión…"
   run git -C "$INSTALL_DIR" fetch --tags --prune origin
   local tag

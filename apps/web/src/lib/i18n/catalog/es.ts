@@ -223,6 +223,10 @@ export const es = {
   'settings.update.lastOk': 'Última actualización correcta: {from} → {to}',
   'settings.update.lastRolledBack': 'Última actualización revertida a {from} (la nueva versión falló).',
   'settings.update.lastFailed': 'La última actualización falló.',
+  'settings.update.nodeTooOld':
+    'Esta versión necesita Node {version} o superior y el sistema tiene uno anterior. Actualiza con «sudo bash scripts/install.sh --update», que instala el Node necesario.',
+  'settings.update.lastNodeTooOld':
+    'La última actualización no se aplicó: la nueva versión necesita un Node más reciente. Actualiza con «sudo bash scripts/install.sh --update».',
 
   // --- Ajustes → Salud del sistema (US-191) ---
   'settings.health.title': 'Salud del sistema',

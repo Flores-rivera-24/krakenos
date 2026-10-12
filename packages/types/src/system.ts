@@ -145,7 +145,12 @@ export interface UpdateStepResult {
   status: UpdateStepStatus;
   /** Mensaje breve (motivo del fallo, versión aplicada…). Sin secretos. */
   detail?: string;
+  /** Motivo estable cuando el actualizador SE NEGÓ antes de tocar nada. */
+  code?: UpdateBlockedCode;
 }
+
+/** La versión de destino exige un Node más nuevo que el que corre el servicio. */
+export type UpdateBlockedCode = 'NODE_TOO_OLD';
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso
@@ -187,6 +192,14 @@ export interface UpdatePlan {
   maintenanceWindow: string | null;
   /** Resultado de la última actualización aplicada, o `null` si nunca se aplicó. */
   lastResult: UpdateResult | null;
+  /**
+   * Por qué la versión disponible no se puede aplicar desde aquí (p. ej. exige un
+   * Node más nuevo), o `null`. Solo se conoce si el tag de destino ya está en el
+   * repo local; si no, el actualizador lo comprueba al hacer el `fetch`.
+   */
+  blockedReason: UpdateBlockedCode | null;
+  /** Node mínimo que exige la versión disponible (`"24"`), si `blockedReason` lo explica. */
+  requiredNode: string | null;
 }
 
 /** Latencia/errores de una operación con nombre (p. ej. un manager) (US-191). */

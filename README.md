@@ -147,7 +147,7 @@ packages/
 
 ## Arranque rápido (desarrollo)
 
-Requisitos: **Node.js ≥ 20** y **pnpm ≥ 9**.
+Requisitos: **Node.js ≥ 24** y **pnpm ≥ 9**.
 
 ```bash
 pnpm install
@@ -180,7 +180,7 @@ pnpm dev:web       # solo web (requiere el agente en :3001)
 ## Producción
 
 **Requisitos del servidor:** Ubuntu/Debian (o similar) en **x86-64 o ARM64** (Raspberry Pi 4/5,
-mini PC), **Node.js ≥ 20**, **~1 GB de RAM** y **~2 GB de disco** libres (la base SQLite crece con
+mini PC), **Node.js ≥ 24**, **~1 GB de RAM** y **~2 GB de disco** libres (la base SQLite crece con
 el histórico de tráfico/energía y la retención acota su tamaño). Para las funciones privilegiadas
 (VPN/firewall/QoS) y de cámara hacen falta `wireguard-tools`, `iptables`, `iproute2` y `ffmpeg` en
 el host.
@@ -193,7 +193,7 @@ En un Debian/Ubuntu/Raspberry Pi OS (x86-64 o ARM64) limpio:
 curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scripts/install.sh | sudo bash
 ```
 
-Comprueba el sistema (SO/arquitectura/RAM/disco), instala Node 20 + pnpm (pinneado, sin
+Comprueba el sistema (SO/arquitectura/RAM/disco), instala Node 24 + pnpm (pinneado, sin
 descargas en el arranque), clona la última versión etiquetada, genera las claves (con permisos
 restringidos), migra la base, construye, crea el **servicio systemd** y te imprime la
 **URL de `/setup?token=` con QR** para crear el administrador. Es **idempotente**:

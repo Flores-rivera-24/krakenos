@@ -207,6 +207,10 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.lastOk': 'Last update succeeded: {from} → {to}',
   'settings.update.lastRolledBack': 'Last update rolled back to {from} (the new version failed).',
   'settings.update.lastFailed': 'The last update failed.',
+  'settings.update.nodeTooOld':
+    'This version needs Node {version} or later and the system has an older one. Update with "sudo bash scripts/install.sh --update", which installs the Node it needs.',
+  'settings.update.lastNodeTooOld':
+    'The last update was not applied: the new version needs a newer Node. Update with "sudo bash scripts/install.sh --update".',
 
   // --- Settings → System health (US-191) ---
   'settings.health.title': 'System health',
