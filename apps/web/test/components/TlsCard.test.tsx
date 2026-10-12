@@ -1,5 +1,6 @@
 import type { TlsStatus } from '@krakenos/types';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -99,5 +100,36 @@ describe('TlsCard (US-241)', () => {
     apiMock.get.mockRejectedValue(new Error('boom'));
     const { container } = render(<TlsCard />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  describe('CA local de KrakenOS', () => {
+    beforeEach(() => {
+      apiMock.get.mockResolvedValue(status({ source: 'local-ca' }));
+    });
+
+    it('ofrece descargar el certificado público con un enlace directo', async () => {
+      render(<TlsCard />);
+      const link = await screen.findByRole('link', { name: 'Descargar certificado' });
+      expect(link).toHaveAttribute('href', '/api/system/ca-cert');
+      expect(screen.getByText('CA local de KrakenOS')).toBeInTheDocument();
+    });
+
+    it('da los pasos de los cuatro sistemas, con el de confianza de iOS', async () => {
+      const user = userEvent.setup();
+      render(<TlsCard />);
+      await screen.findByRole('link', { name: 'Descargar certificado' });
+      for (const os of ['Windows', 'macOS', 'Android', 'iPhone y iPad']) {
+        expect(screen.getByRole('button', { name: os })).toBeInTheDocument();
+      }
+      await user.click(screen.getByRole('button', { name: 'iPhone y iPad' }));
+      expect(screen.getByText(/Confianza de certificados/)).toBeInTheDocument();
+    });
+
+    it('con otro origen (Tailscale) no pinta la descarga', async () => {
+      apiMock.get.mockResolvedValue(status({ source: 'tailscale' }));
+      render(<TlsCard />);
+      await screen.findByText('Tu instalación se sirve por HTTPS.');
+      expect(screen.queryByRole('link', { name: 'Descargar certificado' })).toBeNull();
+    });
   });
 });

@@ -13,6 +13,11 @@ import type { IsoDateTime } from './common.js';
 export type TlsSource =
   /** Certificado de Let's Encrypt emitido por Tailscale para `*.ts.net`. */
   | 'tailscale'
+  /**
+   * Firmado por la CA local de KrakenOS (`gen-local-ca.sh`): cifra y se renueva
+   * solo, pero cada dispositivo debe instalar UNA vez el certificado de la CA.
+   */
+  | 'local-ca'
   /** Autofirmado: el navegador avisará salvo que se instale la CA en cada dispositivo. */
   | 'self-signed'
   /** Hay cert pero no se puede clasificar su origen. */
