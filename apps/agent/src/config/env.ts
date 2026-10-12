@@ -32,18 +32,22 @@ function clamp(value: number, min: number, max: number): number {
  * Parsea `TRUST_PROXY` al valor que espera `trustProxy` de Fastify (US-76, F2).
  * Sustituye el antiguo booleano por una configuración **acotada**:
  *   - vacío / `false`            → `false` (no se confía en `X-Forwarded-For`)
- *   - un entero `n`              → confía en `n` saltos (hops) de proxy
+ *   - un entero `n`              → `['loopback']`: confía SOLO en un proxy de la misma
+ *                                  máquina. Fastify ≥5.12 trata los saltos como «no confiar»
+ *                                  (contar saltos no valida al peer inmediato y permitía
+ *                                  falsificar XFF); no se traduce a redes privadas porque en
+ *                                  una LAN todos los clientes lo son.
  *   - lista `ip[,cidr,keyword]`  → confía solo en esas IPs/CIDRs/preset de proxy
  *   - `true`                     → confía en XFF de CUALQUIER origen (inseguro;
  *                                  se mantiene por compat pero se avisa al arrancar)
  * Confiar en XFF sin un proxy real que lo reescriba permite **falsificar `req.ip`**
  * y burlar el rate limit de login y la auditoría por IP.
  */
-export function parseTrustProxy(raw: string | undefined): boolean | number | string[] {
+export function parseTrustProxy(raw: string | undefined): boolean | string[] {
   const v = (raw ?? '').trim();
   if (v === '' || v.toLowerCase() === 'false') return false;
   if (v.toLowerCase() === 'true') return true;
-  if (/^\d+$/.test(v)) return Number(v);
+  if (/^\d+$/.test(v)) return ['loopback'];
   const list = v
     .split(',')
     .map((s) => s.trim())
@@ -64,14 +68,25 @@ export const publicDisclosure = {
   lastSession: (): boolean => process.env.PUBLIC_LAST_SESSION === 'true',
 };
 
-/** Avisos de configuración de `TRUST_PROXY` (no bloquean el arranque). */
-export function trustProxyWarnings(value: boolean | number | string[]): string[] {
-  if (value === true) {
+/**
+ * Avisos de configuración de `TRUST_PROXY` (no bloquean el arranque). Recibe el valor
+ * **crudo**: el parseado ya no distingue `TRUST_PROXY=1` de `TRUST_PROXY=loopback`.
+ */
+export function trustProxyWarnings(raw: string | undefined): string[] {
+  const v = (raw ?? '').trim();
+  if (v.toLowerCase() === 'true') {
     return [
       'TRUST_PROXY=true confía en X-Forwarded-For de CUALQUIER origen: si no hay un ' +
         'proxy inverso que reescriba la cabecera, un cliente puede falsificar su IP y burlar ' +
-        'el rate limit de login y la auditoría. Usa un nº de hops (p. ej. TRUST_PROXY=1) o una ' +
-        'lista de IPs/CIDRs de proxies de confianza.',
+        'el rate limit de login y la auditoría. Usa TRUST_PROXY=loopback (proxy en esta misma ' +
+        'máquina) o una lista de IPs/CIDRs de proxies de confianza.',
+    ];
+  }
+  if (/^\d+$/.test(v)) {
+    return [
+      `TRUST_PROXY=${v} (nº de saltos) ya no se admite porque permite falsificar la IP: se ` +
+        'interpreta como "loopback" (proxy en esta misma máquina). Si el proxy está en otra ' +
+        'máquina o contenedor, lista su IP o CIDR (p. ej. TRUST_PROXY=10.0.0.5).',
     ];
   }
   return [];
@@ -470,6 +485,8 @@ export const env = {
    * cualquiera) sigue admitido pero se desaconseja (ver `trustProxyWarnings`).
    */
   trustProxy: parseTrustProxy(process.env.TRUST_PROXY),
+  /** Valor crudo de `TRUST_PROXY`, para los avisos de arranque. */
+  trustProxyRaw: process.env.TRUST_PROXY,
 
   /** ¿Hay algún proxy de confianza configurado delante del agente? */
   behindProxy: parseTrustProxy(process.env.TRUST_PROXY) !== false,

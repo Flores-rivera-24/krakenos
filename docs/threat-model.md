@@ -35,7 +35,7 @@ Los hallazgos no son agujeros abiertos sino **límites de defensa en profundidad
    se leían de `Setting` sin máximo; un valor enorme degradaba silenciosamente la sesión corta
    o el rate limit. ✅ **Resuelto** (cotas al escribir y al leer); ver F5.
 3. **`TRUST_PROXY` es un booleano sin lista de proxies de confianza** (🟠): _resuelto_ (ahora
-   admite nº de hops o lista de IPs/CIDRs y avisa del `true` inseguro; ver F2). Mal configurado,
+   admite `loopback` o lista de IPs/CIDRs y avisa del `true` inseguro; ver F2). Mal configurado,
    permite falsificar `X-Forwarded-For` y burlar el rate limit y la auditoría por IP.
 
 Y un meta-hallazgo honesto: **todo el límite de privilegios (helper, sudoers, iptables/tc/wg)
@@ -114,7 +114,7 @@ por una verificación e2e.
 | **T**ampering | JSON Schema estricto (`additionalProperties:false`, email/longitud). ✔ |
 | **R**epudiation | `auth.login` / `auth.login_failed` auditados con IP (email hasheado). ✔ (con reintentos, F11) |
 | **I**nfo disclosure | Mensaje genérico "Credenciales inválidas"; sin distinguir usuario inexistente. ✔ |
-| **D**oS | Rate limit por IP (`max=rateLimitStore.getCurrent()`, def. 10/min) **+ lockout por cuenta con backoff** (F3). El spoofing por XFF se acotó (F2: nº de hops / lista de proxies). |
+| **D**oS | Rate limit por IP (`max=rateLimitStore.getCurrent()`, def. 10/min) **+ lockout por cuenta con backoff** (F3). El spoofing por XFF se acotó (F2: `loopback` / lista de proxies). |
 | **E**oP | Sin passkey → emite sesión; con passkey → sólo `mfaToken` (no tokens). Atadura de factores correcta. ✔ |
 
 ### 4.2 `POST /api/auth/refresh` (token de refresco)
@@ -158,7 +158,7 @@ por una verificación e2e.
 | # | Sev | Hallazgo | Ubicación | Afirmado | Real |
 |---|---|---|---|---|---|
 | **F1** | 🟠 | **Allowlist del helper sólo por verbo, no por ámbito.** Permitía `iptables` sobre cualquier cadena (INPUT/FORWARD/…), `tc` sobre cualquier interfaz y `wg set`/`wg-quick save` arbitrarios. Es la última frontera antes de root. | `scripts/krakenos-helper.sh` | "allowlist estricta… no concede acceso libre a wg/iptables/tc" (doc interna, sudoers) | ✅ **Mitigado:** el helper acota ahora también el **ámbito** — `iptables` solo sobre la cadena `KRAKENOS` (+ enlace `FORWARD -j KRAKENOS`, sin reglas extra, sin otra tabla que `filter`), `tc` solo sobre la interfaz de QoS (`dev <iface>`) y `wg`/`wg-quick` solo sobre la interfaz WireGuard. El ámbito lo fija root (defaults del script + `/etc/krakenos/helper.conf`); `sudo` (env_reset) impide que el agente lo amplíe. Tests por caso permitido/denegado. |
-| **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts` (`parseTrustProxy`), `server.ts` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | ✅ **Mitigado:** `parseTrustProxy` admite **nº de hops** (`TRUST_PROXY=1`) o **lista de IPs/CIDRs** de proxies de confianza, no solo el booleano; `true` (confiar en cualquiera) sigue por compat pero **avisa al arrancar** (`trustProxyWarnings`). Tests de `req.ip` con/sin proxy. |
+| **F2** | 🟠 | **`TRUST_PROXY` booleano sin proxies de confianza.** Activado sin un proxy que reescriba `X-Forwarded-For`, el cliente falsifica `req.ip` → burla rate limit de login y envenena la auditoría/last-session. | `config/env.ts` (`parseTrustProxy`), `server.ts` | "TRUST_PROXY opcional… tras nginx" (SPECS §9) | ✅ **Mitigado:** `parseTrustProxy` admite **`loopback`** o **lista de IPs/CIDRs** de proxies de confianza, no solo el booleano (un número se interpreta como `loopback`: Fastify 5.12 trata los saltos como no-confianza, porque contar saltos no valida al peer inmediato); `true` (confiar en cualquiera) sigue por compat pero **avisa al arrancar** (`trustProxyWarnings`). Tests de `req.ip` con/sin proxy. |
 | **F3** | 🟠 | **Rate limit de login sólo por IP, sin lockout por cuenta** ni backoff. Fuerza bruta distribuida (varias IP de VPN) o spray sobre muchas cuentas no se frenaba por usuario. | `auth/login-lockout.ts`, `auth.routes.ts` | "Rate limiting en /auth/login" (SPECS §9) | ✅ **Mitigado:** se extendió el rate-limit a los endpoints públicos de 2FA + `mfaToken` de un solo uso, y un **lockout por cuenta** (`auth/login-lockout.ts`): tras 5 fallos consecutivos la cuenta se bloquea con **backoff exponencial** (30 s → tope 1 h), se limpia al primer login correcto y audita `auth.login_locked` (+ push). Se aplica a cualquier email (no enumera). |
 | **F4** | 🟠 | **Rotación de refresh sin detección de reuso.** Un refresh robado y usado revocaba el del legítimo pero no revocaba la familia ni alertaba; el atacante se quedaba con la sesión rotada. | `auth.service.ts` (`refresh`), `schema.prisma` (`RefreshToken.rotatedAt`) | "refresh tokens rotatorios" (SPECS §9) | ✅ **Mitigado:** reuse-detection estilo OAuth — al rotar se marca `rotatedAt`; si llega un token **ya rotado** se revoca **toda la familia** del usuario y se audita `auth.refresh_reuse` (+ push). Un token revocado por logout/admin (sin `rotatedAt`) no dispara el nuke: rechazo simple. |
 | **F5** | 🟠 | **Cota superior ausente en ajustes en caliente.** `accessTokenTtl` (y `loginRateLimit`) se leían de `Setting` con sólo `n>0`; un admin podía fijar un TTL enorme → access tokens casi eternos, anulando la "vida corta". | `config/settings-bounds.ts`, `auth.service.ts`, `rate-limit-store.ts` | "access de vida corta (default 900 s)" (SPECS §9) | ✅ **Mitigado:** cotas en `config/settings-bounds.ts` (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas **al escribir** (`PATCH /system/settings`, el valor guardado y devuelto se acota) y **al leer** (`accessTtl`/`rateLimitStore.update`, defensa en profundidad). Tests de borde. |
@@ -207,7 +207,7 @@ por una verificación e2e.
 | Secret scanning (gitleaks, bloqueante) + SAST (semgrep) en CI | endurece F8 (detecta secretos commiteados) | ✅ hecho |
 | Allowlist del helper por ámbito (cadena/interfaz) | F1 (arreglo) | ✅ hecho |
 | Cotas en ajustes en caliente (`accessTokenTtl`/`loginRateLimit`) | F5 (arreglo) | ✅ hecho |
-| `TRUST_PROXY` seguro (nº de hops / lista de proxies) | F2 (arreglo) | ✅ hecho |
+| `TRUST_PROXY` seguro (`loopback` / lista de proxies) | F2 (arreglo) | ✅ hecho |
 | Refresh token en cookie `httpOnly` + access sólo en memoria | F13 (arreglo real) | ✅ hecho |
 | Lockout por cuenta + backoff en login | F3 (arreglo) | ✅ hecho |
 | Detección de reuso de refresh (revoca familia + alerta) | F4 (arreglo) | ✅ hecho |
@@ -234,7 +234,7 @@ commiteados y se verifican los permisos de los ficheros, pero no se cifra.
    por caso permitido/denegado (incl. ámbito a medida).
 2. **Cotas en ajustes en caliente (F5).** ✅ **Hecho.** Cotas en `config/settings-bounds.ts`
    (`accessTokenTtl` 60–3600 s, `loginRateLimit` 1–1000) aplicadas al escribir y al leer, con test de borde.
-3. **`TRUST_PROXY` seguro (F2).** ✅ **Hecho.** `parseTrustProxy` admite nº de hops o lista de
+3. **`TRUST_PROXY` seguro (F2).** ✅ **Hecho.** `parseTrustProxy` admite `loopback` (un número se interpreta así: los saltos no validan al peer inmediato) o lista de
    IPs/CIDRs de proxies de confianza, y `trustProxyWarnings` avisa del `true` inseguro al arrancar.
    Test de `req.ip` con/sin proxy.
 4. **Lockout por cuenta + backoff en login (F3).** ✅ **Hecho.** `auth/login-lockout.ts`:
