@@ -287,6 +287,14 @@ incrustado) para crear el administrador — ábrela o escanéala con el móvil e
 > el auto-descubrimiento por UDP (mDNS/SSDP) **no funcionan** dentro del contenedor. Para esas
 > funciones usa una instalación bare-metal/systemd. Detalle en [`docs/docker-limitations.md`](docs/docker-limitations.md).
 
+### Como aplicación de escritorio
+
+KrakenOS se puede abrir con un icono, en su propia ventana, instalando la interfaz como app desde Edge
+o Chrome (es una PWA). El servicio sigue corriendo en segundo plano aunque cierres la ventana. Hay dos
+formas de montarlo —el servicio en un equipo siempre encendido (recomendada) o todo en tu propio
+ordenador Windows con WSL2— y cada una tiene sus límites: ver el
+[ADR de la app de escritorio](docs/adr-app-escritorio.md).
+
 ---
 
 ## Conectar dispositivos reales
