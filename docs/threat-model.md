@@ -413,6 +413,56 @@ servidor; validadores anti-inyección y helper por ámbito sólidos.
 **Con esto, toda la remediación de código de las DOS auditorías queda cerrada.**
 El único pendiente es de despliegue: la verificación e2e con hardware/root real, que no es código.
 
+
+## 9. Revisión de la checklist de seguridad (2026-10-11)
+
+Se repasó una checklist genérica de 20 puntos de seguridad web contra el código, en cuatro frentes
+(secretos y cifrado, autorización, sesión y transporte, entrada y salida), con evidencia por fichero
+y los hallazgos graves comprobados a mano.
+
+### 9.1 Arreglado
+
+| Hallazgo | Arreglo |
+|---|---|
+| Un error al leer la clave de secretbox que no fuera «no existe» (permisos, ruta que es un directorio) **regeneraba y sobrescribía la clave**: todos los secretos de integraciones quedaban ilegibles sin un error. | Solo se genera ante `ENOENT` o fichero vacío; cualquier otro error detiene el arranque nombrando la ruta (`config/secretbox.ts`). |
+| Los ficheros de `data/` con credenciales (URL RTSP de cámaras, `localKey` de Tuya, peers de WireGuard) se escribían con el `umask` del proceso (0644). | Se escriben 0600, con `chmod` explícito si ya existían (`store/json-store.ts`, `vpn/peer-store.ts`). |
+| Un usuario autenticado que conociera el `endpoint` de la suscripción push de otro podía reasignársela y recibir sus avisos (alarma incluida). | 409 `PUSH_ENDPOINT_TAKEN` si el endpoint es de otro usuario (`modules/push`). |
+| El manejador de errores por defecto de Fastify devolvía `error.message` también en los 500 (detalles de Prisma/SQL). | `plugins/error-handler.ts`: los 4xx no cambian; los 5xx salen con mensaje genérico, salvo los deliberados con código propio (p. ej. `DRIVER_UNAVAILABLE`), cuyo texto es del proyecto. |
+| `POST /api/access-requests` (público) guardaba filas sin tope ni retención. | Tope de 50 pendientes y poda a los 30 días; la respuesta sigue siendo **la misma 202** con el tope lleno, para no revelar qué correos existen. |
+| `TRUST_PROXY` numérico (saltos) dejaba de funcionar con Fastify 5.12, que lo trata como «no confiar». | Un número se interpreta como `loopback` (proxy en la misma máquina) y se avisa al arrancar; un proxy en otra máquina se declara por IP/CIDR. No se traduce a redes privadas: en una LAN todos los clientes lo son y podrían falsificar `X-Forwarded-For`. |
+| Ficheros `.env.<sufijo>` reales (p. ej. `.env.openwrt`) no estaban excluidos de git ni del escaneo de secretos. | `.gitignore` y la regla de gitleaks cubren `.env.*`, salvo las plantillas `*.example`. |
+| Las dependencias solo se revisaban al empujar. | Dependabot semanal y CI semanal aunque no haya cambios. |
+
+### 9.2 No aplican tal cual
+
+- **Claves públicas de base de datos** y **row-level security** son conceptos de plataformas donde el
+  cliente habla directamente con la base de datos. Aquí el cliente solo habla con la API; el
+  equivalente de RLS es el filtrado por dueño en la consulta del servidor.
+
+### 9.3 Riesgos aceptados
+
+| Riesgo | Por qué se acepta |
+|---|---|
+| **Sin CAPTCHA** en las superficies públicas. | Un CAPTCHA de terceros rompe el funcionamiento sin nube y la CSP `'self'`; uno propio no detiene a un bot real. Login, recuperación y solicitudes de acceso llevan límite por IP y bloqueo por cuenta, y la única que guarda filas está acotada. |
+| **HTTP plano por defecto** en el instalador si no se pasa `--tls`. | Forzar HTTPS dejaría inaccesible una instalación de LAN sin certificado. El instalador y el agente avisan de lo que se pierde (PWA, notificaciones push, passkeys). Se recomienda `--tls tailscale` o `--tls self`. |
+| **La base SQLite no está cifrada en reposo.** | El cifrado de disco corresponde al sistema operativo. Los secretos de integraciones sí van cifrados con secretbox dentro de la base, y el instalador deja la base en 0600. |
+| **SMTP y Telegram** se configuran en `.env`. | El instalador deja `.env` en 0600; el agente avisa al arrancar si los ficheros con secretos son legibles por otros. |
+| La **contraseña de la copia automática** es revelable por un administrador y vive en el mismo equipo que la clave de cifrado. | Una copia que nadie puede descifrar no sirve para recuperar la casa. Revelarla exige administrador activo y queda auditado. |
+| `style-src 'unsafe-inline'` en la CSP. | Lo exigen los estilos en línea de la interfaz; `script-src` sigue siendo `'self'`, sin `unsafe-inline` ni `unsafe-eval`. |
+| Los contadores de límite de peticiones y de bloqueo viven **en memoria** y se reinician con el agente. | Un único proceso en el equipo del usuario; persistirlos añadiría escrituras al disco por cada intento sin ganancia real en una LAN. |
+| La restauración de copias acepta hasta **2 GiB**. | Solo un administrador activo puede subirla, y las copias con grabaciones de cámaras pueden ser grandes. |
+| Dependencias de **herramientas de desarrollo** con avisos sin versión arreglada dentro de su rango (esbuild vía tsup, `qs` vía Stryker, `uuid` vía autocannon, `braces` y `postcss-selector-parser` vía Tailwind 3). | No viajan en el producto en ejecución; se resuelven con las migraciones de versión mayor de esas herramientas, no forzando versiones fuera de rango. |
+
+### 9.4 Pendiente
+
+- Un test genérico de aislamiento por dueño (hoy es convención por consulta).
+- Un gate que exija `schema` en toda ruta nueva, y que el barrido de lecturas exija 401 explícito en
+  lugar de cualquier código ≥400.
+- Más entropía en los códigos de recuperación (hoy 48 bits con sha256 sin sal) y bloqueo por cuenta
+  en su verificación.
+- La ventana de rol tras degradar a un administrador: `requireRole` confía en el claim del token de
+  acceso hasta que caduca.
+
 ---
 
 > _Este documento es interno a la auditoría de seguridad; describe la postura a junio de 2026
