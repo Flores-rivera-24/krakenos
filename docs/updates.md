@@ -133,3 +133,14 @@ docker compose pull && docker compose up -d
 Aunque el bare-metal hace un snapshot de la DB para el rollback, haz también una
 **copia de seguridad cifrada** antes de una actualización importante (Ajustes → Sistema
 → Copia de seguridad): es exportable y cubre también `keys/` y `data/`.
+
+### Cuando una versión necesita un Node más nuevo
+
+La actualización con un clic corre sin permisos de administrador, así que no puede cambiar el Node del
+sistema. Antes de aplicar nada, comprueba qué versión de Node exige la versión de destino: si la del
+equipo no llega, se niega sin tocar la instalación y la tarjeta «Actualizaciones» explica qué hacer.
+En ese caso, actualiza desde una terminal con:
+
+    sudo bash scripts/install.sh --update
+
+El instalador sube Node a la versión necesaria y después aplica la actualización.
