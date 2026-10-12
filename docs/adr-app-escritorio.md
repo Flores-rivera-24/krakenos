@@ -128,3 +128,34 @@ da la experiencia de app en el propio servidor.
 
 **Lo que no cambia:** el agente sigue siendo un servicio de Linux, el producto se sigue pudiendo usar
 desde cualquier navegador, y Docker y `systemd` en Linux siguen siendo vías de primera.
+
+## Actualización (2026-10-11): HTTPS por defecto
+
+La decisión que quedaba abierta se toma: **el instalador ya no instala sobre HTTP por defecto.**
+`--tls` pasa a `auto`:
+
+- Si Tailscale está instalado, con sesión y MagicDNS, se usa **`tailscale`** (Let's Encrypt: todos
+  los dispositivos confían sin tocar nada).
+- Si no, **`local`**: una CA propia de KrakenOS que se crea una vez y firma el certificado de
+  servidor (825 días, el máximo que Apple admite para raíces instaladas por el usuario) para
+  `<equipo>.local`, `krakenos.local`, `localhost` y la IPv4 de la LAN. La CA lleva `nameConstraints`
+  críticas (`.local`, `localhost` y rangos privados), de modo que una filtración de su clave no
+  permite suplantar ningún sitio de internet; la clave queda de root en `keys/` y el agente solo
+  conoce el certificado de servidor. Cada dispositivo instala el certificado público de la CA una
+  vez: se descarga de `GET /api/system/ca-cert` (público, sin clave alguna) o de Ajustes →
+  Sistema → Conexión segura, que explica los pasos por sistema.
+- **`none`** solo si se pide expresamente. `--tls self` se mantiene como alias obsoleto de `local`.
+
+**Dónde vive el material (root nunca ejecuta ni escribe lo que el servicio puede modificar).** El árbol
+de instalación es del usuario del servicio, y los timers de renovación corren como root. Por eso el
+material TLS sale de él: la clave de la CA en `/etc/krakenos/ca/` (`root:root` 0700), lo que sirve el
+agente en `/etc/krakenos/tls/` (`root:<servicio>` 0750; el agente lee el certificado y la clave por
+grupo, sin ser dueño), y el timer ejecuta una copia de root de `gen-local-ca.sh` en
+`/usr/local/lib/krakenos/`. Los timers no hacen `chown`, el script rechaza destinos que sean enlaces
+simbólicos, y `--update` migra a esa ubicación las instalaciones previas con Tailscale que tenían el
+certificado en `apps/agent/certs`. La copia de root se refresca al volver a ejecutar el instalador.
+
+**Resolución de nombres.** `<equipo>.local` necesita un respondedor mDNS: en modo `local` el
+instalador instala `avahi-daemon` y `libnss-mdns`. El descubrimiento del agente no compite con él por
+el puerto 5353 (abre su socket UDP sin puerto fijo y con `reuseAddr`). El certificado incluye también
+la IP de la LAN, pero las passkeys exigen el nombre.

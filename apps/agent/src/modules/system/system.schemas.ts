@@ -1,6 +1,14 @@
 import { AUTO_BACKUP_FREQUENCIES, SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
+/** `GET /api/system/ca-cert` — certificado público de la CA local. Sin schema de 200: es un PEM. */
+export const systemCaCertSchema = {
+  response: {
+    404: errorResponse,
+    429: errorResponse,
+  },
+} as const;
+
 /** `GET /api/system/tls` — estado del certificado (US-241). */
 export const systemTlsSchema = {
   response: {
@@ -20,7 +28,7 @@ export const systemTlsSchema = {
       properties: {
         enabled: { type: 'boolean' },
         behindProxy: { type: 'boolean' },
-        source: { type: ['string', 'null'], enum: ['tailscale', 'self-signed', 'unknown', null] },
+        source: { type: ['string', 'null'], enum: ['tailscale', 'local-ca', 'self-signed', 'unknown', null] },
         notAfter: { type: ['string', 'null'] },
         daysLeft: { type: ['integer', 'null'] },
         expiring: { type: 'boolean' },

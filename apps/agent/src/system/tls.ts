@@ -16,6 +16,9 @@ import type { TlsDisabledFeature, TlsSource } from '@krakenos/types';
 /** Días de antelación con los que se empieza a avisar. */
 export const TLS_WARN_DAYS = 21;
 
+/** Prefijo del CN de la CA local (en minúsculas): lo fija `scripts/gen-local-ca.sh`. */
+export const LOCAL_CA_COMMON_NAME = 'krakenos ca local';
+
 /** Ventana de validez de un certificado. */
 export interface CertificateValidity {
   notBefore: Date;
@@ -54,6 +57,10 @@ export function readCertificateValidity(pem: string): CertificateValidity | null
 export function classifyCertificateSource(validity: CertificateValidity): TlsSource {
   const haystack = `${validity.subject} ${validity.issuer}`.toLowerCase();
   if (haystack.includes('.ts.net')) return 'tailscale';
+  // CA propia de KrakenOS: se reconoce por el CN del EMISOR (`gen-local-ca.sh`), no
+  // por el sujeto —el de la hoja es solo `<equipo>.local`—. Va antes del chequeo de
+  // autofirmado; la propia CA (emisor == sujeto) no es lo que sirve el agente.
+  if (validity.issuer.toLowerCase().includes(LOCAL_CA_COMMON_NAME)) return 'local-ca';
   // Autofirmado: emisor y sujeto coinciden (nadie por encima lo avala).
   if (validity.issuer && validity.issuer === validity.subject) return 'self-signed';
   return 'unknown';

@@ -250,12 +250,16 @@ configuración con QR** (token incrustado) y abre el wizard `/setup` para crear 
 (instrucciones en su cabecera), luego `systemctl enable --now krakenos`. Para las operaciones
 privilegiadas, instala el helper sudoers (ver [Operaciones privilegiadas](#operaciones-privilegiadas-helper-sudoers)).
 
-**HTTPS opcional en la LAN:**
+**HTTPS (por defecto con el instalador):** `install.sh --tls auto` es el valor por defecto. Usa
+**Tailscale** (certificado de Let's Encrypt, sin instalar nada en los móviles) si está instalado y con
+sesión; si no, crea una **CA propia de KrakenOS** (`--tls local`) y firma con ella el certificado del
+servidor. La CA solo puede avalar nombres `.local`, `localhost` y rangos privados, y cada dispositivo
+instala su certificado público una vez (Ajustes → Sistema → Conexión segura, o
+`https://<equipo>.local:3001/api/system/ca-cert`). `--tls none` instala sobre HTTP, solo si lo pides
+(sin HTTPS no funcionan la app instalable, los avisos push ni las passkeys). `--tls self` sigue
+aceptándose, pero es un alias obsoleto de `local`.
 
-```bash
-cd apps/agent && ./scripts/gen-cert.sh   # cert autofirmado en ./certs
-# en .env: HTTPS_ENABLED=true
-```
+Instalación manual: `cd apps/agent && ./scripts/gen-local-ca.sh` y, en `.env`, `HTTPS_ENABLED=true`.
 
 
 ### Docker (demo / evaluación rápida)

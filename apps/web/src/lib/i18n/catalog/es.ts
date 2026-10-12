@@ -1001,7 +1001,7 @@ export const es = {
   'settings.tls.feature.push': 'Recibir avisos en el móvil.',
   'settings.tls.feature.passkeys': 'Entrar con passkey (segundo factor).',
   'settings.tls.howTo':
-    'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador con «--tls tailscale» y tu móvil confiará sin instalar nada.',
+    'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador sin «--tls none»: usará Tailscale si lo tienes y, si no, una CA propia de KrakenOS.',
   'settings.tls.sourceLabel': 'Certificado',
   'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
   'settings.tls.source.selfSigned': 'Autofirmado',
@@ -1016,6 +1016,41 @@ export const es = {
     'Los navegadores ya están rechazando la conexión. Emite uno nuevo: KrakenOS lo detecta y lo aplica sin reiniciar.',
   'settings.tls.selfSignedNote':
     'Al ser autofirmado, cada dispositivo avisará de «sitio no seguro» hasta que instales la CA en él.',
+  'settings.tls.source.localCa': 'CA local de KrakenOS',
+  'settings.tls.ca.title': 'Instala el certificado en cada dispositivo',
+  'settings.tls.ca.intro':
+    'Cada móvil u ordenador debe confiar una vez en la CA de KrakenOS. Descarga el certificado y sigue los pasos de tu sistema.',
+  'settings.tls.ca.download': 'Descargar certificado',
+  'settings.tls.ca.scope':
+    'Esta CA solo puede avalar nombres «.local», «localhost» y direcciones privadas: aunque alguien se hiciera con ella, no serviría para suplantar un sitio de internet.',
+  'settings.tls.ca.os.windows': 'Windows',
+  'settings.tls.ca.os.macos': 'macOS',
+  'settings.tls.ca.os.android': 'Android',
+  'settings.tls.ca.os.ios': 'iPhone y iPad',
+  'settings.tls.ca.windows.1':
+    'Abre el archivo krakenos-ca.crt que has descargado y pulsa «Instalar certificado».',
+  'settings.tls.ca.windows.2': 'Elige «Equipo local» (o «Usuario actual») y pulsa «Siguiente».',
+  'settings.tls.ca.windows.3':
+    'Elige «Colocar todos los certificados en el siguiente almacén», pulsa «Examinar» y selecciona «Entidades de certificación raíz de confianza».',
+  'settings.tls.ca.windows.4':
+    'Termina el asistente, acepta el aviso de seguridad y reinicia el navegador.',
+  'settings.tls.ca.macos.1': 'Abre el archivo krakenos-ca.crt: se añade a «Acceso a Llaveros».',
+  'settings.tls.ca.macos.2':
+    'En «Acceso a Llaveros», busca «KrakenOS CA local» y abre su ficha con doble clic.',
+  'settings.tls.ca.macos.3':
+    'Despliega «Confiar», elige «Confiar siempre» y cierra la ventana con tu contraseña.',
+  'settings.tls.ca.android.1':
+    'Descarga el certificado y ve a Ajustes → Seguridad → Cifrado y credenciales → Instalar un certificado → Certificado de CA.',
+  'settings.tls.ca.android.2': 'Acepta el aviso de seguridad y elige el archivo krakenos-ca.crt.',
+  'settings.tls.ca.android.3':
+    'Reinicia el navegador. Los nombres de los menús cambian según el fabricante.',
+  'settings.tls.ca.ios.1':
+    'Descarga el certificado desde Safari y pulsa «Permitir» cuando pregunte si quieres descargar un perfil de configuración.',
+  'settings.tls.ca.ios.2': 'Abre Ajustes → «Perfil descargado» e instálalo.',
+  'settings.tls.ca.ios.3':
+    'Es el paso que más se olvida: ve a Ajustes → General → Información → Confianza de certificados y activa «KrakenOS CA local». Sin él el perfil queda instalado, pero iOS no confía en él.',
+  'settings.tls.ca.firefox':
+    'Firefox usa su propio almacén de certificados: si lo usas, impórtalo también en Ajustes → Privacidad y seguridad → Certificados.',
 
   // --- Energía (US-182) ---
   'energy.loadError': 'No se pudo cargar el consumo',

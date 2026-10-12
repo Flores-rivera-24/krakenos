@@ -123,6 +123,8 @@ export interface BuildTestAppOptions {
   maxRestoreBytes?: number;
   /** Directorio de copias automáticas (US-233): un temporal por test. */
   autoBackupDir?: string;
+  /** Certificado público de la CA local (`GET /api/system/ca-cert`); por defecto el de `env`. */
+  caCertPath?: string;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
   /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
@@ -271,6 +273,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       inventoryService,
       maxRestoreBytes: opts.maxRestoreBytes,
       autoBackupDir: opts.autoBackupDir,
+      caCertPath: opts.caCertPath,
     });
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     // Tailscale (US-215): por defecto "socket ausente" (ENOENT → not-installed);
