@@ -175,11 +175,13 @@ describe('install.sh --dry-run (US-216)', () => {
     }
   });
 
-  it('--with-all instala los tres extras, pero el TLS sigue faltando y se avisa', async () => {
+  it('--with-all instala los tres extras, pero con --tls none el TLS sigue faltando y se avisa', async () => {
     const { code, stdout } = await runInstaller([
       '--dry-run',
       '--yes',
       '--with-all',
+      '--tls',
+      'none',
       '--dir',
       '/tmp/kraken-x',
     ]);
@@ -196,22 +198,69 @@ describe('install.sh --dry-run (US-216)', () => {
     expect(stdout).toContain('sin HTTPS');
   });
 
-  it('--tls self deja la instalación sin nada que avisar', async () => {
+  // HTTPS por defecto: sin --tls y sin Tailscale con sesión, el instalador monta la
+  // CA local en vez de dejar la instalación en HTTP plano.
+  it('sin --tls y sin Tailscale elige «local» y lo dice', async () => {
+    const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x'], {
+      // PATH sin tailscale aunque la máquina de desarrollo lo tenga.
+      PATH: '/usr/bin:/bin',
+    });
+    expect(code).toBe(0);
+    expect(stdout).toContain('--tls auto → local');
+    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).toContain('HTTPS_ENABLED=true');
+    expect(stdout).toContain('TLS_CA_CERT_PATH=./certs/krakenos-ca.pem');
+    expect(stdout).toMatch(/WEB_ORIGIN=https:\/\/[a-z0-9-]+\.local:3001/);
+    expect(stdout).toContain('chown root:root /tmp/kraken-x/apps/agent/keys/krakenos-ca-key.pem');
+    expect(stdout).toContain('krakenos-cert-local.timer');
+    expect(stdout).toContain('/api/system/ca-cert');
+    expect(stdout).toContain('Confianza de certificados');
+    expect(stdout).not.toContain('sin HTTPS');
+  });
+
+  it('--tls local deja la instalación sin nada que avisar salvo instalar la CA', async () => {
     const { code, stdout } = await runInstaller([
       '--dry-run',
       '--yes',
       '--with-all',
+      '--tls',
+      'local',
+      '--dir',
+      '/tmp/kraken-x',
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).toContain('instalar UNA vez el certificado de la CA');
+  });
+
+  it('--tls self sigue funcionando como alias OBSOLETO de local', async () => {
+    const { code, stdout, stderr } = await runInstaller([
+      '--dry-run',
+      '--yes',
       '--tls',
       'self',
       '--dir',
       '/tmp/kraken-x',
     ]);
     expect(code).toBe(0);
-    expect(stdout).toContain('gen-cert.sh');
-    expect(stdout).toContain('HTTPS_ENABLED=true');
-    // Con TLS y los tres extras ya no queda nada pendiente… salvo el aviso propio
-    // del autofirmado, que es información, no una carencia silenciada.
-    expect(stdout).toContain('cada móvil avisará');
+    expect(stderr).toContain('obsoleto');
+    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).not.toContain('gen-cert.sh');
+  });
+
+  it('--tls none sigue instalando sobre HTTP, y lo avisa', async () => {
+    const { code, stdout } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--tls',
+      'none',
+      '--dir',
+      '/tmp/kraken-x',
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).not.toContain('gen-local-ca.sh');
+    expect(stdout).not.toContain('HTTPS_ENABLED=true');
+    expect(stdout).toContain('sin HTTPS');
   });
 
   it('--tls tailscale se PARA si Tailscale no está listo, en vez de dejarlo a medias', async () => {

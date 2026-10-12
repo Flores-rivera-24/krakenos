@@ -27,12 +27,18 @@
 #   --with-all       las tres anteriores
 #
 # TLS (US-241) — sin HTTPS el navegador no da «contexto seguro» y se caen la app
-# instalable (PWA), los avisos push y las passkeys:
+# instalable (PWA), los avisos push y las passkeys. Por eso HTTPS es el DEFECTO:
+#   --tls auto       (por defecto) tailscale si Tailscale está instalado y con
+#                    sesión + MagicDNS; si no, local
 #   --tls tailscale  certificado de Let's Encrypt vía Tailscale para *.ts.net
 #                    (el móvil confía sin instalar nada) + renovación por timer
-#   --tls self       certificado autofirmado: cifra, pero cada dispositivo avisará
-#                    salvo que instales la CA a mano
-#   --tls none       (por defecto) HTTP plano; se avisa al final de lo que pierdes
+#   --tls local      CA propia de KrakenOS (limitada por nameConstraints a .local,
+#                    localhost y rangos privados) + certificado de servidor para
+#                    <equipo>.local, krakenos.local, localhost y la IP de la LAN.
+#                    Cada dispositivo instala el certificado de la CA UNA vez
+#                    (GET /api/system/ca-cert o Ajustes → Conexión segura)
+#   --tls self       OBSOLETO: alias de local
+#   --tls none       HTTP plano, solo si se pide expresamente; se avisa de lo que pierdes
 #
 # En `curl | sudo bash` stdin ES la tubería, así que no hay TTY para preguntar: por
 # eso los extras se piden por bandera. Antes se «ofrecían» y siempre salían que no,
@@ -63,7 +69,7 @@ BRANCH=""
 WITH_HELPER=0
 WITH_FFMPEG=0
 WITH_DEPS=0
-TLS_MODE=none
+TLS_MODE=auto
 # Resumen final: lo que quedó desactivado se dice en voz alta, no en silencio.
 SUMMARY=()
 
@@ -139,10 +145,14 @@ parse_args() {
         ;;
       --no-service) NO_SERVICE=1 ;;
       --tls)
-        [[ $# -ge 2 ]] || die "--tls necesita un valor: tailscale | self | none"
+        [[ $# -ge 2 ]] || die "--tls necesita un valor: auto | tailscale | local | none"
         case "$2" in
-          tailscale | self | none) TLS_MODE="$2" ;;
-          *) die "--tls admite tailscale | self | none (recibido: $2)" ;;
+          auto | tailscale | local | none) TLS_MODE="$2" ;;
+          self)
+            warn "--tls self está obsoleto: ahora es un alias de --tls local (CA propia en vez de un autofirmado suelto)"
+            TLS_MODE=local
+            ;;
+          *) die "--tls admite auto | tailscale | local | none (recibido: $2)" ;;
         esac
         shift
         ;;
@@ -482,11 +492,14 @@ print_setup_url() {
   # Espera al readiness y saca del journal la URL de configuración (AUD-26:
   # el agente la imprime por stdout, legible en journald). El puerto sale del .env:
   # con PORT distinto de 3001 esto sondeaba un puerto que nadie escucha.
-  local port
+  local port scheme=http
   port="$(agent_port)"
+  [[ "$TLS_MODE" == none ]] || scheme=https
   # `_` en vez de `i`: la variable no se usa dentro del bucle (shellcheck SC2034).
   for _ in $(seq 1 30); do
-    if curl -fsS "http://127.0.0.1:${port}/health/ready" > /dev/null 2>&1; then break; fi
+    # Con HTTPS el agente no habla HTTP en ese puerto; -k es aceptable SOLO porque
+    # es el bucle local (127.0.0.1) y únicamente mira si el servicio está vivo.
+    if curl -fsSk "${scheme}://127.0.0.1:${port}/health/ready" > /dev/null 2>&1; then break; fi
     sleep 1
   done
   local setup_lines
@@ -605,24 +618,110 @@ UNIT
   log "    renovación automática programada (timer semanal; el agente recarga el cert sin reiniciar)"
 }
 
-# Autofirmado: cifra el tráfico, pero NINGÚN dispositivo confía en él de serie.
-setup_tls_self_signed() {
-  local agent="$INSTALL_DIR/apps/agent"
-  run bash "$agent/scripts/gen-cert.sh"
-  run chown -R "$SERVICE_USER":"$SERVICE_USER" "$agent/certs"
+# Nombre corto del equipo, saneado como en gen-local-ca.sh (se le pasa por
+# KRAKENOS_HOSTNAME para que ambos usen exactamente el mismo).
+local_hostname() {
+  local h
+  h="$(hostname -s 2> /dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-' || true)"
+  printf '%s' "${h:-krakenos}"
+}
+
+# CA propia de KrakenOS: el cert de servidor lo firma una CA que el dispositivo
+# instala UNA vez. Sus nameConstraints la limitan a .local/localhost/rangos
+# privados, así que su clave no sirve para suplantar ningún sitio de internet.
+setup_tls_local() {
+  local agent="$INSTALL_DIR/apps/agent" host port
+  host="$(local_hostname)"
+  port="$(agent_port)"
+
+  run env KRAKENOS_HOSTNAME="$host" bash "$agent/scripts/gen-local-ca.sh"
+  # La clave de la CA se queda de ROOT: el agente no la necesita (solo sirve el
+  # certificado del servidor) y quien robe el proceso no debe poder emitir nada.
+  run chown root:root "$agent/keys/krakenos-ca-key.pem"
+  run chmod 600 "$agent/keys/krakenos-ca-key.pem"
+  run chown "$SERVICE_USER":"$SERVICE_USER" "$agent/certs" "$agent/certs/agent-cert.pem" \
+    "$agent/certs/agent-key.pem" "$agent/certs/krakenos-ca.pem"
+  run chmod 600 "$agent/certs/agent-key.pem"
+
   set_env_var HTTPS_ENABLED true
   set_env_var TLS_CERT_PATH "./certs/agent-cert.pem"
   set_env_var TLS_KEY_PATH "./certs/agent-key.pem"
-  SUMMARY+=("TLS autofirmado: cada móvil avisará de «sitio no seguro» hasta que instales la CA en él. Para que confíe sin tocar nada: reinstala con --tls tailscale")
+  set_env_var TLS_CA_CERT_PATH "./certs/krakenos-ca.pem"
+  set_env_var WEB_ORIGIN "https://${host}.local:${port}"
+  # WebAuthn exige un NOMBRE (no una IP) y que el origen coincida con el del
+  # navegador; solo se fija si la plantilla del .env los contempla.
+  if grep -qE '^#? *WEBAUTHN_RP_ID=' "$agent/.env.example" 2> /dev/null; then
+    set_env_var WEBAUTHN_RP_ID "${host}.local"
+  fi
+  if grep -qE '^#? *WEBAUTHN_ORIGIN=' "$agent/.env.example" 2> /dev/null; then
+    set_env_var WEBAUTHN_ORIGIN "https://${host}.local:${port}"
+  fi
+  install_tls_local_timer "$host"
+
+  SUMMARY+=("TLS con CA propia: cada dispositivo debe instalar UNA vez el certificado de la CA (descárgalo en https://${host}.local:${port}/api/system/ca-cert o en Ajustes → Conexión segura; en iPhone/iPad hay además que activarlo en Ajustes → General → Información → Confianza de certificados)")
+}
+
+# Renovación del certificado de servidor (825 días): gen-local-ca.sh solo lo
+# reemite cuando quedan <60 días o cambió la IP; el agente lo recarga en caliente.
+install_tls_local_timer() {
+  local host="$1" agent="$INSTALL_DIR/apps/agent"
+  [[ $NO_SERVICE -eq 1 ]] && {
+    SUMMARY+=("sin systemd: el certificado local NO se renovará solo — ejecuta apps/agent/scripts/gen-local-ca.sh antes de que caduque")
+    return 0
+  }
+  write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.service" "$(
+    cat << UNIT
+[Unit]
+Description=Renueva el certificado TLS local de KrakenOS (CA propia)
+
+[Service]
+Type=oneshot
+Environment=KRAKENOS_HOSTNAME=${host}
+ExecStart=/usr/bin/env bash ${agent}/scripts/gen-local-ca.sh
+ExecStartPost=/usr/bin/env chown ${SERVICE_USER}:${SERVICE_USER} ${agent}/certs/agent-cert.pem ${agent}/certs/agent-key.pem
+UNIT
+  )"
+  write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.timer" "$(
+    cat << 'UNIT'
+[Unit]
+Description=Comprobacion mensual del certificado TLS local de KrakenOS
+
+[Timer]
+OnCalendar=monthly
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+UNIT
+  )"
+  run systemctl daemon-reload
+  run systemctl enable --now "${SERVICE_NAME}-cert-local.timer"
+  log "    renovación automática programada (timer mensual; el agente recarga el cert sin reiniciar)"
+}
+
+# `auto`: Tailscale si está listo (el móvil confía sin instalar nada); si no, la
+# CA local. Se resuelve a un modo concreto y se dice cuál y por qué.
+resolve_tls_mode() {
+  [[ "$TLS_MODE" == auto ]] || return 0
+  if command -v tailscale > /dev/null 2>&1 && [[ -n "$(tailscale_fqdn || true)" ]]; then
+    TLS_MODE=tailscale
+    log "    --tls auto → tailscale (Tailscale instalado, con sesión y MagicDNS)"
+    SUMMARY+=("TLS automático: se eligió «tailscale» porque Tailscale está instalado y con sesión")
+  else
+    TLS_MODE=local
+    log "    --tls auto → local (no hay Tailscale con sesión y MagicDNS)"
+    SUMMARY+=("TLS automático: se eligió «local» porque no hay Tailscale instalado y con sesión")
+  fi
 }
 
 setup_tls() {
   log "TLS (US-241)…"
+  resolve_tls_mode
   case "$TLS_MODE" in
     tailscale) setup_tls_tailscale ;;
-    self) setup_tls_self_signed ;;
+    local) setup_tls_local ;;
     none)
-      SUMMARY+=("sin HTTPS → NO funcionan la app instalable (PWA), los avisos push ni las passkeys: el navegador exige contexto seguro (--tls tailscale)")
+      SUMMARY+=("sin HTTPS → NO funcionan la app instalable (PWA), los avisos push ni las passkeys: el navegador exige contexto seguro (reinstala sin --tls none)")
       ;;
   esac
 }
