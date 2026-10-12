@@ -18,9 +18,10 @@ id = "krakenos-sensitive-file"
 description = "Fichero sensible commiteado (keys/, .env, *.db/.sqlite, *.pem/.key)"
 # Cualquier contenido no vacío…
 regex = '''(?s).+'''
-# …en una de las rutas sensibles. `.env` ancla al final, así NO matchea
-# `.env.example`/`.env.openwrt.example` (plantillas sin secretos reales).
-path = '''(?:^|/)keys/|(?:^|/)\.env(?:\.local)?$|\.(?:db|sqlite|sqlite3|pem|key)$'''
+# …en una de las rutas sensibles. `.env` y `.env.<sufijo>` (`.env.openwrt`,
+# `.env.prod`…) casan; las plantillas `*.example` las exime el allowlist de paths
+# de abajo (gitleaks usa RE2: no hay lookahead para excluirlas aquí).
+path = '''(?:^|/)keys/|(?:^|/)\.env(?:\.[^/]*)?$|\.(?:db|sqlite|sqlite3|pem|key)$'''
 
 [allowlist]
 description = "No son secretos reales: plantillas, y valores de ejemplo/fixture."
