@@ -90,6 +90,7 @@ import { MockQosManager } from '../../src/qos/mock.qos.js';
 import { MockVlanManager } from '../../src/vlan/mock.vlan.js';
 import { MockVpnManager } from '../../src/vpn/mock.vpn.js';
 import type { TailscaleTransport } from '../../src/vpn/tailscale.js';
+import { registerErrorHandler } from '../../src/plugins/error-handler.js';
 import { auditPlugin } from '../../src/plugins/audit.js';
 import { authPlugin } from '../../src/plugins/auth.js';
 import { metricsPlugin } from '../../src/plugins/metrics.js';
@@ -139,6 +140,7 @@ export interface BuildTestAppOptions {
  */
 export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<FastifyInstance> {
   const app = Fastify({ logger: false });
+  registerErrorHandler(app); // el mismo manejador de errores que el servidor real
 
   // Recolecta la tabla de rutas real a medida que se registran (AUD-22): la suite
   // de autorización la usa para fallar si una ruta de escritura nueva no está

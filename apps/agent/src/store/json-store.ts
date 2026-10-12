@@ -108,7 +108,7 @@ export class FileJsonStore<T extends Identifiable> implements JsonStore<T> {
     await mkdir(dirname(this.path), { recursive: true });
     const tmp = `${this.path}.${randomUUID()}.tmp`;
     try {
-      const handle = await open(tmp, 'w');
+      const handle = await open(tmp, 'w', 0o600); // credenciales: solo el dueño
       try {
         await handle.writeFile(JSON.stringify(items, null, 2), 'utf8');
         // fsync: asegura que el contenido llega a disco antes de hacerlo visible.

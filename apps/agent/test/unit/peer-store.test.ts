@@ -1,4 +1,4 @@
-import { rm } from 'node:fs/promises';
+import { rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -38,6 +38,11 @@ describe('FilePeerStore', () => {
     expect(await reopened.list()).toHaveLength(1);
     expect((await reopened.removeById('p1'))?.name).toBe('Móvil');
     expect(await reopened.list()).toHaveLength(0);
+  });
+
+  it('el fichero se crea con permisos 0600 (claves de peers)', async () => {
+    await new FilePeerStore(path).add(PEER);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
   });
 
   it('devuelve lista vacía si el fichero no existe', async () => {

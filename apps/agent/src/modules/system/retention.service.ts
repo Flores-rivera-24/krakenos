@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import {
+  pruneAccessRequests,
   DEFAULT_ENERGY_RETENTION_DAYS,
   pruneAuditLog,
   pruneAutomationRuns,
@@ -93,6 +94,11 @@ export class RetentionService {
       const destinos = await pruneKnownDestinations(this.app.prisma);
       if (destinos > 0) {
         this.app.log.info(`[retention] olvidados ${destinos} destinos que ya no se visitan`);
+      }
+      // Solicitudes de acceso: ruta pública, no puede crecer sin límite.
+      const solicitudes = await pruneAccessRequests(this.app.prisma);
+      if (solicitudes > 0) {
+        this.app.log.info(`[retention] podadas ${solicitudes} solicitudes de acceso caducadas`);
       }
     } catch (err) {
       this.app.log.error({ err }, '[retention] la poda de auditoría falló');

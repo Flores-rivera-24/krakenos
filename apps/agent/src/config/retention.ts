@@ -25,6 +25,7 @@ type PrismaLike = Pick<
   | 'surveyScan'
   | 'dnsQueryLog'
   | 'knownDestination'
+  | 'accessRequest'
 >;
 
 /** Retención fija del log de ejecuciones de automatizaciones (US-167). */
@@ -187,6 +188,30 @@ export async function pruneKnownDestinations(
 ): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.knownDestination.deleteMany({ where: { lastSeenAt: { lt: cutoff } } });
+  return res.count;
+}
+
+/**
+ * Retención de las solicitudes de acceso (`AccessRequest`): la ruta que las crea es
+ * pública, así que no pueden acumularse para siempre. Las pendientes caducan a los
+ * 30 días de pedirlas; las decididas, a los 30 días de la decisión (no antes: una
+ * solicitud rechazada se recuerda para que el «no» no se reabra pulsando de nuevo).
+ */
+export const ACCESS_REQUEST_RETENTION_DAYS = 30;
+
+export async function pruneAccessRequests(
+  prisma: PrismaLike,
+  days: number = ACCESS_REQUEST_RETENTION_DAYS,
+): Promise<number> {
+  const cutoff = new Date(Date.now() - days * DAY_MS);
+  const res = await prisma.accessRequest.deleteMany({
+    where: {
+      OR: [
+        { status: 'pending', createdAt: { lt: cutoff } },
+        { status: { not: 'pending' }, decidedAt: { lt: cutoff } },
+      ],
+    },
+  });
   return res.count;
 }
 

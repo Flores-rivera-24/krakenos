@@ -141,7 +141,7 @@ export const invitationsRoutes: FastifyPluginAsync = async (app) => {
  * contraseña la siga eligiendo quien la va a usar.
  */
 export const accessRequestsRoutes: FastifyPluginAsync = async (app) => {
-  const service = new AccessRequestsService(app.prisma);
+  const service = new AccessRequestsService(app.prisma, app.log);
   const invitations = new InvitationsService(app.prisma);
   const adminOnly = app.requireActiveAdmin;
 

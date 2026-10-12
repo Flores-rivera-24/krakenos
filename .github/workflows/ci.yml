@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Semanal aunque nadie empuje: un test con fecha que caduca o un aviso OSV nuevo
+  # no deben pasar meses sin verse (main estuvo rojo dos meses sin que nadie lo viera).
+  # Ningún job de este workflow publica nada; la publicación a GHCR vive en docker.yml
+  # y va condicionada a `push`.
+  schedule:
+    - cron: '0 6 * * 1' # lunes 06:00 UTC
 
 # Cancela ejecuciones anteriores de la misma rama/PR en curso.
 concurrency:

@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -46,6 +46,14 @@ describe('FileJsonStore', () => {
     expect(await reopened.list()).toHaveLength(2);
     expect((await reopened.removeById('a'))?.v).toBe(1);
     expect(await reopened.list()).toHaveLength(1);
+  });
+
+  it('el fichero se escribe con permisos 0600 (guarda credenciales)', async () => {
+    await new FileJsonStore<Item>(path).upsert({ id: 'a', v: 1 });
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
+    // Y se mantiene tras reescribir (el temporal renombrado hereda su modo).
+    await new FileJsonStore<Item>(path).upsert({ id: 'b', v: 2 });
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
   });
 
   it('list() devuelve [] si el fichero no existe (no es corrupción, US-52)', async () => {
