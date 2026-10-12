@@ -201,7 +201,7 @@ export function SettingsPage() {
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         {/* Sidebar de secciones */}
-        <nav className="flex gap-1 overflow-x-auto md:flex-col">
+        <nav className="flex min-w-0 gap-1 overflow-x-auto md:flex-col">
           {SECTIONS.filter((s) => !s.adminOnly || isAdmin).map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
@@ -220,7 +220,7 @@ export function SettingsPage() {
         </nav>
 
         {/* Contenido */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {applied && (
             <div
               role="status"
