@@ -114,7 +114,8 @@ describe('TlsService (US-241)', () => {
 
   it('no repite el aviso en cada barrido (cooldown diario)', async () => {
     const { cert, key } = generarPar(10);
-    let ahora = new Date('2026-07-30T00:00:00.000Z');
+    // El certificado se firma con el reloj del sistema: una fecha fija caduca el test.
+    let ahora = new Date();
     const { app, audits } = fakeApp();
     const svc = new TlsService(app, {
       certPath: cert,
