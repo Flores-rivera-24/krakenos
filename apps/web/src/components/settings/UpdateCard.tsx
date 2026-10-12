@@ -3,7 +3,9 @@ import { AlertTriangle, ArrowUpCircle, CheckCircle2, RefreshCw, RotateCcw } from
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Callout } from '@/components/ui/callout';
 import { CopyButton } from '@/components/ui/copy-button';
+import { RichText } from '@/components/ui/rich-text';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -143,9 +145,9 @@ export function UpdateCard() {
 
             {plan.canSelfUpdate ? (
               plan.blockedReason === 'NODE_TOO_OLD' ? (
-                <p role="note" className="text-kr-sm text-kr-secondary">
-                  {t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}
-                </p>
+                <Callout variant="warning" standing>
+                  <RichText>{t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}</RichText>
+                </Callout>
               ) : (
                 isAdmin && (
                   <Button onClick={() => void apply()} disabled={!canApply}>
@@ -207,6 +209,13 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       </p>
     );
   }
+  if (!result.rolledBack && result.steps.some((s) => s.code === 'NODE_TOO_OLD')) {
+    return (
+      <Callout variant="warning" standing>
+        <RichText>{t('settings.update.lastNodeTooOld')}</RichText>
+      </Callout>
+    );
+  }
   return (
     <p className="flex items-center gap-2 text-kr-xs text-warning">
       {result.rolledBack ? (
@@ -216,9 +225,7 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       )}
       {result.rolledBack
         ? t('settings.update.lastRolledBack', { from: result.fromVersion })
-        : result.steps.some((s) => s.code === 'NODE_TOO_OLD')
-          ? t('settings.update.lastNodeTooOld')
-          : t('settings.update.lastFailed')}
+        : t('settings.update.lastFailed')}
     </p>
   );
 }

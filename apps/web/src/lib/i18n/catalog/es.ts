@@ -224,9 +224,9 @@ export const es = {
   'settings.update.lastRolledBack': 'Última actualización revertida a {from} (la nueva versión falló).',
   'settings.update.lastFailed': 'La última actualización falló.',
   'settings.update.nodeTooOld':
-    'Esta versión necesita Node {version} o superior y el sistema tiene uno anterior. Actualiza con «sudo bash scripts/install.sh --update», que instala el Node necesario.',
+    'Esta versión necesita Node {version} o superior y el sistema tiene uno anterior. Actualiza con <c>sudo bash scripts/install.sh --update</c>, que instala el Node necesario.',
   'settings.update.lastNodeTooOld':
-    'La última actualización no se aplicó: la nueva versión necesita un Node más reciente. Actualiza con «sudo bash scripts/install.sh --update».',
+    'La última actualización no se aplicó: la nueva versión necesita un Node más reciente. Actualiza con <c>sudo bash scripts/install.sh --update</c>.',
 
   // --- Ajustes → Salud del sistema (US-191) ---
   'settings.health.title': 'Salud del sistema',
