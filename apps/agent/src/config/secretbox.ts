@@ -119,7 +119,17 @@ export function loadOrCreateSecretbox(path: string): Secretbox {
   let raw: string | null = null;
   try {
     raw = readFileSync(path, 'utf8');
-  } catch {
+  } catch (err) {
+    // Solo un fichero inexistente autoriza a generar una clave. Cualquier otro fallo
+    // (EACCES, EISDIR…) NO: sobrescribirla dejaría ilegibles, sin error, todos los
+    // secretos ya cifrados en la base.
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      throw new Error(
+        `No se pudo leer la clave de secretbox en ${path} (${(err as NodeJS.ErrnoException).code ?? 'error'}). ` +
+          'No se regenera para no perder los secretos cifrados: corrige el permiso o la ruta y reinicia.',
+        { cause: err },
+      );
+    }
     raw = null;
   }
   if (raw && raw.trim()) {

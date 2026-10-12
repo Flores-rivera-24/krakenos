@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { MAX_PENDING_ACCESS_REQUESTS } from '../../src/modules/onboarding/access-requests.service.js';
+import { ACCESS_REQUEST_RETENTION_DAYS, pruneAccessRequests } from '../../src/config/retention.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 /**
@@ -180,6 +182,56 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
       // Y por dentro no se registra solicitud para quien ya tiene cuenta.
       const filas = await app.prisma.accessRequest.findMany();
       expect(filas.map((f) => f.email)).toEqual(['desconocido@krakenos.test']);
+    });
+
+    it('con el tope de pendientes lleno responde la MISMA 202 y no guarda la nueva', async () => {
+      await app.prisma.accessRequest.createMany({
+        data: Array.from({ length: MAX_PENDING_ACCESS_REQUESTS }, (_, i) => ({
+          email: `relleno${i}@krakenos.test`,
+          displayName: 'Relleno',
+        })),
+      });
+      const referencia = await pedir('cabe-si-hay-hueco@krakenos.test'); // ya no cabe
+      const otra = await pedir('otra@krakenos.test');
+      expect(referencia.statusCode).toBe(202);
+      expect(otra.statusCode).toBe(referencia.statusCode);
+      expect(otra.body).toBe(referencia.body);
+      expect(await app.prisma.accessRequest.count()).toBe(MAX_PENDING_ACCESS_REQUESTS);
+      expect(
+        await app.prisma.accessRequest.findUnique({ where: { email: 'otra@krakenos.test' } }),
+      ).toBeNull();
+      // Refrescar una que ya estaba sí sigue funcionando con la bandeja llena.
+      const existente = await app.inject({
+        method: 'POST',
+        url: '/api/access-requests',
+        payload: { email: 'relleno0@krakenos.test', displayName: 'Nombre nuevo' },
+      });
+      expect(existente.statusCode).toBe(202);
+      expect(
+        (await app.prisma.accessRequest.findUnique({ where: { email: 'relleno0@krakenos.test' } }))
+          ?.displayName,
+      ).toBe('Nombre nuevo');
+    });
+
+    it('la retención poda lo caducado y conserva lo reciente', async () => {
+      const dia = 24 * 60 * 60 * 1000;
+      const viejo = new Date(Date.now() - (ACCESS_REQUEST_RETENTION_DAYS + 5) * dia);
+      const reciente = new Date(Date.now() - 2 * dia);
+      const fila = (email: string, status: string, createdAt: Date, decidedAt: Date | null) =>
+        app.prisma.accessRequest.create({
+          data: { email, displayName: 'X', status, createdAt, decidedAt },
+        });
+      await fila('pend-vieja@k.test', 'pending', viejo, null);
+      await fila('pend-reciente@k.test', 'pending', reciente, null);
+      await fila('aprobada-vieja@k.test', 'approved', viejo, viejo);
+      await fila('rechazada-reciente@k.test', 'rejected', viejo, reciente);
+
+      expect(await pruneAccessRequests(app.prisma)).toBe(2);
+      const quedan = await app.prisma.accessRequest.findMany({ select: { email: true } });
+      expect(quedan.map((f) => f.email).sort()).toEqual([
+        'pend-reciente@k.test',
+        'rechazada-reciente@k.test',
+      ]);
     });
 
     it('pedirlo dos veces no duplica la solicitud', async () => {

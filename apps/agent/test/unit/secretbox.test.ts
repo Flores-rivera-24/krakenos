@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -108,6 +108,17 @@ describe('secretbox — cifrado de secretos en reposo (US-139)', () => {
       // Una segunda carga usa la MISMA clave del disco → descifra el token anterior.
       const box2 = loadOrCreateSecretbox(path);
       expect(box2.decrypt(token)).toBe('persistente');
+    });
+
+    it('un error de lectura que no es ENOENT lanza y NO escribe una clave nueva', () => {
+      // Un directorio donde debería estar el fichero → EISDIR al leer.
+      const path = join(dir, 'es-un-directorio.key');
+      mkdirSync(path);
+      expect(() => loadOrCreateSecretbox(path)).toThrow(/no se regenera/i);
+      expect(() => loadOrCreateSecretbox(path)).toThrow(path);
+      // Sigue siendo un directorio vacío: nada se escribió encima.
+      expect(statSync(path).isDirectory()).toBe(true);
+      expect(readdirSync(path)).toEqual([]);
     });
 
     it('carga una clave existente escrita a mano', () => {

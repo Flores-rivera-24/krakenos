@@ -110,6 +110,7 @@ import { vpnRoutes } from './modules/vpn/vpn.routes.js';
 import { createTailscaleTransport } from './vpn/tailscale.js';
 import { wifiRoutes } from './modules/wifi/wifi.routes.js';
 import { coverageRoutes } from './modules/coverage/coverage.routes.js';
+import { registerErrorHandler } from './plugins/error-handler.js';
 import { serializarPeticion } from './observability/log-redact.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
@@ -129,6 +130,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     ? (Fastify({ logger, https: env.https, trustProxy: env.trustProxy }) as unknown as FastifyInstance)
     : Fastify({ logger, trustProxy: env.trustProxy });
 
+  // Los 5xx no devuelven el mensaje interno (Prisma, drivers…); los 4xx quedan igual.
+  registerErrorHandler(app);
+
   // Aviso si TRUST_PROXY confía en XFF de cualquier origen (US-76, F2).
   for (const w of trustProxyWarnings(env.trustProxy)) {
     app.log.warn(`[config] ${w}`);
@@ -141,7 +145,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     app.log.warn(
       '[config] NODE_ENV=production sin HTTPS ni TRUST_PROXY: la cookie de refresh se ' +
         'emite sin `Secure` y viajaría en claro sobre HTTP. Termina TLS (HTTPS_ENABLED) ' +
-        'o sitúa el agente tras un proxy de confianza / WireGuard.',
+        'o sitúa el agente tras un proxy de confianza / WireGuard. Sin HTTPS tampoco hay ' +
+        'PWA, notificaciones push ni passkeys (exigen contexto seguro): `install.sh --tls ' +
+        'tailscale|self`.',
     );
   }
 

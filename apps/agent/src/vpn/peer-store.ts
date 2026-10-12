@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 
 /** Registro persistido de un peer (lo que WireGuard no guarda: id, nombre, alta). */
@@ -55,7 +55,12 @@ export class FilePeerStore implements PeerStore {
 
   private async write(peers: StoredPeer[]): Promise<void> {
     await mkdir(dirname(this.path), { recursive: true });
-    await writeFile(this.path, JSON.stringify(peers, null, 2), 'utf8');
+    await writeFile(this.path, JSON.stringify(peers, null, 2), {
+      encoding: 'utf8',
+      mode: 0o600, // claves de peers WireGuard: solo el dueño
+    });
+    // `mode` solo aplica al crear: un fichero que ya existía con 0644 se corrige aquí.
+    await chmod(this.path, 0o600);
   }
 
   async list(): Promise<StoredPeer[]> {

@@ -5,6 +5,14 @@ import type {
 } from '@krakenos/types';
 import type { PrismaClient } from '@prisma/client';
 
+/**
+ * Tope de solicitudes **pendientes**. La ruta es pública (5/min por IP, pero una IP no
+ * es una persona): sin tope, un script con correos distintos llena la tabla y la bandeja
+ * del admin. Pasado el tope la nueva no se guarda, y la respuesta sigue siendo la misma
+ * 202 — cambiarla sería un oráculo.
+ */
+export const MAX_PENDING_ACCESS_REQUESTS = 50;
+
 export class AccessRequestError extends Error {
   constructor(
     readonly code: string,
@@ -45,7 +53,12 @@ function toAccessRequest(row: AccessRequestRow): AccessRequest {
  * ninguna cuenta ni ninguna credencial.
  */
 export class AccessRequestsService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private avisadoTopeLleno = false;
+
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly log?: { warn: (msg: string) => void },
+  ) {}
 
   /**
    * Registra la solicitud. **Idempotente por correo**: volver a pedirlo actualiza la
@@ -66,6 +79,22 @@ export class AccessRequestsService {
     // Una solicitud ya rechazada no se reabre sola: si se pudiera, el «no» del admin
     // duraría lo que tarde el interesado en volver a pulsar el botón.
     if (previa?.status === 'rejected') return;
+
+    // Tope de pendientes: refrescar la que ya existe sí vale (no añade filas); una
+    // nueva con la bandeja llena se descarta en silencio de cara al cliente.
+    if (!previa) {
+      const pendientes = await this.prisma.accessRequest.count({ where: { status: 'pending' } });
+      if (pendientes >= MAX_PENDING_ACCESS_REQUESTS) {
+        if (!this.avisadoTopeLleno) {
+          this.avisadoTopeLleno = true;
+          this.log?.warn(
+            `[onboarding] ${MAX_PENDING_ACCESS_REQUESTS} solicitudes de acceso pendientes: ` +
+              'las nuevas se descartan hasta que el admin decida o caduquen.',
+          );
+        }
+        return;
+      }
+    }
 
     await this.prisma.accessRequest.upsert({
       where: { email: body.email },

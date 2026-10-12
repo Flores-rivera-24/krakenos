@@ -48,6 +48,32 @@ describe('rutas de push (US-45)', () => {
     expect(row?.p256dh).toBe('pkey');
   });
 
+  it('POST /api/push/subscribe no deja robar el endpoint de otro usuario (409)', async () => {
+    const a = await seedUser(app, { role: 'viewer', email: 'a@push.test' });
+    const b = await seedUser(app, { role: 'viewer', email: 'b@push.test' });
+    const post = (u: typeof a, payload: typeof SUB) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/push/subscribe',
+        headers: authHeader(signAccess(app, u)),
+        payload,
+      });
+    expect((await post(a, SUB)).statusCode).toBe(204);
+
+    const stolen = await post(b, { ...SUB, keys: { p256dh: 'otra', auth: 'otra' } });
+    expect(stolen.statusCode).toBe(409);
+    expect(stolen.json().code).toBe('PUSH_ENDPOINT_TAKEN');
+    const row = await app.prisma.pushSubscription.findUnique({ where: { endpoint: SUB.endpoint } });
+    expect(row?.userId).toBe(a.id);
+    expect(row?.p256dh).toBe('pkey');
+
+    // El dueño sí puede refrescar sus claves.
+    expect((await post(a, { ...SUB, keys: { p256dh: 'nueva', auth: 'akey' } })).statusCode).toBe(204);
+    const after = await app.prisma.pushSubscription.findUnique({ where: { endpoint: SUB.endpoint } });
+    expect(after?.userId).toBe(a.id);
+    expect(after?.p256dh).toBe('nueva');
+  });
+
   it('POST /api/push/subscribe rechaza endpoints no permitidos (AUD3-01)', async () => {
     const user = await seedUser(app, { role: 'guest' });
     const headers = authHeader(signAccess(app, user));

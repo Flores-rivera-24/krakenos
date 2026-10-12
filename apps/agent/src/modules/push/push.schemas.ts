@@ -31,7 +31,7 @@ export const subscribeSchema = {
       },
     },
   },
-  response: { 204: { type: 'null' }, 400: errorResponse },
+  response: { 204: { type: 'null' }, 400: errorResponse, 409: errorResponse },
 } as const;
 
 export const unsubscribeSchema = {

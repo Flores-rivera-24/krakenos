@@ -39,11 +39,30 @@ export const pushRoutes: FastifyPluginAsync<PushRoutesOpts> = async (app, opts) 
         }
         throw err;
       }
-      await app.prisma.pushSubscription.upsert({
-        where: { endpoint },
-        create: { userId: req.user.sub, endpoint, p256dh: keys.p256dh, auth: keys.auth },
-        update: { userId: req.user.sub, p256dh: keys.p256dh, auth: keys.auth },
+      // Un endpoint ya registrado por OTRO usuario no se reasigna: quien lo conociera
+      // se quedaría sus avisos (alarma incluida). findUnique + escritura van en una
+      // transacción; la carrera residual la cierra el índice único de `endpoint`.
+      const taken = await app.prisma.$transaction(async (tx) => {
+        const existing = await tx.pushSubscription.findUnique({ where: { endpoint } });
+        if (existing && existing.userId !== req.user.sub) return true;
+        if (existing) {
+          await tx.pushSubscription.update({
+            where: { endpoint },
+            data: { p256dh: keys.p256dh, auth: keys.auth },
+          });
+        } else {
+          await tx.pushSubscription.create({
+            data: { userId: req.user.sub, endpoint, p256dh: keys.p256dh, auth: keys.auth },
+          });
+        }
+        return false;
       });
+      if (taken) {
+        return reply.code(409).send({
+          code: 'PUSH_ENDPOINT_TAKEN',
+          message: 'Ese endpoint de notificaciones ya pertenece a otro usuario.',
+        });
+      }
       return reply.code(204).send();
     },
   );
