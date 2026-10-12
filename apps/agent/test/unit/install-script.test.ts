@@ -1,6 +1,6 @@
 import { execFile, execFileSync } from 'node:child_process';
-import { chmodSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { chmodSync, linkSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -465,7 +465,9 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
       join(dir, 'apps/agent/.env'),
       'HTTPS_ENABLED=true\nTLS_CERT_PATH=./certs/agent-cert.pem\n',
     );
-    const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir]);
+    const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir], {
+      KRAKENOS_SERVICE_USER: userInfo().username,
+    });
     expect(code).toBe(0);
     expect(stdout).toContain('migrando el certificado');
     expect(stdout).toContain(
@@ -483,8 +485,50 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
     mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
     writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
     symlinkSync('/etc/shadow', join(dir, 'apps/agent/certs/agent-key.pem'));
-    const { stdout, stderr } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir]);
+    const { stdout, stderr } = await runInstaller(
+      ['--dry-run', '--yes', '--update', '--dir', dir],
+      {
+        KRAKENOS_SERVICE_USER: userInfo().username,
+      },
+    );
     expect(stdout + stderr).toContain('TLS NO migrado');
     expect(stdout).not.toContain('agent-key.pem.nuevo');
+  });
+
+  it('--update NO migra un enlace DURO (pasa -f y ! -L, pero apunta a un fichero de root)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-hl-'));
+    execFileSync('git', ['init', '-q', dir]);
+    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+    const objetivo = join(dir, 'objetivo');
+    writeFileSync(objetivo, 'secreto');
+    linkSync(objetivo, join(dir, 'apps/agent/certs/agent-key.pem'));
+    const { stdout, stderr } = await runInstaller(
+      ['--dry-run', '--yes', '--update', '--dir', dir],
+      {
+        KRAKENOS_SERVICE_USER: userInfo().username,
+      },
+    );
+    expect(stdout + stderr).toContain('TLS NO migrado');
+    expect(stdout).not.toContain('agent-key.pem.nuevo');
+    // Y no se movió NADA: el certificado tampoco (no queda el par partido).
+    expect(stdout).not.toContain('agent-cert.pem.nuevo');
+  });
+
+  it('--update NO migra un fichero de otro propietario', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-own-'));
+    execFileSync('git', ['init', '-q', dir]);
+    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+    writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
+    // El servicio "es" otro usuario distinto del dueño de los ficheros.
+    const { stdout, stderr } = await runInstaller(
+      ['--dry-run', '--yes', '--update', '--dir', dir],
+      {
+        KRAKENOS_SERVICE_USER: 'nadie-que-exista',
+      },
+    );
+    expect(stdout + stderr).toContain('TLS NO migrado');
+    expect(stdout).not.toContain('.nuevo');
   });
 });

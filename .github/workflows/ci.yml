@@ -193,6 +193,10 @@ jobs:
       - name: Run installer (from local tree, no service)
         run: |
           apt-get update -qq && apt-get install -y -qq curl git ca-certificates procps sudo
+          # Con --no-service el instalador no crea el usuario; se crea aquí para que el
+          # grupo del material TLS (root:krakenos) y las comprobaciones "como krakenos"
+          # sean las de una instalación real.
+          useradd --system --home /opt/krakenos --shell /usr/sbin/nologin krakenos
           bash scripts/install.sh --yes --no-service --dir /opt/krakenos --from-local "$PWD" | tee /tmp/install-1.log
 
       - name: Boot agent and probe /health/ready

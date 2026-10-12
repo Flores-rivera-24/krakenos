@@ -427,9 +427,7 @@ install_service() {
     return
   fi
   log "[6/7] Servicio systemd ($SERVICE_NAME)…"
-  if ! id -u "$SERVICE_USER" > /dev/null 2>&1; then
-    run useradd --system --home "$INSTALL_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
-  fi
+  ensure_service_user
   run chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
   local unit="/etc/systemd/system/${SERVICE_NAME}.service"
   local node_bin
@@ -567,13 +565,36 @@ tailscale_fqdn() {
   tailscale status --json 2>/dev/null | sed -n 's/.*"DNSName": *"\([^"]*\)\..*/\1/p' | head -1
 }
 
+# El usuario del servicio tiene que existir ANTES de crear los directorios TLS: el
+# grupo del directorio es el suyo (el agente lee por grupo). Sin servicio
+# (--no-service) no se crea, y el grupo cae a root.
+ensure_service_user() {
+  if ! id -u "$SERVICE_USER" > /dev/null 2>&1; then
+    run useradd --system --home "$INSTALL_DIR" --shell /usr/sbin/nologin "$SERVICE_USER"
+  fi
+}
+
+tls_group() {
+  if [[ $NO_SERVICE -eq 0 ]] || id -u "$SERVICE_USER" > /dev/null 2>&1; then
+    printf '%s' "$SERVICE_USER"
+  else
+    printf 'root'
+  fi
+}
+
 # Directorios del material TLS, todos de root (ver el comentario de las constantes).
 prepare_tls_dirs() {
   local with_ca="$1"
   [[ $DRY_RUN -eq 1 || "$(id -u)" -eq 0 ]] ||
     die "el material TLS se instala en /etc/krakenos y necesita root (usa sudo)"
+  [[ $NO_SERVICE -eq 1 ]] || ensure_service_user
+  local group
+  group="$(tls_group)"
+  if [[ "$group" == root ]]; then
+    SUMMARY+=("sin usuario de servicio ($SERVICE_USER): el material TLS queda legible solo por root — ejecuta el agente como root o ajusta el grupo de $TLS_DIR")
+  fi
   run install -d -o root -g root -m 0755 "$(dirname "$TLS_DIR")"
-  run install -d -o root -g "$SERVICE_USER" -m 0750 "$TLS_DIR"
+  run install -d -o root -g "$group" -m 0750 "$TLS_DIR"
   if [[ "$with_ca" == yes ]]; then
     run install -d -o root -g root -m 0700 "$CA_DIR"
   fi
@@ -611,7 +632,7 @@ setup_tls_tailscale() {
   # root escribe en un directorio de root: el usuario del servicio no puede plantar
   # un enlace simbólico en esa ruta. Después se da lectura por grupo al servicio.
   run tailscale cert --cert-file "$TLS_DIR/agent-cert.pem" --key-file "$TLS_DIR/agent-key.pem" "$fqdn"
-  run chgrp "$SERVICE_USER" "$TLS_DIR/agent-cert.pem" "$TLS_DIR/agent-key.pem"
+  run chgrp "$(tls_group)" "$TLS_DIR/agent-cert.pem" "$TLS_DIR/agent-key.pem"
   run chmod 0644 "$TLS_DIR/agent-cert.pem"
   run chmod 0640 "$TLS_DIR/agent-key.pem"
 
@@ -715,7 +736,7 @@ setup_tls_local() {
   prepare_tls_dirs yes
   install_root_script
   run env KRAKENOS_HOSTNAME="$host" KRAKENOS_CERTS_DIR="$TLS_DIR" KRAKENOS_KEYS_DIR="$CA_DIR" \
-    KRAKENOS_TLS_GROUP="$SERVICE_USER" bash "$LIB_DIR/gen-local-ca.sh"
+    KRAKENOS_TLS_GROUP="$(tls_group)" bash "$LIB_DIR/gen-local-ca.sh"
 
   set_tls_env_paths
   set_env_var TLS_CA_CERT_PATH "$TLS_DIR/krakenos-ca.pem"
@@ -804,13 +825,28 @@ setup_tls() {
   esac
 }
 
+# ¿Es un origen en el que se puede confiar? Fichero normal (ni enlace simbólico),
+# con UN solo enlace duro (un enlace duro a /etc/shadow pasa `-f` y `! -L`; solo
+# `fs.protected_hardlinks` lo impide, y no es una garantía) y propiedad del usuario
+# del servicio o de root.
+tls_source_ok() {
+  local src="$1" owner
+  [[ -f "$src" && ! -L "$src" ]] || return 1
+  [[ "$(stat -c %h "$src" 2> /dev/null)" == 1 ]] || return 1
+  owner="$(stat -c %U "$src" 2> /dev/null)"
+  [[ "$owner" == "$SERVICE_USER" || "$owner" == root ]]
+}
+
 # Copia un fichero del árbol del servicio al directorio TLS de root SIN seguir
-# enlaces simbólicos: el origen es del usuario del servicio, así que un enlace a
-# /etc/shadow no puede convertirse en un fichero legible por él. Devuelve 1 si el
-# origen no existe o no es un fichero normal.
+# enlaces: el origen es del usuario del servicio, así que un enlace (simbólico o
+# duro) a /etc/shadow no puede convertirse en un fichero legible por él. Devuelve 1
+# si el origen no es de fiar o cambió durante la copia.
 copy_tls_file() {
   local src="$1" dst="$2" mode="$3"
-  [[ -f "$src" && ! -L "$src" ]] || return 1
+  tls_source_ok "$src" || {
+    warn "$src no es un fichero normal del servicio (enlace simbólico, enlace duro u otro propietario): se omite"
+    return 1
+  }
   # `cp -P` copia el enlace como enlace si lo fuera (carrera entre la comprobación
   # y la copia); el destino se revalida ya dentro del directorio de root.
   run cp -P --no-preserve=all "$src" "$dst.nuevo"
@@ -819,7 +855,7 @@ copy_tls_file() {
     warn "$src cambió durante la copia (¿enlace simbólico?): se omite"
     return 1
   fi
-  run chgrp "$SERVICE_USER" "$dst.nuevo"
+  run chgrp "$(tls_group)" "$dst.nuevo"
   run chmod "$mode" "$dst.nuevo"
   run mv -f "$dst.nuevo" "$dst"
   run rm -f "$src"
@@ -830,6 +866,12 @@ copy_tls_file() {
 # se refresca la copia de root del script y se reinstalan las unidades de los timers
 # SIN `ExecStartPost=chown` (root hacía chown, siguiendo enlaces, sobre rutas que el
 # servicio controlaba).
+#
+# Riesgo ACEPTADO (docs/threat-model.md §9.3): el código instalado es del usuario del
+# servicio (lo exige la actualización con un clic), así que ejecutar ESTE instalador
+# como root ejecuta código que el servicio pudo modificar. Lo automático ya no lo
+# hace —el timer usa la copia de root y el servicio no puede invocar el instalador
+# por sudo—; al actualizar a mano, el administrador confía en el árbol, como antes.
 refresh_tls_after_update() {
   local agent="$INSTALL_DIR/apps/agent" old migrated=0 f
   old="$agent/certs"
@@ -840,7 +882,7 @@ refresh_tls_after_update() {
     prepare_tls_dirs no
     # Los dos ficheros normales (ni enlaces) ANTES de tocar nada: mover solo uno
     # dejaría el par partido entre dos rutas.
-    if [[ -f "$old/agent-key.pem" && ! -L "$old/agent-key.pem" && ! -L "$old/agent-cert.pem" ]] &&
+    if tls_source_ok "$old/agent-cert.pem" && tls_source_ok "$old/agent-key.pem" &&
       copy_tls_file "$old/agent-cert.pem" "$TLS_DIR/agent-cert.pem" 0644 &&
       copy_tls_file "$old/agent-key.pem" "$TLS_DIR/agent-key.pem" 0640; then
       # Si venía de una CA local anterior, el certificado público la acompaña.
