@@ -250,6 +250,21 @@ export const en: Record<TranslationKey, string> = {
   'settings.support.error': 'Could not generate the support bundle',
 
   // --- Settings → System → About (US-257) ---
+  'settings.install.title': 'Install as an app',
+  'settings.install.desc':
+    'Open KrakenOS from your desktop, with its own icon and in its own window. Monitoring keeps running even if you close it.',
+  'settings.install.button': 'Install app',
+  'settings.install.toast': 'KrakenOS installed as an app',
+  'settings.install.installed': 'KrakenOS is already installed as an app on this device.',
+  'settings.install.running': 'You are using KrakenOS as an app, in its own window.',
+  'settings.install.ios':
+    'On iPhone and iPad it is installed from the browser: «Share» → «Add to Home Screen».',
+  'settings.install.insecure':
+    'The browser only allows installing the app over HTTPS. See the «{tls}» card on this same page to learn how to enable it.',
+  'settings.install.unsupported':
+    'This browser does not offer installation from here. Try Edge or Chrome, or look for «Install» in the browser menu.',
+  'settings.install.edgeTip':
+    'Tip: in Edge, you can make KrakenOS open when you sign in from edge://apps.',
   'settings.about.title': 'About KrakenOS',
   'settings.about.license': 'KrakenOS is free software, released under the {license} license.',
   'settings.about.source': 'View the source code',

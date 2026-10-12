@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
 import { ensureCatalog, initLocale, resolveInitialLocale } from '@/lib/i18n';
 import { registrarServiceWorker } from '@/lib/pwa';
+import { iniciarCapturaDeInstalacionGlobal } from '@/store/install.store';
 import { applyTheme, getTheme } from '@/lib/theme';
 import './index.css';
 
@@ -14,6 +15,10 @@ applyTheme(getTheme());
 // notificaciones, así que quien no las quería no tenía PWA. Es best-effort — si
 // falla, la app sigue funcionando como web normal.
 void registrarServiceWorker();
+
+// `beforeinstallprompt` puede llegar antes del primer render: se engancha aquí y se
+// guarda en el store para que la tarjeta de Ajustes lo encuentre esperando.
+iniciarCapturaDeInstalacionGlobal();
 
 const container = document.getElementById('root');
 if (!container) throw new Error('No se encontró el elemento #root');

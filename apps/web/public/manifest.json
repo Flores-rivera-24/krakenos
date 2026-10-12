@@ -2,9 +2,13 @@
   "name": "KrakenOS — Home Control",
   "short_name": "KrakenOS",
   "description": "Gestión de red doméstica e IoT, self-hosted, sin nube de terceros.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "background_color": "#0d1117",
   "theme_color": "#0d1117",
   "icons": [

@@ -266,6 +266,21 @@ export const es = {
   'settings.support.error': 'No se pudo generar el paquete de soporte',
 
   // --- Ajustes → Sistema → Acerca de (US-257) ---
+  'settings.install.title': 'Instalar como app',
+  'settings.install.desc':
+    'Abre KrakenOS desde el escritorio, con su icono y en su propia ventana. El monitoreo sigue aunque la cierres.',
+  'settings.install.button': 'Instalar app',
+  'settings.install.toast': 'KrakenOS instalada como app',
+  'settings.install.installed': 'KrakenOS ya está instalada como app en este dispositivo.',
+  'settings.install.running': 'Estás usando KrakenOS como app, en su propia ventana.',
+  'settings.install.ios':
+    'En iPhone y iPad se instala desde el navegador: «Compartir» → «Añadir a pantalla de inicio».',
+  'settings.install.insecure':
+    'El navegador solo permite instalar la app sobre HTTPS. Mira la tarjeta «{tls}» de esta misma página para ver cómo activarlo.',
+  'settings.install.unsupported':
+    'Este navegador no ofrece la instalación desde aquí. Prueba con Edge o Chrome, o busca «Instalar» en el menú del navegador.',
+  'settings.install.edgeTip':
+    'Consejo: en Edge, desde edge://apps puedes hacer que KrakenOS se abra al iniciar sesión.',
   'settings.about.title': 'Acerca de KrakenOS',
   'settings.about.license': 'KrakenOS es software libre, publicado bajo la licencia {license}.',
   'settings.about.source': 'Ver el código fuente',
