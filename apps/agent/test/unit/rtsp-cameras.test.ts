@@ -79,8 +79,9 @@ describe('RtspCameraManager (US-148)', () => {
       const mgr = new RtspCameraManager({ cameras: [cam('1')], exec: okExec, clipExec });
       const clip = await mgr.recordClip('1', 8);
       expect(clip).toEqual(new Uint8Array([0, 1, 2, 3, 4]));
-      expect(args[0]).toContain('rtsp://10.0.0.1/s');
-      expect(args[0][args[0].indexOf('-t') + 1]).toBe('8');
+      const primeros = args[0]!;
+      expect(primeros).toContain('rtsp://10.0.0.1/s');
+      expect(primeros[primeros.indexOf('-t') + 1]).toBe('8');
       // ffmpeg sin salida → null.
       const empty = new RtspCameraManager({
         cameras: [cam('1')],

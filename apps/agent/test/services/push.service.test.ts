@@ -104,8 +104,8 @@ describe('PushService (US-45)', () => {
 
   /** Endpoints a los que se envió realmente. */
   const sentEndpoints = (): string[] =>
-    webpushMock.sendNotification.mock.calls.map(
-      (c) => (c[0] as { endpoint: string }).endpoint,
+    (webpushMock.sendNotification.mock.calls as unknown as [{ endpoint: string }][]).map(
+      (c) => c[0].endpoint,
     );
 
   it('un aviso de seguridad (audiencia admin) NO llega a kid, guest ni viewer', async () => {

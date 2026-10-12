@@ -30,6 +30,7 @@ function room(over: Partial<RoomWithState> = {}): RoomWithState {
     controllableCount: 2,
     onCount: 1,
     anyUnreachable: false,
+    iotDeviceIds: [],
     ...over,
   };
 }
@@ -37,7 +38,7 @@ function room(over: Partial<RoomWithState> = {}): RoomWithState {
 function asRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

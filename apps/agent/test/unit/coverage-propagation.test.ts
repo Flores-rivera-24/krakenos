@@ -357,8 +357,8 @@ describe('computePredictedHeatmapAsync — paridad con la versión síncrona', (
       ap({ id: 'b', x: 18, y: 18, bands: ['5GHz'], txPowerDbm: 20 }),
     ];
     const walls: Wall[] = [
-      { x1: 5, y1: 0, x2: 5, y2: 20, material: 'concrete' },
-      { x1: 0, y1: 10, x2: 20, y2: 10, material: 'brick' },
+      { id: 'w1', x1: 5, y1: 0, x2: 5, y2: 20, material: 'concrete' },
+      { id: 'w2', x1: 0, y1: 10, x2: 20, y2: 10, material: 'brick' },
     ];
     const sync = computePredictedHeatmap(20, 20, aps, walls, base);
     const async = await computePredictedHeatmapAsync(20, 20, aps, walls, base);

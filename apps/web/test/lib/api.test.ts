@@ -15,7 +15,7 @@ function jsonResponse(status: number, body: unknown): Response {
     status,
     text: async () => (body === undefined ? '' : JSON.stringify(body)),
     json: async () => body,
-  } as Response;
+  } as unknown as Response;
 }
 
 /** Respuesta cuyo cuerpo NO se puede leer (petición abortada a media lectura). */
@@ -29,10 +29,10 @@ function cuerpoIlegible(status: number): Response {
     json: async () => {
       throw new TypeError('network error');
     },
-  } as Response;
+  } as unknown as Response;
 }
 
-const TOKENS = { accessToken: 'acc', refreshToken: 'ref', expiresIn: 900 };
+const TOKENS = { accessToken: 'acc', expiresIn: 900 };
 
 describe('cliente API', () => {
   beforeEach(() => {
@@ -50,7 +50,7 @@ describe('cliente API', () => {
 
     await api.get('/system/stats');
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer acc');
   });
 
@@ -61,7 +61,7 @@ describe('cliente API', () => {
 
     await request('/setup/status', { method: 'GET', anonymous: true });
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect((init.headers as Record<string, string>).Authorization).toBeUndefined();
   });
 
@@ -78,7 +78,7 @@ describe('cliente API', () => {
 
     await api.post('/inventory/devices/x/block'); // bloquear: sin cuerpo
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect((init.headers as Record<string, string>)['Content-Type']).toBeUndefined();
     expect(init.body).toBeUndefined();
   });
@@ -90,7 +90,7 @@ describe('cliente API', () => {
 
     await api.patch('/inventory/devices/x', { label: 'Salón' });
 
-    const [, init] = fetchMock.mock.calls[0];
+    const [, init] = fetchMock.mock.calls[0]!;
     expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
   });
 
@@ -143,7 +143,7 @@ describe('cliente API', () => {
       // 1) petición original → 401
       .mockResolvedValueOnce(jsonResponse(401, { code: 'AUTH', message: 'expirado' }))
       // 2) /auth/refresh → nuevos tokens
-      .mockResolvedValueOnce(jsonResponse(200, { accessToken: 'acc2', refreshToken: 'ref2', expiresIn: 900 }))
+      .mockResolvedValueOnce(jsonResponse(200, { accessToken: 'acc2', expiresIn: 900 }))
       // 3) reintento → 200
       .mockResolvedValueOnce(jsonResponse(200, { value: 42 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -152,9 +152,9 @@ describe('cliente API', () => {
 
     expect(result).toEqual({ value: 42 });
     expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[1][0]).toBe('/api/auth/refresh');
+    expect(fetchMock.mock.calls[1]![0]).toBe('/api/auth/refresh');
     // El reintento usa el nuevo access token.
-    const retryInit = fetchMock.mock.calls[2][1];
+    const retryInit = fetchMock.mock.calls[2]![1];
     expect((retryInit.headers as Record<string, string>).Authorization).toBe('Bearer acc2');
     expect(useAuthStore.getState().tokens?.accessToken).toBe('acc2');
   });
@@ -165,7 +165,7 @@ describe('cliente API', () => {
     // El endpoint de refresh siempre devuelve el token nuevo.
     const fetchMock = vi.fn(async (url: string, init: RequestInit) => {
       if (url === '/api/auth/refresh') {
-        return jsonResponse(200, { accessToken: 'acc2', refreshToken: 'ref2', expiresIn: 900 });
+        return jsonResponse(200, { accessToken: 'acc2', expiresIn: 900 });
       }
       const auth = (init.headers as Record<string, string>).Authorization;
       return auth === 'Bearer acc2'

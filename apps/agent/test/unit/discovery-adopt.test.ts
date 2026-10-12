@@ -5,6 +5,7 @@ import {
   politicaDe,
   yaConfigurado,
 } from '../../src/discovery/adopt.js';
+import type { DiscoveryProbeRecord } from '../../src/discovery/fingerprints.js';
 import { matchFingerprints } from '../../src/discovery/fingerprints.js';
 import { resolveIotConfig } from '../../src/integrations/factory-config.js';
 import { INTEGRATION_SCHEMA } from '../../src/integrations/schema.js';
@@ -143,7 +144,7 @@ describe('gate: el prefill de cada huella es config VÁLIDA para su backend', ()
    * sugerencia, guardaba y se quedaba con **cero aparatos** y ningún error. No se
    * comprueba «tiene la forma que creo», sino que se pasa por el **resolver real**.
    */
-  const registros = [
+  const registros: DiscoveryProbeRecord[] = [
     { type: 'mdns' as const, service: '_shelly._tcp.local', name: 'shellyplus1-a1._shelly._tcp.local', ip: '192.168.1.80', port: 80, txt: { gen: '2' } },
     { type: 'mdns' as const, service: '_mqtt._tcp.local', name: 'mosquitto._mqtt._tcp.local', ip: '192.168.1.10', port: 1883, txt: {} },
     { type: 'mdns' as const, service: '_http._tcp.local', name: 'Tapo P110._http._tcp.local', ip: '192.168.1.61', port: 80, txt: {} },
@@ -159,7 +160,7 @@ describe('gate: el prefill de cada huella es config VÁLIDA para su backend', ()
       const values = Object.fromEntries(
         Object.entries(match.prefill).map(([k, v]) => [`${match.kind}.${k}`, v]),
       );
-      const cfg = resolveIotConfig({ kind: match.kind, values, enabled: true });
+      const cfg = resolveIotConfig({ kind: match.kind, values });
 
       switch (match.kind) {
         case 'shelly':

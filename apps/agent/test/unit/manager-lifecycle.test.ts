@@ -60,7 +60,7 @@ describe('stop() de los managers de red (US-229)', () => {
     const t = countingTransport();
     const vlans = new SwitchVlanManager({
       store: new MemoryJsonStore<Vlan>(),
-      snmp: { get: vi.fn(), set: vi.fn(), walk: vi.fn(), dispose: t.dispose },
+      snmp: { set: vi.fn(), dispose: t.dispose },
     });
 
     await vlans.stop();

@@ -88,11 +88,11 @@ export class FailingDriver implements HardwareDriver {
     );
   }
 
-  blockDevice(): Promise<void> {
+  blockDevice(_mac: string): Promise<void> {
     return this.react<void>(undefined, undefined);
   }
 
-  unblockDevice(): Promise<void> {
+  unblockDevice(_mac: string): Promise<void> {
     return this.react<void>(undefined, undefined);
   }
 

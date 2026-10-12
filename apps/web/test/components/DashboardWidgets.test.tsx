@@ -26,6 +26,7 @@ function device(over: Partial<Device> = {}): Device {
   return {
     id: 'd1', mac: 'aa:bb:cc:dd:ee:01', ip: '192.168.1.10', hostname: 'macbook',
     label: null, notes: null, vendor: 'Apple', type: 'computer', isBlocked: false,
+    icon: null, roomId: null, ownerId: null,
     online: true, vlanTag: null, sources: ['arp'], firstSeen: '', lastSeen: '', ...over,
   };
 }
@@ -81,7 +82,7 @@ describe('Dashboard widgets', () => {
       devices: {
         d1: device({ id: 'd1', online: true, type: 'computer' }),
         d2: device({ id: 'd2', online: true, type: 'unknown' }),
-        d3: device({ id: 'd3', online: true, type: 'mobile', isBlocked: true }),
+        d3: device({ id: 'd3', online: true, type: 'phone', isBlocked: true }),
         d4: device({ id: 'd4', online: false, type: 'unknown' }),
       },
     });

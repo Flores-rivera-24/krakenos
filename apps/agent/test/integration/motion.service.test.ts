@@ -36,6 +36,9 @@ class FakeCameras implements CameraManager {
   reapIdleStreams() {
     return 0;
   }
+  async recordClip(): Promise<Uint8Array | null> {
+    return null;
+  }
   async stop() {}
 }
 
@@ -66,7 +69,9 @@ describe('MotionService (US-186)', () => {
   ) => {
     const events: HomeEvent[] = [];
     const bus = new HomeEventBus();
-    bus.subscribe((e) => events.push(e));
+    bus.subscribe((e) => {
+      events.push(e);
+    });
     const service = new MotionService(app, cameras, bus, {
       now,
       recorder: recorder as never,

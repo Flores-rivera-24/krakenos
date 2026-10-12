@@ -14,6 +14,7 @@ function horarioNocturno(mac = MAC): AccessSchedule {
     id: 's1',
     name: 'Noche',
     mac,
+    personId: null,
     enabled: true,
     days: [0, 1, 2, 3, 4, 5, 6],
     startMinute: 21 * 60,

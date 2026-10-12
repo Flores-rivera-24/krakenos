@@ -131,7 +131,9 @@ describe('automatizaciones (US-167)', () => {
   });
 
   it('valida el shape por tipo: disparador sin su campo requerido → 400', async () => {
-    const post = (payload: unknown) =>
+    // `unknown` rompia la resolucion de sobrecarga de `inject`, y de rebote el
+    // tipo del resultado perdia `statusCode`.
+    const post = (payload: Record<string, unknown>) =>
       app.inject({ method: 'POST', url: '/api/automations', headers: authHeader(adminToken), payload });
 
     // device-online exige mac; notify exige message; sensor-threshold exige op/value.
@@ -268,14 +270,26 @@ describe('automatizaciones (US-167)', () => {
       actions: [{ type: 'scene-run', sceneId: scene.id }],
     });
 
-    await service.onEvent({ type: 'sensor-reading', deviceId: 'sensor-temp', value: 32, prevValue: 28 });
+    await service.onEvent({
+      type: 'sensor-reading',
+      deviceId: 'sensor-temp',
+      metric: 'temperature',
+      value: 32,
+      prevValue: 28,
+    });
     const runs = await service.listRuns(rule.id);
     expect(runs).toHaveLength(1);
     expect(runs[0]?.ok).toBe(true);
 
     // Lectura sostenida por encima → no re-dispara (sin cruce).
     await service.onEvent(
-      { type: 'sensor-reading', deviceId: 'sensor-temp', value: 33, prevValue: 32 },
+      {
+        type: 'sensor-reading',
+        deviceId: 'sensor-temp',
+        metric: 'temperature',
+        value: 33,
+        prevValue: 32,
+      },
       new Date(Date.now() + 120_000),
     );
     expect(await service.listRuns(rule.id)).toHaveLength(1);

@@ -36,13 +36,14 @@ const disarmed: AlarmState = {
   since: '2026-07-10T00:00:00.000Z',
   countdownEndsAt: null,
   triggeredBy: null,
+  requiresPin: false,
 };
 const armed: AlarmState = { ...disarmed, phase: 'armed', mode: 'away' };
 
 function setRole(role: 'admin' | 'member' | 'kid' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 

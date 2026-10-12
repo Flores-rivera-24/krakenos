@@ -10,7 +10,20 @@ interface Call {
   sid?: string;
 }
 
-type Handler = (call: Call) => Partial<HttpResponse> & { status: number; json?: unknown };
+/**
+ * Lo que devuelve un handler NO es una `HttpResponse`: es la **especificación**
+ * de una, con `json` como el dato ya parseado. `make` la convierte en la
+ * respuesta real, donde `json` es una función. Intersectar con
+ * `Partial<HttpResponse>` hacía que `json` fuese a la vez dato y función, así que
+ * ningún handler encajaba — y no se notaba porque los tests no se typecheckeaban.
+ */
+interface RespuestaFalsa {
+  status: number;
+  ok?: boolean;
+  json?: unknown;
+}
+
+type Handler = (call: Call) => RespuestaFalsa;
 
 /** `fetch` falso: registra llamadas y responde por `${METHOD} ${path}`. */
 class FakeFetch {
@@ -44,7 +57,7 @@ class FakeFetch {
     return this.make(handler({ method, path, body, sid }));
   };
 
-  private make(r: Partial<HttpResponse> & { status: number; json?: unknown }): HttpResponse {
+  private make(r: RespuestaFalsa): HttpResponse {
     return {
       status: r.status,
       ok: r.ok ?? (r.status >= 200 && r.status < 300),

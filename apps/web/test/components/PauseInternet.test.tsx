@@ -38,6 +38,9 @@ function device(over: Partial<Device> = {}): Device {
     sources: ['arp'],
     firstSeen: '',
     lastSeen: '',
+    icon: null,
+    roomId: null,
+    ownerId: null,
     ...over,
   };
 }

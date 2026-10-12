@@ -155,7 +155,7 @@ describe('LoginPage', () => {
   it('permite entrar con un código de recuperación en el paso 2FA (US-59)', async () => {
     const session = {
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 'a', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 'a', expiresIn: 900 },
     };
     const login = vi.fn().mockResolvedValue({ requiresWebAuthn: true, email: 'a@b.c', mfaToken: 'mt' });
     const setSession = vi.fn();

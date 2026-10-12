@@ -4,7 +4,7 @@ import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../help
 
 interface InvalidCase {
   name: string;
-  method: 'POST' | 'PATCH' | 'PUT';
+  method: 'POST' | 'PATCH' | 'PUT' | 'DELETE';
   url: string;
   payload: Record<string, unknown>;
 }

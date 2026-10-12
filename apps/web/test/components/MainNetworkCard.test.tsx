@@ -38,7 +38,7 @@ describe('MainNetworkCard', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     await waitFor(() => expect(apiMock.put).toHaveBeenCalled());
-    const [path, body] = apiMock.put.mock.calls[0];
+    const [path, body] = apiMock.put.mock.calls[0]!;
     expect(path).toBe('/wifi');
     expect(body).toMatchObject({ ssid: 'NuevaRed', band: '5GHz', security: 'wpa2/wpa3' });
     expect(body).not.toHaveProperty('password');
@@ -54,6 +54,6 @@ describe('MainNetworkCard', () => {
     await user.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
     await waitFor(() => expect(apiMock.put).toHaveBeenCalled());
-    expect(apiMock.put.mock.calls[0][1]).toMatchObject({ password: 'claveseguraX' });
+    expect(apiMock.put.mock.calls[0]![1]).toMatchObject({ password: 'claveseguraX' });
   });
 });

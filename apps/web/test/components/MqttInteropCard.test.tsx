@@ -21,6 +21,7 @@ const state: MqttState = {
     intervalSec: 30,
     discovery: false,
     control: false,
+    pauseControl: false,
   },
   status: { enabled: false, connected: false, lastPublishAt: null, lastError: null },
 };

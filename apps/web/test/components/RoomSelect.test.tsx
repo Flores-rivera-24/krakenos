@@ -16,6 +16,7 @@ function room(over: Partial<RoomWithState> = {}): RoomWithState {
     controllableCount: 0,
     onCount: 0,
     anyUnreachable: false,
+    iotDeviceIds: [],
     ...over,
   };
 }

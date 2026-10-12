@@ -36,7 +36,7 @@ describe('UsersSection — roles del hogar (US-179)', () => {
     apiMock.post.mockReset().mockResolvedValue(summary());
     useAuthStore.setState({
       user: { id: 'admin-1', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });
   });

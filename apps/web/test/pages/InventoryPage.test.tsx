@@ -56,6 +56,9 @@ function device(over: Partial<Device> = {}): Device {
     sources: ['arp'],
     firstSeen: '2026-01-01T00:00:00.000Z',
     lastSeen: '2026-01-01T00:00:00.000Z',
+    icon: null,
+    roomId: null,
+    ownerId: null,
     ...over,
   };
 }
@@ -66,7 +69,7 @@ describe('InventoryPage', () => {
     useInventoryStore.setState({ devices: {}, connected: true, recentEvents: [] });
     useAuthStore.setState({
       user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'viewer', createdAt: '', updatedAt: '' },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
   });
 
@@ -205,7 +208,7 @@ describe('InventoryPage', () => {
         createdAt: '',
         updatedAt: '',
       },
-      tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 't', expiresIn: 900 },
     });
     useInventoryStore.setState({ devices: { d1: device({ id: 'd1', label: 'MacBook' }) } });
     const user = userEvent.setup();

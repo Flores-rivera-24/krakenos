@@ -1,0 +1,22 @@
+{
+  // Typecheck de los TESTS, que el `tsconfig.json` de la app no ve (su
+  // `include` es solo `src`). Ver el porqué de que vaya aparte en
+  // `apps/agent/tsconfig.test.json`: aquí pesa además que `tsconfig.json` es lo
+  // que ejecuta `pnpm build` (`tsc -b && vite build`), así que ampliarlo metería
+  // los tests en el build.
+  //
+  // `types` añade lo que la app no necesita pero los tests sí: los matchers de
+  // `@testing-library/jest-dom` y los tipos de Node para `vitest.config.ts`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    // Sin esto hereda `incremental: true` de la base y reutiliza el
+    // `.tsbuildinfo`: el gate llego a dar VERDE en local con un error dentro,
+    // que CI si vio. Un gate que puede mentir en verde no sirve.
+    "incremental": false,
+    "types": ["node", "@testing-library/jest-dom"]
+  },
+  "include": ["src", "test", "vitest.config.ts"],
+  "references": []
+}

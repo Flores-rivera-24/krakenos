@@ -1,0 +1,25 @@
+{
+  // Typecheck de los TESTS y de los ficheros de config, que el `tsconfig.json`
+  // de producción no ve (su `include` es solo `src`).
+  //
+  // Va aparte y no ampliando el `include` del principal por dos motivos: el de
+  // producción lleva `rootDir: ./src` y `outDir` (los tests viven fuera de
+  // `src`), y en la web el `tsconfig.json` forma parte del `build` — meter los
+  // tests ahí los metería en el artefacto.
+  //
+  // Sin esto, un fixture podía desviarse de su tipo en silencio: lo destapó un
+  // `reading:` suelto en `alarm.service.test.ts`, el campo que la lista
+  // `readings` sustituyó, sin que nada protestara. Al medirlo salieron 113
+  // errores (59 aquí y 54 en la web), casi todos fixtures afirmando una forma
+  // que el contrato ya no tiene.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // Sin esto hereda `incremental: true` de la base y reutiliza el
+    // `.tsbuildinfo`: el gate llego a dar VERDE en local con un error dentro,
+    // que CI si vio. Un gate que puede mentir en verde no sirve.
+    "incremental": false,
+    "rootDir": "."
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.config.ts", "prisma/seed.ts"]
+}

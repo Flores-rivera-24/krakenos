@@ -35,7 +35,7 @@ import { useAuthStore } from '@/store/auth.store';
 
 const LOGIN_RESPONSE = {
   user: { id: 'u', email: 'o@k.test', displayName: 'O', role: 'admin' as const, createdAt: '', updatedAt: '' },
-  tokens: { accessToken: 'a', refreshToken: 'r', expiresIn: 900 },
+  tokens: { accessToken: 'a', expiresIn: 900 },
 };
 
 function renderPage() {
@@ -100,7 +100,7 @@ describe('SetupPage', () => {
     await user.click(screen.getByRole('button', { name: 'Crear administrador' }));
 
     await waitFor(() => expect(apiMock.post).toHaveBeenCalled());
-    const [path, , opts] = apiMock.post.mock.calls[0];
+    const [path, , opts] = apiMock.post.mock.calls[0]!;
     expect(path).toBe('/setup/init');
     expect(opts).toMatchObject({ anonymous: true });
     expect(setSession).toHaveBeenCalledWith(LOGIN_RESPONSE);

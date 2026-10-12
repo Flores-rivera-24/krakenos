@@ -19,9 +19,16 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({
   api: apiMock,
+  // El doble respeta la firma real `(status, body)`: con `status = 0` fijo, el
+  // test tenia que parchearlo con `Object.assign` despues de construirlo, y un
+  // doble que no se comporta como el original no prueba lo que dice probar.
   ApiRequestError: class ApiRequestError extends Error {
-    status = 0;
-    body?: { code?: string; message?: string };
+    constructor(
+      readonly status: number,
+      readonly body: { code: string; message: string },
+    ) {
+      super(body.message);
+    }
   },
 }));
 
@@ -64,7 +71,7 @@ function response(over: Partial<PeopleResponse> = {}): PeopleResponse {
 function asRole(role: 'admin' | 'kid') {
   useAuthStore.setState({
     user: { id: 'u-marta', email: 'a@b.c', displayName: 'A', role, createdAt: '', updatedAt: '' },
-    tokens: { accessToken: 't', refreshToken: 'r', expiresIn: 900 },
+    tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 
@@ -255,8 +262,10 @@ describe('PeoplePage (US-240)', () => {
   });
 
   it('un 500 del agente se cuenta como fallo de carga, no como «no hay personas»', async () => {
-    const err = new ApiRequestError('500');
-    Object.assign(err, { status: 500 });
+    // Un 500 sin cuerpo legible es exactamente lo que construye `lib/api.ts`:
+    // code UNKNOWN y `message` vacio, que es lo que hace caer a `describeError`
+    // en su texto de reserva con el codigo de estado.
+    const err = new ApiRequestError(500, { code: 'UNKNOWN', message: '' });
     apiMock.get.mockRejectedValue(err);
     renderPage();
 

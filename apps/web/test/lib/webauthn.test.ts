@@ -41,7 +41,7 @@ describe('completePasskeyLogin (US-51)', () => {
     const assertion = { id: 'assertion-1' };
     const session = {
       user: { id: 'u1' },
-      tokens: { accessToken: 'a', refreshToken: 'r', expiresIn: 900 },
+      tokens: { accessToken: 'a', expiresIn: 900 },
     };
     apiMock.post.mockResolvedValueOnce({ available: true, options }).mockResolvedValueOnce(session);
     browserMock.startAuthentication.mockResolvedValue(assertion);
