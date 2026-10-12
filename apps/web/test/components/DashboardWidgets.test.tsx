@@ -20,6 +20,7 @@ import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTop
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { useInventoryStore } from '@/store/inventory.store';
 
 function device(over: Partial<Device> = {}): Device {
@@ -195,6 +196,20 @@ describe('Dashboard widgets', () => {
       expect(await screen.findByText('No se pudo cargar la lista de dispositivos IoT.')).toBeInTheDocument();
       // La distinción que importa: fallo ≠ casa sin dispositivos.
       expect(screen.queryByText('Sin dispositivos IoT.')).not.toBeInTheDocument();
+    });
+
+    it('con la app en inglés, el fallo sale entero en inglés (sin español mezclado)', async () => {
+      await changeLocale('en', { persist: false });
+      try {
+        apiMock.get.mockReset().mockRejectedValue(new Error('agente caído'));
+        wrap(<IotStatusWidget />);
+
+        expect(await screen.findByText('Could not load the IoT device list.')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+        expect(screen.queryByText(/No se pudo|Reintentar/)).not.toBeInTheDocument();
+      } finally {
+        setLocale('es', { persist: false });
+      }
     });
 
     it('«Reintentar» vuelve a pedir los datos y se recupera', async () => {
