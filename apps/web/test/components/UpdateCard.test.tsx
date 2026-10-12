@@ -159,6 +159,16 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
   });
 
+  it('el bloqueo por Node es un aviso permanente (no role=alert) y el comando va en código', async () => {
+    apiMock.get.mockResolvedValue({ ...basePlan, blockedReason: 'NODE_TOO_OLD', requiredNode: '24' });
+    render(<UpdateCard />);
+    const aviso = (await screen.findByText(/necesita Node 24 o superior/)).closest('[role="note"]');
+    expect(aviso).not.toBeNull();
+    expect(aviso).toHaveTextContent(/sudo bash scripts\/install\.sh --update/);
+    expect(aviso?.querySelector('code')?.textContent).toBe('sudo bash scripts/install.sh --update');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('muestra el motivo cuando la última actualización se negó por el Node', async () => {
     apiMock.get.mockResolvedValue({
       ...basePlan,
