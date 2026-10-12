@@ -6,14 +6,14 @@
 #   · `runtime` parte de una base limpia SIN toolchain de compilación: hereda el
 #     árbol `/app` ya construido (node_modules con el .node de bcrypt y el motor
 #     nativo de Prisma ya compilados contra la MISMA libc — ambas etapas son
-#     `node:20-bookworm-slim`, así que los binarios son compatibles). El resultado
+#     `node:24-bookworm-slim`, así que los binarios son compatibles). El resultado
 #     no lleva compiladores en la imagen final (menor superficie + tamaño).
 #
 # Nota: se copia el árbol completo (no `pnpm deploy`) a propósito, por robustez:
 # evita reconstruir node_modules y perder el cliente generado de Prisma (.prisma/client).
 
 # ---------- Etapa 1: build ----------
-FROM node:20-bookworm-slim AS builder
+FROM node:24-bookworm-slim AS builder
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ openssl ca-certificates \
@@ -29,7 +29,7 @@ RUN pnpm install --frozen-lockfile \
   && pnpm --filter @krakenos/agent build
 
 # ---------- Etapa 2: runtime ----------
-FROM node:20-bookworm-slim AS runtime
+FROM node:24-bookworm-slim AS runtime
 
 # Solo runtime: openssl (claves/Prisma) + ca-certificates. Sin compiladores.
 # `corepack prepare … --activate` deja pnpm 9.12.0 instalado EN LA IMAGEN (AUD-27):

@@ -8,7 +8,7 @@ nube), cubriendo las dos familias de firmware:
 | **Gen1** | Shelly 1, 1PM, 2.5, Plug S, Dimmer 2, RGBW2 | REST HTTP (`GET /relay/0?turn=on`, `GET /status`) |
 | **Gen2 / Gen3** | Plus 1, Plus 1PM, Plus Plug S, Pro 4PM, Mini | JSON-RPC (`POST /rpc`, `Switch.Set`, `Switch.GetStatus`) |
 
-No hay dependencia npm nueva: usa `fetch` (global de Node 20). **No hay discovery fiable** sin
+No hay dependencia npm nueva: usa `fetch` (global de Node 24). **No hay discovery fiable** sin
 mDNS, así que los dispositivos se **configuran a mano**.
 
 ---

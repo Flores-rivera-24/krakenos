@@ -161,6 +161,36 @@ describe('install.sh --dry-run (US-216)', () => {
     expect(stdout).toContain('rollback');
   });
 
+  it('--update sube Node si el instalado es anterior (y lo hace ANTES de lanzar el actualizador)', async () => {
+    // Un `node` de mentira que dice ser v20: obliga a la rama de instalación.
+    const shimDir = mkdtempSync(join(tmpdir(), 'kraken-node-shim-'));
+    const shim = join(shimDir, 'node');
+    writeFileSync(shim, '#!/bin/sh\necho v20.19.0\n');
+    chmodSync(shim, 0o755);
+    const { code, stdout } = await runInstaller(
+      ['--dry-run', '--yes', '--update', '--dir', fileURLToPath(new URL('../../../..', import.meta.url))],
+      { PATH: `${shimDir}:${process.env.PATH ?? ''}` },
+    );
+    expect(code).toBe(0);
+    const nodeStep = stdout.indexOf('deb.nodesource.com/setup_24.x');
+    expect(nodeStep).toBeGreaterThan(-1);
+    expect(stdout).toContain('apt-get install -y -qq nodejs');
+    expect(nodeStep).toBeLessThan(stdout.indexOf('node dist/update-runner.js'));
+  });
+
+  it('--update con el Node ya al día no reinstala nada', async () => {
+    const { code, stdout } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--update',
+      '--dir',
+      fileURLToPath(new URL('../../../..', import.meta.url)),
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).toContain('Node.js ≥ 24');
+    expect(stdout).not.toContain('deb.nodesource.com');
+  });
+
   // US-232 (AUD3-23): en `curl | sudo bash` no hay TTY, así que el viejo `confirm()`
   // respondía «no» SIEMPRE y la instalación se quedaba sin cámaras ni VPN en
   // silencio. Ahora los extras van por bandera y lo omitido se dice en voz alta.
