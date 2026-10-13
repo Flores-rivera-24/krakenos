@@ -2,20 +2,10 @@ import type { DiscoveryStatus } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DiscoveryService } from '../../src/modules/discovery/discovery.service.js';
-import type {
-  DiscoveryProbeResponse,
-  DiscoveryTransport,
-} from '../../src/discovery/transport.js';
+import type { DiscoveryProbeResponse, DiscoveryTransport } from '../../src/discovery/transport.js';
 import { IntegrationConfigStore } from '../../src/integrations/integration-config.store.js';
 import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-  sleep,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess, sleep } from '../helpers/app.js';
 import { esperarAuditoria } from '../helpers/audit.js';
 
 /** Respuesta SSDP sintética (más simple de fabricar que un datagrama DNS). */
@@ -139,7 +129,10 @@ describe('auto-descubrimiento (US-175)', () => {
     expect((await service.status()).suggestions).toHaveLength(0);
 
     // Deshabilitada no cuenta: vuelve a sugerirse.
-    await app.prisma.integrationConfig.update({ where: { domain: 'iot' }, data: { enabled: false } });
+    await app.prisma.integrationConfig.update({
+      where: { domain: 'iot' },
+      data: { enabled: false },
+    });
     expect((await service.status()).suggestions).toHaveLength(1);
   });
 
@@ -191,12 +184,23 @@ describe('auto-descubrimiento (US-175)', () => {
     const anon = await app.inject({ method: 'GET', url: '/api/discovery' });
     expect(anon.statusCode).toBe(401);
 
-    const ok = await app.inject({ method: 'GET', url: '/api/discovery', headers: authHeader(adminToken) });
+    const ok = await app.inject({
+      method: 'GET',
+      url: '/api/discovery',
+      headers: authHeader(adminToken),
+    });
     expect(ok.statusCode).toBe(200);
     expect((ok.json() as DiscoveryStatus).suggestions).toEqual([]);
 
-    const viewer = signAccess(app, await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }));
-    const scan = await app.inject({ method: 'POST', url: '/api/discovery/scan', headers: authHeader(viewer) });
+    const viewer = signAccess(
+      app,
+      await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }),
+    );
+    const scan = await app.inject({
+      method: 'POST',
+      url: '/api/discovery/scan',
+      headers: authHeader(viewer),
+    });
     expect(scan.statusCode).toBe(403);
     const dismiss = await app.inject({
       method: 'DELETE',
@@ -302,7 +306,9 @@ describe('alta de un toque desde el descubrimiento (US-249)', () => {
     expect(res.statusCode).toBe(200);
 
     const row = await app.prisma.integrationConfig.findUnique({ where: { domain: 'iot' } });
-    const devices = JSON.parse(JSON.parse(row?.config ?? '{}')['shelly.devices']) as { ip: string }[];
+    const devices = JSON.parse(JSON.parse(row?.config ?? '{}')['shelly.devices']) as {
+      ip: string;
+    }[];
     expect(devices.map((d) => d.ip)).toEqual(['192.168.1.80', '192.168.1.81']);
   });
 
@@ -332,7 +338,10 @@ describe('alta de un toque desde el descubrimiento (US-249)', () => {
   });
 
   it('adoptar es admin: un viewer no puede', async () => {
-    const viewer = signAccess(app, await seedUser(app, { email: 'v2@krakenos.test', role: 'viewer' }));
+    const viewer = signAccess(
+      app,
+      await seedUser(app, { email: 'v2@krakenos.test', role: 'viewer' }),
+    );
     const res = await app.inject({
       method: 'POST',
       url: '/api/discovery/suggestions/shelly%3A192.168.1.80/adopt',

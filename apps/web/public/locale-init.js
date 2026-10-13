@@ -6,7 +6,10 @@
     var stored = localStorage.getItem('krakenos-locale');
     var lang = stored === 'en' || stored === 'es' ? stored : null;
     if (!lang) {
-      var nav = navigator.languages && navigator.languages.length ? navigator.languages[0] : navigator.language;
+      var nav =
+        navigator.languages && navigator.languages.length
+          ? navigator.languages[0]
+          : navigator.language;
       lang = typeof nav === 'string' && nav.toLowerCase().indexOf('en') === 0 ? 'en' : 'es';
     }
     document.documentElement.lang = lang;

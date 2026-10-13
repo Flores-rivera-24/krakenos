@@ -67,7 +67,9 @@ describe('stageRestoreFromFileAsync (US-233)', () => {
   it('con la passphrase incorrecta no deja NADA en el staging', async () => {
     const { archive, staging } = sandbox();
     writeArchive(archive, [DB, { name: 'keys/secretbox.key', data: Buffer.from('CLAVE') }]);
-    await expect(stageRestoreFromFileAsync(archive, 'otra-passphrase-1', staging)).rejects.toThrow();
+    await expect(
+      stageRestoreFromFileAsync(archive, 'otra-passphrase-1', staging),
+    ).rejects.toThrow();
     expect(existsSync(staging)).toBe(false);
     expect(existsSync(`${staging}.incoming`)).toBe(false);
   });

@@ -3,7 +3,15 @@ import { toCsv } from '../../src/modules/reports/csv.js';
 
 describe('csv (US-109)', () => {
   it('serializa filas simples con CRLF', () => {
-    expect(toCsv(['a', 'b'], [[1, 'x'], [2, 'y']])).toBe('a,b\r\n1,x\r\n2,y\r\n');
+    expect(
+      toCsv(
+        ['a', 'b'],
+        [
+          [1, 'x'],
+          [2, 'y'],
+        ],
+      ),
+    ).toBe('a,b\r\n1,x\r\n2,y\r\n');
   });
 
   it('entrecomilla comas, comillas y saltos de línea (RFC 4180)', () => {

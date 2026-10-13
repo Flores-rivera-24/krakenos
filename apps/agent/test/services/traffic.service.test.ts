@@ -174,7 +174,11 @@ describe('TrafficService', () => {
       const DAY = 24 * 60 * 60 * 1000;
       for (let i = 1; i <= 3; i++) {
         await app.prisma.trafficSample.create({
-          data: { rxBytesPerSec: 100 * i, txBytesPerSec: 10 * i, timestamp: new Date(Date.now() - i * DAY) },
+          data: {
+            rxBytesPerSec: 100 * i,
+            txBytesPerSec: 10 * i,
+            timestamp: new Date(Date.now() - i * DAY),
+          },
         });
       }
       const stats = await svc.getStats('month');

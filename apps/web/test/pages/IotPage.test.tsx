@@ -134,9 +134,11 @@ function setRole(role: 'admin' | 'member' | 'viewer') {
 
 describe('IotPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+      );
     apiMock.patch.mockReset().mockResolvedValue(DEVICES[0]);
     apiMock.put.mockReset().mockResolvedValue(undefined);
     socketMock.on.mockReset();
@@ -303,9 +305,11 @@ describe('IotPage', () => {
  */
 describe('IotPage · persianas y termostatos (US-265)', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      path === '/iot/devices' ? Promise.resolve(CATEGORIAS_NUEVAS) : Promise.resolve([]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path === '/iot/devices' ? Promise.resolve(CATEGORIAS_NUEVAS) : Promise.resolve([]),
+      );
     apiMock.patch.mockReset().mockResolvedValue(CATEGORIAS_NUEVAS[0]);
     apiMock.put.mockReset().mockResolvedValue(undefined);
     socketMock.on.mockReset();

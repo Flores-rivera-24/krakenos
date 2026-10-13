@@ -62,9 +62,7 @@ describe('FileJsonStore', () => {
 
   it('50 upsert concurrentes conservan los 50 (serialización, US-52)', async () => {
     const store = new FileJsonStore<Item>(path);
-    await Promise.all(
-      Array.from({ length: 50 }, (_, i) => store.upsert({ id: `id-${i}`, v: i })),
-    );
+    await Promise.all(Array.from({ length: 50 }, (_, i) => store.upsert({ id: `id-${i}`, v: i })));
     const all = await store.list();
     expect(all).toHaveLength(50);
     expect(new Set(all.map((i) => i.id)).size).toBe(50);
@@ -81,16 +79,19 @@ describe('FileJsonStore', () => {
     expect(await readFile(path, 'utf8')).toBe(corrupt);
   });
 
-  it.skipIf(isRoot)('read() propaga un error de permisos, no lo traga como vacío (US-61)', async () => {
-    await writeFile(path, '[{"id":"a","v":1}]', 'utf8');
-    await chmod(path, 0o000); // sin permiso de lectura
-    try {
-      // No debe devolver [] en silencio: el error de E/S se propaga.
-      await expect(new FileJsonStore<Item>(path).list()).rejects.toThrow();
-    } finally {
-      await chmod(path, 0o600); // restaura para que afterEach pueda borrar
-    }
-  });
+  it.skipIf(isRoot)(
+    'read() propaga un error de permisos, no lo traga como vacío (US-61)',
+    async () => {
+      await writeFile(path, '[{"id":"a","v":1}]', 'utf8');
+      await chmod(path, 0o000); // sin permiso de lectura
+      try {
+        // No debe devolver [] en silencio: el error de E/S se propaga.
+        await expect(new FileJsonStore<Item>(path).list()).rejects.toThrow();
+      } finally {
+        await chmod(path, 0o600); // restaura para que afterEach pueda borrar
+      }
+    },
+  );
 
   it('escritura atómica: no deja temporales y el contenido es JSON válido (US-52)', async () => {
     const store = new FileJsonStore<Item>(path);

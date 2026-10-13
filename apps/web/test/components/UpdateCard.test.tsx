@@ -15,7 +15,10 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class ApiRequestError extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock('@/store/toast.store', () => ({ toast: toastMock }));
@@ -42,7 +45,14 @@ const basePlan: UpdatePlan = {
 
 function setAdmin(role: 'admin' | 'viewer' = 'admin') {
   useAuthStore.setState({
-    user: { id: 'u1', email: 'a@b.c', role, status: 'active', uiMode: 'advanced', locale: 'es' } as never,
+    user: {
+      id: 'u1',
+      email: 'a@b.c',
+      role,
+      status: 'active',
+      uiMode: 'advanced',
+      locale: 'es',
+    } as never,
   });
 }
 
@@ -101,7 +111,12 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
   });
 
   it('muestra desactivada cuando no hay repo configurado', async () => {
-    apiMock.get.mockResolvedValue({ ...basePlan, enabled: false, updateAvailable: false, latest: null });
+    apiMock.get.mockResolvedValue({
+      ...basePlan,
+      enabled: false,
+      updateAvailable: false,
+      latest: null,
+    });
     render(<UpdateCard />);
     expect(await screen.findByText(/desactivada/)).toBeInTheDocument();
   });
@@ -152,7 +167,11 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
   });
 
   it('una versión que exige más Node no ofrece el botón y explica qué hacer', async () => {
-    apiMock.get.mockResolvedValue({ ...basePlan, blockedReason: 'NODE_TOO_OLD', requiredNode: '24' });
+    apiMock.get.mockResolvedValue({
+      ...basePlan,
+      blockedReason: 'NODE_TOO_OLD',
+      requiredNode: '24',
+    });
     render(<UpdateCard />);
     expect(await screen.findByText(/necesita Node 24 o superior/)).toBeInTheDocument();
     expect(screen.getByText(/sudo bash scripts\/install\.sh --update/)).toBeInTheDocument();
@@ -160,7 +179,11 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
   });
 
   it('el bloqueo por Node es un aviso permanente (no role=alert) y el comando va en código', async () => {
-    apiMock.get.mockResolvedValue({ ...basePlan, blockedReason: 'NODE_TOO_OLD', requiredNode: '24' });
+    apiMock.get.mockResolvedValue({
+      ...basePlan,
+      blockedReason: 'NODE_TOO_OLD',
+      requiredNode: '24',
+    });
     render(<UpdateCard />);
     const aviso = (await screen.findByText(/necesita Node 24 o superior/)).closest('[role="note"]');
     expect(aviso).not.toBeNull();
@@ -183,7 +206,9 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
       },
     });
     render(<UpdateCard />);
-    const aviso = (await screen.findByText(/necesita un Node más reciente/)).closest('[role="note"]');
+    const aviso = (await screen.findByText(/necesita un Node más reciente/)).closest(
+      '[role="note"]',
+    );
     expect(aviso).not.toBeNull();
     expect(aviso?.querySelector('code')?.textContent).toBe('sudo bash scripts/install.sh --update');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();

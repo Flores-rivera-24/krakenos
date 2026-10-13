@@ -48,7 +48,11 @@ describe('tokens de API (US-174)', () => {
     expect(body.scopes).toEqual(['home.view', 'home.control']);
     expect(body.prefix).toBe(body.token.slice(0, 8));
 
-    const list = await app.inject({ method: 'GET', url: '/api/tokens', headers: authHeader(session) });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/tokens',
+      headers: authHeader(session),
+    });
     const items = list.json();
     expect(items).toHaveLength(1);
     expect(items[0]).not.toHaveProperty('token'); // el claro no se repite
@@ -86,8 +90,13 @@ describe('tokens de API (US-174)', () => {
 
     // Lectura autenticada: ambos leen.
     expect(
-      (await app.inject({ method: 'GET', url: '/api/iot/devices', headers: tokenHeader(readToken) }))
-        .statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/api/iot/devices',
+          headers: tokenHeader(readToken),
+        })
+      ).statusCode,
     ).toBe(200);
 
     // home.control (PATCH iot): el de solo lectura → 403; el de control → NO 403 (404 por id inexistente).
@@ -153,14 +162,20 @@ describe('tokens de API (US-174)', () => {
     const admin = await seedUser(app, { role: 'admin' });
     const session = signAccess(app, admin);
     const token = await createToken(app, session, ['home.view']);
-    const id = (await app.inject({ method: 'GET', url: '/api/tokens', headers: authHeader(session) })).json()[0].id;
+    const id = (
+      await app.inject({ method: 'GET', url: '/api/tokens', headers: authHeader(session) })
+    ).json()[0].id;
 
     expect(
       (await app.inject({ method: 'GET', url: '/api/iot/devices', headers: tokenHeader(token) }))
         .statusCode,
     ).toBe(200);
 
-    const del = await app.inject({ method: 'DELETE', url: `/api/tokens/${id}`, headers: authHeader(session) });
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/tokens/${id}`,
+      headers: authHeader(session),
+    });
     expect(del.statusCode).toBe(204);
 
     // Ya no autentica.
@@ -210,10 +225,7 @@ describe('tokens de API (US-174)', () => {
     const admin = await seedUser(app, { role: 'admin' });
     const adminSession = signAccess(app, admin);
 
-    for (const patch of [
-      { status: 'disabled' as const },
-      { role: 'viewer' as const },
-    ]) {
+    for (const patch of [{ status: 'disabled' as const }, { role: 'viewer' as const }]) {
       const target = await seedUser(app, {
         email: `t-${JSON.stringify(patch)}@krakenos.test`,
         role: 'member',

@@ -123,7 +123,12 @@ export class UsersService {
   }
 
   async update(id: string, patch: UpdateUserRequest): Promise<UpdateResult | null> {
-    const data: { displayName?: string; role?: UserRole; status?: UserStatus; expiresAt?: Date | null } = {};
+    const data: {
+      displayName?: string;
+      role?: UserRole;
+      status?: UserStatus;
+      expiresAt?: Date | null;
+    } = {};
     if (patch.displayName !== undefined) data.displayName = patch.displayName;
     if (patch.role !== undefined) data.role = patch.role;
     if (patch.status !== undefined) data.status = patch.status;

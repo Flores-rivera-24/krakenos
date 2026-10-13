@@ -59,9 +59,9 @@ function setRole(role: 'admin' | 'viewer') {
 
 describe('VlanPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      Promise.resolve(path === '/vlans' ? [VLAN] : [DEVICE]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) => Promise.resolve(path === '/vlans' ? [VLAN] : [DEVICE]));
     apiMock.post.mockReset().mockResolvedValue(VLAN);
     apiMock.put.mockReset().mockResolvedValue(DEVICE);
     apiMock.del.mockReset().mockResolvedValue(undefined);

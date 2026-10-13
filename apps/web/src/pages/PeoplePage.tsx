@@ -13,7 +13,14 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { diasIniciales, minutesToHHMM } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
-import { clearBedtime, formatUntil, isPaused, listPeople, pausePerson, resumePerson } from '@/lib/people';
+import {
+  clearBedtime,
+  formatUntil,
+  isPaused,
+  listPeople,
+  pausePerson,
+  resumePerson,
+} from '@/lib/people';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';

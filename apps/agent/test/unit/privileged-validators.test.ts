@@ -33,7 +33,8 @@ describe('validadores anti-inyección (US-73)', () => {
       }
     });
     it('rechaza toda carga hostil y nombres demasiado largos', () => {
-      for (const bad of HOSTILE) expect(() => assertInterfaceName(bad)).toThrow(InvalidArgumentError);
+      for (const bad of HOSTILE)
+        expect(() => assertInterfaceName(bad)).toThrow(InvalidArgumentError);
       expect(() => assertInterfaceName('a'.repeat(16))).toThrow(InvalidArgumentError);
     });
   });

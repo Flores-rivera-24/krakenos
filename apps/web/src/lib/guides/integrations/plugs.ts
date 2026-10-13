@@ -301,7 +301,8 @@ const mqttDiscovery: IntegrationGuide = {
     {
       title: 'Dile a cada aparato que se anuncie',
       body: 'En ESPHome, con el bloque "mqtt" en su configuración. En Tasmota, con un comando en su consola. En OpenBeken, con el botón de enviar el anuncio. En zigbee2mqtt y Z-Wave JS UI, activando su opción de anuncio automático.',
-      command: 'Backlog MqttHost 192.168.1.10; MqttUser krakenos; MqttPassword TU_PASSWORD; SetOption19 1',
+      command:
+        'Backlog MqttHost 192.168.1.10; MqttUser krakenos; MqttPassword TU_PASSWORD; SetOption19 1',
       note: 'El comando de ejemplo es el de Tasmota. Los pasos de cada firmware están en la guía completa.',
       external: true,
     },
@@ -352,7 +353,7 @@ const mqttDiscovery: IntegrationGuide = {
   troubleshooting: [
     {
       q: 'No aparece ningún aparato.',
-      a: 'Lo más probable es que no estén publicando su anuncio. Compruébalo desde el servidor con: mosquitto_sub -h TU_SERVIDOR -t \'homeassistant/#\' -v. Si ahí no sale nada, el problema está entre el aparato y el broker.',
+      a: "Lo más probable es que no estén publicando su anuncio. Compruébalo desde el servidor con: mosquitto_sub -h TU_SERVIDOR -t 'homeassistant/#' -v. Si ahí no sale nada, el problema está entre el aparato y el broker.",
     },
     {
       q: 'Aparece el aparato pero no su estado.',

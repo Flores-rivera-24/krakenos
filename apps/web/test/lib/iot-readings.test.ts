@@ -35,7 +35,9 @@ describe('describeReading (US-244)', () => {
       unit: '',
     });
     expect(describeReading({ metric: 'contact', value: 0, unit: '' }, t).value).toBe('Cerrada');
-    expect(describeReading({ metric: 'smoke', value: 1, unit: '' }, t).value).toBe('Humo detectado');
+    expect(describeReading({ metric: 'smoke', value: 1, unit: '' }, t).value).toBe(
+      'Humo detectado',
+    );
     expect(describeReading({ metric: 'occupancy', value: 0, unit: '' }, t).value).toBe(
       'Sin presencia',
     );

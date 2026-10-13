@@ -3,7 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useT, type TranslationKey } from '@/lib/i18n';
-import { estadoDeInstalacion, type EstadoDeInstalacion, type VentanaInstalable } from '@/lib/install';
+import {
+  estadoDeInstalacion,
+  type EstadoDeInstalacion,
+  type VentanaInstalable,
+} from '@/lib/install';
 import { useInstallStore } from '@/store/install.store';
 import { toast } from '@/store/toast.store';
 
@@ -75,7 +79,9 @@ export function InstallAppCard({ win }: InstallAppCardProps) {
           </Callout>
         )}
 
-        {consejoDeEdge && <p className="text-kr-xs text-kr-muted">{t('settings.install.edgeTip')}</p>}
+        {consejoDeEdge && (
+          <p className="text-kr-xs text-kr-muted">{t('settings.install.edgeTip')}</p>
+        )}
       </CardContent>
     </Card>
   );

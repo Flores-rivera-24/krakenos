@@ -152,10 +152,7 @@ export const DEFAULT_ENERGY_RETENTION_DAYS = 90;
  * borró. El rollup por minuto ya poda en cada flush; esto es la red de seguridad
  * del barrido de retención por si el sampler estuvo parado.
  */
-export async function pruneEnergySamples(
-  prisma: PrismaLike,
-  days: number,
-): Promise<number> {
+export async function pruneEnergySamples(prisma: PrismaLike, days: number): Promise<number> {
   const cutoff = new Date(Date.now() - days * DAY_MS);
   const res = await prisma.energySample.deleteMany({ where: { timestamp: { lt: cutoff } } });
   return res.count;

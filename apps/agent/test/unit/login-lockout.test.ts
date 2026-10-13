@@ -36,7 +36,9 @@ describe('login-lockout (US-77, F3)', () => {
     for (let i = 0; i < FAILURE_THRESHOLD; i++) loginLockout.recordFailure(email, now);
     expect(loginLockout.retryAfterSec(email, now)).toBe(BASE_LOCKOUT_MS / 1000);
     // a mitad del bloqueo
-    expect(loginLockout.retryAfterSec(email, now + BASE_LOCKOUT_MS / 2)).toBe(BASE_LOCKOUT_MS / 2000);
+    expect(loginLockout.retryAfterSec(email, now + BASE_LOCKOUT_MS / 2)).toBe(
+      BASE_LOCKOUT_MS / 2000,
+    );
     // tras expirar (pero dentro de RESET): ya no bloquea
     expect(loginLockout.retryAfterSec(email, now + BASE_LOCKOUT_MS + 1)).toBe(0);
   });
@@ -59,7 +61,8 @@ describe('login-lockout (US-77, F3)', () => {
   });
 
   it('trata el email sin distinguir mayúsculas ni espacios', () => {
-    for (let i = 0; i < FAILURE_THRESHOLD; i++) loginLockout.recordFailure('  User@Krakenos.test ', 1000);
+    for (let i = 0; i < FAILURE_THRESHOLD; i++)
+      loginLockout.recordFailure('  User@Krakenos.test ', 1000);
     expect(loginLockout.retryAfterSec('user@krakenos.test', 1000)).toBeGreaterThan(0);
   });
 });

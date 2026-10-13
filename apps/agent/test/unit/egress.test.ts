@@ -120,9 +120,9 @@ describe('assertHostAllowed (literales, sin DNS)', () => {
       '[::ffff:a9fe:a9fe]', // la MISMA, en la forma hexadecimal que normaliza Node
     ];
     for (const host of bracketed) {
-      await expect(assertHostAllowed(host, LENIENT, { allowUnresolvable: true })).rejects.toBeInstanceOf(
-        EgressBlockedError,
-      );
+      await expect(
+        assertHostAllowed(host, LENIENT, { allowUnresolvable: true }),
+      ).rejects.toBeInstanceOf(EgressBlockedError);
     }
     // Loopback y privadas: permitidas por la política LAN-friendly, bloqueadas en
     // estricta — también escritas en hexadecimal mapeado (`::ffff:7f00:1` = 127.0.0.1).
@@ -192,9 +192,9 @@ describe('assertUrlAllowed', () => {
   });
 
   it('rechaza una URL a metadata', async () => {
-    await expect(assertUrlAllowed('http://169.254.169.254/latest/meta-data/', LENIENT)).rejects.toBeInstanceOf(
-      EgressBlockedError,
-    );
+    await expect(
+      assertUrlAllowed('http://169.254.169.254/latest/meta-data/', LENIENT),
+    ).rejects.toBeInstanceOf(EgressBlockedError);
   });
 
   it('acepta una URL pública válida', async () => {

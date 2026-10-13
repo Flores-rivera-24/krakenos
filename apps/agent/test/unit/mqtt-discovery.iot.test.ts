@@ -5,7 +5,10 @@ import {
   topicMatches,
 } from '../../src/iot/mqtt.transport.js';
 import { MqttDiscoveryIotManager } from '../../src/iot/mqtt-discovery.iot.js';
-import { buildDiscoveryConfigs, type StateSnapshot } from '../../src/modules/interop/ha-discovery.js';
+import {
+  buildDiscoveryConfigs,
+  type StateSnapshot,
+} from '../../src/modules/interop/ha-discovery.js';
 
 /**
  * US-248 — ingesta genérica por MQTT Discovery, contra un transporte falso.
@@ -141,7 +144,13 @@ describe('MqttDiscoveryIotManager', () => {
     mqtt.emit('tasmota_ABC/tele/SENSOR', { ENERGY: { Power: 12, Total: 3 } });
 
     const [device] = await iot.listDevices();
-    expect(device).toMatchObject({ id: 'ABC', name: 'Enchufe cocina', kind: 'plug', on: true, powerW: 12 });
+    expect(device).toMatchObject({
+      id: 'ABC',
+      name: 'Enchufe cocina',
+      kind: 'plug',
+      on: true,
+      powerW: 12,
+    });
   });
 
   it('una luz reporta brillo en la escala del aparato y lo acepta de vuelta', async () => {
@@ -231,7 +240,11 @@ describe('MqttDiscoveryIotManager', () => {
   });
 
   it('encender publica el payload que el aparato declaró', async () => {
-    mqtt.emit('homeassistant/switch/salon/rele/config', { ...ESPHOME_SWITCH, payload_on: '1', payload_off: '0' });
+    mqtt.emit('homeassistant/switch/salon/rele/config', {
+      ...ESPHOME_SWITCH,
+      payload_on: '1',
+      payload_off: '0',
+    });
     await flush();
     const device = await iot.setState('esphome-salon', { on: true });
     expect(mqtt.published).toEqual([{ topic: 'esphome/salon/switch/rele/command', payload: '1' }]);
@@ -279,7 +292,11 @@ describe('MqttDiscoveryIotManager', () => {
   });
 
   it('descarta configs por encima del tope y lo AVISA', async () => {
-    const corto = new MqttDiscoveryIotManager({ transport: mqtt, maxEntidades: 2, onAviso: (m) => avisos.push(m) });
+    const corto = new MqttDiscoveryIotManager({
+      transport: mqtt,
+      maxEntidades: 2,
+      onAviso: (m) => avisos.push(m),
+    });
     await corto.start();
     for (let i = 0; i < 5; i++) {
       mqtt.emit(`homeassistant/switch/d${i}/config`, {
@@ -315,7 +332,15 @@ describe('⚠️ KrakenOS no se ingiere a sí mismo', () => {
     // casa duplicada en producción.
     const snapshot: StateSnapshot = {
       iot: [
-        { id: 'hue:foco-1', name: 'Foco salón', kind: 'light', on: true, brightness: 80, color: null, powerW: 9 },
+        {
+          id: 'hue:foco-1',
+          name: 'Foco salón',
+          kind: 'light',
+          on: true,
+          brightness: 80,
+          color: null,
+          powerW: 9,
+        },
       ],
       energy: { todayKwh: 1.2, todayCost: 0.3, currency: 'EUR' },
       devicesOnline: 4,

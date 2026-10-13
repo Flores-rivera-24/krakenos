@@ -20,17 +20,41 @@ export function isIpTarget(target: string): boolean {
 }
 
 export const tcQdiscDelRootArgs = (iface: string): string[] => [
-  'tc', 'qdisc', 'del', 'dev', assertInterfaceName(iface), 'root',
+  'tc',
+  'qdisc',
+  'del',
+  'dev',
+  assertInterfaceName(iface),
+  'root',
 ];
 
 export const tcQdiscAddRootArgs = (iface: string, defaultClassId: number): string[] => [
-  'tc', 'qdisc', 'add', 'dev', assertInterfaceName(iface), 'root', 'handle', '1:',
-  'htb', 'default', String(assertNonNegativeInteger(defaultClassId, 'classid por defecto')),
+  'tc',
+  'qdisc',
+  'add',
+  'dev',
+  assertInterfaceName(iface),
+  'root',
+  'handle',
+  '1:',
+  'htb',
+  'default',
+  String(assertNonNegativeInteger(defaultClassId, 'classid por defecto')),
 ];
 
 export const tcRootClassArgs = (iface: string, linkKbit: number): string[] => [
-  'tc', 'class', 'add', 'dev', assertInterfaceName(iface), 'parent', '1:', 'classid', '1:1',
-  'htb', 'rate', `${assertNonNegativeInteger(linkKbit, 'rate del enlace')}kbit`,
+  'tc',
+  'class',
+  'add',
+  'dev',
+  assertInterfaceName(iface),
+  'parent',
+  '1:',
+  'classid',
+  '1:1',
+  'htb',
+  'rate',
+  `${assertNonNegativeInteger(linkKbit, 'rate del enlace')}kbit`,
 ];
 
 /** Clase hoja HTB con rate/ceil y prioridad. */
@@ -45,8 +69,22 @@ export function tcLeafClassArgs(
   assertNonNegativeInteger(rateKbit, 'rate');
   assertNonNegativeInteger(prio, 'prio');
   return [
-    'tc', 'class', 'add', 'dev', iface, 'parent', '1:1', 'classid', `1:${classId}`,
-    'htb', 'rate', `${rateKbit}kbit`, 'ceil', `${rateKbit}kbit`, 'prio', String(prio),
+    'tc',
+    'class',
+    'add',
+    'dev',
+    iface,
+    'parent',
+    '1:1',
+    'classid',
+    `1:${classId}`,
+    'htb',
+    'rate',
+    `${rateKbit}kbit`,
+    'ceil',
+    `${rateKbit}kbit`,
+    'prio',
+    String(prio),
   ];
 }
 
@@ -57,7 +95,23 @@ export function tcFilterIpArgs(iface: string, prio: number, ip: string, classId:
   assertIpv4Cidr(ip, 'objetivo QoS');
   assertNonNegativeInteger(classId, 'classid');
   return [
-    'tc', 'filter', 'add', 'dev', iface, 'protocol', 'ip', 'parent', '1:', 'prio', String(prio),
-    'u32', 'match', 'ip', 'dst', ip, 'flowid', `1:${classId}`,
+    'tc',
+    'filter',
+    'add',
+    'dev',
+    iface,
+    'protocol',
+    'ip',
+    'parent',
+    '1:',
+    'prio',
+    String(prio),
+    'u32',
+    'match',
+    'ip',
+    'dst',
+    ip,
+    'flowid',
+    `1:${classId}`,
   ];
 }

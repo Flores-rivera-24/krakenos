@@ -28,7 +28,13 @@ describe('omada.parsers', () => {
       ],
     };
     expect(parseOmadaClients(result, 'arp')).toEqual([
-      { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.42', hostname: 'macbook', vendor: 'Apple', source: 'arp' },
+      {
+        mac: 'aa:bb:cc:dd:ee:ff',
+        ip: '192.168.1.42',
+        hostname: 'macbook',
+        vendor: 'Apple',
+        source: 'arp',
+      },
       { mac: '11:22:33:44:55:66', ip: '192.168.1.50', hostname: 'pi', vendor: null, source: 'arp' },
     ]);
   });
@@ -36,13 +42,34 @@ describe('omada.parsers', () => {
   it('parseOmadaAccessPoints mapea estado (status!=0 → online) y nº de clientes', () => {
     const result = {
       data: [
-        { mac: 'AA-BB-CC-DD-EE-01', name: 'EAP-Salón', model: 'EAP670', ip: '192.168.1.20', status: 11, clientNum: 4 },
+        {
+          mac: 'AA-BB-CC-DD-EE-01',
+          name: 'EAP-Salón',
+          model: 'EAP670',
+          ip: '192.168.1.20',
+          status: 11,
+          clientNum: 4,
+        },
         { mac: 'AA-BB-CC-DD-EE-02', model: 'EAP225', status: 0 },
       ],
     };
     expect(parseOmadaAccessPoints(result)).toEqual([
-      { id: 'aa:bb:cc:dd:ee:01', name: 'EAP-Salón', model: 'EAP670', ip: '192.168.1.20', online: true, networkCount: 4 },
-      { id: 'aa:bb:cc:dd:ee:02', name: 'EAP225', model: 'EAP225', ip: '', online: false, networkCount: 0 },
+      {
+        id: 'aa:bb:cc:dd:ee:01',
+        name: 'EAP-Salón',
+        model: 'EAP670',
+        ip: '192.168.1.20',
+        online: true,
+        networkCount: 4,
+      },
+      {
+        id: 'aa:bb:cc:dd:ee:02',
+        name: 'EAP225',
+        model: 'EAP225',
+        ip: '',
+        online: false,
+        networkCount: 0,
+      },
     ]);
   });
 
@@ -59,12 +86,39 @@ describe('omada.parsers', () => {
     const result = {
       data: [
         { id: 'w1', name: 'Casa', wlanBand: 1, security: 3, enable: true, broadcast: true },
-        { id: 'w2', name: 'Invitados', wlanBand: 0, security: 0, guestNetEnable: true, broadcast: false },
+        {
+          id: 'w2',
+          name: 'Invitados',
+          wlanBand: 0,
+          security: 0,
+          guestNetEnable: true,
+          broadcast: false,
+        },
       ],
     };
     expect(parseOmadaWlans(result, 'omada')).toEqual([
-      { id: 'w1', apId: 'omada', ssid: 'Casa', band: '5GHz', security: 'wpa2', enabled: true, hidden: false, isGuest: false, clientCount: 0 },
-      { id: 'w2', apId: 'omada', ssid: 'Invitados', band: '2.4GHz', security: 'open', enabled: true, hidden: true, isGuest: true, clientCount: 0 },
+      {
+        id: 'w1',
+        apId: 'omada',
+        ssid: 'Casa',
+        band: '5GHz',
+        security: 'wpa2',
+        enabled: true,
+        hidden: false,
+        isGuest: false,
+        clientCount: 0,
+      },
+      {
+        id: 'w2',
+        apId: 'omada',
+        ssid: 'Invitados',
+        band: '2.4GHz',
+        security: 'open',
+        enabled: true,
+        hidden: true,
+        isGuest: true,
+        clientCount: 0,
+      },
     ]);
   });
 
@@ -73,7 +127,14 @@ describe('omada.parsers', () => {
       rxBytesPerSec: 1_500_001,
       txBytesPerSec: 250_000,
     });
-    const current = parseSites({ privilege: { sites: [{ name: 'Default', key: 'site-123' }, { name: 'Otra', key: 'site-9' }] } });
+    const current = parseSites({
+      privilege: {
+        sites: [
+          { name: 'Default', key: 'site-123' },
+          { name: 'Otra', key: 'site-9' },
+        ],
+      },
+    });
     expect(current).toEqual([
       { name: 'Default', id: 'site-123' },
       { name: 'Otra', id: 'site-9' },
@@ -82,7 +143,12 @@ describe('omada.parsers', () => {
 
   it('buildWlanPatch parte de la WLAN actual y aplica cambios (psk + broadcast)', () => {
     const current = { id: 'w1', name: 'Casa', enable: true, psk: 'old', security: 3 };
-    const body = buildWlanPatch(current, { ssid: 'Nueva', password: 'secret123', hidden: true, band: '6GHz' });
+    const body = buildWlanPatch(current, {
+      ssid: 'Nueva',
+      password: 'secret123',
+      hidden: true,
+      band: '6GHz',
+    });
     expect(body).toMatchObject({
       id: 'w1',
       name: 'Nueva',

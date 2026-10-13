@@ -21,8 +21,9 @@ import { api } from '@/lib/api';
 // texto y no distingue código de comentario, así que citarlo se delata a sí mismo.)
 export const listInvitations = (): Promise<Invitation[]> => api.getList<Invitation>('/invitations');
 
-export const createInvitation = (body: CreateInvitationRequest): Promise<CreateInvitationResponse> =>
-  api.post<CreateInvitationResponse>('/invitations', body);
+export const createInvitation = (
+  body: CreateInvitationRequest,
+): Promise<CreateInvitationResponse> => api.post<CreateInvitationResponse>('/invitations', body);
 
 export const revokeInvitation = (id: string): Promise<void> => api.del<void>(`/invitations/${id}`);
 

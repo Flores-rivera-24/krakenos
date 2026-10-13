@@ -73,7 +73,9 @@ if (isMain) {
 
   const top = [...chunks].sort((a, b) => b.gzipKb - a.gzipKb).slice(0, 5);
   const totalKb = chunks.reduce((s, c) => s + c.gzipKb, 0);
-  console.log(`Presupuesto de bundle (gzip) — ${chunks.length} chunks, total ${totalKb.toFixed(1)} kB`);
+  console.log(
+    `Presupuesto de bundle (gzip) — ${chunks.length} chunks, total ${totalKb.toFixed(1)} kB`,
+  );
   for (const c of top) console.log(`  ${c.gzipKb.toFixed(1).padStart(7)} kB  ${c.name}`);
 
   const violations = checkBudget(chunks, budget);

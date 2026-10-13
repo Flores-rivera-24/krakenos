@@ -69,10 +69,7 @@ import { PushService } from './modules/push/push.service.js';
 import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
 import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
-import {
-  accessRequestsRoutes,
-  invitationsRoutes,
-} from './modules/onboarding/onboarding.routes.js';
+import { accessRequestsRoutes, invitationsRoutes } from './modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
 import { MotionService } from './modules/cameras/motion.service.js';
@@ -127,7 +124,11 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   // TLS opcional: si hay cert/clave, el agente sirve HTTPS.
   const app: FastifyInstance = env.https
-    ? (Fastify({ logger, https: env.https, trustProxy: env.trustProxy }) as unknown as FastifyInstance)
+    ? (Fastify({
+        logger,
+        https: env.https,
+        trustProxy: env.trustProxy,
+      }) as unknown as FastifyInstance)
     : Fastify({ logger, trustProxy: env.trustProxy });
 
   // Los 5xx no devuelven el mensaje interno (Prisma, drivers…); los 4xx quedan igual.
@@ -265,7 +266,11 @@ export async function buildServer(): Promise<FastifyInstance> {
   })) {
     app.log.warn(`[webauthn] ${w}`);
   }
-  await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
+  await app.register(inventoryRoutes, {
+    prefix: '/api/inventory',
+    driver,
+    service: inventoryService,
+  });
   await app.register(accessRoutes, { prefix: '/api/access', service: accessService });
   // Personas del hogar (US-240): el mismo control parental, pero por persona en vez
   // de por MAC. Le presta al barrido de acceso la reconciliación de sus horarios
@@ -398,9 +403,14 @@ export async function buildServer(): Promise<FastifyInstance> {
   motionService.start();
   app.addHook('onClose', async () => motionService.stop());
   // Poda periódica de grabaciones (edad + tamaño), además de la de cada grabación.
-  const recordingPrune = setInterval(() => {
-    void recordingService.prune().catch((err) => app.log.warn({ err }, '[recording] poda fallida'));
-  }, 6 * 60 * 60 * 1000);
+  const recordingPrune = setInterval(
+    () => {
+      void recordingService
+        .prune()
+        .catch((err) => app.log.warn({ err }, '[recording] poda fallida'));
+    },
+    6 * 60 * 60 * 1000,
+  );
   recordingPrune.unref();
   app.addHook('onClose', async () => clearInterval(recordingPrune));
   // Streaming HLS bajo demanda (US-185): barrido periódico que apaga las sesiones
@@ -425,7 +435,13 @@ export async function buildServer(): Promise<FastifyInstance> {
   // Aviso de destino nuevo (US-253): se alimenta de la tanda que acaba de
   // atribuir la ingesta del histórico, no de una relectura de la tabla.
   const newDestinationService = new NewDestinationService(app);
-  const dnsHistoryService = new DnsHistoryService(app, dns, undefined, undefined, newDestinationService);
+  const dnsHistoryService = new DnsHistoryService(
+    app,
+    dns,
+    undefined,
+    undefined,
+    newDestinationService,
+  );
   await app.register(dnsRoutes, { prefix: '/api/dns', dns, history: dnsHistoryService });
   // Configuración de integraciones desde la UI (US-142): catálogo + guardar + probar
   // conexión + revertir; recarga el manager en caliente vía el runtime (US-141).
@@ -456,7 +472,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   // publica un evento `energy-threshold` al bus (disparador de automatización) y
   // lo audita para el despacho multicanal (US-180).
   const energyAlertService = new EnergyAlertService(app, iotPolled, homeBus);
-  await app.register(energyAlertsRoutes, { prefix: '/api/energy/alerts', service: energyAlertService });
+  await app.register(energyAlertsRoutes, {
+    prefix: '/api/energy/alerts',
+    service: energyAlertService,
+  });
 
   // Alarma del hogar (US-188): máquina de estados armada por modo/manual+PIN, con
   // disparadores de cámara/sensor IoT, sirena/luces/aviso y fail-safe de sensor caído.
@@ -491,11 +510,17 @@ export async function buildServer(): Promise<FastifyInstance> {
       let energy: { todayKwh: number; todayCost: number; currency: string } | null = null;
       try {
         const s = await energyService.getStats('day');
-        energy = { todayKwh: s.totalEnergyWh / 1000, todayCost: s.totalCost ?? 0, currency: s.currency };
+        energy = {
+          todayKwh: s.totalEnergyWh / 1000,
+          todayCost: s.totalCost ?? 0,
+          currency: s.currency,
+        };
       } catch {
         energy = null;
       }
-      const devicesOnline = await app.prisma.device.count({ where: { online: true } }).catch(() => 0);
+      const devicesOnline = await app.prisma.device
+        .count({ where: { online: true } })
+        .catch(() => 0);
       // Privacidad (US-169): del hogar viaja SOLO el modo, nunca las personas.
       const homeMode = await presenceService.getMode().catch(() => null);
       const alarmPhase = alarmService.getStateSync().phase;
@@ -507,7 +532,10 @@ export async function buildServer(): Promise<FastifyInstance> {
       const roomSignals = await (async () => {
         try {
           const [rooms, devs, signalByMac] = await Promise.all([
-            app.prisma.room.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+            app.prisma.room.findMany({
+              select: { id: true, name: true },
+              orderBy: { name: 'asc' },
+            }),
             app.prisma.device.findMany({ select: { mac: true, roomId: true, online: true } }),
             signalCollector.get(),
           ]);
@@ -623,9 +651,10 @@ export async function buildServer(): Promise<FastifyInstance> {
   // nunca arranca un `setInterval` fuera de [min, max]. Un valor ausente/no numérico
   // recurre a 60 s.
   const rawScan = Number(scanRow?.value);
-  const scanSec = Number.isFinite(rawScan) && rawScan > 0
-    ? (clampToBound(rawScan, SETTING_BOUNDS.scanIntervalSec) ?? 60)
-    : 60;
+  const scanSec =
+    Number.isFinite(rawScan) && rawScan > 0
+      ? (clampToBound(rawScan, SETTING_BOUNDS.scanIntervalSec) ?? 60)
+      : 60;
   inventoryService.setScanInterval(scanSec * 1000);
   app.addHook('onClose', async () => inventoryService.stopScan());
 
@@ -719,7 +748,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     registerWebStatic(app, env.web.distPath);
     app.log.info(`Sirviendo frontend desde ${env.web.distPath}`);
   } else if (env.web.serve) {
-    app.log.warn(`SERVE_WEB activo pero no hay build en ${env.web.distPath} (ejecuta "pnpm build")`);
+    app.log.warn(
+      `SERVE_WEB activo pero no hay build en ${env.web.distPath} (ejecuta "pnpm build")`,
+    );
   }
 
   return app;

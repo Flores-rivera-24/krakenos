@@ -21,7 +21,11 @@ const LIGHT = {
   available: true,
   attributes: { '1/6/0': true, '1/8/0': 254, '0/40/5': 'Lámpara salón' },
 };
-const PLUG = { node_id: 5, available: true, attributes: { '1/6/0': false, '0/40/3': 'Smart Plug' } };
+const PLUG = {
+  node_id: 5,
+  available: true,
+  attributes: { '1/6/0': false, '0/40/3': 'Smart Plug' },
+};
 const SENSOR = { node_id: 6, available: false, attributes: { '1/1026/0': 2150 } };
 
 describe('escalado de nivel', () => {
@@ -69,7 +73,12 @@ describe('nodeToIotDevice', () => {
   });
 
   it('mapea un enchufe (sin brillo) y un sensor (lectura/100, reachable de available)', () => {
-    expect(nodeToIotDevice(PLUG)).toMatchObject({ kind: 'plug', name: 'Smart Plug', on: false, brightness: null });
+    expect(nodeToIotDevice(PLUG)).toMatchObject({
+      kind: 'plug',
+      name: 'Smart Plug',
+      on: false,
+      brightness: null,
+    });
     expect(nodeToIotDevice(SENSOR)).toMatchObject({
       kind: 'sensor',
       reachable: false,
@@ -106,10 +115,18 @@ describe('endpointForCluster + builders de device_command', () => {
  * `sensor` (o `plug`, si exponían OnOff) y **sin una sola lectura**.
  */
 describe('categorías nuevas en Matter (US-247)', () => {
-  const CONTACTO = { node_id: 10, available: true, attributes: { '1/69/0': true, '0/40/5': 'Puerta' } };
+  const CONTACTO = {
+    node_id: 10,
+    available: true,
+    attributes: { '1/69/0': true, '0/40/5': 'Puerta' },
+  };
   const HUMO = { node_id: 11, available: true, attributes: { '1/92/1': 0, '1/92/2': 0 } };
   const PERSIANA = { node_id: 12, available: true, attributes: { '1/258/8': 30, '1/6/0': true } };
-  const TERMOSTATO = { node_id: 13, available: true, attributes: { '1/513/18': 2150, '1/513/0': 1980 } };
+  const TERMOSTATO = {
+    node_id: 13,
+    available: true,
+    attributes: { '1/513/18': 2150, '1/513/0': 1980 },
+  };
   const CERRADURA = { node_id: 14, available: true, attributes: { '1/257/0': 1, '1/6/0': false } };
   const PRESENCIA = { node_id: 15, available: true, attributes: { '1/1030/0': 1 } };
 
@@ -211,7 +228,9 @@ describe('categorías nuevas en Matter (US-247)', () => {
   });
 
   it('la presencia entra como lectura de ocupación (bitmap, bit 0)', () => {
-    expect(nodeToIotDevice(PRESENCIA).readings).toEqual([{ metric: 'occupancy', value: 1, unit: '' }]);
+    expect(nodeToIotDevice(PRESENCIA).readings).toEqual([
+      { metric: 'occupancy', value: 1, unit: '' },
+    ]);
     const vacio = { ...PRESENCIA, attributes: { '1/1030/0': 0 } };
     expect(nodeToIotDevice(vacio).readings).toEqual([{ metric: 'occupancy', value: 0, unit: '' }]);
   });

@@ -78,7 +78,12 @@ export class UpdateChecker {
   }
 
   private async fetchLatest(): Promise<UpdateStatus> {
-    const base: UpdateStatus = { enabled: true, current: this.current, latest: null, updateAvailable: false };
+    const base: UpdateStatus = {
+      enabled: true,
+      current: this.current,
+      latest: null,
+      updateAvailable: false,
+    };
     try {
       const res = await this.fetchFn(`https://api.github.com/repos/${this.repo}/releases/latest`);
       if (!res.ok) return base;

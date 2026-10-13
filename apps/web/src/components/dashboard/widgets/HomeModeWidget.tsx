@@ -86,7 +86,11 @@ export function HomeModeWidget() {
           </p>
         ) : (
           <>
-            <div className="grid grid-cols-3 gap-2" role="group" aria-label={t('widget.homeMode.group')}>
+            <div
+              className="grid grid-cols-3 gap-2"
+              role="group"
+              aria-label={t('widget.homeMode.group')}
+            >
               {HOME_MODES.map((mode) => (
                 <button
                   key={mode}

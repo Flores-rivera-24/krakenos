@@ -7,13 +7,7 @@ import { useT } from '@/lib/i18n';
  * el "Cargando…" plano de los widgets del dashboard y otros paneles pequeños. El
  * `role="status"` la anuncia; el spinner queda decorativo (el texto ya informa).
  */
-export function LoadingLine({
-  label,
-  className,
-}: {
-  label?: string;
-  className?: string;
-}) {
+export function LoadingLine({ label, className }: { label?: string; className?: string }) {
   const t = useT();
   return (
     <div

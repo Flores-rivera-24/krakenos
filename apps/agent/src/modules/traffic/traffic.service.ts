@@ -55,7 +55,10 @@ export class TrafficService {
   private count = 0;
 
   // Acumulador del rollup por dispositivo: mac → sumas + IP más reciente (US-46).
-  private deviceAcc = new Map<string, { ip: string; sumRx: number; sumTx: number; count: number }>();
+  private deviceAcc = new Map<
+    string,
+    { ip: string; sumRx: number; sumTx: number; count: number }
+  >();
 
   constructor(
     private readonly app: FastifyInstance,

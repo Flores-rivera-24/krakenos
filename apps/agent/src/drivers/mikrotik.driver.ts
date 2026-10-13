@@ -131,9 +131,7 @@ export class MikrotikDriver implements HardwareDriver {
   /** Garantiza que existe la regla drop que descarta la address-list de bloqueo. */
   private async ensureDropRule(): Promise<void> {
     const rules = await this.listRows('ip/firewall/filter');
-    const exists = rules.some(
-      (r) => r['src-address-list'] === BLOCK_LIST && r.action === 'drop',
-    );
+    const exists = rules.some((r) => r['src-address-list'] === BLOCK_LIST && r.action === 'drop');
     if (!exists) {
       await this.opts.transport.add('ip/firewall/filter', {
         chain: 'forward',
@@ -176,11 +174,15 @@ export class MikrotikDriver implements HardwareDriver {
       rows = await this.listRows('interface/wireless');
     } catch {
       // El menú no existe (sin paquete wireless / RouterOS sin WiFi).
-      throw new FeatureNotSupportedError('Este router MikroTik no expone interfaces WiFi (wireless)');
+      throw new FeatureNotSupportedError(
+        'Este router MikroTik no expone interfaces WiFi (wireless)',
+      );
     }
     const wlans = parseMikrotikWireless(rows, AP_ID);
     if (wlans.length === 0) {
-      throw new FeatureNotSupportedError('Este router MikroTik no tiene interfaces WiFi configuradas');
+      throw new FeatureNotSupportedError(
+        'Este router MikroTik no tiene interfaces WiFi configuradas',
+      );
     }
     return wlans;
   }
@@ -197,7 +199,9 @@ export class MikrotikDriver implements HardwareDriver {
   }
 
   /** Construye los `props` del `set` de wireless a partir de una actualización. */
-  private wirelessSetProps(input: UpdateWifiRequest | UpdateWifiNetworkRequest): Record<string, string> {
+  private wirelessSetProps(
+    input: UpdateWifiRequest | UpdateWifiNetworkRequest,
+  ): Record<string, string> {
     const props: Record<string, string> = {};
     if (input.ssid !== undefined) props.ssid = input.ssid;
     if (input.enabled !== undefined) props.disabled = input.enabled ? 'no' : 'yes';

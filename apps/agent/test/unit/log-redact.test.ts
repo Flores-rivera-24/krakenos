@@ -37,7 +37,14 @@ describe('redactUrl', () => {
   });
 
   it('redacta también otros nombres típicos de secreto', () => {
-    for (const nombre of ['password', 'passphrase', 'secret', 'apikey', 'access_token', 'signature']) {
+    for (const nombre of [
+      'password',
+      'passphrase',
+      'secret',
+      'apikey',
+      'access_token',
+      'signature',
+    ]) {
       const out = redactUrl(`/x?${nombre}=NOAPARECE`);
       expect(out, nombre).not.toContain('NOAPARECE');
     }

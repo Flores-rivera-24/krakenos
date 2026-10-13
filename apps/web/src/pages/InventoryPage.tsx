@@ -31,7 +31,6 @@ const FILTERS: { value: ActiveFilter; key: TranslationKey }[] = [
   { value: 'unknown', key: 'inventory.filter.unknown' },
 ];
 
-
 function loadGroupsOpen(): Record<string, boolean> {
   try {
     const raw = localStorage.getItem(GROUPS_OPEN_KEY);
@@ -107,10 +106,7 @@ function DeviceTable({
             return (
               <tr
                 key={d.id}
-                {...filaAbrible(
-                  () => onSelect(d.id),
-                  `Ver ${d.label ?? d.hostname ?? d.mac}`,
-                )}
+                {...filaAbrible(() => onSelect(d.id), `Ver ${d.label ?? d.hostname ?? d.mac}`)}
                 className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
               >
                 <td className="px-3 py-2 text-kr-primary">{d.label ?? d.hostname ?? d.mac}</td>

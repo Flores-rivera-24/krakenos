@@ -35,10 +35,19 @@ describe('kasa.parsers', () => {
 
   it('parseKasaSysinfo mapea un enchufe (relay_state) a IotDevice plug', () => {
     const sysinfo = {
-      system: { get_sysinfo: { alias: 'Cafetera', mic_type: 'IOT.SMARTPLUGSWITCH', relay_state: 1 } },
+      system: {
+        get_sysinfo: { alias: 'Cafetera', mic_type: 'IOT.SMARTPLUGSWITCH', relay_state: 1 },
+      },
     };
     const dev = kasaToIotDevice(parseKasaSysinfo('192.168.1.60', sysinfo)!);
-    expect(dev).toMatchObject({ id: 'kasa:192.168.1.60', name: 'Cafetera', kind: 'plug', on: true, brightness: null, color: null });
+    expect(dev).toMatchObject({
+      id: 'kasa:192.168.1.60',
+      name: 'Cafetera',
+      kind: 'plug',
+      on: true,
+      brightness: null,
+      color: null,
+    });
   });
 
   it('parseKasaSysinfo mapea una bombilla de color (light_state) a IotDevice light', () => {
@@ -71,11 +80,19 @@ describe('kasa.parsers', () => {
     const nickname = Buffer.from('Enchufe TV').toString('base64');
     const info = { result: { model: 'P115', nickname, device_on: false } };
     const dev = tapoToIotDevice(parseTapoDeviceInfo('192.168.1.70', info));
-    expect(dev).toMatchObject({ id: 'tapo:192.168.1.70', name: 'Enchufe TV', kind: 'plug', on: false });
+    expect(dev).toMatchObject({
+      id: 'tapo:192.168.1.70',
+      name: 'Enchufe TV',
+      kind: 'plug',
+      on: false,
+    });
   });
 
   it('buildTapoSetOn/Color generan método set_device_info con sus params', () => {
-    expect(buildTapoSetOn(true)).toEqual({ method: 'set_device_info', params: { device_on: true } });
+    expect(buildTapoSetOn(true)).toEqual({
+      method: 'set_device_info',
+      params: { device_on: true },
+    });
     expect(buildTapoSetColor({ colorTempK: 4000 })).toEqual({
       method: 'set_device_info',
       params: { color_temp: 4000 },

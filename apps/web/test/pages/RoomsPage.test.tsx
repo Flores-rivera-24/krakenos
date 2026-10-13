@@ -8,7 +8,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -53,9 +60,11 @@ function renderPage() {
 
 describe('RoomsPage (US-165)', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      path === '/favorites' ? Promise.resolve([]) : Promise.resolve([]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path === '/favorites' ? Promise.resolve([]) : Promise.resolve([]),
+      );
     apiMock.post.mockReset();
     apiMock.del.mockReset();
     useFavoritesStore.setState({ favorites: [], loaded: true });
@@ -80,11 +89,19 @@ describe('RoomsPage (US-165)', () => {
     expect(screen.getByText(/1\/2 encendido/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Apagar' }));
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/rooms/r1/action', { on: false }));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith('/rooms/r1/action', { on: false }),
+    );
   });
 
   it('crea una habitación desde el editor', async () => {
-    apiMock.post.mockResolvedValue({ id: 'r9', name: 'Cocina', icon: 'kitchen', order: 0, createdAt: '' });
+    apiMock.post.mockResolvedValue({
+      id: 'r9',
+      name: 'Cocina',
+      icon: 'kitchen',
+      order: 0,
+      createdAt: '',
+    });
     const user = userEvent.setup();
     renderPage();
 

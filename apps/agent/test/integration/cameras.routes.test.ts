@@ -49,7 +49,11 @@ describe('rutas de cámaras', () => {
   it('una cámara offline o inexistente devuelve 404', async () => {
     const user = await seedUser(app, { role: 'viewer' });
     const headers = authHeader(signAccess(app, user));
-    const offline = await app.inject({ method: 'GET', url: '/api/cameras/cam-garaje/snapshot', headers });
+    const offline = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/cam-garaje/snapshot',
+      headers,
+    });
     const unknown = await app.inject({ method: 'GET', url: '/api/cameras/nope/snapshot', headers });
     expect(offline.statusCode).toBe(404);
     expect(unknown.statusCode).toBe(404);
@@ -152,8 +156,12 @@ describe('streaming HLS en vivo (US-185)', () => {
     const st = encodeURIComponent(token);
 
     expect(
-      (await app.inject({ method: 'GET', url: `/api/cameras/cam-entrada/stream/index.m3u8?st=${st}` }))
-        .statusCode,
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/cameras/cam-entrada/stream/index.m3u8?st=${st}`,
+        })
+      ).statusCode,
     ).toBe(200);
 
     const del = await app.inject({
@@ -213,7 +221,12 @@ describe('detección de movimiento — config y eventos (US-186)', () => {
       method: 'PUT',
       url: '/api/cameras/cam-entrada/motion',
       headers: authHeader(signAccess(app, admin)),
-      payload: { enabled: true, sensitivity: 'high', cooldownSec: 120, arming: { mode: 'schedule', windows: [{ fromMinute: 1320, toMinute: 420 }] } },
+      payload: {
+        enabled: true,
+        sensitivity: 'high',
+        cooldownSec: 120,
+        arming: { mode: 'schedule', windows: [{ fromMinute: 1320, toMinute: 420 }] },
+      },
     });
     expect(ok.statusCode).toBe(200);
     expect(ok.json()).toMatchObject({ enabled: true, sensitivity: 'high', cooldownSec: 120 });

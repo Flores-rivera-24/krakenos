@@ -14,10 +14,27 @@ import { NetworksCard } from '@/components/wifi/NetworksCard';
 import { useAuthStore } from '@/store/auth.store';
 
 const APS: AccessPoint[] = [
-  { id: 'ap-salon', name: 'AP Salón', model: 'Pro', ip: '192.168.1.2', online: true, networkCount: 2 },
+  {
+    id: 'ap-salon',
+    name: 'AP Salón',
+    model: 'Pro',
+    ip: '192.168.1.2',
+    online: true,
+    networkCount: 2,
+  },
 ];
 const NETS: WifiNetworkInfo[] = [
-  { id: 'net-1', apId: 'ap-salon', ssid: 'KrakenOS', band: '5GHz', security: 'wpa2/wpa3', enabled: true, hidden: false, isGuest: false, clientCount: 1 },
+  {
+    id: 'net-1',
+    apId: 'ap-salon',
+    ssid: 'KrakenOS',
+    band: '5GHz',
+    security: 'wpa2/wpa3',
+    enabled: true,
+    hidden: false,
+    isGuest: false,
+    clientCount: 1,
+  },
 ];
 const CLIENTS: WifiClient[] = [
   { mac: 'aa:bb:cc:dd:ee:ff', hostname: 'laptop', ip: '192.168.1.42', signalDbm: -50 },

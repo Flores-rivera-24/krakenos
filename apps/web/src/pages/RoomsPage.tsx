@@ -92,8 +92,7 @@ function RoomTile({
                   one: t('rooms.device.one'),
                   other: t('rooms.device.other'),
                 })}{' '}
-                ·{' '}
-                {room.iotCount} IoT
+                · {room.iotCount} IoT
                 {room.anyUnreachable && <span className="text-warning">{t('rooms.noSignal')}</span>}
               </span>
             </span>
@@ -281,9 +280,7 @@ export function RoomsPage() {
           <h1 className="text-xl font-semibold">{t('rooms.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('rooms.subtitle')}</p>
         </div>
-        {isAdmin && (
-          <Button onClick={() => setEditor('new')}>{t('rooms.newTitle')}</Button>
-        )}
+        {isAdmin && <Button onClick={() => setEditor('new')}>{t('rooms.newTitle')}</Button>}
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
@@ -323,9 +320,7 @@ export function RoomsPage() {
         </div>
       )}
 
-      {editor && (
-        <RoomEditor room={editor} onClose={() => setEditor(null)} onSaved={reload} />
-      )}
+      {editor && <RoomEditor room={editor} onClose={() => setEditor(null)} onSaved={reload} />}
     </div>
   );
 }

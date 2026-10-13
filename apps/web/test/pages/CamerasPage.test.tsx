@@ -147,16 +147,11 @@ describe('CamerasPage', () => {
     await user.click(screen.getByRole('button', { name: /Añadir cámara/ }));
     const dialog = screen.getByRole('dialog');
     // Ayuda contextual: qué es una URL RTSP + aviso de privacidad.
-    expect(
-      within(dialog).getByRole('button', { name: /Qué es una URL RTSP/ }),
-    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Qué es una URL RTSP/ })).toBeInTheDocument();
     expect(within(dialog).getByText(/se guardan solo en tu servidor/)).toBeInTheDocument();
 
     await user.type(within(dialog).getByLabelText('Nombre'), 'Jardín');
-    await user.type(
-      within(dialog).getByLabelText('URL RTSP'),
-      'rtsp://u:p@10.0.0.9:554/s1',
-    );
+    await user.type(within(dialog).getByLabelText('URL RTSP'), 'rtsp://u:p@10.0.0.9:554/s1');
     await user.click(within(dialog).getByRole('button', { name: 'Añadir cámara' }));
 
     await waitFor(() =>
@@ -186,11 +181,13 @@ describe('CamerasPage', () => {
     await user.type(within(dialog).getByLabelText('Nombre'), 'Puerta');
     await user.click(within(dialog).getByRole('button', { name: 'Guardar cambios' }));
 
-    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledWith('/cameras/cam-entrada', {
-      name: 'Puerta',
-      room: 'Exterior',
-      model: 'X',
-    }));
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith('/cameras/cam-entrada', {
+        name: 'Puerta',
+        room: 'Exterior',
+        model: 'X',
+      }),
+    );
     await waitFor(() => expect(toastMessages()).toContain('Cámara actualizada'));
   });
 

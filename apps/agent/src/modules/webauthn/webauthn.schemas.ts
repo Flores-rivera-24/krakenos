@@ -155,7 +155,11 @@ export const regenerateBackupCodesSchema = {
 /** `GET /api/webauthn/backup-codes` — cuántos códigos sin usar quedan. */
 export const backupCodesStatusSchema = {
   response: {
-    200: { type: 'object', properties: { remaining: { type: 'integer' } }, required: ['remaining'] },
+    200: {
+      type: 'object',
+      properties: { remaining: { type: 'integer' } },
+      required: ['remaining'],
+    },
   },
 } as const;
 

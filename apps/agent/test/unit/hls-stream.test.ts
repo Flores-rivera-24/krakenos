@@ -25,7 +25,13 @@ function makeSpawner(): { spawn: StreamSpawner; stops: number; urls: string[] } 
       },
     };
   };
-  return { spawn, get stops() { return state.stops; }, urls: state.urls };
+  return {
+    spawn,
+    get stops() {
+      return state.stops;
+    },
+    urls: state.urls,
+  };
 }
 
 describe('HlsStreamManager', () => {
@@ -125,7 +131,12 @@ describe('HlsStreamManager', () => {
   it('una lectura de playlist refresca la actividad (evita el reap)', () => {
     let clock = 0;
     const sp = makeSpawner();
-    const hls = new HlsStreamManager({ baseDir, spawn: sp.spawn, idleTimeoutMs: 100, now: () => clock });
+    const hls = new HlsStreamManager({
+      baseDir,
+      spawn: sp.spawn,
+      idleTimeoutMs: 100,
+      now: () => clock,
+    });
     hls.start('cam-1', 'rtsp://x/1');
     clock = 90;
     hls.readPlaylist('cam-1'); // toca a t=90

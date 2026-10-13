@@ -6,7 +6,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -14,8 +21,19 @@ import { HealthCard } from '@/components/settings/HealthCard';
 
 const snapshot: MetricsSnapshot = {
   uptimeSeconds: 3720, // 1 h 2 min
-  memory: { rssBytes: 120 * 1024 * 1024, heapUsedBytes: 60 * 1024 * 1024, heapTotalBytes: 90 * 1024 * 1024 },
-  http: { total: 42, errors: 3, errorRate: 3 / 42, avgLatencyMs: 12.4, p95LatencyMs: 55, inFlight: 2 },
+  memory: {
+    rssBytes: 120 * 1024 * 1024,
+    heapUsedBytes: 60 * 1024 * 1024,
+    heapTotalBytes: 90 * 1024 * 1024,
+  },
+  http: {
+    total: 42,
+    errors: 3,
+    errorRate: 3 / 42,
+    avgLatencyMs: 12.4,
+    p95LatencyMs: 55,
+    inFlight: 2,
+  },
   eventLoop: { lagMs: 4, maxLagMs: 9 },
   websocketClients: 5,
   storage: {

@@ -1,12 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de DNS', () => {
@@ -33,17 +27,29 @@ describe('rutas de DNS', () => {
     const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
     const token = signAccess(app, viewer);
 
-    const stats = await app.inject({ method: 'GET', url: '/api/dns/stats', headers: authHeader(token) });
+    const stats = await app.inject({
+      method: 'GET',
+      url: '/api/dns/stats',
+      headers: authHeader(token),
+    });
     expect(stats.statusCode).toBe(200);
     expect(typeof stats.json().blockedPercent).toBe('number');
 
-    const list = await app.inject({ method: 'GET', url: '/api/dns/blocklist', headers: authHeader(token) });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/dns/blocklist',
+      headers: authHeader(token),
+    });
     expect(list.statusCode).toBe(200);
     expect(Array.isArray(list.json())).toBe(true);
 
     // El registro de consultas es el historial de navegación del hogar: sale de
     // «lectura autenticada» y pasa a `home.activity` (US-250). Antes daba 200.
-    const queries = await app.inject({ method: 'GET', url: '/api/dns/queries', headers: authHeader(token) });
+    const queries = await app.inject({
+      method: 'GET',
+      url: '/api/dns/queries',
+      headers: authHeader(token),
+    });
     expect(queries.statusCode).toBe(403);
 
     const add = await app.inject({

@@ -20,7 +20,10 @@ describe('habitaciones (US-165)', () => {
   beforeEach(async () => {
     await resetDb(app);
     adminToken = signAccess(app, await seedUser(app, { role: 'admin' }));
-    viewerToken = signAccess(app, await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }));
+    viewerToken = signAccess(
+      app,
+      await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }),
+    );
   });
 
   async function createRoom(name = 'Salón'): Promise<Room> {
@@ -64,8 +67,12 @@ describe('habitaciones (US-165)', () => {
       headers: authHeader(adminToken),
     });
     expect(del.statusCode).toBe(204);
-    const after = await app.inject({ method: 'GET', url: '/api/rooms', headers: authHeader(adminToken) });
-    expect((after.json() as RoomWithState[])).toHaveLength(0);
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/rooms',
+      headers: authHeader(adminToken),
+    });
+    expect(after.json() as RoomWithState[]).toHaveLength(0);
   });
 
   it('asigna un dispositivo de red y un IoT a la habitación; el estado agregado los cuenta', async () => {
@@ -82,7 +89,9 @@ describe('habitaciones (US-165)', () => {
       payload: { kind: 'device', ref: device.id, roomId: room.id },
     });
     expect(assignDevice.statusCode).toBe(204);
-    expect((await app.prisma.device.findUnique({ where: { id: device.id } }))?.roomId).toBe(room.id);
+    expect((await app.prisma.device.findUnique({ where: { id: device.id } }))?.roomId).toBe(
+      room.id,
+    );
 
     // IoT (mock: 'light-salon' está encendido) → habitación.
     const assignIot = await app.inject({
@@ -93,7 +102,11 @@ describe('habitaciones (US-165)', () => {
     });
     expect(assignIot.statusCode).toBe(204);
 
-    const list = await app.inject({ method: 'GET', url: '/api/rooms', headers: authHeader(adminToken) });
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/rooms',
+      headers: authHeader(adminToken),
+    });
     const [state] = list.json() as RoomWithState[];
     expect(state).toMatchObject({
       deviceCount: 1,
@@ -118,7 +131,11 @@ describe('habitaciones (US-165)', () => {
     });
     await app.prisma.iotRoomMember.create({ data: { iotDeviceId: 'plug-tv', roomId: room.id } });
 
-    await app.inject({ method: 'DELETE', url: `/api/rooms/${room.id}`, headers: authHeader(adminToken) });
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/rooms/${room.id}`,
+      headers: authHeader(adminToken),
+    });
 
     expect((await app.prisma.device.findUnique({ where: { id: device.id } }))?.roomId).toBeNull();
     expect(await app.prisma.iotRoomMember.count()).toBe(0);

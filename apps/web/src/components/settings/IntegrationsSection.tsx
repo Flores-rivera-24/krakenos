@@ -85,7 +85,9 @@ export function IntegrationsSection({ isAdmin }: Props) {
   const govee = backendStats(devices, 'govee');
   const tuya = backendStats(devices, 'tuya');
   const reachableTuya = new Set(
-    devices.filter((d) => d.id.startsWith('tuya:') && d.reachable).map((d) => d.id.slice('tuya:'.length)),
+    devices
+      .filter((d) => d.id.startsWith('tuya:') && d.reachable)
+      .map((d) => d.id.slice('tuya:'.length)),
   );
 
   return (
@@ -134,7 +136,11 @@ export function IntegrationsSection({ isAdmin }: Props) {
       )}
 
       {addOpen && (
-        <Dialog open onClose={() => setAddOpen(false)} aria-labelledby="dialog-add-integration-title">
+        <Dialog
+          open
+          onClose={() => setAddOpen(false)}
+          aria-labelledby="dialog-add-integration-title"
+        >
           <h3
             id="dialog-add-integration-title"
             className="text-kr-lg font-semibold text-kr-primary"

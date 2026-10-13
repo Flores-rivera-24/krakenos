@@ -26,14 +26,31 @@ export class ReportsService {
     });
     return toCsv(
       ['fecha', 'accion', 'usuario', 'ip', 'detalle'],
-      rows.map((r) => [r.createdAt.toISOString(), r.action, r.userId ?? '', r.ip ?? '', r.detail ?? '']),
+      rows.map((r) => [
+        r.createdAt.toISOString(),
+        r.action,
+        r.userId ?? '',
+        r.ip ?? '',
+        r.detail ?? '',
+      ]),
     );
   }
 
   async devicesCsv(): Promise<string> {
     const rows = await this.app.prisma.device.findMany({ orderBy: { lastSeen: 'desc' } });
     return toCsv(
-      ['mac', 'ip', 'hostname', 'nombre', 'fabricante', 'tipo', 'bloqueado', 'en_linea', 'vlan', 'ultima_vez'],
+      [
+        'mac',
+        'ip',
+        'hostname',
+        'nombre',
+        'fabricante',
+        'tipo',
+        'bloqueado',
+        'en_linea',
+        'vlan',
+        'ultima_vez',
+      ],
       rows.map((d) => [
         d.mac,
         d.ip,
@@ -53,7 +70,11 @@ export class ReportsService {
     const stats = await this.traffic.getStats(range);
     return toCsv(
       ['timestamp', 'rx_bytes_por_seg', 'tx_bytes_por_seg'],
-      stats.buckets.map((b) => [b.timestamp, Math.round(b.rxBytesPerSec), Math.round(b.txBytesPerSec)]),
+      stats.buckets.map((b) => [
+        b.timestamp,
+        Math.round(b.rxBytesPerSec),
+        Math.round(b.txBytesPerSec),
+      ]),
     );
   }
 

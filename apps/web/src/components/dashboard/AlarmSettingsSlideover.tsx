@@ -150,9 +150,9 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
       ) : (
         <div className="space-y-5">
           <Callout variant="warning" title={t('widget.alarm.disclaimerTitle')}>
-            La alarma del hogar es un extra de aviso, no un sistema de seguridad profesional: no tiene
-            batería de respaldo ni conexión de emergencia por red móvil, y deja de funcionar si se va
-            la luz o se apaga el servidor. No la uses como tu única protección.
+            La alarma del hogar es un extra de aviso, no un sistema de seguridad profesional: no
+            tiene batería de respaldo ni conexión de emergencia por red móvil, y deja de funcionar
+            si se va la luz o se apaga el servidor. No la uses como tu única protección.
           </Callout>
 
           <div className="space-y-1">

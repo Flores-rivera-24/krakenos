@@ -220,7 +220,10 @@ export class WebAuthnService {
     return options;
   }
 
-  async verifyAuthentication(user: WebAuthnUser, response: AuthenticationResponseJSON): Promise<void> {
+  async verifyAuthentication(
+    user: WebAuthnUser,
+    response: AuthenticationResponseJSON,
+  ): Promise<void> {
     const challenge = await this.consumeChallengeOrThrow(user.id, 'authenticate', response);
     const credential = await this.prisma.webAuthnCredential.findUnique({
       where: { credentialId: response.id },

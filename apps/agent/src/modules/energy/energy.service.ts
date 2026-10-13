@@ -123,7 +123,10 @@ export class EnergyService {
    * Guarda la configuración de energía del hogar (US-182). `pricePerKwh` negativo o
    * no finito se rechaza; `null` limpia el precio (vuelve a "sin coste").
    */
-  async setConfig(input: { pricePerKwh?: number | null; currency?: string }): Promise<EnergyConfig> {
+  async setConfig(input: {
+    pricePerKwh?: number | null;
+    currency?: string;
+  }): Promise<EnergyConfig> {
     if (input.pricePerKwh !== undefined) {
       if (input.pricePerKwh === null) {
         await this.app.prisma.setting.deleteMany({ where: { key: 'energyPricePerKwh' } });
@@ -201,10 +204,7 @@ export class EnergyService {
     const { pricePerKwh: price, currency } = await this.getConfig();
 
     // Comparativa vs el periodo inmediatamente anterior, de igual duración (US-182).
-    const previousTotalEnergyWh = await this.energyBetween(
-      new Date(now - 2 * windowMs),
-      since,
-    );
+    const previousTotalEnergyWh = await this.energyBetween(new Date(now - 2 * windowMs), since);
 
     // Nombre/estancia actuales desde el manager (puede ya no existir la fila).
     const live = await this.iot.listDevices().catch(() => []);

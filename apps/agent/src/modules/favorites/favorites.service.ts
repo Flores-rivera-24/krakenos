@@ -90,7 +90,10 @@ export class FavoriteService {
    * mencionados conservan su orden relativo tras los reordenados.
    */
   async reorder(userId: string, ids: string[]): Promise<Favorite[]> {
-    const owned = await this.app.prisma.favorite.findMany({ where: { userId }, select: { id: true } });
+    const owned = await this.app.prisma.favorite.findMany({
+      where: { userId },
+      select: { id: true },
+    });
     const ownedIds = new Set(owned.map((f) => f.id));
     await this.app.prisma.$transaction(
       ids

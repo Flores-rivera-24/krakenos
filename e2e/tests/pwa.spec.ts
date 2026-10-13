@@ -15,7 +15,10 @@ test.beforeEach(async ({ page }) => {
   await login(page);
 });
 
-test('pwa: el manifiesto se sirve con identidad y los iconos responden', async ({ page, request }) => {
+test('pwa: el manifiesto se sirve con identidad y los iconos responden', async ({
+  page,
+  request,
+}) => {
   const href = await page.locator('link[rel="manifest"]').getAttribute('href');
   expect(href).toBeTruthy();
 

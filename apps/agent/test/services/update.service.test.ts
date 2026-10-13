@@ -15,9 +15,24 @@ function stubChecker(status: UpdateStatus): UpdateChecker {
   return { check: vi.fn(async () => status) } as unknown as UpdateChecker;
 }
 
-const AVAILABLE: UpdateStatus = { enabled: true, current: '1.0.0', latest: '1.1.0', updateAvailable: true };
-const UP_TO_DATE: UpdateStatus = { enabled: true, current: '1.1.0', latest: '1.1.0', updateAvailable: false };
-const DISABLED: UpdateStatus = { enabled: false, current: '1.0.0', latest: null, updateAvailable: false };
+const AVAILABLE: UpdateStatus = {
+  enabled: true,
+  current: '1.0.0',
+  latest: '1.1.0',
+  updateAvailable: true,
+};
+const UP_TO_DATE: UpdateStatus = {
+  enabled: true,
+  current: '1.1.0',
+  latest: '1.1.0',
+  updateAvailable: false,
+};
+const DISABLED: UpdateStatus = {
+  enabled: false,
+  current: '1.0.0',
+  latest: null,
+  updateAvailable: false,
+};
 
 function make(opts: {
   status: UpdateStatus;
@@ -46,7 +61,10 @@ function make(opts: {
 }
 
 /** Escribe un lock del formato actual (US-232) en `varDir`. */
-function writeLock(varDir: string, lock: { version: string; pid: number; startedAt: string }): void {
+function writeLock(
+  varDir: string,
+  lock: { version: string; pid: number; startedAt: string },
+): void {
   writeFileSync(join(varDir, 'update.lock'), `${JSON.stringify(lock)}\n`);
 }
 

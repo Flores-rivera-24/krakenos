@@ -66,7 +66,10 @@ export function parseProcNetDev(stdout: string, iface: string): IfaceCounters | 
     if (idx === -1) continue;
     const name = line.slice(0, idx).trim();
     if (name !== iface) continue;
-    const fields = line.slice(idx + 1).trim().split(/\s+/);
+    const fields = line
+      .slice(idx + 1)
+      .trim()
+      .split(/\s+/);
     if (fields.length < 16) continue;
     return { rxBytes: Number(fields[0]), txBytes: Number(fields[8]) };
   }

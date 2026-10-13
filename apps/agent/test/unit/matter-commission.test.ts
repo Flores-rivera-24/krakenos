@@ -9,7 +9,9 @@ import {
   parseCommissionResult,
 } from '../../src/iot/matter.parsers.js';
 
-const NODES = [{ node_id: 7, available: true, attributes: { '1/6/0': true, '0/40/5': 'Enchufe nuevo' } }];
+const NODES = [
+  { node_id: 7, available: true, attributes: { '1/6/0': true, '0/40/5': 'Enchufe nuevo' } },
+];
 
 /**
  * Transporte WS falso que puede responder con éxito o con error por comando, para
@@ -27,12 +29,20 @@ class FakeWs implements WsTransport {
     this.handler = handler;
   }
   async send(data: string): Promise<void> {
-    const msg = JSON.parse(data) as { message_id: string; command: string; args: Record<string, unknown> };
+    const msg = JSON.parse(data) as {
+      message_id: string;
+      command: string;
+      args: Record<string, unknown>;
+    };
     this.sent.push({ command: msg.command, args: msg.args });
     const res = this.responder(msg.command) as { __error?: string } | unknown;
     if (res && typeof res === 'object' && '__error' in (res as object)) {
       this.handler?.(
-        JSON.stringify({ message_id: msg.message_id, error_code: 1, details: (res as { __error: string }).__error }),
+        JSON.stringify({
+          message_id: msg.message_id,
+          error_code: 1,
+          details: (res as { __error: string }).__error,
+        }),
       );
     } else {
       this.handler?.(JSON.stringify({ message_id: msg.message_id, result: res }));
@@ -52,7 +62,9 @@ describe('comisionado Matter (US-172)', () => {
     });
     it('classifyCommissionError mapea a códigos estables', () => {
       expect(classifyCommissionError('Invalid QR code')).toBe('invalid-code');
-      expect(classifyCommissionError('Thread network has no border router')).toBe('thread-no-border');
+      expect(classifyCommissionError('Thread network has no border router')).toBe(
+        'thread-no-border',
+      );
       expect(classifyCommissionError('Device discovery timeout')).toBe('not-found');
       expect(classifyCommissionError('boom')).toBe('failed');
     });
@@ -98,7 +110,9 @@ describe('comisionado Matter (US-172)', () => {
     });
 
     it('sin miembro Matter, commission es undefined', () => {
-      const composite = new CompositeIotManager([{ prefix: 'mock', manager: new MockIotManager() }]);
+      const composite = new CompositeIotManager([
+        { prefix: 'mock', manager: new MockIotManager() },
+      ]);
       expect(composite.commission).toBeUndefined();
     });
   });

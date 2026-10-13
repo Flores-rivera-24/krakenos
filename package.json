@@ -29,7 +29,8 @@
     "qa:compat:install": "playwright install firefox",
     "qa": "pnpm lint && pnpm -r typecheck && pnpm test:coverage && pnpm qa:mutation && pnpm qa:deadcode",
     "lint": "eslint .",
-    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format": "prettier --write \"**/*.{ts,tsx,js,mjs,cjs,json,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,cjs,json,css}\"",
     "clean": "pnpm -r exec rm -rf dist node_modules .turbo && rm -rf node_modules"
   },
   "devDependencies": {

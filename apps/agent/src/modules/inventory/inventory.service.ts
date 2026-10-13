@@ -274,7 +274,13 @@ export class InventoryService {
     const merged = new Map<string, MergedDevice>();
     for (const d of [...arp.devices, ...mdns.devices]) {
       const mac = d.mac.toLowerCase();
-      const cur = merged.get(mac) ?? { mac, ip: d.ip, hostname: null, vendor: null, sources: new Set() };
+      const cur = merged.get(mac) ?? {
+        mac,
+        ip: d.ip,
+        hostname: null,
+        vendor: null,
+        sources: new Set(),
+      };
       cur.ip = d.ip || cur.ip;
       cur.hostname = d.hostname ?? cur.hostname;
       cur.vendor = d.vendor ?? cur.vendor;

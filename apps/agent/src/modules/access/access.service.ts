@@ -159,7 +159,14 @@ export class AccessScheduleService {
   async blockedViews(now: Date = new Date()): Promise<BlockedDeviceView[]> {
     const [devices, schedules] = await Promise.all([
       this.app.prisma.device.findMany({
-        select: { id: true, mac: true, label: true, hostname: true, isBlocked: true, pausedUntil: true },
+        select: {
+          id: true,
+          mac: true,
+          label: true,
+          hostname: true,
+          isBlocked: true,
+          pausedUntil: true,
+        },
         orderBy: { mac: 'asc' },
       }),
       this.app.prisma.accessSchedule.findMany({ where: { enabled: true } }),
@@ -282,7 +289,10 @@ export class AccessScheduleService {
         this.managedBlocked.delete(mac);
         await this.persistManaged();
       } catch (err) {
-        this.app.log.error({ err, mac }, '[access] no se pudo reanudar el dispositivo; se reintenta');
+        this.app.log.error(
+          { err, mac },
+          '[access] no se pudo reanudar el dispositivo; se reintenta',
+        );
         return { applied: false };
       }
     }

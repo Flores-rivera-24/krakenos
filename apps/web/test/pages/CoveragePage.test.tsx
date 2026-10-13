@@ -23,7 +23,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -92,8 +99,12 @@ describe('CoveragePage', () => {
     coverageMock.createScan.mockReset().mockResolvedValue(SCAN);
     coverageMock.getScan.mockReset().mockResolvedValue({ ...SCAN, samples: [] });
     coverageMock.deleteScan.mockReset().mockResolvedValue(undefined);
-    coverageMock.recordSample.mockReset().mockResolvedValue({ found: true, rssiDbm: -55, sample: null });
-    coverageMock.getMeasuredHeatmap.mockReset().mockResolvedValue({ ...HEATMAP, source: 'measured' });
+    coverageMock.recordSample
+      .mockReset()
+      .mockResolvedValue({ found: true, rssiDbm: -55, sample: null });
+    coverageMock.getMeasuredHeatmap
+      .mockReset()
+      .mockResolvedValue({ ...HEATMAP, source: 'measured' });
     apiMock.get.mockReset().mockResolvedValue([]); // /inventory (SurveyPanel)
   });
 
@@ -148,7 +159,9 @@ describe('CoveragePage', () => {
     await screen.findByRole('option', { name: 'Planta baja' });
 
     await user.click(screen.getByRole('button', { name: 'Predicción' }));
-    await waitFor(() => expect(coverageMock.getPredictedHeatmap).toHaveBeenCalledWith('plan-1', '5GHz'));
+    await waitFor(() =>
+      expect(coverageMock.getPredictedHeatmap).toHaveBeenCalledWith('plan-1', '5GHz'),
+    );
 
     await user.click(screen.getByRole('button', { name: '2.4GHz' }));
 

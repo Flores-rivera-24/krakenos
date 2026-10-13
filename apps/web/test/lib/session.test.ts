@@ -11,7 +11,14 @@ vi.mock('@/lib/api', () => ({ api: apiMock }));
 import { bootstrapSession } from '@/lib/session';
 import { useAuthStore } from '@/store/auth.store';
 
-const USER = { id: 'u1', email: 'a@b.c', displayName: 'A', role: 'admin' as const, createdAt: '', updatedAt: '' };
+const USER = {
+  id: 'u1',
+  email: 'a@b.c',
+  displayName: 'A',
+  role: 'admin' as const,
+  createdAt: '',
+  updatedAt: '',
+};
 
 /** Reintentos instantáneos: los tests no esperan de verdad. */
 const SIN_ESPERA = { sleep: async () => {}, retries: [0, 0, 0] as const };

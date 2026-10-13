@@ -52,9 +52,28 @@ describe('catálogo de tipos de dispositivo', () => {
 describe('filterDevices', () => {
   const list = [
     device({ id: 'a', label: 'MacBook Pro', hostname: 'mbp', mac: 'aa:aa:aa:aa:aa:aa' }),
-    device({ id: 'b', label: 'Living Room TV', hostname: 'tv', type: 'tv', mac: 'bb:bb:bb:bb:bb:bb' }),
-    device({ id: 'c', label: 'Old Phone', hostname: 'phone', type: 'phone', online: false, mac: 'cc:cc:cc:cc:cc:cc' }),
-    device({ id: 'd', label: 'Blocked Laptop', hostname: 'lap', isBlocked: true, mac: 'dd:dd:dd:dd:dd:dd' }),
+    device({
+      id: 'b',
+      label: 'Living Room TV',
+      hostname: 'tv',
+      type: 'tv',
+      mac: 'bb:bb:bb:bb:bb:bb',
+    }),
+    device({
+      id: 'c',
+      label: 'Old Phone',
+      hostname: 'phone',
+      type: 'phone',
+      online: false,
+      mac: 'cc:cc:cc:cc:cc:cc',
+    }),
+    device({
+      id: 'd',
+      label: 'Blocked Laptop',
+      hostname: 'lap',
+      isBlocked: true,
+      mac: 'dd:dd:dd:dd:dd:dd',
+    }),
   ];
 
   it('filtra por query en label (coincidencia única)', () => {

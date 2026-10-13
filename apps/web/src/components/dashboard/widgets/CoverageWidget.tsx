@@ -60,9 +60,7 @@ export function CoverageWidget() {
     }
   }
   const okPct =
-    covered > 0
-      ? Math.round(((counts.excellent + counts.good + counts.fair) / covered) * 100)
-      : 0;
+    covered > 0 ? Math.round(((counts.excellent + counts.good + counts.fair) / covered) * 100) : 0;
 
   return (
     <Card>

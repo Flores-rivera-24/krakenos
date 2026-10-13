@@ -98,13 +98,19 @@ export class TlsService {
       // El servidor sigue sirviendo con lo que ya tenía cargado: un fichero
       // ilegible ahora mismo no es motivo para tocar nada ni para mentir en el
       // estado, así que se conserva el último conocido y se registra.
-      this.app.log.warn({ err, certPath }, '[tls] no se pudo leer el certificado; se conserva el anterior');
+      this.app.log.warn(
+        { err, certPath },
+        '[tls] no se pudo leer el certificado; se conserva el anterior',
+      );
       return this.status;
     }
 
     const validity = readCertificateValidity(pem);
     if (!validity) {
-      this.app.log.warn({ certPath }, '[tls] el certificado no se pudo parsear; estado sin cambios');
+      this.app.log.warn(
+        { certPath },
+        '[tls] el certificado no se pudo parsear; estado sin cambios',
+      );
       return this.status;
     }
 
@@ -136,7 +142,9 @@ export class TlsService {
           }
         } else {
           // HTTP puro o servidor sin soporte: se dice, en vez de fingir que se aplicó.
-          this.app.log.warn('[tls] hay un certificado nuevo pero este servidor no admite recarga en caliente; reinicia el agente');
+          this.app.log.warn(
+            '[tls] hay un certificado nuevo pero este servidor no admite recarga en caliente; reinicia el agente',
+          );
         }
       }
     }

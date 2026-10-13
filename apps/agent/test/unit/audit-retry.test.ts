@@ -16,10 +16,7 @@ describe('persistAuditWithRetry (US-85, F11)', () => {
   });
 
   it('reintenta ante un fallo transitorio y acaba escribiendo', async () => {
-    const create = vi
-      .fn()
-      .mockRejectedValueOnce(new Error('DB ocupada'))
-      .mockResolvedValue({});
+    const create = vi.fn().mockRejectedValueOnce(new Error('DB ocupada')).mockResolvedValue({});
     const onSuccess = vi.fn();
     const onGiveUp = vi.fn();
     persistAuditWithRetry({ create, onSuccess, onGiveUp, schedule: runNow }, [10, 20, 30]);

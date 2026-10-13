@@ -9,7 +9,8 @@ import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../help
 class CommissionableIot extends MockIotManager {
   outcome: 'ok' | 'error' = 'ok';
   async commission(code: string): Promise<MatterCommissionResult> {
-    if (this.outcome === 'error') throw new MatterCommissionError('invalid-code', `código ${code} inválido`);
+    if (this.outcome === 'error')
+      throw new MatterCommissionError('invalid-code', `código ${code} inválido`);
     return { deviceId: 'matter:9', name: 'Bombilla nueva' };
   }
 }

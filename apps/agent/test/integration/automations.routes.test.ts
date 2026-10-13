@@ -15,7 +15,14 @@ import { AccessScheduleService } from '../../src/modules/access/access.service.j
 import { AutomationService } from '../../src/modules/automations/automations.service.js';
 import { InventoryService } from '../../src/modules/inventory/inventory.service.js';
 import { SceneService } from '../../src/modules/scenes/scenes.service.js';
-import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import {
+  authHeader,
+  buildTestApp,
+  eventually,
+  resetDb,
+  seedUser,
+  signAccess,
+} from '../helpers/app.js';
 
 /** Automatizaciones «si X entonces Y» (US-167): CRUD + motor. */
 describe('automatizaciones (US-167)', () => {
@@ -34,14 +41,19 @@ describe('automatizaciones (US-167)', () => {
   beforeEach(async () => {
     await resetDb(app);
     adminToken = signAccess(app, await seedUser(app, { role: 'admin' }));
-    viewerToken = signAccess(app, await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }));
+    viewerToken = signAccess(
+      app,
+      await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }),
+    );
   });
 
   /** Servicio con dependencias controlables para probar el motor sin timers. */
-  function makeService(over: {
-    driverCalls?: string[];
-    notifications?: { title: string; body: string }[];
-  } = {}) {
+  function makeService(
+    over: {
+      driverCalls?: string[];
+      notifications?: { title: string; body: string }[];
+    } = {},
+  ) {
     const driver = {
       blockDevice: async (mac: string) => {
         over.driverCalls?.push(`block:${mac}`);
@@ -88,7 +100,7 @@ describe('automatizaciones (US-167)', () => {
       url: '/api/automations',
       headers: authHeader(adminToken),
     });
-    expect((list.json() as AutomationRule[])).toHaveLength(1);
+    expect(list.json() as AutomationRule[]).toHaveLength(1);
 
     const patch = await app.inject({
       method: 'PATCH',
@@ -114,7 +126,11 @@ describe('automatizaciones (US-167)', () => {
       method: 'POST',
       url: '/api/automations',
       headers: authHeader(viewerToken),
-      payload: { name: 'X', trigger: { type: 'device-new' }, actions: [{ type: 'notify', message: 'x' }] },
+      payload: {
+        name: 'X',
+        trigger: { type: 'device-new' },
+        actions: [{ type: 'notify', message: 'x' }],
+      },
     });
     expect(asViewer.statusCode).toBe(403);
 
@@ -134,7 +150,12 @@ describe('automatizaciones (US-167)', () => {
     // `unknown` rompia la resolucion de sobrecarga de `inject`, y de rebote el
     // tipo del resultado perdia `statusCode`.
     const post = (payload: Record<string, unknown>) =>
-      app.inject({ method: 'POST', url: '/api/automations', headers: authHeader(adminToken), payload });
+      app.inject({
+        method: 'POST',
+        url: '/api/automations',
+        headers: authHeader(adminToken),
+        payload,
+      });
 
     // device-online exige mac; notify exige message; sensor-threshold exige op/value.
     const noMac = await post({
@@ -167,14 +188,19 @@ describe('automatizaciones (US-167)', () => {
     await service.create({
       name: 'Intruso fuera',
       trigger: { type: 'device-new' },
-      actions: [{ type: 'device-block' }, { type: 'notify', message: 'Dispositivo nuevo bloqueado' }],
+      actions: [
+        { type: 'device-block' },
+        { type: 'notify', message: 'Dispositivo nuevo bloqueado' },
+      ],
     });
 
     bus.publish({ type: 'device-new', mac });
 
     await eventually(async () => {
       expect(driverCalls).toContain(`block:${mac}`);
-      expect(notifications).toEqual([{ title: 'Intruso fuera', body: 'Dispositivo nuevo bloqueado' }]);
+      expect(notifications).toEqual([
+        { title: 'Intruso fuera', body: 'Dispositivo nuevo bloqueado' },
+      ]);
       const runs = await service.listRuns();
       expect(runs).toHaveLength(1);
       expect(runs[0]).toMatchObject({ ok: true, event: `dispositivo desconocido ${mac}` });
@@ -305,7 +331,11 @@ describe('automatizaciones (US-167)', () => {
       cooldownSec: 5,
     });
 
-    await service.onEvent({ type: 'iot-on', deviceId: 'light-salon', origin: `automation:${rule.id}` });
+    await service.onEvent({
+      type: 'iot-on',
+      deviceId: 'light-salon',
+      origin: `automation:${rule.id}`,
+    });
     expect(notifications).toHaveLength(0);
     await service.onEvent({ type: 'iot-on', deviceId: 'light-salon' });
     expect(notifications).toHaveLength(1);
@@ -341,7 +371,7 @@ describe('automatizaciones (US-167)', () => {
       headers: authHeader(viewerToken),
     });
     expect(res.statusCode).toBe(200);
-    expect((res.json() as AutomationRun[])).toHaveLength(1);
+    expect(res.json() as AutomationRun[]).toHaveLength(1);
   });
 
   /**

@@ -10,7 +10,11 @@ import { useState } from 'react';
 
 const OPTIONS: { mode: UiMode; labelKey: TranslationKey; descKey: TranslationKey }[] = [
   { mode: 'simple', labelKey: 'settings.uiMode.simple', descKey: 'settings.uiMode.simpleDesc' },
-  { mode: 'advanced', labelKey: 'settings.uiMode.advanced', descKey: 'settings.uiMode.advancedDesc' },
+  {
+    mode: 'advanced',
+    labelKey: 'settings.uiMode.advanced',
+    descKey: 'settings.uiMode.advancedDesc',
+  },
 ];
 
 /**
@@ -29,7 +33,9 @@ export function UiModeCard() {
     try {
       const updated = await api.patch<User>('/auth/ui-mode', { uiMode: mode });
       useAuthStore.setState({ user: updated });
-      toast.success(t(mode === 'simple' ? 'settings.uiMode.simpleOn' : 'settings.uiMode.advancedOn'));
+      toast.success(
+        t(mode === 'simple' ? 'settings.uiMode.simpleOn' : 'settings.uiMode.advancedOn'),
+      );
     } catch (err) {
       toast.error(describeError(err, t('settings.uiMode.error')));
     } finally {

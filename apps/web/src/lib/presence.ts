@@ -5,8 +5,7 @@ import type { TranslationKey } from '@/lib/i18n';
 export const getPresence = () => api.get<PresenceState>('/presence');
 export const getPresenceTimeline = (limit = 20) =>
   api.getList<PresenceEvent>(`/presence/timeline?limit=${limit}`);
-export const setHomeMode = (mode: HomeMode) =>
-  api.post<PresenceState>('/presence/mode', { mode });
+export const setHomeMode = (mode: HomeMode) => api.post<PresenceState>('/presence/mode', { mode });
 
 /** Etiquetas y glifos humanos de los modos del hogar (US-169). */
 /**
@@ -22,7 +21,6 @@ export const MODE_LABEL_KEYS: Record<HomeMode, TranslationKey> = {
   away: 'homeMode.away',
   night: 'homeMode.night',
 };
-
 
 export const MODE_GLYPHS: Record<HomeMode, string> = {
   home: '🏠',

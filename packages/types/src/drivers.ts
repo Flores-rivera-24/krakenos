@@ -18,14 +18,7 @@ import type {
  * cero usuarios domésticos y cero verificaciones con hardware real. Un hogar con
  * un Catalyst es un caso que este proyecto no puede sostener ni comprobar.
  */
-export type DriverKind =
-  | 'mock'
-  | 'openwrt'
-  | 'pfsense'
-  | 'unifi'
-  | 'mikrotik'
-  | 'omada'
-  | 'asus';
+export type DriverKind = 'mock' | 'openwrt' | 'pfsense' | 'unifi' | 'mikrotik' | 'omada' | 'asus';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {

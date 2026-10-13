@@ -8,7 +8,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -31,7 +38,15 @@ const LIGHT: IotDevice = {
 };
 
 function scene(over: Partial<Scene> = {}): Scene {
-  return { id: 's1', name: 'Buenas noches', icon: 'night', actions: [{ deviceId: 'light-salon', on: false }], order: 0, createdAt: '', ...over };
+  return {
+    id: 's1',
+    name: 'Buenas noches',
+    icon: 'night',
+    actions: [{ deviceId: 'light-salon', on: false }],
+    order: 0,
+    createdAt: '',
+    ...over,
+  };
 }
 
 function asRole(role: 'admin' | 'viewer') {
@@ -79,11 +94,16 @@ describe('ScenesPage (US-166)', () => {
     // La plantilla "Buenas noches" incluye la luz apagada.
     await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/scenes', expect.objectContaining({
-      name: 'Buenas noches',
-      icon: 'night',
-      actions: [expect.objectContaining({ deviceId: 'light-salon', on: false })],
-    })));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith(
+        '/scenes',
+        expect.objectContaining({
+          name: 'Buenas noches',
+          icon: 'night',
+          actions: [expect.objectContaining({ deviceId: 'light-salon', on: false })],
+        }),
+      ),
+    );
   });
 
   it('ejecuta una escena desde su tarjeta (POST run)', async () => {

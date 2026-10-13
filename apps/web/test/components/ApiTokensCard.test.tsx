@@ -18,7 +18,14 @@ import { useAuthStore } from '@/store/auth.store';
 
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
-    user: { id: 'u', email: 'a@b.c', role, status: 'active', uiMode: 'advanced', locale: 'es' } as never,
+    user: {
+      id: 'u',
+      email: 'a@b.c',
+      role,
+      status: 'active',
+      uiMode: 'advanced',
+      locale: 'es',
+    } as never,
   });
 }
 
@@ -49,7 +56,12 @@ describe('ApiTokensCard (US-174)', () => {
   });
 
   it('crea un token y muestra el valor en claro una vez', async () => {
-    tokensMock.createApiToken.mockResolvedValue({ ...existing, id: 't2', name: 'Nuevo', token: 'krt_SECRETO' });
+    tokensMock.createApiToken.mockResolvedValue({
+      ...existing,
+      id: 't2',
+      name: 'Nuevo',
+      token: 'krt_SECRETO',
+    });
     render(<ApiTokensCard />);
     fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Nuevo' } });
     fireEvent.click(screen.getByRole('button', { name: /Crear token/ }));

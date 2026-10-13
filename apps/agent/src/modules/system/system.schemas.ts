@@ -28,7 +28,10 @@ export const systemTlsSchema = {
       properties: {
         enabled: { type: 'boolean' },
         behindProxy: { type: 'boolean' },
-        source: { type: ['string', 'null'], enum: ['tailscale', 'local-ca', 'self-signed', 'unknown', null] },
+        source: {
+          type: ['string', 'null'],
+          enum: ['tailscale', 'local-ca', 'self-signed', 'unknown', null],
+        },
         notAfter: { type: ['string', 'null'] },
         daysLeft: { type: ['integer', 'null'] },
         expiring: { type: 'boolean' },

@@ -6,7 +6,13 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -37,7 +43,10 @@ describe('LanguageCard (US-177)', () => {
   it('marca el idioma actual como seleccionado', () => {
     render(<LanguageCard />);
     expect(screen.getByRole('button', { name: /Español/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /English/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /English/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('cambiar de idioma llama al PATCH de autoservicio, actualiza el store y aplica el idioma', async () => {

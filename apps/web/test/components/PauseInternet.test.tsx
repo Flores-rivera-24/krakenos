@@ -16,7 +16,10 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class ApiRequestError extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
 
 import { PauseInternet } from '@/components/inventory/PauseInternet';
 import { useToastStore } from '@/store/toast.store';
@@ -72,7 +75,9 @@ describe('PauseInternet (US-111)', () => {
 
     expect(screen.getByText(/Internet pausado hasta/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Reanudar' }));
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/access/resume', { mac: 'aa:bb' }));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith('/access/resume', { mac: 'aa:bb' }),
+    );
   });
 
   it('un viewer sin pausa activa no ve controles', () => {

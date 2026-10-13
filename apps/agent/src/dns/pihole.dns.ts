@@ -176,7 +176,12 @@ export class PiholeDnsManager implements DnsManager {
       const res = await this.request('/api/lists', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: feed.url, type: 'block', enabled: true, comment: `KrakenOS: ${feed.name}` }),
+        body: JSON.stringify({
+          address: feed.url,
+          type: 'block',
+          enabled: true,
+          comment: `KrakenOS: ${feed.name}`,
+        }),
       });
       if (!res.ok && res.status !== 409) {
         await this.ensureOk(res, 'No se pudo suscribir la lista en Pi-hole');

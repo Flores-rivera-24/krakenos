@@ -48,7 +48,10 @@ describe('rutas de setup', () => {
   it('init crea admin, persiste homeName, audita y emite tokens usables', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
     expect(res.statusCode).toBe(200);
-    const body = res.json() as { user: { id: string; role: string }; tokens: { accessToken: string } };
+    const body = res.json() as {
+      user: { id: string; role: string };
+      tokens: { accessToken: string };
+    };
     expect(body.user.role).toBe('admin');
 
     // homeName quedó persistido como Setting.
@@ -71,7 +74,11 @@ describe('rutas de setup', () => {
 
   it('init responde 409 si ya hay un usuario', async () => {
     await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
-    const second = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/setup/init',
+      payload: initBody(),
+    });
     expect(second.statusCode).toBe(409);
     expect(second.json().code).toBe('SETUP_ALREADY_DONE');
   });

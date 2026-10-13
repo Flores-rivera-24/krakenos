@@ -70,9 +70,22 @@ describe('wireguard helpers', () => {
   it('construye los argv de wg', () => {
     expect(wgShowDumpArgs('wg0')).toEqual(['wg', 'show', 'wg0', 'dump']);
     expect(wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.7')).toEqual([
-      'wg', 'set', 'wg0', 'peer', PUBKEY, 'allowed-ips', '10.8.0.7/32',
+      'wg',
+      'set',
+      'wg0',
+      'peer',
+      PUBKEY,
+      'allowed-ips',
+      '10.8.0.7/32',
     ]);
-    expect(wgSetRemovePeerArgs('wg0', PUBKEY)).toEqual(['wg', 'set', 'wg0', 'peer', PUBKEY, 'remove']);
+    expect(wgSetRemovePeerArgs('wg0', PUBKEY)).toEqual([
+      'wg',
+      'set',
+      'wg0',
+      'peer',
+      PUBKEY,
+      'remove',
+    ]);
   });
 
   // --- Anti-inyección: cada argumento se valida antes de devolver el argv (US-73) ---

@@ -57,7 +57,9 @@ describe('TlsCard (US-241)', () => {
     );
     render(<TlsCard />);
 
-    expect(await screen.findByText('Tu instalación se sirve por HTTP, sin cifrar.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Tu instalación se sirve por HTTP, sin cifrar.'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Instalar KrakenOS como app en el móvil.')).toBeInTheDocument();
     expect(screen.getByText('Recibir avisos en el móvil.')).toBeInTheDocument();
     expect(screen.getByText('Entrar con passkey (segundo factor).')).toBeInTheDocument();

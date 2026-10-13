@@ -40,16 +40,25 @@ const SETTINGS: SystemSettingsResponse = {
 
 function setUser(role: 'admin' | 'viewer') {
   useAuthStore.setState({
-    user: { id: 'u', email: 'admin@krakenos.local', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
+    user: {
+      id: 'u',
+      email: 'admin@krakenos.local',
+      displayName: 'Emilio',
+      role,
+      createdAt: '',
+      updatedAt: '',
+    },
     tokens: { accessToken: 't', expiresIn: 900 },
   });
 }
 
 describe('SettingsPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      path.startsWith('/system/settings') ? Promise.resolve(SETTINGS) : Promise.resolve([]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path.startsWith('/system/settings') ? Promise.resolve(SETTINGS) : Promise.resolve([]),
+      );
     apiMock.patch.mockReset().mockResolvedValue(SETTINGS);
     apiMock.post.mockReset().mockResolvedValue({ ok: true, latencyMs: 3 });
   });

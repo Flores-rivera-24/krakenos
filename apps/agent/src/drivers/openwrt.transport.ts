@@ -43,7 +43,10 @@ export class SshTransport implements OpenWrtTransport {
 
   constructor(private readonly opts: SshTransportOptions) {}
 
-  private async connect(): Promise<{ execCommand: (cmd: string) => Promise<CommandOutput>; dispose: () => void }> {
+  private async connect(): Promise<{
+    execCommand: (cmd: string) => Promise<CommandOutput>;
+    dispose: () => void;
+  }> {
     if (!this.connection) {
       // Import dinámico con especificador no-literal: `node-ssh` es opcional y
       // solo se instala en producción, así que TS no debe resolverlo en build.
@@ -55,7 +58,9 @@ export class SshTransport implements OpenWrtTransport {
       })) as { NodeSSH: new () => unknown };
       const ssh = new mod.NodeSSH() as {
         connect: (cfg: Record<string, unknown>) => Promise<unknown>;
-        execCommand: (cmd: string) => Promise<{ stdout: string; stderr: string; code: number | null }>;
+        execCommand: (
+          cmd: string,
+        ) => Promise<{ stdout: string; stderr: string; code: number | null }>;
         dispose: () => void;
       };
       await ssh.connect({
@@ -68,7 +73,9 @@ export class SshTransport implements OpenWrtTransport {
       this.connection = ssh;
     }
     const ssh = this.connection as {
-      execCommand: (cmd: string) => Promise<{ stdout: string; stderr: string; code: number | null }>;
+      execCommand: (
+        cmd: string,
+      ) => Promise<{ stdout: string; stderr: string; code: number | null }>;
       dispose: () => void;
     };
     return {

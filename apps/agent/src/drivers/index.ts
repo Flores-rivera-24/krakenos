@@ -151,7 +151,8 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
     case 'openwrt': {
       const ow = config.openwrt;
       if (!ow) throw new Error('Falta la configuración OpenWrt (CreateDriverConfig.openwrt)');
-      if (!ow.ssh.host) throw new Error('El driver OpenWrt requiere DRIVER_HOST (host SSH del router)');
+      if (!ow.ssh.host)
+        throw new Error('El driver OpenWrt requiere DRIVER_HOST (host SSH del router)');
       return new OpenWrtDriver({
         transport: new SshTransport(ow.ssh),
         wanInterface: ow.wanInterface,
@@ -162,7 +163,8 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
     case 'pfsense': {
       const pf = config.pfsense;
       if (!pf) throw new Error('Falta la configuración pfSense (CreateDriverConfig.pfsense)');
-      if (!pf.baseUrl) throw new Error('El driver pfSense requiere DRIVER_HOST (URL/host del router)');
+      if (!pf.baseUrl)
+        throw new Error('El driver pfSense requiere DRIVER_HOST (URL/host del router)');
       if (!pf.apiKey) throw new Error('El driver pfSense requiere PFSENSE_API_KEY');
       return new PfSenseDriver({
         client: new PfSenseClient({ baseUrl: pf.baseUrl, apiKey: pf.apiKey }),
@@ -245,7 +247,10 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
     }
     default: {
       const kind = String(config.kind as string);
-      const retirado = mensajeDeRetirada(kind, 'mock, openwrt, pfsense, unifi, mikrotik, omada, asus');
+      const retirado = mensajeDeRetirada(
+        kind,
+        'mock, openwrt, pfsense, unifi, mikrotik, omada, asus',
+      );
       if (retirado) throw new Error(retirado);
       throw new Error(`Driver desconocido: ${kind}`);
     }

@@ -16,10 +16,39 @@ import {
   type StateSnapshot,
 } from '../../src/modules/interop/ha-discovery.js';
 
-const plug: SnapshotIotDevice = { id: 'plug-1', name: 'Enchufe', kind: 'plug', on: false, brightness: null, color: null, powerW: 12 };
-const dimLight: SnapshotIotDevice = { id: 'luz', name: 'Luz', kind: 'light', on: true, brightness: 60, color: null };
-const colorLight: SnapshotIotDevice = { id: 'tira', name: 'Tira', kind: 'light', on: true, brightness: 100, color: { hex: '#ff8800', temperatureK: null } };
-const sensor: SnapshotIotDevice = { id: 's1', name: 'Sensor', kind: 'sensor', on: null, brightness: null, color: null };
+const plug: SnapshotIotDevice = {
+  id: 'plug-1',
+  name: 'Enchufe',
+  kind: 'plug',
+  on: false,
+  brightness: null,
+  color: null,
+  powerW: 12,
+};
+const dimLight: SnapshotIotDevice = {
+  id: 'luz',
+  name: 'Luz',
+  kind: 'light',
+  on: true,
+  brightness: 60,
+  color: null,
+};
+const colorLight: SnapshotIotDevice = {
+  id: 'tira',
+  name: 'Tira',
+  kind: 'light',
+  on: true,
+  brightness: 100,
+  color: { hex: '#ff8800', temperatureK: null },
+};
+const sensor: SnapshotIotDevice = {
+  id: 's1',
+  name: 'Sensor',
+  kind: 'sensor',
+  on: null,
+  brightness: null,
+  color: null,
+};
 
 const NADA: ControlFlags = { iot: false, pause: false };
 const SOLO_IOT: ControlFlags = { iot: true, pause: false };
@@ -47,8 +76,16 @@ describe('exposureFor (US-213)', () => {
     expect(exposureFor(sensor, true)).toBeNull();
   });
   it('light es entidad light SOLO con control activo (HA exige command_topic)', () => {
-    expect(exposureFor(dimLight, true)).toEqual({ component: 'light', brightness: true, color: false });
-    expect(exposureFor(colorLight, true)).toEqual({ component: 'light', brightness: true, color: true });
+    expect(exposureFor(dimLight, true)).toEqual({
+      component: 'light',
+      brightness: true,
+      color: false,
+    });
+    expect(exposureFor(colorLight, true)).toEqual({
+      component: 'light',
+      brightness: true,
+      color: true,
+    });
     // Sin control, la luz se muestra como switch de solo lectura.
     expect(exposureFor(dimLight, false)).toEqual({ component: 'switch', controllable: false });
   });
@@ -63,9 +100,13 @@ describe('buildDiscoveryConfigs (US-213)', () => {
     const tira = byTopic.get('homeassistant/light/krakenos/iot_tira/config');
     expect(tira.rgb_command_topic).toBe('casa/iot/tira/rgb/set');
     expect(tira.brightness_scale).toBe(100);
-    expect(byTopic.get('homeassistant/sensor/krakenos/home_mode/config').state_topic).toBe('casa/home/mode');
+    expect(byTopic.get('homeassistant/sensor/krakenos/home_mode/config').state_topic).toBe(
+      'casa/home/mode',
+    );
     expect(byTopic.get('homeassistant/sensor/krakenos/alarm/config')).toBeDefined();
-    expect(byTopic.get('homeassistant/sensor/krakenos/energy_today/config').device_class).toBe('energy');
+    expect(byTopic.get('homeassistant/sensor/krakenos/energy_today/config').device_class).toBe(
+      'energy',
+    );
     expect(byTopic.has('homeassistant/sensor/krakenos/iot_plug-1_power/config')).toBe(true);
   });
 
@@ -87,8 +128,16 @@ describe('buildDiscoveryConfigs (US-213)', () => {
 describe('availability y LWT (US-236)', () => {
   it('el testamento y el adiós apuntan al topic de disponibilidad, retenidos y offline', () => {
     expect(availabilityTopic('casa')).toBe('casa/status');
-    expect(willMessage('casa')).toEqual({ topic: 'casa/status', payload: AVAILABILITY_OFFLINE, retain: true });
-    expect(offlineMessage('casa')).toEqual({ topic: 'casa/status', payload: AVAILABILITY_OFFLINE, retain: true });
+    expect(willMessage('casa')).toEqual({
+      topic: 'casa/status',
+      payload: AVAILABILITY_OFFLINE,
+      retain: true,
+    });
+    expect(offlineMessage('casa')).toEqual({
+      topic: 'casa/status',
+      payload: AVAILABILITY_OFFLINE,
+      retain: true,
+    });
   });
 
   it('el estado publica `online` RETENIDO (si no, un HA que conecte después no lo ve)', () => {
@@ -100,8 +149,10 @@ describe('availability y LWT (US-236)', () => {
     const configs = buildDiscoveryConfigs(snap, 'casa', TODO);
     for (const m of configs) {
       const cfg = JSON.parse(m.payload);
-      const declara = cfg.availability_topic === 'casa/status'
-        || (Array.isArray(cfg.availability) && cfg.availability.some((a: { topic: string }) => a.topic === 'casa/status'));
+      const declara =
+        cfg.availability_topic === 'casa/status' ||
+        (Array.isArray(cfg.availability) &&
+          cfg.availability.some((a: { topic: string }) => a.topic === 'casa/status'));
       expect(declara, `sin availability: ${m.topic}`).toBe(true);
     }
   });
@@ -110,7 +161,9 @@ describe('availability y LWT (US-236)', () => {
 describe('binary_sensor de internet bloqueado (US-236)', () => {
   it('expone una entidad por dispositivo, nombrada por el aparato y no por la persona', () => {
     const msgs = buildDiscoveryConfigs(snap, 'casa', NADA);
-    const cfg = msgs.find((m) => m.topic === 'homeassistant/binary_sensor/krakenos/device_dev-abc_blocked/config');
+    const cfg = msgs.find(
+      (m) => m.topic === 'homeassistant/binary_sensor/krakenos/device_dev-abc_blocked/config',
+    );
     expect(cfg).toBeDefined();
     const payload = JSON.parse(cfg!.payload);
     expect(payload.state_topic).toBe('casa/device/dev-abc/blocked');
@@ -124,7 +177,9 @@ describe('binary_sensor de internet bloqueado (US-236)', () => {
     const byTopic = new Map(buildStateMessages(snap, 'casa').map((m) => [m.topic, m.payload]));
     expect(byTopic.get('casa/device/dev-abc/blocked')).toBe('ON');
     expect(byTopic.get('casa/device/dev-xyz/blocked')).toBe('OFF');
-    expect(JSON.parse(byTopic.get('casa/device/dev-abc/blocked/attributes')!)).toEqual({ razones: ['schedule'] });
+    expect(JSON.parse(byTopic.get('casa/device/dev-abc/blocked/attributes')!)).toEqual({
+      razones: ['schedule'],
+    });
   });
 });
 
@@ -136,7 +191,9 @@ describe('botón de pausa (US-236)', () => {
 
   it('con su toggle: botón por dispositivo que publica los minutos', () => {
     const msgs = buildDiscoveryConfigs(snap, 'casa', TODO);
-    const cfg = msgs.find((m) => m.topic === 'homeassistant/button/krakenos/device_dev-abc_pause/config');
+    const cfg = msgs.find(
+      (m) => m.topic === 'homeassistant/button/krakenos/device_dev-abc_pause/config',
+    );
     expect(cfg).toBeDefined();
     const payload = JSON.parse(cfg!.payload);
     expect(payload.command_topic).toBe('casa/device/dev-abc/pause/set');
@@ -146,8 +203,9 @@ describe('botón de pausa (US-236)', () => {
 
 describe('sensor de señal por habitación (US-236)', () => {
   it('publica dBm con doble disponibilidad (hub + habitación)', () => {
-    const cfg = buildDiscoveryConfigs(snap, 'casa', NADA)
-      .find((m) => m.topic === 'homeassistant/sensor/krakenos/room_room-1_signal/config');
+    const cfg = buildDiscoveryConfigs(snap, 'casa', NADA).find(
+      (m) => m.topic === 'homeassistant/sensor/krakenos/room_room-1_signal/config',
+    );
     const payload = JSON.parse(cfg!.payload);
     expect(payload.unit_of_measurement).toBe('dBm');
     expect(payload.device_class).toBe('signal_strength');
@@ -167,7 +225,9 @@ describe('sensor de señal por habitación (US-236)', () => {
   });
 
   it('el estado es el dBm y NADA más (qué aparato es el peor sería presencia)', () => {
-    const signal = buildStateMessages(snap, 'casa').find((m) => m.topic === 'casa/room/room-1/signal');
+    const signal = buildStateMessages(snap, 'casa').find(
+      (m) => m.topic === 'casa/room/room-1/signal',
+    );
     expect(signal!.payload).toBe('-67');
     expect(signal!.payload).not.toMatch(/[a-z]/i);
   });
@@ -193,17 +253,18 @@ describe('buildStateMessages (US-213)', () => {
   // seguido pasando con una MAC de verdad. Cada regla se prueba por separado y
   // contra lo que de verdad protege.
   it('no filtra la lista de personas (regla de privacidad de US-169)', () => {
-    const all = buildStateMessages(snap, 'casa').map((m) => `${m.topic} ${m.payload}`).join('\n');
+    const all = buildStateMessages(snap, 'casa')
+      .map((m) => `${m.topic} ${m.payload}`)
+      .join('\n');
     expect(all).not.toMatch(/person|people|displayName|ownerId/i);
     // Del hogar viaja SOLO el modo.
     expect(all).toContain('casa/home/mode');
   });
 
   it('no filtra MAC ni IP crudas (patrón real, no el substring «mac»)', () => {
-    const all = [
-      ...buildStateMessages(snap, 'casa'),
-      ...buildDiscoveryConfigs(snap, 'casa', TODO),
-    ].map((m) => `${m.topic} ${m.payload}`).join('\n');
+    const all = [...buildStateMessages(snap, 'casa'), ...buildDiscoveryConfigs(snap, 'casa', TODO)]
+      .map((m) => `${m.topic} ${m.payload}`)
+      .join('\n');
     expect(all).not.toMatch(/\b[0-9a-f]{2}(:[0-9a-f]{2}){5}\b/i); // MAC
     expect(all).not.toMatch(/\b\d{1,3}(\.\d{1,3}){3}\b/); // IPv4
   });
@@ -211,10 +272,26 @@ describe('buildStateMessages (US-213)', () => {
 
 describe('parseInboundCommand (US-213 · US-236)', () => {
   it('interpreta ON/OFF, brillo y rgb', () => {
-    expect(parseInboundCommand('casa/iot/plug-1/set', 'ON', 'casa')).toEqual({ kind: 'iot', deviceId: 'plug-1', state: { on: true } });
-    expect(parseInboundCommand('casa/iot/plug-1/set', 'off', 'casa')).toEqual({ kind: 'iot', deviceId: 'plug-1', state: { on: false } });
-    expect(parseInboundCommand('casa/iot/luz/brightness/set', '55', 'casa')).toEqual({ kind: 'iot', deviceId: 'luz', state: { brightness: 55 } });
-    expect(parseInboundCommand('casa/iot/tira/rgb/set', '255,136,0', 'casa')).toEqual({ kind: 'iot', deviceId: 'tira', state: { color: { hex: '#ff8800' } } });
+    expect(parseInboundCommand('casa/iot/plug-1/set', 'ON', 'casa')).toEqual({
+      kind: 'iot',
+      deviceId: 'plug-1',
+      state: { on: true },
+    });
+    expect(parseInboundCommand('casa/iot/plug-1/set', 'off', 'casa')).toEqual({
+      kind: 'iot',
+      deviceId: 'plug-1',
+      state: { on: false },
+    });
+    expect(parseInboundCommand('casa/iot/luz/brightness/set', '55', 'casa')).toEqual({
+      kind: 'iot',
+      deviceId: 'luz',
+      state: { brightness: 55 },
+    });
+    expect(parseInboundCommand('casa/iot/tira/rgb/set', '255,136,0', 'casa')).toEqual({
+      kind: 'iot',
+      deviceId: 'tira',
+      state: { color: { hex: '#ff8800' } },
+    });
   });
   it('ignora topics ajenos y payloads basura (no lanza)', () => {
     expect(parseInboundCommand('otro/iot/x/set', 'ON', 'casa')).toBeNull();
@@ -223,15 +300,31 @@ describe('parseInboundCommand (US-213 · US-236)', () => {
     expect(parseInboundCommand('casa/status', 'online', 'casa')).toBeNull();
   });
   it('acota el brillo a 0-100', () => {
-    expect(parseInboundCommand('casa/iot/luz/brightness/set', '999', 'casa')).toEqual({ kind: 'iot', deviceId: 'luz', state: { brightness: 100 } });
+    expect(parseInboundCommand('casa/iot/luz/brightness/set', '999', 'casa')).toEqual({
+      kind: 'iot',
+      deviceId: 'luz',
+      state: { brightness: 100 },
+    });
   });
 
   it('interpreta la pausa y acota su duración (el broker no tiene sujeto: no se fía)', () => {
-    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '30', 'casa')).toEqual({ kind: 'pause', deviceId: 'dev-abc', minutes: 30 });
+    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '30', 'casa')).toEqual({
+      kind: 'pause',
+      deviceId: 'dev-abc',
+      minutes: 30,
+    });
     // Payload vacío = el valor por defecto del botón.
-    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '', 'casa')).toEqual({ kind: 'pause', deviceId: 'dev-abc', minutes: 30 });
+    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '', 'casa')).toEqual({
+      kind: 'pause',
+      deviceId: 'dev-abc',
+      minutes: 30,
+    });
     // Una pausa absurda se acota a 24 h en vez de aceptarse.
-    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '999999', 'casa')).toEqual({ kind: 'pause', deviceId: 'dev-abc', minutes: 1440 });
+    expect(parseInboundCommand('casa/device/dev-abc/pause/set', '999999', 'casa')).toEqual({
+      kind: 'pause',
+      deviceId: 'dev-abc',
+      minutes: 1440,
+    });
     expect(parseInboundCommand('casa/device/dev-abc/pause/set', '-5', 'casa')).toBeNull();
     expect(parseInboundCommand('casa/device/dev-abc/otra/set', '30', 'casa')).toBeNull();
   });
@@ -256,7 +349,9 @@ describe('commandFilters (US-236)', () => {
       // US-247: la posición de una persiana entra por su propio topic.
       'casa/iot/+/position/set',
     ]);
-    expect(commandFilters('casa', { iot: false, pause: true })).toEqual(['casa/device/+/pause/set']);
+    expect(commandFilters('casa', { iot: false, pause: true })).toEqual([
+      'casa/device/+/pause/set',
+    ]);
     expect(commandFilters('casa', TODO)).toHaveLength(5);
   });
 });
@@ -269,30 +364,73 @@ describe('commandFilters (US-236)', () => {
  */
 describe('categorías nuevas en la interop con HA (US-247)', () => {
   const persiana: SnapshotIotDevice = {
-    id: 'per-1', name: 'Persiana', kind: 'cover', on: null, brightness: null, color: null,
-    readings: [], position: 70,
+    id: 'per-1',
+    name: 'Persiana',
+    kind: 'cover',
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [],
+    position: 70,
   };
   const puerta: SnapshotIotDevice = {
-    id: 'con-1', name: 'Puerta', kind: 'contact', on: null, brightness: null, color: null,
-    readings: [{ metric: 'contact', value: 1, unit: '' }, { metric: 'battery', value: 80, unit: '%' }],
+    id: 'con-1',
+    name: 'Puerta',
+    kind: 'contact',
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [
+      { metric: 'contact', value: 1, unit: '' },
+      { metric: 'battery', value: 80, unit: '%' },
+    ],
   };
   const detector: SnapshotIotDevice = {
-    id: 'hum-1', name: 'Detector', kind: 'smoke', on: null, brightness: null, color: null,
-    readings: [{ metric: 'smoke', value: 0, unit: '' }, { metric: 'co', value: 1, unit: '' }],
+    id: 'hum-1',
+    name: 'Detector',
+    kind: 'smoke',
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [
+      { metric: 'smoke', value: 0, unit: '' },
+      { metric: 'co', value: 1, unit: '' },
+    ],
   };
   const termostato: SnapshotIotDevice = {
-    id: 'ter-1', name: 'Termostato', kind: 'climate', on: null, brightness: null, color: null,
-    readings: [{ metric: 'temperature', value: 19.8, unit: '°C' }], targetC: 21.5,
+    id: 'ter-1',
+    name: 'Termostato',
+    kind: 'climate',
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [{ metric: 'temperature', value: 19.8, unit: '°C' }],
+    targetC: 21.5,
   };
   const cerradura: SnapshotIotDevice = {
-    id: 'cer-1', name: 'Cerradura', kind: 'lock', on: null, brightness: null, color: null,
-    readings: [], locked: true,
+    id: 'cer-1',
+    name: 'Cerradura',
+    kind: 'lock',
+    on: null,
+    brightness: null,
+    color: null,
+    readings: [],
+    locked: true,
   };
-  const nuevoSnap: StateSnapshot = { ...snap, iot: [persiana, puerta, detector, termostato, cerradura] };
+  const nuevoSnap: StateSnapshot = {
+    ...snap,
+    iot: [persiana, puerta, detector, termostato, cerradura],
+  };
 
   const configs = (control: ControlFlags) =>
-    new Map(buildDiscoveryConfigs(nuevoSnap, 'casa', control).map((m) => [m.topic, JSON.parse(m.payload || '{}')]));
-  const estados = () => new Map(buildStateMessages(nuevoSnap, 'casa').map((m) => [m.topic, m.payload]));
+    new Map(
+      buildDiscoveryConfigs(nuevoSnap, 'casa', control).map((m) => [
+        m.topic,
+        JSON.parse(m.payload || '{}'),
+      ]),
+    );
+  const estados = () =>
+    new Map(buildStateMessages(nuevoSnap, 'casa').map((m) => [m.topic, m.payload]));
 
   it('una persiana es un `cover` con posición', () => {
     const c = configs(SOLO_IOT).get('homeassistant/cover/krakenos/iot_per-1/config');
@@ -384,27 +522,39 @@ describe('categorías nuevas en la interop con HA (US-247)', () => {
 
   it('un aparato sin lecturas no publica entidades de sensor', () => {
     // «Un dato que no existe no se publica inventado» (US-236).
-    const topics = buildDiscoveryConfigs({ ...snap, iot: [cerradura] }, 'casa', SOLO_IOT).map((m) => m.topic);
-    expect(topics.filter((t) => t.startsWith('homeassistant/sensor/krakenos/iot_'))).toHaveLength(0);
+    const topics = buildDiscoveryConfigs({ ...snap, iot: [cerradura] }, 'casa', SOLO_IOT).map(
+      (m) => m.topic,
+    );
+    expect(topics.filter((t) => t.startsWith('homeassistant/sensor/krakenos/iot_'))).toHaveLength(
+      0,
+    );
   });
 });
 
 describe('control entrante de persianas (US-247)', () => {
   it('HA manda OPEN/CLOSE por el command_topic de un cover', () => {
     expect(parseInboundCommand('casa/iot/per-1/set', 'OPEN', 'casa')).toEqual({
-      kind: 'iot', deviceId: 'per-1', state: { on: true },
+      kind: 'iot',
+      deviceId: 'per-1',
+      state: { on: true },
     });
     expect(parseInboundCommand('casa/iot/per-1/set', 'CLOSE', 'casa')).toEqual({
-      kind: 'iot', deviceId: 'per-1', state: { on: false },
+      kind: 'iot',
+      deviceId: 'per-1',
+      state: { on: false },
     });
   });
 
   it('la posición entra acotada a 0-100', () => {
     expect(parseInboundCommand('casa/iot/per-1/position/set', '35', 'casa')).toEqual({
-      kind: 'iot', deviceId: 'per-1', state: { position: 35 },
+      kind: 'iot',
+      deviceId: 'per-1',
+      state: { position: 35 },
     });
     expect(parseInboundCommand('casa/iot/per-1/position/set', '400', 'casa')).toEqual({
-      kind: 'iot', deviceId: 'per-1', state: { position: 100 },
+      kind: 'iot',
+      deviceId: 'per-1',
+      state: { position: 100 },
     });
     expect(parseInboundCommand('casa/iot/per-1/position/set', 'basura', 'casa')).toBeNull();
   });

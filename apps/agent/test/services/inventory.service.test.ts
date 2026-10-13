@@ -84,7 +84,13 @@ describe('InventoryService', () => {
       const staleMacs = ['aa:bb:cc:dd:ee:01', 'aa:bb:cc:dd:ee:02', 'aa:bb:cc:dd:ee:03'];
       for (const [i, mac] of staleMacs.entries()) {
         await app.prisma.device.create({
-          data: { mac, ip: `192.168.1.${200 + i}`, online: true, type: 'unknown', sources: '["arp"]' },
+          data: {
+            mac,
+            ip: `192.168.1.${200 + i}`,
+            online: true,
+            type: 'unknown',
+            sources: '["arp"]',
+          },
         });
       }
 
@@ -150,9 +156,12 @@ describe('InventoryService', () => {
       expect(updated?.label).toBe('Mi router');
       expect(updated?.type).toBe('router');
       expect(updated?.notes).toBe('gabinete');
-      expect(emit).toHaveBeenCalledWith('inventory:device-updated', expect.objectContaining({
-        id: device.id,
-      }));
+      expect(emit).toHaveBeenCalledWith(
+        'inventory:device-updated',
+        expect.objectContaining({
+          id: device.id,
+        }),
+      );
     });
 
     it('devuelve null si el dispositivo no existe', async () => {

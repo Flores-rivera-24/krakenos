@@ -145,11 +145,7 @@ export const updateIotSchema = {
         if: { required: ['targetC'] },
         then: {
           not: {
-            anyOf: [
-              { required: ['brightness'] },
-              { required: ['color'] },
-              { required: ['on'] },
-            ],
+            anyOf: [{ required: ['brightness'] }, { required: ['color'] }, { required: ['on'] }],
           },
         },
       },

@@ -6,7 +6,13 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -31,8 +37,14 @@ describe('UiModeCard (US-176)', () => {
 
   it('marca el modo actual como seleccionado', () => {
     render(<UiModeCard />);
-    expect(screen.getByRole('button', { name: /Avanzado/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.getByRole('button', { name: /Sencillo/ })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Avanzado/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /Sencillo/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('cambiar de modo llama al PATCH de autoservicio y actualiza el store', async () => {

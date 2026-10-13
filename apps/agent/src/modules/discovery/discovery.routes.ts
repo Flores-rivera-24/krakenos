@@ -65,7 +65,8 @@ export const discoveryRoutes: FastifyPluginAsync<DiscoveryRoutesOpts> = async (a
           // descubrir (el bridge Hue, su botón). La UI abre el asistente.
           return reply.code(400).send({
             code: 'DISCOVERY_NEEDS_INPUT',
-            message: 'Este dispositivo necesita datos que solo puedes dar tú. Ábrelo en el asistente.',
+            message:
+              'Este dispositivo necesita datos que solo puedes dar tú. Ábrelo en el asistente.',
           });
         }
         throw err;

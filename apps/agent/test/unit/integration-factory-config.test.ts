@@ -50,12 +50,18 @@ describe('factory-config — precedencia DB sobre .env y mapeo plano→factory (
   });
 
   it('dns pihole y vlan switch mapean sus campos', () => {
-    const dns = resolveDnsConfig({ kind: 'pihole', values: { baseUrl: 'http://pi.casa', password: 'pw' } });
+    const dns = resolveDnsConfig({
+      kind: 'pihole',
+      values: { baseUrl: 'http://pi.casa', password: 'pw' },
+    });
     expect(dns.kind).toBe('pihole');
     expect(dns.pihole!.baseUrl).toBe('http://pi.casa');
     expect(dns.pihole!.password).toBe('pw');
 
-    const vlan = resolveVlanConfig({ kind: 'switch', values: { host: '10.0.0.1', community: 'privada' } });
+    const vlan = resolveVlanConfig({
+      kind: 'switch',
+      values: { host: '10.0.0.1', community: 'privada' },
+    });
     expect(vlan.kind).toBe('switch');
     expect(vlan.switch!.host).toBe('10.0.0.1');
     expect(vlan.switch!.community).toBe('privada');

@@ -16,7 +16,10 @@ describe('rutas con driver que falla', () => {
   const apps: FastifyInstance[] = [];
 
   async function appWith(mode: DriverFailureMode): Promise<FastifyInstance> {
-    const app = await buildTestApp({ routes: true, driver: new FailingDriver(mode, { timeoutMs: 5 }) });
+    const app = await buildTestApp({
+      routes: true,
+      driver: new FailingDriver(mode, { timeoutMs: 5 }),
+    });
     apps.push(app);
     await resetDb(app);
     return app;
@@ -65,7 +68,13 @@ describe('rutas con driver que falla', () => {
     it('POST block de un dispositivo existente da 502 (el driver no pudo aplicar)', async () => {
       const admin = await seedUser(app, { role: 'admin' });
       const device = await app.prisma.device.create({
-        data: { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.50', online: true, type: 'unknown', sources: '[]' },
+        data: {
+          mac: 'aa:bb:cc:dd:ee:ff',
+          ip: '192.168.1.50',
+          online: true,
+          type: 'unknown',
+          sources: '[]',
+        },
       });
       const res = await app.inject({
         method: 'POST',

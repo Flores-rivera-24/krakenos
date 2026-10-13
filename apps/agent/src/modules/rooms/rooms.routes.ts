@@ -28,14 +28,21 @@ export const roomsRoutes: FastifyPluginAsync<RoomsRoutesOpts> = async (app, opts
   const { service } = opts;
   const adminOnly = app.requireRole('admin');
 
-  app.get('/', { schema: listRoomsSchema, preHandler: app.authenticate }, async () => service.list());
+  app.get('/', { schema: listRoomsSchema, preHandler: app.authenticate }, async () =>
+    service.list(),
+  );
 
   app.post<{ Body: CreateRoomRequest }>(
     '/',
     { schema: createRoomSchema, preHandler: adminOnly },
     async (req, reply) => {
       const room = await service.create(req.body);
-      app.audit({ action: 'room.create', userId: req.user.sub, detail: `${room.id} · ${room.name}`, ip: req.ip });
+      app.audit({
+        action: 'room.create',
+        userId: req.user.sub,
+        detail: `${room.id} · ${room.name}`,
+        ip: req.ip,
+      });
       return reply.code(201).send(room);
     },
   );

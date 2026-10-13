@@ -266,8 +266,12 @@ export function resolveIotConfig(
         break;
       case 'kasa':
         cfg.kasa = {
-          kasaIps: has('kasa.kasaDeviceIps') ? csvIps(g('kasa', 'kasaDeviceIps')) : base.kasa.kasaIps,
-          tapoIps: has('kasa.tapoDeviceIps') ? csvIps(g('kasa', 'tapoDeviceIps')) : base.kasa.tapoIps,
+          kasaIps: has('kasa.kasaDeviceIps')
+            ? csvIps(g('kasa', 'kasaDeviceIps'))
+            : base.kasa.kasaIps,
+          tapoIps: has('kasa.tapoDeviceIps')
+            ? csvIps(g('kasa', 'tapoDeviceIps'))
+            : base.kasa.tapoIps,
           // US-259: el hash derivado es lo que el store guarda desde ahora; el par
           // email+contraseña sobrevive para las configs que ya existían.
           tapoAuthHash: optStr(g('kasa', 'tapoAuthHash')) ?? base.kasa.tapoAuthHash,
@@ -277,7 +281,9 @@ export function resolveIotConfig(
         break;
       case 'shelly':
         cfg.shelly = {
-          devices: has('shelly.devices') ? parseShellyDevices(g('shelly', 'devices')) : base.shelly.devices,
+          devices: has('shelly.devices')
+            ? parseShellyDevices(g('shelly', 'devices'))
+            : base.shelly.devices,
           auth: bool(g('shelly', 'auth'), base.shelly.auth),
           username: optStr(g('shelly', 'username')) ?? base.shelly.username,
           password: optStr(g('shelly', 'password')) ?? base.shelly.password,
@@ -287,7 +293,9 @@ export function resolveIotConfig(
         cfg.meross = {
           brokerHost: str(g('meross', 'brokerHost'), base.meross.brokerHost),
           brokerPort: num(g('meross', 'brokerPort'), base.meross.brokerPort),
-          devices: has('meross.devices') ? parseMerossDevices(g('meross', 'devices')) : base.meross.devices,
+          devices: has('meross.devices')
+            ? parseMerossDevices(g('meross', 'devices'))
+            : base.meross.devices,
         };
         break;
       default:

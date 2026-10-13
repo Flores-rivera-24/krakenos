@@ -15,8 +15,16 @@ import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 
 function iot(over: Partial<IotDevice>): IotDevice {
   return {
-    id: 'x', name: 'Luz', kind: 'light', room: null, reachable: true, on: true,
-    brightness: 80, color: null, readings: [], ...over,
+    id: 'x',
+    name: 'Luz',
+    kind: 'light',
+    room: null,
+    reachable: true,
+    on: true,
+    brightness: 80,
+    color: null,
+    readings: [],
+    ...over,
   };
 }
 
@@ -28,9 +36,11 @@ const DEVICES: IotDevice[] = [
 
 describe('IntegrationsSection', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockImplementation((path: string) =>
-      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
-    );
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+      );
     apiMock.post.mockReset().mockResolvedValue({ ok: true, latencyMs: 2 });
   });
 
@@ -41,7 +51,9 @@ describe('IntegrationsSection', () => {
     expect(screen.getByText('Govee')).toBeInTheDocument();
     expect(screen.getByText('Tuya')).toBeInTheDocument();
     // Hue y Tuya: 1/1 en línea (Govee 0/1).
-    await waitFor(() => expect(screen.getAllByText('1/1 en línea').length).toBeGreaterThanOrEqual(1));
+    await waitFor(() =>
+      expect(screen.getAllByText('1/1 en línea').length).toBeGreaterThanOrEqual(1),
+    );
     expect(screen.getByText('0/1 en línea')).toBeInTheDocument();
   });
 

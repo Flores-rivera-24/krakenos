@@ -127,7 +127,9 @@ describe('DnsPage', () => {
       setRole('viewer');
       render(<DnsPage />);
 
-      expect(await screen.findByText(/Solo el administrador ve las consultas/i)).toBeInTheDocument();
+      expect(
+        await screen.findByText(/Solo el administrador ve las consultas/i),
+      ).toBeInTheDocument();
       expect(screen.queryByText('github.com')).not.toBeInTheDocument();
       // La regresión que hay que evitar: las tres peticiones vivían en un mismo
       // `Promise.all`, así que el 403 del registro habría dejado la página entera
@@ -243,7 +245,9 @@ describe('DnsPage · histórico por dispositivo (US-252)', () => {
     render(<DnsPage />);
     // El registro EN VIVO le está negado (US-250), pero el histórico no: el
     // servidor ya le ha quitado lo que no es suyo.
-    expect(await screen.findByText(/A qué dominios han hablado tus dispositivos/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/A qué dominios han hablado tus dispositivos/),
+    ).toBeInTheDocument();
     expect(screen.getByText('telemetria.example')).toBeInTheDocument();
   });
 

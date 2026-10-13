@@ -39,7 +39,10 @@ describe('MerossIotManager', () => {
     const mqtt = new FakeMqtt();
     const mgr = new MerossIotManager({ transport: mqtt, devices: [DEVICE], ...CTX });
     await mgr.start();
-    expect(mqtt.published[0]).toEqual({ topic: 'm/v1/u1/subscribe', payload: buildSystemAll({ key: 'k1', messageId: 'mid', timestamp: 1_700_000_000 }) });
+    expect(mqtt.published[0]).toEqual({
+      topic: 'm/v1/u1/subscribe',
+      payload: buildSystemAll({ key: 'k1', messageId: 'mid', timestamp: 1_700_000_000 }),
+    });
   });
 
   it('listDevices refleja el estado recibido por el topic de publish', async () => {
@@ -50,7 +53,11 @@ describe('MerossIotManager', () => {
     expect((await mgr.listDevices())[0]).toMatchObject({ id: 'meross:u1:0', reachable: false });
     // El broker entrega el estado.
     mqtt.emit('m/v1/u1/publish', systemAllPayload(1));
-    expect((await mgr.listDevices())[0]).toMatchObject({ id: 'meross:u1:0', on: true, reachable: true });
+    expect((await mgr.listDevices())[0]).toMatchObject({
+      id: 'meross:u1:0',
+      on: true,
+      reachable: true,
+    });
   });
 
   it('setState publica un ToggleX en el topic correcto y actualiza optimista', async () => {
@@ -74,7 +81,11 @@ describe('MerossIotManager', () => {
 
   it('multi-canal: un device de 2 canales expone 2 IotDevice', async () => {
     const mqtt = new FakeMqtt();
-    const mgr = new MerossIotManager({ transport: mqtt, devices: [{ ...DEVICE, channels: 2 }], ...CTX });
+    const mgr = new MerossIotManager({
+      transport: mqtt,
+      devices: [{ ...DEVICE, channels: 2 }],
+      ...CTX,
+    });
     const devices = await mgr.listDevices();
     expect(devices.map((d) => d.id)).toEqual(['meross:u1:0', 'meross:u1:1']);
   });

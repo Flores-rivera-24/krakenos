@@ -1,4 +1,8 @@
-import type { DriverKind, PerDeviceTrafficCapability, PerDeviceTrafficStatus } from '@krakenos/types';
+import type {
+  DriverKind,
+  PerDeviceTrafficCapability,
+  PerDeviceTrafficStatus,
+} from '@krakenos/types';
 
 /**
  * Capacidades **declaradas** de cada driver (US-263, ampliado en US-251).

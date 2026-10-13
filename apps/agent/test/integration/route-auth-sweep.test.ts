@@ -108,9 +108,7 @@ describe('barrido de autenticación de lecturas (/api GET)', () => {
     const collected = (app as unknown as { collectedRoutes: { method: string; url: string }[] })
       .collectedRoutes;
     const existentes = new Set(
-      collected
-        .filter((r) => r.method.toUpperCase() === 'GET')
-        .map((r) => `GET ${r.url}`),
+      collected.filter((r) => r.method.toUpperCase() === 'GET').map((r) => `GET ${r.url}`),
     );
     const huerfanas = [...PUBLIC_READS].filter((k) => !existentes.has(k));
     expect(huerfanas).toEqual([]);

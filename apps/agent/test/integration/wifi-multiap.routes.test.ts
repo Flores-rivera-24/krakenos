@@ -1,12 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 import { esperarAuditoria } from '../helpers/audit.js';
 
 describe('rutas de WiFi multi-AP', () => {
@@ -74,8 +68,16 @@ describe('rutas de WiFi multi-AP', () => {
   it('lista los clientes de una red y 404 si no existe', async () => {
     const admin = await seedUser(app, { role: 'admin' });
     const headers = authHeader(signAccess(app, admin));
-    const ok = await app.inject({ method: 'GET', url: '/api/wifi/networks/net-salon-5/clients', headers });
-    const bad = await app.inject({ method: 'GET', url: '/api/wifi/networks/nope/clients', headers });
+    const ok = await app.inject({
+      method: 'GET',
+      url: '/api/wifi/networks/net-salon-5/clients',
+      headers,
+    });
+    const bad = await app.inject({
+      method: 'GET',
+      url: '/api/wifi/networks/nope/clients',
+      headers,
+    });
     expect(ok.statusCode).toBe(200);
     expect((ok.json() as unknown[]).length).toBeGreaterThan(0);
     expect(bad.statusCode).toBe(404);

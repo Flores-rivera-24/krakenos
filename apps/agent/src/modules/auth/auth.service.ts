@@ -265,7 +265,11 @@ export class AuthService {
    * Cambia la propia contraseña (US-101): verifica la actual y guarda el nuevo hash.
    * La rotación de sesiones la decide la ruta (revoca las demás, conserva la actual).
    */
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
     const row = (await this.app.prisma.user.findUnique({ where: { id: userId } })) as DbUser | null;
     if (!row) {
       throw new AuthError('AUTH_INVALID_TOKEN', 'Usuario no encontrado');

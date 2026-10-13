@@ -80,7 +80,9 @@ export function buildKasaLightState(input: {
     state.saturation = Math.round(input.saturation);
     state.color_temp = 0;
   }
-  return JSON.stringify({ 'smartlife.iot.smartbulb.lightingservice': { transition_light_state: state } });
+  return JSON.stringify({
+    'smartlife.iot.smartbulb.lightingservice': { transition_light_state: state },
+  });
 }
 
 // ---- Kasa: parseo de get_sysinfo ----
@@ -105,7 +107,10 @@ function num(value: unknown): number | null {
  */
 export function parseKasaSysinfo(ip: string, raw: unknown): KasaState | null {
   const root = (raw ?? {}) as Record<string, unknown>;
-  const sysinfo = ((root.system as Record<string, unknown>)?.get_sysinfo ?? root) as Record<string, unknown>;
+  const sysinfo = ((root.system as Record<string, unknown>)?.get_sysinfo ?? root) as Record<
+    string,
+    unknown
+  >;
   if (!sysinfo || typeof sysinfo !== 'object') return null;
   const alias = typeof sysinfo.alias === 'string' ? sysinfo.alias : 'Kasa';
   const type = String(sysinfo.mic_type ?? sysinfo.type ?? '');
@@ -121,8 +126,18 @@ export function parseKasaSysinfo(ip: string, raw: unknown): KasaState | null {
     const color: IotColor =
       colorTemp > 0
         ? { hex: null, temperatureK: colorTemp }
-        : { hex: hsvToHex(num(active.hue) ?? 0, num(active.saturation) ?? 0, 100), temperatureK: null };
-    return { ip, alias, isLight: true, on, brightness, color: sysinfo.is_color === 1 || colorTemp > 0 ? color : null };
+        : {
+            hex: hsvToHex(num(active.hue) ?? 0, num(active.saturation) ?? 0, 100),
+            temperatureK: null,
+          };
+    return {
+      ip,
+      alias,
+      isLight: true,
+      on,
+      brightness,
+      color: sysinfo.is_color === 1 || colorTemp > 0 ? color : null,
+    };
   }
 
   const relay = num(sysinfo.relay_state) ?? 0;
@@ -159,7 +174,11 @@ export function buildTapoSetBrightness(value: number): TapoCommand {
   return { method: 'set_device_info', params: { brightness: clampPct(value) } };
 }
 
-export function buildTapoSetColor(input: { hue?: number; saturation?: number; colorTempK?: number }): TapoCommand {
+export function buildTapoSetColor(input: {
+  hue?: number;
+  saturation?: number;
+  colorTempK?: number;
+}): TapoCommand {
   const params: Record<string, unknown> = {};
   if (input.colorTempK !== undefined) params.color_temp = Math.round(input.colorTempK);
   if (input.hue !== undefined && input.saturation !== undefined) {
@@ -187,7 +206,8 @@ export interface TapoState {
 export function parseTapoDeviceInfo(ip: string, raw: unknown): TapoState {
   const info = ((raw as { result?: unknown })?.result ?? raw ?? {}) as Record<string, unknown>;
   const model = String(info.model ?? '');
-  const isLight = /^L/i.test(model) || info.brightness !== undefined || info.color_temp !== undefined;
+  const isLight =
+    /^L/i.test(model) || info.brightness !== undefined || info.color_temp !== undefined;
   const name = decodeNickname(info.nickname) ?? (model || 'Tapo');
   const on = info.device_on === true;
   const brightness = isLight ? (num(info.brightness) ?? 0) : null;

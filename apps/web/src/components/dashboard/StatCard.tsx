@@ -12,7 +12,13 @@ interface StatCardProps {
 }
 
 /** Tarjeta de métrica para el dashboard. */
-export function StatCard({ title, value, hint, icon: Icon, accent = 'text-primary' }: StatCardProps) {
+export function StatCard({
+  title,
+  value,
+  hint,
+  icon: Icon,
+  accent = 'text-primary',
+}: StatCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

@@ -103,9 +103,15 @@ describe('securityFromUci', () => {
 
 describe('bandFromDevice', () => {
   it('usa `band` y cae a `hwmode`', () => {
-    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { band: '2g' } })).toBe('2.4GHz');
-    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { band: '6g' } })).toBe('6GHz');
-    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { hwmode: '11a' } })).toBe('5GHz');
+    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { band: '2g' } })).toBe(
+      '2.4GHz',
+    );
+    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { band: '6g' } })).toBe(
+      '6GHz',
+    );
+    expect(bandFromDevice({ name: 'r', type: 'wifi-device', options: { hwmode: '11a' } })).toBe(
+      '5GHz',
+    );
     expect(bandFromDevice(undefined)).toBe('2.4GHz');
   });
 });
@@ -124,9 +130,9 @@ DC:A6:32:DE:AD:02  -61 dBm / -95 dBm (SNR 34)  1200 ms ago`);
 
 describe('parseUmdnsHosts', () => {
   it('extrae hostname e ipv4, envuelto en `host` o directo', () => {
-    expect(parseUmdnsHosts({ host: { 'Macbook.local': { ipv4: '192.168.1.42', host: 'Macbook' } } })).toEqual([
-      { hostname: 'Macbook', ip: '192.168.1.42' },
-    ]);
+    expect(
+      parseUmdnsHosts({ host: { 'Macbook.local': { ipv4: '192.168.1.42', host: 'Macbook' } } }),
+    ).toEqual([{ hostname: 'Macbook', ip: '192.168.1.42' }]);
     expect(parseUmdnsHosts({ 'pi.local': { ipv4: '192.168.1.50' } })).toEqual([
       { hostname: 'pi', ip: '192.168.1.50' },
     ]);

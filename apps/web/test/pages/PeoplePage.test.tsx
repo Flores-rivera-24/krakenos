@@ -154,9 +154,11 @@ describe('PeoplePage (US-240)', () => {
 
     await user.click(screen.getByRole('button', { name: /Pausar el internet de Marta 30/ }));
 
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/people/u-marta/pause', {
-      minutes: 30,
-    }));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith('/people/u-marta/pause', {
+        minutes: 30,
+      }),
+    );
     expect(await screen.findByText('Internet pausado')).toBeInTheDocument();
   });
 
@@ -244,7 +246,9 @@ describe('PeoplePage (US-240)', () => {
     apiMock.get.mockResolvedValue(response({ people: [], unassignedDevices: 4 }));
     renderPage();
 
-    expect(await screen.findByText('Todavía no hay dispositivos asignados a personas.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Todavía no hay dispositivos asignados a personas.'),
+    ).toBeInTheDocument();
     expect(screen.getByText(/4 dispositivos sin dueño/)).toBeInTheDocument();
   });
 
@@ -273,7 +277,9 @@ describe('PeoplePage (US-240)', () => {
       'No se pudo cargar la lista de personas (error 500).',
     );
     // Y NO se pinta el estado vacío, que diría que el hogar no tiene a nadie.
-    expect(screen.queryByText('Todavía no hay dispositivos asignados a personas.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Todavía no hay dispositivos asignados a personas.'),
+    ).not.toBeInTheDocument();
   });
 
   it('un fallo de red dice que es de red, no del servidor', async () => {

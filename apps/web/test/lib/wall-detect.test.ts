@@ -160,8 +160,6 @@ describe('detectWalls — opción minLength', () => {
     expect(relaxed.length).toBeGreaterThan(strict.length);
     // El corto desaparece con minLength alto; el largo sobrevive.
     expect(strict.length).toBeGreaterThanOrEqual(1);
-    expect(
-      strict.every((w) => Math.max(w.x1, w.x2) - Math.min(w.x1, w.x2) > 0.5),
-    ).toBe(true);
+    expect(strict.every((w) => Math.max(w.x1, w.x2) - Math.min(w.x1, w.x2) > 0.5)).toBe(true);
   });
 });

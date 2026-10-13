@@ -109,7 +109,13 @@ describe('InventoryService contra driver que falla', () => {
     it('un barrido CON dispositivos sí marca offline a los ausentes (no se rompe el caso normal)', async () => {
       // El anti-flapping solo aplica cuando el barrido está totalmente vacío.
       await app.prisma.device.create({
-        data: { mac: 'aa:bb:cc:dd:ee:01', ip: '192.168.1.51', online: true, type: 'unknown', sources: '["arp"]' },
+        data: {
+          mac: 'aa:bb:cc:dd:ee:01',
+          ip: '192.168.1.51',
+          online: true,
+          type: 'unknown',
+          sources: '["arp"]',
+        },
       });
       const { MockDriver } = await import('../../src/drivers/mock.driver.js');
       const service = new InventoryService(app, new MockDriver());

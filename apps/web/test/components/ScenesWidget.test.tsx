@@ -17,7 +17,14 @@ import { Toaster } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
-const SCENE: Scene = { id: 's1', name: 'Cine', icon: 'movie', actions: [], order: 0, createdAt: '' };
+const SCENE: Scene = {
+  id: 's1',
+  name: 'Cine',
+  icon: 'movie',
+  actions: [],
+  order: 0,
+  createdAt: '',
+};
 
 function renderWidget() {
   return render(
@@ -31,7 +38,14 @@ function renderWidget() {
 describe('ScenesWidget (US-166)', () => {
   beforeEach(() => {
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });

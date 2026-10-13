@@ -171,12 +171,16 @@ describe('roles del hogar (US-179)', () => {
       cookies: refreshCookieHeader(cookie),
     });
     expect(refresh.statusCode).toBe(401);
-    expect(await app.prisma.refreshToken.count({ where: { userId: guest.id, revoked: false } })).toBe(0);
+    expect(
+      await app.prisma.refreshToken.count({ where: { userId: guest.id, revoked: false } }),
+    ).toBe(0);
   });
 
   it('el admin asigna y desasigna el dueño de un dispositivo (Device.ownerId)', async () => {
     const member = await seedUser(app, { email: 'm@krakenos.test', role: 'member' });
-    const row = await app.prisma.device.create({ data: { mac: 'aa:bb:cc:dd:ee:10', ip: '10.0.0.9' } });
+    const row = await app.prisma.device.create({
+      data: { mac: 'aa:bb:cc:dd:ee:10', ip: '10.0.0.9' },
+    });
 
     const assign = await app.inject({
       method: 'PATCH',
@@ -197,7 +201,9 @@ describe('roles del hogar (US-179)', () => {
   });
 
   it('asignar un dueño inexistente responde 400 tipado (no un 500 de FK)', async () => {
-    const row = await app.prisma.device.create({ data: { mac: 'aa:bb:cc:dd:ee:11', ip: '10.0.0.10' } });
+    const row = await app.prisma.device.create({
+      data: { mac: 'aa:bb:cc:dd:ee:11', ip: '10.0.0.10' },
+    });
     const res = await app.inject({
       method: 'PATCH',
       url: `/api/inventory/devices/${row.id}`,

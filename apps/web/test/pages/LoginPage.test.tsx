@@ -33,7 +33,8 @@ import { HttpError, useAuthStore } from '@/store/auth.store';
 /** Respuestas por defecto de los endpoints públicos del card. */
 function defaultApi(path: string): Promise<unknown> {
   if (path === '/setup/status') return Promise.resolve({ needsSetup: false });
-  if (path === '/system/info') return Promise.resolve({ homeName: 'Casa de Test', version: '1.0.0' });
+  if (path === '/system/info')
+    return Promise.resolve({ homeName: 'Casa de Test', version: '1.0.0' });
   if (path === '/auth/last-session') return Promise.resolve(null);
   return Promise.resolve({});
 }
@@ -116,7 +117,9 @@ describe('LoginPage', () => {
     // Viene marcada por defecto → viaja `true`.
     await fillLogin(user);
     await user.click(screen.getByRole('button', { name: 'Iniciar sesión' }));
-    await waitFor(() => expect(login).toHaveBeenCalledWith(expect.anything(), expect.anything(), true));
+    await waitFor(() =>
+      expect(login).toHaveBeenCalledWith(expect.anything(), expect.anything(), true),
+    );
 
     // Al desmarcarla viaja `false`. Se comprueban los DOS valores: con solo el
     // defecto, un componente que ignorase la casilla y mandase `true` fijo pasaría.
@@ -154,10 +157,19 @@ describe('LoginPage', () => {
 
   it('permite entrar con un código de recuperación en el paso 2FA (US-59)', async () => {
     const session = {
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 'a', expiresIn: 900 },
     };
-    const login = vi.fn().mockResolvedValue({ requiresWebAuthn: true, email: 'a@b.c', mfaToken: 'mt' });
+    const login = vi
+      .fn()
+      .mockResolvedValue({ requiresWebAuthn: true, email: 'a@b.c', mfaToken: 'mt' });
     const setSession = vi.fn();
     useAuthStore.setState({ login, setSession });
     webauthnMock.verifyBackupCode.mockResolvedValue(session);
@@ -207,7 +219,9 @@ describe('LoginPage', () => {
     });
 
     it('un código incorrecto se anuncia sin decir si el correo existe', async () => {
-      useAuthStore.setState({ recoverWithCode: vi.fn().mockRejectedValue(new HttpError(401, 'no')) });
+      useAuthStore.setState({
+        recoverWithCode: vi.fn().mockRejectedValue(new HttpError(401, 'no')),
+      });
       const user = userEvent.setup();
       await abrirPanel(user);
 

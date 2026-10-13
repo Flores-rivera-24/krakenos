@@ -58,7 +58,13 @@ describe('validateAdminPassword', () => {
 describe('isPlausibleEmail', () => {
   it('acepta correos normales y rechaza basura', () => {
     expect(isPlausibleEmail('yo@casa.local')).toBe(true);
-    for (const bad of ['sinarroba', 'a@b', 'con espacio@x.com', '@x.com', `${'a'.repeat(250)}@x.com`]) {
+    for (const bad of [
+      'sinarroba',
+      'a@b',
+      'con espacio@x.com',
+      '@x.com',
+      `${'a'.repeat(250)}@x.com`,
+    ]) {
       expect(isPlausibleEmail(bad), bad).toBe(false);
     }
   });
@@ -75,11 +81,19 @@ describe('generateAdminPassword', () => {
 describe('resetAdmin', () => {
   it('crea el admin cuando no existe', async () => {
     const { prisma, calls } = fakePrisma();
-    const result = await resetAdmin({ prisma, hash }, { email: 'yo@casa.local', password: 'contrasena1' });
+    const result = await resetAdmin(
+      { prisma, hash },
+      { email: 'yo@casa.local', password: 'contrasena1' },
+    );
     expect(result).toEqual({ email: 'yo@casa.local', created: true, revokedSessions: 0 });
     expect(calls.created).toHaveLength(1);
     expect(calls.created[0]).toMatchObject({
-      data: { email: 'yo@casa.local', role: 'admin', status: 'active', passwordHash: 'hash(contrasena1)' },
+      data: {
+        email: 'yo@casa.local',
+        role: 'admin',
+        status: 'active',
+        passwordHash: 'hash(contrasena1)',
+      },
     });
     // Nada que revocar en una cuenta nueva.
     expect(calls.revoked).toHaveLength(0);
@@ -87,7 +101,10 @@ describe('resetAdmin', () => {
 
   it('resetea el existente: contraseña, rol admin y cuenta ACTIVA', async () => {
     const { prisma, calls } = fakePrisma([{ id: 'u1', email: 'yo@casa.local' }]);
-    const result = await resetAdmin({ prisma, hash }, { email: 'yo@casa.local', password: 'contrasena1' });
+    const result = await resetAdmin(
+      { prisma, hash },
+      { email: 'yo@casa.local', password: 'contrasena1' },
+    );
     expect(result).toMatchObject({ created: false, revokedSessions: 3 });
     // Reactivar importa: un admin que se deshabilitó a sí mismo quedaba encerrado.
     expect(calls.updated[0]).toMatchObject({

@@ -62,7 +62,9 @@ export function TrafficWidget() {
       </CardHeader>
       <CardContent>
         {data.length < 2 ? (
-          <p className="py-12 text-center text-kr-sm text-kr-muted">{t('widget.traffic.waiting')}</p>
+          <p className="py-12 text-center text-kr-sm text-kr-muted">
+            {t('widget.traffic.waiting')}
+          </p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={data}>
@@ -83,12 +85,21 @@ export function TrafficWidget() {
                 tickFormatter={(v: number) => formatRate(v)}
                 width={70}
               />
-              <Tooltip
-                contentStyle={TOOLTIP_STYLE}
-                formatter={(v: number) => formatRate(v)}
+              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatRate(v)} />
+              <Area
+                type="monotone"
+                dataKey="rx"
+                name={t('widget.traffic.down')}
+                stroke="var(--kr-accent)"
+                fill="url(#rx)"
               />
-              <Area type="monotone" dataKey="rx" name={t('widget.traffic.down')} stroke="var(--kr-accent)" fill="url(#rx)" />
-              <Area type="monotone" dataKey="tx" name={t('widget.traffic.up')} stroke="var(--kr-success)" fill="url(#tx)" />
+              <Area
+                type="monotone"
+                dataKey="tx"
+                name={t('widget.traffic.up')}
+                stroke="var(--kr-success)"
+                fill="url(#tx)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         )}

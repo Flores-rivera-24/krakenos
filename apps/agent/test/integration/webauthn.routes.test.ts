@@ -260,7 +260,11 @@ describe('rutas WebAuthn', () => {
     const bad = await app.inject({
       method: 'POST',
       url: '/api/webauthn/backup-codes/verify',
-      payload: { email: 'bcx@krakenos.test', mfaToken: signMfaPending(app, user.id), code: 'no-existe' },
+      payload: {
+        email: 'bcx@krakenos.test',
+        mfaToken: signMfaPending(app, user.id),
+        code: 'no-existe',
+      },
     });
     expect(bad.statusCode).toBe(401);
     expect(bad.json().code).toBe('WEBAUTHN_ERROR');
@@ -271,7 +275,11 @@ describe('rutas WebAuthn', () => {
     const cross = await app.inject({
       method: 'POST',
       url: '/api/webauthn/backup-codes/verify',
-      payload: { email: 'bcx@krakenos.test', mfaToken: signMfaPending(app, other.id), code: otherCodes[0]! },
+      payload: {
+        email: 'bcx@krakenos.test',
+        mfaToken: signMfaPending(app, other.id),
+        code: otherCodes[0]!,
+      },
     });
     expect(cross.statusCode).toBe(401);
     expect(cross.json().code).toBe('AUTH_INVALID_TOKEN');

@@ -58,7 +58,14 @@ export function NetworkTopologyWidget() {
             aria-label={t('widget.topology.diagram')}
           >
             {/* Enlaces ISP→Router y Router→dispositivos */}
-            <line x1={ispX} y1={midY} x2={routerX} y2={midY} stroke="var(--kr-border)" strokeWidth={2} />
+            <line
+              x1={ispX}
+              y1={midY}
+              x2={routerX}
+              y2={midY}
+              stroke="var(--kr-border)"
+              strokeWidth={2}
+            />
             {leaves.map((d, i) => (
               <line
                 key={`l-${d.id}`}
@@ -73,8 +80,20 @@ export function NetworkTopologyWidget() {
 
             {/* ISP */}
             <g>
-              <circle cx={ispX} cy={midY} r={16} fill="var(--kr-bg-elevated)" stroke="var(--kr-border)" />
-              <text x={ispX} y={midY + 32} textAnchor="middle" fill="var(--kr-text-secondary)" fontSize={11}>
+              <circle
+                cx={ispX}
+                cy={midY}
+                r={16}
+                fill="var(--kr-bg-elevated)"
+                stroke="var(--kr-border)"
+              />
+              <text
+                x={ispX}
+                y={midY + 32}
+                textAnchor="middle"
+                fill="var(--kr-text-secondary)"
+                fontSize={11}
+              >
                 ISP
               </text>
             </g>
@@ -82,7 +101,13 @@ export function NetworkTopologyWidget() {
             {/* Router */}
             <g>
               <circle cx={routerX} cy={midY} r={20} fill="var(--kr-accent)" />
-              <text x={routerX} y={midY + 38} textAnchor="middle" fill="var(--kr-text-secondary)" fontSize={11}>
+              <text
+                x={routerX}
+                y={midY + 38}
+                textAnchor="middle"
+                fill="var(--kr-text-secondary)"
+                fontSize={11}
+              >
                 {router ? deviceName(router) : 'Router'}
               </text>
             </g>
@@ -97,12 +122,7 @@ export function NetworkTopologyWidget() {
                 onClick={() => setSelected(d)}
               >
                 <circle cx={leafX} cy={leafY(i)} r={9} fill={dotColor(d)} />
-                <text
-                  x={leafX + 16}
-                  y={leafY(i) + 4}
-                  fill="var(--kr-text-primary)"
-                  fontSize={11}
-                >
+                <text x={leafX + 16} y={leafY(i) + 4} fill="var(--kr-text-primary)" fontSize={11}>
                   {deviceName(d).slice(0, 18)}
                 </text>
               </g>
@@ -116,9 +136,7 @@ export function NetworkTopologyWidget() {
         )}
       </CardContent>
 
-      {selected && (
-        <DeviceDetailSlideover device={selected} onClose={() => setSelected(null)} />
-      )}
+      {selected && <DeviceDetailSlideover device={selected} onClose={() => setSelected(null)} />}
     </Card>
   );
 }

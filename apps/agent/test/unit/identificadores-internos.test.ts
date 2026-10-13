@@ -37,9 +37,7 @@ function ficherosPublicados(patron: string): string[] {
 
 describe('identificadores internos fuera de las superficies públicas', () => {
   it('ningún texto visible de la app nombra una historia', () => {
-    const catalogos = ['es.ts', 'en.ts'].map((f) =>
-      join(RAIZ, 'apps/web/src/lib/i18n/catalog', f),
-    );
+    const catalogos = ['es.ts', 'en.ts'].map((f) => join(RAIZ, 'apps/web/src/lib/i18n/catalog', f));
     const guias = readdirSync(join(RAIZ, 'apps/web/src/lib/guides/integrations'))
       .filter((f) => f.endsWith('.ts'))
       .map((f) => join(RAIZ, 'apps/web/src/lib/guides/integrations', f));

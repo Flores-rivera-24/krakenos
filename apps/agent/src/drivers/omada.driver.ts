@@ -115,7 +115,9 @@ export class OmadaDriver implements HardwareDriver {
   }
 
   async getTrafficSample(): Promise<TrafficSampleResult> {
-    const rates = parseOmadaTraffic(await this.opts.client.get(await this.sBase('/dashboard/overviewDashboard')));
+    const rates = parseOmadaTraffic(
+      await this.opts.client.get(await this.sBase('/dashboard/overviewDashboard')),
+    );
     return {
       // Omada reporta tasas (bytes/seg), no contadores: sin delta propio.
       wan: { rxBytesPerSec: rates.rxBytesPerSec, txBytesPerSec: rates.txBytesPerSec },
@@ -129,7 +131,9 @@ export class OmadaDriver implements HardwareDriver {
 
   async unblockDevice(mac: string): Promise<void> {
     try {
-      await this.opts.client.post(await this.sBase('/cmd/clients/unblock'), { mac: mac.toLowerCase() });
+      await this.opts.client.post(await this.sBase('/cmd/clients/unblock'), {
+        mac: mac.toLowerCase(),
+      });
     } catch {
       // Best-effort: si no estaba bloqueado, no es un error.
     }
@@ -159,7 +163,10 @@ export class OmadaDriver implements HardwareDriver {
     const raw = await this.loadWlanRaw();
     const current = raw.find((w) => (w.id ?? w.wlanId) === id);
     if (!current) throw new Error(`WLAN no encontrada en el controller Omada: ${id}`);
-    await this.opts.client.patch(await this.sBase(`/setting/wlans/${id}`), buildWlanPatch(current, input));
+    await this.opts.client.patch(
+      await this.sBase(`/setting/wlans/${id}`),
+      buildWlanPatch(current, input),
+    );
   }
 
   async getWifi(): Promise<WifiNetwork> {
@@ -194,7 +201,11 @@ export class OmadaDriver implements HardwareDriver {
     const wlans = parseOmadaWlans(await this.loadWlanRaw(), AP_ID);
     const guest = wlans.find((w) => w.isGuest);
     if (!guest) throw new Error('No se encontró una WLAN de invitados en el controller Omada');
-    await this.applyWlan(guest.id, { ssid: input.ssid, password: input.password, enabled: input.enabled });
+    await this.applyWlan(guest.id, {
+      ssid: input.ssid,
+      password: input.password,
+      enabled: input.enabled,
+    });
     return this.getGuestNetwork();
   }
 
@@ -233,8 +244,13 @@ export class OmadaDriver implements HardwareDriver {
     return clients
       .filter((c) => typeof c.ssid === 'string' && c.ssid === wlan.ssid)
       .map((c) => ({
-        mac: String(c.mac ?? '').toLowerCase().replace(/-/g, ':'),
-        hostname: (typeof c.name === 'string' && c.name) || (typeof c.hostName === 'string' && c.hostName) || null,
+        mac: String(c.mac ?? '')
+          .toLowerCase()
+          .replace(/-/g, ':'),
+        hostname:
+          (typeof c.name === 'string' && c.name) ||
+          (typeof c.hostName === 'string' && c.hostName) ||
+          null,
         ip: typeof c.ip === 'string' ? c.ip : '',
         signalDbm: typeof c.signal === 'number' ? c.signal : 0,
       }));

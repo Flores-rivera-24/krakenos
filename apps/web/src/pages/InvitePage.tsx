@@ -85,7 +85,12 @@ export function InvitePage() {
           <LogoMark className="mx-auto h-10 w-10 text-kr-accent" draw />
           <h1 className="text-kr-xl font-medium text-kr-primary">{t('invite.invalid.title')}</h1>
           <p className="text-kr-sm text-kr-secondary">{t('invite.invalid.body')}</p>
-          <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/login')}>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => navigate('/login')}
+          >
             {t('invite.goToLogin')}
           </Button>
         </div>

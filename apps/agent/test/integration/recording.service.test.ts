@@ -69,7 +69,12 @@ describe('RecordingService (US-187)', () => {
 
   it('graba un clip a disco + fila y lo lista sin exponer la ruta', async () => {
     const service = rec();
-    await service.record({ cameraId: 'cam-1', cameraName: 'Entrada', detectedAt: new Date(0).toISOString(), snapshot: 'data:image/jpeg;base64,x' });
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'Entrada',
+      detectedAt: new Date(0).toISOString(),
+      snapshot: 'data:image/jpeg;base64,x',
+    });
 
     const list = await service.list('cam-1');
     expect(list).toHaveLength(1);
@@ -87,8 +92,18 @@ describe('RecordingService (US-187)', () => {
     let clock = 0;
     const service = rec(() => clock);
     await service.setConfig({ retentionDays: 14, clipSeconds: 5 });
-    await service.record({ cameraId: 'cam-1', cameraName: 'E', detectedAt: new Date(0).toISOString(), snapshot: null });
-    await service.record({ cameraId: 'cam-1', cameraName: 'E', detectedAt: new Date(20 * DAY_MS).toISOString(), snapshot: null });
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'E',
+      detectedAt: new Date(0).toISOString(),
+      snapshot: null,
+    });
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'E',
+      detectedAt: new Date(20 * DAY_MS).toISOString(),
+      snapshot: null,
+    });
 
     clock = 30 * DAY_MS; // cutoff = 16 d: el clip de día 0 queda fuera, el de día 20 dentro
     const removed = await service.prune();
@@ -107,7 +122,12 @@ describe('RecordingService (US-187)', () => {
     // 5 clips de 3 MB (día 1..5) → 15 MB > 10 MB; el auto-prune al grabar mantiene ≤10 MB.
     for (let i = 1; i <= 5; i++) {
       clock = i * DAY_MS;
-      await service.record({ cameraId: 'cam-1', cameraName: 'E', detectedAt: new Date(i * DAY_MS).toISOString(), snapshot: null });
+      await service.record({
+        cameraId: 'cam-1',
+        cameraName: 'E',
+        detectedAt: new Date(i * DAY_MS).toISOString(),
+        snapshot: null,
+      });
     }
     const list = await service.list('cam-1');
     // 10 MB / 3 MB → como mucho 3 clips (los más recientes).
@@ -174,11 +194,7 @@ describe('RecordingService (US-187)', () => {
     // backup preparado con esta ruta convertía la descarga de un clip en lectura
     // arbitraria de ficheros (`keys/jwt-private.pem`) y `remove()` en borrado
     // arbitrario. Se valida al USAR la ruta, no solo al desempaquetar el backup.
-    for (const evil of [
-      '../../../keys/jwt-private.pem',
-      '/etc/passwd',
-      'cam-1/../../../.env',
-    ]) {
+    for (const evil of ['../../../keys/jwt-private.pem', '/etc/passwd', 'cam-1/../../../.env']) {
       await app.prisma.recording.update({ where: { id }, data: { path: evil } });
       const row = await service.getRow(id);
       expect(() => service.absPath(row!)).toThrow(/fuera del directorio de clips/);
@@ -193,7 +209,12 @@ describe('RecordingService (US-187)', () => {
 
   it('remove borra fichero y fila; inexistente → false', async () => {
     const service = rec();
-    await service.record({ cameraId: 'cam-1', cameraName: 'E', detectedAt: new Date(0).toISOString(), snapshot: null });
+    await service.record({
+      cameraId: 'cam-1',
+      cameraName: 'E',
+      detectedAt: new Date(0).toISOString(),
+      snapshot: null,
+    });
     const id = (await service.list())[0]!.id;
     const row = await service.getRow(id);
     expect(await service.remove(id)).toBe(true);

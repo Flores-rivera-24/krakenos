@@ -102,7 +102,11 @@ describe('withDeviceCache (US-229)', () => {
 
   it('getDevice no pasa por la caché (estado real de un aparato concreto)', async () => {
     const getDevice = vi.fn().mockResolvedValue(LAMP);
-    const cached = withDeviceCache({ listDevices: async () => [LAMP], getDevice, setState: async () => LAMP });
+    const cached = withDeviceCache({
+      listDevices: async () => [LAMP],
+      getDevice,
+      setState: async () => LAMP,
+    });
 
     await cached.getDevice('lamp');
     await cached.getDevice('lamp');

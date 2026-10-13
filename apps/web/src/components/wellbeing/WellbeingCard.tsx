@@ -75,7 +75,9 @@ export function WellbeingCard() {
               unsupportedDesc={t('wellbeing.unsupportedDesc')}
             />
           ) : withOwner === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.noOwners')}</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t('wellbeing.noOwners')}
+            </p>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.empty')}</p>
           )
@@ -90,7 +92,9 @@ export function WellbeingCard() {
                       {t('wellbeing.devices', { n: p.deviceCount })}
                     </span>
                   </span>
-                  <span className="tabular-nums text-muted-foreground">{formatBytes(p.totalBytes)}</span>
+                  <span className="tabular-nums text-muted-foreground">
+                    {formatBytes(p.totalBytes)}
+                  </span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-muted">
                   <div

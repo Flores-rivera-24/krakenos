@@ -45,7 +45,7 @@ describe('horarios de acceso (US-108)', () => {
       url: '/api/access/schedules?mac=aa:bb:cc:dd:ee:ff',
       headers: authHeader(adminToken),
     });
-    expect((list.json() as AccessSchedule[])).toHaveLength(1);
+    expect(list.json() as AccessSchedule[]).toHaveLength(1);
 
     const patch = await app.inject({
       method: 'PATCH',
@@ -67,7 +67,7 @@ describe('horarios de acceso (US-108)', () => {
       url: '/api/access/schedules',
       headers: authHeader(adminToken),
     });
-    expect((after.json() as AccessSchedule[])).toHaveLength(0);
+    expect(after.json() as AccessSchedule[]).toHaveLength(0);
   });
 
   it('el barrido bloquea y desbloquea vía driver según la ventana', async () => {
@@ -232,7 +232,10 @@ describe('horarios de acceso (US-108)', () => {
     expect(calls).toContain(`block:${mac}`);
 
     // Simula que la pausa expiró.
-    await app.prisma.device.update({ where: { mac }, data: { pausedUntil: new Date(Date.now() - 1000) } });
+    await app.prisma.device.update({
+      where: { mac },
+      data: { pausedUntil: new Date(Date.now() - 1000) },
+    });
     await service.tick(new Date());
     expect(calls).toContain(`unblock:${mac}`);
   });

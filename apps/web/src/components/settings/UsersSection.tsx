@@ -11,13 +11,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
 import { timeAgo } from '@/lib/format';
 import { ROLE_LABELS } from '@/lib/roles';
-import {
-  createUser,
-  deleteUser,
-  listUsers,
-  resetUserPassword,
-  updateUser,
-} from '@/lib/users';
+import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { plural, useT } from '@/lib/i18n';
@@ -252,7 +246,11 @@ export function UsersSection() {
                         value={u.role}
                         disabled={busy}
                         onChange={(e) =>
-                          void patch(u.id, { role: e.target.value as UserRole }, t('users.roleUpdated'))
+                          void patch(
+                            u.id,
+                            { role: e.target.value as UserRole },
+                            t('users.roleUpdated'),
+                          )
                         }
                         className="h-8 rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary disabled:opacity-50"
                       >
@@ -290,7 +288,9 @@ export function UsersSection() {
                             void patch(
                               u.id,
                               { status: u.status === 'active' ? 'disabled' : 'active' },
-                              u.status === 'active' ? t('users.wasDisabled') : t('users.wasEnabled'),
+                              u.status === 'active'
+                                ? t('users.wasDisabled')
+                                : t('users.wasEnabled'),
                             )
                           }
                         >

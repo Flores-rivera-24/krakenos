@@ -27,13 +27,7 @@ function fakePrisma(rows: Record<string, string> = {}): PrismaClient {
     setting: {
       findUnique: async ({ where }: { where: { key: string } }) =>
         where.key in rows ? { key: where.key, value: rows[where.key] } : null,
-      upsert: async ({
-        where,
-        update,
-      }: {
-        where: { key: string };
-        update: { value: string };
-      }) => {
+      upsert: async ({ where, update }: { where: { key: string }; update: { value: string } }) => {
         rows[where.key] = update.value;
         return { key: where.key, value: update.value };
       },
@@ -142,7 +136,9 @@ describe('AutoBackupService', () => {
   });
 
   it('si la contraseña guardada no se puede descifrar, avisa y no revienta', async () => {
-    const { service, warn } = make({ rows: { 'backup.autoPassphrase': 'kbx1.basura.basura.basura' } });
+    const { service, warn } = make({
+      rows: { 'backup.autoPassphrase': 'kbx1.basura.basura.basura' },
+    });
     const status = await service.runNow();
     expect(warn).toHaveBeenCalled();
     expect(status.lastError).toMatch(/contraseña/i);

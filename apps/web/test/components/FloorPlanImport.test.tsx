@@ -26,9 +26,7 @@ import { FloorPlanFormSlideover } from '@/components/coverage/FloorPlanFormSlide
 const PNG_DATA_URL = 'data:image/webp;base64,AAAA';
 
 function renderNew() {
-  return render(
-    <FloorPlanFormSlideover onClose={vi.fn()} onSaved={vi.fn()} onDeleted={vi.fn()} />,
-  );
+  return render(<FloorPlanFormSlideover onClose={vi.fn()} onSaved={vi.fn()} onDeleted={vi.fn()} />);
 }
 
 function pickFile(name = 'plano.png', type = 'image/png') {

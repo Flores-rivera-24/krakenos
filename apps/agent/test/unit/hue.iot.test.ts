@@ -54,7 +54,11 @@ const LIGHT = {
 };
 
 function makeManager(fake: FakeFetch) {
-  const client = new HueClient({ baseUrl: 'https://bridge.test', appKey: 'APPKEY', fetch: fake.fetch });
+  const client = new HueClient({
+    baseUrl: 'https://bridge.test',
+    appKey: 'APPKEY',
+    fetch: fake.fetch,
+  });
   return new HueIotManager({ client });
 }
 
@@ -68,7 +72,13 @@ describe('HueIotManager', () => {
   it('lista las luces y envía la application key', async () => {
     fake.on('GET /clip/v2/resource/light', () => ({ data: [LIGHT] }));
     const devices = await makeManager(fake).listDevices();
-    expect(devices[0]).toMatchObject({ id: 'abc-123', name: 'Foco salón', kind: 'light', on: true, brightness: 80 });
+    expect(devices[0]).toMatchObject({
+      id: 'abc-123',
+      name: 'Foco salón',
+      kind: 'light',
+      on: true,
+      brightness: 80,
+    });
     expect(fake.calls[0]!.appKey).toBe('APPKEY');
   });
 

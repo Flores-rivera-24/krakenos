@@ -175,9 +175,7 @@ describe('wallLossAlong', () => {
   });
 
   it('escala con la banda (misma geometría, distinta banda)', () => {
-    const walls: Wall[] = [
-      wall({ x1: 1, y1: 0, x2: 1, y2: 2, material: 'concrete' }),
-    ];
+    const walls: Wall[] = [wall({ x1: 1, y1: 0, x2: 1, y2: 2, material: 'concrete' })];
     const at24 = wallLossAlong(0, 1, 2, 1, walls, '2.4GHz');
     const at6 = wallLossAlong(0, 1, 2, 1, walls, '6GHz');
     expect(at24).toBeCloseTo(12 * 0.75, 9);

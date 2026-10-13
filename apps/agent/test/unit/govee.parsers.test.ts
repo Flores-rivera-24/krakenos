@@ -13,9 +13,13 @@ import {
 
 describe('builders de comandos Govee', () => {
   it('scan / turn / brightness', () => {
-    expect(JSON.parse(buildScan())).toEqual({ msg: { cmd: 'scan', data: { account_topic: 'reserve' } } });
+    expect(JSON.parse(buildScan())).toEqual({
+      msg: { cmd: 'scan', data: { account_topic: 'reserve' } },
+    });
     expect(JSON.parse(buildTurn(true))).toEqual({ msg: { cmd: 'turn', data: { value: 1 } } });
-    expect(JSON.parse(buildBrightness(150))).toEqual({ msg: { cmd: 'brightness', data: { value: 100 } } });
+    expect(JSON.parse(buildBrightness(150))).toEqual({
+      msg: { cmd: 'brightness', data: { value: 100 } },
+    });
   });
 
   it('color RGB y temperatura usan colorwc', () => {
@@ -50,16 +54,37 @@ describe('parseGoveeMessage', () => {
 describe('goveeToIotDevice', () => {
   it('mapea on/brillo/color (rgb) y la temperatura', () => {
     expect(
-      goveeToIotDevice({ id: 'AA:BB', ip: '10.0.0.5', sku: 'H6159', state: { onOff: 1, brightness: 80, color: { r: 255, g: 0, b: 0 }, colorTemInKelvin: 0 } }),
-    ).toMatchObject({ id: 'AA:BB', name: 'Govee H6159', kind: 'light', on: true, brightness: 80, color: { hex: '#ff0000', temperatureK: null } });
+      goveeToIotDevice({
+        id: 'AA:BB',
+        ip: '10.0.0.5',
+        sku: 'H6159',
+        state: { onOff: 1, brightness: 80, color: { r: 255, g: 0, b: 0 }, colorTemInKelvin: 0 },
+      }),
+    ).toMatchObject({
+      id: 'AA:BB',
+      name: 'Govee H6159',
+      kind: 'light',
+      on: true,
+      brightness: 80,
+      color: { hex: '#ff0000', temperatureK: null },
+    });
 
     expect(
-      goveeToIotDevice({ id: 'CC', ip: '10.0.0.6', sku: null, state: { onOff: 0, colorTemInKelvin: 4000 } }).color,
+      goveeToIotDevice({
+        id: 'CC',
+        ip: '10.0.0.6',
+        sku: null,
+        state: { onOff: 0, colorTemInKelvin: 4000 },
+      }).color,
     ).toEqual({ hex: null, temperatureK: 4000 });
   });
 
   it('sin estado: luz con color por defecto y campos nulos', () => {
     const d = goveeToIotDevice({ id: 'X', ip: '10.0.0.7', sku: null, state: null });
-    expect(d).toMatchObject({ on: null, brightness: null, color: { hex: '#ffffff', temperatureK: null } });
+    expect(d).toMatchObject({
+      on: null,
+      brightness: null,
+      color: { hex: '#ffffff', temperatureK: null },
+    });
   });
 });

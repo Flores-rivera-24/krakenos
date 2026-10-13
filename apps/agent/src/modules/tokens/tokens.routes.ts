@@ -107,7 +107,12 @@ export const tokensRoutes: FastifyPluginAsync = async (app) => {
       if (result.count === 0) {
         return reply.code(404).send({ code: 'TOKEN_NOT_FOUND', message: 'Token no encontrado' });
       }
-      app.audit({ action: 'apitoken.revoke', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'apitoken.revoke',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

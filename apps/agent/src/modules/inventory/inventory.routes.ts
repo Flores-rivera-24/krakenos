@@ -43,7 +43,9 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
         throw err;
       }
       if (!device) {
-        return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.update', userId: req.user.sub, detail: device.mac, ip: req.ip });
       return reply.send(device);
@@ -62,7 +64,9 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
     async (req, reply) => {
       const device = await service.setBlocked(req.params.id, true);
       if (!device) {
-        return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.block', userId: req.user.sub, detail: device.mac, ip: req.ip });
       return reply.send(device);
@@ -75,7 +79,9 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
     async (req, reply) => {
       const device = await service.setBlocked(req.params.id, false);
       if (!device) {
-        return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.unblock', userId: req.user.sub, detail: device.mac, ip: req.ip });
       return reply.send(device);
@@ -89,7 +95,9 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
     async (req, reply) => {
       const device = await service.setVlan(req.params.id, req.body.tag);
       if (!device) {
-        return reply.code(404).send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({
         action: 'device.vlan',

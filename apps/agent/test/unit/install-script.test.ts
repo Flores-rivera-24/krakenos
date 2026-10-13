@@ -168,7 +168,13 @@ describe('install.sh --dry-run (US-216)', () => {
     writeFileSync(shim, '#!/bin/sh\necho v20.19.0\n');
     chmodSync(shim, 0o755);
     const { code, stdout } = await runInstaller(
-      ['--dry-run', '--yes', '--update', '--dir', fileURLToPath(new URL('../../../..', import.meta.url))],
+      [
+        '--dry-run',
+        '--yes',
+        '--update',
+        '--dir',
+        fileURLToPath(new URL('../../../..', import.meta.url)),
+      ],
       { PATH: `${shimDir}:${process.env.PATH ?? ''}` },
     );
     expect(code).toBe(0);

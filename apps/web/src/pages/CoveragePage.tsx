@@ -343,16 +343,13 @@ export function CoveragePage() {
     setSelectedId(saved.id);
   }, []);
 
-  const handlePlanDeleted = useCallback(
-    (id: string) => {
-      setPlans((prev) => {
-        const next = prev.filter((p) => p.id !== id);
-        setSelectedId((cur) => (cur === id ? (next[0]?.id ?? null) : cur));
-        return next;
-      });
-    },
-    [],
-  );
+  const handlePlanDeleted = useCallback((id: string) => {
+    setPlans((prev) => {
+      const next = prev.filter((p) => p.id !== id);
+      setSelectedId((cur) => (cur === id ? (next[0]?.id ?? null) : cur));
+      return next;
+    });
+  }, []);
 
   // ---- Render ----
 
@@ -557,9 +554,7 @@ export function CoveragePage() {
                     proposedWalls={view === 'edit' ? (proposed ?? undefined) : undefined}
                     accessPoints={editAps}
                     surveySamples={view === 'survey' ? activeScan?.samples : undefined}
-                    tool={
-                      view === 'edit' ? tool : view === 'survey' ? 'measure' : 'select'
-                    }
+                    tool={view === 'edit' ? tool : view === 'survey' ? 'measure' : 'select'}
                     wallMaterial={wallMaterial}
                     onAddWall={handleAddWall}
                     onMoveAp={handleMoveAp}

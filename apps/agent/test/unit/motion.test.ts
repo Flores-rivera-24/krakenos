@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { detectMotion, isArmed, sensitivityToThresholds } from '../../src/cameras/motion.js';
 
 /** Construye una huella WxH de gris uniforme con un bloque más claro opcional. */
-function frame(size: number, base: number, block?: { start: number; len: number; value: number }): Uint8Array {
+function frame(
+  size: number,
+  base: number,
+  block?: { start: number; len: number; value: number },
+): Uint8Array {
   const f = new Uint8Array(size).fill(base);
   if (block) for (let i = block.start; i < block.start + block.len; i++) f[i] = block.value;
   return f;
@@ -58,13 +62,19 @@ describe('isArmed (US-186)', () => {
   });
 
   it('schedule: dentro de la ventana arma, fuera no', () => {
-    const arming = { mode: 'schedule' as const, windows: [{ fromMinute: 9 * 60, toMinute: 17 * 60 }] };
+    const arming = {
+      mode: 'schedule' as const,
+      windows: [{ fromMinute: 9 * 60, toMinute: 17 * 60 }],
+    };
     expect(isArmed(arming, at(10, 0))).toBe(true);
     expect(isArmed(arming, at(18, 0))).toBe(false);
   });
 
   it('schedule: ventana que cruza medianoche', () => {
-    const arming = { mode: 'schedule' as const, windows: [{ fromMinute: 22 * 60, toMinute: 7 * 60 }] };
+    const arming = {
+      mode: 'schedule' as const,
+      windows: [{ fromMinute: 22 * 60, toMinute: 7 * 60 }],
+    };
     expect(isArmed(arming, at(23, 0))).toBe(true);
     expect(isArmed(arming, at(3, 0))).toBe(true);
     expect(isArmed(arming, at(12, 0))).toBe(false);
@@ -72,7 +82,10 @@ describe('isArmed (US-186)', () => {
 
   it('schedule: respeta los días', () => {
     // day 3 = miércoles; ventana solo lunes (1).
-    const arming = { mode: 'schedule' as const, windows: [{ fromMinute: 0, toMinute: 1439, days: [1] }] };
+    const arming = {
+      mode: 'schedule' as const,
+      windows: [{ fromMinute: 0, toMinute: 1439, days: [1] }],
+    };
     expect(isArmed(arming, at(12, 0))).toBe(false);
     const monday = new Date(2026, 6, 6, 12, 0, 0); // 2026-07-06 lunes
     expect(isArmed(arming, monday)).toBe(true);

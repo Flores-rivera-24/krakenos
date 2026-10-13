@@ -68,7 +68,14 @@ describe('InventoryPage', () => {
     fakeSocket.emit.mockClear();
     useInventoryStore.setState({ devices: {}, connected: true, recentEvents: [] });
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'viewer', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'viewer',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
     });
   });

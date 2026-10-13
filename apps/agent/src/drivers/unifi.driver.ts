@@ -166,7 +166,11 @@ export class UnifiDriver implements HardwareDriver {
     const wlans = parseUnifiWlans(await this.loadWlanRaw(), AP_ID);
     const guest = wlans.find((w) => w.isGuest);
     if (!guest) throw new Error('No se encontró una WLAN de invitados en el controller UniFi');
-    await this.applyWlan(guest.id, { ssid: input.ssid, password: input.password, enabled: input.enabled });
+    await this.applyWlan(guest.id, {
+      ssid: input.ssid,
+      password: input.password,
+      enabled: input.enabled,
+    });
     return this.getGuestNetwork();
   }
 
@@ -204,7 +208,10 @@ export class UnifiDriver implements HardwareDriver {
       .filter((c) => typeof c.essid === 'string' && c.essid === wlan.ssid)
       .map((c) => ({
         mac: String(c.mac ?? '').toLowerCase(),
-        hostname: (typeof c.name === 'string' && c.name) || (typeof c.hostname === 'string' && c.hostname) || null,
+        hostname:
+          (typeof c.name === 'string' && c.name) ||
+          (typeof c.hostname === 'string' && c.hostname) ||
+          null,
         ip: typeof c.ip === 'string' ? c.ip : '',
         signalDbm: typeof c.signal === 'number' ? c.signal : 0,
       }));

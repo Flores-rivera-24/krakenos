@@ -44,14 +44,15 @@ import { useAuthStore } from '@/store/auth.store';
 type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'usuarios' | 'cuenta';
 
 /** `adminOnly` oculta la sección a los viewers (el servidor la impone igualmente). */
-const SECTIONS: { id: Section; labelKey: TranslationKey; icon: typeof Cpu; adminOnly?: boolean }[] = [
-  { id: 'sistema', labelKey: 'settings.section.system', icon: Cpu },
-  { id: 'red', labelKey: 'settings.section.network', icon: Server },
-  { id: 'seguridad', labelKey: 'settings.section.security', icon: Lock },
-  { id: 'integraciones', labelKey: 'settings.section.integrations', icon: Plug },
-  { id: 'usuarios', labelKey: 'settings.section.users', icon: Users, adminOnly: true },
-  { id: 'cuenta', labelKey: 'settings.section.account', icon: User },
-];
+const SECTIONS: { id: Section; labelKey: TranslationKey; icon: typeof Cpu; adminOnly?: boolean }[] =
+  [
+    { id: 'sistema', labelKey: 'settings.section.system', icon: Cpu },
+    { id: 'red', labelKey: 'settings.section.network', icon: Server },
+    { id: 'seguridad', labelKey: 'settings.section.security', icon: Lock },
+    { id: 'integraciones', labelKey: 'settings.section.integrations', icon: Plug },
+    { id: 'usuarios', labelKey: 'settings.section.users', icon: Users, adminOnly: true },
+    { id: 'cuenta', labelKey: 'settings.section.account', icon: User },
+  ];
 
 const TIMEZONES = [
   'UTC',
@@ -190,7 +191,6 @@ export function SettingsPage() {
       setTesting(false);
     }
   };
-
 
   return (
     <div className="space-y-6 p-6">
@@ -590,7 +590,9 @@ export function SettingsPage() {
                         <table className="w-full text-kr-sm">
                           <thead className="bg-kr-elevated text-kr-secondary">
                             <tr>
-                              <th className="px-3 py-2 text-left">{t('settings.audit.colAction')}</th>
+                              <th className="px-3 py-2 text-left">
+                                {t('settings.audit.colAction')}
+                              </th>
                               <th className="px-3 py-2 text-left">{t('settings.audit.colIp')}</th>
                               <th className="px-3 py-2 text-left">{t('settings.audit.colWhen')}</th>
                             </tr>

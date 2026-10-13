@@ -15,8 +15,24 @@ import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
 const usage: WellbeingUsage = {
   range: 'week',
   people: [
-    { userId: 'u1', name: 'Ana', rxBytes: 2_000_000, txBytes: 500_000, totalBytes: 2_500_000, deviceCount: 3, buckets: [] },
-    { userId: null, name: 'Sin asignar', rxBytes: 100, txBytes: 0, totalBytes: 100, deviceCount: 1, buckets: [] },
+    {
+      userId: 'u1',
+      name: 'Ana',
+      rxBytes: 2_000_000,
+      txBytes: 500_000,
+      totalBytes: 2_500_000,
+      deviceCount: 3,
+      buckets: [],
+    },
+    {
+      userId: null,
+      name: 'Sin asignar',
+      rxBytes: 100,
+      txBytes: 0,
+      totalBytes: 100,
+      deviceCount: 1,
+      buckets: [],
+    },
   ],
   perDeviceTraffic: { status: 'supported' as const },
   devicesWithOwner: 4,

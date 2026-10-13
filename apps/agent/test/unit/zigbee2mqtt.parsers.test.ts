@@ -30,7 +30,9 @@ describe('escalado de brillo', () => {
 
 describe('inferKind', () => {
   it('clasifica luz, enchufe y sensor por los exposes', () => {
-    expect(inferKind([{ type: 'light', features: [{ name: 'state' }, { name: 'brightness' }] }])).toBe('light');
+    expect(
+      inferKind([{ type: 'light', features: [{ name: 'state' }, { name: 'brightness' }] }]),
+    ).toBe('light');
     expect(inferKind([{ type: 'switch', features: [{ name: 'state' }] }])).toBe('plug');
     expect(inferKind([{ name: 'temperature' }, { name: 'humidity' }])).toBe('sensor');
   });
@@ -40,8 +42,16 @@ describe('parseBridgeDevices', () => {
   it('mapea friendly_name y descarta el coordinador', () => {
     const metas = parseBridgeDevices([
       { type: 'Coordinator', friendly_name: 'Coordinator' },
-      { type: 'Router', friendly_name: 'luz_salon', definition: { exposes: [{ type: 'light', features: [{ name: 'brightness' }] }] } },
-      { type: 'EndDevice', friendly_name: 'sensor_temp', definition: { exposes: [{ name: 'temperature' }] } },
+      {
+        type: 'Router',
+        friendly_name: 'luz_salon',
+        definition: { exposes: [{ type: 'light', features: [{ name: 'brightness' }] }] },
+      },
+      {
+        type: 'EndDevice',
+        friendly_name: 'sensor_temp',
+        definition: { exposes: [{ name: 'temperature' }] },
+      },
       { type: 'EndDevice' }, // sin friendly_name
     ]);
     expect(metas).toEqual([
@@ -118,7 +128,10 @@ describe('buildSetPayload', () => {
   });
 
   it('escala el brillo y enciende la luz si no se indica on; ignora brillo en plug', () => {
-    expect(JSON.parse(buildSetPayload({ brightness: 50 }, 'light'))).toEqual({ brightness: 127, state: 'ON' });
+    expect(JSON.parse(buildSetPayload({ brightness: 50 }, 'light'))).toEqual({
+      brightness: 127,
+      state: 'ON',
+    });
     expect(JSON.parse(buildSetPayload({ brightness: 50 }, 'plug'))).toEqual({});
   });
 

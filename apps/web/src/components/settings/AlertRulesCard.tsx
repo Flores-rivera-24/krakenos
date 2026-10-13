@@ -24,7 +24,11 @@ export function AlertRulesCard() {
     void load();
   }, []);
 
-  const toggle = async (rule: AlertRule, channel: 'push' | 'email' | 'telegram', value: boolean) => {
+  const toggle = async (
+    rule: AlertRule,
+    channel: 'push' | 'email' | 'telegram',
+    value: boolean,
+  ) => {
     // Optimista: refleja ya el cambio y revierte si falla.
     setRules(
       (cur) => cur?.map((r) => (r.event === rule.event ? { ...r, [channel]: value } : r)) ?? cur,

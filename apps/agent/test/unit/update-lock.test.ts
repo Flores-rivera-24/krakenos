@@ -67,7 +67,9 @@ describe('isLockStale', () => {
 
   it('lock más viejo que el TTL → caduco aunque el proceso viva (actualizador atascado)', () => {
     expect(isLockStale(fresh, { isProcessAlive: alive, now: at(NOW + LOCK_TTL_MS) })).toBe(true);
-    expect(isLockStale(fresh, { isProcessAlive: alive, now: at(NOW + LOCK_TTL_MS - 1) })).toBe(false);
+    expect(isLockStale(fresh, { isProcessAlive: alive, now: at(NOW + LOCK_TTL_MS - 1) })).toBe(
+      false,
+    );
   });
 
   it('lock legado (sin PID): manda solo el TTL', () => {

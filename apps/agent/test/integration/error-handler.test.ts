@@ -14,21 +14,34 @@ describe('manejador de errores global', () => {
       throw new Error('detalle secreto de prisma: SELECT * FROM User');
     });
     app.get('/boom503', async () => {
-      throw Object.assign(new Error('El router no responde.'), { statusCode: 503, code: 'UPSTREAM_DOWN' });
+      throw Object.assign(new Error('El router no responde.'), {
+        statusCode: 503,
+        code: 'UPSTREAM_DOWN',
+      });
     });
     app.get('/fst500', async () => {
-      throw Object.assign(new Error('detalle interno de fastify'), { statusCode: 500, code: 'FST_ERR_X' });
+      throw Object.assign(new Error('detalle interno de fastify'), {
+        statusCode: 500,
+        code: 'FST_ERR_X',
+      });
     });
     app.get('/prisma', async () => {
       throw Object.assign(new Error('Unique constraint failed on User.email'), { code: 'P2002' });
     });
     app.get('/no-encontrado', async (_req, reply) => {
-      const err = Object.assign(new Error('No existe ese recurso'), { statusCode: 404, code: 'X_404' });
+      const err = Object.assign(new Error('No existe ese recurso'), {
+        statusCode: 404,
+        code: 'X_404',
+      });
       return reply.send(err);
     });
     app.post(
       '/valida',
-      { schema: { body: { type: 'object', required: ['a'], properties: { a: { type: 'string' } } } } },
+      {
+        schema: {
+          body: { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+        },
+      },
       async () => 'ok',
     );
     await app.ready();
@@ -58,7 +71,10 @@ describe('manejador de errores global', () => {
   it('un 5xx interno de Fastify (FST_*) no filtra su mensaje ni su code', async () => {
     const res = await app.inject({ method: 'GET', url: '/fst500' });
     expect(res.statusCode).toBe(500);
-    expect(res.json()).toMatchObject({ code: 'INTERNAL_ERROR', message: 'Error interno del servidor.' });
+    expect(res.json()).toMatchObject({
+      code: 'INTERNAL_ERROR',
+      message: 'Error interno del servidor.',
+    });
     expect(res.body).not.toContain('detalle interno');
   });
 
@@ -72,7 +88,11 @@ describe('manejador de errores global', () => {
   it('un 4xx conserva statusCode, code y message', async () => {
     const res = await app.inject({ method: 'GET', url: '/no-encontrado' });
     expect(res.statusCode).toBe(404);
-    expect(res.json()).toMatchObject({ code: 'X_404', message: 'No existe ese recurso', error: 'Not Found' });
+    expect(res.json()).toMatchObject({
+      code: 'X_404',
+      message: 'No existe ese recurso',
+      error: 'Not Found',
+    });
   });
 
   it('la validación de Fastify (400) conserva su mensaje', async () => {

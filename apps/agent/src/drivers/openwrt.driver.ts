@@ -366,7 +366,8 @@ export class OpenWrtDriver implements HardwareDriver {
     if (input.security !== undefined) {
       cmds.push(uciSet(iface.name, 'encryption', uciEncryptionFromSecurity(input.security)));
     }
-    if (input.hidden !== undefined) cmds.push(uciSet(iface.name, 'hidden', input.hidden ? '1' : '0'));
+    if (input.hidden !== undefined)
+      cmds.push(uciSet(iface.name, 'hidden', input.hidden ? '1' : '0'));
     if (input.band !== undefined && iface.options.device) {
       cmds.push(uciSet(iface.options.device, 'band', uciBandFromBand(input.band)));
     }
@@ -420,7 +421,8 @@ export class OpenWrtDriver implements HardwareDriver {
     const cmds: string[] = [];
     if (input.ssid !== undefined) cmds.push(uciSet(iface.name, 'ssid', input.ssid));
     if (input.password !== undefined) cmds.push(uciSet(iface.name, 'key', input.password));
-    if (input.enabled !== undefined) cmds.push(uciSet(iface.name, 'disabled', input.enabled ? '0' : '1'));
+    if (input.enabled !== undefined)
+      cmds.push(uciSet(iface.name, 'disabled', input.enabled ? '0' : '1'));
     if (input.clientIsolation !== undefined) {
       cmds.push(uciSet(iface.name, 'isolate', input.clientIsolation ? '1' : '0'));
     }

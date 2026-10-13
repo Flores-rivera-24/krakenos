@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+// El @ts-expect-error solo cubre la linea siguiente: sin prettier-ignore Prettier parte el import
+// en varias lineas y el error de tipos queda fuera de su alcance.
+// prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { analyzeReport, cvss3BaseScore, scoreToLabel, severityOf } from '../../../../scripts/audit-osv.mjs';
 
@@ -97,7 +100,9 @@ describe('scoreToLabel', () => {
 
 describe('severityOf (combina las tres fuentes y toma la PEOR)', () => {
   it('lee el array `severity` estándar cuando no hay database_specific', () => {
-    const vuln = { severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }] };
+    const vuln = {
+      severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H' }],
+    };
     expect(severityOf(vuln, undefined)).toBe('CRITICAL');
   });
 

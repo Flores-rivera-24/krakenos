@@ -434,7 +434,12 @@ export function ScenesPage() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {scenes.map((scene) => (
-            <SceneTile key={scene.id} scene={scene} isAdmin={isAdmin} onEdit={() => openEdit(scene)} />
+            <SceneTile
+              key={scene.id}
+              scene={scene}
+              isAdmin={isAdmin}
+              onEdit={() => openEdit(scene)}
+            />
           ))}
         </div>
       )}
@@ -444,7 +449,10 @@ export function ScenesPage() {
       <div className="border-t border-kr-muted pt-6">
         <p className="text-kr-sm text-kr-secondary">
           {t('scenes.scheduleMoved')}{' '}
-          <Link to="/automations" className="text-kr-link underline underline-offset-2 hover:text-kr-primary">
+          <Link
+            to="/automations"
+            className="text-kr-link underline underline-offset-2 hover:text-kr-primary"
+          >
             {t('scenes.scheduleMovedLink')}
           </Link>
         </p>

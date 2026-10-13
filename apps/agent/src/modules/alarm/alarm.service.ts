@@ -1,11 +1,28 @@
-import type { AlarmConfig, AlarmMachineState, AlarmMode, AlarmState, HomeEvent, IotDevice, IotManager, UpdateAlarmConfigRequest } from '@krakenos/types';
+import type {
+  AlarmConfig,
+  AlarmMachineState,
+  AlarmMode,
+  AlarmState,
+  HomeEvent,
+  IotDevice,
+  IotManager,
+  UpdateAlarmConfigRequest,
+} from '@krakenos/types';
 import { isLifeSafetyMetric, isSecurityMetric } from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
 import { settleWithLimit } from '../../iot/batch.js';
-import { advance, arm, disarm, disarmedState, isActive, trigger, type TriggerOptions } from '../../alarm/state-machine.js';
+import {
+  advance,
+  arm,
+  disarm,
+  disarmedState,
+  isActive,
+  trigger,
+  type TriggerOptions,
+} from '../../alarm/state-machine.js';
 import { decideAvisoVital, detalleDeAviso } from '../../alarm/life-safety.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
@@ -289,7 +306,10 @@ export class AlarmService {
       if (dev.kind !== 'smoke') continue;
       if (!dev.reachable && !this.faultNotifiedVital.has(dev.id)) {
         this.faultNotifiedVital.add(dev.id);
-        this.app.audit({ action: 'alarm.sensor_fault', detail: `${dev.name} (detector de humo/CO)` });
+        this.app.audit({
+          action: 'alarm.sensor_fault',
+          detail: `${dev.name} (detector de humo/CO)`,
+        });
         this.app.log.warn(`[alarm] detector de humo/CO caído: ${dev.name}`);
       } else if (dev.reachable) {
         this.faultNotifiedVital.delete(dev.id);

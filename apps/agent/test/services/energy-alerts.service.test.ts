@@ -59,9 +59,13 @@ describe('EnergyAlertService (US-183)', () => {
 
   it('CRUD de reglas', async () => {
     const svc = new EnergyAlertService(app, new StubIot(0), new HomeEventBus());
-    const created = await svc.create({ deviceId: 'plug-x', metric: 'sustained-power', threshold: 500 });
+    const created = await svc.create({
+      deviceId: 'plug-x',
+      metric: 'sustained-power',
+      threshold: 500,
+    });
     expect(created.sustainMinutes).toBe(5);
-    expect((await svc.list())).toHaveLength(1);
+    expect(await svc.list()).toHaveLength(1);
 
     const updated = await svc.update(created.id, { threshold: 800, enabled: false });
     expect(updated?.threshold).toBe(800);
@@ -79,14 +83,23 @@ describe('EnergyAlertService (US-183)', () => {
     bus.subscribe((e) => void events.push(e));
     const iot = new StubIot(600);
     const svc = new EnergyAlertService(app, iot, bus);
-    await svc.create({ deviceId: 'plug-x', metric: 'sustained-power', threshold: 500, sustainMinutes: 5 });
+    await svc.create({
+      deviceId: 'plug-x',
+      metric: 'sustained-power',
+      threshold: 500,
+      sustainMinutes: 5,
+    });
 
     await svc.tick(at(0)); // arranca el sostenido, aún no dispara
     expect(events).toHaveLength(0);
     await svc.tick(at(5)); // 5 min sostenido → dispara
 
     expect(events).toHaveLength(1);
-    expect(events[0]).toMatchObject({ type: 'energy-threshold', deviceId: 'plug-x', metric: 'sustained-power' });
+    expect(events[0]).toMatchObject({
+      type: 'energy-threshold',
+      deviceId: 'plug-x',
+      metric: 'sustained-power',
+    });
     // Audita como `energy.threshold` (despacho multicanal US-180).
     await esperarUnaAuditoria(app, { action: 'energy.threshold' });
   });
@@ -117,7 +130,12 @@ describe('EnergyAlertService (US-183)', () => {
       },
     };
     const svc = new EnergyAlertService(app, iot, bus);
-    await svc.create({ deviceId: 'plug-x', metric: 'sustained-power', threshold: 100, sustainMinutes: 1 });
+    await svc.create({
+      deviceId: 'plug-x',
+      metric: 'sustained-power',
+      threshold: 100,
+      sustainMinutes: 1,
+    });
     await svc.tick(at(0));
     await svc.tick(at(5));
     expect(events).toHaveLength(0);
@@ -138,7 +156,9 @@ describe('EnergyAlertService (US-183)', () => {
       });
     }
     await svc.tick(new Date(2026, 6, 10, 9, 0, 0));
-    expect(events.some((e) => e.type === 'energy-threshold' && e.metric === 'daily-energy')).toBe(true);
+    expect(events.some((e) => e.type === 'energy-threshold' && e.metric === 'daily-energy')).toBe(
+      true,
+    );
   });
 
   it('una regla deshabilitada no se evalúa', async () => {

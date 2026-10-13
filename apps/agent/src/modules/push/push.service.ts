@@ -51,20 +51,50 @@ export function pushNotificationForAudit(
 ): AuditNotification | null {
   switch (action) {
     case 'auth.login_failed':
-      return { title: 'Login fallido', body: `Intento desde ${ip ?? 'IP desconocida'}`, url: '/settings', audience: 'admin' };
+      return {
+        title: 'Login fallido',
+        body: `Intento desde ${ip ?? 'IP desconocida'}`,
+        url: '/settings',
+        audience: 'admin',
+      };
     case 'auth.login_locked':
-      return { title: 'Cuenta bloqueada', body: 'Demasiados intentos de login fallidos', url: '/settings', audience: 'admin' };
+      return {
+        title: 'Cuenta bloqueada',
+        body: 'Demasiados intentos de login fallidos',
+        url: '/settings',
+        audience: 'admin',
+      };
     case 'auth.refresh_reuse':
-      return { title: 'Posible robo de sesión', body: 'Refresh token reutilizado; sesiones revocadas', url: '/settings', audience: 'admin' };
+      return {
+        title: 'Posible robo de sesión',
+        body: 'Refresh token reutilizado; sesiones revocadas',
+        url: '/settings',
+        audience: 'admin',
+      };
     // US-269: alguien ha entrado SIN la contraseña, con un código de recuperación.
     // Es el aviso más importante de los tres de auth: un login fallido es ruido
     // cotidiano, pero esto es un acceso concedido por una vía excepcional.
     case 'auth.recovery_used':
-      return { title: 'Acceso con código de recuperación', body: `Alguien entró sin contraseña desde ${ip ?? 'IP desconocida'}`, url: '/settings', audience: 'admin' };
+      return {
+        title: 'Acceso con código de recuperación',
+        body: `Alguien entró sin contraseña desde ${ip ?? 'IP desconocida'}`,
+        url: '/settings',
+        audience: 'admin',
+      };
     case 'device.block':
-      return { title: 'Dispositivo bloqueado', body: detail ?? 'Un dispositivo fue bloqueado', url: '/inventory', audience: 'admin' };
+      return {
+        title: 'Dispositivo bloqueado',
+        body: detail ?? 'Un dispositivo fue bloqueado',
+        url: '/inventory',
+        audience: 'admin',
+      };
     case 'inventory.unknown_device':
-      return { title: 'Dispositivo desconocido', body: 'Nueva MAC en la red', url: '/inventory', audience: 'admin' };
+      return {
+        title: 'Dispositivo desconocido',
+        body: 'Nueva MAC en la red',
+        url: '/inventory',
+        audience: 'admin',
+      };
     // US-253. Audiencia `admin` y no `home`: el aviso nombra aparato y dominio, o
     // sea **actividad por aparato** — la misma que `home.activity` cerró a los
     // demás roles (US-250). Mandárselo a `member` por push reabriría por detrás

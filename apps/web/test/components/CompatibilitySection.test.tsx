@@ -15,15 +15,60 @@ import { CompatibilitySection } from '@/components/connect/CompatibilitySection'
  * (`compatibility.routes.test.ts`), no este fichero.
  */
 const CATALOG: CompatibilityEntry[] = [
-  { id: 'driver:openwrt', category: 'driver', label: 'Router OpenWrt', capabilities: ['inventory', 'wifi'], requirements: ['address', 'credentials'], verifiedAt: null, support: 'core', appDependency: null },
-  { id: 'iot:hue', category: 'iot', label: 'Philips Hue', capabilities: ['control'], requirements: ['address', 'credentials'], verifiedAt: null, support: 'core', appDependency: null },
-  { id: 'dns:pihole', category: 'dns', label: 'Pi-hole', capabilities: ['dns-block'], requirements: ['address'], verifiedAt: '2026-08-07', support: 'core', appDependency: null },
+  {
+    id: 'driver:openwrt',
+    category: 'driver',
+    label: 'Router OpenWrt',
+    capabilities: ['inventory', 'wifi'],
+    requirements: ['address', 'credentials'],
+    verifiedAt: null,
+    support: 'core',
+    appDependency: null,
+  },
+  {
+    id: 'iot:hue',
+    category: 'iot',
+    label: 'Philips Hue',
+    capabilities: ['control'],
+    requirements: ['address', 'credentials'],
+    verifiedAt: null,
+    support: 'core',
+    appDependency: null,
+  },
+  {
+    id: 'dns:pihole',
+    category: 'dns',
+    label: 'Pi-hole',
+    capabilities: ['dns-block'],
+    requirements: ['address'],
+    verifiedAt: '2026-08-07',
+    support: 'core',
+    appDependency: null,
+  },
   // US-238: uno solo en community, a propósito — con todo igual, invertir la
   // condición del aviso daría el mismo recuento y el test no probaría nada.
-  { id: 'iot:tuya', category: 'iot', label: 'Tuya / Smart Life', capabilities: ['control'], requirements: ['extra-dependency'], verifiedAt: null, support: 'community', appDependency: { reason: 'pairing', scope: 'all' } },
+  {
+    id: 'iot:tuya',
+    category: 'iot',
+    label: 'Tuya / Smart Life',
+    capabilities: ['control'],
+    requirements: ['extra-dependency'],
+    verifiedAt: null,
+    support: 'community',
+    appDependency: { reason: 'pairing', scope: 'all' },
+  },
   // US-258: el caso que no tenía marca posible — `core` (se mantiene) y aun así
   // parte del parque necesita la cuenta del fabricante.
-  { id: 'iot:kasa', category: 'iot', label: 'TP-Link Kasa / Tapo', capabilities: ['control'], requirements: ['credentials'], verifiedAt: null, support: 'core', appDependency: { reason: 'account', scope: 'some', devices: 'Tapo' } },
+  {
+    id: 'iot:kasa',
+    category: 'iot',
+    label: 'TP-Link Kasa / Tapo',
+    capabilities: ['control'],
+    requirements: ['credentials'],
+    verifiedAt: null,
+    support: 'core',
+    appDependency: { reason: 'account', scope: 'some', devices: 'Tapo' },
+  },
 ];
 
 describe('CompatibilitySection (US-208)', () => {
@@ -89,7 +134,9 @@ describe('CompatibilitySection (US-208)', () => {
   it('busca por marca/modelo', async () => {
     render(<CompatibilitySection />);
     await screen.findByText('Router OpenWrt');
-    fireEvent.change(screen.getByLabelText('Buscar por marca o modelo'), { target: { value: 'hue' } });
+    fireEvent.change(screen.getByLabelText('Buscar por marca o modelo'), {
+      target: { value: 'hue' },
+    });
     expect(screen.getByText('Philips Hue')).toBeInTheDocument();
     expect(screen.queryByText('Router OpenWrt')).not.toBeInTheDocument();
   });
@@ -105,7 +152,9 @@ describe('CompatibilitySection (US-208)', () => {
   it('es honesto cuando no encuentra el equipo', async () => {
     render(<CompatibilitySection />);
     await screen.findByText('Router OpenWrt');
-    fireEvent.change(screen.getByLabelText('Buscar por marca o modelo'), { target: { value: 'zzz' } });
+    fireEvent.change(screen.getByLabelText('Buscar por marca o modelo'), {
+      target: { value: 'zzz' },
+    });
     expect(screen.getByText(/no significa que no funcione/)).toBeInTheDocument();
   });
 });

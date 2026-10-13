@@ -3,7 +3,13 @@ import type { FfmpegExec, FfmpegResult } from '../../src/cameras/ffmpeg.js';
 import { type CameraDefinition, RtspCameraManager } from '../../src/cameras/rtsp.cameras.js';
 
 const CAMERAS: CameraDefinition[] = [
-  { id: 'cam-entrada', name: 'Entrada', room: 'Exterior', model: 'Acme', rtspUrl: 'rtsp://u:p@10.0.0.5/s1' },
+  {
+    id: 'cam-entrada',
+    name: 'Entrada',
+    room: 'Exterior',
+    model: 'Acme',
+    rtspUrl: 'rtsp://u:p@10.0.0.5/s1',
+  },
   { id: 'cam-garaje', name: 'Garaje', rtspUrl: 'rtsp://10.0.0.6/s1', enabled: false },
 ];
 
@@ -23,7 +29,11 @@ describe('RtspCameraManager', () => {
 
   beforeEach(() => {
     ff = new FakeFfmpeg();
-    cameras = new RtspCameraManager({ cameras: CAMERAS, exec: ff.exec, now: () => 1_700_000_000_000 });
+    cameras = new RtspCameraManager({
+      cameras: CAMERAS,
+      exec: ff.exec,
+      now: () => 1_700_000_000_000,
+    });
   });
 
   it('lista cámaras sin exponer la rtspUrl y refleja enabled en online', async () => {

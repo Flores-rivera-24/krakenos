@@ -94,7 +94,8 @@ export function expandirConfig(raw: unknown): Record<string, unknown> {
   for (const [clave, valor] of Object.entries(entrada)) {
     if (clave === '~') continue;
     const nombre = ABREVIATURAS[clave] ?? clave;
-    salida[nombre] = nombre === 'device' ? expandirDevice(valor) : expandirTopic(nombre, valor, base);
+    salida[nombre] =
+      nombre === 'device' ? expandirDevice(valor) : expandirTopic(nombre, valor, base);
   }
   return salida;
 }
@@ -179,7 +180,8 @@ export type PlantillaValor =
 
 /** Formas de plantilla que sí se entienden: `{{ value }}` y `{{ value_json.a['b'] }}`. */
 const RE_VALUE = /^\{\{\s*value\s*\}\}$/;
-const RE_VALUE_JSON = /^\{\{\s*value_json((?:\.[A-Za-z_$][\w$]*|\[\s*'[^']*'\s*\]|\[\s*"[^"]*"\s*\])*)\s*\}\}$/;
+const RE_VALUE_JSON =
+  /^\{\{\s*value_json((?:\.[A-Za-z_$][\w$]*|\[\s*'[^']*'\s*\]|\[\s*"[^"]*"\s*\])*)\s*\}\}$/;
 const RE_SEGMENTO = /\.([A-Za-z_$][\w$]*)|\[\s*'([^']*)'\s*\]|\[\s*"([^"]*)"\s*\]/g;
 
 /** Compila una plantilla al subconjunto soportado. Sin plantilla → `directa`. */
@@ -305,7 +307,10 @@ export const COMPONENTES_SOPORTADOS = [
  * `command_topic`, cerrando un **bucle de órdenes** con el anti-bucle de
  * automatizaciones fuera de juego, porque para el motor sería un aparato distinto.
  */
-export function esNuestraPropiaConfig(topic: TopicDeConfig, config: Record<string, unknown>): boolean {
+export function esNuestraPropiaConfig(
+  topic: TopicDeConfig,
+  config: Record<string, unknown>,
+): boolean {
   if (topic.nodeId === 'krakenos') return true;
   const uniqueId = str(config.unique_id);
   if (uniqueId?.startsWith('krakenos_')) return true;
@@ -550,7 +555,8 @@ export function construirOrdenes(
     if (!cover) return [];
     if (input.position !== undefined && cover.setPositionTopic) {
       const rango = cover.positionOpen - cover.positionClosed;
-      const valor = cover.positionClosed + (Math.max(0, Math.min(100, input.position)) / 100) * rango;
+      const valor =
+        cover.positionClosed + (Math.max(0, Math.min(100, input.position)) / 100) * rango;
       mensajes.push({ topic: cover.setPositionTopic, payload: String(Math.round(valor)) });
     } else if (input.on !== undefined && cover.commandTopic) {
       mensajes.push({

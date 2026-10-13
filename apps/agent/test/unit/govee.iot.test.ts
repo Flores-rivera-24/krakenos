@@ -51,7 +51,15 @@ describe('GoveeIotManager', () => {
     const status = udp.unicast.find((u) => u.port === 4003);
     expect(status!.payload).toContain('"cmd":"devStatus"');
 
-    udp.emit({ msg: { cmd: 'devStatus', data: { onOff: 1, brightness: 70, color: { r: 0, g: 255, b: 0 } } } }, '10.0.0.5');
+    udp.emit(
+      {
+        msg: {
+          cmd: 'devStatus',
+          data: { onOff: 1, brightness: 70, color: { r: 0, g: 255, b: 0 } },
+        },
+      },
+      '10.0.0.5',
+    );
 
     const dev = await govee.getDevice('AA:BB');
     expect(dev).toMatchObject({ id: 'AA:BB', on: true, brightness: 70, color: { hex: '#00ff00' } });
@@ -69,13 +77,17 @@ describe('GoveeIotManager', () => {
 
     const updated = await govee.setState('AA:BB', { on: true, brightness: 50 });
     expect(updated).toMatchObject({ on: true, brightness: 50 });
-    const cmds = udp.unicast.filter((u) => u.ip === '10.0.0.5' && u.port === 4003).map((u) => u.payload);
+    const cmds = udp.unicast
+      .filter((u) => u.ip === '10.0.0.5' && u.port === 4003)
+      .map((u) => u.payload);
     expect(cmds.some((p) => p.includes('"cmd":"turn"'))).toBe(true);
     expect(cmds.some((p) => p.includes('"cmd":"brightness"'))).toBe(true);
   });
 
   it('setState lanza IOT_NOT_FOUND si el dispositivo no se ha descubierto', async () => {
-    await expect(govee.setState('NO:PE', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
+    await expect(govee.setState('NO:PE', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_FOUND',
+    });
   });
 
   it('stop cierra el socket UDP (US-201)', async () => {

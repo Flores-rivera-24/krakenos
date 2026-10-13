@@ -267,14 +267,18 @@ export const env = {
     },
     // Solo se usa cuando DRIVER_KIND=pfsense (driver real vía REST API v2).
     pfsense: {
-      baseUrl: process.env.PFSENSE_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      baseUrl:
+        process.env.PFSENSE_URL ??
+        (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
       apiKey: process.env.PFSENSE_API_KEY ?? '',
       wanInterface: process.env.PFSENSE_WAN_IFACE ?? 'wan',
       lanInterface: process.env.PFSENSE_LAN_IFACE ?? 'lan',
     },
     // Solo se usa cuando DRIVER_KIND=unifi (API local del controller UniFi Network).
     unifi: {
-      url: process.env.UNIFI_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      url:
+        process.env.UNIFI_URL ??
+        (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
       username: process.env.UNIFI_USERNAME ?? 'admin',
       password: process.env.UNIFI_PASSWORD ?? '',
       site: process.env.UNIFI_SITE ?? 'default',
@@ -291,7 +295,9 @@ export const env = {
     },
     // Solo se usa cuando DRIVER_KIND=omada (TP-Link Omada Controller, API local).
     omada: {
-      url: process.env.OMADA_URL ?? (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
+      url:
+        process.env.OMADA_URL ??
+        (process.env.DRIVER_HOST ? `https://${process.env.DRIVER_HOST}` : ''),
       username: process.env.OMADA_USERNAME ?? 'admin',
       password: process.env.OMADA_PASSWORD ?? '',
       siteName: process.env.OMADA_SITE_NAME ?? 'Default',

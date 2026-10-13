@@ -67,10 +67,9 @@ test.describe('entrada directa por URL', () => {
 
       expect(problemas.consola, `errores de consola en ${ruta.path} (${stack})`).toEqual([]);
       expect(problemas.peticiones, `peticiones caídas en ${ruta.path} (${stack})`).toEqual([]);
-      expect(
-        problemas.respuestasFallidas,
-        `respuestas 4xx/5xx en ${ruta.path} (${stack})`,
-      ).toEqual([]);
+      expect(problemas.respuestasFallidas, `respuestas 4xx/5xx en ${ruta.path} (${stack})`).toEqual(
+        [],
+      );
     });
   }
 });

@@ -60,10 +60,7 @@ export function deleteIntegration(domain: IntegrationDomain): Promise<void> {
 }
 
 /** Esquema técnico de un `kind` dentro de un `DomainView`, o `undefined` si no existe. */
-export function kindSchemaFor(
-  view: DomainView,
-  kind: string,
-): IntegrationKindSchema | undefined {
+export function kindSchemaFor(view: DomainView, kind: string): IntegrationKindSchema | undefined {
   return view.kinds.find((k) => k.kind === kind);
 }
 

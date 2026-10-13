@@ -39,7 +39,9 @@ describe('settleWithLimit (US-229)', () => {
 
     expect(outcomes.map((o) => o.status)).toEqual(['fulfilled', 'fulfilled', 'rejected']);
     expect(outcomes[0]).toMatchObject({ value: 'LENTO' });
-    expect(outcomes[2]).toMatchObject({ reason: expect.objectContaining({ message: 'no responde' }) });
+    expect(outcomes[2]).toMatchObject({
+      reason: expect.objectContaining({ message: 'no responde' }),
+    });
   });
 
   it('un fallo no aborta el resto del lote (best-effort, como el bucle original)', async () => {

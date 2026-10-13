@@ -96,7 +96,10 @@ export class OmadaClient {
     });
     const body = (await res.json().catch(() => null)) as Envelope | null;
     if (!res.ok || (typeof body?.errorCode === 'number' && body.errorCode !== 0)) {
-      throw new OmadaApiError(body?.errorCode ?? res.status, body?.msg ?? `Omada login (${res.status})`);
+      throw new OmadaApiError(
+        body?.errorCode ?? res.status,
+        body?.msg ?? `Omada login (${res.status})`,
+      );
     }
     const cookie = extractOmadaCookie(res.headers.get('set-cookie'));
     if (cookie) this.sessionCookie = cookie;
@@ -142,7 +145,10 @@ export class OmadaClient {
     }
 
     if (!res.ok || (typeof body?.errorCode === 'number' && body.errorCode !== 0)) {
-      throw new OmadaApiError(body?.errorCode ?? res.status, body?.msg ?? `Omada API ${path} (${res.status})`);
+      throw new OmadaApiError(
+        body?.errorCode ?? res.status,
+        body?.msg ?? `Omada API ${path} (${res.status})`,
+      );
     }
     return body?.result ?? null;
   }

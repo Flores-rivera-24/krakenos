@@ -4,11 +4,7 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import {
-  createEnergyAlert,
-  deleteEnergyAlert,
-  fetchEnergyAlerts,
-} from '@/lib/energy';
+import { createEnergyAlert, deleteEnergyAlert, fetchEnergyAlerts } from '@/lib/energy';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
@@ -147,7 +143,9 @@ export function EnergyAlertsCard() {
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="text-muted-foreground">
-              {metric === 'sustained-power' ? t('energy.alert.thresholdW') : t('energy.alert.thresholdWh')}
+              {metric === 'sustained-power'
+                ? t('energy.alert.thresholdW')
+                : t('energy.alert.thresholdWh')}
             </span>
             <input
               type="number"

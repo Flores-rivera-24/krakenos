@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  computeCalibration,
-  extractPdfJpeg,
-  selectLargestMedia,
-} from '@/lib/coverage-import';
+import { computeCalibration, extractPdfJpeg, selectLargestMedia } from '@/lib/coverage-import';
 
 describe('computeCalibration', () => {
   it('deriva ancho/alto reales de la línea de referencia', () => {
@@ -66,7 +62,10 @@ describe('extractPdfJpeg', () => {
   it('devuelve null si el flujo no empieza por la firma JPEG', () => {
     const bytes = Uint8Array.from([
       ...enc('/Filter /DCTDecode >>\nstream\n'),
-      0x00, 0x01, 0x02, 0x03,
+      0x00,
+      0x01,
+      0x02,
+      0x03,
       ...enc('\nendstream'),
     ]);
     expect(extractPdfJpeg(bytes)).toBeNull();

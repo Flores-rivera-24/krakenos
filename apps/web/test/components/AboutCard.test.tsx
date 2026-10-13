@@ -37,7 +37,9 @@ describe('AboutCard (US-257)', () => {
   it('avisa de que los enlaces abren una pestaña nueva, sin romper el nombre visible', () => {
     render(<AboutCard />);
     // WCAG 2.5.3: el nombre accesible empieza por el texto que se ve.
-    const fuente = screen.getByRole('link', { name: 'Ver el código fuente (se abre en una pestaña nueva)' });
+    const fuente = screen.getByRole('link', {
+      name: 'Ver el código fuente (se abre en una pestaña nueva)',
+    });
     expect(fuente).toHaveTextContent('Ver el código fuente');
   });
 

@@ -29,8 +29,12 @@ describe('WellbeingService (US-184)', () => {
       data: { email: 'leo@test', displayName: 'Leo', role: 'kid', passwordHash: 'x' },
     });
     // Aparatos con dueño + uno sin asignar.
-    await app.prisma.device.create({ data: { mac: 'aa:aa:aa:00:00:01', ip: '1.1.1.1', ownerId: ana.id } });
-    await app.prisma.device.create({ data: { mac: 'bb:bb:bb:00:00:02', ip: '1.1.1.2', ownerId: leo.id } });
+    await app.prisma.device.create({
+      data: { mac: 'aa:aa:aa:00:00:01', ip: '1.1.1.1', ownerId: ana.id },
+    });
+    await app.prisma.device.create({
+      data: { mac: 'bb:bb:bb:00:00:02', ip: '1.1.1.2', ownerId: leo.id },
+    });
     await app.prisma.device.create({ data: { mac: 'cc:cc:cc:00:00:03', ip: '1.1.1.3' } }); // sin dueño
     // Tráfico: Ana consume más que Leo; el sin-dueño también.
     await app.prisma.deviceTrafficSample.create({
@@ -79,7 +83,9 @@ describe('WellbeingService (US-184)', () => {
 
   it('cuenta los dispositivos y agrega en buckets', async () => {
     const { ana } = await seed();
-    await app.prisma.device.create({ data: { mac: 'aa:aa:aa:00:00:09', ip: '1.1.1.9', ownerId: ana.id } });
+    await app.prisma.device.create({
+      data: { mac: 'aa:aa:aa:00:00:09', ip: '1.1.1.9', ownerId: ana.id },
+    });
     await app.prisma.deviceTrafficSample.create({
       data: { mac: 'aa:aa:aa:00:00:09', rxBytesPerSec: 10, txBytesPerSec: 10 },
     });

@@ -4,11 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { PrismaClient } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
-import {
-  decryptArchive,
-  decryptArchiveAsync,
-  unpackArchive,
-} from '../../src/system/backup.js';
+import { decryptArchive, decryptArchiveAsync, unpackArchive } from '../../src/system/backup.js';
 import { BackupService } from '../../src/system/backup.service.js';
 
 /**
@@ -67,7 +63,10 @@ describe('BackupService.createToFile (US-233)', () => {
       'CLAVE-SECRETBOX',
     );
     expect(
-      entries.find((e) => e.name === 'db/app.db')!.data.subarray(0, 16).toString('utf8'),
+      entries
+        .find((e) => e.name === 'db/app.db')!
+        .data.subarray(0, 16)
+        .toString('utf8'),
     ).toContain('SQLite format 3');
   });
 
@@ -135,7 +134,9 @@ describe('BackupService.createToFile (US-233)', () => {
     );
     // Se borra el fichero justo tras medir su tamaño → el stream falla a mitad.
     const original = service['snapshotDbToFile'].bind(service);
-    (service as unknown as { snapshotDbToFile: unknown }).snapshotDbToFile = async (dir: string) => {
+    (service as unknown as { snapshotDbToFile: unknown }).snapshotDbToFile = async (
+      dir: string,
+    ) => {
       const entry = (await original(dir)) as { name: string; path: string; size: number };
       return { ...entry, path: join(dir, 'no-existe.db') };
     };

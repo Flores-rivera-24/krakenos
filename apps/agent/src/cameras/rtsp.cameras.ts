@@ -1,10 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type {
-  Camera,
-  CameraManager,
-  CameraSnapshot,
-  CameraStreamSession,
-} from '@krakenos/types';
+import type { Camera, CameraManager, CameraSnapshot, CameraStreamSession } from '@krakenos/types';
 import { MOTION_FRAME_HEIGHT, MOTION_FRAME_WIDTH } from '@krakenos/types';
 import {
   type FfmpegExec,

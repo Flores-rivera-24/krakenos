@@ -4,11 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Camera, CameraManager, CameraSnapshot, CameraStreamSession } from '@krakenos/types';
 import { MOTION_FRAME_HEIGHT, MOTION_FRAME_WIDTH } from '@krakenos/types';
-import {
-  HLS_PLAYLIST_NAME,
-  HlsStreamManager,
-  type StreamSpawner,
-} from './hls-stream.js';
+import { HLS_PLAYLIST_NAME, HlsStreamManager, type StreamSpawner } from './hls-stream.js';
 
 /** Genera un snapshot SVG sintético (cambia con la hora, simula "en vivo"). */
 function buildSnapshot(name: string, at: Date): string {
@@ -64,7 +60,13 @@ export interface MockCameraOptions {
 export class MockCameraManager implements CameraManager {
   readonly kind = 'mock' as const;
   private readonly cameras: Camera[] = [
-    { id: 'cam-entrada', name: 'Entrada', room: 'Exterior', model: 'KrakenCam 1080p', online: true },
+    {
+      id: 'cam-entrada',
+      name: 'Entrada',
+      room: 'Exterior',
+      model: 'KrakenCam 1080p',
+      online: true,
+    },
     { id: 'cam-patio', name: 'Patio', room: 'Exterior', model: 'KrakenCam 1080p', online: true },
     { id: 'cam-garaje', name: 'Garaje', room: 'Garaje', model: 'KrakenCam 720p', online: false },
   ];
@@ -139,8 +141,8 @@ export class MockCameraManager implements CameraManager {
     // Clip sintético: cabecera MP4 mínima (`ftyp` isom) + relleno proporcional a la
     // duración. No es vídeo reproducible real, pero ejercita grabar→guardar→podar.
     const header = Buffer.from([
-      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02, 0x00,
-      0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
+      0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0x00, 0x00, 0x02,
+      0x00, 0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32,
     ]);
     const filler = Buffer.alloc(Math.max(1, durationSec) * 1024, 0x21);
     return new Uint8Array(Buffer.concat([header, filler]));

@@ -54,7 +54,13 @@ describe('lightToIotDevice / parseLights', () => {
 
   it('mapea una luz de color (hex) y otra blanca (Kelvin)', () => {
     const color = lightToIotDevice(lightColor)!;
-    expect(color).toMatchObject({ id: 'abc-123', name: 'Foco salón', kind: 'light', on: true, brightness: 80 });
+    expect(color).toMatchObject({
+      id: 'abc-123',
+      name: 'Foco salón',
+      kind: 'light',
+      on: true,
+      brightness: 80,
+    });
     expect(color.color!.hex).toMatch(/^#[0-9a-f]{6}$/);
     expect(color.color!.temperatureK).toBeNull();
 
@@ -74,7 +80,9 @@ describe('buildLightUpdate', () => {
     expect(buildLightUpdate({ color: { temperatureK: 2700 } })).toEqual({
       color_temperature: { mirek: 370 },
     });
-    const colorBody = buildLightUpdate({ color: { hex: '#ff0000' } }) as { color: { xy: { x: number } } };
+    const colorBody = buildLightUpdate({ color: { hex: '#ff0000' } }) as {
+      color: { xy: { x: number } };
+    };
     expect(colorBody.color.xy.x).toBeCloseTo(0.64, 1);
   });
 });

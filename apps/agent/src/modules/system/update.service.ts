@@ -37,7 +37,11 @@ import {
   serializeLock,
   type UpdateLock,
 } from '../../system/update-lock.js';
-import { checkNodeRequirement, NODE_TOO_OLD, readEnginesNode } from '../../system/node-requirement.js';
+import {
+  checkNodeRequirement,
+  NODE_TOO_OLD,
+  readEnginesNode,
+} from '../../system/node-requirement.js';
 import type { UpdateChecker } from '../../system/update-check.js';
 
 /**
@@ -45,7 +49,9 @@ import type { UpdateChecker } from '../../system/update-check.js';
  * devuelve su PID, que se guarda en el lock para poder detectar un actualizador
  * muerto (US-232). Un spawner que no pueda informarlo devuelve `undefined`.
  */
-export type UpdateSpawner = (targetVersion: string) => number | undefined | Promise<number | undefined>;
+export type UpdateSpawner = (
+  targetVersion: string,
+) => number | undefined | Promise<number | undefined>;
 
 export interface UpdateServiceOptions {
   current: string;
@@ -200,7 +206,11 @@ export class UpdateService {
 
     const status = await this.opts.checker.check();
     if (!status.enabled) {
-      return { started: false, mode, message: 'La comprobación de actualizaciones está desactivada.' };
+      return {
+        started: false,
+        mode,
+        message: 'La comprobación de actualizaciones está desactivada.',
+      };
     }
     if (!status.updateAvailable || !status.latest) {
       return { started: false, mode, message: 'Ya estás en la última versión.' };

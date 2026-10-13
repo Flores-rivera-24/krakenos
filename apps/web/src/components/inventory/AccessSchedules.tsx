@@ -54,7 +54,9 @@ export function AccessSchedules({ mac, canEdit }: Props) {
   }, [mac]);
 
   const toggleDay = (d: number) =>
-    setDays((cur) => (cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort((a, b) => a - b)));
+    setDays((cur) =>
+      cur.includes(d) ? cur.filter((x) => x !== d) : [...cur, d].sort((a, b) => a - b),
+    );
 
   const submit = async () => {
     if (days.length === 0) {
@@ -112,16 +114,12 @@ export function AccessSchedules({ mac, canEdit }: Props) {
           </Button>
         )}
       </div>
-      <p className="text-kr-xs text-kr-muted">
-        {t('access.intro')}
-      </p>
+      <p className="text-kr-xs text-kr-muted">{t('access.intro')}</p>
 
       {error && <FormError>{error}</FormError>}
 
       {schedules && schedules.length === 0 && !adding && (
-        <p className="text-kr-sm text-kr-secondary">
-          {t('access.empty')}
-        </p>
+        <p className="text-kr-sm text-kr-secondary">{t('access.empty')}</p>
       )}
 
       <ul className="space-y-2">

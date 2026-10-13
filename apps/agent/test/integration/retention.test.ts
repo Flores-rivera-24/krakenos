@@ -44,11 +44,17 @@ describe('retención de datos (US-102)', () => {
     expect(await retentionDays(app.prisma, 'trafficRetentionDays', 7)).toBe(30);
 
     // Fuera de rango → acotado al máximo (365).
-    await app.prisma.setting.update({ where: { key: 'trafficRetentionDays' }, data: { value: '99999' } });
+    await app.prisma.setting.update({
+      where: { key: 'trafficRetentionDays' },
+      data: { value: '99999' },
+    });
     expect(await retentionDays(app.prisma, 'trafficRetentionDays', 7)).toBe(365);
 
     // No numérico → fallback.
-    await app.prisma.setting.update({ where: { key: 'trafficRetentionDays' }, data: { value: 'x' } });
+    await app.prisma.setting.update({
+      where: { key: 'trafficRetentionDays' },
+      data: { value: 'x' },
+    });
     expect(await retentionDays(app.prisma, 'trafficRetentionDays', 7)).toBe(7);
   });
 
@@ -129,7 +135,12 @@ describe('retención de datos (US-102)', () => {
     });
     const seedRun = (event: string, ageDays: number) =>
       app.prisma.automationRun.create({
-        data: { ruleId: rule.id, event, ok: true, createdAt: new Date(Date.now() - ageDays * DAY_MS) },
+        data: {
+          ruleId: rule.id,
+          event,
+          ok: true,
+          createdAt: new Date(Date.now() - ageDays * DAY_MS),
+        },
       });
     await seedRun('vieja', 40);
     await seedRun('reciente', 5);

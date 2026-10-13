@@ -61,7 +61,9 @@ describe('TcQosManager', () => {
   it('usa la capacidad del enlace como rate cuando no hay límite', async () => {
     const qos = makeManager(runner);
     await qos.createRule({ name: 'sin límite', target: '10.0.0.9' });
-    const leaf = runner.calls.find((c) => c.join(' ').startsWith('tc class add dev eth0 parent 1:1'));
+    const leaf = runner.calls.find((c) =>
+      c.join(' ').startsWith('tc class add dev eth0 parent 1:1'),
+    );
     expect(leaf?.join(' ')).toContain('1000000kbit');
   });
 

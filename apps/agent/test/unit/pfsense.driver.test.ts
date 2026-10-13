@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PfSenseDriver } from '../../src/drivers/pfsense.driver.js';
-import type { HttpFetch, HttpRequestInit, HttpResponse } from '../../src/drivers/pfsense.transport.js';
+import type {
+  HttpFetch,
+  HttpRequestInit,
+  HttpResponse,
+} from '../../src/drivers/pfsense.transport.js';
 import { PfSenseClient } from '../../src/drivers/pfsense.transport.js';
 
 interface Call {
@@ -47,7 +51,11 @@ class FakeFetch {
 }
 
 function makeDriver(fake: FakeFetch, now?: () => number) {
-  const client = new PfSenseClient({ baseUrl: 'https://pf.test', apiKey: 'KEY123', fetch: fake.fetch });
+  const client = new PfSenseClient({
+    baseUrl: 'https://pf.test',
+    apiKey: 'KEY123',
+    fetch: fake.fetch,
+  });
   return new PfSenseDriver({ client, wanInterface: 'wan', lanInterface: 'lan', now });
 }
 
@@ -86,22 +94,32 @@ describe('PfSenseDriver', () => {
       { ip: '192.168.1.50', mac: 'dc:a6:32:de:ad:02', hostname: 'raspberrypi', source: 'mdns' },
     ]);
 
-    const broken = new FakeFetch().on('GET /api/v2/services/dhcp_server/leases', () => ({ status: 500 }));
+    const broken = new FakeFetch().on('GET /api/v2/services/dhcp_server/leases', () => ({
+      status: 500,
+    }));
     expect(await makeDriver(broken).scanMdns()).toEqual([]);
   });
 
   it('getTrafficSample: primera 0, segunda calcula la tasa con el reloj inyectado', async () => {
     let rx = 1_000_000;
     let tx = 200_000;
-    fake.on('GET /api/v2/status/interface', () => ({ data: [{ name: 'wan', inbytes: rx, outbytes: tx }] }));
+    fake.on('GET /api/v2/status/interface', () => ({
+      data: [{ name: 'wan', inbytes: rx, outbytes: tx }],
+    }));
     let clock = 1_000_000;
     const driver = makeDriver(fake, () => clock);
 
-    expect((await driver.getTrafficSample()).wan).toMatchObject({ rxBytesPerSec: 0, txBytesPerSec: 0 });
+    expect((await driver.getTrafficSample()).wan).toMatchObject({
+      rxBytesPerSec: 0,
+      txBytesPerSec: 0,
+    });
     rx = 3_000_000;
     tx = 600_000;
     clock += 2_000;
-    expect((await driver.getTrafficSample()).wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
+    expect((await driver.getTrafficSample()).wan).toMatchObject({
+      rxBytesPerSec: 1_000_000,
+      txBytesPerSec: 200_000,
+    });
   });
 
   it('blockDevice resuelve la IP por ARP, crea la regla y aplica', async () => {
@@ -112,13 +130,19 @@ describe('PfSenseDriver', () => {
     await makeDriver(fake).blockDevice('F0:18:98:AA:BB:CC');
 
     const post = fake.calls.find((c) => c.path === '/api/v2/firewall/rule');
-    expect(post!.body).toMatchObject({ type: 'block', source: '192.168.1.42', descr: 'krakenos-block:f0:18:98:aa:bb:cc' });
+    expect(post!.body).toMatchObject({
+      type: 'block',
+      source: '192.168.1.42',
+      descr: 'krakenos-block:f0:18:98:aa:bb:cc',
+    });
     expect(fake.calls.some((c) => c.path === '/api/v2/firewall/apply')).toBe(true);
   });
 
   it('blockDevice lanza si la MAC no está en la tabla ARP', async () => {
     fake.on('GET /api/v2/diagnostics/arp_table', () => ({ data: [] }));
-    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow(/No se encontró IP/);
+    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow(
+      /No se encontró IP/,
+    );
   });
 
   it('unblockDevice borra la regla etiquetada y aplica', async () => {

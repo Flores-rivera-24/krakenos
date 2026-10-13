@@ -20,8 +20,21 @@ function generarPar(dias: number, cn = 'krakenos.local'): { cert: string; key: s
   const key = join(dir, 'key.pem');
   execFileSync(
     'openssl',
-    ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', key, '-out', cert,
-      '-days', String(dias), '-subj', `/CN=${cn}`],
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      key,
+      '-out',
+      cert,
+      '-days',
+      String(dias),
+      '-subj',
+      `/CN=${cn}`,
+    ],
     { stdio: 'pipe' },
   );
   return { cert, key };

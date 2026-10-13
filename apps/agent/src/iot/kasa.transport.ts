@@ -1,5 +1,11 @@
 import type * as NodeCrypto from 'node:crypto';
-import { KASA_SYSINFO, deframeKasaTcp, frameKasaTcp, kasaDecrypt, kasaEncrypt } from './kasa.parsers.js';
+import {
+  KASA_SYSINFO,
+  deframeKasaTcp,
+  frameKasaTcp,
+  kasaDecrypt,
+  kasaEncrypt,
+} from './kasa.parsers.js';
 
 /**
  * Transportes para TP-Link Kasa/Tapo. El manager no conoce sockets ni crypto:
@@ -255,7 +261,11 @@ export class KlapTapoTransport implements TapoTransport {
           res.on('data', (c: Buffer) => chunks.push(c));
           res.on('end', () => {
             const setCookie = res.headers['set-cookie']?.[0]?.split(';')[0] ?? null;
-            resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks), cookie: setCookie ?? cookie });
+            resolve({
+              status: res.statusCode ?? 0,
+              body: Buffer.concat(chunks),
+              cookie: setCookie ?? cookie,
+            });
           });
         },
       );

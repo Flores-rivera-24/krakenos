@@ -20,7 +20,10 @@ describe('escenas (US-166)', () => {
   beforeEach(async () => {
     await resetDb(app);
     adminToken = signAccess(app, await seedUser(app, { role: 'admin' }));
-    viewerToken = signAccess(app, await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }));
+    viewerToken = signAccess(
+      app,
+      await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }),
+    );
   });
 
   async function createScene(actions: SceneAction[]): Promise<Scene> {
@@ -39,8 +42,12 @@ describe('escenas (US-166)', () => {
     expect(scene.icon).toBe('night');
     expect(scene.actions).toHaveLength(1);
 
-    const list = await app.inject({ method: 'GET', url: '/api/scenes', headers: authHeader(viewerToken) });
-    expect((list.json() as Scene[])).toHaveLength(1);
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/scenes',
+      headers: authHeader(viewerToken),
+    });
+    expect(list.json() as Scene[]).toHaveLength(1);
 
     const patch = await app.inject({
       method: 'PATCH',
@@ -163,7 +170,11 @@ describe('escenas (US-166)', () => {
     });
     expect(fav.statusCode).toBe(201);
 
-    await app.inject({ method: 'DELETE', url: `/api/scenes/${scene.id}`, headers: authHeader(adminToken) });
+    await app.inject({
+      method: 'DELETE',
+      url: `/api/scenes/${scene.id}`,
+      headers: authHeader(adminToken),
+    });
 
     // El favorito huérfano ya no existe.
     const orphan = await app.prisma.favorite.findFirst({ where: { kind: 'scene', ref: scene.id } });

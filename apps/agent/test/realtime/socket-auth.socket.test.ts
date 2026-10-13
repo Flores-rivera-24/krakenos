@@ -25,7 +25,11 @@ describe('handshake de Socket.io — ramas de rechazo (US-99)', () => {
 
   /** Resuelve con el mensaje del `connect_error`, o rechaza si llega a conectar. */
   function expectConnectError(token: string): Promise<string> {
-    const client = ioClient(baseUrl, { transports: ['websocket'], forceNew: true, auth: { token } });
+    const client = ioClient(baseUrl, {
+      transports: ['websocket'],
+      forceNew: true,
+      auth: { token },
+    });
     return new Promise<string>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('esperaba connect_error')), 3000);
       client.on('connect', () => {

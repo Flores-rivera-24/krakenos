@@ -41,7 +41,12 @@ describe('rutas de alarma (US-188)', () => {
     const viewer = await token('viewer', 'v2@krakenos.test');
 
     const arm = (t: string) =>
-      app.inject({ method: 'POST', url: '/api/alarm/arm', headers: authHeader(t), payload: { mode: 'away' } });
+      app.inject({
+        method: 'POST',
+        url: '/api/alarm/arm',
+        headers: authHeader(t),
+        payload: { mode: 'away' },
+      });
 
     expect((await arm(admin)).statusCode).toBe(200);
     expect((await arm(member)).statusCode).toBe(200);
@@ -81,7 +86,12 @@ describe('rutas de alarma (US-188)', () => {
     expect(cfg.json()).toMatchObject({ hasPin: true });
     expect(JSON.stringify(cfg.json())).not.toContain('4321'); // el PIN nunca se devuelve
 
-    await app.inject({ method: 'POST', url: '/api/alarm/arm', headers: authHeader(admin), payload: { mode: 'away' } });
+    await app.inject({
+      method: 'POST',
+      url: '/api/alarm/arm',
+      headers: authHeader(admin),
+      payload: { mode: 'away' },
+    });
 
     // Desarmar con PIN erróneo → 401; con el correcto → 200.
     const bad = await app.inject({
@@ -192,7 +202,11 @@ describe('rutas de alarma (US-188)', () => {
   it('el estado expone `requiresPin` sin filtrar el PIN', async () => {
     const admin = await token('admin', 'pin@krakenos.test');
 
-    const sinPin = await app.inject({ method: 'GET', url: '/api/alarm', headers: authHeader(admin) });
+    const sinPin = await app.inject({
+      method: 'GET',
+      url: '/api/alarm',
+      headers: authHeader(admin),
+    });
     expect(sinPin.statusCode).toBe(200);
     expect(sinPin.json().requiresPin).toBe(false);
 
@@ -203,7 +217,11 @@ describe('rutas de alarma (US-188)', () => {
       payload: { pin: '4271' },
     });
 
-    const conPin = await app.inject({ method: 'GET', url: '/api/alarm', headers: authHeader(admin) });
+    const conPin = await app.inject({
+      method: 'GET',
+      url: '/api/alarm',
+      headers: authHeader(admin),
+    });
     expect(conPin.json().requiresPin).toBe(true);
     // Lo que NO puede pasar: que el PIN salga por ningún lado.
     expect(JSON.stringify(conPin.json())).not.toContain('4271');

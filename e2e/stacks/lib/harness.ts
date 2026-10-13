@@ -1,4 +1,10 @@
-import { expect, type ConsoleMessage, type Page, type Request, type TestInfo } from '@playwright/test';
+import {
+  expect,
+  type ConsoleMessage,
+  type Page,
+  type Request,
+  type TestInfo,
+} from '@playwright/test';
 import type { StackName } from './stacks.js';
 
 /** Credenciales del admin de cada stack (uno por DB). */

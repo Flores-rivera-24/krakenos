@@ -13,12 +13,24 @@ describe('asus.parsers', () => {
     const text = JSON.stringify({
       get_clientlist: {
         maclist: ['AA:BB:CC:DD:EE:FF', '11:22:33:44:55:66'],
-        'AA:BB:CC:DD:EE:FF': { ip: '192.168.1.10', name: 'pc', nickName: 'Mi PC', vendor: 'Asus', isOnline: '1' },
+        'AA:BB:CC:DD:EE:FF': {
+          ip: '192.168.1.10',
+          name: 'pc',
+          nickName: 'Mi PC',
+          vendor: 'Asus',
+          isOnline: '1',
+        },
         '11:22:33:44:55:66': { ip: '192.168.1.20', name: 'old', isOnline: '0' },
       },
     });
     expect(parseClientList(text)).toEqual([
-      { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.10', hostname: 'Mi PC', vendor: 'Asus', source: 'arp' },
+      {
+        mac: 'aa:bb:cc:dd:ee:ff',
+        ip: '192.168.1.10',
+        hostname: 'Mi PC',
+        vendor: 'Asus',
+        source: 'arp',
+      },
     ]);
   });
 
@@ -33,7 +45,10 @@ describe('asus.parsers', () => {
       wl0_ssid: 'Casa',
       wl0_wpa_psk: 'secret',
     });
-    expect(parseNvram('wl0_ssid=Casa\nwl0_closed=1')).toEqual({ wl0_ssid: 'Casa', wl0_closed: '1' });
+    expect(parseNvram('wl0_ssid=Casa\nwl0_closed=1')).toEqual({
+      wl0_ssid: 'Casa',
+      wl0_closed: '1',
+    });
     expect(parseNvram('wl1_ssid: "Casa-5G",')).toEqual({ wl1_ssid: 'Casa-5G' });
   });
 
@@ -52,9 +67,11 @@ describe('asus.parsers', () => {
       '11:22:33:44:55:66>aa:bb:cc:dd:ee:ff',
     );
     // idempotente al añadir un duplicado
-    expect(buildMacFilter('aa:bb:cc:dd:ee:ff', 'AA:BB:CC:DD:EE:FF', 'add')).toBe('aa:bb:cc:dd:ee:ff');
-    expect(buildMacFilter('11:22:33:44:55:66>aa:bb:cc:dd:ee:ff', 'aa:bb:cc:dd:ee:ff', 'remove')).toBe(
-      '11:22:33:44:55:66',
+    expect(buildMacFilter('aa:bb:cc:dd:ee:ff', 'AA:BB:CC:DD:EE:FF', 'add')).toBe(
+      'aa:bb:cc:dd:ee:ff',
     );
+    expect(
+      buildMacFilter('11:22:33:44:55:66>aa:bb:cc:dd:ee:ff', 'aa:bb:cc:dd:ee:ff', 'remove'),
+    ).toBe('11:22:33:44:55:66');
   });
 });

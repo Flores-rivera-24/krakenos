@@ -51,7 +51,8 @@ function fail(label: string, value: unknown, reason: string): never {
 function assertCleanString(value: unknown, label: string): asserts value is string {
   if (typeof value !== 'string') fail(label, value, 'no es una cadena');
   if (value.length === 0) fail(label, value, 'está vacío');
-  if (CONTROL_CHARS.test(value)) fail(label, value, 'contiene caracteres de control (posible inyección)');
+  if (CONTROL_CHARS.test(value))
+    fail(label, value, 'contiene caracteres de control (posible inyección)');
   if (/\s/.test(value)) fail(label, value, 'contiene espacios en blanco');
 }
 

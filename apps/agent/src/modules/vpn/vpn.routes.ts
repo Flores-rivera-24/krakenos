@@ -33,16 +33,20 @@ export const vpnRoutes: FastifyPluginAsync<VpnRoutesOpts> = async (app, opts) =>
     return vpn.listPeers();
   });
 
-  app.post<{ Body: CreatePeerRequest }>('/peers', { schema: createPeerSchema }, async (req, reply) => {
-    const result = await vpn.createPeer(req.body);
-    app.audit({
-      action: 'vpn.peer.add',
-      userId: req.user.sub,
-      detail: result.peer.name,
-      ip: req.ip,
-    });
-    return reply.code(201).send(result);
-  });
+  app.post<{ Body: CreatePeerRequest }>(
+    '/peers',
+    { schema: createPeerSchema },
+    async (req, reply) => {
+      const result = await vpn.createPeer(req.body);
+      app.audit({
+        action: 'vpn.peer.add',
+        userId: req.user.sub,
+        detail: result.peer.name,
+        ip: req.ip,
+      });
+      return reply.code(201).send(result);
+    },
+  );
 
   app.delete<{ Params: { id: string } }>(
     '/peers/:id',
@@ -52,7 +56,12 @@ export const vpnRoutes: FastifyPluginAsync<VpnRoutesOpts> = async (app, opts) =>
       if (!removed) {
         return reply.code(404).send({ code: 'PEER_NOT_FOUND', message: 'Peer no encontrado' });
       }
-      app.audit({ action: 'vpn.peer.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'vpn.peer.remove',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

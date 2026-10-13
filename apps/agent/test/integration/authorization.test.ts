@@ -64,7 +64,13 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   {
     method: 'POST',
     url: '/api/access/schedules',
-    payload: { name: 'Noche', mac: 'aa:bb:cc:dd:ee:ff', days: [1], startMinute: 1260, endMinute: 420 },
+    payload: {
+      name: 'Noche',
+      mac: 'aa:bb:cc:dd:ee:ff',
+      days: [1],
+      startMinute: 1260,
+      endMinute: 420,
+    },
   },
   { method: 'PATCH', url: '/api/access/schedules/x', payload: { enabled: false } },
   { method: 'DELETE', url: '/api/access/schedules/x' },
@@ -87,7 +93,11 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/rooms', payload: { name: 'Salón' } },
   { method: 'PATCH', url: '/api/rooms/x', payload: { name: 'Salón' } },
   { method: 'DELETE', url: '/api/rooms/x' },
-  { method: 'PUT', url: '/api/rooms/assign', payload: { kind: 'iot', ref: 'light-salon', roomId: null } },
+  {
+    method: 'PUT',
+    url: '/api/rooms/assign',
+    payload: { kind: 'iot', ref: 'light-salon', roomId: null },
+  },
   { method: 'POST', url: '/api/rooms/x/action', payload: { on: false } },
 
   // escenas (US-166)
@@ -145,7 +155,11 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   { method: 'POST', url: '/api/system/connectivity-test' },
   { method: 'POST', url: '/api/system/regen-keys' },
   { method: 'POST', url: '/api/system/backup', payload: { passphrase: 'passphrase-123' } },
-  { method: 'POST', url: '/api/system/restore', payload: { passphrase: 'passphrase-123', data: 'AAAA' } },
+  {
+    method: 'POST',
+    url: '/api/system/restore',
+    payload: { passphrase: 'passphrase-123', data: 'AAAA' },
+  },
   { method: 'POST', url: '/api/system/update/apply', payload: {} },
   { method: 'POST', url: '/api/system/update/cancel' },
   { method: 'POST', url: '/api/system/restore/upload' },
@@ -159,7 +173,12 @@ const ADMIN_WRITES: WriteEndpoint[] = [
   {
     method: 'POST',
     url: '/api/users',
-    payload: { email: 'nuevo@krakenos.test', displayName: 'Nuevo', password: 'password123', role: 'viewer' },
+    payload: {
+      email: 'nuevo@krakenos.test',
+      displayName: 'Nuevo',
+      password: 'password123',
+      role: 'viewer',
+    },
   },
   { method: 'PATCH', url: '/api/users/x', payload: { displayName: 'Cambiado' } },
   { method: 'POST', url: '/api/users/x/password', payload: { password: 'password123' } },
@@ -182,10 +201,18 @@ const AUTHED_WRITES: WriteEndpoint[] = [
     url: '/api/push/subscribe',
     payload: { endpoint: 'https://push.example/abc', keys: { p256dh: 'p', auth: 'a' } },
   },
-  { method: 'DELETE', url: '/api/push/subscribe', payload: { endpoint: 'https://push.example/abc' } },
+  {
+    method: 'DELETE',
+    url: '/api/push/subscribe',
+    payload: { endpoint: 'https://push.example/abc' },
+  },
   // webauthn: gestionar las propias passkeys / códigos (US-50/US-59)
   { method: 'POST', url: '/api/webauthn/register/options' },
-  { method: 'POST', url: '/api/webauthn/register/verify', payload: { response: { id: 'x' }, name: 'Llave' } },
+  {
+    method: 'POST',
+    url: '/api/webauthn/register/verify',
+    payload: { response: { id: 'x' }, name: 'Llave' },
+  },
   { method: 'POST', url: '/api/webauthn/backup-codes' },
   { method: 'PATCH', url: '/api/webauthn/credentials/x', payload: { name: 'Nuevo' } },
   { method: 'DELETE', url: '/api/webauthn/credentials/x' },
@@ -330,7 +357,9 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
     const toPattern = (method: string, url: string): string => {
       const path = url
         .split('/')
-        .map((seg) => (/^(x|nope|no-existe|[0-9a-f-]{8,}|aa:bb:cc:dd:ee:ff)$/i.test(seg) ? ':p' : seg))
+        .map((seg) =>
+          /^(x|nope|no-existe|[0-9a-f-]{8,}|aa:bb:cc:dd:ee:ff)$/i.test(seg) ? ':p' : seg,
+        )
         .join('/');
       return `${method.toUpperCase()} ${path}`;
     };
@@ -378,7 +407,10 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       { url: '/api/cameras/cam-entrada/motion', pattern: 'GET /api/cameras/:p/motion' },
       { url: '/api/cameras/recordings', pattern: 'GET /api/cameras/recordings' },
       { url: '/api/cameras/recordings/config', pattern: 'GET /api/cameras/recordings/config' },
-      { url: '/api/cameras/recordings/x/download', pattern: 'GET /api/cameras/recordings/:p/download' },
+      {
+        url: '/api/cameras/recordings/x/download',
+        pattern: 'GET /api/cameras/recordings/:p/download',
+      },
     ];
 
     /**
@@ -424,7 +456,10 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
     });
 
     it('un viewer sigue viendo las cámaras (no es una regresión de solo-lectura)', async () => {
-      const token = signAccess(app, await seedUser(app, { email: 'viewer@cam.test', role: 'viewer' }));
+      const token = signAccess(
+        app,
+        await seedUser(app, { email: 'viewer@cam.test', role: 'viewer' }),
+      );
       const res = await app.inject({
         method: 'GET',
         url: '/api/cameras',
@@ -459,7 +494,10 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
       expect(asKid.body).not.toContain('40.4168');
       expect(asKid.body).not.toContain('-3.7038');
 
-      const admin = signAccess(app, await seedUser(app, { email: 'admin@loc.test', role: 'admin' }));
+      const admin = signAccess(
+        app,
+        await seedUser(app, { email: 'admin@loc.test', role: 'admin' }),
+      );
       const asAdmin = await app.inject({
         method: 'GET',
         url: '/api/system/settings',
@@ -545,7 +583,10 @@ describe('autorización exhaustiva de escritura (US-89)', () => {
     });
 
     it('un admin sí la lee (la historia acota, no rompe la función)', async () => {
-      const token = signAccess(app, await seedUser(app, { email: 'admin@act.test', role: 'admin' }));
+      const token = signAccess(
+        app,
+        await seedUser(app, { email: 'admin@act.test', role: 'admin' }),
+      );
       for (const { url } of ACTIVITY_READS) {
         const res = await app.inject({ method: 'GET', url, headers: authHeader(token) });
         expect(`${url} → ${res.statusCode}`).toBe(`${url} → 200`);

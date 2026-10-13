@@ -1,8 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import type {
-  AuthenticationResponseJSON,
-  RegistrationResponseJSON,
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import { sendSession } from '../../auth/session-cookie.js';
 import { AuthService } from '../auth/auth.service.js';
 import { hashEmail } from '../../plugins/audit.js';
@@ -48,7 +45,10 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     { preHandler: app.authenticate, schema: registerOptionsSchema },
     async (req, reply) => {
       const user = await app.prisma.user.findUnique({ where: { id: req.user.sub } });
-      if (!user) return reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
+      if (!user)
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
       return service.generateRegistrationOptions(user);
     },
   );
@@ -58,10 +58,18 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     { preHandler: app.authenticate, schema: registerVerifySchema },
     async (req, reply) => {
       const user = await app.prisma.user.findUnique({ where: { id: req.user.sub } });
-      if (!user) return reply.code(401).send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
+      if (!user)
+        return reply
+          .code(401)
+          .send({ code: 'AUTH_UNAUTHORIZED', message: 'Usuario no encontrado' });
       try {
         const credential = await service.verifyRegistration(user, req.body.response, req.body.name);
-        app.audit({ action: 'webauthn.register', userId: user.id, detail: req.body.name, ip: req.ip });
+        app.audit({
+          action: 'webauthn.register',
+          userId: user.id,
+          detail: req.body.name,
+          ip: req.ip,
+        });
         // Al registrar la PRIMERA passkey se generan códigos de recuperación (US-59),
         // que se muestran una sola vez en la respuesta.
         const codes = await backupCodes.generateIfNone(user.id);
@@ -214,7 +222,8 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     { preHandler: app.authenticate, schema: renameCredentialSchema },
     async (req, reply) => {
       const info = await service.renameCredential(req.user.sub, req.params.id, req.body.name);
-      if (!info) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Passkey no encontrada' });
+      if (!info)
+        return reply.code(404).send({ code: 'NOT_FOUND', message: 'Passkey no encontrada' });
       return reply.send(info);
     },
   );
@@ -225,7 +234,12 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     async (req, reply) => {
       const ok = await service.deleteCredential(req.user.sub, req.params.id);
       if (!ok) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Passkey no encontrada' });
-      app.audit({ action: 'webauthn.delete', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'webauthn.delete',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

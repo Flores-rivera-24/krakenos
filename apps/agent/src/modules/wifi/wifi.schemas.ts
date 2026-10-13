@@ -100,7 +100,17 @@ const networkInfoResponse = {
     isGuest: { type: 'boolean' },
     clientCount: { type: 'integer' },
   },
-  required: ['id', 'apId', 'ssid', 'band', 'security', 'enabled', 'hidden', 'isGuest', 'clientCount'],
+  required: [
+    'id',
+    'apId',
+    'ssid',
+    'band',
+    'security',
+    'enabled',
+    'hidden',
+    'isGuest',
+    'clientCount',
+  ],
 } as const;
 
 const clientResponse = {

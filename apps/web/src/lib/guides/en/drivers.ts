@@ -20,7 +20,8 @@ export const DRIVERS_GUIDES_EN: GuideTranslations = {
       {
         title: 'First of all: understand the risk',
         body: 'Installing OpenWrt replaces the router’s factory software. If you use the wrong file for your model, the router could become unusable (“bricked”) and you would lose the warranty. It’s not the usual outcome if you’re careful, but it’s worth knowing. Take your time and use the exact file for your revision.',
-        warning: 'Always download the firmware for your exact model AND hardware revision. Don’t skip this step.',
+        warning:
+          'Always download the firmware for your exact model AND hardware revision. Don’t skip this step.',
       },
       {
         title: 'Download the right firmware',
@@ -29,7 +30,8 @@ export const DRIVERS_GUIDES_EN: GuideTranslations = {
       {
         title: 'Install OpenWrt from the router’s web page',
         body: 'Connect your computer to the router with a cable. Open its factory admin panel (on TP-Link it’s usually http://192.168.0.1). Look for the option to update firmware manually (something like “Advanced → System Tools → Firmware Upgrade → Local Upgrade”), upload the “factory” file you downloaded and confirm. The router will reboot into OpenWrt in 2-3 minutes.',
-        warning: 'Don’t disconnect the power during the process, even if it seems to be taking a while.',
+        warning:
+          'Don’t disconnect the power during the process, even if it seems to be taking a while.',
       },
       {
         title: 'First boot and password',

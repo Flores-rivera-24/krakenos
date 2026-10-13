@@ -70,11 +70,7 @@ function matchesQuery(d: Device, query: string): boolean {
  * Filtra dispositivos por texto libre (`label`/`hostname`/`ip`/`mac`/`vendor`) y por
  * filtros de estado combinables (OR entre los filtros activos). Función pura testeable.
  */
-export function filterDevices(
-  devices: Device[],
-  query: string,
-  filters: ActiveFilter[],
-): Device[] {
+export function filterDevices(devices: Device[], query: string, filters: ActiveFilter[]): Device[] {
   return devices.filter((d) => {
     if (!matchesQuery(d, query)) return false;
     if (filters.length === 0) return true;

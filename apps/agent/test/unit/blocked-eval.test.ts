@@ -30,20 +30,44 @@ const FUERA = new Date(2026, 6, 29, 12, 0);
 
 describe('evaluateBlocked (US-236)', () => {
   it('sin ninguna fuente activa, no está bloqueado', () => {
-    const r = evaluateBlocked({ isBlocked: false, pausedUntil: null, schedules: [], mac: MAC, now: FUERA });
+    const r = evaluateBlocked({
+      isBlocked: false,
+      pausedUntil: null,
+      schedules: [],
+      mac: MAC,
+      now: FUERA,
+    });
     expect(r).toEqual({ blocked: false, reasons: [], pausedUntil: null });
     expect(primaryReason(r)).toBeNull();
   });
 
   it('cada fuente por separado bloquea', () => {
-    const manual = evaluateBlocked({ isBlocked: true, pausedUntil: null, schedules: [], mac: MAC, now: FUERA });
+    const manual = evaluateBlocked({
+      isBlocked: true,
+      pausedUntil: null,
+      schedules: [],
+      mac: MAC,
+      now: FUERA,
+    });
     expect(manual).toMatchObject({ blocked: true, reasons: ['manual'] });
 
-    const horario = evaluateBlocked({ isBlocked: false, pausedUntil: null, schedules: [horarioNocturno()], mac: MAC, now: DENTRO });
+    const horario = evaluateBlocked({
+      isBlocked: false,
+      pausedUntil: null,
+      schedules: [horarioNocturno()],
+      mac: MAC,
+      now: DENTRO,
+    });
     expect(horario).toMatchObject({ blocked: true, reasons: ['schedule'] });
 
     const futuro = new Date(FUERA.getTime() + 30 * 60_000);
-    const pausa = evaluateBlocked({ isBlocked: false, pausedUntil: futuro, schedules: [], mac: MAC, now: FUERA });
+    const pausa = evaluateBlocked({
+      isBlocked: false,
+      pausedUntil: futuro,
+      schedules: [],
+      mac: MAC,
+      now: FUERA,
+    });
     expect(pausa).toMatchObject({ blocked: true, reasons: ['paused'], pausedUntil: futuro });
   });
 
@@ -70,7 +94,13 @@ describe('evaluateBlocked (US-236)', () => {
    */
   it('una pausa EXPIRADA no bloquea, aunque la columna siga rellena', () => {
     const pasado = new Date(FUERA.getTime() - 60 * 60_000);
-    const r = evaluateBlocked({ isBlocked: false, pausedUntil: pasado, schedules: [], mac: MAC, now: FUERA });
+    const r = evaluateBlocked({
+      isBlocked: false,
+      pausedUntil: pasado,
+      schedules: [],
+      mac: MAC,
+      now: FUERA,
+    });
     expect(r.blocked).toBe(false);
     expect(r.reasons).toEqual([]);
     expect(r.pausedUntil).toBeNull();

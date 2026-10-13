@@ -36,7 +36,9 @@ function srvRdata(port: number, target: Buffer): Buffer {
 }
 
 function txtRdata(entries: string[]): Buffer {
-  return Buffer.concat(entries.map((e) => Buffer.concat([Buffer.from([e.length]), Buffer.from(e)])));
+  return Buffer.concat(
+    entries.map((e) => Buffer.concat([Buffer.from([e.length]), Buffer.from(e)])),
+  );
 }
 
 /** Protocolo del auto-descubrimiento (US-175): mDNS/SSDP mínimos y defensivos. */
@@ -113,7 +115,9 @@ describe('discovery/ssdp', () => {
     );
     expect(headers).toMatchObject({ server: 'Hue/1.0 IpBridge/1.60.0', 'hue-bridgeid': 'ECB5FA' });
 
-    expect(parseSsdpResponse(Buffer.from('NOTIFY * HTTP/1.1\r\nNT: upnp:rootdevice\r\n\r\n'))).toBeNull();
+    expect(
+      parseSsdpResponse(Buffer.from('NOTIFY * HTTP/1.1\r\nNT: upnp:rootdevice\r\n\r\n')),
+    ).toBeNull();
     expect(parseSsdpResponse(Buffer.from('basura'))).toBeNull();
   });
 });

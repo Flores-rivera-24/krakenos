@@ -23,9 +23,8 @@ describe('PRAGMAs de SQLite (US-228)', () => {
   });
 
   it('la base abre en modo WAL', async () => {
-    const rows = await app.prisma.$queryRawUnsafe<{ journal_mode: string }[]>(
-      'PRAGMA journal_mode',
-    );
+    const rows =
+      await app.prisma.$queryRawUnsafe<{ journal_mode: string }[]>('PRAGMA journal_mode');
     expect(rows[0]?.journal_mode?.toLowerCase()).toBe('wal');
   });
 

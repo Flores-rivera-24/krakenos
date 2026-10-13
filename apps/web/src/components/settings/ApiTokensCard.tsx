@@ -42,7 +42,8 @@ export function ApiTokensCard() {
     if (!name.trim()) return;
     setCreating(true);
     try {
-      const scopes: ApiTokenScope[] = mayControl && control ? ['home.view', 'home.control'] : ['home.view'];
+      const scopes: ApiTokenScope[] =
+        mayControl && control ? ['home.view', 'home.control'] : ['home.view'];
       const created = await createApiToken({ name: name.trim(), scopes });
       setFresh(created.token);
       setTokens((prev) => [{ ...created }, ...prev]);
@@ -99,7 +100,11 @@ export function ApiTokensCard() {
           />
           {mayControl && (
             <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-              <input type="checkbox" checked={control} onChange={(e) => setControl(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={control}
+                onChange={(e) => setControl(e.target.checked)}
+              />
               {t('settings.apiTokens.scopeControl')}
             </label>
           )}
@@ -126,11 +131,18 @@ export function ApiTokensCard() {
                       : t('settings.apiTokens.scopeView')}
                     {' · '}
                     {tk.lastUsedAt
-                      ? t('settings.apiTokens.used', { when: new Date(tk.lastUsedAt).toLocaleDateString() })
+                      ? t('settings.apiTokens.used', {
+                          when: new Date(tk.lastUsedAt).toLocaleDateString(),
+                        })
                       : t('settings.apiTokens.neverUsed')}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm" aria-label={t('settings.apiTokens.revoke')} onClick={() => void revoke(tk.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('settings.apiTokens.revoke')}
+                  onClick={() => void revoke(tk.id)}
+                >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </Button>
               </li>

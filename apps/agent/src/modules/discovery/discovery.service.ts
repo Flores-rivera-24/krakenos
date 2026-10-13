@@ -182,7 +182,9 @@ export class DiscoveryService {
     if (!row) return new Set();
     try {
       const parsed = JSON.parse(row.value) as unknown;
-      return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []);
+      return new Set(
+        Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : [],
+      );
     } catch {
       this.app.log.warn('[discovery] ajuste discovery.dismissed corrupto; se ignora');
       return new Set();

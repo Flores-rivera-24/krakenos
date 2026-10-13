@@ -186,7 +186,10 @@ export function createIotManager(
   // que faltaba; las instalaciones existentes las reescribe `IotIdMigrationService`.
   const activeKinds: IotKind[] = kinds.length > 0 ? kinds : ['mock'];
   const manager = new CompositeIotManager(
-    activeKinds.map((kind) => ({ prefix: kind, manager: buildIotManager(kind, config, tuyaStore) })),
+    activeKinds.map((kind) => ({
+      prefix: kind,
+      manager: buildIotManager(kind, config, tuyaStore),
+    })),
   );
 
   return { manager, tuyaStore, kinds: activeKinds };
@@ -206,7 +209,11 @@ function buildIotManager(
       if (!zb) throw new Error('Falta la configuración Zigbee (IotConfig.zigbee)');
       // La conexión MQTT la arranca `startIotManager` (lifecycle en server.ts).
       return new ZigbeeIotManager({
-        transport: new MqttClientTransport({ url: zb.url, username: zb.username, password: zb.password }),
+        transport: new MqttClientTransport({
+          url: zb.url,
+          username: zb.username,
+          password: zb.password,
+        }),
         baseTopic: zb.baseTopic,
       });
     }

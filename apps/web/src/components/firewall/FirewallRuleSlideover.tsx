@@ -18,7 +18,11 @@ const SELECT_CLASS =
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
 // Etiquetas visibles (el valor de la API no cambia); alineadas con FirewallPage.
 const ACTION_LABEL: Record<FirewallAction, string> = { deny: 'Bloquear', allow: 'Permitir' };
-const PROTOCOL_LABEL: Record<FirewallProtocol, string> = { any: 'Cualquiera', tcp: 'TCP', udp: 'UDP' };
+const PROTOCOL_LABEL: Record<FirewallProtocol, string> = {
+  any: 'Cualquiera',
+  tcp: 'TCP',
+  udp: 'UDP',
+};
 
 interface Props {
   rule: FirewallRule;
@@ -87,7 +91,12 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
         </div>
         <div className="space-y-2">
           <Label htmlFor="fr-name">Nombre</Label>
-          <Input id="fr-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} />
+          <Input
+            id="fr-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            maxLength={60}
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">

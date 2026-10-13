@@ -1,14 +1,15 @@
 import type { DeviceType } from '@krakenos/types';
-import {
-  Flame,
-  FlaskConical,
-  Gauge,
-  ShieldBan,
-  ShieldCheck,
-  type LucideIcon,
-} from 'lucide-react';
+import { Flame, FlaskConical, Gauge, ShieldBan, ShieldCheck, type LucideIcon } from 'lucide-react';
 import type { ComponentType } from 'react';
-import { LaptopArt, PhoneArt, TabletArt, TvArt, PrinterArt, IotHubArt, UnknownArt } from './devices';
+import {
+  LaptopArt,
+  PhoneArt,
+  TabletArt,
+  TvArt,
+  PrinterArt,
+  IotHubArt,
+  UnknownArt,
+} from './devices';
 import { AccessPointArt, RouterArt, SwitchArt } from './network';
 import { ServiceEmblem } from './service';
 import type { ArtProps } from './shared';
@@ -67,11 +68,7 @@ const SERVICE_ICON: Record<'vpn' | 'dns' | 'firewall' | 'qos' | 'demo', LucideIc
   demo: FlaskConical,
 };
 
-export function ProductArt({
-  kind,
-  className,
-  title,
-}: ArtProps & { kind: ProductArtKind }) {
+export function ProductArt({ kind, className, title }: ArtProps & { kind: ProductArtKind }) {
   const Art = DEVICE_ART[kind];
   if (Art) return <Art className={className} title={title} />;
   const icon = SERVICE_ICON[kind as keyof typeof SERVICE_ICON] ?? FlaskConical;

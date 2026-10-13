@@ -24,7 +24,10 @@ import { ConnectPage } from '@/pages/ConnectPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
-function view(domain: string, kinds: { kind: string; label: string; fields?: IntegrationField[]; zeroConfig?: boolean }[]) {
+function view(
+  domain: string,
+  kinds: { kind: string; label: string; fields?: IntegrationField[]; zeroConfig?: boolean }[],
+) {
   return {
     domain,
     kinds: kinds.map((k) => ({ domain, fields: [], ...k })),
@@ -147,12 +150,23 @@ describe('ConnectPage — detectados en tu red', () => {
     apiMock.get.mockReset().mockImplementation((path: string) => {
       if (path === '/integrations') return Promise.resolve({ domains: DOMAINS_WITH_HUE });
       if (path === '/discovery')
-        return Promise.resolve({ suggestions: [HUE_SUGGESTION], scanning: false, lastScanAt: null });
+        return Promise.resolve({
+          suggestions: [HUE_SUGGESTION],
+          scanning: false,
+          lastScanAt: null,
+        });
       return Promise.resolve({});
     });
     apiMock.del.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });

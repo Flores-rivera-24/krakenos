@@ -34,16 +34,46 @@ describe('histórico DNS', () => {
 
     await app.prisma.device.createMany({
       data: [
-        { mac: 'aa:00', ip: '192.168.1.10', label: 'Tablet de Marta', ownerId: marta.id, online: true },
-        { mac: 'bb:00', ip: '192.168.1.11', label: 'Portátil de Pablo', ownerId: pablo.id, online: true },
+        {
+          mac: 'aa:00',
+          ip: '192.168.1.10',
+          label: 'Tablet de Marta',
+          ownerId: marta.id,
+          online: true,
+        },
+        {
+          mac: 'bb:00',
+          ip: '192.168.1.11',
+          label: 'Portátil de Pablo',
+          ownerId: pablo.id,
+          online: true,
+        },
         { mac: 'cc:00', ip: '192.168.1.12', label: 'Aparato sin dueño', online: true },
       ],
     });
     await app.prisma.dnsQueryLog.createMany({
       data: [
-        { timestamp: new Date(), domain: 'marta.example', client: '192.168.1.10', blocked: false, mac: 'aa:00' },
-        { timestamp: new Date(), domain: 'pablo.example', client: '192.168.1.11', blocked: false, mac: 'bb:00' },
-        { timestamp: new Date(), domain: 'huerfana.example', client: '192.168.1.99', blocked: true, mac: null },
+        {
+          timestamp: new Date(),
+          domain: 'marta.example',
+          client: '192.168.1.10',
+          blocked: false,
+          mac: 'aa:00',
+        },
+        {
+          timestamp: new Date(),
+          domain: 'pablo.example',
+          client: '192.168.1.11',
+          blocked: false,
+          mac: 'bb:00',
+        },
+        {
+          timestamp: new Date(),
+          domain: 'huerfana.example',
+          client: '192.168.1.99',
+          blocked: true,
+          mac: null,
+        },
       ],
     });
     return { admin, marta, pablo };
@@ -57,7 +87,10 @@ describe('histórico DNS', () => {
       headers: authHeader(signAccess(app, admin)),
     });
     expect(res.statusCode).toBe(200);
-    const dominios = res.json().entries.map((e: { domain: string }) => e.domain).sort();
+    const dominios = res
+      .json()
+      .entries.map((e: { domain: string }) => e.domain)
+      .sort();
     expect(dominios).toEqual(['huerfana.example', 'marta.example', 'pablo.example']);
   });
 
@@ -240,9 +273,24 @@ describe('ingesta y poda del histórico DNS', () => {
     const ahora = Date.now();
     await app.prisma.dnsQueryLog.createMany({
       data: [
-        { timestamp: new Date(ahora - 8 * 24 * 60 * 60 * 1000), domain: 'vieja.example', client: '1.1.1.1', blocked: false },
-        { timestamp: new Date(ahora - 30 * 24 * 60 * 60 * 1000), domain: 'antigua.example', client: '1.1.1.1', blocked: false },
-        { timestamp: new Date(ahora - 60 * 60 * 1000), domain: 'reciente.example', client: '1.1.1.1', blocked: false },
+        {
+          timestamp: new Date(ahora - 8 * 24 * 60 * 60 * 1000),
+          domain: 'vieja.example',
+          client: '1.1.1.1',
+          blocked: false,
+        },
+        {
+          timestamp: new Date(ahora - 30 * 24 * 60 * 60 * 1000),
+          domain: 'antigua.example',
+          client: '1.1.1.1',
+          blocked: false,
+        },
+        {
+          timestamp: new Date(ahora - 60 * 60 * 1000),
+          domain: 'reciente.example',
+          client: '1.1.1.1',
+          blocked: false,
+        },
       ],
     });
 

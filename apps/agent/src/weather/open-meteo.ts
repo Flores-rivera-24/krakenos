@@ -33,7 +33,8 @@ const PASO_REDONDEO = 0.1;
  */
 export function ubicacionEnviada(loc: HomeLocation, precision: WeatherPrecision): HomeLocation {
   if (precision === 'exact') return { lat: loc.lat, lon: loc.lon };
-  const cuantiza = (v: number) => Number((Math.round(v / PASO_REDONDEO) * PASO_REDONDEO).toFixed(1));
+  const cuantiza = (v: number) =>
+    Number((Math.round(v / PASO_REDONDEO) * PASO_REDONDEO).toFixed(1));
   return { lat: cuantiza(loc.lat), lon: cuantiza(loc.lon) };
 }
 

@@ -22,8 +22,16 @@ import { SecuritySection } from '@/components/settings/SecuritySection';
 import { useAuthStore } from '@/store/auth.store';
 
 const SESSIONS: AuthSession[] = [
-  { id: 's1', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 1e9).toISOString() },
-  { id: 's2', createdAt: new Date().toISOString(), expiresAt: new Date(Date.now() + 1e9).toISOString() },
+  {
+    id: 's1',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 1e9).toISOString(),
+  },
+  {
+    id: 's2',
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 1e9).toISOString(),
+  },
 ];
 
 const SETTINGS = {
@@ -56,7 +64,14 @@ describe('SecuritySection', () => {
     apiMock.del.mockReset().mockResolvedValue(undefined);
     webauthnMock.isWebAuthnSupported.mockReset().mockReturnValue(true);
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
       logout: vi.fn().mockResolvedValue(undefined),
     });

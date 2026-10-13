@@ -4,7 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
-import type { CameraManager, HardwareDriver, IotManager, UserRole, VpnManager } from '@krakenos/types';
+import type {
+  CameraManager,
+  HardwareDriver,
+  IotManager,
+  UserRole,
+  VpnManager,
+} from '@krakenos/types';
 import bcrypt from 'bcrypt';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
@@ -195,7 +201,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       }),
       backupCodes: new BackupCodeService(app.prisma),
     });
-    await app.register(inventoryRoutes, { prefix: '/api/inventory', driver, service: inventoryService });
+    await app.register(inventoryRoutes, {
+      prefix: '/api/inventory',
+      driver,
+      service: inventoryService,
+    });
     const accessServiceForTests = new AccessScheduleService(app, driver);
     await app.register(accessRoutes, {
       prefix: '/api/access',
@@ -295,9 +305,15 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     await app.register(vpnRoutes, { prefix: '/api/vpn', vpn, tailscale });
     await app.register(auditRoutes, { prefix: '/api/audit' });
     await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
-    await app.register(alertsRoutes, { prefix: '/api/alerts', service: new AlertConfigService(app) });
+    await app.register(alertsRoutes, {
+      prefix: '/api/alerts',
+      service: new AlertConfigService(app),
+    });
     // Sin arrancar el intervalo: los tests muestrean manualmente vía el servicio.
-    await app.register(trafficRoutes, { prefix: '/api/traffic', service: new TrafficService(app, driver) });
+    await app.register(trafficRoutes, {
+      prefix: '/api/traffic',
+      service: new TrafficService(app, driver),
+    });
     // Energía (US-181/182): sin arrancar timers; los tests consultan vía servicio.
     const energyService = new EnergyService(app, new MockIotManager());
     await app.register(energyRoutes, { prefix: '/api/energy', service: energyService });
@@ -317,7 +333,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
           blockedDevices: [],
           roomSignals: [],
         }),
-        transportFactory: () => ({ subscribe: async () => {}, publish: async () => {}, dispose: async () => {} }),
+        transportFactory: () => ({
+          subscribe: async () => {},
+          publish: async () => {},
+          dispose: async () => {},
+        }),
       }),
     });
     // Alertas de energía (US-183): sin arrancar el timer; el tick se invoca a mano.
@@ -361,7 +381,10 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       motion: motionService,
       recording: recordingService,
     });
-    await app.register(firewallRoutes, { prefix: '/api/firewall', firewall: new MockFirewallManager() });
+    await app.register(firewallRoutes, {
+      prefix: '/api/firewall',
+      firewall: new MockFirewallManager(),
+    });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
     await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
     const dnsManager = new MockDnsManager();
@@ -466,7 +489,10 @@ export function signMfaPending(
     ? { expiresIn: 120, clockTimestamp: Date.now() - 60 * 60 * 1000 }
     : { expiresIn: 120 };
   // `jti` único (anti-replay, US-88); se puede fijar para tests de replay.
-  return app.jwt.sign({ sub: userId, type: 'mfa-pending', jti: opts.jti ?? randomUUID() }, signOptions);
+  return app.jwt.sign(
+    { sub: userId, type: 'mfa-pending', jti: opts.jti ?? randomUUID() },
+    signOptions,
+  );
 }
 
 /** Header de autorización `Bearer` listo para inject. */

@@ -159,7 +159,8 @@ const iptables: IntegrationGuide = {
     {
       title: 'Revisa y ajusta',
       body: 'Tras crear una regla, prueba que el aparato afectado se comporta como querías (por ejemplo, que ya no llega a internet). Si algo deja de funcionar sin querer, desactiva la regla y vuelve a intentarlo con otro planteamiento.',
-      warning: 'Ten cuidado de no bloquearte a ti mismo el acceso a KrakenOS o a internet. Si dudas, empieza por reglas que afecten a un solo aparato.',
+      warning:
+        'Ten cuidado de no bloquearte a ti mismo el acceso a KrakenOS o a internet. Si dudas, empieza por reglas que afecten a un solo aparato.',
     },
   ],
   fields: [],
@@ -202,7 +203,8 @@ const vlan: IntegrationGuide = {
     {
       title: 'Asigna dispositivos y comprueba',
       body: 'Coloca cada aparato en su zona. A partir de ahí, los aparatos de una VLAN aislada tendrán internet pero no verán los de otras VLAN. Comprueba que todo lo que debe funcionar sigue funcionando (por ejemplo, controlar tus luces desde tu móvil puede requerir permitir esa comunicación entre zonas).',
-      warning: 'Aislar por completo los aparatos inteligentes puede impedir que apps de tu móvil los "descubran". Si algo deja de aparecer, quizás haya que permitir un pequeño puente entre zonas.',
+      warning:
+        'Aislar por completo los aparatos inteligentes puede impedir que apps de tu móvil los "descubran". Si algo deja de aparecer, quizás haya que permitir un pequeño puente entre zonas.',
     },
   ],
   fields: [],

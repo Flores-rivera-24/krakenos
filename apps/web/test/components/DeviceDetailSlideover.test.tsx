@@ -147,7 +147,9 @@ describe('DeviceDetailSlideover', () => {
     render(<DeviceDetailSlideover device={device({ isBlocked: false })} onClose={() => {}} />);
 
     await user.click(screen.getByRole('button', { name: 'Bloquear acceso a la red' }));
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith('/inventory/devices/dev-1/block'),
+    );
   });
 
   it('bloqueo optimista: si la petición rechaza, revierte y avisa (US-96)', async () => {
@@ -208,9 +210,7 @@ describe('DeviceDetailSlideover', () => {
     render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
 
     // Cada Sparkline es un <svg role="img" aria-label="Tendencia">: rx y tx → 2.
-    await waitFor(() =>
-      expect(screen.getAllByRole('img', { name: 'Tendencia' })).toHaveLength(2),
-    );
+    await waitFor(() => expect(screen.getAllByRole('img', { name: 'Tendencia' })).toHaveLength(2));
   });
 
   it('a un viewer no se le pide el tráfico y no se le dice «sin datos» (US-250)', async () => {
@@ -233,7 +233,15 @@ describe('DeviceDetailSlideover', () => {
     apiMock.get.mockImplementation((url: string) =>
       url === '/vlans'
         ? Promise.resolve([
-            { id: 'v1', tag: 30, name: 'IoT', subnet: null, isolated: true, createdAt: '', deviceCount: 0 },
+            {
+              id: 'v1',
+              tag: 30,
+              name: 'IoT',
+              subnet: null,
+              isolated: true,
+              createdAt: '',
+              deviceCount: 0,
+            },
           ])
         : Promise.resolve([]),
     );

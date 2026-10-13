@@ -15,7 +15,10 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class ApiRequestError extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
 
 import { AlertRulesCard } from '@/components/settings/AlertRulesCard';
 import { ensureCatalog, setLocale } from '@/lib/i18n';

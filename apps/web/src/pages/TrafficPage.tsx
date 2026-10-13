@@ -37,7 +37,10 @@ const RANGES: { value: TrafficRange; label: string }[] = [
 ];
 // El gráfico WAN admite además el rango mensual (US-113). El desglose por
 // dispositivo se queda en 7 días (consultar un mes por MAC sería muy pesado).
-const WAN_RANGES: { value: TrafficRange; label: string }[] = [...RANGES, { value: 'month', label: '30d' }];
+const WAN_RANGES: { value: TrafficRange; label: string }[] = [
+  ...RANGES,
+  { value: 'month', label: '30d' },
+];
 /**
  * Colores de las gráficas leídos de los tokens del tema (US-57): al ser
  * `var(--kr-*)`, cambian automáticamente al togglear claro/oscuro en vez de
@@ -407,59 +410,59 @@ export function TrafficPage() {
                 unsupportedDesc={t('traffic.perDeviceUnsupportedDesc')}
               />
             ) : (
-            /* Scroll horizontal en móvil en vez de desbordar la página (US-97). */
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <caption className="sr-only">{t('traffic.deviceCaption')}</caption>
-                <thead>
-                  <tr className="text-left text-muted-foreground">
-                    <th scope="col" className="py-2 font-medium">
-                      {t('traffic.col.device')}
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      {t('traffic.col.ip')}
-                    </th>
-                    <th
-                      scope="col"
-                      aria-sort={sortDir === 'desc' ? 'descending' : 'ascending'}
-                      className="py-2 font-medium"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
-                        className="inline-flex items-center gap-1 hover:text-foreground"
-                        aria-label={t('traffic.sortLabel')}
+              /* Scroll horizontal en móvil en vez de desbordar la página (US-97). */
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <caption className="sr-only">{t('traffic.deviceCaption')}</caption>
+                  <thead>
+                    <tr className="text-left text-muted-foreground">
+                      <th scope="col" className="py-2 font-medium">
+                        {t('traffic.col.device')}
+                      </th>
+                      <th scope="col" className="py-2 font-medium">
+                        {t('traffic.col.ip')}
+                      </th>
+                      <th
+                        scope="col"
+                        aria-sort={sortDir === 'desc' ? 'descending' : 'ascending'}
+                        className="py-2 font-medium"
                       >
-                        {t('traffic.col.download')} {sortDir === 'desc' ? '▾' : '▴'}
-                      </button>
-                    </th>
-                    <th scope="col" className="py-2 font-medium">
-                      {t('traffic.col.upload')}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedDev.map((d) => {
-                    const dev = deviceByMac[d.mac.toLowerCase()];
-                    const name = d.label ?? dev?.hostname ?? d.mac;
-                    return (
-                      <tr
-                        key={d.mac}
-                        {...filaAbrible(() => setSelectedMac(d.mac), `Ver ${name}`)}
-                        className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
-                      >
-                        <td className="py-2 text-foreground">{name}</td>
-                        <td className="py-2 font-mono text-xs text-muted-foreground">
-                          {d.ip || '—'}
-                        </td>
-                        <td className="py-2 text-success">{formatBytes(d.rxTotal)}</td>
-                        <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        <button
+                          type="button"
+                          onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}
+                          className="inline-flex items-center gap-1 hover:text-foreground"
+                          aria-label={t('traffic.sortLabel')}
+                        >
+                          {t('traffic.col.download')} {sortDir === 'desc' ? '▾' : '▴'}
+                        </button>
+                      </th>
+                      <th scope="col" className="py-2 font-medium">
+                        {t('traffic.col.upload')}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedDev.map((d) => {
+                      const dev = deviceByMac[d.mac.toLowerCase()];
+                      const name = d.label ?? dev?.hostname ?? d.mac;
+                      return (
+                        <tr
+                          key={d.mac}
+                          {...filaAbrible(() => setSelectedMac(d.mac), `Ver ${name}`)}
+                          className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                        >
+                          <td className="py-2 text-foreground">{name}</td>
+                          <td className="py-2 font-mono text-xs text-muted-foreground">
+                            {d.ip || '—'}
+                          </td>
+                          <td className="py-2 text-success">{formatBytes(d.rxTotal)}</td>
+                          <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>

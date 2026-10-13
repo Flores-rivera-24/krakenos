@@ -113,23 +113,55 @@ export function SetupPage() {
 
         <div className="space-y-2">
           <Label htmlFor="homeName">{t('setup.homeName')}</Label>
-          <Input id="homeName" value={homeName} onChange={(e) => setHomeName(e.target.value)} required maxLength={64} />
+          <Input
+            id="homeName"
+            value={homeName}
+            onChange={(e) => setHomeName(e.target.value)}
+            required
+            maxLength={64}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="displayName">{t('setup.displayName')}</Label>
-          <Input id="displayName" value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={80} />
+          <Input
+            id="displayName"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            required
+            maxLength={80}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="email">{t('setup.email')}</Label>
-          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="password">{t('setup.password')}</Label>
-          <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+          <Input
+            id="password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={8}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirm">{t('setup.confirm')}</Label>
-          <Input id="confirm" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
+          <Input
+            id="confirm"
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            required
+            minLength={8}
+          />
         </div>
 
         {requiresToken && (

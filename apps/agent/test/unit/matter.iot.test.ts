@@ -24,9 +24,15 @@ class FakeWs implements WsTransport {
   }
 
   async send(data: string): Promise<void> {
-    const msg = JSON.parse(data) as { message_id: string; command: string; args: Record<string, unknown> };
+    const msg = JSON.parse(data) as {
+      message_id: string;
+      command: string;
+      args: Record<string, unknown>;
+    };
     this.sent.push({ command: msg.command, args: msg.args });
-    this.handler?.(JSON.stringify({ message_id: msg.message_id, result: this.result(msg.command) }));
+    this.handler?.(
+      JSON.stringify({ message_id: msg.message_id, result: this.result(msg.command) }),
+    );
   }
 }
 
@@ -65,8 +71,12 @@ describe('MatterIotManager', () => {
   });
 
   it('setState lanza IOT_NOT_FOUND / IOT_NOT_CONTROLLABLE sin mandar comandos', async () => {
-    await expect(iot.setState('999', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
-    await expect(iot.setState('6', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_CONTROLLABLE' });
+    await expect(iot.setState('999', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_FOUND',
+    });
+    await expect(iot.setState('6', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_CONTROLLABLE',
+    });
     expect(ws.sent.some((s) => s.command === 'device_command')).toBe(false);
   });
 
@@ -97,7 +107,11 @@ describe('MatterIotManager · categorías nuevas (US-247)', () => {
     const dev = await iot.setState('12', { position: 70 });
     expect(ws.sent.at(-1)).toMatchObject({
       command: 'device_command',
-      args: { cluster_id: 258, command_name: 'GoToLiftPercentage', payload: { liftPercent100thsValue: 3000 } },
+      args: {
+        cluster_id: 258,
+        command_name: 'GoToLiftPercentage',
+        payload: { liftPercent100thsValue: 3000 },
+      },
     });
     expect(dev.position).toBe(70);
   });
