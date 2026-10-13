@@ -6,16 +6,6 @@ import type {
   UpdateFirewallRuleRequest,
 } from '@krakenos/types';
 
-/** Error de dominio del firewall con código estable. */
-export class FirewallError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
 /**
  * Gestor de firewall en memoria para desarrollo. Simula reglas allow/deny
  * sin tocar `iptables`. Sembrado con reglas de ejemplo para que la UI no

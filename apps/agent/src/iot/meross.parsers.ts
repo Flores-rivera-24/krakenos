@@ -30,11 +30,6 @@ export function merossCmdTopic(uuid: string): string {
   return `m/v1/${uuid}/subscribe`;
 }
 
-/** Topic donde el dispositivo publica respuestas/PUSH. */
-export function merossRespTopic(uuid: string): string {
-  return `m/v1/${uuid}/publish`;
-}
-
 /** Filtro MQTT para todas las respuestas de dispositivos. */
 export const MEROSS_RESP_FILTER = 'm/v1/+/publish';
 

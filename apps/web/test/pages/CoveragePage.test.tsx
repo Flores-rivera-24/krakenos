@@ -5,7 +5,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const coverageMock = vi.hoisted(() => ({
   listFloorPlans: vi.fn(),
-  getFloorPlan: vi.fn(),
   createFloorPlan: vi.fn(),
   updateFloorPlan: vi.fn(),
   deleteFloorPlan: vi.fn(),
@@ -84,7 +83,6 @@ const AP: PlaceableAccessPoint = {
 describe('CoveragePage', () => {
   beforeEach(() => {
     coverageMock.listFloorPlans.mockReset().mockResolvedValue([PLAN]);
-    coverageMock.getFloorPlan.mockReset().mockResolvedValue(PLAN);
     coverageMock.createFloorPlan.mockReset().mockResolvedValue(PLAN);
     coverageMock.updateFloorPlan.mockReset().mockResolvedValue(PLAN);
     coverageMock.deleteFloorPlan.mockReset().mockResolvedValue(undefined);
@@ -224,7 +222,6 @@ describe('CoveragePage', () => {
     };
     // El editor toma las paredes del plano SELECCIONADO, que sale del listado.
     coverageMock.listFloorPlans.mockResolvedValue([conParedes]);
-    coverageMock.getFloorPlan.mockResolvedValue(conParedes);
     render(<CoveragePage />);
     await screen.findByRole('option', { name: 'Planta baja' });
 

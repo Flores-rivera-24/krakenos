@@ -6,16 +6,6 @@ import type {
   UpdateQosRuleRequest,
 } from '@krakenos/types';
 
-/** Error de dominio de QoS con código estable. */
-export class QosError extends Error {
-  constructor(
-    readonly code: string,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-
 /**
  * Gestor de QoS en memoria para desarrollo. Simula reglas de priorización y
  * límite de ancho de banda sin tocar `tc`. Sembrado con reglas de ejemplo.

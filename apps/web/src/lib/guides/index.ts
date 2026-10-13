@@ -1,5 +1,5 @@
 import { getLocale } from '@/lib/i18n';
-import type { GuideCategory, GuideDomain, IntegrationGuide } from './types';
+import type { GuideCategory, IntegrationGuide } from './types';
 import { DRIVER_GUIDES } from './integrations/drivers';
 import { LIGHT_GUIDES } from './integrations/lights';
 import { PLUG_GUIDES } from './integrations/plugs';
@@ -26,7 +26,7 @@ export type {
   IntegrationGuide,
 } from './types';
 
-export { GLOSSARY, getGlossaryEntry, glossaryEntries } from './glossary';
+export { GLOSSARY, getGlossaryEntry } from './glossary';
 export type { GlossaryEntry } from './glossary';
 
 export {
@@ -79,14 +79,4 @@ export function getGuideByKind(kind: string): IntegrationGuide | undefined {
 /** Todas las guías (localizadas) de una categoría (lo que la persona conecta). */
 export function guidesByCategory(category: GuideCategory): IntegrationGuide[] {
   return GUIDES.filter((g) => g.category === category).map(localize);
-}
-
-/** Todas las guías (localizadas) de un dominio funcional del backend. */
-export function guidesByDomain(domain: GuideDomain): IntegrationGuide[] {
-  return GUIDES.filter((g) => g.domain === domain).map(localize);
-}
-
-/** Guías (localizadas) ordenadas de más fácil (tier 1) a más avanzada (tier 4). */
-export function guidesByTier(): IntegrationGuide[] {
-  return [...GUIDES].sort((a, b) => a.tier - b.tier).map(localize);
 }

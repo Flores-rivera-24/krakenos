@@ -147,11 +147,6 @@ export function planIdMigration(input: MigrationPlanInput): MigrationPlan {
   return { mapping, unresolved };
 }
 
-/** Aplica el mapa a un id suelto (identidad si no cambia). */
-export function remapId(id: string, mapping: Map<string, string>): string {
-  return mapping.get(id) ?? id;
-}
-
 /**
  * Reescribe los ids dentro de un JSON persistido (`Scene.actions`,
  * `IotSchedule.target`, `alarm.config.sensorDeviceIds`) sin conocer su forma:

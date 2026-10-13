@@ -54,8 +54,6 @@ export const SETTING_BOUNDS = {
   presenceLeaveSweeps: { min: 1, max: 10 },
 } satisfies Record<string, NumericBound>;
 
-export type BoundedSettingKey = keyof typeof SETTING_BOUNDS;
-
 /** Cota de un ajuste por clave, o `undefined` si la clave no tiene cota. */
 export function boundFor(key: string): NumericBound | undefined {
   return (SETTING_BOUNDS as Record<string, NumericBound | undefined>)[key];

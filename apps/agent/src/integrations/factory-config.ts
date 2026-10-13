@@ -1,4 +1,4 @@
-import type { IntegrationConfigValues, IntegrationDomain } from '@krakenos/types';
+import type { IntegrationConfigValues } from '@krakenos/types';
 import { env } from '../config/env.js';
 import type { createCameraManager } from '../cameras/index.js';
 import type { createDnsManager } from '../dns/index.js';
@@ -386,30 +386,4 @@ export function resolveDnsConfig(
       password: optStr(v.password) ?? base.pihole.password,
     },
   };
-}
-
-/** Construye el objeto de config del factory de `domain` a partir de un registro. */
-export function buildConfigForDomain(domain: IntegrationDomain, record: DomainRecord | null): unknown {
-  switch (domain) {
-    case 'driver':
-      return resolveDriverConfig(record);
-    case 'vpn':
-      return resolveVpnConfig(record);
-    case 'iot':
-      return resolveIotConfig(record);
-    case 'cameras':
-      return resolveCameraConfig(record);
-    case 'firewall':
-      return resolveFirewallConfig(record);
-    case 'vlan':
-      return resolveVlanConfig(record);
-    case 'qos':
-      return resolveQosConfig(record);
-    case 'dns':
-      return resolveDnsConfig(record);
-    default: {
-      const exhaustive: never = domain;
-      throw new Error(`Dominio de integración desconocido: ${String(exhaustive)}`);
-    }
-  }
 }
