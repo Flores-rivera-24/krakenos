@@ -27,7 +27,7 @@ export function WeatherCard() {
 
   async function load() {
     try {
-      setStatus(await api.get<WeatherStatus>('/api/weather'));
+      setStatus(await api.get<WeatherStatus>('/weather'));
       setError(null);
     } catch (err) {
       setError(describeError(err, t('weather.loadError')));
@@ -41,7 +41,7 @@ export function WeatherCard() {
   async function save(patch: { enabled?: boolean; precision?: WeatherPrecision }) {
     setSaving(true);
     try {
-      setStatus(await api.put<WeatherStatus>('/api/weather', patch));
+      setStatus(await api.put<WeatherStatus>('/weather', patch));
       setError(null);
     } catch (err) {
       setError(describeError(err, t('weather.saveError')));

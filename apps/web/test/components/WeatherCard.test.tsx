@@ -67,7 +67,7 @@ describe('WeatherCard (US-254)', () => {
     render(<WeatherCard />);
     fireEvent.click(await screen.findByRole('button', { name: 'Activar' }));
 
-    await waitFor(() => expect(apiMock.put).toHaveBeenCalledWith('/api/weather', { enabled: true }));
+    await waitFor(() => expect(apiMock.put).toHaveBeenCalledWith('/weather', { enabled: true }));
   });
 
   it('encendido ENSEÑA la coordenada que se envía, no la guardada', async () => {
@@ -95,7 +95,7 @@ describe('WeatherCard (US-254)', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /Exacta/ }));
 
     await waitFor(() =>
-      expect(apiMock.put).toHaveBeenCalledWith('/api/weather', { precision: 'exact' }),
+      expect(apiMock.put).toHaveBeenCalledWith('/weather', { precision: 'exact' }),
     );
   });
 
