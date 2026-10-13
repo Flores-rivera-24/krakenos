@@ -39,11 +39,13 @@ export default defineConfig({
       // `main.tsx` monta la app (efectos, no unit-testable sin navegador) y
       // `vite-env.d.ts` son tipos.
       exclude: ['src/main.tsx', 'src/vite-env.d.ts'],
-      // ⚠️ Honestidad del número: los catálogos i18n y las 25 guías del asistente
-      // SÍ cuentan, y son `export const` de texto que v8 marca como cubierto solo
-      // con importarse. Eso infla statements/lines (~88 %). **El número que dice
-      // la verdad sobre la web es el de funciones** (~66 %): mide handlers y
-      // callbacks realmente disparados. Por eso su suelo se sube aparte.
+      // Honestidad del número: los catálogos i18n y las 25 guías del asistente
+      // SÍ cuentan, pero son `export const` de texto. Con el remapeo por AST de
+      // Vitest >= 3.2 cada catálogo cuenta como una sola sentencia, así que ya no
+      // inflan statements/lines (medido: sentencias 73,88 · líneas 75,61). Aun así
+      // **el número que mejor dice la verdad sobre la web es el de funciones**
+      // (68,51): mide handlers y callbacks realmente disparados. Por eso su suelo
+      // se fija aparte.
       // Suelos recalibrados el 2026-10-13 con Vitest 4.1.11: medido sentencias 73,88 · ramas 71,48 · funciones 68,51 · líneas 75,61.
       // Motivo: Vitest >= 3.2 remapea V8 por AST (como Istanbul) y cambia qué cuenta
       // como sentencia/rama/función (p. ej. cada catálogo i18n pasa de miles de
