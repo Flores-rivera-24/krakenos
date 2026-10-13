@@ -1,5 +1,6 @@
 import type { IotDevice, IotManager } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import type { MockInstance } from 'vitest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
 import { AlarmPinError, AlarmService } from '../../src/modules/alarm/alarm.service.js';
@@ -230,7 +231,7 @@ describe('AlarmService (US-188)', () => {
       return iot;
     };
 
-    const avisos = (spy: ReturnType<typeof vi.spyOn>, accion: string) =>
+    const avisos = (spy: MockInstance, accion: string) =>
       spy.mock.calls.filter((c) => (c[0] as { action: string }).action === accion);
 
     it('con la alarma DESARMADA y el detector fuera de la lista, avisa igual', async () => {

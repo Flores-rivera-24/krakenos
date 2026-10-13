@@ -36,10 +36,12 @@ export default defineConfig({
     // arrancar el proceso; su lógica sí vive en módulos que se prueban. Los `thresholds` son un **suelo anti-regresión**
     // fijado ~1–2 pts por debajo del número real medido (ver docs/coverage-notes.md
     // para el número vigente y el plan de subida gradual).
+    // Vitest 5 retiró `coverage.all`: ahora lo decide `include` (mide TODO lo que
+    // casa, importado o no). Además remapea V8 por AST (como Istanbul), así que
+    // los porcentajes no son comparables con los de Vitest 2.
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
-      all: true,
       include: ['src/**/*.ts'],
       exclude: [
         ...coverageConfigDefaults.exclude,
