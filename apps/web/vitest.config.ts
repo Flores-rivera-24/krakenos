@@ -29,9 +29,8 @@ export default defineConfig({
     // no un objetivo. El de funciones es más bajo a propósito: muchos componentes
     // exponen handlers/callbacks que no todos los tests disparan
     // (ver docs/coverage-notes.md).
-    // Vitest 5 retiró `coverage.all`: ahora lo decide `include` (mide TODO lo que
-    // casa, importado o no). Además remapea V8 por AST (como Istanbul), así que
-    // los porcentajes no son comparables con los de Vitest 2.
+    // Vitest 4 retiró `coverage.all`: ahora lo decide `include` (mide TODO lo que
+    // casa, importado o no).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
@@ -45,11 +44,15 @@ export default defineConfig({
       // con importarse. Eso infla statements/lines (~88 %). **El número que dice
       // la verdad sobre la web es el de funciones** (~66 %): mide handlers y
       // callbacks realmente disparados. Por eso su suelo se sube aparte.
+      // Suelos recalibrados el 2026-10-13 con Vitest 4.1.11: medido sentencias 73,88 · ramas 71,48 · funciones 68,51 · líneas 75,61.
+      // Motivo: Vitest >= 3.2 remapea V8 por AST (como Istanbul) y cambia qué cuenta
+      // como sentencia/rama/función (p. ej. cada catálogo i18n pasa de miles de
+      // «sentencias» a 1); mismos tests y mismo código. Suelo = medido − 2, hacia abajo.
       thresholds: {
-        statements: 85,
-        branches: 78,
-        functions: 64,
-        lines: 85,
+        statements: 71,
+        branches: 69,
+        functions: 66,
+        lines: 73,
       },
     },
   },

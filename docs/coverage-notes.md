@@ -7,6 +7,13 @@ de error están sin ejercer y cuáles no son testeables aquí.
 
 ## Números reales
 
+> **Cambio de medición (2026-10-13, Vitest 4.1.11).** `coverage.all` ya no existe: lo
+> decide `coverage.include` (mide todo `src/**` igual). Además V8 se remapea por AST
+> (como Istanbul), lo que cambia qué cuenta como sentencia, rama o función: **mismos
+> tests y mismo código, otros porcentajes** — p. ej. cada catálogo i18n pasa de miles
+> de «sentencias» a 1. Los números de abajo son los vigentes; los de antes de esta
+> fecha (agente 92/86/91/92, web 88/80/66/88) no son comparables.
+
 **El agente mide con `all: true`:** cuenta **todo** `src/**`, no solo lo
 que los tests importan — incluidos los transportes de hardware que nunca se cargan
 aquí. El número refleja la realidad del árbol, no "de lo que se usa, cuánto se
@@ -23,11 +30,11 @@ no era deuda, era **inercia**. Se excluyen solo los entrypoints (`main.tsx`,
 
 | Paquete | Medición | Statements | Branches | Functions | Lines |
 |---------|----------|-----------:|---------:|----------:|------:|
-| **agente** (`apps/agent`) | `all: true` | **92.00%** | **86.27%** | **91.11%** | **92.00%** |
-| **web** (`apps/web`)      | `all: true` | 88.28% | 79.84% | **65.99%** | 88.28% |
+| **agente** (`apps/agent`) | `include: src/**` | **89.18%** | **81.29%** | **86.78%** | **91.16%** |
+| **web** (`apps/web`)      | `include: src/**` | 73.88% | 71.48% | **68.51%** | 75.61% |
 
-Medido el 2026-07-29 (tras): agente **2291 tests** (240 ficheros), web **631
-tests** (119 ficheros). Suite completa en verde.
+Medido el 2026-10-13: agente **2890 tests** (273 ficheros), web **973
+tests** (151 ficheros). Suite completa en verde.
 
 > ⚠️ **El número de statements de la web está inflado y conviene saberlo.** Los
 > catálogos i18n (`lib/i18n/catalog/`) y las 25 guías del asistente (`lib/guides/`)
@@ -49,8 +56,8 @@ La lógica de los dos últimos sí se prueba, en `system/update-lock.ts`,
 anti-regresión** ~1–2 pts **por debajo** del número real medido (no un objetivo
 decorativo del 85%):
 
-- **agente** (`all: true`): stmts **89** · branches **83** · funcs **90** · lines **89**
-- **web** (`all: true`): stmts 85 · branches 78 · funcs **64** · lines 85
+- **agente**: stmts **87** · branches **79** · funcs **84** · lines **89**
+- **web**: stmts 71 · branches 69 · funcs **66** · lines 73
 
 Avisan si una rama hoy bien probada deja de estarlo. El margen de ~1–2 pts absorbe
 la variabilidad del árbol completo y **no bloquea** por los caminos de hardware

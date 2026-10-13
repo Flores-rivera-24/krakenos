@@ -24,7 +24,7 @@ Un umbral se pone donde duele si hay regresión, no donde siempre pasa.
 | Estructurales (caja blanca) | Barridos sobre la tabla de rutas real | `apps/agent/test/integration` | Sí |
 | Mutación | Stryker | `apps/agent/stryker.config.json` | Sí |
 | Rendimiento (carga) | autocannon | `scripts/qa/perf-api.mjs` | No (bajo demanda) |
-| Rendimiento (tamaño) | Presupuesto de bundle | `apps/web/scripts/bundle-budget.mjs` | Sí |
+| Rendimiento (tamaño) | Presupuesto de bundle (carga inicial = `index-*` + `modulepreload` de `dist/index.html`; falla cerrado sin él) | `apps/web/scripts/bundle-budget.mjs` | Sí |
 | Seguridad — secretos | gitleaks | CI | Sí |
 | Seguridad — SAST | semgrep | CI | Sí |
 | Seguridad — dependencias | OSV | `scripts/audit-osv.mjs` | Sí (críticas de producción) |
@@ -79,14 +79,18 @@ extraerlos con `dpkg -x` a un directorio y apuntar `LD_LIBRARY_PATH` ahí.
 
 Las cotas de `vitest.config.ts` son un **suelo anti-regresión**, no un objetivo: se
 fijan 1–2 puntos por debajo de lo medido para que una bajada real rompa el build.
-Los valores vigentes están en `docs/coverage-notes.md`.
+Los valores vigentes están en `docs/coverage-notes.md`. Desde Vitest 4 (V8 remapeado
+por AST, como Istanbul) los porcentajes **no son comparables** con los anteriores a
+2026-10-13: mismos tests y mismo código, pero otra definición de sentencia, rama y
+función; los suelos se recalibraron entonces (medido − 2).
 
 Dos avisos de honestidad que ya están escritos en las configs y conviene repetir:
 
 - En la web, **el número que dice la verdad es el de funciones**, no el de líneas.
-  Los catálogos de traducción y las guías son `export const` de texto que el
-  instrumentador marca como cubierto con solo importarlos, e inflan líneas y
-  sentencias.
+  Antes de Vitest 4, los catálogos de traducción y las guías (`export const` de texto)
+  inflaban líneas y sentencias; con el remapeo por AST cuentan como una sentencia cada
+  uno y ese inflado desapareció (de ahí la bajada de ~88 % a ~74 % en sentencias), pero
+  el de funciones sigue siendo el más fiable.
 - Cobertura alta **no** implica tests buenos. Una línea puede ejecutarse en cada test
   sin que nadie compruebe su resultado. Eso lo mide la mutación, no la cobertura.
 
@@ -109,8 +113,10 @@ miente en la dirección contraria.
 
 Umbral de ruptura: **75 %**.
 
-**Última medición: 94,40 %** (219 mutantes muertos, 13 supervivientes, 0 sin cobertura;
-octubre de 2026). Los 13 supervivientes están revisados uno a uno y son **equivalentes**:
+**Última medición: 94,04 %** (221 mutantes muertos, 14 supervivientes, 0 sin cobertura;
+octubre de 2026, Stryker 10 con Vitest 4.1.11 — con Vitest 5 los mutantes de activación
+en runtime no se activan y el score cae a ~10 %, así que no subir Vitest a 5 hasta que el
+runner lo soporte). Los supervivientes (13 en la medición anterior; el decimocuarto no está revisado aún) están revisados uno a uno y son **equivalentes**:
 guardas redundantes con otra condición en `life-safety.ts` y `state-machine.ts`, el
 `JSON.parse` de `api-token.ts` que cae al mismo `catch`, y en `attempt-lockout.ts` la
 normalización de mayúsculas, el redondeo con `ms = 0` y la purga del mapa (que no se ve
