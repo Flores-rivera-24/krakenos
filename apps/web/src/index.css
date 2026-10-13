@@ -21,9 +21,157 @@
  * correcto. No cuenta para el presupuesto de bundle, que mide solo JS. */
 @import '@fontsource-variable/inter/wght.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* `source(none)` + `@source` explícitos = el `content` de la v3 (`index.html` y los
+   `.ts`/`.tsx` de `src/`). La detección automática de la v4 barre todo el paquete
+   —tests, scripts, `public/`—, y un test que cita `text-yellow-500` metería esa clase
+   en el CSS de producción. */
+@import 'tailwindcss' source(none);
+@source '../index.html';
+@source './**/*.{ts,tsx}';
+
+/* Modo oscuro por clase: `dark:` aplica bajo `<html class="dark">` (y a su
+   propio nodo). Es el equivalente de `darkMode: ['class']` de Tailwind 3. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* === Tema de Tailwind ===
+   Antes vivía en `tailwind.config.ts`. Los **valores** siguen siendo variables CSS
+   (`--kr-*` y las de shadcn, más abajo en `:root` / `.dark` / `html:not(.dark)`):
+   aquí solo se les da nombre de utilidad. `inline` hace que cada utilidad emita
+   `var(--kr-…)` tal cual, en vez de pasar por una variable `--color-*` intermedia,
+   así el cambio de tema lo resuelve el elemento y no `:root`.
+
+   ⚠️ En Tailwind 4 todo color de `--color-*` genera las utilidades de **todas** las
+   propiedades (`bg-`, `text-`, `border-`, `ring-`, `outline-`, `divide-`…), no una
+   por mapa como en la v3 (`backgroundColor`/`textColor`/`borderColor`). Dos nombres
+   no caben ahí y se definen a mano con `@utility` más abajo, porque significan
+   cosas distintas según la propiedad: `kr-muted` (texto = `--kr-text-muted`, borde =
+   `--kr-border-muted`) y `kr-base` (fondo = `--kr-bg-base`; como tamaño de texto ya
+   es `text-kr-base`, y un color con ese nombre dejaría `text-kr-base` ambiguo). */
+@theme inline {
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Escala tipográfica del sistema de diseño (US-33). */
+  --text-kr-xs: 11px; /* metadata, timestamps */
+  --text-kr-xs--line-height: 16px;
+  --text-kr-sm: 13px; /* labels, badges, secondary */
+  --text-kr-sm--line-height: 18px;
+  --text-kr-base: 14px; /* cuerpo de texto */
+  --text-kr-base--line-height: 20px;
+  --text-kr-lg: 16px; /* subtítulos de sección */
+  --text-kr-lg--line-height: 24px;
+  --text-kr-xl: 20px; /* títulos de página */
+  --text-kr-xl--line-height: 28px;
+  --text-kr-2xl: 24px; /* números grandes en dashboard */
+  --text-kr-2xl--line-height: 32px;
+
+  /* shadcn/ui: los canales HSL viven en `:root`/`.dark`. */
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+
+  /* Semánticos KrakenOS: usables como bg-/text-/border-/ring-. */
+  --color-success: var(--kr-success);
+  --color-info: var(--kr-info);
+  --color-warning: var(--kr-warning);
+  --color-danger: var(--kr-danger);
+  --color-online: var(--kr-online);
+  --color-offline: var(--kr-offline);
+
+  /* Fondos (`bg-kr-*`). */
+  --color-kr-surface: var(--kr-bg-surface);
+  --color-kr-elevated: var(--kr-bg-elevated); /* también `border-kr-elevated` */
+  --color-kr-accent: var(--kr-accent); /* fondo, texto y borde */
+  --color-kr-accent-hover: var(--kr-accent-hover);
+  --color-kr-accent-faint: var(--kr-accent-faint);
+  --color-kr-accent-glow: var(--kr-accent-glow); /* fondo y borde */
+
+  /* Texto (`text-kr-*`). */
+  --color-kr-primary: var(--kr-text-primary);
+  --color-kr-secondary: var(--kr-text-secondary);
+  /* US-95: texto de acento accesible (enlaces/nav activa) sobre fondos oscuros. */
+  --color-kr-link: var(--kr-link);
+
+  /* Bordes sutiles: `border-kr` (y `border-kr-muted`, a mano más abajo). */
+  --color-kr: var(--kr-border);
+
+  /* El radio base es `--radius` (shadcn); lg/md/sm lo derivan. */
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+
+  /* Halos de acento para superficies "tecnológicas" (US-160). */
+  --shadow-kr-glow: 0 0 0 1px var(--kr-accent-glow), 0 0 24px -6px var(--kr-accent-glow);
+  --shadow-kr-glow-sm: 0 0 16px -8px var(--kr-accent-glow);
+}
+
+/* Lenguaje de movimiento del sistema (US-160). Todo respeta prefers-reduced-motion
+   vía las variantes motion-reduce:* y el bloque `@media` del final. Los nombres de
+   `animate-kr-*` salen de aquí; los `@keyframes` están más abajo, fuera de las capas. */
+@theme {
+  --animate-kr-shimmer: kr-shimmer 1.6s ease-in-out infinite;
+  --animate-kr-fade-up: kr-fade-up 0.4s ease-out both;
+  --animate-kr-fade-in: kr-fade-in 0.3s ease-out both;
+  --animate-kr-orbit: kr-orbit 3.2s linear infinite;
+  --animate-kr-orbit-slow: kr-orbit 9s linear infinite;
+  --animate-kr-pulse-ring: kr-pulse-ring 2.2s ease-out infinite;
+  --animate-kr-glow: kr-glow 2.4s ease-in-out infinite;
+  /* Entrada del slideover (antes `animate-in slide-in-from-right duration-200` de
+     tailwindcss-animate, que solo se usaba aquí). Sin `both`: como en el plugin, no
+     retiene el estado inicial. */
+  --animate-kr-slide-in-right: kr-slide-in-right 0.2s ease;
+}
+
+/* === `space-y-*` con la semántica de la v3 ===
+   La v3 ponía `margin-top` a cada hermano **salvo el primero** (`> :not([hidden]) ~
+   :not([hidden])`); la v4 pone `margin-bottom` a cada hermano **salvo el último**
+   (`:where(> :not(:last-child))`, sin especificidad). Con un hijo en bloque da lo mismo, pero
+   un `<label>` en línea (el de `Label`) ignora el `margin-bottom`: el hueco entre etiqueta y
+   campo se perdía en 33 formularios y la pantalla de acceso encogía 12 px, sin un solo
+   error. Tampoco coincide en hijos `hidden` ni frente a los `mt-*` propios del hijo.
+   Aquí se redefine la v3 y se neutraliza la regla de la v4: la utilidad propia se suma a la
+   suya (no la sustituye), y esa regla deja de aplicar al invalidar `--tw-space-y-reverse`
+   —la declaración queda inválida en tiempo de cálculo y no pisa los márgenes propios del
+   hijo—. Solo hay `space-y` en el código (`space-x`: ninguno); si aparece, hace falta el
+   mismo tratamiento. ⚠️ Depende del nombre interno de esa variable: si la v4 lo cambia, el
+   síntoma es volver a ver el hueco perdido, y el diff de capturas lo caza. */
+@utility space-y-* {
+  & > :not([hidden]) ~ :not([hidden]) {
+    margin-top: calc(var(--spacing) * --value(number));
+    margin-bottom: 0;
+  }
+  & > :not(:last-child) {
+    --tw-space-y-reverse: kr-neutralizada;
+  }
+}
+
+/* Colores con nombre que significan algo distinto según la propiedad (ver arriba).
+   Sin modificador de opacidad: nunca lo han admitido (la v3 tampoco lo generaba). */
+@utility bg-kr-base {
+  background-color: var(--kr-bg-base);
+}
+@utility text-kr-muted {
+  color: var(--kr-text-muted);
+}
+@utility border-kr-muted {
+  border-color: var(--kr-border-muted);
+}
+@utility divide-kr-muted {
+  :where(& > :not(:last-child)) {
+    border-color: var(--kr-border-muted);
+  }
+}
 
 @layer base {
   :root {
@@ -154,6 +302,30 @@
   * {
     @apply border-border;
   }
+
+  /* Preflight de Tailwind 4 vs 3: los cambios que se ven y que aquí se
+     neutralizan para que la UI no cambie con la subida. */
+  /* 1. Los botones ya no traen `cursor: pointer`. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  /* 2. La v4 pone `padding: 0` a todo; la v3 respetaba el de la hoja del navegador en
+        estos dos (1 px en celdas de cabecera, 0 2px 1px en las opciones de un `select`). */
+  th {
+    padding: 1px;
+  }
+  option {
+    padding: 0 2px 1px;
+  }
+  /* 3. El placeholder pasaba a ser `currentColor` al 50 %; la v3 lo fijaba a gray-400
+        (`#9ca3af`) opaco. Se conserva ese valor (los `placeholder:text-*` de cada
+        componente lo siguen sobrescribiendo). */
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+    opacity: 1;
+  }
   body {
     /* `Inter Variable` es el nombre que declara el paquete autoalojado; `Inter` a
        secas queda detrás por si quien mira la tiene instalada en el sistema. */
@@ -177,6 +349,67 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes kr-fade-up {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kr-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes kr-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes kr-pulse-ring {
+  0% {
+    transform: scale(0.7);
+    opacity: 0.55;
+  }
+  70% {
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes kr-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Entrada del slideover: sale desde la derecha (transform como el `enter` de
+   tailwindcss-animate: solo el estado inicial; el final es el de reposo). */
+@keyframes kr-slide-in-right {
+  from {
+    transform: translate3d(100%, 0, 0);
   }
 }
 
