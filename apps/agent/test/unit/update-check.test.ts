@@ -34,7 +34,12 @@ describe('UpdateChecker', () => {
     const fetchFn = vi.fn();
     const checker = new UpdateChecker('1.0.0', null, fetchFn);
     const status = await checker.check();
-    expect(status).toEqual({ enabled: false, current: '1.0.0', latest: null, updateAvailable: false });
+    expect(status).toEqual({
+      enabled: false,
+      current: '1.0.0',
+      latest: null,
+      updateAvailable: false,
+    });
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
@@ -42,7 +47,12 @@ describe('UpdateChecker', () => {
     const fetchFn = fetchOk('v1.1.0');
     const checker = new UpdateChecker('1.0.0', 'owner/repo', fetchFn);
     const status = await checker.check();
-    expect(status).toEqual({ enabled: true, current: '1.0.0', latest: '1.1.0', updateAvailable: true });
+    expect(status).toEqual({
+      enabled: true,
+      current: '1.0.0',
+      latest: '1.1.0',
+      updateAvailable: true,
+    });
     expect(fetchFn).toHaveBeenCalledWith('https://api.github.com/repos/owner/repo/releases/latest');
   });
 
@@ -52,13 +62,28 @@ describe('UpdateChecker', () => {
   });
 
   it('respuesta no-ok → latest null sin lanzar', async () => {
-    const checker = new UpdateChecker('1.0.0', 'owner/repo', vi.fn(async () => ({ ok: false, json: async () => ({}) })));
+    const checker = new UpdateChecker(
+      '1.0.0',
+      'owner/repo',
+      vi.fn(async () => ({ ok: false, json: async () => ({}) })),
+    );
     const status = await checker.check();
-    expect(status).toEqual({ enabled: true, current: '1.0.0', latest: null, updateAvailable: false });
+    expect(status).toEqual({
+      enabled: true,
+      current: '1.0.0',
+      latest: null,
+      updateAvailable: false,
+    });
   });
 
   it('fetch que lanza → degrada a latest null', async () => {
-    const checker = new UpdateChecker('1.0.0', 'owner/repo', vi.fn(async () => { throw new Error('network'); }));
+    const checker = new UpdateChecker(
+      '1.0.0',
+      'owner/repo',
+      vi.fn(async () => {
+        throw new Error('network');
+      }),
+    );
     expect((await checker.check()).latest).toBeNull();
   });
 

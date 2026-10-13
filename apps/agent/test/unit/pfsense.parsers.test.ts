@@ -47,12 +47,20 @@ describe('parsePfSenseInterfaceCounters', () => {
   ];
 
   it('empareja por name/descr/hwif y lee in/out bytes (string o number)', () => {
-    expect(parsePfSenseInterfaceCounters(data, 'wan')).toEqual({ rxBytes: 1000000, txBytes: 200000 });
-    expect(parsePfSenseInterfaceCounters(data, 'em0')).toEqual({ rxBytes: 1000000, txBytes: 200000 });
+    expect(parsePfSenseInterfaceCounters(data, 'wan')).toEqual({
+      rxBytes: 1000000,
+      txBytes: 200000,
+    });
+    expect(parsePfSenseInterfaceCounters(data, 'em0')).toEqual({
+      rxBytes: 1000000,
+      txBytes: 200000,
+    });
   });
 
   it('soporta los alias bytesin/bytesout y devuelve null si no existe', () => {
-    expect(parsePfSenseInterfaceCounters([{ name: 'wan', bytesin: 5, bytesout: 7 }], 'wan')).toEqual({
+    expect(
+      parsePfSenseInterfaceCounters([{ name: 'wan', bytesin: 5, bytesout: 7 }], 'wan'),
+    ).toEqual({
       rxBytes: 5,
       txBytes: 7,
     });

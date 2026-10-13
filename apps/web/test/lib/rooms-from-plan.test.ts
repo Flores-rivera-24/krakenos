@@ -52,10 +52,7 @@ describe('estimatePlanArea', () => {
 describe('detectEnclosures', () => {
   it('detecta dos habitaciones cerradas separadas por un tabique', () => {
     // Perímetro (0.5..9.5, 0.5..7.5) partido por un tabique vertical en x=5.
-    const walls: PlanWall[] = [
-      ...box(0.5, 0.5, 9.5, 7.5),
-      wall(5, 0.5, 5, 7.5),
-    ];
+    const walls: PlanWall[] = [...box(0.5, 0.5, 9.5, 7.5), wall(5, 0.5, 5, 7.5)];
 
     const rooms = detectEnclosures(walls, 10, 8);
     expect(rooms).toHaveLength(2);

@@ -182,8 +182,11 @@ describe('WebAuthnService', () => {
   it('soporta ceremonias concurrentes: consume el desafío concreto que presenta la respuesta (US-82)', async () => {
     const prisma = makePrisma();
     // Dos ceremonias en curso; la respuesta presenta el challenge "B".
-    prisma.webAuthnChallenge.findFirst.mockImplementation(({ where }: { where: { challenge: string } }) =>
-      where.challenge === 'B' ? Promise.resolve({ ...challengeRow('B', 'authenticate'), id: 'chB' }) : Promise.resolve(null),
+    prisma.webAuthnChallenge.findFirst.mockImplementation(
+      ({ where }: { where: { challenge: string } }) =>
+        where.challenge === 'B'
+          ? Promise.resolve({ ...challengeRow('B', 'authenticate'), id: 'chB' })
+          : Promise.resolve(null),
     );
     prisma.webAuthnCredential.findUnique.mockResolvedValue({
       id: 'k1',

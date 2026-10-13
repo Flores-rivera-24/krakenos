@@ -49,9 +49,7 @@ declare module 'fastify' {
     /** preHandler: exige un access token válido. */
     authenticate: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /** Genera un preHandler que además exige un rol concreto. */
-    requireRole: (
-      role: UserRole,
-    ) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    requireRole: (role: UserRole) => (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /**
      * Genera un preHandler que exige una **capacidad** (US-179): generaliza
      * `requireRole` para los roles del hogar sin tocar las rutas admin (mapa en

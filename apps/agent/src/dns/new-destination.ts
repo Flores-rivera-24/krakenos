@@ -39,7 +39,18 @@
  * segundos niveles son pocos y estables; los sufijos, miles.
  */
 const SEGUNDO_NIVEL_DE_SUFIJO = new Set([
-  'com', 'co', 'net', 'org', 'gov', 'gob', 'edu', 'ac', 'or', 'ne', 'mil', 'nom',
+  'com',
+  'co',
+  'net',
+  'org',
+  'gov',
+  'gob',
+  'edu',
+  'ac',
+  'or',
+  'ne',
+  'mil',
+  'nom',
 ]);
 
 /**

@@ -23,13 +23,21 @@ describe('FavoriteButton (US-170)', () => {
   });
 
   it('refleja el estado no-fijado y al pulsar fija (POST) con aria-pressed', async () => {
-    apiMock.post.mockResolvedValue({ id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' });
+    apiMock.post.mockResolvedValue({
+      id: 'f1',
+      kind: 'iot',
+      ref: 'light',
+      order: 0,
+      createdAt: '',
+    });
     render(<FavoriteButton kind="iot" ref_="light" label="Luz salón" />);
     const btn = screen.getByRole('button', { name: /Fijar Luz salón/i });
     expect(btn).toHaveAttribute('aria-pressed', 'false');
 
     fireEvent.click(btn);
-    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/favorites', { kind: 'iot', ref: 'light' }));
+    await waitFor(() =>
+      expect(apiMock.post).toHaveBeenCalledWith('/favorites', { kind: 'iot', ref: 'light' }),
+    );
     await waitFor(() => expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true'));
   });
 

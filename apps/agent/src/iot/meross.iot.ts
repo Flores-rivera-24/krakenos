@@ -77,7 +77,11 @@ export class MerossIotManager implements IotManager {
   }
 
   private ctx(cfg: MerossDeviceConfig) {
-    return { key: cfg.key, messageId: this.genMessageId(), timestamp: Math.floor(this.now() / 1000) };
+    return {
+      key: cfg.key,
+      messageId: this.genMessageId(),
+      timestamp: Math.floor(this.now() / 1000),
+    };
   }
 
   /** Publica un GET `Appliance.System.All` a cada dispositivo (best-effort). */

@@ -186,9 +186,7 @@ function RuleEditor({
   const [sunOffset, setSunOffset] = useState(String(trg?.type === 'sun' ? trg.offsetMin : 0));
   // Presencia/modos (US-169): '' = cualquier persona.
   const [triggerUserId, setTriggerUserId] = useState(
-    trg && (trg.type === 'person-arrived' || trg.type === 'person-left')
-      ? (trg.userId ?? '')
-      : '',
+    trg && (trg.type === 'person-arrived' || trg.type === 'person-left') ? (trg.userId ?? '') : '',
   );
   const [triggerMode, setTriggerMode] = useState<HomeMode>(
     trg?.type === 'mode-changed' ? trg.mode : 'away',
@@ -204,7 +202,9 @@ function RuleEditor({
 
   const [withWindow, setWithWindow] = useState(rule?.condition !== undefined);
   const [windowFrom, setWindowFrom] = useState(
-    rule?.condition?.fromMinute !== undefined ? minuteToTimeString(rule.condition.fromMinute) : '22:00',
+    rule?.condition?.fromMinute !== undefined
+      ? minuteToTimeString(rule.condition.fromMinute)
+      : '22:00',
   );
   const [windowTo, setWindowTo] = useState(
     rule?.condition?.toMinute !== undefined ? minuteToTimeString(rule.condition.toMinute) : '07:00',
@@ -215,7 +215,9 @@ function RuleEditor({
   const [actions, setActions] = useState<DraftAction[]>(
     rule ? rule.actions.map((a) => fromAction(a, base)) : [base],
   );
-  const [cooldownMin, setCooldownMin] = useState(Math.max(1, Math.round((rule?.cooldownSec ?? 60) / 60)));
+  const [cooldownMin, setCooldownMin] = useState(
+    Math.max(1, Math.round((rule?.cooldownSec ?? 60) / 60)),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -233,7 +235,12 @@ function RuleEditor({
       case 'iot-off':
         return { type: triggerType, deviceId: triggerDevice };
       case 'sensor-threshold':
-        return { type: 'sensor-threshold', deviceId: triggerDevice, op: sensorOp, value: sensorValue };
+        return {
+          type: 'sensor-threshold',
+          deviceId: triggerDevice,
+          op: sensorOp,
+          value: sensorValue,
+        };
       case 'energy-threshold':
         // El umbral concreto vive en la regla de alerta de energía (US-183);
         // aquí solo se elige el dispositivo objetivo (vacío = cualquiera).
@@ -242,7 +249,12 @@ function RuleEditor({
         // Reutiliza el operador y el valor del umbral de sensor: es la misma
         // pregunta («¿supera o baja de?») y duplicar el estado sería duplicar
         // también el sitio donde se olvida validarlo.
-        return { type: 'weather-threshold', metric: weatherMetric, op: sensorOp, value: sensorValue };
+        return {
+          type: 'weather-threshold',
+          metric: weatherMetric,
+          op: sensorOp,
+          value: sensorValue,
+        };
       case 'time':
         return { type: 'time', days: timeDays, minute: timeStringToMinute(timeAt) };
       case 'sun': {
@@ -325,7 +337,9 @@ function RuleEditor({
 
   /** ¿El disparador aporta un objetivo de red implícito para bloquear/pausar? */
   const eventHasMac =
-    triggerType === 'device-new' || triggerType === 'device-online' || triggerType === 'device-offline';
+    triggerType === 'device-new' ||
+    triggerType === 'device-online' ||
+    triggerType === 'device-offline';
 
   const dayPicker = (selected: number[], onToggle: (d: number) => void, label: string) => (
     <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
@@ -756,7 +770,9 @@ function RuleEditor({
                       value={row.mac}
                       onChange={(e) => updateAction(i, { mac: e.target.value })}
                     >
-                      {eventHasMac && <option value="">{t('automations.editor.eventDevice')}</option>}
+                      {eventHasMac && (
+                        <option value="">{t('automations.editor.eventDevice')}</option>
+                      )}
                       {networkDevices.map((d) => (
                         <option key={d.mac} value={d.mac}>
                           {networkLabel(d)}
@@ -774,7 +790,9 @@ function RuleEditor({
                           onChange={(e) => updateAction(i, { minutes: Number(e.target.value) })}
                           className="w-24"
                         />
-                        <span className="text-kr-xs text-kr-muted">{t('automations.editor.minutes')}</span>
+                        <span className="text-kr-xs text-kr-muted">
+                          {t('automations.editor.minutes')}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -845,13 +863,20 @@ export function AutomationsPage() {
 
   useEffect(() => {
     reload();
-    void api.getList<IotDevice>('/iot/devices').then(setIotDevices).catch(() => setIotDevices([]));
+    void api
+      .getList<IotDevice>('/iot/devices')
+      .then(setIotDevices)
+      .catch(() => setIotDevices([]));
     void api
       .getList<Device>('/inventory/devices')
       .then(setNetworkDevices)
       .catch(() => setNetworkDevices([]));
-    void listScenes().then(setScenes).catch(() => setScenes([]));
-    void listCameras().then(setCameras).catch(() => setCameras([]));
+    void listScenes()
+      .then(setScenes)
+      .catch(() => setScenes([]));
+    void listCameras()
+      .then(setCameras)
+      .catch(() => setCameras([]));
     // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
     // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
     void api
@@ -864,7 +889,10 @@ export function AutomationsPage() {
   // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
   useEffect(() => {
     if (!isAdmin) return;
-    void api.getList<UserSummary>('/users').then(setUsers).catch(() => setUsers([]));
+    void api
+      .getList<UserSummary>('/users')
+      .then(setUsers)
+      .catch(() => setUsers([]));
   }, [isAdmin]);
 
   const ctx: NameContext = useMemo(
@@ -880,12 +908,15 @@ export function AutomationsPage() {
 
   const rutinasDeAcceso = useMemo(
     () =>
-      agruparHorariosDeAcceso(accessSchedules, {
-        personas: new Map(users.map((u) => [u.id, u.displayName])),
-        aparatos: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
-        personaSinNombre: t('automations.parental.somePerson'),
-      },
-      t),
+      agruparHorariosDeAcceso(
+        accessSchedules,
+        {
+          personas: new Map(users.map((u) => [u.id, u.displayName])),
+          aparatos: new Map(networkDevices.map((d) => [d.mac, networkLabel(d)])),
+          personaSinNombre: t('automations.parental.somePerson'),
+        },
+        t,
+      ),
     [accessSchedules, users, networkDevices, t],
   );
 
@@ -1043,11 +1074,16 @@ export function AutomationsPage() {
 
       {runs.length > 0 && (
         <section className="space-y-2 border-t border-kr-muted pt-6">
-          <h3 className="text-kr-lg font-semibold text-kr-primary">{t('automations.runs.title')}</h3>
+          <h3 className="text-kr-lg font-semibold text-kr-primary">
+            {t('automations.runs.title')}
+          </h3>
           <ul className="divide-y divide-kr-muted overflow-hidden rounded-lg border border-kr">
             {runs.slice(0, 20).map((run) => (
               <li key={run.id} className="flex items-center gap-3 bg-kr-surface px-3 py-2">
-                <span aria-hidden className={cn('text-kr-sm', run.ok ? 'text-success' : 'text-danger')}>
+                <span
+                  aria-hidden
+                  className={cn('text-kr-sm', run.ok ? 'text-success' : 'text-danger')}
+                >
                   {run.ok ? '✓' : '✕'}
                 </span>
                 <div className="min-w-0 flex-1">

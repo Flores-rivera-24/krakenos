@@ -4,7 +4,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -27,7 +34,11 @@ describe('lib/rooms (US-165)', () => {
     createRoom({ name: 'Salón' });
     expect(apiMock.post).toHaveBeenCalledWith('/rooms', { name: 'Salón' });
     assignRoom({ kind: 'device', ref: 'd1', roomId: 'r1' });
-    expect(apiMock.put).toHaveBeenCalledWith('/rooms/assign', { kind: 'device', ref: 'd1', roomId: 'r1' });
+    expect(apiMock.put).toHaveBeenCalledWith('/rooms/assign', {
+      kind: 'device',
+      ref: 'd1',
+      roomId: 'r1',
+    });
     runRoomAction('r1', { on: false });
     expect(apiMock.post).toHaveBeenCalledWith('/rooms/r1/action', { on: false });
   });

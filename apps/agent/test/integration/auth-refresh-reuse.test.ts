@@ -13,16 +13,28 @@ const PASSWORD = 'password123';
 
 // El refresh token vive en la cookie httpOnly (US-91); los helpers lo manejan como tal.
 async function login(app: FastifyInstance, email: string): Promise<string> {
-  const res = await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password: PASSWORD } });
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/auth/login',
+    payload: { email, password: PASSWORD },
+  });
   return refreshCookie(res);
 }
 
 function refresh(app: FastifyInstance, token: string) {
-  return app.inject({ method: 'POST', url: '/api/auth/refresh', cookies: refreshCookieHeader(token) });
+  return app.inject({
+    method: 'POST',
+    url: '/api/auth/refresh',
+    cookies: refreshCookieHeader(token),
+  });
 }
 
 function logout(app: FastifyInstance, token: string) {
-  return app.inject({ method: 'POST', url: '/api/auth/logout', cookies: refreshCookieHeader(token) });
+  return app.inject({
+    method: 'POST',
+    url: '/api/auth/logout',
+    cookies: refreshCookieHeader(token),
+  });
 }
 
 describe('detección de reuso de refresh (US-78, F4)', () => {

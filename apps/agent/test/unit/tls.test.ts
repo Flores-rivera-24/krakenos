@@ -26,11 +26,19 @@ function generarCert(dias: number, cn = 'krakenos.local'): string {
   execFileSync(
     'openssl',
     [
-      'req', '-x509', '-newkey', 'rsa:2048', '-nodes',
-      '-keyout', join(dir, 'key.pem'),
-      '-out', cert,
-      '-days', String(dias),
-      '-subj', `/CN=${cn}`,
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-nodes',
+      '-keyout',
+      join(dir, 'key.pem'),
+      '-out',
+      cert,
+      '-days',
+      String(dias),
+      '-subj',
+      `/CN=${cn}`,
     ],
     { stdio: 'pipe' }, // openssl escupe su barra de progreso por stderr
   );
@@ -52,7 +60,9 @@ describe('readCertificateValidity (US-241)', () => {
     // El servidor ya está sirviendo con lo que tenga cargado: un PEM ilegible no
     // puede ser motivo para caerse.
     expect(readCertificateValidity('')).toBeNull();
-    expect(readCertificateValidity('-----BEGIN CERTIFICATE-----\nnope\n-----END CERTIFICATE-----')).toBeNull();
+    expect(
+      readCertificateValidity('-----BEGIN CERTIFICATE-----\nnope\n-----END CERTIFICATE-----'),
+    ).toBeNull();
     expect(readCertificateValidity('cualquier cosa')).toBeNull();
   });
 });
@@ -70,17 +80,23 @@ describe('classifyCertificateSource (US-241)', () => {
 
   it('reconoce el certificado emitido por la CA local (el de gen-local-ca.sh de verdad)', () => {
     const dir = mkdtempSync(join(tmpdir(), 'krakenos-tls-ca-'));
-    execFileSync('bash', [fileURLToPath(new URL('../../scripts/gen-local-ca.sh', import.meta.url))], {
-      env: {
-        ...process.env,
-        KRAKENOS_CERTS_DIR: join(dir, 'certs'),
-        KRAKENOS_KEYS_DIR: join(dir, 'keys'),
-        KRAKENOS_HOSTNAME: 'casa',
-        KRAKENOS_LAN_IP: '192.168.1.50',
+    execFileSync(
+      'bash',
+      [fileURLToPath(new URL('../../scripts/gen-local-ca.sh', import.meta.url))],
+      {
+        env: {
+          ...process.env,
+          KRAKENOS_CERTS_DIR: join(dir, 'certs'),
+          KRAKENOS_KEYS_DIR: join(dir, 'keys'),
+          KRAKENOS_HOSTNAME: 'casa',
+          KRAKENOS_LAN_IP: '192.168.1.50',
+        },
+        stdio: 'ignore',
       },
-      stdio: 'ignore',
-    });
-    const validity = readCertificateValidity(readFileSync(join(dir, 'certs', 'agent-cert.pem'), 'utf8'));
+    );
+    const validity = readCertificateValidity(
+      readFileSync(join(dir, 'certs', 'agent-cert.pem'), 'utf8'),
+    );
     expect(classifyCertificateSource(validity!)).toBe('local-ca');
   });
 

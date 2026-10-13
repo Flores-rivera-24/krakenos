@@ -11,7 +11,19 @@ import {
   MockFirewallManager,
   createFirewallManager,
 } from '../../src/firewall/index.js';
-import { CompositeIotManager, GoveeIotManager, HueIotManager, KasaIotManager, MatterIotManager, MerossIotManager, MockIotManager, MqttDiscoveryIotManager, ShellyIotManager, ZigbeeIotManager, createIotManager } from '../../src/iot/index.js';
+import {
+  CompositeIotManager,
+  GoveeIotManager,
+  HueIotManager,
+  KasaIotManager,
+  MatterIotManager,
+  MerossIotManager,
+  MockIotManager,
+  MqttDiscoveryIotManager,
+  ShellyIotManager,
+  ZigbeeIotManager,
+  createIotManager,
+} from '../../src/iot/index.js';
 import { MockQosManager, TcQosManager, createQosManager } from '../../src/qos/index.js';
 import { MockVlanManager, SwitchVlanManager, createVlanManager } from '../../src/vlan/index.js';
 import { MockVpnManager, WireguardVpnManager, createVpnManager } from '../../src/vpn/index.js';
@@ -89,14 +101,16 @@ describe('createIotManager', () => {
   });
 
   it('construye la ingesta genérica por MQTT Discovery (US-248)', () => {
-    expect(
-      backendDe({ kind: 'mqtt', mqtt: { url: 'mqtt://localhost:1883' } }),
-    ).toBeInstanceOf(MqttDiscoveryIotManager);
+    expect(backendDe({ kind: 'mqtt', mqtt: { url: 'mqtt://localhost:1883' } })).toBeInstanceOf(
+      MqttDiscoveryIotManager,
+    );
   });
 
   it('lanza si falta el broker de la ingesta MQTT', () => {
     expect(() => createIotManager({ kind: 'mqtt' })).toThrow(/MQTT Discovery/i);
-    expect(() => createIotManager({ kind: 'mqtt', mqtt: { url: '' } })).toThrow(/MQTT_DISCOVERY_URL/);
+    expect(() => createIotManager({ kind: 'mqtt', mqtt: { url: '' } })).toThrow(
+      /MQTT_DISCOVERY_URL/,
+    );
   });
 
   it('la ingesta MQTT convive con un backend por marca (mqtt,hue)', () => {
@@ -108,7 +122,10 @@ describe('createIotManager', () => {
       hue: { url: 'https://x', appKey: 'k' },
     });
     expect(iot.kinds).toEqual(['mqtt', 'hue']);
-    expect((iot.manager as CompositeIotManager).members.map((m) => m.prefix)).toEqual(['mqtt', 'hue']);
+    expect((iot.manager as CompositeIotManager).members.map((m) => m.prefix)).toEqual([
+      'mqtt',
+      'hue',
+    ]);
   });
 
   it('construye un MatterIotManager con su configuración WebSocket', () => {
@@ -142,9 +159,9 @@ describe('createIotManager', () => {
   });
 
   it('lanza si falta el broker Meross', () => {
-    expect(() => createIotManager({ kind: 'meross', meross: { brokerHost: '', devices: [] } })).toThrow(
-      /MEROSS_BROKER_HOST/,
-    );
+    expect(() =>
+      createIotManager({ kind: 'meross', meross: { brokerHost: '', devices: [] } }),
+    ).toThrow(/MEROSS_BROKER_HOST/);
   });
 
   it('el backend SwitchBot ya NO existe: se retiró en US-242', () => {
@@ -160,7 +177,10 @@ describe('createIotManager', () => {
   });
 
   it('admite kasa en una lista multi-IoT (hue,govee,kasa)', () => {
-    const iot = createIotManager({ kind: 'hue,govee,kasa', hue: { url: 'https://x', appKey: 'k' } });
+    const iot = createIotManager({
+      kind: 'hue,govee,kasa',
+      hue: { url: 'https://x', appKey: 'k' },
+    });
     expect(iot.manager).toBeInstanceOf(CompositeIotManager);
   });
 
@@ -202,7 +222,9 @@ describe('createCameraManager', () => {
 
   it('lanza si falta la URL de Frigate', () => {
     expect(() => createCameraManager({ kind: 'frigate' })).toThrow(/Frigate/i);
-    expect(() => createCameraManager({ kind: 'frigate', frigate: { url: '' } })).toThrow(/Frigate/i);
+    expect(() => createCameraManager({ kind: 'frigate', frigate: { url: '' } })).toThrow(
+      /Frigate/i,
+    );
   });
 
   it('lanza para un kind desconocido', () => {

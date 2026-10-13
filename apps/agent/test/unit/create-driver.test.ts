@@ -90,10 +90,16 @@ describe('createDriver', () => {
   it('lanza si falta la configuración MikroTik, el host o las credenciales', () => {
     expect(() => createDriver({ kind: 'mikrotik' })).toThrow(/MikroTik/);
     expect(() =>
-      createDriver({ kind: 'mikrotik', mikrotik: { mode: 'rest', host: '', username: 'a', password: 'b' } }),
+      createDriver({
+        kind: 'mikrotik',
+        mikrotik: { mode: 'rest', host: '', username: 'a', password: 'b' },
+      }),
     ).toThrow(/MIKROTIK_HOST/);
     expect(() =>
-      createDriver({ kind: 'mikrotik', mikrotik: { mode: 'rest', host: 'h', username: '', password: '' } }),
+      createDriver({
+        kind: 'mikrotik',
+        mikrotik: { mode: 'rest', host: 'h', username: '', password: '' },
+      }),
     ).toThrow(/MIKROTIK_USER/);
   });
 

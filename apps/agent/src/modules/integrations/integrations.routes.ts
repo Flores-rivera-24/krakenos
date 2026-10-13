@@ -134,9 +134,10 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
       const { domain } = req.params;
       const { kind, enabled, config } = req.body;
       if (!isKnownKind(domain, kind)) {
-        return reply
-          .code(400)
-          .send({ code: 'UNKNOWN_KIND', message: `Integración desconocida para ${domain}: ${kind}` });
+        return reply.code(400).send({
+          code: 'UNKNOWN_KIND',
+          message: `Integración desconocida para ${domain}: ${kind}`,
+        });
       }
       const blocked = await checkEgress(domain, config, egressPolicy, reply);
       if (blocked) return blocked;
@@ -164,9 +165,10 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
       const { domain } = req.params;
       const { kind, config } = req.body;
       if (!isKnownKind(domain, kind)) {
-        return reply
-          .code(400)
-          .send({ code: 'UNKNOWN_KIND', message: `Integración desconocida para ${domain}: ${kind}` });
+        return reply.code(400).send({
+          code: 'UNKNOWN_KIND',
+          message: `Integración desconocida para ${domain}: ${kind}`,
+        });
       }
       const blocked = await checkEgress(domain, config, egressPolicy, reply);
       if (blocked) return blocked;

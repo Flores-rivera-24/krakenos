@@ -84,9 +84,9 @@ describe('fusionaPrefill', () => {
     // El usuario pudo ajustar su broker a mano (puerto, host distinto): una
     // sugerencia no puede sobrescribirlo.
     const yaHay = { 'zigbee.brokerUrl': 'mqtt://mi-broker.lan:8883' };
-    expect(fusionaPrefill('zigbee', { brokerUrl: 'mqtt://192.168.1.10:1883' }, yaHay, true)).toEqual(
-      {},
-    );
+    expect(
+      fusionaPrefill('zigbee', { brokerUrl: 'mqtt://192.168.1.10:1883' }, yaHay, true),
+    ).toEqual({});
     // Pero si no había nada, se pone.
     expect(fusionaPrefill('zigbee', { brokerUrl: 'mqtt://192.168.1.10:1883' }, {}, true)).toEqual({
       'zigbee.brokerUrl': 'mqtt://192.168.1.10:1883',
@@ -98,7 +98,12 @@ describe('fusionaPrefill', () => {
   });
 
   it('una lista guardada corrupta no rompe la fusión', () => {
-    const salida = fusionaPrefill('shelly', { devices: '[{"ip":"192.168.1.81"}]' }, { 'shelly.devices': '{roto' }, true);
+    const salida = fusionaPrefill(
+      'shelly',
+      { devices: '[{"ip":"192.168.1.81"}]' },
+      { 'shelly.devices': '{roto' },
+      true,
+    );
     expect(JSON.parse(String(salida['shelly.devices']))).toEqual([{ ip: '192.168.1.81' }]);
   });
 });
@@ -106,13 +111,31 @@ describe('fusionaPrefill', () => {
 describe('yaConfigurado', () => {
   it('oculta el aparato que la config demuestra que ya está', () => {
     expect(
-      yaConfigurado('shelly', '192.168.1.80', { devices: '' }, { 'shelly.devices': '[{"ip":"192.168.1.80"}]' }, true),
+      yaConfigurado(
+        'shelly',
+        '192.168.1.80',
+        { devices: '' },
+        { 'shelly.devices': '[{"ip":"192.168.1.80"}]' },
+        true,
+      ),
     ).toBe(true);
     expect(
-      yaConfigurado('kasa', '192.168.1.61', { tapoDeviceIps: '' }, { 'kasa.tapoDeviceIps': '192.168.1.60,192.168.1.61' }, true),
+      yaConfigurado(
+        'kasa',
+        '192.168.1.61',
+        { tapoDeviceIps: '' },
+        { 'kasa.tapoDeviceIps': '192.168.1.60,192.168.1.61' },
+        true,
+      ),
     ).toBe(true);
     expect(
-      yaConfigurado('hue', '192.168.1.2', { bridgeUrl: '' }, { 'hue.bridgeUrl': 'http://192.168.1.2' }, true),
+      yaConfigurado(
+        'hue',
+        '192.168.1.2',
+        { bridgeUrl: '' },
+        { 'hue.bridgeUrl': 'http://192.168.1.2' },
+        true,
+      ),
     ).toBe(true);
   });
 
@@ -120,10 +143,22 @@ describe('yaConfigurado', () => {
     // El fallo que cierra la historia: antes bastaba con que el `kind` estuviera
     // configurado para no volver a sugerir NINGUNO más, nunca.
     expect(
-      yaConfigurado('shelly', '192.168.1.81', { devices: '' }, { 'shelly.devices': '[{"ip":"192.168.1.80"}]' }, true),
+      yaConfigurado(
+        'shelly',
+        '192.168.1.81',
+        { devices: '' },
+        { 'shelly.devices': '[{"ip":"192.168.1.80"}]' },
+        true,
+      ),
     ).toBe(false);
     expect(
-      yaConfigurado('kasa', '192.168.1.99', { tapoDeviceIps: '' }, { 'kasa.tapoDeviceIps': '192.168.1.61' }, true),
+      yaConfigurado(
+        'kasa',
+        '192.168.1.99',
+        { tapoDeviceIps: '' },
+        { 'kasa.tapoDeviceIps': '192.168.1.61' },
+        true,
+      ),
     ).toBe(false);
   });
 
@@ -145,10 +180,38 @@ describe('gate: el prefill de cada huella es config VÁLIDA para su backend', ()
    * comprueba «tiene la forma que creo», sino que se pasa por el **resolver real**.
    */
   const registros: DiscoveryProbeRecord[] = [
-    { type: 'mdns' as const, service: '_shelly._tcp.local', name: 'shellyplus1-a1._shelly._tcp.local', ip: '192.168.1.80', port: 80, txt: { gen: '2' } },
-    { type: 'mdns' as const, service: '_mqtt._tcp.local', name: 'mosquitto._mqtt._tcp.local', ip: '192.168.1.10', port: 1883, txt: {} },
-    { type: 'mdns' as const, service: '_http._tcp.local', name: 'Tapo P110._http._tcp.local', ip: '192.168.1.61', port: 80, txt: {} },
-    { type: 'mdns' as const, service: '_hue._tcp.local', name: 'Hue Bridge._hue._tcp.local', ip: '192.168.1.2', port: 443, txt: {} },
+    {
+      type: 'mdns' as const,
+      service: '_shelly._tcp.local',
+      name: 'shellyplus1-a1._shelly._tcp.local',
+      ip: '192.168.1.80',
+      port: 80,
+      txt: { gen: '2' },
+    },
+    {
+      type: 'mdns' as const,
+      service: '_mqtt._tcp.local',
+      name: 'mosquitto._mqtt._tcp.local',
+      ip: '192.168.1.10',
+      port: 1883,
+      txt: {},
+    },
+    {
+      type: 'mdns' as const,
+      service: '_http._tcp.local',
+      name: 'Tapo P110._http._tcp.local',
+      ip: '192.168.1.61',
+      port: 80,
+      txt: {},
+    },
+    {
+      type: 'mdns' as const,
+      service: '_hue._tcp.local',
+      name: 'Hue Bridge._hue._tcp.local',
+      ip: '192.168.1.2',
+      port: 443,
+      txt: {},
+    },
   ];
 
   it('cada prefill IoT llega íntegro al config del backend', () => {

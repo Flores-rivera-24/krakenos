@@ -119,7 +119,8 @@ export function inferKind(attributes: Record<string, unknown>): IotDeviceKind {
   ) {
     return 'cover';
   }
-  if (findAttribute(attributes, THERMOSTAT_CLUSTER, OCCUPIED_HEATING_SETPOINT_ATTR)) return 'climate';
+  if (findAttribute(attributes, THERMOSTAT_CLUSTER, OCCUPIED_HEATING_SETPOINT_ATTR))
+    return 'climate';
   // Humo antes que contacto, igual que en z2m: un detector combinado es `smoke`.
   if (
     findAttribute(attributes, SMOKE_CO_CLUSTER, SMOKE_STATE_ATTR) ||
@@ -208,7 +209,8 @@ export function nodeToIotDevice(node: MatterNode): IotDevice {
   // hacía— un termostato aparecía sin ninguna lectura, con su consigna al lado y
   // nada con lo que compararla.
   const localTemp = findAttribute(attrs, THERMOSTAT_CLUSTER, LOCAL_TEMPERATURE_ATTR)?.value;
-  const temperatura = typeof temp === 'number' ? temp : typeof localTemp === 'number' ? localTemp : null;
+  const temperatura =
+    typeof temp === 'number' ? temp : typeof localTemp === 'number' ? localTemp : null;
   if (temperatura !== null) {
     readings.push({ metric: 'temperature', value: temperatura / 100, unit: '°C' });
   }
@@ -253,8 +255,10 @@ export function nodeToIotDevice(node: MatterNode): IotDevice {
     // Solo `light` y `plug` tienen encendido (mismo criterio que zigbee2mqtt): una
     // persiana o una cerradura exponen OnOff pero su estado vive en
     // `position`/`locked`, y darles `on` pinta un interruptor que no hace nada.
-    on: kind === 'light' || kind === 'plug' ? (typeof onValue === 'boolean' ? onValue : null) : null,
-    brightness: kind === 'light' && typeof levelValue === 'number' ? levelToPercent(levelValue) : null,
+    on:
+      kind === 'light' || kind === 'plug' ? (typeof onValue === 'boolean' ? onValue : null) : null,
+    brightness:
+      kind === 'light' && typeof levelValue === 'number' ? levelToPercent(levelValue) : null,
     // El color de Matter (cluster Color Control) no se mapea aún (baseline).
     color: null,
     // Las lecturas son del **aparato**, no de su categoría: filtrarlas por `kind`
@@ -295,7 +299,11 @@ function lockState(attrs: Record<string, unknown>): boolean | null {
 }
 
 /** Args de `device_command` para encender/apagar (cluster OnOff). */
-export function buildOnOffArgs(nodeId: number, endpoint: number, on: boolean): Record<string, unknown> {
+export function buildOnOffArgs(
+  nodeId: number,
+  endpoint: number,
+  on: boolean,
+): Record<string, unknown> {
   return {
     node_id: nodeId,
     endpoint_id: endpoint,
@@ -306,7 +314,11 @@ export function buildOnOffArgs(nodeId: number, endpoint: number, on: boolean): R
 }
 
 /** Args de `device_command` para fijar el brillo (cluster LevelControl). */
-export function buildLevelArgs(nodeId: number, endpoint: number, level: number): Record<string, unknown> {
+export function buildLevelArgs(
+  nodeId: number,
+  endpoint: number,
+  level: number,
+): Record<string, unknown> {
   return {
     node_id: nodeId,
     endpoint_id: endpoint,

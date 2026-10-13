@@ -117,7 +117,14 @@ describe('métricas de seguridad (US-244)', () => {
   it('⚠️ la potencia NO es un suceso de seguridad', () => {
     // Era el fallo concreto: un canal Shelly en `sensorDeviceIds` disparaba la
     // alarma al encender una lámpara, porque su potencia cruzaba 1 W.
-    for (const metric of ['power', 'energy', 'temperature', 'humidity', 'battery', 'illuminance'] as IotMetric[]) {
+    for (const metric of [
+      'power',
+      'energy',
+      'temperature',
+      'humidity',
+      'battery',
+      'illuminance',
+    ] as IotMetric[]) {
       expect(isSecurityMetric(metric), metric).toBe(false);
     }
   });

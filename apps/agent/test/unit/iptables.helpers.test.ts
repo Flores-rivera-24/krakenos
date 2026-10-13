@@ -41,12 +41,21 @@ describe('iptables helpers', () => {
     );
     expect(rest).toHaveLength(0);
     expect(argv).toEqual([
-      'iptables', '-A', 'KRAKENOS',
-      '-p', 'tcp',
-      '-s', '10.0.0.5',
-      '--dport', '554',
-      '-m', 'comment', '--comment', 'krakenos:r1',
-      '-j', 'DROP',
+      'iptables',
+      '-A',
+      'KRAKENOS',
+      '-p',
+      'tcp',
+      '-s',
+      '10.0.0.5',
+      '--dport',
+      '554',
+      '-m',
+      'comment',
+      '--comment',
+      'krakenos:r1',
+      '-j',
+      'DROP',
     ]);
   });
 

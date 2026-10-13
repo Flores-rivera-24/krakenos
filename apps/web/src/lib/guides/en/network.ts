@@ -123,7 +123,8 @@ export const NETWORK_GUIDES_EN: GuideTranslations = {
       {
         title: 'Review and adjust',
         body: 'After creating a rule, check that the affected device behaves as you wanted (for example, that it no longer reaches the internet). If something stops working by mistake, disable the rule and try again with a different approach.',
-        warning: 'Be careful not to lock yourself out of KrakenOS or the internet. If in doubt, start with rules that affect a single device.',
+        warning:
+          'Be careful not to lock yourself out of KrakenOS or the internet. If in doubt, start with rules that affect a single device.',
       },
     ],
     troubleshooting: [
@@ -158,7 +159,8 @@ export const NETWORK_GUIDES_EN: GuideTranslations = {
       {
         title: 'Assign devices and check',
         body: 'Place each device in its zone. From then on, devices in an isolated VLAN will have internet but won’t see those in other VLANs. Check that everything that should work still works (for example, controlling your lights from your phone may require allowing that communication between zones).',
-        warning: 'Completely isolating smart devices can stop apps on your phone from “discovering” them. If something stops showing up, you may need to allow a small bridge between zones.',
+        warning:
+          'Completely isolating smart devices can stop apps on your phone from “discovering” them. If something stops showing up, you may need to allow a small bridge between zones.',
       },
     ],
     troubleshooting: [

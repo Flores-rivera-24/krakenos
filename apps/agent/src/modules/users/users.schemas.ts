@@ -10,7 +10,16 @@ const STATUS = { type: 'string', enum: ['active', 'disabled'] } as const;
 const userSummary = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'email', 'displayName', 'role', 'status', 'lastLoginAt', 'expiresAt', 'createdAt'],
+  required: [
+    'id',
+    'email',
+    'displayName',
+    'role',
+    'status',
+    'lastLoginAt',
+    'expiresAt',
+    'createdAt',
+  ],
   properties: {
     id: { type: 'string' },
     email: { type: 'string' },

@@ -230,8 +230,7 @@ export function DnsPage() {
                       <td colSpan={isAdmin ? 2 : 1} className="px-3 py-8 text-center">
                         <p className="text-kr-muted">{t('dns.empty.title')}</p>
                         <p className="mx-auto mt-1 max-w-xs text-kr-xs text-kr-secondary">
-                          {t('dns.empty.desc')}{' '}
-                          {isAdmin && t('dns.empty.cta')}
+                          {t('dns.empty.desc')} {isAdmin && t('dns.empty.cta')}
                         </p>
                       </td>
                     </tr>
@@ -271,42 +270,42 @@ export function DnsPage() {
                 {t('dns.queries.adminOnlyDesc')}
               </Callout>
             ) : (
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary text-secondary-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{t('dns.col.domain')}</th>
-                    <th className="px-3 py-2 text-left">{t('dns.col.client')}</th>
-                    <th className="px-3 py-2 text-left">{t('dns.col.status')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <SkeletonRows cols={3} />
-                  ) : queries.length === 0 ? (
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary text-secondary-foreground">
                     <tr>
-                      <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
-                        {t('dns.queries.empty')}
-                      </td>
+                      <th className="px-3 py-2 text-left">{t('dns.col.domain')}</th>
+                      <th className="px-3 py-2 text-left">{t('dns.col.client')}</th>
+                      <th className="px-3 py-2 text-left">{t('dns.col.status')}</th>
                     </tr>
-                  ) : (
-                    queries.map((q, i) => (
-                      <tr key={`${q.timestamp}-${i}`} className="border-t border-border">
-                        <td className="px-3 py-2 font-mono text-xs">{q.domain}</td>
-                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                          {q.client}
-                        </td>
-                        <td className="px-3 py-2">
-                          <span className={q.blocked ? 'text-destructive' : 'text-success'}>
-                            {q.blocked ? t('dns.blocked') : t('dns.allowed')}
-                          </span>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <SkeletonRows cols={3} />
+                    ) : queries.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="px-3 py-8 text-center text-kr-muted">
+                          {t('dns.queries.empty')}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : (
+                      queries.map((q, i) => (
+                        <tr key={`${q.timestamp}-${i}`} className="border-t border-border">
+                          <td className="px-3 py-2 font-mono text-xs">{q.domain}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                            {q.client}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span className={q.blocked ? 'text-destructive' : 'text-success'}>
+                              {q.blocked ? t('dns.blocked') : t('dns.allowed')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             )}
           </CardContent>
         </Card>

@@ -1,9 +1,4 @@
-import type {
-  AccessPoint,
-  WifiBand,
-  WifiClient,
-  WifiNetworkInfo,
-} from '@krakenos/types';
+import type { AccessPoint, WifiBand, WifiClient, WifiNetworkInfo } from '@krakenos/types';
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -25,16 +20,60 @@ const PHONE_MAC = 'AA:BB:CC:DD:EE:FF';
 class FakeDriver extends MockDriver {
   override async listAccessPoints(): Promise<AccessPoint[]> {
     return [
-      { id: 'ap-1', name: 'AP Salón', model: 'KrakenAP Pro', ip: '192.168.1.2', online: true, networkCount: 2 },
-      { id: 'ap-2', name: 'AP Planta', model: null, ip: '192.168.1.3', online: false, networkCount: 1 },
+      {
+        id: 'ap-1',
+        name: 'AP Salón',
+        model: 'KrakenAP Pro',
+        ip: '192.168.1.2',
+        online: true,
+        networkCount: 2,
+      },
+      {
+        id: 'ap-2',
+        name: 'AP Planta',
+        model: null,
+        ip: '192.168.1.3',
+        online: false,
+        networkCount: 1,
+      },
     ];
   }
 
   override async listWifiNetworks(): Promise<WifiNetworkInfo[]> {
     return [
-      { id: 'net-1', apId: 'ap-1', ssid: 'Kraken', band: '5GHz', security: 'wpa2', enabled: true, hidden: false, isGuest: false, clientCount: 1 },
-      { id: 'net-2', apId: 'ap-1', ssid: 'Kraken', band: '2.4GHz', security: 'wpa2', enabled: true, hidden: false, isGuest: false, clientCount: 1 },
-      { id: 'net-3', apId: 'ap-2', ssid: 'Kraken', band: '5GHz', security: 'wpa2', enabled: true, hidden: false, isGuest: false, clientCount: 0 },
+      {
+        id: 'net-1',
+        apId: 'ap-1',
+        ssid: 'Kraken',
+        band: '5GHz',
+        security: 'wpa2',
+        enabled: true,
+        hidden: false,
+        isGuest: false,
+        clientCount: 1,
+      },
+      {
+        id: 'net-2',
+        apId: 'ap-1',
+        ssid: 'Kraken',
+        band: '2.4GHz',
+        security: 'wpa2',
+        enabled: true,
+        hidden: false,
+        isGuest: false,
+        clientCount: 1,
+      },
+      {
+        id: 'net-3',
+        apId: 'ap-2',
+        ssid: 'Kraken',
+        band: '5GHz',
+        security: 'wpa2',
+        enabled: true,
+        hidden: false,
+        isGuest: false,
+        clientCount: 0,
+      },
     ];
   }
 
@@ -44,7 +83,9 @@ class FakeDriver extends MockDriver {
       // (net-2: -55). Un survey de 5GHz debe registrar -70 e ignorar la lectura
       // de 2.4GHz, aunque sea más fuerte (medición por banda del recorrido).
       'net-1': [{ mac: PHONE_MAC, hostname: 'phone', ip: '192.168.1.42', signalDbm: -70 }],
-      'net-2': [{ mac: PHONE_MAC.toLowerCase(), hostname: 'phone', ip: '192.168.1.42', signalDbm: -55 }],
+      'net-2': [
+        { mac: PHONE_MAC.toLowerCase(), hostname: 'phone', ip: '192.168.1.42', signalDbm: -55 },
+      ],
       'net-3': [],
     };
     return clients[id] ?? null;
@@ -92,7 +133,18 @@ describe('rutas de cobertura', () => {
         heightM: 8,
         walls: [{ id: 'w1', x1: 0, y1: 0, x2: 10, y2: 0, material: 'concrete' }],
         accessPoints: withAp
-          ? [{ id: 'p1', apId: 'ap-1', name: 'AP Salón', x: 5, y: 4, txPowerDbm: 20, bands: [band], enabled: true }]
+          ? [
+              {
+                id: 'p1',
+                apId: 'ap-1',
+                name: 'AP Salón',
+                x: 5,
+                y: 4,
+                txPowerDbm: 20,
+                bands: [band],
+                enabled: true,
+              },
+            ]
           : [],
       },
     });
@@ -102,7 +154,9 @@ describe('rutas de cobertura', () => {
 
   describe('autorización', () => {
     it('GET sin token da 401', async () => {
-      expect((await app.inject({ method: 'GET', url: '/api/coverage/floorplans' })).statusCode).toBe(401);
+      expect(
+        (await app.inject({ method: 'GET', url: '/api/coverage/floorplans' })).statusCode,
+      ).toBe(401);
     });
 
     it('GET por viewer da 200', async () => {
@@ -122,13 +176,28 @@ describe('rutas de cobertura', () => {
       const headers = authHeader(token);
 
       expect(
-        (await app.inject({ method: 'POST', url: '/api/coverage/floorplans', headers, payload: { name: 'x', widthM: 5, heightM: 5 } })).statusCode,
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/coverage/floorplans',
+            headers,
+            payload: { name: 'x', widthM: 5, heightM: 5 },
+          })
+        ).statusCode,
       ).toBe(403);
       expect(
-        (await app.inject({ method: 'PATCH', url: '/api/coverage/floorplans/nope', headers, payload: { name: 'y' } })).statusCode,
+        (
+          await app.inject({
+            method: 'PATCH',
+            url: '/api/coverage/floorplans/nope',
+            headers,
+            payload: { name: 'y' },
+          })
+        ).statusCode,
       ).toBe(403);
       expect(
-        (await app.inject({ method: 'DELETE', url: '/api/coverage/floorplans/nope', headers })).statusCode,
+        (await app.inject({ method: 'DELETE', url: '/api/coverage/floorplans/nope', headers }))
+          .statusCode,
       ).toBe(403);
     });
   });
@@ -181,9 +250,34 @@ describe('rutas de cobertura', () => {
     it('GET/PATCH/DELETE de un id inexistente dan 404', async () => {
       const admin = await seedUser(app, { role: 'admin' });
       const token = signAccess(app, admin);
-      expect((await app.inject({ method: 'GET', url: '/api/coverage/floorplans/nope', headers: authHeader(token) })).statusCode).toBe(404);
-      expect((await app.inject({ method: 'PATCH', url: '/api/coverage/floorplans/nope', headers: authHeader(token), payload: { name: 'z' } })).statusCode).toBe(404);
-      expect((await app.inject({ method: 'DELETE', url: '/api/coverage/floorplans/nope', headers: authHeader(token) })).statusCode).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/api/coverage/floorplans/nope',
+            headers: authHeader(token),
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'PATCH',
+            url: '/api/coverage/floorplans/nope',
+            headers: authHeader(token),
+            payload: { name: 'z' },
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'DELETE',
+            url: '/api/coverage/floorplans/nope',
+            headers: authHeader(token),
+          })
+        ).statusCode,
+      ).toBe(404);
     });
 
     it('PATCH actualiza y DELETE borra (204)', async () => {
@@ -200,9 +294,21 @@ describe('rutas de cobertura', () => {
       expect(patched.statusCode).toBe(200);
       expect(patched.json().name).toBe('Renombrada');
 
-      const del = await app.inject({ method: 'DELETE', url: `/api/coverage/floorplans/${id}`, headers: authHeader(token) });
+      const del = await app.inject({
+        method: 'DELETE',
+        url: `/api/coverage/floorplans/${id}`,
+        headers: authHeader(token),
+      });
       expect(del.statusCode).toBe(204);
-      expect((await app.inject({ method: 'GET', url: `/api/coverage/floorplans/${id}`, headers: authHeader(token) })).statusCode).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/api/coverage/floorplans/${id}`,
+            headers: authHeader(token),
+          })
+        ).statusCode,
+      ).toBe(404);
     });
   });
 
@@ -274,7 +380,9 @@ describe('rutas de cobertura', () => {
         headers: authHeader(token),
         payload: { widthM: 20, heightM: 16 },
       });
-      const afterEdit = (await app.inject({ method: 'GET', url, headers: authHeader(token) })).json();
+      const afterEdit = (
+        await app.inject({ method: 'GET', url, headers: authHeader(token) })
+      ).json();
       expect(afterEdit.widthM).toBe(20);
       expect(afterEdit.heightM).toBe(16);
       expect(afterEdit).not.toEqual(first);
@@ -287,7 +395,15 @@ describe('rutas de cobertura', () => {
       const token = signAccess(app, admin);
       const id = await createPlan(token);
 
-      expect((await app.inject({ method: 'GET', url: '/api/coverage/floorplans/nope/scans', headers: authHeader(token) })).statusCode).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/api/coverage/floorplans/nope/scans',
+            headers: authHeader(token),
+          })
+        ).statusCode,
+      ).toBe(404);
 
       const created = await app.inject({
         method: 'POST',
@@ -297,7 +413,11 @@ describe('rutas de cobertura', () => {
       });
       expect(created.statusCode).toBe(201);
 
-      const list = await app.inject({ method: 'GET', url: `/api/coverage/floorplans/${id}/scans`, headers: authHeader(token) });
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/coverage/floorplans/${id}/scans`,
+        headers: authHeader(token),
+      });
       expect(list.statusCode).toBe(200);
       expect(list.json()).toHaveLength(1);
     });
@@ -326,7 +446,11 @@ describe('rutas de cobertura', () => {
       expect(res.json().rssiDbm).toBe(-70); // banda del survey (5GHz): ignora net-2 (2.4GHz, -55)
       expect(res.json().sample).not.toBeNull();
 
-      const detail = await app.inject({ method: 'GET', url: `/api/coverage/scans/${scan.id}`, headers: authHeader(token) });
+      const detail = await app.inject({
+        method: 'GET',
+        url: `/api/coverage/scans/${scan.id}`,
+        headers: authHeader(token),
+      });
       expect(detail.json().samples).toHaveLength(1);
     });
 
@@ -354,7 +478,11 @@ describe('rutas de cobertura', () => {
       expect(res.json().rssiDbm).toBeNull();
       expect(res.json().sample).toBeNull();
 
-      const detail = await app.inject({ method: 'GET', url: `/api/coverage/scans/${scan.id}`, headers: authHeader(token) });
+      const detail = await app.inject({
+        method: 'GET',
+        url: `/api/coverage/scans/${scan.id}`,
+        headers: authHeader(token),
+      });
       expect(detail.json().samples).toHaveLength(0);
     });
 
@@ -407,11 +535,34 @@ describe('rutas de cobertura', () => {
     it('404 al registrar muestra o leer detalle de un survey inexistente', async () => {
       const admin = await seedUser(app, { role: 'admin' });
       const token = signAccess(app, admin);
-      expect((await app.inject({ method: 'GET', url: '/api/coverage/scans/nope', headers: authHeader(token) })).statusCode).toBe(404);
       expect(
-        (await app.inject({ method: 'POST', url: '/api/coverage/scans/nope/samples', headers: authHeader(token), payload: { x: 0, y: 0, rssiDbm: -50 } })).statusCode,
+        (
+          await app.inject({
+            method: 'GET',
+            url: '/api/coverage/scans/nope',
+            headers: authHeader(token),
+          })
+        ).statusCode,
       ).toBe(404);
-      expect((await app.inject({ method: 'DELETE', url: '/api/coverage/scans/nope', headers: authHeader(token) })).statusCode).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'POST',
+            url: '/api/coverage/scans/nope/samples',
+            headers: authHeader(token),
+            payload: { x: 0, y: 0, rssiDbm: -50 },
+          })
+        ).statusCode,
+      ).toBe(404);
+      expect(
+        (
+          await app.inject({
+            method: 'DELETE',
+            url: '/api/coverage/scans/nope',
+            headers: authHeader(token),
+          })
+        ).statusCode,
+      ).toBe(404);
     });
 
     it('mapa de calor medido de un survey con muestras', async () => {
@@ -433,7 +584,11 @@ describe('rutas de cobertura', () => {
         payload: { x: 2, y: 2, rssiDbm: -45 },
       });
 
-      const res = await app.inject({ method: 'GET', url: `/api/coverage/scans/${scan.id}/heatmap`, headers: authHeader(token) });
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/coverage/scans/${scan.id}/heatmap`,
+        headers: authHeader(token),
+      });
       expect(res.statusCode).toBe(200);
       expect(res.json().source).toBe('measured');
       expect(res.json().cols * res.json().rows).toBe(res.json().values.length);

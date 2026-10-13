@@ -31,7 +31,10 @@ const OUI: Record<string, string> = {
 
 /** Normaliza una MAC a sus 6 primeros dígitos hex en mayúscula. */
 function ouiKey(mac: string): string {
-  return mac.replace(/[^0-9a-fA-F]/g, '').slice(0, 6).toUpperCase();
+  return mac
+    .replace(/[^0-9a-fA-F]/g, '')
+    .slice(0, 6)
+    .toUpperCase();
 }
 
 /** Devuelve el fabricante por OUI, o `null` si no se reconoce. */

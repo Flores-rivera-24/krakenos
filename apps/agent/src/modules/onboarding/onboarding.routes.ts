@@ -45,7 +45,9 @@ export const invitationsRoutes: FastifyPluginAsync = async (app) => {
   // resto de la gestión de usuarios.
   const adminOnly = app.requireActiveAdmin;
 
-  app.get('/', { schema: listInvitationsSchema, preHandler: adminOnly }, async () => service.list());
+  app.get('/', { schema: listInvitationsSchema, preHandler: adminOnly }, async () =>
+    service.list(),
+  );
 
   app.post<{ Body: CreateInvitationRequest }>(
     '/',
@@ -59,9 +61,7 @@ export const invitationsRoutes: FastifyPluginAsync = async (app) => {
           detail: `${invitation.id} · ${invitation.role}`,
           ip: req.ip,
         });
-        return reply
-          .code(201)
-          .send({ invitation, token, path: invitationPath(token) });
+        return reply.code(201).send({ invitation, token, path: invitationPath(token) });
       } catch (err) {
         if (err instanceof InvitationError) {
           return reply.code(409).send({ code: err.code, message: err.message });

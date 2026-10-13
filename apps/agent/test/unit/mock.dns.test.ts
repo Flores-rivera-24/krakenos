@@ -6,7 +6,9 @@ describe('MockDnsManager', () => {
     const dns = new MockDnsManager();
     const stats = await dns.getStats();
     expect(stats.totalQueries).toBeGreaterThan(0);
-    expect(stats.blockedPercent).toBe(Math.round((stats.blockedQueries / stats.totalQueries) * 100));
+    expect(stats.blockedPercent).toBe(
+      Math.round((stats.blockedQueries / stats.totalQueries) * 100),
+    );
     expect(stats.blocklistSize).toBe((await dns.listBlocked()).length);
   });
 

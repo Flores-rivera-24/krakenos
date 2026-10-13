@@ -189,8 +189,12 @@ describe('rutas de autenticación', () => {
     it('el código es de un solo uso', async () => {
       const { code } = await seedConCodigos('unsolo@krakenos.test');
       const payload = { email: 'unsolo@krakenos.test', code };
-      expect((await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode).toBe(200);
-      expect((await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode).toBe(401);
+      expect(
+        (await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode,
+      ).toBe(200);
+      expect(
+        (await app.inject({ method: 'POST', url: '/api/auth/recover', payload })).statusCode,
+      ).toBe(401);
     });
 
     /**
@@ -244,7 +248,9 @@ describe('rutas de autenticación', () => {
     expect(res.statusCode).toBe(204);
     const cleared = res.cookies.find((x) => x.name === 'krakenos_rt');
     // clearCookie emite la cookie vacía / caducada.
-    expect(cleared?.value === '' || cleared?.maxAge === 0 || cleared?.expires !== undefined).toBe(true);
+    expect(cleared?.value === '' || cleared?.maxAge === 0 || cleared?.expires !== undefined).toBe(
+      true,
+    );
   });
 
   it('GET /api/auth/last-session devuelve null por defecto (US-83, divulgación off)', async () => {
@@ -426,7 +432,11 @@ describe('rutas de autenticación', () => {
     await seedUser(app, { email: 's2@krakenos.test', password: 'password123' });
     const a = await loginOk(app, 's2@krakenos.test', 'password123');
     const list = (
-      await app.inject({ method: 'GET', url: '/api/auth/sessions', headers: authHeader(a.accessToken) })
+      await app.inject({
+        method: 'GET',
+        url: '/api/auth/sessions',
+        headers: authHeader(a.accessToken),
+      })
     ).json() as { id: string }[];
 
     const del = await app.inject({
@@ -459,7 +469,11 @@ describe('rutas de autenticación', () => {
     expect(del.statusCode).toBe(204);
 
     const after = (
-      await app.inject({ method: 'GET', url: '/api/auth/sessions', headers: authHeader(a.accessToken) })
+      await app.inject({
+        method: 'GET',
+        url: '/api/auth/sessions',
+        headers: authHeader(a.accessToken),
+      })
     ).json() as unknown[];
     expect(after).toHaveLength(1); // solo la actual sobrevive
   });

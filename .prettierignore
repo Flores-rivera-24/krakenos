@@ -1,0 +1,14 @@
+# Prettier ya respeta .gitignore (dist, coverage, node_modules...). Esto añade lo que
+# esta versionado o puede existir sin estar ignorado y NO debe reformatearse.
+pnpm-lock.yaml
+**/dist
+**/coverage
+playwright-report
+test-results
+graphify-out
+qa-reports
+.stryker-tmp
+# Migraciones SQL/JSON generadas por Prisma.
+apps/agent/prisma/migrations
+# Lo GENERA apps/web/scripts/check-contrast.mjs: si Prettier lo cambia, el gate de contraste falla.
+docs/accessibility.md

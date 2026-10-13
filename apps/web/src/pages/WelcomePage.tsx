@@ -68,7 +68,9 @@ export function WelcomePage() {
           <h1 className="mt-4 max-w-[16ch] text-[clamp(2.1rem,7vw,4rem)] font-semibold leading-[1.02] tracking-[-0.035em] text-kr-primary">
             {t('welcome.title')}
           </h1>
-          <p className="mt-5 max-w-[52ch] text-kr-base text-kr-secondary">{t('welcome.subtitle')}</p>
+          <p className="mt-5 max-w-[52ch] text-kr-base text-kr-secondary">
+            {t('welcome.subtitle')}
+          </p>
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
             {needsSetup === true ? (

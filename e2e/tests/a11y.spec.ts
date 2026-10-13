@@ -82,9 +82,7 @@ for (const enlace of PAGINAS) {
     await page.getByRole('link', { name: enlace }).first().click();
     await esperarPintado(page);
 
-    const { violations } = await new AxeBuilder({ page })
-      .withTags(ETIQUETAS_WCAG)
-      .analyze();
+    const { violations } = await new AxeBuilder({ page }).withTags(ETIQUETAS_WCAG).analyze();
 
     // El mensaje lleva regla + nodos: un fallo tiene que decir QUÉ arreglar sin
     // volver a ejecutar nada.

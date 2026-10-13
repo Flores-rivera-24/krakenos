@@ -11,13 +11,20 @@ import {
 import { useInstallStore } from '@/store/install.store';
 
 /** Un `window` mínimo e inyectable: lo que decide cada función, y nada más. */
-function ventana(over: Partial<VentanaInstalable> & { standalone?: boolean; ua?: string; touch?: number } = {}) {
+function ventana(
+  over: Partial<VentanaInstalable> & { standalone?: boolean; ua?: string; touch?: number } = {},
+) {
   const { standalone, ua, touch, ...resto } = over;
   const oyentes = new Map<string, Set<(e: Event) => void>>();
   const win: VentanaInstalable & { emitir: (tipo: string, e?: Event) => void } = {
     isSecureContext: true,
-    matchMedia: (q: string) => ({ matches: q === '(display-mode: standalone)' && standalone === true }),
-    navigator: { userAgent: ua ?? 'Mozilla/5.0 (Windows NT 10.0) Chrome/130', maxTouchPoints: touch ?? 0 },
+    matchMedia: (q: string) => ({
+      matches: q === '(display-mode: standalone)' && standalone === true,
+    }),
+    navigator: {
+      userAgent: ua ?? 'Mozilla/5.0 (Windows NT 10.0) Chrome/130',
+      maxTouchPoints: touch ?? 0,
+    },
     addEventListener: (t, l) => {
       if (!oyentes.has(t)) oyentes.set(t, new Set());
       oyentes.get(t)?.add(l);
@@ -48,10 +55,16 @@ describe('detección del entorno', () => {
   });
 
   it('iOS: iPhone, iPad clásico e iPadOS (Macintosh con pantalla táctil), pero no un Mac', () => {
-    expect(esIos(ventana({ ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' }))).toBe(true);
+    expect(esIos(ventana({ ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)' }))).toBe(
+      true,
+    );
     expect(esIos(ventana({ ua: 'Mozilla/5.0 (iPad; CPU OS 16_0 like Mac OS X)' }))).toBe(true);
-    expect(esIos(ventana({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', touch: 5 }))).toBe(true);
-    expect(esIos(ventana({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', touch: 0 }))).toBe(false);
+    expect(
+      esIos(ventana({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', touch: 5 })),
+    ).toBe(true);
+    expect(
+      esIos(ventana({ ua: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', touch: 0 })),
+    ).toBe(false);
     expect(esIos(ventana())).toBe(false);
   });
 
@@ -64,11 +77,24 @@ describe('detección del entorno', () => {
 describe('estadoDeInstalacion', () => {
   it('prioriza: corriendo como app > instalada > evento > iOS > sin HTTPS > no soportado', () => {
     const base = { instalada: false, hayEvento: false };
-    expect(estadoDeInstalacion({ ...base, instalada: true, hayEvento: true, win: ventana({ standalone: true }) })).toBe('running');
-    expect(estadoDeInstalacion({ ...base, instalada: true, hayEvento: true, win: ventana() })).toBe('installed');
+    expect(
+      estadoDeInstalacion({
+        ...base,
+        instalada: true,
+        hayEvento: true,
+        win: ventana({ standalone: true }),
+      }),
+    ).toBe('running');
+    expect(estadoDeInstalacion({ ...base, instalada: true, hayEvento: true, win: ventana() })).toBe(
+      'installed',
+    );
     expect(estadoDeInstalacion({ ...base, hayEvento: true, win: ventana() })).toBe('installable');
-    expect(estadoDeInstalacion({ ...base, win: ventana({ ua: 'iPhone', isSecureContext: false }) })).toBe('ios');
-    expect(estadoDeInstalacion({ ...base, win: ventana({ isSecureContext: false }) })).toBe('insecure');
+    expect(
+      estadoDeInstalacion({ ...base, win: ventana({ ua: 'iPhone', isSecureContext: false }) }),
+    ).toBe('ios');
+    expect(estadoDeInstalacion({ ...base, win: ventana({ isSecureContext: false }) })).toBe(
+      'insecure',
+    );
     expect(estadoDeInstalacion({ ...base, win: ventana() })).toBe('unsupported');
   });
 });

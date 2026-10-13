@@ -7,7 +7,9 @@ import type { BeforeInstallPromptEvent, VentanaInstalable } from '@/lib/install'
 import { useInstallStore } from '@/store/install.store';
 import { useToastStore } from '@/store/toast.store';
 
-function ventana(over: { standalone?: boolean; ua?: string; seguro?: boolean } = {}): VentanaInstalable {
+function ventana(
+  over: { standalone?: boolean; ua?: string; seguro?: boolean } = {},
+): VentanaInstalable {
   return {
     isSecureContext: over.seguro ?? true,
     matchMedia: () => ({ matches: over.standalone === true }),
@@ -37,7 +39,9 @@ describe('InstallAppCard', () => {
     useInstallStore.setState({ evento: evento('accepted').e });
     render(<InstallAppCard win={ventana()} />);
     expect(screen.getByText('Instalar como app')).toBeInTheDocument();
-    expect(screen.getByText(/en su propia ventana\. El monitoreo sigue aunque la cierres\./)).toBeInTheDocument();
+    expect(
+      screen.getByText(/en su propia ventana\. El monitoreo sigue aunque la cierres\./),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Instalar app' })).toBeInTheDocument();
     expect(screen.getByText(/edge:\/\/apps/)).toBeInTheDocument();
   });
@@ -48,7 +52,11 @@ describe('InstallAppCard', () => {
     render(<InstallAppCard win={ventana()} />);
     await userEvent.click(screen.getByRole('button', { name: 'Instalar app' }));
 
-    await waitFor(() => expect(screen.getByText('KrakenOS ya está instalada como app en este dispositivo.')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        screen.getByText('KrakenOS ya está instalada como app en este dispositivo.'),
+      ).toBeInTheDocument(),
+    );
     expect(prompt).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('button', { name: 'Instalar app' })).toBeNull();
     const toasts = useToastStore.getState().toasts;
@@ -70,12 +78,18 @@ describe('InstallAppCard', () => {
 
   it('corriendo como app: lo dice, sin botón', () => {
     render(<InstallAppCard win={ventana({ standalone: true })} />);
-    expect(screen.getByText('Estás usando KrakenOS como app, en su propia ventana.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estás usando KrakenOS como app, en su propia ventana.'),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('iOS: da la instrucción manual, sin botón', () => {
-    render(<InstallAppCard win={ventana({ ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)', seguro: false })} />);
+    render(
+      <InstallAppCard
+        win={ventana({ ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)', seguro: false })}
+      />,
+    );
     expect(screen.getByText(/«Compartir» → «Añadir a pantalla de inicio»/)).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
   });
@@ -83,7 +97,9 @@ describe('InstallAppCard', () => {
   it('sin contexto seguro: exige HTTPS y remite a la tarjeta de TLS por su título', () => {
     render(<InstallAppCard win={ventana({ seguro: false })} />);
     expect(
-      screen.getByText(/solo permite instalar la app sobre HTTPS\. Mira la tarjeta «Conexión segura \(HTTPS\)» de esta misma página/),
+      screen.getByText(
+        /solo permite instalar la app sobre HTTPS\. Mira la tarjeta «Conexión segura \(HTTPS\)» de esta misma página/,
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
     expect(screen.queryByText(/edge:\/\/apps/)).toBeNull();
@@ -91,7 +107,9 @@ describe('InstallAppCard', () => {
 
   it('navegador sin soporte: lo dice sin culpar al usuario', () => {
     render(<InstallAppCard win={ventana()} />);
-    expect(screen.getByText(/Este navegador no ofrece la instalación desde aquí/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Este navegador no ofrece la instalación desde aquí/),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button')).toBeNull();
   });
 
@@ -101,12 +119,18 @@ describe('InstallAppCard', () => {
     await act(async () => {
       await changeLocale('en', { persist: false });
     });
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Install app' })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Install app' })).toBeInTheDocument(),
+    );
     expect(screen.getByText('Install as an app')).toBeInTheDocument();
     unmount();
     useInstallStore.setState({ evento: null });
 
     render(<InstallAppCard win={ventana({ seguro: false })} />);
-    expect(screen.getByText(/only allows installing the app over HTTPS\. See the «Secure connection \(HTTPS\)» card/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /only allows installing the app over HTTPS\. See the «Secure connection \(HTTPS\)» card/,
+      ),
+    ).toBeInTheDocument();
   });
 });

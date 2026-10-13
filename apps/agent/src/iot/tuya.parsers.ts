@@ -34,7 +34,9 @@ function clamp(value: number, min: number, max: number): number {
 
 /** Brillo de contrato (0-100) → DPS Tuya (10-1000). `scaleBrightnessToDps(0)=10`, `(100)=1000`. */
 export function scaleBrightnessToDps(pct: number): number {
-  const scaled = Math.round(DPS_BRIGHT_MIN + (clamp(pct, 0, 100) / 100) * (DPS_BRIGHT_MAX - DPS_BRIGHT_MIN));
+  const scaled = Math.round(
+    DPS_BRIGHT_MIN + (clamp(pct, 0, 100) / 100) * (DPS_BRIGHT_MAX - DPS_BRIGHT_MIN),
+  );
   return clamp(scaled, DPS_BRIGHT_MIN, DPS_BRIGHT_MAX);
 }
 
@@ -81,6 +83,7 @@ export function dpsToIotDevice(config: TuyaDeviceConfig, dps: Record<string, unk
 export function stateToTuyaPayload(state: UpdateIotStateRequest): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
   if (state.on !== undefined) payload[DP_ON_NEW] = state.on;
-  if (state.brightness !== undefined) payload[DP_BRIGHT_NEW] = scaleBrightnessToDps(state.brightness);
+  if (state.brightness !== undefined)
+    payload[DP_BRIGHT_NEW] = scaleBrightnessToDps(state.brightness);
   return payload;
 }

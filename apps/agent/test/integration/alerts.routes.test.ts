@@ -21,7 +21,10 @@ describe('reglas de alerta (US-112)', () => {
   beforeEach(async () => {
     await resetDb(app);
     adminToken = signAccess(app, await seedUser(app, { role: 'admin' }));
-    viewerToken = signAccess(app, await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }));
+    viewerToken = signAccess(
+      app,
+      await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' }),
+    );
   });
 
   it('lista el catálogo de reglas con los valores por defecto (lectura auth)', async () => {

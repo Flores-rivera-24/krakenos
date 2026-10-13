@@ -136,7 +136,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
         // Antes el `catch` era ciego y un `HttpError(0)` limpiaba el store igual
         // que un 401 → recargar durante un reinicio del agente te devolvía al
         // login con la cookie todavía buena.
-        set(motivo === 'expired' ? { user: null, tokens: null, lastRefreshFailure: motivo } : { lastRefreshFailure: motivo });
+        set(
+          motivo === 'expired'
+            ? { user: null, tokens: null, lastRefreshFailure: motivo }
+            : { lastRefreshFailure: motivo },
+        );
         return false;
       } finally {
         refreshInFlight = null;

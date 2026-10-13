@@ -111,11 +111,13 @@ export function parseDeviceState(json: unknown): ZigbeeState {
 
   // Magnitudes: se acumulan TODAS (nada de `else if`).
   const temperature = num(s.temperature);
-  if (temperature !== null) readings.push({ metric: 'temperature', value: temperature, unit: '°C' });
+  if (temperature !== null)
+    readings.push({ metric: 'temperature', value: temperature, unit: '°C' });
   const humidity = num(s.humidity);
   if (humidity !== null) readings.push({ metric: 'humidity', value: humidity, unit: '%' });
   const illuminance = num(s.illuminance_lux ?? s.illuminance);
-  if (illuminance !== null) readings.push({ metric: 'illuminance', value: illuminance, unit: 'lx' });
+  if (illuminance !== null)
+    readings.push({ metric: 'illuminance', value: illuminance, unit: 'lx' });
   const battery = num(s.battery);
   if (battery !== null) readings.push({ metric: 'battery', value: battery, unit: '%' });
   const power = num(s.power);

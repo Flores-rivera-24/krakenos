@@ -22,7 +22,13 @@ const iso = (ms: number) => new Date(ms).toISOString();
 
 /** Estado desarmado inicial. */
 export function disarmedState(now: number): AlarmMachineState {
-  return { phase: 'disarmed', mode: null, since: iso(now), countdownEndsAt: null, triggeredBy: null };
+  return {
+    phase: 'disarmed',
+    mode: null,
+    since: iso(now),
+    countdownEndsAt: null,
+    triggeredBy: null,
+  };
 }
 
 /** Arma la alarma: entra en `arming` con la cuenta atrás de salida. */
@@ -80,7 +86,13 @@ export function trigger(
     };
   }
   return {
-    state: { phase: 'triggered', mode: state.mode, since: iso(now), countdownEndsAt: null, triggeredBy: by },
+    state: {
+      phase: 'triggered',
+      mode: state.mode,
+      since: iso(now),
+      countdownEndsAt: null,
+      triggeredBy: by,
+    },
     justTriggered: true,
   };
 }
@@ -90,13 +102,27 @@ export function trigger(
  * salida; `entry`→`triggered` al agotarse la entrada (marca `justTriggered`).
  */
 export function advance(state: AlarmMachineState, now: number): MachineResult {
-  if (state.phase === 'arming' && state.countdownEndsAt && now >= Date.parse(state.countdownEndsAt)) {
+  if (
+    state.phase === 'arming' &&
+    state.countdownEndsAt &&
+    now >= Date.parse(state.countdownEndsAt)
+  ) {
     return {
-      state: { phase: 'armed', mode: state.mode, since: iso(now), countdownEndsAt: null, triggeredBy: null },
+      state: {
+        phase: 'armed',
+        mode: state.mode,
+        since: iso(now),
+        countdownEndsAt: null,
+        triggeredBy: null,
+      },
       justTriggered: false,
     };
   }
-  if (state.phase === 'entry' && state.countdownEndsAt && now >= Date.parse(state.countdownEndsAt)) {
+  if (
+    state.phase === 'entry' &&
+    state.countdownEndsAt &&
+    now >= Date.parse(state.countdownEndsAt)
+  ) {
     return {
       state: {
         phase: 'triggered',

@@ -7,7 +7,13 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 const fakeSocket = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn() }));
@@ -82,7 +88,9 @@ describe('HomeModeWidget (US-169)', () => {
     render(<HomeModeWidget />);
     await screen.findByRole('button', { name: /En casa/ });
     expect(fakeSocket.on).toHaveBeenCalledWith('presence:updated', expect.any(Function));
-    const handler = fakeSocket.on.mock.calls.find((c) => c[0] === 'presence:updated')?.[1] as () => void;
+    const handler = fakeSocket.on.mock.calls.find(
+      (c) => c[0] === 'presence:updated',
+    )?.[1] as () => void;
     apiMock.get.mockClear();
     handler();
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/presence'));

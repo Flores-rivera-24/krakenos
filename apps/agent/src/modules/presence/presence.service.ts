@@ -121,7 +121,9 @@ export class PresenceService {
    * desaparición WiFi no confirma "salió" (el móvil duerme el WiFi de madrugada).
    */
   private async isNightSuppressed(now: Date): Promise<boolean> {
-    const row = await this.app.prisma.setting.findUnique({ where: { key: 'presenceNightSuppress' } });
+    const row = await this.app.prisma.setting.findUnique({
+      where: { key: 'presenceNightSuppress' },
+    });
     const window = parseMaintenanceWindow(row?.value);
     if (!window) return false; // sin franja configurada → nunca suprime
     return isWithinWindow(window, now);
@@ -142,8 +144,7 @@ export class PresenceService {
   async getState(requester: PresenceRequester): Promise<PresenceState> {
     const mode = await this.modeState();
     const users = await this.app.prisma.user.findMany({
-      where:
-        requester.role === 'admin' ? { devices: { some: {} } } : { id: requester.sub },
+      where: requester.role === 'admin' ? { devices: { some: {} } } : { id: requester.sub },
       orderBy: { displayName: 'asc' },
       select: {
         id: true,
@@ -157,7 +158,10 @@ export class PresenceService {
       return {
         userId: u.id,
         displayName: u.displayName,
-        home: this.isHome(u.id, u.devices.some((d) => d.online)),
+        home: this.isHome(
+          u.id,
+          u.devices.some((d) => d.online),
+        ),
         since: last ? last.createdAt.toISOString() : null,
         deviceCount: u.devices.length,
         // `stale` si se le mantiene en casa pero su WiFi dejó de responder (US-220).
@@ -244,7 +248,8 @@ export class PresenceService {
         if (stillOnline > 0) return;
         // Sin señal: no se marca la salida aún (los móviles duermen el WiFi);
         // el barrido la confirmará pasada la gracia + la histéresis (US-220).
-        if (!this.pendingLeave.has(ownerId)) this.pendingLeave.set(ownerId, { since: now, sweeps: 0 });
+        if (!this.pendingLeave.has(ownerId))
+          this.pendingLeave.set(ownerId, { since: now, sweeps: 0 });
       }
     } catch (err) {
       this.app.log.error({ err, event: event.type }, '[presence] fallo procesando el evento');

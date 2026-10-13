@@ -35,7 +35,9 @@ describe('MatterCommissionCard (US-172)', () => {
   });
 
   it('traduce el código de error a un mensaje amable (código inválido)', async () => {
-    apiMock.post.mockRejectedValue(new ApiRequestError(400, { code: 'invalid-code', message: 'x' }));
+    apiMock.post.mockRejectedValue(
+      new ApiRequestError(400, { code: 'invalid-code', message: 'x' }),
+    );
     render(<MatterCommissionCard />);
     const user = userEvent.setup();
     await user.type(screen.getByLabelText('Añadir un dispositivo Matter'), 'MT:BAD');

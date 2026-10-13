@@ -19,10 +19,8 @@ export const pausePerson = (userId: string, minutes: number): Promise<PersonActi
 export const resumePerson = (userId: string): Promise<PersonActionResult> =>
   api.post<PersonActionResult>(`/people/${userId}/resume`);
 
-export const setBedtime = (
-  userId: string,
-  body: SetBedtimeRequest,
-): Promise<PersonActionResult> => api.put<PersonActionResult>(`/people/${userId}/bedtime`, body);
+export const setBedtime = (userId: string, body: SetBedtimeRequest): Promise<PersonActionResult> =>
+  api.put<PersonActionResult>(`/people/${userId}/bedtime`, body);
 
 export const clearBedtime = (userId: string): Promise<PersonActionResult> =>
   api.del<PersonActionResult>(`/people/${userId}/bedtime`);

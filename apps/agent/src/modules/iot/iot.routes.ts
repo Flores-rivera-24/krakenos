@@ -27,7 +27,12 @@ export const iotRoutes: FastifyPluginAsync<IotRoutesOpts> = async (app, opts) =>
       try {
         const device = await iot.setState(req.params.id, req.body);
         app.io.to(IOT_ROOM).emit('iot:device-updated', device);
-        app.audit({ action: 'iot.device.update', userId: req.user.sub, detail: device.id, ip: req.ip });
+        app.audit({
+          action: 'iot.device.update',
+          userId: req.user.sub,
+          detail: device.id,
+          ip: req.ip,
+        });
         return reply.send(device);
       } catch (err) {
         if (err instanceof IotError) {

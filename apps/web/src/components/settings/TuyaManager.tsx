@@ -1,8 +1,4 @@
-import type {
-  CreateTuyaDeviceRequest,
-  TuyaDeviceView,
-  TuyaProtocolVersion,
-} from '@krakenos/types';
+import type { CreateTuyaDeviceRequest, TuyaDeviceView, TuyaProtocolVersion } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +10,13 @@ import { useT } from '@/lib/i18n';
 import { invalidarIot, trasEscribir } from '@/lib/resources';
 
 const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
-const EMPTY: CreateTuyaDeviceRequest = { deviceId: '', localKey: '', ip: '', name: '', version: '3.3' };
+const EMPTY: CreateTuyaDeviceRequest = {
+  deviceId: '',
+  localKey: '',
+  ip: '',
+  name: '',
+  version: '3.3',
+};
 
 interface Props {
   /** Device IDs Tuya alcanzables (derivados de /iot/devices) para el dot de estado. */
@@ -40,15 +42,31 @@ function FocoForm({
   return (
     <div className="grid gap-3 rounded-md border border-kr bg-kr-elevated p-3 sm:grid-cols-2">
       <div className="space-y-1">
-        <Label htmlFor="tf-name" className="text-kr-xs">{t('tuya.name')}</Label>
-        <Input id="tf-name" value={form.name} onChange={(e) => set('name', e.target.value)} maxLength={80} />
+        <Label htmlFor="tf-name" className="text-kr-xs">
+          {t('tuya.name')}
+        </Label>
+        <Input
+          id="tf-name"
+          value={form.name}
+          onChange={(e) => set('name', e.target.value)}
+          maxLength={80}
+        />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-ip" className="text-kr-xs">IP</Label>
-        <Input id="tf-ip" value={form.ip} onChange={(e) => set('ip', e.target.value)} placeholder="192.168.1.x" />
+        <Label htmlFor="tf-ip" className="text-kr-xs">
+          IP
+        </Label>
+        <Input
+          id="tf-ip"
+          value={form.ip}
+          onChange={(e) => set('ip', e.target.value)}
+          placeholder="192.168.1.x"
+        />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-deviceId" className="text-kr-xs">Device ID</Label>
+        <Label htmlFor="tf-deviceId" className="text-kr-xs">
+          Device ID
+        </Label>
         <Input
           id="tf-deviceId"
           value={form.deviceId}
@@ -57,7 +75,9 @@ function FocoForm({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-localKey" className="text-kr-xs">Local Key</Label>
+        <Label htmlFor="tf-localKey" className="text-kr-xs">
+          Local Key
+        </Label>
         <Input
           id="tf-localKey"
           type="password"
@@ -67,7 +87,9 @@ function FocoForm({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-version" className="text-kr-xs">{t('tuya.version')}</Label>
+        <Label htmlFor="tf-version" className="text-kr-xs">
+          {t('tuya.version')}
+        </Label>
         <select
           id="tf-version"
           value={form.version}
@@ -152,16 +174,25 @@ export function TuyaManager({ reachable }: Props) {
                 {editingId === d.deviceId ? (
                   <td colSpan={5} className="p-3">
                     <FocoForm
-                      initial={{ ...EMPTY, deviceId: d.deviceId, ip: d.ip, name: d.name, version: d.version }}
+                      initial={{
+                        ...EMPTY,
+                        deviceId: d.deviceId,
+                        ip: d.ip,
+                        name: d.name,
+                        version: d.version,
+                      }}
                       submitLabel={t('common.save')}
                       onCancel={() => setEditingId(null)}
                       onSubmit={(v) =>
                         handle(async () => {
-                          await trasEscribir(api.patch(`/iot/tuya/devices/${d.deviceId}`, {
-                            ip: v.ip,
-                            name: v.name,
-                            ...(v.localKey ? { localKey: v.localKey } : {}),
-                          }), invalidarIot);
+                          await trasEscribir(
+                            api.patch(`/iot/tuya/devices/${d.deviceId}`, {
+                              ip: v.ip,
+                              name: v.name,
+                              ...(v.localKey ? { localKey: v.localKey } : {}),
+                            }),
+                            invalidarIot,
+                          );
                           setEditingId(null);
                         })
                       }
@@ -186,7 +217,10 @@ export function TuyaManager({ reachable }: Props) {
                             size="sm"
                             onClick={() =>
                               handle(async () => {
-                                await trasEscribir(api.del(`/iot/tuya/devices/${d.deviceId}`), invalidarIot);
+                                await trasEscribir(
+                                  api.del(`/iot/tuya/devices/${d.deviceId}`),
+                                  invalidarIot,
+                                );
                                 setDeletingId(null);
                               })
                             }
@@ -199,10 +233,18 @@ export function TuyaManager({ reachable }: Props) {
                         </span>
                       ) : (
                         <span className="inline-flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => setEditingId(d.deviceId)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingId(d.deviceId)}
+                          >
                             {t('common.edit')}
                           </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDeletingId(d.deviceId)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeletingId(d.deviceId)}
+                          >
                             {t('common.delete')}
                           </Button>
                         </span>

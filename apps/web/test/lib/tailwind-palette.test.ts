@@ -33,15 +33,47 @@ function listarFuentes(dir: string): string[] {
 
 /** Familias de color de la paleta por defecto de Tailwind. */
 const FAMILIAS = [
-  'red', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan',
-  'sky', 'blue', 'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose',
-  'slate', 'gray', 'zinc', 'neutral', 'stone',
+  'red',
+  'orange',
+  'amber',
+  'yellow',
+  'lime',
+  'green',
+  'emerald',
+  'teal',
+  'cyan',
+  'sky',
+  'blue',
+  'indigo',
+  'violet',
+  'purple',
+  'fuchsia',
+  'pink',
+  'rose',
+  'slate',
+  'gray',
+  'zinc',
+  'neutral',
+  'stone',
 ];
 
 /** Utilidades de Tailwind que pintan color. */
 const UTILIDADES = [
-  'text', 'bg', 'border', 'ring', 'fill', 'stroke', 'from', 'to', 'via',
-  'decoration', 'outline', 'divide', 'accent', 'caret', 'shadow',
+  'text',
+  'bg',
+  'border',
+  'ring',
+  'fill',
+  'stroke',
+  'from',
+  'to',
+  'via',
+  'decoration',
+  'outline',
+  'divide',
+  'accent',
+  'caret',
+  'shadow',
 ];
 
 const CRUDO = new RegExp(

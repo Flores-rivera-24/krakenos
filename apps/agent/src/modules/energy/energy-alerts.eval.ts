@@ -66,7 +66,8 @@ export function evaluate(
 
   const aboveSinceMs = state.aboveSinceMs ?? nowMs;
   const sustainedMs = nowMs - aboveSinceMs;
-  const cooldownPassed = state.lastFiredMs === null || nowMs - state.lastFiredMs >= ALERT_COOLDOWN_MS;
+  const cooldownPassed =
+    state.lastFiredMs === null || nowMs - state.lastFiredMs >= ALERT_COOLDOWN_MS;
   const longEnough = sustainedMs >= rule.sustainMinutes * 60_000;
 
   if (longEnough && !state.firing && cooldownPassed) {

@@ -118,9 +118,9 @@ export class EnergyAlertService {
    * dispara las que cruzan. `now` inyectable para los tests.
    */
   async tick(now: Date = new Date()): Promise<void> {
-    const rules = (await this.app.prisma.energyAlertRule.findMany({ where: { enabled: true } })).map(
-      toRule,
-    );
+    const rules = (
+      await this.app.prisma.energyAlertRule.findMany({ where: { enabled: true } })
+    ).map(toRule);
     if (rules.length === 0) return;
 
     const devices = await this.iot.listDevices();

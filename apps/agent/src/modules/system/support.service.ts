@@ -92,7 +92,9 @@ export class SupportService {
   async getTelemetry(): Promise<TelemetrySnapshot> {
     const enabled = await this.deps.telemetryEnabled();
     // Solo consultamos los recuentos si está activada (opt-in estricto).
-    const counts = enabled ? await this.gatherCounts() : { devices: 0, rooms: 0, scenes: 0, automations: 0, users: 0 };
+    const counts = enabled
+      ? await this.gatherCounts()
+      : { devices: 0, rooms: 0, scenes: 0, automations: 0, users: 0 };
     return buildTelemetry(enabled, this.deps.version, counts);
   }
 
@@ -129,9 +131,7 @@ export class SupportService {
         enabled: i.enabled,
         // `config` de `IntegrationConfigInfo` ya viene SIN secretos; `secretsSet`
         // solo lista qué claves hay puestas (nunca su valor).
-        config: Object.fromEntries(
-          Object.entries(i.config).map(([k, v]) => [k, String(v)]),
-        ),
+        config: Object.fromEntries(Object.entries(i.config).map(([k, v]) => [k, String(v)])),
         secretsSet: i.secretsSet,
       })),
       metrics: this.deps.metrics(),

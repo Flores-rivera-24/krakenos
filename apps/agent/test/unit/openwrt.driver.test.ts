@@ -78,14 +78,16 @@ class FakeTransport implements OpenWrtTransport {
 }
 
 function baseTransport(): FakeTransport {
-  return new FakeTransport()
-    .on('command -v nlbw', 'no\n') // sin nlbwmon: el estado de fábrica de OpenWrt
-    // Router con iptables: el caso clásico. Los tests de la pila lo sobrescriben.
-    .on('if command -v iptables', 'iptables\n')
-    .on('cat /proc/uptime', '1234.5 5678.9')
-    .on('cat /proc/net/arp', ARP)
-    .on('uci show wireless', UCI)
-    .on('uci -q get system', 'router-casa');
+  return (
+    new FakeTransport()
+      .on('command -v nlbw', 'no\n') // sin nlbwmon: el estado de fábrica de OpenWrt
+      // Router con iptables: el caso clásico. Los tests de la pila lo sobrescriben.
+      .on('if command -v iptables', 'iptables\n')
+      .on('cat /proc/uptime', '1234.5 5678.9')
+      .on('cat /proc/net/arp', ARP)
+      .on('uci show wireless', UCI)
+      .on('uci -q get system', 'router-casa')
+  );
 }
 
 describe('OpenWrtDriver', () => {
@@ -110,12 +112,18 @@ describe('OpenWrtDriver', () => {
   });
 
   it('scanMdns fusiona umdns + leases con la MAC vía ARP', async () => {
-    t.on('ubus call umdns hosts', JSON.stringify({ 'mac.local': { ipv4: '192.168.1.42', host: 'macbook' } }));
+    t.on(
+      'ubus call umdns hosts',
+      JSON.stringify({ 'mac.local': { ipv4: '192.168.1.42', host: 'macbook' } }),
+    );
     t.on('cat /tmp/dhcp.leases', '1700000000 dc:a6:32:de:ad:02 192.168.1.50 raspberrypi 01:x');
     const devices = await makeDriver().scanMdns();
     const byMac = Object.fromEntries(devices.map((d) => [d.mac, d]));
     expect(byMac['f0:18:98:aa:bb:cc']).toMatchObject({ hostname: 'macbook', source: 'mdns' });
-    expect(byMac['dc:a6:32:de:ad:02']).toMatchObject({ hostname: 'raspberrypi', ip: '192.168.1.50' });
+    expect(byMac['dc:a6:32:de:ad:02']).toMatchObject({
+      hostname: 'raspberrypi',
+      ip: '192.168.1.50',
+    });
   });
 
   it('scanMdns degrada a [] si no hay umdns ni leases', async () => {
@@ -136,7 +144,6 @@ describe('OpenWrtDriver', () => {
     // rx: (3_000_000 - 1_000_000)/2 = 1_000_000 ; tx: (600_000 - 200_000)/2 = 200_000
     expect(second.wan).toMatchObject({ rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 });
   });
-
 
   // ---- Contabilidad por dispositivo con nlbwmon (US-251) ----
 
@@ -350,13 +357,23 @@ describe('OpenWrtDriver', () => {
 
   it('getGuestNetwork mapea la iface de invitados', async () => {
     const guest = await makeDriver().getGuestNetwork();
-    expect(guest).toMatchObject({ ssid: 'Invitados', enabled: false, clientIsolation: true, bandwidthLimitMbps: null });
+    expect(guest).toMatchObject({
+      ssid: 'Invitados',
+      enabled: false,
+      clientIsolation: true,
+      bandwidthLimitMbps: null,
+    });
   });
 
   it('listAccessPoints devuelve el dispositivo como único AP', async () => {
     const aps = await makeDriver().listAccessPoints();
     expect(aps).toHaveLength(1);
-    expect(aps[0]).toMatchObject({ id: 'openwrt', name: 'router-casa', ip: '192.168.1.1', networkCount: 2 });
+    expect(aps[0]).toMatchObject({
+      id: 'openwrt',
+      name: 'router-casa',
+      ip: '192.168.1.1',
+      networkCount: 2,
+    });
   });
 
   it('listWifiNetworks mapea cada iface y marca invitados', async () => {

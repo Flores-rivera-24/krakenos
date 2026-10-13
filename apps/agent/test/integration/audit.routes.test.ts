@@ -1,7 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { hashEmail } from '../../src/plugins/audit.js';
-import { authHeader, buildTestApp, eventually, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import {
+  authHeader,
+  buildTestApp,
+  eventually,
+  resetDb,
+  seedUser,
+  signAccess,
+} from '../helpers/app.js';
 import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 describe('rutas de auditoría', () => {
@@ -20,7 +27,11 @@ describe('rutas de auditoría', () => {
   });
 
   it('un login queda reflejado en el audit log (admin lo consulta)', async () => {
-    const admin = await seedUser(app, { email: 'adm@krakenos.test', password: 'password123', role: 'admin' });
+    const admin = await seedUser(app, {
+      email: 'adm@krakenos.test',
+      password: 'password123',
+      role: 'admin',
+    });
 
     await app.inject({
       method: 'POST',

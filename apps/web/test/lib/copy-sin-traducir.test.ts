@@ -51,7 +51,6 @@ const SUPERFICIES: { nombre: string; re: RegExp }[] = [
  */
 const FUERA_DE_ALCANCE = ['lib/i18n/catalog/', 'lib/guides/'];
 
-
 /** Cuenta las cadenas de copy en español de **un** fichero. */
 function contar(codigo: string): number {
   let n = 0;

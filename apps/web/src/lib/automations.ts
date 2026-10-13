@@ -39,7 +39,9 @@ export const updateAutomation = (id: string, body: UpdateAutomationRuleRequest) 
   api.patch<AutomationRule>(`/automations/${id}`, body);
 export const deleteAutomation = (id: string) => api.del<void>(`/automations/${id}`);
 export const listAutomationRuns = (ruleId?: string) =>
-  api.getList<AutomationRun>(`/automations/runs${ruleId ? `?ruleId=${encodeURIComponent(ruleId)}` : ''}`);
+  api.getList<AutomationRun>(
+    `/automations/runs${ruleId ? `?ruleId=${encodeURIComponent(ruleId)}` : ''}`,
+  );
 
 /** Contexto para resolver ids a nombres humanos en las frases. */
 export interface NameContext {
@@ -53,8 +55,7 @@ export interface NameContext {
   cameraNames?: Map<string, string>;
 }
 
-const iotName = (ctx: NameContext, id: string) =>
-  ctx.devices?.find((d) => d.id === id)?.name ?? id;
+const iotName = (ctx: NameContext, id: string) => ctx.devices?.find((d) => d.id === id)?.name ?? id;
 const macName = (ctx: NameContext, mac: string) => ctx.networkNames?.get(mac) ?? mac;
 
 /**
@@ -74,8 +75,7 @@ export function describeTrigger(
   ctx: NameContext = {},
   t: Traducir = tPorDefecto,
 ): string {
-  const dias = (days: number[]) =>
-    days.map((d) => diasCortos(t)[d] ?? '?').join(' ');
+  const dias = (days: number[]) => days.map((d) => diasCortos(t)[d] ?? '?').join(' ');
 
   switch (trigger.type) {
     case 'device-new':
@@ -139,7 +139,9 @@ export function describeTrigger(
       // Con detección nativa (Frigate, US-214) la regla puede filtrar por objeto.
       const clave = trigger.label ? MOTION_LABEL_KEYS[trigger.label] : undefined;
       const what = trigger.label
-        ? (clave ? t(clave) : t('automation.quoted', { text: trigger.label }))
+        ? clave
+          ? t(clave)
+          : t('automation.quoted', { text: trigger.label })
         : t('automation.motion');
       return t('automation.trigger.motionDetected', { camera, what });
     }

@@ -15,7 +15,13 @@ interface Call {
   csrf?: string;
 }
 
-type Handler = (call: Call) => { status?: number; errorCode?: number; data?: unknown; setCookie?: string; token?: string };
+type Handler = (call: Call) => {
+  status?: number;
+  errorCode?: number;
+  data?: unknown;
+  setCookie?: string;
+  token?: string;
+};
 
 class FakeFetch {
   calls: Call[] = [];
@@ -44,7 +50,7 @@ class FakeFetch {
     const envelope: Record<string, unknown> = {
       errorCode: r.errorCode ?? 0,
       msg: '',
-      result: r.token ? { ...(r.data as object), token: r.token } : r.data ?? null,
+      result: r.token ? { ...(r.data as object), token: r.token } : (r.data ?? null),
     };
     const headers: Record<string, string> = {};
     if (r.setCookie) headers['set-cookie'] = r.setCookie;
@@ -64,7 +70,10 @@ const SITE = 'site-123';
 /** Configura login + autodetección de omadacId + resolución de siteId. */
 function withContext(fake: FakeFetch): FakeFetch {
   return fake
-    .on('POST /api/v2/hotspot/login', () => ({ setCookie: 'TPOMADA_SESSIONID=sess-1; Path=/', token: 'csrf-1' }))
+    .on('POST /api/v2/hotspot/login', () => ({
+      setCookie: 'TPOMADA_SESSIONID=sess-1; Path=/',
+      token: 'csrf-1',
+    }))
     .on('GET /api/info', () => ({ data: { omadacId: OMADAC } }))
     .on(`GET /api/v2/${OMADAC}/users/current`, () => ({
       data: { privilege: { sites: [{ name: 'Default', key: SITE }] } },
@@ -72,13 +81,25 @@ function withContext(fake: FakeFetch): FakeFetch {
 }
 
 function makeDriver(fake: FakeFetch, now?: () => number) {
-  const client = new OmadaClient({ url: 'https://omada.test', username: 'admin', password: 'pw', fetch: fake.fetch });
+  const client = new OmadaClient({
+    url: 'https://omada.test',
+    username: 'admin',
+    password: 'pw',
+    fetch: fake.fetch,
+  });
   return new OmadaDriver({ client, siteName: 'Default', now });
 }
 
 const CLIENTS = {
   data: [
-    { mac: 'AA-BB-CC-DD-EE-FF', ip: '192.168.1.42', name: 'macbook', vendor: 'Apple', ssid: 'Casa', signal: -50 },
+    {
+      mac: 'AA-BB-CC-DD-EE-FF',
+      ip: '192.168.1.42',
+      name: 'macbook',
+      vendor: 'Apple',
+      ssid: 'Casa',
+      signal: -50,
+    },
     { mac: '11-22-33-44-55-66', ip: '192.168.1.50', hostName: 'pi' },
   ],
 };
@@ -90,10 +111,9 @@ describe('OmadaClient transport', () => {
   });
 
   it('hace login, autodetecta omadacId/siteId y reenvía cookie + Csrf-Token', async () => {
-    const fake = withContext(new FakeFetch()).on(
-      `GET /api/v2/${OMADAC}/clients`,
-      () => ({ data: CLIENTS }),
-    );
+    const fake = withContext(new FakeFetch()).on(`GET /api/v2/${OMADAC}/clients`, () => ({
+      data: CLIENTS,
+    }));
     await makeDriver(fake).scanArp();
 
     expect(fake.calls[0]!.path).toBe('/api/v2/hotspot/login');
@@ -171,7 +191,18 @@ describe('OmadaDriver', () => {
 
   it('listAccessPoints consulta devices?type=ap del site', async () => {
     fake.on(`GET /api/v2/${OMADAC}/sites/${SITE}/devices`, () => ({
-      data: { data: [{ mac: 'AA-BB-CC-DD-EE-01', name: 'EAP-Salón', model: 'EAP670', ip: '192.168.1.20', status: 11, clientNum: 3 }] },
+      data: {
+        data: [
+          {
+            mac: 'AA-BB-CC-DD-EE-01',
+            name: 'EAP-Salón',
+            model: 'EAP670',
+            ip: '192.168.1.20',
+            status: 11,
+            clientNum: 3,
+          },
+        ],
+      },
     }));
     const aps = await makeDriver(fake).listAccessPoints();
     expect(aps).toHaveLength(1);

@@ -7,7 +7,13 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -35,7 +41,14 @@ describe('UsersSection — roles del hogar (US-179)', () => {
     apiMock.get.mockReset().mockResolvedValue([summary()]);
     apiMock.post.mockReset().mockResolvedValue(summary());
     useAuthStore.setState({
-      user: { id: 'admin-1', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'admin-1',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });

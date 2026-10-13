@@ -41,7 +41,9 @@ describe('WelcomePage — portada pública (US-269)', () => {
 
     const cta = await screen.findByRole('link', { name: /Crear administrador/ });
     expect(cta).toHaveAttribute('href', '/setup');
-    expect(screen.getByText('Esta instalación todavía no tiene administrador.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Esta instalación todavía no tiene administrador.'),
+    ).toBeInTheDocument();
     // Y no ofrece entrar: no hay cuenta con la que hacerlo.
     expect(screen.queryByRole('link', { name: /Entrar/ })).not.toBeInTheDocument();
   });

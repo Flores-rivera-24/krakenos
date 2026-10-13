@@ -24,7 +24,12 @@ interface OptimisticToggle {
  * El `value` del servidor manda: si cambia (p. ej. un `iot:device-updated` por
  * socket, o un reload tras guardar), se adopta y se descarta cualquier optimismo.
  */
-export function useOptimisticToggle({ value, mutate, onError, onSuccess }: Options): OptimisticToggle {
+export function useOptimisticToggle({
+  value,
+  mutate,
+  onError,
+  onSuccess,
+}: Options): OptimisticToggle {
   const [optimistic, setOptimistic] = useState(value);
   const [pending, setPending] = useState(false);
   const lastValue = useRef(value);

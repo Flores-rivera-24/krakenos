@@ -32,7 +32,11 @@ const OPTS = {
 };
 
 /** Lleva al sujeto justo hasta el umbral (primer bloqueo aplicado). */
-function hastaBloquear(lockout: ReturnType<typeof createAttemptLockout>, sujeto: string, now: number) {
+function hastaBloquear(
+  lockout: ReturnType<typeof createAttemptLockout>,
+  sujeto: string,
+  now: number,
+) {
   for (let i = 0; i < OPTS.failureThreshold; i++) lockout.recordFailure(sujeto, now);
 }
 

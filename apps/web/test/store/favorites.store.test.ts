@@ -19,7 +19,9 @@ describe('favorites.store (US-170)', () => {
   });
 
   it('carga los favoritos del usuario una sola vez (idempotente)', async () => {
-    apiMock.get.mockResolvedValue([{ id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' }]);
+    apiMock.get.mockResolvedValue([
+      { id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' },
+    ]);
     await useFavoritesStore.getState().load();
     await useFavoritesStore.getState().load(); // segunda llamada: no refetch
     expect(apiMock.get).toHaveBeenCalledTimes(1);
@@ -33,7 +35,13 @@ describe('favorites.store (US-170)', () => {
   });
 
   it('toggle fija (POST) cuando no existe y devuelve true', async () => {
-    apiMock.post.mockResolvedValue({ id: 'f1', kind: 'iot', ref: 'light', order: 0, createdAt: '' });
+    apiMock.post.mockResolvedValue({
+      id: 'f1',
+      kind: 'iot',
+      ref: 'light',
+      order: 0,
+      createdAt: '',
+    });
     const now = await useFavoritesStore.getState().toggle('iot', 'light');
     expect(now).toBe(true);
     expect(apiMock.post).toHaveBeenCalledWith('/favorites', { kind: 'iot', ref: 'light' });

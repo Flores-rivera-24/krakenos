@@ -55,7 +55,10 @@ class FakeFetch {
 }
 
 function loginOk(fake: FakeFetch): FakeFetch {
-  return fake.on('POST /api/auth/login', () => ({ status: 200, setCookie: 'TOKEN=jwt-abc; Path=/' }));
+  return fake.on('POST /api/auth/login', () => ({
+    status: 200,
+    setCookie: 'TOKEN=jwt-abc; Path=/',
+  }));
 }
 
 function makeDriver(fake: FakeFetch, now?: () => number) {
@@ -70,7 +73,14 @@ function makeDriver(fake: FakeFetch, now?: () => number) {
 
 const ACTIVE = {
   data: [
-    { mac: 'F0:18:98:AA:BB:CC', ip: '192.168.1.42', name: 'macbook', oui: 'Apple', essid: 'Casa', signal: -55 },
+    {
+      mac: 'F0:18:98:AA:BB:CC',
+      ip: '192.168.1.42',
+      name: 'macbook',
+      oui: 'Apple',
+      essid: 'Casa',
+      signal: -55,
+    },
     { mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50', hostname: 'pi' },
   ],
 };
@@ -83,7 +93,9 @@ describe('UnifiClient transport', () => {
   });
 
   it('hace login antes de la primera petición y reenvía la cookie TOKEN', async () => {
-    const fake = loginOk(new FakeFetch()).on('GET /v2/api/site/default/clients/active', () => ({ data: ACTIVE }));
+    const fake = loginOk(new FakeFetch()).on('GET /v2/api/site/default/clients/active', () => ({
+      data: ACTIVE,
+    }));
     await makeDriver(fake).scanArp();
 
     expect(fake.calls[0]!.path).toBe('/api/auth/login');
@@ -102,7 +114,9 @@ describe('UnifiClient transport', () => {
     expect(devices).toHaveLength(2);
     // Dos logins (inicial + renovación) y dos GET (el 401 y el reintento ok).
     expect(fake.calls.filter((c) => c.path === '/api/auth/login')).toHaveLength(2);
-    expect(fake.calls.filter((c) => c.path === '/v2/api/site/default/clients/active')).toHaveLength(2);
+    expect(fake.calls.filter((c) => c.path === '/v2/api/site/default/clients/active')).toHaveLength(
+      2,
+    );
   });
 });
 
@@ -117,7 +131,9 @@ describe('UnifiDriver', () => {
     fake.on('GET /v2/api/site/default/stat/health', () => ({ data: [] }));
     expect(await makeDriver(fake).healthcheck()).toBe(true);
 
-    const down = loginOk(new FakeFetch()).on('GET /v2/api/site/default/stat/health', () => ({ status: 500 }));
+    const down = loginOk(new FakeFetch()).on('GET /v2/api/site/default/stat/health', () => ({
+      status: 500,
+    }));
     expect(await makeDriver(down).healthcheck()).toBe(false);
   });
 
@@ -132,9 +148,14 @@ describe('UnifiDriver', () => {
     fake.on('GET /v2/api/site/default/stat/alluser', () => ({
       data: [{ mac: 'dc:a6:32:de:ad:02', ip: '192.168.1.50', hostname: 'pi' }],
     }));
-    expect((await makeDriver(fake).scanMdns())[0]).toMatchObject({ source: 'mdns', hostname: 'pi' });
+    expect((await makeDriver(fake).scanMdns())[0]).toMatchObject({
+      source: 'mdns',
+      hostname: 'pi',
+    });
 
-    const broken = loginOk(new FakeFetch()).on('GET /v2/api/site/default/stat/alluser', () => ({ status: 500 }));
+    const broken = loginOk(new FakeFetch()).on('GET /v2/api/site/default/stat/alluser', () => ({
+      status: 500,
+    }));
     expect(await makeDriver(broken).scanMdns()).toEqual([]);
   });
 
@@ -161,7 +182,14 @@ describe('UnifiDriver', () => {
 
   it('getWifi/updateWifi operan sobre la WLAN principal (no invitados)', async () => {
     const wlans = [
-      { _id: 'w1', name: 'Casa', wlan_band: 'na', enabled: true, is_guest: false, security: 'wpapsk' },
+      {
+        _id: 'w1',
+        name: 'Casa',
+        wlan_band: 'na',
+        enabled: true,
+        is_guest: false,
+        security: 'wpapsk',
+      },
       { _id: 'w2', name: 'Invitados', wlan_band: 'ng', is_guest: true },
     ];
     fake

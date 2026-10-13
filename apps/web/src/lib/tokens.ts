@@ -1,8 +1,4 @@
-import type {
-  ApiTokenInfo,
-  CreateApiTokenRequest,
-  CreateApiTokenResponse,
-} from '@krakenos/types';
+import type { ApiTokenInfo, CreateApiTokenRequest, CreateApiTokenResponse } from '@krakenos/types';
 import { api } from '@/lib/api';
 
 /** Cliente de los tokens personales de API (US-174). Autoservicio por usuario. */

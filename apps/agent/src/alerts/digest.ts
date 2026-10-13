@@ -81,7 +81,8 @@ export async function buildDigest(
     );
   }
 
-  if (newDevices.length === 0 && securityEvents === 0 && runs === 0 && usageBytes === 0) return null;
+  if (newDevices.length === 0 && securityEvents === 0 && runs === 0 && usageBytes === 0)
+    return null;
 
   const lines: string[] = [];
   if (newDevices.length > 0) {
@@ -184,7 +185,8 @@ export class DigestService {
       intervalMs,
       immediate: true, // fija prevTick
       tick: () => this.tick(),
-      onError: (err) => this.app.log.error({ err }, '[digest] el barrido falló; se omite este ciclo'),
+      onError: (err) =>
+        this.app.log.error({ err }, '[digest] el barrido falló; se omite este ciclo'),
       onSkip: () =>
         this.app.log.warn('[digest] el barrido anterior sigue en curso; se salta este ciclo'),
     });

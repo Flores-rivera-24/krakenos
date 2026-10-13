@@ -73,7 +73,10 @@ export function Callout({ variant, title, children, className, standing }: Callo
   const key: CalloutVariant = variant ?? 'info';
   const Icon = ICONS[key];
   return (
-    <div role={standing ? 'note' : ROLE[key]} className={cn(calloutVariants({ variant, className }))}>
+    <div
+      role={standing ? 'note' : ROLE[key]}
+      className={cn(calloutVariants({ variant, className }))}
+    >
       <Icon className={cn('mt-0.5 h-5 w-5 shrink-0', ICON_COLOR[key])} aria-hidden />
       <div className="min-w-0 space-y-1">
         {title && <p className="font-semibold text-kr-primary">{title}</p>}

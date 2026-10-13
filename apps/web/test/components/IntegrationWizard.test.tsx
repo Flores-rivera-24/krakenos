@@ -251,9 +251,7 @@ describe('IntegrationWizard en inglés', () => {
     );
 
     expect(await screen.findByText("You'll need the manufacturer's app")).toBeInTheDocument();
-    expect(
-      screen.getByText(/turn on local control on each device/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/turn on local control on each device/)).toBeInTheDocument();
   });
 
   it('el botón de probar y el de guardar sin probar se traducen', async () => {

@@ -8,7 +8,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -92,7 +99,9 @@ describe('AutomationsPage (US-167)', () => {
 
     expect(await screen.findByText('Intruso fuera')).toBeInTheDocument();
     expect(
-      screen.getByText(/Cuando aparece un dispositivo desconocido → bloquea el dispositivo del evento/),
+      screen.getByText(
+        /Cuando aparece un dispositivo desconocido → bloquea el dispositivo del evento/,
+      ),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('switch', { name: 'Activar Intruso fuera' }));

@@ -160,14 +160,23 @@ describe('plantillas de valor', () => {
     expect(extraerValor(p, 'no soy json')).toBeNull();
     expect(extraerValor(p, '{"otra":1}')).toBeNull();
     expect(extraerValor({ tipo: 'directa' }, 'ON')).toBe('ON');
-    expect(extraerValor(compilarPlantilla("{{ value_json['ENERGY']['Power'] }}"), '{"ENERGY":{"Power":42}}')).toBe('42');
+    expect(
+      extraerValor(
+        compilarPlantilla("{{ value_json['ENERGY']['Power'] }}"),
+        '{"ENERGY":{"Power":42}}',
+      ),
+    ).toBe('42');
   });
 
   it('⚠️ la ruta solo recorre propiedades PROPIAS del mensaje', () => {
     // La escribe quien publica en el broker. Sin la guarda, `constructor` o
     // `__proto__` devolverían como «lectura del sensor» algo que no está en el
     // mensaje (lo cazó el SAST al revisar esta historia).
-    for (const tpl of ['{{ value_json.constructor }}', '{{ value_json.__proto__ }}', '{{ value_json.a.toString }}']) {
+    for (const tpl of [
+      '{{ value_json.constructor }}',
+      '{{ value_json.__proto__ }}',
+      '{{ value_json.a.toString }}',
+    ]) {
       expect(extraerValor(compilarPlantilla(tpl), '{"a":{"b":1}}'), tpl).toBeNull();
     }
     // Y lo que sí está en el mensaje se sigue leyendo.
@@ -221,7 +230,10 @@ describe('parseDiscoveryConfig', () => {
   it('agrupa por el identificador del aparato, no por la entidad', () => {
     // Es lo que hace que un enchufe con medidor sea UN aparato con lecturas y no
     // tres aparatos sueltos (para eso US-244 volvió `readings` una lista).
-    const rele = parseDiscoveryConfig(topic, { device: { identifiers: ['abc'] }, unique_id: 'abc_rl' });
+    const rele = parseDiscoveryConfig(topic, {
+      device: { identifiers: ['abc'] },
+      unique_id: 'abc_rl',
+    });
     const potencia = parseDiscoveryConfig(
       { component: 'sensor', nodeId: null, objectId: 'pot' },
       { device: { identifiers: ['abc'] }, unique_id: 'abc_pw' },
@@ -237,7 +249,9 @@ describe('parseDiscoveryConfig', () => {
 
   it('descarta componentes que el contrato no representa', () => {
     for (const component of ['fan', 'button', 'number', 'vacuum', 'siren']) {
-      expect(parseDiscoveryConfig({ component, nodeId: null, objectId: 'x' }, { name: 'X' })).toBeNull();
+      expect(
+        parseDiscoveryConfig({ component, nodeId: null, objectId: 'x' }, { name: 'X' }),
+      ).toBeNull();
     }
   });
 
@@ -250,9 +264,14 @@ describe('parseDiscoveryConfig', () => {
 
 describe('⚠️ no ingerir nuestra propia publicación', () => {
   it('reconoce el nodo, el unique_id y el identificador de KrakenOS', () => {
-    expect(esNuestraPropiaConfig({ component: 'switch', nodeId: 'krakenos', objectId: 'x' }, {})).toBe(true);
     expect(
-      esNuestraPropiaConfig({ component: 'switch', nodeId: null, objectId: 'x' }, { unique_id: 'krakenos_iot_1' }),
+      esNuestraPropiaConfig({ component: 'switch', nodeId: 'krakenos', objectId: 'x' }, {}),
+    ).toBe(true);
+    expect(
+      esNuestraPropiaConfig(
+        { component: 'switch', nodeId: null, objectId: 'x' },
+        { unique_id: 'krakenos_iot_1' },
+      ),
     ).toBe(true);
     expect(
       esNuestraPropiaConfig(
@@ -261,26 +280,43 @@ describe('⚠️ no ingerir nuestra propia publicación', () => {
       ),
     ).toBe(true);
     expect(
-      esNuestraPropiaConfig({ component: 'switch', nodeId: 'tasmota', objectId: 'x' }, { unique_id: 'x' }),
+      esNuestraPropiaConfig(
+        { component: 'switch', nodeId: 'tasmota', objectId: 'x' },
+        { unique_id: 'x' },
+      ),
     ).toBe(false);
   });
 });
 
 describe('categoría del aparato', () => {
   it('resuelve las específicas ANTES que el interruptor (lección de US-244)', () => {
-    expect(categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'sensor' })])).toBe('plug');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'sensor' })]),
+    ).toBe('plug');
     // Una persiana con sensor de posición sigue siendo una persiana: si ganara
     // `switch`, la UI le pintaría un interruptor y le mandaría ON.
-    expect(categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'cover' })])).toBe('cover');
-    expect(categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'light' })])).toBe('light');
-    expect(categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'lock' })])).toBe('lock');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'cover' })]),
+    ).toBe('cover');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'light' })]),
+    ).toBe('light');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'switch' }), entidad({ component: 'lock' })]),
+    ).toBe('lock');
     expect(categoriaDeEntidades([entidad({ component: 'climate' })])).toBe('climate');
   });
 
   it('clasifica los binarios por su device_class', () => {
-    expect(categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'door' })])).toBe('contact');
-    expect(categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'window' })])).toBe('contact');
-    expect(categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'smoke' })])).toBe('smoke');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'door' })]),
+    ).toBe('contact');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'window' })]),
+    ).toBe('contact');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'smoke' })]),
+    ).toBe('smoke');
     // Humo antes que contacto en un detector combinado.
     expect(
       categoriaDeEntidades([
@@ -288,7 +324,9 @@ describe('categoría del aparato', () => {
         entidad({ component: 'binary_sensor', deviceClass: 'smoke' }),
       ]),
     ).toBe('smoke');
-    expect(categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'motion' })])).toBe('sensor');
+    expect(
+      categoriaDeEntidades([entidad({ component: 'binary_sensor', deviceClass: 'motion' })]),
+    ).toBe('sensor');
     expect(categoriaDeEntidades([entidad({ component: 'sensor' })])).toBe('sensor');
   });
 });
@@ -324,29 +362,46 @@ describe('métricas', () => {
     // zigbee2mqtt: `contact: true` significa CERRADO → 0.
     const z2m = parseDeviceState({ contact: true }).readings.find((r) => r.metric === 'contact');
     expect(z2m?.value).toBe(0);
-    expect(parseDeviceState({ contact: false }).readings.find((r) => r.metric === 'contact')?.value).toBe(1);
+    expect(
+      parseDeviceState({ contact: false }).readings.find((r) => r.metric === 'contact')?.value,
+    ).toBe(1);
   });
 
   it('una lectura de sensor exige un número', () => {
     const s = entidad({ component: 'sensor', deviceClass: 'temperature', unit: '°C' });
     expect(lecturaDeSensor(s, '21.5')).toEqual({ metric: 'temperature', value: 21.5, unit: '°C' });
     expect(lecturaDeSensor(s, 'unknown')).toBeNull();
-    expect(lecturaDeSensor(entidad({ component: 'sensor', deviceClass: 'pressure' }), '1013')).toBeNull();
+    expect(
+      lecturaDeSensor(entidad({ component: 'sensor', deviceClass: 'pressure' }), '1013'),
+    ).toBeNull();
   });
 
   it('normaliza potencia y energía a W y Wh', () => {
-    expect(normalizarEnergia({ metric: 'power', value: 1.5, unit: 'kW' })).toEqual({ powerW: 1500 });
+    expect(normalizarEnergia({ metric: 'power', value: 1.5, unit: 'kW' })).toEqual({
+      powerW: 1500,
+    });
     expect(normalizarEnergia({ metric: 'power', value: 40, unit: 'W' })).toEqual({ powerW: 40 });
-    expect(normalizarEnergia({ metric: 'energy', value: 2, unit: 'kWh' })).toEqual({ energyWh: 2000 });
+    expect(normalizarEnergia({ metric: 'energy', value: 2, unit: 'kWh' })).toEqual({
+      energyWh: 2000,
+    });
     expect(normalizarEnergia({ metric: 'battery', value: 90, unit: '%' })).toEqual({});
   });
 });
 
 describe('construirOrdenes', () => {
   it('enciende y apaga con los payloads que el aparato declara', () => {
-    const sw = entidad({ component: 'switch', commandTopic: 'cmnd/x/POWER', payloadOn: '1', payloadOff: '0' });
-    expect(construirOrdenes([sw], 'plug', { on: true })).toEqual([{ topic: 'cmnd/x/POWER', payload: '1' }]);
-    expect(construirOrdenes([sw], 'plug', { on: false })).toEqual([{ topic: 'cmnd/x/POWER', payload: '0' }]);
+    const sw = entidad({
+      component: 'switch',
+      commandTopic: 'cmnd/x/POWER',
+      payloadOn: '1',
+      payloadOff: '0',
+    });
+    expect(construirOrdenes([sw], 'plug', { on: true })).toEqual([
+      { topic: 'cmnd/x/POWER', payload: '1' },
+    ]);
+    expect(construirOrdenes([sw], 'plug', { on: false })).toEqual([
+      { topic: 'cmnd/x/POWER', payload: '0' },
+    ]);
   });
 
   it('convierte el brillo a la escala del aparato y enciende con él', () => {
@@ -365,8 +420,15 @@ describe('construirOrdenes', () => {
       { topic: 'luz/bri/set', payload: '128' },
     ]);
     // Escala propia (ESPHome usa a veces 100).
-    const cien = entidad({ component: 'light', brightnessCommandTopic: 'l/b', brightnessScale: 100 });
-    expect(construirOrdenes([cien], 'light', { brightness: 40 })[0]).toEqual({ topic: 'l/b', payload: '40' });
+    const cien = entidad({
+      component: 'light',
+      brightnessCommandTopic: 'l/b',
+      brightnessScale: 100,
+    });
+    expect(construirOrdenes([cien], 'light', { brightness: 40 })[0]).toEqual({
+      topic: 'l/b',
+      payload: '40',
+    });
   });
 
   it('una persiana va por posición, escalada a su propio rango', () => {
@@ -381,11 +443,25 @@ describe('construirOrdenes', () => {
       { topic: 'persiana/pos/set', payload: '30' },
     ]);
     // Rango invertido (algunos aparatos declaran 0 = abierta).
-    const invertida = entidad({ component: 'cover', setPositionTopic: 'p', positionOpen: 0, positionClosed: 100 });
-    expect(construirOrdenes([invertida], 'cover', { position: 25 })).toEqual([{ topic: 'p', payload: '75' }]);
+    const invertida = entidad({
+      component: 'cover',
+      setPositionTopic: 'p',
+      positionOpen: 0,
+      positionClosed: 100,
+    });
+    expect(construirOrdenes([invertida], 'cover', { position: 25 })).toEqual([
+      { topic: 'p', payload: '75' },
+    ]);
     // Sin topic de posición, cae al abrir/cerrar declarado.
-    const simple = entidad({ component: 'cover', commandTopic: 'p/set', payloadOpen: 'UP', payloadClose: 'DOWN' });
-    expect(construirOrdenes([simple], 'cover', { on: true })).toEqual([{ topic: 'p/set', payload: 'UP' }]);
+    const simple = entidad({
+      component: 'cover',
+      commandTopic: 'p/set',
+      payloadOpen: 'UP',
+      payloadClose: 'DOWN',
+    });
+    expect(construirOrdenes([simple], 'cover', { on: true })).toEqual([
+      { topic: 'p/set', payload: 'UP' },
+    ]);
   });
 
   it('un termostato manda su consigna', () => {
@@ -398,7 +474,11 @@ describe('construirOrdenes', () => {
   it('sin topic de control declarado no inventa ninguno', () => {
     // Publicar en un topic inventado sería mandar la orden al vacío y decir «hecho».
     expect(construirOrdenes([entidad({ component: 'switch' })], 'plug', { on: true })).toEqual([]);
-    expect(construirOrdenes([entidad({ component: 'cover' })], 'cover', { position: 10 })).toEqual([]);
-    expect(construirOrdenes([entidad({ component: 'climate' })], 'climate', { targetC: 20 })).toEqual([]);
+    expect(construirOrdenes([entidad({ component: 'cover' })], 'cover', { position: 10 })).toEqual(
+      [],
+    );
+    expect(
+      construirOrdenes([entidad({ component: 'climate' })], 'climate', { targetC: 20 }),
+    ).toEqual([]);
   });
 });

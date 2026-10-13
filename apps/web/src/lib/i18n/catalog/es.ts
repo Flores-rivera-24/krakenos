@@ -76,7 +76,8 @@ export const es = {
   'setup.password': 'Contraseña',
   'setup.confirm': 'Confirmar contraseña',
   'setup.token': 'Token de configuración',
-  'setup.tokenHint': 'Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).',
+  'setup.tokenHint':
+    'Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).',
   'setup.submit': 'Crear administrador',
   'setup.submitting': 'Configurando…',
   'setup.error.mismatch': 'Las contraseñas no coinciden.',
@@ -183,7 +184,8 @@ export const es = {
   'settings.uiMode.simpleDesc':
     'Solo lo cotidiano: dispositivos, hogar, WiFi y cámaras. Sin jerga técnica.',
   'settings.uiMode.advanced': 'Avanzado',
-  'settings.uiMode.advancedDesc': 'Todo, incluida la red avanzada (VPN, firewall, VLANs, QoS, DNS).',
+  'settings.uiMode.advancedDesc':
+    'Todo, incluida la red avanzada (VPN, firewall, VLANs, QoS, DNS).',
   'settings.uiMode.simpleOn': 'Modo sencillo activado',
   'settings.uiMode.advancedOn': 'Modo avanzado activado',
   'settings.uiMode.error': 'No se pudo cambiar el modo',
@@ -214,14 +216,16 @@ export const es = {
   'settings.update.cancelling': 'Cancelando…',
   'settings.update.cancelled': 'Actualización cancelada',
   'settings.update.cancelError': 'No se pudo cancelar la actualización',
-  'settings.update.dockerHint': 'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
+  'settings.update.dockerHint':
+    'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
   'settings.update.copyCommand': 'Copiar comando',
   'settings.update.copied': '¡Copiado!',
   'settings.update.maintenanceWindow': 'Ventana de mantenimiento: {window}',
   'settings.update.started': 'Actualización iniciada',
   'settings.update.error': 'No se pudo iniciar la actualización',
   'settings.update.lastOk': 'Última actualización correcta: {from} → {to}',
-  'settings.update.lastRolledBack': 'Última actualización revertida a {from} (la nueva versión falló).',
+  'settings.update.lastRolledBack':
+    'Última actualización revertida a {from} (la nueva versión falló).',
   'settings.update.lastFailed': 'La última actualización falló.',
   'settings.update.nodeTooOld':
     'Esta versión necesita Node {version} o superior y el sistema tiene uno anterior. Actualiza con <c>sudo bash scripts/install.sh --update</c>, que instala el Node necesario.',
@@ -295,7 +299,8 @@ export const es = {
 
   // --- Ajustes → Tokens de API (US-174) ---
   'settings.apiTokens.title': 'Tokens de API',
-  'settings.apiTokens.desc': 'Da acceso a Home Assistant, Node-RED u otras apps sin darles tu contraseña. Los tokens leen el estado y, opcionalmente, controlan dispositivos; nunca administran.',
+  'settings.apiTokens.desc':
+    'Da acceso a Home Assistant, Node-RED u otras apps sin darles tu contraseña. Los tokens leen el estado y, opcionalmente, controlan dispositivos; nunca administran.',
   'settings.apiTokens.name': 'Nombre',
   'settings.apiTokens.namePlaceholder': 'p. ej. Home Assistant',
   'settings.apiTokens.scopes': 'Permisos',
@@ -314,7 +319,8 @@ export const es = {
 
   // --- Ajustes → Publicar a MQTT (US-174) ---
   'settings.mqtt.title': 'Publicar a MQTT',
-  'settings.mqtt.desc': 'Publica el estado de tu hogar (IoT, energía) a un broker MQTT local para integrarlo con Home Assistant o Node-RED. La contraseña se guarda cifrada.',
+  'settings.mqtt.desc':
+    'Publica el estado de tu hogar (IoT, energía) a un broker MQTT local para integrarlo con Home Assistant o Node-RED. La contraseña se guarda cifrada.',
   'settings.mqtt.enabled': 'Activar publicación',
   'settings.mqtt.url': 'Broker',
   'settings.mqtt.username': 'Usuario',
@@ -422,8 +428,7 @@ export const es = {
   'vpn.tailscale.copy': 'Copiar',
   'vpn.tailscale.copied': '¡Copiado!',
   'vpn.mobile.title': 'Tu móvil en 3 pasos',
-  'vpn.mobile.desc':
-    'Con esto, abrir la app en el teléfono conecta directo — en casa y fuera.',
+  'vpn.mobile.desc': 'Con esto, abrir la app en el teléfono conecta directo — en casa y fuera.',
   'vpn.mobile.step1.title': 'Instala la app (PWA)',
   'vpn.mobile.step1.desc':
     'Abre KrakenOS en el navegador del teléfono y añádela a la pantalla de inicio (Android: menú de Chrome → «Añadir a pantalla de inicio»; iPhone: Compartir → «Añadir a pantalla de inicio»). En iPhone, las notificaciones push solo llegan con la app instalada.',
@@ -619,7 +624,8 @@ export const es = {
     'Cuando la red se satura, el tráfico de prioridad alta pasa primero y el de prioridad baja espera. La mayoría del tráfico va en «Normal».',
   'qos.priorityHelpLabel': '¿Qué es la prioridad?',
   'qos.download': 'Descarga en kbps (0 = sin límite)',
-  'qos.kbpsHelp': 'Límite de velocidad en kbps (1000 kbps ≈ 1 Mbps). Escribe 0 para no poner límite.',
+  'qos.kbpsHelp':
+    'Límite de velocidad en kbps (1000 kbps ≈ 1 Mbps). Escribe 0 para no poner límite.',
   'qos.kbpsHelpLabel': '¿Qué son los kbps?',
   'qos.upload': 'Subida en kbps (0 = sin límite)',
   'qos.creating': 'Creando…',
@@ -731,7 +737,8 @@ export const es = {
   'firewall.empty.title': 'Aún no hay reglas configuradas.',
   'firewall.empty.desc':
     'El cortafuegos decide qué conexiones se permiten y cuáles se bloquean. Sin reglas, todo el tráfico pasa.',
-  'firewall.empty.cta': 'Crea una arriba para, por ejemplo, impedir que un aparato salga a internet.',
+  'firewall.empty.cta':
+    'Crea una arriba para, por ejemplo, impedir que un aparato salga a internet.',
   'firewall.toggleError': 'No se pudo actualizar {name}',
   'firewall.toggleLabel': 'Activar regla {name}',
   'firewall.deleteLabel': 'Eliminar regla {name}',
@@ -788,7 +795,8 @@ export const es = {
   // --- Escenas (US-166) ---
   'scenes.title': 'Escenas',
   'scenes.subtitle': 'Deja varios dispositivos como quieres con un solo toque.',
-  'scenes.scheduleMoved': 'Para que una escena se active sola a una hora o al atardecer, créala como rutina.',
+  'scenes.scheduleMoved':
+    'Para que una escena se active sola a una hora o al atardecer, créala como rutina.',
   'scenes.scheduleMovedLink': 'Ir a Rutinas',
   'scenes.loadError': 'No se pudieron cargar las escenas',
   'scenes.devicesLoadError': 'No se pudieron cargar los dispositivos IoT',
@@ -889,18 +897,17 @@ export const es = {
 
   // --- Bienestar digital (US-184) ---
   'wellbeing.title': 'Uso por persona',
-  'wellbeing.subtitle': 'Uso de internet agregado por persona del hogar. Solo tú y los administradores veis el detalle de cada uno.',
+  'wellbeing.subtitle':
+    'Uso de internet agregado por persona del hogar. Solo tú y los administradores veis el detalle de cada uno.',
   'wellbeing.rangeLabel': 'Rango',
   'wellbeing.loading': 'Cargando…',
   'wellbeing.empty': 'Todavía no hay datos de uso en este periodo.',
   'wellbeing.noOwners':
     'Sin datos de uso todavía. Asigna un dueño a los dispositivos en su detalle.',
-  'wellbeing.unsupported':
-    'Tu router no reparte el tráfico por dispositivo',
+  'wellbeing.unsupported': 'Tu router no reparte el tráfico por dispositivo',
   'wellbeing.unsupportedDesc':
     'Esta función necesita que el router informe de cuántos datos consume cada dispositivo, y el tuyo solo informa del total de la casa. No es cosa de tu configuración: asignar dueños no lo arregla. Estamos trabajando en obtener ese dato de los routers que lo permiten.',
-  'traffic.perDeviceUnsupported':
-    'Tu router no reparte el tráfico por dispositivo',
+  'traffic.perDeviceUnsupported': 'Tu router no reparte el tráfico por dispositivo',
   'traffic.perDeviceUnsupportedDesc':
     'Solo informa del total de la casa, así que no se puede mostrar cuánto consume cada dispositivo ni el uso por persona. No es cosa de tu configuración.',
   // US-250: cuarto estado del vacío, y el único que no es del router. No lleva
@@ -1010,7 +1017,7 @@ export const es = {
   'settings.tls.howTo':
     'No es un ajuste de la app: se resuelve al instalar. Vuelve a lanzar el instalador sin «--tls none»: usará Tailscale si lo tienes y, si no, una CA propia de KrakenOS.',
   'settings.tls.sourceLabel': 'Certificado',
-  'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
+  'settings.tls.source.tailscale': "Let's Encrypt (Tailscale)",
   'settings.tls.source.selfSigned': 'Autofirmado',
   'settings.tls.source.unknown': 'Desconocido',
   'settings.tls.expiresLabel': 'Caduca',
@@ -1083,7 +1090,8 @@ export const es = {
   'energy.savePrice': 'Guardar',
   'energy.priceSaved': 'Precio actualizado',
   'energy.priceError': 'No se pudo guardar el precio',
-  'energy.priceHint': 'Déjalo en blanco para no estimar coste. El consumo se mide solo en aparatos que reportan potencia.',
+  'energy.priceHint':
+    'Déjalo en blanco para no estimar coste. El consumo se mide solo en aparatos que reportan potencia.',
   'energy.alert.title': 'Alertas de consumo',
   'energy.alert.device': 'Dispositivo',
   'energy.alert.metric': 'Tipo',
@@ -1100,7 +1108,8 @@ export const es = {
   'energy.alert.invalid': 'Elige un dispositivo y un umbral válido',
   'energy.alert.describeSustained': 'más de {w} W durante {min} min',
   'energy.alert.describeDaily': 'más de {wh} Wh en un día',
-  'energy.alert.hint': 'El canal del aviso (push/email/Telegram) se elige en Ajustes → Alertas, evento «Consumo eléctrico anómalo».',
+  'energy.alert.hint':
+    'El canal del aviso (push/email/Telegram) se elige en Ajustes → Alertas, evento «Consumo eléctrico anómalo».',
 
   // --- Conectar (US-139) ---
   'connect.loadError': 'No se pudo cargar el catálogo de integraciones',
@@ -1323,7 +1332,8 @@ export const es = {
   'device.applying': 'Aplicando…',
   'device.identify.title': '¿Qué es este aparato?',
   'device.identify.guess': 'Por su fabricante y nombre parece {type}. ¿Lo es?',
-  'device.identify.unknown': 'Aún no está identificado. Dinos qué es para reconocerlo en toda la app.',
+  'device.identify.unknown':
+    'Aún no está identificado. Dinos qué es para reconocerlo en toda la app.',
   'device.identify.confirm': 'Sí, es {type}',
   'device.traffic.title': 'Tráfico (última hora)',
   'device.traffic.down': '↓ Descarga',
@@ -1377,7 +1387,8 @@ export const es = {
   'backup.typeToConfirm': 'Para continuar, escribe',
   'backup.passMismatch': 'Las contraseñas no coinciden',
   'backup.downloaded': 'Copia de seguridad descargada',
-  'backup.restorePrepared': 'Restauración preparada ({staged} ficheros). Reinicia el agente para aplicarla.',
+  'backup.restorePrepared':
+    'Restauración preparada ({staged} ficheros). Reinicia el agente para aplicarla.',
   'backup.restoreError': 'No se pudo restaurar',
   'backup.auto.title': 'Copias automáticas',
   'backup.auto.freq': 'Frecuencia',
@@ -1431,7 +1442,8 @@ export const es = {
   'security.passkey.registerError': 'No se pudo registrar la passkey.',
   'security.codes.title': 'Códigos de recuperación',
   'security.codes.remaining': 'te quedan {n}',
-  'security.codes.help': 'Permiten entrar si pierdes tu passkey. Regenerar invalida los anteriores.',
+  'security.codes.help':
+    'Permiten entrar si pierdes tu passkey. Regenerar invalida los anteriores.',
   'security.codes.regenerate': 'Regenerar códigos',
   'security.codes.regenerating': 'Generando…',
   'security.codes.reveal':
@@ -1570,7 +1582,8 @@ export const es = {
   'survey.band': 'Banda',
   'survey.device': 'Dispositivo itinerante',
   'survey.manualOption': 'Manual (introduzco los valores)',
-  'survey.deviceHint': 'Su señal en vivo se registrará al tocar el plano. Elige «Manual» si no aparece.',
+  'survey.deviceHint':
+    'Su señal en vivo se registrará al tocar el plano. Elige «Manual» si no aparece.',
   'survey.samples': '{n} {unidad}',
   'survey.sample.one': 'muestra',
   'survey.sample.other': 'muestras',
@@ -1783,14 +1796,18 @@ export const es = {
   'compat.subtitle': 'Busca tu router, cámara o dispositivo y mira qué se puede controlar.',
   'compat.search': 'Buscar por marca o modelo',
   'compat.all': 'Todo',
-  'compat.none': 'No encontramos ese equipo. Que no esté en la lista no significa que no funcione: muchos routers con OpenWrt o dispositivos estándar valen igual.',
+  'compat.none':
+    'No encontramos ese equipo. Que no esté en la lista no significa que no funcione: muchos routers con OpenWrt o dispositivos estándar valen igual.',
   'compat.verified': 'Verificado con hardware',
   'compat.verifiedOn': 'Verificado con hardware el {date}',
   'compat.unverified': 'Soportado por código',
-  'compat.community': 'Community · sin garantía: puede dejar de funcionar si el fabricante cambia algo.',
-  'compat.app.pairing': 'Necesita la app del fabricante una vez: el emparejamiento se hace contra su nube.',
+  'compat.community':
+    'Community · sin garantía: puede dejar de funcionar si el fabricante cambia algo.',
+  'compat.app.pairing':
+    'Necesita la app del fabricante una vez: el emparejamiento se hace contra su nube.',
   'compat.app.account': 'Necesita la cuenta del fabricante para funcionar.',
-  'compat.app.enable-local': 'Necesita la app del fabricante para activar el control local en cada dispositivo.',
+  'compat.app.enable-local':
+    'Necesita la app del fabricante para activar el control local en cada dispositivo.',
   'compat.app.only': 'Solo afecta a los {devices}.',
   'compat.needs': 'Necesita:',
   'compat.cat.driver': 'Routers y puntos de acceso',
@@ -1833,7 +1850,8 @@ export const es = {
 
   // --- Puente Matter (US-171) ---
   'matter.title': 'Puente Matter (Alexa / Google / Apple)',
-  'matter.subtitle': 'Expón los dispositivos que elijas a tu asistente de voz como un hub Matter en tu red local, sin cuentas ni nube extra.',
+  'matter.subtitle':
+    'Expón los dispositivos que elijas a tu asistente de voz como un hub Matter en tu red local, sin cuentas ni nube extra.',
   'matter.error': 'No se pudo actualizar el puente Matter',
   'matter.enable': 'Activar el puente',
   'matter.statusOff': 'Desactivado',
@@ -1841,7 +1859,8 @@ export const es = {
   'matter.statusCommissioned': 'Emparejado ({n})',
   'matter.qrAlt': 'Código QR de emparejamiento Matter',
   'matter.manualCode': 'Código manual',
-  'matter.commissionHint': 'Añade un «hub» o «dispositivo Matter» en tu app de Alexa/Google/Apple y escanea este QR (o teclea el código).',
+  'matter.commissionHint':
+    'Añade un «hub» o «dispositivo Matter» en tu app de Alexa/Google/Apple y escanea este QR (o teclea el código).',
   'matter.certWarning':
     'Al escanear el QR, Alexa/Google/Apple pueden avisar de que el dispositivo «no está certificado». Es normal: KrakenOS usa un identificador de prueba. Puedes continuar; algunos ecosistemas pueden limitar ciertas funciones.',
   'matter.devices': 'Dispositivos a exponer',
@@ -1851,14 +1870,18 @@ export const es = {
   'matter.type.dimmable': 'luz regulable',
   'matter.type.color': 'luz de color',
   'matter.commission.title': 'Añadir un dispositivo Matter',
-  'matter.commission.subtitle': 'Pega el código QR o de emparejamiento (11 dígitos) de tu dispositivo Matter y KrakenOS lo añadirá directamente, sin la app del fabricante.',
+  'matter.commission.subtitle':
+    'Pega el código QR o de emparejamiento (11 dígitos) de tu dispositivo Matter y KrakenOS lo añadirá directamente, sin la app del fabricante.',
   'matter.commission.placeholder': 'MT:… o 1234-567-8901',
   'matter.commission.add': 'Añadir',
   'matter.commission.ok': '«{name}» añadido correctamente',
   'matter.commission.err.invalidCode': 'El código no es válido. Revisa el QR o los 11 dígitos.',
-  'matter.commission.err.notFound': 'No se encontró el dispositivo. Acércalo al hub y asegúrate de que está en modo emparejamiento.',
-  'matter.commission.err.threadNoBorder': 'Es un dispositivo Thread y no hay un border router en tu red. Necesitas uno (p. ej. un HomePod, Echo o Nest compatible).',
-  'matter.commission.err.unavailable': 'No hay una integración Matter activa. Configúrala primero en Ajustes → Integraciones.',
+  'matter.commission.err.notFound':
+    'No se encontró el dispositivo. Acércalo al hub y asegúrate de que está en modo emparejamiento.',
+  'matter.commission.err.threadNoBorder':
+    'Es un dispositivo Thread y no hay un border router en tu red. Necesitas uno (p. ej. un HomePod, Echo o Nest compatible).',
+  'matter.commission.err.unavailable':
+    'No hay una integración Matter activa. Configúrala primero en Ajustes → Integraciones.',
   'matter.commission.err.failed': 'No se pudo añadir el dispositivo. Inténtalo de nuevo.',
   'settings.section.users': 'Usuarios',
   'settings.section.account': 'Cuenta',
@@ -1956,13 +1979,15 @@ export const es = {
   'coverage.survey.recordError': 'No se pudo registrar la medición',
   // Importar plano + calibración (US-194)
   'coverage.import.label': 'Plano de fondo (opcional)',
-  'coverage.import.hint': 'Sube una foto, un PDF o un Word con tu plano. Se procesa en tu navegador.',
+  'coverage.import.hint':
+    'Sube una foto, un PDF o un Word con tu plano. Se procesa en tu navegador.',
   'coverage.import.choose': 'Elegir archivo',
   'coverage.import.processing': 'Procesando…',
   'coverage.import.remove': 'Quitar imagen',
   'coverage.import.preview': 'Vista previa del plano',
   'coverage.import.error.unsupported': 'Formato no admitido. Usa una imagen, un PDF o un Word.',
-  'coverage.import.error.pdfUnreadable': 'No pudimos leer este PDF. Sube una foto o captura del plano.',
+  'coverage.import.error.pdfUnreadable':
+    'No pudimos leer este PDF. Sube una foto o captura del plano.',
   'coverage.import.error.docxNoImage': 'El documento no contiene ninguna imagen del plano.',
   'coverage.import.error.decode': 'No se pudo procesar la imagen.',
   'coverage.calibrate.button': 'Calibrar escala',
@@ -1992,7 +2017,8 @@ export const es = {
   'coverage.detect.detecting': 'Detectando…',
   'coverage.detect.title': 'Paredes del plano',
   'coverage.detect.noImage': 'Sube un plano de fondo para detectar las paredes.',
-  'coverage.detect.hint': 'Revisa las paredes propuestas (punteadas), elige el material y acéptalas. Luego ajústalas o bórralas a mano.',
+  'coverage.detect.hint':
+    'Revisa las paredes propuestas (punteadas), elige el material y acéptalas. Luego ajústalas o bórralas a mano.',
   'coverage.detect.found': '{count} paredes propuestas',
   'coverage.detect.none': 'No se detectaron paredes. Dibújalas a mano sobre el plano.',
   'coverage.detect.material': 'Material',
@@ -2002,12 +2028,14 @@ export const es = {
   'coverage.detect.accepted': '{count} paredes añadidas',
   // Habitaciones detectadas del plano (US-196)
   'coverage.rooms.title': 'Habitaciones del plano',
-  'coverage.rooms.hint': 'Detecta los recintos cerrados por las paredes y créalos como habitaciones de un toque. Nada se crea automáticamente.',
+  'coverage.rooms.hint':
+    'Detecta los recintos cerrados por las paredes y créalos como habitaciones de un toque. Nada se crea automáticamente.',
   'coverage.rooms.area': 'Superficie del plano: {area} m²',
   'coverage.rooms.detect': 'Detectar habitaciones',
   'coverage.rooms.detecting': 'Detectando…',
   'coverage.rooms.needWalls': 'Dibuja o detecta las paredes primero.',
-  'coverage.rooms.none': 'No se detectaron recintos cerrados. Cierra las paredes o crea las habitaciones a mano.',
+  'coverage.rooms.none':
+    'No se detectaron recintos cerrados. Cierra las paredes o crea las habitaciones a mano.',
   'coverage.rooms.found': '{count} habitaciones detectadas',
   'coverage.rooms.roomArea': '{area} m²',
   'coverage.rooms.aps': '{count} AP dentro',
@@ -2196,7 +2224,8 @@ export const es = {
 
   // --- Primeros pasos (US-239) ---
   'gettingStarted.network.title': 'Conecta tu red',
-  'gettingStarted.network.desc': 'Tu router o punto de acceso, para ver y controlar tus dispositivos.',
+  'gettingStarted.network.desc':
+    'Tu router o punto de acceso, para ver y controlar tus dispositivos.',
   'gettingStarted.iot.title': 'Añade una luz o un enchufe',
   'gettingStarted.iot.desc': 'Philips Hue, Govee, TP-Link, Shelly y más — con guía paso a paso.',
   'gettingStarted.wifi.title': 'Revisa tu WiFi',

@@ -88,12 +88,20 @@ describe('PiholeDnsManager', () => {
   it('autentica una vez y adjunta el SID en las peticiones siguientes', async () => {
     fake.on('GET /api/stats/summary', () => ({
       status: 200,
-      json: { queries: { total: 100, blocked: 10, percent_blocked: 10 }, gravity: { domains_being_blocked: 500 } },
+      json: {
+        queries: { total: 100, blocked: 10, percent_blocked: 10 },
+        gravity: { domains_being_blocked: 500 },
+      },
     }));
     const dns = makeManager(fake);
 
     const stats = await dns.getStats();
-    expect(stats).toEqual({ totalQueries: 100, blockedQueries: 10, blockedPercent: 10, blocklistSize: 500 });
+    expect(stats).toEqual({
+      totalQueries: 100,
+      blockedQueries: 10,
+      blockedPercent: 10,
+      blocklistSize: 500,
+    });
     // La primera llamada autentica con la contraseña; la segunda lleva el SID.
     expect(fake.calls[0]).toMatchObject({ path: '/api/auth', body: { password: 'secret' } });
     expect(fake.calls[1]).toMatchObject({ path: '/api/stats/summary', sid: 'SID123' });
@@ -117,7 +125,10 @@ describe('PiholeDnsManager', () => {
   });
 
   it('lanza si la autenticación falla', async () => {
-    const bad = new FakeFetch().on('POST /api/auth', () => ({ status: 401, json: { session: { valid: false } } }));
+    const bad = new FakeFetch().on('POST /api/auth', () => ({
+      status: 401,
+      json: { session: { valid: false } },
+    }));
     await expect(makeManager(bad).getStats()).rejects.toBeInstanceOf(DnsError);
   });
 
@@ -128,7 +139,11 @@ describe('PiholeDnsManager', () => {
     }));
     const list = await makeManager(fake).listBlocked();
     expect(list).toEqual([
-      { id: 'ads.bad.com', domain: 'ads.bad.com', createdAt: new Date(1700000000 * 1000).toISOString() },
+      {
+        id: 'ads.bad.com',
+        domain: 'ads.bad.com',
+        createdAt: new Date(1700000000 * 1000).toISOString(),
+      },
     ]);
   });
 
@@ -137,13 +152,17 @@ describe('PiholeDnsManager', () => {
       .on('GET /api/domains/deny/exact', () => ({ status: 200, json: { domains: [] } }))
       .on('POST /api/domains/deny/exact', (c) => ({
         status: 201,
-        json: { domains: [{ domain: (c.body as { domain: string }).domain, date_added: 1700000000 }] },
+        json: {
+          domains: [{ domain: (c.body as { domain: string }).domain, date_added: 1700000000 }],
+        },
       }));
     const dns = makeManager(fake);
 
     const entry = await dns.addBlocked('  ADS.Nuevo.COM  ');
     expect(entry.domain).toBe('ads.nuevo.com');
-    const post = fake.calls.find((c) => c.method === 'POST' && c.path === '/api/domains/deny/exact');
+    const post = fake.calls.find(
+      (c) => c.method === 'POST' && c.path === '/api/domains/deny/exact',
+    );
     expect(post?.body).toEqual({ domain: 'ads.nuevo.com' });
   });
 
@@ -155,7 +174,9 @@ describe('PiholeDnsManager', () => {
     const dns = makeManager(fake);
 
     await expect(dns.addBlocked('dup.com')).rejects.toMatchObject({ code: 'DOMAIN_EXISTS' });
-    expect(fake.calls.some((c) => c.method === 'POST' && c.path === '/api/domains/deny/exact')).toBe(false);
+    expect(
+      fake.calls.some((c) => c.method === 'POST' && c.path === '/api/domains/deny/exact'),
+    ).toBe(false);
   });
 
   it('elimina por dominio: 204 → true, 404 → false', async () => {
@@ -172,7 +193,12 @@ describe('PiholeDnsManager', () => {
       status: 200,
       json: {
         queries: [
-          { time: 1700000000, domain: 'ads.bad.com', client: { ip: '10.0.0.5' }, status: 'GRAVITY' },
+          {
+            time: 1700000000,
+            domain: 'ads.bad.com',
+            client: { ip: '10.0.0.5' },
+            status: 'GRAVITY',
+          },
           { time: 1700000005, domain: 'github.com', client: '10.0.0.6', status: 'FORWARDED' },
         ],
       },
@@ -187,7 +213,10 @@ describe('PiholeDnsManager', () => {
       status: 200,
       json: {
         lists: [
-          { address: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts', enabled: true },
+          {
+            address: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts',
+            enabled: true,
+          },
         ],
       },
     }));

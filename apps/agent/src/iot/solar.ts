@@ -55,15 +55,11 @@ export function sunEventUtc(
 
   const solarAnomaly = (357.5291 + 0.98560028 * meanSolarNoon) % 360;
   const M = solarAnomaly * DEG;
-  const center =
-    1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M);
+  const center = 1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M);
   const eclipticLong = ((solarAnomaly + center + 180 + 102.9372) % 360) * DEG;
 
   const solarTransit =
-    2451545 +
-    meanSolarNoon +
-    0.0053 * Math.sin(M) -
-    0.0069 * Math.sin(2 * eclipticLong);
+    2451545 + meanSolarNoon + 0.0053 * Math.sin(M) - 0.0069 * Math.sin(2 * eclipticLong);
 
   const declination = Math.asin(Math.sin(eclipticLong) * Math.sin(23.44 * DEG));
 
@@ -77,9 +73,7 @@ export function sunEventUtc(
 
   const hourAngle = Math.acos(cosHourAngle) / DEG; // grados
   const jEvent =
-    which === 'sunset'
-      ? solarTransit + hourAngle / 360
-      : solarTransit - hourAngle / 360;
+    which === 'sunset' ? solarTransit + hourAngle / 360 : solarTransit - hourAngle / 360;
 
   return julianToDate(jEvent);
 }
@@ -96,7 +90,14 @@ export function sunEventLocalMinutes(
   lon: number,
   which: 'sunrise' | 'sunset',
 ): number | null {
-  const event = sunEventUtc(date.getFullYear(), date.getMonth() + 1, date.getDate(), lat, lon, which);
+  const event = sunEventUtc(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    date.getDate(),
+    lat,
+    lon,
+    which,
+  );
   if (!event) return null;
   return event.getHours() * 60 + event.getMinutes();
 }

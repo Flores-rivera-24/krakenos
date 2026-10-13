@@ -20,7 +20,9 @@ describe('buildCompatibilityCatalog (US-208)', () => {
 
   it('asigna capacidades por categoría; el driver suma WiFi si lo soporta', () => {
     const openwrt = byId('driver:openwrt');
-    expect(openwrt?.capabilities).toEqual(expect.arrayContaining(['inventory', 'block', 'traffic', 'wifi']));
+    expect(openwrt?.capabilities).toEqual(
+      expect.arrayContaining(['inventory', 'block', 'traffic', 'wifi']),
+    );
     // pfSense no gestiona WiFi (wifiSupported ausente).
     const pfsense = byId('driver:pfsense');
     expect(pfsense?.capabilities).not.toContain('wifi');
@@ -31,7 +33,9 @@ describe('buildCompatibilityCatalog (US-208)', () => {
 
   it('deriva requisitos de los campos + deps opcionales', () => {
     // Hue: URL del bridge (address) + appKey secreto (credentials).
-    expect(byId('iot:hue')?.requirements).toEqual(expect.arrayContaining(['address', 'credentials']));
+    expect(byId('iot:hue')?.requirements).toEqual(
+      expect.arrayContaining(['address', 'credentials']),
+    );
     // OpenWrt: host + contraseña + dep node-ssh.
     expect(byId('driver:openwrt')?.requirements).toEqual(
       expect.arrayContaining(['address', 'credentials', 'extra-dependency']),

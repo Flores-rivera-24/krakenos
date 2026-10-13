@@ -29,16 +29,31 @@ const INVALID_CASES: InvalidCase[] = [
     payload: { tag: 0 },
   },
   // wifi
-  { name: 'wifi: contraseña demasiado corta', method: 'PUT', url: '/api/wifi', payload: { password: 'short' } },
+  {
+    name: 'wifi: contraseña demasiado corta',
+    method: 'PUT',
+    url: '/api/wifi',
+    payload: { password: 'short' },
+  },
   {
     name: 'wifi guest: ancho de banda fuera de rango',
     method: 'PUT',
     url: '/api/wifi/guest',
     payload: { bandwidthLimitMbps: 0 },
   },
-  { name: 'wifi network: SSID vacío', method: 'PUT', url: '/api/wifi/networks/x', payload: { ssid: '' } },
+  {
+    name: 'wifi network: SSID vacío',
+    method: 'PUT',
+    url: '/api/wifi/networks/x',
+    payload: { ssid: '' },
+  },
   // vpn
-  { name: 'vpn: nombre de peer vacío', method: 'POST', url: '/api/vpn/peers', payload: { name: '' } },
+  {
+    name: 'vpn: nombre de peer vacío',
+    method: 'POST',
+    url: '/api/vpn/peers',
+    payload: { name: '' },
+  },
   // firewall
   {
     name: 'firewall: puerto fuera de rango',
@@ -72,7 +87,12 @@ const INVALID_CASES: InvalidCase[] = [
     payload: { downloadKbps: -1 },
   },
   // vlan
-  { name: 'vlan: tag fuera de rango', method: 'POST', url: '/api/vlans', payload: { tag: 5000, name: 'V' } },
+  {
+    name: 'vlan: tag fuera de rango',
+    method: 'POST',
+    url: '/api/vlans',
+    payload: { tag: 5000, name: 'V' },
+  },
   {
     name: 'vlan (patch): nombre con espacios/metacaracteres',
     method: 'PATCH',

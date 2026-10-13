@@ -67,7 +67,14 @@ function renderSidebar(props: { collapsed: boolean; stats?: SidebarStats }) {
 describe('AppSidebar', () => {
   beforeEach(() => {
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'Emilio Flores', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'Emilio Flores',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       logout: vi.fn(),
     });
     useInventoryStore.setState({ devices: {} });

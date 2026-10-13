@@ -62,7 +62,10 @@ describe('/api/integrations — API de configuración (US-142)', () => {
       method: 'PUT',
       url: '/api/integrations/driver',
       headers: authHeader(adminToken),
-      payload: { kind: 'openwrt', config: { host: '192.168.1.1', username: 'root', password: 's3cr3t', sshPort: 22 } },
+      payload: {
+        kind: 'openwrt',
+        config: { host: '192.168.1.1', username: 'root', password: 's3cr3t', sshPort: 22 },
+      },
     });
     expect(res.statusCode).toBe(200);
     const info = res.json() as DomainView['current'];

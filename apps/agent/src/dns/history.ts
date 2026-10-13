@@ -95,7 +95,10 @@ export function seleccionarNuevas(
  * nombre: son las dos vías por las que se acaba atribuyendo tráfico al vecino de
  * subred.
  */
-export function macDelCliente(client: string, macPorIp: ReadonlyMap<string, string>): string | null {
+export function macDelCliente(
+  client: string,
+  macPorIp: ReadonlyMap<string, string>,
+): string | null {
   return macPorIp.get(client.trim()) ?? null;
 }
 

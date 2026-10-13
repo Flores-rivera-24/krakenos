@@ -37,7 +37,9 @@ describe('MqttInteropCard (US-174)', () => {
   it('carga la config y muestra el broker', async () => {
     render(<MqttInteropCard />);
     await waitFor(() => expect(interopMock.getMqttState).toHaveBeenCalled());
-    expect((await screen.findByLabelText('Broker')) as HTMLInputElement).toHaveValue('mqtt://192.168.1.10:1883');
+    expect((await screen.findByLabelText('Broker')) as HTMLInputElement).toHaveValue(
+      'mqtt://192.168.1.10:1883',
+    );
   });
 
   it('guarda la configuración', async () => {

@@ -142,7 +142,12 @@ function roomAvailabilityTopic(prefix: string, roomId: string): string {
 
 /** Bloque `device` del hub (agrupa los sensores del hogar en HA). */
 function hubDevice() {
-  return { identifiers: [HUB_ID], name: 'KrakenOS', manufacturer: 'KrakenOS', model: 'Home Control' };
+  return {
+    identifiers: [HUB_ID],
+    name: 'KrakenOS',
+    manufacturer: 'KrakenOS',
+    model: 'Home Control',
+  };
 }
 
 /** Bloque `device` de un aparato IoT concreto (entidad propia en HA). */
@@ -305,7 +310,11 @@ export function buildDiscoveryConfigs(
       };
       if (exp.component === 'switch') {
         if (exp.controllable) base.command_topic = `${t}/set`;
-        msgs.push({ topic: configTopic('switch', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
+        msgs.push({
+          topic: configTopic('switch', `iot_${objectId(dev.id)}`),
+          payload: JSON.stringify(base),
+          retain: true,
+        });
       } else if (exp.component === 'cover') {
         // Una persiana en HA lleva su posición: `state_topic` con open/closed y
         // `position_topic` con el 0-100, que es la misma orientación del contrato.
@@ -322,7 +331,11 @@ export function buildDiscoveryConfigs(
           // manda un `STOP` al vacío.
           base.payload_stop = null;
         }
-        msgs.push({ topic: configTopic('cover', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
+        msgs.push({
+          topic: configTopic('cover', `iot_${objectId(dev.id)}`),
+          payload: JSON.stringify(base),
+          retain: true,
+        });
       } else if (exp.component === 'binary_sensor') {
         // Cerradura: **sin `command_topic`**. Ver `exposureFor`.
         base.device_class = exp.deviceClass;
@@ -343,7 +356,11 @@ export function buildDiscoveryConfigs(
           base.rgb_state_topic = `${t}/rgb`;
           base.rgb_command_topic = `${t}/rgb/set`;
         }
-        msgs.push({ topic: configTopic('light', `iot_${objectId(dev.id)}`), payload: JSON.stringify(base), retain: true });
+        msgs.push({
+          topic: configTopic('light', `iot_${objectId(dev.id)}`),
+          payload: JSON.stringify(base),
+          retain: true,
+        });
       }
     }
     // Entidades derivadas de las lecturas (US-247): contacto, presencia, humo, CO,
@@ -530,8 +547,16 @@ export function buildDiscoveryConfigs(
         // Doble disponibilidad: el hub vivo **y** la habitación con algún aparato
         // WiFi en línea. Sin aparatos no se inventa un 0 ni un -100: no hay dato.
         availability: [
-          { topic: availabilityTopic(prefix), payload_available: AVAILABILITY_ONLINE, payload_not_available: AVAILABILITY_OFFLINE },
-          { topic: roomAvailabilityTopic(prefix, room.id), payload_available: AVAILABILITY_ONLINE, payload_not_available: AVAILABILITY_OFFLINE },
+          {
+            topic: availabilityTopic(prefix),
+            payload_available: AVAILABILITY_ONLINE,
+            payload_not_available: AVAILABILITY_OFFLINE,
+          },
+          {
+            topic: roomAvailabilityTopic(prefix, room.id),
+            payload_available: AVAILABILITY_ONLINE,
+            payload_not_available: AVAILABILITY_OFFLINE,
+          },
         ],
         availability_mode: 'all',
         device: hubDevice(),
@@ -555,9 +580,12 @@ export function buildStateMessages(snapshot: StateSnapshot, prefix: string): Mqt
   ];
   for (const dev of snapshot.iot) {
     const t = `${prefix}/iot/${encodeTopic(dev.id)}`;
-    if (dev.on !== null) msgs.push({ topic: `${t}/state`, payload: dev.on ? 'ON' : 'OFF', retain: true });
-    if (dev.brightness !== null) msgs.push({ topic: `${t}/brightness`, payload: String(dev.brightness), retain: true });
-    if (dev.color?.hex) msgs.push({ topic: `${t}/rgb`, payload: hexToRgb(dev.color.hex), retain: true });
+    if (dev.on !== null)
+      msgs.push({ topic: `${t}/state`, payload: dev.on ? 'ON' : 'OFF', retain: true });
+    if (dev.brightness !== null)
+      msgs.push({ topic: `${t}/brightness`, payload: String(dev.brightness), retain: true });
+    if (dev.color?.hex)
+      msgs.push({ topic: `${t}/rgb`, payload: hexToRgb(dev.color.hex), retain: true });
     if (dev.powerW !== undefined && dev.powerW !== null) {
       msgs.push({ topic: `${t}/power`, payload: String(dev.powerW), retain: true });
     }
@@ -595,11 +623,21 @@ export function buildStateMessages(snapshot: StateSnapshot, prefix: string): Mqt
     }
   }
   if (snapshot.energy) {
-    msgs.push({ topic: `${prefix}/energy/today_kwh`, payload: snapshot.energy.todayKwh.toFixed(3), retain: true });
+    msgs.push({
+      topic: `${prefix}/energy/today_kwh`,
+      payload: snapshot.energy.todayKwh.toFixed(3),
+      retain: true,
+    });
   }
-  if (snapshot.homeMode !== null) msgs.push({ topic: `${prefix}/home/mode`, payload: snapshot.homeMode, retain: true });
-  if (snapshot.alarmPhase !== null) msgs.push({ topic: `${prefix}/alarm/state`, payload: snapshot.alarmPhase, retain: true });
-  msgs.push({ topic: `${prefix}/devices/online`, payload: String(snapshot.devicesOnline), retain: true });
+  if (snapshot.homeMode !== null)
+    msgs.push({ topic: `${prefix}/home/mode`, payload: snapshot.homeMode, retain: true });
+  if (snapshot.alarmPhase !== null)
+    msgs.push({ topic: `${prefix}/alarm/state`, payload: snapshot.alarmPhase, retain: true });
+  msgs.push({
+    topic: `${prefix}/devices/online`,
+    payload: String(snapshot.devicesOnline),
+    retain: true,
+  });
 
   // Bloqueo efectivo por dispositivo (US-236). El estado es el DERIVADO de las tres
   // fuentes, nunca la columna `Device.isBlocked`: con un horario activo esa columna
@@ -624,7 +662,8 @@ export function buildStateMessages(snapshot: StateSnapshot, prefix: string): Mqt
       payload: hayDato ? AVAILABILITY_ONLINE : AVAILABILITY_OFFLINE,
       retain: true,
     });
-    if (hayDato) msgs.push({ topic: `${base}/signal`, payload: String(room.worstDbm), retain: true });
+    if (hayDato)
+      msgs.push({ topic: `${base}/signal`, payload: String(room.worstDbm), retain: true });
   }
 
   return msgs;
@@ -706,12 +745,20 @@ export function parseInboundCommand(
   if (rest === 'position/set') {
     const n = Number(body);
     if (!Number.isFinite(n)) return null;
-    return { kind: 'iot', deviceId, state: { position: Math.max(0, Math.min(100, Math.round(n))) } };
+    return {
+      kind: 'iot',
+      deviceId,
+      state: { position: Math.max(0, Math.min(100, Math.round(n))) },
+    };
   }
   if (rest === 'brightness/set') {
     const n = Number(body);
     if (!Number.isFinite(n)) return null;
-    return { kind: 'iot', deviceId, state: { brightness: Math.max(0, Math.min(100, Math.round(n))) } };
+    return {
+      kind: 'iot',
+      deviceId,
+      state: { brightness: Math.max(0, Math.min(100, Math.round(n))) },
+    };
   }
   if (rest === 'rgb/set') {
     const hex = rgbToHex(body);

@@ -30,7 +30,12 @@ describe('SwitchVlanManager', () => {
   });
 
   it('crea una VLAN: aplica SNMP createAndGo y la persiste', async () => {
-    const vlan = await vlans.createVlan({ tag: 30, name: 'IoT', subnet: '10.0.30.0/24', isolated: true });
+    const vlan = await vlans.createVlan({
+      tag: 30,
+      name: 'IoT',
+      subnet: '10.0.30.0/24',
+      isolated: true,
+    });
     expect(vlan).toMatchObject({ tag: 30, name: 'IoT', subnet: '10.0.30.0/24', isolated: true });
     expect(vlan.createdAt).toBe(new Date(1_700_000_000_000).toISOString());
     // Aplicó el SET con RowStatus createAndGo (4).

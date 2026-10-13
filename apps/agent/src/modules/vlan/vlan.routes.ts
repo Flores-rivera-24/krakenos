@@ -45,7 +45,12 @@ export const vlanRoutes: FastifyPluginAsync<VlanRoutesOpts> = async (app, opts) 
     async (req, reply) => {
       try {
         const created = await vlan.createVlan(req.body);
-        app.audit({ action: 'vlan.create', userId: req.user.sub, detail: `${created.tag}`, ip: req.ip });
+        app.audit({
+          action: 'vlan.create',
+          userId: req.user.sub,
+          detail: `${created.tag}`,
+          ip: req.ip,
+        });
         const [withCount] = await withCounts([created]);
         return reply.code(201).send(withCount);
       } catch (err) {
@@ -65,7 +70,12 @@ export const vlanRoutes: FastifyPluginAsync<VlanRoutesOpts> = async (app, opts) 
       if (!updated) {
         return reply.code(404).send({ code: 'VLAN_NOT_FOUND', message: 'VLAN no encontrada' });
       }
-      app.audit({ action: 'vlan.update', userId: req.user.sub, detail: `${updated.tag}`, ip: req.ip });
+      app.audit({
+        action: 'vlan.update',
+        userId: req.user.sub,
+        detail: `${updated.tag}`,
+        ip: req.ip,
+      });
       const [withCount] = await withCounts([updated]);
       return withCount;
     },
@@ -85,7 +95,12 @@ export const vlanRoutes: FastifyPluginAsync<VlanRoutesOpts> = async (app, opts) 
         where: { vlanTag: existing.tag },
         data: { vlanTag: null },
       });
-      app.audit({ action: 'vlan.delete', userId: req.user.sub, detail: `${existing.tag}`, ip: req.ip });
+      app.audit({
+        action: 'vlan.delete',
+        userId: req.user.sub,
+        detail: `${existing.tag}`,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

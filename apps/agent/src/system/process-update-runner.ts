@@ -20,7 +20,12 @@ import { resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { EXTRA_DEPS_FILE, parseExtraDeps } from './extra-deps.js';
 import { safeFetch } from '../net/egress.js';
-import { checkNodeRequirement, NODE_TOO_OLD, readEnginesNode, UpdateBlockedError } from './node-requirement.js';
+import {
+  checkNodeRequirement,
+  NODE_TOO_OLD,
+  readEnginesNode,
+  UpdateBlockedError,
+} from './node-requirement.js';
 import type { UpdateRunner } from './update-orchestrator.js';
 
 const execFileAsync = promisify(execFile);

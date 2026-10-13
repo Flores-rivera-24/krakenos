@@ -66,7 +66,11 @@ describe('QosPage', () => {
     await waitFor(() =>
       expect(apiMock.post).toHaveBeenCalledWith(
         '/qos/rules',
-        expect.objectContaining({ name: 'Prioridad trabajo', target: '10.0.0.20', priority: 'normal' }),
+        expect.objectContaining({
+          name: 'Prioridad trabajo',
+          target: '10.0.0.20',
+          priority: 'normal',
+        }),
       ),
     );
   });

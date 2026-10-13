@@ -103,9 +103,7 @@ export class MockMatterBridgeStack implements MatterBridgeStack {
  * memoria; `matter` carga el stack real de `@matter/main` de forma perezosa (no
  * está en `package.json`; se instala en el servidor, patrón de deps de hardware).
  */
-export async function createMatterBridgeStack(
-  kind: 'mock' | 'matter',
-): Promise<MatterBridgeStack> {
+export async function createMatterBridgeStack(kind: 'mock' | 'matter'): Promise<MatterBridgeStack> {
   if (kind === 'mock') return new MockMatterBridgeStack();
   const { RealMatterBridgeStack } = await import('./real-stack.js');
   return new RealMatterBridgeStack();

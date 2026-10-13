@@ -55,12 +55,20 @@ describe('alerts/telegram', () => {
       sent.push(t);
     };
 
-    const off = new TelegramNotifier(fakeApp({ telegram: false }), { botToken: 't', chatId: 'c' }, send);
+    const off = new TelegramNotifier(
+      fakeApp({ telegram: false }),
+      { botToken: 't', chatId: 'c' },
+      send,
+    );
     off.notifyForAudit('device.block', 'aa:bb:cc:dd:ee:ff');
     await new Promise((r) => setTimeout(r, 20));
     expect(sent).toHaveLength(0);
 
-    const on = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, send);
+    const on = new TelegramNotifier(
+      fakeApp({ telegram: true }),
+      { botToken: 't', chatId: 'c' },
+      send,
+    );
     on.notifyForAudit('device.block', 'aa:bb:cc:dd:ee:ff');
     await vi.waitFor(() => expect(sent).toHaveLength(1));
   });
@@ -70,9 +78,13 @@ describe('alerts/telegram', () => {
       'Se bloqueó …:ee:ff desde la red local',
     );
     const sent: string[] = [];
-    const notifier = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, async (t) => {
-      sent.push(t);
-    });
+    const notifier = new TelegramNotifier(
+      fakeApp({ telegram: true }),
+      { botToken: 't', chatId: 'c' },
+      async (t) => {
+        sent.push(t);
+      },
+    );
     notifier.notifyForAudit('device.block', 'aa:bb:cc:dd:ee:ff');
     await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]).not.toContain('aa:bb:cc:dd:ee:ff');
@@ -81,9 +93,13 @@ describe('alerts/telegram', () => {
 
   it('un evento fuera del catálogo de alertas no genera mensaje', async () => {
     const sent: string[] = [];
-    const notifier = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, async (t) => {
-      sent.push(t);
-    });
+    const notifier = new TelegramNotifier(
+      fakeApp({ telegram: true }),
+      { botToken: 't', chatId: 'c' },
+      async (t) => {
+        sent.push(t);
+      },
+    );
     notifier.notifyForAudit('rooms.create', 'x');
     await new Promise((r) => setTimeout(r, 20));
     expect(sent).toHaveLength(0);
@@ -120,9 +136,19 @@ describe('alerts/telegram', () => {
     const sendPhoto = async () => {
       photos.push(1);
     };
-    const off = new TelegramNotifier(fakeApp({ telegram: false }), { botToken: 't', chatId: 'c' }, undefined, sendPhoto);
+    const off = new TelegramNotifier(
+      fakeApp({ telegram: false }),
+      { botToken: 't', chatId: 'c' },
+      undefined,
+      sendPhoto,
+    );
     off.sendPhotoForAudit('camera.motion', 'x', 'data:image/jpeg;base64,/9j/');
-    const on = new TelegramNotifier(fakeApp({ telegram: true }), { botToken: 't', chatId: 'c' }, undefined, sendPhoto);
+    const on = new TelegramNotifier(
+      fakeApp({ telegram: true }),
+      { botToken: 't', chatId: 'c' },
+      undefined,
+      sendPhoto,
+    );
     on.sendPhotoForAudit('camera.motion', 'x', 'data:image/svg+xml;base64,AAAA'); // SVG no rasterizable
     await new Promise((r) => setTimeout(r, 20));
     expect(photos).toHaveLength(0);

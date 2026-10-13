@@ -146,7 +146,11 @@ describe('rate-limit y anti-replay en endpoints públicos de auth (US-88)', () =
         method: 'POST',
         url: '/api/webauthn/backup-codes/verify',
         // Token fresco por intento (un solo uso) + código erróneo: simula fuerza bruta.
-        payload: { email: 'bf@krakenos.test', mfaToken: signMfaPending(app, user.id), code: 'xxxx-xxxx-xxxx' },
+        payload: {
+          email: 'bf@krakenos.test',
+          mfaToken: signMfaPending(app, user.id),
+          code: 'xxxx-xxxx-xxxx',
+        },
       });
 
     const allowed = [await guess(), await guess(), await guess()];

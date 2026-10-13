@@ -93,7 +93,12 @@ export function MqttInteropCard() {
 
         <div className="space-y-2">
           <Label htmlFor="mqtt-url">{t('settings.mqtt.url')}</Label>
-          <Input id="mqtt-url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="mqtt://192.168.1.10:1883" />
+          <Input
+            id="mqtt-url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="mqtt://192.168.1.10:1883"
+          />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -115,7 +120,12 @@ export function MqttInteropCard() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="mqtt-prefix">{t('settings.mqtt.prefix')}</Label>
-            <Input id="mqtt-prefix" value={prefix} onChange={(e) => setPrefix(e.target.value)} maxLength={64} />
+            <Input
+              id="mqtt-prefix"
+              value={prefix}
+              onChange={(e) => setPrefix(e.target.value)}
+              maxLength={64}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="mqtt-interval">{t('settings.mqtt.interval')}</Label>
@@ -140,7 +150,9 @@ export function MqttInteropCard() {
             />
             <span>
               {t('settings.mqtt.discovery')}
-              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.discoveryDesc')}</span>
+              <span className="block text-kr-xs text-kr-muted">
+                {t('settings.mqtt.discoveryDesc')}
+              </span>
             </span>
           </label>
           <label className="flex items-start gap-2 text-kr-sm text-kr-secondary">
@@ -152,7 +164,9 @@ export function MqttInteropCard() {
             />
             <span>
               {t('settings.mqtt.control')}
-              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.controlDesc')}</span>
+              <span className="block text-kr-xs text-kr-muted">
+                {t('settings.mqtt.controlDesc')}
+              </span>
             </span>
           </label>
           <label className="flex items-start gap-2 text-kr-sm text-kr-secondary">
@@ -164,7 +178,9 @@ export function MqttInteropCard() {
             />
             <span>
               {t('settings.mqtt.pauseControl')}
-              <span className="block text-kr-xs text-kr-muted">{t('settings.mqtt.pauseControlDesc')}</span>
+              <span className="block text-kr-xs text-kr-muted">
+                {t('settings.mqtt.pauseControlDesc')}
+              </span>
             </span>
           </label>
         </div>
@@ -172,9 +188,13 @@ export function MqttInteropCard() {
         {state && (
           <div className="flex items-center gap-2 text-kr-xs text-kr-muted">
             <StatusDot status={state.status.connected ? 'online' : 'offline'} />
-            {state.status.connected ? t('settings.mqtt.connected') : t('settings.mqtt.disconnected')}
+            {state.status.connected
+              ? t('settings.mqtt.connected')
+              : t('settings.mqtt.disconnected')}
             {state.status.lastError && (
-              <span className="text-warning">· {t('settings.mqtt.lastError', { error: state.status.lastError })}</span>
+              <span className="text-warning">
+                · {t('settings.mqtt.lastError', { error: state.status.lastError })}
+              </span>
             )}
           </div>
         )}

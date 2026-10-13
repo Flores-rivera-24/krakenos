@@ -29,7 +29,8 @@ const openwrt: IntegrationGuide = {
     {
       title: 'Antes de nada: entiende el riesgo',
       body: 'Instalar OpenWrt reemplaza el programa de fábrica del router. Si usas el archivo equivocado para tu modelo, el router podría quedar inservible ("ladrillo") y perderías la garantía. No es lo habitual si vas con cuidado, pero conviene saberlo. Ve con calma y usa el archivo exacto de tu revisión.',
-      warning: 'Descarga siempre el firmware para tu modelo Y tu revisión de hardware exactos. No te saltes este paso.',
+      warning:
+        'Descarga siempre el firmware para tu modelo Y tu revisión de hardware exactos. No te saltes este paso.',
       external: true,
     },
     {

@@ -23,7 +23,9 @@ describe('createFfmpegExec (US-229)', () => {
   });
 
   /** Ejecuta y devuelve las opciones con las que se invocó `execFile`. */
-  async function optsOf(exec: ReturnType<typeof createFfmpegExec>): Promise<Record<string, unknown>> {
+  async function optsOf(
+    exec: ReturnType<typeof createFfmpegExec>,
+  ): Promise<Record<string, unknown>> {
     await exec(['-i', 'rtsp://camara']);
     expect(execFileMock).toHaveBeenCalledTimes(1);
     const call = execFileMock.mock.calls[0] as [string, string[], Record<string, unknown>];

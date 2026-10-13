@@ -146,7 +146,9 @@ export function UpdateCard() {
             {plan.canSelfUpdate ? (
               plan.blockedReason === 'NODE_TOO_OLD' ? (
                 <Callout variant="warning" standing>
-                  <RichText>{t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}</RichText>
+                  <RichText>
+                    {t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}
+                  </RichText>
                 </Callout>
               ) : (
                 isAdmin && (

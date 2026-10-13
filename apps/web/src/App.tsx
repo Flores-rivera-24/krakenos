@@ -13,7 +13,9 @@ const SetupPage = lazy(() => import('@/pages/SetupPage').then((m) => ({ default:
 const WelcomePage = lazy(() =>
   import('@/pages/WelcomePage').then((m) => ({ default: m.WelcomePage })),
 );
-const InvitePage = lazy(() => import('@/pages/InvitePage').then((m) => ({ default: m.InvitePage })));
+const InvitePage = lazy(() =>
+  import('@/pages/InvitePage').then((m) => ({ default: m.InvitePage })),
+);
 const DashboardPage = lazy(() =>
   import('@/pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
@@ -32,12 +34,16 @@ const TrafficPage = lazy(() =>
   import('@/pages/TrafficPage').then((m) => ({ default: m.TrafficPage })),
 );
 const IotPage = lazy(() => import('@/pages/IotPage').then((m) => ({ default: m.IotPage })));
-const EnergyPage = lazy(() => import('@/pages/EnergyPage').then((m) => ({ default: m.EnergyPage })));
+const EnergyPage = lazy(() =>
+  import('@/pages/EnergyPage').then((m) => ({ default: m.EnergyPage })),
+);
 const PeoplePage = lazy(() =>
   import('@/pages/PeoplePage').then((m) => ({ default: m.PeoplePage })),
 );
 const RoomsPage = lazy(() => import('@/pages/RoomsPage').then((m) => ({ default: m.RoomsPage })));
-const ScenesPage = lazy(() => import('@/pages/ScenesPage').then((m) => ({ default: m.ScenesPage })));
+const ScenesPage = lazy(() =>
+  import('@/pages/ScenesPage').then((m) => ({ default: m.ScenesPage })),
+);
 const AutomationsPage = lazy(() =>
   import('@/pages/AutomationsPage').then((m) => ({ default: m.AutomationsPage })),
 );

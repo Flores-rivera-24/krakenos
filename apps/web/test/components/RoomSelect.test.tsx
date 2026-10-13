@@ -23,7 +23,13 @@ function room(over: Partial<RoomWithState> = {}): RoomWithState {
 
 describe('RoomSelect (US-165)', () => {
   it('lista «Sin habitación» más cada habitación y refleja el valor actual', () => {
-    render(<RoomSelect rooms={[room(), room({ id: 'r2', name: 'Cocina', icon: 'kitchen' })]} value="r2" onChange={() => {}} />);
+    render(
+      <RoomSelect
+        rooms={[room(), room({ id: 'r2', name: 'Cocina', icon: 'kitchen' })]}
+        value="r2"
+        onChange={() => {}}
+      />,
+    );
     const select = screen.getByLabelText('Habitación') as HTMLSelectElement;
     expect(select.value).toBe('r2');
     expect(screen.getByRole('option', { name: /Sin habitación/ })).toBeInTheDocument();

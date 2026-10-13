@@ -260,9 +260,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             {device.label ?? device.hostname ?? device.mac}
           </p>
           <p className="text-kr-sm text-kr-secondary">{TYPE_LABELS[device.type]}</p>
-          {device.vendor && (
-            <p className="truncate text-kr-xs text-kr-muted">{device.vendor}</p>
-          )}
+          {device.vendor && <p className="truncate text-kr-xs text-kr-muted">{device.vendor}</p>}
         </div>
       </div>
 
@@ -305,7 +303,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         {!simpleMode && <Field label="MAC" value={device.mac} />}
         <Field label="Hostname" value={device.hostname ?? '—'} />
         <Field label={t('device.vendor')} value={device.vendor ?? '—'} />
-        {!simpleMode && <Field label={t('device.sources')} value={device.sources.join(', ') || '—'} />}
+        {!simpleMode && (
+          <Field label={t('device.sources')} value={device.sources.join(', ') || '—'} />
+        )}
         <Field label={t('device.lastSeen')} value={new Date(device.lastSeen).toLocaleString()} />
       </dl>
 
@@ -331,9 +331,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         <p className="mb-4 text-kr-xs text-kr-muted">{t('device.traffic.empty')}</p>
       ) : (
         /* «Sin datos» sería mentira: puede haberlos y no se enseñan (US-250). */
-        <p className="mb-4 text-kr-xs text-kr-muted">
-          {t('device.traffic.adminOnly')}
-        </p>
+        <p className="mb-4 text-kr-xs text-kr-muted">{t('device.traffic.adminOnly')}</p>
       )}
 
       {/* Pausa de internet (US-111) + control parental / horarios (US-108).
@@ -438,7 +436,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               className={SELECT_CLASS}
               value={vlanTag ?? ''}
               disabled={vlanBusy}
-              onChange={(e) => void assignVlan(e.target.value === '' ? null : Number(e.target.value))}
+              onChange={(e) =>
+                void assignVlan(e.target.value === '' ? null : Number(e.target.value))
+              }
             >
               <option value="">{t('device.noVlan')}</option>
               {vlans.map((v) => (

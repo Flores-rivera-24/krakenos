@@ -8,7 +8,13 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 const fakeSocket = vi.hoisted(() => ({ on: vi.fn(), off: vi.fn() }));
@@ -49,7 +55,14 @@ describe('QuickActionsWidget (US-170)', () => {
     });
     apiMock.patch.mockReset().mockResolvedValue(undefined);
     useAuthStore.setState({
-      user: { id: 'u', email: 'a@b.c', displayName: 'A', role: 'admin', createdAt: '', updatedAt: '' },
+      user: {
+        id: 'u',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
       tokens: { accessToken: 't', expiresIn: 900 },
     });
     useToastStore.setState({ toasts: [] });
@@ -58,7 +71,9 @@ describe('QuickActionsWidget (US-170)', () => {
   it('sin favoritos muestra el mensaje de ayuda', async () => {
     useFavoritesStore.setState({ favorites: [], loaded: true });
     renderWidget();
-    expect(await screen.findByText(/Fija tus dispositivos y habitaciones favoritos/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Fija tus dispositivos y habitaciones favoritos/),
+    ).toBeInTheDocument();
   });
 
   it('resuelve un favorito IoT y su toggle llama a PATCH', async () => {

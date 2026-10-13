@@ -35,7 +35,12 @@ describe('IptablesFirewallManager', () => {
 
   it('crea una regla, asigna prioridad y reconstruye la cadena', async () => {
     const fw = makeManager(runner);
-    const rule = await fw.createRule({ name: 'block cam', action: 'deny', protocol: 'tcp', port: 554 });
+    const rule = await fw.createRule({
+      name: 'block cam',
+      action: 'deny',
+      protocol: 'tcp',
+      port: 554,
+    });
 
     expect(rule.priority).toBe(0);
     expect(rule.enabled).toBe(true);

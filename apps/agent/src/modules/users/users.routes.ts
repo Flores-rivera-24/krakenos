@@ -1,4 +1,8 @@
-import type { AdminResetPasswordRequest, CreateUserRequest, UpdateUserRequest } from '@krakenos/types';
+import type {
+  AdminResetPasswordRequest,
+  CreateUserRequest,
+  UpdateUserRequest,
+} from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { UserError, UsersService } from './users.service.js';
 import {

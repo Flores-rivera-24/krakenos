@@ -14,7 +14,10 @@ import type { CameraDefinition } from './rtsp.cameras.js';
 export type CameraStore = JsonStore<CameraDefinition>;
 
 /** Construye un registro de cámara (con `id`) a partir de la petición de creación. */
-export function toCameraRecord(input: CreateCameraRequest, id: string = randomUUID()): CameraDefinition {
+export function toCameraRecord(
+  input: CreateCameraRequest,
+  id: string = randomUUID(),
+): CameraDefinition {
   return {
     id,
     name: input.name,

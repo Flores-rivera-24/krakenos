@@ -26,7 +26,12 @@ describe('re-verificación de sesión de Socket.io (US-80, F7)', () => {
     });
 
     it('rechaza un token cuyo type no es access', () => {
-      expect(isSocketTokenValid('tok', () => ({ ...accessClaims(), type: 'refresh' }) as unknown as AccessTokenClaims)).toBe(false);
+      expect(
+        isSocketTokenValid(
+          'tok',
+          () => ({ ...accessClaims(), type: 'refresh' }) as unknown as AccessTokenClaims,
+        ),
+      ).toBe(false);
     });
   });
 

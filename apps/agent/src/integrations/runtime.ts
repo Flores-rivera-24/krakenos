@@ -155,7 +155,9 @@ export async function buildIntegrationRuntime(
   async function reconfigure(domain: IntegrationDomain): Promise<{ fallback: boolean }> {
     switch (domain) {
       case 'driver': {
-        const r = await tryBuild('driver', (rec) => wrapDriverErrors(createDriver(resolveDriverConfig(rec))));
+        const r = await tryBuild('driver', (rec) =>
+          wrapDriverErrors(createDriver(resolveDriverConfig(rec))),
+        );
         driver.swap(r.value);
         return { fallback: r.fallback };
       }
@@ -166,7 +168,9 @@ export async function buildIntegrationRuntime(
       }
       case 'iot': {
         // Reinyecta el mismo tuyaStore para no duplicar la instancia (US-63).
-        const r = await tryBuild('iot', (rec) => createIotManager(resolveIotConfig(rec), { tuyaStore }));
+        const r = await tryBuild('iot', (rec) =>
+          createIotManager(resolveIotConfig(rec), { tuyaStore }),
+        );
         startIotManager(r.value.manager, onIotError);
         iot.swap(r.value.manager);
         return { fallback: r.fallback };
@@ -177,7 +181,9 @@ export async function buildIntegrationRuntime(
         return { fallback: r.fallback };
       }
       case 'firewall': {
-        const r = await tryBuild('firewall', (rec) => createFirewallManager(resolveFirewallConfig(rec)));
+        const r = await tryBuild('firewall', (rec) =>
+          createFirewallManager(resolveFirewallConfig(rec)),
+        );
         firewall.swap(r.value);
         return { fallback: r.fallback };
       }

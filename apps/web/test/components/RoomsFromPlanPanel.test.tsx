@@ -18,7 +18,15 @@ vi.mock('@/store/toast.store', () => ({ toast: toastMock }));
 import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 
 const wall = (): Wall => ({ id: 'w', x1: 0, y1: 0, x2: 5, y2: 0, material: 'drywall' });
-const candidate = (areaM2: number) => ({ areaM2, cx: 1, cy: 1, minX: 0, minY: 0, maxX: 2, maxY: 2 });
+const candidate = (areaM2: number) => ({
+  areaM2,
+  cx: 1,
+  cy: 1,
+  minX: 0,
+  minY: 0,
+  maxX: 2,
+  maxY: 2,
+});
 
 function renderPanel(walls: Wall[] = [wall()]) {
   return render(
@@ -52,7 +60,9 @@ describe('RoomsFromPlanPanel (US-196)', () => {
     // No se crea nada hasta pulsar Crear.
     expect(roomsMock.createRoom).not.toHaveBeenCalled();
     fireEvent.click(screen.getAllByRole('button', { name: /Crear/ })[0]!);
-    await waitFor(() => expect(roomsMock.createRoom).toHaveBeenCalledWith({ name: 'Habitación 1' }));
+    await waitFor(() =>
+      expect(roomsMock.createRoom).toHaveBeenCalledWith({ name: 'Habitación 1' }),
+    );
     await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
   });
 

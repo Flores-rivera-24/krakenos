@@ -82,10 +82,13 @@ describe('collectSignalByMac (US-236)', () => {
   it('recorre las redes UNA vez y se queda con el AP que mejor oye a cada aparato', async () => {
     const driver = fakeDriver({
       listWifiNetworks: vi.fn(async () => [{ id: 'ap1' }, { id: 'ap2' }] as never),
-      listNetworkClients: vi.fn(async (id: string) =>
-        (id === 'ap1'
-          ? [{ mac: 'AA:AA:AA:AA:AA:AA', hostname: null, ip: '10.0.0.2', signalDbm: -70 }]
-          : [{ mac: 'aa:aa:aa:aa:aa:aa', hostname: null, ip: '10.0.0.2', signalDbm: -55 }]) as never,
+      listNetworkClients: vi.fn(
+        async (id: string) =>
+          (id === 'ap1'
+            ? [{ mac: 'AA:AA:AA:AA:AA:AA', hostname: null, ip: '10.0.0.2', signalDbm: -70 }]
+            : [
+                { mac: 'aa:aa:aa:aa:aa:aa', hostname: null, ip: '10.0.0.2', signalDbm: -55 },
+              ]) as never,
       ),
     });
     const out = await collectSignalByMac(driver);
@@ -108,8 +111,9 @@ describe('collectSignalByMac (US-236)', () => {
     let t = 0;
     const driver = fakeDriver({
       listWifiNetworks: vi.fn(async () => [{ id: 'ap1' }] as never),
-      listNetworkClients: vi.fn(async () =>
-        [{ mac: 'aa:aa:aa:aa:aa:aa', hostname: null, ip: '10.0.0.2', signalDbm: -50 }] as never,
+      listNetworkClients: vi.fn(
+        async () =>
+          [{ mac: 'aa:aa:aa:aa:aa:aa', hostname: null, ip: '10.0.0.2', signalDbm: -50 }] as never,
       ),
     });
     const col = createSignalCollector(driver, { ttlMs: 60_000, now: () => t });
@@ -142,7 +146,9 @@ describe('collectSignalByMac (US-236)', () => {
       listWifiNetworks: vi.fn(async () => [{ id: 'roto' }, { id: 'ok' }] as never),
       listNetworkClients: vi.fn(async (id: string) => {
         if (id === 'roto') throw new Error('timeout');
-        return [{ mac: 'bb:bb:bb:bb:bb:bb', hostname: null, ip: '10.0.0.3', signalDbm: -60 }] as never;
+        return [
+          { mac: 'bb:bb:bb:bb:bb:bb', hostname: null, ip: '10.0.0.3', signalDbm: -60 },
+        ] as never;
       }),
     });
     const out = await collectSignalByMac(driver);

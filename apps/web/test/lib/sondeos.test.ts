@@ -33,7 +33,8 @@ import { fuentes } from './_fuentes';
  * I/O, la respuesta no es la excepción: es `usePolling`.
  */
 const RELOJES_LOCALES: Record<string, string> = {
-  'lib/realtime.ts': 'useNow: re-renderiza para reevaluar la antigüedad de las muestras ya recibidas',
+  'lib/realtime.ts':
+    'useNow: re-renderiza para reevaluar la antigüedad de las muestras ya recibidas',
   'components/dashboard/widgets/AlarmWidget.tsx':
     'useCountdown: cuenta atrás sobre un `endsAt` que ya está en memoria',
 };

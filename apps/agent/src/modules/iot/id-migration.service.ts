@@ -1,10 +1,6 @@
 import type { IotKind, IotManager } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
-import {
-  planIdMigration,
-  remapIdsInJson,
-  type MigrationPlan,
-} from '../../iot/id-migration.js';
+import { planIdMigration, remapIdsInJson, type MigrationPlan } from '../../iot/id-migration.js';
 
 /**
  * Reescritura **una sola vez** de los ids IoT persistidos (US-243).

@@ -203,8 +203,7 @@ export function VlanPage() {
           <div className="rounded-xl border border-kr bg-kr-surface py-10 text-center sm:col-span-2 lg:col-span-3">
             <p className="text-kr-secondary">{t('vlan.empty.title')}</p>
             <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-muted">
-              {t('vlan.empty.desc')}{' '}
-              {isAdmin && t('vlan.empty.cta')}
+              {t('vlan.empty.desc')} {isAdmin && t('vlan.empty.cta')}
             </p>
           </div>
         )}

@@ -48,7 +48,15 @@ export function PlugArt({ className, title }: ArtProps) {
         stroke="var(--kr-art-edge)"
         strokeWidth={1.2}
       />
-      <rect x={19} y={14} width={26} height={10} rx={5} fill="var(--kr-art-shell-hi)" opacity={0.55} />
+      <rect
+        x={19}
+        y={14}
+        width={26}
+        height={10}
+        rx={5}
+        fill="var(--kr-art-shell-hi)"
+        opacity={0.55}
+      />
       {/* anillo/botón de encendido */}
       <circle cx={32} cy={31} r={9} fill="var(--kr-art-shell-lo)" />
       <circle cx={32} cy={31} r={8} fill="none" stroke="var(--kr-art-glow)" strokeWidth={2} />
@@ -76,9 +84,24 @@ export function CameraArt({ className, title }: ArtProps) {
         stroke="var(--kr-art-edge)"
         strokeWidth={1.2}
       />
-      <rect x={13} y={21} width={30} height={7} rx={3.5} fill="var(--kr-art-shell-hi)" opacity={0.55} />
+      <rect
+        x={13}
+        y={21}
+        width={30}
+        height={7}
+        rx={3.5}
+        fill="var(--kr-art-shell-hi)"
+        opacity={0.55}
+      />
       {/* lente */}
-      <circle cx={32} cy={32} r={10} fill="var(--kr-art-screen)" stroke="var(--kr-art-edge)" strokeWidth={1} />
+      <circle
+        cx={32}
+        cy={32}
+        r={10}
+        fill="var(--kr-art-screen)"
+        stroke="var(--kr-art-edge)"
+        strokeWidth={1}
+      />
       <circle cx={32} cy={32} r={9} fill="none" stroke="var(--kr-art-glow)" strokeWidth={1.6} />
       <circle cx={32} cy={32} r={5.5} fill="var(--kr-art-shell-lo)" />
       <circle cx={29} cy={29} r={2} fill="var(--kr-art-metal)" opacity={0.8} />
@@ -111,9 +134,24 @@ export function SensorArt({ className, title }: ArtProps) {
         stroke="var(--kr-art-edge)"
         strokeWidth={1.2}
       />
-      <rect x={23} y={30} width={18} height={5} rx={2.5} fill="var(--kr-art-shell-hi)" opacity={0.55} />
+      <rect
+        x={23}
+        y={30}
+        width={18}
+        height={5}
+        rx={2.5}
+        fill="var(--kr-art-shell-hi)"
+        opacity={0.55}
+      />
       {/* lente del sensor */}
-      <circle cx={32} cy={42} r={5} fill="var(--kr-art-screen)" stroke="var(--kr-art-edge)" strokeWidth={1} />
+      <circle
+        cx={32}
+        cy={42}
+        r={5}
+        fill="var(--kr-art-screen)"
+        stroke="var(--kr-art-edge)"
+        strokeWidth={1}
+      />
       <circle cx={32} cy={42} r={2} fill="var(--kr-art-glow)" />
     </ArtSvg>
   );

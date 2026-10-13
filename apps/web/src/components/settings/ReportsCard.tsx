@@ -7,7 +7,11 @@ import { toast } from '@/store/toast.store';
 
 const REPORTS = [
   { path: '/reports/devices.csv', file: 'krakenos-dispositivos.csv', label: 'Dispositivos' },
-  { path: '/reports/traffic.csv?range=week', file: 'krakenos-trafico.csv', label: 'Tráfico (semana)' },
+  {
+    path: '/reports/traffic.csv?range=week',
+    file: 'krakenos-trafico.csv',
+    label: 'Tráfico (semana)',
+  },
   { path: '/reports/audit.csv', file: 'krakenos-auditoria.csv', label: 'Auditoría' },
 ];
 
@@ -33,9 +37,7 @@ export function ReportsCard() {
         <CardTitle>{t('reports.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-kr-sm text-kr-secondary">
-          {t('reports.intro')}
-        </p>
+        <p className="text-kr-sm text-kr-secondary">{t('reports.intro')}</p>
         <div className="flex flex-wrap gap-2">
           {REPORTS.map((r) => (
             <Button

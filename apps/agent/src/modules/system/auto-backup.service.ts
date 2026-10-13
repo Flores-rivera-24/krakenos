@@ -78,7 +78,9 @@ interface LastRun {
 }
 
 function isFrequency(value: unknown): value is AutoBackupFrequency {
-  return typeof value === 'string' && (AUTO_BACKUP_FREQUENCIES as readonly string[]).includes(value);
+  return (
+    typeof value === 'string' && (AUTO_BACKUP_FREQUENCIES as readonly string[]).includes(value)
+  );
 }
 
 /** Genera una passphrase legible y fuerte (base64url, sin caracteres ambiguos de shell). */
@@ -217,8 +219,7 @@ export class AutoBackupService {
     const newest = files[0] ?? null;
     const maxAgeMs = (frequency === 'weekly' ? 8 : 2) * 24 * 60 * 60 * 1000;
     const stale =
-      frequency !== 'off' &&
-      (!newest || this.now().getTime() - Date.parse(newest.at) > maxAgeMs);
+      frequency !== 'off' && (!newest || this.now().getTime() - Date.parse(newest.at) > maxAgeMs);
     return {
       frequency,
       retention,

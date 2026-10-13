@@ -52,7 +52,12 @@ export interface NavGroup {
 // móvil (así `MOBILE_SECONDARY` se deriva por diferencia sin duplicar rutas).
 const CONNECT: NavItem = { to: '/connect', labelKey: 'nav.connect', icon: PlusCircle };
 const DASHBOARD: NavItem = { to: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard, end: true };
-const DEVICES: NavItem = { to: '/inventory', labelKey: 'nav.devices', icon: Network, badge: 'devices' };
+const DEVICES: NavItem = {
+  to: '/inventory',
+  labelKey: 'nav.devices',
+  icon: Network,
+  badge: 'devices',
+};
 const WIFI: NavItem = { to: '/wifi', labelKey: 'nav.wifi', icon: Wifi };
 const COVERAGE: NavItem = { to: '/coverage', labelKey: 'nav.coverage', icon: Radar };
 const TRAFFIC: NavItem = { to: '/traffic', labelKey: 'nav.traffic', icon: Activity };
@@ -64,7 +69,12 @@ const IOT: NavItem = { to: '/iot', labelKey: 'nav.iot', icon: Cpu, badge: 'iot' 
 const ENERGY: NavItem = { to: '/energy', labelKey: 'nav.energy', icon: Zap };
 const CAMERAS: NavItem = { to: '/cameras', labelKey: 'nav.cameras', icon: Video };
 const VPN: NavItem = { to: '/vpn', labelKey: 'nav.vpn', icon: KeyRound };
-const FIREWALL: NavItem = { to: '/firewall', labelKey: 'nav.firewall', icon: ShieldAlert, badge: 'firewall' };
+const FIREWALL: NavItem = {
+  to: '/firewall',
+  labelKey: 'nav.firewall',
+  icon: ShieldAlert,
+  badge: 'firewall',
+};
 const VLANS: NavItem = { to: '/vlans', labelKey: 'nav.vlans', icon: Layers };
 const QOS: NavItem = { to: '/qos', labelKey: 'nav.qos', icon: Gauge };
 const DNS: NavItem = { to: '/dns', labelKey: 'nav.dns', icon: Globe };
@@ -82,7 +92,11 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.group.home',
     items: [PEOPLE, ROOMS, SCENES, AUTOMATIONS, IOT, ENERGY, CAMERAS],
   },
-  { label: 'Red avanzada', labelKey: 'nav.group.advanced', items: [VPN, FIREWALL, VLANS, QOS, DNS] },
+  {
+    label: 'Red avanzada',
+    labelKey: 'nav.group.advanced',
+    items: [VPN, FIREWALL, VLANS, QOS, DNS],
+  },
   { label: 'Sistema', labelKey: 'nav.group.system', items: [SETTINGS] },
 ];
 

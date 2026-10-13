@@ -66,9 +66,13 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
 
   // ---- Multi-AP (Fase 2) ----
 
-  app.get('/access-points', { schema: accessPointsSchema, preHandler: app.authenticate }, async () => {
-    return normalizeAccessPoints(await driver.listAccessPoints());
-  });
+  app.get(
+    '/access-points',
+    { schema: accessPointsSchema, preHandler: app.authenticate },
+    async () => {
+      return normalizeAccessPoints(await driver.listAccessPoints());
+    },
+  );
 
   app.get('/networks', { schema: networksSchema, preHandler: app.authenticate }, async () => {
     return normalizeWifiNetworks(await driver.listWifiNetworks());
@@ -97,7 +101,12 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
       if (!network) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }
-      app.audit({ action: 'wifi.network.update', userId: req.user.sub, detail: network.id, ip: req.ip });
+      app.audit({
+        action: 'wifi.network.update',
+        userId: req.user.sub,
+        detail: network.id,
+        ip: req.ip,
+      });
       return reply.send(network);
     },
   );

@@ -55,7 +55,10 @@ export function HealthCard() {
         ) : (
           <>
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Metric label={t('settings.health.uptime')} value={formatUptime(metrics.uptimeSeconds)} />
+              <Metric
+                label={t('settings.health.uptime')}
+                value={formatUptime(metrics.uptimeSeconds)}
+              />
               <Metric label={t('settings.health.memory')} value={formatMem(metrics.memory)} />
               <Metric label={t('settings.health.requests')} value={String(metrics.http.total)} />
               <Metric
@@ -73,7 +76,10 @@ export function HealthCard() {
                 value={`${Math.round(metrics.eventLoop.lagMs)} ms`}
                 danger={metrics.eventLoop.maxLagMs > 200}
               />
-              <Metric label={t('settings.health.wsClients')} value={String(metrics.websocketClients)} />
+              <Metric
+                label={t('settings.health.wsClients')}
+                value={String(metrics.websocketClients)}
+              />
               {/* Disco y base (US-233): quedarse sin espacio es el fallo más
                   probable de un aparato sobre tarjeta SD, y no se veía en ningún sitio. */}
               <Metric
@@ -121,7 +127,9 @@ function Metric({ label, value, danger }: { label: string; value: string; danger
   return (
     <div>
       <dt className="text-kr-xs text-kr-muted">{label}</dt>
-      <dd className={danger ? 'font-medium text-warning' : 'font-medium text-kr-primary'}>{value}</dd>
+      <dd className={danger ? 'font-medium text-warning' : 'font-medium text-kr-primary'}>
+        {value}
+      </dd>
     </div>
   );
 }

@@ -62,7 +62,8 @@ export function diasIniciales(t: Traducir): string[] {
  */
 export function timeStringToMinute(value: string): number {
   const [h, m] = value.split(':').map(Number);
-  const minute = (Number.isFinite(h) ? (h as number) : 0) * 60 + (Number.isFinite(m) ? (m as number) : 0);
+  const minute =
+    (Number.isFinite(h) ? (h as number) : 0) * 60 + (Number.isFinite(m) ? (m as number) : 0);
   return Math.min(1439, Math.max(0, minute));
 }
 

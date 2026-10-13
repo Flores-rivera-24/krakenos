@@ -9,9 +9,12 @@ describe('manager-holder — recarga en caliente vía handle (US-141)', () => {
         return `soy ${this.id}`;
       },
     };
-    const b = { id: 'b', greet(): string {
+    const b = {
+      id: 'b',
+      greet(): string {
         return `soy ${this.id}`;
-      } };
+      },
+    };
     const disposed: string[] = [];
     const holder = createManagerHolder(a, (old) => disposed.push(old.id));
 

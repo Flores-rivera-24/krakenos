@@ -58,10 +58,12 @@ describe('HeatmapCache', () => {
       }),
     ).rejects.toThrow('boom');
     // La clave no quedó memoizada: el siguiente get recalcula (y ahora resuelve).
-    expect(await cache.get('k', () => {
-      calls++;
-      return Promise.resolve(1);
-    })).toBe(1);
+    expect(
+      await cache.get('k', () => {
+        calls++;
+        return Promise.resolve(1);
+      }),
+    ).toBe(1);
     expect(calls).toBe(2);
   });
 

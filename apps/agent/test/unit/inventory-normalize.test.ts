@@ -5,12 +5,24 @@ describe('normalizeDiscovered (frontera del driver, US-98)', () => {
   it('conserva entradas válidas y rellena hostname/vendor a null si faltan', () => {
     const { devices, dropped } = normalizeDiscovered([
       { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.1', source: 'arp' },
-      { mac: '11:22:33:44:55:66', ip: '192.168.1.2', hostname: 'pc', vendor: 'Acme', source: 'mdns' },
+      {
+        mac: '11:22:33:44:55:66',
+        ip: '192.168.1.2',
+        hostname: 'pc',
+        vendor: 'Acme',
+        source: 'mdns',
+      },
     ]);
     expect(dropped).toBe(0);
     expect(devices).toEqual([
       { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.1', hostname: null, vendor: null, source: 'arp' },
-      { mac: '11:22:33:44:55:66', ip: '192.168.1.2', hostname: 'pc', vendor: 'Acme', source: 'mdns' },
+      {
+        mac: '11:22:33:44:55:66',
+        ip: '192.168.1.2',
+        hostname: 'pc',
+        vendor: 'Acme',
+        source: 'mdns',
+      },
     ]);
   });
 

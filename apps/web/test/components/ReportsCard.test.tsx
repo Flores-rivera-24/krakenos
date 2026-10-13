@@ -20,7 +20,10 @@ describe('ReportsCard — exportación CSV (US-109)', () => {
     render(<ReportsCard />);
     await user.click(screen.getByRole('button', { name: 'Dispositivos' }));
     await waitFor(() =>
-      expect(downloadReport).toHaveBeenCalledWith('/reports/devices.csv', 'krakenos-dispositivos.csv'),
+      expect(downloadReport).toHaveBeenCalledWith(
+        '/reports/devices.csv',
+        'krakenos-dispositivos.csv',
+      ),
     );
   });
 

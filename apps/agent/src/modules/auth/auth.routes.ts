@@ -65,59 +65,61 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
       config: { rateLimit: { max: () => rateLimitStore.getCurrent(), timeWindow: '1 minute' } },
     },
     async (req, reply) => {
-    const { email } = req.body;
-    // Defecto `true`: es lo que hacía la cookie antes de US-269, así que un
-    // cliente que no manda el campo no cambia de comportamiento.
-    const keepSignedIn = req.body.keepSignedIn !== false;
+      const { email } = req.body;
+      // Defecto `true`: es lo que hacía la cookie antes de US-269, así que un
+      // cliente que no manda el campo no cambia de comportamiento.
+      const keepSignedIn = req.body.keepSignedIn !== false;
 
-    // Lockout por cuenta con backoff (US-77, F3): además del límite por IP, una
-    // cuenta con demasiados fallos consecutivos se bloquea temporalmente. Se
-    // comprueba para cualquier email (exista o no) → no enumera cuentas.
-    const retryAfter = loginLockout.retryAfterSec(email);
-    if (retryAfter > 0) {
-      app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
-      return reply
-        .code(429)
-        .header('retry-after', String(retryAfter))
-        .send({
-          code: 'AUTH_ACCOUNT_LOCKED',
-          message: `Demasiados intentos. Reintenta en ${retryAfter} s.`,
-          retryAfter,
-        });
-    }
-
-    try {
-      const user = await service.verifyCredentials(email, req.body.password);
-      // Primer factor correcto: limpia el contador de fallos de la cuenta.
-      loginLockout.recordSuccess(email);
-
-      // 2FA WebAuthn (US-50/US-51): si el usuario tiene passkeys, no se emiten tokens
-      // todavía. Se devuelve un token efímero `mfa-pending` que acredita la contraseña
-      // ya superada y que el paso de passkey debe presentar (atando ambos factores).
-      const passkeys = await app.prisma.webAuthnCredential.count({ where: { userId: user.id } });
-      if (passkeys > 0) {
-        return reply.send({
-          requiresWebAuthn: true,
-          email: user.email,
-          mfaToken: service.issueMfaPendingToken(user.id, keepSignedIn),
-        });
+      // Lockout por cuenta con backoff (US-77, F3): además del límite por IP, una
+      // cuenta con demasiados fallos consecutivos se bloquea temporalmente. Se
+      // comprueba para cualquier email (exista o no) → no enumera cuentas.
+      const retryAfter = loginLockout.retryAfterSec(email);
+      if (retryAfter > 0) {
+        app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
+        return reply
+          .code(429)
+          .header('retry-after', String(retryAfter))
+          .send({
+            code: 'AUTH_ACCOUNT_LOCKED',
+            message: `Demasiados intentos. Reintenta en ${retryAfter} s.`,
+            retryAfter,
+          });
       }
 
-      const session = await service.issueSessionForUserId(user.id, keepSignedIn);
-      app.audit({ action: 'auth.login', userId: session.user.id, ip: req.ip });
-      return sendSession(reply, session);
-    } catch (err) {
-      if (err instanceof AuthError) {
-        // Login fallido: evento de seguridad (auditoría + push, US-45) y suma al
-        // contador de lockout por cuenta (US-77).
-        const lockedSec = loginLockout.recordFailure(email);
-        app.audit({ action: 'auth.login_failed', detail: hashEmail(email), ip: req.ip });
-        if (lockedSec > 0) app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
-        return reply.code(401).send({ code: err.code, message: err.message });
+      try {
+        const user = await service.verifyCredentials(email, req.body.password);
+        // Primer factor correcto: limpia el contador de fallos de la cuenta.
+        loginLockout.recordSuccess(email);
+
+        // 2FA WebAuthn (US-50/US-51): si el usuario tiene passkeys, no se emiten tokens
+        // todavía. Se devuelve un token efímero `mfa-pending` que acredita la contraseña
+        // ya superada y que el paso de passkey debe presentar (atando ambos factores).
+        const passkeys = await app.prisma.webAuthnCredential.count({ where: { userId: user.id } });
+        if (passkeys > 0) {
+          return reply.send({
+            requiresWebAuthn: true,
+            email: user.email,
+            mfaToken: service.issueMfaPendingToken(user.id, keepSignedIn),
+          });
+        }
+
+        const session = await service.issueSessionForUserId(user.id, keepSignedIn);
+        app.audit({ action: 'auth.login', userId: session.user.id, ip: req.ip });
+        return sendSession(reply, session);
+      } catch (err) {
+        if (err instanceof AuthError) {
+          // Login fallido: evento de seguridad (auditoría + push, US-45) y suma al
+          // contador de lockout por cuenta (US-77).
+          const lockedSec = loginLockout.recordFailure(email);
+          app.audit({ action: 'auth.login_failed', detail: hashEmail(email), ip: req.ip });
+          if (lockedSec > 0)
+            app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
+          return reply.code(401).send({ code: err.code, message: err.message });
+        }
+        throw err;
       }
-      throw err;
-    }
-  });
+    },
+  );
 
   /**
    * Entrar con un código de recuperación, **sin la contraseña** (US-269).
@@ -258,7 +260,12 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
         req.user.role === 'admin',
       );
       if (!ok) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Sesión no encontrada' });
-      app.audit({ action: 'auth.session.revoke', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'auth.session.revoke',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

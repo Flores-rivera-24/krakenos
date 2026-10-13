@@ -45,7 +45,8 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
       if (event.type !== 'sensor-reading' || event.deviceId !== trigger.deviceId) return false;
       // Dispara solo al CRUZAR el umbral (no sostenido): la lectura actual lo
       // satisface y la anterior no (o no había anterior).
-      const satisfies = (v: number) => (trigger.op === 'gt' ? v > trigger.value : v < trigger.value);
+      const satisfies = (v: number) =>
+        trigger.op === 'gt' ? v > trigger.value : v < trigger.value;
       return satisfies(event.value) && (event.prevValue === null || !satisfies(event.prevValue));
     }
     case 'energy-threshold':
@@ -57,7 +58,8 @@ export function matchesTrigger(trigger: AutomationTrigger, event: HomeEvent): bo
       if (event.type !== 'weather-reading' || event.metric !== trigger.metric) return false;
       // Mismo flanco que `sensor-threshold`: cruzar, no sostener. Con lectura
       // horaria, «sostenido» sería disparar cada hora mientras siga helando.
-      const satisfies = (v: number) => (trigger.op === 'gt' ? v > trigger.value : v < trigger.value);
+      const satisfies = (v: number) =>
+        trigger.op === 'gt' ? v > trigger.value : v < trigger.value;
       return satisfies(event.value) && (event.prevValue === null || !satisfies(event.prevValue));
     }
     case 'motion-detected':

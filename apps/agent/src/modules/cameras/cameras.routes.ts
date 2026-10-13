@@ -135,10 +135,13 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
         { sub: req.user.sub, cam: req.params.id, type: 'stream' },
         { expiresIn: STREAM_TOKEN_TTL_SEC },
       );
-      app.audit({ action: 'camera.stream', userId: req.user.sub, detail: req.params.id, ip: req.ip });
-      return reply
-        .code(201)
-        .send({ ...session, token, expiresIn: STREAM_TOKEN_TTL_SEC });
+      app.audit({
+        action: 'camera.stream',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
+      return reply.code(201).send({ ...session, token, expiresIn: STREAM_TOKEN_TTL_SEC });
     },
   );
 
@@ -195,12 +198,14 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
           .code(404)
           .send({ code: 'STREAM_SEGMENT_NOT_FOUND', message: 'Segmento no encontrado' });
       }
-      return reply
-        .header('Cache-Control', 'no-store')
-        // .ts → MPEG-TS; los backends que proxyean fMP4 (Frigate/go2rtc, US-214)
-        // sirven segmentos .m4s/.mp4 → video/mp4.
-        .type(segmentContentType(req.params.segment))
-        .send(Buffer.from(bytes));
+      return (
+        reply
+          .header('Cache-Control', 'no-store')
+          // .ts → MPEG-TS; los backends que proxyean fMP4 (Frigate/go2rtc, US-214)
+          // sirven segmentos .m4s/.mp4 → video/mp4.
+          .type(segmentContentType(req.params.segment))
+          .send(Buffer.from(bytes))
+      );
     },
   );
 
@@ -283,7 +288,10 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
           }
           return reply
             .header('Content-Type', 'video/mp4')
-            .header('Content-Disposition', `attachment; filename="${safeFilename(req.params.id)}.mp4"`)
+            .header(
+              'Content-Disposition',
+              `attachment; filename="${safeFilename(req.params.id)}.mp4"`,
+            )
             .send(Buffer.from(bytes));
         }
         const row = await recording.getRow(req.params.id);
@@ -318,7 +326,12 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
             .code(404)
             .send({ code: 'RECORDING_NOT_FOUND', message: 'Grabación no encontrada' });
         }
-        app.audit({ action: 'camera.recording_delete', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+        app.audit({
+          action: 'camera.recording_delete',
+          userId: req.user.sub,
+          detail: req.params.id,
+          ip: req.ip,
+        });
         return reply.code(204).send();
       },
     );
@@ -346,11 +359,18 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
       async (req, reply) => {
         const existing = await store.get(req.params.id);
         if (!existing) {
-          return reply.code(404).send({ code: 'CAMERA_NOT_FOUND', message: 'Cámara no encontrada' });
+          return reply
+            .code(404)
+            .send({ code: 'CAMERA_NOT_FOUND', message: 'Cámara no encontrada' });
         }
         const updated = { ...existing, ...req.body };
         await store.upsert(updated);
-        app.audit({ action: 'camera.update', userId: req.user.sub, detail: updated.id, ip: req.ip });
+        app.audit({
+          action: 'camera.update',
+          userId: req.user.sub,
+          detail: updated.id,
+          ip: req.ip,
+        });
         return toManagedCamera(updated);
       },
     );
@@ -363,9 +383,16 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
         await cameras.stopStream(req.params.id);
         const removed = await store.removeById(req.params.id);
         if (!removed) {
-          return reply.code(404).send({ code: 'CAMERA_NOT_FOUND', message: 'Cámara no encontrada' });
+          return reply
+            .code(404)
+            .send({ code: 'CAMERA_NOT_FOUND', message: 'Cámara no encontrada' });
         }
-        app.audit({ action: 'camera.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+        app.audit({
+          action: 'camera.remove',
+          userId: req.user.sub,
+          detail: req.params.id,
+          ip: req.ip,
+        });
         return reply.code(204).send();
       },
     );

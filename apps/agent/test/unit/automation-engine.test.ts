@@ -35,7 +35,9 @@ const NOW = new Date(2026, 6, 8, 12, 0, 0); // miércoles (día 3) 12:00
 describe('automations/engine — matchesTrigger', () => {
   it('device-new casa con cualquier MAC nueva', () => {
     expect(matchesTrigger({ type: 'device-new' }, { type: 'device-new', mac: 'aa' })).toBe(true);
-    expect(matchesTrigger({ type: 'device-new' }, { type: 'device-online', mac: 'aa' })).toBe(false);
+    expect(matchesTrigger({ type: 'device-new' }, { type: 'device-online', mac: 'aa' })).toBe(
+      false,
+    );
   });
 
   it('device-online/offline exigen la MAC concreta', () => {
@@ -51,8 +53,12 @@ describe('automations/engine — matchesTrigger', () => {
   });
 
   it('iot-on/off exigen el dispositivo concreto', () => {
-    expect(matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-on', deviceId: 'x' })).toBe(true);
-    expect(matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-off', deviceId: 'x' })).toBe(false);
+    expect(
+      matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-on', deviceId: 'x' }),
+    ).toBe(true);
+    expect(
+      matchesTrigger({ type: 'iot-on', deviceId: 'x' }, { type: 'iot-off', deviceId: 'x' }),
+    ).toBe(false);
   });
 
   it('sensor-threshold dispara solo al CRUZAR el umbral, no sostenido', () => {
@@ -75,7 +81,12 @@ describe('automations/engine — matchesTrigger', () => {
   });
 
   it('weather-threshold dispara al CRUZAR, no cada hora mientras dure el frío (US-254)', () => {
-    const trigger = { type: 'weather-threshold', metric: 'temperature', op: 'lt', value: 5 } as const;
+    const trigger = {
+      type: 'weather-threshold',
+      metric: 'temperature',
+      op: 'lt',
+      value: 5,
+    } as const;
     const lectura = (value: number, prevValue: number | null): HomeEvent => ({
       type: 'weather-reading',
       metric: 'temperature',
@@ -93,7 +104,12 @@ describe('automations/engine — matchesTrigger', () => {
   it('weather-threshold solo mira SU magnitud', () => {
     // Sin el filtro por métrica, «si llueve» dispararía con la temperatura: es el
     // mismo fallo que la alarma con una lámpara antes de US-244.
-    const lluvia = { type: 'weather-threshold', metric: 'precipitation', op: 'gt', value: 0 } as const;
+    const lluvia = {
+      type: 'weather-threshold',
+      metric: 'precipitation',
+      op: 'gt',
+      value: 0,
+    } as const;
     expect(
       matchesTrigger(lluvia, {
         type: 'weather-reading',
@@ -123,9 +139,9 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger({ type: 'energy-threshold' }, ev)).toBe(true);
     expect(matchesTrigger({ type: 'energy-threshold', deviceId: 'plug-x' }, ev)).toBe(true);
     expect(matchesTrigger({ type: 'energy-threshold', deviceId: 'other' }, ev)).toBe(false);
-    expect(matchesTrigger({ type: 'energy-threshold' }, { type: 'iot-on', deviceId: 'plug-x' })).toBe(
-      false,
-    );
+    expect(
+      matchesTrigger({ type: 'energy-threshold' }, { type: 'iot-on', deviceId: 'plug-x' }),
+    ).toBe(false);
   });
 
   it('motion-detected: sin cameraId casa con cualquiera; con cameraId, solo esa (US-186)', () => {
@@ -133,7 +149,9 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger({ type: 'motion-detected' }, ev)).toBe(true);
     expect(matchesTrigger({ type: 'motion-detected', cameraId: 'cam-1' }, ev)).toBe(true);
     expect(matchesTrigger({ type: 'motion-detected', cameraId: 'cam-2' }, ev)).toBe(false);
-    expect(matchesTrigger({ type: 'motion-detected' }, { type: 'iot-on', deviceId: 'x' })).toBe(false);
+    expect(matchesTrigger({ type: 'motion-detected' }, { type: 'iot-on', deviceId: 'x' })).toBe(
+      false,
+    );
   });
 
   it('motion-detected con label (Frigate, US-214): filtra por objeto detectado', () => {
@@ -168,7 +186,10 @@ describe('automations/engine — matchesTrigger', () => {
     expect(matchesTrigger({ type: 'person-arrived', userId: 'u2' }, arrived)).toBe(false);
     expect(matchesTrigger({ type: 'person-left' }, arrived)).toBe(false);
     expect(
-      matchesTrigger({ type: 'person-left', userId: 'u1' }, { type: 'person-left', userId: 'u1', name: 'Ana' }),
+      matchesTrigger(
+        { type: 'person-left', userId: 'u1' },
+        { type: 'person-left', userId: 'u1', name: 'Ana' },
+      ),
     ).toBe(true);
   });
 
@@ -205,14 +226,22 @@ describe('automations/engine — timeTriggerDue', () => {
   }; // miércoles 12:00
 
   it('dispara al cruzar el minuto, no antes ni después', () => {
-    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 59), new Date(2026, 6, 8, 12, 0))).toBe(true);
-    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 57), new Date(2026, 6, 8, 11, 58))).toBe(false);
-    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 12, 0), new Date(2026, 6, 8, 12, 1))).toBe(false);
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 59), new Date(2026, 6, 8, 12, 0))).toBe(
+      true,
+    );
+    expect(
+      timeTriggerDue(trigger, new Date(2026, 6, 8, 11, 57), new Date(2026, 6, 8, 11, 58)),
+    ).toBe(false);
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 8, 12, 0), new Date(2026, 6, 8, 12, 1))).toBe(
+      false,
+    );
   });
 
   it('respeta el día de la semana y cruza medianoche', () => {
     // Mismo minuto pero jueves → no dispara.
-    expect(timeTriggerDue(trigger, new Date(2026, 6, 9, 11, 59), new Date(2026, 6, 9, 12, 0))).toBe(false);
+    expect(timeTriggerDue(trigger, new Date(2026, 6, 9, 11, 59), new Date(2026, 6, 9, 12, 0))).toBe(
+      false,
+    );
     // 00:00 del jueves con barrido que cruza medianoche desde el miércoles.
     const midnight: Extract<AutomationTrigger, { type: 'time' }> = {
       type: 'time',
@@ -244,7 +273,9 @@ describe('automations/engine — dueRulesForEvent / dueTimeRules', () => {
     const self = rule({ id: 'r1' });
     const other = rule({ id: 'r2' });
     const caused: HomeEvent = { ...event, origin: 'automation:r1' };
-    expect(dueRulesForEvent([self, other], caused, NOW, new Map()).map((r) => r.id)).toEqual(['r2']);
+    expect(dueRulesForEvent([self, other], caused, NOW, new Map()).map((r) => r.id)).toEqual([
+      'r2',
+    ]);
   });
 
   it('cooldown cumplido vuelve a permitir el disparo', () => {
@@ -327,10 +358,14 @@ describe('automations/engine — eventSubject / describeEvent', () => {
     expect(eventSubject({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toEqual({});
     // El resumen acaba en AutomationRun.event, legible por cualquier autenticado:
     // no debe contener el nombre de la persona (la presencia ajena es por rol).
-    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).not.toContain('Ana');
+    expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).not.toContain(
+      'Ana',
+    );
     expect(describeEvent({ type: 'person-arrived', userId: 'u1', name: 'Ana' })).toContain('llega');
     expect(describeEvent({ type: 'person-left', userId: 'u1', name: 'Ana' })).toContain('sale');
-    expect(describeEvent({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toContain('night');
+    expect(describeEvent({ type: 'mode-changed', mode: 'night', prevMode: 'home' })).toContain(
+      'night',
+    );
   });
 });
 

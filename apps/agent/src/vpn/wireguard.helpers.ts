@@ -1,16 +1,15 @@
 import { generateKeyPairSync } from 'node:crypto';
-import {
-  assertInterfaceName,
-  assertIpv4,
-  assertWireguardKey,
-} from '../privileged/validators.js';
+import { assertInterfaceName, assertIpv4, assertWireguardKey } from '../privileged/validators.js';
 
 /** Genera un par de claves X25519 en formato WireGuard (base64 de 32 bytes raw). */
 export function wireguardKeypair(): { publicKey: string; privateKey: string } {
   const { publicKey, privateKey } = generateKeyPairSync('x25519');
   return {
     publicKey: publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('base64'),
-    privateKey: privateKey.export({ type: 'pkcs8', format: 'der' }).subarray(-32).toString('base64'),
+    privateKey: privateKey
+      .export({ type: 'pkcs8', format: 'der' })
+      .subarray(-32)
+      .toString('base64'),
   };
 }
 
@@ -108,11 +107,17 @@ export function nextAddress(subnetCidr: string, usedIps: string[]): string {
 // una variable de entorno) puede llegar a `wg`/`wg-quick` con una bandera inyectada.
 
 export const wgShowDumpArgs = (iface: string): string[] => [
-  'wg', 'show', assertInterfaceName(iface), 'dump',
+  'wg',
+  'show',
+  assertInterfaceName(iface),
+  'dump',
 ];
 
 export const wgShowPublicKeyArgs = (iface: string): string[] => [
-  'wg', 'show', assertInterfaceName(iface), 'public-key',
+  'wg',
+  'show',
+  assertInterfaceName(iface),
+  'public-key',
 ];
 
 export const wgSetAddPeerArgs = (iface: string, publicKey: string, address: string): string[] => [
@@ -135,5 +140,7 @@ export const wgSetRemovePeerArgs = (iface: string, publicKey: string): string[] 
 ];
 
 export const wgQuickSaveArgs = (iface: string): string[] => [
-  'wg-quick', 'save', assertInterfaceName(iface),
+  'wg-quick',
+  'save',
+  assertInterfaceName(iface),
 ];

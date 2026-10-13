@@ -151,7 +151,9 @@ export function NetworksCard() {
               {clientsOf.clients.map((c) => (
                 <tr key={c.mac} className="border-t border-border">
                   {/* Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC. */}
-                  <td className="py-1">{inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}</td>
+                  <td className="py-1">
+                    {inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
+                  </td>
                   <td className="py-1 font-mono text-xs">{c.ip}</td>
                   <td className="py-1">{c.signalDbm} dBm</td>
                 </tr>

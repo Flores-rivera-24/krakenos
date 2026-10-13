@@ -48,17 +48,19 @@ function normalizeArming(raw: unknown): MotionArming {
   if (mode === 'always' || mode === 'never') return { mode };
   if (mode === 'schedule') {
     const windows = Array.isArray((raw as { windows?: unknown }).windows)
-      ? ((raw as { windows: unknown[] }).windows)
+      ? (raw as { windows: unknown[] }).windows
           .map((w) => {
             const from = clampInt((w as { fromMinute?: unknown }).fromMinute, 0, 1439, -1);
             const to = clampInt((w as { toMinute?: unknown }).toMinute, 0, 1439, -1);
             if (from < 0 || to < 0) return null;
             const days = Array.isArray((w as { days?: unknown }).days)
-              ? ((w as { days: unknown[] }).days
+              ? (w as { days: unknown[] }).days
                   .map((d) => clampInt(d, 0, 6, -1))
-                  .filter((d) => d >= 0))
+                  .filter((d) => d >= 0)
               : undefined;
-            return days ? { fromMinute: from, toMinute: to, days } : { fromMinute: from, toMinute: to };
+            return days
+              ? { fromMinute: from, toMinute: to, days }
+              : { fromMinute: from, toMinute: to };
           })
           .filter((w): w is NonNullable<typeof w> => w !== null)
       : [];
@@ -72,7 +74,10 @@ function normalizeArming(raw: unknown): MotionArming {
  * **Puro** y defensivo (patrón US-63): un valor corrupto cae al por defecto sin
  * romper. Exportado para tests.
  */
-export function normalizeMotionConfig(raw: unknown, base: MotionConfig = DEFAULT_MOTION_CONFIG): MotionConfig {
+export function normalizeMotionConfig(
+  raw: unknown,
+  base: MotionConfig = DEFAULT_MOTION_CONFIG,
+): MotionConfig {
   const r = (raw ?? {}) as Record<string, unknown>;
   const sensitivity = (MOTION_SENSITIVITIES as readonly string[]).includes(r.sensitivity as string)
     ? (r.sensitivity as MotionSensitivity)
@@ -183,7 +188,9 @@ export class MotionService {
   async tick(now: Date = new Date()): Promise<void> {
     if (this.cameras.pollEvents) return this.tickNative(now);
     const configs = await this.readAll();
-    const enabledIds = Object.entries(configs).filter(([, c]) => c.enabled).map(([id]) => id);
+    const enabledIds = Object.entries(configs)
+      .filter(([, c]) => c.enabled)
+      .map(([id]) => id);
     if (enabledIds.length === 0) return;
 
     const cameras = await this.cameras.listCameras();
@@ -250,15 +257,28 @@ export class MotionService {
   ): Promise<void> {
     // El evento nativo trae su propia miniatura; el frame-diff local captura una.
     const image =
-      native?.snapshot ?? (await this.cameras.getSnapshot(cameraId).catch(() => null))?.image ?? null;
+      native?.snapshot ??
+      (await this.cameras.getSnapshot(cameraId).catch(() => null))?.image ??
+      null;
     const detectedAt = now.toISOString();
     const label = native?.label;
 
-    const event: MotionEvent = { cameraId, cameraName, detectedAt, snapshot: image, label: label ?? null };
+    const event: MotionEvent = {
+      cameraId,
+      cameraName,
+      detectedAt,
+      snapshot: image,
+      label: label ?? null,
+    };
     this.events.unshift(event);
     if (this.events.length > this.maxEvents) this.events.length = this.maxEvents;
 
-    this.bus.publish({ type: 'motion-detected', cameraId, cameraName, ...(label ? { label } : {}) });
+    this.bus.publish({
+      type: 'motion-detected',
+      cameraId,
+      cameraName,
+      ...(label ? { label } : {}),
+    });
     // Aviso de texto multicanal (US-180) + registro/auditoría/digest. El label lo
     // pone el detector del NVR (person/car/…), no es PII — puede ir en el detail.
     const detail = label ? `${cameraName} (${label})` : cameraName;

@@ -259,8 +259,16 @@ describe('rutas de sistema', () => {
   });
 
   it('POST /api/system/regen-keys revoca todas las sesiones (admin)', async () => {
-    const admin = await seedUser(app, { email: 'rk@krakenos.test', password: 'password123', role: 'admin' });
-    await app.inject({ method: 'POST', url: '/api/auth/login', payload: { email: 'rk@krakenos.test', password: 'password123' } });
+    const admin = await seedUser(app, {
+      email: 'rk@krakenos.test',
+      password: 'password123',
+      role: 'admin',
+    });
+    await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { email: 'rk@krakenos.test', password: 'password123' },
+    });
 
     const res = await app.inject({
       method: 'POST',

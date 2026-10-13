@@ -239,7 +239,9 @@ function main() {
 
   const { bySeverity, prodCriticals, prodOthers } = analysis;
   const summary = [...bySeverity.entries()].map(([s, n]) => `${n} ${s.toLowerCase()}`).join(' · ');
-  console.log(`OSV: ${summary || 'sin vulnerabilidades conocidas'} (lockfile completo, dev incluido)`);
+  console.log(
+    `OSV: ${summary || 'sin vulnerabilidades conocidas'} (lockfile completo, dev incluido)`,
+  );
   console.log(
     `Producción: ${prodOthers.length} aviso(s) no críticos · ${prodCriticals.length} CRITICAL`,
   );

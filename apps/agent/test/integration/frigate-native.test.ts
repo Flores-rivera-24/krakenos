@@ -30,7 +30,11 @@ class FakeNativeCameras implements CameraManager {
     return [{ id: 'entrada', name: 'entrada', room: null, model: null, online: true }];
   }
   async getSnapshot(id: string): Promise<CameraSnapshot | null> {
-    return { cameraId: id, image: 'data:image/jpeg;base64,X', capturedAt: '2026-07-16T10:00:00.000Z' };
+    return {
+      cameraId: id,
+      image: 'data:image/jpeg;base64,X',
+      capturedAt: '2026-07-16T10:00:00.000Z',
+    };
   }
   async getMotionFrame(): Promise<Uint8Array | null> {
     return null; // sin frame-diff: la detección es nativa
@@ -144,7 +148,11 @@ describe('detección nativa (Frigate, US-214)', () => {
       const admin = await seedUser(routesApp, { role: 'admin' });
       const headers = authHeader(signAccess(routesApp, admin));
 
-      const list = await routesApp.inject({ method: 'GET', url: '/api/cameras/recordings', headers });
+      const list = await routesApp.inject({
+        method: 'GET',
+        url: '/api/cameras/recordings',
+        headers,
+      });
       expect(list.statusCode).toBe(200);
       const rows = list.json() as Recording[];
       expect(rows[0]).toMatchObject({ id: 'frg-ev1', cameraId: 'entrada' });

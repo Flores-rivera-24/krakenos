@@ -57,7 +57,10 @@ const trigger = {
   },
   allOf: [
     {
-      if: { properties: { type: { enum: ['device-online', 'device-offline'] } }, required: ['type'] },
+      if: {
+        properties: { type: { enum: ['device-online', 'device-offline'] } },
+        required: ['type'],
+      },
       then: { required: ['mac'] },
     },
     {

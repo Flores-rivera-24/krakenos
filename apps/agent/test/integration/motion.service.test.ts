@@ -18,7 +18,11 @@ class FakeCameras implements CameraManager {
     return CAMS;
   }
   async getSnapshot(id: string): Promise<CameraSnapshot | null> {
-    return { cameraId: id, image: 'data:image/jpeg;base64,/9j/', capturedAt: '2026-07-08T00:00:00.000Z' };
+    return {
+      cameraId: id,
+      image: 'data:image/jpeg;base64,/9j/',
+      capturedAt: '2026-07-08T00:00:00.000Z',
+    };
   }
   async getMotionFrame(): Promise<Uint8Array | null> {
     return this.frames[Math.min(this.idx++, this.frames.length - 1)] ?? null;
@@ -80,7 +84,12 @@ describe('MotionService (US-186)', () => {
   };
 
   it('normalizeMotionConfig acota y sanea valores corruptos', () => {
-    const cfg = normalizeMotionConfig({ enabled: true, sensitivity: 'nope', cooldownSec: 999999, arming: { mode: 'x' } });
+    const cfg = normalizeMotionConfig({
+      enabled: true,
+      sensitivity: 'nope',
+      cooldownSec: 999999,
+      arming: { mode: 'x' },
+    });
     expect(cfg.enabled).toBe(true);
     expect(cfg.sensitivity).toBe('medium'); // valor inválido → default
     expect(cfg.cooldownSec).toBe(3600); // acotado
@@ -96,7 +105,11 @@ describe('MotionService (US-186)', () => {
     (app as unknown as { telegram: { sendPhotoForAudit: typeof sendPhoto } }).telegram = {
       sendPhotoForAudit: sendPhoto,
     };
-    await service.setConfig('cam-1', { enabled: true, sensitivity: 'medium', arming: { mode: 'always' } });
+    await service.setConfig('cam-1', {
+      enabled: true,
+      sensitivity: 'medium',
+      arming: { mode: 'always' },
+    });
 
     await service.tick(new Date()); // siembra
     await service.tick(new Date()); // estático → sin movimiento
@@ -105,7 +118,11 @@ describe('MotionService (US-186)', () => {
 
     expect(events).toEqual([{ type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' }]);
     expect(auditSpy).toHaveBeenCalledWith(expect.objectContaining({ action: 'camera.motion' }));
-    expect(sendPhoto).toHaveBeenCalledWith('camera.motion', expect.stringContaining('Entrada'), expect.any(String));
+    expect(sendPhoto).toHaveBeenCalledWith(
+      'camera.motion',
+      expect.stringContaining('Entrada'),
+      expect.any(String),
+    );
     expect(service.recentEvents('cam-1')).toHaveLength(1);
     expect(service.recentEvents('cam-1')[0]!.snapshot).toContain('data:image/jpeg');
 
@@ -119,7 +136,11 @@ describe('MotionService (US-186)', () => {
     let clock = 0;
     const { service, events } = build(cameras, () => clock);
     vi.spyOn(app, 'audit').mockImplementation(() => {});
-    await service.setConfig('cam-1', { enabled: true, cooldownSec: 300, arming: { mode: 'always' } });
+    await service.setConfig('cam-1', {
+      enabled: true,
+      cooldownSec: 300,
+      arming: { mode: 'always' },
+    });
 
     await service.tick(new Date()); // siembra (still)
     await service.tick(new Date()); // moving → dispara (clock=0)
@@ -147,7 +168,9 @@ describe('MotionService (US-186)', () => {
     const cams2 = new FakeCameras();
     cams2.frames = [still(), moving()];
     const rec2: unknown[] = [];
-    const { service: s2 } = build(cams2, () => 0, { record: async (i: unknown) => void rec2.push(i) });
+    const { service: s2 } = build(cams2, () => 0, {
+      record: async (i: unknown) => void rec2.push(i),
+    });
     await s2.setConfig('cam-1', { enabled: true, record: true, arming: { mode: 'always' } });
     await s2.tick(new Date());
     await s2.tick(new Date());

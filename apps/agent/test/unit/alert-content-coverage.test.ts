@@ -34,8 +34,11 @@ describe('cobertura de contenido del catálogo de alertas (US-245)', () => {
     '«%s» produce un aviso con título, cuerpo, destino y audiencia',
     (event) => {
       const note = pushNotificationForAudit(event, 'detalle de prueba', '10.0.0.5');
-      expect(note, `el evento «${event}» está en el catálogo pero no tiene contenido de aviso: se
-        configuraría en Ajustes → Alertas y no llegaría nada por push, email ni Telegram`).not.toBeNull();
+      expect(
+        note,
+        `el evento «${event}» está en el catálogo pero no tiene contenido de aviso: se
+        configuraría en Ajustes → Alertas y no llegaría nada por push, email ni Telegram`,
+      ).not.toBeNull();
       expect(note!.title.length).toBeGreaterThan(0);
       expect(note!.body.length).toBeGreaterThan(0);
       expect(note!.url.startsWith('/')).toBe(true);

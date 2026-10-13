@@ -162,7 +162,9 @@ export function InvitationsCard() {
                 <select
                   aria-label={t('requests.roleFor', { name: r.displayName })}
                   value={roleFor[r.id] ?? 'member'}
-                  onChange={(e) => setRoleFor((m) => ({ ...m, [r.id]: e.target.value as UserRole }))}
+                  onChange={(e) =>
+                    setRoleFor((m) => ({ ...m, [r.id]: e.target.value as UserRole }))
+                  }
                   className="rounded-lg border border-kr bg-kr-elevated px-2 py-1.5 text-kr-sm text-kr-primary"
                 >
                   {USER_ROLES.map((role) => (
@@ -195,7 +197,9 @@ export function InvitationsCard() {
       {/* --- Enlace recién emitido --- */}
       {freshLink && (
         <section className="rounded-xl border border-kr-accent bg-kr-elevated p-4">
-          <h3 className="text-kr-base font-medium text-kr-primary">{t('invitations.freshTitle')}</h3>
+          <h3 className="text-kr-base font-medium text-kr-primary">
+            {t('invitations.freshTitle')}
+          </h3>
           <p className="mt-1 text-kr-sm text-kr-secondary">
             <RichText>{t('invitations.freshBody')}</RichText>
           </p>

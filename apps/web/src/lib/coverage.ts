@@ -18,7 +18,8 @@ import { api } from '@/lib/api';
  * de señal por propagación RF y survey de medición real).
  */
 
-export const listFloorPlans = (): Promise<FloorPlan[]> => api.getList<FloorPlan>('/coverage/floorplans');
+export const listFloorPlans = (): Promise<FloorPlan[]> =>
+  api.getList<FloorPlan>('/coverage/floorplans');
 
 export const createFloorPlan = (body: CreateFloorPlanRequest): Promise<FloorPlan> =>
   api.post<FloorPlan>('/coverage/floorplans', body);

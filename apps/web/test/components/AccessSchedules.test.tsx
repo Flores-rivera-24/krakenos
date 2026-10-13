@@ -16,7 +16,10 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class ApiRequestError extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
 
 import { AccessSchedules } from '@/components/inventory/AccessSchedules';
 import { useToastStore } from '@/store/toast.store';

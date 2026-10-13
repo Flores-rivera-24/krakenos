@@ -123,7 +123,10 @@ const YIELD_EVERY = 64;
  *   pasen no forman tramos de la longitud mínima.
  */
 /** Media, desviación típica y umbral de Sauvola de cada bloque de tamaño `block`. */
-function statsPorBloque(img: GrayImage, block: number): { mean: Float64Array; std: Float64Array; cols: number; rows: number } {
+function statsPorBloque(
+  img: GrayImage,
+  block: number,
+): { mean: Float64Array; std: Float64Array; cols: number; rows: number } {
   const { data, width, height } = img;
   const cols = Math.max(1, Math.ceil(width / block));
   const rows = Math.max(1, Math.ceil(height / block));

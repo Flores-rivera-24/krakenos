@@ -1,12 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 import { esperarAuditoria } from '../helpers/audit.js';
 
 describe('rutas de VPN', () => {
@@ -54,7 +48,10 @@ describe('rutas de VPN', () => {
       payload: { name: 'Portátil' },
     });
     expect(created.statusCode).toBe(201);
-    const body = created.json() as { peer: { id: string; name: string }; config: { config: string; qr: string } };
+    const body = created.json() as {
+      peer: { id: string; name: string };
+      config: { config: string; qr: string };
+    };
     expect(body.peer.name).toBe('Portátil');
     expect(body.config.config).toContain('[Interface]');
     expect(body.config.qr).toMatch(/^data:image\/png;base64,/);

@@ -6,7 +6,14 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), post: vi.fn(), patch: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    post: vi.fn(),
+    patch: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
@@ -42,7 +49,10 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
   it('muestra la telemetría desactivada por defecto (opt-in)', async () => {
     render(<SupportCard />);
     expect(await screen.findByRole('button', { name: 'Activar' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Activar' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: 'Activar' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('activa la telemetría vía el ajuste telemetryEnabled', async () => {

@@ -24,9 +24,19 @@ function runHelper(
       [SCRIPT, ...args],
       // PATH con los stubs delante para que `exec wg`/`tc`/`iptables` los use;
       // KRAKENOS_HELPER_CONF a un fichero inexistente para no leer config del host.
-      { env: { ...process.env, PATH: `${binDir}:${process.env.PATH}`, KRAKENOS_HELPER_CONF: '/dev/null/none', ...env } },
+      {
+        env: {
+          ...process.env,
+          PATH: `${binDir}:${process.env.PATH}`,
+          KRAKENOS_HELPER_CONF: '/dev/null/none',
+          ...env,
+        },
+      },
       (err, _stdout, stderr) => {
-        const code = err && typeof (err as { code?: unknown }).code === 'number' ? (err as { code: number }).code : 0;
+        const code =
+          err && typeof (err as { code?: unknown }).code === 'number'
+            ? (err as { code: number }).code
+            : 0;
         resolve({ code, stderr });
       },
     );
@@ -99,7 +109,19 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
       expect((await runHelper(['iptables', '-N', 'KRAKENOS'])).code).toBe(0);
       expect((await runHelper(['iptables', '-F', 'KRAKENOS'])).code).toBe(0);
       expect(
-        (await runHelper(['iptables', '-A', 'KRAKENOS', '-p', 'tcp', '--dport', '443', '-j', 'DROP'])).code,
+        (
+          await runHelper([
+            'iptables',
+            '-A',
+            'KRAKENOS',
+            '-p',
+            'tcp',
+            '--dport',
+            '443',
+            '-j',
+            'DROP',
+          ])
+        ).code,
       ).toBe(0);
     });
 
@@ -117,13 +139,19 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
 
     it('rechaza reglas arbitrarias en FORWARD (solo el salto exacto a la cadena)', async () => {
       expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'ACCEPT'])).code).toBe(64);
-      expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'KRAKENOS', '-p', 'tcp'])).code).toBe(64);
+      expect(
+        (await runHelper(['iptables', '-A', 'FORWARD', '-j', 'KRAKENOS', '-p', 'tcp'])).code,
+      ).toBe(64);
       expect((await runHelper(['iptables', '-F', 'FORWARD'])).code).toBe(64);
     });
 
     it('rechaza tocar otra tabla distinta de filter (-t/--table)', async () => {
-      expect((await runHelper(['iptables', '-t', 'nat', '-A', 'KRAKENOS', '-j', 'MASQUERADE'])).code).toBe(64);
-      expect((await runHelper(['iptables', '-A', 'KRAKENOS', '--table', 'nat', '-j', 'ACCEPT'])).code).toBe(64);
+      expect(
+        (await runHelper(['iptables', '-t', 'nat', '-A', 'KRAKENOS', '-j', 'MASQUERADE'])).code,
+      ).toBe(64);
+      expect(
+        (await runHelper(['iptables', '-A', 'KRAKENOS', '--table', 'nat', '-j', 'ACCEPT'])).code,
+      ).toBe(64);
     });
   });
 
@@ -131,10 +159,45 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
     it('permite qdisc/class/filter sobre la interfaz por defecto (eth0)', async () => {
       expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth0', 'root'])).code).toBe(0);
       expect(
-        (await runHelper(['tc', 'qdisc', 'add', 'dev', 'eth0', 'root', 'handle', '1:', 'htb', 'default', '99'])).code,
+        (
+          await runHelper([
+            'tc',
+            'qdisc',
+            'add',
+            'dev',
+            'eth0',
+            'root',
+            'handle',
+            '1:',
+            'htb',
+            'default',
+            '99',
+          ])
+        ).code,
       ).toBe(0);
       expect(
-        (await runHelper(['tc', 'filter', 'add', 'dev', 'eth0', 'protocol', 'ip', 'parent', '1:', 'prio', '1', 'u32', 'match', 'ip', 'dst', '10.0.0.5', 'flowid', '1:10'])).code,
+        (
+          await runHelper([
+            'tc',
+            'filter',
+            'add',
+            'dev',
+            'eth0',
+            'protocol',
+            'ip',
+            'parent',
+            '1:',
+            'prio',
+            '1',
+            'u32',
+            'match',
+            'ip',
+            'dst',
+            '10.0.0.5',
+            'flowid',
+            '1:10',
+          ])
+        ).code,
       ).toBe(0);
     });
 
@@ -164,12 +227,18 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
   });
 
   describe('ámbito configurable (root-owned, no por el agente)', () => {
-    const scope = { KRAKENOS_FW_CHAIN: 'MYCHAIN', KRAKENOS_TC_IFACE: 'enp3s0', KRAKENOS_WG_IFACE: 'wg9' };
+    const scope = {
+      KRAKENOS_FW_CHAIN: 'MYCHAIN',
+      KRAKENOS_TC_IFACE: 'enp3s0',
+      KRAKENOS_WG_IFACE: 'wg9',
+    };
 
     it('permite el ámbito configurado y rechaza el por defecto', async () => {
       expect((await runHelper(['iptables', '-F', 'MYCHAIN'], scope)).code).toBe(0);
       expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'MYCHAIN'], scope)).code).toBe(0);
-      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'enp3s0', 'root'], scope)).code).toBe(0);
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'enp3s0', 'root'], scope)).code).toBe(
+        0,
+      );
       expect((await runHelper(['wg', 'show', 'wg9', 'dump'], scope)).code).toBe(0);
 
       // Con un ámbito a medida, los defaults dejan de estar permitidos.

@@ -50,7 +50,9 @@ describe('TailscaleCard (US-215)', () => {
 
     expect(await screen.findByText('No detectado')).toBeInTheDocument();
     expect(screen.getByText(/tailscale\.com\/install\.sh/)).toBeInTheDocument();
-    expect(screen.getByText(/WireGuard de arriba sigue siendo la vía recomendada/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/WireGuard de arriba sigue siendo la vía recomendada/),
+    ).toBeInTheDocument();
   });
 
   it('falta iniciar sesión: muestra el comando `tailscale up`', async () => {

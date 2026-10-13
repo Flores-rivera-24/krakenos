@@ -18,12 +18,16 @@ describe('RichText', () => {
     // en uso real siempre llega `{t('clave')}`, que sí lo es.
     const { container } = render(
       <p>
-        <RichText>{'Hay que decir <b>dónde</b>, así que consulta <c>open-meteo.com</c> y ya.'}</RichText>
+        <RichText>
+          {'Hay que decir <b>dónde</b>, así que consulta <c>open-meteo.com</c> y ya.'}
+        </RichText>
       </p>,
     );
 
     // La frase completa sigue leyéndose igual: el marcado no parte el texto.
-    expect(container.textContent).toBe('Hay que decir dónde, así que consulta open-meteo.com y ya.');
+    expect(container.textContent).toBe(
+      'Hay que decir dónde, así que consulta open-meteo.com y ya.',
+    );
     expect(container.querySelector('strong')?.textContent).toBe('dónde');
     expect(container.querySelector('code')?.textContent).toBe('open-meteo.com');
   });

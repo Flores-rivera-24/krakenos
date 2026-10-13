@@ -61,7 +61,9 @@ describe('MatterBridgeCard (US-171)', () => {
     const user = userEvent.setup();
     await screen.findByText(/Puente Matter/);
     await user.click(screen.getByRole('switch', { name: 'Activar el puente' }));
-    await waitFor(() => expect(apiMock.put).toHaveBeenCalledWith('/matter-bridge', { enabled: true }));
+    await waitFor(() =>
+      expect(apiMock.put).toHaveBeenCalledWith('/matter-bridge', { enabled: true }),
+    );
   });
 
   it('muestra el QR y el código manual cuando está activo', async () => {

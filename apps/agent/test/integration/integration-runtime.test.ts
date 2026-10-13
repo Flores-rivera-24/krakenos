@@ -59,7 +59,12 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
     expect(rt.driver.handle.kind).toBe('mock'); // el vivo es el de .env
 
     // Con una config válida el flag vuelve a false.
-    await store.save('driver', 'openwrt', { host: '192.168.1.1', username: 'root', password: 'x', sshPort: 22 });
+    await store.save('driver', 'openwrt', {
+      host: '192.168.1.1',
+      username: 'root',
+      password: 'x',
+      sshPort: 22,
+    });
     const ok = await rt.reconfigure('driver');
     expect(ok.fallback).toBe(false);
     expect(rt.driver.handle.kind).toBe('openwrt');
@@ -86,7 +91,12 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
     rt.dns.swap(stub('dns') as never);
 
     // Recargar el driver cierra la instancia que sale.
-    await store.save('driver', 'openwrt', { host: '192.168.1.1', username: 'root', password: 'x', sshPort: 22 });
+    await store.save('driver', 'openwrt', {
+      host: '192.168.1.1',
+      username: 'root',
+      password: 'x',
+      sshPort: 22,
+    });
     await rt.reconfigure('driver');
     expect(stops).toEqual(['driver']);
 

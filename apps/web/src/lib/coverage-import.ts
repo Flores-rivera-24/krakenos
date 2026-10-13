@@ -194,10 +194,7 @@ export async function importPlanFile(file: File): Promise<string> {
     const jpeg = extractPdfJpeg(new Uint8Array(await file.arrayBuffer()));
     if (!jpeg) throw new PlanImportError('pdf-unreadable');
     imageBlob = bytesToBlob(jpeg, 'image/jpeg');
-  } else if (
-    name.endsWith('.docx') ||
-    type.includes('officedocument.wordprocessingml')
-  ) {
+  } else if (name.endsWith('.docx') || type.includes('officedocument.wordprocessingml')) {
     let media: Uint8Array | null = null;
     try {
       media = selectLargestMedia(unzipSync(new Uint8Array(await file.arrayBuffer())));

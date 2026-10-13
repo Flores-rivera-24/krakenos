@@ -94,7 +94,9 @@ describe('AlarmSettingsSlideover (US-188 · US-245)', () => {
 
     const nota = await screen.findByText(/El humo y el CO avisan siempre/i);
     const caja = nota.closest('[role="note"]')!;
-    expect(within(caja as HTMLElement).getByText(/aunque la alarma esté desarmada/i)).toBeInTheDocument();
+    expect(
+      within(caja as HTMLElement).getByText(/aunque la alarma esté desarmada/i),
+    ).toBeInTheDocument();
     // Aviso permanente: `note`, nunca `alert` (US-235) — no debe interrumpir al
     // lector de pantalla cada vez que se abre el panel.
     expect(caja.getAttribute('role')).toBe('note');
@@ -103,6 +105,8 @@ describe('AlarmSettingsSlideover (US-188 · US-245)', () => {
   it('sin detectores, la nota explica igualmente la regla', async () => {
     apiMock.get.mockResolvedValue([aparato('c1', 'Puerta', 'contact')]);
     render(<AlarmSettingsSlideover onClose={() => {}} />);
-    expect(await screen.findByText(/de noche, con la casa llena, es cuando más importa/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/de noche, con la casa llena, es cuando más importa/i),
+    ).toBeInTheDocument();
   });
 });

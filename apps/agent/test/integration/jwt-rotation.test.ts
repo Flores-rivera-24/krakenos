@@ -21,7 +21,12 @@ function decodeHeader(token: string): { alg?: string; kid?: string } {
   };
 }
 
-const ACCESS = { sub: 'u1', email: 'a@krakenos.test', role: 'admin' as const, type: 'access' as const };
+const ACCESS = {
+  sub: 'u1',
+  email: 'a@krakenos.test',
+  role: 'admin' as const,
+  type: 'access' as const,
+};
 
 async function appWithKeyring(keyring: Keyring): Promise<FastifyInstance> {
   const app = Fastify();
@@ -35,7 +40,9 @@ describe('rotación de claves RS256 (US-64)', () => {
   const keyB = keypair();
   const keyC = keypair();
 
-  const ringA = new Keyring({ privateKey: keyA.privateKey, publicKey: keyA.publicKey }, [keyB.publicKey]);
+  const ringA = new Keyring({ privateKey: keyA.privateKey, publicKey: keyA.publicKey }, [
+    keyB.publicKey,
+  ]);
   const ringB = new Keyring({ privateKey: keyB.privateKey, publicKey: keyB.publicKey });
   const ringC = new Keyring({ privateKey: keyC.privateKey, publicKey: keyC.publicKey });
 

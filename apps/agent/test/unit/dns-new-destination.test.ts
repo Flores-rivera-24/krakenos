@@ -89,9 +89,7 @@ describe('planDeAviso', () => {
       GRACIA,
       AHORA,
     );
-    expect(plan.aRegistrar).toEqual([
-      { mac: 'aa', domain: 'fabricante.com', at: AHORA },
-    ]);
+    expect(plan.aRegistrar).toEqual([{ mac: 'aa', domain: 'fabricante.com', at: AHORA }]);
     expect(plan.aAvisar).toEqual(plan.aRegistrar);
   });
 

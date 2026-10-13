@@ -260,7 +260,9 @@ export function LoginPage() {
         <div className="mx-auto w-full max-w-[340px]">
           <div className="mb-8 flex items-center gap-2.5">
             <LogoMark className="h-7 w-7 text-kr-accent" draw />
-            <span className="text-kr-lg font-semibold tracking-tight text-kr-primary">KrakenOS</span>
+            <span className="text-kr-lg font-semibold tracking-tight text-kr-primary">
+              KrakenOS
+            </span>
           </div>
 
           {stage === 'webauthn' && (
@@ -586,7 +588,9 @@ export function LoginPage() {
                 <p className="text-kr-sm font-medium text-kr-primary">
                   {t('login.recover.noCodes')}
                 </p>
-                <p className="mt-1 text-kr-xs text-kr-secondary">{t('login.recover.noCodesHelp')}</p>
+                <p className="mt-1 text-kr-xs text-kr-secondary">
+                  {t('login.recover.noCodesHelp')}
+                </p>
               </div>
 
               <button

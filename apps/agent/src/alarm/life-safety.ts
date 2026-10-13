@@ -76,7 +76,12 @@ export function decideAvisoVital(
   const ultimo = ultimosAvisos.get(clave);
   if (ultimo !== undefined && now - ultimo < ventanaMs) return null;
 
-  return { clave, deviceId: event.deviceId, metric: event.metric, accion: ACCION_POR_METRICA[event.metric] };
+  return {
+    clave,
+    deviceId: event.deviceId,
+    metric: event.metric,
+    accion: ACCION_POR_METRICA[event.metric],
+  };
 }
 
 /** Texto del aviso: «Humo detectado en Cocina» / «Monóxido de carbono detectado en Garaje». */

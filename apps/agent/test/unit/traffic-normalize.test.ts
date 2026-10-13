@@ -5,7 +5,9 @@ describe('normalizeTrafficSample (frontera del driver, US-98)', () => {
   it('conserva un WAN válido y un desglose por dispositivo válido', () => {
     const result = normalizeTrafficSample({
       wan: { rxBytesPerSec: 100, txBytesPerSec: 50 },
-      devices: [{ mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.1', rxBytesPerSec: 10, txBytesPerSec: 5 }],
+      devices: [
+        { mac: 'aa:bb:cc:dd:ee:ff', ip: '192.168.1.1', rxBytesPerSec: 10, txBytesPerSec: 5 },
+      ],
     });
     expect(result.wan).toEqual({ rxBytesPerSec: 100, txBytesPerSec: 50 });
     expect(result.devices).toHaveLength(1);

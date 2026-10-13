@@ -29,13 +29,7 @@ export type {
 export { GLOSSARY, getGlossaryEntry } from './glossary';
 export type { GlossaryEntry } from './glossary';
 
-export {
-  DRIVER_GUIDES,
-  LIGHT_GUIDES,
-  PLUG_GUIDES,
-  CAMERA_GUIDES,
-  NETWORK_GUIDES,
-};
+export { DRIVER_GUIDES, LIGHT_GUIDES, PLUG_GUIDES, CAMERA_GUIDES, NETWORK_GUIDES };
 
 /**
  * Todas las guías en su **fuente canónica en español**, ordenadas por familia

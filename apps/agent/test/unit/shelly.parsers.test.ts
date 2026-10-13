@@ -18,7 +18,10 @@ describe('shelly.parsers', () => {
   });
 
   it('gen2SwitchSet/GetStatus y gen2LightSet construyen el JSON-RPC correcto', () => {
-    expect(gen2SwitchSet(0, true)).toMatchObject({ method: 'Switch.Set', params: { id: 0, on: true } });
+    expect(gen2SwitchSet(0, true)).toMatchObject({
+      method: 'Switch.Set',
+      params: { id: 0, on: true },
+    });
     expect(gen2SwitchGetStatus(1)).toMatchObject({ method: 'Switch.GetStatus', params: { id: 1 } });
     expect(gen2LightSet(0, { on: true, brightness: 30 })).toMatchObject({
       method: 'Light.Set',
@@ -31,7 +34,10 @@ describe('shelly.parsers', () => {
       relays: [{ ison: true }, { ison: false }],
       meters: [{ power: 12.34 }, { power: 0 }],
     };
-    const devices = parseGen1Status({ ip: '192.168.1.80', name: 'Shelly 2.5', gen: 1, channels: 2 }, status);
+    const devices = parseGen1Status(
+      { ip: '192.168.1.80', name: 'Shelly 2.5', gen: 1, channels: 2 },
+      status,
+    );
     expect(devices).toHaveLength(2);
     expect(devices[0]).toMatchObject({ id: 'shelly:192.168.1.80:0', kind: 'plug', on: true });
     expect(devices[0]!.readings).toEqual([{ metric: 'power', value: 12.3, unit: 'W' }]);
@@ -42,17 +48,26 @@ describe('shelly.parsers', () => {
 
   it('parseGen1Status mapea un dimmer (type=light) con brillo', () => {
     const status = { lights: [{ ison: true, brightness: 65 }], meters: [{ power: 5 }] };
-    const devices = parseGen1Status({ ip: '192.168.1.81', gen: 1, channels: 1, type: 'light' }, status);
+    const devices = parseGen1Status(
+      { ip: '192.168.1.81', gen: 1, channels: 1, type: 'light' },
+      status,
+    );
     expect(devices[0]).toMatchObject({ kind: 'light', on: true, brightness: 65 });
   });
 
   it('parseGen2Channel mapea output/apower/brightness', () => {
-    const plug = parseGen2Channel({ ip: '192.168.1.82', gen: 2, type: 'relay' }, 0, { output: true, apower: 7.7 });
+    const plug = parseGen2Channel({ ip: '192.168.1.82', gen: 2, type: 'relay' }, 0, {
+      output: true,
+      apower: 7.7,
+    });
     expect(plug).toMatchObject({ id: 'shelly:192.168.1.82:0', kind: 'plug', on: true });
     expect(plug.readings).toEqual([{ metric: 'power', value: 7.7, unit: 'W' }]);
     expect(plug.powerW).toBe(7.7);
 
-    const light = parseGen2Channel({ ip: '192.168.1.83', gen: 2, type: 'light' }, 0, { output: false, brightness: 40 });
+    const light = parseGen2Channel({ ip: '192.168.1.83', gen: 2, type: 'light' }, 0, {
+      output: false,
+      brightness: 40,
+    });
     expect(light).toMatchObject({ kind: 'light', on: false, brightness: 40 });
   });
 

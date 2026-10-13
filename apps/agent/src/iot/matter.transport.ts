@@ -83,7 +83,10 @@ export class WebSocketTransport implements WsTransport {
  * id pendiente (info del servidor / eventos). Puro en su lógica de correlación.
  */
 export class MatterClient {
-  private readonly pending = new Map<string, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly pending = new Map<
+    string,
+    { resolve: (v: unknown) => void; reject: (e: Error) => void }
+  >();
   private seq = 0;
 
   constructor(private readonly transport: WsTransport) {

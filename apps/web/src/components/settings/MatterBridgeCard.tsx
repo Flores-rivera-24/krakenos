@@ -114,9 +114,7 @@ export function MatterBridgeCard({ isAdmin }: MatterBridgeCardProps) {
                     <li key={c.deviceId} className="flex items-center justify-between text-kr-sm">
                       <span>
                         {c.name}{' '}
-                        <span className="text-kr-xs text-kr-muted">
-                          ({t(TYPE_LABEL[c.type])})
-                        </span>
+                        <span className="text-kr-xs text-kr-muted">({t(TYPE_LABEL[c.type])})</span>
                       </span>
                       <Switch
                         checked={c.exposed}

@@ -31,7 +31,13 @@ export interface VentanaInstalable {
   removeEventListener: (type: string, listener: (event: Event) => void) => void;
 }
 
-export type EstadoDeInstalacion = 'running' | 'installed' | 'installable' | 'ios' | 'insecure' | 'unsupported';
+export type EstadoDeInstalacion =
+  | 'running'
+  | 'installed'
+  | 'installable'
+  | 'ios'
+  | 'insecure'
+  | 'unsupported';
 
 /** ¿Ya corre como app (ventana propia) y no en una pestaña? */
 export function correComoApp(win: VentanaInstalable | undefined = ventanaActual()): boolean {
@@ -70,7 +76,11 @@ export interface EntradaDeEstado {
  * prueba que se puede (y que hay contexto seguro), iOS no tiene evento pero sí
  * vía manual, y solo entonces se distingue «falta HTTPS» de «este navegador no».
  */
-export function estadoDeInstalacion({ instalada, hayEvento, win }: EntradaDeEstado): EstadoDeInstalacion {
+export function estadoDeInstalacion({
+  instalada,
+  hayEvento,
+  win,
+}: EntradaDeEstado): EstadoDeInstalacion {
   if (correComoApp(win)) return 'running';
   if (instalada) return 'installed';
   if (hayEvento) return 'installable';

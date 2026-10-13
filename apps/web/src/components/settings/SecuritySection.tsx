@@ -247,12 +247,13 @@ function PasskeysCard() {
                 <p className="text-kr-sm text-kr-secondary">
                   {t('security.codes.title')}
                   {remaining !== null && (
-                    <span className="text-kr-muted"> · {t('security.codes.remaining', { n: remaining })}</span>
+                    <span className="text-kr-muted">
+                      {' '}
+                      · {t('security.codes.remaining', { n: remaining })}
+                    </span>
                   )}
                 </p>
-                <p className="text-kr-xs text-kr-muted">
-                  {t('security.codes.help')}
-                </p>
+                <p className="text-kr-xs text-kr-muted">{t('security.codes.help')}</p>
                 <Button
                   variant="outline"
                   size="sm"
@@ -396,9 +397,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
             <CardTitle className="text-danger">{t('security.danger')}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-3">
-            <p className="text-kr-sm text-kr-secondary">
-              {t('security.regen.warning')}
-            </p>
+            <p className="text-kr-sm text-kr-secondary">{t('security.regen.warning')}</p>
             <Button variant="destructive" size="sm" onClick={() => setConfirmRegen(true)}>
               {t('security.regen.button')}
             </Button>
@@ -411,9 +410,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           <h3 id="dialog-regen-title" className="text-kr-lg font-semibold text-kr-primary">
             {t('security.regen.confirmTitle')}
           </h3>
-          <p className="mt-2 text-kr-sm text-kr-secondary">
-            {t('security.regen.confirmBody')}
-          </p>
+          <p className="mt-2 text-kr-sm text-kr-secondary">{t('security.regen.confirmBody')}</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirmRegen(false)}>
               Cancelar

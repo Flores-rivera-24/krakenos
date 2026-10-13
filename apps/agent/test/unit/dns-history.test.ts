@@ -24,7 +24,11 @@ const q = (ms: number, domain: string, client = '192.168.1.10', blocked = false)
 
 describe('seleccionarNuevas (US-252)', () => {
   it('con la marca inicial entra todo, en orden cronológico', () => {
-    const { nuevas, marca } = seleccionarNuevas([q(3000, 'c.com'), q(1000, 'a.com'), q(2000, 'b.com')], MARCA_INICIAL, 100);
+    const { nuevas, marca } = seleccionarNuevas(
+      [q(3000, 'c.com'), q(1000, 'a.com'), q(2000, 'b.com')],
+      MARCA_INICIAL,
+      100,
+    );
     expect(nuevas.map((n) => n.domain)).toEqual(['a.com', 'b.com', 'c.com']);
     expect(marca.ultimoMs).toBe(3000);
   });

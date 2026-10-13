@@ -193,7 +193,9 @@ export class SshMikrotikTransport implements MikrotikTransport {
       this.connection = ssh;
     }
     const ssh = this.connection as {
-      execCommand: (cmd: string) => Promise<{ stdout: string; stderr: string; code: number | null }>;
+      execCommand: (
+        cmd: string,
+      ) => Promise<{ stdout: string; stderr: string; code: number | null }>;
     };
     const r = await ssh.execCommand(command);
     if (r.code && r.code !== 0) {

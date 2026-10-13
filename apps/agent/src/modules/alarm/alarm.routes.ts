@@ -1,4 +1,8 @@
-import type { ArmAlarmRequest, DisarmAlarmRequest, UpdateAlarmConfigRequest } from '@krakenos/types';
+import type {
+  ArmAlarmRequest,
+  DisarmAlarmRequest,
+  UpdateAlarmConfigRequest,
+} from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { alarmPinLockout } from './alarm.lockout.js';
 import { AlarmPinError, type AlarmService } from './alarm.service.js';
@@ -75,8 +79,10 @@ export const alarmRoutes: FastifyPluginAsync<AlarmRoutesOpts> = async (app, opts
     },
   );
 
-  app.get('/config', { schema: getAlarmConfigSchema, preHandler: app.requireRole('admin') }, async () =>
-    alarm.getConfig(),
+  app.get(
+    '/config',
+    { schema: getAlarmConfigSchema, preHandler: app.requireRole('admin') },
+    async () => alarm.getConfig(),
   );
 
   app.put<{ Body: UpdateAlarmConfigRequest }>(

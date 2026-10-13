@@ -16,7 +16,10 @@ test('hogar: crear una habitación (US-165) y verla aparecer', async ({ page }) 
   // Navegación client-side (React Router): un `page.goto` recargaría y perdería el
   // access token en memoria (US-91). Se llega por el enlace de la barra lateral.
   await page.getByRole('link', { name: 'Habitaciones' }).first().click();
-  await page.getByRole('button', { name: /habitación/i }).first().click();
+  await page
+    .getByRole('button', { name: /habitación/i })
+    .first()
+    .click();
 
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Nombre').fill('Salón E2E');
@@ -28,7 +31,10 @@ test('hogar: crear una habitación (US-165) y verla aparecer', async ({ page }) 
 test('red: escanear el inventario y bloquear un dispositivo', async ({ page }) => {
   await page.getByRole('link', { name: 'Dispositivos' }).first().click();
   // Dispara un barrido (mock) y espera a que aparezca un dispositivo conocido.
-  await page.getByRole('button', { name: /Escanear/i }).first().click();
+  await page
+    .getByRole('button', { name: /Escanear/i })
+    .first()
+    .click();
   const device = page.getByText('macbook-emilio').first();
   await expect(device).toBeVisible({ timeout: 15_000 });
 
@@ -43,7 +49,10 @@ test('red: escanear el inventario y bloquear un dispositivo', async ({ page }) =
 test('hogar: crear una escena desde plantilla y ejecutarla (US-166)', async ({ page }) => {
   await page.getByRole('link', { name: 'Escenas' }).first().click();
   // Estado vacío → plantilla sugerida abre el editor precargado.
-  await page.getByRole('button', { name: /Buenas noches/ }).first().click();
+  await page
+    .getByRole('button', { name: /Buenas noches/ })
+    .first()
+    .click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('button', { name: 'Guardar' }).click();
 

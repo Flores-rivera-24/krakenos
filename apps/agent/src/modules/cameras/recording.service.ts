@@ -93,7 +93,9 @@ export class RecordingService implements MotionRecorder {
     try {
       return normalizeRecordingConfig(JSON.parse(row.value));
     } catch {
-      this.app.log.warn('[recording] ajuste cameras.recording corrupto; se usan los valores por defecto');
+      this.app.log.warn(
+        '[recording] ajuste cameras.recording corrupto; se usan los valores por defecto',
+      );
       return DEFAULT_RECORDING_CONFIG;
     }
   }

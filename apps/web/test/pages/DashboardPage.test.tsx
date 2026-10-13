@@ -7,10 +7,22 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
-const fakeSocket = vi.hoisted(() => ({ connected: true, on: vi.fn(), off: vi.fn(), emit: vi.fn() }));
+const fakeSocket = vi.hoisted(() => ({
+  connected: true,
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+}));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { DashboardPage } from '@/pages/DashboardPage';
@@ -83,7 +95,13 @@ describe('DashboardPage', () => {
    */
   it('un `kid` no ve los widgets de red avanzada', async () => {
     useAuthStore.setState({
-      user: { id: 'u2', email: 'k@b.c', displayName: 'K', role: 'kid', uiMode: 'advanced' } as never,
+      user: {
+        id: 'u2',
+        email: 'k@b.c',
+        displayName: 'K',
+        role: 'kid',
+        uiMode: 'advanced',
+      } as never,
     });
     renderDashboard();
 
@@ -98,7 +116,13 @@ describe('DashboardPage', () => {
 
   it('el modo sencillo oculta lo avanzado aunque el rol sea admin', () => {
     useAuthStore.setState({
-      user: { id: 'u3', email: 'a@b.c', displayName: 'A', role: 'admin', uiMode: 'simple' } as never,
+      user: {
+        id: 'u3',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        uiMode: 'simple',
+      } as never,
     });
     renderDashboard();
 

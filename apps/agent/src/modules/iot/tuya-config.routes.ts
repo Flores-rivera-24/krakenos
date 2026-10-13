@@ -37,7 +37,12 @@ export const tuyaConfigRoutes: FastifyPluginAsync<TuyaConfigRoutesOpts> = async 
   app.post<{ Body: CreateBody }>('/devices', { schema: createTuyaSchema }, async (req, reply) => {
     const record = toTuyaRecord(req.body);
     await store.upsert(record);
-    app.audit({ action: 'iot.tuya.add', userId: req.user.sub, detail: record.deviceId, ip: req.ip });
+    app.audit({
+      action: 'iot.tuya.add',
+      userId: req.user.sub,
+      detail: record.deviceId,
+      ip: req.ip,
+    });
     return reply.code(201).send(toPublicTuyaDevice(record));
   });
 
@@ -47,11 +52,18 @@ export const tuyaConfigRoutes: FastifyPluginAsync<TuyaConfigRoutesOpts> = async 
     async (req, reply) => {
       const existing = await store.get(req.params.deviceId);
       if (!existing) {
-        return reply.code(404).send({ code: 'TUYA_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'TUYA_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       const updated = { ...existing, ...req.body };
       await store.upsert(updated);
-      app.audit({ action: 'iot.tuya.update', userId: req.user.sub, detail: updated.deviceId, ip: req.ip });
+      app.audit({
+        action: 'iot.tuya.update',
+        userId: req.user.sub,
+        detail: updated.deviceId,
+        ip: req.ip,
+      });
       return toPublicTuyaDevice(updated);
     },
   );
@@ -62,9 +74,16 @@ export const tuyaConfigRoutes: FastifyPluginAsync<TuyaConfigRoutesOpts> = async 
     async (req, reply) => {
       const removed = await store.removeById(req.params.deviceId);
       if (!removed) {
-        return reply.code(404).send({ code: 'TUYA_NOT_FOUND', message: 'Dispositivo no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'TUYA_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
-      app.audit({ action: 'iot.tuya.remove', userId: req.user.sub, detail: req.params.deviceId, ip: req.ip });
+      app.audit({
+        action: 'iot.tuya.remove',
+        userId: req.user.sub,
+        detail: req.params.deviceId,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

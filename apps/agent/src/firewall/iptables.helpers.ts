@@ -18,7 +18,13 @@ export const iptablesCheckLinkArgs = (chain: string): string[] => [
   '-j',
   chain,
 ];
-export const iptablesLinkArgs = (chain: string): string[] => ['iptables', '-A', 'FORWARD', '-j', chain];
+export const iptablesLinkArgs = (chain: string): string[] => [
+  'iptables',
+  '-A',
+  'FORWARD',
+  '-j',
+  chain,
+];
 
 /**
  * Traduce una regla a uno o más comandos `iptables -A <chain> …`. Devuelve

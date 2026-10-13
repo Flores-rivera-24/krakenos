@@ -17,8 +17,7 @@ const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 // Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 6 celdas encojan por
 // igual a ≤375px (en vez de `min-w-[4rem]`, que sumaba 384px y desbordaba), y la
 // etiqueta trunca para no solaparse con la vecina (US-97).
-const BOTTOM_ITEM_BASE =
-  'flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 px-0.5 py-2';
+const BOTTOM_ITEM_BASE = 'flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 px-0.5 py-2';
 
 function bottomLinkClass({ isActive }: { isActive: boolean }): string {
   return cn(BOTTOM_ITEM_BASE, isActive ? 'text-kr-link' : 'text-kr-secondary');
@@ -62,7 +61,12 @@ function MobileBottomNav() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span id="mas-secciones-titulo" className="text-kr-base font-semibold text-kr-primary">{t('layout.moreSections')}</span>
+              <span
+                id="mas-secciones-titulo"
+                className="text-kr-base font-semibold text-kr-primary"
+              >
+                {t('layout.moreSections')}
+              </span>
               <button
                 type="button"
                 aria-label={t('common.close')}
@@ -104,7 +108,9 @@ function MobileBottomNav() {
         {primary.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="w-full truncate text-center text-[10px] leading-tight">{t(labelKey)}</span>
+            <span className="w-full truncate text-center text-[10px] leading-tight">
+              {t(labelKey)}
+            </span>
           </NavLink>
         ))}
         <button
@@ -114,7 +120,9 @@ function MobileBottomNav() {
           className={cn(BOTTOM_ITEM_BASE, moreOpen ? 'text-kr-link' : 'text-kr-secondary')}
         >
           <MoreHorizontal className="h-5 w-5 shrink-0" />
-          <span className="w-full truncate text-center text-[10px] leading-tight">{t('layout.more')}</span>
+          <span className="w-full truncate text-center text-[10px] leading-tight">
+            {t('layout.more')}
+          </span>
         </button>
       </nav>
     </>

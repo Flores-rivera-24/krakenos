@@ -17,7 +17,11 @@ describe('createUpdateSpawner (US-190)', () => {
     createUpdateSpawner()('1.2.3');
 
     expect(spawnMock).toHaveBeenCalledTimes(1);
-    const [cmd, args, opts] = spawnMock.mock.calls[0] as [string, string[], Record<string, unknown>];
+    const [cmd, args, opts] = spawnMock.mock.calls[0] as [
+      string,
+      string[],
+      Record<string, unknown>,
+    ];
     expect(cmd).toBe(process.execPath);
     expect(args[0]).toMatch(/update-runner\.js$/);
     expect(args[1]).toBe('1.2.3');

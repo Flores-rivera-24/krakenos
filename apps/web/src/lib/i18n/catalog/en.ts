@@ -168,7 +168,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.uiMode.simpleDesc':
     'Just the essentials: devices, home, WiFi and cameras. No technical jargon.',
   'settings.uiMode.advanced': 'Advanced',
-  'settings.uiMode.advancedDesc': 'Everything, including the advanced network (VPN, firewall, VLANs, QoS, DNS).',
+  'settings.uiMode.advancedDesc':
+    'Everything, including the advanced network (VPN, firewall, VLANs, QoS, DNS).',
   'settings.uiMode.simpleOn': 'Simple mode enabled',
   'settings.uiMode.advancedOn': 'Advanced mode enabled',
   'settings.uiMode.error': 'Could not change the mode',
@@ -279,7 +280,8 @@ export const en: Record<TranslationKey, string> = {
 
   // --- Settings → API tokens (US-174) ---
   'settings.apiTokens.title': 'API tokens',
-  'settings.apiTokens.desc': 'Give Home Assistant, Node-RED or other apps access without sharing your password. Tokens read state and, optionally, control devices; they never administer.',
+  'settings.apiTokens.desc':
+    'Give Home Assistant, Node-RED or other apps access without sharing your password. Tokens read state and, optionally, control devices; they never administer.',
   'settings.apiTokens.name': 'Name',
   'settings.apiTokens.namePlaceholder': 'e.g. Home Assistant',
   'settings.apiTokens.scopes': 'Permissions',
@@ -298,7 +300,8 @@ export const en: Record<TranslationKey, string> = {
 
   // --- Settings → Publish to MQTT (US-174) ---
   'settings.mqtt.title': 'Publish to MQTT',
-  'settings.mqtt.desc': 'Publish your home state (IoT, energy) to a local MQTT broker to integrate with Home Assistant or Node-RED. The password is stored encrypted.',
+  'settings.mqtt.desc':
+    'Publish your home state (IoT, energy) to a local MQTT broker to integrate with Home Assistant or Node-RED. The password is stored encrypted.',
   'settings.mqtt.enabled': 'Enable publishing',
   'settings.mqtt.url': 'Broker',
   'settings.mqtt.username': 'Username',
@@ -400,8 +403,7 @@ export const en: Record<TranslationKey, string> = {
     'tailscaled was not detected on the server. If your connection has no public IP, install it with one command:',
   'vpn.tailscale.wireguardNote':
     'With a public IP, the WireGuard VPN above remains the recommended path.',
-  'vpn.tailscale.webauthnNote':
-    'If you use passkeys, set WEBAUTHN_RP_ID to this name as the host.',
+  'vpn.tailscale.webauthnNote': 'If you use passkeys, set WEBAUTHN_RP_ID to this name as the host.',
   'vpn.tailscale.loadError': 'Could not query Tailscale',
   'vpn.tailscale.copy': 'Copy',
   'vpn.tailscale.copied': 'Copied!',
@@ -712,7 +714,8 @@ export const en: Record<TranslationKey, string> = {
   'firewall.empty.title': 'No rules configured yet.',
   'firewall.empty.desc':
     'The firewall decides which connections are allowed and which are blocked. Without rules, all traffic passes.',
-  'firewall.empty.cta': 'Create one above to, for example, stop a device from reaching the internet.',
+  'firewall.empty.cta':
+    'Create one above to, for example, stop a device from reaching the internet.',
   'firewall.toggleError': 'Could not update {name}',
   'firewall.toggleLabel': 'Enable rule {name}',
   'firewall.deleteLabel': 'Delete rule {name}',
@@ -769,7 +772,8 @@ export const en: Record<TranslationKey, string> = {
   // --- Escenas (US-166) ---
   'scenes.title': 'Scenes',
   'scenes.subtitle': 'Set several devices the way you want with a single tap.',
-  'scenes.scheduleMoved': 'To run a scene automatically at a time or at sunset, create it as a routine.',
+  'scenes.scheduleMoved':
+    'To run a scene automatically at a time or at sunset, create it as a routine.',
   'scenes.scheduleMovedLink': 'Go to Routines',
   'scenes.loadError': 'Could not load scenes',
   'scenes.devicesLoadError': 'Could not load IoT devices',
@@ -870,18 +874,17 @@ export const en: Record<TranslationKey, string> = {
 
   // --- Digital wellbeing (US-184) ---
   'wellbeing.title': 'Usage by person',
-  'wellbeing.subtitle': 'Internet usage aggregated per household member. Only you and admins see each person’s detail.',
+  'wellbeing.subtitle':
+    'Internet usage aggregated per household member. Only you and admins see each person’s detail.',
   'wellbeing.rangeLabel': 'Range',
   'wellbeing.loading': 'Loading…',
   'wellbeing.empty': 'No usage data for this period yet.',
   'wellbeing.noOwners':
     'No usage data yet. Assign an owner to your devices from their detail panel.',
-  'wellbeing.unsupported':
-    'Your router does not break traffic down per device',
+  'wellbeing.unsupported': 'Your router does not break traffic down per device',
   'wellbeing.unsupportedDesc':
     'This feature needs the router to report how much data each device uses, and yours only reports the household total. This is not a setting on your side: assigning owners will not fix it. We are working on getting that data from the routers that allow it.',
-  'traffic.perDeviceUnsupported':
-    'Your router does not break traffic down per device',
+  'traffic.perDeviceUnsupported': 'Your router does not break traffic down per device',
   'traffic.perDeviceUnsupportedDesc':
     'It only reports the household total, so per-device usage and per-person usage cannot be shown. This is not a setting on your side.',
   'traffic.perDeviceAdminOnly': 'Only the administrator sees per-device usage',
@@ -972,7 +975,8 @@ export const en: Record<TranslationKey, string> = {
   'access.kinds.block': 'Block',
   'access.kinds.blockDesc':
     'An open-ended cut on one device. It only comes back when someone unblocks it.',
-  'access.kinds.note': 'They are independent and they stack: while any one is on, there is no internet.',
+  'access.kinds.note':
+    'They are independent and they stack: while any one is on, there is no internet.',
 
   // --- Installation TLS (US-241) ---
   'settings.tls.title': 'Secure connection (HTTPS)',
@@ -986,7 +990,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.tls.howTo':
     'This is not an in-app setting: it is decided at install time. Re-run the installer without «--tls none»: it will use Tailscale if you have it and, if not, a KrakenOS CA of its own.',
   'settings.tls.sourceLabel': 'Certificate',
-  'settings.tls.source.tailscale': 'Let\'s Encrypt (Tailscale)',
+  'settings.tls.source.tailscale': "Let's Encrypt (Tailscale)",
   'settings.tls.source.selfSigned': 'Self-signed',
   'settings.tls.source.unknown': 'Unknown',
   'settings.tls.expiresLabel': 'Expires',
@@ -1057,7 +1061,8 @@ export const en: Record<TranslationKey, string> = {
   'energy.savePrice': 'Save',
   'energy.priceSaved': 'Price updated',
   'energy.priceError': 'Could not save the price',
-  'energy.priceHint': 'Leave blank to skip cost estimation. Consumption is only measured on devices that report power.',
+  'energy.priceHint':
+    'Leave blank to skip cost estimation. Consumption is only measured on devices that report power.',
   'energy.alert.title': 'Consumption alerts',
   'energy.alert.device': 'Device',
   'energy.alert.metric': 'Type',
@@ -1074,7 +1079,8 @@ export const en: Record<TranslationKey, string> = {
   'energy.alert.invalid': 'Pick a device and a valid threshold',
   'energy.alert.describeSustained': 'over {w} W for {min} min',
   'energy.alert.describeDaily': 'over {wh} Wh in a day',
-  'energy.alert.hint': 'The alert channel (push/email/Telegram) is chosen in Settings → Alerts, event “Abnormal power consumption”.',
+  'energy.alert.hint':
+    'The alert channel (push/email/Telegram) is chosen in Settings → Alerts, event “Abnormal power consumption”.',
 
   // --- Connect ---
   'connect.loadError': 'Could not load the integrations catalog',
@@ -1287,7 +1293,8 @@ export const en: Record<TranslationKey, string> = {
   'device.applying': 'Applying…',
   'device.identify.title': 'What is this device?',
   'device.identify.guess': 'By its manufacturer and name it looks like {type}. Is it?',
-  'device.identify.unknown': 'Not identified yet. Tell us what it is so we recognise it across the app.',
+  'device.identify.unknown':
+    'Not identified yet. Tell us what it is so we recognise it across the app.',
   'device.identify.confirm': 'Yes, it is {type}',
   'device.traffic.title': 'Traffic (last hour)',
   'device.traffic.down': '↓ Download',
@@ -1390,7 +1397,8 @@ export const en: Record<TranslationKey, string> = {
   'security.passkey.registerError': 'Could not register the passkey.',
   'security.codes.title': 'Recovery codes',
   'security.codes.remaining': '{n} left',
-  'security.codes.help': 'They let you in if you lose your passkey. Regenerating invalidates the previous ones.',
+  'security.codes.help':
+    'They let you in if you lose your passkey. Regenerating invalidates the previous ones.',
   'security.codes.regenerate': 'Regenerate codes',
   'security.codes.regenerating': 'Generating…',
   'security.codes.reveal':
@@ -1552,7 +1560,8 @@ export const en: Record<TranslationKey, string> = {
   'survey.deleteError': 'Could not delete the walk',
   'survey.heatmapError': 'Could not compute the measured map',
   'coverage.ap.yours': 'Your access points',
-  'coverage.ap.yoursHint': 'Detected on your network. Add them to the plan and drag them to their real spot.',
+  'coverage.ap.yoursHint':
+    'Detected on your network. Add them to the plan and drag them to their real spot.',
   'coverage.ap.none': 'No access points detected. You can add one manually below.',
   'coverage.ap.loadError': 'Could not load the access points',
   'coverage.ap.onPlan': 'On the plan',
@@ -1738,11 +1747,13 @@ export const en: Record<TranslationKey, string> = {
   'compat.subtitle': 'Search for your router, camera or device and see what can be controlled.',
   'compat.search': 'Search by brand or model',
   'compat.all': 'All',
-  'compat.none': "We couldn't find that equipment. Not being listed doesn't mean it won't work: many routers with OpenWrt or standard devices work fine.",
+  'compat.none':
+    "We couldn't find that equipment. Not being listed doesn't mean it won't work: many routers with OpenWrt or standard devices work fine.",
   'compat.verified': 'Verified with hardware',
   'compat.verifiedOn': 'Verified with hardware on {date}',
   'compat.unverified': 'Supported in code',
-  'compat.community': 'Community · no guarantee: it may break if the manufacturer changes something.',
+  'compat.community':
+    'Community · no guarantee: it may break if the manufacturer changes something.',
   'compat.app.pairing': 'Needs the manufacturer app once: pairing happens against their cloud.',
   'compat.app.account': 'Needs the manufacturer account to work.',
   'compat.app.enable-local': 'Needs the manufacturer app to turn on local control on each device.',
@@ -1786,7 +1797,8 @@ export const en: Record<TranslationKey, string> = {
 
   // --- Matter bridge (US-171) ---
   'matter.title': 'Matter bridge (Alexa / Google / Apple)',
-  'matter.subtitle': 'Expose the devices you choose to your voice assistant as a Matter hub on your local network — no extra accounts or cloud.',
+  'matter.subtitle':
+    'Expose the devices you choose to your voice assistant as a Matter hub on your local network — no extra accounts or cloud.',
   'matter.error': 'Could not update the Matter bridge',
   'matter.enable': 'Enable the bridge',
   'matter.statusOff': 'Off',
@@ -1794,7 +1806,8 @@ export const en: Record<TranslationKey, string> = {
   'matter.statusCommissioned': 'Paired ({n})',
   'matter.qrAlt': 'Matter pairing QR code',
   'matter.manualCode': 'Manual code',
-  'matter.commissionHint': 'Add a “hub” or “Matter device” in your Alexa/Google/Apple app and scan this QR (or type the code).',
+  'matter.commissionHint':
+    'Add a “hub” or “Matter device” in your Alexa/Google/Apple app and scan this QR (or type the code).',
   'matter.certWarning':
     'When you scan the QR, Alexa/Google/Apple may warn that the device is “not certified”. That’s expected: KrakenOS uses a test identifier. You can continue, though some ecosystems may limit certain features.',
   'matter.devices': 'Devices to expose',
@@ -1804,14 +1817,18 @@ export const en: Record<TranslationKey, string> = {
   'matter.type.dimmable': 'dimmable light',
   'matter.type.color': 'color light',
   'matter.commission.title': 'Add a Matter device',
-  'matter.commission.subtitle': 'Paste your Matter device’s QR or 11-digit pairing code and KrakenOS will add it directly — no manufacturer app.',
+  'matter.commission.subtitle':
+    'Paste your Matter device’s QR or 11-digit pairing code and KrakenOS will add it directly — no manufacturer app.',
   'matter.commission.placeholder': 'MT:… or 1234-567-8901',
   'matter.commission.add': 'Add',
   'matter.commission.ok': '“{name}” added successfully',
   'matter.commission.err.invalidCode': 'That code isn’t valid. Check the QR or the 11 digits.',
-  'matter.commission.err.notFound': 'Device not found. Move it closer to the hub and make sure it’s in pairing mode.',
-  'matter.commission.err.threadNoBorder': 'This is a Thread device and there’s no border router on your network. You need one (e.g. a compatible HomePod, Echo or Nest).',
-  'matter.commission.err.unavailable': 'No active Matter integration. Set it up first in Settings → Integrations.',
+  'matter.commission.err.notFound':
+    'Device not found. Move it closer to the hub and make sure it’s in pairing mode.',
+  'matter.commission.err.threadNoBorder':
+    'This is a Thread device and there’s no border router on your network. You need one (e.g. a compatible HomePod, Echo or Nest).',
+  'matter.commission.err.unavailable':
+    'No active Matter integration. Set it up first in Settings → Integrations.',
   'matter.commission.err.failed': 'Could not add the device. Please try again.',
   'settings.section.users': 'Users',
   'settings.section.account': 'Account',
@@ -1909,13 +1926,15 @@ export const en: Record<TranslationKey, string> = {
   'coverage.survey.recordError': 'Could not record the measurement',
   // Import floor plan + calibration (US-194)
   'coverage.import.label': 'Background plan (optional)',
-  'coverage.import.hint': 'Upload a photo, a PDF or a Word file with your plan. It is processed in your browser.',
+  'coverage.import.hint':
+    'Upload a photo, a PDF or a Word file with your plan. It is processed in your browser.',
   'coverage.import.choose': 'Choose file',
   'coverage.import.processing': 'Processing…',
   'coverage.import.remove': 'Remove image',
   'coverage.import.preview': 'Floor plan preview',
   'coverage.import.error.unsupported': 'Unsupported format. Use an image, a PDF or a Word file.',
-  'coverage.import.error.pdfUnreadable': "We couldn't read this PDF. Upload a photo or screenshot of the plan.",
+  'coverage.import.error.pdfUnreadable':
+    "We couldn't read this PDF. Upload a photo or screenshot of the plan.",
   'coverage.import.error.docxNoImage': 'The document contains no plan image.',
   'coverage.import.error.decode': 'Could not process the image.',
   'coverage.calibrate.button': 'Calibrate scale',
@@ -1945,7 +1964,8 @@ export const en: Record<TranslationKey, string> = {
   'coverage.detect.detecting': 'Detecting…',
   'coverage.detect.title': 'Plan walls',
   'coverage.detect.noImage': 'Upload a background plan to detect walls.',
-  'coverage.detect.hint': 'Review the proposed walls (dashed), pick the material and accept them. Then adjust or delete them by hand.',
+  'coverage.detect.hint':
+    'Review the proposed walls (dashed), pick the material and accept them. Then adjust or delete them by hand.',
   'coverage.detect.found': '{count} proposed walls',
   'coverage.detect.none': 'No walls detected. Draw them by hand over the plan.',
   'coverage.detect.material': 'Material',
@@ -1955,7 +1975,8 @@ export const en: Record<TranslationKey, string> = {
   'coverage.detect.accepted': '{count} walls added',
   // Rooms detected from the plan (US-196)
   'coverage.rooms.title': 'Rooms from the plan',
-  'coverage.rooms.hint': 'Detect the areas enclosed by walls and create them as rooms in one tap. Nothing is created automatically.',
+  'coverage.rooms.hint':
+    'Detect the areas enclosed by walls and create them as rooms in one tap. Nothing is created automatically.',
   'coverage.rooms.area': 'Plan area: {area} m²',
   'coverage.rooms.detect': 'Detect rooms',
   'coverage.rooms.detecting': 'Detecting…',
@@ -2151,7 +2172,8 @@ export const en: Record<TranslationKey, string> = {
   'gettingStarted.network.title': 'Connect your network',
   'gettingStarted.network.desc': 'Your router or access point, to see and control your devices.',
   'gettingStarted.iot.title': 'Add a light or a plug',
-  'gettingStarted.iot.desc': 'Philips Hue, Govee, TP-Link, Shelly and more — with a step-by-step guide.',
+  'gettingStarted.iot.desc':
+    'Philips Hue, Govee, TP-Link, Shelly and more — with a step-by-step guide.',
   'gettingStarted.wifi.title': 'Check your WiFi',
   'gettingStarted.wifi.desc': 'Network name, password and guest network.',
   'gettingStarted.camera.title': 'Add a camera',

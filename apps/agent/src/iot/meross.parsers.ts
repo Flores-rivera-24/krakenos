@@ -143,7 +143,9 @@ export function extractChannelStates(payload: Record<string, unknown>): Map<numb
     out.set(ch, { on: t.onoff === 1, brightness: null, color: null, isLight: false });
   }
   // Dispositivos antiguos de un solo canal: `control.toggle`.
-  const toggle = ((all.control ?? {}) as Record<string, unknown>).toggle as Record<string, unknown> | undefined;
+  const toggle = ((all.control ?? {}) as Record<string, unknown>).toggle as
+    | Record<string, unknown>
+    | undefined;
   if (toggle && !out.has(0)) {
     out.set(0, { on: toggle.onoff === 1, brightness: null, color: null, isLight: false });
   }
@@ -151,7 +153,8 @@ export function extractChannelStates(payload: Record<string, unknown>): Map<numb
   for (const l of asArray(digest.light)) {
     const ch = num(l.channel) ?? 0;
     const rgb = num(l.rgb);
-    const color: IotColor | null = rgb !== null ? { hex: rgbIntToHex(rgb), temperatureK: null } : null;
+    const color: IotColor | null =
+      rgb !== null ? { hex: rgbIntToHex(rgb), temperatureK: null } : null;
     const existing = out.get(ch);
     out.set(ch, {
       on: existing?.on ?? l.onoff === 1,

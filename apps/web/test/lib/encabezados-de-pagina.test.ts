@@ -47,7 +47,9 @@ describe('jerarquía de encabezados de las páginas (US-266)', () => {
     // La forma exacta que tenían las 18: se ve igual que un `<h1>` y por eso
     // sobrevivió a todas las revisiones visuales.
     const reincidentes = paginas
-      .filter((p) => /<h2\s+className="(?:text-xl font-semibold|text-kr-xl font-semibold)/.test(p.fuente))
+      .filter((p) =>
+        /<h2\s+className="(?:text-xl font-semibold|text-kr-xl font-semibold)/.test(p.fuente),
+      )
       .map((p) => p.nombre);
     expect(reincidentes).toEqual([]);
   });

@@ -50,8 +50,7 @@ function mockApi({
 } = {}) {
   apiMock.get.mockImplementation((url: string) => {
     if (url.startsWith('/traffic/stats')) return Promise.resolve(stats);
-    if (url.startsWith('/traffic/devices'))
-      return Promise.resolve({ devices, perDeviceTraffic });
+    if (url.startsWith('/traffic/devices')) return Promise.resolve({ devices, perDeviceTraffic });
     return Promise.resolve(history);
   });
 }

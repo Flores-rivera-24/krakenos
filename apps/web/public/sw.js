@@ -161,9 +161,13 @@ self.addEventListener('fetch', (e) => {
   // Estáticos inmutables: caché primero (los nombres llevan hash del contenido).
   if (esInmutable(url)) {
     e.respondWith(
-      caches
-        .match(req)
-        .then((hit) => hit ?? fetch(req).then(guardar).catch(() => Response.error())),
+      caches.match(req).then(
+        (hit) =>
+          hit ??
+          fetch(req)
+            .then(guardar)
+            .catch(() => Response.error()),
+      ),
     );
     return;
   }

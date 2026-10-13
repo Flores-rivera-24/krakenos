@@ -48,7 +48,11 @@ export function RichText({ children }: RichTextProps): ReactElement {
 
   MARCA.lastIndex = 0;
   while ((m = MARCA.exec(children)) !== null) {
-    const [completo, etiqueta, contenido] = m as unknown as [string, keyof typeof ETIQUETAS, string];
+    const [completo, etiqueta, contenido] = m as unknown as [
+      string,
+      keyof typeof ETIQUETAS,
+      string,
+    ];
     if (m.index > cursor) {
       trozos.push(<Fragment key={trozos.length}>{children.slice(cursor, m.index)}</Fragment>);
     }

@@ -58,7 +58,9 @@ async function main(): Promise<void> {
   try {
     result = await orchestrateUpdate(runner, current, targetVersion, {
       onStep: (s) =>
-        process.stdout.write(`[update] ${s.step}: ${s.status}${s.detail ? ` — ${s.detail}` : ''}\n`),
+        process.stdout.write(
+          `[update] ${s.step}: ${s.status}${s.detail ? ` — ${s.detail}` : ''}\n`,
+        ),
     });
   } catch (err) {
     // orchestrateUpdate no debería lanzar, pero si algo inesperado explota dejamos
@@ -68,7 +70,9 @@ async function main(): Promise<void> {
       rolledBack: false,
       fromVersion: current,
       targetVersion,
-      steps: [{ step: 'backup', status: 'failed', detail: err instanceof Error ? err.message : 'error' }],
+      steps: [
+        { step: 'backup', status: 'failed', detail: err instanceof Error ? err.message : 'error' },
+      ],
       finishedAt: new Date().toISOString(),
     };
   }

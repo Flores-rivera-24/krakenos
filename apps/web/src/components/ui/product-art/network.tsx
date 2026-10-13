@@ -25,7 +25,15 @@ export function RouterArt({ className, title }: ArtProps) {
       {/* banda superior (highlight) */}
       <rect x={12} y={32} width={40} height={5} rx={2.5} fill="var(--kr-art-shell-hi)" />
       {/* sombra base */}
-      <rect x={13} y={49} width={38} height={3} rx={1.5} fill="var(--kr-art-shell-lo)" opacity={0.9} />
+      <rect
+        x={13}
+        y={49}
+        width={38}
+        height={3}
+        rx={1.5}
+        fill="var(--kr-art-shell-lo)"
+        opacity={0.9}
+      />
       {/* LEDs (uno activo en acento) */}
       <circle cx={18} cy={44} r={2} fill="var(--kr-art-glow)" />
       <circle cx={26} cy={44} r={2} fill="var(--kr-art-metal)" />
@@ -88,7 +96,15 @@ export function SwitchArt({ className, title }: ArtProps) {
       </g>
       {/* LED de enlace en acento */}
       <circle cx={13.5} cy={30} r={1.3} fill="var(--kr-art-glow)" />
-      <rect x={9} y={40} width={46} height={2.5} rx={1.2} fill="var(--kr-art-shell-lo)" opacity={0.9} />
+      <rect
+        x={9}
+        y={40}
+        width={46}
+        height={2.5}
+        rx={1.2}
+        fill="var(--kr-art-shell-lo)"
+        opacity={0.9}
+      />
     </ArtSvg>
   );
 }

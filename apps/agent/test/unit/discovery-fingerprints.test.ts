@@ -21,7 +21,11 @@ const mdns = (
 describe('discovery/fingerprints', () => {
   it('reconoce un bridge Hue por mDNS y precarga su URL', () => {
     const out = matchFingerprints([
-      mdns({ service: '_hue._tcp.local', name: 'Philips Hue - ABC123._hue._tcp.local', ip: '192.168.1.2' }),
+      mdns({
+        service: '_hue._tcp.local',
+        name: 'Philips Hue - ABC123._hue._tcp.local',
+        ip: '192.168.1.2',
+      }),
     ]);
     expect(out).toHaveLength(1);
     expect(out[0]).toMatchObject({
@@ -77,7 +81,12 @@ describe('discovery/fingerprints', () => {
     // El broker no dice para qué se usa: adivinar una sola dejaba fuera la ingesta
     // genérica de US-248, que es la que sirve con cualquier cacharro liberado.
     const out = matchFingerprints([
-      mdns({ service: '_mqtt._tcp.local', name: 'mosquitto._mqtt._tcp.local', ip: '192.168.1.10', port: 1883 }),
+      mdns({
+        service: '_mqtt._tcp.local',
+        name: 'mosquitto._mqtt._tcp.local',
+        ip: '192.168.1.10',
+        port: 1883,
+      }),
     ]);
     expect(out.map((m) => m.kind).sort()).toEqual(['mqtt', 'zigbee']);
     for (const match of out) {
@@ -87,7 +96,11 @@ describe('discovery/fingerprints', () => {
 
   it('un ESPHome sugiere la ingesta genérica, y sin prefill a propósito (US-249)', () => {
     const out = matchFingerprints([
-      mdns({ service: '_esphomelib._tcp.local', name: 'salon-rele._esphomelib._tcp.local', ip: '192.168.1.90' }),
+      mdns({
+        service: '_esphomelib._tcp.local',
+        name: 'salon-rele._esphomelib._tcp.local',
+        ip: '192.168.1.90',
+      }),
     ]);
     expect(out[0]).toMatchObject({ kind: 'mqtt', prefill: {} });
     // El aparato no dice cuál es su broker, así que esta sugerencia NO puede ser
@@ -96,10 +109,14 @@ describe('discovery/fingerprints', () => {
   });
 
   it('distingue Kasa y Tapo por nombre y precarga el campo de IPs correcto', () => {
-    const tapo = matchFingerprints([mdns({ name: 'Tapo P110._http._tcp.local', ip: '192.168.1.71' })]);
+    const tapo = matchFingerprints([
+      mdns({ name: 'Tapo P110._http._tcp.local', ip: '192.168.1.71' }),
+    ]);
     expect(tapo[0]).toMatchObject({ kind: 'kasa', prefill: { tapoDeviceIps: '192.168.1.71' } });
 
-    const kasa = matchFingerprints([mdns({ name: 'HS110(EU)._http._tcp.local', ip: '192.168.1.72' })]);
+    const kasa = matchFingerprints([
+      mdns({ name: 'HS110(EU)._http._tcp.local', ip: '192.168.1.72' }),
+    ]);
     expect(kasa[0]).toMatchObject({ kind: 'kasa', prefill: { kasaDeviceIps: '192.168.1.72' } });
   });
 

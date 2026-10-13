@@ -55,7 +55,10 @@ describe('parseDenyExactList', () => {
 
 describe('parseAddedDomain', () => {
   it('toma la entrada creada de la respuesta', () => {
-    const entry = parseAddedDomain({ domains: [{ domain: 'nuevo.com', date_added: 1700000000 }] }, 'nuevo.com');
+    const entry = parseAddedDomain(
+      { domains: [{ domain: 'nuevo.com', date_added: 1700000000 }] },
+      'nuevo.com',
+    );
     expect(entry.id).toBe('nuevo.com');
     expect(entry.createdAt).toBe(new Date(1700000000 * 1000).toISOString());
   });
@@ -84,7 +87,12 @@ describe('isBlockedStatus', () => {
 describe('parseQueries', () => {
   const json = {
     queries: [
-      { time: 1700000000, domain: 'ads.bad.com', client: { ip: '10.0.0.5', name: 'tv' }, status: 'GRAVITY' },
+      {
+        time: 1700000000,
+        domain: 'ads.bad.com',
+        client: { ip: '10.0.0.5', name: 'tv' },
+        status: 'GRAVITY',
+      },
       { time: 1700000005, domain: 'github.com', client: '10.0.0.6', status: 'FORWARDED' },
       { time: 1700000010, status: 'OK' }, // sin domain → descartado
     ],

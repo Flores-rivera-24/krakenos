@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { type MqttMessageHandler, type MqttTransport, topicMatches } from '../../src/iot/mqtt.transport.js';
+import {
+  type MqttMessageHandler,
+  type MqttTransport,
+  topicMatches,
+} from '../../src/iot/mqtt.transport.js';
 import { ZigbeeIotManager } from '../../src/iot/zigbee.iot.js';
 
 /** Transporte MQTT falso: enruta los mensajes emitidos por los filtros suscritos. */
@@ -29,9 +33,23 @@ class FakeMqtt implements MqttTransport {
 
 const BRIDGE_DEVICES = [
   { type: 'Coordinator', friendly_name: 'Coordinator' },
-  { type: 'Router', friendly_name: 'luz_salon', definition: { exposes: [{ type: 'light', features: [{ name: 'state' }, { name: 'brightness' }] }] } },
-  { type: 'Router', friendly_name: 'enchufe_tv', definition: { exposes: [{ type: 'switch', features: [{ name: 'state' }] }] } },
-  { type: 'EndDevice', friendly_name: 'sensor_temp', definition: { exposes: [{ name: 'temperature' }] } },
+  {
+    type: 'Router',
+    friendly_name: 'luz_salon',
+    definition: {
+      exposes: [{ type: 'light', features: [{ name: 'state' }, { name: 'brightness' }] }],
+    },
+  },
+  {
+    type: 'Router',
+    friendly_name: 'enchufe_tv',
+    definition: { exposes: [{ type: 'switch', features: [{ name: 'state' }] }] },
+  },
+  {
+    type: 'EndDevice',
+    friendly_name: 'sensor_temp',
+    definition: { exposes: [{ name: 'temperature' }] },
+  },
 ];
 
 describe('ZigbeeIotManager', () => {
@@ -86,7 +104,9 @@ describe('ZigbeeIotManager', () => {
   });
 
   it('setState lanza IOT_NOT_FOUND y IOT_NOT_CONTROLLABLE', async () => {
-    await expect(iot.setState('no-existe', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
+    await expect(iot.setState('no-existe', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_FOUND',
+    });
     await expect(iot.setState('sensor_temp', { on: true })).rejects.toMatchObject({
       code: 'IOT_NOT_CONTROLLABLE',
     });

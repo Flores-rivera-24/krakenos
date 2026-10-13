@@ -229,10 +229,7 @@ export function ConnectPage() {
     });
   };
 
-  const viewByDomain = useMemo(
-    () => new Map(views.map((v) => [v.domain, v])),
-    [views],
-  );
+  const viewByDomain = useMemo(() => new Map(views.map((v) => [v.domain, v])), [views]);
 
   /** El `kind` del backend que usaría una guía (aplica alias). */
   const backendKind = (guide: IntegrationGuide) => KIND_ALIASES[guide.kind] ?? guide.kind;
@@ -249,7 +246,13 @@ export function ConnectPage() {
       // usa el primer backend real del dominio (p. ej. `switch`).
       const schema = kindSchemaFor(view, wanted) ?? view.kinds.find((k) => k.kind !== 'mock');
       if (!schema) return null;
-      return { type: 'wizard', domain: view.domain, kind: schema.kind, kindSchema: schema, current: view.current };
+      return {
+        type: 'wizard',
+        domain: view.domain,
+        kind: schema.kind,
+        kindSchema: schema,
+        current: view.current,
+      };
     },
     [viewByDomain],
   );
@@ -320,11 +323,18 @@ export function ConnectPage() {
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <h2 className="text-kr-lg font-semibold text-kr-primary">{t('connect.detected.title')}</h2>
+              <h2 className="text-kr-lg font-semibold text-kr-primary">
+                {t('connect.detected.title')}
+              </h2>
               <p className="text-kr-sm text-kr-muted">{t('connect.detected.desc')}</p>
             </div>
             {isAdmin && (
-              <Button variant="outline" size="sm" disabled={scanning} onClick={() => void runScan()}>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={scanning}
+                onClick={() => void runScan()}
+              >
                 {scanning ? t('connect.scanning') : t('connect.scan')}
               </Button>
             )}
@@ -479,7 +489,9 @@ function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
           <span className="font-medium text-kr-primary">{guide.displayName}</span>
           {connected && <Badge variant="online">{t('connect.connected')}</Badge>}
         </span>
-        {guide.vendor && <span className="block truncate text-kr-xs text-kr-muted">{guide.vendor}</span>}
+        {guide.vendor && (
+          <span className="block truncate text-kr-xs text-kr-muted">{guide.vendor}</span>
+        )}
         <span className="block text-kr-xs text-kr-secondary">{t(TIER_HINT[guide.tier])}</span>
       </span>
     </button>

@@ -38,7 +38,8 @@ const PHASE_CLASS: Record<AlarmPhase, string> = {
 function PhaseIcon({ phase }: { phase: AlarmPhase }) {
   if (phase === 'triggered' || phase === 'entry')
     return <ShieldAlert className="h-5 w-5" aria-hidden />;
-  if (phase === 'armed' || phase === 'arming') return <ShieldCheck className="h-5 w-5" aria-hidden />;
+  if (phase === 'armed' || phase === 'arming')
+    return <ShieldCheck className="h-5 w-5" aria-hidden />;
   return <ShieldOff className="h-5 w-5" aria-hidden />;
 }
 
@@ -181,7 +182,12 @@ export function AlarmWidget() {
           <LoadingLine />
         ) : (
           <>
-            <div className={cn('flex items-center gap-2 text-lg font-semibold', PHASE_CLASS[state.phase])}>
+            <div
+              className={cn(
+                'flex items-center gap-2 text-lg font-semibold',
+                PHASE_CLASS[state.phase],
+              )}
+            >
               <PhaseIcon phase={state.phase} />
               <span>{t(PHASE_LABEL_KEY[state.phase])}</span>
               {countdown !== null && <span className="text-kr-sm font-normal">({countdown}s)</span>}
@@ -194,8 +200,9 @@ export function AlarmWidget() {
               <Callout variant="warning" title={t('widget.alarm.disclaimerTitle')}>
                 <div className="space-y-2">
                   <p>
-                    Sin batería de respaldo ni conexión de emergencia por red móvil: deja de funcionar
-                    si se va la luz o se apaga el servidor. Es un aviso extra, no tu única protección.
+                    Sin batería de respaldo ni conexión de emergencia por red móvil: deja de
+                    funcionar si se va la luz o se apaga el servidor. Es un aviso extra, no tu única
+                    protección.
                   </p>
                   <Button variant="outline" size="sm" onClick={dismissDisclaimer}>
                     Entendido

@@ -33,18 +33,25 @@ beforeAll(async () => {
   const key = join(dir, 'k.pem');
   const cert = join(dir, 'c.pem');
   execFileSync('openssl', [
-    'req', '-x509', '-newkey', 'rsa:2048',
-    '-keyout', key, '-out', cert,
-    '-days', '1', '-nodes', '-subj', '/CN=localhost',
+    'req',
+    '-x509',
+    '-newkey',
+    'rsa:2048',
+    '-keyout',
+    key,
+    '-out',
+    cert,
+    '-days',
+    '1',
+    '-nodes',
+    '-subj',
+    '/CN=localhost',
   ]);
 
-  server = createHttpsServer(
-    { key: readFileSync(key), cert: readFileSync(cert) },
-    (_req, res) => {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end('{"data":[]}');
-    },
-  );
+  server = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"data":[]}');
+  });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   port = (server.address() as AddressInfo).port;
 });

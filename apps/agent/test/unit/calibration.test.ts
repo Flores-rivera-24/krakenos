@@ -22,7 +22,11 @@ const AP: ApPlacement = {
 const SIN_PAREDES: Wall[] = [];
 
 /** Genera medidas SINTÉTICAS con un `n` conocido, para poder recuperarlo. */
-function muestrasCon(n: number, aps: ApPlacement[] = [AP], walls: Wall[] = SIN_PAREDES): CalibrationSample[] {
+function muestrasCon(
+  n: number,
+  aps: ApPlacement[] = [AP],
+  walls: Wall[] = SIN_PAREDES,
+): CalibrationSample[] {
   const out: CalibrationSample[] = [];
   for (let i = 0; i < 20; i++) {
     const x = 2 + i * 0.7;

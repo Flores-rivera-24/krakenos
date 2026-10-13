@@ -73,8 +73,12 @@ describe('resumen del hogar (US-180)', () => {
     const now = new Date();
     // Tráfico WAN en la ventana (dos rollups). El detalle por persona NO va aquí
     // (privacidad por rol): solo el total del hogar.
-    await app.prisma.trafficSample.create({ data: { rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 } });
-    await app.prisma.trafficSample.create({ data: { rxBytesPerSec: 500_000, txBytesPerSec: 100_000 } });
+    await app.prisma.trafficSample.create({
+      data: { rxBytesPerSec: 1_000_000, txBytesPerSec: 200_000 },
+    });
+    await app.prisma.trafficSample.create({
+      data: { rxBytesPerSec: 500_000, txBytesPerSec: 100_000 },
+    });
 
     const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const weekly = await buildDigest(app.prisma, since, new Date(now.getTime() + 1000), 'weekly');
@@ -127,9 +131,7 @@ describe('resumen del hogar (US-180)', () => {
 
   it('un periodo sin novedades no genera resumen (no hacer ruido)', async () => {
     const now = new Date();
-    expect(
-      await buildDigest(app.prisma, new Date(now.getTime() - 1000), now, 'daily'),
-    ).toBeNull();
+    expect(await buildDigest(app.prisma, new Date(now.getTime() - 1000), now, 'daily')).toBeNull();
   });
 
   it('due(): diario cruza las 08:00; semanal solo el lunes', () => {

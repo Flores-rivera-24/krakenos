@@ -1,9 +1,4 @@
-import type {
-  AlarmConfig,
-  AlarmMode,
-  AlarmState,
-  UpdateAlarmConfigRequest,
-} from '@krakenos/types';
+import type { AlarmConfig, AlarmMode, AlarmState, UpdateAlarmConfigRequest } from '@krakenos/types';
 import { api } from '@/lib/api';
 
 /** Envoltorio fino sobre `@/lib/api` para la alarma del hogar (US-188). */

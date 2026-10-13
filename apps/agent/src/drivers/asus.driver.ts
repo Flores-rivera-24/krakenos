@@ -127,15 +127,23 @@ export class AsusDriver implements HardwareDriver {
 
   private async readBand(prefix: string): Promise<{ ssid: string; security: WifiSecurityFields }> {
     const nvram = parseNvram(
-      await this.opts.client.get(`nvram_get(${prefix}_ssid);nvram_get(${prefix}_auth_mode_x);nvram_get(${prefix}_closed)`),
+      await this.opts.client.get(
+        `nvram_get(${prefix}_ssid);nvram_get(${prefix}_auth_mode_x);nvram_get(${prefix}_closed)`,
+      ),
     );
     return {
       ssid: nvram[`${prefix}_ssid`] ?? '',
-      security: { authMode: nvram[`${prefix}_auth_mode_x`], closed: nvram[`${prefix}_closed`] === '1' },
+      security: {
+        authMode: nvram[`${prefix}_auth_mode_x`],
+        closed: nvram[`${prefix}_closed`] === '1',
+      },
     };
   }
 
-  private async applyBand(prefix: string, input: UpdateWifiRequest | UpdateWifiNetworkRequest): Promise<void> {
+  private async applyBand(
+    prefix: string,
+    input: UpdateWifiRequest | UpdateWifiNetworkRequest,
+  ): Promise<void> {
     const params: Record<string, string> = { rc_service: 'restart_wireless' };
     if (input.ssid !== undefined) params[`${prefix}_ssid`] = input.ssid;
     if (input.password !== undefined) params[`${prefix}_wpa_psk`] = input.password;
@@ -143,7 +151,10 @@ export class AsusDriver implements HardwareDriver {
     await this.opts.client.apply(params);
   }
 
-  private toWifiNetwork(band: WifiBand, data: { ssid: string; security: WifiSecurityFields }): WifiNetwork {
+  private toWifiNetwork(
+    band: WifiBand,
+    data: { ssid: string; security: WifiSecurityFields },
+  ): WifiNetwork {
     return {
       ssid: data.ssid,
       enabled: true,

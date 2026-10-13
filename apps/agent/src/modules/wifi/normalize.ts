@@ -21,7 +21,12 @@ import { DriverUnavailableError } from '../../drivers/driver-error.js';
  */
 
 const BANDS: ReadonlySet<string> = new Set<WifiBand>(['2.4GHz', '5GHz', '6GHz']);
-const SECURITIES: ReadonlySet<string> = new Set<WifiSecurity>(['open', 'wpa2', 'wpa3', 'wpa2/wpa3']);
+const SECURITIES: ReadonlySet<string> = new Set<WifiSecurity>([
+  'open',
+  'wpa2',
+  'wpa3',
+  'wpa2/wpa3',
+]);
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;

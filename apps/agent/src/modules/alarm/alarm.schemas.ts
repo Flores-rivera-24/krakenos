@@ -66,7 +66,11 @@ export const getAlarmConfigSchema = {
   response: { 200: alarmConfigResponse },
 } as const;
 
-const idArray = { type: 'array', maxItems: 64, items: { type: 'string', minLength: 1, maxLength: 128 } } as const;
+const idArray = {
+  type: 'array',
+  maxItems: 64,
+  items: { type: 'string', minLength: 1, maxLength: 128 },
+} as const;
 
 export const updateAlarmConfigSchema = {
   body: {

@@ -46,7 +46,10 @@ describe('parseImageDataUrl', () => {
 
 describe('validateBackgroundImage', () => {
   it('acepta una imagen PNG/JPEG/WebP coherente', () => {
-    expect(validateBackgroundImage(dataUrl('image/png', PNG_SIG))).toEqual({ ok: true, mime: 'image/png' });
+    expect(validateBackgroundImage(dataUrl('image/png', PNG_SIG))).toEqual({
+      ok: true,
+      mime: 'image/png',
+    });
     expect(validateBackgroundImage(dataUrl('image/jpeg', JPEG_SIG)).ok).toBe(true);
     expect(validateBackgroundImage(dataUrl('image/webp', WEBP)).ok).toBe(true);
   });

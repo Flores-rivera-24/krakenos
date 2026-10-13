@@ -57,7 +57,14 @@ function failingTransport(behavior: Behavior): never {
 }
 
 /** Tipo de valor que una operación puede devolver SI resuelve (si no, lanza). */
-type Shape = 'boolean' | 'array' | 'object' | 'traffic' | 'void' | 'nullableObject' | 'nullableArray';
+type Shape =
+  | 'boolean'
+  | 'array'
+  | 'object'
+  | 'traffic'
+  | 'void'
+  | 'nullableObject'
+  | 'nullableArray';
 
 interface Op {
   name: string;
@@ -76,21 +83,70 @@ interface Subject {
 // ---- Operaciones del contrato HardwareDriver ----
 
 const DRIVER_OPS: Op[] = [
-  { name: 'healthcheck', shape: 'boolean', neverThrows: true, call: (x) => (x as HardwareDriver).healthcheck() },
+  {
+    name: 'healthcheck',
+    shape: 'boolean',
+    neverThrows: true,
+    call: (x) => (x as HardwareDriver).healthcheck(),
+  },
   { name: 'scanArp', shape: 'array', call: (x) => (x as HardwareDriver).scanArp() },
   { name: 'scanMdns', shape: 'array', call: (x) => (x as HardwareDriver).scanMdns() },
-  { name: 'getTrafficSample', shape: 'traffic', call: (x) => (x as HardwareDriver).getTrafficSample() },
-  { name: 'blockDevice', shape: 'void', call: (x) => (x as HardwareDriver).blockDevice('aa:bb:cc:dd:ee:ff') },
-  { name: 'unblockDevice', shape: 'void', call: (x) => (x as HardwareDriver).unblockDevice('aa:bb:cc:dd:ee:ff') },
+  {
+    name: 'getTrafficSample',
+    shape: 'traffic',
+    call: (x) => (x as HardwareDriver).getTrafficSample(),
+  },
+  {
+    name: 'blockDevice',
+    shape: 'void',
+    call: (x) => (x as HardwareDriver).blockDevice('aa:bb:cc:dd:ee:ff'),
+  },
+  {
+    name: 'unblockDevice',
+    shape: 'void',
+    call: (x) => (x as HardwareDriver).unblockDevice('aa:bb:cc:dd:ee:ff'),
+  },
   { name: 'getWifi', shape: 'object', call: (x) => (x as HardwareDriver).getWifi() },
-  { name: 'updateWifi', shape: 'object', call: (x) => (x as HardwareDriver).updateWifi({ ssid: 'k' }) },
-  { name: 'getGuestNetwork', shape: 'object', call: (x) => (x as HardwareDriver).getGuestNetwork() },
-  { name: 'updateGuestNetwork', shape: 'object', call: (x) => (x as HardwareDriver).updateGuestNetwork({ enabled: true }) },
-  { name: 'listAccessPoints', shape: 'array', call: (x) => (x as HardwareDriver).listAccessPoints() },
-  { name: 'listWifiNetworks', shape: 'array', call: (x) => (x as HardwareDriver).listWifiNetworks() },
-  { name: 'getWifiNetwork', shape: 'nullableObject', call: (x) => (x as HardwareDriver).getWifiNetwork('id') },
-  { name: 'updateWifiNetwork', shape: 'nullableObject', call: (x) => (x as HardwareDriver).updateWifiNetwork('id', { ssid: 'k' }) },
-  { name: 'listNetworkClients', shape: 'nullableArray', call: (x) => (x as HardwareDriver).listNetworkClients('id') },
+  {
+    name: 'updateWifi',
+    shape: 'object',
+    call: (x) => (x as HardwareDriver).updateWifi({ ssid: 'k' }),
+  },
+  {
+    name: 'getGuestNetwork',
+    shape: 'object',
+    call: (x) => (x as HardwareDriver).getGuestNetwork(),
+  },
+  {
+    name: 'updateGuestNetwork',
+    shape: 'object',
+    call: (x) => (x as HardwareDriver).updateGuestNetwork({ enabled: true }),
+  },
+  {
+    name: 'listAccessPoints',
+    shape: 'array',
+    call: (x) => (x as HardwareDriver).listAccessPoints(),
+  },
+  {
+    name: 'listWifiNetworks',
+    shape: 'array',
+    call: (x) => (x as HardwareDriver).listWifiNetworks(),
+  },
+  {
+    name: 'getWifiNetwork',
+    shape: 'nullableObject',
+    call: (x) => (x as HardwareDriver).getWifiNetwork('id'),
+  },
+  {
+    name: 'updateWifiNetwork',
+    shape: 'nullableObject',
+    call: (x) => (x as HardwareDriver).updateWifiNetwork('id', { ssid: 'k' }),
+  },
+  {
+    name: 'listNetworkClients',
+    shape: 'nullableArray',
+    call: (x) => (x as HardwareDriver).listNetworkClients('id'),
+  },
 ];
 
 function driverSubject(name: string, make: (b: Behavior) => HardwareDriver): Subject {
@@ -102,8 +158,16 @@ function driverSubject(name: string, make: (b: Behavior) => HardwareDriver): Sub
 function iotOps(sampleId: string): Op[] {
   return [
     { name: 'listDevices', shape: 'array', call: (x) => (x as IotManager).listDevices() },
-    { name: 'getDevice', shape: 'nullableObject', call: (x) => (x as IotManager).getDevice(sampleId) },
-    { name: 'setState', shape: 'object', call: (x) => (x as IotManager).setState(sampleId, { on: true }) },
+    {
+      name: 'getDevice',
+      shape: 'nullableObject',
+      call: (x) => (x as IotManager).getDevice(sampleId),
+    },
+    {
+      name: 'setState',
+      shape: 'object',
+      call: (x) => (x as IotManager).setState(sampleId, { on: true }),
+    },
   ];
 }
 
@@ -114,30 +178,62 @@ function iotSubject(name: string, make: (b: Behavior) => IotManager, sampleId: s
 // ---- Sujetos: los 8 drivers/integraciones reales ----
 
 const SUBJECTS: Subject[] = [
-  driverSubject('unifi', (b) => new UnifiDriver({ client: failingTransport(b), host: 'unifi.test' })),
-  driverSubject('omada', (b) => new OmadaDriver({ client: failingTransport(b), host: 'omada.test' })),
+  driverSubject(
+    'unifi',
+    (b) => new UnifiDriver({ client: failingTransport(b), host: 'unifi.test' }),
+  ),
+  driverSubject(
+    'omada',
+    (b) => new OmadaDriver({ client: failingTransport(b), host: 'omada.test' }),
+  ),
   driverSubject('asus', (b) => new AsusDriver({ client: failingTransport(b), host: 'asus.test' })),
-  driverSubject('mikrotik', (b) => new MikrotikDriver({ transport: failingTransport(b), wanInterface: 'ether1' })),
+  driverSubject(
+    'mikrotik',
+    (b) => new MikrotikDriver({ transport: failingTransport(b), wanInterface: 'ether1' }),
+  ),
   iotSubject(
     'kasa',
-    (b) => new KasaIotManager({ kasa: failingTransport(b), tapo: failingTransport(b), kasaIps: ['10.0.0.5'], tapoIps: ['10.0.0.6'] }),
+    (b) =>
+      new KasaIotManager({
+        kasa: failingTransport(b),
+        tapo: failingTransport(b),
+        kasaIps: ['10.0.0.5'],
+        tapoIps: ['10.0.0.6'],
+      }),
     'kasa:10.0.0.5',
   ),
-  iotSubject('shelly', (b) => new ShellyIotManager({ transport: failingTransport(b), devices: [{ ip: '10.0.0.7', gen: 1 }] }), 'shelly:10.0.0.7:0'),
-  iotSubject('meross', (b) => new MerossIotManager({ transport: failingTransport(b), devices: [{ uuid: 'u1', key: 'k' }] }), 'meross:u1:0'),
+  iotSubject(
+    'shelly',
+    (b) =>
+      new ShellyIotManager({
+        transport: failingTransport(b),
+        devices: [{ ip: '10.0.0.7', gen: 1 }],
+      }),
+    'shelly:10.0.0.7:0',
+  ),
+  iotSubject(
+    'meross',
+    (b) =>
+      new MerossIotManager({ transport: failingTransport(b), devices: [{ uuid: 'u1', key: 'k' }] }),
+    'meross:u1:0',
+  ),
 ];
 
 const BEHAVIORS: Behavior[] = ['timeout', 'cut', 'garbage'];
 
 /** Asienta `p` con un guardia de cuelgue: marca `hung` si no resuelve en 1 s. */
-async function settle(p: Promise<unknown>): Promise<{ ok: true; value: unknown } | { ok: false; error: unknown } | 'hung'> {
+async function settle(
+  p: Promise<unknown>,
+): Promise<{ ok: true; value: unknown } | { ok: false; error: unknown } | 'hung'> {
   const HUNG = Symbol('hung');
   const guard = new Promise<typeof HUNG>((resolve) => {
     const t = setTimeout(() => resolve(HUNG), 1000);
     t.unref?.();
   });
   const result = await Promise.race([
-    p.then((value) => ({ ok: true as const, value })).catch((error: unknown) => ({ ok: false as const, error })),
+    p
+      .then((value) => ({ ok: true as const, value }))
+      .catch((error: unknown) => ({ ok: false as const, error })),
     guard,
   ]);
   return result === HUNG ? 'hung' : result;
@@ -145,7 +241,8 @@ async function settle(p: Promise<unknown>): Promise<{ ok: true; value: unknown }
 
 /** ¿Es `value` una forma válida del contrato para `shape`? */
 function matchesShape(shape: Shape, value: unknown): boolean {
-  const isObject = (v: unknown): boolean => typeof v === 'object' && v !== null && !Array.isArray(v);
+  const isObject = (v: unknown): boolean =>
+    typeof v === 'object' && v !== null && !Array.isArray(v);
   switch (shape) {
     case 'boolean':
       return typeof value === 'boolean';
@@ -202,7 +299,10 @@ describe('Conformidad de drivers: contrato de fallo (US-100)', () => {
                 `${subject.name}.${op.name} bajo "${behavior}" rechazó con un no-Error`,
               ).toBeInstanceOf(Error);
               // …salvo healthcheck, que NUNCA debe lanzar.
-              expect(op.neverThrows ?? false, `${subject.name}.${op.name} no debería lanzar nunca`).toBe(false);
+              expect(
+                op.neverThrows ?? false,
+                `${subject.name}.${op.name} no debería lanzar nunca`,
+              ).toBe(false);
               // …y ante basura, el error debe ser DELIBERADO (validó la forma del
               // transporte), no un `TypeError` por desreferenciar lo malformado
               // (`x.split is not a function`, `rows is not iterable`): eso delata

@@ -29,12 +29,42 @@ export class MockDnsManager implements DnsManager {
   private readonly blockedQueries = 312;
 
   private readonly queries: DnsQuery[] = [
-    { timestamp: '2026-06-17T10:00:00.000Z', domain: 'ads.doubleclick.net', client: '10.0.0.21', blocked: true },
-    { timestamp: '2026-06-17T10:00:03.000Z', domain: 'github.com', client: '10.0.0.10', blocked: false },
-    { timestamp: '2026-06-17T10:00:05.000Z', domain: 'telemetry.vendor.io', client: '10.0.0.33', blocked: true },
-    { timestamp: '2026-06-17T10:00:08.000Z', domain: 'api.weather.com', client: '10.0.0.10', blocked: false },
-    { timestamp: '2026-06-17T10:00:11.000Z', domain: 'tracker.example.com', client: '10.0.0.21', blocked: true },
-    { timestamp: '2026-06-17T10:00:14.000Z', domain: 'cdn.jsdelivr.net', client: '10.0.0.15', blocked: false },
+    {
+      timestamp: '2026-06-17T10:00:00.000Z',
+      domain: 'ads.doubleclick.net',
+      client: '10.0.0.21',
+      blocked: true,
+    },
+    {
+      timestamp: '2026-06-17T10:00:03.000Z',
+      domain: 'github.com',
+      client: '10.0.0.10',
+      blocked: false,
+    },
+    {
+      timestamp: '2026-06-17T10:00:05.000Z',
+      domain: 'telemetry.vendor.io',
+      client: '10.0.0.33',
+      blocked: true,
+    },
+    {
+      timestamp: '2026-06-17T10:00:08.000Z',
+      domain: 'api.weather.com',
+      client: '10.0.0.10',
+      blocked: false,
+    },
+    {
+      timestamp: '2026-06-17T10:00:11.000Z',
+      domain: 'tracker.example.com',
+      client: '10.0.0.21',
+      blocked: true,
+    },
+    {
+      timestamp: '2026-06-17T10:00:14.000Z',
+      domain: 'cdn.jsdelivr.net',
+      client: '10.0.0.15',
+      blocked: false,
+    },
   ];
 
   constructor() {

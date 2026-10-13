@@ -28,7 +28,12 @@ export const energyAlertsRoutes: FastifyPluginAsync<EnergyAlertsRoutesOpts> = as
     { schema: createEnergyAlertSchema, preHandler: app.requireRole('admin') },
     async (req, reply) => {
       const created = await service.create(req.body);
-      app.audit({ action: 'energy.alert.create', userId: req.user.sub, detail: created.deviceId, ip: req.ip });
+      app.audit({
+        action: 'energy.alert.create',
+        userId: req.user.sub,
+        detail: created.deviceId,
+        ip: req.ip,
+      });
       return reply.code(201).send(created);
     },
   );
@@ -38,8 +43,14 @@ export const energyAlertsRoutes: FastifyPluginAsync<EnergyAlertsRoutesOpts> = as
     { schema: updateEnergyAlertSchema, preHandler: app.requireRole('admin') },
     async (req, reply) => {
       const updated = await service.update(req.params.id, req.body);
-      if (!updated) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Regla no encontrada' });
-      app.audit({ action: 'energy.alert.update', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      if (!updated)
+        return reply.code(404).send({ code: 'NOT_FOUND', message: 'Regla no encontrada' });
+      app.audit({
+        action: 'energy.alert.update',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return updated;
     },
   );
@@ -50,7 +61,12 @@ export const energyAlertsRoutes: FastifyPluginAsync<EnergyAlertsRoutesOpts> = as
     async (req, reply) => {
       const ok = await service.remove(req.params.id);
       if (!ok) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Regla no encontrada' });
-      app.audit({ action: 'energy.alert.delete', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'energy.alert.delete',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

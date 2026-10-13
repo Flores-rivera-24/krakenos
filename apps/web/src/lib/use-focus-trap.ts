@@ -33,8 +33,7 @@ export function useFocusTrap<T extends HTMLElement>(active: boolean) {
 
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
-    const focusable = () =>
-      Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+    const focusable = () => Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
 
     // Foco inicial: primer elemento focusable, o el propio contenedor.
     const first = focusable()[0];

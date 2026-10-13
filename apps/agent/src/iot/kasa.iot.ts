@@ -61,7 +61,9 @@ export class KasaIotManager implements IotManager {
       const dev = await this.fetchKasa(ip).catch(() => null);
       // US-242: una IP configurada a mano existe aunque hoy no conteste; se muestra
       // como no disponible en vez de desaparecer, que se confundía con «apagado».
-      devices.push(dev ?? unreachableDevice({ id: `kasa:${ip}`, name: `Kasa ${ip}`, kind: 'plug' }));
+      devices.push(
+        dev ?? unreachableDevice({ id: `kasa:${ip}`, name: `Kasa ${ip}`, kind: 'plug' }),
+      );
     }
 
     // --- Tapo: descubrimiento + IPs configuradas ---
@@ -127,7 +129,8 @@ export class KasaIotManager implements IotManager {
       await this.opts.kasa.send(ip, buildKasaLightState(light));
     } else {
       if (input.on !== undefined) await this.opts.kasa.send(ip, buildKasaRelay(input.on));
-      if (input.brightness !== undefined) await this.opts.kasa.send(ip, buildKasaBrightness(input.brightness));
+      if (input.brightness !== undefined)
+        await this.opts.kasa.send(ip, buildKasaBrightness(input.brightness));
     }
     return this.fetchKasa(ip);
   }
@@ -136,7 +139,9 @@ export class KasaIotManager implements IotManager {
 
   private async fetchTapo(ip: string): Promise<IotDevice> {
     if (!this.opts.tapo) throw new IotError('IOT_NOT_FOUND', 'Tapo no configurado');
-    return tapoToIotDevice(parseTapoDeviceInfo(ip, await this.opts.tapo.request(ip, 'get_device_info')));
+    return tapoToIotDevice(
+      parseTapoDeviceInfo(ip, await this.opts.tapo.request(ip, 'get_device_info')),
+    );
   }
 
   private async setTapo(ip: string, input: UpdateIotStateRequest): Promise<IotDevice> {

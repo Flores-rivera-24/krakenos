@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MAX_EXTRA_DEPS,
-  isValidPackageName,
-  parseExtraDeps,
-} from '../../src/system/extra-deps.js';
+import { MAX_EXTRA_DEPS, isValidPackageName, parseExtraDeps } from '../../src/system/extra-deps.js';
 
 /**
  * Manifiesto de deps opcionales (US-232 / AUD3-22). Los nombres acaban en la argv
@@ -67,7 +63,17 @@ describe('isValidPackageName', () => {
   });
 
   it('rechaza banderas, rutas, versiones y nombres absurdos', () => {
-    for (const bad of ['-x', '--force', './local', '/abs', 'a b', 'Pkg', 'pkg@1', '@/x', 'x'.repeat(129)]) {
+    for (const bad of [
+      '-x',
+      '--force',
+      './local',
+      '/abs',
+      'a b',
+      'Pkg',
+      'pkg@1',
+      '@/x',
+      'x'.repeat(129),
+    ]) {
       expect(isValidPackageName(bad), bad).toBe(false);
     }
   });

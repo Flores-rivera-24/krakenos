@@ -46,8 +46,9 @@ describe('capacidad «tráfico por dispositivo» (US-263)', () => {
     for (const [kind, reporta] of Object.entries(PER_DEVICE_TRAFFIC_BY_KIND)) {
       if (reporta) continue;
       const src = driverSource(kind);
-      expect(src, `${kind}.driver.ts declara NO reportar pero no devuelve devices: []`)
-        .toMatch(/devices:\s*\[\]/);
+      expect(src, `${kind}.driver.ts declara NO reportar pero no devuelve devices: []`).toMatch(
+        /devices:\s*\[\]/,
+      );
     }
   });
 
@@ -66,7 +67,10 @@ describe('capacidad «tráfico por dispositivo» (US-263)', () => {
     for (const [kind, reporta] of Object.entries(PER_DEVICE_TRAFFIC_BY_KIND)) {
       if (!reporta) continue;
       const fuente = FUENTE_DEL_DESGLOSE[kind];
-      expect(fuente, `${kind} declara reportar el desglose pero no dice de dónde sale`).toBeDefined();
+      expect(
+        fuente,
+        `${kind} declara reportar el desglose pero no dice de dónde sale`,
+      ).toBeDefined();
       expect(driverSource(kind), `${kind}.driver.ts no usa su fuente declarada`).toMatch(fuente!);
     }
     // Guard de tamaño: si la recolección se rompiera, el bucle no iteraría y el

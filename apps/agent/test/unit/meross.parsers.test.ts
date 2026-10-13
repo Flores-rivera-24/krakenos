@@ -23,7 +23,11 @@ describe('meross.parsers', () => {
 
   it('buildToggleX firma el mensaje con md5(messageId+key+timestamp)', () => {
     const msg = JSON.parse(buildToggleX(2, true, CTX));
-    expect(msg.header).toMatchObject({ namespace: 'Appliance.Control.ToggleX', method: 'SET', messageId: 'mid123' });
+    expect(msg.header).toMatchObject({
+      namespace: 'Appliance.Control.ToggleX',
+      method: 'SET',
+      messageId: 'mid123',
+    });
     expect(msg.payload).toEqual({ togglex: { channel: 2, onoff: 1 } });
     const expectedSign = createHash('md5').update('mid123secretkey1700000000').digest('hex');
     expect(msg.header.sign).toBe(expectedSign);
@@ -36,8 +40,14 @@ describe('meross.parsers', () => {
   });
 
   it('parseMerossMessage extrae namespace y payload (o null si no es JSON)', () => {
-    const text = JSON.stringify({ header: { namespace: 'Appliance.System.All' }, payload: { all: {} } });
-    expect(parseMerossMessage(text)).toEqual({ namespace: 'Appliance.System.All', payload: { all: {} } });
+    const text = JSON.stringify({
+      header: { namespace: 'Appliance.System.All' },
+      payload: { all: {} },
+    });
+    expect(parseMerossMessage(text)).toEqual({
+      namespace: 'Appliance.System.All',
+      payload: { all: {} },
+    });
     expect(parseMerossMessage('no-json')).toBeNull();
   });
 
@@ -67,7 +77,13 @@ describe('meross.parsers', () => {
       color: null,
       isLight: false,
     });
-    expect(dev).toMatchObject({ id: 'meross:u1:1', name: 'Regleta (2)', kind: 'plug', on: true, reachable: true });
+    expect(dev).toMatchObject({
+      id: 'meross:u1:1',
+      name: 'Regleta (2)',
+      kind: 'plug',
+      on: true,
+      reachable: true,
+    });
     expect(parseMerossId('meross:u1:1')).toEqual({ uuid: 'u1', channel: 1 });
     expect(parseMerossId('nope')).toBeNull();
   });

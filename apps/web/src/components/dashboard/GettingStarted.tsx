@@ -107,9 +107,7 @@ export function GettingStarted() {
             <h3 id="onboarding-title" className="text-kr-lg font-semibold text-kr-primary">
               {t('gettingStarted.welcome')}
             </h3>
-            <p className="text-kr-sm text-kr-secondary">
-              {t('gettingStarted.intro')}
-            </p>
+            <p className="text-kr-sm text-kr-secondary">{t('gettingStarted.intro')}</p>
           </div>
         </div>
         <button

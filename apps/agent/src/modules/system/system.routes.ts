@@ -21,7 +21,11 @@ import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
 import { detectDeployMode } from '../../system/deploy-mode.js';
-import { resolveDbFile, stageRestoreAsync, stageRestoreFromFileAsync } from '../../system/restore.js';
+import {
+  resolveDbFile,
+  stageRestoreAsync,
+  stageRestoreFromFileAsync,
+} from '../../system/restore.js';
 import { readStorageInfo } from '../../system/storage.js';
 import { UpdateChecker } from '../../system/update-check.js';
 import { createGitPackageReader } from '../../system/target-package.js';
@@ -177,7 +181,10 @@ function readStats(): SystemStats {
 }
 
 /** Ajustes que revelan **dónde** está la casa: solo para admin (AUD3-02). */
-const LOCATION_SETTING_KEYS = ['homeLatitude', 'homeLongitude'] as const satisfies readonly SystemSettingKey[];
+const LOCATION_SETTING_KEYS = [
+  'homeLatitude',
+  'homeLongitude',
+] as const satisfies readonly SystemSettingKey[];
 
 export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, opts) => {
   const { driver } = opts;
@@ -253,7 +260,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
       if (!pem) {
         return reply.code(404).send({
           code: 'CA_CERT_NOT_FOUND',
-          message: 'Esta instalación no usa una CA local de KrakenOS (HTTPS con Tailscale o sin HTTPS).',
+          message:
+            'Esta instalación no usa una CA local de KrakenOS (HTTPS con Tailscale o sin HTTPS).',
         });
       }
       return reply
@@ -399,12 +407,16 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     mode: opts.deployMode ?? detectDeployMode(),
     checker: updateChecker,
     readMaintenanceWindow: async () => {
-      const row = await app.prisma.setting.findUnique({ where: { key: 'updateMaintenanceWindow' } });
+      const row = await app.prisma.setting.findUnique({
+        where: { key: 'updateMaintenanceWindow' },
+      });
       return row?.value ?? '';
     },
     spawn: opts.updateSpawner ?? createUpdateSpawner(),
     varDir: opts.updateVarDir,
-    readTargetPackageJson: createGitPackageReader(process.env.KRAKENOS_REPO_DIR ?? resolve('../..')),
+    readTargetPackageJson: createGitPackageReader(
+      process.env.KRAKENOS_REPO_DIR ?? resolve('../..'),
+    ),
   });
 
   // Plan de actualización (lectura autenticada): estado + modo + última ejecución.
@@ -433,21 +445,25 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // muerto o TTL) cubre al actualizador que murió; esto cubre al que está VIVO
   // pero atascado (p. ej. `pnpm install` esperando una red que no vuelve), que
   // antes solo se arreglaba borrando el fichero por SSH.
-  app.post('/update/cancel', { preHandler: app.requireActiveAdmin, schema: updateCancelSchema }, async (req) => {
-    const cancelled = await updateService.cancel();
-    app.audit({
-      action: 'system.update.cancel',
-      userId: req.user.sub,
-      detail: cancelled ? 'lock liberado' : 'sin actualización en curso',
-      ip: req.ip,
-    });
-    return {
-      cancelled,
-      message: cancelled
-        ? 'Actualización cancelada. Ya puedes volver a intentarlo.'
-        : 'No hay ninguna actualización en curso.',
-    };
-  });
+  app.post(
+    '/update/cancel',
+    { preHandler: app.requireActiveAdmin, schema: updateCancelSchema },
+    async (req) => {
+      const cancelled = await updateService.cancel();
+      app.audit({
+        action: 'system.update.cancel',
+        userId: req.user.sub,
+        detail: cancelled ? 'lock liberado' : 'sin actualización en curso',
+        ip: req.ip,
+      });
+      return {
+        cancelled,
+        message: cancelled
+          ? 'Actualización cancelada. Ya puedes volver a intentarlo.'
+          : 'No hay ninguna actualización en curso.',
+      };
+    },
+  );
 
   app.get('/settings', { preHandler: app.authenticate, schema: getSettingsSchema }, async (req) =>
     readSettings({ includeLocation: req.user.role === 'admin' }),
@@ -484,7 +500,12 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         create: { key, value },
         update: { value },
       });
-      app.audit({ action: 'system.settings.update', userId: req.user.sub, detail: key, ip: req.ip });
+      app.audit({
+        action: 'system.settings.update',
+        userId: req.user.sub,
+        detail: key,
+        ip: req.ip,
+      });
 
       // Ajustes que se aplican en caliente, sin reiniciar el agente (US-47).
       let appliedImmediately = false;
@@ -523,11 +544,18 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // La rotación real de claves es un procedimiento de despliegue con solape
   // (scripts/rotate-keys.sh + reinicio); ver docs/jwt-key-rotation.md. Combina
   // ambos para responder a una clave comprometida (rotar + revocar refresh).
-  app.post('/regen-keys', { preHandler: app.requireRole('admin'), schema: regenKeysSchema }, async (req, reply) => {
-    await app.prisma.refreshToken.updateMany({ where: { revoked: false }, data: { revoked: true } });
-    app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });
-    return reply.code(204).send();
-  });
+  app.post(
+    '/regen-keys',
+    { preHandler: app.requireRole('admin'), schema: regenKeysSchema },
+    async (req, reply) => {
+      await app.prisma.refreshToken.updateMany({
+        where: { revoked: false },
+        data: { revoked: true },
+      });
+      app.audit({ action: 'system.regen-keys', userId: req.user.sub, ip: req.ip });
+      return reply.code(204).send();
+    },
+  );
 
   // Copia de seguridad **real** cifrada (US-103): DB + keys + data. Reemplaza el
   // falso backup que solo exportaba ajustes cosméticos. Admin-only y auditada. El
@@ -653,9 +681,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // la ruta de arriba — se podía crear un backup más grande de lo que se podía
   // restaurar (AUD3-15). La passphrase va en cabecera, NO en la URL (acabaría en los
   // logs del proxy). El parser de octet-stream está acotado a este módulo.
-  app.addContentTypeParser(
-    'application/octet-stream',
-    (_req, payload, done) => done(null, payload),
+  app.addContentTypeParser('application/octet-stream', (_req, payload, done) =>
+    done(null, payload),
   );
   app.post(
     '/restore/upload',
@@ -663,9 +690,10 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     async (req, reply) => {
       const passphrase = req.headers['x-restore-passphrase'];
       if (typeof passphrase !== 'string' || passphrase.length === 0) {
-        return reply
-          .code(400)
-          .send({ code: 'RESTORE_INVALID', message: 'Falta la contraseña de la copia de seguridad.' });
+        return reply.code(400).send({
+          code: 'RESTORE_INVALID',
+          message: 'Falta la contraseña de la copia de seguridad.',
+        });
       }
       const maxBytes = opts.maxRestoreBytes ?? MAX_RESTORE_BYTES;
       const tmpFile = resolve('var', `restore-upload-${randomUUID()}.kbk`);

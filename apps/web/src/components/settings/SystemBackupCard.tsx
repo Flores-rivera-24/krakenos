@@ -82,9 +82,7 @@ export function SystemBackupCard() {
         <CardTitle>{t('backup.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-kr-sm text-kr-secondary">
-          {t('backup.intro')}
-        </p>
+        <p className="text-kr-sm text-kr-secondary">{t('backup.intro')}</p>
         <div className="grid max-w-lg gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
             <Label htmlFor="bk-pass">{t('backup.pass')}</Label>
@@ -327,9 +325,7 @@ function AutoBackupSection() {
       {pass && (
         <Callout variant="warning" title={t('backup.auto.keepPassTitle')}>
           <code className="break-all font-mono text-kr-sm">{pass}</code>
-          <p className="mt-1">
-            {t('backup.auto.keepPassBody')}
-          </p>
+          <p className="mt-1">{t('backup.auto.keepPassBody')}</p>
         </Callout>
       )}
 

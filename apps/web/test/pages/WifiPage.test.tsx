@@ -15,10 +15,19 @@ import { WifiPage } from '@/pages/WifiPage';
 import { useAuthStore } from '@/store/auth.store';
 
 const WIFI: WifiNetwork = {
-  ssid: 'KrakenOS', enabled: true, band: '5GHz', security: 'wpa2/wpa3', hidden: false, updatedAt: '',
+  ssid: 'KrakenOS',
+  enabled: true,
+  band: '5GHz',
+  security: 'wpa2/wpa3',
+  hidden: false,
+  updatedAt: '',
 };
 const GUEST: GuestNetwork = {
-  ssid: 'KrakenOS-Invitados', enabled: false, clientIsolation: true, bandwidthLimitMbps: 50, updatedAt: '',
+  ssid: 'KrakenOS-Invitados',
+  enabled: false,
+  clientIsolation: true,
+  bandwidthLimitMbps: 50,
+  updatedAt: '',
 };
 
 function setRole(role: 'admin' | 'viewer') {

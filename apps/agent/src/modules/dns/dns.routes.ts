@@ -61,8 +61,7 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
   app.get<{ Querystring: { limit?: number } }>(
     '/history',
     { schema: dnsHistorySchema },
-    async (req) =>
-      history.history({ sub: req.user.sub, role: req.user.role }, req.query.limit),
+    async (req) => history.history({ sub: req.user.sub, role: req.user.role }, req.query.limit),
   );
 
   /**
@@ -87,7 +86,12 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
     async (req, reply) => {
       try {
         const entry = await dns.addBlocked(req.body.domain);
-        app.audit({ action: 'dns.block.add', userId: req.user.sub, detail: entry.domain, ip: req.ip });
+        app.audit({
+          action: 'dns.block.add',
+          userId: req.user.sub,
+          detail: entry.domain,
+          ip: req.ip,
+        });
         return reply.code(201).send(entry);
       } catch (err) {
         if (err instanceof DnsError && err.code === 'DOMAIN_EXISTS') {
@@ -106,7 +110,12 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
       if (!removed) {
         return reply.code(404).send({ code: 'DOMAIN_NOT_FOUND', message: 'Dominio no encontrado' });
       }
-      app.audit({ action: 'dns.block.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'dns.block.remove',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

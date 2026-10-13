@@ -96,10 +96,7 @@ function classifyIp(rawIp: string): IpClass | null {
       linkLocal: a === 169 && b === 254,
       unspecified: a === 0,
       loopback: a === 127,
-      private:
-        a === 10 ||
-        (a === 172 && b >= 16 && b <= 31) ||
-        (a === 192 && b === 168),
+      private: a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168),
     };
   }
   if (isIP(ip) === 6) {
@@ -176,8 +173,7 @@ export async function assertHostAllowed(
   // nombre DNS: en el borde de configuración (`allowUnresolvable`) eso dejaba pasar
   // loopback e incluso la metadata IPv6 de nube. Hallado al escribir los tests de
   // US-227; afecta a todo lo que pasa por aquí, no solo a push.
-  const clean =
-    trimmed.startsWith('[') && trimmed.endsWith(']') ? trimmed.slice(1, -1) : trimmed;
+  const clean = trimmed.startsWith('[') && trimmed.endsWith(']') ? trimmed.slice(1, -1) : trimmed;
 
   if (isIP(clean) !== 0) {
     const reason = blockedReason(clean, policy);

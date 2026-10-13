@@ -27,9 +27,7 @@ export function WidgetError({ message, onRetry }: WidgetErrorProps) {
   const t = useT();
   return (
     <div className="flex flex-col items-center gap-2 py-4 text-center">
-      <p className="text-kr-sm text-kr-secondary">
-        {message ?? t('widget.error.generic')}
-      </p>
+      <p className="text-kr-sm text-kr-secondary">{message ?? t('widget.error.generic')}</p>
       {onRetry && (
         <button
           type="button"

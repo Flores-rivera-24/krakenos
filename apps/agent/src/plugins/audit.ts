@@ -91,7 +91,12 @@ export const auditPlugin = fp(async (app: FastifyInstance) => {
     persistAuditWithRetry({
       create: () =>
         app.prisma.auditLog.create({
-          data: { action: input.action, userId: input.userId ?? null, detail, ip: input.ip ?? null },
+          data: {
+            action: input.action,
+            userId: input.userId ?? null,
+            detail,
+            ip: input.ip ?? null,
+          },
         }),
       // Tras registrar la acción, notifica los eventos de alta prioridad por push
       // (US-45), email si hay SMTP (US-110) y Telegram si hay bot (US-180).

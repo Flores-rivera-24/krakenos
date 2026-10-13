@@ -40,9 +40,7 @@ describe('matter-bridge mapping (US-171)', () => {
       expect(endpointTypeFor(device({ brightness: null, color: null }))).toBe('onoff');
     });
     it('sensor → null (no se expone)', () => {
-      expect(
-        endpointTypeFor(device({ kind: 'sensor', on: null, brightness: null })),
-      ).toBeNull();
+      expect(endpointTypeFor(device({ kind: 'sensor', on: null, brightness: null }))).toBeNull();
     });
   });
 

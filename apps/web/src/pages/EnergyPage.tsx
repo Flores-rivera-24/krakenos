@@ -83,7 +83,10 @@ export function EnergyPage() {
       if (range === 'day') return d.toLocaleTimeString([], { hour: '2-digit' });
       return d.toLocaleDateString([], { day: '2-digit', month: 'short' });
     };
-    return stats.buckets.map((b) => ({ t: label(b.timestamp), kwh: +(b.energyWh / 1000).toFixed(3) }));
+    return stats.buckets.map((b) => ({
+      t: label(b.timestamp),
+      kwh: +(b.energyWh / 1000).toFixed(3),
+    }));
   }, [stats, range]);
 
   const change = stats ? percentChange(stats.totalEnergyWh, stats.previousTotalEnergyWh) : null;
@@ -164,7 +167,12 @@ export function EnergyPage() {
                 </button>
               ))}
             </div>
-            <Button variant="outline" size="sm" onClick={downloadCsv} aria-label={t('energy.exportCsv')}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadCsv}
+              aria-label={t('energy.exportCsv')}
+            >
               <Download className="h-4 w-4" />
             </Button>
           </div>
@@ -178,7 +186,12 @@ export function EnergyPage() {
                 <XAxis dataKey="t" stroke={CHART_COLORS.axis} fontSize={11} minTickGap={20} />
                 <YAxis stroke={CHART_COLORS.axis} fontSize={11} width={44} />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v} kWh`} />
-                <Bar dataKey="kwh" name={t('energy.consumption')} fill={CHART_COLORS.bar} radius={[3, 3, 0, 0]} />
+                <Bar
+                  dataKey="kwh"
+                  name={t('energy.consumption')}
+                  fill={CHART_COLORS.bar}
+                  radius={[3, 3, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -191,7 +204,9 @@ export function EnergyPage() {
         </CardHeader>
         <CardContent>
           {!stats || stats.devices.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t('energy.noDevices')}</p>
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {t('energy.noDevices')}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

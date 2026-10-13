@@ -58,6 +58,8 @@ describe('MockIotManager', () => {
 
   it('lanza si el dispositivo no existe', async () => {
     const iot = new MockIotManager();
-    await expect(iot.setState('nope', { on: true })).rejects.toMatchObject({ code: 'IOT_NOT_FOUND' });
+    await expect(iot.setState('nope', { on: true })).rejects.toMatchObject({
+      code: 'IOT_NOT_FOUND',
+    });
   });
 });

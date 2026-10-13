@@ -42,7 +42,10 @@ export function gen1RelayPath(channel: number, on: boolean): string {
 }
 
 /** Ruta para una luz/dimmer Gen1: `/light/<ch>?turn=…&brightness=…`. */
-export function gen1LightPath(channel: number, input: { on?: boolean; brightness?: number }): string {
+export function gen1LightPath(
+  channel: number,
+  input: { on?: boolean; brightness?: number },
+): string {
   const params: string[] = [];
   if (input.on !== undefined) params.push(`turn=${input.on ? 'on' : 'off'}`);
   if (input.brightness !== undefined) params.push(`brightness=${clampPct(input.brightness)}`);
@@ -71,7 +74,10 @@ export function gen2SwitchGetStatus(channel: number): RpcCommand {
   return { id: nextRpcId(), method: 'Switch.GetStatus', params: { id: channel } };
 }
 
-export function gen2LightSet(channel: number, input: { on?: boolean; brightness?: number }): RpcCommand {
+export function gen2LightSet(
+  channel: number,
+  input: { on?: boolean; brightness?: number },
+): RpcCommand {
   const params: Record<string, unknown> = { id: channel };
   if (input.on !== undefined) params.on = input.on;
   if (input.brightness !== undefined) params.brightness = clampPct(input.brightness);
@@ -164,7 +170,11 @@ export function parseGen1Status(cfg: ShellyDeviceConfig, status: unknown): IotDe
  * un `IotDevice`. `output` = encendido; `apower` = potencia (W); `brightness` solo
  * en luces.
  */
-export function parseGen2Channel(cfg: ShellyDeviceConfig, channel: number, result: unknown): IotDevice {
+export function parseGen2Channel(
+  cfg: ShellyDeviceConfig,
+  channel: number,
+  result: unknown,
+): IotDevice {
   const r = (result ?? {}) as Record<string, unknown>;
   const isLight = cfg.type === 'light';
   return {

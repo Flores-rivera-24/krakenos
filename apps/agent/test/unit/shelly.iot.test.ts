@@ -33,7 +33,10 @@ class FakeTransport implements ShellyTransport {
 describe('ShellyIotManager', () => {
   it('listDevices expone un device por canal (Gen1, Shelly 2.5)', async () => {
     const transport = new FakeTransport({
-      '192.168.1.80': { relays: [{ ison: true }, { ison: false }], meters: [{ power: 10 }, { power: 0 }] },
+      '192.168.1.80': {
+        relays: [{ ison: true }, { ison: false }],
+        meters: [{ power: 10 }, { power: 0 }],
+      },
     });
     const mgr = new ShellyIotManager({
       transport,
@@ -44,22 +47,33 @@ describe('ShellyIotManager', () => {
   });
 
   it('setState Gen1 relé pega a /relay/<ch>?turn=on', async () => {
-    const transport = new FakeTransport({ '192.168.1.80': { relays: [{ ison: false }], meters: [] } });
-    const mgr = new ShellyIotManager({ transport, devices: [{ ip: '192.168.1.80', gen: 1, channels: 1 }] });
+    const transport = new FakeTransport({
+      '192.168.1.80': { relays: [{ ison: false }], meters: [] },
+    });
+    const mgr = new ShellyIotManager({
+      transport,
+      devices: [{ ip: '192.168.1.80', gen: 1, channels: 1 }],
+    });
     await mgr.setState('shelly:192.168.1.80:0', { on: true });
     expect(transport.gets.some((g) => g.path === '/relay/0?turn=on')).toBe(true);
   });
 
   it('setState Gen2 relé emite Switch.Set por JSON-RPC', async () => {
     const transport = new FakeTransport({}, { 'Switch.GetStatus': { output: true, apower: 3 } });
-    const mgr = new ShellyIotManager({ transport, devices: [{ ip: '192.168.1.82', gen: 2, channels: 1 }] });
+    const mgr = new ShellyIotManager({
+      transport,
+      devices: [{ ip: '192.168.1.82', gen: 2, channels: 1 }],
+    });
     await mgr.setState('shelly:192.168.1.82:0', { on: true });
     const set = transport.rpcs.find((r) => r.body.method === 'Switch.Set');
     expect(set!.body.params).toMatchObject({ id: 0, on: true });
   });
 
   it('setState Gen2 luz (type=light) emite Light.Set con brillo', async () => {
-    const transport = new FakeTransport({}, { 'Light.GetStatus': { output: true, brightness: 80 } });
+    const transport = new FakeTransport(
+      {},
+      { 'Light.GetStatus': { output: true, brightness: 80 } },
+    );
     const mgr = new ShellyIotManager({
       transport,
       devices: [{ ip: '192.168.1.83', gen: 2, channels: 1, type: 'light' }],
@@ -73,7 +87,10 @@ describe('ShellyIotManager', () => {
     const transport = new FakeTransport({
       '192.168.1.80': { relays: [{ ison: true }, { ison: false }], meters: [] },
     });
-    const mgr = new ShellyIotManager({ transport, devices: [{ ip: '192.168.1.80', gen: 1, channels: 2 }] });
+    const mgr = new ShellyIotManager({
+      transport,
+      devices: [{ ip: '192.168.1.80', gen: 1, channels: 2 }],
+    });
     expect(await mgr.getDevice('shelly:192.168.1.80:1')).toMatchObject({ on: false });
     await expect(mgr.setState('shelly:10.0.0.1:0', { on: true })).rejects.toThrow(/no encontrado/i);
   });

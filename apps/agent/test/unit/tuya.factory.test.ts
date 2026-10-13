@@ -10,9 +10,9 @@ describe('createIotManager — tuya', () => {
   }
 
   it('IOT_KIND=tuya instancia un TuyaIotManager', () => {
-    expect(backendDe({ kind: 'tuya', tuya: { configPath: '/tmp/krakenos-tuya.json' } })).toBeInstanceOf(
-      TuyaIotManager,
-    );
+    expect(
+      backendDe({ kind: 'tuya', tuya: { configPath: '/tmp/krakenos-tuya.json' } }),
+    ).toBeInstanceOf(TuyaIotManager);
   });
 
   it('IOT_KIND=tuya expone el tuyaStore compartido en el bundle (US-63)', () => {

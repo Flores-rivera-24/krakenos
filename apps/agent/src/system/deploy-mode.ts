@@ -23,7 +23,9 @@ export interface DeployModeProbe {
 }
 
 export function detectDeployMode(probe: DeployModeProbe = {}): DeployMode {
-  const override = (probe.envOverride ?? process.env.KRAKENOS_DEPLOY_MODE ?? '').trim().toLowerCase();
+  const override = (probe.envOverride ?? process.env.KRAKENOS_DEPLOY_MODE ?? '')
+    .trim()
+    .toLowerCase();
   if ((DEPLOY_MODES as readonly string[]).includes(override)) {
     return override as DeployMode;
   }

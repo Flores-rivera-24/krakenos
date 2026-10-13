@@ -33,6 +33,4 @@ export interface PaginationQuery {
 }
 
 /** Resultado discriminado para operaciones que pueden fallar de forma controlada. */
-export type Result<T, E = ApiError> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
+export type Result<T, E = ApiError> = { ok: true; value: T } | { ok: false; error: E };

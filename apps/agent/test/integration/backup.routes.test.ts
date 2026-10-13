@@ -4,13 +4,7 @@ import { join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { decryptArchive, unpackArchive } from '../../src/system/backup.js';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 import { esperarUnaAuditoria } from '../helpers/audit.js';
 
 /** Copia de seguridad real (US-103): el endpoint produce un archivo cifrado restaurable. */
@@ -150,7 +144,9 @@ describe('copias de seguridad automáticas (US-233)', () => {
 
     const files = readdirSync(backupDir);
     expect(files).toHaveLength(1);
-    const entries = unpackArchive(decryptArchive(readFileSync(join(backupDir, files[0]!)), generated));
+    const entries = unpackArchive(
+      decryptArchive(readFileSync(join(backupDir, files[0]!)), generated),
+    );
     expect(entries.some((e) => e.name === 'db/app.db')).toBe(true);
 
     // Queda auditado (fire-and-forget).

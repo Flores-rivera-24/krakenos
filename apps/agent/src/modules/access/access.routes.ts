@@ -101,7 +101,12 @@ export const accessRoutes: FastifyPluginAsync<AccessRoutesOpts> = async (app, op
     { schema: resumeSchema, preHandler: adminOnly },
     async (req, reply) => {
       await service.resume(req.body.mac);
-      app.audit({ action: 'access.resume', userId: req.user.sub, detail: req.body.mac, ip: req.ip });
+      app.audit({
+        action: 'access.resume',
+        userId: req.user.sub,
+        detail: req.body.mac,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

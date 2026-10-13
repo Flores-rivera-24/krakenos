@@ -46,7 +46,10 @@ describe('mikrotik.parsers', () => {
       { name: 'ether1', 'rx-byte': '1000000', 'tx-byte': '200000' },
       { name: 'ether2', 'rx-byte': '5', 'tx-byte': '5' },
     ];
-    expect(parseMikrotikInterface(rows, 'ether1')).toEqual({ rxBytes: 1_000_000, txBytes: 200_000 });
+    expect(parseMikrotikInterface(rows, 'ether1')).toEqual({
+      rxBytes: 1_000_000,
+      txBytes: 200_000,
+    });
     expect(parseMikrotikInterface(rows, 'wlan9')).toBeNull();
   });
 
@@ -57,7 +60,12 @@ describe('mikrotik.parsers', () => {
 
     const entries = [
       { '.id': '*1', list: 'otra', address: '192.168.88.10' },
-      { '.id': '*7', list: BLOCK_LIST, address: '192.168.88.10', comment: blockComment('AA:BB:CC:DD:EE:FF') },
+      {
+        '.id': '*7',
+        list: BLOCK_LIST,
+        address: '192.168.88.10',
+        comment: blockComment('AA:BB:CC:DD:EE:FF'),
+      },
     ];
     expect(blockEntryId(entries, 'aa:bb:cc:dd:ee:ff', '192.168.88.10')).toBe('*7');
     expect(blockEntryId(entries, '00:00:00:00:00:00', null)).toBeNull();
@@ -69,11 +77,28 @@ describe('mikrotik.parsers', () => {
     expect(bandFromMikrotik('6ghz-ax')).toBe('6GHz');
 
     const rows = [
-      { '.id': '*1', name: 'wlan1', ssid: 'Casa', band: '5ghz-a/n/ac', disabled: 'false', 'hide-ssid': 'true' },
+      {
+        '.id': '*1',
+        name: 'wlan1',
+        ssid: 'Casa',
+        band: '5ghz-a/n/ac',
+        disabled: 'false',
+        'hide-ssid': 'true',
+      },
       { '.id': '*2', name: 'wlan2' }, // sin ssid → fuera
     ];
     expect(parseMikrotikWireless(rows, 'mikrotik')).toEqual([
-      { id: '*1', apId: 'mikrotik', ssid: 'Casa', band: '5GHz', security: 'wpa2', enabled: true, hidden: true, isGuest: false, clientCount: 0 },
+      {
+        id: '*1',
+        apId: 'mikrotik',
+        ssid: 'Casa',
+        band: '5GHz',
+        security: 'wpa2',
+        enabled: true,
+        hidden: true,
+        isGuest: false,
+        clientCount: 0,
+      },
     ]);
   });
 });

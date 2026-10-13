@@ -98,7 +98,11 @@ export class ShellyIotManager implements IotManager {
     return out;
   }
 
-  private async applyGen1(cfg: ShellyDeviceConfig, channel: number, input: UpdateIotStateRequest): Promise<void> {
+  private async applyGen1(
+    cfg: ShellyDeviceConfig,
+    channel: number,
+    input: UpdateIotStateRequest,
+  ): Promise<void> {
     if (cfg.type === 'light') {
       await this.opts.transport.get(cfg.ip, gen1LightPath(channel, input));
     } else if (input.on !== undefined) {
@@ -106,7 +110,11 @@ export class ShellyIotManager implements IotManager {
     }
   }
 
-  private async applyGen2(cfg: ShellyDeviceConfig, channel: number, input: UpdateIotStateRequest): Promise<void> {
+  private async applyGen2(
+    cfg: ShellyDeviceConfig,
+    channel: number,
+    input: UpdateIotStateRequest,
+  ): Promise<void> {
     if (cfg.type === 'light') {
       await this.opts.transport.rpc(cfg.ip, gen2LightSet(channel, input));
     } else if (input.on !== undefined) {

@@ -68,8 +68,12 @@ describe('rutas de push (US-45)', () => {
     expect(row?.p256dh).toBe('pkey');
 
     // El dueño sí puede refrescar sus claves.
-    expect((await post(a, { ...SUB, keys: { p256dh: 'nueva', auth: 'akey' } })).statusCode).toBe(204);
-    const after = await app.prisma.pushSubscription.findUnique({ where: { endpoint: SUB.endpoint } });
+    expect((await post(a, { ...SUB, keys: { p256dh: 'nueva', auth: 'akey' } })).statusCode).toBe(
+      204,
+    );
+    const after = await app.prisma.pushSubscription.findUnique({
+      where: { endpoint: SUB.endpoint },
+    });
     expect(after?.userId).toBe(a.id);
     expect(after?.p256dh).toBe('nueva');
   });

@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AsusDriver } from '../../src/drivers/asus.driver.js';
-import type { AsusHttpFetch, AsusHttpRequestInit, AsusHttpResponse } from '../../src/drivers/asus.transport.js';
+import type {
+  AsusHttpFetch,
+  AsusHttpRequestInit,
+  AsusHttpResponse,
+} from '../../src/drivers/asus.transport.js';
 import { AsusClient } from '../../src/drivers/asus.transport.js';
 
 interface Call {
@@ -52,7 +56,12 @@ class FakeFetch {
 }
 
 function makeDriver(fake: FakeFetch, now?: () => number) {
-  const client = new AsusClient({ baseUrl: 'http://router.test', username: 'admin', password: 'pw', fetch: fake.fetch });
+  const client = new AsusClient({
+    baseUrl: 'http://router.test',
+    username: 'admin',
+    password: 'pw',
+    fetch: fake.fetch,
+  });
   return new AsusDriver({ client, host: 'router.test', now });
 }
 
@@ -79,7 +88,9 @@ describe('AsusDriver', () => {
 
   it('getTrafficSample calcula la tasa con el reloj inyectado', async () => {
     let rx = 1_000_000;
-    fake.onHook('get_traffics()', () => ({ text: JSON.stringify({ netdev: { INTERNET: { rx: String(rx), tx: '0' } } }) }));
+    fake.onHook('get_traffics()', () => ({
+      text: JSON.stringify({ netdev: { INTERNET: { rx: String(rx), tx: '0' } } }),
+    }));
     let clock = 1_000_000;
     const driver = makeDriver(fake, () => clock);
     expect((await driver.getTrafficSample()).wan.rxBytesPerSec).toBe(0);
@@ -89,10 +100,14 @@ describe('AsusDriver', () => {
   });
 
   it('blockDevice escribe MULTIFILTER_MAC vía applyapp y reinicia el firewall', async () => {
-    fake.onHook('nvram_get(MULTIFILTER_MAC)', () => ({ text: '{"MULTIFILTER_MAC":"11:22:33:44:55:66"}' }));
+    fake.onHook('nvram_get(MULTIFILTER_MAC)', () => ({
+      text: '{"MULTIFILTER_MAC":"11:22:33:44:55:66"}',
+    }));
     await makeDriver(fake).blockDevice('AA:BB:CC:DD:EE:FF');
     const apply = fake.calls.find((c) => c.path.includes('applyapp'));
-    expect(apply!.body).toContain('MULTIFILTER_MAC=11%3A22%3A33%3A44%3A55%3A66%3Eaa%3Abb%3Acc%3Add%3Aee%3Aff');
+    expect(apply!.body).toContain(
+      'MULTIFILTER_MAC=11%3A22%3A33%3A44%3A55%3A66%3Eaa%3Abb%3Acc%3Add%3Aee%3Aff',
+    );
     expect(apply!.body).toContain('rc_service=restart_firewall');
     expect(apply!.body).toContain('action_mode=apply');
   });
@@ -102,7 +117,12 @@ describe('AsusDriver', () => {
       text: '{"wl0_ssid":"Casa","wl0_auth_mode_x":"psk2","wl0_closed":"0"}',
     }));
     const driver = makeDriver(fake);
-    expect(await driver.getWifi()).toMatchObject({ ssid: 'Casa', band: '2.4GHz', security: 'wpa2', hidden: false });
+    expect(await driver.getWifi()).toMatchObject({
+      ssid: 'Casa',
+      band: '2.4GHz',
+      security: 'wpa2',
+      hidden: false,
+    });
 
     await driver.updateWifi({ ssid: 'CasaNueva', password: 'secret123', hidden: true });
     const apply = fake.calls.find((c) => c.path.includes('applyapp'));

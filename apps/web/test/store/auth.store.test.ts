@@ -10,7 +10,14 @@ function jsonResponse(status: number, body: unknown): Response {
   } as Response;
 }
 
-const USER = { id: 'u1', email: 'a@krakenos.test', displayName: 'A', role: 'admin' as const, createdAt: '', updatedAt: '' };
+const USER = {
+  id: 'u1',
+  email: 'a@krakenos.test',
+  displayName: 'A',
+  role: 'admin' as const,
+  createdAt: '',
+  updatedAt: '',
+};
 const TOKENS = { accessToken: 'acc', expiresIn: 900 };
 
 describe('useAuthStore', () => {
@@ -28,13 +35,19 @@ describe('useAuthStore', () => {
 
     await useAuthStore.getState().login('a@krakenos.test', 'password123');
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/login', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/login',
+      expect.objectContaining({ method: 'POST' }),
+    );
     expect(useAuthStore.getState().user).toEqual(USER);
     expect(useAuthStore.getState().tokens).toEqual(TOKENS);
   });
 
   it('login propaga el error y no fija sesión', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })),
+    );
     await expect(useAuthStore.getState().login('a@krakenos.test', 'mala')).rejects.toThrow();
     expect(useAuthStore.getState().user).toBeNull();
   });
@@ -82,7 +95,10 @@ describe('useAuthStore', () => {
 
   it('refresh fallido limpia la sesión', async () => {
     useAuthStore.setState({ user: USER, tokens: TOKENS });
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })),
+    );
 
     const ok = await useAuthStore.getState().refresh();
     expect(ok).toBe(false);
@@ -111,7 +127,10 @@ describe('useAuthStore', () => {
 
     it('la sesión sobrevive a un 5xx (el agente arrancando)', async () => {
       useAuthStore.setState({ user: USER, tokens: TOKENS });
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(503, { code: 'X', message: 'no' })));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(jsonResponse(503, { code: 'X', message: 'no' })),
+      );
 
       expect(await useAuthStore.getState().refresh()).toBe(false);
       expect(useAuthStore.getState().user).toEqual(USER);
@@ -120,7 +139,10 @@ describe('useAuthStore', () => {
 
     it('un 403 SÍ cierra la sesión (cuenta deshabilitada o rol retirado)', async () => {
       useAuthStore.setState({ user: USER, tokens: TOKENS });
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(403, { code: 'X', message: 'no' })));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(jsonResponse(403, { code: 'X', message: 'no' })),
+      );
 
       expect(await useAuthStore.getState().refresh()).toBe(false);
       expect(useAuthStore.getState().user).toBeNull();
@@ -142,7 +164,10 @@ describe('useAuthStore', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await useAuthStore.getState().logout();
-    expect(fetchMock).toHaveBeenCalledWith('/api/auth/logout', expect.objectContaining({ method: 'POST' }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/auth/logout',
+      expect.objectContaining({ method: 'POST' }),
+    );
     expect(useAuthStore.getState().user).toBeNull();
     expect(useAuthStore.getState().tokens).toBeNull();
   });

@@ -34,7 +34,9 @@ describe('CameraLivePlayer (US-185)', () => {
     camerasMock.stopStream.mockReset().mockResolvedValue(undefined);
     camerasMock.streamPlaylistUrl
       .mockReset()
-      .mockImplementation((id: string, token: string) => `/api/cameras/${id}/stream/x.m3u8?st=${token}`);
+      .mockImplementation(
+        (id: string, token: string) => `/api/cameras/${id}/stream/x.m3u8?st=${token}`,
+      );
     // Fuerza la ruta de HLS nativo (Safari): evita importar hls.js en jsdom.
     vi.spyOn(HTMLMediaElement.prototype, 'canPlayType').mockReturnValue('maybe');
     vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);

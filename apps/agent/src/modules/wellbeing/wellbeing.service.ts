@@ -107,7 +107,10 @@ export class WellbeingService {
     const people: PersonUsage[] = [...byOwner.entries()].map(([key, acc]) => {
       const buckets: UsageBucket[] = [...acc.buckets.entries()]
         .sort(([a], [b]) => a - b)
-        .map(([start, bytes]) => ({ timestamp: new Date(start).toISOString(), bytes: Math.round(bytes) }));
+        .map(([start, bytes]) => ({
+          timestamp: new Date(start).toISOString(),
+          bytes: Math.round(bytes),
+        }));
       return {
         userId: key === UNASSIGNED ? null : key,
         name: key === UNASSIGNED ? 'Sin asignar' : (nameById.get(key) ?? 'Desconocido'),

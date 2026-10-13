@@ -38,7 +38,12 @@ export class IptablesFirewallManager implements FirewallManager {
     const { runner, chain } = this.opts;
     // Asegura cadena y enlace (idempotentes: ignora "ya existe").
     await runner.run(iptablesNewChainArgs(chain)).catch(() => undefined);
-    if (await runner.run(iptablesCheckLinkArgs(chain)).then(() => false).catch(() => true)) {
+    if (
+      await runner
+        .run(iptablesCheckLinkArgs(chain))
+        .then(() => false)
+        .catch(() => true)
+    ) {
       await runner.run(iptablesLinkArgs(chain)).catch(() => undefined);
     }
     await runner.run(iptablesFlushArgs(chain));

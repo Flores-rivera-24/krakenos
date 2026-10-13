@@ -1,10 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type {
-  CreateVlanRequest,
-  UpdateVlanRequest,
-  Vlan,
-  VlanManager,
-} from '@krakenos/types';
+import type { CreateVlanRequest, UpdateVlanRequest, Vlan, VlanManager } from '@krakenos/types';
 
 /** Error de dominio de VLANs con código estable. */
 export class VlanError extends Error {

@@ -73,7 +73,9 @@ export class RetentionService {
       );
       const energy = await pruneEnergySamples(this.app.prisma, energyDays);
       if (energy > 0) {
-        this.app.log.info(`[retention] podados ${energy} rollups de energía (> ${energyDays} días)`);
+        this.app.log.info(
+          `[retention] podados ${energy} rollups de energía (> ${energyDays} días)`,
+        );
       }
       // Recorridos de cobertura antiguos (US-228): nada los podaba y cada uno son
       // hasta 10.000 muestras. Las muestras caen en cascada con su recorrido.

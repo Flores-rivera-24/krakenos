@@ -64,7 +64,9 @@ export function PauseInternet({ device, canEdit }: Props) {
     <div className="flex flex-wrap items-center gap-2 text-kr-sm">
       {active ? (
         <>
-          <span className="text-warning">{t('pauseInternet.until', { time: formatTime(pausedUntil!) })}</span>
+          <span className="text-warning">
+            {t('pauseInternet.until', { time: formatTime(pausedUntil!) })}
+          </span>
           {canEdit && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void resume()}>
               {t('pauseInternet.resume')}

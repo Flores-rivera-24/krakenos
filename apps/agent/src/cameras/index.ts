@@ -82,7 +82,8 @@ export function createCameraManager(config: CameraConfig): CameraManager {
     }
     case 'frigate': {
       const frigate = config.frigate;
-      if (!frigate?.url) throw new Error('Falta la configuración de Frigate (CameraConfig.frigate.url)');
+      if (!frigate?.url)
+        throw new Error('Falta la configuración de Frigate (CameraConfig.frigate.url)');
       return new FrigateCameraManager({
         baseUrl: frigate.url,
         go2rtcUrl: frigate.go2rtcUrl,

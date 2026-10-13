@@ -260,7 +260,7 @@ export const PLUGS_GUIDES_EN: GuideTranslations = {
     troubleshooting: [
       {
         q: 'No devices show up.',
-        a: 'Most likely they are not publishing their announcement. Check it from the server with: mosquitto_sub -h YOUR_SERVER -t \'homeassistant/#\' -v. If nothing comes out there, the problem is between the device and the broker.',
+        a: "Most likely they are not publishing their announcement. Check it from the server with: mosquitto_sub -h YOUR_SERVER -t 'homeassistant/#' -v. If nothing comes out there, the problem is between the device and the broker.",
       },
       {
         q: 'The device shows up but not its state.',

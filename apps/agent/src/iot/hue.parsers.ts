@@ -110,9 +110,7 @@ export function lightToIotDevice(light: unknown): IotDevice | null {
 /** Mapea la respuesta `{ data: [...] }` de `GET .../resource/light`. */
 export function parseLights(data: unknown): IotDevice[] {
   const list = Array.isArray(data) ? data : [];
-  return list
-    .map(lightToIotDevice)
-    .filter((d): d is IotDevice => d !== null);
+  return list.map(lightToIotDevice).filter((d): d is IotDevice => d !== null);
 }
 
 /** Construye el cuerpo del PUT a un light desde una petición de control. */

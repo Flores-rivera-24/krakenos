@@ -51,7 +51,12 @@ export const qosRoutes: FastifyPluginAsync<QosRoutesOpts> = async (app, opts) =>
       if (!removed) {
         return reply.code(404).send({ code: 'RULE_NOT_FOUND', message: 'Regla no encontrada' });
       }
-      app.audit({ action: 'qos.rule.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'qos.rule.remove',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

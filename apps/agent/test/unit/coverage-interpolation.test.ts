@@ -7,7 +7,9 @@ import {
 } from '../../src/coverage/interpolation.js';
 
 /** Crea una muestra de survey con valores por defecto sensatos. */
-function sample(partial: Partial<SurveySample> & { x: number; y: number; rssiDbm: number }): SurveySample {
+function sample(
+  partial: Partial<SurveySample> & { x: number; y: number; rssiDbm: number },
+): SurveySample {
   return {
     id: 's1',
     scanId: 'scan1',
@@ -159,10 +161,7 @@ describe('computeMeasuredHeatmap', () => {
   });
 
   it('las cotas de la leyenda reflejan el rango de las muestras', () => {
-    const s = [
-      sample({ x: 0.5, y: 0.5, rssiDbm: -40 }),
-      sample({ x: 1.5, y: 0.5, rssiDbm: -75 }),
-    ];
+    const s = [sample({ x: 0.5, y: 0.5, rssiDbm: -40 }), sample({ x: 1.5, y: 0.5, rssiDbm: -75 })];
     const hm = computeMeasuredHeatmap(4, 4, s, { band: '5GHz', cellSizeM: 1 });
     expect(hm.minDbm).toBe(-75);
     expect(hm.maxDbm).toBe(-40);

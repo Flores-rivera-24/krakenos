@@ -254,7 +254,8 @@ export class MqttDiscoveryIotManager implements IotManager {
         ? Math.round(((posicionBruta - cover.positionClosed) / rango) * 100)
         : null;
 
-    const targetC = kind === 'climate' ? this.numeroDe(climate?.temperatureStateTopic ?? null) : null;
+    const targetC =
+      kind === 'climate' ? this.numeroDe(climate?.temperatureStateTopic ?? null) : null;
 
     const lock = entidades.find((e) => e.component === 'lock');
     const valorCerradura = lock ? this.valorDe(lock) : null;
@@ -346,7 +347,10 @@ export class MqttDiscoveryIotManager implements IotManager {
     // Actualización optimista: el aparato confirmará por su topic de estado.
     const principal = entidades.find((e) => e.component === 'light' || e.component === 'switch');
     if (input.on !== undefined && principal?.stateTopic && principal.plantilla.tipo === 'directa') {
-      this.payloads.set(principal.stateTopic, input.on ? principal.payloadOn : principal.payloadOff);
+      this.payloads.set(
+        principal.stateTopic,
+        input.on ? principal.payloadOn : principal.payloadOff,
+      );
     }
     return this.toDevice(id, entidades);
   }

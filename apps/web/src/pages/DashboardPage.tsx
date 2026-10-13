@@ -36,7 +36,9 @@ import { useInventoryStore } from '@/store/inventory.store';
  * chunk se pide solo si el widget se va a pintar de verdad.
  */
 const TrafficWidget = lazy(() =>
-  import('@/components/dashboard/widgets/TrafficWidget').then((m) => ({ default: m.TrafficWidget })),
+  import('@/components/dashboard/widgets/TrafficWidget').then((m) => ({
+    default: m.TrafficWidget,
+  })),
 );
 const NetworkTopologyWidget = lazy(() =>
   import('@/components/dashboard/widgets/NetworkTopologyWidget').then((m) => ({
@@ -114,7 +116,10 @@ export function DashboardPage() {
           if (!meta || !permitidos.has(id) || (hidden && !editing)) return null;
 
           return (
-            <div key={id} className={cn(meta.span === 2 && 'lg:col-span-2', hidden && 'opacity-50')}>
+            <div
+              key={id}
+              className={cn(meta.span === 2 && 'lg:col-span-2', hidden && 'opacity-50')}
+            >
               {editing && (
                 <div className="mb-1 flex items-center justify-between rounded-md bg-kr-elevated px-2 py-1">
                   <span className="text-kr-sm text-kr-secondary">{meta.title}</span>

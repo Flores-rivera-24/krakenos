@@ -184,7 +184,9 @@ describe('SurveyPanel', () => {
     await user.click(screen.getByRole('button', { name: `Eliminar ${SCAN.name}` }));
 
     await waitFor(() => expect(coverageMock.deleteScan).toHaveBeenCalledWith('scan-1'));
-    await waitFor(() => expect(screen.queryByText('Recorrido planta baja')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Recorrido planta baja')).not.toBeInTheDocument(),
+    );
   });
 
   it('en un survey manual (sin dispositivo) ofrece el campo de dBm y propaga cambios', async () => {

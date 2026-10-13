@@ -24,17 +24,30 @@ describe('gestión de usuarios (US-101)', () => {
   });
 
   const create = (body: Record<string, unknown>) =>
-    app.inject({ method: 'POST', url: '/api/users', headers: authHeader(adminToken), payload: body });
+    app.inject({
+      method: 'POST',
+      url: '/api/users',
+      headers: authHeader(adminToken),
+      payload: body,
+    });
 
   const login = (email: string, password: string) =>
     app.inject({ method: 'POST', url: '/api/auth/login', payload: { email, password } });
 
   it('lista usuarios sin exponer el hash de contraseña', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/users', headers: authHeader(adminToken) });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/users',
+      headers: authHeader(adminToken),
+    });
     expect(res.statusCode).toBe(200);
     const list = res.json() as Array<Record<string, unknown>>;
     expect(list).toHaveLength(1);
-    expect(list[0]).toMatchObject({ email: 'admin@krakenos.test', role: 'admin', status: 'active' });
+    expect(list[0]).toMatchObject({
+      email: 'admin@krakenos.test',
+      role: 'admin',
+      status: 'active',
+    });
     expect(list[0]).not.toHaveProperty('passwordHash');
   });
 

@@ -2,10 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  ProcessUpdateRunner,
-  type UpdateExec,
-} from '../../src/system/process-update-runner.js';
+import { ProcessUpdateRunner, type UpdateExec } from '../../src/system/process-update-runner.js';
 
 function tmpDbFile(content = 'DB-ANTES'): string {
   const dir = mkdtempSync(join(tmpdir(), 'krakenos-upd-'));
@@ -92,9 +89,9 @@ describe('ProcessUpdateRunner', () => {
   it('migrate ejecuta prisma migrate deploy', async () => {
     const { runner, calls } = make();
     await runner.migrate();
-    expect(calls.some((c) => c.includes('prisma') && c.includes('migrate') && c.includes('deploy'))).toBe(
-      true,
-    );
+    expect(
+      calls.some((c) => c.includes('prisma') && c.includes('migrate') && c.includes('deploy')),
+    ).toBe(true);
   });
 
   it('restart usa sudo systemctl por defecto', async () => {

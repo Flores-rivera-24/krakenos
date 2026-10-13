@@ -15,7 +15,10 @@ export interface ShellyTransport {
 }
 
 export interface HttpFetchLike {
-  (url: string, init?: { method?: string; headers?: Record<string, string>; body?: string }): Promise<{
+  (
+    url: string,
+    init?: { method?: string; headers?: Record<string, string>; body?: string },
+  ): Promise<{
     ok: boolean;
     status: number;
     json(): Promise<unknown>;
@@ -58,7 +61,9 @@ export class FetchShellyTransport implements ShellyTransport {
   private headers(): Record<string, string> {
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (this.opts.auth && this.opts.username !== undefined) {
-      const token = Buffer.from(`${this.opts.username}:${this.opts.password ?? ''}`).toString('base64');
+      const token = Buffer.from(`${this.opts.username}:${this.opts.password ?? ''}`).toString(
+        'base64',
+      );
       headers['Authorization'] = `Basic ${token}`;
     }
     return headers;

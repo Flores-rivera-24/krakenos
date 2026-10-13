@@ -166,7 +166,9 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
 
     it('pedir acceso no crea ninguna cuenta ni credencial', async () => {
       expect((await pedir()).statusCode).toBe(202);
-      expect(await app.prisma.user.findUnique({ where: { email: 'quiero@krakenos.test' } })).toBeNull();
+      expect(
+        await app.prisma.user.findUnique({ where: { email: 'quiero@krakenos.test' } }),
+      ).toBeNull();
     });
 
     /**
@@ -261,7 +263,9 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
       expect(body.invitation.token).toBeTruthy();
 
       // Sigue sin haber cuenta: la crea quien acepte el enlace, con SU contraseña.
-      expect(await app.prisma.user.findUnique({ where: { email: 'quiero@krakenos.test' } })).toBeNull();
+      expect(
+        await app.prisma.user.findUnique({ where: { email: 'quiero@krakenos.test' } }),
+      ).toBeNull();
 
       const alta = await app.inject({
         method: 'POST',

@@ -454,9 +454,7 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
         type={secret ? 'password' : field.type === 'number' ? 'number' : 'text'}
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(e.target.value)}
-        placeholder={
-          secret && secretStored ? t('wizard.secretStored') : placeholder
-        }
+        placeholder={secret && secretStored ? t('wizard.secretStored') : placeholder}
         autoComplete={secret ? 'new-password' : undefined}
       />
     );

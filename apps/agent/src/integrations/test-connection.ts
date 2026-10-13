@@ -58,11 +58,17 @@ export async function testConnection(
   try {
     return await withTimeout(probe(domain, record), PROBE_TIMEOUT_MS);
   } catch (err) {
-    return { ok: false, message: `No se pudo conectar: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      ok: false,
+      message: `No se pudo conectar: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
 }
 
-async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<IntegrationTestResult> {
+async function probe(
+  domain: IntegrationDomain,
+  record: DomainRecord,
+): Promise<IntegrationTestResult> {
   switch (domain) {
     case 'driver': {
       const mgr = wrapDriverErrors(createDriver(resolveDriverConfig(record)));
@@ -72,7 +78,8 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
           ? { ok: true, message: 'Conexión correcta con el equipo de red.' }
           : {
               ok: false,
-              message: 'El equipo respondió pero el chequeo de estado falló. Revisa las credenciales.',
+              message:
+                'El equipo respondió pero el chequeo de estado falló. Revisa las credenciales.',
             };
       } finally {
         await stopManager(mgr);
@@ -106,7 +113,8 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
           // exactamente lo que se sabe.
           return {
             ok: true,
-            message: 'Conectado, pero no hay ningún dispositivo todavía. Empareja alguno y vuelve a probar.',
+            message:
+              'Conectado, pero no hay ningún dispositivo todavía. Empareja alguno y vuelve a probar.',
             details: { dispositivos: 0 },
           };
         }
@@ -123,7 +131,11 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
       const mgr = createCameraManager(resolveCameraConfig(record));
       try {
         const cams = await mgr.listCameras();
-        return { ok: true, message: `Conectado. ${cams.length} cámara(s).`, details: { camaras: cams.length } };
+        return {
+          ok: true,
+          message: `Conectado. ${cams.length} cámara(s).`,
+          details: { camaras: cams.length },
+        };
       } finally {
         await stopManager(mgr);
       }
@@ -132,7 +144,11 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
       const mgr = createFirewallManager(resolveFirewallConfig(record));
       try {
         const rules = await mgr.listRules();
-        return { ok: true, message: `Cortafuegos operativo. ${rules.length} regla(s).`, details: { reglas: rules.length } };
+        return {
+          ok: true,
+          message: `Cortafuegos operativo. ${rules.length} regla(s).`,
+          details: { reglas: rules.length },
+        };
       } finally {
         await stopManager(mgr);
       }
@@ -141,7 +157,11 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
       const mgr = createVlanManager(resolveVlanConfig(record));
       try {
         const vlans = await mgr.listVlans();
-        return { ok: true, message: `Conectado. ${vlans.length} VLAN(s).`, details: { vlans: vlans.length } };
+        return {
+          ok: true,
+          message: `Conectado. ${vlans.length} VLAN(s).`,
+          details: { vlans: vlans.length },
+        };
       } finally {
         await stopManager(mgr);
       }
@@ -150,7 +170,11 @@ async function probe(domain: IntegrationDomain, record: DomainRecord): Promise<I
       const mgr = createQosManager(resolveQosConfig(record));
       try {
         const rules = await mgr.listRules();
-        return { ok: true, message: `QoS operativo. ${rules.length} regla(s).`, details: { reglas: rules.length } };
+        return {
+          ok: true,
+          message: `QoS operativo. ${rules.length} regla(s).`,
+          details: { reglas: rules.length },
+        };
       } finally {
         await stopManager(mgr);
       }

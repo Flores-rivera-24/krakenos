@@ -16,11 +16,19 @@ const rng = makeRng(0xc0ffee);
 const pick = <T>(arr: T[]): T => arr[Math.floor(rng() * arr.length)]!;
 const octet = (): number => Math.floor(rng() * 256);
 const validIpv4 = (): string => `${octet()}.${octet()}.${octet()}.${octet()}`;
-const validCidr = (): string => (rng() < 0.5 ? validIpv4() : `${validIpv4()}/${Math.floor(rng() * 33)}`);
+const validCidr = (): string =>
+  rng() < 0.5 ? validIpv4() : `${validIpv4()}/${Math.floor(rng() * 33)}`;
 
 describe('validación IP/CIDR estricta + fuzz (US-84, F12)', () => {
   it('acepta direcciones y redes IPv4 canónicas', () => {
-    for (const v of ['0.0.0.0', '255.255.255.255', '10.0.0.0/8', '192.168.1.0/24', '1.2.3.4/32', '8.8.8.8']) {
+    for (const v of [
+      '0.0.0.0',
+      '255.255.255.255',
+      '10.0.0.0/8',
+      '192.168.1.0/24',
+      '1.2.3.4/32',
+      '8.8.8.8',
+    ]) {
       expect(assertIpv4Cidr(v)).toBe(v);
     }
   });

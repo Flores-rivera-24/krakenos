@@ -41,9 +41,7 @@ describe('CopyButton', () => {
     render(<CopyButton value="v" feedbackMs={50} />);
     fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
     await screen.findByRole('button', { name: '¡Copiado!' });
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Copiar' })).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Copiar' })).toBeInTheDocument());
   });
 
   it('muestra el texto junto al icono con showLabel', async () => {

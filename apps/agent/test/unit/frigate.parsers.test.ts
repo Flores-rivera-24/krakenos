@@ -96,9 +96,7 @@ describe('rewriteHlsPlaylist (proxy sin fuga, US-214)', () => {
     expect(playlist).toContain('f1.m4s');
     expect(playlist).toContain('f2.ts');
     expect(segments.get('f0.mp4')).toBe('http://frigate.lan:1984/api/init.mp4?src=entrada');
-    expect(segments.get('f1.m4s')).toBe(
-      'http://frigate.lan:1984/api/segment0.m4s?src=entrada&n=0',
-    );
+    expect(segments.get('f1.m4s')).toBe('http://frigate.lan:1984/api/segment0.m4s?src=entrada&n=0');
     expect(segments.get('f2.ts')).toBe('https://frigate.lan:1984/abs/segment1.ts');
   });
 

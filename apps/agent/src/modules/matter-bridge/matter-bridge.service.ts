@@ -8,7 +8,11 @@ import type {
 import type { FastifyInstance } from 'fastify';
 import QRCode from 'qrcode';
 import { withActionTimeout } from '../../iot/action-timeout.js';
-import { matterCommandToState, toBridgeEndpoint, type MatterIncomingCommand } from '../../iot/matter-bridge/mapping.js';
+import {
+  matterCommandToState,
+  toBridgeEndpoint,
+  type MatterIncomingCommand,
+} from '../../iot/matter-bridge/mapping.js';
 import type { MatterBridgeStack } from '../../iot/matter-bridge/stack.js';
 
 /** Clave del ajuste que persiste la config del puente. */
@@ -118,7 +122,13 @@ export class MatterBridgeService {
     const candidates: MatterBridgeCandidate[] = [];
     for (const d of devices) {
       const ep = toBridgeEndpoint(d);
-      if (ep) candidates.push({ deviceId: ep.deviceId, name: ep.name, type: ep.type, exposed: exposed.has(ep.deviceId) });
+      if (ep)
+        candidates.push({
+          deviceId: ep.deviceId,
+          name: ep.name,
+          type: ep.type,
+          exposed: exposed.has(ep.deviceId),
+        });
     }
     const endpoints = candidates
       .filter((c) => c.exposed)

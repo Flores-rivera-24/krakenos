@@ -138,12 +138,7 @@ export function Stepper({
               {omitir}
             </Button>
           )}
-          <Button
-            type="button"
-            onClick={goNext}
-            disabled={busy || !canAdvance}
-            aria-busy={busy}
-          >
+          <Button type="button" onClick={goNext} disabled={busy || !canAdvance} aria-busy={busy}>
             {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
             {isLast ? finalizar : siguiente}
           </Button>

@@ -9,11 +9,31 @@ import { buildTestApp, resetDb } from '../helpers/app.js';
 class FakeIot implements IotManager {
   setCalls: { id: string; on?: boolean }[] = [];
   devices: IotDevice[] = [
-    { id: 'siren', name: 'Sirena', kind: 'plug', room: null, reachable: true, on: false, brightness: null, color: null, readings: [] },
+    {
+      id: 'siren',
+      name: 'Sirena',
+      kind: 'plug',
+      room: null,
+      reachable: true,
+      on: false,
+      brightness: null,
+      color: null,
+      readings: [],
+    },
     // ⚠️ Este fixture llevaba un `reading:` suelto —el campo que US-244 sustituyó
     // por la lista `readings`— y nadie se enteró: `apps/agent/tsconfig.json` solo
     // incluye `src`, así que los tests del agente **tampoco** se typecheckean.
-    { id: 'sensor-door', name: 'Puerta', kind: 'contact', room: null, reachable: true, on: null, brightness: null, color: null, readings: [{ metric: 'contact', value: 0, unit: '' }] },
+    {
+      id: 'sensor-door',
+      name: 'Puerta',
+      kind: 'contact',
+      room: null,
+      reachable: true,
+      on: null,
+      brightness: null,
+      color: null,
+      readings: [{ metric: 'contact', value: 0, unit: '' }],
+    },
   ];
   async listDevices() {
     return this.devices;
@@ -52,7 +72,12 @@ describe('AlarmService (US-188)', () => {
     const { service, bus } = build(iot, () => clock);
     const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
     service.start();
-    await service.setConfig({ sirenDeviceId: 'siren', cameraIds: ['cam-1'], exitDelaySec: 0, entryDelaySec: 10 });
+    await service.setConfig({
+      sirenDeviceId: 'siren',
+      cameraIds: ['cam-1'],
+      exitDelaySec: 0,
+      entryDelaySec: 10,
+    });
 
     await service.armAlarm('away', 'ana@x');
     expect(service.getStateSync().phase).toBe('armed');
@@ -133,7 +158,13 @@ describe('AlarmService (US-188)', () => {
     it('tampoco la disparan temperatura ni batería', async () => {
       const { service, bus } = await armada(new FakeIot());
       for (const metric of ['temperature', 'battery', 'humidity', 'illuminance'] as const) {
-        bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric, value: 22, prevValue: 0 });
+        bus.publish({
+          type: 'sensor-reading',
+          deviceId: 'sensor-1',
+          metric,
+          value: 22,
+          prevValue: 0,
+        });
       }
       await new Promise((r) => setTimeout(r, 30));
       expect(service.getStateSync().phase).toBe('armed');
@@ -146,7 +177,13 @@ describe('AlarmService (US-188)', () => {
       // pasaba por `entry` como una puerta cualquiera.
       for (const metric of ['smoke', 'co'] as const) {
         const { service, bus } = await armada(new FakeIot());
-        bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric, value: 1, prevValue: 0 });
+        bus.publish({
+          type: 'sensor-reading',
+          deviceId: 'sensor-1',
+          metric,
+          value: 1,
+          prevValue: 0,
+        });
         await vi.waitFor(() => expect(service.getStateSync().phase).toBe('triggered'));
         service.stop();
       }
@@ -156,7 +193,13 @@ describe('AlarmService (US-188)', () => {
       // El contrapunto del anterior: si se hubiera quitado el retardo para todos,
       // entrar en tu propia casa dispararía la alarma antes de llegar al teclado.
       const { service, bus } = await armada(new FakeIot());
-      bus.publish({ type: 'sensor-reading', deviceId: 'sensor-1', metric: 'contact', value: 1, prevValue: 0 });
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'sensor-1',
+        metric: 'contact',
+        value: 1,
+        prevValue: 0,
+      });
       await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
       service.stop();
     });
@@ -200,7 +243,13 @@ describe('AlarmService (US-188)', () => {
       await service.setConfig({ sensorDeviceIds: [], exitDelaySec: 0 });
       expect(service.getStateSync().phase).toBe('disarmed');
 
-      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'humo-cocina',
+        metric: 'smoke',
+        value: 1,
+        prevValue: 0,
+      });
 
       await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(1));
       expect(avisos(auditSpy, 'alarm.smoke')[0]![0]).toMatchObject({
@@ -219,7 +268,13 @@ describe('AlarmService (US-188)', () => {
       service.start();
       await service.setConfig({ exitDelaySec: 0 });
 
-      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'co', value: 1, prevValue: 0 });
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'humo-cocina',
+        metric: 'co',
+        value: 1,
+        prevValue: 0,
+      });
 
       await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.co')).toHaveLength(1));
       expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(0);
@@ -236,10 +291,20 @@ describe('AlarmService (US-188)', () => {
       service.start();
       await service.setConfig({ exitDelaySec: 0 });
 
-      bus.publish({ type: 'sensor-reading', deviceId: 'sensor-door', metric: 'contact', value: 1, prevValue: 0 });
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'sensor-door',
+        metric: 'contact',
+        value: 1,
+        prevValue: 0,
+      });
       await new Promise((r) => setTimeout(r, 30));
 
-      expect(auditSpy.mock.calls.filter((c) => String((c[0] as { action: string }).action).startsWith('alarm.'))).toHaveLength(0);
+      expect(
+        auditSpy.mock.calls.filter((c) =>
+          String((c[0] as { action: string }).action).startsWith('alarm.'),
+        ),
+      ).toHaveLength(0);
       service.stop();
       auditSpy.mockRestore();
     });
@@ -254,13 +319,25 @@ describe('AlarmService (US-188)', () => {
 
       for (let i = 0; i < 4; i++) {
         clock += 10_000; // cuatro activaciones en 40 s, dentro de la ventana
-        bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+        bus.publish({
+          type: 'sensor-reading',
+          deviceId: 'humo-cocina',
+          metric: 'smoke',
+          value: 1,
+          prevValue: 0,
+        });
         await new Promise((r) => setTimeout(r, 10));
       }
       expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(1);
 
       clock += 5 * 60_000; // pasada la ventana de rearme, el riesgo sigue: vuelve a avisar
-      bus.publish({ type: 'sensor-reading', deviceId: 'humo-cocina', metric: 'smoke', value: 1, prevValue: 0 });
+      bus.publish({
+        type: 'sensor-reading',
+        deviceId: 'humo-cocina',
+        metric: 'smoke',
+        value: 1,
+        prevValue: 0,
+      });
       await vi.waitFor(() => expect(avisos(auditSpy, 'alarm.smoke')).toHaveLength(2));
 
       service.stop();
@@ -286,7 +363,9 @@ describe('AlarmService (US-188)', () => {
 
       const faults = avisos(auditSpy, 'alarm.sensor_fault');
       expect(faults).toHaveLength(1);
-      expect(faults[0]![0]).toMatchObject({ detail: expect.stringContaining('detector de humo/CO') });
+      expect(faults[0]![0]).toMatchObject({
+        detail: expect.stringContaining('detector de humo/CO'),
+      });
       auditSpy.mockRestore();
     });
 
@@ -316,7 +395,13 @@ describe('AlarmService (US-188)', () => {
     const iot = new FakeIot();
     const { service } = build(iot, () => 0);
     vi.spyOn(app, 'audit').mockImplementation(() => {});
-    await service.setConfig({ sirenDeviceId: 'siren', pin: '1234', exitDelaySec: 0, entryDelaySec: 0, cameraIds: ['cam-1'] });
+    await service.setConfig({
+      sirenDeviceId: 'siren',
+      pin: '1234',
+      exitDelaySec: 0,
+      entryDelaySec: 0,
+      cameraIds: ['cam-1'],
+    });
     await service.armAlarm('away', 'ana@x');
 
     await expect(service.disarmAlarm('9999', 'ana@x')).rejects.toBeInstanceOf(AlarmPinError);

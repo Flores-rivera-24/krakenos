@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  isWithinWindow,
-  parseMaintenanceWindow,
-} from '../../src/system/maintenance-window.js';
+import { isWithinWindow, parseMaintenanceWindow } from '../../src/system/maintenance-window.js';
 
 describe('parseMaintenanceWindow', () => {
   it('parsea "HH:MM-HH:MM" a minutos', () => {

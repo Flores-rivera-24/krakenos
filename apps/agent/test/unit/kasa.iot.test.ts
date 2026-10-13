@@ -3,7 +3,9 @@ import { KasaIotManager } from '../../src/iot/kasa.iot.js';
 import type { KasaDiscovered, KasaTransport, TapoTransport } from '../../src/iot/kasa.transport.js';
 
 function plugSysinfo(alias: string, on: boolean) {
-  return { system: { get_sysinfo: { alias, mic_type: 'IOT.SMARTPLUGSWITCH', relay_state: on ? 1 : 0 } } };
+  return {
+    system: { get_sysinfo: { alias, mic_type: 'IOT.SMARTPLUGSWITCH', relay_state: on ? 1 : 0 } },
+  };
 }
 function bulbSysinfo(alias: string, on: boolean, brightness: number) {
   return {
@@ -49,7 +51,12 @@ class FakeTapo implements TapoTransport {
 }
 
 const tapoInfo = (model: string, on: boolean) => ({
-  result: { model, nickname: Buffer.from('Tapo dev').toString('base64'), device_on: on, brightness: 50 },
+  result: {
+    model,
+    nickname: Buffer.from('Tapo dev').toString('base64'),
+    device_on: on,
+    brightness: 50,
+  },
 });
 
 describe('KasaIotManager', () => {
@@ -74,7 +81,9 @@ describe('KasaIotManager', () => {
     const kasa = new FakeKasa([], { '192.168.1.60': plugSysinfo('Cafetera', false) });
     const mgr = new KasaIotManager({ kasa });
     await mgr.setState('kasa:192.168.1.60', { on: true });
-    expect(kasa.sent.some((s) => s.cmd.includes('set_relay_state') && s.cmd.includes('"state":1'))).toBe(true);
+    expect(
+      kasa.sent.some((s) => s.cmd.includes('set_relay_state') && s.cmd.includes('"state":1')),
+    ).toBe(true);
   });
 
   it('setState en una bombilla Kasa usa transition_light_state con el brillo', async () => {
@@ -90,13 +99,18 @@ describe('KasaIotManager', () => {
     const tapo = new FakeTapo([], { '192.168.1.70': tapoInfo('P115', true) });
     const mgr = new KasaIotManager({ kasa: new FakeKasa([]), tapo, tapoIps: ['192.168.1.70'] });
     await mgr.setState('tapo:192.168.1.70', { on: false });
-    expect(tapo.requests.some((r) => r.method === 'set_device_info' && r.params?.device_on === false)).toBe(true);
+    expect(
+      tapo.requests.some((r) => r.method === 'set_device_info' && r.params?.device_on === false),
+    ).toBe(true);
   });
 
   it('getDevice devuelve null para un prefijo desconocido y consulta el correcto', async () => {
     const kasa = new FakeKasa([], { '192.168.1.60': plugSysinfo('Cafetera', true) });
     const mgr = new KasaIotManager({ kasa });
     expect(await mgr.getDevice('zigbee:abc')).toBeNull();
-    expect(await mgr.getDevice('kasa:192.168.1.60')).toMatchObject({ id: 'kasa:192.168.1.60', on: true });
+    expect(await mgr.getDevice('kasa:192.168.1.60')).toMatchObject({
+      id: 'kasa:192.168.1.60',
+      on: true,
+    });
   });
 });

@@ -21,7 +21,10 @@ describe('favoritos (US-170)', () => {
   beforeEach(async () => {
     await resetDb(app);
     token = signAccess(app, await seedUser(app, { role: 'viewer' }));
-    otherToken = signAccess(app, await seedUser(app, { email: 'other@krakenos.test', role: 'viewer' }));
+    otherToken = signAccess(
+      app,
+      await seedUser(app, { email: 'other@krakenos.test', role: 'viewer' }),
+    );
   });
 
   async function add(payload: { kind: string; ref: string }, t = token): Promise<Favorite> {
@@ -39,8 +42,12 @@ describe('favoritos (US-170)', () => {
     const fav = await add({ kind: 'iot', ref: 'light-salon' });
     expect(fav.order).toBe(0);
 
-    const list = await app.inject({ method: 'GET', url: '/api/favorites', headers: authHeader(token) });
-    expect((list.json() as Favorite[])).toHaveLength(1);
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/favorites',
+      headers: authHeader(token),
+    });
+    expect(list.json() as Favorite[]).toHaveLength(1);
 
     const del = await app.inject({
       method: 'DELETE',
@@ -48,16 +55,24 @@ describe('favoritos (US-170)', () => {
       headers: authHeader(token),
     });
     expect(del.statusCode).toBe(204);
-    const after = await app.inject({ method: 'GET', url: '/api/favorites', headers: authHeader(token) });
-    expect((after.json() as Favorite[])).toHaveLength(0);
+    const after = await app.inject({
+      method: 'GET',
+      url: '/api/favorites',
+      headers: authHeader(token),
+    });
+    expect(after.json() as Favorite[]).toHaveLength(0);
   });
 
   it('fijar dos veces el mismo objetivo es idempotente (no duplica)', async () => {
     const first = await add({ kind: 'device', ref: 'dev-1' });
     const second = await add({ kind: 'device', ref: 'dev-1' });
     expect(second.id).toBe(first.id);
-    const list = await app.inject({ method: 'GET', url: '/api/favorites', headers: authHeader(token) });
-    expect((list.json() as Favorite[])).toHaveLength(1);
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/favorites',
+      headers: authHeader(token),
+    });
+    expect(list.json() as Favorite[]).toHaveLength(1);
   });
 
   it('reordena los favoritos del usuario', async () => {
@@ -83,10 +98,12 @@ describe('favoritos (US-170)', () => {
       url: '/api/favorites',
       headers: authHeader(otherToken),
     });
-    expect((otherList.json() as Favorite[])).toHaveLength(0);
+    expect(otherList.json() as Favorite[]).toHaveLength(0);
 
     // Un usuario no puede borrar el favorito de otro (404, no es suyo).
-    const mine = (await app.inject({ method: 'GET', url: '/api/favorites', headers: authHeader(token) }).then((r) => r.json())) as Favorite[];
+    const mine = (await app
+      .inject({ method: 'GET', url: '/api/favorites', headers: authHeader(token) })
+      .then((r) => r.json())) as Favorite[];
     const del = await app.inject({
       method: 'DELETE',
       url: `/api/favorites/${mine[0]?.id}`,

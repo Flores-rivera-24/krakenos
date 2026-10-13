@@ -29,7 +29,12 @@ export const firewallRoutes: FastifyPluginAsync<FirewallRoutesOpts> = async (app
     { schema: createRuleSchema },
     async (req, reply) => {
       const rule = await firewall.createRule(req.body);
-      app.audit({ action: 'firewall.rule.add', userId: req.user.sub, detail: rule.name, ip: req.ip });
+      app.audit({
+        action: 'firewall.rule.add',
+        userId: req.user.sub,
+        detail: rule.name,
+        ip: req.ip,
+      });
       return reply.code(201).send(rule);
     },
   );
@@ -42,7 +47,12 @@ export const firewallRoutes: FastifyPluginAsync<FirewallRoutesOpts> = async (app
       if (!rule) {
         return reply.code(404).send({ code: 'RULE_NOT_FOUND', message: 'Regla no encontrada' });
       }
-      app.audit({ action: 'firewall.rule.update', userId: req.user.sub, detail: rule.name, ip: req.ip });
+      app.audit({
+        action: 'firewall.rule.update',
+        userId: req.user.sub,
+        detail: rule.name,
+        ip: req.ip,
+      });
       return rule;
     },
   );
@@ -55,7 +65,12 @@ export const firewallRoutes: FastifyPluginAsync<FirewallRoutesOpts> = async (app
       if (!removed) {
         return reply.code(404).send({ code: 'RULE_NOT_FOUND', message: 'Regla no encontrada' });
       }
-      app.audit({ action: 'firewall.rule.remove', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      app.audit({
+        action: 'firewall.rule.remove',
+        userId: req.user.sub,
+        detail: req.params.id,
+        ip: req.ip,
+      });
       return reply.code(204).send();
     },
   );

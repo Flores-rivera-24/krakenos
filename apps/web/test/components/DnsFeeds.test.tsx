@@ -15,13 +15,22 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class ApiRequestError extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {},
+}));
 
 import { DnsFeeds } from '@/components/dns/DnsFeeds';
 import { useToastStore } from '@/store/toast.store';
 
 const FEEDS = [
-  { id: 'ads', name: 'Publicidad', description: 'Bloquea anuncios', url: 'http://x', enabled: false },
+  {
+    id: 'ads',
+    name: 'Publicidad',
+    description: 'Bloquea anuncios',
+    url: 'http://x',
+    enabled: false,
+  },
 ];
 
 describe('DnsFeeds — feeds de categoría (US-114)', () => {

@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -64,9 +72,9 @@ describe('secretbox — cifrado de secretos en reposo (US-139)', () => {
     expect(() => decryptSecret('no-es-un-token', key)).toThrow(SecretDecryptError);
     expect(() => decryptSecret('kbx9.a.b.c', key)).toThrow(SecretDecryptError);
     // Nonce demasiado corto (1 byte en base64).
-    expect(() => decryptSecret(`kbx1.${Buffer.from([1]).toString('base64')}.${'A'.repeat(24)}.AA`, key)).toThrow(
-      SecretDecryptError,
-    );
+    expect(() =>
+      decryptSecret(`kbx1.${Buffer.from([1]).toString('base64')}.${'A'.repeat(24)}.AA`, key),
+    ).toThrow(SecretDecryptError);
   });
 
   it('encrypt/decrypt con clave de longitud inválida lanza', () => {

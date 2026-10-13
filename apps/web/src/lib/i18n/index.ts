@@ -82,10 +82,7 @@ export function ensureCatalog(locale: Locale): Promise<void> {
  * Es la puerta que deben usar los cambios de idioma en runtime; `setLocale` a
  * secas solo mueve el estado y se quedaría sin traducciones.
  */
-export async function changeLocale(
-  locale: Locale,
-  opts?: { persist?: boolean },
-): Promise<void> {
+export async function changeLocale(locale: Locale, opts?: { persist?: boolean }): Promise<void> {
   await ensureCatalog(locale);
   setLocale(locale, opts);
 }

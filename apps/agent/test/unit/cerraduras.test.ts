@@ -117,7 +117,9 @@ describe('política de cerraduras: se leen y se cierran, no se abren (US-246)', 
     };
     const composite = new CompositeIotManager([{ prefix: 'hue', manager: backend }]);
 
-    await expect(composite.setState('hue:luz-1', { on: true })).resolves.toMatchObject({ on: true });
+    await expect(composite.setState('hue:luz-1', { on: true })).resolves.toMatchObject({
+      on: true,
+    });
   });
 
   it('a Home Assistant se publica de solo lectura, incluso con el control activo', () => {
