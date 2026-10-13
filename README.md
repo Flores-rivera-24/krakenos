@@ -440,7 +440,7 @@ construye la imagen y hace un *smoke test* de `/health` cuando cambia el empaque
 | `pnpm test` | tests (Vitest) de agente y web |
 | `pnpm typecheck` | typecheck de todo el monorepo |
 | `pnpm lint` | ESLint |
-| `pnpm format` | Prettier (formatea en lugar) |
+| `pnpm format` | Prettier (formatea en lugar); la CI comprueba el formato con `pnpm format:check`, así que ejecútalo antes de commitear |
 | `pnpm clean` | limpiar dist/, node_modules |
 
 ---
