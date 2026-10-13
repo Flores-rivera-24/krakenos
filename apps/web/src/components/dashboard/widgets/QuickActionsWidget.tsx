@@ -191,7 +191,7 @@ export function QuickActionsWidget() {
             {tiles.map((tile) => (
               <li
                 key={tile.key}
-                className="flex min-h-[3rem] items-center justify-between gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-2"
+                className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-2"
               >
                 <Link to={tile.to} className="flex min-w-0 items-center gap-2">
                   <span aria-hidden className="text-xl">

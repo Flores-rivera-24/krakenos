@@ -107,7 +107,7 @@ function DeviceTable({
               <tr
                 key={d.id}
                 {...filaAbrible(() => onSelect(d.id), `Ver ${d.label ?? d.hostname ?? d.mac}`)}
-                className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
               >
                 <td className="px-3 py-2 text-kr-primary">{d.label ?? d.hostname ?? d.mac}</td>
                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-secondary">{d.ip}</td>
@@ -205,7 +205,7 @@ export function InventoryPage() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('inventory.searchPlaceholder')}
             aria-label={t('inventory.searchLabel')}
-            className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           />
         </div>
 
@@ -216,7 +216,7 @@ export function InventoryPage() {
               type="button"
               onClick={() => setTab(tabKey)}
               className={cn(
-                'rounded px-3 py-1.5 text-kr-sm font-medium transition-colors',
+                'rounded-sm px-3 py-1.5 text-kr-sm font-medium transition-colors',
                 tab === tabKey
                   ? 'bg-kr-accent text-white'
                   : 'text-kr-secondary hover:text-kr-primary',
@@ -234,7 +234,7 @@ export function InventoryPage() {
               aria-label={t('inventory.view.grid')}
               onClick={() => setView('grid')}
               className={cn(
-                'rounded p-1.5',
+                'rounded-sm p-1.5',
                 view === 'grid' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
               )}
             >
@@ -245,7 +245,7 @@ export function InventoryPage() {
               aria-label={t('inventory.view.list')}
               onClick={() => setView('list')}
               className={cn(
-                'rounded p-1.5',
+                'rounded-sm p-1.5',
                 view === 'list' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
               )}
             >

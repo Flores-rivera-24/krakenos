@@ -114,7 +114,7 @@ export function GettingStarted() {
           type="button"
           onClick={dismiss}
           aria-label="Descartar primeros pasos"
-          className="rounded p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
+          className="rounded-sm p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <X className="h-4 w-4" />
         </button>

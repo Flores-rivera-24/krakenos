@@ -68,7 +68,7 @@ export function CopyButton({
       aria-label={copied ? copiedLabel : textoCopiar}
       data-copied={copied}
       className={cn(
-        'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
         copied && 'border-success text-success',
         className,
       )}

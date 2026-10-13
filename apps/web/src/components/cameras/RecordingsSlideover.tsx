@@ -77,7 +77,7 @@ export function RecordingsSlideover({ camera, isAdmin, onClose }: Props) {
               key={clip.id}
               className="flex items-center gap-3 rounded-lg border border-kr bg-kr-surface p-2"
             >
-              <div className="h-14 w-20 shrink-0 overflow-hidden rounded bg-black">
+              <div className="h-14 w-20 shrink-0 overflow-hidden rounded-sm bg-black">
                 {clip.snapshot ? (
                   <img
                     src={clip.snapshot}

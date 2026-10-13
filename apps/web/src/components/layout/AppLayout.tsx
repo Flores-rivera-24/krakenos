@@ -153,7 +153,7 @@ export function AppLayout() {
           en CADA vista antes de llegar al contenido. Invisible hasta enfocarlo. */}
       <a
         href="#contenido"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[70] focus:rounded-md focus:bg-kr-accent focus:px-4 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-70 focus:rounded-md focus:bg-kr-accent focus:px-4 focus:py-2 focus:text-white"
       >
         Saltar al contenido
       </a>
@@ -180,14 +180,14 @@ export function AppLayout() {
         {/* La `key` por ruta reinicia el fade en cada navegación (transición sutil,
             US-160). motion-reduce desactiva el desplazamiento. */}
         {/* `tabIndex={-1}`: enfocable por código (al cambiar de ruta) pero no en el
-            orden de tabulación. `outline-none` porque el foco aquí es programático
+            orden de tabulación. `outline-hidden` porque el foco aquí es programático
             y un halo alrededor de toda la página sería ruido visual. */}
         <main
           id="contenido"
           ref={mainRef}
           tabIndex={-1}
           key={location.pathname}
-          className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-none md:pb-0"
+          className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-hidden md:pb-0"
         >
           <Outlet />
         </main>

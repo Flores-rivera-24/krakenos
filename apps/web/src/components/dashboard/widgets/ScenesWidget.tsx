@@ -57,7 +57,7 @@ export function ScenesWidget() {
                 type="button"
                 disabled={!canControl || busy === scene.id}
                 onClick={() => void run(scene)}
-                className="flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-1.5 text-kr-sm text-kr-primary transition-colors hover:border-kr-accent disabled:opacity-50"
+                className="flex min-h-10 items-center gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-1.5 text-kr-sm text-kr-primary transition-colors hover:border-kr-accent disabled:opacity-50"
               >
                 <span aria-hidden className="text-lg">
                   {sceneGlyph(scene.icon)}

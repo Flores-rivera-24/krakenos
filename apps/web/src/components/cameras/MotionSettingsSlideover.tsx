@@ -215,7 +215,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
                     onClick={() => toggleDay(d)}
                     aria-pressed={days.includes(d)}
                     className={
-                      'rounded px-2 py-1 text-kr-xs ' +
+                      'rounded-sm px-2 py-1 text-kr-xs ' +
                       (days.includes(d)
                         ? 'bg-kr-accent text-kr-on-accent'
                         : 'border border-kr text-kr-secondary')

@@ -284,7 +284,7 @@ export function FirewallPage() {
                     rules.map((r) => (
                       <tr
                         key={r.id}
-                        className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                        className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
                         {...filaAbrible(() => setSelected(r), `Editar la regla ${r.name}`)}
                       >
                         <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>

@@ -90,11 +90,7 @@ function SceneTile({
           <FavoriteButton kind="scene" ref_={scene.id} label={scene.name} />
         </div>
 
-        <Button
-          className="mt-auto min-h-[2.75rem] w-full"
-          disabled={busy}
-          onClick={() => void run()}
-        >
+        <Button className="mt-auto min-h-11 w-full" disabled={busy} onClick={() => void run()}>
           {busy ? t('scenes.activating') : t('scenes.activate')}
         </Button>
       </CardContent>

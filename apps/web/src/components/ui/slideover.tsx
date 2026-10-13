@@ -60,8 +60,8 @@ export function Slideover({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={cn(
-          'absolute inset-y-0 right-0 flex w-full flex-col border-l border-kr bg-kr-surface shadow-xl outline-none md:w-[480px]',
-          'motion-safe:animate-in motion-safe:slide-in-from-right motion-safe:duration-200',
+          'absolute inset-y-0 right-0 flex w-full flex-col border-l border-kr bg-kr-surface shadow-xl outline-hidden md:w-[480px]',
+          'motion-safe:animate-kr-slide-in-right',
           className,
         )}
       >

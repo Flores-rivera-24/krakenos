@@ -478,7 +478,7 @@ function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
       onClick={onClick}
       className={cn(
         'group flex h-full items-start gap-3 rounded-xl border border-kr bg-kr-surface p-4 text-left transition-all duration-150',
-        'hover:-translate-y-0.5 hover:border-kr-accent hover:shadow-kr-glow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'hover:-translate-y-0.5 hover:border-kr-accent hover:shadow-kr-glow-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
       )}
     >
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-kr-muted bg-kr-elevated transition-colors group-hover:border-kr-accent-glow">
