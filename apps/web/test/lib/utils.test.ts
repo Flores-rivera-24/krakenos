@@ -15,4 +15,21 @@ describe('cn', () => {
   it('acepta arrays y objetos condicionales', () => {
     expect(cn(['a', 'b'], { c: true, d: false })).toBe('a b c');
   });
+
+  it('conserva la escala tipográfica propia junto a un color (text-kr-sm es tamaño, no color)', () => {
+    expect(cn('text-kr-sm', 'text-kr-primary')).toBe('text-kr-sm text-kr-primary');
+    expect(cn('text-kr-primary', 'text-kr-xs')).toBe('text-kr-primary text-kr-xs');
+    expect(cn('text-kr-2xl', 'text-danger')).toBe('text-kr-2xl text-danger');
+  });
+
+  it('dos tamaños de la escala propia siguen entrando en conflicto (gana el último)', () => {
+    expect(cn('text-kr-sm', 'text-kr-lg')).toBe('text-kr-lg');
+    expect(cn('text-kr-base', 'text-lg')).toBe('text-lg');
+  });
+
+  it('entiende los nombres de utilidad de Tailwind 4', () => {
+    expect(cn('shadow-xs', 'shadow-md')).toBe('shadow-md');
+    expect(cn('rounded-xs', 'rounded-lg')).toBe('rounded-lg');
+    expect(cn('outline-hidden', 'outline-none')).toBe('outline-none');
+  });
 });
