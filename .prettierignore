@@ -6,6 +6,9 @@ pnpm-lock.yaml
 playwright-report
 test-results
 graphify-out
+# Salidas locales de playwright-cli (no versionadas).
+.playwright
+.playwright-cli
 qa-reports
 .stryker-tmp
 # Migraciones SQL/JSON generadas por Prisma.
