@@ -6,6 +6,7 @@ import {
   normalizeLayout,
   saveLayout,
   toggleHidden,
+  widgetsForUser,
   WIDGETS,
   type WidgetId,
 } from '@/lib/dashboard';
@@ -38,7 +39,10 @@ describe('dashboard layout', () => {
   });
 
   it('saveLayout/loadLayout persisten y restauran el orden', () => {
-    const custom = { order: ['system', ...ALL.filter((i) => i !== 'system')] as WidgetId[], hidden: ['wifi'] as WidgetId[] };
+    const custom = {
+      order: ['system', ...ALL.filter((i) => i !== 'system')] as WidgetId[],
+      hidden: ['wifi'] as WidgetId[],
+    };
     saveLayout(custom);
     const loaded = loadLayout();
     expect(loaded.order[0]).toBe('system');
@@ -47,5 +51,25 @@ describe('dashboard layout', () => {
 
   it('loadLayout sin nada guardado devuelve el orden por defecto', () => {
     expect(loadLayout().order).toEqual(DEFAULT_LAYOUT.order);
+  });
+});
+
+describe('widgetsForUser y el widget de alertas', () => {
+  const ids = (role?: string, mode?: string) => widgetsForUser(role, mode).map((w) => w.id);
+
+  it('alerts (lee /audit, solo admin) no se ofrece a ningún rol que no sea admin', () => {
+    for (const rol of ['viewer', 'member', 'kid', 'guest']) {
+      expect(ids(rol)).not.toContain('alerts');
+    }
+  });
+
+  it('alerts sí se ofrece al admin y a un rol aún sin cargar', () => {
+    expect(ids('admin')).toContain('alerts');
+    expect(ids(undefined)).toContain('alerts');
+  });
+
+  it('un viewer conserva el resto de lo que ya veía', () => {
+    expect(ids('viewer')).toContain('system');
+    expect(ids('viewer').length).toBe(WIDGETS.length - 1);
   });
 });

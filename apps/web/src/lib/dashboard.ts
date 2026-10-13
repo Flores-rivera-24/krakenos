@@ -29,6 +29,12 @@ export interface WidgetDef {
    * oculta a dos clicks de distancia, en la misma sesión.
    */
   advancedOnly?: boolean;
+  /**
+   * `true` = el widget lee algo que el servidor reserva a admin. No se ofrece al
+   * resto de roles: pedirlo daba un 403 continuo y, peor, un estado vacío que
+   * para ellos era mentira. Un rol aún sin cargar ve todo (como `advancedOnly`).
+   */
+  adminOnly?: boolean;
 }
 
 /** Registro de widgets disponibles, en su orden por defecto. */
@@ -44,7 +50,7 @@ export const WIDGETS: WidgetDef[] = [
   { id: 'iot', title: 'IoT', span: 1 },
   { id: 'wifi', title: 'WiFi', span: 1 },
   { id: 'coverage', title: 'Cobertura WiFi', span: 1, advancedOnly: true },
-  { id: 'alerts', title: 'Alertas recientes', span: 1, advancedOnly: true },
+  { id: 'alerts', title: 'Alertas recientes', span: 1, advancedOnly: true, adminOnly: true },
 ];
 
 /**
@@ -65,7 +71,8 @@ export function widgetsForUser(role?: string, uiMode?: string): WidgetDef[] {
   //     defecto haría parpadear el dashboard del admin en cada arranque.
   const restringido =
     role === 'member' || role === 'kid' || role === 'guest' || uiMode === 'simple';
-  return restringido ? WIDGETS.filter((w) => !w.advancedOnly) : WIDGETS;
+  const noAdmin = role !== undefined && role !== 'admin';
+  return WIDGETS.filter((w) => !(restringido && w.advancedOnly) && !(noAdmin && w.adminOnly));
 }
 
 const WIDGET_IDS = WIDGETS.map((w) => w.id);

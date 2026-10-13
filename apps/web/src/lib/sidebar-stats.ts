@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFirewallRules, useIotDevices, useSystemStats } from '@/lib/resources';
 import { usePolling } from '@/lib/use-polling';
+import { useAuthStore } from '@/store/auth.store';
 
 interface HealthResponse {
   status: string;
@@ -16,8 +17,11 @@ export interface SidebarStats {
   online: boolean;
   /** Uptime del servidor en segundos; `null` si no disponible. */
   uptimeSeconds: number | null;
-  /** Nº de reglas de firewall activas. */
-  firewallActive: number;
+  /**
+   * Nº de reglas de firewall activas; `null` si quien mira no puede leerlas
+   * (`GET /firewall/rules` es solo admin): no es «0 reglas», es «no lo sé».
+   */
+  firewallActive: number | null;
   /** Nº de dispositivos IoT no alcanzables. */
   iotOffline: number;
 }
@@ -43,7 +47,9 @@ export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
   // barra lateral en pantalla pedía `/iot/devices` **tres** veces en el mismo
   // tick. Ahora comparten caché y una sola petición sirve a los tres.
   const system = useSystemStats({ enabled, pollMs });
-  const firewall = useFirewallRules({ enabled, pollMs });
+  // `/firewall/rules` es solo admin: para el resto cada sondeo era un 403 seguro.
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  const firewall = useFirewallRules({ enabled: enabled && isAdmin, pollMs });
   const iot = useIotDevices({ enabled, pollMs });
 
   // `/health` se queda fuera del caché compartido a propósito: no es `/api`, no
@@ -69,7 +75,11 @@ export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
     // corte de un ciclo no debe poner los badges a cero, que se leería como
     // «no tienes reglas» en vez de «no he podido preguntar».
     uptimeSeconds: system.data?.uptimeSeconds ?? null,
-    firewallActive: firewall.data ? firewall.data.filter((r) => r.enabled).length : 0,
+    firewallActive: !isAdmin
+      ? null
+      : firewall.data
+        ? firewall.data.filter((r) => r.enabled).length
+        : 0,
     iotOffline: iot.data ? iot.data.filter((d) => !d.reachable).length : 0,
   };
 }

@@ -21,7 +21,8 @@ function unknownOrBlockedCount(devices: Record<string, Device>): number {
 
 function badgeValue(key: NavBadgeKey, devicesBadge: number, stats: SidebarStats): number {
   if (key === 'devices') return devicesBadge;
-  if (key === 'firewall') return stats.firewallActive;
+  // `null` = quien mira no puede leer las reglas: sin badge, no un «0».
+  if (key === 'firewall') return stats.firewallActive ?? 0;
   return stats.iotOffline;
 }
 
@@ -69,10 +70,7 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
             />
           )}
           <Icon
-            className={cn(
-              'h-5 w-5 shrink-0 transition-colors',
-              isActive && 'text-kr-accent',
-            )}
+            className={cn('h-5 w-5 shrink-0 transition-colors', isActive && 'text-kr-accent')}
           />
           {!collapsed && <span className="flex-1 truncate">{label}</span>}
           {item.badge && badge > 0 && (
@@ -192,7 +190,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
               ) : (
                 <>
                   <div className="truncate text-kr-secondary">
-                    {t('layout.driver')}: <span className="text-kr-primary">{stats.driver ?? '—'}</span>
+                    {t('layout.driver')}:{' '}
+                    <span className="text-kr-primary">{stats.driver ?? '—'}</span>
                   </div>
                   {stats.uptimeSeconds != null && (
                     <div className="text-kr-xs text-kr-muted">
