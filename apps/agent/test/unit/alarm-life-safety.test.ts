@@ -1,5 +1,10 @@
 import type { HomeEvent, IotMetric } from '@krakenos/types';
-import { IOT_METRICS, LIFE_SAFETY_METRICS, SECURITY_METRICS, isLifeSafetyMetric } from '@krakenos/types';
+import {
+  IOT_METRICS,
+  LIFE_SAFETY_METRICS,
+  SECURITY_METRICS,
+  isLifeSafetyMetric,
+} from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import {
   REARME_AVISO_VITAL_MS,
@@ -8,7 +13,12 @@ import {
   detalleDeAviso,
 } from '../../src/alarm/life-safety.js';
 
-const lectura = (metric: IotMetric, value: number, prevValue: number | null, deviceId = 'det-1'): HomeEvent => ({
+const lectura = (
+  metric: IotMetric,
+  value: number,
+  prevValue: number | null,
+  deviceId = 'det-1',
+): HomeEvent => ({
   type: 'sensor-reading',
   deviceId,
   metric,
@@ -80,8 +90,49 @@ describe('aviso de riesgo vital (US-245)', () => {
   it('otros eventos del bus no producen aviso', () => {
     expect(decideAvisoVital({ type: 'iot-on', deviceId: 'det-1' }, sinAvisos, 0)).toBeNull();
     expect(
-      decideAvisoVital({ type: 'motion-detected', cameraId: 'c1', cameraName: 'Entrada' }, sinAvisos, 0),
+      decideAvisoVital(
+        { type: 'motion-detected', cameraId: 'c1', cameraName: 'Entrada' },
+        sinAvisos,
+        0,
+      ),
     ).toBeNull();
+  });
+
+  it('una lectura de humo o CO a 0 no avisa, con o sin valor previo', () => {
+    for (const metric of ['smoke', 'co'] as const) {
+      expect(
+        decideAvisoVital(lectura(metric, 0, null), sinAvisos, 1_000),
+        `${metric} 0/null`,
+      ).toBeNull();
+      expect(decideAvisoVital(lectura(metric, 0, 0), sinAvisos, 1_000), `${metric} 0/0`).toBeNull();
+    }
+  });
+
+  describe('ventana de rearme con un reloj realista', () => {
+    const ahora = Date.parse('2026-10-12T20:00:00Z');
+    const clave = claveDeAviso('det-1', 'smoke');
+    const avisos = new Map([[clave, ahora]]);
+    const flanco = lectura('smoke', 1, 0);
+
+    it('dentro de la ventana suprime', () => {
+      expect(decideAvisoVital(flanco, avisos, ahora + 1)).toBeNull();
+      expect(decideAvisoVital(flanco, avisos, ahora + REARME_AVISO_VITAL_MS - 1)).toBeNull();
+    });
+
+    it('justo en el borde y después vuelve a avisar', () => {
+      expect(decideAvisoVital(flanco, avisos, ahora + REARME_AVISO_VITAL_MS)).not.toBeNull();
+      expect(decideAvisoVital(flanco, avisos, ahora + REARME_AVISO_VITAL_MS + 1)).not.toBeNull();
+    });
+
+    it('un aviso anterior en el pasado lejano no suprime', () => {
+      const viejo = new Map([[clave, ahora - 24 * 3_600_000]]);
+      expect(decideAvisoVital(flanco, viejo, ahora)).not.toBeNull();
+    });
+
+    it('respeta una ventana personalizada', () => {
+      expect(decideAvisoVital(flanco, avisos, ahora + 999, 1_000)).toBeNull();
+      expect(decideAvisoVital(flanco, avisos, ahora + 1_000, 1_000)).not.toBeNull();
+    });
   });
 
   describe('ventana de rearme', () => {
@@ -95,7 +146,9 @@ describe('aviso de riesgo vital (US-245)', () => {
 
     it('pasada la ventana vuelve a avisar (el riesgo sigue ahí)', () => {
       const avisos = new Map([[clave, 1_000]]);
-      expect(decideAvisoVital(lectura('smoke', 1, 0), avisos, 1_000 + REARME_AVISO_VITAL_MS)).not.toBeNull();
+      expect(
+        decideAvisoVital(lectura('smoke', 1, 0), avisos, 1_000 + REARME_AVISO_VITAL_MS),
+      ).not.toBeNull();
     });
 
     it('la ventana es por aparato: el detector de al lado avisa igual', () => {
