@@ -84,10 +84,14 @@ describe('FirewallPage', () => {
     );
   });
 
-  it('un viewer no ve el formulario de creación', async () => {
+  it('un viewer ve el aviso de solo administrador y no se piden las reglas', async () => {
     setRole('viewer');
     render(<FirewallPage />);
-    await screen.findByText('Bloquear IoT');
+    expect(
+      await screen.findByText('Solo el administrador ve las reglas del cortafuegos'),
+    ).toBeInTheDocument();
+    expect(apiMock.get).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Aún no hay reglas configuradas/)).not.toBeInTheDocument();
     expect(screen.queryByText('Nueva regla')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Añadir regla/ })).not.toBeInTheDocument();
   });
@@ -97,6 +101,9 @@ describe('FirewallPage', () => {
     render(<FirewallPage />);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+    // Un fallo de carga no es «no hay reglas»: no se afirma lo que no se ha comprobado.
+    expect(screen.queryByText(/Aún no hay reglas configuradas/)).not.toBeInTheDocument();
+    expect(screen.getByText('No se pudieron cargar las reglas')).toBeInTheDocument();
   });
 
   it('muestra el estado vacío honesto sin reglas (US-93)', async () => {

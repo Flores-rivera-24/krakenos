@@ -14,6 +14,7 @@ import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
@@ -51,19 +52,29 @@ export function FirewallPage() {
   const [form, setForm] = useState<CreateFirewallRuleRequest>(EMPTY);
   const [portText, setPortText] = useState('');
   const [busy, setBusy] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isAdmin);
+  // La carga falló: «sin reglas» no es un hecho comprobado, así que no se pinta el estado vacío.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<FirewallRule | null>(null);
 
   const load = () =>
     api
       .getList<FirewallRule>('/firewall/rules')
-      .then(setRules)
-      .catch((err) => setError(describeError(err, t('firewall.loadError'))));
+      .then((list) => {
+        setRules(list);
+        setLoadFailed(false);
+      })
+      .catch((err) => {
+        setLoadFailed(true);
+        setError(describeError(err, t('firewall.loadError')));
+      });
 
   useEffect(() => {
+    // Todo el módulo de cortafuegos es solo admin en el servidor: a otro rol ni se le pide.
+    if (!isAdmin) return;
     void load().finally(() => setLoading(false));
-  }, []);
+  }, [isAdmin]);
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -140,7 +151,10 @@ export function FirewallPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="fw-action">{t('firewall.action')}</Label>
-                  <HelpHint content={t('firewall.actionHelp')} label={t('firewall.actionHelpLabel')} />
+                  <HelpHint
+                    content={t('firewall.actionHelp')}
+                    label={t('firewall.actionHelpLabel')}
+                  />
                 </div>
                 <select
                   id="fw-action"
@@ -175,7 +189,10 @@ export function FirewallPage() {
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="fw-source">{t('firewall.source')}</Label>
-                  <HelpHint content={t('firewall.sourceHelp')} label={t('firewall.sourceHelpLabel')} />
+                  <HelpHint
+                    content={t('firewall.sourceHelp')}
+                    label={t('firewall.sourceHelpLabel')}
+                  />
                 </div>
                 <Input
                   id="fw-source"
@@ -224,77 +241,92 @@ export function FirewallPage() {
           <CardTitle className="text-base text-foreground">{t('firewall.rules')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary text-secondary-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.active')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.name')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.action')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.protocol')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.source')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.dest')}</th>
-                  <th className="px-3 py-2 text-left">{t('firewall.col.port')}</th>
-                  {isAdmin && <th className="px-3 py-2 text-right">{t('firewall.col.action')}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows cols={isAdmin ? 8 : 7} />
-                ) : rules.length === 0 ? (
+          {!isAdmin ? (
+            <Callout variant="info" standing title={t('firewall.adminOnly')}>
+              {t('firewall.adminOnlyDesc')}
+            </Callout>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary text-secondary-foreground">
                   <tr>
-                    <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">{t('firewall.empty.title')}</p>
-                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        {t('firewall.empty.desc')}{' '}
-                        {isAdmin && t('firewall.empty.cta')}
-                      </p>
-                    </td>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.active')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.name')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.action')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.protocol')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.source')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.dest')}</th>
+                    <th className="px-3 py-2 text-left">{t('firewall.col.port')}</th>
+                    {isAdmin && (
+                      <th className="px-3 py-2 text-right">{t('firewall.col.action')}</th>
+                    )}
                   </tr>
-                ) : (
-                  rules.map((r) => (
-                    <tr
-                      key={r.id}
-                      className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
-                      {...filaAbrible(() => setSelected(r), `Editar la regla ${r.name}`)}
-                    >
-                      <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                        <OptimisticSwitch
-                          checked={r.enabled}
-                          onToggle={(next) => toggleRule(r, next)}
-                          disabled={!isAdmin}
-                          errorMessage={t('firewall.toggleError', { name: r.name })}
-                          aria-label={t('firewall.toggleLabel', { name: r.name })}
-                        />
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <SkeletonRows cols={isAdmin ? 8 : 7} />
+                  ) : rules.length === 0 && loadFailed ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center text-kr-muted">
+                        {t('firewall.loadError')}
                       </td>
-                      <td className="px-3 py-2">{r.name}</td>
-                      <td className="px-3 py-2">
-                        <span
-                          className={r.action === 'deny' ? 'text-destructive' : 'text-success'}
-                        >
-                          {actionLabel[r.action]}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-muted-foreground">{protocolLabel[r.protocol]}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
-                      {isAdmin && (
-                        <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                          <DeleteButton
-                            onDelete={() => removeRule(r.id)}
-                            aria-label={t('firewall.deleteLabel', { name: r.name })}
-                          >
-                            {t('firewall.delete')}
-                          </DeleteButton>
-                        </td>
-                      )}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : rules.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
+                        <p className="text-kr-muted">{t('firewall.empty.title')}</p>
+                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                          {t('firewall.empty.desc')} {isAdmin && t('firewall.empty.cta')}
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    rules.map((r) => (
+                      <tr
+                        key={r.id}
+                        className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                        {...filaAbrible(() => setSelected(r), `Editar la regla ${r.name}`)}
+                      >
+                        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                          <OptimisticSwitch
+                            checked={r.enabled}
+                            onToggle={(next) => toggleRule(r, next)}
+                            disabled={!isAdmin}
+                            errorMessage={t('firewall.toggleError', { name: r.name })}
+                            aria-label={t('firewall.toggleLabel', { name: r.name })}
+                          />
+                        </td>
+                        <td className="px-3 py-2">{r.name}</td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={r.action === 'deny' ? 'text-destructive' : 'text-success'}
+                          >
+                            {actionLabel[r.action]}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {protocolLabel[r.protocol]}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
+                            <DeleteButton
+                              onDelete={() => removeRule(r.id)}
+                              aria-label={t('firewall.deleteLabel', { name: r.name })}
+                            >
+                              {t('firewall.delete')}
+                            </DeleteButton>
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

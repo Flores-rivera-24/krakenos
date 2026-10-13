@@ -717,6 +717,9 @@ export const en: Record<TranslationKey, string> = {
   'firewall.toggleLabel': 'Enable rule {name}',
   'firewall.deleteLabel': 'Delete rule {name}',
   'firewall.delete': 'Delete',
+  'firewall.adminOnly': 'Only the administrator sees the firewall rules',
+  'firewall.adminOnlyDesc':
+    'The rules decide what traffic enters and leaves the home network, so seeing and changing them is limited to whoever administers the installation.',
 
   // --- Habitaciones (US-165) ---
   'rooms.title': 'Rooms',

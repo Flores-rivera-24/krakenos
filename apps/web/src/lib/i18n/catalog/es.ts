@@ -736,6 +736,9 @@ export const es = {
   'firewall.toggleLabel': 'Activar regla {name}',
   'firewall.deleteLabel': 'Eliminar regla {name}',
   'firewall.delete': 'Eliminar',
+  'firewall.adminOnly': 'Solo el administrador ve las reglas del cortafuegos',
+  'firewall.adminOnlyDesc':
+    'Las reglas deciden qué tráfico entra y sale de la red de casa, así que verlas y cambiarlas se reserva a quien administra la instalación.',
 
   // --- Habitaciones (US-165) ---
   'rooms.title': 'Habitaciones',
