@@ -76,7 +76,7 @@ export function AccordionItem({ id, title, children, className }: AccordionItemP
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => ctx.toggle(id)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-kr-base font-medium text-kr-primary hover:bg-kr-elevated focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-kr-base font-medium text-kr-primary hover:bg-kr-elevated focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <span className="min-w-0">{title}</span>
         <ChevronDown

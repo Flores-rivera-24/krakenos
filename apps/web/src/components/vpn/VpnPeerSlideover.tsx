@@ -61,7 +61,7 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
           <img
             src={config.qr}
             alt={t('vpn.peer.qrAlt')}
-            className="mx-auto h-56 w-56 rounded bg-white p-2"
+            className="mx-auto h-56 w-56 rounded-sm bg-white p-2"
           />
           <pre className="max-h-48 overflow-auto rounded-md border border-kr bg-kr-base p-3 text-kr-xs text-kr-secondary">
             {config.config}

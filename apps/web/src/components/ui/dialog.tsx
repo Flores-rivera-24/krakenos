@@ -46,7 +46,7 @@ export function Dialog({
         aria-labelledby={ariaLabelledby}
         tabIndex={-1}
         className={cn(
-          'relative z-10 w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg outline-none',
+          'relative z-10 w-full max-w-lg rounded-lg border border-border bg-card p-6 shadow-lg outline-hidden',
           className,
         )}
       >

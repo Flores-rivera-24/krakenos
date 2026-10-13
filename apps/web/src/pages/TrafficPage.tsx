@@ -449,7 +449,7 @@ export function TrafficPage() {
                         <tr
                           key={d.mac}
                           {...filaAbrible(() => setSelectedMac(d.mac), `Ver ${name}`)}
-                          className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-kr-accent"
+                          className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
                         >
                           <td className="py-2 text-foreground">{name}</td>
                           <td className="py-2 font-mono text-xs text-muted-foreground">

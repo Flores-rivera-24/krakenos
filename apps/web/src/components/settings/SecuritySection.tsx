@@ -56,7 +56,7 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
       </p>
       <ul className="grid grid-cols-2 gap-1.5 font-mono text-kr-sm text-kr-primary">
         {codes.map((c) => (
-          <li key={c} className="rounded bg-kr-surface px-2 py-1 text-center">
+          <li key={c} className="rounded-sm bg-kr-surface px-2 py-1 text-center">
             {c}
           </li>
         ))}

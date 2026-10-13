@@ -71,7 +71,7 @@ export function Toaster() {
       aria-live="polite"
       // `aria-atomic="false"`: se anuncia solo el toast nuevo, no toda la pila.
       aria-atomic="false"
-      className="pointer-events-none fixed bottom-4 right-4 z-[60] flex w-full max-w-sm flex-col gap-2"
+      className="pointer-events-none fixed bottom-4 right-4 z-60 flex w-full max-w-sm flex-col gap-2"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

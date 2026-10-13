@@ -454,7 +454,7 @@ y los hallazgos graves comprobados a mano.
 | `style-src 'unsafe-inline'` en la CSP. | Lo exigen los estilos en línea de la interfaz; `script-src` sigue siendo `'self'`, sin `unsafe-inline` ni `unsafe-eval`. |
 | Los contadores de límite de peticiones y de bloqueo viven **en memoria** y se reinician con el agente. | Un único proceso en el equipo del usuario; persistirlos añadiría escrituras al disco por cada intento sin ganancia real en una LAN. |
 | La restauración de copias acepta hasta **2 GiB**. | Solo un administrador activo puede subirla, y las copias con grabaciones de cámaras pueden ser grandes. |
-| Dependencias de **herramientas de desarrollo** con avisos sin versión arreglada dentro de su rango (esbuild vía tsup, `qs` vía Stryker, `uuid` vía autocannon, `braces` y `postcss-selector-parser` vía Tailwind 3). | No viajan en el producto en ejecución; se resuelven con las migraciones de versión mayor de esas herramientas, no forzando versiones fuera de rango. |
+| Dependencias de **herramientas de desarrollo** con avisos sin versión arreglada dentro de su rango (esbuild vía tsup, `qs` vía Stryker, `uuid` vía autocannon, `braces` vía knip). | No viajan en el producto en ejecución; se resuelven con las migraciones de versión mayor de esas herramientas, no forzando versiones fuera de rango. |
 
 ### 9.4 Pendiente
 

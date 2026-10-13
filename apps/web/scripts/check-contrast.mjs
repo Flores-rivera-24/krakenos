@@ -40,8 +40,30 @@ function parseBlock(selectorRegex) {
  *   · claro            = `:root` + `html:not(.dark)` encima
  */
 const rootTokens = parseBlock(':root');
-const darkTokens = { ...rootTokens, ...parseBlock('\\.dark') };
-const lightTokens = { ...rootTokens, ...parseBlock('html:not\\(\\.dark\\)') };
+const darkOverrides = parseBlock('\\.dark');
+const lightOverrides = parseBlock('html:not\\(\\.dark\\)');
+
+/**
+ * Falla CERRADO si no encuentra un bloque de tokens. Sin esto, un bloque movido o renombrado
+ * (p. ej. al reorganizar `index.css`) dejaba `{}` y el tema afectado se medía con los valores de
+ * `:root` solos: el medidor seguía en verde sobre una paleta que ya no estaba midiendo.
+ */
+for (const [nombre, tokens] of [
+  [':root', rootTokens],
+  ['.dark', darkOverrides],
+  ['html:not(.dark)', lightOverrides],
+]) {
+  if (Object.keys(tokens).length === 0) {
+    console.error(
+      `check-contrast: no se encontró ningún token --kr-*: #hex en el bloque \`${nombre}\` de ${cssPath}. ` +
+        'Si se movió o renombró el bloque, hay que ajustar este script: no se mide una paleta que no se ve.',
+    );
+    process.exit(1);
+  }
+}
+
+const darkTokens = { ...rootTokens, ...darkOverrides };
+const lightTokens = { ...rootTokens, ...lightOverrides };
 
 function hexToRgb(hex) {
   let h = hex.replace('#', '');

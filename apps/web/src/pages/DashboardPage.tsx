@@ -128,7 +128,7 @@ export function DashboardPage() {
                       type="button"
                       aria-label={t('dashboard.moveUp', { title: meta.title })}
                       onClick={() => update(moveWidget(layout, id, 'up'))}
-                      className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
+                      className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
                       <ChevronUp className="h-4 w-4" />
                     </button>
@@ -136,7 +136,7 @@ export function DashboardPage() {
                       type="button"
                       aria-label={t('dashboard.moveDown', { title: meta.title })}
                       onClick={() => update(moveWidget(layout, id, 'down'))}
-                      className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
+                      className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
@@ -148,7 +148,7 @@ export function DashboardPage() {
                           : t('dashboard.hide', { title: meta.title })
                       }
                       onClick={() => update(toggleHidden(layout, id))}
-                      className="rounded p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
+                      className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
                       {hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>

@@ -275,7 +275,7 @@ function DeviceCard({
               value={device.color.hex ?? '#ffffff'}
               disabled={!canControl}
               onChange={(e) => commitColor(e.target.value)}
-              className="h-6 w-10 cursor-pointer rounded border border-border bg-transparent disabled:opacity-50"
+              className="h-6 w-10 cursor-pointer rounded-sm border border-border bg-transparent disabled:opacity-50"
             />
           </div>
         )}
