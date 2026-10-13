@@ -7,20 +7,25 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useAuthStore } from '@/store/auth.store';
 
 const SEEN_KEY = 'krakenos-alerts-seen';
 
 /** Últimas 5 acciones del audit log, con badge de no leídas. */
 export function AlertsWidget() {
   const t = useT();
+  // `GET /audit` es solo admin. Un rol ya cargado que no lo es no pide nada (y el
+  // dashboard ni siquiera le ofrece el widget); un rol aún sin cargar sí pide.
+  const role = useAuthStore((s) => s.user?.role);
+  const puedeLeer = role === undefined || role === 'admin';
   const [entries, setEntries] = useState<AuditLogEntry[] | null>(null);
   const [unread, setUnread] = useState(0);
-  // US-234: el `catch` de abajo pinta el estado vacío para un viewer sin permiso
-  // (legítimo) pero también para un agente caído (mentira). Se distinguen.
+  // US-234: un fallo se declara como fallo; nunca se degrada al estado vacío.
   const [failed, setFailed] = useState(false);
   const [intento, setIntento] = useState(0);
 
   useEffect(() => {
+    if (!puedeLeer) return;
     let active = true;
     api
       .getList<AuditLogEntry>('/audit?limit=5')
@@ -30,22 +35,23 @@ export function AlertsWidget() {
         const lastSeen = localStorage.getItem(SEEN_KEY) ?? '';
         setUnread(list.filter((e) => e.createdAt > lastSeen).length);
       })
-      .catch((err: unknown) => {
+      .catch(() => {
         if (!active) return;
-        // 403 = un viewer no puede leer el audit: eso NO es un fallo, es su rol.
-        const status = (err as { status?: number } | null)?.status;
-        if (status === 403) setEntries([]);
-        else setFailed(true);
+        // Sin rama para el 403: quien no puede leer el audit no llega aquí, y a un
+        // admin un 403 sí es un fallo real. Nunca se pinta como «sin alertas».
+        setFailed(true);
       });
     return () => {
       active = false;
     };
-  }, [intento]);
+  }, [intento, puedeLeer]);
 
   const markSeen = () => {
     if (entries && entries[0]) localStorage.setItem(SEEN_KEY, entries[0].createdAt);
     setUnread(0);
   };
+
+  if (!puedeLeer) return null;
 
   return (
     <Card>
@@ -61,7 +67,10 @@ export function AlertsWidget() {
       </CardHeader>
       <CardContent>
         {failed && entries === null ? (
-          <WidgetError message={t('widget.alerts.error')} onRetry={() => setIntento((n) => n + 1)} />
+          <WidgetError
+            message={t('widget.alerts.error')}
+            onRetry={() => setIntento((n) => n + 1)}
+          />
         ) : entries === null ? (
           <LoadingLine />
         ) : entries.length === 0 ? (

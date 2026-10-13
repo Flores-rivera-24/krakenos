@@ -7,10 +7,22 @@ const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
   const get = vi.fn();
-  return { get, getList: vi.fn((path: string) => get(path)), patch: vi.fn(), post: vi.fn(), put: vi.fn(), del: vi.fn() };
+  return {
+    get,
+    getList: vi.fn((path: string) => get(path)),
+    patch: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    del: vi.fn(),
+  };
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
-const fakeSocket = vi.hoisted(() => ({ connected: true, on: vi.fn(), off: vi.fn(), emit: vi.fn() }));
+const fakeSocket = vi.hoisted(() => ({
+  connected: true,
+  on: vi.fn(),
+  off: vi.fn(),
+  emit: vi.fn(),
+}));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
@@ -21,14 +33,29 @@ import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
 import { changeLocale, setLocale } from '@/lib/i18n';
+import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 function device(over: Partial<Device> = {}): Device {
   return {
-    id: 'd1', mac: 'aa:bb:cc:dd:ee:01', ip: '192.168.1.10', hostname: 'macbook',
-    label: null, notes: null, vendor: 'Apple', type: 'computer', isBlocked: false,
-    icon: null, roomId: null, ownerId: null,
-    online: true, vlanTag: null, sources: ['arp'], firstSeen: '', lastSeen: '', ...over,
+    id: 'd1',
+    mac: 'aa:bb:cc:dd:ee:01',
+    ip: '192.168.1.10',
+    hostname: 'macbook',
+    label: null,
+    notes: null,
+    vendor: 'Apple',
+    type: 'computer',
+    isBlocked: false,
+    icon: null,
+    roomId: null,
+    ownerId: null,
+    online: true,
+    vlanTag: null,
+    sources: ['arp'],
+    firstSeen: '',
+    lastSeen: '',
+    ...over,
   };
 }
 
@@ -55,6 +82,7 @@ describe('Dashboard widgets', () => {
   };
 
   beforeEach(() => {
+    useAuthStore.setState({ user: null } as never);
     apiMock.get
       .mockReset()
       .mockImplementation((path: string) =>
@@ -184,7 +212,9 @@ describe('Dashboard widgets', () => {
       apiMock.get.mockReset().mockRejectedValue(new Error('agente caído'));
       wrap(<SystemWidget />);
 
-      expect(await screen.findByText('No se pudo cargar el estado del sistema.')).toBeInTheDocument();
+      expect(
+        await screen.findByText('No se pudo cargar el estado del sistema.'),
+      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /Reintentar/ })).toBeInTheDocument();
       expect(screen.queryByText('Cargando…')).not.toBeInTheDocument();
     });
@@ -193,7 +223,9 @@ describe('Dashboard widgets', () => {
       apiMock.get.mockReset().mockRejectedValue(new Error('agente caído'));
       wrap(<IotStatusWidget />);
 
-      expect(await screen.findByText('No se pudo cargar la lista de dispositivos IoT.')).toBeInTheDocument();
+      expect(
+        await screen.findByText('No se pudo cargar la lista de dispositivos IoT.'),
+      ).toBeInTheDocument();
       // La distinción que importa: fallo ≠ casa sin dispositivos.
       expect(screen.queryByText('Sin dispositivos IoT.')).not.toBeInTheDocument();
     });
@@ -222,13 +254,21 @@ describe('Dashboard widgets', () => {
       expect(await screen.findByText('Uptime')).toBeInTheDocument();
     });
 
-    it('AlertsWidget distingue «sin permiso» (403) de «no se pudo cargar»', async () => {
-      // Un viewer sin acceso al audit es un caso legítimo: estado vacío, no error.
+    it('AlertsWidget con un viewer cargado no llama a la API ni pinta nada', () => {
+      useAuthStore.setState({ user: { sub: 'u', email: 'v@b.c', role: 'viewer' } } as never);
+      apiMock.get.mockReset();
+      const { container } = wrap(<AlertsWidget />);
+
+      expect(apiMock.get).not.toHaveBeenCalled();
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    it('AlertsWidget: un 403 a un admin es un fallo, nunca «sin actividad»', async () => {
       apiMock.get.mockReset().mockRejectedValue(Object.assign(new Error('403'), { status: 403 }));
       wrap(<AlertsWidget />);
 
-      expect(await screen.findByText('Sin actividad registrada.')).toBeInTheDocument();
-      expect(screen.queryByText(/No se pudo cargar/)).not.toBeInTheDocument();
+      expect(await screen.findByText(/No se pudo cargar/)).toBeInTheDocument();
+      expect(screen.queryByText('Sin actividad registrada.')).not.toBeInTheDocument();
     });
   });
 
