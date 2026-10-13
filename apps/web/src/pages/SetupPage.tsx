@@ -1,6 +1,6 @@
 import type { LoginResponse, SetupInitRequest, SetupStatus } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { AuthBackdrop } from '@/components/ui/auth-backdrop';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';

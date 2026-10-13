@@ -1,6 +1,6 @@
 import type { GuestNetwork, WifiNetwork } from '@krakenos/types';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { GuestNetworkCard } from '@/components/wifi/GuestNetworkCard';
 import { MainNetworkCard } from '@/components/wifi/MainNetworkCard';
 import { NetworksCard } from '@/components/wifi/NetworksCard';

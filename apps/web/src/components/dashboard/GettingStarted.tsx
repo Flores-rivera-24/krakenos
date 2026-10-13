@@ -1,6 +1,6 @@
 import { ArrowRight, CheckCircle2, Circle, Rocket, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { getIntegrations } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';

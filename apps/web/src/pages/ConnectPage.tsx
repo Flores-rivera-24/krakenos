@@ -5,7 +5,7 @@ import type {
   IntegrationKindSchema,
 } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
 import { IntegrationWizard } from '@/components/connect/IntegrationWizard';
 import { MatterCommissionCard } from '@/components/connect/MatterCommissionCard';
