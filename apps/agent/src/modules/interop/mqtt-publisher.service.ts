@@ -78,6 +78,8 @@ interface StoredConfig {
 }
 
 const SETTING_KEY = 'interop.mqtt';
+/** Topics de config de discovery publicados (JSON: lista de strings), para limpiar tras un reinicio. */
+const TOPICS_SETTING_KEY = 'interop.mqtt.discoveryTopics';
 const DEFAULTS: StoredConfig = {
   enabled: false,
   url: '',
@@ -132,6 +134,14 @@ export class MqttPublisher {
    * cada conexión nueva resincroniza todo.
    */
   private lastConfigs = new Map<string, string>();
+  /**
+   * Topics de config de discovery que constan como publicados (solo topics, sin
+   * payloads: se derivan de `Device.id`/`Room.id`, sin MAC, IP ni personas). Se
+   * persisten en `Setting` para que la limpieza sobreviva a un reinicio. `null`
+   * = aún sin cargar.
+   */
+  private publishedTopics: Set<string> | null = null;
+  private persistedTopics: string | null = null;
 
   constructor(private readonly deps: MqttPublisherDeps) {
     this.transportFactory = deps.transportFactory ?? ((opts) => new MqttClientTransport(opts));
@@ -150,7 +160,10 @@ export class MqttPublisher {
         url: typeof parsed.url === 'string' ? parsed.url : '',
         username: typeof parsed.username === 'string' ? parsed.username : '',
         passwordEnc: typeof parsed.passwordEnc === 'string' ? parsed.passwordEnc : '',
-        topicPrefix: typeof parsed.topicPrefix === 'string' && parsed.topicPrefix ? parsed.topicPrefix : 'krakenos',
+        topicPrefix:
+          typeof parsed.topicPrefix === 'string' && parsed.topicPrefix
+            ? parsed.topicPrefix
+            : 'krakenos',
         intervalSec: clampInterval(parsed.intervalSec),
         discovery: parsed.discovery === true,
         control: parsed.control === true,
@@ -224,7 +237,8 @@ export class MqttPublisher {
     try {
       await assertHostAllowed(extractHost(c.url), this.egressPolicy, { allowUnresolvable: false });
     } catch (err) {
-      this.lastError = err instanceof Error ? err.message : 'Broker bloqueado por la política de egress';
+      this.lastError =
+        err instanceof Error ? err.message : 'Broker bloqueado por la política de egress';
       this.deps.onError?.(this.lastError);
       return;
     }
@@ -290,7 +304,12 @@ export class MqttPublisher {
       for (const d of snap.iot) {
         await this.transport.publish(
           `${p}/iot/${encodeTopic(d.id)}`,
-          JSON.stringify({ name: d.name, on: d.on, brightness: d.brightness ?? null, powerW: d.powerW ?? null }),
+          JSON.stringify({
+            name: d.name,
+            on: d.on,
+            brightness: d.brightness ?? null,
+            powerW: d.powerW ?? null,
+          }),
         );
       }
       if (snap.energy) await this.transport.publish(`${p}/energy`, JSON.stringify(snap.energy));
@@ -299,32 +318,43 @@ export class MqttPublisher {
       // MQTT Discovery de HA (US-213): configs retained + estado en sus topics, con
       // limpieza de los retenidos que ya no aplican (dispositivo quitado o discovery
       // desactivado). Se publica además de los topics legados de US-174.
-      if (c.discovery) {
-        const configs = buildDiscoveryConfigs(snap, p, this.controlFlags(c));
-        // Solo lo que cambió: una config idéntica ya está retenida en el broker.
-        for (const m of configs) {
-          if (this.lastConfigs.get(m.topic) === m.payload) continue;
-          await this.transport.publish(m.topic, m.payload, { retain: true });
-        }
-        // El ESTADO sí va siempre: es lo que se mueve.
-        for (const m of buildStateMessages(snap, p)) {
-          await this.transport.publish(m.topic, m.payload, { retain: !!m.retain });
-        }
-        const current = new Map(configs.map((m) => [m.topic, m.payload]));
-        for (const topic of this.lastConfigs.keys()) {
-          if (!current.has(topic)) {
+      // Lo que consta como publicado se persiste: sin eso, un dispositivo quitado
+      // mientras el agente estaba parado dejaría su config retenida en el broker.
+      const published = await this.loadPublishedTopics();
+      try {
+        if (c.discovery) {
+          const configs = buildDiscoveryConfigs(snap, p, this.controlFlags(c));
+          // Solo lo que cambió: una config idéntica ya está retenida en el broker.
+          for (const m of configs) {
+            if (this.lastConfigs.get(m.topic) === m.payload) continue;
+            await this.transport.publish(m.topic, m.payload, { retain: true });
+            published.add(m.topic);
+          }
+          // El ESTADO sí va siempre: es lo que se mueve.
+          for (const m of buildStateMessages(snap, p)) {
+            await this.transport.publish(m.topic, m.payload, { retain: !!m.retain });
+          }
+          const current = new Map(configs.map((m) => [m.topic, m.payload]));
+          for (const topic of [...published]) {
+            if (current.has(topic)) continue;
             const rm = removalMessage(topic);
             await this.transport.publish(rm.topic, rm.payload, { retain: true });
+            published.delete(topic); // solo tras el éxito: lo no retirado sigue constando
           }
+          this.lastConfigs = current;
+        } else if (published.size > 0) {
+          // Discovery recién desactivado: borra todas las configs retenidas.
+          for (const topic of [...published]) {
+            const rm = removalMessage(topic);
+            await this.transport.publish(rm.topic, rm.payload, { retain: true });
+            published.delete(topic);
+          }
+          this.lastConfigs = new Map();
         }
-        this.lastConfigs = current;
-      } else if (this.lastConfigs.size > 0) {
-        // Discovery recién desactivado: borra todas las configs retenidas.
-        for (const topic of this.lastConfigs.keys()) {
-          const rm = removalMessage(topic);
-          await this.transport.publish(rm.topic, rm.payload, { retain: true });
-        }
-        this.lastConfigs = new Map();
+      } finally {
+        // DESPUÉS de publicar y retirar: si el broker falla a mitad, lo no
+        // retirado queda guardado para el siguiente ciclo.
+        await this.persistPublishedTopics(published);
       }
       this.connected = true;
       this.lastPublishAt = this.now();
@@ -336,9 +366,48 @@ export class MqttPublisher {
     }
   }
 
+  private async loadPublishedTopics(): Promise<Set<string>> {
+    if (this.publishedTopics) return this.publishedTopics;
+    let topics: string[] = [];
+    try {
+      const row = await this.deps.prisma.setting.findUnique({ where: { key: TOPICS_SETTING_KEY } });
+      if (row) {
+        const parsed: unknown = JSON.parse(row.value);
+        if (Array.isArray(parsed)) {
+          topics = parsed.filter((t): t is string => typeof t === 'string');
+          this.persistedTopics = JSON.stringify([...topics].sort());
+        } else {
+          this.deps.onError?.(`${TOPICS_SETTING_KEY} no es una lista; se ignora`);
+        }
+      }
+    } catch {
+      this.deps.onError?.(`${TOPICS_SETTING_KEY} ilegible; se ignora`);
+    }
+    this.publishedTopics = new Set(topics);
+    return this.publishedTopics;
+  }
+
+  private async persistPublishedTopics(topics: Set<string>): Promise<void> {
+    const value = JSON.stringify([...topics].sort());
+    if (value === this.persistedTopics) return;
+    try {
+      await this.deps.prisma.setting.upsert({
+        where: { key: TOPICS_SETTING_KEY },
+        create: { key: TOPICS_SETTING_KEY, value },
+        update: { value },
+      });
+      this.persistedTopics = value;
+    } catch {
+      this.deps.onError?.(`No se pudo guardar ${TOPICS_SETTING_KEY}`);
+    }
+  }
+
   /** Superficies de control entrante activas. Cada una es un toggle propio. */
   private controlFlags(c: StoredConfig): ControlFlags {
-    return { iot: c.control && !!this.deps.onCommand, pause: c.pauseControl && !!this.deps.onPause };
+    return {
+      iot: c.control && !!this.deps.onCommand,
+      pause: c.pauseControl && !!this.deps.onPause,
+    };
   }
 
   /**
