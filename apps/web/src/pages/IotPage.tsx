@@ -25,6 +25,7 @@ import { useT } from '@/lib/i18n';
 import { getSocket } from '@/lib/socket';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
+import { invalidarIot, trasEscribir } from '@/lib/resources';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
@@ -54,7 +55,7 @@ function DeviceCard({
   // (`iot:device-updated`); si el PATCH falla se avisa con un toast y la UI sigue
   // mostrando la verdad.
   const patch = (body: unknown) =>
-    api.patch(`/iot/devices/${device.id}`, body).catch((err) => {
+    trasEscribir(api.patch(`/iot/devices/${device.id}`, body), invalidarIot).catch((err) => {
       toast.error(describeError(err, t('iot.patchError')));
     });
 
@@ -110,7 +111,9 @@ function DeviceCard({
           {isSwitchableKind(device.kind) && (
             <OptimisticSwitch
               checked={device.on ?? false}
-              onToggle={(next) => api.patch(`/iot/devices/${device.id}`, { on: next })}
+              onToggle={(next) =>
+                trasEscribir(api.patch(`/iot/devices/${device.id}`, { on: next }), invalidarIot)
+              }
               disabled={!canControl}
               errorMessage={t('iot.toggleError', { name: device.name })}
               aria-label={t('iot.turnOn', { name: device.name })}
@@ -355,9 +358,7 @@ export function IotPage() {
     void api
       .getList<IotDevice>('/iot/devices')
       .then((list) => active && setDevices(Object.fromEntries(list.map((d) => [d.id, d]))))
-      .catch(
-        (err) => active && setError(describeError(err, t('iot.loadError'))),
-      )
+      .catch((err) => active && setError(describeError(err, t('iot.loadError'))))
       .finally(() => active && setLoading(false));
 
     const onSnapshot = (list: IotDevice[]) =>

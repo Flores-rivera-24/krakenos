@@ -4,10 +4,14 @@ import type {
   UpdateMatterBridgeRequest,
 } from '@krakenos/types';
 import { api } from './api';
+import { invalidarIot, trasEscribir } from './resources';
 
 /** Comisiona un dispositivo Matter nuevo por su QR/código (US-172). */
 export function commissionMatter(code: string): Promise<MatterCommissionResult> {
-  return api.post<MatterCommissionResult>('/iot/matter/commission', { code });
+  return trasEscribir(
+    api.post<MatterCommissionResult>('/iot/matter/commission', { code }),
+    invalidarIot,
+  );
 }
 
 export function fetchMatterBridge(): Promise<MatterBridgeState> {

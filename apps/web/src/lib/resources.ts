@@ -101,3 +101,14 @@ export function invalidarIot(): void {
 export function invalidarHabitaciones(): void {
   invalidarRecurso(CLAVES.rooms);
 }
+
+/**
+ * Envuelve una escritura: si sale bien, invalida lo que deja obsoleto; si falla,
+ * no toca nada (no cambió nada en el servidor) y el error sigue su camino.
+ */
+export function trasEscribir<T>(escritura: Promise<T>, ...invalidar: (() => void)[]): Promise<T> {
+  return escritura.then((r) => {
+    for (const i of invalidar) i();
+    return r;
+  });
+}

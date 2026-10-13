@@ -9,6 +9,7 @@ import type {
   UpdateRoomRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
+import { invalidarHabitaciones, invalidarIot, trasEscribir } from '@/lib/resources';
 
 /**
  * Catálogo de iconos de habitación (US-165): glifo (emoji) + etiqueta en
@@ -36,10 +37,22 @@ export function roomGlyph(icon: RoomIcon): string {
 }
 
 export const listRooms = () => api.getList<RoomWithState>('/rooms');
-export const createRoom = (body: CreateRoomRequest) => api.post<Room>('/rooms', body);
+/**
+ * Las escrituras invalidan la caché compartida (`lib/resources.ts`) **solo tras el
+ * éxito**: un fallo no cambió nada en el servidor. Una habitación también la leen
+ * los aparatos IoT (`room`), así que tocarla deja obsoleta esa lista.
+ */
+export const createRoom = (body: CreateRoomRequest) =>
+  trasEscribir(api.post<Room>('/rooms', body), invalidarHabitaciones);
 export const updateRoom = (id: string, body: UpdateRoomRequest) =>
-  api.patch<Room>(`/rooms/${id}`, body);
-export const deleteRoom = (id: string) => api.del<void>(`/rooms/${id}`);
-export const assignRoom = (body: AssignRoomRequest) => api.put<void>('/rooms/assign', body);
+  trasEscribir(api.patch<Room>(`/rooms/${id}`, body), invalidarHabitaciones, invalidarIot);
+export const deleteRoom = (id: string) =>
+  trasEscribir(api.del<void>(`/rooms/${id}`), invalidarHabitaciones, invalidarIot);
+export const assignRoom = (body: AssignRoomRequest) =>
+  trasEscribir(api.put<void>('/rooms/assign', body), invalidarHabitaciones, invalidarIot);
 export const runRoomAction = (id: string, body: RoomGroupActionRequest) =>
-  api.post<RoomActionResult>(`/rooms/${id}/action`, body);
+  trasEscribir(
+    api.post<RoomActionResult>(`/rooms/${id}/action`, body),
+    invalidarHabitaciones,
+    invalidarIot,
+  );

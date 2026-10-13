@@ -23,6 +23,7 @@ describe('lib/rooms (US-165)', () => {
   });
 
   it('los helpers llaman al endpoint correcto', () => {
+    for (const m of [apiMock.post, apiMock.put]) m.mockResolvedValue({});
     createRoom({ name: 'Salón' });
     expect(apiMock.post).toHaveBeenCalledWith('/rooms', { name: 'Salón' });
     assignRoom({ kind: 'device', ref: 'd1', roomId: 'r1' });
