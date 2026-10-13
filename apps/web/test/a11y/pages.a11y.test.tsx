@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { configureAxe, toHaveNoViolations } from 'jest-axe';
 import type { ReactElement } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

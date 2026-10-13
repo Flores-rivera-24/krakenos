@@ -1,7 +1,7 @@
 import type { IntegrationField } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // El hub carga el catálogo vía el `api` genérico; lo stubbeamos.
