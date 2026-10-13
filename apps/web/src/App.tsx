@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Splash } from '@/components/ui/splash';
 import { changeLocale, useT } from '@/lib/i18n';

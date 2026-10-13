@@ -1,6 +1,6 @@
 import { MoreHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
 import { useT } from '@/lib/i18n';

@@ -1,7 +1,7 @@
 import type { SetupStatus } from '@krakenos/types';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
 import { NetworkCanvas } from '@/components/ui/network-canvas';
 import { api } from '@/lib/api';

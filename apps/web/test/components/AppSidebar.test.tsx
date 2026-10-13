@@ -1,7 +1,7 @@
 import type { Device } from '@krakenos/types';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // `ThemeToggle` (US-44) usa lib/theme; lo mockeamos para aislar el sidebar.

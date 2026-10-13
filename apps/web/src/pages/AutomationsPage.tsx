@@ -14,7 +14,7 @@ import type {
 } from '@krakenos/types';
 import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';

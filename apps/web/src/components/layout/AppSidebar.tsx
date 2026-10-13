@@ -1,6 +1,6 @@
 import type { Device } from '@krakenos/types';
 import { ChevronLeft, LogOut } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';

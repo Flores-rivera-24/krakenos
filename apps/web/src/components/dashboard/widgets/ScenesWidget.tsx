@@ -1,6 +1,6 @@
 import type { Scene } from '@krakenos/types';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { describeError } from '@/lib/errors';

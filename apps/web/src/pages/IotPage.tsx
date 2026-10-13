@@ -6,7 +6,7 @@ import {
   isSwitchableKind,
 } from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { RoomSelect } from '@/components/rooms/RoomSelect';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

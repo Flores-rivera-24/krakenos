@@ -1,7 +1,7 @@
 import type { LastSession, SetupStatus, SystemPublicInfo } from '@krakenos/types';
 import { Clock, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LogoMark } from '@/components/ui/logo';

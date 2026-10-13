@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import type * as ReactRouter from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router';
+import type * as ReactRouter from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const navigate = vi.hoisted(() => vi.fn());
-vi.mock('react-router-dom', async (orig) => {
+vi.mock('react-router', async (orig) => {
   const actual = (await orig()) as typeof ReactRouter;
   return { ...actual, useNavigate: () => navigate };
 });
