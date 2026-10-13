@@ -7,8 +7,6 @@ import type { AccessSchedule } from '@krakenos/types';
  * la medianoche (p. ej. 21:00→07:00).
  */
 
-export const MINUTES_IN_DAY = 24 * 60;
-
 /** ¿Está activa la ventana de `schedule` en (`dow`, `minute`)? */
 export function isActiveAt(schedule: AccessSchedule, dow: number, minute: number): boolean {
   if (!schedule.enabled || schedule.days.length === 0) return false;

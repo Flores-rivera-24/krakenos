@@ -543,15 +543,6 @@ export function buildDiscoveryConfigs(
   return msgs;
 }
 
-/** Solo los topics de config (para el diff de limpieza de retenidos). */
-export function discoveryConfigTopics(
-  snapshot: StateSnapshot,
-  prefix: string,
-  control: ControlFlags,
-): string[] {
-  return buildDiscoveryConfigs(snapshot, prefix, control).map((m) => m.topic);
-}
-
 /** Mensaje retenido que **borra** una config de discovery (payload vacío). */
 export function removalMessage(topic: string): MqttMessage {
   return { topic, payload: '', retain: true };

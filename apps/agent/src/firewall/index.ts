@@ -45,5 +45,5 @@ export function createFirewallManager(config: FirewallConfig): FirewallManager {
   }
 }
 
-export { MockFirewallManager, FirewallError } from './mock.firewall.js';
+export { MockFirewallManager } from './mock.firewall.js';
 export { IptablesFirewallManager } from './iptables.firewall.js';

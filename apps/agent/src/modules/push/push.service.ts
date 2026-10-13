@@ -15,16 +15,6 @@ const PUSH_CONCURRENCY = 6;
 /** Timeout de socket por envío. `web-push` SOLO lo aplica si se le pasa (AUD3-01). */
 const PUSH_TIMEOUT_MS = 8_000;
 
-/** Acciones de auditoría que disparan una notificación push (US-45). */
-export const HIGH_PRIORITY_AUDIT_ACTIONS = [
-  'auth.login_failed',
-  'auth.login_locked',
-  'auth.refresh_reuse',
-  'auth.recovery_used',
-  'device.block',
-  'inventory.unknown_device',
-] as const;
-
 /**
  * A quién va dirigida una notificación derivada de una acción auditada (AUD3-01).
  * `admin` = seguridad/red (solo quien administra) · `home` = eventos de la casa,

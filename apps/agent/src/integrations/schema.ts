@@ -283,23 +283,6 @@ export function getKindSchema(
 }
 
 /**
- * Dado un dominio, su `kind` (CSV en `iot`) y las claves de valores presentes, decide
- * cuáles son **secretas**. Para `iot` la clave es `backend.campo`; para el resto es la
- * clave de campo plana. Una clave sin definición conocida se trata como no-secreta.
- */
-export function secretKeysFor(
-  domain: IntegrationDomain,
-  kind: string,
-  valueKeys: string[],
-): Set<string> {
-  const out = new Set<string>();
-  for (const valueKey of valueKeys) {
-    if (isSecretKey(domain, kind, valueKey)) out.add(valueKey);
-  }
-  return out;
-}
-
-/**
  * Tipo de campo (`url`/`host`/`ip`/…) de una clave de valor según el esquema, o
  * `undefined` si no se conoce. Respeta el namespacing `backend.campo` de `iot`.
  * Lo usa el filtrado de egress para saber qué valores son destinos de red.

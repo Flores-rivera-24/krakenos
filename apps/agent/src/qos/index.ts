@@ -46,5 +46,5 @@ export function createQosManager(config: QosConfig): QosManager {
   }
 }
 
-export { MockQosManager, QosError } from './mock.qos.js';
+export { MockQosManager } from './mock.qos.js';
 export { TcQosManager } from './tc.qos.js';

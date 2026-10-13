@@ -201,14 +201,3 @@ export function getGlossaryEntry(key: string): GlossaryEntry | undefined {
   if (getLocale() === 'es') return base;
   return localizeGlossaryEntry(base, GLOSSARY_EN[key]);
 }
-
-/** Lista las entradas del glosario (localizadas) ordenadas por término. */
-export function glossaryEntries(): (GlossaryEntry & { key: string })[] {
-  const locale = getLocale();
-  return Object.entries(GLOSSARY)
-    .map(([key, entry]) => {
-      const localized = locale === 'es' ? entry : localizeGlossaryEntry(entry, GLOSSARY_EN[key]);
-      return { key, ...localized };
-    })
-    .sort((a, b) => a.term.localeCompare(b.term, locale));
-}

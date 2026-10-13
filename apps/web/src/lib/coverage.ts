@@ -20,9 +20,6 @@ import { api } from '@/lib/api';
 
 export const listFloorPlans = (): Promise<FloorPlan[]> => api.getList<FloorPlan>('/coverage/floorplans');
 
-export const getFloorPlan = (id: string): Promise<FloorPlan> =>
-  api.get<FloorPlan>(`/coverage/floorplans/${id}`);
-
 export const createFloorPlan = (body: CreateFloorPlanRequest): Promise<FloorPlan> =>
   api.post<FloorPlan>('/coverage/floorplans', body);
 
