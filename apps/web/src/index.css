@@ -144,8 +144,12 @@
    suya (no la sustituye), y esa regla deja de aplicar al invalidar `--tw-space-y-reverse`
    —la declaración queda inválida en tiempo de cálculo y no pisa los márgenes propios del
    hijo—. Solo hay `space-y` en el código (`space-x`: ninguno); si aparece, hace falta el
-   mismo tratamiento. ⚠️ Depende del nombre interno de esa variable: si la v4 lo cambia, el
-   síntoma es volver a ver el hueco perdido, y el diff de capturas lo caza. */
+   mismo tratamiento. ⚠️ Depende del nombre interno de esa variable (`--tw-space-y-reverse`):
+   si Tailwind lo cambia, el hueco etiqueta-campo vuelve a perderse sin error. Lo atan dos tests e2e
+   (`e2e/tests/login.spec.ts`, corren en CI contra el build): el hueco etiqueta-campo del
+   login (la regla de la v3) y un contenedor flex inyectado donde un hueco doble delata que la
+   regla de la v4 no quedó anulada (el invalidar de `--tw-space-y-reverse`). Si se ponen
+   rojos tras subir Tailwind, la causa es esta regla, no el test. */
 @utility space-y-* {
   & > :not([hidden]) ~ :not([hidden]) {
     margin-top: calc(var(--spacing) * --value(number));
