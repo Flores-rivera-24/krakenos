@@ -25,6 +25,7 @@ describe('lib/scenes (US-166)', () => {
   });
 
   it('los helpers llaman al endpoint correcto', () => {
+    apiMock.post.mockResolvedValue({});
     createScene({ name: 'Noche', actions: [] });
     expect(apiMock.post).toHaveBeenCalledWith('/scenes', { name: 'Noche', actions: [] });
     runScene('s1');

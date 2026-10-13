@@ -11,6 +11,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import { invalidarIot, trasEscribir } from '@/lib/resources';
 
 const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
 const EMPTY: CreateTuyaDeviceRequest = { deviceId: '', localKey: '', ip: '', name: '', version: '3.3' };
@@ -156,11 +157,11 @@ export function TuyaManager({ reachable }: Props) {
                       onCancel={() => setEditingId(null)}
                       onSubmit={(v) =>
                         handle(async () => {
-                          await api.patch(`/iot/tuya/devices/${d.deviceId}`, {
+                          await trasEscribir(api.patch(`/iot/tuya/devices/${d.deviceId}`, {
                             ip: v.ip,
                             name: v.name,
                             ...(v.localKey ? { localKey: v.localKey } : {}),
-                          });
+                          }), invalidarIot);
                           setEditingId(null);
                         })
                       }
@@ -185,7 +186,7 @@ export function TuyaManager({ reachable }: Props) {
                             size="sm"
                             onClick={() =>
                               handle(async () => {
-                                await api.del(`/iot/tuya/devices/${d.deviceId}`);
+                                await trasEscribir(api.del(`/iot/tuya/devices/${d.deviceId}`), invalidarIot);
                                 setDeletingId(null);
                               })
                             }
@@ -229,7 +230,7 @@ export function TuyaManager({ reachable }: Props) {
           onCancel={() => setAdding(false)}
           onSubmit={(v) =>
             handle(async () => {
-              await api.post('/iot/tuya/devices', v);
+              await trasEscribir(api.post('/iot/tuya/devices', v), invalidarIot);
               setAdding(false);
             })
           }

@@ -9,6 +9,8 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import {
+  invalidarIot,
+  trasEscribir,
   useInventoryDevices,
   useIotDevices,
   useRooms,
@@ -206,7 +208,12 @@ export function QuickActionsWidget() {
                 {tile.iot && (
                   <OptimisticSwitch
                     checked={tile.iot.on}
-                    onToggle={(next) => api.patch(`/iot/devices/${tile.iot!.id}`, { on: next })}
+                    onToggle={(next) =>
+                      trasEscribir(
+                        api.patch(`/iot/devices/${tile.iot!.id}`, { on: next }),
+                        invalidarIot,
+                      )
+                    }
                     disabled={!canControl}
                     errorMessage={t('widget.quickActions.toggleFailed', { name: tile.label })}
                     aria-label={t('widget.quickActions.toggle', {
@@ -222,7 +229,9 @@ export function QuickActionsWidget() {
                     disabled={!canControl || runningScene === tile.sceneId}
                     onClick={() => void runFavoriteScene(tile.sceneId!, tile.label)}
                   >
-                    {runningScene === tile.sceneId ? t('widget.scenes.running') : t('widget.scenes.run')}
+                    {runningScene === tile.sceneId
+                      ? t('widget.scenes.running')
+                      : t('widget.scenes.run')}
                   </Button>
                 )}
               </li>

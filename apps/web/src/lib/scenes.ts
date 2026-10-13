@@ -8,6 +8,12 @@ import type {
   UpdateSceneRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
+import {
+  invalidarEscenas,
+  invalidarHabitaciones,
+  invalidarIot,
+  trasEscribir,
+} from '@/lib/resources';
 
 /** Catálogo de iconos de escena (US-166): glifo (emoji) + etiqueta en español. */
 export const SCENE_ICONS: { icon: SceneIcon; glyph: string; label: string }[] = [
@@ -44,10 +50,15 @@ export const SCENE_TEMPLATES: SceneTemplate[] = [
 ];
 
 export const listScenes = () => api.getList<Scene>('/scenes');
-export const createScene = (body: CreateSceneRequest) => api.post<Scene>('/scenes', body);
+// Las escrituras invalidan la caché compartida (`lib/resources.ts`) tras el éxito.
+// Ejecutar una escena cambia aparatos y habitaciones, no escenas.
+export const createScene = (body: CreateSceneRequest) =>
+  trasEscribir(api.post<Scene>('/scenes', body), invalidarEscenas);
 export const updateScene = (id: string, body: UpdateSceneRequest) =>
-  api.patch<Scene>(`/scenes/${id}`, body);
-export const deleteScene = (id: string) => api.del<void>(`/scenes/${id}`);
-export const runScene = (id: string) => api.post<SceneRunResult>(`/scenes/${id}/run`);
+  trasEscribir(api.patch<Scene>(`/scenes/${id}`, body), invalidarEscenas);
+export const deleteScene = (id: string) =>
+  trasEscribir(api.del<void>(`/scenes/${id}`), invalidarEscenas);
+export const runScene = (id: string) =>
+  trasEscribir(api.post<SceneRunResult>(`/scenes/${id}/run`), invalidarIot, invalidarHabitaciones);
 export const captureScene = (body: CaptureSceneRequest) =>
   api.post<SceneAction[]>('/scenes/capture', body);
