@@ -10,8 +10,24 @@ import { buildTestApp, resetDb } from '../helpers/app.js';
 
 const SNAP: StateSnapshot = {
   iot: [
-    { id: 'light/salon', name: 'Salón', kind: 'light', on: true, brightness: 80, color: null, powerW: 9 },
-    { id: 'plug-1', name: 'Enchufe', kind: 'plug', on: false, brightness: null, color: null, powerW: 0 },
+    {
+      id: 'light/salon',
+      name: 'Salón',
+      kind: 'light',
+      on: true,
+      brightness: 80,
+      color: null,
+      powerW: 9,
+    },
+    {
+      id: 'plug-1',
+      name: 'Enchufe',
+      kind: 'plug',
+      on: false,
+      brightness: null,
+      color: null,
+      powerW: 0,
+    },
   ],
   energy: { todayKwh: 1.23, todayCost: 0.3, currency: '€' },
   devicesOnline: 5,
@@ -66,7 +82,12 @@ describe('MqttPublisher (US-174)', () => {
   it('cifra la contraseña en reposo y NUNCA la devuelve por la API', async () => {
     const { transport } = fakeTransport();
     const pub = makePublisher(app, transport);
-    await pub.setConfig({ enabled: false, url: 'mqtt://192.168.1.10:1883', username: 'ha', password: 'secreto123' });
+    await pub.setConfig({
+      enabled: false,
+      url: 'mqtt://192.168.1.10:1883',
+      username: 'ha',
+      password: 'secreto123',
+    });
     try {
       const cfg = await pub.getConfig();
       expect(cfg.hasPassword).toBe(true);
@@ -164,14 +185,22 @@ describe('MqttPublisher (US-174)', () => {
       // Luz salón → light o switch; enchufe → switch; + sensores del hub.
       expect(configs.some((p) => p.topic.includes('/iot_light_salon/config'))).toBe(true);
       expect(configs.some((p) => p.topic.includes('/iot_plug-1/config'))).toBe(true);
-      expect(configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/home_mode/config')).toBe(true);
-      expect(configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/alarm/config')).toBe(true);
-      expect(configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/devices_online/config')).toBe(true);
+      expect(
+        configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/home_mode/config'),
+      ).toBe(true);
+      expect(configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/alarm/config')).toBe(
+        true,
+      );
+      expect(
+        configs.some((p) => p.topic === 'homeassistant/sensor/krakenos/devices_online/config'),
+      ).toBe(true);
       // TODAS las configs son retained.
       expect(configs.every((p) => p.retain)).toBe(true);
       // El estado que las configs referencian se publica.
       expect(published.some((p) => p.topic === 'casa/iot/light_salon/state')).toBe(true);
-      expect(published.some((p) => p.topic === 'casa/home/mode' && p.payload === 'home')).toBe(true);
+      expect(published.some((p) => p.topic === 'casa/home/mode' && p.payload === 'home')).toBe(
+        true,
+      );
     } finally {
       await pub.stop();
     }
@@ -180,7 +209,12 @@ describe('MqttPublisher (US-174)', () => {
   it('NUNCA publica personas/PII, solo el modo del hogar', async () => {
     const { transport, published } = fakeTransport();
     const pub = makePublisher(app, transport);
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      discovery: true,
+    });
     try {
       await pub.publishOnce();
       const all = published.map((p) => `${p.topic} ${p.payload}`).join('\n');
@@ -200,7 +234,12 @@ describe('MqttPublisher (US-174)', () => {
       snapshot: async () => snapWith,
       transportFactory: () => transport,
     });
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      discovery: true,
+    });
     try {
       await pub.publishOnce();
       published.length = 0;
@@ -214,6 +253,125 @@ describe('MqttPublisher (US-174)', () => {
     } finally {
       await pub.stop();
     }
+  });
+
+  describe('la limpieza de discovery sobrevive a un reinicio', () => {
+    const CFG = {
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      discovery: true,
+    } as const;
+    const snapSin = (id: string): StateSnapshot => ({
+      ...SNAP,
+      iot: SNAP.iot.filter((d) => d.id !== id),
+    });
+    const mk = (transport: MqttTransport, snap: StateSnapshot) =>
+      new MqttPublisher({
+        prisma: app.prisma,
+        secretbox: createSecretbox(generateSecretboxKey()),
+        snapshot: async () => snap,
+        transportFactory: () => transport,
+      });
+    const removalOf = (published: Sent[]) =>
+      published.find((p) => p.topic.includes('/iot_plug-1/config') && p.payload === '');
+
+    it('un publicador NUEVO retira el retenido de un dispositivo que se fue mientras el agente estaba parado', async () => {
+      const a = fakeTransport();
+      const pubA = mk(a.transport, SNAP);
+      await pubA.setConfig(CFG);
+      await pubA.publishOnce();
+      expect(
+        a.published.some((p) => p.topic.includes('/iot_plug-1/config') && p.payload !== ''),
+      ).toBe(true);
+      await pubA.stop();
+
+      // «Reinicio»: instancia nueva, el enchufe ya no está en el hogar.
+      const b = fakeTransport();
+      const pubB = mk(b.transport, snapSin('plug-1'));
+      await pubB.start();
+      try {
+        await pubB.publishOnce();
+        const removal = removalOf(b.published);
+        expect(removal).toBeDefined();
+        expect(removal?.payload).toBe('');
+        expect(removal?.retain).toBe(true);
+      } finally {
+        await pubB.stop();
+      }
+    });
+
+    it('un JSON corrupto en el Setting no lanza y sigue publicando', async () => {
+      await app.prisma.setting.create({
+        data: { key: 'interop.mqtt.discoveryTopics', value: '{no es json' },
+      });
+      const t = fakeTransport();
+      const pub = mk(t.transport, SNAP);
+      await pub.setConfig(CFG);
+      try {
+        await pub.publishOnce();
+        expect(
+          t.published.some((p) => p.topic.includes('/iot_plug-1/config') && p.payload !== ''),
+        ).toBe(true);
+      } finally {
+        await pub.stop();
+      }
+    });
+
+    it('desactivar discovery tras un reinicio retira lo que constaba y deja el conjunto vacío', async () => {
+      const a = fakeTransport();
+      const pubA = mk(a.transport, SNAP);
+      await pubA.setConfig(CFG);
+      await pubA.publishOnce();
+      await pubA.stop();
+
+      const b = fakeTransport();
+      const pubB = mk(b.transport, SNAP);
+      await pubB.setConfig({ ...CFG, discovery: false });
+      try {
+        await pubB.publishOnce();
+        const removal = removalOf(b.published);
+        expect(removal?.payload).toBe('');
+        expect(removal?.retain).toBe(true);
+        const row = await app.prisma.setting.findUnique({
+          where: { key: 'interop.mqtt.discoveryTopics' },
+        });
+        expect(JSON.parse(row?.value ?? 'null')).toEqual([]);
+      } finally {
+        await pubB.stop();
+      }
+    });
+
+    it('un fallo del transporte al retirar deja el topic pendiente para el siguiente ciclo', async () => {
+      const a = fakeTransport();
+      const pubA = mk(a.transport, SNAP);
+      await pubA.setConfig(CFG);
+      await pubA.publishOnce();
+      await pubA.stop();
+
+      const b = fakeTransport();
+      const publishMock = b.transport.publish as ReturnType<typeof vi.fn>;
+      const ok = publishMock.getMockImplementation()!;
+      let failRemoval = true;
+      publishMock.mockImplementation(
+        async (topic: string, payload: string, opts?: { retain?: boolean }) => {
+          if (failRemoval && payload === '' && topic.includes('/iot_plug-1/config'))
+            throw new Error('broker caído');
+          return ok(topic, payload, opts);
+        },
+      );
+      const pubB = mk(b.transport, snapSin('plug-1'));
+      await pubB.start();
+      try {
+        await pubB.publishOnce(); // la retirada falla: no lanza
+        expect(removalOf(b.published)).toBeUndefined();
+        failRemoval = false;
+        await pubB.publishOnce(); // el topic seguía constando
+        expect(removalOf(b.published)?.payload).toBe('');
+      } finally {
+        await pubB.stop();
+      }
+    });
   });
 
   // --- Control entrante (US-213) ---
@@ -279,7 +437,12 @@ describe('MqttPublisher (US-174)', () => {
       onCommand: vi.fn(async () => undefined),
       onPause: vi.fn(async () => undefined),
     });
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', control: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      control: true,
+    });
     try {
       expect(handlers.has('casa/iot/+/set')).toBe(true);
       expect(handlers.has('casa/device/+/pause/set')).toBe(false);
@@ -318,11 +481,18 @@ describe('MqttPublisher (US-174)', () => {
   it('publica la cuña: bloqueo por dispositivo y señal por habitación', async () => {
     const { transport, published } = fakeTransport();
     const pub = makePublisher(app, transport);
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      discovery: true,
+    });
     try {
       await pub.publishOnce();
       const topics = published.map((p) => p.topic);
-      expect(topics).toContain('homeassistant/binary_sensor/krakenos/device_dev-abc_blocked/config');
+      expect(topics).toContain(
+        'homeassistant/binary_sensor/krakenos/device_dev-abc_blocked/config',
+      );
       expect(topics).toContain('homeassistant/sensor/krakenos/room_room-1_signal/config');
       expect(published.find((p) => p.topic === 'casa/device/dev-abc/blocked')?.payload).toBe('ON');
       expect(published.find((p) => p.topic === 'casa/room/room-1/signal')?.payload).toBe('-70');
@@ -336,7 +506,12 @@ describe('MqttPublisher (US-174)', () => {
   it('no reenvía una config que no ha cambiado, pero el estado sí va siempre', async () => {
     const { transport, published } = fakeTransport();
     const pub = makePublisher(app, transport);
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', discovery: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      discovery: true,
+    });
     try {
       await pub.publishOnce();
       const configsPrimera = published.filter((p) => p.topic.startsWith('homeassistant/')).length;
@@ -362,7 +537,12 @@ describe('MqttPublisher (US-174)', () => {
       transportFactory: () => transport,
       onCommand,
     });
-    await pub.setConfig({ enabled: true, url: 'mqtt://192.168.1.10:1883', topicPrefix: 'casa', control: true });
+    await pub.setConfig({
+      enabled: true,
+      url: 'mqtt://192.168.1.10:1883',
+      topicPrefix: 'casa',
+      control: true,
+    });
     try {
       expect(transport.subscribe).toHaveBeenCalled();
       const setHandler = handlers.get('casa/iot/+/set');
