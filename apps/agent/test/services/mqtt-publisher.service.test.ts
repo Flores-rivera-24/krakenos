@@ -350,7 +350,7 @@ describe('MqttPublisher (US-174)', () => {
       await pubA.stop();
 
       const b = fakeTransport();
-      const publishMock = b.transport.publish as ReturnType<typeof vi.fn>;
+      const publishMock = vi.mocked(b.transport.publish);
       const ok = publishMock.getMockImplementation()!;
       let failRemoval = true;
       publishMock.mockImplementation(

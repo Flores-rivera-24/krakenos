@@ -36,10 +36,11 @@ export default defineConfig({
     // arrancar el proceso; su lógica sí vive en módulos que se prueban. Los `thresholds` son un **suelo anti-regresión**
     // fijado ~1–2 pts por debajo del número real medido (ver docs/coverage-notes.md
     // para el número vigente y el plan de subida gradual).
+    // Vitest 4 retiró `coverage.all`: ahora lo decide `include` (mide TODO lo que
+    // casa, importado o no).
     coverage: {
       provider: 'v8',
       reporter: ['text-summary'],
-      all: true,
       include: ['src/**/*.ts'],
       exclude: [
         ...coverageConfigDefaults.exclude,
@@ -47,10 +48,14 @@ export default defineConfig({
         'src/update-runner.ts',
         'src/reset-admin.ts',
       ],
+      // Suelos recalibrados el 2026-10-13 con Vitest 4.1.11: medido sentencias 89,18 · ramas 81,29 · funciones 86,78 · líneas 91,16.
+      // Motivo: Vitest >= 3.2 remapea V8 por AST (como Istanbul) y cambia qué cuenta
+      // como sentencia/rama/función (p. ej. cada catálogo i18n pasa de miles de
+      // «sentencias» a 1); mismos tests y mismo código. Suelo = medido − 2, hacia abajo.
       thresholds: {
-        statements: 89,
-        branches: 83,
-        functions: 90,
+        statements: 87,
+        branches: 79,
+        functions: 84,
         lines: 89,
       },
     },

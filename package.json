@@ -37,14 +37,30 @@
     "@axe-core/playwright": "4",
     "@eslint/js": "^9.9.0",
     "@playwright/test": "1.61.1",
-    "@stryker-mutator/core": "9",
-    "@stryker-mutator/vitest-runner": "9",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@types/node": "24.19.0",
     "autocannon": "8",
     "eslint": "^9.9.0",
     "knip": "5",
     "prettier": "^3.3.0",
     "typescript": "^5.5.0",
-    "typescript-eslint": "^8.0.0"
+    "typescript-eslint": "^8.0.0",
+    "vite": "^8.3.1",
+    "vitest": "^4.1.11"
+  },
+  "pnpm": {
+    "packageExtensions": {
+      "@testing-library/jest-dom": {
+        "peerDependencies": {
+          "vitest": "*"
+        },
+        "peerDependenciesMeta": {
+          "vitest": {
+            "optional": true
+          }
+        }
+      }
+    }
   }
 }

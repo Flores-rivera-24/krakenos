@@ -15,7 +15,7 @@ export interface BundleChunk {
 }
 
 export interface BundleBudget {
-  /** Tope de la SUMA de los chunks de entrada (`index-*`). */
+  /** Tope de la carga inicial: entrada `index-*` + chunks `modulepreload` de `index.html`. */
   maxEntryKb: number;
   /** Tope de CADA chunk por separado, entrada incluida. */
   maxChunkKb: number;
@@ -24,4 +24,11 @@ export interface BundleBudget {
 }
 
 /** Devuelve una violación por cada tope superado; vacío si todo cabe. */
-export function checkBudget(chunks: BundleChunk[], budget: BundleBudget): string[];
+export function checkBudget(
+  chunks: BundleChunk[],
+  budget: BundleBudget,
+  initialNames?: string[],
+): string[];
+
+/** Chunks JS que `index.html` carga al abrir: módulos de entrada y `modulepreload`. */
+export function initialChunkNames(html: string): string[];
