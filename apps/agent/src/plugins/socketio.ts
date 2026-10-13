@@ -135,6 +135,17 @@ export const socketioPlugin = fp(async (app: FastifyInstance) => {
 
   app.decorate('io', io);
 
+  // ⚠️ El cierre de los sockets va en `preClose`, NO en `onClose`. Los hooks
+  // `onClose` corren en orden inverso al de registro y el de Fastify (el que hace
+  // `server.close()` y ESPERA a que no quede ninguna conexión) se registra el
+  // último, así que corre el primero: con un cliente Socket.io vivo —una conexión
+  // `upgrade`, que `closeIdleConnections` no toca— esa espera no termina nunca y
+  // nuestro `onClose` ni se ejecuta. `preClose` corre antes de cerrar el servidor.
+  app.addHook('preClose', async () => {
+    io.disconnectSockets(true);
+    io.engine.close();
+  });
+
   app.addHook('onClose', async (instance) => {
     clearInterval(recheck);
     await instance.io.close();

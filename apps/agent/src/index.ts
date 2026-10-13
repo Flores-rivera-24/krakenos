@@ -3,6 +3,7 @@ import { existsSync, renameSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { env } from './config/env.js';
 import { buildServer } from './server.js';
+import { createShutdown } from './system/shutdown.js';
 import { applyStagedRestore, resolveDbFile } from './system/restore.js';
 
 /**
@@ -50,11 +51,7 @@ async function main(): Promise<void> {
   applyPendingRestore();
   const app = await buildServer();
 
-  const shutdown = async (signal: string): Promise<void> => {
-    app.log.info(`Recibido ${signal}, cerrando…`);
-    await app.close();
-    process.exit(0);
-  };
+  const shutdown = createShutdown({ app, exit: (code) => process.exit(code) });
   process.on('SIGINT', () => void shutdown('SIGINT'));
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
@@ -72,10 +69,7 @@ async function main(): Promise<void> {
   });
   process.on('uncaughtException', (err) => {
     app.log.fatal({ err }, 'uncaughtException — cerrando para reiniciar limpio');
-    void app
-      .close()
-      .catch(() => undefined)
-      .finally(() => process.exit(1));
+    void shutdown('uncaughtException', 1);
   });
 
   try {
