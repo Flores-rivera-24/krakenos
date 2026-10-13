@@ -109,6 +109,14 @@ miente en la dirección contraria.
 
 Umbral de ruptura: **75 %**.
 
+**Última medición: 94,40 %** (219 mutantes muertos, 13 supervivientes, 0 sin cobertura;
+octubre de 2026). Los 13 supervivientes están revisados uno a uno y son **equivalentes**:
+guardas redundantes con otra condición en `life-safety.ts` y `state-machine.ts`, el
+`JSON.parse` de `api-token.ts` que cae al mismo `catch`, y en `attempt-lockout.ts` la
+normalización de mayúsculas, el redondeo con `ms = 0` y la purga del mapa (que no se ve
+desde fuera mientras el bloqueo máximo no supere la ventana de reinicio). Si la cifra
+baja, el superviviente nuevo es un hueco hasta que se demuestre lo contrario.
+
 Al leer el informe, cuidado con los **mutantes equivalentes**: cambios que no alteran
 el comportamiento y que por tanto ningún test puede matar. En el lockout, por
 ejemplo, `.toLowerCase()` → `.toUpperCase()` sobrevive porque ambas normalizan igual
@@ -177,6 +185,24 @@ expect(rutas.length).toBeGreaterThan(60);
 Sin él, si la recolección de rutas se rompiera en una actualización de Fastify, la
 lista saldría vacía y el barrido pasaría **sin haber comprobado nada**: «no encontré
 rutas» no puede leerse como «está todo bien».
+
+### Código muerto — knip no es un gate
+
+`pnpm qa:deadcode` sale con código 1 mientras quede algún hallazgo, y algunos se quedan
+a propósito, así que no corre en CI. Lo aceptado hoy:
+
+- `apps/web/scripts/bundle-budget.d.mts`: falso positivo. Es la declaración de tipos de
+  `bundle-budget.mjs` que TypeScript resuelve al importar el `.mjs`, y knip no sigue esa
+  resolución.
+- `DP_MODE_NEW`/`DP_MODE_OLD` (Tuya): constantes de un modo pendiente de implementar.
+- Funciones del cliente cuyo endpoint existe pero aún no tiene pantalla
+  (`listMotionEvents`, `getRecordingConfig`, `updateRecordingConfig`,
+  `updateEnergyAlert`, `captureScene`): se conservan hasta decidir si se les hace UI o
+  se retira el endpoint.
+
+Cualquier hallazgo que no esté en esta lista es nuevo y se revisa: un export sin
+consumidor puede ser código muerto, pero también una función que alguien olvidó
+cablear (así apareció que ninguna escritura invalidaba la caché compartida de la web).
 
 ---
 
