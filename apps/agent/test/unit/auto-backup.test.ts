@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { PrismaClient } from '@prisma/client';
@@ -46,6 +53,19 @@ function fakeBackupService(onCreate?: () => void): BackupService {
   } as unknown as BackupService;
 }
 
+/**
+ * `make()` fija `now`, pero `stale` se mide contra el MTIME REAL del fichero: es una
+ * segunda fuente de tiempo. Quien dependa de la edad de una copia debe fijar el mtime
+ * con `plantarCopia`, referido al `now` inyectado y no al reloj del sistema.
+ */
+function plantarCopia(backupDir: string, name: string, mtime: Date): void {
+  mkdirSync(backupDir, { recursive: true });
+  const file = join(backupDir, name);
+  writeFileSync(file, 'x');
+  utimesSync(file, mtime, mtime);
+}
+
+// `now` es fijo, pero `stale` mide contra el mtime REAL de los ficheros: usa `plantarCopia`.
 function make(opts: { rows?: Record<string, string>; onCreate?: () => void; now?: Date } = {}) {
   const rows = opts.rows ?? {};
   const backupDir = join(mkdtempSync(join(tmpdir(), 'krakenos-auto-')), 'backups');
@@ -205,6 +225,28 @@ describe('AutoBackupService', () => {
     const aged = await service.getStatus();
     expect(aged.count).toBe(1);
     expect(aged.stale).toBe(true);
+  });
+
+  it('`stale` con el reloj inyectado: la edad se fija con el mtime relativo a `now`', () => {
+    // Sin depender del reloj real: `now` (fijo) menos la edad de la copia.
+    const now = new Date('2026-07-29T03:30:00.000Z');
+    const HORA = 60 * 60 * 1000;
+    const vieja = make({ rows: { autoBackupFrequency: 'daily' }, now });
+    plantarCopia(
+      vieja.backupDir,
+      'krakenos-backup-2026-07-26T03-00-00-000Z.kbk',
+      new Date(now.getTime() - 49 * HORA),
+    );
+    const fresca = make({ rows: { autoBackupFrequency: 'daily' }, now });
+    plantarCopia(
+      fresca.backupDir,
+      'krakenos-backup-2026-07-29T03-00-00-000Z.kbk',
+      new Date(now.getTime() - 1 * HORA),
+    );
+    return Promise.all([vieja.service.getStatus(), fresca.service.getStatus()]).then(([v, f]) => {
+      expect(v.stale).toBe(true);
+      expect(f.stale).toBe(false);
+    });
   });
 
   it('en semanal el margen es más ancho que en diaria', async () => {
