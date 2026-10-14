@@ -87,6 +87,20 @@ function clasesKr(codigo: string): string[] {
   return encontradas;
 }
 
+/**
+ * Variables `--kr-*` que declara `index.css` (en `:root`, `.dark`, `html:not(.dark)`
+ * o `@theme`): cualquier `--kr-x:` del CSS es una definición, sin lista a mano.
+ */
+function variablesDefinidas(css: string): Set<string> {
+  const codigo = sinComentarios(css);
+  return new Set([...codigo.matchAll(/(--kr-[a-z0-9-]+)\s*:/g)].map((m) => m[1] ?? ''));
+}
+
+/** Las `var(--kr-*)` de un fuente; tolera `var(--kr-x, fallback)` y saltos de línea. */
+function referenciasKr(codigo: string): string[] {
+  return [...codigo.matchAll(/var\(\s*(--kr-[a-z0-9-]+)/g)].map((m) => m[1] ?? '');
+}
+
 const CSS = readFileSync(join(process.cwd(), 'src', 'index.css'), 'utf8');
 const DEFINIDAS = clasesDefinidas(CSS);
 
@@ -138,5 +152,36 @@ describe('clases de token kr-*', () => {
     for (const clase of ['bg-kr-bg', 'text-kr-fg', 'text-kr-fg-muted']) {
       expect(DEFINIDAS.has(clase), clase).toBe(false);
     }
+  });
+
+  it('cada var(--kr-*) del fuente está definida en index.css', () => {
+    const definidas = variablesDefinidas(CSS);
+    const usos: { nombre: string; fichero: string }[] = [];
+    for (const f of fuentes()) {
+      for (const nombre of referenciasKr(f.codigo)) usos.push({ nombre, fichero: f.nombre });
+    }
+
+    // Guard de tamaño. Medido el 2026-10-13: ~140 referencias y ~45 variables.
+    expect(usos.length).toBeGreaterThan(50);
+    expect(definidas.size).toBeGreaterThan(10);
+
+    const huerfanas = usos
+      .filter((u) => !definidas.has(u.nombre))
+      .map((u) => `${u.fichero}: ${u.nombre}`);
+    expect([...new Set(huerfanas)].sort()).toEqual([]);
+  });
+
+  it('control positivo de las variables: una inventada se marca, con fallback y partida en líneas', () => {
+    const definidas = variablesDefinidas(CSS);
+    const muestra = [
+      '<circle stroke="var(--kr-bg)" fill="var(--kr-accent)" />',
+      "const s = { backgroundColor: 'var(--kr-fantasma, #000)' };",
+      'const t = `calc(1px + var(',
+      '  --kr-nada))`;',
+    ].join('\n');
+    const huerfanas = referenciasKr(muestra).filter((n) => !definidas.has(n));
+    expect(huerfanas).toEqual(['--kr-bg', '--kr-fantasma', '--kr-nada']);
+    expect(definidas.has('--kr-bg-base')).toBe(true);
+    expect(definidas.has('--kr-bg')).toBe(false);
   });
 });
