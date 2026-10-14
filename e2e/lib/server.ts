@@ -177,7 +177,7 @@ export async function startServer(): Promise<ChildProcess> {
 }
 
 /** ¿Hay algo escuchando en el puerto? Se prueba IPv4 y IPv6 (`localhost` resuelve a ambas). */
-function puertoOcupado(puerto: number): Promise<boolean> {
+export function puertoOcupado(puerto: number): Promise<boolean> {
   const probar = (host: string) =>
     new Promise<boolean>((res) => {
       const s = connect({ port: puerto, host });
@@ -191,7 +191,7 @@ function puertoOcupado(puerto: number): Promise<boolean> {
 }
 
 /** PID(s) que escuchan en el puerto, si `lsof` está disponible (mejor esfuerzo). */
-function quienTieneElPuerto(puerto: number): string {
+export function quienTieneElPuerto(puerto: number): string {
   try {
     const out = execFileSync('lsof', ['-t', `-iTCP:${puerto}`, '-sTCP:LISTEN'], {
       encoding: 'utf8',
