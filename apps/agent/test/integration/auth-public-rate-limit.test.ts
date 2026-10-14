@@ -99,7 +99,7 @@ describe('rate-limit y anti-replay en endpoints públicos de auth (US-88)', () =
     const wrong = await app.inject({
       method: 'POST',
       url: '/api/webauthn/backup-codes/verify',
-      payload: { email: 'rpc@krakenos.test', mfaToken: token, code: 'no-existe' },
+      payload: { email: 'rpc@krakenos.test', mfaToken: token, code: 'aaaaa-bbbbb-ccccc-ddddd' },
     });
     expect(wrong.statusCode).toBe(401);
     expect(wrong.json().code).toBe('WEBAUTHN_ERROR');
@@ -149,7 +149,7 @@ describe('rate-limit y anti-replay en endpoints públicos de auth (US-88)', () =
         payload: {
           email: 'bf@krakenos.test',
           mfaToken: signMfaPending(app, user.id),
-          code: 'xxxx-xxxx-xxxx',
+          code: 'aaaa-bbbb-cccc',
         },
       });
 
