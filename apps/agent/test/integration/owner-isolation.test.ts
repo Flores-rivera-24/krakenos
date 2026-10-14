@@ -1,12 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import {
-  authHeader,
-  buildTestApp,
-  resetDb,
-  seedUser,
-  signAccess,
-} from '../helpers/app.js';
+import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 /**
  * Aislamiento por dueño, de forma genérica.
@@ -157,7 +151,12 @@ const RECURSOS: Recurso[] = [
       return idsDe(res);
     },
     intentos: (id) => [
-      { method: 'PATCH', url: `/api/webauthn/credentials/${id}`, payload: { name: 'robada' }, ok: [404] },
+      {
+        method: 'PATCH',
+        url: `/api/webauthn/credentials/${id}`,
+        payload: { name: 'robada' },
+        ok: [404],
+      },
       { method: 'DELETE', url: `/api/webauthn/credentials/${id}`, ok: [404] },
     ],
   },

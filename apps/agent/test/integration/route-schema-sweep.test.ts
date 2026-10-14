@@ -22,8 +22,14 @@ import { buildTestApp, type CollectedRoute } from '../helpers/app.js';
 const SIN_BODY = new Map<string, string>([
   ['POST /api/auth/refresh', 'sin cuerpo: el refresh token viaja en cookie httpOnly'],
   ['POST /api/auth/logout', 'sin cuerpo: lee la cookie de sesion'],
-  ['POST /api/webauthn/register/options', 'accion sin payload: opciones para el usuario autenticado'],
-  ['POST /api/webauthn/backup-codes', 'accion sin payload: regenera los codigos del usuario autenticado'],
+  [
+    'POST /api/webauthn/register/options',
+    'accion sin payload: opciones para el usuario autenticado',
+  ],
+  [
+    'POST /api/webauthn/backup-codes',
+    'accion sin payload: regenera los codigos del usuario autenticado',
+  ],
   ['POST /api/inventory/rescan', 'accion sin payload'],
   ['POST /api/inventory/devices/:id/block', 'accion sin payload: el id va en la ruta'],
   ['POST /api/people/:id/resume', 'accion sin payload: el id va en la ruta'],
@@ -35,9 +41,15 @@ const SIN_BODY = new Map<string, string>([
   ['POST /api/system/connectivity-test', 'accion sin payload'],
   ['POST /api/system/regen-keys', 'accion sin payload'],
   ['POST /api/system/backup/auto/run', 'accion sin payload'],
-  ['POST /api/system/backup/auto/passphrase/reveal', 'accion sin payload (solo admin activo, auditada)'],
+  [
+    'POST /api/system/backup/auto/passphrase/reveal',
+    'accion sin payload (solo admin activo, auditada)',
+  ],
   ['POST /api/system/restore/upload', 'subida binaria (stream), no JSON'],
-  ['POST /api/cameras/:id/stream', 'accion sin payload: emite el token de stream de la camara del id'],
+  [
+    'POST /api/cameras/:id/stream',
+    'accion sin payload: emite el token de stream de la camara del id',
+  ],
 ]);
 
 /** Rutas sin `schema.response`, con su motivo. */
@@ -57,7 +69,10 @@ const SIN_RESPONSE = new Map<string, string>([
   ['DELETE /api/coverage/floorplans/:id', 'pendiente: declarar el schema response'],
   ['DELETE /api/coverage/scans/:scanId', 'pendiente: declarar el schema response'],
   ['POST /api/system/support-bundle', 'pendiente: declarar el schema response (descarga JSON)'],
-  ['POST /api/system/backup', 'pendiente: declarar el schema response (descarga de archivo cifrado)'],
+  [
+    'POST /api/system/backup',
+    'pendiente: declarar el schema response (descarga de archivo cifrado)',
+  ],
   ['POST /api/vlans', 'pendiente: declarar el schema response'],
   ['PATCH /api/vlans/:id', 'pendiente: declarar el schema response'],
 ]);
