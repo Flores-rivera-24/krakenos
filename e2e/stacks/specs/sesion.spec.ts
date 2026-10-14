@@ -49,14 +49,17 @@ test('cerrar sesión limpia la cookie y bloquea la vuelta atrás', async ({
   await login(page);
 
   await page.getByRole('button', { name: /Cerrar sesión|Salir/ }).click();
-  await page.waitForURL('**/login');
+  // Sin sesión, `RequireAuth` manda la raíz a la portada (`/bienvenida`) y el resto
+  // de rutas al login: el logout te deja en `/`, así que aterriza en la portada.
+  await page.waitForURL('**/bienvenida');
 
   const refresh = (await context.cookies()).find((c) => c.name === 'krakenos_rt');
   expect(refresh?.value ?? '', `la cookie de refresh sobrevivió al logout en ${stack}`).toBe('');
 
-  // Volver a una ruta protegida tras cerrar sesión debe llevar al login.
+  // La sesión murió de verdad: una ruta protegida lleva al login, no al dashboard.
   await page.goto('/settings');
   await expect(page).toHaveURL(/\/login/);
+  await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveCount(0);
 });
 
 test('una contraseña incorrecta da un error legible, no una pantalla rota', async ({
