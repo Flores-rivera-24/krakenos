@@ -36,15 +36,15 @@ const GUIA_SIN_ESQUEMA = new Map<string, string>();
 const CLAVE_SIN_ESQUEMA = new Map<string, string>([
   ...['name', 'ip', 'deviceId', 'localKey', 'version'].map((k): [string, string] => [
     `tuya: ${k}`,
-    'por diseno: los focos Tuya se registran uno a uno en su gestor propio (/api/iot/tuya); el esquema no tiene campos',
+    'por diseño: los focos Tuya se registran uno a uno en su gestor propio (/api/iot/tuya); el esquema no tiene campos',
   ]),
   ...['name', 'rtspUrl', 'room', 'model'].map((k): [string, string] => [
     `rtsp: ${k}`,
-    'por diseno: las camaras se dan de alta por el CRUD /api/cameras, no por la config del dominio',
+    'por diseño: las cámaras se dan de alta por el CRUD /api/cameras, no por la config del dominio',
   ]),
   [
     'wireguard: name',
-    'por diseno: el nombre es del peer (alta de peer), no de la config de la VPN',
+    'por diseño: el nombre es del peer (alta de peer), no de la config de la VPN',
   ],
 ]);
 
