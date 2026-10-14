@@ -1,26 +1,29 @@
 // Presupuesto de rendimiento móvil (US-193): cotas de tamaño gzip sobre el
 // build de la web. Corre en CI tras `pnpm build` y FALLA si se excede — una
 // dependencia pesada nueva o un chunk sin code-splitting no entra en verde.
-// La lógica es pura (`checkBudget`) y se testea con regresiones simuladas.
+// La lógica es pura (`checkBudget`, `routeWeights`, `checkRoutes`) y se testea con
+// regresiones simuladas.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
 /** @typedef {{ name: string, gzipKb: number }} ChunkInfo */
-/** @typedef {{ maxEntryKb: number, maxChunkKb: number, maxTotalKb: number }} Budget */
+/** @typedef {{ maxInitialKb: number, maxRouteKb: number, maxChunkKb: number }} Budget */
+/** @typedef {{ file: string, imports?: string[], dynamicImports?: string[] }} ManifestEntry */
+/** @typedef {Record<string, ManifestEntry>} Manifest */
+/** @typedef {{ route: string, ownKb: number, totalKb: number, chunks: string[] }} RouteWeight */
 
 /**
  * Evalúa los chunks contra el presupuesto. Puro: devuelve la lista de
  * violaciones (vacía = dentro de presupuesto).
- * - `maxEntryKb`: la CARGA INICIAL real (lo que manda en el TTI móvil). Si se
- *   pasa `initialNames` (los chunks que `index.html` carga: el módulo de entrada
- *   más los `modulepreload`), es la suma de esos. Sin él, la suma de los
- *   `index-*` (comportamiento anterior). Con rolldown (vite 8) la entrada `index-*`
- *   es pequeña y el grueso viaja en chunks precargados, así que medir solo
- *   `index-*` dejaba el gate ciego.
+ * - `maxInitialKb`: la CARGA INICIAL real (lo que manda en el TTI móvil): la suma
+ *   de los chunks que `index.html` carga (`initialNames`: el módulo de entrada más
+ *   los `modulepreload`). Con rolldown la entrada `index-*` es pequeña y el grueso
+ *   viaja en chunks precargados, así que medir solo `index-*` dejaba el gate ciego.
+ *   Sin `initialNames` no se puede medir y falla cerrado.
  * - `maxChunkKb`: ningún chunk individual (lazy incluido) puede superarlo.
- * - `maxTotalKb`: suma de todo el JS del build.
+ * El peso por ruta lo evalúa `checkRoutes`; el total emitido ya no es un gate.
  * @param {ChunkInfo[]} chunks
  * @param {Budget} budget
  * @param {string[]} [initialNames] nombres de los chunks de la carga inicial
@@ -28,27 +31,24 @@ import { gzipSync } from 'node:zlib';
  */
 export function checkBudget(chunks, budget, initialNames) {
   const violations = [];
-  let entryChunks;
-  if (initialNames) {
-    const byName = new Map(chunks.map((c) => [c.name, c]));
-    const missing = initialNames.filter((n) => !byName.has(n));
-    // Falla cerrado: un chunk que index.html carga y no existe en dist/ no se puede medir.
-    if (missing.length > 0) {
-      violations.push(`index.html carga chunks que no están en dist/assets: ${missing.join(', ')}`);
-    }
-    entryChunks = initialNames.map((n) => byName.get(n)).filter(Boolean);
-    if (!entryChunks.some((c) => c.name.startsWith('index-'))) {
-      violations.push('index.html no carga ningún chunk de entrada index-*: no se puede medir');
-    }
-  } else {
-    entryChunks = chunks.filter((c) => c.name.startsWith('index-'));
+  if (!initialNames) {
+    return ['No se conoce la carga inicial (falta index.html): no se puede medir'];
   }
-  const entryKb = entryChunks.reduce((sum, c) => sum + c.gzipKb, 0);
-  const totalKb = chunks.reduce((sum, c) => sum + c.gzipKb, 0);
+  const byName = new Map(chunks.map((c) => [c.name, c]));
+  const missing = initialNames.filter((n) => !byName.has(n));
+  // Falla cerrado: un chunk que index.html carga y no existe en dist/ no se puede medir.
+  if (missing.length > 0) {
+    violations.push(`index.html carga chunks que no están en dist/assets: ${missing.join(', ')}`);
+  }
+  const entryChunks = initialNames.map((n) => byName.get(n)).filter(Boolean);
+  if (!entryChunks.some((c) => c.name.startsWith('index-'))) {
+    violations.push('index.html no carga ningún chunk de entrada index-*: no se puede medir');
+  }
+  const initialKb = entryChunks.reduce((sum, c) => sum + c.gzipKb, 0);
 
-  if (entryKb > budget.maxEntryKb) {
+  if (initialKb > budget.maxInitialKb) {
     violations.push(
-      `La carga inicial pesa ${entryKb.toFixed(1)} kB gzip > presupuesto ${budget.maxEntryKb} kB (suma ${entryChunks.length} chunks: ${entryChunks.map((c) => `${c.name} ${c.gzipKb.toFixed(1)}`).join(', ')})`,
+      `La carga inicial pesa ${initialKb.toFixed(1)} kB gzip > presupuesto ${budget.maxInitialKb} kB (suma ${entryChunks.length} chunks: ${entryChunks.map((c) => `${c.name} ${c.gzipKb.toFixed(1)}`).join(', ')})`,
     );
   }
   for (const chunk of chunks) {
@@ -58,10 +58,111 @@ export function checkBudget(chunks, budget, initialNames) {
       );
     }
   }
-  if (totalKb > budget.maxTotalKb) {
+  return violations;
+}
+
+/**
+ * Páginas de la app según `App.tsx`: cada `lazy(() => import('@/pages/X'))`. La
+ * convención es la propia declaración de rutas, así que una página nueva entra en
+ * el gate sin tocar una lista a mano. Puro.
+ * @param {string} appSource
+ * @returns {string[]} nombres de página (`DashboardPage`, …) sin repetir
+ */
+export function pageNames(appSource) {
+  const names = [];
+  for (const m of appSource.matchAll(/import\(\s*['"]@\/pages\/(\w+)['"]\s*\)/g)) {
+    if (!names.includes(m[1])) names.push(m[1]);
+  }
+  return names;
+}
+
+const baseName = (file) => file.replace(/^.*\//, '');
+
+/**
+ * Chunks que trae una entrada del manifest por imports ESTÁTICOS (transitivos),
+ * entrada incluida. Los `dynamicImports` no entran: son carga perezosa que otra
+ * navegación decide. Devuelve nombres de fichero. Puro.
+ * @param {Manifest} manifest
+ * @param {string} key
+ * @returns {string[]}
+ */
+export function staticClosure(manifest, key) {
+  const seen = new Set();
+  const files = [];
+  const visit = (k) => {
+    if (seen.has(k)) return;
+    seen.add(k);
+    const e = manifest[k];
+    if (!e) throw new Error(`El manifest no tiene la entrada ${k}`);
+    files.push(baseName(e.file));
+    for (const i of e.imports ?? []) visit(i);
+  };
+  visit(key);
+  return files;
+}
+
+/**
+ * Peso por ruta: la carga inicial más lo que trae la página al navegar a ella
+ * (su chunk y sus imports estáticos que NO estén ya en la inicial, sin contar
+ * nada dos veces). `extras` son entradas del manifest que se cargan en runtime
+ * tras iniciar sesión (p. ej. el cliente de socket.io, que la fachada de
+ * `lib/socket.ts` importa con `import()`): cuentan en toda ruta que no sea
+ * `publicPages`. Falla cerrado (lanza) si una ruta o un extra no está en el
+ * manifest o un chunk no tiene tamaño. Puro.
+ * @param {{ manifest: Manifest, chunks: ChunkInfo[], initialNames: string[], pages: string[], publicPages?: string[], extras?: string[] }} input
+ * @returns {RouteWeight[]}
+ */
+export function routeWeights({
+  manifest,
+  chunks,
+  initialNames,
+  pages,
+  publicPages = [],
+  extras = [],
+}) {
+  const size = new Map(chunks.map((c) => [c.name, c.gzipKb]));
+  const kb = (n) => {
+    const v = size.get(n);
+    if (v === undefined) throw new Error(`El chunk ${n} del manifest no está en dist/assets`);
+    return v;
+  };
+  const initial = new Set(initialNames);
+  const initialKb = [...initial].reduce((s, n) => s + kb(n), 0);
+  return pages.map((page) => {
+    const key = `src/pages/${page}.tsx`;
+    if (!manifest[key]) throw new Error(`La ruta ${page} no está en el manifest (${key})`);
+    const keys = [key, ...(publicPages.includes(page) ? [] : extras)];
+    const own = new Set();
+    for (const k of keys) {
+      for (const n of staticClosure(manifest, k)) if (!initial.has(n)) own.add(n);
+    }
+    const ownKb = [...own].reduce((s, n) => s + kb(n), 0);
+    return { route: page, ownKb, totalKb: initialKb + ownKb, chunks: [...own] };
+  });
+}
+
+/**
+ * Evalúa las rutas contra `maxRouteKb` y exige un mínimo de rutas medidas (si la
+ * recolección se rompe, la lista saldría vacía y el gate pasaría en verde).
+ * `expectedPages` es lo que `App.tsx` declara: se mide TODO lo declarado.
+ * @param {RouteWeight[]} weights
+ * @param {{ maxRouteKb: number }} budget
+ * @param {{ expectedPages: number, minPages?: number }} opts
+ * @returns {string[]}
+ */
+export function checkRoutes(weights, budget, { expectedPages, minPages = 15 }) {
+  const violations = [];
+  if (weights.length < minPages || weights.length < expectedPages) {
     violations.push(
-      `El JS total pesa ${totalKb.toFixed(1)} kB gzip > presupuesto ${budget.maxTotalKb} kB`,
+      `Se midieron ${weights.length} rutas y se esperaban al menos ${Math.max(minPages, expectedPages)}: la recolección de rutas está rota`,
     );
+  }
+  for (const w of weights) {
+    if (w.totalKb > budget.maxRouteKb) {
+      violations.push(
+        `La ruta ${w.route} pesa ${w.totalKb.toFixed(1)} kB gzip (inicial + ${w.ownKb.toFixed(1)}) > presupuesto ${budget.maxRouteKb} kB (${w.chunks.join(', ')})`,
+      );
+    }
   }
   return violations;
 }
@@ -116,10 +217,26 @@ if (isMain) {
     process.exit(1);
   }
 
+  const manifestPath = join(here, '../dist/.vite/manifest.json');
+  let manifest;
+  try {
+    manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  } catch {
+    console.error('No se puede leer dist/.vite/manifest.json — ¿falta build.manifest en vite?');
+    process.exit(1);
+  }
+  let appSource;
+  try {
+    appSource = readFileSync(join(here, '../src/App.tsx'), 'utf8');
+  } catch {
+    console.error('No se puede leer src/App.tsx — sin él no se sabe qué rutas medir.');
+    process.exit(1);
+  }
+
   const top = [...chunks].sort((a, b) => b.gzipKb - a.gzipKb).slice(0, 5);
   const totalKb = chunks.reduce((s, c) => s + c.gzipKb, 0);
   console.log(
-    `Presupuesto de bundle (gzip) — ${chunks.length} chunks, total ${totalKb.toFixed(1)} kB`,
+    `Presupuesto de bundle (gzip) — ${chunks.length} chunks, total emitido ${totalKb.toFixed(1)} kB (informativo)`,
   );
   for (const c of top) console.log(`  ${c.gzipKb.toFixed(1).padStart(7)} kB  ${c.name}`);
 
@@ -129,7 +246,28 @@ if (isMain) {
     `Carga inicial: ${initialKb.toFixed(1)} kB (suma ${initial.length} chunks: ${initial.map((c) => `${c.name} ${c.gzipKb.toFixed(1)}`).join(', ')})`,
   );
 
-  const violations = checkBudget(chunks, budget, initialNames);
+  const pages = pageNames(appSource);
+  let weights = [];
+  const routeViolations = [];
+  try {
+    weights = routeWeights({
+      manifest,
+      chunks,
+      initialNames,
+      pages,
+      publicPages: budget.publicPages,
+      extras: budget.runtimeAfterLogin,
+    });
+  } catch (e) {
+    routeViolations.push(e instanceof Error ? e.message : String(e));
+  }
+  console.log('Peso por ruta (inicial + lo que trae la página):');
+  for (const w of [...weights].sort((a, b) => b.totalKb - a.totalKb)) {
+    console.log(`  ${w.totalKb.toFixed(1).padStart(7)} kB  ${w.route} (+${w.ownKb.toFixed(1)})`);
+  }
+  routeViolations.push(...checkRoutes(weights, budget, { expectedPages: pages.length }));
+
+  const violations = [...checkBudget(chunks, budget, initialNames), ...routeViolations];
   if (violations.length > 0) {
     console.error('\n✗ Presupuesto excedido:');
     for (const v of violations) console.error(`  - ${v}`);

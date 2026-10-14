@@ -11,33 +11,33 @@ Un umbral se pone donde duele si hay regresión, no donde siempre pasa.
 
 ## Mapa de disciplinas
 
-| Disciplina | Herramienta | Dónde vive | ¿Bloquea CI? |
-| --- | --- | --- | --- |
-| Unitarias | Vitest | `apps/*/test/unit` | Sí |
-| Integración (API + DB) | Vitest + Fastify `inject` | `apps/agent/test/integration` | Sí |
-| Tiempo real | Vitest + socket.io-client | `apps/agent/test/realtime` | Sí |
-| Componentes y stores | Vitest + Testing Library | `apps/web/test` | Sí |
-| Sistema / E2E | Playwright | `e2e/tests`, `e2e/tests-en` | Sí |
-| E2E de montaje (dev/prod) | Playwright | `e2e/stacks` | No (bajo demanda) |
-| Aceptación | E2E escritos por historia | `e2e/tests` | Sí |
-| Regresión | Toda la suite + *gates* estructurales | — | Sí |
-| Estructurales (caja blanca) | Barridos sobre la tabla de rutas real | `apps/agent/test/integration` | Sí |
-| Mutación | Stryker | `apps/agent/stryker.config.json` | Sí |
-| Rendimiento (carga) | autocannon | `scripts/qa/perf-api.mjs` | No (bajo demanda) |
-| Rendimiento (tamaño) | Presupuesto de bundle (carga inicial = `index-*` + `modulepreload` de `dist/index.html`; falla cerrado sin él) | `apps/web/scripts/bundle-budget.mjs` | Sí |
-| Seguridad — secretos | gitleaks | CI | Sí |
-| Seguridad — SAST | semgrep | CI | Sí |
-| Seguridad — dependencias | OSV | `scripts/audit-osv.mjs` | Sí (críticas de producción) |
-| Seguridad — shell que corre como root | shellcheck | CI | Sí |
-| Seguridad — autorización | Barridos de authz | `apps/agent/test/integration` | Sí |
-| Usabilidad / accesibilidad (navegador) | axe-core + Playwright | `e2e/tests/a11y.spec.ts` | Sí |
-| Accesibilidad (componentes) | jest-axe | `apps/web/test/a11y` | Sí |
-| Accesibilidad (paleta) | Medidor de contraste | `apps/web/scripts/check-contrast.mjs` | Sí |
-| Compatibilidad (motor) | Playwright Chromium · Firefox opt-in | `e2e/` | Chromium sí |
-| Compatibilidad (idioma) | Proyecto `chromium-en` | `e2e/tests-en` | Sí |
-| Portabilidad (instalación) | Smoke del instalador en Debian limpio | CI | Sí |
-| Mantenibilidad | knip | `knip.json` | No (bajo demanda) |
-| Fiabilidad | Reintentos, *timeouts*, cuarentena explícita | `e2e/playwright.config.ts` | Sí |
+| Disciplina                             | Herramienta                                                                                                                                                                                                                                                                  | Dónde vive                            | ¿Bloquea CI?                |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------------- |
+| Unitarias                              | Vitest                                                                                                                                                                                                                                                                       | `apps/*/test/unit`                    | Sí                          |
+| Integración (API + DB)                 | Vitest + Fastify `inject`                                                                                                                                                                                                                                                    | `apps/agent/test/integration`         | Sí                          |
+| Tiempo real                            | Vitest + socket.io-client                                                                                                                                                                                                                                                    | `apps/agent/test/realtime`            | Sí                          |
+| Componentes y stores                   | Vitest + Testing Library                                                                                                                                                                                                                                                     | `apps/web/test`                       | Sí                          |
+| Sistema / E2E                          | Playwright                                                                                                                                                                                                                                                                   | `e2e/tests`, `e2e/tests-en`           | Sí                          |
+| E2E de montaje (dev/prod)              | Playwright                                                                                                                                                                                                                                                                   | `e2e/stacks`                          | No (bajo demanda)           |
+| Aceptación                             | E2E escritos por historia                                                                                                                                                                                                                                                    | `e2e/tests`                           | Sí                          |
+| Regresión                              | Toda la suite + _gates_ estructurales                                                                                                                                                                                                                                        | —                                     | Sí                          |
+| Estructurales (caja blanca)            | Barridos sobre la tabla de rutas real                                                                                                                                                                                                                                        | `apps/agent/test/integration`         | Sí                          |
+| Mutación                               | Stryker                                                                                                                                                                                                                                                                      | `apps/agent/stryker.config.json`      | Sí                          |
+| Rendimiento (carga)                    | autocannon                                                                                                                                                                                                                                                                   | `scripts/qa/perf-api.mjs`             | No (bajo demanda)           |
+| Rendimiento (tamaño)                   | Presupuesto de bundle por sesión (carga inicial = `index-*` + `modulepreload` de `dist/index.html`, y peso de cada ruta de `App.tsx` por el grafo de `dist/.vite/manifest.json`; falla cerrado sin manifest, sin `index.html`, con una ruta ausente o con menos de 15 rutas) | `apps/web/scripts/bundle-budget.mjs`  | Sí                          |
+| Seguridad — secretos                   | gitleaks                                                                                                                                                                                                                                                                     | CI                                    | Sí                          |
+| Seguridad — SAST                       | semgrep                                                                                                                                                                                                                                                                      | CI                                    | Sí                          |
+| Seguridad — dependencias               | OSV                                                                                                                                                                                                                                                                          | `scripts/audit-osv.mjs`               | Sí (críticas de producción) |
+| Seguridad — shell que corre como root  | shellcheck                                                                                                                                                                                                                                                                   | CI                                    | Sí                          |
+| Seguridad — autorización               | Barridos de authz                                                                                                                                                                                                                                                            | `apps/agent/test/integration`         | Sí                          |
+| Usabilidad / accesibilidad (navegador) | axe-core + Playwright                                                                                                                                                                                                                                                        | `e2e/tests/a11y.spec.ts`              | Sí                          |
+| Accesibilidad (componentes)            | jest-axe                                                                                                                                                                                                                                                                     | `apps/web/test/a11y`                  | Sí                          |
+| Accesibilidad (paleta)                 | Medidor de contraste                                                                                                                                                                                                                                                         | `apps/web/scripts/check-contrast.mjs` | Sí                          |
+| Compatibilidad (motor)                 | Playwright Chromium · Firefox opt-in                                                                                                                                                                                                                                         | `e2e/`                                | Chromium sí                 |
+| Compatibilidad (idioma)                | Proyecto `chromium-en`                                                                                                                                                                                                                                                       | `e2e/tests-en`                        | Sí                          |
+| Portabilidad (instalación)             | Smoke del instalador en Debian limpio                                                                                                                                                                                                                                        | CI                                    | Sí                          |
+| Mantenibilidad                         | knip                                                                                                                                                                                                                                                                         | `knip.json`                           | No (bajo demanda)           |
+| Fiabilidad                             | Reintentos, _timeouts_, cuarentena explícita                                                                                                                                                                                                                                 | `e2e/playwright.config.ts`            | Sí                          |
 
 ---
 
@@ -139,18 +139,18 @@ están en el propio script, en el campo `medido`).
 
 Es una medida **relativa**: corre en la máquina de quien lo ejecuta y con mocks en
 vez de hardware real. Sirve para cazar una consulta N+1 nueva o un JSON sin paginar;
-**no** es una promesa de capacidad. Por eso no bloquea CI: en un *runner* compartido
+**no** es una promesa de capacidad. Por eso no bloquea CI: en un _runner_ compartido
 un presupuesto de latencia produce rojos que no son del código, y un gate que falla
 solo enseña a ignorar el rojo.
 
 ### Accesibilidad — dos capas que miden cosas distintas
 
-| | `apps/web/test/a11y` (jsdom) | `e2e/tests/a11y.spec.ts` (navegador) |
-| --- | --- | --- |
-| Qué monta | Cada página suelta | La app entera, navegada |
-| Contraste | **No puede medirlo** (sin cascada de estilos) | Sí, sobre lo pintado |
-| Landmarks y orden de encabezados | Desactivado (falsos positivos) | Sí |
-| Velocidad | Segundos | ~40 s |
+|                                  | `apps/web/test/a11y` (jsdom)                  | `e2e/tests/a11y.spec.ts` (navegador) |
+| -------------------------------- | --------------------------------------------- | ------------------------------------ |
+| Qué monta                        | Cada página suelta                            | La app entera, navegada              |
+| Contraste                        | **No puede medirlo** (sin cascada de estilos) | Sí, sobre lo pintado                 |
+| Landmarks y orden de encabezados | Desactivado (falsos positivos)                | Sí                                   |
+| Velocidad                        | Segundos                                      | ~40 s                                |
 
 La de navegador **debe esperar a que la página esté pintada** antes de medir. No es
 una precaución de manual: sin esperar, axe analiza los esqueletos de carga
