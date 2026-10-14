@@ -37,7 +37,15 @@ export const createEnergyAlertSchema = {
   response: { 201: rule, 400: errorResponse },
 } as const;
 
+const idParams = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id'],
+  properties: { id: { type: 'string', minLength: 1 } },
+} as const;
+
 export const updateEnergyAlertSchema = {
+  params: idParams,
   body: {
     type: 'object',
     additionalProperties: false,
@@ -52,5 +60,6 @@ export const updateEnergyAlertSchema = {
 } as const;
 
 export const deleteEnergyAlertSchema = {
-  response: { 404: errorResponse },
+  params: idParams,
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;

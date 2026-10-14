@@ -61,28 +61,18 @@ const SIN_RESPONSE = new Map<string, string>([
   ['GET /api/cameras/:id/stream/index.m3u8', 'playlist HLS, no JSON'],
   ['GET /api/cameras/:id/stream/:segment', 'segmento de video, no JSON'],
   ['GET /api/cameras/recordings/:id/download', 'descarga binaria, no JSON'],
-  ['DELETE /api/auth/sessions/:id', 'pendiente: declarar el schema response (204/errorResponse)'],
-  ['POST /api/users/:id/password', 'pendiente: declarar el schema response'],
-  ['DELETE /api/users/:id', 'pendiente: declarar el schema response'],
-  ['POST /api/access-requests', 'pendiente: declarar el schema response (siempre 202, publica)'],
-  ['DELETE /api/access/schedules/:id', 'pendiente: declarar el schema response'],
-  ['DELETE /api/coverage/floorplans/:id', 'pendiente: declarar el schema response'],
-  ['DELETE /api/coverage/scans/:scanId', 'pendiente: declarar el schema response'],
-  ['POST /api/system/support-bundle', 'pendiente: declarar el schema response (descarga JSON)'],
+  [
+    'POST /api/system/support-bundle',
+    'JSON de forma abierta (ajustes saneados, telemetría, auditoría) servido como descarga; tiparlo exigiría additionalProperties: true, que no valida nada',
+  ],
   [
     'POST /api/system/backup',
-    'pendiente: declarar el schema response (descarga de archivo cifrado)',
+    'se sirve un stream binario (octet-stream): Fastify no serializa streams por schema, así que un response no se aplicaría',
   ],
-  ['POST /api/vlans', 'pendiente: declarar el schema response'],
-  ['PATCH /api/vlans/:id', 'pendiente: declarar el schema response'],
 ]);
 
 /** Rutas con `:param` sin `schema.params`, con su motivo. */
-const SIN_PARAMS = new Map<string, string>([
-  ['DELETE /api/auth/sessions/:id', 'pendiente: declarar el schema params'],
-  ['PATCH /api/energy/alerts/:id', 'pendiente: declarar el schema params'],
-  ['DELETE /api/energy/alerts/:id', 'pendiente: declarar el schema params'],
-]);
+const SIN_PARAMS = new Map<string, string>([]);
 
 describe('barrido de schemas por ruta (/api)', () => {
   let app: FastifyInstance;

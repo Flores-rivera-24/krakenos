@@ -142,6 +142,8 @@ export const createAccessRequestSchema = {
       note: { type: 'string', maxLength: 280 },
     },
   },
+  // Siempre 202 y sin cuerpo: responder distinto según exista la cuenta sería un oráculo.
+  response: { 202: { type: 'null' } },
 } as const;
 
 export const listAccessRequestsSchema = {

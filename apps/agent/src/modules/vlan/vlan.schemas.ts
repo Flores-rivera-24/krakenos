@@ -1,3 +1,5 @@
+import { errorResponse } from '../common.schemas.js';
+
 const vlanResponse = {
   type: 'object',
   properties: {
@@ -45,7 +47,7 @@ export const createVlanSchema = {
       isolated: { type: 'boolean' },
     },
   },
-  // El tag puede chocar (409), por eso no se restringe la respuesta a 201.
+  response: { 201: vlanResponse, 409: errorResponse },
 } as const;
 
 export const updateVlanSchema = {
@@ -64,6 +66,7 @@ export const updateVlanSchema = {
       isolated: { type: 'boolean' },
     },
   },
+  response: { 200: vlanResponse, 404: errorResponse },
 } as const;
 
 export const removeVlanSchema = {

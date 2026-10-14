@@ -146,6 +146,17 @@ export const listSessionsSchema = {
 } as const;
 
 // Cierra las demás sesiones; la actual se identifica por la cookie (US-91), sin cuerpo.
+// Revoca una sesión concreta del usuario (o de cualquiera, si es admin).
+export const revokeSessionSchema = {
+  params: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['id'],
+    properties: { id: { type: 'string', minLength: 1 } },
+  },
+  response: { 204: { type: 'null' }, 404: errorResponse },
+} as const;
+
 export const revokeSessionsSchema = {
   response: { 204: { type: 'null' } },
 } as const;

@@ -289,6 +289,7 @@ export const updateFloorPlanSchema = {
 
 export const deleteFloorPlanSchema = {
   params: idParams,
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 export const heatmapSchema = {
@@ -319,12 +320,18 @@ export const getScanSchema = {
 
 export const deleteScanSchema = {
   params: scanIdParams,
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 export const recordSampleSchema = {
   params: scanIdParams,
   body: recordSampleBody,
-  response: { 200: measureResultResponse, 400: errorResponse, 404: errorResponse, 413: errorResponse },
+  response: {
+    200: measureResultResponse,
+    400: errorResponse,
+    404: errorResponse,
+    413: errorResponse,
+  },
 } as const;
 
 export const measuredHeatmapSchema = {
