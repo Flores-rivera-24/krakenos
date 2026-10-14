@@ -879,6 +879,8 @@ export const en: Record<TranslationKey, string> = {
   'wellbeing.rangeLabel': 'Range',
   'wellbeing.loading': 'Loading…',
   'wellbeing.empty': 'No usage data for this period yet.',
+  'wellbeing.noOwnedDevices':
+    "You don't have any devices assigned yet. Ask a home administrator to assign yours.",
   'wellbeing.noOwners':
     'No usage data yet. Assign an owner to your devices from their detail panel.',
   'wellbeing.unsupported': 'Your router does not break traffic down per device',

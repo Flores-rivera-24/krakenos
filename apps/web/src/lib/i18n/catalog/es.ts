@@ -902,6 +902,8 @@ export const es = {
   'wellbeing.rangeLabel': 'Rango',
   'wellbeing.loading': 'Cargando…',
   'wellbeing.empty': 'Todavía no hay datos de uso en este periodo.',
+  'wellbeing.noOwnedDevices':
+    'Aún no tienes dispositivos asignados. Pídele a un administrador del hogar que te asigne los tuyos.',
   'wellbeing.noOwners':
     'Sin datos de uso todavía. Asigna un dueño a los dispositivos en su detalle.',
   'wellbeing.unsupported': 'Tu router no reparte el tráfico por dispositivo',

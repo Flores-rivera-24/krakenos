@@ -11,6 +11,7 @@ const apiMock = vi.hoisted(() => {
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
+import { useAuthStore } from '@/store/auth.store';
 
 const usage: WellbeingUsage = {
   range: 'week',
@@ -101,5 +102,36 @@ describe('WellbeingCard (US-184)', () => {
     expect(await screen.findByText(/Todavía no hay datos de uso/i)).toBeInTheDocument();
     expect(screen.queryByText(/Asigna un dueño/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/no reparte el tráfico/i)).not.toBeInTheDocument();
+  });
+
+  // --- Un estado vacío no culpa a quien no puede arreglarlo ---
+
+  const sinDueños = {
+    range: 'week',
+    people: [],
+    perDeviceTraffic: { status: 'supported' as const },
+    devicesWithOwner: 0,
+  };
+  const como = (role: 'admin' | 'member') =>
+    useAuthStore.setState({
+      user: { id: 'u', email: 'u@t', displayName: 'U', role } as never,
+    });
+
+  it('un no-admin sin aparatos propios NO ve «asigna un dueño» (no puede hacerlo)', async () => {
+    como('member');
+    apiMock.get.mockResolvedValue(sinDueños);
+    render(<WellbeingCard />);
+    expect(await screen.findByText(/Aún no tienes dispositivos asignados/)).toBeInTheDocument();
+    expect(screen.queryByText(/Asigna un dueño/i)).not.toBeInTheDocument();
+    useAuthStore.setState({ user: null });
+  });
+
+  it('un admin sin dueños sigue viendo «asigna un dueño»', async () => {
+    como('admin');
+    apiMock.get.mockResolvedValue(sinDueños);
+    render(<WellbeingCard />);
+    expect(await screen.findByText(/Asigna un dueño/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Aún no tienes dispositivos/)).not.toBeInTheDocument();
+    useAuthStore.setState({ user: null });
   });
 });
