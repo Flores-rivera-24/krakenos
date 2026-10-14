@@ -14,6 +14,9 @@ const PID_FILE = resolve(HERE, '../.server.pid');
 export const E2E_PORT = 3999;
 export const BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
 
+/** Origen por hostname para WebAuthn (el RP ID no puede ser una IP). */
+export const ORIGIN_2FA = `http://localhost:${E2E_PORT}`;
+
 /**
  * Ruta **absoluta** de la DB efímera de e2e. Absoluta a propósito: Prisma resuelve
  * los `file:` relativos respecto al directorio del schema (`prisma/`), no al cwd,
@@ -54,9 +57,11 @@ function agentEnv(): NodeJS.ProcessEnv {
     VLAN_KIND: 'mock',
     QOS_KIND: 'mock',
     DNS_KIND: 'mock',
-    // WebAuthn coherente con el origen fijo (para el flujo 2FA en cuarentena).
+    // WebAuthn: el RP ID es un HOSTNAME, nunca una IP (el navegador rechaza
+    // `rpId: '127.0.0.1'`), así que el flujo 2FA navega por `localhost`
+    // (`ORIGIN_2FA`) aunque el resto de la suite use 127.0.0.1.
     WEBAUTHN_RP_ID: 'localhost',
-    WEBAUTHN_ORIGIN: BASE_URL,
+    WEBAUTHN_ORIGIN: ORIGIN_2FA,
     // Claves JWT explícitas (relativas al cwd del agente): en local venían del
     // `.env` gitignored, pero en CI no hay `.env` y el agente moría al arrancar
     // («Falta la variable de entorno obligatoria: JWT_PRIVATE_KEY_PATH») — era

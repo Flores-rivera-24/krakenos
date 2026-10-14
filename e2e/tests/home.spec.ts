@@ -3,9 +3,7 @@ import { login } from '../lib/auth.js';
 
 /**
  * Flujos del hogar autenticados (US-189). La cuenta admin la crea el proyecto
- * `setup`; cada test hace login por UI. Los flujos que aún no aplican (2FA con
- * virtual authenticator, escenas de US-166) quedan en **cuarentena explícita**
- * (`test.fixme`) con su motivo — ver `docs/e2e.md`.
+ * `setup`; cada test hace login por UI. El 2FA con passkey vive en `dos-factores.spec.ts`.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -64,10 +62,3 @@ test('hogar: crear una escena desde plantilla y ejecutarla (US-166)', async ({ p
   // dejaría pasar el flujo aunque no aplicara nada (AUD-24).
   await expect(page.getByText(/activada/).first()).toBeVisible();
 });
-
-// --- Cuarentena explícita (flaky-policy, US-189) ---
-
-// 2FA con passkey requiere cablear un virtual authenticator (CDP WebAuthn) por
-// toda la ceremonia registro+login; se activará junto con el endurecimiento de
-// WebAuthn en e2e. Ver docs/e2e.md.
-test.fixme('login con 2FA (passkey vía virtual authenticator)', async () => {});

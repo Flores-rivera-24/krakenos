@@ -7,9 +7,9 @@ import { BASE_URL } from './lib/server.js';
  * `globalSetup`/`globalTeardown` (no el `webServer` de Playwright) porque hay que
  * **capturar el token de configuración out-of-band** de su salida.
  *
- * Flaky-policy: `retries: 1` (un reintento) en CI; los flujos que aún no aplican
- * (2FA con virtual authenticator, escenas de US-166) están en **cuarentena
- * explícita** con `test.fixme` y motivo — ver `docs/e2e.md`.
+ * Flaky-policy: `retries: 1` (un reintento) en CI; un flujo que no pueda
+ * ir estable se deja en **cuarentena explícita** con `test.fixme` y motivo — ver
+ * `docs/e2e.md`.
  */
 export default defineConfig({
   testDir: '.',
