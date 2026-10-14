@@ -155,6 +155,39 @@ describe('IotPage', () => {
     expect(screen.getByText('°C')).toBeInTheDocument();
   });
 
+  it('la etiqueta del interruptor sigue al estado: encendido ofrece «Apagar», apagado «Encender»', async () => {
+    setRole('admin');
+    const apagado: IotDevice = { ...DEVICES[0]!, id: 'plug-lampara', name: 'Lámpara', on: false };
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve([DEVICES[0]!, apagado]) : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('Lámpara');
+
+    expect(screen.getByLabelText('Apagar TV')).toBeChecked();
+    expect(screen.queryByLabelText('Encender TV')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Encender Lámpara')).not.toBeChecked();
+    expect(screen.queryByLabelText('Apagar Lámpara')).not.toBeInTheDocument();
+  });
+
+  it('al pulsar, la etiqueta pasa a lo que se ve (optimista), no a lo que había', async () => {
+    setRole('admin');
+    const apagado: IotDevice = { ...DEVICES[0]!, id: 'plug-lampara', name: 'Lámpara', on: false };
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve([apagado]) : Promise.resolve([]),
+    );
+    // Petición sin resolver: aísla el estado optimista del refetch posterior.
+    apiMock.patch.mockReturnValue(new Promise(() => {}));
+    render(<IotPage />);
+    await screen.findByText('Lámpara');
+
+    fireEvent.click(screen.getByLabelText('Encender Lámpara'));
+
+    expect(apiMock.patch).toHaveBeenCalledWith('/iot/devices/plug-lampara', { on: true });
+    expect(await screen.findByLabelText('Apagar Lámpara')).toBeChecked();
+    expect(screen.queryByLabelText('Encender Lámpara')).not.toBeInTheDocument();
+  });
+
   it('un admin asigna un IoT a una habitación (PUT /rooms/assign, US-165)', async () => {
     setRole('admin');
     apiMock.get.mockImplementation((path: string) => {

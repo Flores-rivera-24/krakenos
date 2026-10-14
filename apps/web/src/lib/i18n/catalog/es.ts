@@ -506,6 +506,7 @@ export const es = {
   'iot.patchError': 'No se pudo aplicar el cambio',
   'iot.toggleError': 'No se pudo cambiar {name}',
   'iot.turnOn': 'Encender {name}',
+  'iot.turnOff': 'Apagar {name}',
   'iot.noRoom': 'Sin habitación',
   // US-244: nombres de métrica y estados de los sensores de suceso. Un «1» debajo
   // de «Puerta de entrada» no dice nada; «Abierta», sí.
