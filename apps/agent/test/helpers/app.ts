@@ -108,6 +108,13 @@ import { IntegrationConfigStore } from '../../src/integrations/integration-confi
 import { buildIntegrationRuntime } from '../../src/integrations/runtime.js';
 import { integrationsRoutes } from '../../src/modules/integrations/integrations.routes.js';
 
+export interface CollectedRoute {
+  method: string;
+  url: string;
+  /** Qué partes del `schema` declara la ruta. */
+  schema: { body: boolean; querystring: boolean; params: boolean; response: boolean };
+}
+
 export interface BuildTestAppOptions {
   /** Registra también las rutas HTTP (para tests de integración con inject). */
   routes?: boolean;
@@ -159,10 +166,19 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   // Recolecta la tabla de rutas real a medida que se registran (AUD-22): la suite
   // de autorización la usa para fallar si una ruta de escritura nueva no está
   // clasificada, en vez de enumerarlas a mano y arriesgarse a olvidar una.
-  const collectedRoutes: { method: string; url: string }[] = [];
+  // Además de método y URL guarda qué partes del `schema` declara cada ruta
+  // (`body`, `querystring`, `params`, `response`): lo lee el gate de schemas.
+  const collectedRoutes: CollectedRoute[] = [];
   app.addHook('onRoute', (r) => {
     const methods = Array.isArray(r.method) ? r.method : [r.method];
-    for (const method of methods) collectedRoutes.push({ method, url: r.url });
+    const sch = (r.schema ?? {}) as Record<string, unknown>;
+    const schema = {
+      body: sch.body !== undefined,
+      querystring: sch.querystring !== undefined,
+      params: sch.params !== undefined,
+      response: sch.response !== undefined,
+    };
+    for (const method of methods) collectedRoutes.push({ method, url: r.url, schema });
   });
   (app as unknown as { collectedRoutes: typeof collectedRoutes }).collectedRoutes = collectedRoutes;
 
