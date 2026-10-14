@@ -296,7 +296,12 @@ describe('IntegrationWizard en inglés', () => {
       <IntegrationWizard
         domain="vlan"
         kind="switch"
-        kindSchema={{ domain: 'vlan', kind: 'switch', label: 'Switch gestionado (SNMP)', fields: [] }}
+        kindSchema={{
+          domain: 'vlan',
+          kind: 'switch',
+          label: 'Switch gestionado (SNMP)',
+          fields: [],
+        }}
         current={null}
         onDone={vi.fn()}
       />,
