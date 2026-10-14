@@ -179,7 +179,7 @@ const iptables: IntegrationGuide = {
 const vlan: IntegrationGuide = {
   id: 'vlan',
   domain: 'vlan',
-  kind: 'vlan',
+  kind: 'switch',
   category: 'vlan',
   displayName: 'Redes separadas (VLAN)',
   icon: 'Network',

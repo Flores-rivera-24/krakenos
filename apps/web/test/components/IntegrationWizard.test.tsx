@@ -267,4 +267,40 @@ describe('IntegrationWizard en inglés', () => {
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save without testing' })).toBeInTheDocument();
   });
+
+  // --- Claves de la guía = claves del esquema ---
+
+  it('un campo de Kasa recibe la etiqueta y la ayuda de su guía (clave `kasaDeviceIps`)', async () => {
+    const user = userEvent.setup();
+    render(
+      <IntegrationWizard
+        domain="iot"
+        kind="kasa"
+        kindSchema={{
+          domain: 'iot',
+          kind: 'kasa',
+          label: 'TP-Link Kasa / Tapo',
+          fields: [{ key: 'kasaDeviceIps', type: 'text', required: false }],
+        }}
+        current={null}
+        onDone={vi.fn()}
+      />,
+    );
+    await gotoConnect(user);
+    // Sin la copia de la guía se humanizaría la clave técnica («Kasa device ips»).
+    expect(screen.getByText('Direcciones de los Kasa (opcional)')).toBeInTheDocument();
+  });
+
+  it('el asistente de VLAN encuentra su guía con el kind del esquema (`switch`)', () => {
+    render(
+      <IntegrationWizard
+        domain="vlan"
+        kind="switch"
+        kindSchema={{ domain: 'vlan', kind: 'switch', label: 'Switch gestionado (SNMP)', fields: [] }}
+        current={null}
+        onDone={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Una VLAN te permite dividir tu red/)).toBeInTheDocument();
+  });
 });
