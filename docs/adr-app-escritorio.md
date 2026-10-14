@@ -2,6 +2,11 @@
 
 **Estado:** aceptado (2026-10-11) · **Ámbito:** distribución y experiencia de uso, no funciones nuevas.
 
+> **Sustituido en parte por `adr-instalable.md` (2026-10-13):** el objetivo pasa a ser Windows **y**
+> Linux con un instalador para el usuario final. Se revisa el descarte de «Windows nativo» (en Windows
+> KrakenOS funciona como cerebro de la red y declara no disponibles las funciones de puerta de enlace) y
+> se retira el Perfil B sobre WSL2. Sigue vigente la separación entre servicio y ventana.
+
 ## Contexto
 
 La petición: que KrakenOS **arranque solo con el ordenador y corra siempre en segundo plano**, que se
