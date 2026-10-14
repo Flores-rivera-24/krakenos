@@ -12,6 +12,8 @@ interface Props {
   /** Texto base del toast de error (se completa con `describeError`). */
   errorMessage?: string;
   'aria-label'?: string;
+  /** Etiqueta que sigue al estado que se VE (incluido el optimista): `on` = está encendido ahora. */
+  labelFor?: (on: boolean) => string;
   'aria-labelledby'?: string;
 }
 
@@ -27,6 +29,7 @@ export function OptimisticSwitch({
   disabled,
   errorMessage,
   'aria-label': ariaLabel,
+  labelFor,
   'aria-labelledby': ariaLabelledby,
 }: Props) {
   const t = useT();
@@ -41,7 +44,7 @@ export function OptimisticSwitch({
       checked={on}
       disabled={disabled || pending}
       onCheckedChange={() => void toggle()}
-      aria-label={ariaLabel}
+      aria-label={labelFor ? labelFor(on) : ariaLabel}
       aria-labelledby={ariaLabelledby}
     />
   );

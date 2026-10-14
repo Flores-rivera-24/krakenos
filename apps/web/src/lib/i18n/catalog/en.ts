@@ -487,6 +487,7 @@ export const en: Record<TranslationKey, string> = {
   'iot.patchError': 'Could not apply the change',
   'iot.toggleError': 'Could not change {name}',
   'iot.turnOn': 'Turn on {name}',
+  'iot.turnOff': 'Turn off {name}',
   'iot.noRoom': 'No room',
   'iot.metric.temperature': 'Temperature',
   'iot.metric.humidity': 'Humidity',

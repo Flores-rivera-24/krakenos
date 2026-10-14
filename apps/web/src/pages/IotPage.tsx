@@ -116,7 +116,7 @@ function DeviceCard({
               }
               disabled={!canControl}
               errorMessage={t('iot.toggleError', { name: device.name })}
-              aria-label={t('iot.turnOn', { name: device.name })}
+              labelFor={(on) => t(on ? 'iot.turnOff' : 'iot.turnOn', { name: device.name })}
             />
           )}
         </div>
