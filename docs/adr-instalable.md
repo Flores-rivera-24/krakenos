@@ -1,6 +1,6 @@
 # ADR: KrakenOS instalable en Windows y Linux desde un ejecutable
 
-**Estado:** propuesto (2026-10-13) · **Sustituye en parte a:** `adr-app-escritorio.md` (el descarte de
+**Estado:** aceptado (2026-10-13) · **Sustituye en parte a:** `adr-app-escritorio.md` (el descarte de
 «Windows nativo» y el Perfil B sobre WSL2) · **Ámbito:** distribución, servicio, instalador,
 actualizaciones y lo que cada plataforma puede hacer.
 
@@ -100,14 +100,15 @@ funciona: copia de la base antes de migrar, comprobación de salud y vuelta atr�
 - **CI crece:** compilar y probar en Windows (x64) y Linux (x64 y arm64), incluida una instalación
   silenciosa del `.exe` en un runner de Windows.
 
-## Decisiones abiertas (del dueño)
+## Decisiones del dueño (2026-10-13)
 
-1. **Firma de código en Windows:** Azure Artifact Signing (unos 10 USD/mes; para particulares solo en
-   EE. UU. y Canadá), SignPath Foundation (gratis para código abierto, sujeto a aprobación), un
-   certificado OV (150–300 USD/año) o publicar sin firma al principio.
-2. **Energía:** que el instalador de Windows cambie el plan de energía para que el equipo no se suspenda
-   con corriente, o que solo avise.
-3. **RPM:** si además del `.deb` se publica `.rpm` (Fedora y derivadas).
+1. **Firma de código:** se publica **sin firma** al principio. Windows SmartScreen avisará al instalar, y
+   la guía de instalación explica cómo continuar. Se revisa cuando haya usuarios fuera del círculo cercano.
+2. **Energía:** el instalador de Windows **solo avisa** de que un equipo que se suspende deja de vigilar.
+   No cambia el plan de energía.
+3. **Paquetes de Linux:** solo `.deb`. Sin `.rpm`.
+4. **Funciones de puerta de enlace en Windows:** se acepta que en Windows no hay servidor VPN, cortafuegos
+   ni QoS propios. El acceso remoto va por Tailscale o por el WireGuard del router.
 
 ## Lo que hay que verificar con una máquina real
 
