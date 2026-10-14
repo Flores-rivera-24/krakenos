@@ -6,17 +6,22 @@ const CODE_COUNT = 10;
 
 /**
  * Hash sha256 (hex) de un código. Los códigos son aleatorios de alta entropía
- * (48 bits), así que un hash rápido es suficiente (a diferencia de las contraseñas,
+ * (80 bits los nuevos; los emitidos antes eran de 48 bits y siguen valiendo, porque
+ * el hash es del texto normalizado), así que un hash rápido es suficiente (a diferencia de las contraseñas,
  * que usan bcrypt). Nunca se persiste el texto plano.
  */
 function hashCode(code: string): string {
   return createHash('sha256').update(code.trim().toLowerCase()).digest('hex');
 }
 
-/** Genera un código legible tipo `a1b2-c3d4-e5f6` (12 hex = 48 bits). */
+/**
+ * Genera un código legible tipo `a1b2c-3d4e5-f6a7b-8c9d0` (20 hex = 80 bits, en
+ * 4 grupos de 5). Los códigos antiguos (`a1b2-c3d4-e5f6`, 48 bits) ya emitidos
+ * se siguen aceptando al verificar.
+ */
 function generateCode(): string {
-  const hex = randomBytes(6).toString('hex');
-  return `${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`;
+  const hex = randomBytes(10).toString('hex');
+  return [0, 5, 10, 15].map((i) => hex.slice(i, i + 5)).join('-');
 }
 
 /**

@@ -3,6 +3,7 @@
  * Se mantienen alineados con los tipos de `@krakenos/types`.
  */
 import { errorResponse } from '../common.schemas.js';
+import { BACKUP_CODE_PATTERN } from '../webauthn/webauthn.schemas.js';
 import { LOCALES, UI_MODES, USER_ROLES } from '@krakenos/types';
 
 const userResponse = {
@@ -78,7 +79,7 @@ export const recoverSchema = {
     required: ['email', 'code'],
     properties: {
       email: { type: 'string', format: 'email', maxLength: 254 },
-      code: { type: 'string', minLength: 8, maxLength: 64 },
+      code: { type: 'string', maxLength: 64, pattern: BACKUP_CODE_PATTERN },
     },
   },
   response: {

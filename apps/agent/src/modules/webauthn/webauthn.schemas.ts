@@ -6,6 +6,30 @@
 
 import { errorResponse } from '../common.schemas.js';
 
+/**
+ * Formato de un código de recuperación: el nuevo (4 grupos de 5 hex, 80 bits) o el
+ * antiguo (3 grupos de 4 hex, 48 bits), con espacios alrededor tolerados (el hash
+ * normaliza con `trim().toLowerCase()`).
+ */
+export const BACKUP_CODE_PATTERN =
+  '^\\s*([0-9a-fA-F]{5}(-[0-9a-fA-F]{5}){3}|[0-9a-fA-F]{4}(-[0-9a-fA-F]{4}){2})\\s*$';
+
+/**
+ * 429 del lockout por cuenta (`code`, `message`, `retryAfter`) **y** del rate-limit
+ * por IP, cuyo cuerpo (`statusCode`/`error`/`message`) no trae `code`: por eso nada
+ * es `required` salvo `message`, o la serialización de ese 429 reventaría en 500.
+ */
+const lockedResponse = {
+  type: 'object',
+  properties: {
+    ...errorResponse.properties,
+    statusCode: { type: 'integer' },
+    error: { type: 'string' },
+    retryAfter: { type: 'integer' },
+  },
+  required: ['message'],
+} as const;
+
 /** Objeto WebAuthn opaco (options o response de la ceremonia). */
 const opaqueObject = { type: 'object', additionalProperties: true } as const;
 
@@ -110,6 +134,8 @@ export const authenticateVerifySchema = {
       properties: { user: userResponse, tokens: tokensResponse },
       required: ['user', 'tokens'],
     },
+    401: errorResponse,
+    429: lockedResponse,
   },
 } as const;
 
@@ -172,7 +198,7 @@ export const backupCodeVerifySchema = {
     properties: {
       email: { type: 'string', format: 'email', maxLength: 254 },
       mfaToken: { type: 'string', minLength: 1 },
-      code: { type: 'string', minLength: 1, maxLength: 64 },
+      code: { type: 'string', maxLength: 64, pattern: BACKUP_CODE_PATTERN },
     },
   },
   response: {
@@ -181,5 +207,7 @@ export const backupCodeVerifySchema = {
       properties: { user: userResponse, tokens: tokensResponse },
       required: ['user', 'tokens'],
     },
+    401: errorResponse,
+    429: lockedResponse,
   },
 } as const;

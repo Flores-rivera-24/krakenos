@@ -263,7 +263,7 @@ describe('rutas WebAuthn', () => {
       payload: {
         email: 'bcx@krakenos.test',
         mfaToken: signMfaPending(app, user.id),
-        code: 'no-existe',
+        code: 'aaaaa-bbbbb-ccccc-ddddd',
       },
     });
     expect(bad.statusCode).toBe(401);

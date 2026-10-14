@@ -305,7 +305,7 @@ export function LoginPage() {
                     id="backup-code"
                     value={backupCode}
                     onChange={(e) => setBackupCode(e.target.value)}
-                    placeholder="xxxx-xxxx-xxxx"
+                    placeholder="xxxxx-xxxxx-xxxxx-xxxxx"
                     autoComplete="one-time-code"
                     autoCapitalize="none"
                   />
@@ -565,7 +565,7 @@ export function LoginPage() {
                   id="recover-code"
                   value={recoverCode}
                   onChange={(e) => setRecoverCode(e.target.value)}
-                  placeholder="xxxx-xxxx-xxxx"
+                  placeholder="xxxxx-xxxxx-xxxxx-xxxxx"
                   autoComplete="one-time-code"
                   autoCapitalize="none"
                   required

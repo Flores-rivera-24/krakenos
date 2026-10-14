@@ -1,5 +1,6 @@
-import type { FastifyPluginAsync } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
+import { mfaLockout } from '../../auth/mfa-lockout.js';
 import { sendSession } from '../../auth/session-cookie.js';
 import { AuthService } from '../auth/auth.service.js';
 import { hashEmail } from '../../plugins/audit.js';
@@ -107,6 +108,38 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     return user && user.id === sub ? user : null;
   }
 
+  /**
+   * Lockout por cuenta del segundo factor: si el `mfaToken` es válido y su usuario
+   * está bloqueado, responde 429 (como `/auth/recover`) y devuelve `true`. Se mira
+   * **antes** de consumir el token. Un token inválido no llega aquí: ya lo rechaza
+   * `resolveMfaUser` con su 401.
+   */
+  function sendIfMfaLocked(
+    req: { ip: string },
+    reply: FastifyReply,
+    email: string,
+    mfaToken: string,
+  ): boolean {
+    let sub: string;
+    try {
+      sub = auth.verifyMfaPendingToken(mfaToken);
+    } catch {
+      return false;
+    }
+    const retryAfter = mfaLockout.retryAfterSec(sub);
+    if (retryAfter <= 0) return false;
+    app.audit({ action: 'auth.login_locked', detail: hashEmail(email), ip: req.ip });
+    void reply
+      .code(429)
+      .header('retry-after', String(retryAfter))
+      .send({
+        code: 'AUTH_ACCOUNT_LOCKED',
+        message: `Demasiados intentos. Reintenta en ${retryAfter} s.`,
+        retryAfter,
+      });
+    return true;
+  }
+
   app.post<{ Body: { email: string; mfaToken: string } }>(
     '/authenticate/options',
     { schema: authenticateOptionsSchema, config: publicMfaRateLimit },
@@ -127,6 +160,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     '/authenticate/verify',
     { schema: authenticateVerifySchema, config: publicMfaRateLimit },
     async (req, reply) => {
+      if (sendIfMfaLocked(req, reply, req.body.email, req.body.mfaToken)) return reply;
       // `consume: true` → el mfaToken queda de un solo uso: un intento de segundo
       // factor por token (anti-replay). Un fallo de passkey exige re-login (US-88).
       const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
@@ -140,11 +174,13 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
         await service.verifyAuthentication(user, req.body.response);
       } catch (err) {
         if (err instanceof WebAuthnError) {
+          mfaLockout.recordFailure(user.id);
           app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
           return reply.code(401).send({ code: 'WEBAUTHN_ERROR', message: err.message });
         }
         throw err;
       }
+      mfaLockout.recordSuccess(user.id);
       // La elección de «Mantener sesión iniciada» se hizo en el paso de la
       // contraseña y viaja en el `mfaToken` (US-269): este endpoint es el que
       // emite la sesión, así que es el que tiene que respetarla.
@@ -184,6 +220,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
     '/backup-codes/verify',
     { schema: backupCodeVerifySchema, config: publicMfaRateLimit },
     async (req, reply) => {
+      if (sendIfMfaLocked(req, reply, req.body.email, req.body.mfaToken)) return reply;
       // `consume: true` → un código adivinado por token: junto al rate limit por IP,
       // hace inviable la fuerza bruta de los códigos de recuperación (US-88).
       const user = await resolveMfaUser(req.body.email, req.body.mfaToken, true);
@@ -195,11 +232,13 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       }
       const ok = await backupCodes.consume(user.id, req.body.code);
       if (!ok) {
+        mfaLockout.recordFailure(user.id);
         app.audit({ action: 'auth.login_failed', detail: hashEmail(req.body.email), ip: req.ip });
         return reply
           .code(401)
           .send({ code: 'WEBAUTHN_ERROR', message: 'Código de recuperación inválido' });
       }
+      mfaLockout.recordSuccess(user.id);
       const session = await auth.issueSessionForUserId(
         user.id,
         auth.keepSignedInFromMfaToken(req.body.mfaToken),
