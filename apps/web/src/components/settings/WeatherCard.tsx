@@ -56,7 +56,7 @@ export function WeatherCard() {
         <CardTitle>{t('weather.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-kr-sm text-kr-fg-muted">{t('weather.intro')}</p>
+        <p className="text-kr-sm text-kr-secondary">{t('weather.intro')}</p>
 
         {error ? <ErrorBanner>{error}</ErrorBanner> : null}
 
@@ -76,8 +76,8 @@ export function WeatherCard() {
 
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-kr-sm text-kr-fg">{t('weather.useInRoutines')}</p>
-                <p className="text-kr-xs text-kr-fg-muted">
+                <p className="text-kr-sm text-kr-primary">{t('weather.useInRoutines')}</p>
+                <p className="text-kr-xs text-kr-muted">
                   {status.enabled ? t('weather.onHint') : t('weather.offHint')}
                 </p>
               </div>
@@ -93,7 +93,7 @@ export function WeatherCard() {
             {status.enabled ? (
               <>
                 <fieldset className="border-t border-kr pt-3">
-                  <legend className="text-kr-sm text-kr-fg">{t('weather.precision')}</legend>
+                  <legend className="text-kr-sm text-kr-primary">{t('weather.precision')}</legend>
                   <div className="mt-2 flex flex-col gap-2">
                     {(
                       [
@@ -119,8 +119,8 @@ export function WeatherCard() {
                           onChange={() => void save({ precision: opt.value })}
                         />
                         <span>
-                          <span className="text-kr-fg">{opt.label}</span>
-                          <span className="block text-kr-xs text-kr-fg-muted">{opt.hint}</span>
+                          <span className="text-kr-primary">{opt.label}</span>
+                          <span className="block text-kr-xs text-kr-muted">{opt.hint}</span>
                         </span>
                       </label>
                     ))}
@@ -130,7 +130,7 @@ export function WeatherCard() {
                 {/* El efecto del ajuste, hecho visible: sin esto, «aproximada» es
                     una promesa que el usuario no puede comprobar. */}
                 {status.sentLatitude !== null && status.sentLongitude !== null ? (
-                  <p className="text-kr-xs text-kr-fg-muted">
+                  <p className="text-kr-xs text-kr-muted">
                     {t('weather.sentExactly')}{' '}
                     <code>
                       {status.sentLatitude}, {status.sentLongitude}
@@ -147,9 +147,9 @@ export function WeatherCard() {
                 {status.readings.length > 0 ? (
                   <ul className="flex flex-wrap gap-3 text-kr-sm">
                     {status.readings.map((r) => (
-                      <li key={r.metric} className="text-kr-fg-muted">
+                      <li key={r.metric} className="text-kr-secondary">
                         {t(WEATHER_METRIC_KEYS[r.metric])}:{' '}
-                        <span className="text-kr-fg">
+                        <span className="text-kr-primary">
                           {r.value} {WEATHER_UNITS[r.metric]}
                         </span>
                       </li>

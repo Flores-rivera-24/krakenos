@@ -275,7 +275,7 @@ export function SurveyPanel({
         </div>
 
         {showForm && (
-          <div className="mb-3 space-y-3 rounded-md border border-kr bg-kr-bg p-3">
+          <div className="mb-3 space-y-3 rounded-md border border-kr bg-kr-base p-3">
             <div className="space-y-1.5">
               <Label htmlFor="survey-name">{t('users.name')}</Label>
               <Input
@@ -292,7 +292,7 @@ export function SurveyPanel({
                 id="survey-band"
                 value={band}
                 onChange={(e) => setBand(e.target.value as WifiBand)}
-                className="h-9 w-full rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
               >
                 {BANDS.map((b) => (
                   <option key={b} value={b}>
@@ -307,7 +307,7 @@ export function SurveyPanel({
                 id="survey-device"
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
-                className="h-9 w-full rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
               >
                 <option value="">{t('survey.manualOption')}</option>
                 {devices.map((d) => (
@@ -352,7 +352,7 @@ export function SurveyPanel({
                   className={
                     active
                       ? 'flex items-center gap-2 rounded-md border border-kr-accent bg-kr-elevated px-2.5 py-2'
-                      : 'flex items-center gap-2 rounded-md border border-kr bg-kr-bg px-2.5 py-2'
+                      : 'flex items-center gap-2 rounded-md border border-kr bg-background px-2.5 py-2'
                   }
                 >
                   <button

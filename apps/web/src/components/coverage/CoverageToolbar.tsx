@@ -78,7 +78,7 @@ export function CoverageToolbar({
             value={wallMaterial}
             disabled={!canEdit}
             onChange={(e) => onWallMaterialChange(e.target.value as WallMaterial)}
-            className="h-9 rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary disabled:opacity-50"
+            className="h-9 rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary disabled:opacity-50"
           >
             {WALL_MATERIALS.map((m) => (
               <option key={m} value={m}>

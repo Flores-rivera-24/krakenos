@@ -522,11 +522,11 @@ function RuleEditor({
                   onChange={(e) => setSensorValue(Number(e.target.value))}
                   className="w-24"
                 />
-                <span className="text-kr-sm text-kr-fg-muted">{WEATHER_UNITS[weatherMetric]}</span>
+                <span className="text-kr-sm text-kr-secondary">{WEATHER_UNITS[weatherMetric]}</span>
               </div>
               {/* Sin el opt-in no llega ninguna lectura y la regla NUNCA
                   dispararía. Decirlo aquí evita que parezca un fallo de la regla. */}
-              <p className="text-kr-xs text-kr-fg-muted">{t('automations.weather.needsOptIn')}</p>
+              <p className="text-kr-xs text-kr-muted">{t('automations.weather.needsOptIn')}</p>
             </div>
           )}
 
@@ -603,14 +603,14 @@ function RuleEditor({
                   onChange={(e) => setSunOffset(e.target.value)}
                   className="w-24"
                 />
-                <span className="text-kr-sm text-kr-fg-muted">
+                <span className="text-kr-sm text-kr-secondary">
                   {t('automations.sun.offsetUnit')}
                 </span>
               </div>
               {/* Sin lat/long del hogar no hay cálculo solar y la regla NUNCA
                   dispara. Se dice aquí, no cuando el usuario se pregunte por qué
                   la luz no se encendió anoche. */}
-              <p className="text-kr-xs text-kr-fg-muted">{t('automations.sun.needsLocation')}</p>
+              <p className="text-kr-xs text-kr-muted">{t('automations.sun.needsLocation')}</p>
             </div>
           )}
           {(triggerType === 'person-arrived' || triggerType === 'person-left') && (
