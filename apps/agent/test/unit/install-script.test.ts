@@ -22,6 +22,9 @@ const SUPPORTED_ENV = {
   KRAKENOS_ARCH: 'x86_64',
   KRAKENOS_MIN_RAM_MB: '1',
   KRAKENOS_MIN_DISK_MB: '1',
+  // Los tests no dependen de que el runner tenga systemd: se asume que sí salvo que
+  // el caso diga lo contrario.
+  KRAKENOS_ASSUME_SYSTEMD: 'yes',
 };
 
 function runInstaller(
@@ -79,6 +82,43 @@ describe('install.sh --dry-run (US-216)', () => {
     expect(stdout).not.toContain('systemctl enable');
     expect(stdout).not.toContain('useradd');
     expect(stdout).toContain('Arranque manual');
+  });
+
+  it('sin systemd no falla: omite servicio y timers, avisa y lo dice en el resumen', async () => {
+    const { code, stdout, stderr } = await runInstaller(
+      ['--dry-run', '--yes', '--dir', '/tmp/kraken-x'],
+      { KRAKENOS_ASSUME_SYSTEMD: 'no', KRAKENOS_ASSUME_WSL: 'no' },
+    );
+    expect(code).toBe(0);
+    expect(stderr).toContain('no tiene systemd');
+    expect(stdout).not.toContain('systemctl');
+    expect(stdout).not.toContain('useradd');
+    expect(stdout).toContain('Servicio systemd omitido (este sistema no tiene systemd)');
+    expect(stdout).toContain('NODE_ENV=production node dist/index.js');
+    expect(stdout).toContain('sin systemd: no hay servicio');
+  });
+
+  it('sin systemd en WSL explica cómo activarlo', async () => {
+    const { code, stdout, stderr } = await runInstaller(
+      ['--dry-run', '--yes', '--dir', '/tmp/kraken-x'],
+      { KRAKENOS_ASSUME_SYSTEMD: 'no', KRAKENOS_ASSUME_WSL: 'yes' },
+    );
+    expect(code).toBe(0);
+    expect(stderr).toContain('/etc/wsl.conf');
+    expect(stderr).toContain('wsl --shutdown');
+    expect(stdout).toContain('sin systemd (WSL)');
+    expect(stdout).not.toContain('systemctl');
+  });
+
+  it('sin systemd tampoco programa los timers de renovación TLS y lo declara', async () => {
+    const { code, stdout } = await runInstaller(
+      ['--dry-run', '--yes', '--tls', 'local', '--dir', '/tmp/kraken-x'],
+      { KRAKENOS_ASSUME_SYSTEMD: 'no', KRAKENOS_ASSUME_WSL: 'no' },
+    );
+    expect(code).toBe(0);
+    expect(stdout).not.toContain('systemctl');
+    expect(stdout).not.toMatch(/\.timer/);
+    expect(stdout).toContain('el certificado local NO se renovará solo');
   });
 
   it('--from-local copia el árbol local (sin node_modules) en vez de clonar', async () => {

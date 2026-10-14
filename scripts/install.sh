@@ -77,6 +77,7 @@ MODE=install
 DRY_RUN=0
 ASSUME_YES=0
 NO_SERVICE=0
+NO_SYSTEMD=0
 PURGE=0
 FROM_LOCAL=""
 BRANCH=""
@@ -422,7 +423,11 @@ install_sudoers() {
 # ---------------------------------------------------------------- servicio
 install_service() {
   if [[ $NO_SERVICE -eq 1 ]]; then
-    log "[6/7] Servicio systemd omitido (--no-service). Arranque manual:"
+    if [[ $NO_SYSTEMD -eq 1 ]]; then
+      log "[6/7] Servicio systemd omitido (este sistema no tiene systemd). Arranque manual:"
+    else
+      log "[6/7] Servicio systemd omitido (--no-service). Arranque manual:"
+    fi
     log "    cd $INSTALL_DIR/apps/agent && NODE_ENV=production node dist/index.js"
     return
   fi
@@ -990,6 +995,9 @@ do_update() {
   # una release que pasa a pedir un Node más nuevo no se puede aplicar con el viejo,
   # y es este camino —con root— el único que puede instalarlo.
   ensure_node
+  if ! has_systemd; then
+    warn "sin systemd, el paso «restart» de la actualización no podrá reiniciar el servicio: reinicia el agente a mano al terminar"
+  fi
   log "Buscando la última versión…"
   run git -C "$INSTALL_DIR" fetch --tags --prune origin
   local tag
@@ -1017,7 +1025,42 @@ do_update() {
 # ¿Hay systemd de verdad? En un contenedor `systemctl` existe pero no hay PID 1 de
 # systemd: sus llamadas fallan y con `set -e` tumbaban el desinstalador entero antes
 # de enumerar los datos conservados.
-has_systemd() { [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null; }
+# `KRAKENOS_ASSUME_SYSTEMD=yes|no` fuerza la respuesta (solo para los tests, igual que
+# KRAKENOS_OS_ID/ARCH): en un runner sin systemd no se puede comprobar el camino con él.
+has_systemd() {
+  case "${KRAKENOS_ASSUME_SYSTEMD:-}" in
+    yes) return 0 ;;
+    no) return 1 ;;
+  esac
+  [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null
+}
+
+# ¿Es WSL? Las distros de WSL2 arrancan sin systemd salvo que se active a mano.
+is_wsl() {
+  case "${KRAKENOS_ASSUME_WSL:-}" in # igual que ASSUME_SYSTEMD: solo para tests
+    yes) return 0 ;;
+    no) return 1 ;;
+  esac
+  [[ -n "${WSL_DISTRO_NAME:-}" ]] || grep -qi microsoft /proc/version 2> /dev/null
+}
+
+# Sin systemd no hay servicio que instalar: se degrada a --no-service EN VEZ de morir
+# a mitad en `systemctl daemon-reload`, y se dice qué falta y cómo seguir. Cubre de
+# una vez la unidad, el sudoers de la actualización, los timers de TLS y la espera
+# del servicio, que ya se omiten con --no-service.
+detect_systemd() {
+  [[ $NO_SERVICE -eq 0 ]] || return 0
+  has_systemd && return 0
+  NO_SERVICE=1
+  NO_SYSTEMD=1
+  warn "este sistema no tiene systemd en marcha: no se instalará el servicio (se instala todo lo demás)"
+  if is_wsl; then
+    warn "estás en WSL. Para activar systemd: añade a /etc/wsl.conf las líneas «[boot]» y «systemd=true», ejecuta «wsl --shutdown» desde Windows, vuelve a abrir la distro y repite la instalación"
+    SUMMARY+=("sin systemd (WSL): activa systemd en /etc/wsl.conf ([boot] systemd=true) y «wsl --shutdown», y vuelve a ejecutar el instalador para tener servicio, renovación de certificados y actualización automática")
+  else
+    SUMMARY+=("sin systemd: no hay servicio. Arranque manual: cd $INSTALL_DIR/apps/agent && NODE_ENV=production node dist/index.js (no se reinicia solo ni se actualiza solo)")
+  fi
+}
 
 do_uninstall() {
   local u
@@ -1076,6 +1119,7 @@ main() {
 
   log "Instalador de KrakenOS (${REPO}) → $INSTALL_DIR"
   check_platform
+  detect_systemd
   require_root
   ensure_base_packages
   ensure_node
