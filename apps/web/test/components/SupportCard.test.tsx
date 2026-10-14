@@ -58,6 +58,10 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
   it('activa la telemetría vía el ajuste telemetryEnabled', async () => {
     render(<SupportCard />);
     const btn = await screen.findByRole('button', { name: 'Activar' });
+    // «Activar» también se pinta con la telemetría SIN cargar, pero deshabilitado:
+    // pulsarlo entonces no hace nada y `patch` no se llama nunca. Se espera a que
+    // esté habilitado (= telemetría cargada) antes de pulsar.
+    await waitFor(() => expect(btn).toBeEnabled());
     // A partir de aquí el servidor dice que la telemetría está activada. Se
     // cambia la IMPLEMENTACIÓN, no `mockResolvedValueOnce`: el `Once` va a la
     // siguiente llamada **sea cual sea la ruta**, y este componente lanza dos al
@@ -77,6 +81,25 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
       }),
     );
     await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
+  });
+
+  it('⚠️ «Activar» no actúa mientras la telemetría aún no ha cargado', async () => {
+    // Con la telemetría sin cargar el botón ya se pinta como «Activar» (porque
+    // `telemetry?.enabled` es indefinido) pero está deshabilitado. Un test que
+    // solo espera ese texto puede pulsar un botón muerto: pasa o falla según
+    // lo rápido que resuelva la primera petición.
+    let resolverTelemetria: (v: TelemetrySnapshot) => void = () => {};
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/system/update/plan'
+        ? Promise.resolve(PLAN)
+        : new Promise<TelemetrySnapshot>((res) => (resolverTelemetria = res)),
+    );
+    render(<SupportCard />);
+    const btn = await screen.findByRole('button', { name: 'Activar' });
+    expect(btn).toBeDisabled();
+
+    resolverTelemetria(OFF);
+    await waitFor(() => expect(btn).toBeEnabled());
   });
 
   it('descarga el bundle de soporte', async () => {
