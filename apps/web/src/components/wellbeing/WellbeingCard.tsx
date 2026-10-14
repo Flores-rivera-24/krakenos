@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
+import { useAuthStore } from '@/store/auth.store';
 
 /**
  * Bienestar digital (US-184): uso de internet por persona. El servidor filtra por
@@ -13,6 +14,9 @@ import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
  */
 export function WellbeingCard() {
   const t = useT();
+  // Asignar dueños es cosa de admin: a los demás roles no se les manda a hacerlo.
+  // Con el rol aún sin cargar se asume admin (mismo criterio que la nav).
+  const notAdmin = useAuthStore((s) => s.user != null && s.user.role !== 'admin');
   const [range, setRange] = useState<WellbeingRange>('week');
   const [people, setPeople] = useState<PersonUsage[] | null>(null);
   // US-263/US-251: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume
@@ -76,7 +80,7 @@ export function WellbeingCard() {
             />
           ) : withOwner === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
-              {t('wellbeing.noOwners')}
+              {t(notAdmin ? 'wellbeing.noOwnedDevices' : 'wellbeing.noOwners')}
             </p>
           ) : (
             <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.empty')}</p>

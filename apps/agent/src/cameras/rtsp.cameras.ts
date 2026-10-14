@@ -10,6 +10,7 @@ import {
   jpegToDataUrl,
 } from './ffmpeg.js';
 import { HlsStreamManager, type StreamSpawner } from './hls-stream.js';
+import { CamerasConfigCorruptError } from './config-error.js';
 
 /** Definición de una cámara en la config (la `rtspUrl` nunca se expone en la API). */
 export interface CameraDefinition {
@@ -175,20 +176,31 @@ export class RtspCameraManager implements CameraManager {
 
 /**
  * Carga las definiciones de cámaras desde un fichero JSON (array de
- * `CameraDefinition`). Devuelve `[]` si el fichero no existe o es inválido.
+ * `CameraDefinition`). Mismo criterio que `FileJsonStore`: si el fichero no existe
+ * devuelve `[]`; si existe pero no es JSON o no es un array lanza
+ * `CorruptJsonStoreError` (un fichero dañado no se lee como «sin cámaras», que es
+ * justo lo que contradiría al alta).
  */
 export function loadCameraDefinitions(path: string): CameraDefinition[] {
+  let raw: string;
   try {
-    const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'));
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter(
-      (c): c is CameraDefinition =>
-        typeof c === 'object' &&
-        c !== null &&
-        typeof (c as CameraDefinition).id === 'string' &&
-        typeof (c as CameraDefinition).rtspUrl === 'string',
-    );
-  } catch {
-    return [];
+    raw = readFileSync(path, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw err;
   }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new CamerasConfigCorruptError(path, err);
+  }
+  if (!Array.isArray(parsed)) throw new CamerasConfigCorruptError(path);
+  return parsed.filter(
+    (c): c is CameraDefinition =>
+      typeof c === 'object' &&
+      c !== null &&
+      typeof (c as CameraDefinition).id === 'string' &&
+      typeof (c as CameraDefinition).rtspUrl === 'string',
+  );
 }

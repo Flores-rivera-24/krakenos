@@ -5,6 +5,7 @@ import type {
   WellbeingRange,
   WellbeingUsage,
 } from '@krakenos/types';
+import { Prisma } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import { asNumber } from '../../db/sql-aggregate.js';
 import { resolvePerDeviceTraffic } from '../../drivers/capabilities.js';
@@ -49,7 +50,12 @@ export class WellbeingService {
     const since = new Date(Date.now() - RANGE_MS[range]);
 
     // mac → ownerId (los aparatos sin fila de inventario o sin dueño → sin asignar).
-    const devices = await this.app.prisma.device.findMany({ select: { mac: true, ownerId: true } });
+    // Privacidad EN LA CONSULTA: un no-admin ni siquiera lee los aparatos ni las
+    // muestras ajenas (filtrar después en memoria sería haberlas leído igual).
+    const devices = await this.app.prisma.device.findMany({
+      where: isAdmin ? undefined : { ownerId: viewer.sub },
+      select: { mac: true, ownerId: true },
+    });
     const ownerByMac = new Map(devices.map((d) => [d.mac.toLowerCase(), d.ownerId]));
     const devicesWithOwner = devices.filter((d) => d.ownerId !== null).length;
 
@@ -59,15 +65,24 @@ export class WellbeingService {
     // Agregado en SQL (US-228/AUD3-13): con 40 aparatos, `range=week` traía ~403.000
     // filas (~100 MB de heap) para pintar 7 puntos por persona — y esta lectura la
     // puede pedir **cualquier rol**. Ahora salen `macs × buckets` filas.
-    const rows = await this.app.prisma.$queryRaw<
-      { mac: string; bucket: number | bigint; sumRx: number; sumTx: number }[]
-    >`
+    // Un no-admin sin aparatos propios no consulta nada (un `IN ()` vacío no es SQL válido).
+    const noQuery = !isAdmin && devices.length === 0;
+    const macFilter =
+      isAdmin || noQuery
+        ? Prisma.empty
+        : Prisma.sql`AND lower(mac) IN (${Prisma.join(devices.map((d) => d.mac.toLowerCase()))})`;
+    const rows = noQuery
+      ? []
+      : await this.app.prisma.$queryRaw<
+          { mac: string; bucket: number | bigint; sumRx: number; sumTx: number }[]
+        >`
       SELECT mac,
              (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
              SUM(rxBytesPerSec) AS sumRx,
              SUM(txBytesPerSec) AS sumTx
       FROM DeviceTrafficSample
       WHERE timestamp >= ${since.getTime()}
+        ${macFilter}
       GROUP BY mac, bucket
       ORDER BY mac ASC, bucket ASC`;
 

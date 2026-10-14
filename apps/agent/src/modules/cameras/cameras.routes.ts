@@ -8,6 +8,7 @@ import type {
   UpdateMotionConfigRequest,
 } from '@krakenos/types';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { withCamerasCorruptError } from '../../cameras/config-error.js';
 import { toCameraRecord, toManagedCamera, type CameraStore } from '../../cameras/camera.store.js';
 import { FRIGATE_RECORDING_PREFIX, segmentContentType } from '../../cameras/frigate.parsers.js';
 import { StreamLimitError } from '../../cameras/hls-stream.js';
@@ -47,7 +48,8 @@ interface CameraRoutesOpts {
 const STREAM_TOKEN_TTL_SEC = 300;
 
 export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, opts) => {
-  const { cameras, store, motion, recording } = opts;
+  const { cameras, motion, recording } = opts;
+  const store = opts.store ? withCamerasCorruptError(opts.store) : undefined;
 
   /**
    * Valida el token de stream de la query (`?st=`) para **una** cámara. A

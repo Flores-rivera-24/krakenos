@@ -1,7 +1,18 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { CameraDefinition } from '../../src/cameras/rtsp.cameras.js';
-import { MemoryJsonStore } from '../../src/store/json-store.js';
+import {
+  loadCameraDefinitions,
+  RtspCameraManager,
+  type CameraDefinition,
+} from '../../src/cameras/rtsp.cameras.js';
+import {
+  CorruptJsonStoreError,
+  FileJsonStore,
+  MemoryJsonStore,
+} from '../../src/store/json-store.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 describe('rutas de cámaras', () => {
@@ -434,5 +445,61 @@ describe('gestión de cámaras desde la UI (US-148)', () => {
       headers: authHeader(adminToken),
     });
     expect(missing.statusCode).toBe(404);
+  });
+});
+
+describe('fichero de cámaras corrupto', () => {
+  let app: FastifyInstance;
+  let path: string;
+
+  beforeAll(async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'krakenos-cams-'));
+    path = join(dir, 'cameras.json');
+    writeFileSync(path, '{ esto no es json');
+    app = await buildTestApp({
+      routes: true,
+      cameras: new RtspCameraManager({
+        configPath: path,
+        exec: async () => ({ stdout: Buffer.alloc(0), code: 1 }),
+      }),
+      cameraStore: new FileJsonStore<CameraDefinition>(path),
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('GET y POST responden lo mismo (500 CAMERAS_CONFIG_CORRUPT) y no leen «sin cámaras»', async () => {
+    await resetDb(app);
+    const admin = await seedUser(app, { role: 'admin' });
+    const headers = authHeader(signAccess(app, admin));
+    const get = await app.inject({ method: 'GET', url: '/api/cameras', headers });
+    const post = await app.inject({
+      method: 'POST',
+      url: '/api/cameras',
+      headers,
+      payload: { name: 'Patio', rtspUrl: 'rtsp://10.0.0.5/stream' },
+    });
+    expect(get.statusCode).toBe(500);
+    expect(post.statusCode).toBe(500);
+    for (const res of [get, post]) {
+      const body = res.json<{ code: string; message: string }>();
+      expect(body.code).toBe('CAMERAS_CONFIG_CORRUPT');
+      expect(body.message).toMatch(/fichero de cámaras está dañado/);
+      expect(body.message).not.toContain(path); // sin la ruta absoluta
+    }
+    // El fichero dañado se conserva intacto.
+    expect(readFileSync(path, 'utf8')).toBe('{ esto no es json');
+  });
+
+  it('un fichero que no existe sí es «sin cámaras»', () => {
+    expect(loadCameraDefinitions(join(tmpdir(), 'krakenos-no-existe', 'c.json'))).toEqual([]);
+  });
+
+  it('un JSON válido que no es un array también es corrupto', () => {
+    const p = join(mkdtempSync(join(tmpdir(), 'krakenos-cams-')), 'c.json');
+    writeFileSync(p, '{"id":"x"}');
+    expect(() => loadCameraDefinitions(p)).toThrow(CorruptJsonStoreError);
   });
 });

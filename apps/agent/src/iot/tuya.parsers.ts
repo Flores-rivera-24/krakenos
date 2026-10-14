@@ -20,9 +20,6 @@ export const DP_ON_OLD = '1';
 /** DPS de brillo (nuevo/viejo). */
 export const DP_BRIGHT_NEW = '22';
 export const DP_BRIGHT_OLD = '2';
-/** DPS de modo de color (nuevo/viejo) — `white` | `colour`. */
-export const DP_MODE_NEW = '21';
-export const DP_MODE_OLD = '3';
 
 /** Rango de brillo del protocolo Tuya. */
 const DPS_BRIGHT_MIN = 10;
