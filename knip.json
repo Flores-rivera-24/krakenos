@@ -41,13 +41,21 @@
       ]
     }
   },
-  "ignore": ["**/.stryker-tmp/**", "**/dist/**", "qa-reports/**", "apps/web/public/**"],
+  "ignore": [
+    "**/.stryker-tmp/**",
+    "**/dist/**",
+    "qa-reports/**",
+    "apps/web/public/**",
+    "apps/web/scripts/bundle-budget.d.mts"
+  ],
   "ignoreDependencies": [
     "@stryker-mutator/core",
     "@stryker-mutator/vitest-runner",
     "autocannon",
     "knip",
-    "pino-pretty"
+    "pino-pretty",
+    "vite",
+    "vitest"
   ],
   "ignoreExportsUsedInFile": true
 }
