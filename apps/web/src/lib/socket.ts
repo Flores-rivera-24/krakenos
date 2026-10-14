@@ -21,6 +21,9 @@ export interface LazySocket {
   io: Pick<AppSocket['io'], 'on' | 'off'>;
 }
 
+const SOCKET_RETRY_BASE_MS = 1000;
+const SOCKET_RETRY_MAX_MS = 30_000;
+
 let facade: LazySocket | null = null;
 
 function openSocket(io: typeof socketIo): AppSocket {
@@ -86,12 +89,32 @@ export function getSocket(): LazySocket {
     else pending.push(op);
   };
 
-  void import('./socket-client').then(({ io }) => {
-    const s = openSocket(io);
-    real = s;
-    for (const op of pending.splice(0)) op(s);
-    s.connect();
-  });
+  // Si el chunk no llega (sin red, o una actualización cambió los hashes) NO se
+  // abandona: la cola se conserva y se reintenta con backoff acotado, así que en
+  // cuanto vuelve la red las suscripciones se aplican y el socket conecta. No toca
+  // la sesión: un fallo de red no es una sesión caducada.
+  let attempt = 0;
+  const load = (): void => {
+    import('./socket-client').then(
+      ({ io }) => {
+        const s = openSocket(io);
+        real = s;
+        for (const op of pending.splice(0)) op(s);
+        s.connect();
+      },
+      (err: unknown) => {
+        const delay = Math.min(SOCKET_RETRY_MAX_MS, SOCKET_RETRY_BASE_MS * 2 ** attempt);
+        attempt += 1;
+        console.warn(
+          'socket: no se pudo cargar el cliente en tiempo real; reintento (ms):',
+          delay,
+          err,
+        );
+        setTimeout(load, delay);
+      },
+    );
+  };
+  load();
 
   // Los métodos de socket.io están sobrecargados con genéricos de eventos que una
   // fachada genérica no puede reexpresar: el contrato tipado lo da `LazySocket`.
