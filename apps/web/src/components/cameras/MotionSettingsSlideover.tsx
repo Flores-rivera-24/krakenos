@@ -217,7 +217,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
                     className={
                       'rounded-sm px-2 py-1 text-kr-xs ' +
                       (days.includes(d)
-                        ? 'bg-kr-accent text-kr-on-accent'
+                        ? 'bg-kr-accent text-white'
                         : 'border border-kr text-kr-secondary')
                     }
                   >

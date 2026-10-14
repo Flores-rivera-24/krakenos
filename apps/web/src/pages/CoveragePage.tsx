@@ -399,7 +399,7 @@ export function CoveragePage() {
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
                 aria-label={t('coverage.planLabel')}
-                className="h-9 rounded-md border border-kr bg-kr-bg px-2 text-kr-sm text-kr-primary"
+                className="h-9 rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
               >
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -497,7 +497,7 @@ export function CoveragePage() {
                       prev.map((w) => (w.id === selectedWallId ? { ...w, material } : w)),
                     );
                   }}
-                  className="h-8 rounded-md border border-kr bg-kr-bg px-2 text-kr-primary"
+                  className="h-8 rounded-md border border-kr bg-background px-2 text-kr-primary"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>

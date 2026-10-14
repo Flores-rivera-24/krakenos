@@ -93,7 +93,7 @@ export function ApPalette({
               return (
                 <li
                   key={ap.id}
-                  className="flex items-center gap-2 rounded-md border border-kr bg-kr-bg px-2.5 py-2"
+                  className="flex items-center gap-2 rounded-md border border-kr bg-kr-base px-2.5 py-2"
                 >
                   <span
                     className={cn(
@@ -148,7 +148,7 @@ export function ApPalette({
           </p>
           <ul className="space-y-3">
             {placedAps.map((ap) => (
-              <li key={ap.id} className="rounded-md border border-kr bg-kr-bg p-3">
+              <li key={ap.id} className="rounded-md border border-kr bg-kr-base p-3">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-1.5">
                     <StatusDot status={ap.enabled ? 'online' : 'offline'} />

@@ -350,7 +350,7 @@ export function FloorPlanStage({
               cy={s.y * pxPerM}
               r={SAMPLE_RADIUS_PX}
               fill={signalQualityColorVar(signalQuality(s.rssiDbm))}
-              stroke="var(--kr-bg)"
+              stroke="var(--kr-bg-base)"
               strokeWidth={1.5}
             >
               <title>{`${Math.round(s.rssiDbm)} dBm`}</title>
@@ -379,7 +379,7 @@ export function FloorPlanStage({
                 cy={ap.y * pxPerM}
                 r={AP_RADIUS_PX}
                 fill={ap.enabled ? 'var(--kr-accent)' : 'var(--kr-text-muted)'}
-                stroke="var(--kr-bg)"
+                stroke="var(--kr-bg-base)"
                 strokeWidth={2}
               />
               <text

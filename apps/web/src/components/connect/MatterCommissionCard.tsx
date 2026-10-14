@@ -64,12 +64,12 @@ export function MatterCommissionCard() {
         </Button>
       </form>
       {ok && (
-        <p role="status" className="text-kr-sm text-kr-success">
+        <p role="status" className="text-kr-sm text-success">
           {ok}
         </p>
       )}
       {error && (
-        <p role="alert" className="text-kr-sm text-kr-danger">
+        <p role="alert" className="text-kr-sm text-danger">
           {error}
         </p>
       )}
