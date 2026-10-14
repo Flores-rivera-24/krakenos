@@ -95,6 +95,66 @@ describe('WellbeingService (US-184)', () => {
     expect((people[0]?.buckets.length ?? 0) >= 1).toBe(true);
   });
 
+  // --- El servidor no debe LEER lo ajeno, no solo no devolverlo ---
+
+  /** App espía: registra los parámetros de cada consulta SQL y las MAC que lee el inventario. */
+  function appEspia() {
+    const sqlParams: unknown[] = [];
+    const macsLeidas: string[] = [];
+    const espia = {
+      prisma: {
+        user: app.prisma.user,
+        device: {
+          findMany: async (args: Parameters<typeof app.prisma.device.findMany>[0]) => {
+            const rows = await app.prisma.device.findMany(args);
+            for (const r of rows) macsLeidas.push(r.mac);
+            return rows;
+          },
+        },
+        $queryRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
+          sqlParams.push(JSON.stringify(values));
+          return app.prisma.$queryRaw(strings, ...values);
+        },
+      },
+    } as unknown as FastifyInstance;
+    return { espia, sqlParams, macsLeidas };
+  }
+
+  it('un no-admin no LEE los aparatos ni las muestras ajenas, y su devicesWithOwner es el suyo', async () => {
+    const { ana } = await seed();
+    const { espia, sqlParams, macsLeidas } = appEspia();
+    const svc = new WellbeingService(espia, new MockDriver());
+    const out = await svc.usageByPerson('week', { sub: ana.id, role: 'member' });
+
+    expect(out.people).toHaveLength(1);
+    expect(out.people[0]?.totalBytes).toBe(1500 * 60);
+    // Solo se leyó su aparato, y el SQL solo filtra por su MAC.
+    expect(macsLeidas).toEqual(['aa:aa:aa:00:00:01']);
+    expect(sqlParams.join()).toContain('aa:aa:aa:00:00:01');
+    expect(sqlParams.join()).not.toContain('bb:bb:bb:00:00:02');
+    expect(sqlParams.join()).not.toContain('cc:cc:cc:00:00:03');
+    // Hay 2 aparatos con dueño en el hogar; este member tiene 1.
+    expect(out.devicesWithOwner).toBe(1);
+  });
+
+  it('un no-admin sin aparatos propios no consulta las muestras', async () => {
+    await seed();
+    const { espia, sqlParams } = appEspia();
+    const svc = new WellbeingService(espia, new MockDriver());
+    const out = await svc.usageByPerson('week', { sub: 'nadie', role: 'viewer' });
+    expect(out.people).toEqual([]);
+    expect(out.devicesWithOwner).toBe(0);
+    expect(sqlParams).toEqual([]);
+  });
+
+  it('el admin ve todo el hogar y devicesWithOwner cuenta todos los dueños', async () => {
+    await seed();
+    const svc = new WellbeingService(app, new MockDriver());
+    const out = await svc.usageByPerson('week', { sub: 'admin-x', role: 'admin' });
+    expect(out.people).toHaveLength(3);
+    expect(out.devicesWithOwner).toBe(2);
+  });
+
   // --- US-263: la capacidad viaja con el informe ---
 
   it('con el mock (que sí reporta el desglose) la capacidad sale disponible', async () => {
