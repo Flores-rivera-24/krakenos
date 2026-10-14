@@ -470,7 +470,7 @@ describe('fichero de cámaras corrupto', () => {
     await app.close();
   });
 
-  it('GET y POST responden lo mismo (500 INTERNAL_ERROR) y no leen «sin cámaras»', async () => {
+  it('GET y POST responden lo mismo (500 CAMERAS_CONFIG_CORRUPT) y no leen «sin cámaras»', async () => {
     await resetDb(app);
     const admin = await seedUser(app, { role: 'admin' });
     const headers = authHeader(signAccess(app, admin));
@@ -483,8 +483,12 @@ describe('fichero de cámaras corrupto', () => {
     });
     expect(get.statusCode).toBe(500);
     expect(post.statusCode).toBe(500);
-    expect(get.json<{ code: string }>().code).toBe('INTERNAL_ERROR');
-    expect(post.json<{ code: string }>().code).toBe('INTERNAL_ERROR');
+    for (const res of [get, post]) {
+      const body = res.json<{ code: string; message: string }>();
+      expect(body.code).toBe('CAMERAS_CONFIG_CORRUPT');
+      expect(body.message).toMatch(/fichero de cámaras está dañado/);
+      expect(body.message).not.toContain(path); // sin la ruta absoluta
+    }
     // El fichero dañado se conserva intacto.
     expect(readFileSync(path, 'utf8')).toBe('{ esto no es json');
   });

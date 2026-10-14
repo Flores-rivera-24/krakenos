@@ -10,7 +10,7 @@ import {
   jpegToDataUrl,
 } from './ffmpeg.js';
 import { HlsStreamManager, type StreamSpawner } from './hls-stream.js';
-import { CorruptJsonStoreError } from '../store/json-store.js';
+import { CamerasConfigCorruptError } from './config-error.js';
 
 /** Definición de una cámara en la config (la `rtspUrl` nunca se expone en la API). */
 export interface CameraDefinition {
@@ -193,9 +193,9 @@ export function loadCameraDefinitions(path: string): CameraDefinition[] {
   try {
     parsed = JSON.parse(raw);
   } catch (err) {
-    throw new CorruptJsonStoreError(path, { cause: err });
+    throw new CamerasConfigCorruptError(path, err);
   }
-  if (!Array.isArray(parsed)) throw new CorruptJsonStoreError(path);
+  if (!Array.isArray(parsed)) throw new CamerasConfigCorruptError(path);
   return parsed.filter(
     (c): c is CameraDefinition =>
       typeof c === 'object' &&

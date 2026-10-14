@@ -58,6 +58,8 @@ export const es = {
   'errors.code.AUTH_INVALID_CREDENTIALS': 'Credenciales incorrectas.',
   'errors.code.RATE_LIMITED': 'Demasiados intentos. Espera un momento e inténtalo de nuevo.',
   'errors.code.VALIDATION': 'Revisa los datos e inténtalo de nuevo.',
+  'errors.code.CAMERAS_CONFIG_CORRUPT':
+    'El fichero de cámaras está dañado. Restáuralo desde una copia de seguridad o revísalo a mano; no se ha modificado.',
   'errors.code.SETUP_ALREADY_DONE': 'El sistema ya está configurado',
   'errors.code.SETUP_LOCK_STALE':
     'La configuración quedó bloqueada por un intento anterior. Reinicia el agente y vuelve a intentarlo.',

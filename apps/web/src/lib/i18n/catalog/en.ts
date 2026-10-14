@@ -52,6 +52,8 @@ export const en: Record<TranslationKey, string> = {
   'errors.code.AUTH_INVALID_CREDENTIALS': 'Incorrect credentials.',
   'errors.code.RATE_LIMITED': 'Too many attempts. Wait a moment and try again.',
   'errors.code.VALIDATION': 'Check the details and try again.',
+  'errors.code.CAMERAS_CONFIG_CORRUPT':
+    'The cameras file is damaged. Restore it from a backup or check it by hand; it has not been modified.',
   'errors.code.SETUP_ALREADY_DONE': 'This system is already set up',
   'errors.code.SETUP_LOCK_STALE':
     'Setup was left locked by an earlier attempt. Restart the agent and try again.',

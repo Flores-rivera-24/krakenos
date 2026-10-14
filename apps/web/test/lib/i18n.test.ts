@@ -98,6 +98,17 @@ describe('describeError localizado (US-177)', () => {
     expect(describeError(err, 'fallback')).toBe(en['errors.code.AUTH_INVALID_CREDENTIALS']);
   });
 
+  it('traduce el código del fichero de cámaras dañado y en español conserva el texto del servidor', () => {
+    const err = new ApiRequestError(500, {
+      code: 'CAMERAS_CONFIG_CORRUPT',
+      message: 'texto del servidor',
+    });
+    expect(describeError(err, 'fallback')).toBe('texto del servidor');
+    setLocale('en', { persist: false });
+    expect(describeError(err, 'fallback')).toBe(en['errors.code.CAMERAS_CONFIG_CORRUPT']);
+    expect(en['errors.code.CAMERAS_CONFIG_CORRUPT']).toMatch(/cameras file is damaged/);
+  });
+
   it('sin código conocido, cae al mensaje del servidor', () => {
     setLocale('en', { persist: false });
     const err = new ApiRequestError(500, { code: 'WHATEVER', message: 'server text' });
