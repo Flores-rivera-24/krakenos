@@ -7,7 +7,7 @@ navegador real".
 
 ## Qué se prueba
 
-**29 tests activos** en 7 ficheros (27 en `e2e/tests`, 2 en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`) y 1 en cuarentena (2FA con autenticador virtual). Recuento con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
+Los tests viven en `e2e/tests` (y los de inglés en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`) y 1 en cuarentena (2FA con autenticador virtual). El recuento actual se obtiene con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
 
 | # | Flujo | Cubre |
 |---|-------|-------|
