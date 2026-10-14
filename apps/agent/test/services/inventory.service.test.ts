@@ -47,6 +47,22 @@ describe('InventoryService', () => {
       expect([...gateway.sources].sort()).toEqual(['arp', 'mdns']);
     });
 
+    it('el fabricante que da el driver gana al ya guardado; sin él se conserva el guardado', async () => {
+      const mac = '24:5a:4c:11:22:33';
+      await app.prisma.device.create({
+        data: { mac, ip: '192.168.1.1', vendor: 'Generic', type: 'router', sources: '["arp"]' },
+      });
+      vi.spyOn(driver, 'scanArp').mockResolvedValue([
+        { mac, ip: '192.168.1.1', source: 'arp', vendor: 'Ubiquiti' },
+      ]);
+      vi.spyOn(driver, 'scanMdns').mockResolvedValue([]);
+      expect(byMac(await service.scan(), mac).vendor).toBe('Ubiquiti');
+
+      // Un barrido posterior sin fabricante del driver no pisa el guardado.
+      vi.spyOn(driver, 'scanArp').mockResolvedValue([{ mac, ip: '192.168.1.1', source: 'arp' }]);
+      expect(byMac(await service.scan(), mac).vendor).toBe('Ubiquiti');
+    });
+
     it('infiere el tipo a partir de hostname y fabricante', async () => {
       const devices = await service.scan();
 

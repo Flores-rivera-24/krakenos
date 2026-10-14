@@ -333,7 +333,7 @@ export class InventoryService {
 
     const hostname = found.hostname ?? existing?.hostname ?? null;
     // Fabricante: el provisto por el driver tiene prioridad; si no, lookup OUI.
-    const vendor = existing?.vendor ?? found.vendor ?? lookupVendor(mac);
+    const vendor = found.vendor ?? existing?.vendor ?? lookupVendor(mac);
     // Tipo: respeta el que haya fijado el usuario; sólo autoinfiere si es 'unknown'.
     const type =
       existing && existing.type !== 'unknown' ? existing.type : inferDeviceType(vendor, hostname);
