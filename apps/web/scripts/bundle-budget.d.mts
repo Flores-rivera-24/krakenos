@@ -16,19 +16,58 @@ export interface BundleChunk {
 
 export interface BundleBudget {
   /** Tope de la carga inicial: entrada `index-*` + chunks `modulepreload` de `index.html`. */
-  maxEntryKb: number;
+  maxInitialKb: number;
+  /** Tope de la PEOR ruta: carga inicial + lo que trae su página. */
+  maxRouteKb: number;
   /** Tope de CADA chunk por separado, entrada incluida. */
   maxChunkKb: number;
-  /** Tope de la suma de todo lo emitido. */
-  maxTotalKb: number;
 }
 
-/** Devuelve una violación por cada tope superado; vacío si todo cabe. */
+export interface ManifestEntry {
+  file: string;
+  imports?: string[];
+  dynamicImports?: string[];
+}
+export type Manifest = Record<string, ManifestEntry>;
+
+export interface RouteWeight {
+  route: string;
+  /** Lo que la ruta añade a la carga inicial. */
+  ownKb: number;
+  /** Carga inicial + `ownKb`. */
+  totalKb: number;
+  chunks: string[];
+}
+
+/** Violaciones de la carga inicial y de cada chunk; vacío si todo cabe. Sin `initialNames` falla cerrado. */
 export function checkBudget(
   chunks: BundleChunk[],
-  budget: BundleBudget,
+  budget: Pick<BundleBudget, 'maxInitialKb' | 'maxChunkKb'>,
   initialNames?: string[],
 ): string[];
 
 /** Chunks JS que `index.html` carga al abrir: módulos de entrada y `modulepreload`. */
 export function initialChunkNames(html: string): string[];
+
+/** Páginas que `App.tsx` declara con `lazy(() => import('@/pages/X'))`. */
+export function pageNames(appSource: string): string[];
+
+/** Ficheros que trae una entrada del manifest por imports estáticos (transitivos). Lanza si falta una. */
+export function staticClosure(manifest: Manifest, key: string): string[];
+
+/** Peso por ruta. Lanza si una ruta, un extra o un chunk no está. */
+export function routeWeights(input: {
+  manifest: Manifest;
+  chunks: BundleChunk[];
+  initialNames: string[];
+  pages: string[];
+  publicPages?: string[];
+  extras?: string[];
+}): RouteWeight[];
+
+/** Violaciones por ruta; exige medir al menos `expectedPages` y `minPages` (15) rutas. */
+export function checkRoutes(
+  weights: RouteWeight[],
+  budget: Pick<BundleBudget, 'maxRouteKb'>,
+  opts: { expectedPages: number; minPages?: number },
+): string[];

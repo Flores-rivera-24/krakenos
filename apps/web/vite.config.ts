@@ -7,6 +7,7 @@ const AGENT_URL = process.env.VITE_AGENT_URL ?? 'http://localhost:3001';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: { manifest: true },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
