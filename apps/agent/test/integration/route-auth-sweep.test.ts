@@ -56,18 +56,18 @@ describe('barrido de autenticación de lecturas (/api GET)', () => {
     // CA (nunca el fichero crudo) y no lee `keys/`; lleva rate-limit propio. Lo
     // prueba `ca-cert.routes.test.ts`.
     'GET /api/system/ca-cert',
-    // Vista previa de una invitacion: la autoriza el token de invitacion (capacidad
-    // de un solo uso, 404 si no vale), no una sesion; quien la abre aun no tiene
+    // Vista previa de una invitación: la autoriza el token de invitación (capacidad
+    // de un solo uso, 404 si no vale), no una sesión; quien la abre aún no tiene
     // cuenta. Lleva rate-limit propio. Con un token de relleno responde 400 por
-    // longitud del schema, no por falta de sesion.
+    // longitud del schema, no por falta de sesión.
     'GET /api/invitations/redeem/:token',
   ]);
 
   /**
-   * Rutas protegidas que, con los parametros de relleno del barrido, responden 400
-   * por **validacion del schema** (que corre antes del `preHandler` de auth) y no
-   * 401. Cada una se recomprueba con una peticion valida en el test de abajo, que
-   * si exige 401/403.
+   * Rutas protegidas que, con los parámetros de relleno del barrido, responden 400
+   * por **validación del schema** (que corre antes del `preHandler` de auth) y no
+   * 401. Cada una se recomprueba con una petición válida en el test de abajo, que
+   * sí exige 401/403.
    */
   const VALIDACION_ANTES_DE_AUTH = new Map<string, string>([
     ['GET /api/coverage/floorplans/:id/heatmap', '/api/coverage/floorplans/x/heatmap?band=5GHz'],
@@ -115,7 +115,7 @@ describe('barrido de autenticación de lecturas (/api GET)', () => {
     expect(abiertas).toEqual([]);
   });
 
-  it('las rutas con validacion previa a la auth responden 401/403 con una peticion valida', async () => {
+  it('las rutas con validación previa a la auth responden 401/403 con una petición válida', async () => {
     for (const [key, url] of VALIDACION_ANTES_DE_AUTH) {
       const res = await app.inject({ method: 'GET', url });
       expect([401, 403], key).toContain(res.statusCode);
