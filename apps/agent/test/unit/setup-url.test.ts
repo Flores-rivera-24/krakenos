@@ -1,30 +1,134 @@
-import os from 'node:os';
-import { describe, expect, it, vi } from 'vitest';
-import { buildSetupUrl, firstLanIpv4 } from '../../src/modules/setup/setup-url.js';
+import type os from 'node:os';
+import { describe, expect, it } from 'vitest';
+import {
+  buildSetupUrl,
+  firstLanIpv4,
+  isPrivateIpv4,
+  resolveSetupUrl,
+} from '../../src/modules/setup/setup-url.js';
 
 type Nifs = ReturnType<typeof os.networkInterfaces>;
 
-describe('firstLanIpv4 (US-105)', () => {
-  it('devuelve la primera IPv4 no interna (LAN)', () => {
-    vi.spyOn(os, 'networkInterfaces').mockReturnValue({
-      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
-      eth0: [
-        { family: 'IPv6', internal: false, address: 'fe80::1' },
-        { family: 'IPv4', internal: false, address: '192.168.1.42' },
-      ],
-    } as unknown as Nifs);
-    expect(firstLanIpv4()).toBe('192.168.1.42');
+const lo = { family: 'IPv4', internal: true, address: '127.0.0.1' };
+const nifs = (o: Record<string, object[]>) => o as unknown as Nifs;
+
+describe('firstLanIpv4', () => {
+  it('devuelve la primera IPv4 privada de la LAN', () => {
+    expect(
+      firstLanIpv4(
+        nifs({
+          lo: [lo],
+          eth0: [
+            { family: 'IPv6', internal: false, address: 'fe80::1' },
+            { family: 'IPv4', internal: false, address: '192.168.1.42' },
+          ],
+        }),
+      ),
+    ).toBe('192.168.1.42');
   });
 
-  it('cae a localhost si solo hay interfaces internas', () => {
-    vi.spyOn(os, 'networkInterfaces').mockReturnValue({
-      lo: [{ family: 'IPv4', internal: true, address: '127.0.0.1' }],
-    } as unknown as Nifs);
-    expect(firstLanIpv4()).toBe('localhost');
+  it('una 100.x de Tailscale o una IP pública delante no ganan a la privada', () => {
+    expect(
+      firstLanIpv4(
+        nifs({
+          tailscale0: [{ family: 'IPv4', internal: false, address: '100.101.102.103' }],
+          wan0: [{ family: 'IPv4', internal: false, address: '8.8.4.4' }],
+          eth0: [{ family: 'IPv4', internal: false, address: '10.0.0.7' }],
+        }),
+      ),
+    ).toBe('10.0.0.7');
+  });
+
+  it('prefiere 10.x/192.168.x a la 172.16/12 (NAT de WSL/Docker) aunque esta vaya antes', () => {
+    expect(
+      firstLanIpv4(
+        nifs({
+          eth0: [{ family: 'IPv4', internal: false, address: '172.24.5.2' }],
+          wlan0: [{ family: 'IPv4', internal: false, address: '192.168.0.9' }],
+        }),
+      ),
+    ).toBe('192.168.0.9');
+    expect(
+      firstLanIpv4(nifs({ eth0: [{ family: 'IPv4', internal: false, address: '172.24.5.2' }] })),
+    ).toBe('172.24.5.2');
+  });
+
+  it('salta las interfaces virtuales de contenedores', () => {
+    expect(
+      firstLanIpv4(
+        nifs({
+          docker0: [{ family: 'IPv4', internal: false, address: '192.168.99.1' }],
+          eth0: [{ family: 'IPv4', internal: false, address: '192.168.1.5' }],
+        }),
+      ),
+    ).toBe('192.168.1.5');
+  });
+
+  it('cae a localhost si no hay ninguna privada (solo loopback, 100.x o pública)', () => {
+    expect(firstLanIpv4(nifs({ lo: [lo] }))).toBe('localhost');
+    expect(
+      firstLanIpv4(
+        nifs({
+          ts: [{ family: 'IPv4', internal: false, address: '100.64.0.1' }],
+          wan: [{ family: 'IPv4', internal: false, address: '203.0.113.9' }],
+        }),
+      ),
+    ).toBe('localhost');
+  });
+
+  it('ignora IPv6', () => {
+    expect(
+      firstLanIpv4(nifs({ eth0: [{ family: 'IPv6', internal: false, address: '192.168.1.1' }] })),
+    ).toBe('localhost');
+  });
+
+  it('172.15.x y 172.32.x no son privadas', () => {
+    expect(isPrivateIpv4('172.15.0.1')).toBe(false);
+    expect(isPrivateIpv4('172.32.0.1')).toBe(false);
+    expect(isPrivateIpv4('172.31.0.1')).toBe(true);
   });
 });
 
-describe('setup URL (US-105)', () => {
+describe('resolveSetupUrl', () => {
+  const ifaces = nifs({
+    eth0: [{ family: 'IPv4', internal: false, address: '192.168.1.42' }],
+  });
+  const base = { https: false, port: 3001, token: 'tok', interfaces: ifaces };
+
+  it('usa el origen fijado de la instalación (--tls local)', () => {
+    expect(resolveSetupUrl({ ...base, webOrigin: 'https://casa.local:8443' })).toBe(
+      'https://casa.local:8443/setup?token=tok',
+    );
+  });
+
+  it('descarta ruta y barra final del origen', () => {
+    expect(resolveSetupUrl({ ...base, webOrigin: 'https://casa.ts.net/algo/' })).toBe(
+      'https://casa.ts.net/setup?token=tok',
+    );
+  });
+
+  it('un origen de loopback (vite en dev) o ilegible no cuenta: cae a la IP privada', () => {
+    for (const o of ['http://localhost:5173', 'http://127.0.0.1:5173', 'basura', 'ftp://x', '']) {
+      expect(resolveSetupUrl({ ...base, webOrigin: o })).toBe(
+        'http://192.168.1.42:3001/setup?token=tok',
+      );
+    }
+  });
+
+  it('sin WEB_ORIGIN usa la IP privada y el esquema según https', () => {
+    expect(resolveSetupUrl({ ...base, webOrigin: undefined, https: true })).toBe(
+      'https://192.168.1.42:3001/setup?token=tok',
+    );
+  });
+
+  it('sin ninguna privada acaba en localhost', () => {
+    expect(resolveSetupUrl({ ...base, webOrigin: undefined, interfaces: nifs({ lo: [lo] }) })).toBe(
+      'http://localhost:3001/setup?token=tok',
+    );
+  });
+});
+
+describe('setup URL', () => {
   it('incrusta el token en el query y respeta el esquema/host/puerto', () => {
     expect(
       buildSetupUrl({ scheme: 'http', host: '192.168.1.50', port: 3001, token: 'abc123' }),

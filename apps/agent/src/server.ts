@@ -68,7 +68,7 @@ import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
-import { buildSetupUrl, firstLanIpv4 } from './modules/setup/setup-url.js';
+import { resolveSetupUrl } from './modules/setup/setup-url.js';
 import { accessRequestsRoutes, invitationsRoutes } from './modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
@@ -722,9 +722,11 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
 
     const token = setupToken.ensure();
-    const setupUrl = buildSetupUrl({
-      scheme: env.https ? 'https' : 'http',
-      host: firstLanIpv4(),
+    // El origen solo cuenta si `WEB_ORIGIN` está fijado de verdad (env.webOrigin
+    // trae un valor por defecto de dev que no distingue «fijado» de «ausente»).
+    const setupUrl = resolveSetupUrl({
+      webOrigin: process.env.WEB_ORIGIN,
+      https: env.https !== null,
       port: env.port,
       token,
     });
