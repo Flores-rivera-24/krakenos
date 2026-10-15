@@ -1,3 +1,4 @@
+import { errorResponse } from '../common.schemas.js';
 /** JSON Schemas de los horarios de acceso / control parental (US-108). */
 
 // MAC en los cuerpos de entrada: acepta hex separado por `:`/`-` (todos los
@@ -94,7 +95,10 @@ export const updateScheduleSchema = {
   response: { 200: scheduleResponse },
 } as const;
 
-export const deleteScheduleSchema = { params: idParam } as const;
+export const deleteScheduleSchema = {
+  params: idParam,
+  response: { 204: { type: 'null' }, 404: errorResponse },
+} as const;
 
 const mac = { type: 'string', minLength: 1, maxLength: 64, pattern: MAC_PATTERN } as const;
 

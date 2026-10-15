@@ -32,7 +32,7 @@ export const PLUGS_GUIDES_EN: GuideTranslations = {
       },
     ],
     fields: {
-      deviceIps: {
+      kasaDeviceIps: {
         label: 'Kasa addresses (optional)',
         help: 'Only if they are not discovered automatically: your Kasa devices’ IPs separated by commas, for example 192.168.1.60, 192.168.1.62. Leave it empty for automatic discovery.',
         placeholder: '192.168.1.60, 192.168.1.62',
@@ -74,16 +74,16 @@ export const PLUGS_GUIDES_EN: GuideTranslations = {
       },
     ],
     fields: {
-      email: {
+      tapoEmail: {
         label: 'TP-Link account email',
         help: 'The email you use to sign in to the Tapo app.',
         placeholder: 'your-email@example.com',
       },
-      password: {
+      tapoPassword: {
         label: 'TP-Link password',
         help: 'Your TP-Link account password. It is used locally to create the security key and is stored encrypted.',
       },
-      deviceIps: {
+      tapoDeviceIps: {
         label: 'Tapo addresses',
         help: 'Your Tapo devices’ IPs separated by commas, for example 192.168.1.61, 192.168.1.63. It is best if they are fixed.',
         placeholder: '192.168.1.61, 192.168.1.63',

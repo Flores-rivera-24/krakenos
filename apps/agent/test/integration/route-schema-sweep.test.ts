@@ -21,34 +21,34 @@ import { buildTestApp, type CollectedRoute } from '../helpers/app.js';
 /** Escrituras que no llevan cuerpo JSON (acciones sin payload o subidas binarias). */
 const SIN_BODY = new Map<string, string>([
   ['POST /api/auth/refresh', 'sin cuerpo: el refresh token viaja en cookie httpOnly'],
-  ['POST /api/auth/logout', 'sin cuerpo: lee la cookie de sesion'],
+  ['POST /api/auth/logout', 'sin cuerpo: lee la cookie de sesión'],
   [
     'POST /api/webauthn/register/options',
-    'accion sin payload: opciones para el usuario autenticado',
+    'acción sin payload: opciones para el usuario autenticado',
   ],
   [
     'POST /api/webauthn/backup-codes',
-    'accion sin payload: regenera los codigos del usuario autenticado',
+    'acción sin payload: regenera los códigos del usuario autenticado',
   ],
-  ['POST /api/inventory/rescan', 'accion sin payload'],
-  ['POST /api/inventory/devices/:id/block', 'accion sin payload: el id va en la ruta'],
-  ['POST /api/people/:id/resume', 'accion sin payload: el id va en la ruta'],
-  ['POST /api/scenes/:id/run', 'accion sin payload: el id va en la ruta'],
-  ['POST /api/discovery/scan', 'accion sin payload'],
-  ['POST /api/discovery/suggestions/:id/adopt', 'accion sin payload: el id va en la ruta'],
-  ['POST /api/system/support-bundle', 'accion sin payload'],
-  ['POST /api/system/update/cancel', 'accion sin payload'],
-  ['POST /api/system/connectivity-test', 'accion sin payload'],
-  ['POST /api/system/regen-keys', 'accion sin payload'],
-  ['POST /api/system/backup/auto/run', 'accion sin payload'],
+  ['POST /api/inventory/rescan', 'acción sin payload'],
+  ['POST /api/inventory/devices/:id/block', 'acción sin payload: el id va en la ruta'],
+  ['POST /api/people/:id/resume', 'acción sin payload: el id va en la ruta'],
+  ['POST /api/scenes/:id/run', 'acción sin payload: el id va en la ruta'],
+  ['POST /api/discovery/scan', 'acción sin payload'],
+  ['POST /api/discovery/suggestions/:id/adopt', 'acción sin payload: el id va en la ruta'],
+  ['POST /api/system/support-bundle', 'acción sin payload'],
+  ['POST /api/system/update/cancel', 'acción sin payload'],
+  ['POST /api/system/connectivity-test', 'acción sin payload'],
+  ['POST /api/system/regen-keys', 'acción sin payload'],
+  ['POST /api/system/backup/auto/run', 'acción sin payload'],
   [
     'POST /api/system/backup/auto/passphrase/reveal',
-    'accion sin payload (solo admin activo, auditada)',
+    'acción sin payload (solo admin activo, auditada)',
   ],
   ['POST /api/system/restore/upload', 'subida binaria (stream), no JSON'],
   [
     'POST /api/cameras/:id/stream',
-    'accion sin payload: emite el token de stream de la camara del id',
+    'acción sin payload: emite el token de stream de la cámara del id',
   ],
 ]);
 
@@ -61,28 +61,18 @@ const SIN_RESPONSE = new Map<string, string>([
   ['GET /api/cameras/:id/stream/index.m3u8', 'playlist HLS, no JSON'],
   ['GET /api/cameras/:id/stream/:segment', 'segmento de video, no JSON'],
   ['GET /api/cameras/recordings/:id/download', 'descarga binaria, no JSON'],
-  ['DELETE /api/auth/sessions/:id', 'pendiente: declarar el schema response (204/errorResponse)'],
-  ['POST /api/users/:id/password', 'pendiente: declarar el schema response'],
-  ['DELETE /api/users/:id', 'pendiente: declarar el schema response'],
-  ['POST /api/access-requests', 'pendiente: declarar el schema response (siempre 202, publica)'],
-  ['DELETE /api/access/schedules/:id', 'pendiente: declarar el schema response'],
-  ['DELETE /api/coverage/floorplans/:id', 'pendiente: declarar el schema response'],
-  ['DELETE /api/coverage/scans/:scanId', 'pendiente: declarar el schema response'],
-  ['POST /api/system/support-bundle', 'pendiente: declarar el schema response (descarga JSON)'],
+  [
+    'POST /api/system/support-bundle',
+    'JSON de forma abierta (ajustes saneados, telemetría, auditoría) servido como descarga; tiparlo exigiría additionalProperties: true, que no valida nada',
+  ],
   [
     'POST /api/system/backup',
-    'pendiente: declarar el schema response (descarga de archivo cifrado)',
+    'se sirve un stream binario (octet-stream): Fastify no serializa streams por schema, así que un response no se aplicaría',
   ],
-  ['POST /api/vlans', 'pendiente: declarar el schema response'],
-  ['PATCH /api/vlans/:id', 'pendiente: declarar el schema response'],
 ]);
 
 /** Rutas con `:param` sin `schema.params`, con su motivo. */
-const SIN_PARAMS = new Map<string, string>([
-  ['DELETE /api/auth/sessions/:id', 'pendiente: declarar el schema params'],
-  ['PATCH /api/energy/alerts/:id', 'pendiente: declarar el schema params'],
-  ['DELETE /api/energy/alerts/:id', 'pendiente: declarar el schema params'],
-]);
+const SIN_PARAMS = new Map<string, string>([]);
 
 describe('barrido de schemas por ruta (/api)', () => {
   let app: FastifyInstance;

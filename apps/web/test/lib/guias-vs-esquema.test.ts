@@ -30,43 +30,21 @@ const GUIDE_DOMAIN: Record<GuideDomain, IntegrationDomain> = {
 const KIND_ALIASES: Record<string, string> = { tapo: 'kasa' };
 
 /** Guías cuyo `kind` no existe en el esquema, con su motivo. */
-const GUIA_SIN_ESQUEMA = new Map<string, string>([
-  [
-    'vlan',
-    'HALLAZGO pendiente: la guia usa kind `vlan` y el esquema del backend lo llama `switch` (SNMP); ' +
-      'el asistente pide la guia por el kind del esquema y no la encuentra',
-  ],
-]);
+const GUIA_SIN_ESQUEMA = new Map<string, string>();
 
 /** `guia: clave` de campo que no existe en el esquema, con su motivo. */
 const CLAVE_SIN_ESQUEMA = new Map<string, string>([
   ...['name', 'ip', 'deviceId', 'localKey', 'version'].map((k): [string, string] => [
     `tuya: ${k}`,
-    'por diseno: los focos Tuya se registran uno a uno en su gestor propio (/api/iot/tuya); el esquema no tiene campos',
+    'por diseño: los focos Tuya se registran uno a uno en su gestor propio (/api/iot/tuya); el esquema no tiene campos',
   ]),
   ...['name', 'rtspUrl', 'room', 'model'].map((k): [string, string] => [
     `rtsp: ${k}`,
-    'por diseno: las camaras se dan de alta por el CRUD /api/cameras, no por la config del dominio',
+    'por diseño: las cámaras se dan de alta por el CRUD /api/cameras, no por la config del dominio',
   ]),
   [
     'wireguard: name',
-    'por diseno: el nombre es del peer (alta de peer), no de la config de la VPN',
-  ],
-  [
-    'kasa: deviceIps',
-    'HALLAZGO pendiente: el esquema lo llama `kasaDeviceIps`; el asistente pinta el campo sin la copia de la guia',
-  ],
-  [
-    'tapo: email',
-    'HALLAZGO pendiente: el esquema lo llama `tapoEmail`; el asistente pinta el campo sin la copia de la guia',
-  ],
-  [
-    'tapo: password',
-    'HALLAZGO pendiente: el esquema lo llama `tapoPassword`; el asistente pinta el campo sin la copia de la guia',
-  ],
-  [
-    'tapo: deviceIps',
-    'HALLAZGO pendiente: el esquema lo llama `tapoDeviceIps`; el asistente pinta el campo sin la copia de la guia',
+    'por diseño: el nombre es del peer (alta de peer), no de la config de la VPN',
   ],
 ]);
 

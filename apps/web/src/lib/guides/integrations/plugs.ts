@@ -40,7 +40,7 @@ const kasa: IntegrationGuide = {
   ],
   fields: [
     {
-      key: 'deviceIps',
+      key: 'kasaDeviceIps',
       label: 'Direcciones de los Kasa (opcional)',
       help: 'Solo si no se descubren solos: las IP de tus Kasa separadas por comas, por ejemplo 192.168.1.60, 192.168.1.62. Déjalo vacío para el descubrimiento automático.',
       type: 'text',
@@ -94,7 +94,7 @@ const tapo: IntegrationGuide = {
   ],
   fields: [
     {
-      key: 'email',
+      key: 'tapoEmail',
       label: 'Correo de tu cuenta TP-Link',
       help: 'El correo con el que entras a la app Tapo.',
       type: 'text',
@@ -102,7 +102,7 @@ const tapo: IntegrationGuide = {
       required: true,
     },
     {
-      key: 'password',
+      key: 'tapoPassword',
       label: 'Contraseña de TP-Link',
       help: 'La contraseña de tu cuenta TP-Link. Se usa localmente para crear la llave de seguridad y se guarda cifrada.',
       type: 'password',
@@ -110,7 +110,7 @@ const tapo: IntegrationGuide = {
       secret: true,
     },
     {
-      key: 'deviceIps',
+      key: 'tapoDeviceIps',
       label: 'Direcciones de los Tapo',
       help: 'Las IP de tus Tapo separadas por comas, por ejemplo 192.168.1.61, 192.168.1.63. Conviene que sean fijas.',
       type: 'text',

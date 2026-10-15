@@ -1,3 +1,4 @@
+import { errorResponse } from '../common.schemas.js';
 import { USER_ROLES } from '@krakenos/types';
 
 /** JSON Schemas del módulo de gestión de usuarios (US-101/US-179). */
@@ -86,8 +87,10 @@ export const resetPasswordSchema = {
     required: ['password'],
     properties: { password: { type: 'string', minLength: 8, maxLength: 128 } },
   },
+  response: { 204: { type: 'null' }, 404: errorResponse },
 } as const;
 
 export const deleteUserSchema = {
   params: idParam,
+  response: { 204: { type: 'null' }, 404: errorResponse, 409: errorResponse },
 } as const;

@@ -20,6 +20,7 @@ import {
   loginSchema,
   logoutSchema,
   refreshSchema,
+  revokeSessionSchema,
   revokeSessionsSchema,
   statusSchema,
   updateLocaleSchema,
@@ -252,7 +253,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete<{ Params: { id: string } }>(
     '/sessions/:id',
-    { preHandler: app.authenticate },
+    { schema: revokeSessionSchema, preHandler: app.authenticate },
     async (req, reply) => {
       const ok = await service.revokeSession(
         req.params.id,
