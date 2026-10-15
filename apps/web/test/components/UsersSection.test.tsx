@@ -1,7 +1,7 @@
 import type { UserSummary } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -19,6 +19,7 @@ vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error
 
 import { UsersSection } from '@/components/settings/UsersSection';
 import { Toaster } from '@/components/ui/toast';
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
@@ -106,5 +107,48 @@ describe('UsersSection — roles del hogar (US-179)', () => {
       </>,
     );
     expect(await screen.findByText(/Caduca /)).toBeInTheDocument();
+  });
+});
+
+describe('UsersSection en inglés: etiquetas de rol', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([summary()]);
+    useAuthStore.setState({
+      user: {
+        id: 'a',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
+      tokens: { accessToken: 't', expiresIn: 900 },
+    });
+  });
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('el selector de rol sale en inglés y cambia en caliente con el idioma', async () => {
+    render(<UsersSection />);
+    const select = await screen.findByLabelText('Rol');
+    expect(Array.from(select.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
+      'Administrador',
+      'Miembro',
+      'Menor',
+      'Invitado',
+      'Observador',
+    ]);
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    await waitFor(() => {
+      const en = screen.getByLabelText('Role');
+      expect(Array.from(en.querySelectorAll('option')).map((o) => o.textContent)).toEqual([
+        'Administrator',
+        'Member',
+        'Child',
+        'Guest',
+        'Viewer',
+      ]);
+    });
   });
 });

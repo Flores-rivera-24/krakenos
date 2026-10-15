@@ -1,7 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -25,6 +25,7 @@ const fakeSocket = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -137,6 +138,23 @@ describe('DashboardPage', () => {
     await user.click(screen.getByRole('button', { name: /Personalizar/ }));
     expect(screen.getAllByLabelText(/Subir/).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Hecho/ })).toBeInTheDocument();
+  });
+
+  describe('en inglés', () => {
+    afterEach(() => setLocale('es', { persist: false }));
+
+    it('el modo Customize nombra cada widget en inglés en sus controles', async () => {
+      await act(async () => {
+        await changeLocale('en', { persist: false });
+      });
+      const user = userEvent.setup();
+      renderDashboard();
+      await user.click(screen.getByRole('button', { name: /Customize/ }));
+      expect(screen.getByLabelText('Move Alarm up')).toBeInTheDocument();
+      expect(screen.getByLabelText('Hide Quick actions')).toBeInTheDocument();
+      expect(screen.queryByLabelText(/Subir/)).toBeNull();
+      expect(screen.queryByLabelText('Ocultar Alarma')).toBeNull();
+    });
   });
 
   it('ocultar un widget lo quita del dashboard y persiste', async () => {
