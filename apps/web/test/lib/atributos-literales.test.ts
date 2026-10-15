@@ -17,21 +17,28 @@ import { SRC, ficheros, sinComentariosConLineas } from './_fuentes';
  * persona** y va por `t()`. Lo que de verdad no es copy (un formato técnico, un
  * nombre de marca) se declara en `PERMITIDOS`, con el porqué.
  *
- * Alcance honesto: solo ve literales **simples** (`attr="x"`, `attr={'x'}` o
- * `attr={`x`}` sin interpolación). Una plantilla con `${…}` queda fuera: separar
- * en ella lo traducible de lo que no es otra cosa que adivinar.
+ * Alcance honesto: ve el literal simple (`attr="x"`, `attr={'x'}`), la plantilla
+ * sin interpolación y la plantilla CON interpolación cuando su parte **estática**
+ * (quitados los `${…}`) lleva letras: `Activar ${x}` cuenta, `${a}/${b}` o
+ * `${n} %` no. Lo que NO ve: copy que llega por una variable (`aria-label={etiqueta}`)
+ * o que se compone con concatenación (`'Activar ' + x`); ese hueco lo cubren la
+ * revisión y `copy-sin-traducir`. Una plantilla con una función dentro del `${…}`
+ * que a su vez lleve llaves anidadas se lee como el primer `}`: vale para lo que
+ * hay hoy, y si un día falla por eso se afina aquí.
  */
 
 const ATRIBUTOS = ['aria-label', 'placeholder', 'title', 'alt'] as const;
 
 /**
- * `(?<![\w-])` evita casar `data-title=` o `aria-labelledby=`; el valor es una
+ * `(?<![\w.-])` evita casar `data-title=`, `aria-labelledby=` o una asignación
+ * de código como `document.title = …` (no es un atributo JSX); el valor es una
  * cadena entre comillas, dentro o no de llaves. `\s*` tolera que Prettier parta
- * el atributo en su propia línea. Las plantillas con `${` no casan.
+ * el atributo en su propia línea. La plantilla admite `${…}` (y saltos de línea);
+ * si la parte estática lleva letras se decide en `literalesDeAtributo`.
  */
 const LITERAL = new RegExp(
-  String.raw`(?<![\w-])(${ATRIBUTOS.join('|')})\s*=\s*(?:\{\s*)?(?:"([^"\n]*)"|'([^'\n]*)'|` +
-    '`([^`$\\n]*)`' +
+  String.raw`(?<![\w.-])(${ATRIBUTOS.join('|')})\s*=\s*(?:\{\s*)?(?:"([^"\n]*)"|'([^'\n]*)'|` +
+    '`([^`]*)`' +
     String.raw`)`,
   'g',
 );
@@ -49,7 +56,9 @@ export function literalesDeAtributo(codigo: string): Hallazgo[] {
   let m: RegExpExecArray | null;
   while ((m = LITERAL.exec(codigo)) !== null) {
     const valor = (m[2] ?? m[3] ?? m[4] ?? '').trim();
-    if (!/\p{L}/u.test(valor)) continue; // `alt=""`, `placeholder="0"`: no hay texto
+    // Solo cuenta lo estático: `${n} %` o `${a}/${b}` no llevan texto.
+    const estatico = valor.replace(/\$\{[^}]*\}/g, '');
+    if (!/\p{L}/u.test(estatico)) continue; // `alt=""`, `placeholder="0"`: no hay texto
     const linea = codigo.slice(0, m.index).split('\n').length;
     salida.push({ atributo: m[1]!, valor, linea });
   }
@@ -62,10 +71,8 @@ export function literalesDeAtributo(codigo: string): Hallazgo[] {
  * obsoleta es sitio libre para volver a meter copy.
  */
 const PERMITIDOS: Record<string, string> = {
-  'components/firewall/FirewallRuleSlideover.tsx|IP/CIDR/MAC':
-    'formato técnico de un campo de dirección; no se traduce',
-  'components/firewall/FirewallRuleSlideover.tsx|IP/CIDR/host':
-    'formato técnico de un campo de dirección; no se traduce',
+  'components/coverage/FloorPlanStage.tsx|${ap.name} (${Math.round(ap.x)}, ${Math.round(ap.y)} m)':
+    'nombre del aparato y coordenadas: la única parte estática es la unidad «m»',
   'components/settings/IntegrationsSection.tsx|Philips Hue': 'nombre de marca',
   'components/settings/IntegrationsSection.tsx|Govee': 'nombre de marca',
   'components/settings/IntegrationsSection.tsx|Tuya': 'nombre de marca',
@@ -111,6 +118,7 @@ const MUESTRA = [
   'const e = <img alt="" />;',
   'const f = <Input placeholder="0.15" />;',
   'const g = <b aria-label={`Activar ${nombre}`} />;',
+  'const g2 = <b title={`${a}/${b}`} aria-label={`${n} %`} />;',
   'const h = <p data-title="no cuenta" aria-labelledby="tampoco" />;',
   'const i = <p aria-label={t("clave")} />;',
 ].join('\n');
@@ -129,6 +137,7 @@ describe('atributos con literal a pelo (issue #88)', () => {
       { atributo: 'placeholder', valor: 'Nombre del hogar', linea: 6 },
       { atributo: 'title', valor: 'Tendencia', linea: 9 },
       { atributo: 'title', valor: 'Sin interpolar', linea: 10 },
+      { atributo: 'aria-label', valor: 'Activar ${nombre}', linea: 13 },
     ]);
   });
 
