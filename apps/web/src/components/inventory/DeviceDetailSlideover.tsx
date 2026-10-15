@@ -27,7 +27,12 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
-import { DEVICE_ICON_LABELS, DEVICE_TYPES, TYPE_LABELS, deviceArtKind } from '@/lib/devices';
+import {
+  DEVICE_ICON_LABEL_KEYS,
+  DEVICE_TYPES,
+  TYPE_LABEL_KEYS,
+  deviceArtKind,
+} from '@/lib/devices';
 import { describeError } from '@/lib/errors';
 import { listUsers } from '@/lib/users';
 import { useT } from '@/lib/i18n';
@@ -135,8 +140,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       next
         ? api.post(`/inventory/devices/${device.id}/block`)
         : api.del(`/inventory/devices/${device.id}/block`),
-    onSuccess: (next) =>
-      toast.success(next ? 'Dispositivo bloqueado' : 'Acceso a la red restaurado'),
+    onSuccess: (next) => toast.success(next ? t('device.blocked') : t('device.unblocked')),
     onError: (err) => toast.error(describeError(err, t('device.blockError'))),
   });
 
@@ -184,7 +188,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     setType(tipo);
     try {
       await api.patch<Device>(`/inventory/devices/${device.id}`, { type: tipo });
-      toast.success(t('device.identifiedAs', { type: TYPE_LABELS[tipo] }));
+      toast.success(t('device.identifiedAs', { type: t(TYPE_LABEL_KEYS[tipo]) }));
     } catch (err) {
       setType(previous);
       toast.error(describeError(err, t('device.identifyError')));
@@ -205,7 +209,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       toast.success(t('device.saved'));
       onClose();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : 'No se pudo guardar');
+      setError(err instanceof ApiRequestError ? err.body.message : t('common.saveError'));
     } finally {
       setSaving(false);
     }
@@ -214,8 +218,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const subtitle = (
     <span className="flex items-center gap-2">
       <StatusDot status={device.online ? 'online' : 'offline'} />
-      {device.online ? 'En línea' : 'Desconectado'}
-      {block.on && <span className="text-danger">· Bloqueado</span>}
+      {device.online ? t('inventory.status.online') : t('inventory.status.offline')}
+      {block.on && <span className="text-danger">· {t('inventory.status.blocked')}</span>}
     </span>
   );
 
@@ -223,7 +227,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     <div className="space-y-2">
       {error && <FormError>{error}</FormError>}
       <Button onClick={() => void save()} disabled={saving} className="w-full">
-        {saving ? 'Guardando…' : 'Guardar cambios'}
+        {saving ? t('common.saving') : t('common.saveChanges')}
       </Button>
       {isAdmin && (
         <Button
@@ -259,7 +263,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
           <p className="truncate text-kr-base font-medium text-kr-primary">
             {device.label ?? device.hostname ?? device.mac}
           </p>
-          <p className="text-kr-sm text-kr-secondary">{TYPE_LABELS[device.type]}</p>
+          <p className="text-kr-sm text-kr-secondary">{t(TYPE_LABEL_KEYS[device.type])}</p>
           {device.vendor && <p className="truncate text-kr-xs text-kr-muted">{device.vendor}</p>}
         </div>
       </div>
@@ -271,7 +275,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             <p className="mb-2">
               {device.suggestedType
                 ? t('device.identify.guess', {
-                    type: TYPE_LABELS[device.suggestedType].toLowerCase(),
+                    type: t(TYPE_LABEL_KEYS[device.suggestedType]).toLowerCase(),
                   })
                 : t('device.identify.unknown')}
             </p>
@@ -289,8 +293,10 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                   onClick={() => void identifyAs(tipo)}
                 >
                   {tipo === device.suggestedType
-                    ? t('device.identify.confirm', { type: TYPE_LABELS[tipo].toLowerCase() })
-                    : TYPE_LABELS[tipo]}
+                    ? t('device.identify.confirm', {
+                        type: t(TYPE_LABEL_KEYS[tipo]).toLowerCase(),
+                      })
+                    : t(TYPE_LABEL_KEYS[tipo])}
                 </Button>
               ))}
             </div>
@@ -364,9 +370,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             value={type}
             onChange={(e) => setType(e.target.value as DeviceType)}
           >
-            {DEVICE_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
+            {DEVICE_TYPES.map((tipo) => (
+              <option key={tipo} value={tipo}>
+                {t(TYPE_LABEL_KEYS[tipo])}
               </option>
             ))}
           </select>
@@ -382,7 +388,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             <option value="">{t('device.iconAuto')}</option>
             {DEVICE_ICONS.map((k) => (
               <option key={k} value={k}>
-                {DEVICE_ICON_LABELS[k]}
+                {t(DEVICE_ICON_LABEL_KEYS[k])}
               </option>
             ))}
           </select>

@@ -85,10 +85,10 @@ export function NetworksCard() {
             <thead className="bg-secondary text-secondary-foreground">
               <tr>
                 <th className="px-3 py-2 text-left">SSID</th>
-                <th className="px-3 py-2 text-left">Banda</th>
+                <th className="px-3 py-2 text-left">{t('wifi.networks.band')}</th>
                 <th className="px-3 py-2 text-left">AP</th>
-                <th className="px-3 py-2 text-left">Clientes</th>
-                <th className="px-3 py-2 text-right">Activa</th>
+                <th className="px-3 py-2 text-left">{t('wifi.networks.clients')}</th>
+                <th className="px-3 py-2 text-right">{t('wifi.networks.active')}</th>
               </tr>
             </thead>
             <tbody>
@@ -97,7 +97,9 @@ export function NetworksCard() {
                   <td className="px-3 py-2">
                     {n.ssid}
                     {n.isGuest && (
-                      <span className="ml-1 text-xs text-muted-foreground">(invitados)</span>
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        {t('wifi.networks.guestTag')}
+                      </span>
                     )}
                   </td>
                   <td className="px-3 py-2">{n.band}</td>
@@ -133,18 +135,18 @@ export function NetworksCard() {
         <Dialog open onClose={() => setClientsOf(null)} aria-labelledby="dialog-clients-title">
           <div className="mb-3 flex items-start justify-between">
             <h3 id="dialog-clients-title" className="text-lg font-semibold">
-              Clientes · {clientsOf.net.ssid}
+              {t('wifi.networks.clientsOf', { ssid: clientsOf.net.ssid })}
             </h3>
             <Button variant="ghost" size="sm" onClick={() => setClientsOf(null)}>
-              Cerrar
+              {t('common.close')}
             </Button>
           </div>
           <table className="w-full text-sm">
             <thead className="text-left text-xs text-muted-foreground">
               <tr>
-                <th className="py-1">Dispositivo</th>
+                <th className="py-1">{t('inventory.col.device')}</th>
                 <th className="py-1">IP</th>
-                <th className="py-1">Señal</th>
+                <th className="py-1">{t('wifi.networks.signal')}</th>
               </tr>
             </thead>
             <tbody>

@@ -1,8 +1,9 @@
 import type { Device } from '@krakenos/types';
 import { ProductArt } from '@/components/ui/product-art';
 import { StatusDot } from '@/components/ui/status-dot';
-import { TYPE_LABELS, deviceArtKind } from '@/lib/devices';
+import { TYPE_LABEL_KEYS, deviceArtKind } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -16,10 +17,15 @@ interface Props {
  * abre el slideover de detalle.
  */
 export function DeviceCard({ device, onSelect }: Props) {
+  const t = useT();
   const name = device.label ?? device.hostname ?? device.mac;
   const blocked = device.isBlocked;
   const dotStatus = blocked ? 'danger' : device.online ? 'online' : 'offline';
-  const statusText = blocked ? 'Bloqueado' : device.online ? 'En línea' : 'Desconectado';
+  const statusText = blocked
+    ? t('inventory.status.blocked')
+    : device.online
+      ? t('inventory.status.online')
+      : t('inventory.status.offline');
 
   return (
     <button
@@ -34,7 +40,7 @@ export function DeviceCard({ device, onSelect }: Props) {
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium text-kr-primary">{name}</p>
           <p className="text-kr-sm text-kr-secondary">{device.ip}</p>
-          <p className="text-kr-xs text-kr-muted">{TYPE_LABELS[device.type]}</p>
+          <p className="text-kr-xs text-kr-muted">{t(TYPE_LABEL_KEYS[device.type])}</p>
         </div>
       </div>
       <div className="flex items-center justify-between">

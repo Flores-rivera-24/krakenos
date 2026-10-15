@@ -131,7 +131,7 @@ export function NetworkTopologyWidget() {
         )}
         {devices.length > leaves.length + (router ? 1 : 0) && (
           <p className="mt-2 text-kr-xs text-kr-muted">
-            Mostrando {leaves.length} de {devices.length} dispositivos.
+            {t('widget.topology.showing', { shown: leaves.length, total: devices.length })}
           </p>
         )}
       </CardContent>

@@ -182,7 +182,10 @@ export function VpnPage() {
                     <tr
                       key={p.id}
                       className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
-                      {...filaAbrible(() => setSelected({ peer: p }), `Ver el peer ${p.name}`)}
+                      {...filaAbrible(
+                        () => setSelected({ peer: p }),
+                        t('vpn.peerRowAria', { name: p.name }),
+                      )}
                     >
                       <td className="px-3 py-2">{p.name}</td>
                       <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>

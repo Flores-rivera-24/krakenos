@@ -1,8 +1,9 @@
 import type { Device } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
+import { t } from '@/lib/i18n';
 import {
   DEVICE_TYPES,
-  TYPE_LABELS,
+  TYPE_LABEL_KEYS,
   deviceArtKind,
   filterDevices,
   groupDevicesByType,
@@ -34,18 +35,18 @@ function device(over: Partial<Device> = {}): Device {
 describe('catálogo de tipos de dispositivo', () => {
   it('cada tipo tiene una etiqueta en español', () => {
     for (const type of DEVICE_TYPES) {
-      expect(TYPE_LABELS[type]).toBeTruthy();
+      expect(t(TYPE_LABEL_KEYS[type])).toBeTruthy();
     }
   });
 
   it('no hay etiquetas huérfanas (claves = DEVICE_TYPES)', () => {
-    expect(Object.keys(TYPE_LABELS).sort()).toEqual([...DEVICE_TYPES].sort());
+    expect(Object.keys(TYPE_LABEL_KEYS).sort()).toEqual([...DEVICE_TYPES].sort());
   });
 
   it('incluye los tipos esperados', () => {
     expect(DEVICE_TYPES).toContain('router');
     expect(DEVICE_TYPES).toContain('unknown');
-    expect(TYPE_LABELS.iot).toBe('IoT');
+    expect(t(TYPE_LABEL_KEYS.iot)).toBe('IoT');
   });
 });
 

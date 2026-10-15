@@ -201,7 +201,9 @@ export function QuickActionsWidget() {
                     <span className="block truncate text-kr-sm text-kr-primary">{tile.label}</span>
                     <span className="flex items-center gap-1 text-kr-xs text-kr-muted">
                       <StatusDot status={tile.online ? 'online' : 'offline'} />
-                      {tile.online ? 'disponible' : 'sin señal'}
+                      {tile.online
+                        ? t('widget.quickActions.available')
+                        : t('widget.quickActions.noSignal')}
                     </span>
                   </span>
                 </Link>

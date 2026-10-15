@@ -135,7 +135,7 @@ export function SurveyPanel({
       setScans((prev) => [scan, ...prev]);
       setName('');
       setShowForm(false);
-      toast.success('Recorrido creado');
+      toast.success(t('survey.created'));
       await handleSelectScan(scan.id);
     } catch (err) {
       toast.error(describeError(err, t('survey.createError')));
@@ -154,7 +154,7 @@ export function SurveyPanel({
           onMeasuredHeatmapChange(null);
           onShowMeasuredChange(false);
         }
-        toast.success('Recorrido eliminado');
+        toast.success(t('survey.deleted'));
       } catch (err) {
         toast.error(describeError(err, t('survey.deleteError')));
       }

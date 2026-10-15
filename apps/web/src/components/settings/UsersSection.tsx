@@ -163,7 +163,7 @@ export function UsersSection() {
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="nu-role">Rol</Label>
+            <Label htmlFor="nu-role">{t('users.col.role')}</Label>
             <select
               id="nu-role"
               value={form.role}
@@ -262,7 +262,7 @@ export function UsersSection() {
                       </select>
                       {u.expiresAt && (
                         <div className="mt-1 text-kr-xs text-kr-muted">
-                          Caduca {new Date(u.expiresAt).toLocaleString()}
+                          {t('users.expiresAt', { date: new Date(u.expiresAt).toLocaleString() })}
                         </div>
                       )}
                     </td>
@@ -276,7 +276,7 @@ export function UsersSection() {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-kr-xs text-kr-muted">
-                      {u.lastLoginAt ? timeAgo(u.lastLoginAt) : 'Nunca'}
+                      {u.lastLoginAt ? timeAgo(u.lastLoginAt) : t('users.neverLoggedIn')}
                     </td>
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap justify-end gap-2">

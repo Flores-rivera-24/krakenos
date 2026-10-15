@@ -41,7 +41,7 @@ export function DeviceCountWidget() {
         <Stat status="warning" label={t('widget.devices.unknown')} value={unknown} />
         <Stat status="danger" label={t('widget.devices.blocked')} value={blocked} />
         <Link to="/inventory" className="col-span-2 text-kr-sm text-kr-link hover:underline">
-          Ver inventario →
+          {t('widget.devices.viewInventory')}
         </Link>
       </CardContent>
     </Card>

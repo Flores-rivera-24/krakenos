@@ -138,7 +138,9 @@ export function GettingStarted() {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5 text-kr-base font-medium text-kr-primary">
                   {step.label}
-                  {step.done && <span className="text-kr-xs text-success">· hecho</span>}
+                  {step.done && (
+                    <span className="text-kr-xs text-success">{t('gettingStarted.done')}</span>
+                  )}
                 </span>
                 <span className="block text-kr-sm text-kr-secondary">{step.description}</span>
               </span>

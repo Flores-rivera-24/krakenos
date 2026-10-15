@@ -448,7 +448,10 @@ export function TrafficPage() {
                       return (
                         <tr
                           key={d.mac}
-                          {...filaAbrible(() => setSelectedMac(d.mac), `Ver ${name}`)}
+                          {...filaAbrible(
+                            () => setSelectedMac(d.mac),
+                            t('traffic.rowAria', { name }),
+                          )}
                           className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
                         >
                           <td className="py-2 text-foreground">{name}</td>

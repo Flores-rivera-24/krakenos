@@ -193,19 +193,17 @@ export function AlarmWidget() {
               {countdown !== null && <span className="text-kr-sm font-normal">({countdown}s)</span>}
             </div>
             {state.triggeredBy && (state.phase === 'entry' || state.phase === 'triggered') && (
-              <p className="text-kr-xs text-kr-muted">Disparada por {state.triggeredBy}</p>
+              <p className="text-kr-xs text-kr-muted">
+                {t('widget.alarm.triggeredBy', { name: state.triggeredBy })}
+              </p>
             )}
 
             {canControl && showDisclaimer && (
               <Callout variant="warning" title={t('widget.alarm.disclaimerTitle')}>
                 <div className="space-y-2">
-                  <p>
-                    Sin batería de respaldo ni conexión de emergencia por red móvil: deja de
-                    funcionar si se va la luz o se apaga el servidor. Es un aviso extra, no tu única
-                    protección.
-                  </p>
+                  <p>{t('widget.alarm.disclaimerBody')}</p>
                   <Button variant="outline" size="sm" onClick={dismissDisclaimer}>
-                    Entendido
+                    {t('widget.alarm.dismiss')}
                   </Button>
                 </div>
               </Callout>
@@ -215,10 +213,10 @@ export function AlarmWidget() {
               state.phase === 'disarmed' ? (
                 <div className="grid grid-cols-2 gap-2">
                   <Button variant="outline" disabled={busy} onClick={() => void arm('away')}>
-                    Armar (Fuera)
+                    {t('widget.alarm.armAway')}
                   </Button>
                   <Button variant="outline" disabled={busy} onClick={() => void arm('night')}>
-                    Armar (Noche)
+                    {t('widget.alarm.armNight')}
                   </Button>
                 </div>
               ) : (
@@ -239,7 +237,7 @@ export function AlarmWidget() {
                     disabled={busy || ((pinNeeded || state.requiresPin) && pin.length === 0)}
                     onClick={() => void disarm()}
                   >
-                    Desarmar
+                    {t('widget.alarm.disarm')}
                   </Button>
                 </div>
               )

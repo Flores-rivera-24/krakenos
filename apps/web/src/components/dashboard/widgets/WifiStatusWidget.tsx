@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 
 /** SSIDs activos y clientes conectados por red. */
 export function WifiStatusWidget() {
@@ -39,16 +39,24 @@ export function WifiStatusWidget() {
               <div key={n.id} className="flex items-center justify-between text-kr-base">
                 <span className="flex min-w-0 items-center gap-2">
                   <StatusDot status={n.enabled ? 'online' : 'offline'} />
-                  <span className="truncate text-kr-primary">{n.ssid || '(oculta)'}</span>
-                  {n.isGuest && <span className="text-kr-xs text-kr-muted">invitados</span>}
+                  <span className="truncate text-kr-primary">
+                    {n.ssid || t('widget.wifi.hiddenSsid')}
+                  </span>
+                  {n.isGuest && (
+                    <span className="text-kr-xs text-kr-muted">{t('widget.wifi.guestTag')}</span>
+                  )}
                 </span>
                 <span className="shrink-0 text-kr-secondary">
-                  {n.clientCount} {n.clientCount === 1 ? 'cliente' : 'clientes'}
+                  {n.clientCount}{' '}
+                  {plural(n.clientCount, {
+                    one: t('widget.wifi.client.one'),
+                    other: t('widget.wifi.client.other'),
+                  })}
                 </span>
               </div>
             ))}
             <Link to="/wifi" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Gestionar WiFi →
+              {t('widget.wifi.manage')}
             </Link>
           </>
         )}

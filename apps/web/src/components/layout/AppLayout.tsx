@@ -155,7 +155,7 @@ export function AppLayout() {
         href="#contenido"
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-70 focus:rounded-md focus:bg-kr-accent focus:px-4 focus:py-2 focus:text-white"
       >
-        Saltar al contenido
+        {t('nav.skipToContent')}
       </a>
       <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
 
