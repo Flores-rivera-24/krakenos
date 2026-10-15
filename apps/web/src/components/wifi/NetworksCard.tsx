@@ -117,8 +117,8 @@ export function NetworksCard() {
                         checked={n.enabled}
                         onToggle={(next) => toggle(n, next)}
                         disabled={!isAdmin}
-                        errorMessage={`No se pudo cambiar la red ${n.ssid}`}
-                        aria-label={`Activar red ${n.ssid}`}
+                        errorMessage={t('wifi.networks.toggleError', { ssid: n.ssid })}
+                        aria-label={t('wifi.networks.toggleLabel', { ssid: n.ssid })}
                       />
                     </div>
                   </td>
