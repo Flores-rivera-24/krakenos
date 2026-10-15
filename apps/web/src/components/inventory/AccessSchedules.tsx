@@ -145,12 +145,12 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 <Switch
                   checked={s.enabled}
                   onCheckedChange={() => void toggle(s)}
-                  aria-label={`Activar ${s.name}`}
+                  aria-label={t('access.toggleLabel', { name: s.name })}
                 />
                 <button
                   type="button"
                   onClick={() => void remove(s)}
-                  aria-label={`Eliminar ${s.name}`}
+                  aria-label={t('access.deleteLabel', { name: s.name })}
                   className="px-1 text-kr-secondary hover:text-danger"
                 >
                   ✕
