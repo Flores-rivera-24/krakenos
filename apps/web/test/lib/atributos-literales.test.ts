@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SRC, ficheros, sinComentariosConLineas } from './_fuentes';
+import { cierreDe, literalesConTexto } from './_literales';
 
 /**
  * Gate: ningún atributo accesible o de texto lleva un LITERAL a pelo.
@@ -16,6 +17,12 @@ import { SRC, ficheros, sinComentariosConLineas } from './_fuentes';
  * `placeholder`, `title` o `alt` que lleve letras es **texto de cara a una
  * persona** y va por `t()`. Lo que de verdad no es copy (un formato técnico, un
  * nombre de marca) se declara en `PERMITIDOS`, con el porqué.
+ *
+ * También mira DENTRO de la expresión entre llaves (`aria-label={dark ? 'Modo claro' : 'Modo
+ * oscuro'}`, `title={x && 'Cerrar'}`): el botón de tema anunciaba «Cambiar a modo claro»
+ * con la interfaz en inglés porque aquel ternario no era un literal «simple». Las
+ * llamadas a `t(...)` se descartan antes de buscar (su primer argumento es una clave) y
+ * un literal usado como ÍNDICE (`rest['aria-label']`) no cuenta.
  *
  * Alcance honesto: ve el literal simple (`attr="x"`, `attr={'x'}`), la plantilla
  * sin interpolación y la plantilla CON interpolación cuando su parte **estática**
@@ -66,6 +73,31 @@ export function literalesDeAtributo(codigo: string): Hallazgo[] {
 }
 
 /**
+ * Literales con texto DENTRO de una expresión `{...}` de esos atributos (ternarios,
+ * `&&`, `??`), ignorando `t(...)`. Complementa a `literalesDeAtributo`, que solo ve el
+ * valor cuando es el literal entero; un valor que ya es un literal simple lo ve aquel
+ * y aquí se descarta para no contarlo dos veces.
+ */
+export function literalesDeAtributoEnExpresion(codigo: string): Hallazgo[] {
+  const salida: Hallazgo[] = [];
+  const re = new RegExp(String.raw`(?<![\w.-])(${ATRIBUTOS.join('|')})\s*=\s*\{`, 'g');
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(codigo)) !== null) {
+    const abre = m.index + m[0].length - 1;
+    const cierre = cierreDe(codigo, abre);
+    if (cierre === -1) continue;
+    const expr = codigo.slice(abre + 1, cierre).trim();
+    // `{'x'}` / `{`x`}` enteros ya los cuenta `literalesDeAtributo`.
+    if (/^(?:'[^']*'|"[^"]*"|`[^`]*`)$/.test(expr)) continue;
+    const linea = codigo.slice(0, m.index).split('\n').length;
+    for (const valor of literalesConTexto(expr)) {
+      salida.push({ atributo: m[1]!, valor: valor.trim(), linea });
+    }
+  }
+  return salida;
+}
+
+/**
  * Literales que NO son copy. Clave `ruta relativa a src/ | valor`; el motivo va
  * al lado. Una entrada que ya no casa con nada hace fallar el test: una allowlist
  * obsoleta es sitio libre para volver a meter copy.
@@ -88,7 +120,7 @@ function escanear(): { clave: string; texto: string }[] {
     const nombre = ruta.slice(SRC.length + 1);
     if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
     const codigo = sinComentariosConLineas(readFileSync(ruta, 'utf8'));
-    for (const h of literalesDeAtributo(codigo)) {
+    for (const h of [...literalesDeAtributo(codigo), ...literalesDeAtributoEnExpresion(codigo)]) {
       salida.push({
         clave: `${nombre}|${h.valor}`,
         texto: `${nombre}:${h.linea}  ${h.atributo}="${h.valor}"`,
@@ -123,6 +155,20 @@ const MUESTRA = [
   'const i = <p aria-label={t("clave")} />;',
 ].join('\n');
 
+/** Control positivo de las EXPRESIONES: ternarios y `&&` con literal, sin `t(...)` ni índices. */
+const MUESTRA_EXPRESIONES = [
+  "const a = <b aria-label={dark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'} />;",
+  'const b = <b',
+  '  title={',
+  "    ok ? t('clave.uno') : `Quitar ${x} de favoritos`",
+  '  }',
+  '/>;',
+  "const c = <b aria-label={ok ? t('clave', { a: 'literal en el argumento' }) : t('otra')} />;",
+  "const d = <b aria-label={rest['aria-label']} />;",
+  "const e = <b aria-label={'Simple'} />;",
+  "const f = <b placeholder={n > 0 ? '0.15' : t('k')} />;",
+].join('\n');
+
 describe('atributos con literal a pelo (issue #88)', () => {
   it('el barrido encuentra el árbol', () => {
     // Sin este guard, romper el recorrido dejaría la lista vacía y el test de abajo
@@ -138,6 +184,15 @@ describe('atributos con literal a pelo (issue #88)', () => {
       { atributo: 'title', valor: 'Tendencia', linea: 9 },
       { atributo: 'title', valor: 'Sin interpolar', linea: 10 },
       { atributo: 'aria-label', valor: 'Activar ${nombre}', linea: 13 },
+    ]);
+  });
+
+  it('ve también el literal dentro de una expresión, con su línea (control positivo)', () => {
+    const codigo = sinComentariosConLineas(MUESTRA_EXPRESIONES);
+    expect(literalesDeAtributoEnExpresion(codigo)).toEqual([
+      { atributo: 'aria-label', valor: 'Cambiar a modo claro', linea: 1 },
+      { atributo: 'aria-label', valor: 'Cambiar a modo oscuro', linea: 1 },
+      { atributo: 'title', valor: 'Quitar ${x} de favoritos', linea: 3 },
     ]);
   });
 

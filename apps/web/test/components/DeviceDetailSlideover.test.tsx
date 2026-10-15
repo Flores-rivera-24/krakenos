@@ -1,7 +1,7 @@
 import type { Device } from '@krakenos/types';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock del cliente API: capturamos las llamadas sin tocar la red.
 const apiMock = vi.hoisted(() => {
@@ -24,6 +24,7 @@ vi.mock('@/lib/api', () => ({
 
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Toaster } from '@/components/ui/toast';
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
@@ -253,5 +254,61 @@ describe('DeviceDetailSlideover', () => {
     await waitFor(() =>
       expect(apiMock.put).toHaveBeenCalledWith('/inventory/devices/dev-1/vlan', { tag: 30 }),
     );
+  });
+});
+
+describe('DeviceDetailSlideover en inglés (issue #93)', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([]);
+    apiMock.patch.mockReset().mockResolvedValue(device());
+    useToastStore.setState({ toasts: [] });
+  });
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('en español conserva el estado, el tipo y el botón carácter a carácter', () => {
+    asRole('viewer');
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+    expect(screen.getByText('En línea')).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Tipo')).getByRole('option', { name: 'Ordenador' }),
+    ).toBeInTheDocument();
+    expect(
+      within(screen.getByLabelText('Icono')).getByRole('option', { name: 'Bombilla' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeInTheDocument();
+  });
+
+  it('traduce el estado, las opciones de tipo e icono y el botón', async () => {
+    asRole('viewer');
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    render(<DeviceDetailSlideover device={device({ isBlocked: false })} onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByText('Online')).toBeInTheDocument());
+    const tipo = within(screen.getByLabelText('Type'));
+    const icono = within(screen.getByLabelText('Icon'));
+    expect(tipo.getByRole('option', { name: 'Computer' })).toBeInTheDocument();
+    expect(tipo.getByRole('option', { name: 'Printer' })).toBeInTheDocument();
+    expect(icono.getByRole('option', { name: 'Light bulb' })).toBeInTheDocument();
+    expect(icono.getByRole('option', { name: 'Access point' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Ordenador' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Guardar cambios' })).toBeNull();
+    expect(screen.queryByText('En línea')).toBeNull();
+  });
+
+  it('el estado «Offline» y «Blocked» también salen en inglés', async () => {
+    asRole('viewer');
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    render(
+      <DeviceDetailSlideover
+        device={device({ online: false, isBlocked: true })}
+        onClose={() => {}}
+      />,
+    );
+    expect(await screen.findByText('Offline')).toBeInTheDocument();
+    expect(screen.getByText(/Blocked/)).toBeInTheDocument();
   });
 });

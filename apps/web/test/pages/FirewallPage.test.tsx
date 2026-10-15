@@ -1,7 +1,7 @@
 import type { FirewallRule } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -17,6 +17,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { FirewallPage } from '@/pages/FirewallPage';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -110,5 +111,38 @@ describe('FirewallPage', () => {
     apiMock.get.mockReset().mockResolvedValue([]);
     render(<FirewallPage />);
     expect(await screen.findByText(/Aún no hay reglas configuradas/)).toBeInTheDocument();
+  });
+});
+
+describe('FirewallPage: la fila abrible se anuncia en el idioma activo', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([RULE]);
+    setRole('admin');
+  });
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('en español: «Editar la regla …» (verbatim)', async () => {
+    render(<FirewallPage />);
+    expect(await screen.findByRole('row', { name: 'Editar la regla Bloquear IoT' })).toBeVisible();
+  });
+
+  it('en inglés: «Edit rule …», no el literal en español', async () => {
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    render(<FirewallPage />);
+    expect(await screen.findByRole('row', { name: 'Edit rule Bloquear IoT' })).toBeVisible();
+    expect(screen.queryByRole('row', { name: 'Editar la regla Bloquear IoT' })).toBeNull();
+  });
+
+  it('un cambio de idioma en caliente reetiqueta la fila', async () => {
+    render(<FirewallPage />);
+    await screen.findByRole('row', { name: 'Editar la regla Bloquear IoT' });
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    await waitFor(() =>
+      expect(screen.getByRole('row', { name: 'Edit rule Bloquear IoT' })).toBeVisible(),
+    );
   });
 });
