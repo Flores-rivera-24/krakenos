@@ -1,6 +1,8 @@
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
+import { connect } from 'node:net';
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -11,6 +13,9 @@ const PID_FILE = resolve(HERE, '../.server.pid');
 /** Puerto fijo para que `baseURL` y `WEBAUTHN_ORIGIN` sean deterministas. */
 export const E2E_PORT = 3999;
 export const BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
+
+/** Origen por hostname para WebAuthn (el RP ID no puede ser una IP). */
+export const ORIGIN_2FA = `http://localhost:${E2E_PORT}`;
 
 /**
  * Ruta **absoluta** de la DB efímera de e2e. Absoluta a propósito: Prisma resuelve
@@ -52,9 +57,11 @@ function agentEnv(): NodeJS.ProcessEnv {
     VLAN_KIND: 'mock',
     QOS_KIND: 'mock',
     DNS_KIND: 'mock',
-    // WebAuthn coherente con el origen fijo (para el flujo 2FA en cuarentena).
+    // WebAuthn: el RP ID es un HOSTNAME, nunca una IP (el navegador rechaza
+    // `rpId: '127.0.0.1'`), así que el flujo 2FA navega por `localhost`
+    // (`ORIGIN_2FA`) aunque el resto de la suite use 127.0.0.1.
     WEBAUTHN_RP_ID: 'localhost',
-    WEBAUTHN_ORIGIN: BASE_URL,
+    WEBAUTHN_ORIGIN: ORIGIN_2FA,
     // Claves JWT explícitas (relativas al cwd del agente): en local venían del
     // `.env` gitignored, pero en CI no hay `.env` y el agente moría al arrancar
     // («Falta la variable de entorno obligatoria: JWT_PRIVATE_KEY_PATH») — era
@@ -75,6 +82,11 @@ export async function startServer(): Promise<ChildProcess> {
   // limpió): si no, ocuparía el puerto y responderíamos contra él por error.
   stopServer();
 
+  // Matar el PID anotado no basta: el puerto puede seguir ocupado por un agente
+  // que no es el nuestro (otro checkout, un `pnpm prod` olvidado). Se espera a que
+  // quede libre y, si no, se falla nombrando el puerto y quién lo tiene.
+  await esperarPuertoLibre(E2E_PORT);
+
   // DB efímera limpia en cada arranque (setup parte de cero, sin usuarios).
   for (const suffix of ['', '-journal', '-wal', '-shm']) {
     rmSync(`${DB_FILE}${suffix}`, { force: true });
@@ -87,6 +99,18 @@ export async function startServer(): Promise<ChildProcess> {
     env: { ...process.env, DATABASE_URL: DB_URL },
     stdio: 'ignore',
   });
+
+  // Con usuarios en la base el agente NO imprime el token de configuración, y sin
+  // esta comprobación la suite espera 60 s para morir con un error que no se parece
+  // a su causa (restos de un WAL ajeno, una base que no se borró).
+  const usuarios = contarUsuarios();
+  if (usuarios > 0) {
+    throw new Error(
+      `La DB de e2e no está vacía (${usuarios} usuarios): ${DB_FILE}. ` +
+        `Algún proceso la reescribió tras borrarla (¿un agente anterior sigue vivo?). ` +
+        `Comprueba quién tiene el fichero con \`fuser -v ${DB_FILE}\`.`,
+    );
+  }
 
   const child = spawn('node', ['dist/index.js'], {
     cwd: AGENT_DIR,
@@ -113,12 +137,23 @@ export async function startServer(): Promise<ChildProcess> {
   };
   child.stdout?.on('data', capture);
   child.stderr?.on('data', capture);
+  // Se anota la salida del proceso para poder reportar un cierre prematuro aunque
+  // llegue entre dos sondeos.
+  let salida: { code: number | null; signal: NodeJS.Signals | null } | null = null;
+  child.once('exit', (code, signal) => {
+    salida = { code, signal };
+  });
 
   const deadline = Date.now() + 60_000;
   // Espera a readiness Y a haber capturado el token (ambos ocurren al arrancar).
   while (Date.now() < deadline) {
-    if (child.exitCode !== null) {
-      throw new Error(`El agente e2e murió al arrancar (código ${child.exitCode}).\n${output}`);
+    if (salida !== null) {
+      const { code, signal } = salida as { code: number | null; signal: string | null };
+      rmSync(PID_FILE, { force: true });
+      throw new Error(
+        `El agente e2e murió al arrancar (código ${code ?? 'ninguno'}${signal ? `, señal ${signal}` : ''}) ` +
+          `antes de dar el token de configuración.\nSalida capturada:\n${output || '(vacía)'}`,
+      );
     }
     try {
       const res = await fetch(`${BASE_URL}/health/ready`);
@@ -134,13 +169,68 @@ export async function startServer(): Promise<ChildProcess> {
     // de que el siguiente intento borre la base, o su WAL a medio volcar reaparece
     // encima y vuelve a dejar la instalación «ya configurada».
     stopServer();
-    throw new Error(`No se capturó el token de configuración en 60 s.\n${output}`);
+    throw new Error(
+      `No se capturó el token de configuración en 60 s (el agente seguía vivo).\n` +
+        `Salida capturada:\n${output || '(vacía)'}`,
+    );
   }
 
   if (!existsSync(dirname(STATE_FILE))) mkdirSync(dirname(STATE_FILE), { recursive: true });
   const state: E2EState = { baseURL: BASE_URL, setupToken };
   writeFileSync(STATE_FILE, JSON.stringify(state));
   return child;
+}
+
+/** ¿Hay algo escuchando en el puerto? Se prueba IPv4 y IPv6 (`localhost` resuelve a ambas). */
+export function puertoOcupado(puerto: number): Promise<boolean> {
+  const probar = (host: string) =>
+    new Promise<boolean>((res) => {
+      const s = connect({ port: puerto, host });
+      s.once('connect', () => {
+        s.destroy();
+        res(true);
+      });
+      s.once('error', () => res(false));
+    });
+  return Promise.all([probar('127.0.0.1'), probar('::1')]).then(([a, b]) => a || b);
+}
+
+/** PID(s) que escuchan en el puerto, si `lsof` está disponible (mejor esfuerzo). */
+export function quienTieneElPuerto(puerto: number): string {
+  try {
+    const out = execFileSync('lsof', ['-t', `-iTCP:${puerto}`, '-sTCP:LISTEN'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return out ? `PID ${out.split('\n').join(', ')}` : 'proceso desconocido';
+  } catch {
+    return 'proceso desconocido';
+  }
+}
+
+/** Espera (con tope) a que el puerto quede libre; si no, falla nombrándolo. */
+async function esperarPuertoLibre(puerto: number, topeMs = 10_000): Promise<void> {
+  const limite = Date.now() + topeMs;
+  while (await puertoOcupado(puerto)) {
+    if (Date.now() > limite) {
+      throw new Error(
+        `El puerto ${puerto} sigue ocupado tras ${topeMs / 1000} s (${quienTieneElPuerto(puerto)}). ` +
+          `La suite e2e necesita ese puerto fijo: páralo con \`kill -TERM <pid>\` (nunca -9) y reintenta.`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, 200));
+  }
+}
+
+/** Cuenta los usuarios de la DB de e2e recién migrada (0 = instalación nueva). */
+function contarUsuarios(): number {
+  const db = new DatabaseSync(DB_FILE, { readOnly: true });
+  try {
+    const fila = db.prepare('SELECT COUNT(*) AS n FROM "User"').get() as { n: number | bigint };
+    return Number(fila.n);
+  } finally {
+    db.close();
+  }
 }
 
 /** Pausa síncrona (no hay `await` disponible: `stopServer` es sync por contrato). */

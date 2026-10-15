@@ -7,7 +7,7 @@ navegador real".
 
 ## Qué se prueba
 
-Los tests viven en `e2e/tests` (y los de inglés en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`) y 1 en cuarentena (2FA con autenticador virtual). El recuento actual se obtiene con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
+Los tests viven en `e2e/tests` (y los de inglés en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`). El recuento actual se obtiene con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
 
 | # | Flujo | Cubre |
 |---|-------|-------|
@@ -106,11 +106,16 @@ En **CI no hace falta**: el job usa `--with-deps`.
 - ⚠️ **Un 429 se ve como «No se pudo conectar con el servidor»** en la pantalla de login:
   `LoginPage` solo distingue el 401 (credenciales) del resto. Cuesta diagnosticar
   porque parece un problema de red. Anotado como deuda de copy.
-- **Cuarentena explícita** con `test.fixme` (no se ejecutan, quedan listados) y su motivo:
-  - **2FA con passkey** (virtual authenticator vía CDP WebAuthn): requiere cablear la
-    ceremonia registro+login con un autenticador virtual; se activará con el endurecimiento
-    de WebAuthn en e2e.
-  - (El flujo de **escenas** ya está **activo**; salió de cuarentena al llegar su UI.)
+- **Cuarentena explícita** con `test.fixme` (no se ejecutan, quedan listados) y su motivo.
+  Ahora mismo no hay ninguno.
+- **2FA con passkey** (`dos-factores.spec.ts`): autenticador virtual de Chromium por CDP
+  (`WebAuthn.addVirtualAuthenticator`, CTAP2 interno con verificación de usuario). Dos cosas
+  que no son obvias: el RP ID es un hostname, así que el agente e2e arranca con
+  `WEBAUTHN_ORIGIN=http://localhost:3999` y este spec navega por `localhost` (el resto, por
+  `127.0.0.1`); y usa **un usuario nuevo por ejecución**, porque la passkey se queda en la DB
+  pero el autenticador muere con el contexto (con `--repeat-each` el segundo intento pediría un
+  factor que nadie puede dar). Nunca registres una passkey en el admin: todos los demás flujos
+  entran con él.
 
 Si un test se vuelve flaky, se marca `test.fixme` con un comentario del motivo y un issue de
 seguimiento, en vez de dejarlo parpadeando en rojo.

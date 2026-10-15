@@ -2,6 +2,7 @@ import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { puertoOcupado, quienTieneElPuerto } from '../../lib/server.js';
 
 /**
  * Arnés de los **stacks reales** (`pnpm dev` y `pnpm prod`).
@@ -262,9 +263,41 @@ async function startProd(): Promise<string> {
   return await waitForSetupToken(agent.child, agent.output, 'prod');
 }
 
+/**
+ * Comprueba que los tres puertos están libres **antes de lanzar nada**. Con otro
+ * proceso en el :3001, `vite` proxea a ese agente ajeno y el setup muere 60 s
+ * después contra un formulario que no es el nuestro: nada apunta al puerto.
+ */
+async function comprobarPuertos(): Promise<void> {
+  const puertos: [string, number][] = [
+    ['agente de dev', PORTS.devAgent],
+    ['Vite de dev', PORTS.devWeb],
+    ['prod', PORTS.prod],
+  ];
+  // Tras matar los árboles de una tanda anterior el SO tarda un instante en soltarlos.
+  const limite = Date.now() + 10_000;
+  for (;;) {
+    const ocupados: string[] = [];
+    for (const [nombre, puerto] of puertos) {
+      if (await puertoOcupado(puerto)) {
+        ocupados.push(`:${puerto} (${nombre}, ${quienTieneElPuerto(puerto)})`);
+      }
+    }
+    if (ocupados.length === 0) return;
+    if (Date.now() > limite) {
+      throw new Error(
+        `Puertos ocupados, no se lanza nada: ${ocupados.join(', ')}. ` +
+          `Páralos con \`kill -TERM <pid>\` (nunca -9) y reintenta.`,
+      );
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+}
+
 /** Arranca ambos stacks y persiste sus tokens de configuración para los specs. */
 export async function startStacks(): Promise<void> {
   stopStacks();
+  await comprobarPuertos();
   const setupToken = { dev: await startDev(), prod: await startProd() };
   const pids = running.map((c) => c.pid).filter((p): p is number => typeof p === 'number');
   writeFileSync(STATE_FILE, JSON.stringify({ setupToken, pids } satisfies StacksState));
@@ -285,9 +318,31 @@ export function stopStacks(): void {
   } catch {
     // no hay estado previo
   }
+  // SIGTERM primero y a TODO el grupo (negativo): `vite` deja hijos vivos si se mata
+  // solo el PID, y un SIGKILL directo a un agente a media escritura de SQLite es
+  // justo como se corrompe la base. Solo si tras ~10 s sigue vivo, SIGKILL.
+  const vivo = (pid: number): boolean => {
+    try {
+      process.kill(-pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
+  };
   for (const pid of pids) {
     try {
-      // Grupo entero (negativo): `vite` deja hijos vivos si se mata solo el PID.
+      process.kill(-pid, 'SIGTERM');
+    } catch {
+      // ya murió
+    }
+  }
+  const limite = Date.now() + 10_000;
+  while (Date.now() < limite && [...pids].some(vivo)) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
+  }
+  for (const pid of pids) {
+    if (!vivo(pid)) continue;
+    try {
       process.kill(-pid, 'SIGKILL');
     } catch {
       // ya murió
