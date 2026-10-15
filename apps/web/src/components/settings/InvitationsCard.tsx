@@ -12,7 +12,7 @@ import { RichText } from '@/components/ui/rich-text';
 import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { timeAgo } from '@/lib/format';
-import { ROLE_LABELS } from '@/lib/roles';
+import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import {
   createInvitation,
   decideAccessRequest,
@@ -169,7 +169,7 @@ export function InvitationsCard() {
                 >
                   {USER_ROLES.map((role) => (
                     <option key={role} value={role}>
-                      {ROLE_LABELS[role]}
+                      {t(ROLE_LABEL_KEYS[role])}
                     </option>
                   ))}
                 </select>
@@ -253,7 +253,7 @@ export function InvitationsCard() {
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
+                  {t(ROLE_LABEL_KEYS[role])}
                 </option>
               ))}
             </select>
@@ -284,7 +284,7 @@ export function InvitationsCard() {
                   <p className="truncate text-kr-base text-kr-primary">{inv.email}</p>
                   <p className="truncate text-kr-xs text-kr-secondary">
                     {t('invitations.meta', {
-                      role: ROLE_LABELS[inv.role],
+                      role: t(ROLE_LABEL_KEYS[inv.role]),
                       estado:
                         inv.status === 'used'
                           ? t('invitations.usedAgo', {

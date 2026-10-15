@@ -2349,6 +2349,20 @@ export const es = {
   'ui.favorite.unpinned': 'Quitado de favoritos: {label}',
   'ui.favorite.removeAria': 'Quitar {label} de favoritos',
   'ui.favorite.addAria': 'Fijar {label} como favorito',
+
+  // --- Barrido de copy a pelo (constantes de módulo) ---
+  'widget.wifi.title': 'WiFi',
+  'route.wifi': 'WiFi',
+  'route.vpn': 'VPN y acceso remoto',
+  'route.automations': 'Automatizaciones',
+  'connect.category.router': 'Tu red y router',
+  'connect.category.lights': 'Luces inteligentes',
+  'connect.category.plugs': 'Enchufes e interruptores',
+  'connect.category.cameras': 'Cámaras',
+  'connect.category.remoteAccess': 'Acceso remoto (VPN)',
+  'connect.category.adBlocking': 'Bloqueo de anuncios (DNS)',
+  'connect.category.advanced': 'Red avanzada',
+  'cameras.rtsp.example': 'rtsp://usuario:contraseña@192.168.1.50:554/stream1',
 } as const;
 
 /** Clave válida del catálogo (derivada de la fuente en español). */

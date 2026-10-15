@@ -2295,4 +2295,18 @@ export const en: Record<TranslationKey, string> = {
   'ui.favorite.unpinned': 'Removed from favourites: {label}',
   'ui.favorite.removeAria': 'Remove {label} from favourites',
   'ui.favorite.addAria': 'Pin {label} as favourite',
+
+  // --- Barrido de copy a pelo (constantes de módulo) ---
+  'widget.wifi.title': 'WiFi',
+  'route.wifi': 'WiFi',
+  'route.vpn': 'VPN and remote access',
+  'route.automations': 'Automations',
+  'connect.category.router': 'Your network and router',
+  'connect.category.lights': 'Smart lights',
+  'connect.category.plugs': 'Plugs and switches',
+  'connect.category.cameras': 'Cameras',
+  'connect.category.remoteAccess': 'Remote access (VPN)',
+  'connect.category.adBlocking': 'Ad blocking (DNS)',
+  'connect.category.advanced': 'Advanced network',
+  'cameras.rtsp.example': 'rtsp://user:password@192.168.1.50:554/stream1',
 };

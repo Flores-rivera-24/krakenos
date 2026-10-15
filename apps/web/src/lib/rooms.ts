@@ -12,21 +12,22 @@ import { api } from '@/lib/api';
 import { invalidarHabitaciones, invalidarIot, trasEscribir } from '@/lib/resources';
 
 /**
- * Catálogo de iconos de habitación (US-165): glifo (emoji) + etiqueta en
- * español. Se pinta inline (self-hosted, sin assets externos, coherente con la
- * CSP `connect-src 'self'`). El orden es el que ve el usuario en el selector.
+ * Catálogo de iconos de habitación (US-165): glifo (emoji). Se pinta inline
+ * (self-hosted, sin assets externos, coherente con la CSP `connect-src 'self'`).
+ * El orden es el que ve el usuario en el selector; el nombre visible de cada
+ * icono vive en el catálogo i18n (`rooms.icon.<icon>`), no aquí.
  */
-export const ROOM_ICONS: { icon: RoomIcon; glyph: string; label: string }[] = [
-  { icon: 'living', glyph: '🛋️', label: 'Salón' },
-  { icon: 'bedroom', glyph: '🛏️', label: 'Dormitorio' },
-  { icon: 'kitchen', glyph: '🍳', label: 'Cocina' },
-  { icon: 'bathroom', glyph: '🛁', label: 'Baño' },
-  { icon: 'dining', glyph: '🍽️', label: 'Comedor' },
-  { icon: 'office', glyph: '💻', label: 'Oficina' },
-  { icon: 'kids', glyph: '🧸', label: 'Habitación infantil' },
-  { icon: 'garage', glyph: '🚗', label: 'Garaje' },
-  { icon: 'garden', glyph: '🌳', label: 'Jardín' },
-  { icon: 'generic', glyph: '🏠', label: 'Otra' },
+export const ROOM_ICONS: { icon: RoomIcon; glyph: string }[] = [
+  { icon: 'living', glyph: '🛋️' },
+  { icon: 'bedroom', glyph: '🛏️' },
+  { icon: 'kitchen', glyph: '🍳' },
+  { icon: 'bathroom', glyph: '🛁' },
+  { icon: 'dining', glyph: '🍽️' },
+  { icon: 'office', glyph: '💻' },
+  { icon: 'kids', glyph: '🧸' },
+  { icon: 'garage', glyph: '🚗' },
+  { icon: 'garden', glyph: '🌳' },
+  { icon: 'generic', glyph: '🏠' },
 ];
 
 const GLYPH_BY_ICON = new Map(ROOM_ICONS.map((r) => [r.icon, r.glyph]));

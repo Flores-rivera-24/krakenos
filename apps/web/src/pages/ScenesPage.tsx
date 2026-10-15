@@ -134,7 +134,7 @@ function SceneEditor({
 }) {
   const t = useT();
   const editing = scene !== null;
-  const [name, setName] = useState(scene?.name ?? template?.name ?? '');
+  const [name, setName] = useState(scene?.name ?? (template ? t(template.nameKey) : ''));
   const [icon, setIcon] = useState<SceneIcon>(scene?.icon ?? template?.icon ?? 'scene');
   const [draft, setDraft] = useState<Record<string, DraftAction>>(() => {
     const base = initialDraft(devices, scene?.actions ?? []);
@@ -418,7 +418,7 @@ export function ScenesPage() {
             {isAdmin && (
               <div className="flex flex-wrap justify-center gap-2">
                 {SCENE_TEMPLATES.map((tpl) => (
-                  <Button key={tpl.name} variant="outline" onClick={() => openNew(tpl)}>
+                  <Button key={tpl.nameKey} variant="outline" onClick={() => openNew(tpl)}>
                     {sceneGlyph(tpl.icon)} {t(`scenes.icon.${tpl.icon}`)}
                   </Button>
                 ))}

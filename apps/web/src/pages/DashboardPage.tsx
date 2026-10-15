@@ -122,11 +122,11 @@ export function DashboardPage() {
             >
               {editing && (
                 <div className="mb-1 flex items-center justify-between rounded-md bg-kr-elevated px-2 py-1">
-                  <span className="text-kr-sm text-kr-secondary">{meta.title}</span>
+                  <span className="text-kr-sm text-kr-secondary">{t(meta.titleKey)}</span>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
-                      aria-label={t('dashboard.moveUp', { title: meta.title })}
+                      aria-label={t('dashboard.moveUp', { title: t(meta.titleKey) })}
                       onClick={() => update(moveWidget(layout, id, 'up'))}
                       className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -134,7 +134,7 @@ export function DashboardPage() {
                     </button>
                     <button
                       type="button"
-                      aria-label={t('dashboard.moveDown', { title: meta.title })}
+                      aria-label={t('dashboard.moveDown', { title: t(meta.titleKey) })}
                       onClick={() => update(moveWidget(layout, id, 'down'))}
                       className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"
                     >
@@ -144,8 +144,8 @@ export function DashboardPage() {
                       type="button"
                       aria-label={
                         hidden
-                          ? t('dashboard.show', { title: meta.title })
-                          : t('dashboard.hide', { title: meta.title })
+                          ? t('dashboard.show', { title: t(meta.titleKey) })
+                          : t('dashboard.hide', { title: t(meta.titleKey) })
                       }
                       onClick={() => update(toggleHidden(layout, id))}
                       className="rounded-sm p-1 text-kr-secondary hover:bg-kr-surface hover:text-kr-primary"

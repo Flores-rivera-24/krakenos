@@ -8,6 +8,7 @@ import type {
   UpdateSceneRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
+import type { TranslationKey } from '@/lib/i18n';
 import {
   invalidarEscenas,
   invalidarHabitaciones,
@@ -15,17 +16,20 @@ import {
   trasEscribir,
 } from '@/lib/resources';
 
-/** Catálogo de iconos de escena (US-166): glifo (emoji) + etiqueta en español. */
-export const SCENE_ICONS: { icon: SceneIcon; glyph: string; label: string }[] = [
-  { icon: 'night', glyph: '🌙', label: 'Buenas noches' },
-  { icon: 'movie', glyph: '🎬', label: 'Cine' },
-  { icon: 'leave', glyph: '🚪', label: 'Salir de casa' },
-  { icon: 'morning', glyph: '🌅', label: 'Buenos días' },
-  { icon: 'dinner', glyph: '🍽️', label: 'Cena' },
-  { icon: 'relax', glyph: '🛀', label: 'Relax' },
-  { icon: 'party', glyph: '🎉', label: 'Fiesta' },
-  { icon: 'focus', glyph: '🎯', label: 'Concentración' },
-  { icon: 'scene', glyph: '✨', label: 'Escena' },
+/**
+ * Catálogo de iconos de escena (US-166): glifo (emoji). El nombre visible de cada
+ * icono vive en el catálogo i18n (`scenes.icon.<icon>`), no aquí.
+ */
+export const SCENE_ICONS: { icon: SceneIcon; glyph: string }[] = [
+  { icon: 'night', glyph: '🌙' },
+  { icon: 'movie', glyph: '🎬' },
+  { icon: 'leave', glyph: '🚪' },
+  { icon: 'morning', glyph: '🌅' },
+  { icon: 'dinner', glyph: '🍽️' },
+  { icon: 'relax', glyph: '🛀' },
+  { icon: 'party', glyph: '🎉' },
+  { icon: 'focus', glyph: '🎯' },
+  { icon: 'scene', glyph: '✨' },
 ];
 
 const GLYPH_BY_ICON = new Map(SCENE_ICONS.map((s) => [s.icon, s.glyph]));
@@ -37,16 +41,21 @@ export function sceneGlyph(icon: SceneIcon): string {
 
 /** Plantillas sugeridas al crear la primera escena (US-166). `preset` fija el estado. */
 export interface SceneTemplate {
-  name: string;
+  /**
+   * Clave del nombre sugerido. El nombre que se GUARDA es el ya resuelto en el idioma
+   * de quien crea la escena (es un dato suyo, no copy: no cambia si luego cambia de
+   * idioma).
+   */
+  nameKey: TranslationKey;
   icon: SceneIcon;
   /** Estado a aplicar a las luces incluidas al usar la plantilla. */
   preset: { on: boolean; brightness?: number };
 }
 
 export const SCENE_TEMPLATES: SceneTemplate[] = [
-  { name: 'Buenas noches', icon: 'night', preset: { on: false } },
-  { name: 'Cine', icon: 'movie', preset: { on: true, brightness: 20 } },
-  { name: 'Salir de casa', icon: 'leave', preset: { on: false } },
+  { nameKey: 'scenes.icon.night', icon: 'night', preset: { on: false } },
+  { nameKey: 'scenes.icon.movie', icon: 'movie', preset: { on: true, brightness: 20 } },
+  { nameKey: 'scenes.icon.leave', icon: 'leave', preset: { on: false } },
 ];
 
 export const listScenes = () => api.getList<Scene>('/scenes');

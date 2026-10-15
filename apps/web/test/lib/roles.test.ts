@@ -1,7 +1,8 @@
 import { USER_ROLES } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import { navGroupsForRole, mobileNavForRole } from '@/components/layout/nav';
-import { ROLE_LABELS, canControlHome } from '@/lib/roles';
+import { t } from '@/lib/i18n';
+import { ROLE_LABEL_KEYS, canControlHome } from '@/lib/roles';
 
 /** Roles del hogar en el cliente (US-179) — capa cosmética del servidor. */
 describe('lib/roles + nav por rol (US-179)', () => {
@@ -16,7 +17,7 @@ describe('lib/roles + nav por rol (US-179)', () => {
 
   it('hay etiqueta humana para todos los roles', () => {
     for (const role of USER_ROLES) {
-      expect(ROLE_LABELS[role]).toBeTruthy();
+      expect(t(ROLE_LABEL_KEYS[role])).toBeTruthy();
     }
   });
 
