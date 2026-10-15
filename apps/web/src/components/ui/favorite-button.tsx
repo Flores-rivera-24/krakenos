@@ -31,7 +31,9 @@ export function FavoriteButton({ kind, ref_, label, className }: Props) {
     setBusy(true);
     try {
       const now = await toggle(kind, ref_);
-      toast.success(now ? `Fijado: ${label}` : `Quitado de favoritos: ${label}`);
+      toast.success(
+        now ? t('ui.favorite.pinned', { label }) : t('ui.favorite.unpinned', { label }),
+      );
     } catch (err) {
       toast.error(describeError(err, t('ui.favorite.failed')));
     } finally {
@@ -48,7 +50,9 @@ export function FavoriteButton({ kind, ref_, label, className }: Props) {
       }}
       disabled={busy}
       aria-pressed={isFav}
-      aria-label={isFav ? `Quitar ${label} de favoritos` : `Fijar ${label} como favorito`}
+      aria-label={
+        isFav ? t('ui.favorite.removeAria', { label }) : t('ui.favorite.addAria', { label })
+      }
       title={isFav ? t('ui.favorite.remove') : t('ui.favorite.add')}
       className={cn(
         'inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',

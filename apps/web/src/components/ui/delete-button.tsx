@@ -1,6 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Button, type ButtonProps } from '@/components/ui/button';
+import { useT } from '@/lib/i18n';
 
 interface Props {
   /** Acción de borrado. La fila puede desmontarse al recargar la lista tras resolver. */
@@ -45,6 +46,7 @@ export function DeleteButton({
   skipConfirm,
   ...rest
 }: Props) {
+  const t = useT();
   const [pending, setPending] = useState(false);
   const [armado, setArmado] = useState(false);
   const confirmarRef = useRef<HTMLButtonElement>(null);
@@ -87,7 +89,7 @@ export function DeleteButton({
             void handle();
           }}
         >
-          Confirmar
+          {t('common.confirm')}
         </Button>
         <Button
           type="button"
@@ -98,7 +100,7 @@ export function DeleteButton({
             setArmado(false);
           }}
         >
-          Cancelar
+          {t('common.cancel')}
         </Button>
       </span>
     );

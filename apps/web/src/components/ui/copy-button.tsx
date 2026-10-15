@@ -30,7 +30,7 @@ const DEFAULT_FEEDBACK_MS = 1500;
 export function CopyButton({
   value,
   label,
-  copiedLabel = '¡Copiado!',
+  copiedLabel,
   showLabel = false,
   feedbackMs = DEFAULT_FEEDBACK_MS,
   onCopied,
@@ -38,6 +38,7 @@ export function CopyButton({
 }: CopyButtonProps) {
   const t = useT();
   const textoCopiar = label ?? t('ui.copy');
+  const textoCopiado = copiedLabel ?? t('ui.copied');
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -65,7 +66,7 @@ export function CopyButton({
     <button
       type="button"
       onClick={() => void handleCopy()}
-      aria-label={copied ? copiedLabel : textoCopiar}
+      aria-label={copied ? textoCopiado : textoCopiar}
       data-copied={copied}
       className={cn(
         'inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring',
@@ -74,7 +75,7 @@ export function CopyButton({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
-      {showLabel && <span>{copied ? copiedLabel : textoCopiar}</span>}
+      {showLabel && <span>{copied ? textoCopiado : textoCopiar}</span>}
     </button>
   );
 }

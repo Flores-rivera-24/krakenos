@@ -10,7 +10,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import {
   type ActiveFilter,
   DEVICE_TYPES,
-  TYPE_LABELS,
+  TYPE_LABEL_KEYS,
   filterDevices,
   groupDevicesByType,
 } from '@/lib/devices';
@@ -106,7 +106,10 @@ function DeviceTable({
             return (
               <tr
                 key={d.id}
-                {...filaAbrible(() => onSelect(d.id), `Ver ${d.label ?? d.hostname ?? d.mac}`)}
+                {...filaAbrible(
+                  () => onSelect(d.id),
+                  t('inventory.rowAria', { name: d.label ?? d.hostname ?? d.mac }),
+                )}
                 className="cursor-pointer border-t border-kr hover:bg-kr-elevated focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
               >
                 <td className="px-3 py-2 text-kr-primary">{d.label ?? d.hostname ?? d.mac}</td>
@@ -117,7 +120,7 @@ function DeviceTable({
                     <td className="px-3 py-2 text-kr-secondary">{d.vendor ?? '—'}</td>
                   </>
                 )}
-                <td className="px-3 py-2 text-kr-secondary">{TYPE_LABELS[d.type]}</td>
+                <td className="px-3 py-2 text-kr-secondary">{t(TYPE_LABEL_KEYS[d.type])}</td>
                 <td className="px-3 py-2">
                   <span className="flex items-center gap-2">
                     <StatusDot status={s.dot} />
@@ -331,7 +334,7 @@ export function InventoryPage() {
                   className="flex w-full items-center justify-between px-4 py-3 text-left text-kr-primary hover:bg-kr-elevated"
                 >
                   <span className="font-medium">
-                    {TYPE_LABELS[type]} ({items.length})
+                    {t(TYPE_LABEL_KEYS[type])} ({items.length})
                   </span>
                   {open ? (
                     <ChevronUp className="h-5 w-5 text-kr-muted" />

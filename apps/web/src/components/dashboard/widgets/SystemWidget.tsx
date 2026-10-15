@@ -58,7 +58,10 @@ export function SystemWidget() {
             <Meter
               label="CPU"
               percent={stats.cpu.loadPercent}
-              detail={`${stats.cpu.loadPercent}% · ${stats.cpu.cores} núcleos`}
+              detail={t('widget.system.cpuDetail', {
+                percent: stats.cpu.loadPercent,
+                cores: stats.cpu.cores,
+              })}
             />
             <Meter
               label="RAM"

@@ -73,7 +73,7 @@ export function CoverageToolbar({
 
       {tool === 'wall' && (
         <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-          <span className="hidden md:inline">Material</span>
+          <span className="hidden md:inline">{t('coverage.toolbar.material')}</span>
           <select
             value={wallMaterial}
             disabled={!canEdit}
@@ -92,7 +92,11 @@ export function CoverageToolbar({
       <div className="ml-auto">
         <Button size="sm" onClick={onSave} disabled={!canEdit || saving || !dirty}>
           <Save className="h-4 w-4" aria-hidden />
-          {saving ? 'Guardando…' : dirty ? 'Guardar cambios' : 'Guardado'}
+          {saving
+            ? t('common.saving')
+            : dirty
+              ? t('common.saveChanges')
+              : t('coverage.toolbar.saved')}
         </Button>
       </div>
     </div>

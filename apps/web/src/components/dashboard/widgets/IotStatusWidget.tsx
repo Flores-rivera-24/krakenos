@@ -69,12 +69,12 @@ export function IotStatusWidget() {
                   <span className="text-kr-primary">{b.name}</span>
                 </span>
                 <span className="text-kr-secondary">
-                  {b.online}/{b.total} en línea
+                  {t('widget.iot.onlineOf', { online: b.online, total: b.total })}
                 </span>
               </div>
             ))}
             <Link to="/iot" className="inline-block text-kr-sm text-kr-link hover:underline">
-              Controlar IoT →
+              {t('widget.iot.manage')}
             </Link>
           </>
         )}

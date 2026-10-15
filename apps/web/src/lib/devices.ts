@@ -1,5 +1,6 @@
 import type { Device, DeviceIcon, DeviceType } from '@krakenos/types';
 import { deviceTypeToArtKind, type ProductArtKind } from '@/components/ui/product-art';
+import type { TranslationKey } from '@/lib/i18n';
 
 /**
  * Ilustración efectiva de un dispositivo (US-178): el icono elegido a mano
@@ -9,21 +10,25 @@ export function deviceArtKind(device: Pick<Device, 'icon' | 'type'>): ProductArt
   return (device.icon as ProductArtKind | null) ?? deviceTypeToArtKind(device.type);
 }
 
-/** Etiquetas humanas del catálogo de iconos elegibles (US-178). */
-export const DEVICE_ICON_LABELS: Record<DeviceIcon, string> = {
-  router: 'Router',
-  'access-point': 'Punto de acceso',
-  switch: 'Switch',
-  laptop: 'Ordenador',
-  phone: 'Móvil',
-  tablet: 'Tablet',
-  tv: 'Tele',
-  printer: 'Impresora',
-  'iot-hub': 'Hub IoT',
-  bulb: 'Bombilla',
-  plug: 'Enchufe',
-  camera: 'Cámara',
-  sensor: 'Sensor',
+/**
+ * Etiquetas humanas del catálogo de iconos elegibles (US-178). Guardan la
+ * **clave** del catálogo, no el texto: una constante de módulo con el texto ya
+ * resuelto se congelaría con el idioma que hubiera al importar el módulo.
+ */
+export const DEVICE_ICON_LABEL_KEYS: Record<DeviceIcon, TranslationKey> = {
+  router: 'device.iconName.router',
+  'access-point': 'device.iconName.accessPoint',
+  switch: 'device.iconName.switch',
+  laptop: 'device.iconName.laptop',
+  phone: 'device.iconName.phone',
+  tablet: 'device.iconName.tablet',
+  tv: 'device.iconName.tv',
+  printer: 'device.iconName.printer',
+  'iot-hub': 'device.iconName.iotHub',
+  bulb: 'device.iconName.bulb',
+  plug: 'device.iconName.plug',
+  camera: 'device.iconName.camera',
+  sensor: 'device.iconName.sensor',
 };
 
 export const DEVICE_TYPES: DeviceType[] = [
@@ -37,15 +42,16 @@ export const DEVICE_TYPES: DeviceType[] = [
   'unknown',
 ];
 
-export const TYPE_LABELS: Record<DeviceType, string> = {
-  router: 'Router',
-  computer: 'Ordenador',
-  phone: 'Móvil',
-  tablet: 'Tablet',
-  iot: 'IoT',
-  tv: 'TV',
-  printer: 'Impresora',
-  unknown: 'Desconocido',
+/** Etiqueta de cada tipo de dispositivo: la clave del catálogo, no el texto. */
+export const TYPE_LABEL_KEYS: Record<DeviceType, TranslationKey> = {
+  router: 'device.typeName.router',
+  computer: 'device.typeName.computer',
+  phone: 'device.typeName.phone',
+  tablet: 'device.typeName.tablet',
+  iot: 'device.typeName.iot',
+  tv: 'device.typeName.tv',
+  printer: 'device.typeName.printer',
+  unknown: 'device.typeName.unknown',
 };
 
 /** Filtro rápido por estado en la página de inventario (US-43). */

@@ -124,7 +124,7 @@ function PasskeysCard() {
     } catch (err) {
       setError(
         err instanceof Error && err.message === 'webauthn_cancelled'
-          ? 'Registro cancelado.'
+          ? t('security.passkey.cancelled')
           : t('security.passkey.registerError'),
       );
     } finally {
@@ -328,9 +328,9 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
               disabled={!isAdmin}
               onChange={(e) => void patch('accessTokenTtl', e.target.value)}
             >
-              <option value="900">15 minutos</option>
-              <option value="3600">1 hora</option>
-              <option value="28800">8 horas</option>
+              <option value="900">{t('security.ttl.15m')}</option>
+              <option value="3600">{t('security.ttl.1h')}</option>
+              <option value="28800">{t('security.ttl.8h')}</option>
             </select>
           </Row>
           <Row label={t('security.loginLimit')}>
@@ -376,11 +376,13 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
                   className="flex items-center justify-between rounded-md border border-kr px-3 py-2 text-kr-sm"
                 >
                   <span className="text-kr-secondary">
-                    Creada {timeAgo(s.createdAt)} · expira{' '}
-                    {new Date(s.expiresAt).toLocaleDateString()}
+                    {t('security.sessionMeta', {
+                      created: timeAgo(s.createdAt),
+                      expires: new Date(s.expiresAt).toLocaleDateString(),
+                    })}
                   </span>
                   <Button variant="ghost" size="sm" onClick={() => void revoke(s.id)}>
-                    Revocar
+                    {t('security.sessionRevoke')}
                   </Button>
                 </li>
               ))}
@@ -413,7 +415,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           <p className="mt-2 text-kr-sm text-kr-secondary">{t('security.regen.confirmBody')}</p>
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirmRegen(false)}>
-              Cancelar
+              {t('common.cancel')}
             </Button>
             <Button variant="destructive" size="sm" onClick={() => void regenKeys()}>
               {t('security.regen.confirm')}

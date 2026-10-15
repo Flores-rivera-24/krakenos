@@ -6,7 +6,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 
 const SEEN_KEY = 'krakenos-alerts-seen';
@@ -60,7 +60,11 @@ export function AlertsWidget() {
         {unread > 0 && (
           <button type="button" onClick={markSeen} aria-label={t('widget.alerts.markRead')}>
             <Badge variant="warning">
-              {unread} {unread === 1 ? 'nueva' : 'nuevas'}
+              {unread}{' '}
+              {plural(unread, {
+                one: t('widget.alerts.new.one'),
+                other: t('widget.alerts.new.other'),
+              })}
             </Badge>
           </button>
         )}

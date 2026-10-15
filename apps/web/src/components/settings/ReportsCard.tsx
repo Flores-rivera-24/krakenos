@@ -2,17 +2,17 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { downloadReport } from '@/lib/reports';
-import { useT } from '@/lib/i18n';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
-const REPORTS = [
-  { path: '/reports/devices.csv', file: 'krakenos-dispositivos.csv', label: 'Dispositivos' },
+const REPORTS: { path: string; file: string; label: TranslationKey }[] = [
+  { path: '/reports/devices.csv', file: 'krakenos-dispositivos.csv', label: 'reports.devices' },
   {
     path: '/reports/traffic.csv?range=week',
     file: 'krakenos-trafico.csv',
-    label: 'Tráfico (semana)',
+    label: 'reports.traffic',
   },
-  { path: '/reports/audit.csv', file: 'krakenos-auditoria.csv', label: 'Auditoría' },
+  { path: '/reports/audit.csv', file: 'krakenos-auditoria.csv', label: 'reports.audit' },
 ];
 
 /** Exportación de informes en CSV (US-109) — para una revisión mensual o un auditor. */
@@ -47,7 +47,7 @@ export function ReportsCard() {
               disabled={busy === r.path}
               onClick={() => void run(r)}
             >
-              {busy === r.path ? 'Generando…' : r.label}
+              {busy === r.path ? t('reports.generating') : t(r.label)}
             </Button>
           ))}
         </div>

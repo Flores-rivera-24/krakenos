@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from 'react';
+import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 
 export type DotStatus = 'online' | 'offline' | 'warning' | 'danger';
@@ -11,12 +12,12 @@ const STATUS_BG: Record<DotStatus, string> = {
   danger: 'bg-danger',
 };
 
-/** Etiqueta accesible por estado. */
-const STATUS_LABEL: Record<DotStatus, string> = {
-  online: 'En línea',
-  offline: 'Desconectado',
-  warning: 'Advertencia',
-  danger: 'Error',
+/** Etiqueta accesible por estado: la clave del catálogo, no el texto. */
+const STATUS_LABEL: Record<DotStatus, TranslationKey> = {
+  online: 'ui.status.online',
+  offline: 'ui.status.offline',
+  warning: 'ui.status.warning',
+  danger: 'ui.status.danger',
 };
 
 export interface StatusDotProps extends HTMLAttributes<HTMLSpanElement> {
@@ -41,10 +42,11 @@ export interface StatusDotProps extends HTMLAttributes<HTMLSpanElement> {
  * resto del tiempo.
  */
 export function StatusDot({ status, label, className, ...props }: StatusDotProps) {
+  const t = useT();
   return (
     <span
       role="img"
-      aria-label={label ?? STATUS_LABEL[status]}
+      aria-label={label ?? t(STATUS_LABEL[status])}
       data-status={status}
       className={cn('inline-block h-2 w-2 shrink-0 rounded-full', STATUS_BG[status], className)}
       {...props}
