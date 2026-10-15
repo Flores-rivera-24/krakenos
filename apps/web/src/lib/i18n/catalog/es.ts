@@ -38,6 +38,8 @@ export const es = {
   // --- Arranque / genéricos ---
   'app.booting': 'Iniciando KrakenOS…',
   'common.close': 'Cerrar',
+  'common.dismiss': 'Descartar',
+  'common.trend': 'Tendencia',
   'common.logout': 'Salir',
 
   // --- Shell / layout ---
@@ -1289,12 +1291,14 @@ export const es = {
     'Fija tus dispositivos y habitaciones favoritos con la estrella ⭐ para tenerlos aquí.',
   'gettingStarted.welcome': '¡Bienvenido a KrakenOS!',
   'gettingStarted.intro': 'Conecta tus dispositivos en unos minutos. Te guiamos en cada paso.',
+  'gettingStarted.dismiss': 'Descartar primeros pasos',
   'coverage.toolbar.label': 'Herramientas del plano',
   'coverage.tool.select': 'Seleccionar',
   'coverage.tool.wall': 'Pared',
   'coverage.tool.ap': 'Punto de acceso',
   'coverage.tool.measure': 'Medir',
   'coverage.plan.aria': 'Plano {name}: {w}×{h} m con {aps} punto(s) de acceso',
+  'coverage.plan.namePlaceholder': 'p. ej. Planta baja',
   'coverage.plan.deleted': 'Plano eliminado',
   'coverage.plan.deleteError': 'No se pudo eliminar el plano',
   'common.save': 'Guardar',

@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useId, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useT } from '@/lib/i18n';
 import { useFocusTrap } from '@/lib/use-focus-trap';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ export function Slideover({
   children,
   className,
 }: SlideoverProps) {
+  const t = useT();
   const titleId = useId();
   const panelRef = useFocusTrap<HTMLDivElement>(open);
 
@@ -75,7 +77,7 @@ export function Slideover({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t('common.close')}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
           >
             <X className="h-5 w-5" />

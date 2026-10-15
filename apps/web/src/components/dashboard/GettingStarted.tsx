@@ -113,7 +113,7 @@ export function GettingStarted() {
         <button
           type="button"
           onClick={dismiss}
-          aria-label="Descartar primeros pasos"
+          aria-label={t('gettingStarted.dismiss')}
           className="rounded-sm p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <X className="h-4 w-4" />

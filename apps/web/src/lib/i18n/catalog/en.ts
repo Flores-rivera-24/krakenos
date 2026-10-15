@@ -35,6 +35,8 @@ export const en: Record<TranslationKey, string> = {
   // --- Boot / generic ---
   'app.booting': 'Starting KrakenOS…',
   'common.close': 'Close',
+  'common.dismiss': 'Dismiss',
+  'common.trend': 'Trend',
   'common.logout': 'Log out',
 
   // --- Shell / layout ---
@@ -1250,12 +1252,14 @@ export const en: Record<TranslationKey, string> = {
     'Star your favourite devices and rooms with the ⭐ to keep them here.',
   'gettingStarted.welcome': 'Welcome to KrakenOS!',
   'gettingStarted.intro': 'Connect your devices in a few minutes. We guide you through each step.',
+  'gettingStarted.dismiss': 'Dismiss getting started',
   'coverage.toolbar.label': 'Floor plan tools',
   'coverage.tool.select': 'Select',
   'coverage.tool.wall': 'Wall',
   'coverage.tool.ap': 'Access point',
   'coverage.tool.measure': 'Measure',
   'coverage.plan.aria': 'Plan {name}: {w}×{h} m with {aps} access point(s)',
+  'coverage.plan.namePlaceholder': 'e.g. Ground floor',
   'coverage.plan.deleted': 'Plan deleted',
   'coverage.plan.deleteError': 'Could not delete the plan',
   'common.save': 'Save',
