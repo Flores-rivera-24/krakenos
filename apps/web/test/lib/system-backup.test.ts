@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiRequestError } from '@/lib/api';
+import { describeError } from '@/lib/errors';
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { downloadBackup, restoreBackup } from '@/lib/system-backup';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -19,7 +22,10 @@ describe('cliente de copia de seguridad', () => {
     useAuthStore.setState({ tokens: { accessToken: 'tok-1', expiresIn: 900 } } as never);
   });
 
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setLocale('es', { persist: false });
+  });
 
   it('restore sube el fichero en binario con la contraseña en cabecera', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ staged: 3 }) });
@@ -59,5 +65,39 @@ describe('cliente de copia de seguridad', () => {
     fetchMock.mockResolvedValue({ ok: true, blob: async () => blob });
     expect(await downloadBackup('passphrase-larga-1')).toBe(blob);
     expect(fetchMock.mock.calls[0]![0]).toBe('/api/system/backup');
+  });
+
+  it('un fallo es un ApiRequestError con status y code: la UI lo traduce, no lo pinta crudo', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ code: 'VALIDATION', message: 'Revisa los datos e inténtalo de nuevo.' }),
+    });
+    const err = await restoreBackup(new File(['x'], 'c.kbk'), 'passphrase-larga-1').catch((e) => e);
+    expect(err).toBeInstanceOf(ApiRequestError);
+    expect(err.status).toBe(400);
+    expect(err.body.code).toBe('VALIDATION');
+    // En español sale el mensaje del agente; en inglés, el del catálogo para ese code.
+    expect(describeError(err, 'No se pudo restaurar la copia de seguridad')).toBe(
+      'Revisa los datos e inténtalo de nuevo.',
+    );
+    await changeLocale('en', { persist: false });
+    expect(describeError(err, 'x')).toBe('Check the details and try again.');
+  });
+
+  it('sin cuerpo JSON el error no inventa texto: describeError usa el fallback del idioma', async () => {
+    fetchMock.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error('no es json');
+      },
+    });
+    const err = await downloadBackup('passphrase-larga-1').catch((e) => e);
+    expect(err).toBeInstanceOf(ApiRequestError);
+    expect(err.body).toEqual({ code: 'UNKNOWN', message: '' });
+    expect(describeError(err, 'No se pudo generar la copia de seguridad')).toBe(
+      'No se pudo generar la copia de seguridad (error 500).',
+    );
   });
 });

@@ -30,7 +30,7 @@ import {
   type IntegrationGuide,
 } from '@/lib/guides';
 import {
-  CATEGORY_LABELS,
+  CATEGORY_LABEL_KEYS,
   getIntegrations,
   kindSchemaFor,
   type DomainView,
@@ -275,20 +275,20 @@ export function ConnectPage() {
     else setActive(action);
   };
 
-  // Secciones deduplicadas por etiqueta (firewall/vlan/qos → "Red avanzada").
+  // Secciones deduplicadas por clave de etiqueta (firewall/vlan/qos → "Red avanzada").
   const sections = useMemo(() => {
-    const out: { label: string; guides: IntegrationGuide[] }[] = [];
-    const byLabel = new Map<string, IntegrationGuide[]>();
+    const out: { labelKey: TranslationKey; guides: IntegrationGuide[] }[] = [];
+    const byLabel = new Map<TranslationKey, IntegrationGuide[]>();
     for (const category of SECTION_ORDER) {
       const guides = guidesByCategory(category);
       if (guides.length === 0) continue;
-      const label = CATEGORY_LABELS[category];
-      const existing = byLabel.get(label);
+      const labelKey = CATEGORY_LABEL_KEYS[category];
+      const existing = byLabel.get(labelKey);
       if (existing) existing.push(...guides);
       else {
         const bucket = [...guides];
-        byLabel.set(label, bucket);
-        out.push({ label, guides: bucket });
+        byLabel.set(labelKey, bucket);
+        out.push({ labelKey, guides: bucket });
       }
     }
     return out;
@@ -416,8 +416,8 @@ export function ConnectPage() {
         </div>
       ) : (
         sections.map((section) => (
-          <section key={section.label} className="space-y-3">
-            <h2 className="text-kr-lg font-semibold text-kr-primary">{section.label}</h2>
+          <section key={section.labelKey} className="space-y-3">
+            <h2 className="text-kr-lg font-semibold text-kr-primary">{t(section.labelKey)}</h2>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {section.guides.map((guide) => (
                 <ConnectCard

@@ -1,35 +1,37 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
+import { t, useLocale, type TranslationKey } from '@/lib/i18n';
 
 /**
  * Título legible por ruta. Se mantiene aquí (y no en cada página) porque el
  * anuncio tiene que ocurrir **en el momento de la navegación**, no cuando la
  * página perezosa termina de cargar.
  */
-const TITULOS: Record<string, string> = {
-  '/': 'Dashboard',
-  '/connect': 'Conectar',
-  '/inventory': 'Dispositivos',
-  '/wifi': 'WiFi',
-  '/vpn': 'VPN y acceso remoto',
-  '/iot': 'IoT',
-  '/cameras': 'Cámaras',
-  '/traffic': 'Tráfico',
-  '/energy': 'Energía',
-  '/rooms': 'Habitaciones',
-  '/scenes': 'Escenas',
-  '/automations': 'Automatizaciones',
-  '/coverage': 'Cobertura WiFi',
-  '/firewall': 'Firewall',
-  '/vlan': 'VLANs',
-  '/qos': 'QoS',
-  '/dns': 'DNS',
-  '/settings': 'Ajustes',
+const TITULOS: Record<string, TranslationKey> = {
+  '/': 'nav.dashboard',
+  '/connect': 'nav.connect',
+  '/inventory': 'nav.devices',
+  '/wifi': 'route.wifi',
+  '/vpn': 'route.vpn',
+  '/iot': 'nav.iot',
+  '/cameras': 'nav.cameras',
+  '/traffic': 'nav.traffic',
+  '/energy': 'nav.energy',
+  '/rooms': 'nav.rooms',
+  '/scenes': 'nav.scenes',
+  '/automations': 'route.automations',
+  '/coverage': 'nav.coverage',
+  '/firewall': 'nav.firewall',
+  '/vlan': 'nav.vlans',
+  '/qos': 'nav.qos',
+  '/dns': 'nav.dns',
+  '/settings': 'nav.settings',
 };
 
 /** Nombre de la vista actual, con caída razonable para rutas no listadas. */
 export function tituloDeRuta(pathname: string): string {
-  return TITULOS[pathname] ?? TITULOS[`/${pathname.split('/')[1] ?? ''}`] ?? 'KrakenOS';
+  const clave = TITULOS[pathname] ?? TITULOS[`/${pathname.split('/')[1] ?? ''}`];
+  return clave ? t(clave) : 'KrakenOS';
 }
 
 /**
@@ -51,12 +53,15 @@ export function tituloDeRuta(pathname: string): string {
  */
 export function useRouteAnnounce(mainRef: React.RefObject<HTMLElement | null>): void {
   const { pathname } = useLocation();
+  const locale = useLocale();
   const primeraVez = useRef(true);
 
+  // El título depende del idioma: un cambio de idioma lo reescribe, pero NO mueve el foco.
   useEffect(() => {
-    const titulo = tituloDeRuta(pathname);
-    document.title = `${titulo} · KrakenOS`;
+    document.title = `${tituloDeRuta(pathname)} · KrakenOS`;
+  }, [pathname, locale]);
 
+  useEffect(() => {
     if (primeraVez.current) {
       primeraVez.current = false;
       return;

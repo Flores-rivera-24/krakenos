@@ -20,9 +20,6 @@ interface Props {
   onSaved: () => void;
 }
 
-/** Ejemplo literal de URL: es un dato, no copy, y no se traduce. */
-const RTSP_EXAMPLE = 'rtsp://usuario:contraseña@192.168.1.50:554/stream1';
-
 export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
   const t = useT();
   const isEdit = camera != null;
@@ -111,7 +108,9 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
                   <span className="block">{t('cameras.rtsp.help')}</span>
                   <span className="block">
                     {t('cameras.rtsp.format')}{' '}
-                    <code className="break-all font-mono text-kr-xs">{RTSP_EXAMPLE}</code>
+                    <code className="break-all font-mono text-kr-xs">
+                      {t('cameras.rtsp.example')}
+                    </code>
                   </span>
                 </span>
               }
@@ -122,7 +121,7 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
             id="cam-rtsp"
             value={rtspUrl}
             onChange={(e) => setRtspUrl(e.target.value)}
-            placeholder={isEdit ? t('cameras.rtsp.keep') : RTSP_EXAMPLE}
+            placeholder={isEdit ? t('cameras.rtsp.keep') : t('cameras.rtsp.example')}
             autoComplete="off"
             spellCheck={false}
           />

@@ -1,3 +1,5 @@
+import type { TranslationKey } from '@/lib/i18n';
+
 /** Identificadores estables de los widgets del dashboard (US-36). */
 export type WidgetId =
   | 'quickActions'
@@ -15,7 +17,8 @@ export type WidgetId =
 
 export interface WidgetDef {
   id: WidgetId;
-  title: string;
+  /** Clave del título en el catálogo: se resuelve al pintar, no al importar. */
+  titleKey: TranslationKey;
   /** Columnas que ocupa en el grid de 2 (1 = media fila, 2 = fila completa). */
   span: 1 | 2;
   /**
@@ -39,18 +42,24 @@ export interface WidgetDef {
 
 /** Registro de widgets disponibles, en su orden por defecto. */
 export const WIDGETS: WidgetDef[] = [
-  { id: 'quickActions', title: 'Acciones rápidas', span: 2 },
-  { id: 'homeMode', title: 'Modo del hogar', span: 2 },
-  { id: 'alarm', title: 'Alarma', span: 2 },
-  { id: 'scenes', title: 'Escenas', span: 2 },
-  { id: 'devices', title: 'Dispositivos', span: 1 },
-  { id: 'system', title: 'Sistema', span: 1, advancedOnly: true },
-  { id: 'traffic', title: 'Tráfico WAN', span: 2, advancedOnly: true },
-  { id: 'topology', title: 'Topología de red', span: 2, advancedOnly: true },
-  { id: 'iot', title: 'IoT', span: 1 },
-  { id: 'wifi', title: 'WiFi', span: 1 },
-  { id: 'coverage', title: 'Cobertura WiFi', span: 1, advancedOnly: true },
-  { id: 'alerts', title: 'Alertas recientes', span: 1, advancedOnly: true, adminOnly: true },
+  { id: 'quickActions', titleKey: 'widget.quickActions.title', span: 2 },
+  { id: 'homeMode', titleKey: 'widget.homeMode.title', span: 2 },
+  { id: 'alarm', titleKey: 'widget.alarm.title', span: 2 },
+  { id: 'scenes', titleKey: 'widget.scenes.title', span: 2 },
+  { id: 'devices', titleKey: 'widget.devices.title', span: 1 },
+  { id: 'system', titleKey: 'widget.system.title', span: 1, advancedOnly: true },
+  { id: 'traffic', titleKey: 'widget.traffic.title', span: 2, advancedOnly: true },
+  { id: 'topology', titleKey: 'widget.topology.title', span: 2, advancedOnly: true },
+  { id: 'iot', titleKey: 'nav.iot', span: 1 },
+  { id: 'wifi', titleKey: 'widget.wifi.title', span: 1 },
+  { id: 'coverage', titleKey: 'widget.coverage.title', span: 1, advancedOnly: true },
+  {
+    id: 'alerts',
+    titleKey: 'widget.alerts.title',
+    span: 1,
+    advancedOnly: true,
+    adminOnly: true,
+  },
 ];
 
 /**

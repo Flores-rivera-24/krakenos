@@ -10,7 +10,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
 import { timeAgo } from '@/lib/format';
-import { ROLE_LABELS } from '@/lib/roles';
+import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -172,7 +172,7 @@ export function UsersSection() {
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
-                  {ROLE_LABELS[role]}
+                  {t(ROLE_LABEL_KEYS[role])}
                 </option>
               ))}
             </select>
@@ -256,7 +256,7 @@ export function UsersSection() {
                       >
                         {USER_ROLES.map((role) => (
                           <option key={role} value={role}>
-                            {ROLE_LABELS[role]}
+                            {t(ROLE_LABEL_KEYS[role])}
                           </option>
                         ))}
                       </select>

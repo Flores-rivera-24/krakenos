@@ -1,6 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { act, render } from '@testing-library/react';
+import { createRef } from 'react';
+import { MemoryRouter } from 'react-router';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { filaAbrible } from '@/lib/a11y';
-import { tituloDeRuta } from '@/lib/use-route-announce';
+import { changeLocale, setLocale } from '@/lib/i18n';
+import { tituloDeRuta, useRouteAnnounce } from '@/lib/use-route-announce';
 
 /**
  * US-235 (AUD3-26): las cuatro tablas principales eran `<tr onClick>` sin teclado
@@ -67,5 +71,46 @@ describe('tituloDeRuta', () => {
 
   it('cae a la marca en una ruta desconocida en vez de quedarse vacío', () => {
     expect(tituloDeRuta('/ruta-que-no-existe')).toBe('KrakenOS');
+  });
+});
+
+describe('tituloDeRuta en inglés', () => {
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('se resuelve con el idioma ACTIVO en el momento de la llamada, no al importar', async () => {
+    expect(tituloDeRuta('/automations')).toBe('Automatizaciones');
+    await changeLocale('en', { persist: false });
+    expect(tituloDeRuta('/')).toBe('Dashboard');
+    expect(tituloDeRuta('/cameras')).toBe('Cameras');
+    expect(tituloDeRuta('/automations')).toBe('Automations');
+    expect(tituloDeRuta('/vpn')).toBe('VPN and remote access');
+    expect(tituloDeRuta('/coverage/plan-1')).toBe('WiFi coverage');
+  });
+});
+
+describe('useRouteAnnounce: el título sigue al idioma', () => {
+  afterEach(() => setLocale('es', { persist: false }));
+
+  function Pantalla({ foco }: { foco: React.RefObject<HTMLElement | null> }) {
+    useRouteAnnounce(foco);
+    return <main ref={foco} tabIndex={-1} />;
+  }
+
+  it('al cambiar de idioma reescribe document.title SIN mover el foco', async () => {
+    const foco = createRef<HTMLElement>();
+    render(
+      <MemoryRouter initialEntries={['/cameras']}>
+        <Pantalla foco={foco} />
+      </MemoryRouter>,
+    );
+    expect(document.title).toBe('Cámaras · KrakenOS');
+    expect(document.activeElement).not.toBe(foco.current);
+
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    expect(document.title).toBe('Cameras · KrakenOS');
+    // Cambiar de idioma no es navegar: robar el foco al <main> sería un salto sin motivo.
+    expect(document.activeElement).not.toBe(foco.current);
   });
 });

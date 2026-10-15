@@ -10,7 +10,7 @@ import { NetworkCanvas } from '@/components/ui/network-canvas';
 import { Splash } from '@/components/ui/splash';
 import { useT } from '@/lib/i18n';
 import { acceptInvitation, previewInvitation } from '@/lib/onboarding';
-import { ROLE_LABELS } from '@/lib/roles';
+import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
@@ -114,7 +114,7 @@ export function InvitePage() {
               {t('invite.title', { home: preview.homeName })}
             </h1>
             <p className="text-kr-sm text-kr-secondary">
-              {preview.email} · {ROLE_LABELS[preview.role]}
+              {preview.email} · {t(ROLE_LABEL_KEYS[preview.role])}
             </p>
           </div>
         </div>

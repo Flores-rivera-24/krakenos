@@ -1,6 +1,21 @@
-import type { AutoBackupStatus } from '@krakenos/types';
-import { api } from '@/lib/api';
+import type { ApiError, AutoBackupStatus } from '@krakenos/types';
+import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
+
+/**
+ * El error de una respuesta que no es 2xx, como `ApiRequestError`: lleva el `code` y el
+ * mensaje del agente (si los hay) y la interfaz lo traduce con `describeError`, en vez
+ * de pintar un texto escrito aquí. Sin cuerpo JSON, el mensaje queda vacío y
+ * `describeError` usa el fallback del idioma activo.
+ */
+async function errorDeRespuesta(res: Response): Promise<ApiRequestError> {
+  const body = (await res.json().catch(() => null)) as Partial<ApiError> | null;
+  return new ApiRequestError(res.status, {
+    code: body?.code ?? 'UNKNOWN',
+    message: body?.message ?? '',
+    ...(body?.details ? { details: body.details } : {}),
+  });
+}
 
 /**
  * Descarga la copia de seguridad cifrada (US-103). El endpoint devuelve binario
@@ -18,10 +33,7 @@ export async function downloadBackup(passphrase: string): Promise<Blob> {
     },
     body: JSON.stringify({ passphrase }),
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(err?.message ?? 'No se pudo generar la copia de seguridad');
-  }
+  if (!res.ok) throw await errorDeRespuesta(res);
   return res.blob();
 }
 
@@ -46,10 +58,7 @@ export async function restoreBackup(file: File, passphrase: string): Promise<{ s
     },
     body: file,
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(err?.message ?? 'No se pudo restaurar la copia de seguridad');
-  }
+  if (!res.ok) throw await errorDeRespuesta(res);
   return res.json() as Promise<{ staged: number }>;
 }
 

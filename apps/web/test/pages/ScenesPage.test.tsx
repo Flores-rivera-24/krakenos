@@ -1,8 +1,8 @@
 import type { IotDevice, Scene } from '@krakenos/types';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -19,6 +19,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { ScenesPage } from '@/pages/ScenesPage';
 import { Toaster } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth.store';
@@ -104,6 +105,30 @@ describe('ScenesPage (US-166)', () => {
         }),
       ),
     );
+  });
+
+  describe('en inglés', () => {
+    afterEach(() => setLocale('es', { persist: false }));
+
+    it('la plantilla se pinta en inglés y guarda el nombre YA resuelto en ese idioma', async () => {
+      await act(async () => {
+        await changeLocale('en', { persist: false });
+      });
+      apiMock.post.mockResolvedValue(scene({ name: 'Good night' }));
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByRole('button', { name: /Good night/ }));
+      const dialog = await screen.findByRole('dialog');
+      await user.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+      await waitFor(() =>
+        expect(apiMock.post).toHaveBeenCalledWith(
+          '/scenes',
+          expect.objectContaining({ name: 'Good night', icon: 'night' }),
+        ),
+      );
+    });
   });
 
   it('ejecuta una escena desde su tarjeta (POST run)', async () => {

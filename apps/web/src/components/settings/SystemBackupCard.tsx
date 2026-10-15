@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RichText } from '@/components/ui/rich-text';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import {
   downloadBackup,
   getAutoBackupStatus,
@@ -46,7 +47,7 @@ export function SystemBackupCard() {
       setRestorePass('');
       if (fileInput.current) fileInput.current.value = '';
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('backup.restoreError'));
+      toast.error(describeError(err, t('backup.restoreError')));
     } finally {
       setRestoreBusy(false);
     }
@@ -70,7 +71,7 @@ export function SystemBackupCard() {
       setPass('');
       setConfirm('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('backup.generateError'));
+      toast.error(describeError(err, t('backup.generateError')));
     } finally {
       setBusy(false);
     }
@@ -221,7 +222,7 @@ function AutoBackupSection() {
       await api.patch('/system/settings', { key, value });
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('backup.settingError'));
+      toast.error(describeError(err, t('backup.settingError')));
     }
   };
 
@@ -230,7 +231,7 @@ function AutoBackupSection() {
     try {
       await fn();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('backup.opError'));
+      toast.error(describeError(err, t('backup.opError')));
     } finally {
       setBusy(false);
     }

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { t } from '@/lib/i18n';
 
 // El cliente de integraciones envuelve el `api` genérico; lo stubbeamos para
 // verificar que llama a los endpoints correctos con el cuerpo esperado.
@@ -18,7 +19,7 @@ const apiMock = vi.hoisted(() => {
 vi.mock('@/lib/api', () => ({ api: apiMock }));
 
 import {
-  CATEGORY_LABELS,
+  CATEGORY_LABEL_KEYS,
   deleteIntegration,
   getIntegrations,
   kindSchemaFor,
@@ -87,11 +88,14 @@ describe('lib/integrations', () => {
     expect(kindSchemaFor(view, 'inexistente')).toBeUndefined();
   });
 
-  it('CATEGORY_LABELS agrupa firewall/vlan/qos bajo "Red avanzada"', () => {
-    expect(CATEGORY_LABELS.router).toBe('Tu red y router');
-    expect(CATEGORY_LABELS.lights).toBe('Luces inteligentes');
-    expect(CATEGORY_LABELS.firewall).toBe('Red avanzada');
-    expect(CATEGORY_LABELS.vlan).toBe('Red avanzada');
-    expect(CATEGORY_LABELS.qos).toBe('Red avanzada');
+  it('CATEGORY_LABEL_KEYS agrupa firewall/vlan/qos bajo "Red avanzada"', () => {
+    expect(t(CATEGORY_LABEL_KEYS.router)).toBe('Tu red y router');
+    expect(t(CATEGORY_LABEL_KEYS.lights)).toBe('Luces inteligentes');
+    expect(t(CATEGORY_LABEL_KEYS.firewall)).toBe('Red avanzada');
+    expect(t(CATEGORY_LABEL_KEYS.vlan)).toBe('Red avanzada');
+    expect(t(CATEGORY_LABEL_KEYS.qos)).toBe('Red avanzada');
+    // Son la MISMA clave: es lo que las junta en una sola sección del hub.
+    expect(CATEGORY_LABEL_KEYS.firewall).toBe(CATEGORY_LABEL_KEYS.vlan);
+    expect(CATEGORY_LABEL_KEYS.vlan).toBe(CATEGORY_LABEL_KEYS.qos);
   });
 });

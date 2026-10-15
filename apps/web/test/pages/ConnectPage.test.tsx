@@ -1,8 +1,8 @@
 import type { IntegrationField } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // El hub carga el catálogo vía el `api` genérico; lo stubbeamos.
 const apiMock = vi.hoisted(() => {
@@ -20,6 +20,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { ConnectPage } from '@/pages/ConnectPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
@@ -92,6 +93,29 @@ describe('ConnectPage', () => {
     ]) {
       expect(screen.getByRole('heading', { name: label })).toBeInTheDocument();
     }
+  });
+
+  describe('en inglés', () => {
+    afterEach(() => setLocale('es', { persist: false }));
+
+    it('los títulos de sección salen en inglés, con firewall/vlan/qos juntos en una', async () => {
+      await act(async () => {
+        await changeLocale('en', { persist: false });
+      });
+      renderPage();
+      expect(await screen.findByRole('heading', { name: 'Your network and router' })).toBeVisible();
+      for (const label of [
+        'Smart lights',
+        'Plugs and switches',
+        'Cameras',
+        'Remote access (VPN)',
+        'Ad blocking (DNS)',
+      ]) {
+        expect(screen.getByRole('heading', { name: label })).toBeInTheDocument();
+      }
+      expect(screen.getAllByRole('heading', { name: 'Advanced network' })).toHaveLength(1);
+      expect(screen.queryByRole('heading', { name: 'Red avanzada' })).toBeNull();
+    });
   });
 
   it('al pulsar una tarjeta config-style abre el asistente en un slideover', async () => {
