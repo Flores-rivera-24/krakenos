@@ -1,8 +1,12 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Slideover } from '@/components/ui/slideover';
+import { Sparkline } from '@/components/ui/sparkline';
+import { Toaster } from '@/components/ui/toast';
+import { changeLocale, setLocale } from '@/lib/i18n';
+import { useToastStore } from '@/store/toast.store';
 
 /** Disparador + slideover controlado, para verificar la devolución de foco. */
 function Harness() {
@@ -111,5 +115,48 @@ describe('Slideover', () => {
     await user.click(abrir);
     await user.click(screen.getByRole('button', { name: 'Cerrar' }));
     expect(abrir).toHaveFocus();
+  });
+
+  describe('con la interfaz en inglés (issue #88)', () => {
+    afterEach(() => {
+      setLocale('es', { persist: false });
+      useToastStore.setState({ toasts: [] });
+    });
+
+    async function aIngles() {
+      await act(async () => {
+        await changeLocale('en', { persist: false });
+      });
+    }
+
+    it('el botón de cerrar se anuncia «Close», no «Cerrar»', async () => {
+      await aIngles();
+      render(
+        <Slideover open onClose={() => {}} title="Detail">
+          content
+        </Slideover>,
+      );
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument(),
+      );
+      expect(screen.queryByRole('button', { name: 'Cerrar' })).not.toBeInTheDocument();
+    });
+
+    it('el botón de descartar un aviso se anuncia «Dismiss»', async () => {
+      await aIngles();
+      useToastStore.getState().push('info', 'Saved');
+      render(<Toaster />);
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument(),
+      );
+      expect(screen.queryByRole('button', { name: 'Descartar' })).not.toBeInTheDocument();
+    });
+
+    it('la mini-gráfica se anuncia «Trend», no «Tendencia»', async () => {
+      await aIngles();
+      render(<Sparkline points={[1, 2, 3]} />);
+      await waitFor(() => expect(screen.getByRole('img', { name: 'Trend' })).toBeInTheDocument());
+      expect(screen.queryByRole('img', { name: 'Tendencia' })).not.toBeInTheDocument();
+    });
   });
 });

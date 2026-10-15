@@ -34,6 +34,18 @@ export function sinComentarios(fuente: string): string {
   return fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
+/**
+ * Como `sinComentarios`, pero **conserva los saltos de línea** de lo que quita,
+ * de modo que el número de línea de un hallazgo coincide con el del fichero real.
+ * `sinComentarios` los pierde dentro de un comentario de bloque: vale para
+ * contar, no para decirle a alguien en qué línea mirar.
+ */
+export function sinComentariosConLineas(fuente: string): string {
+  return fuente
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ''))
+    .replace(/^\s*\/\/.*$/gm, (m) => m.replace(/[^\n]/g, ''));
+}
+
 export interface Fuente {
   /** Ruta relativa a `src/`, que es como se nombra en el mensaje de fallo. */
   nombre: string;

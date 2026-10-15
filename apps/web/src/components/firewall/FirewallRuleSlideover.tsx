@@ -12,6 +12,7 @@ import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary';
@@ -34,6 +35,7 @@ interface Props {
 }
 
 export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props) {
+  const t = useT();
   const [name, setName] = useState(rule.name);
   const [action, setAction] = useState<FirewallAction>(rule.action);
   const [protocol, setProtocol] = useState<FirewallProtocol>(rule.protocol);
@@ -151,7 +153,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
             id="fr-port"
             value={portText}
             onChange={(e) => setPortText(e.target.value.replace(/\D/g, ''))}
-            placeholder="cualquiera"
+            placeholder={t('firewall.portPlaceholder')}
             inputMode="numeric"
           />
         </div>

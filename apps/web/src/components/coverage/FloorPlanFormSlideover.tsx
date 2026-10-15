@@ -182,7 +182,7 @@ export function FloorPlanFormSlideover({ plan, onClose, onSaved, onDeleted }: Pr
             id="plan-name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="p. ej. Planta baja"
+            placeholder={t('coverage.plan.namePlaceholder')}
             maxLength={64}
           />
         </div>
