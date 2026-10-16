@@ -59,7 +59,9 @@ describe('WellbeingService (US-184)', () => {
     expect(people[0]?.name).toBe('Ana');
     expect(people[0]?.userId).toBe(ana.id);
     expect(people[0]?.totalBytes).toBe((1000 + 500) * 60);
-    expect(people.some((p) => p.userId === null && p.name === 'Sin asignar')).toBe(true);
+    // Sin dueño: `name` es null (la web escribe «Sin asignar» en su idioma).
+    expect(people.some((p) => p.userId === null && p.name === null)).toBe(true);
+    expect(JSON.stringify(people)).not.toContain('Sin asignar');
   });
 
   it('un no-admin solo ve su propio uso (privacidad por rol)', async () => {

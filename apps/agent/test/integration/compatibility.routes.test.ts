@@ -59,6 +59,15 @@ describe('GET /api/compatibility — contrato', () => {
     }
   });
 
+  it('no manda el nombre de la ficha: viaja el id y la web lo traduce', async () => {
+    const servido = await leerCatalogo();
+    // Un nombre escrito en español («Cámaras RTSP») no se podía traducir y con la
+    // interfaz en inglés salía en español. Guard de tamaño: sin entradas el `every`
+    // pasaría en vacío.
+    expect(servido.length).toBeGreaterThan(10);
+    expect(servido.every((e) => !('label' in e))).toBe(true);
+  });
+
   it('el sello de mantenimiento llega al cliente (era lo que se podaba)', async () => {
     const servido = await leerCatalogo();
     expect(servido.find((e) => e.id === 'iot:tuya')?.support).toBe('community');

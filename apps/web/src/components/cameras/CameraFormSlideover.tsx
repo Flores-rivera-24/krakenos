@@ -101,7 +101,7 @@ export function CameraFormSlideover({ camera, onClose, onSaved }: Props) {
 
         <div className="space-y-2">
           <div className="flex items-center gap-1.5">
-            <Label htmlFor="cam-rtsp">URL RTSP</Label>
+            <Label htmlFor="cam-rtsp">{t('cameras.rtsp.label')}</Label>
             <HelpHint
               content={
                 <span className="block space-y-1">

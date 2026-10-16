@@ -1,11 +1,18 @@
 import type { CompatibilityEntry } from '@krakenos/types';
+import type * as Compat from '@/lib/compatibility';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const compatMock = vi.hoisted(() => ({ listCompatibility: vi.fn() }));
-vi.mock('@/lib/compatibility', () => compatMock);
+// Solo se sustituye la lectura: los mapas de etiquetas son los reales (si no, el
+// componente no los encontraría y el test no vería nada de lo que pinta).
+vi.mock('@/lib/compatibility', async (importOriginal) => ({
+  ...(await importOriginal<typeof Compat>()),
+  ...compatMock,
+}));
 
 import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
+import { ensureCatalog, setLocale } from '@/lib/i18n';
 
 /**
  * ⚠️ Este fixture **mintió** hasta US-258: traía `support` y el servidor lo podaba
@@ -18,7 +25,6 @@ const CATALOG: CompatibilityEntry[] = [
   {
     id: 'driver:openwrt',
     category: 'driver',
-    label: 'Router OpenWrt',
     capabilities: ['inventory', 'wifi'],
     requirements: ['address', 'credentials'],
     verifiedAt: null,
@@ -28,7 +34,6 @@ const CATALOG: CompatibilityEntry[] = [
   {
     id: 'iot:hue',
     category: 'iot',
-    label: 'Philips Hue',
     capabilities: ['control'],
     requirements: ['address', 'credentials'],
     verifiedAt: null,
@@ -38,7 +43,6 @@ const CATALOG: CompatibilityEntry[] = [
   {
     id: 'dns:pihole',
     category: 'dns',
-    label: 'Pi-hole',
     capabilities: ['dns-block'],
     requirements: ['address'],
     verifiedAt: '2026-08-07',
@@ -50,7 +54,6 @@ const CATALOG: CompatibilityEntry[] = [
   {
     id: 'iot:tuya',
     category: 'iot',
-    label: 'Tuya / Smart Life',
     capabilities: ['control'],
     requirements: ['extra-dependency'],
     verifiedAt: null,
@@ -62,7 +65,6 @@ const CATALOG: CompatibilityEntry[] = [
   {
     id: 'iot:kasa',
     category: 'iot',
-    label: 'TP-Link Kasa / Tapo',
     capabilities: ['control'],
     requirements: ['credentials'],
     verifiedAt: null,
@@ -80,6 +82,9 @@ describe('CompatibilitySection (US-208)', () => {
     expect(avisos).toHaveLength(1);
     expect(avisos[0]!.closest('li')).toHaveTextContent('Tuya / Smart Life');
   });
+
+  beforeAll(() => ensureCatalog('en'));
+  afterEach(() => setLocale('es', { persist: false }));
 
   beforeEach(() => {
     compatMock.listCompatibility.mockReset().mockResolvedValue(CATALOG);
@@ -129,6 +134,50 @@ describe('CompatibilitySection (US-208)', () => {
     expect(screen.getByText('Philips Hue').closest('li')).not.toHaveTextContent(
       'la app del fabricante',
     );
+  });
+
+  it('la capacidad «tráfico por dispositivo» sale traducida y una desconocida se declara', async () => {
+    compatMock.listCompatibility.mockResolvedValue([
+      {
+        ...CATALOG[0]!,
+        capabilities: ['inventory', 'traffic-per-device', 'teletransporte'],
+      },
+    ]);
+    render(<CompatibilitySection />);
+    const ficha = (await screen.findByText('Router OpenWrt')).closest('li')!;
+    expect(ficha).toHaveTextContent('Tráfico por dispositivo');
+    expect(ficha).toHaveTextContent('No reconocido (teletransporte)');
+    expect(ficha).not.toHaveTextContent('compat.cap');
+  });
+
+  it('el nombre sale del catálogo según el idioma, no del servidor', async () => {
+    compatMock.listCompatibility.mockResolvedValue([
+      {
+        ...CATALOG[0]!,
+        id: 'cameras:rtsp',
+        category: 'cameras',
+        capabilities: ['camera-stream'],
+        requirements: [],
+      },
+      { ...CATALOG[0]!, id: 'vlan:switch', category: 'vlan', capabilities: ['vlan'] },
+    ]);
+    setLocale('en', { persist: false });
+    render(<CompatibilitySection />);
+    expect(await screen.findByText('RTSP cameras')).toBeInTheDocument();
+    expect(screen.getByText('Managed switch (SNMP)')).toBeInTheDocument();
+    expect(screen.queryByText('Cámaras RTSP')).toBeNull();
+    // La búsqueda va por el nombre que se ve, no por el que no se ve.
+    fireEvent.change(screen.getByLabelText('Search by brand or model'), {
+      target: { value: 'managed' },
+    });
+    expect(screen.queryByText('RTSP cameras')).toBeNull();
+    expect(screen.getByText('Managed switch (SNMP)')).toBeInTheDocument();
+  });
+
+  it('un id de ficha que esta versión no conoce se declara', async () => {
+    compatMock.listCompatibility.mockResolvedValue([{ ...CATALOG[0]!, id: 'driver:nuevo' }]);
+    render(<CompatibilitySection />);
+    expect(await screen.findByText('No reconocido (driver:nuevo)')).toBeInTheDocument();
   });
 
   it('busca por marca/modelo', async () => {

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { textoDeListaDns } from '@/lib/dns-feeds';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
@@ -49,23 +50,28 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
           <LoadingLine />
         ) : (
           <ul className="space-y-2">
-            {feeds.map((f) => (
-              <li
-                key={f.id}
-                className="flex items-center gap-3 rounded-md border border-kr bg-kr-elevated px-3 py-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-kr-sm text-kr-primary">{f.name}</p>
-                  <p className="text-kr-xs text-kr-muted">{f.description}</p>
-                </div>
-                <Switch
-                  checked={f.enabled}
-                  disabled={!canEdit}
-                  onCheckedChange={(v) => void toggle(f, v)}
-                  aria-label={t('dns.feeds.enableAria', { name: f.name })}
-                />
-              </li>
-            ))}
+            {feeds.map((f) => {
+              const texto = textoDeListaDns(f.id);
+              // Un id que esta web no conoce se declara; no se pinta crudo.
+              const name = texto ? t(texto.name) : t('dns.feeds.unknown', { id: f.id });
+              return (
+                <li
+                  key={f.id}
+                  className="flex items-center gap-3 rounded-md border border-kr bg-kr-elevated px-3 py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-kr-sm text-kr-primary">{name}</p>
+                    {texto && <p className="text-kr-xs text-kr-muted">{t(texto.description)}</p>}
+                  </div>
+                  <Switch
+                    checked={f.enabled}
+                    disabled={!canEdit}
+                    onCheckedChange={(v) => void toggle(f, v)}
+                    aria-label={t('dns.feeds.enableAria', { name })}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
       </CardContent>

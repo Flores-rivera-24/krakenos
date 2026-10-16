@@ -85,14 +85,22 @@ export interface DnsHistoryResponse {
 }
 
 /**
+ * Ids de los feeds del catálogo fijo. **Unión cerrada**: el agente manda el id y no
+ * el nombre ni la descripción, porque un copy que el servidor manda ya escrito no se
+ * puede traducir. La web resuelve el texto con un `Record<DnsFeedId, …>` exhaustivo,
+ * así que un feed nuevo no compila hasta tener su nombre y su descripción.
+ */
+export const DNS_FEED_IDS = ['ads', 'malware', 'tracking-extended'] as const;
+export type DnsFeedId = (typeof DNS_FEED_IDS)[number];
+
+/**
  * Feed de categoría (adlist): una lista curada de dominios a bloquear que el
  * resolver (Pi-hole) gestiona por URL. El catálogo es fijo; el usuario activa o
  * desactiva cada uno (US-114).
  */
 export interface DnsFeed {
+  /** Id estable del catálogo (ver {@link DNS_FEED_IDS}); `string` a propósito: un agente más nuevo puede anunciar uno que esta web no conoce. */
   id: string;
-  name: string;
-  description: string;
   url: string;
   enabled: boolean;
 }

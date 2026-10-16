@@ -128,7 +128,7 @@ export class WellbeingService {
         }));
       return {
         userId: key === UNASSIGNED ? null : key,
-        name: key === UNASSIGNED ? 'Sin asignar' : (nameById.get(key) ?? 'Desconocido'),
+        name: key === UNASSIGNED ? null : (nameById.get(key) ?? null),
         rxBytes: Math.round(acc.rx),
         txBytes: Math.round(acc.tx),
         totalBytes: Math.round(acc.rx + acc.tx),
