@@ -52,7 +52,7 @@ Al pulsar **«Actualizar ahora»**, el agente lanza un **proceso actualizador ap
 2. **fetch** — `git fetch --tags` y verifica que existe la etiqueta `v<versión>`.
 3. **apply** — `git checkout` de la etiqueta + `pnpm install --frozen-lockfile` +
    `pnpm build` + **reinstalación de las deps opcionales** (abajo).
-4. **migrate** — `prisma migrate deploy`.
+4. **migrate** — `node apps/agent/dist/migrate.js` (el aplicador propio de migraciones, el recién construido; ya no la CLI de Prisma). Antes de aplicar nada hace una copia `var/pre-migrate-<fecha>.db` (se conservan las 3 últimas) y se niega a seguir, nombrando la migración, si la base y el código no cuentan la misma historia.
 5. **restart** — `systemctl restart <servicio>` (por eso corre en un proceso aparte:
    sobrevive al reinicio del agente).
 6. **healthcheck** — sondea `/health/ready` unos segundos.

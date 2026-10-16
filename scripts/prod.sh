@@ -2,8 +2,9 @@
 #
 # KrakenOS — arranque de producción en un solo comando.
 #
-# Encadena todo el flujo: dependencias → claves JWT → migración de la base →
-# build (agente + web) → arranque del agente sirviendo API y UI en un puerto.
+# Encadena todo el flujo: dependencias → claves JWT → cliente de Prisma →
+# build (agente + web) → migración de la base (aplicador propio, US-275) →
+# arranque del agente sirviendo API y UI en un puerto.
 # El admin NO se siembra: en el primer arranque la UI muestra el wizard /setup.
 #
 # Uso:   ./scripts/prod.sh            (foreground; Ctrl-C para parar)
@@ -27,14 +28,16 @@ if [[ ! -f "$AGENT/keys/jwt-private.pem" ]]; then
   "$AGENT/scripts/gen-keys.sh"
 fi
 
-echo "==> [3/5] Base de datos (Prisma migrate deploy)…"
+echo "==> [3/5] Cliente de Prisma…"
 pnpm --filter @krakenos/agent exec prisma generate
-pnpm --filter @krakenos/agent exec prisma migrate deploy
 
 echo "==> [4/5] Build (agente + web)…"
 pnpm build
 
-echo "==> [5/5] Arrancando KrakenOS (API + UI en un puerto)…"
+echo "==> [5/5] Base de datos y arranque de KrakenOS (API + UI en un puerto)…"
 cd "$AGENT"
+# Migra aquí, de forma explícita, para que un fallo salga con su causa antes de
+# arrancar (el agente también migra al arrancar; sin pendientes es un no-op).
+node dist/migrate.js
 # `exec` para que las señales (systemd/Ctrl-C) lleguen directas a Node.
 exec env NODE_ENV=production node dist/index.js

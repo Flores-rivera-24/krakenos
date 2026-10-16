@@ -356,8 +356,10 @@ build_and_configure() {
   fi
   run bash -c "cd '$INSTALL_DIR' && pnpm install --frozen-lockfile"
   run bash -c "cd '$INSTALL_DIR' && pnpm --filter @krakenos/agent exec prisma generate"
-  run bash -c "cd '$INSTALL_DIR' && pnpm --filter @krakenos/agent exec prisma migrate deploy"
   run bash -c "cd '$INSTALL_DIR' && pnpm build"
+  # Aplicador de migraciones propio (US-275): vive en el build del agente, así que va
+  # después de `pnpm build` y desde su directorio (lee ahí el .env y prisma/migrations).
+  run bash -c "cd '$agent' && node dist/migrate.js"
 }
 
 # Puerto real del agente (respeta PORT del .env; por defecto 3001).

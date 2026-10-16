@@ -86,12 +86,11 @@ describe('ProcessUpdateRunner', () => {
     expect(calls.some((c) => c[0] === 'pnpm' && c.includes('build'))).toBe(true);
   });
 
-  it('migrate ejecuta prisma migrate deploy', async () => {
+  it('migrate ejecuta el CLI de migraciones propio (dist/migrate.js), no la CLI de Prisma', async () => {
     const { runner, calls } = make();
     await runner.migrate();
-    expect(
-      calls.some((c) => c.includes('prisma') && c.includes('migrate') && c.includes('deploy')),
-    ).toBe(true);
+    expect(calls).toContainEqual([process.execPath, '/opt/krakenos/apps/agent/dist/migrate.js']);
+    expect(calls.some((c) => c.includes('prisma'))).toBe(false);
   });
 
   it('restart usa sudo systemctl por defecto', async () => {

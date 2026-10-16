@@ -242,7 +242,7 @@ pnpm prod          # = ./scripts/prod.sh
 ```
 
 Encadena: instalar deps → generar claves JWT (si faltan) → crear `.env` (si falta) →
-`prisma migrate deploy` → `pnpm build` → arrancar en `NODE_ENV=production` sirviendo
+`pnpm build` → migrar la base (`node dist/migrate.js`, el aplicador propio; ya no la CLI de Prisma) → arrancar en `NODE_ENV=production` sirviendo
 API+UI en `PORT` (por defecto `:3001`). El primer arranque imprime en el log una **URL de
 configuración con QR** (token incrustado) y abre el wizard `/setup` para crear el administrador.
 
