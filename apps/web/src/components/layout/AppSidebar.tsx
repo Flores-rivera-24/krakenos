@@ -170,11 +170,14 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       // zona inferior (usuario, tema, cerrar sesión) queda siempre a la vista.
       className={cn(
         'sticky top-0 hidden h-dvh shrink-0 self-start flex-col border-r border-kr bg-kr-surface transition-[width] duration-200 md:flex',
+        // Ventana baja (variante `bajo`, `index.css`): la barra ENTERA hace scroll —cabecera,
+        // lista, Ajustes y pie, en ese orden— y la lista deja de tener scroll propio.
+        'bajo:overflow-y-auto',
         collapsed ? 'w-16' : 'w-[220px]',
       )}
     >
       {/* Marca + toggle de colapso */}
-      <div className="flex h-14 items-center justify-between px-4">
+      <div className="flex h-14 shrink-0 items-center justify-between px-4">
         {collapsed ? (
           // Colapsada: el isotipo actúa como botón para expandir.
           <button
@@ -206,8 +209,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Navegación por grupos con cabecera (US-163). Lo que cabe se desplaza por dentro;
           el grupo «Sistema» (Ajustes) va fijo debajo, para que no quede enterrado en una
           ventana baja. Es UN solo <nav>: dos landmarks iguales no se distinguirían. */}
-      <nav className="flex min-h-0 flex-1 flex-col px-3 py-2">
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+      <nav className="flex min-h-0 flex-1 flex-col px-3 py-2 bajo:min-h-fit bajo:flex-none">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bajo:flex-none bajo:overflow-visible">
           {scrollGroups.map((group, gi) => renderGroup(group, gi))}
         </div>
         {pinnedGroup && (
@@ -216,7 +219,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       </nav>
 
       {/* Zona inferior: conexión en vivo, driver, uptime, usuario, logout */}
-      <div className="space-y-3 border-t border-kr p-3">
+      <div className="shrink-0 space-y-3 border-t border-kr p-3">
         {/* Estado real del stream en tiempo real (US-94). */}
         <ConnectionStatus collapsed={collapsed} />
 
