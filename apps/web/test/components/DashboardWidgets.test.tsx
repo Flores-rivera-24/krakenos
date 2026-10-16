@@ -189,9 +189,11 @@ describe('Dashboard widgets', () => {
     );
     wrap(<AlertsWidget />);
 
-    expect(await screen.findByText('wifi.update')).toBeInTheDocument();
-    expect(screen.getByText('device.block')).toBeInTheDocument();
-    expect(screen.getByText('auth.login')).toBeInTheDocument();
+    // La acción se enseña con su texto (catálogo), no con el identificador crudo.
+    expect(await screen.findByText('Ajustes de WiFi modificados')).toBeInTheDocument();
+    expect(screen.getByText('Dispositivo bloqueado')).toBeInTheDocument();
+    expect(screen.getByText('Inicio de sesión')).toBeInTheDocument();
+    expect(screen.queryByText('auth.login')).not.toBeInTheDocument();
     // Dos son posteriores al `lastSeen`; la tercera no.
     expect(screen.getByText('2 nuevas')).toBeInTheDocument();
   });

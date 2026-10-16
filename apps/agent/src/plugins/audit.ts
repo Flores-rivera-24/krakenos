@@ -1,9 +1,11 @@
 import { createHash } from 'node:crypto';
+import type { AuditAction } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
 export interface AuditInput {
-  action: string;
+  /** Acción del catálogo cerrado `AUDIT_ACTIONS`: una acción nueva no compila hasta añadirla allí. */
+  action: AuditAction;
   userId?: string | null;
   detail?: string | null;
   ip?: string | null;

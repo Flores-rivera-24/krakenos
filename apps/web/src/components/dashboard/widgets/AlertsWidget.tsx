@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
+import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
@@ -83,7 +84,7 @@ export function AlertsWidget() {
           <ul className="space-y-2 text-kr-sm">
             {entries.slice(0, 5).map((e) => (
               <li key={e.id} className="flex justify-between gap-2">
-                <span className="truncate text-kr-primary">{e.action}</span>
+                <span className="truncate text-kr-primary">{etiquetaDeAccion(e.action, t)}</span>
                 <span className="shrink-0 text-kr-muted">{timeAgo(e.createdAt)}</span>
               </li>
             ))}
