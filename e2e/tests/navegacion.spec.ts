@@ -130,6 +130,36 @@ test.describe('móvil', () => {
  * llegaba a medir 63 px (un enlace). Por debajo del umbral `bajo` de `index.css` la barra
  * ENTERA es un único contenedor con scroll.
  */
+test.describe('justo por encima del umbral (1440×600)', () => {
+  test.use({ viewport: { width: 1440, height: 600 } });
+
+  test('la barra sigue fija: la lista tiene su scroll propio y enseña al menos 5 enlaces', async ({
+    page,
+  }) => {
+    await login(page);
+    const aside = page.locator('aside');
+    // La barra no es el contenedor con scroll: lo es la lista (que no cabe entera).
+    expect(await aside.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
+    const lista = aside.locator('nav > div').first();
+    expect(
+      await lista.evaluate((el) => el.scrollHeight - el.clientHeight),
+      'la lista debería tener scroll propio (si cupiera entera, el test no probaría nada)',
+    ).toBeGreaterThan(100);
+    const aLaVista = await aside.locator('nav a').evaluateAll(
+      (els) =>
+        els.filter((el) => {
+          const r = el.getBoundingClientRect();
+          const punto = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return punto !== null && el.contains(punto);
+        }).length,
+    );
+    // 5 de la lista + «Ajustes», fijo debajo: es el criterio con el que se eligió el umbral.
+    expect(aLaVista, 'enlaces de la nav a la vista').toBeGreaterThanOrEqual(6);
+    await expect(aside.getByRole('link', { name: 'Ajustes' })).toBeInViewport();
+    await expect(aside.getByRole('button', { name: 'Salir' })).toBeInViewport();
+  });
+});
+
 for (const { ancho, alto } of [
   { ancho: 844, alto: 390 },
   { ancho: 1024, alto: 500 },
