@@ -1,3 +1,4 @@
+import { DNS_FEED_IDS } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
@@ -132,5 +133,27 @@ describe('rutas de DNS', () => {
       headers: authHeader(token),
     });
     expect(again.statusCode).toBe(404);
+  });
+
+  /**
+   * Contrato de `/api/dns/feeds`: el agente manda el ID del feed y no su nombre ni su
+   * descripción (escritos en español no se podían traducir; el copy vive en la web).
+   * Se comparan las claves **servidas**: `additionalProperties:false` poda en
+   * silencio, así que un campo que se añada al tipo y no al schema desaparecería.
+   */
+  it('GET /api/dns/feeds manda id, url y enabled, y NINGÚN copy (se traduce en la web)', async () => {
+    const viewer = await seedUser(app, { email: 'v@krakenos.test', role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/dns/feeds',
+      headers: authHeader(signAccess(app, viewer)),
+    });
+    expect(res.statusCode).toBe(200);
+    const feeds = res.json() as Record<string, unknown>[];
+    // Los ids servidos son exactamente los del contrato (ni uno más ni uno menos).
+    expect(feeds.map((f) => f.id).sort()).toEqual([...DNS_FEED_IDS].sort());
+    for (const f of feeds) {
+      expect(Object.keys(f).sort(), `feed ${String(f.id)}`).toEqual(['enabled', 'id', 'url']);
+    }
   });
 });

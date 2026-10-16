@@ -1,6 +1,6 @@
 import type { BlockedDomain, DnsFeed, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
 import { DnsError } from './mock.dns.js';
-import { DNS_FEED_CATALOG } from './feeds.js';
+import { DNS_FEED_CATALOG, toDnsFeed } from './feeds.js';
 import {
   parseAddedDomain,
   parseDenyExactList,
@@ -165,7 +165,7 @@ export class PiholeDnsManager implements DnsManager {
         .filter((l) => l.enabled !== false && typeof l.address === 'string')
         .map((l) => l.address as string),
     );
-    return DNS_FEED_CATALOG.map((f) => ({ ...f, enabled: active.has(f.url) }));
+    return DNS_FEED_CATALOG.map((f) => toDnsFeed(f, active.has(f.url)));
   }
 
   async setFeedEnabled(id: string, enabled: boolean): Promise<DnsFeed> {
@@ -194,6 +194,6 @@ export class PiholeDnsManager implements DnsManager {
         await this.ensureOk(res, 'No se pudo quitar la lista de Pi-hole');
       }
     }
-    return { ...feed, enabled };
+    return toDnsFeed(feed, enabled);
   }
 }

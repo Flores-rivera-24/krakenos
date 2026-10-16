@@ -1557,6 +1557,15 @@ export const es = {
   'dns.feeds.enableAria': 'Activar {name}',
   'dns.feeds.loadError': 'No se pudieron cargar las listas',
   'dns.feeds.toggleError': 'No se pudo cambiar la lista',
+  // El agente manda el id del feed y el copy vive aquí (traducible).
+  'dns.feeds.unknown': 'Lista no reconocida ({id})',
+  'dns.feed.ads.name': 'Publicidad y rastreo',
+  'dns.feed.ads.description': 'Bloquea anuncios, banners y rastreadores comunes (StevenBlack).',
+  'dns.feed.malware.name': 'Malware y phishing',
+  'dns.feed.malware.description': 'Dominios maliciosos y de phishing conocidos (URLhaus).',
+  'dns.feed.tracking-extended.name': 'Rastreo extendido',
+  'dns.feed.tracking-extended.description':
+    'Telemetría y rastreo adicional (lista de Perflyst/SmartTV opcional).',
   'vpn.peer.delete': 'Eliminar dispositivo',
   'vpn.peer.publicKey': 'Clave pública',
   'vpn.peer.created': 'Creado',

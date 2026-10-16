@@ -148,11 +148,9 @@ export const clearDnsHistorySchema = {
 const feed = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'name', 'description', 'url', 'enabled'],
+  required: ['id', 'url', 'enabled'],
   properties: {
     id: { type: 'string' },
-    name: { type: 'string' },
-    description: { type: 'string' },
     url: { type: 'string' },
     enabled: { type: 'boolean' },
   },
