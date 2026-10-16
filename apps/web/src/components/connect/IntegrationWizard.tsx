@@ -467,7 +467,7 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
           {label}
           {field.required && <span className="text-danger"> *</span>}
         </Label>
-        {help && <HelpHint content={help} />}
+        {help && <HelpHint content={help} label={t('wizard.field.moreInfo', { field: label })} />}
       </div>
       {control}
     </div>

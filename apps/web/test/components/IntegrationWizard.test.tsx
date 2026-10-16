@@ -125,11 +125,27 @@ describe('IntegrationWizard', () => {
     const next = screen.getByRole('button', { name: 'Siguiente' });
     expect(next).toBeDisabled(); // faltan bridgeUrl y appKey
 
-    await user.type(screen.getByLabelText(/Dirección del bridge/), 'https://192.168.1.50');
+    await user.type(screen.getByLabelText(/^Dirección del bridge/), 'https://192.168.1.50');
     expect(next).toBeDisabled(); // aún falta el secreto obligatorio
 
-    await user.type(screen.getByLabelText(/Clave de aplicación/), 'secret-app-key');
+    await user.type(screen.getByLabelText(/^Clave de aplicación/), 'secret-app-key');
     expect(next).toBeEnabled();
+  });
+
+  it('cada botón «Más información» dice de qué campo es', async () => {
+    const user = userEvent.setup();
+    renderHue();
+    await gotoConnect(user);
+
+    // Un lector de pantalla que enumera «Más información» dos veces no dice de cuál.
+    expect(screen.queryAllByRole('button', { name: 'Más información' })).toHaveLength(0);
+    const ayudas = screen
+      .getAllByRole('button', { name: /^Más información sobre / })
+      .map((b) => b.getAttribute('aria-label'));
+    expect(ayudas.length).toBeGreaterThanOrEqual(2);
+    expect(new Set(ayudas).size).toBe(ayudas.length);
+    expect(ayudas).toContain('Más información sobre Dirección del bridge');
+    expect(ayudas).toContain('Más información sobre Clave de aplicación');
   });
 
   it('precarga los valores del auto-descubrimiento (US-175), nunca los secretos', async () => {
@@ -137,8 +153,8 @@ describe('IntegrationWizard', () => {
     renderHue(vi.fn(), { bridgeUrl: 'http://192.168.1.2', appKey: 'no-debe-precargarse' });
     await gotoConnect(user);
 
-    expect(screen.getByLabelText(/Dirección del bridge/)).toHaveValue('http://192.168.1.2');
-    expect(screen.getByLabelText(/Clave de aplicación/)).toHaveValue('');
+    expect(screen.getByLabelText(/^Dirección del bridge/)).toHaveValue('http://192.168.1.2');
+    expect(screen.getByLabelText(/^Clave de aplicación/)).toHaveValue('');
   });
 
   it('tras una prueba correcta, guardar hace PUT namespaced y avisa con un toast', async () => {
@@ -151,8 +167,8 @@ describe('IntegrationWizard', () => {
     const { onDone } = renderHue();
 
     await gotoConnect(user);
-    await user.type(screen.getByLabelText(/Dirección del bridge/), 'https://192.168.1.50');
-    await user.type(screen.getByLabelText(/Clave de aplicación/), 'secret-app-key');
+    await user.type(screen.getByLabelText(/^Dirección del bridge/), 'https://192.168.1.50');
+    await user.type(screen.getByLabelText(/^Clave de aplicación/), 'secret-app-key');
     await user.click(screen.getByRole('button', { name: 'Siguiente' }));
 
     // Paso "Prueba y guarda": el botón de guardar está gateado hasta probar.
@@ -187,8 +203,8 @@ describe('IntegrationWizard', () => {
     renderHue();
 
     await gotoConnect(user);
-    await user.type(screen.getByLabelText(/Dirección del bridge/), 'https://192.168.1.50');
-    await user.type(screen.getByLabelText(/Clave de aplicación/), 'secret-app-key');
+    await user.type(screen.getByLabelText(/^Dirección del bridge/), 'https://192.168.1.50');
+    await user.type(screen.getByLabelText(/^Clave de aplicación/), 'secret-app-key');
     await user.click(screen.getByRole('button', { name: 'Siguiente' }));
     await user.click(screen.getByRole('button', { name: 'Probar conexión' }));
 
@@ -260,8 +276,8 @@ describe('IntegrationWizard en inglés', () => {
     renderHue();
 
     await user.click(await screen.findByRole('button', { name: 'Next' }));
-    await user.type(screen.getByLabelText(/bridge/i), 'https://192.168.1.50');
-    await user.type(screen.getByLabelText(/key/i), 'secret-app-key');
+    await user.type(screen.getByLabelText(/^bridge/i), 'https://192.168.1.50');
+    await user.type(screen.getByLabelText(/^application key/i), 'secret-app-key');
     await user.click(screen.getByRole('button', { name: 'Next' }));
 
     expect(screen.getByRole('button', { name: 'Test connection' })).toBeInTheDocument();

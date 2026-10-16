@@ -4,6 +4,7 @@ import { Check, Copy, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -211,8 +212,13 @@ export function InvitationsCard() {
               {copied ? <Check size={15} /> : <Copy size={15} />}
               <span className="ml-1.5">{copied ? t('common.copied') : t('common.copy')}</span>
             </Button>
-            <Button type="button" variant="ghost" onClick={() => setFreshLink(null)}>
-              <X size={15} />
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setFreshLink(null)}
+              aria-label={t('invitations.hideLink')}
+            >
+              <X size={15} aria-hidden />
             </Button>
           </div>
         </section>
@@ -297,14 +303,10 @@ export function InvitationsCard() {
                 <Badge variant={inv.status === 'pending' ? 'online' : 'offline'}>
                   {t(STATUS_KEY[inv.status])}
                 </Badge>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void onRevoke(inv)}
-                  disabled={busyId === inv.id}
-                >
+                {/* Revocar invalida el enlace para siempre: confirma en dos pasos. */}
+                <DeleteButton variant="outline" onDelete={() => onRevoke(inv)}>
                   {inv.status === 'pending' ? t('invitations.revoke') : t('invitations.remove')}
-                </Button>
+                </DeleteButton>
               </li>
             ))}
           </ul>

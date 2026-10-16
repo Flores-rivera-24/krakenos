@@ -208,7 +208,7 @@ describe('ConnectPage — detectados en tu red', () => {
 
     // Avanza al paso "Conecta": el campo llega precargado con lo detectado.
     await user.click(screen.getByRole('button', { name: 'Siguiente' }));
-    expect(screen.getByLabelText(/Dirección del bridge/)).toHaveValue('http://192.168.1.2');
+    expect(screen.getByLabelText(/^Dirección del bridge/)).toHaveValue('http://192.168.1.2');
   });
 
   it('descartar una sugerencia llama al API y quita la tarjeta', async () => {

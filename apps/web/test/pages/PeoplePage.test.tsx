@@ -231,6 +231,18 @@ describe('PeoplePage (US-240)', () => {
     expect(await screen.findByText('Hora de dormir guardada')).toBeInTheDocument();
   });
 
+  it('las dos horas del editor se llaman por sí solas, no «De» y «a»', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByText('Marta');
+
+    await user.click(screen.getByRole('button', { name: 'Poner hora de dormir' }));
+    const panel = await screen.findByRole('dialog');
+    // Fuera de su contexto visual, «a» no dice qué hora es.
+    expect(within(panel).getByLabelText('Hora de inicio')).toHaveValue('22:00');
+    expect(within(panel).getByLabelText('Hora de fin')).toHaveValue('07:00');
+  });
+
   it('un rol no admin ve solo lo suyo, sin controles de corte', async () => {
     asRole('kid');
     apiMock.get.mockResolvedValue(response({ fullHome: false }));
