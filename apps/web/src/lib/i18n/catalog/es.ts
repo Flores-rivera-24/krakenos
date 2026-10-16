@@ -65,7 +65,7 @@ export const es = {
   'security.sessionRevokeFor': 'Revocar la sesión creada {created}',
   'wizard.field.moreInfo': 'Más información sobre {field}',
   'invitations.hideLink': 'Ocultar el enlace',
-  'security.otherSessionsClosed': 'Se han cerrado las demás sesiones. Esta sigue abierta.',
+  'security.otherSessionsClosed': 'Se han cerrado las demás sesiones; esta sigue abierta',
   'security.otherSessionsError': 'No se pudieron cerrar las demás sesiones',
 
   // --- Errores (US-93 / US-177) ---

@@ -103,7 +103,7 @@ describe('SecuritySection', () => {
       expect(useToastStore.getState().toasts).toEqual([
         expect.objectContaining({
           kind: 'success',
-          message: 'Se han cerrado las demás sesiones. Esta sigue abierta.',
+          message: 'Se han cerrado las demás sesiones; esta sigue abierta',
         }),
       ]),
     );

@@ -62,7 +62,7 @@ export const en: Record<TranslationKey, string> = {
   'security.sessionRevokeFor': 'Revoke the session created {created}',
   'wizard.field.moreInfo': 'More information about {field}',
   'invitations.hideLink': 'Hide the link',
-  'security.otherSessionsClosed': 'Other sessions signed out. This one stays open.',
+  'security.otherSessionsClosed': 'Other sessions signed out; this one stays open',
   'security.otherSessionsError': 'Could not sign out the other sessions',
 
   // --- Errors ---
