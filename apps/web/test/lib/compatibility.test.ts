@@ -6,6 +6,7 @@ import {
 } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import {
+  NOMBRE_DE_FICHA,
   ETIQUETA_DE_CAPACIDAD,
   ETIQUETA_DE_CATEGORIA,
   ETIQUETA_DE_DEPENDENCIA,
@@ -15,6 +16,8 @@ import {
 import { en } from '@/lib/i18n/catalog/en';
 import { es } from '@/lib/i18n/catalog/es';
 import { t } from '@/lib/i18n';
+// Módulo puro del agente (ver `guias-vs-esquema.test.ts`): de él sale la lista REAL de fichas.
+import { INTEGRATION_SCHEMA } from '../../../agent/src/integrations/schema';
 
 /**
  * Las etiquetas de la ficha de compatibilidad salen de mapas exhaustivos sobre la
@@ -55,5 +58,26 @@ describe('etiquetas de compatibilidad', () => {
     expect(etiquetaCompat(ETIQUETA_DE_CAPACIDAD, 'constructor', t)).toBe(
       'No reconocido (constructor)',
     );
+  });
+});
+
+describe('nombre de las fichas (el agente manda el id, no el nombre)', () => {
+  const idsReales = Object.entries(INTEGRATION_SCHEMA).flatMap(([dominio, kinds]) =>
+    Object.keys(kinds)
+      .filter((kind) => kind !== 'mock')
+      .map((kind) => `${dominio}:${kind}`),
+  );
+
+  it('hay nombre para TODA ficha que el agente construye, y ninguno de más', () => {
+    // Guard de tamaño: si la recolección se rompiera, la lista saldría vacía.
+    expect(idsReales.length).toBeGreaterThan(15);
+    expect(Object.keys(NOMBRE_DE_FICHA).sort()).toEqual([...idsReales].sort());
+  });
+
+  it('cada nombre tiene clave en es y en en', () => {
+    for (const key of Object.values(NOMBRE_DE_FICHA)) {
+      expect(Object.keys(es), `es:${key}`).toContain(key);
+      expect(Object.keys(en), `en:${key}`).toContain(key);
+    }
   });
 });

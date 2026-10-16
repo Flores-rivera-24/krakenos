@@ -8,7 +8,16 @@ describe('buildCompatibilityCatalog (US-208)', () => {
 
   it('deriva del catálogo de integraciones (no es una lista a mano)', () => {
     // OpenWrt y Pi-hole están en el schema → aparecen.
-    expect(byId('driver:openwrt')?.label).toBe(INTEGRATION_SCHEMA.driver.openwrt!.label);
+    expect(byId('driver:openwrt')).toBeTruthy();
+    // El agente manda el id y NO el nombre: escrito en español no se podía traducir.
+    // Cada ficha del catálogo sale de una entrada del schema.
+    const esperados = Object.entries(INTEGRATION_SCHEMA).flatMap(([domain, kinds]) =>
+      Object.keys(kinds)
+        .filter((kind) => kind !== 'mock')
+        .map((kind) => `${domain}:${kind}`),
+    );
+    expect(catalog.map((e) => e.id).sort()).toEqual(esperados.sort());
+    expect(catalog.every((e) => !('label' in e))).toBe(true);
     expect(byId('dns:pihole')).toBeTruthy();
     expect(byId('iot:hue')).toBeTruthy();
   });
@@ -124,9 +133,9 @@ describe('buildCompatibilityCatalog (US-208)', () => {
     expect(community.length).toBeLessThan(catalog.length / 2);
   });
 
-  it('ordena por nombre y no está vacío', () => {
+  it('ordena por id (el nombre visible lo ordena la web) y no está vacío', () => {
     expect(catalog.length).toBeGreaterThan(5);
-    const labels = catalog.map((e) => e.label);
-    expect(labels).toEqual([...labels].sort((a, b) => a.localeCompare(b)));
+    const ids = catalog.map((e) => e.id);
+    expect(ids).toEqual([...ids].sort((a, b) => a.localeCompare(b)));
   });
 });

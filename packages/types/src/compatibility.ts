@@ -6,7 +6,14 @@
  * soportada por código.
  */
 
+import type { CameraKind } from './camera.js';
+import type { DnsKind } from './dns.js';
+import type { DriverKind } from './drivers.js';
+import type { FirewallKind } from './firewall.js';
 import type { IotKind } from './iot.js';
+import type { QosKind } from './qos.js';
+import type { VlanKind } from './vlan.js';
+import type { VpnKind } from './vpn.js';
 
 /** Capacidad concreta que ofrece una integración. */
 export const COMPAT_CAPABILITIES = [
@@ -172,12 +179,31 @@ export const MANUFACTURER_APP: Record<IotKind, ManufacturerAppDependency | null>
  */
 export const HARDWARE_VERIFIED_AT: Record<string, string> = {};
 
+/**
+ * Ids que puede tener una ficha: `<categoría>:<kind>` de cada backend real (el
+ * `mock` no aparece). **Unión cerrada derivada de los `*Kind`**: la web resuelve el
+ * nombre de cada ficha con un `Record<CompatEntryId, …>` exhaustivo, así que un
+ * backend nuevo no compila hasta tener nombre. El agente manda el id y NO el nombre
+ * (escrito en español no se podía traducir).
+ */
+export type CompatEntryId =
+  | `driver:${Exclude<DriverKind, 'mock'>}`
+  | `vpn:${Exclude<VpnKind, 'mock'>}`
+  | `iot:${Exclude<IotKind, 'mock'>}`
+  | `cameras:${Exclude<CameraKind, 'mock'>}`
+  | `firewall:${Exclude<FirewallKind, 'mock'>}`
+  | `vlan:${Exclude<VlanKind, 'mock'>}`
+  | `qos:${Exclude<QosKind, 'mock'>}`
+  | `dns:${Exclude<DnsKind, 'mock'>}`;
+
 export interface CompatibilityEntry {
-  /** Id estable `<categoría>:<kind>` (p. ej. `driver:openwrt`). */
+  /**
+   * Id estable `<categoría>:<kind>` (p. ej. `driver:openwrt`; ver {@link CompatEntryId}).
+   * `string` a propósito: un agente más nuevo puede anunciar uno que esta web no conoce.
+   * No hay `label`: el nombre visible lo pone la web, traducido, a partir del id.
+   */
   id: string;
   category: CompatCategory;
-  /** Nombre visible (marca/modelo/protocolo), del catálogo de integraciones. */
-  label: string;
   capabilities: CompatCapability[];
   requirements: CompatRequirement[];
   /**

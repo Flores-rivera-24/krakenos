@@ -2,6 +2,7 @@ import type {
   AppDependencyReason,
   CompatCapability,
   CompatCategory,
+  CompatEntryId,
   CompatRequirement,
   CompatibilityEntry,
 } from '@krakenos/types';
@@ -57,6 +58,38 @@ export const ETIQUETA_DE_DEPENDENCIA: Record<AppDependencyReason, TranslationKey
   pairing: 'compat.app.pairing',
   account: 'compat.app.account',
   'enable-local': 'compat.app.enable-local',
+};
+
+/**
+ * Nombre visible de cada ficha. El agente manda el **id** (`<categoría>:<kind>`) y no
+ * el nombre: escrito en español («Cámaras RTSP», «Switch gestionado (SNMP)»…) no se
+ * podía traducir y con la interfaz en inglés salía en español. Exhaustivo sobre
+ * `CompatEntryId`, que se deriva de los `*Kind`: un backend nuevo no compila hasta
+ * tener nombre aquí (y la clave no existe hasta estar en los dos catálogos).
+ */
+export const NOMBRE_DE_FICHA: Record<CompatEntryId, TranslationKey> = {
+  'driver:openwrt': 'compat.name.driver.openwrt',
+  'driver:asus': 'compat.name.driver.asus',
+  'driver:unifi': 'compat.name.driver.unifi',
+  'driver:omada': 'compat.name.driver.omada',
+  'driver:mikrotik': 'compat.name.driver.mikrotik',
+  'driver:pfsense': 'compat.name.driver.pfsense',
+  'vpn:wireguard': 'compat.name.vpn.wireguard',
+  'iot:hue': 'compat.name.iot.hue',
+  'iot:govee': 'compat.name.iot.govee',
+  'iot:mqtt': 'compat.name.iot.mqtt',
+  'iot:zigbee': 'compat.name.iot.zigbee',
+  'iot:matter': 'compat.name.iot.matter',
+  'iot:tuya': 'compat.name.iot.tuya',
+  'iot:kasa': 'compat.name.iot.kasa',
+  'iot:shelly': 'compat.name.iot.shelly',
+  'iot:meross': 'compat.name.iot.meross',
+  'cameras:rtsp': 'compat.name.cameras.rtsp',
+  'cameras:frigate': 'compat.name.cameras.frigate',
+  'firewall:iptables': 'compat.name.firewall.iptables',
+  'vlan:switch': 'compat.name.vlan.switch',
+  'qos:tc': 'compat.name.qos.tc',
+  'dns:pihole': 'compat.name.dns.pihole',
 };
 
 type Traducir = (key: TranslationKey, params?: Record<string, string | number>) => string;

@@ -1,7 +1,7 @@
 import type { CompatCategory, CompatibilityEntry } from '@krakenos/types';
 import { COMPAT_CATEGORIES } from '@krakenos/types';
 import { CheckCircle2, CircleDot, Search } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import {
   ETIQUETA_DE_CATEGORIA,
   ETIQUETA_DE_DEPENDENCIA,
   ETIQUETA_DE_REQUISITO,
+  NOMBRE_DE_FICHA,
   etiquetaCompat,
   listCompatibility,
 } from '@/lib/compatibility';
@@ -38,14 +39,20 @@ export function CompatibilitySection() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return entries.filter(
+  // El agente manda el id; el nombre sale del catálogo (traducido) y por él se
+  // busca y se ordena. Un id que esta versión no conoce se declara. Sin `useMemo`
+  // a propósito: `t` es una función estable y un memo no se recalcularía al cambiar
+  // de idioma (son ~22 fichas; recalcular en cada render no cuesta nada).
+  const nombres = new Map(entries.map((e) => [e.id, etiquetaCompat(NOMBRE_DE_FICHA, e.id, t)]));
+  const nombre = (id: string) => nombres.get(id) ?? id;
+  const q = query.trim().toLowerCase();
+  const filtered = entries
+    .filter(
       (e) =>
         (category === 'all' || e.category === category) &&
-        (q === '' || e.label.toLowerCase().includes(q)),
-    );
-  }, [entries, query, category]);
+        (q === '' || nombre(e.id).toLowerCase().includes(q)),
+    )
+    .sort((a, b) => nombre(a.id).localeCompare(nombre(b.id)));
 
   return (
     <section className="space-y-3">
@@ -88,7 +95,7 @@ export function CompatibilitySection() {
           {filtered.map((e) => (
             <li key={e.id} className="space-y-2 rounded-lg border border-kr bg-kr-surface p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="font-medium text-kr-primary">{e.label}</span>
+                <span className="font-medium text-kr-primary">{nombre(e.id)}</span>
                 {/* US-258: la verificación es una FECHA, no un sí/no. «Verificado»
                     sin cuándo envejece mal: una prueba de hace dos años sobre un
                     firmware que ya no existe se lee igual que una de ayer. */}

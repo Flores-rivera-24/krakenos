@@ -27,7 +27,6 @@ const compatibilitySchema = {
         properties: {
           id: { type: 'string' },
           category: { type: 'string', enum: [...COMPAT_CATEGORIES] },
-          label: { type: 'string' },
           capabilities: { type: 'array', items: { type: 'string' } },
           requirements: { type: 'array', items: { type: 'string' } },
           verifiedAt: { type: ['string', 'null'] },
@@ -46,7 +45,6 @@ const compatibilitySchema = {
         required: [
           'id',
           'category',
-          'label',
           'capabilities',
           'requirements',
           'verifiedAt',
