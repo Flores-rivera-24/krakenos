@@ -29,6 +29,9 @@ test.describe('escritorio', () => {
     const caja = (await aside.boundingBox())!;
     expect(caja.y).toBeCloseTo(0, 0);
     expect(caja.height).toBeCloseTo(900, 0);
+    // Con ventana normal la barra NO es el contenedor con scroll (lo es la lista): el pie
+    // y «Ajustes» están siempre a la vista sin desplazar nada.
+    expect(await aside.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeLessThanOrEqual(1);
     await expect(aside.getByRole('link', { name: 'Ajustes' })).toBeInViewport();
     await expect(aside.getByRole('button', { name: 'Salir' })).toBeInViewport();
   });
@@ -119,3 +122,76 @@ test.describe('móvil', () => {
     await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
   });
 });
+
+/**
+ * Ventana baja con barra lateral (`md:` o más ancha): móvil apaisado, tableta, o un portátil
+ * con el zoom del navegador al 150–175 %. La barra es fija a la altura de la ventana; si el
+ * pie (estado, tema, usuario) conserva su alto y la lista solo recibe lo que sobra, esta
+ * llegaba a medir 63 px (un enlace). Por debajo del umbral `bajo` de `index.css` la barra
+ * ENTERA es un único contenedor con scroll.
+ */
+for (const { ancho, alto } of [
+  { ancho: 844, alto: 390 },
+  { ancho: 1024, alto: 500 },
+]) {
+  for (const colapsada of [false, true]) {
+    test.describe(`ventana baja ${ancho}×${alto}${colapsada ? ', barra colapsada' : ''}`, () => {
+      test.use({ viewport: { width: ancho, height: alto } });
+
+      test('toda la navegación se alcanza y Dashboard y Ajustes se pueden pulsar', async ({
+        page,
+      }) => {
+        await login(page);
+        const aside = page.locator('aside');
+        if (colapsada) {
+          await aside.getByRole('button', { name: 'Colapsar menú' }).click();
+          await expect(aside).toHaveAttribute('data-collapsed', 'true');
+        }
+        const enlaces = aside.locator('nav a');
+        const n = await enlaces.count();
+        // Precondición (lo que el test necesita, no una altura): que haya más enlaces de
+        // los que caben a la vez, o no distinguiría una lista alcanzable de una recortada.
+        expect(n, 'la nav debería tener más enlaces de los que caben').toBeGreaterThan(10);
+
+        // En reposo, la lista no es una ranura de un enlace: se ve una parte útil de ella.
+        // `elementFromPoint` respeta el recorte de un contenedor con scroll; la caja no.
+        const aLaVista = await enlaces.evaluateAll(
+          (els, altoVentana) =>
+            els.filter((el) => {
+              const r = el.getBoundingClientRect();
+              if (r.top < 0 || r.bottom > altoVentana) return false;
+              const punto = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+              return punto !== null && el.contains(punto);
+            }).length,
+          alto,
+        );
+        expect(aLaVista, 'enlaces de la nav a la vista sin desplazar').toBeGreaterThanOrEqual(5);
+
+        // El desplazamiento es de la barra entera, no de una lista interna.
+        const lista = aside.locator('nav > div').first();
+        expect(
+          await lista.evaluate((el) => el.scrollHeight - el.clientHeight),
+          'la lista no debe tener scroll propio',
+        ).toBeLessThanOrEqual(1);
+
+        // Todos los enlaces se alcanzan (el de Ajustes queda detrás de la lista).
+        for (let i = 0; i < n; i++) {
+          const enlace = enlaces.nth(i);
+          await enlace.scrollIntoViewIfNeeded();
+          await expect(enlace).toBeInViewport();
+        }
+
+        // Y con el teclado: Tab desde el primero llega al último, y queda a la vista.
+        await enlaces.first().focus();
+        for (let i = 1; i < n; i++) await page.keyboard.press('Tab');
+        await expect(enlaces.last()).toBeFocused();
+        await expect(enlaces.last()).toBeInViewport();
+
+        await aside.getByRole('link', { name: 'Ajustes' }).click();
+        await expect(page).toHaveURL(/\/settings$/);
+        await aside.getByRole('link', { name: 'Dashboard' }).click();
+        await expect(page).toHaveURL(/\/$/);
+      });
+    });
+  }
+}

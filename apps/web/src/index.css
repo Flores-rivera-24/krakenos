@@ -33,6 +33,13 @@
    propio nodo). Es el equivalente de `darkMode: ['class']` de Tailwind 3. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Ventana baja: la barra lateral deja de repartirse el alto y pasa a ser UN solo contenedor
+   con scroll (`AppSidebar`). 724 px es lo medido (barra expandida, administrador, 18
+   enlaces de 36 px): la lista, con scroll propio, enseña 8 enlaces enteros a partir de 725 px
+   de alto (alto de la lista = ventana − 327 px) y 7 a 720 px. Por debajo, el pie fijo de la
+   barra (~181 px) más la cabecera se llevan lo que le queda a la lista (63 px a 390 px). */
+@custom-variant bajo (@media (max-height: 724px));
+
 /* === Tema de Tailwind ===
    Antes vivía en `tailwind.config.ts`. Los **valores** siguen siendo variables CSS
    (`--kr-*` y las de shadcn, más abajo en `:root` / `.dark` / `html:not(.dark)`):

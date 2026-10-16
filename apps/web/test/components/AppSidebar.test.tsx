@@ -137,6 +137,15 @@ describe('AppSidebar', () => {
     expect(scroll).toContainElement(screen.getByRole('link', { name: 'Dashboard' }));
   });
 
+  it('en ventana baja (variante `bajo`) la barra entera es el contenedor con scroll', () => {
+    // La receta; el efecto lo mide `e2e/tests/navegacion.spec.ts` (jsdom no evalúa media queries).
+    const { container } = renderSidebar({ collapsed: false });
+    expect(container.querySelector('aside')).toHaveClass('bajo:overflow-y-auto');
+    const lista = container.querySelector('aside > nav > div.overflow-y-auto');
+    expect(lista).toHaveClass('bajo:overflow-visible', 'bajo:flex-none');
+    expect(container.querySelector('aside > nav')).toHaveClass('bajo:flex-none');
+  });
+
   it('muestra el badge de "Dispositivos" cuando hay desconocidos o bloqueados', () => {
     useInventoryStore.setState({
       devices: {
