@@ -121,6 +121,18 @@ describe('AppSidebar', () => {
     expect(container.querySelector('a[href="/settings"]')).toBeInTheDocument();
   });
 
+  it('queda fija a la altura de la ventana: la nav hace scroll por dentro y el pie siempre se ve', () => {
+    // jsdom no calcula layout: se ata la receta (el comportamiento real lo mide
+    // `e2e/tests/navegacion.spec.ts`). `self-start` es la pieza que se olvida: sin ella el
+    // flex estira el aside a la altura del documento y el `sticky` no tiene recorrido.
+    const { container } = renderSidebar({ collapsed: false });
+    const aside = container.querySelector('aside');
+    for (const clase of ['sticky', 'top-0', 'h-dvh', 'self-start']) {
+      expect(aside, clase).toHaveClass(clase);
+    }
+    expect(container.querySelector('aside > nav')).toHaveClass('overflow-y-auto');
+  });
+
   it('muestra el badge de "Dispositivos" cuando hay desconocidos o bloqueados', () => {
     useInventoryStore.setState({
       devices: {
@@ -132,6 +144,39 @@ describe('AppSidebar', () => {
     renderSidebar({ collapsed: false });
     const link = screen.getByRole('link', { name: /Dispositivos/ });
     expect(within(link).getByText('2')).toBeInTheDocument();
+  });
+
+  it('cada contador dice qué cuenta, con su plural, en el nombre accesible y en el title', () => {
+    useInventoryStore.setState({
+      devices: {
+        d1: device({ id: 'd1', type: 'unknown' }),
+        d2: device({ id: 'd2', isBlocked: true }),
+        d3: device({ id: 'd3', type: 'unknown', mac: 'aa:bb:cc:dd:ee:01' }),
+      },
+    });
+    // Asimétricos: 3 desconocidos o bloqueados, 1 regla activa, 2 aparatos IoT caídos.
+    renderSidebar({ collapsed: false, stats: { ...STATS, firewallActive: 1, iotOffline: 2 } });
+    const dispositivos = screen.getByRole('link', { name: /Dispositivos/ });
+    expect(dispositivos).toHaveAccessibleName(
+      /^Dispositivos\s?3 dispositivos desconocidos o bloqueados$/,
+    );
+    expect(
+      within(dispositivos).getByTitle('3 dispositivos desconocidos o bloqueados'),
+    ).toBeTruthy();
+    // El singular no se queda en «1 reglas».
+    expect(screen.getByRole('link', { name: /Firewall/ })).toHaveAccessibleName(
+      /^Firewall\s?1 regla activa$/,
+    );
+    expect(screen.getByRole('link', { name: /IoT/ })).toHaveAccessibleName(
+      /^IoT\s?2 dispositivos IoT desconectados$/,
+    );
+  });
+
+  it('el contador de reglas activas es un inventario, no un aviso: no lleva el acento', () => {
+    renderSidebar({ collapsed: false, stats: { ...STATS, firewallActive: 4, iotOffline: 2 } });
+    const regla = screen.getByTitle('4 reglas activas');
+    expect(regla).not.toHaveClass('bg-kr-accent');
+    expect(screen.getByTitle('2 dispositivos IoT desconectados')).toHaveClass('bg-kr-accent');
   });
 
   it('sin desconocidos ni bloqueados, "Dispositivos" no lleva badge', () => {

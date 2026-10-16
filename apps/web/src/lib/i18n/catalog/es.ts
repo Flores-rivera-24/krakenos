@@ -51,6 +51,20 @@ export const es = {
   'layout.noRouterConnection': 'Sin conexión con el router',
   'layout.driver': 'Driver',
   'layout.uptime': 'Uptime',
+  // --- Navegación, foco y nombres accesibles ---
+  'layout.badge.devices.one': '{n} dispositivo desconocido o bloqueado',
+  'layout.badge.devices.other': '{n} dispositivos desconocidos o bloqueados',
+  'layout.badge.firewall.one': '{n} regla activa',
+  'layout.badge.firewall.other': '{n} reglas activas',
+  'layout.badge.iot.one': '{n} dispositivo IoT desconectado',
+  'layout.badge.iot.other': '{n} dispositivos IoT desconectados',
+  'settings.sections': 'Secciones de ajustes',
+  'settings.system.presenceNightHint': 'Vacío = desactivada',
+  'settings.system.maintenanceWindowHint': 'Vacío = siempre',
+  'wizard.field.moreInfo': 'Más información sobre {field}',
+  'invitations.hideLink': 'Ocultar el enlace',
+  'security.otherSessionsClosed': 'Se han cerrado las demás sesiones. Esta sigue abierta.',
+  'security.otherSessionsError': 'No se pudieron cerrar las demás sesiones',
 
   // --- Errores (US-93 / US-177) ---
   // `errors.network` lo genera el frontend (fetch rechazada). Los `errors.code.*`
@@ -1419,7 +1433,7 @@ export const es = {
   'backup.intro':
     'Descarga un archivo cifrado con todo lo importante: la base de datos, las claves y los datos de tus integraciones. Guárdalo en un lugar seguro — necesitarás esta contraseña para restaurarlo, y sin ella el archivo es irrecuperable.',
   'backup.pass': 'Contraseña de la copia',
-  'backup.confirm': 'Confirmar',
+  'backup.confirm': 'Confirmar contraseña de la copia',
   'backup.restore': 'Restaurar',
   'backup.file': 'Archivo de copia',
   'backup.replaceTitle': 'Esto sustituye tus datos actuales',
@@ -1779,7 +1793,7 @@ export const es = {
   'security.passkey.metaUsed': '{type} · creada {created} · usada {used}',
   'security.passkey.metaUnused': '{type} · creada {created} · sin uso',
   'security.perMinute': '{n} por minuto',
-  'security.closeAllSessions': 'Cerrar todas las sesiones',
+  'security.closeAllSessions': 'Cerrar las demás sesiones',
   'users.addHint':
     'Da acceso a un familiar o a personal. «Solo lectura» ve el estado pero no cambia nada.',
   'users.create': 'Crear usuario',
@@ -1943,9 +1957,9 @@ export const es = {
   'settings.system.presenceSweeps': 'Confirmación de salida (barridos)',
   'settings.system.presenceSweepsAria': 'Barridos consecutivos para confirmar una salida',
   'settings.system.presenceNight': 'Supresión nocturna de salidas',
-  'settings.system.presenceNightPlaceholder': 'p. ej. 23:00-07:00 (vacío = desactivada)',
+  'settings.system.presenceNightPlaceholder': 'p. ej. 23:00-07:00',
   'settings.system.maintenanceWindow': 'Ventana de mantenimiento',
-  'settings.system.maintenanceWindowPlaceholder': 'p. ej. 02:00-06:00 (vacío = siempre)',
+  'settings.system.maintenanceWindowPlaceholder': 'p. ej. 02:00-06:00',
   'settings.system.https': 'HTTPS',
   'settings.system.httpsOn': 'Activado (certificado en LAN)',
   'settings.system.httpsOff': 'Desactivado (HTTP)',
