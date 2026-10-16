@@ -83,7 +83,9 @@ describe('SecuritySection', () => {
     const user = userEvent.setup();
     renderSection();
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/auth/sessions'));
-    const revokeButtons = await screen.findAllByRole('button', { name: 'Revocar' });
+    const revokeButtons = await screen.findAllByRole('button', {
+      name: /^Revocar la sesión creada/,
+    });
     expect(revokeButtons).toHaveLength(2);
     await user.click(revokeButtons[0]!);
     expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions/s1');

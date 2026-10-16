@@ -389,7 +389,12 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
                       expires: formatDate(s.expiresAt),
                     })}
                   </span>
-                  <Button variant="ghost" size="sm" onClick={() => void revoke(s.id)}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => void revoke(s.id)}
+                    aria-label={t('security.sessionRevokeFor', { created: timeAgo(s.createdAt) })}
+                  >
                     {t('security.sessionRevoke')}
                   </Button>
                 </li>

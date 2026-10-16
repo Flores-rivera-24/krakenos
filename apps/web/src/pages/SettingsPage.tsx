@@ -279,6 +279,9 @@ export function SettingsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => void patch('homeName', homeName)}
+                          aria-label={t('settings.system.saveFor', {
+                            field: t('settings.system.homeName'),
+                          })}
                         >
                           {t('settings.system.save')}
                         </Button>
@@ -361,6 +364,9 @@ export function SettingsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => void patch('presenceNightSuppress', nightSuppress.trim())}
+                          aria-label={t('settings.system.saveFor', {
+                            field: t('settings.system.presenceNight'),
+                          })}
                         >
                           {t('settings.system.save')}
                         </Button>
@@ -387,6 +393,9 @@ export function SettingsPage() {
                           variant="outline"
                           size="sm"
                           onClick={() => void patch('updateMaintenanceWindow', maintWindow.trim())}
+                          aria-label={t('settings.system.saveFor', {
+                            field: t('settings.system.maintenanceWindow'),
+                          })}
                         >
                           {t('settings.system.save')}
                         </Button>

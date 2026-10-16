@@ -95,6 +95,21 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('los tres «Guardar» de Sistema dicen qué guardan', async () => {
+    setUser('admin');
+    render(<SettingsPage />);
+    await screen.findByLabelText('Supresión nocturna de salidas');
+    for (const campo of [
+      'Nombre del hogar',
+      'Supresión nocturna de salidas',
+      'Ventana de mantenimiento',
+    ]) {
+      expect(screen.getByRole('button', { name: `Guardar: ${campo}` })).toBeInTheDocument();
+    }
+    // Y ya no hay tres botones que se llamen igual.
+    expect(screen.queryAllByRole('button', { name: 'Guardar' })).toHaveLength(0);
+  });
+
   it('lo que significa dejar vacío un campo va en una ayuda visible, no en el placeholder', async () => {
     setUser('admin');
     render(<SettingsPage />);

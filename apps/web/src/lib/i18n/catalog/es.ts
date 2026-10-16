@@ -61,6 +61,8 @@ export const es = {
   'settings.sections': 'Secciones de ajustes',
   'settings.system.presenceNightHint': 'Vacío = desactivada',
   'settings.system.maintenanceWindowHint': 'Vacío = siempre',
+  'settings.system.saveFor': 'Guardar: {field}',
+  'security.sessionRevokeFor': 'Revocar la sesión creada {created}',
   'wizard.field.moreInfo': 'Más información sobre {field}',
   'invitations.hideLink': 'Ocultar el enlace',
   'security.otherSessionsClosed': 'Se han cerrado las demás sesiones. Esta sigue abierta.',

@@ -58,6 +58,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.sections': 'Settings sections',
   'settings.system.presenceNightHint': 'Empty = off',
   'settings.system.maintenanceWindowHint': 'Empty = always',
+  'settings.system.saveFor': 'Save: {field}',
+  'security.sessionRevokeFor': 'Revoke the session created {created}',
   'wizard.field.moreInfo': 'More information about {field}',
   'invitations.hideLink': 'Hide the link',
   'security.otherSessionsClosed': 'Other sessions signed out. This one stays open.',
