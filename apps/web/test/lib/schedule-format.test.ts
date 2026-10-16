@@ -1,7 +1,9 @@
-import { t } from '@/lib/i18n';
+import { changeLocale, setLocale, t } from '@/lib/i18n';
 import { describe, expect, it } from 'vitest';
 import {
+  diasCompletos,
   diasCortos,
+  diasIniciales,
   formatSunOffset,
   minuteToTimeString,
   timeStringToMinute,
@@ -50,5 +52,38 @@ describe('diasCortos', () => {
     expect(diasCortos(t)).toHaveLength(7);
     expect(diasCortos(t)[0]).toBe('Dom');
     expect(diasCortos(t)[6]).toBe('Sáb');
+  });
+});
+
+describe('diasCompletos', () => {
+  it('tiene los siete días empezando en domingo y todos distintos', () => {
+    expect(diasCompletos(t)).toEqual([
+      'Domingo',
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+    ]);
+  });
+
+  it('en inglés las iniciales se repiten y los nombres completos no', async () => {
+    // Es la razón de existir de la forma completa: la inicial no sirve de nombre.
+    await changeLocale('en', { persist: false });
+    try {
+      expect(new Set(diasIniciales(t)).size).toBeLessThan(7);
+      expect(diasCompletos(t)).toEqual([
+        'Sunday',
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+      ]);
+    } finally {
+      setLocale('es', { persist: false });
+    }
   });
 });

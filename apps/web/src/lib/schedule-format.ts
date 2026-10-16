@@ -12,9 +12,11 @@ export type Traducir = (key: TranslationKey, params?: TranslationParams) => stri
  */
 
 /**
- * Etiquetas de los días de la semana (0=domingo), en las dos formas que usa la
- * app: **corta** («Dom») para listas y **inicial** («D») para las casillas de una
- * semana, donde no cabe más.
+ * Etiquetas de los días de la semana (0=domingo), en las tres formas que usa la
+ * app: **corta** («Dom») para listas, **inicial** («D») para las casillas de una
+ * semana, donde no cabe más, y **completa** («Domingo») para el nombre accesible
+ * de esas casillas: la inicial se repite («M» de martes y de miércoles en inglés
+ * hasta «T» dos veces), así que un lector de pantalla no distinguiría los días.
  *
  * US-270: eran dos constantes en español en **dos módulos distintos** —aquí las
  * cortas y en `lib/access.ts` las iniciales—, así que la app en inglés enseñaba
@@ -44,6 +46,16 @@ const CLAVES_DIA_INICIAL: readonly TranslationKey[] = [
   'day.initial.6',
 ];
 
+const CLAVES_DIA_LARGO: readonly TranslationKey[] = [
+  'day.long.0',
+  'day.long.1',
+  'day.long.2',
+  'day.long.3',
+  'day.long.4',
+  'day.long.5',
+  'day.long.6',
+];
+
 /** «Dom Lun Mar…» — para listas donde cabe el nombre corto. */
 export function diasCortos(t: Traducir): string[] {
   return CLAVES_DIA_CORTO.map((k) => t(k));
@@ -52,6 +64,11 @@ export function diasCortos(t: Traducir): string[] {
 /** «D L M…» — para las siete casillas de una semana, donde no cabe más. */
 export function diasIniciales(t: Traducir): string[] {
   return CLAVES_DIA_INICIAL.map((k) => t(k));
+}
+
+/** «Domingo Lunes Martes…» — nombre accesible de una casilla que solo enseña la inicial. */
+export function diasCompletos(t: Traducir): string[] {
+  return CLAVES_DIA_LARGO.map((k) => t(k));
 }
 
 /**

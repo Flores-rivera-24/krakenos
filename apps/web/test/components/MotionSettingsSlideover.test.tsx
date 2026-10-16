@@ -62,4 +62,16 @@ describe('MotionSettingsSlideover (US-186)', () => {
     await user.selectOptions(screen.getByLabelText('Cuándo vigilar'), 'schedule');
     expect(screen.getByLabelText('Desde')).toBeInTheDocument();
   });
+
+  it('las casillas de día del horario se anuncian con el nombre completo', async () => {
+    const user = userEvent.setup();
+    render(<MotionSettingsSlideover camera={CAM} onClose={() => {}} />);
+    await screen.findByLabelText('Detectar movimiento');
+    await user.selectOptions(screen.getByLabelText('Cuándo vigilar'), 'schedule');
+
+    // Sin nombre propio, «M» (martes) y «M»/«X» (miércoles) y «S» (sábado/domingo) se confunden.
+    for (const dia of ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']) {
+      expect(screen.getByRole('button', { name: dia })).toHaveAttribute('aria-pressed');
+    }
+  });
 });
