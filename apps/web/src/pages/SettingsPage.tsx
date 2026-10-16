@@ -67,11 +67,32 @@ const TIMEZONES = [
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';
 
-function Setting({ label, children }: { label: string; children: ReactNode }) {
+function Setting({
+  label,
+  hint,
+  hintId,
+  children,
+}: {
+  label: string;
+  /** Ayuda bajo el control (no en el placeholder: en móvil el placeholder se corta). */
+  hint?: string;
+  /** `id` de la ayuda, para enlazarla con `aria-describedby` en el control. */
+  hintId?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="grid gap-2 sm:grid-cols-[200px_1fr] sm:items-center">
       <Label className="text-kr-secondary">{label}</Label>
-      {children}
+      {hint ? (
+        <div className="space-y-1">
+          {children}
+          <p id={hintId} className="text-kr-xs text-kr-muted">
+            {hint}
+          </p>
+        </div>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -201,12 +222,18 @@ export function SettingsPage() {
 
       <div className="grid gap-6 md:grid-cols-[200px_1fr]">
         {/* Sidebar de secciones */}
-        <nav className="flex min-w-0 gap-1 overflow-x-auto md:flex-col">
+        <nav
+          aria-label={t('settings.sections')}
+          className="flex min-w-0 gap-1 overflow-x-auto md:flex-col"
+        >
           {SECTIONS.filter((s) => !s.adminOnly || isAdmin).map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
               type="button"
               onClick={() => setSection(id)}
+              // Cambia el contenido sin cambiar de página ni de URL, así que es `true`
+              // («el actual de un conjunto») y no `page`.
+              aria-current={section === id ? 'true' : undefined}
               className={
                 section === id
                   ? 'flex items-center gap-2 rounded-md bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary'
@@ -314,11 +341,16 @@ export function SettingsPage() {
                       <option value="5">5</option>
                     </select>
                   </Setting>
-                  <Setting label={t('settings.system.presenceNight')}>
+                  <Setting
+                    label={t('settings.system.presenceNight')}
+                    hint={t('settings.system.presenceNightHint')}
+                    hintId="presence-night-hint"
+                  >
                     <div className="flex gap-2">
                       <Input
                         aria-label={t('settings.system.presenceNight')}
                         placeholder={t('settings.system.presenceNightPlaceholder')}
+                        aria-describedby="presence-night-hint"
                         value={nightSuppress}
                         onChange={(e) => setNightSuppress(e.target.value)}
                         disabled={!isAdmin}
@@ -335,11 +367,16 @@ export function SettingsPage() {
                       )}
                     </div>
                   </Setting>
-                  <Setting label={t('settings.system.maintenanceWindow')}>
+                  <Setting
+                    label={t('settings.system.maintenanceWindow')}
+                    hint={t('settings.system.maintenanceWindowHint')}
+                    hintId="maintenance-window-hint"
+                  >
                     <div className="flex gap-2">
                       <Input
                         aria-label={t('settings.system.maintenanceWindow')}
                         placeholder={t('settings.system.maintenanceWindowPlaceholder')}
+                        aria-describedby="maintenance-window-hint"
                         value={maintWindow}
                         onChange={(e) => setMaintWindow(e.target.value)}
                         disabled={!isAdmin}
