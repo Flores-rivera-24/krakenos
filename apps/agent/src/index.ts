@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { existsSync, renameSync, rmSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { env } from './config/env.js';
+import { MigrationError, migrateFromEnv } from './db/migrate.js';
 import { buildServer } from './server.js';
 import { createShutdown } from './system/shutdown.js';
 import { applyStagedRestore, resolveDbFile } from './system/restore.js';
@@ -47,8 +48,27 @@ function applyPendingRestore(): void {
   }
 }
 
+/**
+ * Migra la base (US-275) **después** de la restauración pendiente —una base restaurada
+ * puede venir de una versión anterior— y **antes** de abrir Prisma. Si la base y el
+ * código no cuentan la misma historia, NO arranca: seguir con un esquema que no es el
+ * que el código espera falla más tarde y lejos de la causa.
+ */
+function migrateOrExit(): void {
+  try {
+    migrateFromEnv((m) => process.stdout.write(`${m}\n`));
+  } catch (err) {
+    const code = err instanceof MigrationError ? ` (${err.code})` : '';
+    process.stderr.write(
+      `[migrate] No se puede arrancar${code}: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+    process.exit(1);
+  }
+}
+
 async function main(): Promise<void> {
   applyPendingRestore();
+  migrateOrExit();
   const app = await buildServer();
 
   const shutdown = createShutdown({ app, exit: (code) => process.exit(code) });

@@ -23,6 +23,7 @@
         "src/index.ts",
         "src/update-runner.ts",
         "src/reset-admin.ts",
+        "src/migrate.ts",
         "prisma/seed.ts",
         "test/**/*.test.ts",
         "test/globalSetup.ts",

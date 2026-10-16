@@ -32,7 +32,8 @@ export default defineConfig({
     // real, US-86), no "de lo que se usa, cuánto se ejerce". Excludes legítimos:
     // los **entrypoints** con efectos secundarios (`index.ts` arranca/escucha;
     // `update-runner.ts` es el proceso actualizador aparte; `reset-admin.ts` es la
-    // recuperación de admin desde el host, US-233) — no son unit-testables sin
+    // recuperación de admin desde el host, US-233; `migrate.ts` es el CLI de migraciones, US-275, cuya
+    // lógica vive en `db/migrate.ts`) — no son unit-testables sin
     // arrancar el proceso; su lógica sí vive en módulos que se prueban. Los `thresholds` son un **suelo anti-regresión**
     // fijado ~1–2 pts por debajo del número real medido (ver docs/coverage-notes.md
     // para el número vigente y el plan de subida gradual).
@@ -47,6 +48,7 @@ export default defineConfig({
         'src/index.ts',
         'src/update-runner.ts',
         'src/reset-admin.ts',
+        'src/migrate.ts',
       ],
       // Suelos recalibrados el 2026-10-13 con Vitest 4.1.11: medido sentencias 89,18 · ramas 81,29 · funciones 86,78 · líneas 91,16.
       // Motivo: Vitest >= 3.2 remapea V8 por AST (como Istanbul) y cambia qué cuenta

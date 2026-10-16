@@ -227,7 +227,9 @@ export class ProcessUpdateRunner implements UpdateRunner {
   }
 
   async migrate(): Promise<void> {
-    await this.exec('pnpm', ['--dir', this.opts.repoDir, 'exec', 'prisma', 'migrate', 'deploy']);
+    // El CLI de migraciones recién construido (`dist/migrate.js`, US-275): se ancla
+    // solo al directorio del agente, así que el cwd de este proceso no importa.
+    await this.exec(process.execPath, [resolve(this.agentDir, 'dist', 'migrate.js')]);
   }
 
   async restart(): Promise<void> {

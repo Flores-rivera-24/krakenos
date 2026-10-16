@@ -105,16 +105,16 @@ function commonEnv(stack: StackName): NodeJS.ProcessEnv {
   };
 }
 
-/** Aplica el esquema a una DB efímera limpia (el agente no migra al arrancar). */
+/** Aplica el esquema a una DB efímera limpia con el CLI de migraciones (`dist/migrate.js`, ya construido). */
 function resetDb(stack: StackName): void {
   const file = dbFile(stack);
   for (const suffix of ['', '-journal', '-wal', '-shm']) {
     rmSync(`${file}${suffix}`, { force: true });
   }
-  execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
+  execFileSync(process.execPath, ['dist/migrate.js'], {
     cwd: AGENT_DIR,
     env: { ...process.env, DATABASE_URL: `file:${file}` },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'],
   });
 }
 
