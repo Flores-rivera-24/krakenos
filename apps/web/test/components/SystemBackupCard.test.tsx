@@ -151,6 +151,9 @@ describe('SystemBackupCard — nombres accesibles', () => {
     const campo = screen.getByRole('textbox', { name: /Para continuar, escribe\s+RESTAURAR/ });
     expect(campo).toHaveAttribute('id', 'bk-restore-confirm');
     // Y el otro «Confirmar» sigue siendo el de la contraseña de la copia.
-    expect(screen.getByLabelText('Confirmar')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Confirmar contraseña de la copia')).toHaveAttribute(
+      'type',
+      'password',
+    );
   });
 });

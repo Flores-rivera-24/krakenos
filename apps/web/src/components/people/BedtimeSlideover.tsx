@@ -105,7 +105,7 @@ export function BedtimeSlideover({ person, onClose, onSaved }: Props) {
             value={start}
             onChange={(e) => setStart(e.target.value)}
             className="w-28"
-            aria-label={t('people.bedtime.from')}
+            aria-label={t('access.startTime')}
           />
           <span>{t('people.bedtime.to')}</span>
           <Input
@@ -113,7 +113,7 @@ export function BedtimeSlideover({ person, onClose, onSaved }: Props) {
             value={end}
             onChange={(e) => setEnd(e.target.value)}
             className="w-28"
-            aria-label={t('people.bedtime.to')}
+            aria-label={t('access.endTime')}
           />
         </div>
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -75,5 +75,26 @@ describe('LanguageCard (US-177)', () => {
     setLocale('en', { persist: false });
     render(<LanguageCard />);
     expect(screen.getByText('Language')).toBeInTheDocument();
+  });
+
+  it('mientras guarda el foco se queda en el botón: no se deshabilita, se marca aria-disabled', async () => {
+    // Un botón que pasa a `disabled` con el foco encima lo suelta y el foco acaba en <body>
+    // (el siguiente Tab vuelve al principio de la página).
+    let resolver!: (u: unknown) => void;
+    apiMock.patch.mockReset().mockReturnValue(new Promise((r) => (resolver = r)));
+    render(<LanguageCard />);
+    const ingles = screen.getByRole('button', { name: /English/ });
+    ingles.focus();
+    await userEvent.keyboard('{Enter}');
+    await waitFor(() => expect(ingles).toHaveAttribute('aria-disabled', 'true'));
+    expect(ingles).not.toBeDisabled();
+    expect(ingles).toHaveFocus();
+    // Y el segundo clic durante el guardado no manda otra petición.
+    fireEvent.click(screen.getByRole('button', { name: /Español/ }));
+    expect(apiMock.patch).toHaveBeenCalledTimes(1);
+    resolver({ ...USER, locale: 'en' });
+    await waitFor(() => expect(screen.getByText('Language')).toBeInTheDocument());
+    await waitFor(() => expect(ingles).toHaveAttribute('aria-disabled', 'false'));
+    expect(ingles).toHaveFocus();
   });
 });

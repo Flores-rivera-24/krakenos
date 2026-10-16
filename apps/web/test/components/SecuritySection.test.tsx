@@ -20,6 +20,7 @@ vi.mock('@/lib/webauthn', () => webauthnMock);
 
 import { SecuritySection } from '@/components/settings/SecuritySection';
 import { useAuthStore } from '@/store/auth.store';
+import { useToastStore } from '@/store/toast.store';
 
 const SESSIONS: AuthSession[] = [
   {
@@ -55,6 +56,7 @@ function renderSection(isAdmin = true) {
 
 describe('SecuritySection', () => {
   beforeEach(() => {
+    useToastStore.setState({ toasts: [] });
     apiMock.get
       .mockReset()
       .mockImplementation((path: string) =>
@@ -81,17 +83,41 @@ describe('SecuritySection', () => {
     const user = userEvent.setup();
     renderSection();
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/auth/sessions'));
-    const revokeButtons = await screen.findAllByRole('button', { name: 'Revocar' });
+    const revokeButtons = await screen.findAllByRole('button', {
+      name: /^Revocar la sesión creada/,
+    });
     expect(revokeButtons).toHaveLength(2);
     await user.click(revokeButtons[0]!);
     expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions/s1');
   });
 
-  it('"Cerrar todas las sesiones" cierra las demás (la actual se identifica por cookie, US-91)', async () => {
+  it('«Cerrar las demás sesiones» pide confirmar, cierra las demás (la actual se identifica por cookie, US-91) y avisa', async () => {
     const user = userEvent.setup();
     renderSection();
-    await user.click(screen.getByRole('button', { name: 'Cerrar todas las sesiones' }));
-    expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions');
+    await user.click(screen.getByRole('button', { name: 'Cerrar las demás sesiones' }));
+    // El primer clic solo arma: antes mandaba el DELETE de golpe y sin decir nada.
+    expect(apiMock.del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/auth/sessions'));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([
+        expect.objectContaining({
+          kind: 'success',
+          message: 'Se han cerrado las demás sesiones; esta sigue abierta',
+        }),
+      ]),
+    );
+  });
+
+  it('si el servidor falla al cerrar las demás sesiones, se dice y no queda una promesa rechazada', async () => {
+    const user = userEvent.setup();
+    apiMock.del.mockRejectedValue(new Error('boom'));
+    renderSection();
+    await user.click(screen.getByRole('button', { name: 'Cerrar las demás sesiones' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([expect.objectContaining({ kind: 'error' })]),
+    );
   });
 
   it('la zona de peligro pide confirmación antes de regenerar las claves', async () => {

@@ -60,10 +60,12 @@ export function LanguageCard() {
               key={opt.locale}
               type="button"
               aria-pressed={current === opt.locale}
-              disabled={saving}
+              // `aria-disabled` y no `disabled`: un botón que se deshabilita con el foco encima lo
+              // suelta y el foco acaba en <body>. `change` ya ignora los clics mientras guarda.
+              aria-disabled={saving}
               onClick={() => void change(opt.locale)}
               className={cn(
-                'rounded-lg border p-3 text-left transition-colors',
+                'rounded-lg border p-3 text-left transition-colors aria-disabled:opacity-60',
                 current === opt.locale
                   ? 'border-kr-accent bg-kr-accent-faint'
                   : 'border-kr bg-kr-elevated hover:border-kr-accent-glow',

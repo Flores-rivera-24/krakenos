@@ -1,5 +1,5 @@
 import type { SystemSettingsResponse } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -69,6 +69,58 @@ describe('SettingsPage', () => {
     for (const s of ['Sistema', 'Red', 'Seguridad', 'Integraciones', 'Cuenta']) {
       expect(screen.getByRole('button', { name: s })).toBeInTheDocument();
     }
+  });
+
+  it('el menú de secciones se nombra y marca la sección actual con aria-current', async () => {
+    setUser('admin');
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    const menu = screen.getByRole('navigation', { name: 'Secciones de ajustes' });
+    const botones = within(menu).getAllByRole('button');
+    expect(botones.length).toBeGreaterThanOrEqual(5);
+    // Una sola actual: Sistema al abrir…
+    expect(within(menu).getByRole('button', { name: 'Sistema' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(botones.filter((b) => b.hasAttribute('aria-current'))).toHaveLength(1);
+    // …y se mueve al pulsar otra.
+    await user.click(within(menu).getByRole('button', { name: 'Cuenta' }));
+    expect(within(menu).getByRole('button', { name: 'Cuenta' })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+    expect(within(menu).getByRole('button', { name: 'Sistema' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('los tres «Guardar» de Sistema dicen qué guardan', async () => {
+    setUser('admin');
+    render(<SettingsPage />);
+    await screen.findByLabelText('Supresión nocturna de salidas');
+    for (const campo of [
+      'Nombre del hogar',
+      'Supresión nocturna de salidas',
+      'Ventana de mantenimiento',
+    ]) {
+      expect(screen.getByRole('button', { name: `Guardar: ${campo}` })).toBeInTheDocument();
+    }
+    // Y ya no hay tres botones que se llamen igual.
+    expect(screen.queryAllByRole('button', { name: 'Guardar' })).toHaveLength(0);
+  });
+
+  it('lo que significa dejar vacío un campo va en una ayuda visible, no en el placeholder', async () => {
+    setUser('admin');
+    render(<SettingsPage />);
+    const noche = await screen.findByLabelText('Supresión nocturna de salidas');
+    const ventana = screen.getByLabelText('Ventana de mantenimiento');
+    // El placeholder es corto (en móvil se cortaba justo antes de decir qué pasa si está vacío)…
+    expect(noche).toHaveAttribute('placeholder', 'p. ej. 23:00-07:00');
+    expect(ventana).toHaveAttribute('placeholder', 'p. ej. 02:00-06:00');
+    // …y el significado se lee bajo el campo y está enlazado a él.
+    expect(noche).toHaveAccessibleDescription('Vacío = desactivada');
+    expect(ventana).toHaveAccessibleDescription('Vacío = siempre');
   });
 
   it('carga los ajustes del sistema y muestra el estado de HTTPS', async () => {

@@ -5,7 +5,7 @@ import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
 import { formatUptime } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { plural, useT, type TranslationKey } from '@/lib/i18n';
 import { useSidebarStats, type SidebarStats } from '@/lib/sidebar-stats';
 import { useIsMobile } from '@/lib/use-is-mobile';
 import { cn } from '@/lib/utils';
@@ -26,6 +26,22 @@ function badgeValue(key: NavBadgeKey, devicesBadge: number, stats: SidebarStats)
   return stats.iotOffline;
 }
 
+/**
+ * Qué cuenta cada contador y si pide atención. El número solo no dice nada («Firewall 2»):
+ * el nombre accesible y el `title` dicen QUÉ se cuenta, con su plural. El de reglas activas
+ * es un inventario, no un aviso, así que no lleva el color de acento de una notificación.
+ */
+const BADGES: Record<NavBadgeKey, { one: TranslationKey; other: TranslationKey; alert: boolean }> =
+  {
+    devices: { one: 'layout.badge.devices.one', other: 'layout.badge.devices.other', alert: true },
+    firewall: {
+      one: 'layout.badge.firewall.one',
+      other: 'layout.badge.firewall.other',
+      alert: false,
+    },
+    iot: { one: 'layout.badge.iot.one', other: 'layout.badge.iot.other', alert: true },
+  };
+
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -45,6 +61,13 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
   const t = useT();
   const { to, labelKey, icon: Icon, end } = item;
   const label = t(labelKey);
+  const badgeInfo = item.badge ? BADGES[item.badge] : null;
+  const badgeText = badgeInfo
+    ? plural(badge, {
+        one: t(badgeInfo.one, { n: badge }),
+        other: t(badgeInfo.other, { n: badge }),
+      })
+    : '';
   return (
     <NavLink
       to={to}
@@ -73,13 +96,17 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
             className={cn('h-5 w-5 shrink-0 transition-colors', isActive && 'text-kr-accent')}
           />
           {!collapsed && <span className="flex-1 truncate">{label}</span>}
-          {item.badge && badge > 0 && (
+          {badgeInfo && badge > 0 && (
             <span
               className={cn(
-                'rounded-full bg-kr-accent px-1.5 py-0.5 text-kr-xs font-semibold text-white',
+                'rounded-full px-1.5 py-0.5 text-kr-xs font-semibold',
+                badgeInfo.alert
+                  ? 'bg-kr-accent text-white'
+                  : 'border border-kr bg-kr-surface text-kr-secondary',
                 collapsed && 'absolute right-1 top-1 px-1 py-0',
               )}
-              aria-label={`${badge}`}
+              aria-label={badgeText}
+              title={badgeText}
             >
               {badge}
             </span>
@@ -110,11 +137,39 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const devices = useInventoryStore((s) => s.devices);
   const devicesBadge = unknownOrBlockedCount(devices);
 
+  // «Sistema» se fija bajo la lista; el resto de grupos se desplaza.
+  const pinnedGroup = navGroups.find((g) => g.label === 'Sistema');
+  const scrollGroups = navGroups.filter((g) => g !== pinnedGroup);
+
+  const renderGroup = (group: (typeof navGroups)[number], gi: number) => (
+    <div key={group.label} className="space-y-1">
+      {collapsed ? (
+        gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
+      ) : (
+        <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
+          {t(group.labelKey)}
+        </p>
+      )}
+      {group.items.map((item) => (
+        <div key={item.to} className="relative">
+          <SidebarItem
+            item={item}
+            collapsed={collapsed}
+            badge={item.badge ? badgeValue(item.badge, devicesBadge, stats) : 0}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <aside
       data-collapsed={collapsed}
+      // Fija a la altura de la ventana (`self-start` evita que el flex la estire a la del
+      // documento, que anularía el `sticky`): la navegación hace scroll por dentro y la
+      // zona inferior (usuario, tema, cerrar sesión) queda siempre a la vista.
       className={cn(
-        'relative hidden shrink-0 flex-col border-r border-kr bg-kr-surface transition-[width] duration-200 md:flex',
+        'sticky top-0 hidden h-dvh shrink-0 self-start flex-col border-r border-kr bg-kr-surface transition-[width] duration-200 md:flex',
         collapsed ? 'w-16' : 'w-[220px]',
       )}
     >
@@ -148,28 +203,16 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
       </div>
 
-      {/* Navegación por grupos con cabecera (US-163) */}
-      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2">
-        {navGroups.map((group, gi) => (
-          <div key={group.label} className="space-y-1">
-            {collapsed ? (
-              gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
-            ) : (
-              <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
-                {t(group.labelKey)}
-              </p>
-            )}
-            {group.items.map((item) => (
-              <div key={item.to} className="relative">
-                <SidebarItem
-                  item={item}
-                  collapsed={collapsed}
-                  badge={item.badge ? badgeValue(item.badge, devicesBadge, stats) : 0}
-                />
-              </div>
-            ))}
-          </div>
-        ))}
+      {/* Navegación por grupos con cabecera (US-163). Lo que cabe se desplaza por dentro;
+          el grupo «Sistema» (Ajustes) va fijo debajo, para que no quede enterrado en una
+          ventana baja. Es UN solo <nav>: dos landmarks iguales no se distinguirían. */}
+      <nav className="flex min-h-0 flex-1 flex-col px-3 py-2">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+          {scrollGroups.map((group, gi) => renderGroup(group, gi))}
+        </div>
+        {pinnedGroup && (
+          <div className="mt-2 border-t border-kr-muted pt-2">{renderGroup(pinnedGroup, 0)}</div>
+        )}
       </nav>
 
       {/* Zona inferior: conexión en vivo, driver, uptime, usuario, logout */}
