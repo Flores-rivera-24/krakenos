@@ -7,7 +7,7 @@ navegador real".
 
 ## Qué se prueba
 
-Los tests viven en `e2e/tests` (y los de inglés en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`). El recuento actual se obtiene con `npx playwright test --list` desde `e2e/`, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
+Los tests viven en `e2e/tests` (y los de inglés en `e2e/tests-en`), más 1 de preparación (`auth.setup.ts`). El recuento actual se obtiene con `pnpm exec playwright test -c e2e/playwright.config.ts --list` desde la raíz, que incluye los generados en bucle (la suite de accesibilidad recorre 7 páginas dos veces). La tabla de abajo agrupa por flujo, no por test.
 
 | # | Flujo | Cubre |
 |---|-------|-------|
@@ -51,7 +51,44 @@ Corregido en `apps/web/src/lib/api.ts` y `store/auth.store.ts` (no declarar JSON
   la detección de idioma renderiza la app en inglés → todos los selectores fallan. Si un
   día se quiere un flujo e2e en inglés, será un proyecto aparte con su propio `locale`.
 
+## Correr la suite en local
+
+```bash
+pnpm test:e2e:local                                          # build + toda la suite
+pnpm test:e2e:local e2e/tests/navegacion.spec.ts --project=chromium
+pnpm test:e2e:local --no-build -g "alarma" --headed          # sin rebuild, con ventana
+```
+
+Es el camino recomendado en una máquina de desarrollo (WSL incluido): `scripts/e2e-local.mjs`
+comprueba, **antes** de lanzar nada, lo que si falla no se parece a su causa, y **no mata ni
+instala nada** por su cuenta:
+
+1. **Puerto 3999** (fijo, `E2E_PORT` en `e2e/lib/server.ts`): si está ocupado, dice qué PID y qué
+   comando lo tienen y da el `kill -TERM <pid>` (nunca `-9`) para que decidas tú.
+2. **Librerías de Chromium** (`libnspr4`, `libnss3`, solo en Linux): si faltan y existe el apaño sin
+   root (ver más abajo), lo usa por `LD_LIBRARY_PATH` y lo dice; si no existe, se detiene y explica las
+   dos salidas.
+3. **Navegador**: si falta el Chromium de la versión de Playwright del repo, sugiere
+   `pnpm test:e2e:install`.
+4. **Build**: ejecuta `pnpm build` antes (la suite corre contra el build; olvidarlo da resultados de
+   código viejo). `--no-build` lo salta.
+5. **Playwright local** (nunca `npx`: el `.npmrc` de pnpm hace que npm avise de configuración
+   desconocida) con reporter `list` + `html`, y propaga su código de salida. El resto de argumentos
+   pasan tal cual: specs, `-g`, `--headed`, `--ui`, `--project`.
+
+Al terminar imprime cómo abrir el informe y dónde están las trazas:
+
+```bash
+pnpm exec playwright show-report e2e/playwright-report   # informe HTML (no se abre solo)
+pnpm exec playwright show-trace e2e/test-results/<carpeta>/trace.zip
+```
+
+El informe HTML solo lo escribe la suite si se pide (la config lo activa por defecto únicamente con
+`CI`); `test:e2e:local` lo pide siempre, por eso `show-report` funciona tras una ejecución local.
+
 ## Ejecutar
+
+Lo de abajo es lo que hace `test:e2e:local` por dentro, por si quieres los pasos sueltos:
 
 ```bash
 pnpm build                 # el agente sirve apps/web/dist
@@ -70,8 +107,10 @@ El Chromium de Playwright necesita `libnspr4`, `libnss3` y `libasound2`, que no 
 Ubuntu mínima ni en muchos WSL. La vía normal es:
 
 ```bash
-sudo pnpm exec playwright install-deps chromium
+sudo env "PATH=$PATH" "$PWD/node_modules/.bin/playwright" install-deps chromium
 ```
+
+(`sudo` no hereda el `PATH` de nvm, de ahí el `env` y la ruta del binario local.)
 
 **Sin `sudo`** (p. ej. una cuenta sin permisos), se pueden extraer los `.deb` a un prefijo
 propio — `apt-get download` no necesita root:
@@ -83,7 +122,7 @@ for p in libnspr4 libnss3 libasound2t64; do apt-get download "$p"; done
 for d in *.deb; do dpkg-deb -x "$d" "$DEPS/root"; done
 ln -sf libasound.so.2.0.0 "$DEPS/root/usr/lib/x86_64-linux-gnu/libasound.so.2"
 
-# y en cada sesión donde se corra la suite:
+# `pnpm test:e2e:local` lo detecta y lo usa solo. Para correr Playwright a mano:
 export LD_LIBRARY_PATH="$HOME/.cache/krakenos/playwright-deps/root/usr/lib/x86_64-linux-gnu"
 ```
 
