@@ -125,11 +125,41 @@ describe('groupByPerson (US-240)', () => {
     expect(serialized).not.toMatch(/([0-9a-f]{2}:){5}[0-9a-f]{2}/i);
   });
 
-  it('nombra un dispositivo sin etiqueta con su id, nunca con su MAC', () => {
-    expect(deviceDisplayName({ id: 'clx0000abcdef', label: null, hostname: null })).toBe(
-      'Dispositivo abcdef',
+  it('un dispositivo sin nombre sale con `name: null` en la vista, sin texto inventado', () => {
+    const people = groupByPerson({
+      devices: [device({ id: 'clx0000abcdef', label: null, hostname: null, ownerId: null })],
+      people: [],
+      schedules: [],
+      now: NOW,
+      unassignedLabel: 'Sin asignar',
+    });
+    expect(people[0]?.devices[0]?.name).toBeNull();
+    expect(JSON.stringify(people)).not.toContain('Dispositivo');
+  });
+
+  it('los aparatos sin nombre van al final, ordenados por id (orden estable)', () => {
+    const people = groupByPerson({
+      devices: [
+        device({ id: 'd-b', ownerId: null, label: null, hostname: null, mac: 'aa:00:00:00:00:02' }),
+        device({ id: 'd-z', ownerId: null, label: 'Zeta', mac: 'aa:00:00:00:00:03' }),
+        device({ id: 'd-a', ownerId: null, label: null, hostname: null, mac: 'aa:00:00:00:00:04' }),
+        device({ id: 'd-m', ownerId: null, label: 'Alfa', mac: 'aa:00:00:00:00:05' }),
+      ],
+      people: [],
+      schedules: [],
+      now: NOW,
+      unassignedLabel: 'Sin asignar',
+    });
+    // Los 4 son de nadie → grupo sin asignar.
+    expect(people[0]?.devices.map((d) => d.id)).toEqual(['d-m', 'd-z', 'd-a', 'd-b']);
+  });
+
+  it('un dispositivo sin nombre humano devuelve null: ni su MAC ni un trozo de su id', () => {
+    expect(deviceDisplayName({ label: null, hostname: null })).toBeNull();
+    expect(deviceDisplayName({ label: null, hostname: 'pc-salon' })).toBe('pc-salon');
+    expect(deviceDisplayName({ label: 'Tablet de Marta', hostname: 'pc-salon' })).toBe(
+      'Tablet de Marta',
     );
-    expect(deviceDisplayName({ id: 'x', label: null, hostname: 'pc-salon' })).toBe('pc-salon');
   });
 
   it('enseña la pausa que más tarda en levantarse', () => {

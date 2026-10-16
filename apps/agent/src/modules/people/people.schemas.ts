@@ -19,7 +19,7 @@ const personDevice = {
     id: { type: 'string' },
     // Sin `mac` ni `ip` a propósito: esta vista ata aparato→persona y la MAC no
     // aporta nada al caso de uso (US-240).
-    name: { type: 'string' },
+    name: { type: ['string', 'null'] },
     online: { type: 'boolean' },
     blocked: { type: 'boolean' },
     reasons: { type: 'array', items: { type: 'string', enum: ['manual', 'schedule', 'paused'] } },

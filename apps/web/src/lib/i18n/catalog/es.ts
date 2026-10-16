@@ -952,6 +952,8 @@ export const es = {
   'people.withoutOwner': 'sin dueño',
   'people.noDevices': 'Sin dispositivos asignados.',
   'people.device.one': 'dispositivo',
+  // Un aparato sin etiqueta ni hostname: el agente manda `null`, no un nombre inventado.
+  'people.device.unnamed': 'Dispositivo sin nombre',
   'people.device.other': 'dispositivos',
   'people.onlineCount': '{n} en línea',
   'people.blockedCount': '{n} sin internet',

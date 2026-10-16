@@ -925,6 +925,7 @@ export const en: Record<TranslationKey, string> = {
   'people.withoutOwner': 'without an owner',
   'people.noDevices': 'No devices assigned.',
   'people.device.one': 'device',
+  'people.device.unnamed': 'Unnamed device',
   'people.device.other': 'devices',
   'people.onlineCount': '{n} online',
   'people.blockedCount': '{n} without internet',

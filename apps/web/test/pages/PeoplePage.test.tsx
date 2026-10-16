@@ -2,7 +2,7 @@ import type { PeopleResponse, PersonSummary } from '@krakenos/types';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -34,6 +34,7 @@ vi.mock('@/lib/api', () => ({
 
 import { ApiRequestError } from '@/lib/api';
 
+import { ensureCatalog, setLocale } from '@/lib/i18n';
 import { PeoplePage } from '@/pages/PeoplePage';
 import { Toaster } from '@/components/ui/toast';
 import { useAuthStore } from '@/store/auth.store';
@@ -263,6 +264,74 @@ describe('PeoplePage (US-240)', () => {
     expect(await screen.findByText('Sin asignar')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pausar el internet/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Poner hora de dormir' })).not.toBeInTheDocument();
+  });
+
+  it('un aparato sin nombre se llama «Dispositivo sin nombre», no con un trozo de su id', async () => {
+    apiMock.get.mockResolvedValue(
+      response({
+        people: [
+          person({
+            devices: [
+              {
+                id: 'clx0b3lscb',
+                name: null,
+                online: true,
+                blocked: false,
+                reasons: [],
+                pausedUntil: null,
+              },
+              {
+                id: 'd2',
+                name: 'Móvil',
+                online: true,
+                blocked: false,
+                reasons: [],
+                pausedUntil: null,
+              },
+            ],
+          }),
+        ],
+      }),
+    );
+    renderPage();
+    expect(await screen.findByText('Dispositivo sin nombre')).toBeInTheDocument();
+    expect(screen.getByText('Móvil')).toBeInTheDocument();
+    expect(screen.queryByText(/b3lscb/)).not.toBeInTheDocument();
+  });
+
+  describe('con la interfaz en inglés', () => {
+    beforeAll(() => ensureCatalog('en'));
+    afterEach(() => setLocale('es', { persist: false }));
+
+    it('el aparato sin nombre y el grupo sin dueño salen en inglés', async () => {
+      apiMock.get.mockResolvedValue(
+        response({
+          people: [
+            person({
+              userId: null,
+              name: 'Sin asignar',
+              role: null,
+              bedtime: null,
+              devices: [
+                {
+                  id: 'clx0b3lscb',
+                  name: null,
+                  online: true,
+                  blocked: false,
+                  reasons: [],
+                  pausedUntil: null,
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      setLocale('en', { persist: false });
+      renderPage();
+      expect(await screen.findByText('Unnamed device')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Unassigned' })).toBeInTheDocument();
+      expect(screen.queryByText('Sin asignar')).not.toBeInTheDocument();
+    });
   });
 
   it('un 500 del agente se cuenta como fallo de carga, no como «no hay personas»', async () => {

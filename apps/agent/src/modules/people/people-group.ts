@@ -48,9 +48,14 @@ export interface GroupInput {
   unassignedLabel: string;
 }
 
-/** Nombre humano de un dispositivo, nunca su MAC (invariante 2). */
-export function deviceDisplayName(d: Pick<DeviceRow, 'id' | 'label' | 'hostname'>): string {
-  return d.label ?? d.hostname ?? `Dispositivo ${d.id.slice(-6)}`;
+/**
+ * Nombre humano de un dispositivo, nunca su MAC (invariante 2). Sin etiqueta ni
+ * hostname devuelve `null` y la web pone el texto, traducido: inventar aquí un
+ * «Dispositivo b3lscb» (con un trozo del id interno) era copy en español que no se
+ * podía traducir y un sufijo que no significa nada para quien lo mira.
+ */
+export function deviceDisplayName(d: Pick<DeviceRow, 'label' | 'hostname'>): string | null {
+  return d.label ?? d.hostname ?? null;
 }
 
 /**
@@ -147,7 +152,14 @@ function buildSummary(
   devices: PersonDevice[],
   personSchedules: AccessSchedule[],
 ): PersonSummary {
-  const sorted = [...devices].sort((a, b) => a.name.localeCompare(b.name));
+  // Orden estable: por nombre, y los que no tienen nombre al final (por id, que es
+  // lo único que los distingue sin enseñarlo).
+  const sorted = [...devices].sort((a, b) => {
+    if (a.name === null || b.name === null) {
+      return a.name === b.name ? a.id.localeCompare(b.id) : a.name === null ? 1 : -1;
+    }
+    return a.name.localeCompare(b.name);
+  });
   // La pausa que se enseña es la que **más tarda en levantarse**: es la respuesta a
   // «¿cuándo vuelve a tener internet?», que es lo que se pregunta de verdad.
   const pausedUntil = sorted.reduce<string | null>(

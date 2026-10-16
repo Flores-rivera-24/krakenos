@@ -101,7 +101,8 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
         <div className="flex flex-wrap items-center gap-2">
           <UserRound size={20} className="text-kr-accent" aria-hidden />
           <h3 className="min-w-0 flex-1 truncate text-kr-base font-medium text-kr-primary">
-            {person.name}
+            {/* El grupo sin dueño lo nombra el agente en español; la web lo traduce. */}
+            {person.userId === null ? t('people.unassigned') : person.name}
           </h3>
           {person.role && <Badge>{t(ROLE_KEY[person.role as UserRole])}</Badge>}
         </div>
@@ -139,7 +140,9 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
                   status={d.online ? 'online' : 'offline'}
                   label={d.online ? t('people.state.online') : t('people.state.offline')}
                 />
-                <span className="min-w-0 flex-1 truncate text-kr-secondary">{d.name}</span>
+                <span className="min-w-0 flex-1 truncate text-kr-secondary">
+                  {d.name ?? t('people.device.unnamed')}
+                </span>
                 {d.reasons.map((r) => (
                   <Badge key={r} variant="warning">
                     {t(REASON_KEY[r])}
