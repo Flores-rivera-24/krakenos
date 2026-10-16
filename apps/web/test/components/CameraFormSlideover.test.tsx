@@ -23,7 +23,8 @@ describe('CameraFormSlideover: ejemplo de URL RTSP', () => {
       await changeLocale('en', { persist: false });
     });
     montar();
-    expect(screen.getByLabelText('URL RTSP')).toHaveAttribute(
+    // La etiqueta también va en el orden inglés («RTSP URL»), no «URL RTSP».
+    expect(screen.getByLabelText('RTSP URL')).toHaveAttribute(
       'placeholder',
       'rtsp://user:password@192.168.1.50:554/stream1',
     );

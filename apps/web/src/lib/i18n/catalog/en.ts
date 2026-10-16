@@ -1538,6 +1538,7 @@ export const en: Record<TranslationKey, string> = {
   'cameras.added': 'Camera added',
   'cameras.addError': 'Could not add the camera',
   'cameras.rtsp.helpLabel': 'What is an RTSP URL and where do I find it?',
+  'cameras.rtsp.label': 'RTSP URL',
   'cameras.rtsp.help':
     'It is the address of your camera’s live video inside your network. It is usually in the camera’s app or manual (look for “RTSP”, “ONVIF” or “stream”).',
   'cameras.rtsp.format': 'Typical format:',

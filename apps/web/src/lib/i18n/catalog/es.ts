@@ -1585,6 +1585,7 @@ export const es = {
   'cameras.added': 'Cámara añadida',
   'cameras.addError': 'No se pudo añadir la cámara',
   'cameras.rtsp.helpLabel': '¿Qué es una URL RTSP y dónde encontrarla?',
+  'cameras.rtsp.label': 'URL RTSP',
   'cameras.rtsp.help':
     'Es la dirección del vídeo en directo de tu cámara dentro de tu red. Suele estar en la app o el manual de la cámara (busca «RTSP», «ONVIF» o «stream»).',
   'cameras.rtsp.format': 'Formato típico:',
