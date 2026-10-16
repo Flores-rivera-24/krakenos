@@ -137,6 +137,31 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const devices = useInventoryStore((s) => s.devices);
   const devicesBadge = unknownOrBlockedCount(devices);
 
+  // «Sistema» se fija bajo la lista; el resto de grupos se desplaza.
+  const pinnedGroup = navGroups.find((g) => g.label === 'Sistema');
+  const scrollGroups = navGroups.filter((g) => g !== pinnedGroup);
+
+  const renderGroup = (group: (typeof navGroups)[number], gi: number) => (
+    <div key={group.label} className="space-y-1">
+      {collapsed ? (
+        gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
+      ) : (
+        <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
+          {t(group.labelKey)}
+        </p>
+      )}
+      {group.items.map((item) => (
+        <div key={item.to} className="relative">
+          <SidebarItem
+            item={item}
+            collapsed={collapsed}
+            badge={item.badge ? badgeValue(item.badge, devicesBadge, stats) : 0}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <aside
       data-collapsed={collapsed}
@@ -178,28 +203,16 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
       </div>
 
-      {/* Navegación por grupos con cabecera (US-163) */}
-      <nav className="flex-1 space-y-3 overflow-y-auto px-3 py-2">
-        {navGroups.map((group, gi) => (
-          <div key={group.label} className="space-y-1">
-            {collapsed ? (
-              gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
-            ) : (
-              <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
-                {t(group.labelKey)}
-              </p>
-            )}
-            {group.items.map((item) => (
-              <div key={item.to} className="relative">
-                <SidebarItem
-                  item={item}
-                  collapsed={collapsed}
-                  badge={item.badge ? badgeValue(item.badge, devicesBadge, stats) : 0}
-                />
-              </div>
-            ))}
-          </div>
-        ))}
+      {/* Navegación por grupos con cabecera (US-163). Lo que cabe se desplaza por dentro;
+          el grupo «Sistema» (Ajustes) va fijo debajo, para que no quede enterrado en una
+          ventana baja. Es UN solo <nav>: dos landmarks iguales no se distinguirían. */}
+      <nav className="flex min-h-0 flex-1 flex-col px-3 py-2">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+          {scrollGroups.map((group, gi) => renderGroup(group, gi))}
+        </div>
+        {pinnedGroup && (
+          <div className="mt-2 border-t border-kr-muted pt-2">{renderGroup(pinnedGroup, 0)}</div>
+        )}
       </nav>
 
       {/* Zona inferior: conexión en vivo, driver, uptime, usuario, logout */}

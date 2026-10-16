@@ -130,7 +130,11 @@ describe('AppSidebar', () => {
     for (const clase of ['sticky', 'top-0', 'h-dvh', 'self-start']) {
       expect(aside, clase).toHaveClass(clase);
     }
-    expect(container.querySelector('aside > nav')).toHaveClass('overflow-y-auto');
+    // La lista se desplaza por dentro y «Ajustes» queda FUERA de lo que se desplaza.
+    const scroll = container.querySelector('aside > nav > div.overflow-y-auto');
+    expect(scroll).toBeInTheDocument();
+    expect(scroll).not.toContainElement(screen.getByRole('link', { name: 'Ajustes' }));
+    expect(scroll).toContainElement(screen.getByRole('link', { name: 'Dashboard' }));
   });
 
   it('muestra el badge de "Dispositivos" cuando hay desconocidos o bloqueados', () => {
