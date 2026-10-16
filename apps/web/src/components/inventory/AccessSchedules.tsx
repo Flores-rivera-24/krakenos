@@ -2,6 +2,7 @@ import type { AccessSchedule } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
@@ -148,14 +149,15 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                   onCheckedChange={() => void toggle(s)}
                   aria-label={t('access.toggleLabel', { name: s.name })}
                 />
-                <button
-                  type="button"
-                  onClick={() => void remove(s)}
+                {/* Confirma en dos pasos: antes un clic suelto borraba el horario y, con él,
+                    el corte de internet que protegía a ese aparato. */}
+                <DeleteButton
+                  onDelete={() => remove(s)}
                   aria-label={t('access.deleteLabel', { name: s.name })}
                   className="px-1 text-kr-secondary hover:text-danger"
                 >
                   ✕
-                </button>
+                </DeleteButton>
               </>
             )}
             {s.personId && (

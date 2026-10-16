@@ -68,7 +68,22 @@ describe('AccessSchedules — control parental (US-108)', () => {
     await screen.findByText('Noche');
 
     await user.click(screen.getByRole('button', { name: 'Eliminar Noche' }));
+    // El primer clic solo arma: borrar un horario quita el corte de internet que protegía el aparato.
+    expect(apiMock.del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/access/schedules/s1'));
+  });
+
+  it('cancelar la confirmación no borra el horario', async () => {
+    apiMock.get.mockResolvedValue([SCHEDULE]);
+    const user = userEvent.setup();
+    render(<AccessSchedules mac="aa:bb" canEdit />);
+    await screen.findByText('Noche');
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar Noche' }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(apiMock.del).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Eliminar Noche' })).toBeInTheDocument();
   });
 
   it('un horario que pone la persona no se edita desde el dispositivo (US-240)', async () => {

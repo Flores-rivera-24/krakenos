@@ -11,18 +11,21 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { formatDate, timeAgo } from '@/lib/format';
 import { applyTheme, type Theme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
+import { toast } from '@/store/toast.store';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';
@@ -301,9 +304,14 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
   };
 
   const closeOthers = async () => {
-    // La sesión a conservar es la actual, identificada por la cookie (US-91).
-    await api.del('/auth/sessions');
-    loadSessions();
+    try {
+      // La sesión a conservar es la actual, identificada por la cookie (US-91).
+      await api.del('/auth/sessions');
+      toast.success(t('security.otherSessionsClosed'));
+      loadSessions();
+    } catch (err) {
+      toast.error(describeError(err, t('security.otherSessionsError')));
+    }
   };
 
   const regenKeys = async () => {
@@ -359,9 +367,9 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>{t('security.sessions')}</CardTitle>
-          <Button variant="outline" size="sm" onClick={() => void closeOthers()}>
+          <DeleteButton variant="outline" onDelete={closeOthers}>
             {t('security.closeAllSessions')}
-          </Button>
+          </DeleteButton>
         </CardHeader>
         <CardContent>
           {sessions === null ? (
