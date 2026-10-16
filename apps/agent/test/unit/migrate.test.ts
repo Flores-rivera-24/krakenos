@@ -1,11 +1,13 @@
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   cpSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
   readdirSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -301,6 +303,36 @@ describe('migrateDatabase sobre una base sintética (US-275)', () => {
     expect(names(res.backupFile as string)).toEqual(['001_a', '002_b', '003_c']);
     expect(count(dbFile, 'Parent')).toBe(2);
   });
+
+  // En Windows los bits de modo POSIX no significan nada (los permisos son ACL).
+  it.skipIf(process.platform === 'win32')(
+    'la copia previa (la base entera) es 0600 y el directorio que se crea 0700',
+    () => {
+      const { run, backupDir, migrationsDir } = setup();
+      run();
+      writeMigrations(migrationsDir, { '004_d': `CREATE TABLE "T4" ("id" TEXT);` });
+      const res = run();
+      expect(statSync(res.backupFile as string).mode & 0o777).toBe(0o600);
+      expect(statSync(backupDir).mode & 0o777).toBe(0o700);
+    },
+  );
+
+  it.skipIf(process.platform === 'win32')(
+    'una copia previa que ya existía con modo abierto se deja en 0600',
+    () => {
+      const { run, backupDir, migrationsDir } = setup();
+      run();
+      writeMigrations(migrationsDir, { '004_d': `CREATE TABLE "T4" ("id" TEXT);` });
+      const now = () => new Date('2026-03-04T05:06:07.000Z');
+      mkdirSync(backupDir, { recursive: true });
+      const dest = join(backupDir, preMigrateFileName(now()));
+      writeFileSync(dest, '', { mode: 0o644 });
+      chmodSync(dest, 0o644);
+      const res = run({ now });
+      expect(res.backupFile).toBe(dest);
+      expect(statSync(dest).mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('retención: se conservan las 3 últimas copias y no se tocan otros ficheros del directorio', () => {
     const { run, backupDir, migrationsDir } = setup({ '001_a': M1 });

@@ -1,12 +1,14 @@
 import { createHash, randomUUID } from 'node:crypto';
 import {
   existsSync,
+  chmodSync,
   mkdirSync,
   readdirSync,
   readFileSync,
   rmSync,
   statfsSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
@@ -264,7 +266,9 @@ function backupBeforeMigrating(
   now: Date,
   freeBytes: (dir: string) => number,
 ): string {
-  mkdirSync(backupDir, { recursive: true });
+  // La copia es la base ENTERA (hashes, secretos cifrados, tokens): el directorio nace
+  // 0700 y la copia 0600, como el resto de lo que lleva credenciales.
+  mkdirSync(backupDir, { recursive: true, mode: 0o700 });
   const dest = join(backupDir, preMigrateFileName(now));
 
   // Una copia que no cabe se llevaría por delante el disco de una caja desatendida;
@@ -282,8 +286,14 @@ function backupBeforeMigrating(
     );
   }
 
-  rmSync(dest, { force: true }); // `VACUUM INTO` exige que el destino no exista.
+  // `VACUUM INTO` admite un destino inexistente o VACÍO, pero no fija el modo: se crea
+  // antes el fichero vacío en 0600 para que la copia no exista ni un instante con el
+  // umask por defecto (aunque el directorio ya existiera más abierto). El `chmod` final
+  // cubre el caso de un fichero que ya estuviera ahí (`mode` solo aplica al crear).
+  rmSync(dest, { force: true });
+  writeFileSync(dest, '', { mode: 0o600 });
   db.exec(`VACUUM INTO '${dest.replace(/'/g, "''")}'`);
+  chmodSync(dest, 0o600);
 
   for (const old of staleBackups(readdirSync(backupDir), keep)) {
     rmSync(join(backupDir, old), { force: true });
@@ -357,7 +367,7 @@ export function migrateDatabase(opts: MigrateOptions): MigrateResult {
   }
 
   const existed = existsSync(opts.dbFile) && statSync(opts.dbFile).size > 0;
-  mkdirSync(dirname(opts.dbFile), { recursive: true });
+  mkdirSync(dirname(opts.dbFile), { recursive: true, mode: 0o700 });
   const db = new Database(opts.dbFile);
   try {
     db.pragma('busy_timeout = 10000');
