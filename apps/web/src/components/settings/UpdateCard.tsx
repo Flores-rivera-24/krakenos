@@ -9,6 +9,7 @@ import { RichText } from '@/components/ui/rich-text';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
@@ -126,7 +127,7 @@ export function UpdateCard() {
             {plan.inProgressSince && (
               <p className="text-kr-xs text-kr-muted">
                 {t('settings.update.inProgressSince', {
-                  time: new Date(plan.inProgressSince).toLocaleTimeString(),
+                  time: formatTime(plan.inProgressSince),
                 })}
               </p>
             )}

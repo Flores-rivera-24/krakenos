@@ -35,6 +35,7 @@ import {
 } from '@/lib/devices';
 import { describeError } from '@/lib/errors';
 import { listUsers } from '@/lib/users';
+import { formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
@@ -312,7 +313,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         {!simpleMode && (
           <Field label={t('device.sources')} value={device.sources.join(', ') || '—'} />
         )}
-        <Field label={t('device.lastSeen')} value={new Date(device.lastSeen).toLocaleString()} />
+        <Field label={t('device.lastSeen')} value={formatDateTime(device.lastSeen)} />
       </dl>
 
       {/* Histórico de tráfico de la última hora (US-46). */}

@@ -102,7 +102,10 @@ function RoomTile({
 
         {room.controllableCount > 0 ? (
           <p className="text-kr-sm text-kr-secondary">
-            {t('rooms.onCount', { on: room.onCount, total: room.controllableCount })}
+            {plural(room.onCount, {
+              one: t('rooms.onCount.one', { on: room.onCount, total: room.controllableCount }),
+              other: t('rooms.onCount.other', { on: room.onCount, total: room.controllableCount }),
+            })}
           </p>
         ) : (
           <p className="text-kr-sm text-kr-muted">{t('rooms.noControllable')}</p>

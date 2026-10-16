@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { deleteRecording, downloadRecording, listRecordings } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
-import { formatBytes } from '@/lib/format';
+import { formatBytes, formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
@@ -92,9 +92,7 @@ export function RecordingsSlideover({ camera, isAdmin, onClose }: Props) {
                 )}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-kr-sm font-medium">
-                  {new Date(clip.startedAt).toLocaleString()}
-                </p>
+                <p className="truncate text-kr-sm font-medium">{formatDateTime(clip.startedAt)}</p>
                 <p className="text-kr-xs text-kr-secondary">
                   {clip.durationSec}s · {formatBytes(clip.sizeBytes)}
                 </p>

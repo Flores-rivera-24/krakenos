@@ -54,18 +54,49 @@ describe('HealthCard — observabilidad (US-191)', () => {
   it('muestra las métricas del agente', async () => {
     render(<HealthCard />);
     expect(await screen.findByText('1 h 2 min')).toBeInTheDocument();
-    expect(screen.getByText('120 / 90 MB')).toBeInTheDocument();
+    expect(screen.getByText('120 MB')).toBeInTheDocument();
     expect(screen.getByText('42')).toBeInTheDocument();
-    expect(screen.getByText('7.1%')).toBeInTheDocument(); // 3/42
+    expect(screen.getByText('7,1%')).toBeInTheDocument(); // 3/42
     expect(screen.getByText('12 / 55 ms')).toBeInTheDocument();
     expect(screen.getByText('driver:mock')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/system/metrics');
   });
 
+  // La memoria del agente es UNA magnitud con nombre (el RSS); el heap de V8 va
+  // aparte y rotulado. «120 / 90 MB» se leía como usado/total con el usado mayor.
+  it('rotula la memoria del agente y el heap por separado', async () => {
+    render(<HealthCard />);
+    expect(await screen.findByText('Memoria del agente')).toBeInTheDocument();
+    expect(screen.getByText('120 MB')).toBeInTheDocument();
+    expect(screen.getByText('Heap de V8 (usado / reservado)')).toBeInTheDocument();
+    expect(screen.getByText('60 / 90 MB')).toBeInTheDocument();
+    expect(screen.queryByText('120 / 90 MB')).not.toBeInTheDocument();
+  });
+
+  it('concuerda en número: «1 llamada» y «7 llamadas»', async () => {
+    apiMock.get.mockReset().mockResolvedValue({
+      ...snapshot,
+      managers: [
+        { name: 'driver:mock', count: 1, errors: 0, avgLatencyMs: 0, maxLatencyMs: 0 },
+        { name: 'iot:mock', count: 7, errors: 0, avgLatencyMs: 8, maxLatencyMs: 9 },
+      ],
+    });
+    render(<HealthCard />);
+    expect(await screen.findByText('1 llamada')).toBeInTheDocument();
+    expect(screen.getByText('7 llamadas')).toBeInTheDocument();
+    expect(screen.queryByText('1 llamadas')).not.toBeInTheDocument();
+  });
+
+  it('dice que el porcentaje de disco es el USADO (los GB son los libres)', async () => {
+    render(<HealthCard />);
+    // diskUsedPercent = (total - libre) / total: 75 % usado, 3 GB libres.
+    expect(await screen.findByText('3,0 GB · 75% usado')).toBeInTheDocument();
+  });
+
   // US-233: el disco es el fallo más probable de un aparato sobre tarjeta SD.
   it('muestra el disco libre y el tamaño de la base', async () => {
     render(<HealthCard />);
-    expect(await screen.findByText('3.0 GB · 75%')).toBeInTheDocument();
+    expect(await screen.findByText('3,0 GB · 75% usado')).toBeInTheDocument();
     expect(screen.getByText('42 MB')).toBeInTheDocument();
   });
 

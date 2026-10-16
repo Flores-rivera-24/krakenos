@@ -85,6 +85,30 @@ describe('ScenesPage (US-166)', () => {
     expect(screen.getByRole('button', { name: /Cine/ })).toBeInTheDocument();
   });
 
+  it('concuerda en número: «1 dispositivo» y «2 dispositivos»', async () => {
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/iot/devices') return Promise.resolve([LIGHT]);
+      if (path === '/scenes') {
+        return Promise.resolve([
+          scene(),
+          scene({
+            id: 's2',
+            name: 'Cine',
+            actions: [
+              { deviceId: 'light-salon', on: false },
+              { deviceId: 'tv', on: true },
+            ],
+          }),
+        ]);
+      }
+      return Promise.resolve([]);
+    });
+    renderPage();
+    expect(await screen.findByText('1 dispositivo')).toBeInTheDocument();
+    expect(screen.getByText('2 dispositivos')).toBeInTheDocument();
+    expect(screen.queryByText(/dispositivo\(s\)/)).not.toBeInTheDocument();
+  });
+
   it('crea una escena desde una plantilla (preselecciona la luz)', async () => {
     apiMock.post.mockResolvedValue(scene());
     const user = userEvent.setup();

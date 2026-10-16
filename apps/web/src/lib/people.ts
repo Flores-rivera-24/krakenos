@@ -5,6 +5,7 @@ import type {
   SetBedtimeRequest,
 } from '@krakenos/types';
 import { api } from '@/lib/api';
+import { formatTime } from '@/lib/format';
 
 /**
  * Cliente de las personas del hogar (US-240). La unidad es la persona: el fan-out
@@ -31,4 +32,4 @@ export const isPaused = (person: PersonSummary): boolean =>
 
 /** Hora de fin de una pausa, en formato corto local. */
 export const formatUntil = (iso: string): string =>
-  new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  formatTime(iso, { hour: '2-digit', minute: '2-digit' });

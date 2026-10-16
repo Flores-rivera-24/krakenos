@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { listCompatibility } from '@/lib/compatibility';
+import { formatDate } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 
 /**
@@ -97,7 +98,7 @@ export function CompatibilitySection() {
                   )}
                   {e.verifiedAt
                     ? t('compat.verifiedOn', {
-                        date: new Date(e.verifiedAt).toLocaleDateString(),
+                        date: formatDate(e.verifiedAt),
                       })
                     : t('compat.unverified')}
                 </span>

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { formatRate } from '@/lib/format';
+import { formatRate, formatRateCompact, formatTime } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
 import { useT } from '@/lib/i18n';
 
@@ -41,7 +41,7 @@ export function TrafficWidget() {
   const data = useMemo(
     () =>
       samples.map((s) => ({
-        t: new Date(s.timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }),
+        t: formatTime(s.timestamp, { minute: '2-digit', second: '2-digit' }),
         rx: s.rxBytesPerSec,
         tx: s.txBytesPerSec,
       })),
@@ -67,7 +67,7 @@ export function TrafficWidget() {
           </p>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={data}>
+            <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
               <defs>
                 <linearGradient id="rx" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="var(--kr-accent)" stopOpacity={0.4} />
@@ -82,8 +82,8 @@ export function TrafficWidget() {
               <YAxis
                 stroke="var(--kr-text-secondary)"
                 fontSize={11}
-                tickFormatter={(v: number) => formatRate(v)}
-                width={70}
+                tickFormatter={(v: number) => formatRateCompact(v)}
+                width={46}
               />
               <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatRate(v)} />
               <Area

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { pauseInternet, resumeInternet } from '@/lib/access';
 import { describeError } from '@/lib/errors';
+import { formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 
@@ -17,8 +18,8 @@ const OPTIONS = [
   { minutes: 120, label: '2 h' },
 ];
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+function formatUntil(iso: string): string {
+  return formatTime(iso, { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -65,7 +66,7 @@ export function PauseInternet({ device, canEdit }: Props) {
       {active ? (
         <>
           <span className="text-warning">
-            {t('pauseInternet.until', { time: formatTime(pausedUntil!) })}
+            {t('pauseInternet.until', { time: formatUntil(pausedUntil!) })}
           </span>
           {canEdit && (
             <Button size="sm" variant="outline" disabled={busy} onClick={() => void resume()}>

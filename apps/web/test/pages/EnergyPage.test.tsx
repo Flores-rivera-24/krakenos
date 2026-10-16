@@ -82,10 +82,29 @@ describe('EnergyPage (US-182)', () => {
   it('muestra el consumo total, coste y desglose por dispositivo', async () => {
     renderPage();
     // Total y el único dispositivo comparten valor (1.5 kWh): ≥1 aparición.
-    expect((await screen.findAllByText('1.50 kWh')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('0.23 €').length).toBeGreaterThan(0); // coste
+    expect((await screen.findAllByText('1,50 kWh')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0,23 €').length).toBeGreaterThan(0); // coste
     expect(screen.getByText('TV')).toBeInTheDocument();
     expect(screen.getByText('+50%')).toBeInTheDocument(); // vs anterior
+  });
+
+  // El eje y la tarjeta de total usan la MISMA unidad, y el título la dice.
+  it('el título del gráfico lleva la unidad de la tarjeta de total (kWh)', async () => {
+    renderPage();
+    expect(await screen.findByText('Consumo (kWh)')).toBeInTheDocument();
+  });
+
+  it('con consumos pequeños el gráfico y la tarjeta van en Wh', async () => {
+    apiMock.get.mockImplementation((path: string) => {
+      if (path.startsWith('/energy/stats')) {
+        return Promise.resolve(stats({ totalEnergyWh: 32, devices: [] }));
+      }
+      if (path === '/energy/config') return Promise.resolve(config);
+      return Promise.resolve([]);
+    });
+    renderPage();
+    expect(await screen.findByText('Consumo (Wh)')).toBeInTheDocument();
+    expect(screen.getByText('32 Wh')).toBeInTheDocument();
   });
 
   it('un admin ve el formulario de precio y lo guarda', async () => {

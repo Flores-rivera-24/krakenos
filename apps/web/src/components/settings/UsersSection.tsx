@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
-import { timeAgo } from '@/lib/format';
+import { formatDateTime, timeAgo } from '@/lib/format';
 import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
@@ -262,7 +262,7 @@ export function UsersSection() {
                       </select>
                       {u.expiresAt && (
                         <div className="mt-1 text-kr-xs text-kr-muted">
-                          {t('users.expiresAt', { date: new Date(u.expiresAt).toLocaleString() })}
+                          {t('users.expiresAt', { date: formatDateTime(u.expiresAt) })}
                         </div>
                       )}
                     </td>
