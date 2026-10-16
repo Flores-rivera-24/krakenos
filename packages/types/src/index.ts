@@ -9,6 +9,7 @@ export * from './system.js';
 export * from './tls.js';
 export * from './setup.js';
 export * from './audit.js';
+export * from './gateway.js';
 export * from './vpn.js';
 export * from './traffic.js';
 export * from './energy.js';

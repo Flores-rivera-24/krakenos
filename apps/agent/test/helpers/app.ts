@@ -6,8 +6,10 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type {
   CameraManager,
+  FirewallManager,
   HardwareDriver,
   IotManager,
+  QosManager,
   UserRole,
   VpnManager,
 } from '@krakenos/types';
@@ -125,6 +127,16 @@ export interface BuildTestAppOptions {
   driver?: HardwareDriver;
   /** Gestor de VPN a inyectar; por defecto un `MockVpnManager` nuevo. */
   vpn?: VpnManager;
+  /** Gestor de cortafuegos a inyectar; por defecto un `MockFirewallManager` nuevo. */
+  firewall?: FirewallManager;
+  /** Gestor de QoS a inyectar; por defecto un `MockQosManager` nuevo. */
+  qos?: QosManager;
+  /**
+   * Entorno con el que VPN, cortafuegos y QoS deciden si este equipo puede ser puerta de
+   * enlace. Por defecto Linux con el helper presente: los tests no dependen de la máquina
+   * que los corre. El helper es el mismo para los tres dominios.
+   */
+  gateway?: { platform?: NodeJS.Platform; helperExists?: boolean };
   /**
    * Transporte de la LocalAPI de Tailscale (US-215); por defecto uno que simula
    * la ausencia del socket (→ `not-installed`), sin tocar el sistema.
@@ -309,6 +321,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       restoreStagingDir:
         opts.restoreStagingDir ?? join(mkdtempSync(join(tmpdir(), 'krakenos-restore-')), 'staging'),
     });
+    const gateway = {
+      helperPath: '/test/krakenos-helper',
+      platform: opts.gateway?.platform ?? ('linux' as const),
+      pathExists: () => opts.gateway?.helperExists ?? true,
+    };
     const vpn = opts.vpn ?? new MockVpnManager({ endpoint: 'vpn.test', listenPort: 51820 });
     // Tailscale (US-215): por defecto "socket ausente" (ENOENT → not-installed);
     // los tests de comportamiento inyectan su transporte falso.
@@ -318,7 +335,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
         fetchStatus: () =>
           Promise.reject(Object.assign(new Error('no socket'), { code: 'ENOENT' })),
       } satisfies TailscaleTransport);
-    await app.register(vpnRoutes, { prefix: '/api/vpn', vpn, tailscale });
+    await app.register(vpnRoutes, { prefix: '/api/vpn', vpn, tailscale, gateway });
     await app.register(auditRoutes, { prefix: '/api/audit' });
     await app.register(pushRoutes, { prefix: '/api/push', service: pushService });
     await app.register(alertsRoutes, {
@@ -399,10 +416,15 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     });
     await app.register(firewallRoutes, {
       prefix: '/api/firewall',
-      firewall: new MockFirewallManager(),
+      firewall: opts.firewall ?? new MockFirewallManager(),
+      gateway,
     });
     await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
-    await app.register(qosRoutes, { prefix: '/api/qos', qos: new MockQosManager() });
+    await app.register(qosRoutes, {
+      prefix: '/api/qos',
+      qos: opts.qos ?? new MockQosManager(),
+      gateway,
+    });
     const dnsManager = new MockDnsManager();
     await app.register(dnsRoutes, {
       prefix: '/api/dns',

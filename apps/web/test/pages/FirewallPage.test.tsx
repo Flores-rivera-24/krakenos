@@ -1,4 +1,4 @@
-import type { FirewallRule } from '@krakenos/types';
+import type { FirewallRule, GatewayCapability } from '@krakenos/types';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,6 +34,15 @@ const RULE: FirewallRule = {
   createdAt: '2026-06-17T00:00:00.000Z',
 };
 
+/** Mock por ruta: `/firewall/status` lleva la capacidad y el resto de GET devuelven las reglas. */
+function mockApi(rules: FirewallRule[], capability: GatewayCapability = { status: 'supported' }) {
+  apiMock.get
+    .mockReset()
+    .mockImplementation((path: string) =>
+      path === '/firewall/status' ? Promise.resolve({ capability }) : Promise.resolve(rules),
+    );
+}
+
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
@@ -43,7 +52,7 @@ function setRole(role: 'admin' | 'viewer') {
 
 describe('FirewallPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue([RULE]);
+    mockApi([RULE]);
     apiMock.post.mockReset().mockResolvedValue(RULE);
     apiMock.patch.mockReset().mockResolvedValue({ ...RULE, enabled: false });
     apiMock.del.mockReset().mockResolvedValue(undefined);
@@ -108,7 +117,7 @@ describe('FirewallPage', () => {
   });
 
   it('muestra el estado vacío honesto sin reglas (US-93)', async () => {
-    apiMock.get.mockReset().mockResolvedValue([]);
+    mockApi([]);
     render(<FirewallPage />);
     expect(await screen.findByText(/Aún no hay reglas configuradas/)).toBeInTheDocument();
   });
@@ -116,7 +125,7 @@ describe('FirewallPage', () => {
 
 describe('FirewallPage: la fila abrible se anuncia en el idioma activo', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue([RULE]);
+    mockApi([RULE]);
     setRole('admin');
   });
   afterEach(() => setLocale('es', { persist: false }));
@@ -144,5 +153,80 @@ describe('FirewallPage: la fila abrible se anuncia en el idioma activo', () => {
     await waitFor(() =>
       expect(screen.getByRole('row', { name: 'Edit rule Bloquear IoT' })).toBeVisible(),
     );
+  });
+});
+
+describe('FirewallPage: capacidad de puerta de enlace de este equipo', () => {
+  beforeEach(() => {
+    apiMock.post.mockReset();
+    apiMock.patch.mockReset();
+    apiMock.del.mockReset();
+    setRole('admin');
+  });
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('supported: sin aviso y con el formulario de alta', async () => {
+    mockApi([RULE], { status: 'supported' });
+    render(<FirewallPage />);
+    await screen.findByText('Bloquear IoT');
+    expect(screen.getByRole('button', { name: /Añadir regla/ })).toBeInTheDocument();
+    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
+    expect(screen.queryByText('Falta instalar el helper de puerta de enlace')).toBeNull();
+    expect(apiMock.get).toHaveBeenCalledWith('/firewall/status');
+  });
+
+  it('unsupported: avisa de que en Windows hay que usar el cortafuegos del router y no ofrece alta', async () => {
+    mockApi([RULE], { status: 'unsupported', reason: 'platform' });
+    render(<FirewallPage />);
+    await screen.findByText('Bloquear IoT');
+    expect(screen.getByText('Este equipo no puede hacer de puerta de enlace')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /En Windows, KrakenOS no hace de puerta de enlace.*cortafuegos de tu router/,
+      ),
+    ).toBeInTheDocument();
+    // Ningún control que acabaría en error: ni formulario, ni interruptor activo, ni eliminar.
+    expect(screen.queryByRole('button', { name: /Añadir regla/ })).toBeNull();
+    expect(screen.queryByLabelText('Nombre')).toBeNull();
+    expect(screen.getByRole('switch')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Eliminar regla/ })).toBeNull();
+  });
+
+  it('requires-setup: dice cómo instalar el helper y no ofrece alta', async () => {
+    mockApi([RULE], { status: 'requires-setup', reason: 'helper-missing' });
+    render(<FirewallPage />);
+    await screen.findByText('Bloquear IoT');
+    expect(screen.getByText('Falta instalar el helper de puerta de enlace')).toBeInTheDocument();
+    expect(screen.getByText(/install\.sh --with-helper/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Añadir regla/ })).toBeNull();
+  });
+
+  it('sin reglas y sin capacidad de crearlas, el vacío no manda a «crear una arriba»', async () => {
+    mockApi([], { status: 'unsupported', reason: 'platform' });
+    render(<FirewallPage />);
+    expect(await screen.findByText(/Aún no hay reglas configuradas/)).toBeInTheDocument();
+    expect(screen.queryByText(/Crea una arriba/)).toBeNull();
+  });
+
+  it('si no se pudo leer la capacidad no se ofrece alta ni se afirma nada: error visible', async () => {
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path === '/firewall/status' ? Promise.reject(new Error('boom')) : Promise.resolve([RULE]),
+      );
+    render(<FirewallPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo conectar/);
+    expect(screen.queryByRole('button', { name: /Añadir regla/ })).toBeNull();
+    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
+  });
+
+  it('el aviso sale en inglés con el idioma en inglés', async () => {
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    mockApi([RULE], { status: 'unsupported', reason: 'platform' });
+    render(<FirewallPage />);
+    expect(await screen.findByText('This computer can’t act as a gateway')).toBeInTheDocument();
+    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
   });
 });

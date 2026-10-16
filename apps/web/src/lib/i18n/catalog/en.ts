@@ -75,6 +75,12 @@ export const en: Record<TranslationKey, string> = {
   'errors.code.SETUP_ALREADY_DONE': 'This system is already set up',
   'errors.code.SETUP_LOCK_STALE':
     'Setup was left locked by an earlier attempt. Restart the agent and try again.',
+  'errors.code.GATEWAY_UNSUPPORTED':
+    'This computer can’t act as a gateway (VPN, firewall or QoS). Use your router’s.',
+  'errors.code.GATEWAY_REQUIRES_SETUP':
+    'The gateway helper isn’t installed on this computer, so the change can’t be applied.',
+  'errors.code.PRIVILEGED_COMMAND_FAILED':
+    'The change couldn’t be applied on the system. The details are in the server log.',
 
   // --- Setup / wizard ---
   'setup.checking': 'Checking this installation…',
@@ -399,6 +405,7 @@ export const en: Record<TranslationKey, string> = {
   'vpn.col.publicKey': 'Public key',
   'vpn.col.action': 'Action',
   'vpn.empty.title': 'No devices. Create the first one above.',
+  'vpn.empty.titleReadOnly': 'No devices.',
   'vpn.empty.desc':
     'Give your phone or computer a name and press “Add device”: you’ll get a QR to connect it to your network from anywhere with the WireGuard app.',
   'vpn.delete': 'Delete',
@@ -925,6 +932,20 @@ export const en: Record<TranslationKey, string> = {
   'perDeviceTraffic.setup.title': 'Your router can report this, but it is missing a package',
   'perDeviceTraffic.setup.nlbwmon':
     'Install «nlbwmon» on the router: in LuCI, System → Software → Update lists and search for «nlbwmon»; or over SSH, «opkg update && opkg install nlbwmon luci-app-nlbwmon». KrakenOS picks it up on its own within a few minutes and starts counting from then.',
+  'gateway.unsupported.title': 'This computer can’t act as a gateway',
+  'gateway.unsupported.vpn':
+    'On Windows, KrakenOS doesn’t act as a gateway: it can’t be the WireGuard server. Use your router’s VPN, or Tailscale below.',
+  'gateway.unsupported.firewall':
+    'On Windows, KrakenOS doesn’t act as a gateway: it doesn’t apply firewall rules. Use your router’s firewall.',
+  'gateway.unsupported.qos':
+    'On Windows, KrakenOS doesn’t act as a gateway: it doesn’t limit or prioritize traffic. Use your router’s QoS.',
+  'gateway.setup.title': 'The gateway helper isn’t installed',
+  'gateway.setup.vpn':
+    'Without the privileged helper, KrakenOS can’t add or remove WireGuard devices. Install it by running «install.sh --with-helper» on this computer.',
+  'gateway.setup.firewall':
+    'Without the privileged helper, KrakenOS can’t apply firewall rules. Install it by running «install.sh --with-helper» on this computer.',
+  'gateway.setup.qos':
+    'Without the privileged helper, KrakenOS can’t limit or prioritize traffic. Install it by running «install.sh --with-helper» on this computer.',
   'wellbeing.devices.one': '{n} device',
   'wellbeing.devices.other': '{n} devices',
 

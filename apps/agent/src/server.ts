@@ -378,6 +378,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     vpn,
     // Detección de Tailscale (US-215): LocalAPI por socket UNIX, solo lectura.
     tailscale: createTailscaleTransport(env.vpn.tailscaleSocketPath),
+    gateway: { helperPath: env.vpn.wireguard.helperPath },
   });
   await app.register(iotRoutes, { prefix: '/api/iot', iot });
   // Solo si hay store Tuya (config presente); con `env.iot.tuya` siempre lo hay.
@@ -429,9 +430,17 @@ export async function buildServer(): Promise<FastifyInstance> {
     clearInterval(streamReap);
     await cameras.stop();
   });
-  await app.register(firewallRoutes, { prefix: '/api/firewall', firewall });
+  await app.register(firewallRoutes, {
+    prefix: '/api/firewall',
+    firewall,
+    gateway: { helperPath: env.firewall.iptables.helperPath },
+  });
   await app.register(vlanRoutes, { prefix: '/api/vlans', vlan });
-  await app.register(qosRoutes, { prefix: '/api/qos', qos });
+  await app.register(qosRoutes, {
+    prefix: '/api/qos',
+    qos,
+    gateway: { helperPath: env.qos.tc.helperPath },
+  });
   // Aviso de destino nuevo (US-253): se alimenta de la tanda que acaba de
   // atribuir la ingesta del histórico, no de una relectura de la tabla.
   const newDestinationService = new NewDestinationService(app);
