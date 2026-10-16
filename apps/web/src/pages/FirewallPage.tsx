@@ -3,9 +3,11 @@ import type {
   FirewallAction,
   FirewallProtocol,
   FirewallRule,
+  GatewayStatusResponse,
 } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { FirewallRuleSlideover } from '@/components/firewall/FirewallRuleSlideover';
+import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -49,6 +51,8 @@ export function FirewallPage() {
   };
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [rules, setRules] = useState<FirewallRule[]>([]);
+  // Capacidad de ESTE equipo para aplicar reglas; `null` = aún sin saber (cargando o fallo).
+  const [capability, setCapability] = useState<GatewayStatusResponse['capability'] | null>(null);
   const [form, setForm] = useState<CreateFirewallRuleRequest>(EMPTY);
   const [portText, setPortText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -70,11 +74,21 @@ export function FirewallPage() {
         setError(describeError(err, t('firewall.loadError')));
       });
 
+  const loadCapability = () =>
+    api
+      .get<GatewayStatusResponse>('/firewall/status')
+      .then((s) => setCapability(s.capability))
+      .catch((err) => setError(describeError(err, t('firewall.loadError'))));
+
   useEffect(() => {
     // Todo el módulo de cortafuegos es solo admin en el servidor: a otro rol ni se le pide.
     if (!isAdmin) return;
-    void load().finally(() => setLoading(false));
+    void Promise.all([load(), loadCapability()]).finally(() => setLoading(false));
   }, [isAdmin]);
+
+  // Solo con un equipo que puede aplicar reglas se ofrece crearlas, activarlas o eliminarlas:
+  // si no, cada control acabaría en error. Sin saberlo todavía, tampoco.
+  const canConfigure = isAdmin && capability?.status === 'supported';
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -131,7 +145,11 @@ export function FirewallPage() {
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      {isAdmin && (
+      {isAdmin && capability && !canConfigure && (
+        <GatewayCapabilityNotice capability={capability} feature="firewall" />
+      )}
+
+      {canConfigure && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-foreground">{t('firewall.newRule')}</CardTitle>
@@ -276,7 +294,7 @@ export function FirewallPage() {
                       <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
                         <p className="text-kr-muted">{t('firewall.empty.title')}</p>
                         <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                          {t('firewall.empty.desc')} {isAdmin && t('firewall.empty.cta')}
+                          {t('firewall.empty.desc')} {canConfigure && t('firewall.empty.cta')}
                         </p>
                       </td>
                     </tr>
@@ -294,7 +312,7 @@ export function FirewallPage() {
                           <OptimisticSwitch
                             checked={r.enabled}
                             onToggle={(next) => toggleRule(r, next)}
-                            disabled={!isAdmin}
+                            disabled={!canConfigure}
                             errorMessage={t('firewall.toggleError', { name: r.name })}
                             aria-label={t('firewall.toggleLabel', { name: r.name })}
                           />
@@ -315,12 +333,14 @@ export function FirewallPage() {
                         <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
                         {isAdmin && (
                           <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                            <DeleteButton
-                              onDelete={() => removeRule(r.id)}
-                              aria-label={t('firewall.deleteLabel', { name: r.name })}
-                            >
-                              {t('firewall.delete')}
-                            </DeleteButton>
+                            {canConfigure && (
+                              <DeleteButton
+                                onDelete={() => removeRule(r.id)}
+                                aria-label={t('firewall.deleteLabel', { name: r.name })}
+                              >
+                                {t('firewall.delete')}
+                              </DeleteButton>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -336,7 +356,7 @@ export function FirewallPage() {
       {selected && (
         <FirewallRuleSlideover
           rule={selected}
-          canEdit={isAdmin}
+          canEdit={canConfigure}
           onClose={() => setSelected(null)}
           onSaved={load}
         />

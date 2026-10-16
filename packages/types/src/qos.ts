@@ -53,6 +53,8 @@ export interface UpdateQosRuleRequest {
  * las reglas en memoria.
  */
 export interface QosManager {
+  /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
+  readonly kind: QosKind;
   listRules(): Promise<QosRule[]>;
   getRule(id: Id): Promise<QosRule | null>;
   createRule(input: CreateQosRuleRequest): Promise<QosRule>;

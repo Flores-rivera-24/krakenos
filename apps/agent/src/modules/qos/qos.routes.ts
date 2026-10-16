@@ -1,6 +1,12 @@
 import type { CreateQosRuleRequest, QosManager, UpdateQosRuleRequest } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  gatewayCapabilityOf,
+  requireGatewaySupported,
+  type GatewayProbe,
+} from '../../privileged/gateway-capability.js';
+import { gatewayStatusSchema } from '../common.schemas.js';
+import {
   createRuleSchema,
   listRulesSchema,
   removeRuleSchema,
@@ -8,13 +14,25 @@ import {
 } from './qos.schemas.js';
 
 interface QosRoutesOpts {
-  qos: QosManager;
+  qos: QosManager; /** Dónde buscar el helper (la capacidad de este equipo depende de ello). */
+  gateway: GatewayProbe;
 }
 
 export const qosRoutes: FastifyPluginAsync<QosRoutesOpts> = async (app, opts) => {
   const { qos } = opts;
+  const capability = gatewayCapabilityOf(qos, opts.gateway);
   // El QoS es configuración privilegiada: toda la gestión es solo admin.
   app.addHook('preHandler', app.requireRole('admin'));
+
+  // Escribir exige que este equipo pueda aplicar el cambio; las lecturas siguen (la UI
+  // necesita el estado para enseñar por qué no se puede).
+  app.addHook('preHandler', requireGatewaySupported(capability));
+
+  // La lista es un array y no admite campos: la capacidad viaja en su propio estado, igual que
+  // en `/vpn/status`.
+  app.get('/status', { schema: gatewayStatusSchema }, async () => ({
+    capability: capability(),
+  }));
 
   app.get('/rules', { schema: listRulesSchema }, async () => {
     return qos.listRules();

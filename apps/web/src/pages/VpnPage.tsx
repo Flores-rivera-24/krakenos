@@ -1,5 +1,6 @@
-import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatus } from '@krakenos/types';
+import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatusResponse } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
+import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -21,7 +22,7 @@ import { filaAbrible } from '@/lib/a11y';
 
 export function VpnPage() {
   const t = useT();
-  const [status, setStatus] = useState<VpnStatus | null>(null);
+  const [status, setStatus] = useState<VpnStatusResponse | null>(null);
   const [peers, setPeers] = useState<VpnPeer[]>([]);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -31,7 +32,7 @@ export function VpnPage() {
   const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
   const load = () =>
-    Promise.all([api.get<VpnStatus>('/vpn/status'), api.getList<VpnPeer>('/vpn/peers')])
+    Promise.all([api.get<VpnStatusResponse>('/vpn/status'), api.getList<VpnPeer>('/vpn/peers')])
       .then(([s, p]) => {
         setStatus(s);
         setPeers(p);
@@ -41,6 +42,11 @@ export function VpnPage() {
   useEffect(() => {
     void load().finally(() => setLoading(false));
   }, []);
+
+  // Solo con el estado cargado y un equipo que puede ser servidor se ofrece el alta: si no,
+  // el formulario acabaría en error (o, mientras carga, parpadearía y desaparecería).
+  const capability = status?.capability;
+  const canConfigure = capability?.status === 'supported';
 
   const addPeer = async (e: FormEvent) => {
     e.preventDefault();
@@ -123,31 +129,37 @@ export function VpnPage() {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <span className="flex items-center gap-1.5">
-              <CardTitle className="text-base text-foreground">{t('vpn.addDevice')}</CardTitle>
-              <HelpHint content={t('vpn.qrHelp')} label={t('vpn.qrHelp.label')} />
-            </span>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={addPeer} className="flex items-end gap-3">
-              <div className="flex-1 space-y-2">
-                <Label htmlFor="peer-name">{t('vpn.name')}</Label>
-                <Input
-                  id="peer-name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t('vpn.namePlaceholder')}
-                  maxLength={60}
-                />
-              </div>
-              <Button type="submit" disabled={busy}>
-                {busy ? t('vpn.adding') : t('vpn.addDevice')}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        {capability && !canConfigure ? (
+          <div className="lg:col-span-2">
+            <GatewayCapabilityNotice capability={capability} feature="vpn" />
+          </div>
+        ) : canConfigure ? (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <span className="flex items-center gap-1.5">
+                <CardTitle className="text-base text-foreground">{t('vpn.addDevice')}</CardTitle>
+                <HelpHint content={t('vpn.qrHelp')} label={t('vpn.qrHelp.label')} />
+              </span>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={addPeer} className="flex items-end gap-3">
+                <div className="flex-1 space-y-2">
+                  <Label htmlFor="peer-name">{t('vpn.name')}</Label>
+                  <Input
+                    id="peer-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t('vpn.namePlaceholder')}
+                    maxLength={60}
+                  />
+                </div>
+                <Button type="submit" disabled={busy}>
+                  {busy ? t('vpn.adding') : t('vpn.addDevice')}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
 
       <Card>
@@ -171,10 +183,14 @@ export function VpnPage() {
                 ) : peers.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">{t('vpn.empty.title')}</p>
-                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        {t('vpn.empty.desc')}
+                      <p className="text-kr-muted">
+                        {canConfigure ? t('vpn.empty.title') : t('vpn.empty.titleReadOnly')}
                       </p>
+                      {canConfigure && (
+                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                          {t('vpn.empty.desc')}
+                        </p>
+                      )}
                     </td>
                   </tr>
                 ) : (
@@ -193,12 +209,15 @@ export function VpnPage() {
                         {p.publicKey.slice(0, 16)}…
                       </td>
                       <td className="px-3 py-2 text-right">
-                        <DeleteButton
-                          onDelete={() => removePeer(p.id)}
-                          aria-label={t('vpn.deleteLabel', { name: p.name })}
-                        >
-                          {t('vpn.delete')}
-                        </DeleteButton>
+                        {/* Sin servidor posible, eliminar sería un botón que siempre falla. */}
+                        {canConfigure && (
+                          <DeleteButton
+                            onDelete={() => removePeer(p.id)}
+                            aria-label={t('vpn.deleteLabel', { name: p.name })}
+                          >
+                            {t('vpn.delete')}
+                          </DeleteButton>
+                        )}
                       </td>
                     </tr>
                   ))
@@ -219,7 +238,7 @@ export function VpnPage() {
           peer={selected.peer}
           config={selected.config}
           onClose={() => setSelected(null)}
-          onDelete={(id) => void removePeer(id)}
+          onDelete={canConfigure ? (id) => void removePeer(id) : undefined}
         />
       )}
     </div>

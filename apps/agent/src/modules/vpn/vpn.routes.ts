@@ -1,5 +1,10 @@
 import type { CreatePeerRequest, VpnManager } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
+import {
+  gatewayCapabilityOf,
+  requireGatewaySupported,
+  type GatewayProbe,
+} from '../../privileged/gateway-capability.js';
 import { detectTailscale, type TailscaleTransport } from '../../vpn/tailscale.js';
 import {
   createPeerSchema,
@@ -13,15 +18,23 @@ interface VpnRoutesOpts {
   vpn: VpnManager;
   /** Transporte hacia la LocalAPI de tailscaled (US-215); inyectable en tests. */
   tailscale: TailscaleTransport;
+  /** Dónde buscar el helper de WireGuard (la capacidad de este equipo depende de ello). */
+  gateway: GatewayProbe;
 }
 
 export const vpnRoutes: FastifyPluginAsync<VpnRoutesOpts> = async (app, opts) => {
   const { vpn, tailscale } = opts;
+  const capability = gatewayCapabilityOf(vpn, opts.gateway);
   // Toda la gestión de VPN es privilegiada: solo admin.
   app.addHook('preHandler', app.requireRole('admin'));
 
+  // Escribir exige que este equipo pueda aplicar el cambio; las lecturas siguen (la UI
+  // necesita el estado para enseñar por qué no se puede).
+  app.addHook('preHandler', requireGatewaySupported(capability));
+
   app.get('/status', { schema: vpnStatusSchema }, async () => {
-    return vpn.getStatus();
+    // La capacidad viaja con los datos: la UI no la adivina donde se ve el vacío.
+    return { ...(await vpn.getStatus()), capability: capability() };
   });
 
   // Detección de Tailscale (US-215): solo lectura, nunca administra el tailnet.

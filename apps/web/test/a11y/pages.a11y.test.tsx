@@ -236,6 +236,7 @@ function apiGet(path: string): Promise<unknown> {
       endpoint: 'h:1',
       listenPort: 1,
       peerCount: 1,
+      capability: { status: 'supported' },
     });
   if (path === '/vpn/peers') return Promise.resolve([VPN_PEER]);
   if (path === '/vpn/tailscale')
@@ -247,6 +248,8 @@ function apiGet(path: string): Promise<unknown> {
     });
   if (path === '/iot/devices') return Promise.resolve([IOT_LIGHT]);
   if (path === '/cameras') return Promise.resolve([CAMERA]);
+  if (path === '/firewall/status') return Promise.resolve({ capability: { status: 'supported' } });
+  if (path === '/qos/status') return Promise.resolve({ capability: { status: 'supported' } });
   if (path === '/firewall/rules') return Promise.resolve([FIREWALL_RULE]);
   if (path === '/qos/rules') return Promise.resolve([QOS_RULE]);
   if (path === '/vlans') return Promise.resolve([VLAN]);

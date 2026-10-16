@@ -1,4 +1,5 @@
 import { TAILSCALE_STATES } from '@krakenos/types';
+import { gatewayCapabilitySchema } from '../common.schemas.js';
 
 const peerResponse = {
   type: 'object',
@@ -23,8 +24,9 @@ export const vpnStatusSchema = {
         endpoint: { type: ['string', 'null'] },
         listenPort: { type: 'integer' },
         peerCount: { type: 'integer' },
+        capability: gatewayCapabilitySchema,
       },
-      required: ['enabled', 'publicKey', 'endpoint', 'listenPort', 'peerCount'],
+      required: ['enabled', 'publicKey', 'endpoint', 'listenPort', 'peerCount', 'capability'],
     },
   },
 } as const;
