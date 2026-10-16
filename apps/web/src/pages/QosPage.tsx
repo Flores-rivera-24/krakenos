@@ -12,6 +12,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
+import { formatFixed } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -29,7 +30,7 @@ const EMPTY: CreateQosRuleRequest = { name: '', target: '', priority: 'normal' }
 /** Formatea kbps a una etiqueta legible; `0` = sin límite. */
 function formatLimit(kbps: number): string {
   if (kbps === 0) return '∞';
-  if (kbps >= 1000) return `${(kbps / 1000).toFixed(kbps % 1000 ? 1 : 0)} Mbps`;
+  if (kbps >= 1000) return `${formatFixed(kbps / 1000, kbps % 1000 ? 1 : 0)} Mbps`;
   return `${kbps} kbps`;
 }
 

@@ -17,6 +17,7 @@ import {
   setAutoBackupPassphrase,
 } from '@/lib/system-backup';
 import { toast } from '@/store/toast.store';
+import { formatDateTime, formatFixed } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 
 /**
@@ -189,8 +190,8 @@ export function SystemBackupCard() {
 
 /** Formatea bytes para la UI (sin decimales de más). */
 function formatBytes(bytes: number): string {
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-  if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(0)} MB`;
+  if (bytes >= 1024 ** 3) return `${formatFixed(bytes / 1024 ** 3, 1)} GB`;
+  if (bytes >= 1024 ** 2) return `${formatFixed(bytes / 1024 ** 2, 0)} MB`;
   return `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
@@ -340,7 +341,7 @@ function AutoBackupSection() {
                 other: t('backup.auto.copies'),
               }),
               size: formatBytes(status.totalBytes),
-              last: status.lastBackupAt ? new Date(status.lastBackupAt).toLocaleString() : '—',
+              last: status.lastBackupAt ? formatDateTime(status.lastBackupAt) : '—',
             })}
       </p>
 

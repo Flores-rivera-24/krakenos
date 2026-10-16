@@ -11,12 +11,17 @@ import {
   ENERGY_RANGES,
   fetchEnergyConfig,
   fetchEnergyStats,
+  energyIn,
+  energyUnitFor,
   formatCost,
   formatEnergy,
+  formatEnergyIn,
+  formatEnergyTick,
   percentChange,
   saveEnergyConfig,
 } from '@/lib/energy';
 import { describeError } from '@/lib/errors';
+import { formatDate, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { downloadReport } from '@/lib/reports';
 import { useAuthStore } from '@/store/auth.store';
@@ -76,18 +81,22 @@ export function EnergyPage() {
     };
   }, []);
 
+  // Misma unidad que la tarjeta de total (`formatEnergy(stats.totalEnergyWh)`):
+  // el eje y la cifra de arriba se leen en la misma escala.
+  const unit = energyUnitFor(stats?.totalEnergyWh ?? 0);
+
   const chartData = useMemo(() => {
     if (!stats) return [];
     const label = (iso: string): string => {
       const d = new Date(iso);
-      if (range === 'day') return d.toLocaleTimeString([], { hour: '2-digit' });
-      return d.toLocaleDateString([], { day: '2-digit', month: 'short' });
+      if (range === 'day') return formatTime(d, { hour: '2-digit' });
+      return formatDate(d, { day: '2-digit', month: 'short' });
     };
     return stats.buckets.map((b) => ({
       t: label(b.timestamp),
-      kwh: +(b.energyWh / 1000).toFixed(3),
+      value: energyIn(b.energyWh, unit),
     }));
-  }, [stats, range]);
+  }, [stats, range, unit]);
 
   const change = stats ? percentChange(stats.totalEnergyWh, stats.previousTotalEnergyWh) : null;
 
@@ -148,7 +157,7 @@ export function EnergyPage() {
 
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle>{t('energy.consumptionChart')}</CardTitle>
+          <CardTitle>{t('energy.consumptionChart', { unit })}</CardTitle>
           <div className="flex items-center gap-2">
             <div className="flex gap-1" role="group" aria-label={t('energy.rangeLabel')}>
               {ENERGY_RANGES.map((r) => (
@@ -184,10 +193,18 @@ export function EnergyPage() {
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={chartData}>
                 <XAxis dataKey="t" stroke={CHART_COLORS.axis} fontSize={11} minTickGap={20} />
-                <YAxis stroke={CHART_COLORS.axis} fontSize={11} width={44} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => `${v} kWh`} />
+                <YAxis
+                  stroke={CHART_COLORS.axis}
+                  fontSize={11}
+                  width={52}
+                  tickFormatter={(v: number) => formatEnergyTick(v, unit)}
+                />
+                <Tooltip
+                  contentStyle={TOOLTIP_STYLE}
+                  formatter={(v: number) => formatEnergyIn(unit === 'kWh' ? v * 1000 : v, unit)}
+                />
                 <Bar
-                  dataKey="kwh"
+                  dataKey="value"
                   name={t('energy.consumption')}
                   fill={CHART_COLORS.bar}
                   radius={[3, 3, 0, 0]}

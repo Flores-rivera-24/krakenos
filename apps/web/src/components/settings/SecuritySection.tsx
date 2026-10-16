@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
-import { timeAgo } from '@/lib/format';
+import { formatDate, timeAgo } from '@/lib/format';
 import { applyTheme, type Theme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
@@ -177,12 +177,12 @@ function PasskeysCard() {
                         {pk.lastUsedAt
                           ? t('security.passkey.metaUsed', {
                               type: pk.deviceType,
-                              created: new Date(pk.createdAt).toLocaleDateString(),
-                              used: new Date(pk.lastUsedAt).toLocaleDateString(),
+                              created: formatDate(pk.createdAt),
+                              used: formatDate(pk.lastUsedAt),
                             })
                           : t('security.passkey.metaUnused', {
                               type: pk.deviceType,
-                              created: new Date(pk.createdAt).toLocaleDateString(),
+                              created: formatDate(pk.createdAt),
                             })}
                       </span>
                     </span>
@@ -378,7 +378,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
                   <span className="text-kr-secondary">
                     {t('security.sessionMeta', {
                       created: timeAgo(s.createdAt),
-                      expires: new Date(s.expiresAt).toLocaleDateString(),
+                      expires: formatDate(s.expiresAt),
                     })}
                   </span>
                   <Button variant="ghost" size="sm" onClick={() => void revoke(s.id)}>

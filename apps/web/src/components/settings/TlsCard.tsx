@@ -6,6 +6,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
+import { formatDate } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 
 /**
@@ -134,7 +135,7 @@ export function TlsCard() {
             <div>
               <dt className="text-kr-xs text-kr-muted">{t('settings.tls.expiresLabel')}</dt>
               <dd className="text-kr-primary">
-                {new Date(status.notAfter).toLocaleDateString()}
+                {formatDate(status.notAfter)}
                 {status.daysLeft !== null && !status.expired && (
                   <span className="ml-1 text-kr-xs text-kr-muted">
                     {t('settings.tls.daysLeft', { n: status.daysLeft })}

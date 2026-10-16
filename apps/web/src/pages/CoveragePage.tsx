@@ -34,6 +34,7 @@ import {
 import { formatDbm } from '@/lib/coverage-format';
 import { proposeWalls, type ProposedWall } from '@/lib/wall-propose';
 import { describeError } from '@/lib/errors';
+import { formatFixed } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -521,7 +522,7 @@ export function CoveragePage() {
                 {heatmap.calibration
                   ? t('coverage.model.calibrated', {
                       n: heatmap.calibration.sampleCount,
-                      rmse: heatmap.calibration.rmseDb.toFixed(1),
+                      rmse: formatFixed(heatmap.calibration.rmseDb, 1),
                     })
                   : t('coverage.model.generic')}
               </Callout>

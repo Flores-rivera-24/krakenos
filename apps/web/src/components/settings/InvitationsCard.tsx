@@ -11,7 +11,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { RichText } from '@/components/ui/rich-text';
 import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
-import { timeAgo } from '@/lib/format';
+import { timeAgo, timeFromNow } from '@/lib/format';
 import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import {
   createInvitation,
@@ -290,7 +290,7 @@ export function InvitationsCard() {
                           ? t('invitations.usedAgo', {
                               when: timeAgo(inv.usedAt ?? inv.createdAt),
                             })
-                          : t('invitations.expiresAgo', { when: timeAgo(inv.expiresAt) }),
+                          : t('invitations.expiresAgo', { when: timeFromNow(inv.expiresAt) }),
                     })}
                   </p>
                 </div>

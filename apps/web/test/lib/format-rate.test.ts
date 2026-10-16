@@ -3,7 +3,7 @@ import { formatRate } from '@/lib/format';
 
 describe('formatRate', () => {
   it('formatea Mbps', () => {
-    expect(formatRate(1_250_000)).toBe('10.0 Mbps'); // 1.25 MB/s = 10 Mbps
+    expect(formatRate(1_250_000)).toBe('10,0 Mbps'); // 1.25 MB/s = 10 Mbps
   });
 
   it('formatea Kbps', () => {

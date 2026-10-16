@@ -7,6 +7,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { describeError } from '@/lib/errors';
+import { formatDate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { canControlHome } from '@/lib/roles';
 import { createApiToken, listApiTokens, revokeApiToken } from '@/lib/tokens';
@@ -132,7 +133,7 @@ export function ApiTokensCard() {
                     {' · '}
                     {tk.lastUsedAt
                       ? t('settings.apiTokens.used', {
-                          when: new Date(tk.lastUsedAt).toLocaleDateString(),
+                          when: formatDate(tk.lastUsedAt),
                         })
                       : t('settings.apiTokens.neverUsed')}
                   </p>

@@ -3,7 +3,8 @@ import { Activity } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
-import { useT } from '@/lib/i18n';
+import { formatFixed, formatNumber } from '@/lib/format';
+import { plural, useT } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
 
 /**
@@ -59,11 +60,21 @@ export function HealthCard() {
                 label={t('settings.health.uptime')}
                 value={formatUptime(metrics.uptimeSeconds)}
               />
-              <Metric label={t('settings.health.memory')} value={formatMem(metrics.memory)} />
+              {/* Dato principal: la memoria residente (RSS), lo que el aparato gasta de
+                  verdad. El heap de V8 es otra cosa (parte de esa memoria) y va aparte,
+                  rotulado: «232 / 112 MB» se leía como usado/total con el usado mayor. */}
+              <Metric
+                label={t('settings.health.memory')}
+                value={formatMb(metrics.memory.rssBytes)}
+              />
+              <Metric
+                label={t('settings.health.heap')}
+                value={`${formatMb(metrics.memory.heapUsedBytes, false)} / ${formatMb(metrics.memory.heapTotalBytes)}`}
+              />
               <Metric label={t('settings.health.requests')} value={String(metrics.http.total)} />
               <Metric
                 label={t('settings.health.errorRate')}
-                value={`${(metrics.http.errorRate * 100).toFixed(1)}%`}
+                value={`${formatFixed(metrics.http.errorRate * 100, 1)}%`}
                 danger={metrics.http.errorRate > 0.05}
               />
               <Metric
@@ -84,7 +95,9 @@ export function HealthCard() {
                   probable de un aparato sobre tarjeta SD, y no se veía en ningún sitio. */}
               <Metric
                 label={t('settings.health.disk')}
-                value={formatDisk(metrics.storage)}
+                value={formatDisk(metrics.storage, (free, pct) =>
+                  t('settings.health.diskValue', { free, pct }),
+                )}
                 danger={(metrics.storage?.diskUsedPercent ?? 0) >= 90}
               />
               <Metric
@@ -107,7 +120,10 @@ export function HealthCard() {
                       <span className="text-kr-primary">
                         {Math.round(m.avgLatencyMs)} ms
                         <span className="ml-2 text-kr-xs text-kr-muted">
-                          {t('settings.health.opsCount', { count: m.count })}
+                          {plural(m.count, {
+                            one: t('settings.health.opsCount.one', { count: m.count }),
+                            other: t('settings.health.opsCount.other', { count: m.count }),
+                          })}
                           {m.errors > 0 ? ` · ${m.errors} ✕` : ''}
                         </span>
                       </span>
@@ -141,24 +157,31 @@ function formatUptime(seconds: number): string {
   return `${m} min`;
 }
 
-function formatMem(mem: MetricsSnapshot['memory']): string {
-  const mb = (bytes: number) => Math.round(bytes / (1024 * 1024));
-  return `${mb(mem.rssBytes)} / ${mb(mem.heapTotalBytes)} MB`;
+/** Megabytes enteros; `unit` = false para encadenar dos cifras bajo una sola unidad. */
+function formatMb(bytes: number, unit = true): string {
+  const mb = formatNumber(Math.round(bytes / (1024 * 1024)));
+  return unit ? `${mb} MB` : mb;
 }
 
 /** Bytes legibles; `null` = el sistema no permitió medirlo (US-233). */
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return '—';
-  if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-  return `${Math.round(bytes / 1024 ** 2)} MB`;
+  if (bytes >= 1024 ** 3) return `${formatFixed(bytes / 1024 ** 3, 1)} GB`;
+  return `${formatNumber(Math.round(bytes / 1024 ** 2))} MB`;
 }
 
 /**
- * «12 GB libres · 68 %» o «—» si no se pudo medir. Tolera que falte el bloque
- * entero: un agente anterior a US-233 no lo manda y la tarjeta no debe romperse.
+ * «12 GB · 68% usado» o «—» si no se pudo medir. Los GB son los LIBRES (el rótulo
+ * de la métrica es «Disco libre») y el porcentaje es el USADO (`diskUsedPercent`):
+ * sin decirlo, «937,9 GB · 7%» no aclara de cuál de los dos habla el 7. Tolera
+ * que falte el bloque entero: un agente anterior a US-233 no lo manda y la
+ * tarjeta no debe romperse.
  */
-function formatDisk(storage: MetricsSnapshot['storage'] | undefined): string {
+function formatDisk(
+  storage: MetricsSnapshot['storage'] | undefined,
+  withPercent: (free: string, pct: number) => string,
+): string {
   if (!storage || storage.diskFreeBytes === null) return '—';
   const free = formatBytes(storage.diskFreeBytes);
-  return storage.diskUsedPercent === null ? free : `${free} · ${storage.diskUsedPercent}%`;
+  return storage.diskUsedPercent === null ? free : withPercent(free, storage.diskUsedPercent);
 }

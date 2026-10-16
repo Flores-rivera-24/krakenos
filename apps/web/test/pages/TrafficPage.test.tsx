@@ -88,8 +88,8 @@ describe('TrafficPage', () => {
     mockApi({ history: [SAMPLE] });
     render(<TrafficPage />);
 
-    await waitFor(() => expect(screen.getByText('10.0 Mbps')).toBeInTheDocument());
-    expect(screen.getByText('1.0 Mbps')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('10,0 Mbps')).toBeInTheDocument());
+    expect(screen.getByText('1,0 Mbps')).toBeInTheDocument();
   });
 
   it('muestra el total de datos del histórico y pide el rango por defecto', async () => {
@@ -104,7 +104,7 @@ describe('TrafficPage', () => {
     mockApi({ stats });
     render(<TrafficPage />);
 
-    await waitFor(() => expect(screen.getByText('2.0 GB')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('2,0 GB')).toBeInTheDocument());
     expect(screen.getByText('512 MB')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/traffic/stats?range=day');
   });
@@ -201,7 +201,7 @@ describe('TrafficPage', () => {
     mockApi({ history: [SAMPLE] }); // SAMPLE es de hace días → muestra no reciente
     render(<TrafficPage />);
     // Las tasas se siguen mostrando, pero marcadas como obsoletas (no congeladas como actuales).
-    await waitFor(() => expect(screen.getByText('10.0 Mbps')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('10,0 Mbps')).toBeInTheDocument());
     expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
   });
 

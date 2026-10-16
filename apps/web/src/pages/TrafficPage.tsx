@@ -18,7 +18,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { formatBytes, formatRate } from '@/lib/format';
+import { formatBytes, formatDate, formatFixed, formatRate, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { isSampleStale, useNow } from '@/lib/realtime';
 import { getSocket } from '@/lib/socket';
@@ -164,7 +164,7 @@ export function TrafficPage() {
   const data = useMemo(
     () =>
       samples.map((s) => ({
-        t: new Date(s.timestamp).toLocaleTimeString([], { minute: '2-digit', second: '2-digit' }),
+        t: formatTime(s.timestamp, { minute: '2-digit', second: '2-digit' }),
         rx: +(s.rxBytesPerSec * 8) / 1_000_000,
         tx: +(s.txBytesPerSec * 8) / 1_000_000,
       })),
@@ -183,10 +183,10 @@ export function TrafficPage() {
     if (!stats) return [];
     const sameDay = range === 'hour' || range === 'day';
     const label = (d: Date): string => {
-      if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      if (sameDay) return formatTime(d, { hour: '2-digit', minute: '2-digit' });
       // Mes (buckets diarios): fecha corta; semana: día + hora.
-      if (range === 'month') return d.toLocaleDateString([], { day: '2-digit', month: 'short' });
-      return d.toLocaleDateString([], { weekday: 'short', hour: '2-digit' });
+      if (range === 'month') return formatDate(d, { day: '2-digit', month: 'short' });
+      return formatDate(d, { weekday: 'short', hour: '2-digit' });
     };
     return stats.buckets.map((b) => {
       const d = new Date(b.timestamp);
@@ -256,7 +256,7 @@ export function TrafficPage() {
                 <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={(v: number) => `${v.toFixed(1)} Mbps`}
+                  formatter={(v: number) => `${formatFixed(v, 1)} Mbps`}
                 />
                 <Area
                   type="monotone"
@@ -341,7 +341,7 @@ export function TrafficPage() {
                 <YAxis stroke={TRAFFIC_CHART_COLORS.axis} fontSize={11} width={40} />
                 <Tooltip
                   contentStyle={TOOLTIP_STYLE}
-                  formatter={(v: number) => `${v.toFixed(1)} Mbps`}
+                  formatter={(v: number) => `${formatFixed(v, 1)} Mbps`}
                 />
                 <Area
                   type="monotone"

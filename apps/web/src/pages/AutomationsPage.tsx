@@ -39,6 +39,7 @@ import {
 import { agruparHorariosDeAcceso } from '@/lib/access-routines';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
+import { formatDateTime } from '@/lib/format';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
 import {
   diasCompletos,
@@ -1101,7 +1102,7 @@ export function AutomationsPage() {
                   )}
                 </div>
                 <time className="shrink-0 text-kr-xs text-kr-muted">
-                  {new Date(run.createdAt).toLocaleString()}
+                  {formatDateTime(run.createdAt)}
                 </time>
               </li>
             ))}

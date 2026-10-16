@@ -1,6 +1,7 @@
 import type { PeerConfig, VpnPeer } from '@krakenos/types';
 import { Button } from '@/components/ui/button';
 import { Slideover } from '@/components/ui/slideover';
+import { formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 
 interface Props {
@@ -46,12 +47,10 @@ export function VpnPeerSlideover({ peer, config, onClose, onDelete }: Props) {
       <dl className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
         <Row label="IP VPN" value={peer.allowedIps} />
         <Row label={t('vpn.peer.publicKey')} value={peer.publicKey} />
-        <Row label={t('vpn.peer.created')} value={new Date(peer.createdAt).toLocaleString()} />
+        <Row label={t('vpn.peer.created')} value={formatDateTime(peer.createdAt)} />
         <Row
           label={t('vpn.peer.lastHandshake')}
-          value={
-            peer.lastHandshake ? new Date(peer.lastHandshake).toLocaleString() : t('vpn.peer.never')
-          }
+          value={peer.lastHandshake ? formatDateTime(peer.lastHandshake) : t('vpn.peer.never')}
         />
       </dl>
 

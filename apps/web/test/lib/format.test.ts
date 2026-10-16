@@ -4,8 +4,8 @@ import { setLocale } from '@/lib/i18n';
 
 describe('formatBytes', () => {
   it('usa GB a partir de 1 GiB', () => {
-    expect(formatBytes(1024 ** 3)).toBe('1.0 GB');
-    expect(formatBytes(1.5 * 1024 ** 3)).toBe('1.5 GB');
+    expect(formatBytes(1024 ** 3)).toBe('1,0 GB');
+    expect(formatBytes(1.5 * 1024 ** 3)).toBe('1,5 GB');
   });
 
   it('usa MB por debajo de 1 GiB', () => {

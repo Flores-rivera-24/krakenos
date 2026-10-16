@@ -17,6 +17,7 @@ import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getGlossaryEntry } from '@/lib/guides/glossary';
+import { formatNumber, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -155,12 +156,12 @@ export function DnsPage() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           title={t('dns.stat.queries')}
-          value={stats ? stats.totalQueries.toLocaleString() : '—'}
+          value={stats ? formatNumber(stats.totalQueries) : '—'}
           icon={Globe}
         />
         <StatCard
           title={t('dns.stat.blocked')}
-          value={stats ? stats.blockedQueries.toLocaleString() : '—'}
+          value={stats ? formatNumber(stats.blockedQueries) : '—'}
           icon={Ban}
           accent="text-destructive"
         />
@@ -367,7 +368,7 @@ export function DnsPage() {
                   history!.entries.map((e) => (
                     <tr key={e.id} className="border-t border-border">
                       <td className="px-3 py-2 text-xs text-muted-foreground">
-                        {new Date(e.timestamp).toLocaleTimeString()}
+                        {formatTime(e.timestamp)}
                       </td>
                       <td className="px-3 py-2 text-xs">
                         {e.deviceLabel ?? (
