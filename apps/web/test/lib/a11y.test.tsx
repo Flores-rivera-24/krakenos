@@ -1,6 +1,7 @@
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createRef } from 'react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useNavigate } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { filaAbrible } from '@/lib/a11y';
 import { changeLocale, setLocale } from '@/lib/i18n';
@@ -78,12 +79,12 @@ describe('tituloDeRuta en inglés', () => {
   afterEach(() => setLocale('es', { persist: false }));
 
   it('se resuelve con el idioma ACTIVO en el momento de la llamada, no al importar', async () => {
-    expect(tituloDeRuta('/automations')).toBe('Automatizaciones');
+    expect(tituloDeRuta('/automations')).toBe('Rutinas');
     await changeLocale('en', { persist: false });
     expect(tituloDeRuta('/')).toBe('Dashboard');
     expect(tituloDeRuta('/cameras')).toBe('Cameras');
-    expect(tituloDeRuta('/automations')).toBe('Automations');
-    expect(tituloDeRuta('/vpn')).toBe('VPN and remote access');
+    expect(tituloDeRuta('/automations')).toBe('Routines');
+    expect(tituloDeRuta('/vpn')).toBe('VPN');
     expect(tituloDeRuta('/coverage/plan-1')).toBe('WiFi coverage');
   });
 });
@@ -112,5 +113,56 @@ describe('useRouteAnnounce: el título sigue al idioma', () => {
     expect(document.title).toBe('Cameras · KrakenOS');
     // Cambiar de idioma no es navegar: robar el foco al <main> sería un salto sin motivo.
     expect(document.activeElement).not.toBe(foco.current);
+  });
+});
+
+describe('useRouteAnnounce: el scroll', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  function Pantalla({ foco }: { foco: React.RefObject<HTMLElement | null> }) {
+    useRouteAnnounce(foco);
+    const navegar = useNavigate();
+    return (
+      <main ref={foco} tabIndex={-1}>
+        <button onClick={() => navegar('/inventory')}>ir</button>
+        <button onClick={() => navegar('/iot', { replace: true })}>reemplazar</button>
+        <button onClick={() => navegar(-1)}>atrás</button>
+      </main>
+    );
+  }
+
+  function montar() {
+    const foco = createRef<HTMLElement>();
+    const scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+    render(
+      <MemoryRouter initialEntries={['/connect']}>
+        <Pantalla foco={foco} />
+      </MemoryRouter>,
+    );
+    return { scrollTo, foco };
+  }
+
+  it('una navegación nueva (PUSH) abre la página arriba y el foco no desplaza', async () => {
+    const { scrollTo, foco } = montar();
+    const enfocar = vi.spyOn(foco.current as HTMLElement, 'focus');
+    // El montaje inicial no toca el scroll.
+    expect(scrollTo).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: 'ir' }));
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    expect(enfocar).toHaveBeenCalledWith({ preventScroll: true });
+  });
+
+  it('un reemplazo (REPLACE) también vuelve arriba', async () => {
+    const { scrollTo } = montar();
+    await userEvent.click(screen.getByRole('button', { name: 'reemplazar' }));
+    expect(scrollTo).toHaveBeenCalledWith(0, 0);
+  });
+
+  it('atrás (POP) NO toca el scroll: el navegador lo restaura', async () => {
+    const { scrollTo } = montar();
+    await userEvent.click(screen.getByRole('button', { name: 'ir' }));
+    scrollTo.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: 'atrás' }));
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });

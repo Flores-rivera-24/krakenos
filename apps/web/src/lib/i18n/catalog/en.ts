@@ -2310,9 +2310,6 @@ export const en: Record<TranslationKey, string> = {
 
   // --- Barrido de copy a pelo (constantes de módulo) ---
   'widget.wifi.title': 'WiFi',
-  'route.wifi': 'WiFi',
-  'route.vpn': 'VPN and remote access',
-  'route.automations': 'Automations',
   'connect.category.router': 'Your network and router',
   'connect.category.lights': 'Smart lights',
   'connect.category.plugs': 'Plugs and switches',

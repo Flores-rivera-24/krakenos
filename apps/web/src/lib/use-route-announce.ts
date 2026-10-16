@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router';
+import { useLocation, useNavigationType } from 'react-router';
 import { t, useLocale, type TranslationKey } from '@/lib/i18n';
 
 /**
@@ -11,8 +11,8 @@ const TITULOS: Record<string, TranslationKey> = {
   '/': 'nav.dashboard',
   '/connect': 'nav.connect',
   '/inventory': 'nav.devices',
-  '/wifi': 'route.wifi',
-  '/vpn': 'route.vpn',
+  '/wifi': 'nav.wifi',
+  '/vpn': 'nav.vpn',
   '/iot': 'nav.iot',
   '/cameras': 'nav.cameras',
   '/traffic': 'nav.traffic',
@@ -20,7 +20,7 @@ const TITULOS: Record<string, TranslationKey> = {
   '/energy': 'nav.energy',
   '/rooms': 'nav.rooms',
   '/scenes': 'nav.scenes',
-  '/automations': 'route.automations',
+  '/automations': 'nav.automations',
   '/coverage': 'nav.coverage',
   '/firewall': 'nav.firewall',
   '/vlans': 'nav.vlans',
@@ -49,13 +49,22 @@ export function tituloDeRuta(pathname: string): string {
  * Se hace lo que haría el navegador: actualizar `document.title` y llevar el
  * foco al `<main>` (que es `tabIndex={-1}`: enfocable por código, no por Tab).
  *
+ * También lo que hace el navegador con el scroll: una navegación nueva (PUSH/REPLACE)
+ * abre la página arriba, y atrás/adelante (POP) **no se toca** (se queda donde esté).
+ * Sin esto, pulsar «Dispositivos» desde Conectar a 1500 px abría la página a medias y
+ * con el título fuera de pantalla. El foco va con `preventScroll` para que no sea él
+ * quien mueva la página (8 px de salto en escritorio).
+ *
  * No se salta el primer render: al entrar directamente por URL el foco ya está
  * donde debe y robarlo sería peor.
  */
 export function useRouteAnnounce(mainRef: React.RefObject<HTMLElement | null>): void {
   const { pathname } = useLocation();
   const locale = useLocale();
+  const tipo = useNavigationType();
   const primeraVez = useRef(true);
+  const tipoRef = useRef(tipo);
+  tipoRef.current = tipo;
 
   // El título depende del idioma: un cambio de idioma lo reescribe, pero NO mueve el foco.
   useEffect(() => {
@@ -67,6 +76,8 @@ export function useRouteAnnounce(mainRef: React.RefObject<HTMLElement | null>): 
       primeraVez.current = false;
       return;
     }
-    mainRef.current?.focus();
+    if (tipoRef.current !== 'POP') window.scrollTo(0, 0);
+    mainRef.current?.focus({ preventScroll: true });
+    // `tipo` va por ref: llega en el mismo render que `pathname` y no debe disparar el efecto solo.
   }, [pathname, mainRef]);
 }

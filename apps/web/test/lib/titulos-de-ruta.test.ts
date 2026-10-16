@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { NAV_ITEMS } from '@/components/layout/nav';
+import { changeLocale, setLocale, t } from '@/lib/i18n';
 import { tituloDeRuta } from '@/lib/use-route-announce';
 import { SRC, sinComentarios } from './_fuentes';
 
@@ -54,4 +55,19 @@ describe('títulos de ruta', () => {
     expect(tituloDeRuta('/vlans')).toBe('VLANs');
     expect(tituloDeRuta('/people')).toBe('Personas');
   });
+
+  it('el título de cada vista de la nav es EL MISMO texto que su entrada del menú', async () => {
+    // Antes «Automatizaciones», «WiFi» y «VPN y acceso remoto» se anunciaban mientras el
+    // menú decía «Rutinas», «Red WiFi» y «VPN»: quien navega con lector oye un nombre y
+    // ve otro. El nombre de la ruta es el del menú, en los dos idiomas.
+    expect(NAV_ITEMS.length).toBeGreaterThanOrEqual(15);
+    for (const idioma of ['es', 'en'] as const) {
+      await changeLocale(idioma, { persist: false });
+      for (const item of NAV_ITEMS) {
+        expect(tituloDeRuta(item.to), `${idioma} ${item.to}`).toBe(t(item.labelKey));
+      }
+    }
+  });
+
+  afterEach(() => setLocale('es', { persist: false }));
 });

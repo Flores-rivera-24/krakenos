@@ -2364,9 +2364,6 @@ export const es = {
 
   // --- Barrido de copy a pelo (constantes de módulo) ---
   'widget.wifi.title': 'WiFi',
-  'route.wifi': 'WiFi',
-  'route.vpn': 'VPN y acceso remoto',
-  'route.automations': 'Automatizaciones',
   'connect.category.router': 'Tu red y router',
   'connect.category.lights': 'Luces inteligentes',
   'connect.category.plugs': 'Enchufes e interruptores',
