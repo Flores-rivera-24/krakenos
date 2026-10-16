@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { BlockedDomain, DnsFeed, DnsManager, DnsQuery, DnsStats } from '@krakenos/types';
-import { DNS_FEED_CATALOG } from './feeds.js';
+import { DNS_FEED_CATALOG, toDnsFeed } from './feeds.js';
 
 /** Error de dominio del DNS con código estable. */
 export class DnsError extends Error {
@@ -114,7 +114,7 @@ export class MockDnsManager implements DnsManager {
   }
 
   async listFeeds(): Promise<DnsFeed[]> {
-    return DNS_FEED_CATALOG.map((f) => ({ ...f, enabled: this.enabledFeeds.has(f.id) }));
+    return DNS_FEED_CATALOG.map((f) => toDnsFeed(f, this.enabledFeeds.has(f.id)));
   }
 
   async setFeedEnabled(id: string, enabled: boolean): Promise<DnsFeed> {
@@ -122,6 +122,6 @@ export class MockDnsManager implements DnsManager {
     if (!feed) throw new DnsError('FEED_UNKNOWN', `Feed desconocido: ${id}`);
     if (enabled) this.enabledFeeds.add(id);
     else this.enabledFeeds.delete(id);
-    return { ...feed, enabled };
+    return toDnsFeed(feed, enabled);
   }
 }

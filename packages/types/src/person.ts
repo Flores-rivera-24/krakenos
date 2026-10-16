@@ -24,8 +24,13 @@ import type { Id, IsoDateTime } from './common.js';
 export interface PersonDevice {
   /** `Device.id` — la MAC no sale en esta vista (es PII y aquí no hace falta). */
   id: Id;
-  /** `label ?? hostname ?? «Dispositivo xxxxxx»`. */
-  name: string;
+  /**
+   * `label ?? hostname`, o `null` si el aparato no tiene nombre humano. El agente NO
+   * inventa uno («Dispositivo» + un trozo del id interno): ese texto no significaba
+   * nada para quien lo mira y, escrito en español, no se podía traducir. La web
+   * pone «Dispositivo sin nombre» en el idioma activo. Nunca la MAC.
+   */
+  name: string | null;
   online: boolean;
   /** Bloqueo **efectivo**: manual OR horario OR pausa. */
   blocked: boolean;

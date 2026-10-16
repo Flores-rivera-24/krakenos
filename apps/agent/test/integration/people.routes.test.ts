@@ -68,6 +68,14 @@ describe('rutas de personas (US-240)', () => {
       // Y el grupo sin dueño existe, con su dispositivo dentro.
       const orphans = body.people.find((p: { userId: string | null }) => p.userId === null);
       expect(orphans.devices).toHaveLength(1);
+      // Sin etiqueta ni hostname: el servidor manda `null` y la web pone el texto
+      // traducido. Antes inventaba «Dispositivo xxxxxx» con un trozo del id interno.
+      expect(orphans.devices[0].name).toBeNull();
+      expect(marta.devices.map((d: { name: string | null }) => d.name)).toEqual([
+        'marta@test-0',
+        'marta@test-1',
+      ]);
+      expect(JSON.stringify(body)).not.toContain('Dispositivo ');
     });
 
     it('un kid solo se ve a sí mismo y no cuenta huérfanos ajenos', async () => {

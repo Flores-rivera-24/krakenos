@@ -70,7 +70,7 @@ function deriveRequirements(id: string, fields: IntegrationField[]): CompatRequi
   return [...reqs];
 }
 
-/** Construye el catálogo de compatibilidad completo, ordenado por nombre. */
+/** Construye el catálogo de compatibilidad completo, ordenado por id. */
 export function buildCompatibilityCatalog(): CompatibilityEntry[] {
   const entries: CompatibilityEntry[] = [];
   for (const category of COMPAT_CATEGORIES) {
@@ -95,7 +95,6 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
       entries.push({
         id,
         category,
-        label: schema.label,
         capabilities,
         requirements: deriveRequirements(id, schema.fields),
         // Fecha real o `null` (US-258): el mapa está **vacío a propósito** mientras
@@ -114,5 +113,6 @@ export function buildCompatibilityCatalog(): CompatibilityEntry[] {
       });
     }
   }
-  return entries.sort((a, b) => a.label.localeCompare(b.label));
+  // Orden estable por id: el nombre visible (y su orden) lo pone la web, traducido.
+  return entries.sort((a, b) => a.id.localeCompare(b.id));
 }

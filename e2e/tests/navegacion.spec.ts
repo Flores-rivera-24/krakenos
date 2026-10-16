@@ -106,10 +106,15 @@ test.describe('móvil', () => {
     await page.getByRole('link', { name: 'Conectar' }).first().click();
     await expect(page).toHaveURL(/\/connect$/);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    // Precondición: que la página de destino PUEDA desplazarse. Sin el arreglo, el navegador
+    // deja `scrollY = min(1500, máximo)`, que es > 0 mientras haya algo que desplazar; eso es
+    // lo que distingue el arreglo de su ausencia. No se mide una altura absoluta (antes
+    // `> 2500`): Conectar crece al llegar sus datos (1890 px al montar, ~7000 con la lista de
+    // compatibilidad), así que cualquier umbral alto depende de la rapidez de la máquina.
     expect(
-      await page.evaluate(() => document.scrollingElement!.scrollHeight),
-      'Conectar debería ser más alta que el scroll de partida',
-    ).toBeGreaterThan(2500);
+      await page.evaluate(() => document.scrollingElement!.scrollHeight - window.innerHeight),
+      'Conectar debería poder desplazarse, o el test no distinguiría el arreglo de su ausencia',
+    ).toBeGreaterThan(300);
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
     await expect(page.getByRole('heading', { level: 1 })).toBeInViewport();
   });

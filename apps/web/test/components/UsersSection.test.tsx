@@ -150,5 +150,8 @@ describe('UsersSection en inglés: etiquetas de rol', () => {
         'Viewer',
       ]);
     });
+    // La intro llama al rol por su nombre (“Viewer”), no «View only».
+    expect(screen.getByText(/“Viewer” sees the status/)).toBeInTheDocument();
+    expect(screen.queryByText(/View only/)).not.toBeInTheDocument();
   });
 });

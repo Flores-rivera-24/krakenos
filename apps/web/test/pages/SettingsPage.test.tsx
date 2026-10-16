@@ -177,6 +177,18 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Cuenta' }));
     expect(screen.getByText('Emilio')).toBeInTheDocument();
     expect(screen.getByText('admin@krakenos.local')).toBeInTheDocument();
+    // El rol se enseña con su nombre («Observador»), no con el valor interno.
+    expect(screen.getByText('Observador')).toBeInTheDocument();
+    expect(screen.queryByText('viewer')).not.toBeInTheDocument();
+  });
+
+  it('la sección Cuenta nombra el rol admin como «Administrador»', async () => {
+    setUser('admin');
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.click(screen.getByRole('button', { name: 'Cuenta' }));
+    expect(screen.getByText('Administrador')).toBeInTheDocument();
+    expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });
 
   // US-257: la §13 de la AGPL ofrece el código a quien **usa** el programa, no a
