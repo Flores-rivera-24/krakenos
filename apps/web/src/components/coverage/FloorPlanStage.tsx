@@ -9,7 +9,7 @@ import type {
 import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 
 /** Herramienta activa del lienzo. */
 export type CoverageTool = 'select' | 'wall' | 'ap' | 'measure';
@@ -88,6 +88,12 @@ export function FloorPlanStage({
   readOnly = false,
 }: Props) {
   const t = useT();
+  const planAriaParams = {
+    name: plan.name,
+    w: plan.widthM,
+    h: plan.heightM,
+    aps: accessPoints.length,
+  };
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -247,7 +253,10 @@ export function FloorPlanStage({
           className="absolute inset-0 touch-none select-none"
           style={{ cursor }}
           role="img"
-          aria-label={t('coverage.plan.aria', { name: plan.name, w: plan.widthM, h: plan.heightM, aps: accessPoints.length })}
+          aria-label={plural(accessPoints.length, {
+            one: t('coverage.plan.aria.one', planAriaParams),
+            other: t('coverage.plan.aria.other', planAriaParams),
+          })}
           onPointerDown={onBackgroundPointerDown}
           onPointerMove={onSvgPointerMove}
           onPointerUp={onSvgPointerUp}

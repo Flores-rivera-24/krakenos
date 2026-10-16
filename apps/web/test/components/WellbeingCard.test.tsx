@@ -51,6 +51,13 @@ describe('WellbeingCard (US-184)', () => {
     expect(screen.getByText('Sin asignar')).toBeInTheDocument();
   });
 
+  it('concuerda en número: «3 dispositivos» y «1 dispositivo»', async () => {
+    render(<WellbeingCard />);
+    expect(await screen.findByText('3 dispositivos')).toBeInTheDocument();
+    expect(screen.getByText('1 dispositivo')).toBeInTheDocument();
+    expect(screen.queryByText(/dispositivo\(s\)/)).not.toBeInTheDocument();
+  });
+
   it('estado vacío cuando no hay datos', async () => {
     apiMock.get.mockResolvedValue({ range: 'week', people: [] });
     render(<WellbeingCard />);

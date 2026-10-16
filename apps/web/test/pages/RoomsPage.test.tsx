@@ -77,6 +77,22 @@ describe('RoomsPage (US-165)', () => {
     expect(await screen.findByText(/Aún no has creado ninguna habitación/)).toBeInTheDocument();
   });
 
+  it('concuerda en número: «1/2 encendido» y «2/3 encendidos»', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/rooms'
+        ? Promise.resolve([
+            room(),
+            room({ id: 'r2', name: 'Cocina', controllableCount: 3, onCount: 2 }),
+          ])
+        : Promise.resolve([]),
+    );
+    renderPage();
+
+    expect(await screen.findByText('1/2 encendido')).toBeInTheDocument();
+    expect(screen.getByText('2/3 encendidos')).toBeInTheDocument();
+    expect(screen.queryByText(/encendido\(s\)/)).not.toBeInTheDocument();
+  });
+
   it('rinde un tile con el estado agregado y ejecuta la acción de grupo', async () => {
     apiMock.get.mockImplementation((path: string) =>
       path === '/rooms' ? Promise.resolve([room()]) : Promise.resolve([]),

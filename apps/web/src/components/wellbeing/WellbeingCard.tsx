@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatBytes } from '@/lib/format';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -93,7 +93,10 @@ export function WellbeingCard() {
                   <span className="font-medium text-foreground">
                     {p.userId === null ? t('wellbeing.unassigned') : p.name}
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {t('wellbeing.devices', { n: p.deviceCount })}
+                      {plural(p.deviceCount, {
+                        one: t('wellbeing.devices.one', { n: p.deviceCount }),
+                        other: t('wellbeing.devices.other', { n: p.deviceCount }),
+                      })}
                     </span>
                   </span>
                   <span className="tabular-nums text-muted-foreground">

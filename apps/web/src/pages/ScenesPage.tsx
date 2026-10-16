@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 import {
   SCENE_ICONS,
   SCENE_TEMPLATES,
@@ -83,7 +83,10 @@ function SceneTile({
                 {scene.name}
               </span>
               <span className="block text-kr-xs text-kr-muted">
-                {t('scenes.deviceCount', { count: scene.actions.length })}
+                {plural(scene.actions.length, {
+                  one: t('scenes.deviceCount.one', { count: scene.actions.length }),
+                  other: t('scenes.deviceCount.other', { count: scene.actions.length }),
+                })}
               </span>
             </span>
           </button>
