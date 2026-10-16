@@ -1,0 +1,605 @@
+// KrakenOS — esquema de datos del agente local (SQLite).
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  displayName  String
+  passwordHash String
+  role         String         @default("viewer") // 'admin' | 'member' | 'kid' | 'guest' | 'viewer' (US-179)
+  status       String         @default("active") // 'active' | 'disabled' (US-101)
+  lastLoginAt  DateTime?      // último inicio de sesión efectivo (US-101)
+  /// Caducidad del acceso (invitados, US-179); null = sin caducidad.
+  expiresAt    DateTime?
+  /// Modo de la interfaz (US-176): 'simple' | 'advanced'. Solo presentación.
+  uiMode       String         @default("advanced")
+  /// Idioma de la interfaz (US-177): 'es' | 'en'. Solo presentación.
+  locale       String         @default("es")
+  refreshTokens RefreshToken[]
+  /// Tokens personales de API con scopes (US-174).
+  apiTokens    ApiToken[]
+  /// Dispositivos de red de los que es dueño (US-179).
+  devices      Device[]
+  webAuthnCredentials WebAuthnCredential[]
+  webAuthnChallenges  WebAuthnChallenge[]
+  backupCodes  BackupCode[]
+  favorites    Favorite[]
+  pushSubscriptions PushSubscription[]
+  /// Llegadas/salidas derivadas de la presencia WiFi (US-169).
+  presenceEvents PresenceEvent[]
+  /// Horarios de acceso definidos **por persona** (US-240); se replican a sus dispositivos.
+  accessSchedules AccessSchedule[]
+  /// Invitaciones que ESTE usuario ha emitido (US-272).
+  invitationsSent Invitation[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+/// Invitación de un solo uso para dar de alta a alguien de la casa (US-272).
+///
+/// Lo que sustituye: el admin creaba la cuenta tecleando ÉL una contraseña y se la
+/// mandaba a la persona por WhatsApp — la contraseña más reutilizada de la casa
+/// viajando por un chat, y encima conocida por dos personas desde el minuto cero.
+/// Con la invitación, la contraseña la elige quien la va a usar y nadie más la ve.
+///
+/// Solo se guarda el **hash** del token, como con los refresh y los códigos de
+/// recuperación: quien lea la base no puede usar las invitaciones pendientes.
+model Invitation {
+  id          String    @id @default(cuid())
+  /// Hash sha256 del token; el texto plano se enseña UNA vez al crearla.
+  tokenHash   String    @unique
+  email       String
+  displayName String
+  role        String    @default("member")
+  /// Caducidad del acceso de la cuenta que se cree (invitados, US-179); null = sin caducidad.
+  accountExpiresAt DateTime?
+  /// Caducidad de la INVITACIÓN. Distinta de `accountExpiresAt`: un enlace que no
+  /// caduca es una puerta abierta en un chat para siempre.
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+}
+
+/// Solicitud de acceso al hogar hecha desde la propia pantalla de entrada (US-273).
+///
+/// Existe para que la pantalla deje de ser un callejón sin abrir la puerta: el
+/// autorregistro está descartado a propósito —KrakenOS controla firewall, cámaras y
+/// cerraduras, y hasta un rol `viewer` ve el inventario de red entero— así que quien
+/// decide el rol, y si entra siquiera, es siempre un administrador.
+model AccessRequest {
+  id          String    @id @default(cuid())
+  email       String    @unique
+  displayName String
+  /// 'pending' | 'approved' | 'rejected'
+  status      String    @default("pending")
+  /// Nota opcional de quien solicita («soy el del cuarto de arriba»).
+  note        String?
+  decidedAt   DateTime?
+  decidedById String?
+  createdAt   DateTime  @default(now())
+
+  @@index([status])
+}
+
+/// Desafío WebAuthn temporal por ceremonia (US-82). Una fila por ceremonia
+/// (registro/autenticación) en curso, de modo que ceremonias concurrentes (dos
+/// pestañas, registro+login) no se pisen un único campo en `User` (F6). Se
+/// consume (borra) de un solo uso al verificar; caduca a los 5 min.
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // 'register' | 'authenticate'
+  challenge String // base64url
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Passkey WebAuthn registrada por un usuario (2FA opcional, US-50).
+model WebAuthnCredential {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique // base64url
+  publicKey    Bytes             // clave pública del dispositivo
+  counter      Int      @default(0)
+  deviceType   String            // 'singleDevice' | 'multiDevice'
+  backedUp     Boolean  @default(false)
+  name         String            // nombre dado por el usuario: "iPhone", "YubiKey"
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+}
+
+/// Código de recuperación 2FA (US-59). Solo se persiste el hash sha256; el texto
+/// plano se muestra una sola vez al generarlo. `usedAt` marca el consumo (un solo uso).
+model BackupCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String // sha256 hex del código
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Ajustes clave/valor del sistema (p. ej. nombre del hogar).
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+/// Registro de auditoría de acciones relevantes.
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String          // p. ej. 'auth.login', 'wifi.update', 'device.block'
+  userId    String?
+  detail    String?         // texto/JSON con contexto adicional
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+/// Refresh tokens persistidos para permitir rotación y revocación.
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Hash del token (nunca el token en claro).
+  tokenHash String   @unique
+  revoked   Boolean  @default(false)
+  /// Fecha en que el token fue ROTADO (sustituido por uno nuevo en /auth/refresh).
+  /// Distingue un token revocado por rotación de uno revocado por logout/admin:
+  /// solo el reuso de un token rotado dispara la detección de reuso (US-78, F4).
+  rotatedAt DateTime?
+  /// «Mantener sesión iniciada» (US-269). Decide si la cookie del refresh lleva
+  /// `maxAge` (sobrevive a cerrar el navegador) o es de sesión (muere con él).
+  /// Vive AQUÍ y no en una cookie aparte porque el servidor no puede distinguir
+  /// una cookie de sesión de una persistente cuando llega: sin esta columna, la
+  /// elección se perdería en la primera rotación de `/auth/refresh`.
+  persistent Boolean @default(true)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Token personal de API con scopes (US-174). Opaco y **guardado solo por su hash
+/// sha256** (como RefreshToken); el valor en claro se muestra una única vez al
+/// crearlo. Revocable (borrar la fila). `scopes` es JSON (SQLite no tiene arrays);
+/// `role` es una foto del rol del emisor al crear (los scopes nunca lo superan).
+model ApiToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Etiqueta legible para reconocer el token (p. ej. "Home Assistant").
+  name       String
+  /// Hash sha256 del token (nunca el token en claro).
+  tokenHash  String    @unique
+  /// Prefijo visible del token (p. ej. "krt_ab12") para identificarlo en la lista.
+  prefix     String
+  /// Scopes concedidos, JSON de `ApiTokenScope[]` (subconjunto de las capacidades del rol).
+  scopes     String
+  /// Rol del emisor al crear (los scopes derivan de sus capacidades).
+  role       String
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+/// Rollup periódico (p. ej. 1/min) del uso de ancho de banda para estadísticas
+/// históricas. Cada fila es la media de las muestras del intervalo de rollup.
+model TrafficSample {
+  id            String   @id @default(cuid())
+  timestamp     DateTime @default(now())
+  /// Media de bytes/seg de descarga (entrada) en el intervalo.
+  rxBytesPerSec Float
+  /// Media de bytes/seg de subida (salida) en el intervalo.
+  txBytesPerSec Float
+
+  @@index([timestamp])
+}
+
+/// Suscripción Web Push de un usuario para notificaciones (US-45).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+/// Rollup periódico (1/min) del uso de ancho de banda por dispositivo (US-46).
+/// Cada fila es la media de las muestras del intervalo para una MAC concreta.
+model DeviceTrafficSample {
+  id            String   @id @default(cuid())
+  mac           String
+  timestamp     DateTime @default(now())
+  /// Media de bytes/seg de descarga (entrada) en el intervalo.
+  rxBytesPerSec Float
+  /// Media de bytes/seg de subida (salida) en el intervalo.
+  txBytesPerSec Float
+
+  // La poda de retención y el rollup filtran solo por timestamp: sin este índice
+  // eran un full scan cada minuto (AUD-10 / US-206). El índice (mac, timestamp) se
+  // eliminó en US-228: ninguna consulta filtraba por MAC (los informes agrupan en
+  // SQL) y costaba el 22 % del tamaño de la tabla más grande del sistema.
+  @@index([timestamp])
+}
+
+/// Rollup periódico (1/min) del consumo eléctrico por dispositivo IoT (US-181).
+/// Cada fila es la media de potencia (W) de las muestras del intervalo para un
+/// `deviceId` del `IotManager`. La energía (Wh/kWh) se integra en el tiempo al
+/// agregar; solo los dispositivos que reportan potencia generan filas.
+model EnergySample {
+  id        String   @id @default(cuid())
+  /// Id del dispositivo en el IotManager (namespaced en composite: `hue:x`).
+  deviceId  String
+  timestamp DateTime @default(now())
+  /// Media de potencia (W) en el intervalo de rollup.
+  powerW    Float
+
+  @@index([deviceId, timestamp])
+  // La poda de retención y el rollup filtran solo por timestamp (patrón US-206).
+  @@index([timestamp])
+}
+
+/// Regla de alerta de consumo eléctrico por dispositivo (US-183). `metric` =
+/// `sustained-power` (W durante `sustainMinutes`) o `daily-energy` (Wh en el día).
+/// Al cruzar el umbral se emite un evento `energy-threshold` (disparador de
+/// automatización) y se notifica por el canal preferido (US-180).
+model EnergyAlertRule {
+  id            String   @id @default(cuid())
+  deviceId      String
+  metric        String // 'sustained-power' | 'daily-energy'
+  threshold     Float
+  sustainMinutes Int     @default(5)
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@index([deviceId])
+}
+
+/// Configuración de integraciones editable desde la UI (US-140). Una fila por
+/// dominio (driver/vpn/iot/cameras/firewall/vlan/qos/dns). `config` es un JSON con
+/// los valores; los secretos se guardan cifrados con secretbox (US-139), nunca en
+/// claro. Cuando existe y está `enabled`, precede a las variables de `.env`.
+model IntegrationConfig {
+  domain    String   @id // 'driver' | 'vpn' | 'iot' | 'cameras' | 'firewall' | 'vlan' | 'qos' | 'dns'
+  kind      String // implementación activa (CSV de backends en 'iot')
+  config    String   @default("{}") // JSON de valores; secretos como tokens kbx1.*
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Plano de una planta de la casa para la cobertura WiFi (US-151). Las paredes
+/// y los APs colocados se serializan como JSON string (`walls`/`accessPoints`),
+/// igual que `Device.sources`, porque SQLite no tiene tipos estructurados.
+model FloorPlan {
+  id              String       @id @default(cuid())
+  name            String
+  /// Ancho real del plano en metros.
+  widthM          Float
+  /// Alto real del plano en metros.
+  heightM         Float
+  /// Data URL (base64) de un plano de fondo opcional.
+  backgroundImage String?
+  /// JSON `Wall[]`.
+  walls           String       @default("[]")
+  /// JSON `ApPlacement[]`.
+  accessPoints    String       @default("[]")
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  scans           SurveyScan[]
+}
+
+/// Un recorrido de medición (survey) de señal real sobre un plano (US-151).
+model SurveyScan {
+  id          String         @id @default(cuid())
+  floorPlanId String
+  floorPlan   FloorPlan      @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+  name        String
+  band        String
+  /// MAC del dispositivo itinerante cuya señal en vivo se registra, o null.
+  deviceMac   String?
+  createdAt   DateTime       @default(now())
+  samples     SurveySample[]
+
+  @@index([floorPlanId])
+}
+
+/// Una muestra de señal medida en un punto del plano (US-151).
+model SurveySample {
+  id        String     @id @default(cuid())
+  scanId    String
+  scan      SurveyScan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  /// Posición en el plano (metros).
+  x         Float
+  y         Float
+  rssiDbm   Int
+  createdAt DateTime   @default(now())
+
+  @@index([scanId])
+}
+
+model Device {
+  id        String   @id @default(cuid())
+  mac       String   @unique
+  ip        String
+  hostname  String?
+  label     String?
+  vendor    String?
+  type      String   @default("unknown")
+  /// Icono elegido a mano (US-178), clave del catálogo ProductArt; null = inferido.
+  icon      String?
+  notes     String?
+  isBlocked Boolean  @default(false)
+  /// Pausa de internet hasta este instante (US-111); null = sin pausa.
+  pausedUntil DateTime?
+  online    Boolean  @default(true)
+  /// VLAN (tag 802.1Q) asignada, o null si ninguna (US-15).
+  vlanTag   Int?
+  /// Habitación asignada (US-165), o null. Al borrar la habitación se pone a null.
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  /// Dueño del dispositivo (US-179; base de presencia US-169), o null.
+  ownerId   String?
+  owner     User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  /// Fuentes de descubrimiento serializadas como JSON: ["arp","mdns"].
+  sources   String   @default("[]")
+  firstSeen DateTime @default(now())
+  lastSeen  DateTime @default(now())
+
+  @@index([online])
+  @@index([roomId])
+  @@index([ownerId])
+}
+
+/// Habitación / grupo de dispositivos del hogar (US-165). Organiza los aparatos
+/// "como piensa el usuario su casa" en vez de como una lista de MACs. Los
+/// dispositivos de red se asocian por `Device.roomId`; los IoT (que viven en el
+/// manager, no en `Device`) por la tabla de mapeo `IotRoomMember`.
+model Room {
+  id         String          @id @default(cuid())
+  name       String
+  /// Clave de icono (mapeada a un glifo en el frontend), no una URL.
+  icon       String          @default("generic")
+  order      Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  devices    Device[]
+  iotMembers IotRoomMember[]
+}
+
+/// Mapeo de un dispositivo IoT (id del `IotManager`) a una habitación (US-165).
+/// Se guarda aparte de `Device` porque los IoT no son entidades de inventario;
+/// evita duplicarlos. Un IoT pertenece a lo sumo a una habitación (PK = id IoT).
+model IotRoomMember {
+  /// Id del dispositivo en el `IotManager`.
+  iotDeviceId String   @id
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([roomId])
+}
+
+/// Favorito de un usuario (US-170): dispositivo / IoT / habitación / escena
+/// fijado para acceso rápido en el dashboard. Es por usuario; un mismo objetivo
+/// (kind+ref) no se puede fijar dos veces por el mismo usuario.
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // 'device' | 'iot' | 'room' | 'scene'
+  ref       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, kind, ref])
+  @@index([userId])
+}
+
+/// Regla de alerta configurable (US-112): por evento de auditoría, si notificar
+/// por push, email y/o Telegram (US-180). El catálogo de eventos es fijo (código).
+model AlertRule {
+  event    String  @id
+  push     Boolean @default(true)
+  email    Boolean @default(false)
+  telegram Boolean @default(false)
+}
+
+/// Escena (US-166): deja N dispositivos IoT en un estado deseado con un toque.
+/// `actions` es un JSON `SceneAction[]` (SQLite no tiene tipos estructurados).
+model Scene {
+  id        String   @id @default(cuid())
+  name      String
+  /// Clave de icono (mapeada a un glifo en el frontend), no una URL.
+  icon      String   @default("scene")
+  /// JSON `SceneAction[]`: [{deviceId, on?, brightness?, color?}].
+  actions   String   @default("[]")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Horario para IoT/escenas (US-168): dispara una acción en días concretos a una
+/// hora fija o solar (amanecer/atardecer). `days`/`time`/`target` van como JSON.
+/// Distinto de `AccessSchedule` (ventanas de bloqueo): esto es un disparo puntual.
+model IotSchedule {
+  id        String   @id @default(cuid())
+  name      String
+  enabled   Boolean  @default(true)
+  /// JSON: array de 0-6 (Dom-Sáb).
+  days      String   @default("[]")
+  /// JSON `IotScheduleTime`: {kind:'fixed',minute} | {kind:'sunrise'|'sunset',offsetMin}.
+  time      String
+  /// JSON `IotScheduleTarget`: {type:'device',deviceId,on?,brightness?} | {type:'scene',sceneId}.
+  target    String
+  createdAt DateTime @default(now())
+}
+
+/// Horario de acceso / control parental (US-108). Bloquea el internet de un
+/// dispositivo (por MAC) en ventanas recurrentes. `days` es un JSON de 0-6.
+model AccessSchedule {
+  id          String   @id @default(cuid())
+  name        String
+  mac         String
+  enabled     Boolean  @default(true)
+  days        String // JSON: array de 0-6 (Dom-Sáb)
+  startMinute Int // minutos desde medianoche (0-1439)
+  endMinute   Int // si <= startMinute, cruza medianoche
+  /// Persona dueña del horario (US-240): el parental se define por persona y el
+  /// servidor lo replica a todos sus dispositivos (una fila por MAC). null = horario
+  /// creado sobre un dispositivo suelto. Cascade: un horario de persona sin persona
+  /// es basura que seguiría cortando internet a un aparato heredado.
+  personId    String?
+  person      User?    @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@index([mac])
+  @@index([personId])
+}
+
+/// Regla de automatización «si X entonces Y» (US-167). `trigger`/`condition`/
+/// `actions` van como JSON (shape en `@krakenos/types`, parseo defensivo US-63).
+model AutomationRule {
+  id          String          @id @default(cuid())
+  name        String
+  enabled     Boolean         @default(true)
+  /// JSON `AutomationTrigger`.
+  trigger     String
+  /// JSON `AutomationCondition` (opcional).
+  condition   String?
+  /// JSON `AutomationAction[]`.
+  actions     String
+  /// Segundos mínimos entre disparos de la misma regla (anti-ruido/anti-bucle).
+  cooldownSec Int             @default(60)
+  runs        AutomationRun[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+}
+
+/// Llegada/salida de una persona derivada de la presencia WiFi (US-169): la
+/// transición online/offline de sus dispositivos (`Device.ownerId`) con ventana
+/// de gracia. Alimenta el timeline (privado por rol) y se poda por retención.
+model PresenceEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String // 'arrived' | 'left'
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+}
+
+/// Histórico de consultas DNS por aparato (US-252). Es el dato **más sensible**
+/// que escribe el producto: el historial de navegación del hogar. De ahí sus tres
+/// propiedades, que no son opcionales:
+///   1. Retención **propia y corta** (`DNS_QUERY_RETENTION_DAYS`), no la del tráfico.
+///   2. La `mac` se resuelve **en la ingesta**, no al leer: las IP se reasignan por
+///      DHCP y resolver a posteriori atribuye la navegación de ayer a quien tenga
+///      esa IP hoy.
+///   3. La lectura va acotada por rol en el servidor (admin ve el hogar; el resto,
+///      solo sus propios aparatos), igual que el bienestar digital.
+/// Nunca sale en el bundle de soporte, que está pensado para salir de casa.
+model DnsQueryLog {
+  id        String   @id @default(cuid())
+  timestamp DateTime
+  domain    String
+  /// IP del cliente tal cual la reportó el resolver (se conserva para diagnóstico).
+  client    String
+  blocked   Boolean
+  /// MAC del aparato en el momento de la consulta; null si esa IP no era del inventario.
+  mac       String?
+
+  // La poda filtra solo por timestamp; la lectura por aparato filtra por (mac, timestamp).
+  @@index([timestamp])
+  @@index([mac, timestamp])
+}
+
+/// Ejecución registrada de una regla (log de automatizaciones, US-167). Se poda
+/// por edad en el barrido de retención.
+model AutomationRun {
+  id        String         @id @default(cuid())
+  ruleId    String
+  rule      AutomationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  /// Resumen legible del evento disparador.
+  event     String
+  ok        Boolean
+  /// Detalle de fallos por acción (si los hubo).
+  detail    String?
+  createdAt DateTime       @default(now())
+
+  @@index([ruleId, createdAt])
+  @@index([createdAt])
+}
+
+/// Clip grabado a raíz de un evento de movimiento (US-187). El fichero de vídeo
+/// vive en disco (`data/recordings/<cameraId>/`); la fila guarda solo metadatos +
+/// ruta para el timeline por cámara y la descarga autenticada. Se poda por edad y
+/// por tamaño total del conjunto (RecordingService, patrón de retención US-102).
+model Recording {
+  id          String   @id @default(cuid())
+  cameraId    String
+  /// Nombre de la cámara en el momento (legible sin otra consulta).
+  cameraName  String
+  /// Ruta relativa del fichero dentro de `data/recordings`.
+  path        String
+  startedAt   DateTime
+  durationSec Int
+  sizeBytes   Int
+  /// Snapshot (data URL) del disparo, para la miniatura del timeline. Opcional.
+  snapshot    String?
+  createdAt   DateTime @default(now())
+
+  @@index([cameraId, startedAt])
+  @@index([startedAt])
+}
+
+/// Destinos ya vistos por aparato (US-253), para poder decir «nunca había
+/// contactado con esto». Existe porque `DnsQueryLog` se poda a los 7 días y
+/// sobre esa ventana «nunca» no es sabible.
+///
+/// Guarda el **dominio registrable** (`example.com`), NO el FQDN: sirve para
+/// detectar un cambio de comportamiento y deja de servir para reconstruir
+/// navegación, que es lo que protege la retención corta del histórico. Tiene su
+/// propia retención, más larga y declarada (`KNOWN_DESTINATION_RETENTION_DAYS`).
+model KnownDestination {
+  id          String   @id @default(cuid())
+  mac         String
+  /// Dominio registrable (eTLD+1), ya normalizado a minúsculas.
+  domain      String
+  firstSeenAt DateTime @default(now())
+  /// Se refresca en cada visita: la poda mide desde la ÚLTIMA vez, no desde la
+  /// primera — si no, un destino habitual caducaría y volvería a avisar solo.
+  lastSeenAt  DateTime @default(now())
+
+  @@unique([mac, domain])
+  @@index([lastSeenAt])
+}
