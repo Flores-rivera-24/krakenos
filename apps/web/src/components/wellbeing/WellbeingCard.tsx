@@ -91,7 +91,9 @@ export function WellbeingCard() {
               <li key={p.userId ?? 'unassigned'} className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium text-foreground">
-                    {p.userId === null ? t('wellbeing.unassigned') : p.name}
+                    {p.userId === null
+                      ? t('wellbeing.unassigned')
+                      : (p.name ?? t('wellbeing.unknown'))}
                     <span className="ml-2 text-xs text-muted-foreground">
                       {plural(p.deviceCount, {
                         one: t('wellbeing.devices.one', { n: p.deviceCount }),

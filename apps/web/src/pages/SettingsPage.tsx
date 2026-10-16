@@ -36,6 +36,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
@@ -649,7 +650,9 @@ export function SettingsPage() {
                           <tbody>
                             {audit.map((e) => (
                               <tr key={e.id} className="border-t border-kr">
-                                <td className="px-3 py-2 text-kr-primary">{e.action}</td>
+                                <td className="px-3 py-2 text-kr-primary">
+                                  {etiquetaDeAccion(e.action, t)}
+                                </td>
                                 <td className="px-3 py-2 font-mono text-kr-xs text-kr-muted">
                                   {e.ip ?? '—'}
                                 </td>

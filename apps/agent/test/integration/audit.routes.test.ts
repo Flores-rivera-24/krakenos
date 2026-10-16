@@ -93,9 +93,9 @@ describe('rutas de auditoría', () => {
   });
 
   it('trunca audit.detail a 1 KB antes de persistir (US-58)', async () => {
-    app.audit({ action: 'test.big', detail: 'x'.repeat(5000) });
+    app.audit({ action: 'weather.config', detail: 'x'.repeat(5000) });
 
-    const row = await esperarUnaAuditoria(app, { action: 'test.big' });
+    const row = await esperarUnaAuditoria(app, { action: 'weather.config' });
     expect(row.detail).toHaveLength(1024);
     expect(row.detail).toBe('x'.repeat(1024));
   });

@@ -191,6 +191,37 @@ describe('SettingsPage', () => {
     expect(screen.queryByText('admin')).not.toBeInTheDocument();
   });
 
+  it('el registro de auditoría enseña cada acción con su texto y declara la que no conoce', async () => {
+    setUser('admin');
+    const fila = (id: string, action: string, hora: string) => ({
+      id,
+      action,
+      userId: null,
+      detail: null,
+      ip: null,
+      createdAt: `2026-07-22T${hora}.000Z`,
+    });
+    apiMock.get.mockImplementation((path: string) => {
+      if (path.startsWith('/system/settings')) return Promise.resolve(SETTINGS);
+      if (path.startsWith('/audit'))
+        return Promise.resolve([
+          fila('a1', 'auth.login', '10:00:00'),
+          fila('a2', 'device.block', '09:00:00'),
+          fila('a3', 'zz.de-una-version-vieja', '08:00:00'),
+        ]);
+      return Promise.resolve([]);
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.click(screen.getByRole('button', { name: 'Cuenta' }));
+
+    expect(await screen.findByText('Inicio de sesión')).toBeInTheDocument();
+    expect(screen.getByText('Dispositivo bloqueado')).toBeInTheDocument();
+    // Una acción de una versión que esta web no conoce se declara, no se pinta cruda.
+    expect(screen.getByText('Acción no reconocida (zz.de-una-version-vieja)')).toBeInTheDocument();
+    expect(screen.queryByText('auth.login')).not.toBeInTheDocument();
+  });
+
   // US-257: la §13 de la AGPL ofrece el código a quien **usa** el programa, no a
   // quien lo administra. Si «Acerca de» acabara detrás de `isAdmin` como sus
   // tarjetas vecinas, la instalación dejaría de cumplir su propia licencia para

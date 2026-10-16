@@ -13,7 +13,7 @@ const personUsage = {
   additionalProperties: false,
   properties: {
     userId: { type: ['string', 'null'] },
-    name: { type: 'string' },
+    name: { type: ['string', 'null'] },
     rxBytes: { type: 'number' },
     txBytes: { type: 'number' },
     totalBytes: { type: 'number' },
