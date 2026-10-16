@@ -21,6 +21,8 @@
     "test:coverage": "pnpm -r test:coverage",
     "test:e2e": "playwright test -c e2e/playwright.config.ts",
     "test:e2e:local": "node scripts/e2e-local.mjs",
+    "test:e2e:report": "node scripts/e2e-local.mjs --modo=informe",
+    "test:e2e:ui": "node scripts/e2e-local.mjs --modo=ui",
     "test:e2e:stacks": "playwright test -c e2e/stacks/playwright.config.ts",
     "test:e2e:install": "playwright install chromium",
     "qa:mutation": "pnpm --filter @krakenos/agent exec stryker run",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { decidirLibs, ldLibraryPathCon, libsPresentes, mensajePuertoOcupado, necesitaChromium, parseArgs, proyectosPedidos, resumenFinal } from '../../../../scripts/e2e-local.mjs';
+import { argumentosPlaywright, decidirLibs, ldLibraryPathCon, libsPresentes, mensajePuertoOcupado, mensajeSinInforme, necesitaChromium, parseArgs, proyectosPedidos, resumenFinal, stdinDelHijo, urlDeLaUi, urlDelInforme } from '../../../../scripts/e2e-local.mjs';
 
 /**
  * `pnpm test:e2e:local`: la lógica de decisión del script (qué decir ante un puerto
@@ -12,9 +12,27 @@ describe('e2e-local: argumentos', () => {
   it('--no-build es nuestro; el resto pasa tal cual a Playwright', () => {
     expect(parseArgs(['--no-build', 'e2e/tests/a.spec.ts', '-g', 'x', '--headed'])).toEqual({
       build: false,
+      modo: 'suite',
+      enNavegador: false,
       resto: ['e2e/tests/a.spec.ts', '-g', 'x', '--headed'],
     });
-    expect(parseArgs(['--ui'])).toEqual({ build: true, resto: ['--ui'] });
+    expect(parseArgs(['--ui'])).toEqual({
+      build: true,
+      modo: 'suite',
+      enNavegador: false,
+      resto: ['--ui'],
+    });
+  });
+
+  it('--modo y --en-navegador son nuestros; un modo desconocido cae a la suite', () => {
+    expect(parseArgs(['--modo=ui', '--en-navegador', 'e2e/tests/a.spec.ts'])).toEqual({
+      build: true,
+      modo: 'ui',
+      enNavegador: true,
+      resto: ['e2e/tests/a.spec.ts'],
+    });
+    expect(parseArgs(['--modo=informe']).modo).toBe('informe');
+    expect(parseArgs(['--modo=otro']).modo).toBe('suite');
   });
 
   it('Chromium hace falta salvo que se pidan solo proyectos de Firefox', () => {
@@ -26,6 +44,67 @@ describe('e2e-local: argumentos', () => {
     expect(necesitaChromium(['--project=chromium-en'])).toBe(true);
     expect(necesitaChromium(['--project=firefox'])).toBe(false);
     expect(necesitaChromium(['--project=firefox', '--project=chromium'])).toBe(true);
+  });
+});
+
+describe('e2e-local: argumentos de Playwright por modo', () => {
+  it('suite: test con reporter list+html y el resto detrás', () => {
+    expect(argumentosPlaywright({ modo: 'suite', enNavegador: false, resto: ['-g', 'x'] })).toEqual(
+      ['test', '-c', 'e2e/playwright.config.ts', '--reporter=list,html', '-g', 'x'],
+    );
+  });
+
+  it('ui con ventana: --ui sin servidor, y el resto (un spec) sigue pasando', () => {
+    expect(
+      argumentosPlaywright({ modo: 'ui', enNavegador: false, resto: ['e2e/tests/a.spec.ts'] }),
+    ).toEqual(['test', '-c', 'e2e/playwright.config.ts', '--ui', 'e2e/tests/a.spec.ts']);
+    expect(urlDeLaUi({ modo: 'ui', enNavegador: false })).toBeNull();
+  });
+
+  it('ui en el navegador: sirve en 127.0.0.1:9324 y da la URL', () => {
+    const a = argumentosPlaywright({
+      modo: 'ui',
+      enNavegador: true,
+      resto: ['--project=chromium'],
+    });
+    expect(a).toEqual([
+      'test',
+      '-c',
+      'e2e/playwright.config.ts',
+      '--ui',
+      '--ui-host=127.0.0.1',
+      '--ui-port=9324',
+      '--project=chromium',
+    ]);
+    expect(urlDeLaUi({ modo: 'ui', enNavegador: true })).toBe('http://127.0.0.1:9324');
+    // --en-navegador solo significa algo en modo ui
+    expect(urlDeLaUi({ modo: 'suite', enNavegador: true })).toBeNull();
+  });
+
+  it('informe: show-report con la carpeta correcta (la de e2e/) y puerto fijo', () => {
+    const a = argumentosPlaywright({ modo: 'informe', enNavegador: false, resto: [] });
+    expect(a).toEqual([
+      'show-report',
+      'e2e/playwright-report',
+      '--host',
+      'localhost',
+      '--port',
+      '9323',
+    ]);
+    expect(urlDelInforme()).toBe('http://localhost:9323');
+  });
+
+  it('sin informe: lo dice y sugiere generarlo', () => {
+    const m = mensajeSinInforme();
+    expect(m).toContain('e2e/playwright-report');
+    expect(m).toContain('pnpm test:e2e:local');
+  });
+
+  it('stdin: cerrado solo en la suite (calla el aviso de Playwright), heredado en la UI', () => {
+    expect(stdinDelHijo({ modo: 'suite', resto: [] })).toBe('ignore');
+    expect(stdinDelHijo({ modo: 'suite', resto: ['--ui'] })).toBe('inherit');
+    expect(stdinDelHijo({ modo: 'ui', resto: [] })).toBe('inherit');
+    expect(stdinDelHijo({ modo: 'informe', resto: [] })).toBe('inherit');
   });
 });
 
@@ -113,7 +192,8 @@ describe('e2e-local: cierre', () => {
   it('dice cómo abrir el informe y dónde están las trazas solo si existen', () => {
     const con = resumenFinal({ informeExiste: true, trazasExisten: true, codigo: 1 });
     expect(con).toContain('terminó con código 1');
-    expect(con).toContain('pnpm exec playwright show-report e2e/playwright-report');
+    expect(con).toContain('pnpm test:e2e:report');
+    expect(con).not.toContain('npx');
     expect(con).toContain('e2e/test-results');
     const sin = resumenFinal({ informeExiste: false, trazasExisten: false, codigo: 0 });
     expect(sin).toContain('OK');

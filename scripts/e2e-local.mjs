@@ -1,5 +1,8 @@
 /**
  * `pnpm test:e2e:local [--no-build] [argumentos de Playwright…]`
+ * `pnpm test:e2e:report`                                  abre el último informe HTML
+ * `pnpm test:e2e:ui [--en-navegador] [--no-build] […]`   modo interactivo (`--ui`) de Playwright
+ * (los dos últimos son este mismo script con `--modo=informe` / `--modo=ui`).
  *
  * Corre la suite e2e en la máquina del desarrollador (WSL incluido) comprobando de
  * antemano lo que, si falla, falla de forma que no se parece a su causa:
@@ -21,7 +24,7 @@
  *   E2E_LOCAL_LIBS=faltan|presentes   fuerza el resultado de la comprobación de libs
  *   E2E_LOCAL_APANO_DIR=<dir>         dirección alternativa del apaño sin root
  */
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
@@ -31,7 +34,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { E2E_PORT, puertoOcupado } from '../e2e/lib/server.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const INFORME_REL = 'e2e/playwright-report';
 const INFORME = join(ROOT, 'e2e', 'playwright-report');
+const CONFIG = 'e2e/playwright.config.ts';
+const PUERTO_INFORME = 9323;
+const PUERTO_UI = 9324;
 const TRAZAS = join(ROOT, 'e2e', 'test-results');
 const PID_FILE = join(ROOT, 'e2e', '.server.pid');
 const APANO_POR_DEFECTO = join(
@@ -42,10 +49,62 @@ const LIBS_NECESARIAS = ['libnspr4.so', 'libnss3.so'];
 
 // ─── Funciones puras ────────────────────────────────────────────────────────
 
-/** Separa nuestro flag `--no-build` del resto, que pasa tal cual a Playwright. */
+const MODOS = ['suite', 'ui', 'informe'];
+
+/**
+ * Separa nuestros flags (`--no-build`, `--en-navegador`, `--modo=ui|informe`) del
+ * resto, que pasa tal cual a Playwright. Sin `--modo`, el modo es `suite`.
+ */
 export function parseArgs(argv) {
   const build = !argv.includes('--no-build');
-  return { build, resto: argv.filter((a) => a !== '--no-build') };
+  const enNavegador = argv.includes('--en-navegador');
+  const modoArg = argv.find((a) => a.startsWith('--modo='))?.slice('--modo='.length);
+  const modo = MODOS.includes(modoArg) ? modoArg : 'suite';
+  const nuestros = (a) => a === '--no-build' || a === '--en-navegador' || a.startsWith('--modo=');
+  return { build, modo, enNavegador, resto: argv.filter((a) => !nuestros(a)) };
+}
+
+/** Argumentos del CLI de Playwright para cada modo. */
+export function argumentosPlaywright({ modo, enNavegador, resto }) {
+  if (modo === 'informe') {
+    return ['show-report', INFORME_REL, '--host', 'localhost', '--port', String(PUERTO_INFORME)];
+  }
+  if (modo === 'ui') {
+    // Sin ventana (p. ej. WSL sin WSLg): sirve la UI por HTTP para abrirla en cualquier navegador.
+    const servidor = enNavegador ? ['--ui-host=127.0.0.1', `--ui-port=${PUERTO_UI}`] : [];
+    return ['test', '-c', CONFIG, '--ui', ...servidor, ...resto];
+  }
+  return ['test', '-c', CONFIG, '--reporter=list,html', ...resto];
+}
+
+/**
+ * stdin del hijo. El reporter html de Playwright 1.61 imprime «To open last HTML report
+ * run: …» (SIN la carpeta cuando el informe va a una ruta fija, y con `npx` si no hay
+ * gestor) solo si `process.stdin.isTTY`; no tiene opción para callarlo (ni en
+ * `reporter: [['html', {…}]]` ni por variable de entorno). Con stdin cerrado no lo
+ * imprime ni intenta abrir el informe, que es lo que queremos: la suite no lee del
+ * teclado. Se deja heredado en `--ui` (interactivo) y fuera de la suite.
+ */
+export function stdinDelHijo({ modo, resto }) {
+  return modo === 'suite' && !resto.includes('--ui') ? 'ignore' : 'inherit';
+}
+
+/** URL donde queda la UI con `--en-navegador`, o null si se abre en ventana. */
+export function urlDeLaUi({ modo, enNavegador }) {
+  return modo === 'ui' && enNavegador ? `http://127.0.0.1:${PUERTO_UI}` : null;
+}
+
+/** URL del informe servido por `show-report`. */
+export function urlDelInforme() {
+  return `http://localhost:${PUERTO_INFORME}`;
+}
+
+/** Mensaje cuando `test:e2e:report` no encuentra informe. */
+export function mensajeSinInforme() {
+  return [
+    `No hay informe en ${INFORME_REL} (aún no has corrido la suite, o se borró).`,
+    'Genera uno con:  pnpm test:e2e:local',
+  ].join('\n');
 }
 
 /** Proyectos pedidos con `--project=x` / `--project x` (vacío = todos). */
@@ -140,7 +199,7 @@ export function resumenFinal({ informeExiste, trazasExisten, codigo }) {
   const l = [''];
   l.push(codigo === 0 ? 'Suite e2e: OK.' : `Suite e2e: terminó con código ${codigo}.`);
   if (informeExiste) {
-    l.push('Informe HTML:  pnpm exec playwright show-report e2e/playwright-report');
+    l.push('Informe HTML:  pnpm test:e2e:report');
   }
   if (trazasExisten) {
     l.push(
@@ -199,9 +258,38 @@ function fallar(mensaje, codigo = 1) {
   process.exit(codigo);
 }
 
+/**
+ * Lanza el Playwright LOCAL y espera a que acabe. Ctrl+C llega a todo el grupo: el hijo
+ * limpia (teardown del agente) y nosotros esperamos; un `kill -TERM` solo a nosotros se
+ * reenvía al hijo para no dejarlo huérfano.
+ */
+function correrPlaywright(args, env, stdin = 'inherit') {
+  const cli = createRequire(import.meta.url).resolve('@playwright/test/cli');
+  process.on('SIGINT', () => {});
+  return new Promise((resolvePromesa) => {
+    const hijo = spawn(process.execPath, [cli, ...args], {
+      cwd: ROOT,
+      stdio: [stdin, 'inherit', 'inherit'],
+      env,
+    });
+    for (const senal of ['SIGTERM', 'SIGHUP']) process.on(senal, () => hijo.kill(senal));
+    hijo.on('exit', (codigo, senal) => resolvePromesa(codigo ?? (senal ? 1 : 0)));
+  });
+}
+
 async function main() {
-  const { build, resto } = parseArgs(process.argv.slice(2));
+  const { build, modo, enNavegador, resto } = parseArgs(process.argv.slice(2));
   const env = { ...process.env };
+  const require = createRequire(import.meta.url);
+
+  // Informe: no hace falta puerto 3999, ni navegador de la suite, ni build.
+  if (modo === 'informe') {
+    if (!existsSync(join(INFORME, 'index.html'))) fallar(mensajeSinInforme());
+    console.log(
+      `[e2e:local] Informe en ${urlDelInforme()}  (si el navegador no se abre solo, pega esa URL; Ctrl+C para cerrar).`,
+    );
+    process.exit(await correrPlaywright(argumentosPlaywright({ modo, enNavegador, resto }), env));
+  }
 
   // 1. Puerto
   if (await puertoOcupado(E2E_PORT)) {
@@ -209,7 +297,6 @@ async function main() {
   }
 
   // 2. Librerías de Chromium (solo Linux)
-  const require = createRequire(import.meta.url);
   const { chromium } = require('@playwright/test');
   if (necesitaChromium(resto)) {
     const apanoDir = process.env.E2E_LOCAL_APANO_DIR || APANO_POR_DEFECTO;
@@ -244,20 +331,15 @@ async function main() {
   }
 
   // 5. Playwright local
-  const cli = require.resolve('@playwright/test/cli');
-  console.log('[e2e:local] playwright test…');
-  // Ctrl+C llega a todo el grupo: el hijo limpia (teardown del agente) y nosotros esperamos.
-  process.on('SIGINT', () => {});
-  const r = spawnSync(
-    process.execPath,
-    [cli, 'test', '-c', 'e2e/playwright.config.ts', '--reporter=list,html', ...resto],
-    {
-      cwd: ROOT,
-      stdio: 'inherit',
-      env: { ...env, PLAYWRIGHT_HTML_OUTPUT_DIR: INFORME, PLAYWRIGHT_HTML_OPEN: 'never' },
-    },
+  const url = urlDeLaUi({ modo, enNavegador });
+  console.log(`[e2e:local] playwright ${modo === 'ui' ? '--ui' : 'test'}…`);
+  if (url) console.log(`[e2e:local] Abre la UI en tu navegador: ${url}  (Ctrl+C para cerrar).`);
+  const codigo = await correrPlaywright(
+    argumentosPlaywright({ modo, enNavegador, resto }),
+    { ...env, PLAYWRIGHT_HTML_OUTPUT_DIR: INFORME, PLAYWRIGHT_HTML_OPEN: 'never' },
+    stdinDelHijo({ modo, resto }),
   );
-  const codigo = r.status ?? (r.signal ? 1 : 0);
+  if (modo === 'ui') process.exit(codigo);
   console.log(
     resumenFinal({
       informeExiste: existsSync(join(INFORME, 'index.html')),
