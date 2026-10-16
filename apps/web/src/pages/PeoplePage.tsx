@@ -1,4 +1,4 @@
-import type { BlockReason, PersonSummary, UserRole } from '@krakenos/types';
+import type { BlockReason, PersonSummary } from '@krakenos/types';
 import { Moon, UserRound } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { AccessKindsHelp } from '@/components/access/AccessKindsHelp';
@@ -21,6 +21,7 @@ import {
   pausePerson,
   resumePerson,
 } from '@/lib/people';
+import { etiquetaDeRol } from '@/lib/roles';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -46,14 +47,6 @@ const REASON_KEY: Record<BlockReason, TranslationKey> = {
   manual: 'people.reason.manual',
   schedule: 'people.reason.schedule',
   paused: 'people.reason.paused',
-};
-
-const ROLE_KEY: Record<UserRole, TranslationKey> = {
-  admin: 'people.role.admin',
-  member: 'people.role.member',
-  kid: 'people.role.kid',
-  guest: 'people.role.guest',
-  viewer: 'people.role.viewer',
 };
 
 interface PersonCardProps {
@@ -104,7 +97,7 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
             {/* El grupo sin dueño lo nombra el agente en español; la web lo traduce. */}
             {person.userId === null ? t('people.unassigned') : person.name}
           </h3>
-          {person.role && <Badge>{t(ROLE_KEY[person.role as UserRole])}</Badge>}
+          {person.role && <Badge>{etiquetaDeRol(person.role, t)}</Badge>}
         </div>
 
         <p className="text-kr-sm text-kr-secondary">

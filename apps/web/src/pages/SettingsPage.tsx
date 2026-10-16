@@ -39,6 +39,7 @@ import { api } from '@/lib/api';
 import { timeAgo } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
+import { etiquetaDeRol } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 
 type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'usuarios' | 'cuenta';
@@ -553,7 +554,9 @@ export function SettingsPage() {
                     </div>
                     <div>
                       <dt className="text-kr-xs text-kr-muted">{t('settings.account.role')}</dt>
-                      <dd className="text-kr-primary">{user?.role}</dd>
+                      <dd className="text-kr-primary">
+                        {user?.role ? etiquetaDeRol(user.role, t) : null}
+                      </dd>
                     </div>
                   </dl>
                 </CardContent>

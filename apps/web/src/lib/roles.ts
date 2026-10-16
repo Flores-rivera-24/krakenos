@@ -1,5 +1,5 @@
 import type { UserRole } from '@krakenos/types';
-import type { TranslationKey } from '@/lib/i18n';
+import type { TranslationKey, TranslationParams } from '@/lib/i18n';
 
 /**
  * Capa cosmética de los roles del hogar (US-179). La autoridad es del servidor
@@ -24,3 +24,17 @@ export const ROLE_LABEL_KEYS: Record<UserRole, TranslationKey> = {
   guest: 'people.role.guest',
   viewer: 'people.role.viewer',
 };
+
+/**
+ * Nombre visible de un rol que llega del servidor (`string`). Un rol que esta web no
+ * conoce (un agente más nuevo) se **declara** en vez de pintar el valor interno
+ * («admin») o dejar `undefined` en el catálogo.
+ */
+export function etiquetaDeRol(
+  role: string,
+  t: (key: TranslationKey, params?: TranslationParams) => string,
+): string {
+  return Object.prototype.hasOwnProperty.call(ROLE_LABEL_KEYS, role)
+    ? t(ROLE_LABEL_KEYS[role as UserRole])
+    : t('people.role.unknown', { role });
+}

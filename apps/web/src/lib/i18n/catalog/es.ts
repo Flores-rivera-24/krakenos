@@ -967,6 +967,7 @@ export const es = {
   'people.role.kid': 'Menor',
   'people.role.guest': 'Invitado',
   'people.role.viewer': 'Observador',
+  'people.role.unknown': 'Rol no reconocido ({role})',
 
   // Pausa por persona
   'people.pause': 'Pausar internet',
@@ -1793,7 +1794,7 @@ export const es = {
   'security.perMinute': '{n} por minuto',
   'security.closeAllSessions': 'Cerrar todas las sesiones',
   'users.addHint':
-    'Da acceso a un familiar o a personal. «Solo lectura» ve el estado pero no cambia nada.',
+    'Da acceso a un familiar o a personal. «Observador» ve el estado pero no cambia nada.',
   'users.create': 'Crear usuario',
   'users.creating': 'Creando…',
   'users.confirmDelete': '¿Eliminar a {email}? Esta acción no se puede deshacer.',

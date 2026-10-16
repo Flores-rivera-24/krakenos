@@ -939,6 +939,7 @@ export const en: Record<TranslationKey, string> = {
   'people.role.kid': 'Child',
   'people.role.guest': 'Guest',
   'people.role.viewer': 'Viewer',
+  'people.role.unknown': 'Unrecognized role ({role})',
 
   // Pause by person
   'people.pause': 'Pause internet',
@@ -1744,7 +1745,7 @@ export const en: Record<TranslationKey, string> = {
   'security.perMinute': '{n} per minute',
   'security.closeAllSessions': 'Close every session',
   'users.addHint':
-    'Give access to a family member or to staff. “View only” sees the status but changes nothing.',
+    'Give access to a family member or to staff. “Viewer” sees the status but changes nothing.',
   'users.create': 'Create user',
   'users.creating': 'Creating…',
   'users.confirmDelete': 'Delete {email}? This cannot be undone.',

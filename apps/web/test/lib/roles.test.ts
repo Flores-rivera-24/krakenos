@@ -2,7 +2,7 @@ import { USER_ROLES } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import { navGroupsForRole, mobileNavForRole } from '@/components/layout/nav';
 import { t } from '@/lib/i18n';
-import { ROLE_LABEL_KEYS, canControlHome } from '@/lib/roles';
+import { ROLE_LABEL_KEYS, canControlHome, etiquetaDeRol } from '@/lib/roles';
 
 /** Roles del hogar en el cliente (US-179) — capa cosmética del servidor. */
 describe('lib/roles + nav por rol (US-179)', () => {
@@ -19,6 +19,21 @@ describe('lib/roles + nav por rol (US-179)', () => {
     for (const role of USER_ROLES) {
       expect(t(ROLE_LABEL_KEYS[role])).toBeTruthy();
     }
+  });
+
+  it('etiquetaDeRol nombra cada rol y declara el que no conoce, sin pintarlo crudo', () => {
+    expect(etiquetaDeRol('admin', t)).toBe('Administrador');
+    expect(etiquetaDeRol('viewer', t)).toBe('Observador');
+    expect(etiquetaDeRol('superuser', t)).toBe('Rol no reconocido (superuser)');
+    // Ni un valor heredado del prototipo se cuela como rol.
+    expect(etiquetaDeRol('constructor', t)).toBe('Rol no reconocido (constructor)');
+  });
+
+  it('la intro de «Añadir usuario» usa el nombre del rol, no otro («Solo lectura»)', () => {
+    // Una palabra que se ENSEÑA y se COMPARA sale de la misma clave: el rol se llama
+    // «Observador» en el selector, y la intro no puede llamarlo de otra manera.
+    expect(t('users.addHint')).toContain(`«${t(ROLE_LABEL_KEYS.viewer)}»`);
+    expect(t('users.addHint')).not.toContain('Solo lectura');
   });
 
   it('admin y viewer ven toda la navegación', () => {
