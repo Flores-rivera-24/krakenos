@@ -947,6 +947,8 @@ export const es = {
   'traffic.perDeviceAdminOnlyDesc':
     'Cuánto consume cada dispositivo permite deducir qué hace cada persona de la casa, así que el detalle se reserva a quien administra la instalación. Tu propio uso sí lo tienes más abajo, en «Uso por persona».',
   'wellbeing.unassigned': 'Sin asignar',
+  // Un dueño que ya no existe: el agente manda `name: null`, no un texto.
+  'wellbeing.unknown': 'Desconocido',
   // US-251: el estado que SÍ se arregla, y por eso lleva instrucción concreta.
   'perDeviceTraffic.setup.title': 'Tu router puede dar este dato, pero le falta un paquete',
   'perDeviceTraffic.setup.nlbwmon':

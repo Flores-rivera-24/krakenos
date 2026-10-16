@@ -921,6 +921,7 @@ export const en: Record<TranslationKey, string> = {
   'traffic.perDeviceAdminOnlyDesc':
     'How much each device uses reveals what each person at home does, so the breakdown is limited to whoever administers the installation. Your own usage is still below, under «Usage by person».',
   'wellbeing.unassigned': 'Unassigned',
+  'wellbeing.unknown': 'Unknown',
   'perDeviceTraffic.setup.title': 'Your router can report this, but it is missing a package',
   'perDeviceTraffic.setup.nlbwmon':
     'Install «nlbwmon» on the router: in LuCI, System → Software → Update lists and search for «nlbwmon»; or over SSH, «opkg update && opkg install nlbwmon luci-app-nlbwmon». KrakenOS picks it up on its own within a few minutes and starts counting from then.',

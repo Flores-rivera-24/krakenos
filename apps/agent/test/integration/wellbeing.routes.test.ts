@@ -35,6 +35,32 @@ describe('rutas de bienestar digital (US-184)', () => {
     expect(Array.isArray(body.people)).toBe(true);
   });
 
+  it('los aparatos sin dueño salen con name null y el contrato conserva todas las claves', async () => {
+    // El agente no manda «Sin asignar»/«Desconocido» (copy sin traducir): manda null.
+    const admin = await seedUser(app, { role: 'admin' });
+    await app.prisma.device.create({ data: { mac: 'cc:cc:cc:00:00:03', ip: '1.1.1.3' } });
+    await app.prisma.deviceTrafficSample.create({
+      data: { mac: 'cc:cc:cc:00:00:03', rxBytesPerSec: 200, txBytesPerSec: 0 },
+    });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/wellbeing/usage?range=week',
+      headers: authHeader(signAccess(app, admin)),
+    });
+    const sinDueno = res.json().people.find((p: { userId: string | null }) => p.userId === null);
+    expect(sinDueno, 'el grupo sin dueño tiene que salir').toBeTruthy();
+    expect(sinDueno.name).toBeNull();
+    expect(Object.keys(sinDueno).sort()).toEqual([
+      'buckets',
+      'deviceCount',
+      'name',
+      'rxBytes',
+      'totalBytes',
+      'txBytes',
+      'userId',
+    ]);
+  });
+
   it('rechaza un rango inválido con 400', async () => {
     const user = await seedUser(app, { role: 'viewer' });
     const res = await app.inject({

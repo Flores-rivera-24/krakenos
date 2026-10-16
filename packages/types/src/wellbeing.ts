@@ -19,8 +19,12 @@ export interface UsageBucket {
 export interface PersonUsage {
   /** Id de la persona dueña, o `null` para los dispositivos sin asignar. */
   userId: string | null;
-  /** Nombre a mostrar (persona o «Sin asignar»). */
-  name: string;
+  /**
+   * `displayName` de la persona, o `null` si no hay nombre que dar: los aparatos sin
+   * dueño (`userId: null`) y un dueño que ya no existe. El agente NO manda «Sin asignar»
+   * ni «Desconocido» (copy en español que no se podía traducir): la web los escribe.
+   */
+  name: string | null;
   /** Bytes de descarga estimados en la ventana. */
   rxBytes: number;
   /** Bytes de subida estimados en la ventana. */

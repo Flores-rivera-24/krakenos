@@ -27,7 +27,7 @@ const usage: WellbeingUsage = {
     },
     {
       userId: null,
-      name: 'Sin asignar',
+      name: null,
       rxBytes: 100,
       txBytes: 0,
       totalBytes: 100,
@@ -49,6 +49,16 @@ describe('WellbeingCard (US-184)', () => {
     expect(await screen.findByText('Ana')).toBeInTheDocument();
     // El grupo sin dueño se localiza a partir de userId === null.
     expect(screen.getByText('Sin asignar')).toBeInTheDocument();
+  });
+
+  it('un dueño sin nombre se llama «Desconocido», no vacío ni null', async () => {
+    apiMock.get.mockResolvedValue({
+      ...usage,
+      people: [{ ...usage.people[0]!, userId: 'u-borrado', name: null }],
+    });
+    render(<WellbeingCard />);
+    expect(await screen.findByText('Desconocido')).toBeInTheDocument();
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
   });
 
   it('concuerda en número: «3 dispositivos» y «1 dispositivo»', async () => {
