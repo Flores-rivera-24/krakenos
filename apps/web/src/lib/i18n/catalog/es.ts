@@ -81,6 +81,13 @@ export const es = {
   'errors.code.SETUP_ALREADY_DONE': 'El sistema ya está configurado',
   'errors.code.SETUP_LOCK_STALE':
     'La configuración quedó bloqueada por un intento anterior. Reinicia el agente y vuelve a intentarlo.',
+  // Puerta de enlace (VPN, cortafuegos y QoS): el copy del agente, verbatim.
+  'errors.code.GATEWAY_UNSUPPORTED':
+    'Este equipo no puede hacer de puerta de enlace (VPN, cortafuegos o QoS). Usa los de tu router.',
+  'errors.code.GATEWAY_REQUIRES_SETUP':
+    'Falta instalar el helper de puerta de enlace en este equipo: sin él no se puede aplicar el cambio.',
+  'errors.code.PRIVILEGED_COMMAND_FAILED':
+    'No se pudo aplicar el cambio en el sistema. El detalle está en el registro del servidor.',
 
   // --- Setup / wizard (US-81/105) ---
   'setup.checking': 'Comprobando la instalación…',
@@ -418,6 +425,8 @@ export const es = {
   'vpn.col.publicKey': 'Clave pública',
   'vpn.col.action': 'Acción',
   'vpn.empty.title': 'Sin dispositivos. Crea el primero arriba.',
+  // Sin formulario de alta (el equipo no puede ser servidor): no se manda a «crear arriba».
+  'vpn.empty.titleReadOnly': 'Sin dispositivos.',
   'vpn.empty.desc':
     'Dale un nombre a tu móvil u ordenador y pulsa «Añadir dispositivo»: obtendrás un QR para conectarlo a tu red desde cualquier lugar con la app de WireGuard.',
   'vpn.delete': 'Eliminar',
@@ -953,6 +962,21 @@ export const es = {
   'perDeviceTraffic.setup.title': 'Tu router puede dar este dato, pero le falta un paquete',
   'perDeviceTraffic.setup.nlbwmon':
     'Instala «nlbwmon» en el router: en LuCI, Sistema → Software → Actualizar listas y buscar «nlbwmon»; o por SSH, «opkg update && opkg install nlbwmon luci-app-nlbwmon». KrakenOS lo detecta solo en unos minutos y empieza a contar desde ese momento.',
+  // Puerta de enlace por equipo: VPN, cortafuegos y QoS necesitan un helper de Linux.
+  'gateway.unsupported.title': 'Este equipo no puede hacer de puerta de enlace',
+  'gateway.unsupported.vpn':
+    'En Windows, KrakenOS no hace de puerta de enlace: no puede ser el servidor WireGuard. Usa la VPN de tu router, o Tailscale más abajo.',
+  'gateway.unsupported.firewall':
+    'En Windows, KrakenOS no hace de puerta de enlace: no aplica reglas de cortafuegos. Usa el cortafuegos de tu router.',
+  'gateway.unsupported.qos':
+    'En Windows, KrakenOS no hace de puerta de enlace: no limita ni prioriza el tráfico. Usa el QoS de tu router.',
+  'gateway.setup.title': 'Falta instalar el helper de puerta de enlace',
+  'gateway.setup.vpn':
+    'Sin el helper privilegiado, KrakenOS no puede crear ni quitar dispositivos de WireGuard. Instálalo con «install.sh --with-helper» en este equipo.',
+  'gateway.setup.firewall':
+    'Sin el helper privilegiado, KrakenOS no puede aplicar reglas de cortafuegos. Instálalo con «install.sh --with-helper» en este equipo.',
+  'gateway.setup.qos':
+    'Sin el helper privilegiado, KrakenOS no puede limitar ni priorizar el tráfico. Instálalo con «install.sh --with-helper» en este equipo.',
   'wellbeing.devices.one': '{n} dispositivo',
   'wellbeing.devices.other': '{n} dispositivos',
 

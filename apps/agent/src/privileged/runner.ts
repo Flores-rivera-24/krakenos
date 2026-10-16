@@ -11,6 +11,13 @@ export interface CommandRunner {
   run(argv: string[]): Promise<CommandResult>;
 }
 
+/**
+ * Copy que ve el cliente cuando un comando privilegiado falla (`PRIVILEGED_COMMAND_FAILED`).
+ * Es nuestro y no lleva el `stderr` del helper; la web lo traduce por `code`.
+ */
+export const PRIVILEGED_COMMAND_FAILED_MESSAGE =
+  'No se pudo aplicar el cambio en el sistema. El detalle está en el registro del servidor.';
+
 /** Error de un comando privilegiado con código de salida distinto de 0. */
 export class PrivilegedCommandError extends Error {
   constructor(

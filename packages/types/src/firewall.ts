@@ -61,6 +61,8 @@ export interface UpdateFirewallRuleRequest {
  * simula las reglas en memoria.
  */
 export interface FirewallManager {
+  /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
+  readonly kind: FirewallKind;
   listRules(): Promise<FirewallRule[]>;
   getRule(id: Id): Promise<FirewallRule | null>;
   createRule(input: CreateFirewallRuleRequest): Promise<FirewallRule>;

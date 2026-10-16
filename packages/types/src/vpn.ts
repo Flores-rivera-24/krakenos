@@ -1,4 +1,5 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { GatewayCapability } from './gateway.js';
 
 /** Implementaciones de gestor de VPN disponibles. */
 export type VpnKind = 'mock' | 'wireguard';
@@ -12,6 +13,14 @@ export interface VpnStatus {
   endpoint: string | null;
   listenPort: number;
   peerCount: number;
+}
+
+/**
+ * Respuesta de `GET /api/vpn/status`: el estado del gestor más la capacidad de este equipo para
+ * hacer de servidor WireGuard (la tarjeta de Tailscale no depende de ella).
+ */
+export interface VpnStatusResponse extends VpnStatus {
+  capability: GatewayCapability;
 }
 
 /** Peer (dispositivo autorizado) de la VPN. */
@@ -73,6 +82,8 @@ export interface TailscaleStatus {
  * privilegiadas (wg/iptables) a un helper vía sudoers; `mock` simula en memoria.
  */
 export interface VpnManager {
+  /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
+  readonly kind: VpnKind;
   getStatus(): Promise<VpnStatus>;
   listPeers(): Promise<VpnPeer[]>;
   createPeer(input: CreatePeerRequest): Promise<CreatePeerResult>;

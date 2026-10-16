@@ -1,4 +1,4 @@
-import type { QosRule } from '@krakenos/types';
+import type { GatewayCapability, QosRule } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +31,15 @@ const RULE: QosRule = {
   createdAt: '2026-06-17T00:00:00.000Z',
 };
 
+/** Mock por ruta: `/qos/status` lleva la capacidad y el resto de GET devuelven las reglas. */
+function mockApi(rules: QosRule[], capability: GatewayCapability = { status: 'supported' }) {
+  apiMock.get
+    .mockReset()
+    .mockImplementation((path: string) =>
+      path === '/qos/status' ? Promise.resolve({ capability }) : Promise.resolve(rules),
+    );
+}
+
 function setRole(role: 'admin' | 'viewer') {
   useAuthStore.setState({
     user: { id: 'u', email: 'a@b.c', displayName: 'Emilio', role, createdAt: '', updatedAt: '' },
@@ -40,7 +49,7 @@ function setRole(role: 'admin' | 'viewer') {
 
 describe('QosPage', () => {
   beforeEach(() => {
-    apiMock.get.mockReset().mockResolvedValue([RULE]);
+    mockApi([RULE]);
     apiMock.post.mockReset().mockResolvedValue(RULE);
     apiMock.patch.mockReset().mockResolvedValue({ ...RULE, enabled: false });
     apiMock.del.mockReset().mockResolvedValue(undefined);
@@ -101,8 +110,66 @@ describe('QosPage', () => {
   });
 
   it('muestra el estado vacío honesto sin reglas (US-93)', async () => {
-    apiMock.get.mockReset().mockResolvedValue([]);
+    mockApi([]);
     render(<QosPage />);
     expect(await screen.findByText(/Aún no hay reglas de QoS/)).toBeInTheDocument();
+  });
+});
+
+describe('QosPage: capacidad de puerta de enlace de este equipo', () => {
+  beforeEach(() => {
+    apiMock.post.mockReset();
+    apiMock.patch.mockReset();
+    apiMock.del.mockReset();
+    setRole('admin');
+  });
+
+  it('supported: sin aviso y con el formulario de alta', async () => {
+    mockApi([RULE], { status: 'supported' });
+    render(<QosPage />);
+    await screen.findByText('Limitar consola');
+    expect(screen.getByRole('button', { name: /Añadir regla/ })).toBeInTheDocument();
+    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
+    expect(screen.queryByText('Falta instalar el helper de puerta de enlace')).toBeNull();
+    expect(apiMock.get).toHaveBeenCalledWith('/qos/status');
+  });
+
+  it('unsupported: avisa de que en Windows hay que usar el QoS del router y no ofrece alta', async () => {
+    mockApi([RULE], { status: 'unsupported', reason: 'platform' });
+    render(<QosPage />);
+    await screen.findByText('Limitar consola');
+    expect(screen.getByText('Este equipo no puede hacer de puerta de enlace')).toBeInTheDocument();
+    expect(
+      screen.getByText(/En Windows, KrakenOS no hace de puerta de enlace.*QoS de tu router/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Añadir regla/ })).toBeNull();
+    expect(screen.queryByLabelText('Nombre')).toBeNull();
+    expect(screen.getByRole('switch')).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /Eliminar regla/ })).toBeNull();
+  });
+
+  it('requires-setup: dice cómo instalar el helper y no ofrece alta', async () => {
+    mockApi([RULE], { status: 'requires-setup', reason: 'helper-missing' });
+    render(<QosPage />);
+    await screen.findByText('Limitar consola');
+    expect(screen.getByText('Falta instalar el helper de puerta de enlace')).toBeInTheDocument();
+    expect(screen.getByText(/install\.sh --with-helper/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Añadir regla/ })).toBeNull();
+  });
+
+  it('sin reglas y sin capacidad de crearlas, el vacío no manda a «crear una arriba»', async () => {
+    mockApi([], { status: 'unsupported', reason: 'platform' });
+    render(<QosPage />);
+    expect(await screen.findByText(/Aún no hay reglas de QoS/)).toBeInTheDocument();
+    expect(screen.queryByText(/Crea una regla arriba/)).toBeNull();
+  });
+
+  it('un viewer no pide la capacidad (es solo admin) ni ve aviso', async () => {
+    setRole('viewer');
+    mockApi([RULE], { status: 'unsupported', reason: 'platform' });
+    render(<QosPage />);
+    await screen.findByText('Limitar consola');
+    expect(apiMock.get).not.toHaveBeenCalledWith('/qos/status');
+    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
   });
 });

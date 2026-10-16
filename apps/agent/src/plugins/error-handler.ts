@@ -1,5 +1,6 @@
 import { STATUS_CODES } from 'node:http';
 import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { PRIVILEGED_COMMAND_FAILED_MESSAGE, PrivilegedCommandError } from '../privileged/runner.js';
 
 /**
  * Manejador de errores global.
@@ -9,11 +10,26 @@ import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from
  *
  * - **4xx**: idéntico al de Fastify (respeta `statusCode`, `code` y `message`, también
  *   los errores de validación). El contrato 4xx no cambia.
+ * - **`PrivilegedCommandError`** (el helper de WireGuard/iptables/tc salió con error): **503**
+ *   `PRIVILEGED_COMMAND_FAILED` con copy nuestro. Antes caía como 500 «Error interno» sin
+ *   decir que era el sistema y no el agente. El `stderr` del helper puede llevar rutas o salida
+ *   del sistema: va al log del servidor y **no** al cuerpo. Se mapea aquí, en el punto único, y
+ *   no en cada `catch` de los managers.
  * - **5xx**: el error completo va al log; el cliente recibe un mensaje genérico salvo en los
  *   5xx deliberados con `code` propio (p. ej. `DRIVER_UNAVAILABLE`), cuyo copy es nuestro.
  */
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, req: FastifyRequest, reply: FastifyReply) => {
+    if (error instanceof PrivilegedCommandError) {
+      // El mensaje de este error lleva el `stderr` entero: al log, nunca al cliente.
+      req.log.error({ err: error }, 'comando privilegiado fallido');
+      return reply.status(503).send({
+        statusCode: 503,
+        code: 'PRIVILEGED_COMMAND_FAILED',
+        error: STATUS_CODES[503] ?? 'Service Unavailable',
+        message: PRIVILEGED_COMMAND_FAILED_MESSAGE,
+      });
+    }
     const status = error.statusCode ?? 500;
     if (status < 500) {
       // Mismo cuerpo que el handler por defecto de Fastify.

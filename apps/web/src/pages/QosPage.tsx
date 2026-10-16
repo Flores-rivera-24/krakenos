@@ -1,5 +1,11 @@
-import type { CreateQosRuleRequest, QosPriority, QosRule } from '@krakenos/types';
+import type {
+  CreateQosRuleRequest,
+  GatewayStatusResponse,
+  QosPriority,
+  QosRule,
+} from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
+import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -43,6 +49,8 @@ export function QosPage() {
     low: t('qos.priority.low'),
   };
   const [rules, setRules] = useState<QosRule[]>([]);
+  // Capacidad de ESTE equipo para moldear tráfico; `null` = aún sin saber (cargando o fallo).
+  const [capability, setCapability] = useState<GatewayStatusResponse['capability'] | null>(null);
   const [form, setForm] = useState<CreateQosRuleRequest>(EMPTY);
   const [downText, setDownText] = useState('');
   const [upText, setUpText] = useState('');
@@ -56,9 +64,22 @@ export function QosPage() {
       .then(setRules)
       .catch((err) => setError(describeError(err, t('qos.loadError'))));
 
+  const loadCapability = () =>
+    api
+      .get<GatewayStatusResponse>('/qos/status')
+      .then((s) => setCapability(s.capability))
+      .catch((err) => setError(describeError(err, t('qos.loadError'))));
+
   useEffect(() => {
-    void load().finally(() => setLoading(false));
+    // `/qos/status` es solo admin como el resto del módulo: a otro rol no se le pide.
+    void Promise.all([load(), isAdmin ? loadCapability() : Promise.resolve()]).finally(() =>
+      setLoading(false),
+    );
   }, []);
+
+  // Solo con un equipo que puede aplicar QoS se ofrece crear, activar o eliminar reglas: si no,
+  // cada control acabaría en error. Sin saberlo todavía, tampoco.
+  const canConfigure = isAdmin && capability?.status === 'supported';
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -113,7 +134,11 @@ export function QosPage() {
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
-      {isAdmin && (
+      {isAdmin && capability && !canConfigure && (
+        <GatewayCapabilityNotice capability={capability} feature="qos" />
+      )}
+
+      {canConfigure && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-foreground">{t('qos.newRule')}</CardTitle>
@@ -219,7 +244,7 @@ export function QosPage() {
                     <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
                       <p className="text-kr-muted">{t('qos.empty.title')}</p>
                       <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        {t('qos.empty.desc')} {isAdmin && t('qos.empty.cta')}
+                        {t('qos.empty.desc')} {canConfigure && t('qos.empty.cta')}
                       </p>
                     </td>
                   </tr>
@@ -230,7 +255,7 @@ export function QosPage() {
                         <OptimisticSwitch
                           checked={r.enabled}
                           onToggle={(next) => toggleRule(r, next)}
-                          disabled={!isAdmin}
+                          disabled={!canConfigure}
                           errorMessage={t('qos.toggleError', { name: r.name })}
                           aria-label={t('qos.toggleLabel', { name: r.name })}
                         />
@@ -244,12 +269,14 @@ export function QosPage() {
                       <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
                       {isAdmin && (
                         <td className="px-3 py-2 text-right">
-                          <DeleteButton
-                            onDelete={() => removeRule(r.id)}
-                            aria-label={t('qos.deleteLabel', { name: r.name })}
-                          >
-                            {t('qos.delete')}
-                          </DeleteButton>
+                          {canConfigure && (
+                            <DeleteButton
+                              onDelete={() => removeRule(r.id)}
+                              aria-label={t('qos.deleteLabel', { name: r.name })}
+                            >
+                              {t('qos.delete')}
+                            </DeleteButton>
+                          )}
                         </td>
                       )}
                     </tr>
