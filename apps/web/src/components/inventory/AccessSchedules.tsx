@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import {
+  diasCompletos,
   diasIniciales,
   createSchedule,
   deleteSchedule,
@@ -181,7 +182,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 type="button"
                 onClick={() => toggleDay(d)}
                 aria-pressed={days.includes(d)}
-                aria-label={t('access.day', { day: label })}
+                aria-label={diasCompletos(t)[d]}
                 className={cn(
                   'h-8 w-8 rounded-md border text-kr-sm',
                   days.includes(d)

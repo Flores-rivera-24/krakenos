@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -22,6 +22,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import { AccessSchedules } from '@/components/inventory/AccessSchedules';
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { useToastStore } from '@/store/toast.store';
 
 const SCHEDULE = {
@@ -93,5 +94,53 @@ describe('AccessSchedules — control parental (US-108)', () => {
     await screen.findByText('Noche');
     expect(screen.queryByRole('button', { name: 'Añadir horario' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Eliminar/ })).not.toBeInTheDocument();
+  });
+});
+
+/**
+ * Las siete casillas del formulario solo enseñan la inicial, y las iniciales se
+ * repiten («S»/«T» dos veces en inglés, «M» y «X» en español no, pero «Day S» sí).
+ * El nombre accesible es el día completo; la inicial queda como texto visible.
+ */
+describe('AccessSchedules — nombres accesibles de las casillas de día', () => {
+  const ES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+  const EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([]);
+    useToastStore.setState({ toasts: [] });
+  });
+
+  afterEach(() => {
+    setLocale('es', { persist: false });
+  });
+
+  async function abrirFormulario() {
+    const user = userEvent.setup();
+    render(<AccessSchedules mac="aa:bb" canEdit />);
+    await screen.findByText(/Sin horarios/);
+    await user.click(screen.getByRole('button', { name: 'Añadir horario' }));
+  }
+
+  it('cada casilla se anuncia con el nombre completo de su día y ninguno se repite', async () => {
+    await abrirFormulario();
+    for (const dia of ES) {
+      expect(screen.getByRole('button', { name: dia })).toHaveAttribute('aria-pressed');
+    }
+    // La inicial sigue siendo el texto visible de la casilla.
+    expect(screen.getByRole('button', { name: 'Martes' })).toHaveTextContent(/^M$/);
+    expect(screen.getByRole('button', { name: 'Sábado' })).toHaveTextContent(/^S$/);
+  });
+
+  it('en inglés también: Sunday/Saturday y Tuesday/Thursday no se confunden', async () => {
+    await abrirFormulario();
+    await changeLocale('en', { persist: false });
+    await waitFor(() => {
+      for (const dia of EN) {
+        expect(screen.getByRole('button', { name: dia })).toBeInTheDocument();
+      }
+    });
+    expect(screen.getByRole('button', { name: 'Tuesday' })).toHaveTextContent(/^T$/);
+    expect(screen.getByRole('button', { name: 'Thursday' })).toHaveTextContent(/^T$/);
   });
 });

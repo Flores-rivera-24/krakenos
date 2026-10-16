@@ -45,4 +45,4 @@ export const hhmmToMinutes = (s: string): number => {
  * español con la app en inglés y además con dos formatos según la pantalla.
  * Ahora hay una sola fuente y se traduce; se reexporta para no romper importes.
  */
-export { diasIniciales } from '@/lib/schedule-format';
+export { diasCompletos, diasIniciales } from '@/lib/schedule-format';

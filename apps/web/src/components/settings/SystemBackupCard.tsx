@@ -155,11 +155,11 @@ export function SystemBackupCard() {
             {t('backup.replaceBody')}
           </Callout>
           <div className="space-y-1.5">
-            <Label htmlFor="bk-confirm">
+            <Label htmlFor="bk-restore-confirm">
               {t('backup.typeToConfirm')} <strong>{t('backup.confirmWord')}</strong>
             </Label>
             <Input
-              id="bk-confirm"
+              id="bk-restore-confirm"
               value={restoreConfirm}
               onChange={(e) => setRestoreConfirm(e.target.value)}
               autoComplete="off"

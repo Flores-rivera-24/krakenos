@@ -40,7 +40,12 @@ import { agruparHorariosDeAcceso } from '@/lib/access-routines';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
-import { diasIniciales, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
+import {
+  diasCompletos,
+  diasIniciales,
+  minuteToTimeString,
+  timeStringToMinute,
+} from '@/lib/schedule-format';
 import { MODE_LABEL_KEYS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
@@ -348,6 +353,7 @@ function RuleEditor({
           key={d}
           type="button"
           aria-pressed={selected.includes(d)}
+          aria-label={diasCompletos(t)[d]}
           onClick={() => onToggle(d)}
           className={cn(
             'h-9 w-11 rounded-md border text-kr-xs transition-colors',

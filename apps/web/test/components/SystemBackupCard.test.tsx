@@ -131,3 +131,26 @@ describe('SystemBackupCard — copias automáticas', () => {
     expect(await screen.findByText(/1 copia en disco/)).toBeInTheDocument();
   });
 });
+
+/**
+ * Los dos campos «confirmar» de la tarjeta (contraseña de la copia y palabra de la
+ * restauración) compartían `id="bk-confirm"`: con un id repetido `htmlFor` resuelve al
+ * primero y el campo de restaurar se quedaba sin nombre accesible.
+ */
+describe('SystemBackupCard — nombres accesibles', () => {
+  it('no repite ningún id y el campo de confirmar la restauración tiene nombre', async () => {
+    apiMock.get.mockResolvedValue(OFF);
+    const { container } = render(<SystemBackupCard />);
+    await screen.findByLabelText('Frecuencia');
+
+    const ids = Array.from(container.querySelectorAll('[id]')).map((el) => el.id);
+    expect(ids.length).toBeGreaterThan(5);
+    expect(ids.filter((id, i) => ids.indexOf(id) !== i)).toEqual([]);
+
+    // El nombre sale del <label> real: «Para continuar, escribe RESTAURAR».
+    const campo = screen.getByRole('textbox', { name: /Para continuar, escribe\s+RESTAURAR/ });
+    expect(campo).toHaveAttribute('id', 'bk-restore-confirm');
+    // Y el otro «Confirmar» sigue siendo el de la contraseña de la copia.
+    expect(screen.getByLabelText('Confirmar')).toHaveAttribute('type', 'password');
+  });
+});

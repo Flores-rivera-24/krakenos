@@ -9,7 +9,12 @@ import { FormError } from '@/components/ui/form-error';
 import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
-import { diasIniciales, minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
+import {
+  diasCompletos,
+  diasIniciales,
+  minuteToTimeString,
+  timeStringToMinute,
+} from '@/lib/schedule-format';
 import { toast } from '@/store/toast.store';
 
 interface Props {
@@ -214,6 +219,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
                     type="button"
                     onClick={() => toggleDay(d)}
                     aria-pressed={days.includes(d)}
+                    aria-label={diasCompletos(t)[d]}
                     className={
                       'rounded-sm px-2 py-1 text-kr-xs ' +
                       (days.includes(d)

@@ -5,7 +5,7 @@ import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
-import { diasIniciales, hhmmToMinutes, minutesToHHMM } from '@/lib/access';
+import { diasCompletos, diasIniciales, hhmmToMinutes, minutesToHHMM } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { setBedtime } from '@/lib/people';
@@ -84,7 +84,7 @@ export function BedtimeSlideover({ person, onClose, onSaved }: Props) {
                 type="button"
                 onClick={() => toggleDay(d)}
                 aria-pressed={days.includes(d)}
-                aria-label={t('people.bedtime.dayAria', { label })}
+                aria-label={diasCompletos(t)[d]}
                 className={cn(
                   'h-9 w-9 rounded-md border text-kr-sm',
                   days.includes(d)
