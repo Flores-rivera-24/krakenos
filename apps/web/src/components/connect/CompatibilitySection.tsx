@@ -5,9 +5,16 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { listCompatibility } from '@/lib/compatibility';
+import {
+  ETIQUETA_DE_CAPACIDAD,
+  ETIQUETA_DE_CATEGORIA,
+  ETIQUETA_DE_DEPENDENCIA,
+  ETIQUETA_DE_REQUISITO,
+  etiquetaCompat,
+  listCompatibility,
+} from '@/lib/compatibility';
 import { formatDate } from '@/lib/format';
-import { useT, type TranslationKey } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
 
 /**
  * Consulta de compatibilidad de hardware (US-208). Buscador + filtro por categoría
@@ -67,7 +74,7 @@ export function CompatibilitySection() {
         </FilterChip>
         {COMPAT_CATEGORIES.map((c) => (
           <FilterChip key={c} active={category === c} onClick={() => setCategory(c)}>
-            {t(`compat.cat.${c}` as TranslationKey)}
+            {etiquetaCompat(ETIQUETA_DE_CATEGORIA, c, t)}
           </FilterChip>
         ))}
       </div>
@@ -105,7 +112,7 @@ export function CompatibilitySection() {
               </div>
               <div className="flex flex-wrap gap-1">
                 {e.capabilities.map((c) => (
-                  <Badge key={c}>{t(`compat.cap.${c}` as TranslationKey)}</Badge>
+                  <Badge key={c}>{etiquetaCompat(ETIQUETA_DE_CAPACIDAD, c, t)}</Badge>
                 ))}
               </div>
               {/* US-238: solo se marca lo `community`. Poner también un sello a lo
@@ -121,7 +128,7 @@ export function CompatibilitySection() {
                   una sola línea, ese caso no tenía dónde decirse. */}
               {e.appDependency && (
                 <p className="text-kr-xs text-warning">
-                  {t(`compat.app.${e.appDependency.reason}` as TranslationKey)}
+                  {etiquetaCompat(ETIQUETA_DE_DEPENDENCIA, e.appDependency.reason, t)}
                   {e.appDependency.scope === 'some' && e.appDependency.devices ? (
                     <> {t('compat.app.only', { devices: e.appDependency.devices })}</>
                   ) : null}
@@ -130,7 +137,9 @@ export function CompatibilitySection() {
               {e.requirements.length > 0 && (
                 <p className="text-kr-xs text-kr-muted">
                   {t('compat.needs')}{' '}
-                  {e.requirements.map((r) => t(`compat.req.${r}` as TranslationKey)).join(' · ')}
+                  {e.requirements
+                    .map((r) => etiquetaCompat(ETIQUETA_DE_REQUISITO, r, t))
+                    .join(' · ')}
                 </p>
               )}
             </li>

@@ -1851,6 +1851,8 @@ export const es = {
     'Necesita la app del fabricante para activar el control local en cada dispositivo.',
   'compat.app.only': 'Solo afecta a los {devices}.',
   'compat.needs': 'Necesita:',
+  // Un valor que esta versión de la web no conoce se declara, no se pinta crudo.
+  'compat.unknown': 'No reconocido ({value})',
   'compat.cat.driver': 'Routers y puntos de acceso',
   'compat.cat.iot': 'Dispositivos inteligentes',
   'compat.cat.cameras': 'Cámaras',
@@ -1862,6 +1864,7 @@ export const es = {
   'compat.cap.inventory': 'Inventario',
   'compat.cap.block': 'Bloquear',
   'compat.cap.traffic': 'Tráfico',
+  'compat.cap.traffic-per-device': 'Tráfico por dispositivo',
   'compat.cap.wifi': 'WiFi',
   'compat.cap.control': 'Encender/atenuar',
   'compat.cap.vpn': 'VPN',

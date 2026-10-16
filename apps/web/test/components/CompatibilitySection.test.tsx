@@ -3,7 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const compatMock = vi.hoisted(() => ({ listCompatibility: vi.fn() }));
-vi.mock('@/lib/compatibility', () => compatMock);
+// Solo se sustituye la lectura: los mapas de etiquetas son los reales (si no, el
+// componente no los encontraría y el test no vería nada de lo que pinta).
+vi.mock('@/lib/compatibility', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/compatibility')>()),
+  ...compatMock,
+}));
 
 import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
 
@@ -129,6 +134,20 @@ describe('CompatibilitySection (US-208)', () => {
     expect(screen.getByText('Philips Hue').closest('li')).not.toHaveTextContent(
       'la app del fabricante',
     );
+  });
+
+  it('la capacidad «tráfico por dispositivo» sale traducida y una desconocida se declara', async () => {
+    compatMock.listCompatibility.mockResolvedValue([
+      {
+        ...CATALOG[0]!,
+        capabilities: ['inventory', 'traffic-per-device', 'teletransporte'],
+      },
+    ]);
+    render(<CompatibilitySection />);
+    const ficha = (await screen.findByText('Router OpenWrt')).closest('li')!;
+    expect(ficha).toHaveTextContent('Tráfico por dispositivo');
+    expect(ficha).toHaveTextContent('No reconocido (teletransporte)');
+    expect(ficha).not.toHaveTextContent('compat.cap');
   });
 
   it('busca por marca/modelo', async () => {
