@@ -9,8 +9,9 @@ export default defineConfig({
   // `index.ts` = agente; `update-runner.ts` = proceso actualizador one-click
   // independiente (US-190), lanzado detached para sobrevivir al reinicio del agente;
   // `reset-admin.ts` = recuperación de la cuenta de admin desde el host (US-233),
-  // que no existe como endpoint a propósito.
-  entry: ['src/index.ts', 'src/update-runner.ts', 'src/reset-admin.ts'],
+  // que no existe como endpoint a propósito; `migrate.ts` = CLI de migraciones (US-275)
+  // para el instalador, Docker, el actualizador y los e2e.
+  entry: ['src/index.ts', 'src/update-runner.ts', 'src/reset-admin.ts', 'src/migrate.ts'],
   format: ['esm'],
   platform: 'node',
   target: 'node24',

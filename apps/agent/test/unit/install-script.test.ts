@@ -48,7 +48,7 @@ function runInstaller(
 }
 
 describe('install.sh --dry-run (US-216)', () => {
-  it('imprime el plan completo en orden: pnpm pinneado → clone → keys → migrate → build → systemd', async () => {
+  it('imprime el plan completo en orden: pnpm pinneado → clone → keys → build → migrate (aplicador propio) → systemd', async () => {
     const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
     expect(code).toBe(0);
     const order = [
@@ -56,8 +56,8 @@ describe('install.sh --dry-run (US-216)', () => {
       'git clone',
       'gen-keys.sh',
       'pnpm install --frozen-lockfile',
-      'prisma migrate deploy',
       'pnpm build',
+      'dist/migrate.js', // aplicador propio de migraciones (US-275), no la CLI de Prisma
       'systemctl enable --now krakenos',
     ];
     let last = -1;
@@ -66,6 +66,7 @@ describe('install.sh --dry-run (US-216)', () => {
       expect(at, `falta el paso «${step}» en el plan`).toBeGreaterThan(last);
       last = at;
     }
+    expect(stdout).not.toContain('prisma migrate deploy');
     // Nada se ejecuta de verdad: toda mutación va marcada como dry-run.
     expect(stdout).toContain('dry-run$');
   });

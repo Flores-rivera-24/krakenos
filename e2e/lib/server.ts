@@ -92,12 +92,12 @@ export async function startServer(): Promise<ChildProcess> {
     rmSync(`${DB_FILE}${suffix}`, { force: true });
   }
 
-  // El agente NO migra al arrancar (eso es `migrate deploy`): aplica el esquema a
-  // la DB efímera antes de levantarlo, o las consultas Prisma fallarían.
-  execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
+  // Migra ANTES de levantar el agente (US-275, `dist/migrate.js`): `contarUsuarios` lee
+  // la base antes de que arranque nadie, y necesita el esquema ya aplicado.
+  execFileSync(process.execPath, ['dist/migrate.js'], {
     cwd: AGENT_DIR,
     env: { ...process.env, DATABASE_URL: DB_URL },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'],
   });
 
   // Con usuarios en la base el agente NO imprime el token de configuración, y sin

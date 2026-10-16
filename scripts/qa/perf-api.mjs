@@ -125,10 +125,10 @@ async function arrancarAgente() {
   for (const sufijo of ['', '-journal', '-wal', '-shm']) {
     rmSync(`${DB_FILE}${sufijo}`, { force: true });
   }
-  execFileSync('npx', ['prisma', 'migrate', 'deploy'], {
+  execFileSync(process.execPath, ['dist/migrate.js'], {
     cwd: AGENT_DIR,
     env: { ...process.env, DATABASE_URL: `file:${DB_FILE}` },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'inherit'],
   });
 
   const hijo = spawn('node', ['dist/index.js'], {
