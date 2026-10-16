@@ -1,4 +1,5 @@
 import type { CompatibilityEntry } from '@krakenos/types';
+import type * as Compat from '@/lib/compatibility';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -6,7 +7,7 @@ const compatMock = vi.hoisted(() => ({ listCompatibility: vi.fn() }));
 // Solo se sustituye la lectura: los mapas de etiquetas son los reales (si no, el
 // componente no los encontraría y el test no vería nada de lo que pinta).
 vi.mock('@/lib/compatibility', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/compatibility')>()),
+  ...(await importOriginal<typeof Compat>()),
   ...compatMock,
 }));
 
