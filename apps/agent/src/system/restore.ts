@@ -266,6 +266,26 @@ function destFor(name: string, targets: RestoreTargets): string | null {
   return null;
 }
 
+const SQLITE_SIDECARS = ['-wal', '-shm'] as const;
+
+/**
+ * Respalda en `preRestoreDir` y borra el `-wal`/`-shm` de la base SQLite vieja
+ * (tolera que no existan). Devuelve los sufijos retirados, para poder revertir.
+ */
+function retireSqliteSidecars(dbFile: string, rel: string, preRestoreDir: string): string[] {
+  const retired: string[] = [];
+  for (const suffix of SQLITE_SIDECARS) {
+    const file = `${dbFile}${suffix}`;
+    if (!existsSync(file)) continue;
+    const bak = join(preRestoreDir, `${rel}${suffix}`);
+    mkdirSync(dirname(bak), { recursive: true });
+    copyFileSync(file, bak);
+    rmSync(file, { force: true });
+    retired.push(suffix);
+  }
+  return retired;
+}
+
 /**
  * Aplica un restore preparado: respalda cada fichero actual en `preRestoreDir` y
  * coloca el del staging en su sitio. Al terminar borra el staging. Devuelve los
@@ -276,7 +296,7 @@ export function applyStagedRestore(
   targets: RestoreTargets,
   preRestoreDir: string,
 ): string[] {
-  const applied: { rel: string; dest: string; existed: boolean }[] = [];
+  const applied: { rel: string; dest: string; existed: boolean; sidecars: string[] }[] = [];
   try {
     for (const rel of listStagedFiles(stagingDir)) {
       if (!isSafeEntryName(rel)) continue; // defensa en profundidad
@@ -289,18 +309,27 @@ export function applyStagedRestore(
         mkdirSync(dirname(bak), { recursive: true });
         copyFileSync(dest, bak);
       }
+      // Los `-wal`/`-shm` de la base vieja se retiran ANTES de publicar la nueva
+      // (US-274): un WAL no está atado al fichero principal, y SQLite lo
+      // reproduciría sobre la base restaurada dejando los datos de la vieja.
+      const sidecars =
+        dest === targets.dbFile ? retireSqliteSidecars(dest, rel, preRestoreDir) : [];
+      applied.push({ rel, dest, existed, sidecars });
       mkdirSync(dirname(dest), { recursive: true });
       copyFileSync(join(stagingDir, rel), dest);
-      applied.push({ rel, dest, existed });
     }
   } catch (err) {
     // Aplicación ATÓMICA (best-effort): si un fichero falla a mitad, revierte los ya
     // aplicados —restaura el previo o borra el recién creado— y deja el staging para
     // que el arranque lo aparte. Así nunca queda un estado a medio restaurar.
-    for (const { rel, dest, existed } of applied) {
+    for (const { rel, dest, existed, sidecars } of applied) {
       try {
         if (existed) copyFileSync(join(preRestoreDir, rel), dest);
         else rmSync(dest, { force: true });
+        // La base vieja vuelve con su WAL: sin él se perdería lo no checkpointed.
+        for (const suffix of sidecars) {
+          copyFileSync(join(preRestoreDir, `${rel}${suffix}`), `${dest}${suffix}`);
+        }
       } catch {
         // mejor esfuerzo: la copia previa sigue en preRestoreDir para rescate manual
       }
