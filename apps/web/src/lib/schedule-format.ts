@@ -15,8 +15,8 @@ export type Traducir = (key: TranslationKey, params?: TranslationParams) => stri
  * Etiquetas de los días de la semana (0=domingo), en las tres formas que usa la
  * app: **corta** («Dom») para listas, **inicial** («D») para las casillas de una
  * semana, donde no cabe más, y **completa** («Domingo») para el nombre accesible
- * de esas casillas: la inicial se repite («M» de martes y de miércoles en inglés
- * hasta «T» dos veces), así que un lector de pantalla no distinguiría los días.
+ * de esas casillas: la inicial se repite (en inglés, «S» para sábado y domingo y
+ * «T» para martes y jueves), así que un lector de pantalla no distinguiría los días.
  *
  * US-270: eran dos constantes en español en **dos módulos distintos** —aquí las
  * cortas y en `lib/access.ts` las iniciales—, así que la app en inglés enseñaba
