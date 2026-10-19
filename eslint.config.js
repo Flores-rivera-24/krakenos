@@ -11,6 +11,8 @@ export default tseslint.config(
       '**/.claude/**',
       '**/*.config.js',
       '**/prisma/**',
+      // Cliente de Prisma 7 GENERADO dentro de src/ (US-276): código ajeno, gitignored.
+      'apps/agent/src/generated/**',
       // Assets estáticos servidos tal cual (script anti-flash de tema, sw.js, etc.).
       'apps/web/public/**',
       // Informes y artefactos que ESCRIBE Playwright al correr las suites: no son

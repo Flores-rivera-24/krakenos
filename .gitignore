@@ -34,6 +34,12 @@ var/
 *.sqlite
 *.sqlite3
 prisma/dev.db*
+# Excepción: la base SINTÉTICA escrita por Prisma 5 que usan los tests de la subida a
+# Prisma 7 (US-276). No contiene datos de nadie; ver scripts/fixtures-prisma5/generar.mjs.
+!apps/agent/test/fixtures/prisma5/prisma5.db
+
+# Cliente de Prisma 7 generado (US-276): sale de `prisma generate` y se empaqueta en dist.
+apps/agent/src/generated/
 
 # Logs
 *.log

@@ -110,31 +110,36 @@ describe('InventoryService', () => {
         });
       }
 
-      // Cuenta las escrituras sobre Device durante el barrido vía middleware de
-      // Prisma (espiar el delegate de Prisma no es fiable: rompe el call-through).
+      // Cuenta las escrituras sobre Device durante el barrido con una extensión de
+      // cliente (`$extends` con `query`): Prisma 7 retiró el middleware `$use`, y espiar
+      // el delegate de Prisma no es fiable (rompe el call-through). El servicio recibe
+      // una vista de `app` cuyo `prisma` es el cliente extendido.
       const writes: string[] = [];
-      let counting = true;
-      app.prisma.$use(async (params, next) => {
-        if (
-          counting &&
-          params.model === 'Device' &&
-          (params.action === 'update' || params.action === 'updateMany')
-        ) {
-          writes.push(params.action);
-        }
-        return next(params);
+      const counted = app.prisma.$extends({
+        query: {
+          device: {
+            async update({ args, query }) {
+              writes.push('update');
+              return query(args);
+            },
+            async updateMany({ args, query }) {
+              writes.push('updateMany');
+              return query(args);
+            },
+          },
+        },
       });
+      const countedApp = Object.create(app, {
+        prisma: { value: counted },
+      }) as FastifyInstance;
+      const countedService = new InventoryService(countedApp, driver);
 
-      try {
-        const devices = await service.scan();
+      const devices = await countedService.scan();
 
-        // Una sola escritura (updateMany) para todos los stale, ningún update por dispositivo.
-        expect(writes).toEqual(['updateMany']);
-        for (const mac of staleMacs) {
-          expect(byMac(devices, mac).online).toBe(false);
-        }
-      } finally {
-        counting = false;
+      // Una sola escritura (updateMany) para todos los stale, ningún update por dispositivo.
+      expect(writes).toEqual(['updateMany']);
+      for (const mac of staleMacs) {
+        expect(byMac(devices, mac).online).toBe(false);
       }
     });
 

@@ -1,5 +1,5 @@
 import type { WebAuthnCredentialInfo } from '@krakenos/types';
-import type { PrismaClient, WebAuthnCredential } from '@prisma/client';
+import type { PrismaClient, WebAuthnCredential } from '../generated/prisma/client.js';
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,

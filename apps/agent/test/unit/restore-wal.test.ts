@@ -1,7 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../../src/db/client.js';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyStagedRestore } from '../../src/system/restore.js';
 
@@ -21,10 +22,8 @@ import { applyStagedRestore } from '../../src/system/restore.js';
 type Fila = { id: bigint | number; v: string };
 
 function cliente(file: string): PrismaClient {
-  return new PrismaClient({
-    datasources: { db: { url: `file:${file}?connection_limit=1` } },
-    log: [],
-  });
+  // Prisma 7: una sola conexión de better-sqlite3 (la `connection_limit=1` de Prisma 5).
+  return createPrismaClient({ databaseUrl: `file:${file}` });
 }
 
 async function leer(file: string): Promise<{ integridad: string; filas: [number, string][] }> {

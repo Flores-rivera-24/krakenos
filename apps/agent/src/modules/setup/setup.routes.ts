@@ -1,5 +1,5 @@
 import type { SetupInitRequest } from '@krakenos/types';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import bcrypt from 'bcrypt';
 import type { FastifyPluginAsync } from 'fastify';
 import { sendSession } from '../../auth/session-cookie.js';

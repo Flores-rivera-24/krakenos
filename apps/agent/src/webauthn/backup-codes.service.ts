@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 
 /** Número de códigos de recuperación que se generan por lote. */
 const CODE_COUNT = 10;

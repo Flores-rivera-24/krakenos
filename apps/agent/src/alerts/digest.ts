@@ -1,6 +1,6 @@
 import type { DigestFrequency } from '@krakenos/types';
 import { DIGEST_FREQUENCIES } from '@krakenos/types';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { ALERT_EVENTS } from './alert-config.js';
 import { createTickLoop, type TickLoop } from '../system/tick-loop.js';

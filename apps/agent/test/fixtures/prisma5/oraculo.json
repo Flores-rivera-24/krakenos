@@ -1,0 +1,2059 @@
+{
+  "generadoCon": "prisma 5.22.0",
+  "t0Ms": 1772600767891,
+  "migraciones": [
+    "20260617031529_init",
+    "20260617044512_setup_settings",
+    "20260617063803_device_notes",
+    "20260617065122_device_blocked",
+    "20260617065841_audit_log",
+    "20260617210924_traffic_samples",
+    "20260617212759_device_vlan",
+    "20260620192110_add_device_traffic_sample",
+    "20260620194754_add_push_subscription",
+    "20260620231910_add_webauthn",
+    "20260621065524_add_backup_codes",
+    "20260623035713_add_refresh_rotated_at",
+    "20260623043224_webauthn_challenge_table",
+    "20260701014642_add_integration_config",
+    "20260701020000_add_wifi_coverage",
+    "20260703030000_add_user_status_lastlogin",
+    "20260703040000_add_access_schedule",
+    "20260703050000_add_device_paused_until",
+    "20260703060000_add_alert_rule",
+    "20260707212819_add_rooms_favorites",
+    "20260707224853_add_scenes_iot_schedules",
+    "20260709163857_push_subscription_user_fk",
+    "20260709165840_device_traffic_timestamp_index",
+    "20260709171511_add_automations",
+    "20260709174149_add_home_roles",
+    "20260709213132_add_presence_events",
+    "20260710002850_add_user_ui_mode",
+    "20260710004512_add_device_icon",
+    "20260710010030_alert_rule_telegram",
+    "20260710120000_add_user_locale",
+    "20260710140000_add_energy_sample",
+    "20260710150000_add_energy_alert_rule",
+    "20260710160000_add_recording",
+    "20260714023953_add_api_token",
+    "20260729020000_drop_dead_device_traffic_index",
+    "20260730184524_add_access_schedule_person",
+    "20260807000000_add_dns_query_log",
+    "20260807120000_add_known_destination",
+    "20260808100000_add_refresh_token_persistent",
+    "20260808120000_add_invitation_access_request"
+  ],
+  "passkey": {
+    "seed": "no-es-un-secreto: passkey sintetica de la fixture de Prisma 5",
+    "credentialId": "ZmljdHVyYS1wYXNza2V5LXNpbnRldGljYQ",
+    "userId": "usr-admin",
+    "email": "admin@fixture.invalid",
+    "publicKeyHex": "a50102032620012158206d9122bc0dc72fe75c3e56bb24d0fc0c5cfa3a70e1cbcc367f0376e48668a01822582056e79d32bb45677bbb6cd9273e9b44d0a38956a3c8613877daa402160b33f37f",
+    "counter": 5
+  },
+  "filas": {
+    "User": [
+      {
+        "id": "usr-admin",
+        "email": "admin@fixture.invalid",
+        "displayName": "Admin de prueba",
+        "passwordHash": "$2b$10$no-es-un-secreto-hash-de-prueba",
+        "role": "admin",
+        "status": "active",
+        "lastLoginAt": {
+          "$date": "2026-03-04T06:06:08.014Z"
+        },
+        "expiresAt": null,
+        "uiMode": "advanced",
+        "locale": "es",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:07.891Z"
+        },
+        "updatedAt": {
+          "$date": "2026-03-04T05:06:07.892Z"
+        }
+      },
+      {
+        "id": "usr-guest",
+        "email": "invitado@fixture.invalid",
+        "displayName": "Invitado de prueba",
+        "passwordHash": "$2b$10$no-es-un-secreto-otro-hash",
+        "role": "guest",
+        "status": "active",
+        "lastLoginAt": null,
+        "expiresAt": {
+          "$date": "2026-03-11T05:06:08.890Z"
+        },
+        "uiMode": "advanced",
+        "locale": "es",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:07.893Z"
+        },
+        "updatedAt": {
+          "$date": "2026-03-04T05:06:07.893Z"
+        }
+      }
+    ],
+    "WebAuthnCredential": [
+      {
+        "id": "cred-1",
+        "userId": "usr-admin",
+        "credentialId": "ZmljdHVyYS1wYXNza2V5LXNpbnRldGljYQ",
+        "publicKey": {
+          "$bytes": "a50102032620012158206d9122bc0dc72fe75c3e56bb24d0fc0c5cfa3a70e1cbcc367f0376e48668a01822582056e79d32bb45677bbb6cd9273e9b44d0a38956a3c8613877daa402160b33f37f"
+        },
+        "counter": 5,
+        "deviceType": "multiDevice",
+        "backedUp": true,
+        "name": "Passkey sintética",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:17.892Z"
+        },
+        "lastUsedAt": {
+          "$date": "2026-03-04T05:06:27.893Z"
+        }
+      },
+      {
+        "id": "cred-2",
+        "userId": "usr-guest",
+        "credentialId": "Ymlub3Jpby1yYXJv",
+        "publicKey": {
+          "$bytes": "00ff1000807fff0001fe00"
+        },
+        "counter": 0,
+        "deviceType": "singleDevice",
+        "backedUp": false,
+        "name": "Bytes raros",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:37.894Z"
+        },
+        "lastUsedAt": null
+      }
+    ],
+    "WebAuthnChallenge": [
+      {
+        "id": "chl-1",
+        "userId": "usr-admin",
+        "type": "authenticate",
+        "challenge": "ZGVzYWZpby1jYWR1Y2Fkbw",
+        "expiresAt": {
+          "$date": "2026-03-04T05:11:08.212Z"
+        },
+        "createdAt": {
+          "$date": "2026-03-04T05:06:08.891Z"
+        }
+      }
+    ],
+    "RefreshToken": [
+      {
+        "id": "rt-1",
+        "userId": "usr-admin",
+        "tokenHash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "revoked": false,
+        "rotatedAt": {
+          "$date": "2026-03-04T05:06:12.896Z"
+        },
+        "persistent": false,
+        "expiresAt": {
+          "$date": "2026-04-03T05:06:07.898Z"
+        },
+        "createdAt": {
+          "$date": "2026-03-04T05:06:11.895Z"
+        }
+      }
+    ],
+    "ApiToken": [
+      {
+        "id": "api-1",
+        "userId": "usr-admin",
+        "name": "Token de prueba",
+        "tokenHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "prefix": "krt_fx01",
+        "scopes": "[\"home.control\"]",
+        "role": "admin",
+        "lastUsedAt": {
+          "$date": "2026-03-04T05:06:13.897Z"
+        },
+        "expiresAt": null,
+        "createdAt": {
+          "$date": "2026-03-04T05:06:12.891Z"
+        }
+      }
+    ],
+    "BackupCode": [
+      {
+        "id": "bc-1",
+        "userId": "usr-admin",
+        "codeHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "usedAt": {
+          "$date": "2026-03-04T05:06:15.899Z"
+        },
+        "createdAt": {
+          "$date": "2026-10-16T18:45:04.073Z"
+        }
+      }
+    ],
+    "Setting": [
+      {
+        "key": "fixture.marca",
+        "value": "prisma5",
+        "updatedAt": {
+          "$date": "2026-03-04T05:07:48.091Z"
+        }
+      },
+      {
+        "key": "homeName",
+        "value": "Casa de prueba",
+        "updatedAt": {
+          "$date": "2026-03-04T05:07:47.991Z"
+        }
+      }
+    ],
+    "AuditLog": [
+      {
+        "id": "aud-1",
+        "action": "auth.login",
+        "userId": "usr-admin",
+        "detail": null,
+        "ip": "hash",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:07.902Z"
+        }
+      },
+      {
+        "id": "aud-2",
+        "action": "device.block",
+        "userId": "usr-admin",
+        "detail": "{}",
+        "ip": null,
+        "createdAt": {
+          "$date": "2026-03-04T05:06:07.903Z"
+        }
+      },
+      {
+        "id": "aud-3",
+        "action": "wifi.update",
+        "userId": null,
+        "detail": null,
+        "ip": null,
+        "createdAt": {
+          "$date": "2026-03-05T05:06:07.904Z"
+        }
+      }
+    ],
+    "Device": [
+      {
+        "id": "dev-1",
+        "mac": "aa:bb:cc:00:00:01",
+        "ip": "192.168.1.10",
+        "hostname": "tablet-de-prueba",
+        "label": null,
+        "vendor": null,
+        "type": "unknown",
+        "icon": null,
+        "notes": null,
+        "isBlocked": false,
+        "pausedUntil": {
+          "$date": "2026-03-04T05:21:08.341Z"
+        },
+        "online": true,
+        "vlanTag": null,
+        "roomId": null,
+        "ownerId": "usr-admin",
+        "sources": "[]",
+        "firstSeen": {
+          "$date": "2026-03-04T05:06:08.091Z"
+        },
+        "lastSeen": {
+          "$date": "2026-03-04T05:21:08.890Z"
+        }
+      },
+      {
+        "id": "dev-2",
+        "mac": "aa:bb:cc:00:00:02",
+        "ip": "192.168.1.11",
+        "hostname": null,
+        "label": null,
+        "vendor": null,
+        "type": "unknown",
+        "icon": null,
+        "notes": null,
+        "isBlocked": false,
+        "pausedUntil": null,
+        "online": true,
+        "vlanTag": null,
+        "roomId": null,
+        "ownerId": null,
+        "sources": "[]",
+        "firstSeen": {
+          "$date": "2026-03-04T05:06:08.092Z"
+        },
+        "lastSeen": {
+          "$date": "2026-03-04T05:06:08.093Z"
+        }
+      }
+    ],
+    "PresenceEvent": [
+      {
+        "id": "pe-1",
+        "userId": "usr-admin",
+        "kind": "arrived",
+        "createdAt": {
+          "$date": "2026-03-04T05:06:08.668Z"
+        }
+      }
+    ],
+    "DnsQueryLog": [
+      {
+        "id": "dns-1",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:08.391Z"
+        },
+        "domain": "ejemplo.invalid",
+        "client": "192.168.1.10",
+        "blocked": false,
+        "mac": "aa:bb:cc:00:00:01"
+      },
+      {
+        "id": "dns-2",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:08.391Z"
+        },
+        "domain": "ejemplo.invalid",
+        "client": "192.168.1.10",
+        "blocked": true,
+        "mac": "aa:bb:cc:00:00:01"
+      },
+      {
+        "id": "dns-3",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:08.392Z"
+        },
+        "domain": "otro.invalid",
+        "client": "192.168.1.99",
+        "blocked": false,
+        "mac": null
+      }
+    ],
+    "KnownDestination": [
+      {
+        "id": "kd-1",
+        "mac": "aa:bb:cc:00:00:01",
+        "domain": "ejemplo.invalid",
+        "firstSeenAt": {
+          "$date": "2026-03-04T05:06:08.391Z"
+        },
+        "lastSeenAt": {
+          "$date": "2026-03-05T05:06:08.392Z"
+        }
+      }
+    ],
+    "Recording": [
+      {
+        "id": "rec-1",
+        "cameraId": "cam-1",
+        "cameraName": "Cámara de prueba",
+        "path": "cam-1/clip.mp4",
+        "startedAt": {
+          "$date": "2026-03-04T05:06:47.931Z"
+        },
+        "durationSec": 12,
+        "sizeBytes": 1234567,
+        "snapshot": null,
+        "createdAt": {
+          "$date": "2026-03-04T05:06:59.943Z"
+        }
+      }
+    ],
+    "TrafficSample": [
+      {
+        "id": "ts-00",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:07.891Z"
+        },
+        "rxBytesPerSec": 0,
+        "txBytesPerSec": 411.5226
+      },
+      {
+        "id": "ts-01",
+        "timestamp": {
+          "$date": "2026-03-04T05:07:07.928Z"
+        },
+        "rxBytesPerSec": 0.1000001,
+        "txBytesPerSec": 1133333334.333333
+      },
+      {
+        "id": "ts-02",
+        "timestamp": {
+          "$date": "2026-03-04T05:08:07.912Z"
+        },
+        "rxBytesPerSec": 0.5,
+        "txBytesPerSec": 502
+      },
+      {
+        "id": "ts-03",
+        "timestamp": {
+          "$date": "2026-03-04T05:09:07.896Z"
+        },
+        "rxBytesPerSec": 1234.8678,
+        "txBytesPerSec": 5.333333333333334
+      },
+      {
+        "id": "ts-04",
+        "timestamp": {
+          "$date": "2026-03-04T05:10:07.933Z"
+        },
+        "rxBytesPerSec": 3400000000.4,
+        "txBytesPerSec": 4
+      },
+      {
+        "id": "ts-05",
+        "timestamp": {
+          "$date": "2026-03-04T05:11:07.917Z"
+        },
+        "rxBytesPerSec": 1500.5,
+        "txBytesPerSec": 5.000000033333333
+      },
+      {
+        "id": "ts-06",
+        "timestamp": {
+          "$date": "2026-03-04T05:12:07.901Z"
+        },
+        "rxBytesPerSec": 7.600000000000001,
+        "txBytesPerSec": 6.1
+      },
+      {
+        "id": "ts-07",
+        "timestamp": {
+          "$date": "2026-03-04T05:13:07.938Z"
+        },
+        "rxBytesPerSec": 0.7000000000000001,
+        "txBytesPerSec": 418.5226
+      },
+      {
+        "id": "ts-08",
+        "timestamp": {
+          "$date": "2026-03-04T05:14:07.922Z"
+        },
+        "rxBytesPerSec": 0.8000001,
+        "txBytesPerSec": 1133333341.333333
+      },
+      {
+        "id": "ts-09",
+        "timestamp": {
+          "$date": "2026-03-04T05:15:07.906Z"
+        },
+        "rxBytesPerSec": 1.2,
+        "txBytesPerSec": 509
+      },
+      {
+        "id": "ts-10",
+        "timestamp": {
+          "$date": "2026-03-04T05:16:07.943Z"
+        },
+        "rxBytesPerSec": 1235.5678,
+        "txBytesPerSec": 12.33333333333333
+      },
+      {
+        "id": "ts-11",
+        "timestamp": {
+          "$date": "2026-03-04T05:17:07.927Z"
+        },
+        "rxBytesPerSec": 3400000001.1,
+        "txBytesPerSec": 11
+      },
+      {
+        "id": "ts-12",
+        "timestamp": {
+          "$date": "2026-03-04T05:18:07.911Z"
+        },
+        "rxBytesPerSec": 1501.2,
+        "txBytesPerSec": 12.00000003333333
+      },
+      {
+        "id": "ts-13",
+        "timestamp": {
+          "$date": "2026-03-04T05:19:07.895Z"
+        },
+        "rxBytesPerSec": 8.3,
+        "txBytesPerSec": 13.1
+      },
+      {
+        "id": "ts-14",
+        "timestamp": {
+          "$date": "2026-03-04T05:20:07.932Z"
+        },
+        "rxBytesPerSec": 1.4,
+        "txBytesPerSec": 425.5226
+      },
+      {
+        "id": "ts-15",
+        "timestamp": {
+          "$date": "2026-03-04T05:21:07.916Z"
+        },
+        "rxBytesPerSec": 1.5000001,
+        "txBytesPerSec": 1133333348.333333
+      },
+      {
+        "id": "ts-16",
+        "timestamp": {
+          "$date": "2026-03-04T05:22:07.900Z"
+        },
+        "rxBytesPerSec": 1.9,
+        "txBytesPerSec": 516
+      },
+      {
+        "id": "ts-17",
+        "timestamp": {
+          "$date": "2026-03-04T05:23:07.937Z"
+        },
+        "rxBytesPerSec": 1236.2678,
+        "txBytesPerSec": 19.33333333333333
+      },
+      {
+        "id": "ts-18",
+        "timestamp": {
+          "$date": "2026-03-04T05:24:07.921Z"
+        },
+        "rxBytesPerSec": 3400000001.8,
+        "txBytesPerSec": 18
+      },
+      {
+        "id": "ts-19",
+        "timestamp": {
+          "$date": "2026-03-04T05:25:07.905Z"
+        },
+        "rxBytesPerSec": 1501.9,
+        "txBytesPerSec": 19.00000003333333
+      },
+      {
+        "id": "ts-20",
+        "timestamp": {
+          "$date": "2026-03-04T05:26:07.942Z"
+        },
+        "rxBytesPerSec": 9,
+        "txBytesPerSec": 20.1
+      },
+      {
+        "id": "ts-21",
+        "timestamp": {
+          "$date": "2026-03-04T05:27:07.926Z"
+        },
+        "rxBytesPerSec": 2.1,
+        "txBytesPerSec": 432.5226
+      },
+      {
+        "id": "ts-22",
+        "timestamp": {
+          "$date": "2026-03-04T05:28:07.910Z"
+        },
+        "rxBytesPerSec": 2.2000001,
+        "txBytesPerSec": 1133333355.333333
+      },
+      {
+        "id": "ts-23",
+        "timestamp": {
+          "$date": "2026-03-04T05:29:07.894Z"
+        },
+        "rxBytesPerSec": 2.600000000000001,
+        "txBytesPerSec": 523
+      },
+      {
+        "id": "ts-24",
+        "timestamp": {
+          "$date": "2026-03-04T05:30:07.931Z"
+        },
+        "rxBytesPerSec": 1236.9678,
+        "txBytesPerSec": 26.33333333333333
+      },
+      {
+        "id": "ts-25",
+        "timestamp": {
+          "$date": "2026-03-04T05:31:07.915Z"
+        },
+        "rxBytesPerSec": 3400000002.5,
+        "txBytesPerSec": 25
+      },
+      {
+        "id": "ts-26",
+        "timestamp": {
+          "$date": "2026-03-04T05:32:07.899Z"
+        },
+        "rxBytesPerSec": 1502.6,
+        "txBytesPerSec": 26.00000003333333
+      },
+      {
+        "id": "ts-27",
+        "timestamp": {
+          "$date": "2026-03-04T05:33:07.936Z"
+        },
+        "rxBytesPerSec": 9.700000000000001,
+        "txBytesPerSec": 27.1
+      },
+      {
+        "id": "ts-28",
+        "timestamp": {
+          "$date": "2026-03-04T05:34:07.920Z"
+        },
+        "rxBytesPerSec": 2.8,
+        "txBytesPerSec": 439.5226
+      },
+      {
+        "id": "ts-29",
+        "timestamp": {
+          "$date": "2026-03-04T05:35:07.904Z"
+        },
+        "rxBytesPerSec": 2.9000001,
+        "txBytesPerSec": 1133333362.333333
+      }
+    ],
+    "DeviceTrafficSample": [
+      {
+        "id": "dts-00",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:07.896Z"
+        },
+        "rxBytesPerSec": 0.1000001,
+        "txBytesPerSec": 502
+      },
+      {
+        "id": "dts-01",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:07:07.933Z"
+        },
+        "rxBytesPerSec": 0.5,
+        "txBytesPerSec": 5.333333333333334
+      },
+      {
+        "id": "dts-02",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:08:07.917Z"
+        },
+        "rxBytesPerSec": 1234.8678,
+        "txBytesPerSec": 4
+      },
+      {
+        "id": "dts-03",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:09:07.901Z"
+        },
+        "rxBytesPerSec": 3400000000.4,
+        "txBytesPerSec": 5.000000033333333
+      },
+      {
+        "id": "dts-04",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:10:07.938Z"
+        },
+        "rxBytesPerSec": 1500.5,
+        "txBytesPerSec": 6.1
+      },
+      {
+        "id": "dts-05",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:11:07.922Z"
+        },
+        "rxBytesPerSec": 7.600000000000001,
+        "txBytesPerSec": 418.5226
+      },
+      {
+        "id": "dts-06",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:12:07.906Z"
+        },
+        "rxBytesPerSec": 0.7000000000000001,
+        "txBytesPerSec": 1133333341.333333
+      },
+      {
+        "id": "dts-07",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:13:07.943Z"
+        },
+        "rxBytesPerSec": 0.8000001,
+        "txBytesPerSec": 509
+      },
+      {
+        "id": "dts-08",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:14:07.927Z"
+        },
+        "rxBytesPerSec": 1.2,
+        "txBytesPerSec": 12.33333333333333
+      },
+      {
+        "id": "dts-09",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:15:07.911Z"
+        },
+        "rxBytesPerSec": 1235.5678,
+        "txBytesPerSec": 11
+      },
+      {
+        "id": "dts-10",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:16:07.948Z"
+        },
+        "rxBytesPerSec": 3400000001.1,
+        "txBytesPerSec": 12.00000003333333
+      },
+      {
+        "id": "dts-11",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:17:07.932Z"
+        },
+        "rxBytesPerSec": 1501.2,
+        "txBytesPerSec": 13.1
+      },
+      {
+        "id": "dts-12",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:18:07.916Z"
+        },
+        "rxBytesPerSec": 8.3,
+        "txBytesPerSec": 425.5226
+      },
+      {
+        "id": "dts-13",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:19:07.900Z"
+        },
+        "rxBytesPerSec": 1.4,
+        "txBytesPerSec": 1133333348.333333
+      },
+      {
+        "id": "dts-14",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:20:07.937Z"
+        },
+        "rxBytesPerSec": 1.5000001,
+        "txBytesPerSec": 516
+      },
+      {
+        "id": "dts-15",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:21:07.921Z"
+        },
+        "rxBytesPerSec": 1.9,
+        "txBytesPerSec": 19.33333333333333
+      },
+      {
+        "id": "dts-16",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:22:07.905Z"
+        },
+        "rxBytesPerSec": 1236.2678,
+        "txBytesPerSec": 18
+      },
+      {
+        "id": "dts-17",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:23:07.942Z"
+        },
+        "rxBytesPerSec": 3400000001.8,
+        "txBytesPerSec": 19.00000003333333
+      },
+      {
+        "id": "dts-18",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:24:07.926Z"
+        },
+        "rxBytesPerSec": 1501.9,
+        "txBytesPerSec": 20.1
+      },
+      {
+        "id": "dts-19",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:25:07.910Z"
+        },
+        "rxBytesPerSec": 9,
+        "txBytesPerSec": 432.5226
+      },
+      {
+        "id": "dts-20",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:26:07.947Z"
+        },
+        "rxBytesPerSec": 2.1,
+        "txBytesPerSec": 1133333355.333333
+      },
+      {
+        "id": "dts-21",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:27:07.931Z"
+        },
+        "rxBytesPerSec": 2.2000001,
+        "txBytesPerSec": 523
+      },
+      {
+        "id": "dts-22",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:28:07.915Z"
+        },
+        "rxBytesPerSec": 2.600000000000001,
+        "txBytesPerSec": 26.33333333333333
+      },
+      {
+        "id": "dts-23",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:29:07.899Z"
+        },
+        "rxBytesPerSec": 1236.9678,
+        "txBytesPerSec": 25
+      },
+      {
+        "id": "dts-24",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:30:07.936Z"
+        },
+        "rxBytesPerSec": 3400000002.5,
+        "txBytesPerSec": 26.00000003333333
+      },
+      {
+        "id": "dts-25",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:31:07.920Z"
+        },
+        "rxBytesPerSec": 1502.6,
+        "txBytesPerSec": 27.1
+      },
+      {
+        "id": "dts-26",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:32:07.904Z"
+        },
+        "rxBytesPerSec": 9.700000000000001,
+        "txBytesPerSec": 439.5226
+      },
+      {
+        "id": "dts-27",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:33:07.941Z"
+        },
+        "rxBytesPerSec": 2.8,
+        "txBytesPerSec": 1133333362.333333
+      },
+      {
+        "id": "dts-28",
+        "mac": "aa:bb:cc:00:00:01",
+        "timestamp": {
+          "$date": "2026-03-04T05:34:07.925Z"
+        },
+        "rxBytesPerSec": 2.9000001,
+        "txBytesPerSec": 530
+      },
+      {
+        "id": "dts-29",
+        "mac": "aa:bb:cc:00:00:02",
+        "timestamp": {
+          "$date": "2026-03-04T05:35:07.909Z"
+        },
+        "rxBytesPerSec": 3.3,
+        "txBytesPerSec": 33.33333333333334
+      }
+    ],
+    "EnergySample": [
+      {
+        "id": "es-00",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:06:07.900Z"
+        },
+        "powerW": 0
+      },
+      {
+        "id": "es-01",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:07:07.937Z"
+        },
+        "powerW": 0.370000001
+      },
+      {
+        "id": "es-02",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:08:07.921Z"
+        },
+        "powerW": 0.743
+      },
+      {
+        "id": "es-03",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:09:07.905Z"
+        },
+        "powerW": 13.455678
+      },
+      {
+        "id": "es-04",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:10:07.942Z"
+        },
+        "powerW": 34000001.48
+      },
+      {
+        "id": "es-05",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:11:07.926Z"
+        },
+        "powerW": 15
+      },
+      {
+        "id": "es-06",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:12:07.910Z"
+        },
+        "powerW": 0.44
+      },
+      {
+        "id": "es-07",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:13:07.947Z"
+        },
+        "powerW": 0.74
+      },
+      {
+        "id": "es-08",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:14:07.931Z"
+        },
+        "powerW": 1.110000001
+      },
+      {
+        "id": "es-09",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:15:07.915Z"
+        },
+        "powerW": 1.483
+      },
+      {
+        "id": "es-10",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:16:07.952Z"
+        },
+        "powerW": 12.345678
+      },
+      {
+        "id": "es-11",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:17:07.936Z"
+        },
+        "powerW": 34000000.37
+      },
+      {
+        "id": "es-12",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:18:07.920Z"
+        },
+        "powerW": 15.74
+      },
+      {
+        "id": "es-13",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:19:07.904Z"
+        },
+        "powerW": 1.18
+      },
+      {
+        "id": "es-14",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:20:07.941Z"
+        },
+        "powerW": 1.48
+      },
+      {
+        "id": "es-15",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:21:07.925Z"
+        },
+        "powerW": 9.999999999999999e-10
+      },
+      {
+        "id": "es-16",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:22:07.909Z"
+        },
+        "powerW": 0.373
+      },
+      {
+        "id": "es-17",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:23:07.946Z"
+        },
+        "powerW": 13.085678
+      },
+      {
+        "id": "es-18",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:24:07.930Z"
+        },
+        "powerW": 34000001.11
+      },
+      {
+        "id": "es-19",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:25:07.914Z"
+        },
+        "powerW": 16.48
+      },
+      {
+        "id": "es-20",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:26:07.951Z"
+        },
+        "powerW": 0.07
+      },
+      {
+        "id": "es-21",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:27:07.935Z"
+        },
+        "powerW": 0.37
+      },
+      {
+        "id": "es-22",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:28:07.919Z"
+        },
+        "powerW": 0.740000001
+      },
+      {
+        "id": "es-23",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:29:07.903Z"
+        },
+        "powerW": 1.113
+      },
+      {
+        "id": "es-24",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:30:07.940Z"
+        },
+        "powerW": 13.825678
+      },
+      {
+        "id": "es-25",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:31:07.924Z"
+        },
+        "powerW": 34000000
+      },
+      {
+        "id": "es-26",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:32:07.908Z"
+        },
+        "powerW": 15.37
+      },
+      {
+        "id": "es-27",
+        "deviceId": "hue:enchufe-a",
+        "timestamp": {
+          "$date": "2026-03-04T05:33:07.945Z"
+        },
+        "powerW": 0.81
+      },
+      {
+        "id": "es-28",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:34:07.929Z"
+        },
+        "powerW": 1.11
+      },
+      {
+        "id": "es-29",
+        "deviceId": "tuya:enchufe-b",
+        "timestamp": {
+          "$date": "2026-03-04T05:35:07.913Z"
+        },
+        "powerW": 1.480000001
+      }
+    ]
+  },
+  "fechasCrudas": {
+    "User.lastLoginAt": [
+      {
+        "k": "usr-admin",
+        "t": "integer",
+        "v": 1772604368014
+      },
+      {
+        "k": "usr-guest",
+        "t": "null",
+        "v": null
+      }
+    ],
+    "User.expiresAt": [
+      {
+        "k": "usr-admin",
+        "t": "null",
+        "v": null
+      },
+      {
+        "k": "usr-guest",
+        "t": "integer",
+        "v": 1773205568890
+      }
+    ],
+    "User.createdAt": [
+      {
+        "k": "usr-admin",
+        "t": "integer",
+        "v": 1772600767891
+      },
+      {
+        "k": "usr-guest",
+        "t": "integer",
+        "v": 1772600767893
+      }
+    ],
+    "User.updatedAt": [
+      {
+        "k": "usr-admin",
+        "t": "integer",
+        "v": 1772600767892
+      },
+      {
+        "k": "usr-guest",
+        "t": "integer",
+        "v": 1772600767893
+      }
+    ],
+    "WebAuthnCredential.createdAt": [
+      {
+        "k": "cred-1",
+        "t": "integer",
+        "v": 1772600777892
+      },
+      {
+        "k": "cred-2",
+        "t": "integer",
+        "v": 1772600797894
+      }
+    ],
+    "WebAuthnCredential.lastUsedAt": [
+      {
+        "k": "cred-1",
+        "t": "integer",
+        "v": 1772600787893
+      },
+      {
+        "k": "cred-2",
+        "t": "null",
+        "v": null
+      }
+    ],
+    "WebAuthnChallenge.expiresAt": [
+      {
+        "k": "chl-1",
+        "t": "integer",
+        "v": 1772601068212
+      }
+    ],
+    "WebAuthnChallenge.createdAt": [
+      {
+        "k": "chl-1",
+        "t": "integer",
+        "v": 1772600768891
+      }
+    ],
+    "RefreshToken.expiresAt": [
+      {
+        "k": "rt-1",
+        "t": "integer",
+        "v": 1775192767898
+      }
+    ],
+    "RefreshToken.createdAt": [
+      {
+        "k": "rt-1",
+        "t": "integer",
+        "v": 1772600771895
+      }
+    ],
+    "RefreshToken.rotatedAt": [
+      {
+        "k": "rt-1",
+        "t": "integer",
+        "v": 1772600772896
+      }
+    ],
+    "ApiToken.lastUsedAt": [
+      {
+        "k": "api-1",
+        "t": "integer",
+        "v": 1772600773897
+      }
+    ],
+    "ApiToken.expiresAt": [
+      {
+        "k": "api-1",
+        "t": "null",
+        "v": null
+      }
+    ],
+    "ApiToken.createdAt": [
+      {
+        "k": "api-1",
+        "t": "integer",
+        "v": 1772600772891
+      }
+    ],
+    "BackupCode.usedAt": [
+      {
+        "k": "bc-1",
+        "t": "integer",
+        "v": 1772600775899
+      }
+    ],
+    "BackupCode.createdAt": [
+      {
+        "k": "bc-1",
+        "t": "integer",
+        "v": 1792176304073
+      }
+    ],
+    "Setting.updatedAt": [
+      {
+        "k": "fixture.marca",
+        "t": "integer",
+        "v": 1772600868091
+      },
+      {
+        "k": "homeName",
+        "t": "integer",
+        "v": 1772600867991
+      }
+    ],
+    "AuditLog.createdAt": [
+      {
+        "k": "aud-1",
+        "t": "integer",
+        "v": 1772600767902
+      },
+      {
+        "k": "aud-2",
+        "t": "integer",
+        "v": 1772600767903
+      },
+      {
+        "k": "aud-3",
+        "t": "integer",
+        "v": 1772687167904
+      }
+    ],
+    "Device.pausedUntil": [
+      {
+        "k": "dev-1",
+        "t": "integer",
+        "v": 1772601668341
+      },
+      {
+        "k": "dev-2",
+        "t": "null",
+        "v": null
+      }
+    ],
+    "Device.firstSeen": [
+      {
+        "k": "dev-1",
+        "t": "integer",
+        "v": 1772600768091
+      },
+      {
+        "k": "dev-2",
+        "t": "integer",
+        "v": 1772600768092
+      }
+    ],
+    "Device.lastSeen": [
+      {
+        "k": "dev-1",
+        "t": "integer",
+        "v": 1772601668890
+      },
+      {
+        "k": "dev-2",
+        "t": "integer",
+        "v": 1772600768093
+      }
+    ],
+    "PresenceEvent.createdAt": [
+      {
+        "k": "pe-1",
+        "t": "integer",
+        "v": 1772600768668
+      }
+    ],
+    "DnsQueryLog.timestamp": [
+      {
+        "k": "dns-1",
+        "t": "integer",
+        "v": 1772600768391
+      },
+      {
+        "k": "dns-2",
+        "t": "integer",
+        "v": 1772600768391
+      },
+      {
+        "k": "dns-3",
+        "t": "integer",
+        "v": 1772600768392
+      }
+    ],
+    "KnownDestination.firstSeenAt": [
+      {
+        "k": "kd-1",
+        "t": "integer",
+        "v": 1772600768391
+      }
+    ],
+    "KnownDestination.lastSeenAt": [
+      {
+        "k": "kd-1",
+        "t": "integer",
+        "v": 1772687168392
+      }
+    ],
+    "Recording.startedAt": [
+      {
+        "k": "rec-1",
+        "t": "integer",
+        "v": 1772600807931
+      }
+    ],
+    "Recording.createdAt": [
+      {
+        "k": "rec-1",
+        "t": "integer",
+        "v": 1772600819943
+      }
+    ],
+    "TrafficSample.timestamp": [
+      {
+        "k": "ts-00",
+        "t": "integer",
+        "v": 1772600767891
+      },
+      {
+        "k": "ts-01",
+        "t": "integer",
+        "v": 1772600827928
+      },
+      {
+        "k": "ts-02",
+        "t": "integer",
+        "v": 1772600887912
+      },
+      {
+        "k": "ts-03",
+        "t": "integer",
+        "v": 1772600947896
+      },
+      {
+        "k": "ts-04",
+        "t": "integer",
+        "v": 1772601007933
+      },
+      {
+        "k": "ts-05",
+        "t": "integer",
+        "v": 1772601067917
+      },
+      {
+        "k": "ts-06",
+        "t": "integer",
+        "v": 1772601127901
+      },
+      {
+        "k": "ts-07",
+        "t": "integer",
+        "v": 1772601187938
+      },
+      {
+        "k": "ts-08",
+        "t": "integer",
+        "v": 1772601247922
+      },
+      {
+        "k": "ts-09",
+        "t": "integer",
+        "v": 1772601307906
+      },
+      {
+        "k": "ts-10",
+        "t": "integer",
+        "v": 1772601367943
+      },
+      {
+        "k": "ts-11",
+        "t": "integer",
+        "v": 1772601427927
+      },
+      {
+        "k": "ts-12",
+        "t": "integer",
+        "v": 1772601487911
+      },
+      {
+        "k": "ts-13",
+        "t": "integer",
+        "v": 1772601547895
+      },
+      {
+        "k": "ts-14",
+        "t": "integer",
+        "v": 1772601607932
+      },
+      {
+        "k": "ts-15",
+        "t": "integer",
+        "v": 1772601667916
+      },
+      {
+        "k": "ts-16",
+        "t": "integer",
+        "v": 1772601727900
+      },
+      {
+        "k": "ts-17",
+        "t": "integer",
+        "v": 1772601787937
+      },
+      {
+        "k": "ts-18",
+        "t": "integer",
+        "v": 1772601847921
+      },
+      {
+        "k": "ts-19",
+        "t": "integer",
+        "v": 1772601907905
+      },
+      {
+        "k": "ts-20",
+        "t": "integer",
+        "v": 1772601967942
+      },
+      {
+        "k": "ts-21",
+        "t": "integer",
+        "v": 1772602027926
+      },
+      {
+        "k": "ts-22",
+        "t": "integer",
+        "v": 1772602087910
+      },
+      {
+        "k": "ts-23",
+        "t": "integer",
+        "v": 1772602147894
+      },
+      {
+        "k": "ts-24",
+        "t": "integer",
+        "v": 1772602207931
+      },
+      {
+        "k": "ts-25",
+        "t": "integer",
+        "v": 1772602267915
+      },
+      {
+        "k": "ts-26",
+        "t": "integer",
+        "v": 1772602327899
+      },
+      {
+        "k": "ts-27",
+        "t": "integer",
+        "v": 1772602387936
+      },
+      {
+        "k": "ts-28",
+        "t": "integer",
+        "v": 1772602447920
+      },
+      {
+        "k": "ts-29",
+        "t": "integer",
+        "v": 1772602507904
+      }
+    ],
+    "DeviceTrafficSample.timestamp": [
+      {
+        "k": "dts-00",
+        "t": "integer",
+        "v": 1772600767896
+      },
+      {
+        "k": "dts-01",
+        "t": "integer",
+        "v": 1772600827933
+      },
+      {
+        "k": "dts-02",
+        "t": "integer",
+        "v": 1772600887917
+      },
+      {
+        "k": "dts-03",
+        "t": "integer",
+        "v": 1772600947901
+      },
+      {
+        "k": "dts-04",
+        "t": "integer",
+        "v": 1772601007938
+      },
+      {
+        "k": "dts-05",
+        "t": "integer",
+        "v": 1772601067922
+      },
+      {
+        "k": "dts-06",
+        "t": "integer",
+        "v": 1772601127906
+      },
+      {
+        "k": "dts-07",
+        "t": "integer",
+        "v": 1772601187943
+      },
+      {
+        "k": "dts-08",
+        "t": "integer",
+        "v": 1772601247927
+      },
+      {
+        "k": "dts-09",
+        "t": "integer",
+        "v": 1772601307911
+      },
+      {
+        "k": "dts-10",
+        "t": "integer",
+        "v": 1772601367948
+      },
+      {
+        "k": "dts-11",
+        "t": "integer",
+        "v": 1772601427932
+      },
+      {
+        "k": "dts-12",
+        "t": "integer",
+        "v": 1772601487916
+      },
+      {
+        "k": "dts-13",
+        "t": "integer",
+        "v": 1772601547900
+      },
+      {
+        "k": "dts-14",
+        "t": "integer",
+        "v": 1772601607937
+      },
+      {
+        "k": "dts-15",
+        "t": "integer",
+        "v": 1772601667921
+      },
+      {
+        "k": "dts-16",
+        "t": "integer",
+        "v": 1772601727905
+      },
+      {
+        "k": "dts-17",
+        "t": "integer",
+        "v": 1772601787942
+      },
+      {
+        "k": "dts-18",
+        "t": "integer",
+        "v": 1772601847926
+      },
+      {
+        "k": "dts-19",
+        "t": "integer",
+        "v": 1772601907910
+      },
+      {
+        "k": "dts-20",
+        "t": "integer",
+        "v": 1772601967947
+      },
+      {
+        "k": "dts-21",
+        "t": "integer",
+        "v": 1772602027931
+      },
+      {
+        "k": "dts-22",
+        "t": "integer",
+        "v": 1772602087915
+      },
+      {
+        "k": "dts-23",
+        "t": "integer",
+        "v": 1772602147899
+      },
+      {
+        "k": "dts-24",
+        "t": "integer",
+        "v": 1772602207936
+      },
+      {
+        "k": "dts-25",
+        "t": "integer",
+        "v": 1772602267920
+      },
+      {
+        "k": "dts-26",
+        "t": "integer",
+        "v": 1772602327904
+      },
+      {
+        "k": "dts-27",
+        "t": "integer",
+        "v": 1772602387941
+      },
+      {
+        "k": "dts-28",
+        "t": "integer",
+        "v": 1772602447925
+      },
+      {
+        "k": "dts-29",
+        "t": "integer",
+        "v": 1772602507909
+      }
+    ],
+    "EnergySample.timestamp": [
+      {
+        "k": "es-00",
+        "t": "integer",
+        "v": 1772600767900
+      },
+      {
+        "k": "es-01",
+        "t": "integer",
+        "v": 1772600827937
+      },
+      {
+        "k": "es-02",
+        "t": "integer",
+        "v": 1772600887921
+      },
+      {
+        "k": "es-03",
+        "t": "integer",
+        "v": 1772600947905
+      },
+      {
+        "k": "es-04",
+        "t": "integer",
+        "v": 1772601007942
+      },
+      {
+        "k": "es-05",
+        "t": "integer",
+        "v": 1772601067926
+      },
+      {
+        "k": "es-06",
+        "t": "integer",
+        "v": 1772601127910
+      },
+      {
+        "k": "es-07",
+        "t": "integer",
+        "v": 1772601187947
+      },
+      {
+        "k": "es-08",
+        "t": "integer",
+        "v": 1772601247931
+      },
+      {
+        "k": "es-09",
+        "t": "integer",
+        "v": 1772601307915
+      },
+      {
+        "k": "es-10",
+        "t": "integer",
+        "v": 1772601367952
+      },
+      {
+        "k": "es-11",
+        "t": "integer",
+        "v": 1772601427936
+      },
+      {
+        "k": "es-12",
+        "t": "integer",
+        "v": 1772601487920
+      },
+      {
+        "k": "es-13",
+        "t": "integer",
+        "v": 1772601547904
+      },
+      {
+        "k": "es-14",
+        "t": "integer",
+        "v": 1772601607941
+      },
+      {
+        "k": "es-15",
+        "t": "integer",
+        "v": 1772601667925
+      },
+      {
+        "k": "es-16",
+        "t": "integer",
+        "v": 1772601727909
+      },
+      {
+        "k": "es-17",
+        "t": "integer",
+        "v": 1772601787946
+      },
+      {
+        "k": "es-18",
+        "t": "integer",
+        "v": 1772601847930
+      },
+      {
+        "k": "es-19",
+        "t": "integer",
+        "v": 1772601907914
+      },
+      {
+        "k": "es-20",
+        "t": "integer",
+        "v": 1772601967951
+      },
+      {
+        "k": "es-21",
+        "t": "integer",
+        "v": 1772602027935
+      },
+      {
+        "k": "es-22",
+        "t": "integer",
+        "v": 1772602087919
+      },
+      {
+        "k": "es-23",
+        "t": "integer",
+        "v": 1772602147903
+      },
+      {
+        "k": "es-24",
+        "t": "integer",
+        "v": 1772602207940
+      },
+      {
+        "k": "es-25",
+        "t": "integer",
+        "v": 1772602267924
+      },
+      {
+        "k": "es-26",
+        "t": "integer",
+        "v": 1772602327908
+      },
+      {
+        "k": "es-27",
+        "t": "integer",
+        "v": 1772602387945
+      },
+      {
+        "k": "es-28",
+        "t": "integer",
+        "v": 1772602447929
+      },
+      {
+        "k": "es-29",
+        "t": "integer",
+        "v": 1772602507913
+      }
+    ]
+  },
+  "agregados": {
+    "params": {
+      "bucketMs": 300000,
+      "sinceMs": 1772600887891
+    },
+    "traffic": [
+      {
+        "bucket": 1772600700000,
+        "avgRx": 617.6839,
+        "avgTx": 253.66666666666666,
+        "sumRx": 1235.3678,
+        "sumTx": 507.3333333333333
+      },
+      {
+        "bucket": 1772601000000,
+        "avgRx": 680000302,
+        "avgTx": 226666754.99118662,
+        "sumRx": 3400001510,
+        "sumTx": 1133333774.955933
+      },
+      {
+        "bucket": 1772601300000,
+        "avgRx": 680000549.47356,
+        "avgTx": 111.48666667333335,
+        "sumRx": 3400002747.3677998,
+        "sumTx": 557.4333333666667
+      },
+      {
+        "bucket": 1772601600000,
+        "avgRx": 680000248.57356,
+        "avgTx": 226666865.43785328,
+        "sumRx": 3400001242.8678,
+        "sumTx": 1133334327.1892664
+      },
+      {
+        "bucket": 1772601900000,
+        "avgRx": 303.56000002,
+        "avgTx": 226666869.99118662,
+        "sumRx": 1517.8000001,
+        "sumTx": 1133334349.955933
+      },
+      {
+        "bucket": 1772602200000,
+        "avgRx": 680000550.91356,
+        "avgTx": 108.79118667333333,
+        "sumRx": 3400002754.5678,
+        "sumTx": 543.9559333666666
+      },
+      {
+        "bucket": 1772602500000,
+        "avgRx": 2.9000001,
+        "avgTx": 1133333362.333333,
+        "sumRx": 2.9000001,
+        "sumTx": 1133333362.333333
+      }
+    ],
+    "deviceTraffic": [
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772600700000,
+        "sumRx": 1234.8678,
+        "sumTx": 4
+      },
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772601000000,
+        "sumRx": 1502.4,
+        "sumTx": 1133333359.7666664
+      },
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772601300000,
+        "sumRx": 3400000009.4,
+        "sumTx": 437.52260003333333
+      },
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772601600000,
+        "sumRx": 2739.6678001,
+        "sumTx": 554.1
+      },
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772601900000,
+        "sumRx": 4.700000000000001,
+        "sumTx": 1133333381.6666663
+      },
+      {
+        "mac": "aa:bb:cc:00:00:01",
+        "bucket": 1772602200000,
+        "sumRx": 3400000015.1,
+        "sumTx": 995.5226000333333
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772600700000,
+        "sumRx": 3400000000.4,
+        "sumTx": 5.000000033333333
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772601000000,
+        "sumRx": 8.400000100000002,
+        "sumTx": 927.5226
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772601300000,
+        "sumRx": 2738.1678,
+        "sumTx": 1133333372.433333
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772601600000,
+        "sumRx": 3400000003.7000003,
+        "sumTx": 38.33333336666666
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772601900000,
+        "sumRx": 1248.1678000999998,
+        "sumTx": 980.5226
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772602200000,
+        "sumRx": 1505.3999999999999,
+        "sumTx": 1133333389.433333
+      },
+      {
+        "mac": "aa:bb:cc:00:00:02",
+        "bucket": 1772602500000,
+        "sumRx": 3.3,
+        "sumTx": 33.33333333333334
+      }
+    ],
+    "energy": [
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772600700000,
+        "sumPower": 13.455678,
+        "samples": 1
+      },
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772601000000,
+        "sumPower": 0.44,
+        "samples": 1
+      },
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772601300000,
+        "sumPower": 17.223,
+        "samples": 2
+      },
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772601600000,
+        "sumPower": 34000001.11,
+        "samples": 2
+      },
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772601900000,
+        "sumPower": 0.37,
+        "samples": 1
+      },
+      {
+        "deviceId": "hue:enchufe-a",
+        "bucket": 1772602200000,
+        "sumPower": 14.635678,
+        "samples": 2
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772600700000,
+        "sumPower": 0.743,
+        "samples": 1
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772601000000,
+        "sumPower": 34000018.33,
+        "samples": 4
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772601300000,
+        "sumPower": 34000013.895678,
+        "samples": 3
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772601600000,
+        "sumPower": 14.938678,
+        "samples": 3
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772601900000,
+        "sumPower": 18.403000001,
+        "samples": 4
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772602200000,
+        "sumPower": 34000016.48,
+        "samples": 3
+      },
+      {
+        "deviceId": "tuya:enchufe-b",
+        "bucket": 1772602500000,
+        "sumPower": 1.480000001,
+        "samples": 1
+      }
+    ]
+  }
+}

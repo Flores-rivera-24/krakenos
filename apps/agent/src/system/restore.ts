@@ -8,7 +8,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { mkdir, open, rename, rm, writeFile, type FileHandle } from 'node:fs/promises';
-import { dirname, isAbsolute, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import {
   ENVELOPE_HEADER_LEN,
   type ArchiveEntry,
@@ -37,13 +37,8 @@ export interface RestoreTargets {
   dataDir: string;
 }
 
-/** Resuelve la ruta del fichero SQLite desde una `DATABASE_URL` (`file:…`). */
-export function resolveDbFile(databaseUrl: string): string {
-  const p = databaseUrl.replace(/^file:/, '');
-  // Prisma resuelve las rutas sqlite relativas respecto al directorio del schema
-  // (`prisma/`); en dev/prod el proceso corre desde `apps/agent`.
-  return isAbsolute(p) ? p : resolve('prisma', p);
-}
+// La regla vive en `db/database-url.ts` (la comparten el cliente, el aplicador y la CLI de Prisma).
+export { resolveDbFile } from '../db/database-url.js';
 
 /**
  * Descifra y valida un backup, escribiendo sus ficheros en `stagingDir`. Lanza si

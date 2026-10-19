@@ -13,7 +13,7 @@ import { IOT_ROOM } from '@krakenos/types';
 import type {
   AutomationRule as DbAutomationRule,
   AutomationRun as DbAutomationRun,
-} from '@prisma/client';
+} from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { withActionTimeout } from '../../iot/action-timeout.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';

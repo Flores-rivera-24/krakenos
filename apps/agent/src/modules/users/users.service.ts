@@ -5,7 +5,7 @@ import type {
   UserStatus,
   UserSummary,
 } from '@krakenos/types';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import { AuthService } from '../auth/auth.service.js';

@@ -3,7 +3,7 @@ import type {
   AccessRequestStatus,
   CreateAccessRequestRequest,
 } from '@krakenos/types';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 
 /**
  * Tope de solicitudes **pendientes**. La ruta es pública (5/min por IP, pero una IP no

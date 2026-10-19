@@ -21,7 +21,7 @@ import type {
   FloorPlan as DbFloorPlan,
   SurveySample as DbSurveySample,
   SurveyScan as DbSurveyScan,
-} from '@prisma/client';
+} from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 // Núcleo puro del cálculo de cobertura (creado en paralelo):
 //  · computePredictedHeatmap: modelo de propagación RF (log-distance + atenuación

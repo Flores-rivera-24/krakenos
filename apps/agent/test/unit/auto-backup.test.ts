@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { describe, expect, it, vi } from 'vitest';
 import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
 import {

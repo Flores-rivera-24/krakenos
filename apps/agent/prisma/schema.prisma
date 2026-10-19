@@ -1,11 +1,16 @@
 // KrakenOS — esquema de datos del agente local (SQLite).
+// Prisma 7 (US-276): generador `prisma-client` (sin motores nativos; el acceso a SQLite va por
+// el adaptador de better-sqlite3, ver src/db/client.ts). El cliente se genera DENTRO de
+// `src/` (gitignored) para que tsup lo empaquete en `dist` y el paquete no dependa de
+// un `.prisma/client` generado dentro de node_modules. La URL de la base ya no vive aquí:
+// la usa el adaptador (agente) y `prisma.config.ts` (CLI de desarrollo).
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 model User {

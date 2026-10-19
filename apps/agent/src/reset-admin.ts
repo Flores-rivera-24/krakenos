@@ -13,7 +13,7 @@
 
 import 'dotenv/config';
 import bcrypt from 'bcrypt';
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from './db/client.js';
 import { generateAdminPassword, resetAdmin } from './system/admin-reset.js';
 
 const BCRYPT_ROUNDS = 12;
@@ -41,7 +41,7 @@ async function main(): Promise<void> {
   }
 
   const finalPassword = password ?? generateAdminPassword();
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   try {
     const result = await resetAdmin(
       { prisma, hash: (pw) => bcrypt.hash(pw, BCRYPT_ROUNDS) },

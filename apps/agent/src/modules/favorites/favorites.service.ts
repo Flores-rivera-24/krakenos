@@ -1,6 +1,6 @@
 import type { CreateFavoriteRequest, Favorite } from '@krakenos/types';
 import { FAVORITE_KINDS } from '@krakenos/types';
-import type { Favorite as DbFavorite } from '@prisma/client';
+import type { Favorite as DbFavorite } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { asEnum } from '../../util/as-enum.js';
 

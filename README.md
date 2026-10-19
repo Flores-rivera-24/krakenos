@@ -156,7 +156,7 @@ pnpm install
 cd apps/agent
 cp .env.example .env
 ./scripts/gen-keys.sh          # genera el par RS256 en ./keys
-pnpm prisma:generate
+pnpm prisma:generate          # cliente de Prisma 7 (src/generated); ya corre solo tras `pnpm install`
 pnpm prisma:migrate            # crea la base SQLite
 pnpm db:seed                   # opcional: admin@krakenos.local / changeme123
 cd ../..

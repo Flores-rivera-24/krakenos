@@ -55,8 +55,8 @@ function createDefaultSnapshot(warn: (message: string) => void): DbSnapshot {
     // `VACUUM INTO` exige que el destino NO exista.
     await rm(destFile, { force: true });
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const prisma = new PrismaClient({ datasources: { db: { url: `file:${dbFile}` } } });
+      const { createPrismaClient } = await import('../db/client.js');
+      const prisma = createPrismaClient({ databaseUrl: `file:${dbFile}` });
       try {
         await prisma.$executeRawUnsafe(`VACUUM INTO '${destFile.replace(/'/g, "''")}'`);
       } finally {
