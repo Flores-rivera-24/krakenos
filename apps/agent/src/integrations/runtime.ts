@@ -2,9 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import type {
   CameraManager,
   DnsManager,
+  DomainState,
   FirewallManager,
   HardwareDriver,
   IntegrationDomain,
+  IntegrationStates,
   IotKind,
   IotManager,
   QosManager,
@@ -22,7 +24,10 @@ import type { FileJsonStore } from '../store/json-store.js';
 import { createQosManager } from '../qos/index.js';
 import { createVlanManager } from '../vlan/index.js';
 import { createVpnManager } from '../vpn/index.js';
+import { env } from '../config/env.js';
 import type { DomainRecord } from './factory-config.js';
+import { INTEGRATION_DOMAINS } from './schema.js';
+import { domainStateOf } from './domain-state.js';
 import {
   resolveCameraConfig,
   resolveDnsConfig,
@@ -56,6 +61,18 @@ import {
 /** Espera máxima por dominio al apagar el agente (US-229). */
 const STOP_TIMEOUT_MS = 5_000;
 
+/** `kind` heredado de `.env` por dominio (cuando no hay config guardada y activa). */
+export const ENV_KIND: Record<IntegrationDomain, string> = {
+  driver: env.driver.kind,
+  vpn: env.vpn.kind,
+  iot: env.iot.kind,
+  cameras: env.cameras.kind,
+  firewall: env.firewall.kind,
+  vlan: env.vlan.kind,
+  qos: env.qos.kind,
+  dns: env.dns.kind,
+};
+
 export interface IntegrationRuntime {
   driver: ManagerHolder<HardwareDriver>;
   vpn: ManagerHolder<VpnManager>;
@@ -69,6 +86,15 @@ export interface IntegrationRuntime {
   tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
   /** Backends IoT activos al arrancar. Los usa la migración de ids (US-243). */
   iotKinds: IotKind[];
+  /**
+   * Lo que el dominio **tiene vivo ahora mismo**: el `kind` del manager que atiende las
+   * peticiones y de dónde sale su config. No es lo que hay guardado: una config guardada con
+   * `enabled: false`, o que no se pudo aplicar (fallback), deja el manager de `.env` vivo, y
+   * contar la guardada como efectiva mentía (`source: 'db'` con el manager viniendo de `.env`).
+   */
+  live(domain: IntegrationDomain): { kind: string; source: 'db' | 'env' };
+  /** Estado de los ocho dominios (`configured | demo | not-configured`), punto único. */
+  states(): IntegrationStates;
   /**
    * Reconstruye e intercambia en caliente el manager de `domain` desde la config
    * actual. Devuelve `fallback: true` si la config guardada no se pudo aplicar y
@@ -93,6 +119,7 @@ export async function buildIntegrationRuntime(
     const rec = await store.getDecrypted(domain);
     return rec && rec.enabled ? { kind: rec.kind, values: rec.values } : null;
   };
+  const liveDomains = new Map<IntegrationDomain, { kind: string; source: 'db' | 'env' }>();
   const onIotError = (msg: string): void =>
     app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`);
 
@@ -105,16 +132,24 @@ export async function buildIntegrationRuntime(
     build: (rec: DomainRecord | null) => T,
   ): Promise<{ value: T; fallback: boolean }> {
     const rec = await effective(domain);
-    if (!rec) return { value: build(null), fallback: false };
+    if (!rec) {
+      const value = build(null);
+      liveDomains.set(domain, { kind: ENV_KIND[domain], source: 'env' });
+      return { value, fallback: false };
+    }
     try {
-      return { value: build(rec), fallback: false };
+      const value = build(rec);
+      liveDomains.set(domain, { kind: rec.kind, source: 'db' });
+      return { value, fallback: false };
     } catch (err) {
       app.log.warn(
         `[integrations] no se pudo aplicar la config guardada de ${domain} ` +
           `(${err instanceof Error ? err.message : String(err)}); se usa el fallback de .env`,
       );
       // fallback: la config guardada existe pero el manager vivo viene de .env (US-205).
-      return { value: build(null), fallback: true };
+      const value = build(null);
+      liveDomains.set(domain, { kind: ENV_KIND[domain], source: 'env' });
+      return { value, fallback: true };
     }
   }
 
@@ -238,6 +273,14 @@ export async function buildIntegrationRuntime(
     dns,
     tuyaStore,
     iotKinds,
+    live: (domain) => liveDomains.get(domain) ?? { kind: ENV_KIND[domain], source: 'env' },
+    states: () => {
+      const entries = INTEGRATION_DOMAINS.map((domain): [IntegrationDomain, DomainState] => [
+        domain,
+        domainStateOf(liveDomains.get(domain)?.kind ?? ENV_KIND[domain]),
+      ]);
+      return Object.fromEntries(entries) as IntegrationStates;
+    },
     reconfigure,
     stopAll,
   };

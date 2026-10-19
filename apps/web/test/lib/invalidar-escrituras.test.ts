@@ -20,6 +20,10 @@ const REGLAS = [
   { escribe: ESCRITURA(String.raw`/scenes(?!/capture)`), debeLlamar: 'invalidarEscenas' },
   { escribe: ESCRITURA('/rooms'), debeLlamar: 'invalidarHabitaciones' },
   { escribe: ESCRITURA('/iot/(?:devices|tuya|matter)'), debeLlamar: 'invalidarIot' },
+  // Conectar (o desconectar) un dominio cambia su estado: sin esto las páginas siguen diciendo
+  // «Sin configurar» hasta el sondeo siguiente, con la integración ya guardada.
+  { escribe: ESCRITURA('/integrations'), debeLlamar: 'refrescarEstados' },
+  { escribe: ESCRITURA('/discovery/suggestions/.*/adopt'), debeLlamar: 'refrescarEstados' },
 ];
 
 describe('las escrituras invalidan su caché compartida', () => {

@@ -1,3 +1,4 @@
+import { DOMAIN_STATES } from '@krakenos/types';
 import { INTEGRATION_DOMAINS } from '../../integrations/schema.js';
 
 /**
@@ -39,6 +40,30 @@ export const overviewSchema = {
       properties: {
         // Se deja permisivo (additionalProperties) para no recortar el catálogo dinámico.
         domains: { type: 'array', items: { type: 'object', additionalProperties: true } },
+      },
+    },
+  },
+};
+
+/**
+ * GET /api/integrations/status — estado de cada dominio. Las claves salen de
+ * `INTEGRATION_DOMAINS`: un dominio nuevo sin estado no pasa el `required`.
+ */
+export const statusSchema = {
+  response: {
+    200: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['states'],
+      properties: {
+        states: {
+          type: 'object',
+          additionalProperties: false,
+          required: [...INTEGRATION_DOMAINS],
+          properties: Object.fromEntries(
+            INTEGRATION_DOMAINS.map((d) => [d, { type: 'string', enum: [...DOMAIN_STATES] }]),
+          ),
+        },
       },
     },
   },

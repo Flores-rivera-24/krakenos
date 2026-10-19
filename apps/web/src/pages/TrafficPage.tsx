@@ -27,6 +27,7 @@ import { useConnectionStore } from '@/store/connection.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
 import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 const MAX_POINTS = 60;
 
@@ -60,7 +61,7 @@ export const TOOLTIP_STYLE = {
   color: 'var(--kr-text-primary)',
 } as const;
 
-export function TrafficPage() {
+function TrafficPageBody() {
   const t = useT();
   const [samples, setSamples] = useState<TrafficSample[]>([]);
   const [range, setRange] = useState<TrafficRange>('day');
@@ -478,5 +479,18 @@ export function TrafficPage() {
         <DeviceDetailSlideover device={selectedDevice} onClose={() => setSelectedMac(null)} />
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `driver` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function TrafficPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="driver" title={t('traffic.title')}>
+      <TrafficPageBody />
+    </DomainGate>
   );
 }

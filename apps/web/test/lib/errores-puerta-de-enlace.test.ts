@@ -30,6 +30,12 @@ const CASOS = [
     status: 503,
     es: 'No se pudo aplicar el cambio en el sistema. El detalle está en el registro del servidor.',
   },
+  // Dominio sin conectar (instalación nueva): el 409 de los managers `none` y del guard de puerta de enlace.
+  {
+    code: 'DOMAIN_NOT_CONFIGURED',
+    status: 409,
+    es: 'Este apartado todavía no está conectado. Conéctalo en «Conectar» para poder hacer cambios.',
+  },
 ] as const;
 
 describe.each(CASOS)('describeError: $code', (caso) => {

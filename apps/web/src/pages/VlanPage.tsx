@@ -14,10 +14,11 @@ import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 const EMPTY: CreateVlanRequest = { tag: 0, name: '', subnet: '', isolated: false };
 
-export function VlanPage() {
+function VlanPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [vlans, setVlans] = useState<VlanWithCount[]>([]);
@@ -267,5 +268,18 @@ export function VlanPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * La página del dominio `vlan` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function VlanPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="vlan" title={t('vlan.title')}>
+      <VlanPageBody />
+    </DomainGate>
   );
 }

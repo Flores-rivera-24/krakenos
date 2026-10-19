@@ -52,6 +52,7 @@ import { listScenes } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 const SELECT_CLASS =
   'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring';
@@ -838,7 +839,7 @@ function RuleEditor({
   );
 }
 
-export function AutomationsPage() {
+function AutomationsPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [rules, setRules] = useState<AutomationRule[] | null>(null);
@@ -1123,5 +1124,18 @@ export function AutomationsPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `iot` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function AutomationsPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="iot" title={t('automations.title')} blockWhenNotConfigured={false}>
+      <AutomationsPageBody />
+    </DomainGate>
   );
 }

@@ -21,8 +21,9 @@ import { formatNumber, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
-export function DnsPage() {
+function DnsPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   /**
@@ -396,5 +397,18 @@ export function DnsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * La página del dominio `dns` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function DnsPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="dns" title={t('dns.title')}>
+      <DnsPageBody />
+    </DomainGate>
   );
 }

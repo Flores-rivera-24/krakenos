@@ -1,4 +1,5 @@
 import type { HardwareDriver } from '@krakenos/types';
+import { DomainNotConfiguredError } from '../integrations/not-configured.js';
 
 /**
  * Fallo del driver de hardware al hablar con el dispositivo real (router caído,
@@ -36,11 +37,14 @@ export function wrapDriverErrors(driver: HardwareDriver): HardwareDriver {
           const result = (value as (...a: unknown[]) => unknown).apply(target, args);
           if (result instanceof Promise) {
             return result.catch((err: unknown) => {
+              // «Sin configurar» no es un router caído: pasa tal cual (409, no 502).
+              if (err instanceof DomainNotConfiguredError) throw err;
               throw new DriverUnavailableError(method, { cause: err });
             });
           }
           return result;
         } catch (err) {
+          if (err instanceof DomainNotConfiguredError) throw err;
           throw new DriverUnavailableError(method, { cause: err });
         }
       };

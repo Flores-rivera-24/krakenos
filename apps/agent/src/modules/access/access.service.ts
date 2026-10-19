@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import type { AccessSchedule as DbAccessSchedule } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
+import { DomainNotConfiguredError, isNotConfigured } from '../../integrations/not-configured.js';
 import { activeBlockedMacs } from './schedule-eval.js';
 import { evaluateBlocked, groupSchedulesByMac, type BlockReason } from './blocked-eval.js';
 import { planDeReafirmacion } from '../../access/reaffirm.js';
@@ -254,6 +255,9 @@ export class AccessScheduleService {
    * prometiendo un corte que aún no existe.
    */
   async pause(mac: string, minutes: number): Promise<{ pausedUntil: Date; applied: boolean }> {
+    // Cortar el internet de alguien exige un router al que decírselo: sin él, prometer la
+    // pausa (y dejar `pausedUntil` en la base) sería fingir un corte que no existe.
+    this.requireDriver();
     const pausedUntil = new Date(Date.now() + minutes * 60_000);
     await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil } });
     // Solo se marca como gestionado tras el éxito del driver: si falla, la MAC
@@ -277,6 +281,8 @@ export class AccessScheduleService {
    */
   async resume(mac: string): Promise<{ applied: boolean }> {
     await this.app.prisma.device.updateMany({ where: { mac }, data: { pausedUntil: null } });
+    // Sin router no hay nada que reanudar contra él (y la pausa no pudo aplicarse).
+    if (isNotConfigured(this.driver)) return { applied: true };
     const device = await this.app.prisma.device.findUnique({ where: { mac } });
     const manual = device?.isBlocked ?? false;
     // Con la pausa ya quitada, `isBlockedNow` refleja solo los horarios.
@@ -299,6 +305,14 @@ export class AccessScheduleService {
     return { applied: true };
   }
 
+  /** Lanza 409 si no hay router conectado: las acciones inmediatas sobre él no pueden hacerse. */
+  requireDriver(): void {
+    if (isNotConfigured(this.driver)) throw new DomainNotConfiguredError('driver');
+  }
+
+  /** ¿Ya se avisó de que los horarios no se están aplicando por falta de router? */
+  private avisadoSinRouter = false;
+
   // ---- Enforcement ----
 
   /** Aplica el estado de bloqueo por horario en el instante `now`. */
@@ -314,6 +328,19 @@ export class AccessScheduleService {
       }
     }
     const rows = await this.app.prisma.accessSchedule.findMany({ where: { enabled: true } });
+    // Sin router no hay a quién pedirle el bloqueo: se avisa UNA vez (no un error por MAC y
+    // por barrido, cada minuto) y no se toca el estado gestionado, que sigue siendo el de
+    // lo último que el router aceptó de verdad.
+    if (isNotConfigured(this.driver)) {
+      if (rows.length > 0 && !this.avisadoSinRouter) {
+        this.avisadoSinRouter = true;
+        this.app.log.warn(
+          `[access] hay ${rows.length} horario(s) activo(s) pero no hay router conectado: no se aplican`,
+        );
+      }
+      return;
+    }
+    this.avisadoSinRouter = false;
     const active = activeBlockedMacs(rows.map(toSchedule), now);
     // La pausa de internet (US-111) cuenta como bloqueo activo hasta que expira; el
     // barrido la desbloquea automáticamente cuando `pausedUntil` queda en el pasado.

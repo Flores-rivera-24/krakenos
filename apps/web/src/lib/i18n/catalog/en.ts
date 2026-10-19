@@ -81,6 +81,8 @@ export const en: Record<TranslationKey, string> = {
     'The gateway helper isn’t installed on this computer, so the change can’t be applied.',
   'errors.code.PRIVILEGED_COMMAND_FAILED':
     'The change couldn’t be applied on the system. The details are in the server log.',
+  'errors.code.DOMAIN_NOT_CONFIGURED':
+    'This section isn’t connected yet. Connect it in «Connect» to make changes.',
 
   // --- Setup / wizard ---
   'setup.checking': 'Checking this installation…',
@@ -946,6 +948,22 @@ export const en: Record<TranslationKey, string> = {
     'Without the privileged helper, KrakenOS can’t apply firewall rules. Install it by running «install.sh --with-helper» on this computer.',
   'gateway.setup.qos':
     'Without the privileged helper, KrakenOS can’t limit or prioritize traffic. Install it by running «install.sh --with-helper» on this computer.',
+  'domain.notConfigured.title': 'Not set up',
+  'domain.notConfigured.driver':
+    'You haven’t connected your router yet, so there are no devices or networks to show.',
+  'domain.notConfigured.vpn': 'You haven’t set up this computer’s VPN yet.',
+  'domain.notConfigured.iot': 'You haven’t connected any smart devices yet.',
+  'domain.notConfigured.cameras': 'You haven’t connected any cameras yet.',
+  'domain.notConfigured.firewall': 'You haven’t set up this computer’s firewall yet.',
+  'domain.notConfigured.vlan': 'You haven’t connected a managed switch yet.',
+  'domain.notConfigured.qos': 'You haven’t set up this computer’s QoS yet.',
+  'domain.notConfigured.dns': 'You haven’t connected a DNS blocker yet.',
+  'domain.demo.title': 'Demo data',
+  'domain.demo.body': 'What you see here is sample data, not your home.',
+  'domain.demo.dashboard': 'Some of what you see on the dashboard is sample data, not your home.',
+  'domain.connectLink': 'Go to Connect',
+  'layout.driver.connected': 'Connected',
+  'layout.driver.demo': 'Demo',
   'wellbeing.devices.one': '{n} device',
   'wellbeing.devices.other': '{n} devices',
 

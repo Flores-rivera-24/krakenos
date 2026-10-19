@@ -1,6 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import type { DriverKind } from '@krakenos/types';
+import type {
+  CameraKind,
+  DnsKind,
+  DriverKind,
+  FirewallKind,
+  QosKind,
+  VlanKind,
+  VpnKind,
+} from '@krakenos/types';
 import { DEFAULT_TAILSCALE_SOCKET } from '../vpn/tailscale.js';
 import type { MerossDeviceConfig } from '../iot/meross.parsers.js';
 import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
@@ -313,7 +321,7 @@ export const env = {
   },
 
   vpn: {
-    kind: (process.env.VPN_KIND ?? 'mock') as 'mock' | 'wireguard',
+    kind: (process.env.VPN_KIND ?? 'mock') as VpnKind,
     endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
     listenPort: int('VPN_LISTEN_PORT', 51820),
     // Socket UNIX de la LocalAPI de tailscaled (US-215, detección solo-lectura).
@@ -392,7 +400,7 @@ export const env = {
   },
 
   cameras: {
-    kind: (process.env.CAMERAS_KIND ?? 'mock') as 'mock' | 'rtsp' | 'frigate',
+    kind: (process.env.CAMERAS_KIND ?? 'mock') as CameraKind,
     // Solo se usa cuando CAMERAS_KIND=rtsp (snapshot vía ffmpeg).
     rtsp: {
       configPath: process.env.CAMERAS_CONFIG ?? resolve('data/cameras.json'),
@@ -417,7 +425,7 @@ export const env = {
   },
 
   firewall: {
-    kind: (process.env.FIREWALL_KIND ?? 'mock') as 'mock' | 'iptables',
+    kind: (process.env.FIREWALL_KIND ?? 'mock') as FirewallKind,
     // Solo se usa cuando FIREWALL_KIND=iptables (gestor real).
     iptables: {
       chain: process.env.FW_CHAIN ?? 'KRAKENOS',
@@ -428,7 +436,7 @@ export const env = {
   },
 
   vlan: {
-    kind: (process.env.VLAN_KIND ?? 'mock') as 'mock' | 'switch',
+    kind: (process.env.VLAN_KIND ?? 'mock') as VlanKind,
     // Solo se usa cuando VLAN_KIND=switch (switch gestionado vía SNMP).
     switch: {
       host: process.env.VLAN_SWITCH_HOST ?? '',
@@ -439,7 +447,7 @@ export const env = {
   },
 
   qos: {
-    kind: (process.env.QOS_KIND ?? 'mock') as 'mock' | 'tc',
+    kind: (process.env.QOS_KIND ?? 'mock') as QosKind,
     // Solo se usa cuando QOS_KIND=tc (gestor real).
     tc: {
       interface: process.env.TC_INTERFACE ?? 'eth0',
@@ -451,7 +459,7 @@ export const env = {
   },
 
   dns: {
-    kind: (process.env.DNS_KIND ?? 'mock') as 'mock' | 'pihole',
+    kind: (process.env.DNS_KIND ?? 'mock') as DnsKind,
     // Solo se usa cuando DNS_KIND=pihole (gestor real, API REST de Pi-hole v6).
     pihole: {
       baseUrl: process.env.PIHOLE_URL ?? 'http://pi.hole',

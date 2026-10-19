@@ -29,7 +29,8 @@ services:
       SERVE_WEB: 'true'
       HOST: 0.0.0.0
       PORT: '3001'
-      # Empieza en modo demo; conéctalo a tu hardware desde la app.
+      # Empieza en modo demo (la app lo declara: «Datos de demostración»); conéctalo a tu
+      # hardware desde «Conectar». No se cambia a `none`: la demo es para probar la imagen.
       DRIVER_KIND: mock
       # Estado persistente redirigido al volumen /data.
       DATABASE_URL: file:/data/app.db

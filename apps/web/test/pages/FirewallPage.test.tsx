@@ -1,5 +1,7 @@
 import type { FirewallRule, GatewayCapability } from '@krakenos/types';
 import { act, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
+import { useEstadosStore } from '@/lib/integration-states';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -228,5 +230,49 @@ describe('FirewallPage: capacidad de puerta de enlace de este equipo', () => {
     render(<FirewallPage />);
     expect(await screen.findByText('This computer can’t act as a gateway')).toBeInTheDocument();
     expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
+  });
+
+  describe('estado del dominio (instalación nueva)', () => {
+    const conRouter = () =>
+      render(
+        <MemoryRouter>
+          <FirewallPage />
+        </MemoryRouter>,
+      );
+    afterEach(() => useEstadosStore.setState({ estados: null }));
+
+    it('not-configured: el MISMO aviso «Sin configurar» de las demás páginas, sin alta', async () => {
+      mockApi([], { status: 'not-configured', reason: 'not-configured' });
+      conRouter();
+      expect(await screen.findByText('Sin configurar')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ir a Conectar' })).toHaveAttribute(
+        'href',
+        '/connect',
+      );
+      // Un solo aviso, y ninguno de los de capacidad del equipo.
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+      expect(screen.queryByText('Falta instalar el helper de puerta de enlace')).toBeNull();
+      // Y sin el vacío que culpa al usuario («aún no hay reglas»): el aviso lo dice todo.
+      expect(screen.queryByText(/Aún no hay reglas configuradas/)).toBeNull();
+    });
+
+    it('supported + demo: un aviso «Datos de demostración» y la página entera', async () => {
+      mockApi([RULE], { status: 'supported' });
+      useEstadosStore.setState({ estados: { firewall: 'demo' } });
+      conRouter();
+      expect(await screen.findByText('Datos de demostración')).toBeInTheDocument();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
+
+    it('nunca dos avisos a la vez: si el equipo no puede, solo el suyo (no el de demostración)', async () => {
+      mockApi([RULE], { status: 'unsupported', reason: 'platform' });
+      useEstadosStore.setState({ estados: { firewall: 'demo' } });
+      conRouter();
+      expect(
+        await screen.findByText('Este equipo no puede hacer de puerta de enlace'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Datos de demostración')).toBeNull();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
   });
 });

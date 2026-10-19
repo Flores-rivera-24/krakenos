@@ -25,7 +25,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 
 const STATS: SidebarStats = {
-  driver: 'openwrt',
+  driverState: 'configured',
   online: true,
   uptimeSeconds: 3600,
   firewallActive: 0,
@@ -85,8 +85,26 @@ describe('AppSidebar', () => {
     expect(screen.getByText('KrakenOS')).toBeInTheDocument();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Ajustes')).toBeInTheDocument();
-    // Estado del driver en la zona inferior.
-    expect(screen.getByText('openwrt')).toBeInTheDocument();
+    // Estado del driver en la zona inferior. Antes enseñaba `stats.driver`, un campo que
+    // `/health` no manda (es público y mínimo): en producción era siempre «—», y este
+    // fixture lo disimulaba con `driver: 'openwrt'`.
+    expect(screen.getByText('Conectado')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['configured', 'Conectado'],
+    ['demo', 'Demostración'],
+    ['not-configured', 'Sin configurar'],
+  ] as const)('el router en estado %s se etiqueta «%s»', (driverState, etiqueta) => {
+    renderSidebar({ collapsed: false, stats: { ...STATS, driverState } });
+    expect(screen.getByText(etiqueta)).toBeInTheDocument();
+  });
+
+  it('mientras no se sabe el estado del router no inventa ninguno', () => {
+    renderSidebar({ collapsed: false, stats: { ...STATS, driverState: null } });
+    expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
+    expect(screen.queryByText('Demostración')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sin configurar')).not.toBeInTheDocument();
   });
 
   it('modo sencillo (US-176): sin «Red avanzada» y sin jerga de driver', () => {
@@ -106,7 +124,7 @@ describe('AppSidebar', () => {
     expect(screen.queryByText('Red avanzada')).not.toBeInTheDocument();
     expect(screen.queryByText('Firewall')).not.toBeInTheDocument();
     // El estado técnico del driver se sustituye por un texto llano.
-    expect(screen.queryByText('openwrt')).not.toBeInTheDocument();
+    expect(screen.queryByText('Conectado')).not.toBeInTheDocument();
     expect(screen.getByText('Casa conectada')).toBeInTheDocument();
   });
 

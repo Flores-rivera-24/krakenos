@@ -112,6 +112,9 @@ export class PeopleService {
    * los que fallaron dentro del minuto siguiente.
    */
   async pause(userId: string, minutes: number): Promise<PersonActionResult> {
+    // Antes de contar nada: con `Promise.allSettled` por dentro, un 409 por aparato acabaría
+    // como `applied: 0, failed: N` en un 200 («no se pudo» en vez de «no hay router»).
+    this.access.requireDriver();
     const macs = await this.macsOf(userId);
     const results = await settleWithLimit(macs, (mac) => this.access.pause(mac, minutes));
 

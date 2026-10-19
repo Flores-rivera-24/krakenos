@@ -11,6 +11,7 @@ import { QuickActionsWidget } from '@/components/dashboard/widgets/QuickActionsW
 import { ScenesWidget } from '@/components/dashboard/widgets/ScenesWidget';
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
+import { DemoNotice } from '@/components/integrations/DomainNotice';
 import { Button } from '@/components/ui/button';
 import { LoadingLine } from '@/components/ui/loading-line';
 import {
@@ -23,6 +24,7 @@ import {
   type DashboardLayout,
   type WidgetId,
 } from '@/lib/dashboard';
+import { useDomainsIn } from '@/lib/integration-states';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
@@ -69,6 +71,7 @@ export function DashboardPage() {
   const subscribe = useInventoryStore((s) => s.subscribe);
   useEffect(() => subscribe(), [subscribe]);
 
+  const hayDemo = useDomainsIn('demo').length > 0;
   const [layout, setLayout] = useState(loadLayout);
   const [editing, setEditing] = useState(false);
 
@@ -105,6 +108,9 @@ export function DashboardPage() {
           {editing ? t('dashboard.done') : t('dashboard.customize')}
         </Button>
       </div>
+
+      {/* Con algún dominio en `mock`, parte de los widgets enseña datos de ejemplo. */}
+      {hayDemo && <DemoNotice body="domain.demo.dashboard" />}
 
       <GettingStarted />
 

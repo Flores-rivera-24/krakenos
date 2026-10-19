@@ -90,6 +90,8 @@ export class AlarmService {
   private readonly ultimosAvisosVitales = new Map<string, number>();
   /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
   private lastFailSafeMs = Number.NEGATIVE_INFINITY;
+  /** ¿Ya se avisó de la caída actual del IoT? Se rearma cuando el IoT vuelve a leerse. */
+  private iotOutageNotified = false;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -287,7 +289,29 @@ export class AlarmService {
     // La lista se pide igualmente para los detectores de humo: va por la vista
     // cacheada de US-229 (TTL 5 s + single-flight), compartida con los otros
     // barridos, así que no añade tráfico real contra el bridge o el broker.
-    const devices = await this.iot.listDevices().catch(() => [] as IotDevice[]);
+    //
+    // ⚠️ «No puedo leer el IoT» NO es «este sensor ha desaparecido». Con un `catch → []`
+    // un broker caído (o un IoT sin configurar) daba un `alarm.sensor_fault` por CADA
+    // sensor vigilado, con el nombre de un sensor que quizá está perfectamente. Un fallo
+    // de lectura es un único aviso del IoT, con su causa, y no juzga a los sensores.
+    const lectura = await this.leerDispositivos();
+    if (!lectura.ok) {
+      if (!this.iotOutageNotified) {
+        this.iotOutageNotified = true;
+        this.app.log.warn(`[alarm] no se puede comprobar los sensores: ${lectura.causa}`);
+        // Solo si había algo que vigilar: con la alarma desarmada y sin lista no hay
+        // sensor ciego que contar, y el log ya lo dice.
+        if (vigilados.length > 0) {
+          this.app.audit({
+            action: 'alarm.sensor_fault',
+            detail: `No se puede leer el IoT (${lectura.causa}): los sensores no se están vigilando`,
+          });
+        }
+      }
+      return;
+    }
+    this.iotOutageNotified = false;
+    const devices = lectura.devices;
     const byId = new Map(devices.map((d) => [d.id, d]));
 
     for (const id of vigilados) {
@@ -314,6 +338,22 @@ export class AlarmService {
       } else if (dev.reachable) {
         this.faultNotifiedVital.delete(dev.id);
       }
+    }
+  }
+
+  /**
+   * Lee la lista de aparatos IoT distinguiendo «no se pudo leer» de «la lista está vacía».
+   * Un IoT sin configurar se trata como no legible: no hay nada que vigilar con él.
+   */
+  private async leerDispositivos(): Promise<
+    { ok: true; devices: IotDevice[] } | { ok: false; causa: string }
+  > {
+    if (this.iot.notConfigured) return { ok: false, causa: 'IoT sin configurar' };
+    try {
+      return { ok: true, devices: await this.iot.listDevices() };
+    } catch (err) {
+      const causa = err instanceof Error && err.message ? err.message : 'error desconocido';
+      return { ok: false, causa: causa.slice(0, 120) };
     }
   }
 

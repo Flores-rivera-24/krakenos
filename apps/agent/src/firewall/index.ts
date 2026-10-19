@@ -3,6 +3,7 @@ import { SudoHelperRunner } from '../privileged/runner.js';
 import { FileJsonStore } from '../store/json-store.js';
 import { IptablesFirewallManager } from './iptables.firewall.js';
 import { MockFirewallManager } from './mock.firewall.js';
+import { NoneFirewallManager } from './none.firewall.js';
 
 /** Config específica del gestor iptables real (`kind: 'iptables'`). */
 export interface IptablesManagerConfig {
@@ -27,6 +28,8 @@ export interface FirewallConfig {
  */
 export function createFirewallManager(config: FirewallConfig): FirewallManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneFirewallManager();
     case 'mock':
       return new MockFirewallManager();
     case 'iptables': {
@@ -46,4 +49,5 @@ export function createFirewallManager(config: FirewallConfig): FirewallManager {
 }
 
 export { MockFirewallManager } from './mock.firewall.js';
+export { NoneFirewallManager } from './none.firewall.js';
 export { IptablesFirewallManager } from './iptables.firewall.js';

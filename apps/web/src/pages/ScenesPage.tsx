@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 /** Tarjeta táctil de una escena con ejecución de un toque (US-166). */
 function SceneTile({
@@ -343,7 +344,7 @@ function SceneEditor({
   );
 }
 
-export function ScenesPage() {
+function ScenesPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [scenes, setScenes] = useState<Scene[] | null>(null);
@@ -467,5 +468,18 @@ export function ScenesPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `iot` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function ScenesPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="iot" title={t('scenes.title')} blockWhenNotConfigured={false}>
+      <ScenesPageBody />
+    </DomainGate>
   );
 }

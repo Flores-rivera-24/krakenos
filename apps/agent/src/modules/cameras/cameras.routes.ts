@@ -12,6 +12,7 @@ import { withCamerasCorruptError } from '../../cameras/config-error.js';
 import { toCameraRecord, toManagedCamera, type CameraStore } from '../../cameras/camera.store.js';
 import { FRIGATE_RECORDING_PREFIX, segmentContentType } from '../../cameras/frigate.parsers.js';
 import { StreamLimitError } from '../../cameras/hls-stream.js';
+import { requireDomainConfigured } from '../../integrations/not-configured.js';
 import type { MotionService } from './motion.service.js';
 import type { RecordingService } from './recording.service.js';
 import {
@@ -342,7 +343,9 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
   // Gestión de cámaras (alta/edición/baja) — solo admin, si hay store. La `rtspUrl`
   // (con credenciales) se acepta pero **nunca** se devuelve.
   if (store) {
-    const adminOnly = app.requireRole('admin');
+    // Alta/edición/baja escriben en el almacén de cámaras, no en el manager: contra
+    // `CAMERAS_KIND=none` el alta «tendría éxito» y no aparecería en ninguna parte.
+    const adminOnly = [app.requireRole('admin'), requireDomainConfigured('cameras', cameras)];
 
     app.post<{ Body: CreateCameraRequest }>(
       '/',

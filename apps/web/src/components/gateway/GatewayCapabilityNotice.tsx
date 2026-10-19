@@ -1,4 +1,5 @@
 import type { GatewayCapability } from '@krakenos/types';
+import { NotConfiguredNotice } from '@/components/integrations/DomainNotice';
 import { Callout } from '@/components/ui/callout';
 import { useT, type TranslationKey } from '@/lib/i18n';
 
@@ -25,11 +26,17 @@ interface Props {
  *   (`warning`: la función no existe aquí).
  * - `requires-setup`: falta el helper. Es el único que se arregla, así que lleva el paso
  *   concreto, y va `info`: es un paso pendiente, no un problema.
+ * - `not-configured`: el dominio está sin conectar (instalación nueva). Es el MISMO aviso que
+ *   el de «sin configurar» de las demás páginas, no uno propio: así nunca hay dos a la vez.
  *
  * Devuelve `null` si el equipo puede: entonces la pantalla es la de siempre.
  */
 export function GatewayCapabilityNotice({ capability, feature }: Props) {
   const t = useT();
+
+  if (capability.status === 'not-configured') {
+    return <NotConfiguredNotice domain={feature} />;
+  }
 
   if (capability.status === 'requires-setup') {
     return (

@@ -1,4 +1,4 @@
-import type { Device } from '@krakenos/types';
+import type { Device, DomainState } from '@krakenos/types';
 import { ChevronLeft, LogOut } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
@@ -31,6 +31,13 @@ function badgeValue(key: NavBadgeKey, devicesBadge: number, stats: SidebarStats)
  * el nombre accesible y el `title` dicen QUÉ se cuenta, con su plural. El de reglas activas
  * es un inventario, no un aviso, así que no lleva el color de acento de una notificación.
  */
+/** Etiqueta del estado del router en la zona inferior. Guarda la **clave**, no el texto. */
+const DRIVER_STATE_LABEL: Record<DomainState, TranslationKey> = {
+  configured: 'layout.driver.connected',
+  demo: 'layout.driver.demo',
+  'not-configured': 'domain.notConfigured.title',
+};
+
 const BADGES: Record<NavBadgeKey, { one: TranslationKey; other: TranslationKey; alert: boolean }> =
   {
     devices: { one: 'layout.badge.devices.one', other: 'layout.badge.devices.other', alert: true },
@@ -237,7 +244,9 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
                 <>
                   <div className="truncate text-kr-secondary">
                     {t('layout.driver')}:{' '}
-                    <span className="text-kr-primary">{stats.driver ?? '—'}</span>
+                    <span className="text-kr-primary">
+                      {stats.driverState ? t(DRIVER_STATE_LABEL[stats.driverState]) : '—'}
+                    </span>
                   </div>
                   {stats.uptimeSeconds != null && (
                     <div className="text-kr-xs text-kr-muted">

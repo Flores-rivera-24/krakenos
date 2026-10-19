@@ -81,23 +81,37 @@ export function readStacksState(): StacksState {
 const running: ChildProcess[] = [];
 
 /**
- * Entorno común: **todo mock** (sin hardware) y claves JWT explícitas. Se separa
- * del entorno del arnés de US-189 solo en lo que distingue a cada montaje
- * (`NODE_ENV`, `SERVE_WEB`, puerto y base de datos), que es justo lo que se
+ * Qué `*_KIND` lleva cada stack. Son DOS montajes con dos entornos distintos, a propósito:
+ *
+ *  · `prod` lleva el `.env` que escribe `scripts/install.sh` en una instalación real: los ocho
+ *    dominios SIN CONFIGURAR (`none`). Es la primera pantalla que ve quien acaba de instalar, y
+ *    el montaje donde se comprueba que **no enseña ningún dato inventado** ni emite alertas.
+ *  · `dev` sigue en `mock` (demostración): es lo que ve quien desarrolla o prueba la imagen
+ *    Docker, y donde se comprueba que la app **lo declara** («Datos de demostración»).
+ *
+ * `e2e/stacks/specs/sin-datos-inventados.spec.ts` ata esta diferencia.
+ */
+export const KIND_DEL_STACK: Record<StackName, 'none' | 'mock'> = { dev: 'mock', prod: 'none' };
+
+/**
+ * Entorno común: sin hardware (todos los dominios en el `KIND_DEL_STACK` del montaje) y claves
+ * JWT explícitas. Se separa del entorno del arnés de US-189 solo en lo que distingue a cada
+ * montaje (`NODE_ENV`, `SERVE_WEB`, puerto, base de datos y kinds), que es justo lo que se
  * quiere ejercer.
  */
 function commonEnv(stack: StackName): NodeJS.ProcessEnv {
+  const kind = KIND_DEL_STACK[stack];
   return {
     ...process.env,
     DATABASE_URL: `file:${dbFile(stack)}`,
-    DRIVER_KIND: 'mock',
-    VPN_KIND: 'mock',
-    IOT_KIND: 'mock',
-    CAMERAS_KIND: 'mock',
-    FIREWALL_KIND: 'mock',
-    VLAN_KIND: 'mock',
-    QOS_KIND: 'mock',
-    DNS_KIND: 'mock',
+    DRIVER_KIND: kind,
+    VPN_KIND: kind,
+    IOT_KIND: kind,
+    CAMERAS_KIND: kind,
+    FIREWALL_KIND: kind,
+    VLAN_KIND: kind,
+    QOS_KIND: kind,
+    DNS_KIND: kind,
     JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
     JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',
     WEBAUTHN_RP_ID: 'localhost',

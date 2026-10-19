@@ -339,7 +339,14 @@ build_and_configure() {
   local agent="$INSTALL_DIR/apps/agent"
   if [[ ! -f "$agent/.env" ]]; then
     run cp "$agent/.env.example" "$agent/.env"
-    log "    .env creado desde .env.example (todo arranca en modo mock)"
+    # Una instalación real NO arranca en `mock`: el mock inventa dispositivos, peers VPN, reglas
+    # y cámaras que no son del usuario. Los ocho dominios arrancan SIN CONFIGURAR (`none`) y la
+    # app lo dice y lleva a «Conectar». Solo al CREAR el .env: uno existente conserva lo que el
+    # usuario ya eligiera (incluido un `mock` de una instalación anterior).
+    for kind_var in DRIVER VPN IOT CAMERAS FIREWALL VLAN QOS DNS; do
+      run sed -i "s/^${kind_var}_KIND=.*/${kind_var}_KIND=none/" "$agent/.env"
+    done
+    log "    .env creado desde .env.example (sin configurar: la app te lleva a «Conectar»)"
   fi
   if [[ ! -f "$agent/keys/jwt-private.pem" ]]; then
     run bash "$agent/scripts/gen-keys.sh"

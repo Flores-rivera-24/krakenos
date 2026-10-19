@@ -17,6 +17,7 @@ import { useT } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 interface TileProps {
   camera: Camera;
@@ -140,7 +141,7 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
   );
 }
 
-export function CamerasPage() {
+function CamerasPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [cameras, setCameras] = useState<Camera[]>([]);
@@ -254,5 +255,18 @@ export function CamerasPage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `cameras` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function CamerasPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="cameras" title={t('cameras.title')}>
+      <CamerasPageBody />
+    </DomainGate>
   );
 }

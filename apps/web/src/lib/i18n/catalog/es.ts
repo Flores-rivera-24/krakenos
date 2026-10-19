@@ -88,6 +88,9 @@ export const es = {
     'Falta instalar el helper de puerta de enlace en este equipo: sin él no se puede aplicar el cambio.',
   'errors.code.PRIVILEGED_COMMAND_FAILED':
     'No se pudo aplicar el cambio en el sistema. El detalle está en el registro del servidor.',
+  // Dominio sin conectar (instalación nueva): el copy del agente, verbatim.
+  'errors.code.DOMAIN_NOT_CONFIGURED':
+    'Este apartado todavía no está conectado. Conéctalo en «Conectar» para poder hacer cambios.',
 
   // --- Setup / wizard (US-81/105) ---
   'setup.checking': 'Comprobando la instalación…',
@@ -977,6 +980,23 @@ export const es = {
     'Sin el helper privilegiado, KrakenOS no puede aplicar reglas de cortafuegos. Instálalo con «install.sh --with-helper» en este equipo.',
   'gateway.setup.qos':
     'Sin el helper privilegiado, KrakenOS no puede limitar ni priorizar el tráfico. Instálalo con «install.sh --with-helper» en este equipo.',
+  // Estado de cada dominio: sin conectar (instalación nueva) o de demostración.
+  'domain.notConfigured.title': 'Sin configurar',
+  'domain.notConfigured.driver':
+    'Todavía no has conectado tu router: no hay dispositivos ni redes que enseñar.',
+  'domain.notConfigured.vpn': 'Todavía no has configurado la VPN de este equipo.',
+  'domain.notConfigured.iot': 'Todavía no has conectado ningún dispositivo inteligente.',
+  'domain.notConfigured.cameras': 'Todavía no has conectado ninguna cámara.',
+  'domain.notConfigured.firewall': 'Todavía no has configurado el cortafuegos de este equipo.',
+  'domain.notConfigured.vlan': 'Todavía no has conectado un switch gestionado.',
+  'domain.notConfigured.qos': 'Todavía no has configurado el QoS de este equipo.',
+  'domain.notConfigured.dns': 'Todavía no has conectado un bloqueador de DNS.',
+  'domain.demo.title': 'Datos de demostración',
+  'domain.demo.body': 'Lo que ves aquí es de ejemplo, no de tu casa.',
+  'domain.demo.dashboard': 'Parte de lo que ves en el panel es de ejemplo, no de tu casa.',
+  'domain.connectLink': 'Ir a Conectar',
+  'layout.driver.connected': 'Conectado',
+  'layout.driver.demo': 'Demostración',
   'wellbeing.devices.one': '{n} dispositivo',
   'wellbeing.devices.other': '{n} dispositivos',
 

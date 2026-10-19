@@ -1,8 +1,9 @@
 import type { Id, IsoDateTime } from './common.js';
 import type { GatewayCapability } from './gateway.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /** Implementaciones de gestor de VPN disponibles. */
-export type VpnKind = 'mock' | 'wireguard';
+export type VpnKind = 'none' | 'mock' | 'wireguard';
 
 /** Estado del servidor WireGuard gestionado por el agente. */
 export interface VpnStatus {
@@ -81,7 +82,7 @@ export interface TailscaleStatus {
  * Gestor de VPN intercambiable. La implementación real delega las operaciones
  * privilegiadas (wg/iptables) a un helper vía sudoers; `mock` simula en memoria.
  */
-export interface VpnManager {
+export interface VpnManager extends NotConfigurable {
   /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
   readonly kind: VpnKind;
   getStatus(): Promise<VpnStatus>;

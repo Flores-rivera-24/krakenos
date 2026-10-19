@@ -1,6 +1,8 @@
 import type { IotKind, IotManager } from '@krakenos/types';
 import { FileJsonStore } from '../store/json-store.js';
+import { NOT_CONFIGURED_KIND } from '@krakenos/types';
 import { CompositeIotManager } from './composite.iot.js';
+import { NoneIotManager } from './none.iot.js';
 import { GoveeIotManager } from './govee.iot.js';
 import { DgramUdpTransport } from './govee.transport.js';
 import { HueIotManager } from './hue.iot.js';
@@ -164,6 +166,12 @@ export function createIotManager(
   config: IotConfig,
   deps: { tuyaStore?: FileJsonStore<TuyaDeviceRecord> } = {},
 ): IotManagerBundle {
+  // Sin configurar (`IOT_KIND=none`): ningún backend, ni envoltorio de composite (que prefija
+  // ids con un backend que aquí no existe). Ver `none.iot.ts`.
+  if (config.kind.trim() === NOT_CONFIGURED_KIND) {
+    return { manager: new NoneIotManager(), tuyaStore: deps.tuyaStore, kinds: [] };
+  }
+
   const kinds = config.kind
     .split(',')
     .map((k) => k.trim())
@@ -341,3 +349,4 @@ export { FetchShellyTransport } from './shelly.transport.js';
 export { MerossIotManager } from './meross.iot.js';
 export { createMerossTransport } from './meross.transport.js';
 export { CompositeIotManager } from './composite.iot.js';
+export { NoneIotManager } from './none.iot.js';

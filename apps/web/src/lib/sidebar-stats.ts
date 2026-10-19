@@ -1,18 +1,22 @@
+import type { DomainState } from '@krakenos/types';
 import { useCallback, useState } from 'react';
+import { useDomainState } from '@/lib/integration-states';
 import { useFirewallRules, useIotDevices, useSystemStats } from '@/lib/resources';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 
 interface HealthResponse {
   status: string;
-  driver: string;
-  uptime: number;
 }
 
 /** Datos en vivo para la zona inferior y los badges de la sidebar. */
 export interface SidebarStats {
-  /** Nombre del driver activo (`mock`, `openwrt`, …); `null` si no se pudo leer. */
-  driver: string | null;
+  /**
+   * Estado del driver (router): conectado, de demostración o sin configurar; `null` si aún no
+   * se sabe. Antes se leía de `/health`, que NO lo expone (es público y mínimo a propósito),
+   * así que la etiqueta enseñaba siempre «—».
+   */
+  driverState: DomainState | null;
   /** `true` si `/health` respondió ok. */
   online: boolean;
   /** Uptime del servidor en segundos; `null` si no disponible. */
@@ -55,21 +59,20 @@ export function useSidebarStats(pollMs = 8000, enabled = true): SidebarStats {
   // `/health` se queda fuera del caché compartido a propósito: no es `/api`, no
   // lleva sesión y es la sonda que dice si el agente está vivo. Cachearla sería
   // arriesgarse a declarar «en línea» a un agente que ya no responde.
-  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const driverState = useDomainState('driver');
   const [healthOk, setHealthOk] = useState(false);
 
   const leerHealth = useCallback(async () => {
     const r = await fetch('/health')
       .then((res) => (res.ok ? (res.json() as Promise<HealthResponse>) : null))
       .catch(() => null);
-    setHealth((prev) => r ?? prev);
     setHealthOk(r !== null && r.status === 'ok');
   }, []);
 
   usePolling(leerHealth, pollMs, { enabled });
 
   return {
-    driver: health?.driver ?? null,
+    driverState: driverState,
     online: healthOk,
     // Se conserva el último valor conocido ante un fallo, igual que antes: un
     // corte de un ciclo no debe poner los badges a cero, que se leería como

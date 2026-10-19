@@ -1,6 +1,11 @@
 import { existsSync } from 'node:fs';
-import type { GatewayCapability } from '@krakenos/types';
+import {
+  DOMAIN_NOT_CONFIGURED_CODE,
+  NOT_CONFIGURED_KIND,
+  type GatewayCapability,
+} from '@krakenos/types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { DOMAIN_NOT_CONFIGURED_MESSAGE } from '../integrations/not-configured.js';
 
 /**
  * Capacidad de **este equipo** para hacer de puerta de enlace (VPN WireGuard, cortafuegos
@@ -30,6 +35,8 @@ export interface GatewayCapabilityInput {
 export function resolveGatewayCapability(input: GatewayCapabilityInput): GatewayCapability {
   const platform = input.platform ?? process.platform;
   if (platform === 'win32') return { status: 'unsupported', reason: 'platform' };
+  if (input.kind === NOT_CONFIGURED_KIND)
+    return { status: 'not-configured', reason: 'not-configured' };
   if (input.kind === 'mock') return { status: 'supported' };
   const exists = input.pathExists ?? existsSync;
   if (!exists(input.helperPath)) return { status: 'requires-setup', reason: 'helper-missing' };
@@ -69,6 +76,11 @@ export function gatewayCapabilityOf(
  * detalles del sistema; la web lo traduce por `code`.
  */
 export const GATEWAY_BLOCK = {
+  'not-configured': {
+    statusCode: 409,
+    code: DOMAIN_NOT_CONFIGURED_CODE,
+    message: DOMAIN_NOT_CONFIGURED_MESSAGE,
+  },
   unsupported: {
     statusCode: 501,
     code: 'GATEWAY_UNSUPPORTED',

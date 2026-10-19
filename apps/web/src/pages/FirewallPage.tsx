@@ -8,6 +8,7 @@ import type {
 import { useEffect, useState, type FormEvent } from 'react';
 import { FirewallRuleSlideover } from '@/components/firewall/FirewallRuleSlideover';
 import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
+import { DemoNoticeFor } from '@/components/integrations/DomainNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -89,6 +90,8 @@ export function FirewallPage() {
   // Solo con un equipo que puede aplicar reglas se ofrece crearlas, activarlas o eliminarlas:
   // si no, cada control acabaría en error. Sin saberlo todavía, tampoco.
   const canConfigure = isAdmin && capability?.status === 'supported';
+  // Sin configurar el aviso lo dice todo: la lista vacía («aún no hay reglas») culparía al usuario.
+  const sinConfigurar = capability?.status === 'not-configured';
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -148,6 +151,8 @@ export function FirewallPage() {
       {isAdmin && capability && !canConfigure && (
         <GatewayCapabilityNotice capability={capability} feature="firewall" />
       )}
+      {/* Nunca dos avisos a la vez: el de demostración solo sale si el equipo no tiene otro. */}
+      {isAdmin && canConfigure && <DemoNoticeFor domain="firewall" />}
 
       {canConfigure && (
         <Card>
@@ -254,104 +259,112 @@ export function FirewallPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base text-foreground">{t('firewall.rules')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!isAdmin ? (
-            <Callout variant="info" standing title={t('firewall.adminOnly')}>
-              {t('firewall.adminOnlyDesc')}
-            </Callout>
-          ) : (
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary text-secondary-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.active')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.name')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.action')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.protocol')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.source')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.dest')}</th>
-                    <th className="px-3 py-2 text-left">{t('firewall.col.port')}</th>
-                    {isAdmin && (
-                      <th className="px-3 py-2 text-right">{t('firewall.col.action')}</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <SkeletonRows cols={isAdmin ? 8 : 7} />
-                  ) : rules.length === 0 && loadFailed ? (
+      {!sinConfigurar && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-foreground">{t('firewall.rules')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!isAdmin ? (
+              <Callout variant="info" standing title={t('firewall.adminOnly')}>
+                {t('firewall.adminOnlyDesc')}
+              </Callout>
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary text-secondary-foreground">
                     <tr>
-                      <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center text-kr-muted">
-                        {t('firewall.loadError')}
-                      </td>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.active')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.name')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.action')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.protocol')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.source')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.dest')}</th>
+                      <th className="px-3 py-2 text-left">{t('firewall.col.port')}</th>
+                      {isAdmin && (
+                        <th className="px-3 py-2 text-right">{t('firewall.col.action')}</th>
+                      )}
                     </tr>
-                  ) : rules.length === 0 ? (
-                    <tr>
-                      <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
-                        <p className="text-kr-muted">{t('firewall.empty.title')}</p>
-                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                          {t('firewall.empty.desc')} {canConfigure && t('firewall.empty.cta')}
-                        </p>
-                      </td>
-                    </tr>
-                  ) : (
-                    rules.map((r) => (
-                      <tr
-                        key={r.id}
-                        className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
-                        {...filaAbrible(
-                          () => setSelected(r),
-                          t('firewall.ruleRowAria', { name: r.name }),
-                        )}
-                      >
-                        <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
-                          <OptimisticSwitch
-                            checked={r.enabled}
-                            onToggle={(next) => toggleRule(r, next)}
-                            disabled={!canConfigure}
-                            errorMessage={t('firewall.toggleError', { name: r.name })}
-                            aria-label={t('firewall.toggleLabel', { name: r.name })}
-                          />
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <SkeletonRows cols={isAdmin ? 8 : 7} />
+                    ) : rules.length === 0 && loadFailed ? (
+                      <tr>
+                        <td
+                          colSpan={isAdmin ? 8 : 7}
+                          className="px-3 py-8 text-center text-kr-muted"
+                        >
+                          {t('firewall.loadError')}
                         </td>
-                        <td className="px-3 py-2">{r.name}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={r.action === 'deny' ? 'text-destructive' : 'text-success'}
-                          >
-                            {actionLabel[r.action]}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">
-                          {protocolLabel[r.protocol]}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
-                        {isAdmin && (
-                          <td className="px-3 py-2 text-right" onClick={(e) => e.stopPropagation()}>
-                            {canConfigure && (
-                              <DeleteButton
-                                onDelete={() => removeRule(r.id)}
-                                aria-label={t('firewall.deleteLabel', { name: r.name })}
-                              >
-                                {t('firewall.delete')}
-                              </DeleteButton>
-                            )}
-                          </td>
-                        )}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    ) : rules.length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 8 : 7} className="px-3 py-8 text-center">
+                          <p className="text-kr-muted">{t('firewall.empty.title')}</p>
+                          <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                            {t('firewall.empty.desc')} {canConfigure && t('firewall.empty.cta')}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      rules.map((r) => (
+                        <tr
+                          key={r.id}
+                          className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
+                          {...filaAbrible(
+                            () => setSelected(r),
+                            t('firewall.ruleRowAria', { name: r.name }),
+                          )}
+                        >
+                          <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
+                            <OptimisticSwitch
+                              checked={r.enabled}
+                              onToggle={(next) => toggleRule(r, next)}
+                              disabled={!canConfigure}
+                              errorMessage={t('firewall.toggleError', { name: r.name })}
+                              aria-label={t('firewall.toggleLabel', { name: r.name })}
+                            />
+                          </td>
+                          <td className="px-3 py-2">{r.name}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={r.action === 'deny' ? 'text-destructive' : 'text-success'}
+                            >
+                              {actionLabel[r.action]}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-muted-foreground">
+                            {protocolLabel[r.protocol]}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs">{r.source ?? '*'}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{r.destination ?? '*'}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{r.port ?? '*'}</td>
+                          {isAdmin && (
+                            <td
+                              className="px-3 py-2 text-right"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {canConfigure && (
+                                <DeleteButton
+                                  onDelete={() => removeRule(r.id)}
+                                  aria-label={t('firewall.deleteLabel', { name: r.name })}
+                                >
+                                  {t('firewall.delete')}
+                                </DeleteButton>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {selected && (
         <FirewallRuleSlideover

@@ -1,7 +1,8 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /** Implementaciones de fuente de cámaras disponibles. */
-export type CameraKind = 'mock' | 'rtsp' | 'frigate';
+export type CameraKind = 'none' | 'mock' | 'rtsp' | 'frigate';
 
 /**
  * Evento de detección **nativo** de un backend con detección propia (Frigate,
@@ -51,7 +52,7 @@ export interface CameraStreamSession {
  * sintéticos; la implementación `rtsp` real transcodifica el stream con ffmpeg
  * (snapshot con un fotograma, vídeo en vivo con RTSP→HLS bajo demanda, US-185).
  */
-export interface CameraManager {
+export interface CameraManager extends NotConfigurable {
   listCameras(): Promise<Camera[]>;
   /** Snapshot de una cámara online, o `null` si no existe o está offline. */
   getSnapshot(id: Id): Promise<CameraSnapshot | null>;

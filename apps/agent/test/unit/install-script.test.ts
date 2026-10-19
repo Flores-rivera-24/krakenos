@@ -609,3 +609,61 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
     expect(stdout).not.toContain('.nuevo');
   });
 });
+
+/**
+ * Una instalación real NO arranca en `mock`: el mock inventa dispositivos, peers VPN, reglas
+ * y cámaras como si fueran del usuario. El instalador escribe `*_KIND=none` en el `.env` que
+ * CREA; el default de `env.ts` y el `.env.example` (desarrollo) siguen siendo `mock`.
+ */
+describe('install.sh: los ocho dominios arrancan sin configurar', () => {
+  const EXAMPLE = fileURLToPath(new URL('../../.env.example', import.meta.url));
+  const KINDS = ['DRIVER', 'VPN', 'IOT', 'CAMERAS', 'FIREWALL', 'VLAN', 'QOS', 'DNS'];
+
+  /** Las órdenes `sed` del plan, tal y como el instalador las imprimiría para ejecutarlas. */
+  async function sedsDelPlan(): Promise<string[]> {
+    const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
+    return stdout
+      .split('\n')
+      .filter((l) => l.startsWith('dry-run$ sed -i ') && l.includes('_KIND='));
+  }
+
+  const kindsDe = (texto: string) =>
+    Object.fromEntries(
+      [...texto.matchAll(/^([A-Z]+)_KIND=(.*)$/gm)].map((m) => [m[1]!, m[2]!.trim()]),
+    );
+
+  it('el plan escribe none en los ocho, sobre el .env que crea', async () => {
+    const seds = await sedsDelPlan();
+    expect(seds).toHaveLength(KINDS.length);
+    for (const k of KINDS) {
+      expect(seds.some((l) => l.includes(`${k}_KIND=none`))).toBe(true);
+    }
+    for (const l of seds) expect(l.endsWith('/tmp/kraken-x/apps/agent/.env')).toBe(true);
+  });
+
+  it('aplicado de verdad sobre el .env.example: los ocho quedan en none y nada más cambia', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'krakenos-env-'));
+    const envFile = join(dir, '.env');
+    writeFileSync(envFile, readFileSync(EXAMPLE, 'utf8'));
+    for (const linea of await sedsDelPlan()) {
+      const expr = /sed -i (\S+) /.exec(linea)![1]!;
+      execFileSync('sed', ['-i', expr, envFile]);
+    }
+    const antes = readFileSync(EXAMPLE, 'utf8').split('\n');
+    const despues = readFileSync(envFile, 'utf8').split('\n');
+    expect(despues).toHaveLength(antes.length);
+    const cambiadas = despues.filter((l, i) => l !== antes[i]);
+    expect(cambiadas.sort()).toEqual(KINDS.map((k) => `${k}_KIND=none`).sort());
+    const kinds = kindsDe(readFileSync(envFile, 'utf8'));
+    for (const k of KINDS) expect(kinds[k], k).toBe('none');
+  });
+
+  it('el .env.example (desarrollo) sigue en mock: dev y tests no cambian', () => {
+    const kinds = kindsDe(readFileSync(EXAMPLE, 'utf8'));
+    for (const k of KINDS) expect(kinds[k], k).toBe('mock');
+  });
+
+  it('el instalador ya no promete «modo mock»', () => {
+    expect(readFileSync(SCRIPT, 'utf8')).not.toContain('todo arranca en modo mock');
+  });
+});

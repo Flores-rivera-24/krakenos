@@ -1,6 +1,7 @@
 import type { CreatePeerResult, PeerConfig, VpnPeer, VpnStatusResponse } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
+import { DemoNoticeFor } from '@/components/integrations/DomainNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -47,6 +48,8 @@ export function VpnPage() {
   // el formulario acabaría en error (o, mientras carga, parpadearía y desaparecería).
   const capability = status?.capability;
   const canConfigure = capability?.status === 'supported';
+  // Sin configurar el aviso lo dice todo: la lista vacía («aún no hay reglas») culparía al usuario.
+  const sinConfigurar = capability?.status === 'not-configured';
 
   const addPeer = async (e: FormEvent) => {
     e.preventDefault();
@@ -93,6 +96,9 @@ export function VpnPage() {
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
+
+      {/* Nunca dos avisos a la vez: el de demostración solo sale si el equipo no tiene otro. */}
+      {canConfigure && <DemoNoticeFor domain="vpn" />}
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
@@ -162,71 +168,73 @@ export function VpnPage() {
         ) : null}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base text-foreground">{t('vpn.authorized')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary text-secondary-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left">{t('vpn.col.name')}</th>
-                  <th className="px-3 py-2 text-left">{t('vpn.col.vpnIp')}</th>
-                  <th className="px-3 py-2 text-left">{t('vpn.col.publicKey')}</th>
-                  <th className="px-3 py-2 text-right">{t('vpn.col.action')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows cols={4} />
-                ) : peers.length === 0 ? (
+      {!sinConfigurar && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-foreground">{t('vpn.authorized')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary text-secondary-foreground">
                   <tr>
-                    <td colSpan={4} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">
-                        {canConfigure ? t('vpn.empty.title') : t('vpn.empty.titleReadOnly')}
-                      </p>
-                      {canConfigure && (
-                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                          {t('vpn.empty.desc')}
-                        </p>
-                      )}
-                    </td>
+                    <th className="px-3 py-2 text-left">{t('vpn.col.name')}</th>
+                    <th className="px-3 py-2 text-left">{t('vpn.col.vpnIp')}</th>
+                    <th className="px-3 py-2 text-left">{t('vpn.col.publicKey')}</th>
+                    <th className="px-3 py-2 text-right">{t('vpn.col.action')}</th>
                   </tr>
-                ) : (
-                  peers.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
-                      {...filaAbrible(
-                        () => setSelected({ peer: p }),
-                        t('vpn.peerRowAria', { name: p.name }),
-                      )}
-                    >
-                      <td className="px-3 py-2">{p.name}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
-                      <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
-                        {p.publicKey.slice(0, 16)}…
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {/* Sin servidor posible, eliminar sería un botón que siempre falla. */}
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <SkeletonRows cols={4} />
+                  ) : peers.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center">
+                        <p className="text-kr-muted">
+                          {canConfigure ? t('vpn.empty.title') : t('vpn.empty.titleReadOnly')}
+                        </p>
                         {canConfigure && (
-                          <DeleteButton
-                            onDelete={() => removePeer(p.id)}
-                            aria-label={t('vpn.deleteLabel', { name: p.name })}
-                          >
-                            {t('vpn.delete')}
-                          </DeleteButton>
+                          <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                            {t('vpn.empty.desc')}
+                          </p>
                         )}
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : (
+                    peers.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="cursor-pointer border-t border-border hover:bg-secondary/40 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-kr-accent"
+                        {...filaAbrible(
+                          () => setSelected({ peer: p }),
+                          t('vpn.peerRowAria', { name: p.name }),
+                        )}
+                      >
+                        <td className="px-3 py-2">{p.name}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{p.allowedIps}</td>
+                        <td className="px-3 py-2 font-mono text-xs text-muted-foreground">
+                          {p.publicKey.slice(0, 16)}…
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {/* Sin servidor posible, eliminar sería un botón que siempre falla. */}
+                          {canConfigure && (
+                            <DeleteButton
+                              onDelete={() => removePeer(p.id)}
+                              aria-label={t('vpn.deleteLabel', { name: p.name })}
+                            >
+                              {t('vpn.delete')}
+                            </DeleteButton>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Acceso remoto sin puertos (US-215): Tailscale para CGNAT. La guía «Tu móvil
           en 3 pasos» se mudó a Ajustes → Cuenta en US-240: aquí solo la veía quien

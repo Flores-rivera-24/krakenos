@@ -26,6 +26,7 @@ const fakeSocket = vi.hoisted(() => ({
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { changeLocale, setLocale } from '@/lib/i18n';
+import { useEstadosStore } from '@/lib/integration-states';
 import { DashboardPage } from '@/pages/DashboardPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -69,6 +70,30 @@ describe('DashboardPage', () => {
       .mockImplementation((path: string) =>
         path === '/system/stats' ? Promise.resolve(STATS) : Promise.resolve([]),
       );
+  });
+
+  describe('aviso de demostración', () => {
+    afterEach(() => useEstadosStore.setState({ estados: null }));
+
+    it('con algún dominio en demostración, un aviso permanente (nunca un alert)', () => {
+      useEstadosStore.setState({ estados: { driver: 'configured', iot: 'demo' } });
+      renderDashboard();
+      expect(screen.getByText('Datos de demostración')).toBeInTheDocument();
+      expect(
+        screen.getByText('Parte de lo que ves en el panel es de ejemplo, no de tu casa.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ['sin conocer el estado', null],
+      ['todo conectado', { driver: 'configured', iot: 'configured' } as const],
+      ['todo sin configurar', { driver: 'not-configured', iot: 'not-configured' } as const],
+    ])('%s: no avisa de demostración', (_n, estados) => {
+      useEstadosStore.setState({ estados });
+      renderDashboard();
+      expect(screen.queryByText('Datos de demostración')).not.toBeInTheDocument();
+    });
   });
 
   it('muestra el título y el estado de conexión en tiempo real', () => {

@@ -30,6 +30,7 @@ import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { useFavoritesStore } from '@/store/favorites.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 function DeviceCard({
   device,
@@ -296,7 +297,7 @@ function DeviceCard({
   );
 }
 
-export function IotPage() {
+function IotPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   // Operar el hogar (toggle/brillo/color) también para `member` (US-179).
@@ -427,5 +428,18 @@ export function IotPage() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `iot` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function IotPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="iot" title={t('iot.title')}>
+      <IotPageBody />
+    </DomainGate>
   );
 }

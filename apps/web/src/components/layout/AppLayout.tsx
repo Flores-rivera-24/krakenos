@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
+import { useEstadosListos, useSincronizarEstados } from '@/lib/integration-states';
 import { useT } from '@/lib/i18n';
 import { useFocusTrap } from '@/lib/use-focus-trap';
 import { useRouteAnnounce } from '@/lib/use-route-announce';
@@ -138,6 +139,11 @@ export function AppLayout() {
   // Refleja el estado real del stream Socket.io en el indicador de conexión (US-94).
   useEffect(() => useConnectionStore.getState().subscribe(), []);
 
+  // Estado de cada dominio (conectado / demostración / sin configurar), una sola lectura para
+  // la barra lateral y todas las páginas (ver `lib/integration-states.ts`).
+  useSincronizarEstados();
+  const estadosListos = useEstadosListos();
+
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
   }, [collapsed]);
@@ -189,7 +195,8 @@ export function AppLayout() {
           key={location.pathname}
           className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-hidden md:pb-0"
         >
-          <Outlet />
+          {/* Sin esperar al estado, una entrada en frío pide los datos de un dominio sin conectar. */}
+          {estadosListos ? <Outlet /> : null}
         </main>
 
         <MobileBottomNav />

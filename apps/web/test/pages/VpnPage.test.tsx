@@ -5,7 +5,9 @@ import type {
   VpnStatusResponse,
 } from '@krakenos/types';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
+import { useEstadosStore } from '@/lib/integration-states';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -139,5 +141,49 @@ describe('VpnPage: capacidad de puerta de enlace de este equipo', () => {
     expect(screen.getByText('Falta instalar el helper de puerta de enlace')).toBeInTheDocument();
     expect(screen.getByText(/install\.sh --with-helper/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Añadir dispositivo/ })).toBeNull();
+  });
+
+  describe('estado del dominio (instalación nueva)', () => {
+    const conRouter = () =>
+      render(
+        <MemoryRouter>
+          <VpnPage />
+        </MemoryRouter>,
+      );
+    afterEach(() => useEstadosStore.setState({ estados: null }));
+
+    it('not-configured: el MISMO aviso «Sin configurar» de las demás páginas, sin alta', async () => {
+      mockApi({ status: 'not-configured', reason: 'not-configured' });
+      conRouter();
+      expect(await screen.findByText('Sin configurar')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ir a Conectar' })).toHaveAttribute(
+        'href',
+        '/connect',
+      );
+      // Un solo aviso, y ninguno de los de capacidad del equipo.
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+      expect(screen.queryByText('Falta instalar el helper de puerta de enlace')).toBeNull();
+      // Y sin el vacío que culpa al usuario («aún no hay reglas»): el aviso lo dice todo.
+      expect(screen.queryByText(/Sin dispositivos/)).toBeNull();
+    });
+
+    it('supported + demo: un aviso «Datos de demostración» y la página entera', async () => {
+      mockApi();
+      useEstadosStore.setState({ estados: { vpn: 'demo' } });
+      conRouter();
+      expect(await screen.findByText('Datos de demostración')).toBeInTheDocument();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
+
+    it('nunca dos avisos a la vez: si el equipo no puede, solo el suyo (no el de demostración)', async () => {
+      mockApi({ status: 'unsupported', reason: 'platform' });
+      useEstadosStore.setState({ estados: { vpn: 'demo' } });
+      conRouter();
+      expect(
+        await screen.findByText('Este equipo no puede hacer de puerta de enlace'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Datos de demostración')).toBeNull();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
   });
 });

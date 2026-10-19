@@ -1,6 +1,7 @@
 import type { VpnKind, VpnManager } from '@krakenos/types';
 import { SudoHelperRunner } from '../privileged/runner.js';
 import { MockVpnManager } from './mock.vpn.js';
+import { NoneVpnManager } from './none.vpn.js';
 import { FilePeerStore } from './peer-store.js';
 import { WireguardVpnManager } from './wireguard.vpn.js';
 
@@ -32,6 +33,8 @@ export interface VpnConfig {
  */
 export function createVpnManager(config: VpnConfig): VpnManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneVpnManager({ listenPort: config.listenPort });
     case 'mock':
       return new MockVpnManager({ endpoint: config.endpoint, listenPort: config.listenPort });
     case 'wireguard': {
@@ -56,4 +59,5 @@ export function createVpnManager(config: VpnConfig): VpnManager {
 }
 
 export { MockVpnManager } from './mock.vpn.js';
+export { NoneVpnManager } from './none.vpn.js';
 export { WireguardVpnManager } from './wireguard.vpn.js';

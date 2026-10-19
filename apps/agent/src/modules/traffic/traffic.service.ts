@@ -12,6 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEVICE_TRAFFIC_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
 import { asNumber, bucketStart } from '../../db/sql-aggregate.js';
 import { resolvePerDeviceTraffic } from '../../drivers/capabilities.js';
+import { isNotConfigured } from '../../integrations/not-configured.js';
 import { normalizeTrafficSample } from './normalize.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
@@ -288,6 +289,9 @@ export class TrafficService {
    * handler global de `unhandledRejection`, tumbaría el agente cada 2 s.
    */
   async sampleCycle(): Promise<void> {
+    // Sin router conectado no hay nada que muestrear: un 0 B/s sería un dato inventado y un
+    // error por ciclo (cada 2 s) llenaría el log. El estado «sin configurar» viaja aparte.
+    if (isNotConfigured(this.driver)) return;
     try {
       await this.sampleOnce();
     } catch (err) {
