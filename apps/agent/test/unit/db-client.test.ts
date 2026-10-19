@@ -34,8 +34,9 @@ describe('createPrismaClient (US-276)', () => {
   it('una transacción con rollback NO se lleva por delante la escritura de otra petición', async () => {
     // El adaptador de Prisma 7 abre una sola conexión: sin `serialized-adapter`, una
     // consulta suelta lanzada con la transacción abierta se ejecuta DENTRO de ella y el
-    // ROLLBACK la deshace. Se reproduce de verdad (no hay `$transaction` en el código de
-    // hoy, pero Prisma envuelve en una los creates anidados).
+    // ROLLBACK la deshace. Se reproduce de verdad. El código tiene 9 `$transaction` (4
+    // interactivas: absorb, push y users ×2) y Prisma envuelve en una los creates anidados;
+    // `transacciones-interactivas.test.ts` vigila que dentro solo se use `tx`.
     let ajena: Promise<unknown> = Promise.resolve();
     const orden: string[] = [];
     await prisma

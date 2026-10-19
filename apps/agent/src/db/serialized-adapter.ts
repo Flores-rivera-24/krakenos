@@ -17,7 +17,9 @@ import type { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3';
  * `COMMIT`/`ROLLBACK`. En una sola conexión SQLite las consultas ya eran secuenciales
  * (better-sqlite3 es síncrono), así que serializar no cuesta rendimiento: solo impide el
  * entrelazado. ⚠️ Consecuencia: dentro de un `$transaction(async (tx) => …)` hay que
- * usar `tx`, nunca el cliente exterior (esperaría a que acabe la propia transacción).
+ * usar `tx`, nunca el cliente exterior (esperaría a que acabe la propia transacción: punto
+ * muerto hasta el timeout de Prisma). Lo vigila `test/unit/transacciones-interactivas.test.ts`
+ * por AST sobre las 4 transacciones interactivas de hoy.
  */
 
 type Factory = InstanceType<typeof PrismaBetterSqlite3>;
