@@ -1,5 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { lazy } from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -207,6 +208,27 @@ describe('AppLayout', () => {
         expect(screen.queryByRole('link', { name: 'Ir a Conectar' })).not.toBeInTheDocument();
       },
     );
+
+    it('una página lazy() que aún carga NO tumba el layout: la barra lateral sigue ahí', async () => {
+      // El Suspense de `App.tsx` envuelve TODAS las rutas: sin uno propio dentro del layout, la
+      // página que suspende (ahora siempre tras montar el layout) lo sustituía entero por la
+      // pantalla de carga y la barra desaparecía.
+      useEstadosStore.setState({ estados: { dns: 'configured' }, intentado: true });
+      const Colgada = lazy(() => new Promise<never>(() => {}));
+      render(
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route index element={<Colgada />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('complementary')).toBeInTheDocument();
+      expect(within(screen.getByRole('main')).getByRole('status')).toBeInTheDocument();
+      // Con esqueleto: quien espera a que la página esté pintada no la da por lista aún.
+      expect(screen.getByRole('main').querySelector('.kr-shimmer')).not.toBeNull();
+    });
 
     it('durante la espera hay un indicador de carga, no un main vacío', () => {
       useEstadosStore.setState({ estados: null, intentado: false });

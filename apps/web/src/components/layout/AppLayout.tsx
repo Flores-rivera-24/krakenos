@@ -1,7 +1,8 @@
 import { MoreHorizontal, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { Skeleton } from '@/components/ui/skeleton';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
 import { useEstadosListos, useSincronizarEstados } from '@/lib/integration-states';
@@ -13,6 +14,22 @@ import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { AppSidebar } from './AppSidebar';
 import { mobileNavForRole, type NavItem } from './nav';
+
+/**
+ * Lo que ocupa el `main` mientras la página no está lista (su chunk `lazy()` o el estado de los
+ * dominios). Lleva el esqueleto (`kr-shimmer`) además del indicador: sin él, `main` está
+ * «visible y quieto» antes de tener contenido y cualquier observador que espere a que la página
+ * esté PINTADA (el e2e de accesibilidad mide el contraste) la da por lista y analiza una página
+ * que aparece justo después, a medio animar.
+ */
+function CargandoPagina() {
+  return (
+    <div className="space-y-4 p-6">
+      <LoadingLine />
+      <Skeleton className="h-24 w-full" />
+    </div>
+  );
+}
 
 const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 
@@ -197,7 +214,13 @@ export function AppLayout() {
           className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-hidden md:pb-0"
         >
           {/* Sin esperar al estado, una entrada en frío pide los datos de un dominio sin conectar. */}
-          {estadosListos ? <Outlet /> : <LoadingLine />}
+          {/* Su PROPIO límite de Suspense: el de `App.tsx` envuelve todas las rutas, así que sin este
+              una página `lazy()` que se carga después de montar el layout (ahora siempre, porque
+              el Outlet espera al estado) hacía caer el layout ENTERO a la pantalla de carga y
+              la barra lateral desaparecía. */}
+          <Suspense fallback={<CargandoPagina />}>
+            {estadosListos ? <Outlet /> : <CargandoPagina />}
+          </Suspense>
         </main>
 
         <MobileBottomNav />
