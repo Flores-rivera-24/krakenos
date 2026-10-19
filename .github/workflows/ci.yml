@@ -54,8 +54,7 @@ jobs:
 
       # Las claves RS256 están gitignored: se generan en cada ejecución.
       - name: Generate JWT keys (agent)
-        run: bash scripts/gen-keys.sh
-        working-directory: apps/agent
+        run: pnpm --filter @krakenos/agent keys:gen
 
       # El Prisma Client no se commitea: hay que generarlo antes de typecheck/test.
       - name: Generate Prisma client
@@ -150,8 +149,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate JWT keys (agent)
-        run: bash scripts/gen-keys.sh
-        working-directory: apps/agent
+        run: pnpm --filter @krakenos/agent keys:gen
 
       - name: Generate Prisma client
         run: pnpm --filter @krakenos/agent prisma:generate
@@ -291,14 +289,32 @@ jobs:
             if [ "$actual" != "$2 $3" ]; then echo "::error::$1 es $actual, se esperaba $2 $3"; fail=1; else echo "OK  $1 → $actual"; fi
           }
           check /usr/local/lib/krakenos root:root 755
-          check /usr/local/lib/krakenos/gen-local-ca.sh root:root 755
+          check /usr/local/lib/krakenos/local-ca.js root:root 755
           check /etc/krakenos/ca root:root 700
           check /etc/krakenos/ca/krakenos-ca-key.pem root:root 600
           check /etc/krakenos/tls root:krakenos 750
           check /etc/krakenos/tls/agent-key.pem root:krakenos 640
           # El servicio NO puede leer la clave de la CA ni modificar el script de root…
           if sudo -u krakenos test -r /etc/krakenos/ca/krakenos-ca-key.pem; then echo "::error::krakenos lee la clave de la CA"; fail=1; fi
-          if sudo -u krakenos test -w /usr/local/lib/krakenos/gen-local-ca.sh; then echo "::error::krakenos puede escribir el script de root"; fail=1; fi
+          if sudo -u krakenos test -w /usr/local/lib/krakenos/local-ca.js; then echo "::error::krakenos puede escribir el script de root"; fail=1; fi
+          # root ejecuta ese fichero con un node concreto (el del sistema si es de root; si
+          # no, la copia de root en /usr/local/lib/krakenos/node): ni el node ni NINGUNO de
+          # sus directorios pueden ser del servicio ni escribibles por él.
+          node_bin="$(readlink -f "$(command -v node)")"
+          if [ -e /usr/local/lib/krakenos/node ]; then node_bin=/usr/local/lib/krakenos/node; fi
+          p="$node_bin"
+          while :; do
+            [ "$(stat -c %u "$p")" = 0 ] || { echo "::error::$p no es de root (lo ejecuta root)"; fail=1; }
+            if sudo -u krakenos test -w "$p"; then echo "::error::krakenos puede escribir $p, que ejecuta root"; fail=1; fi
+            [ "$p" = / ] && break
+            p="$(dirname "$p")"
+          done
+          # La copia de root arranca SOLA (sin node_modules) y no toca la CA existente.
+          before="$(sha256sum /etc/krakenos/tls/krakenos-ca.pem)"
+          KRAKENOS_CERTS_DIR=/etc/krakenos/tls KRAKENOS_KEYS_DIR=/etc/krakenos/ca KRAKENOS_TLS_GROUP=krakenos \
+            "$node_bin" /usr/local/lib/krakenos/local-ca.js || { echo "::error::la copia de root de local-ca.js falló"; fail=1; }
+          [ "$before" = "$(sha256sum /etc/krakenos/tls/krakenos-ca.pem)" ] || { echo "::error::la renovación cambió la CA"; fail=1; }
+          echo "OK  root ejecuta $node_bin /usr/local/lib/krakenos/local-ca.js"
           if sudo -u krakenos test -w /etc/krakenos/tls; then echo "::error::krakenos puede escribir en /etc/krakenos/tls"; fail=1; fi
           # …pero SÍ lee la clave del servidor (por grupo) para servir HTTPS.
           sudo -u krakenos test -r /etc/krakenos/tls/agent-key.pem || { echo "::error::krakenos no lee la clave del servidor"; fail=1; }
@@ -415,7 +431,4 @@ jobs:
           shellcheck --severity=warning \
             scripts/install.sh \
             apps/agent/scripts/krakenos-helper.sh \
-            apps/agent/scripts/gen-local-ca.sh \
-            apps/agent/scripts/gen-keys.sh \
-            apps/agent/scripts/rotate-keys.sh \
             docker/entrypoint.sh

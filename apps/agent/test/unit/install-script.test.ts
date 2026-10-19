@@ -1,7 +1,16 @@
 import { execFile, execFileSync } from 'node:child_process';
-import { chmodSync, linkSync, mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -48,15 +57,15 @@ function runInstaller(
 }
 
 describe('install.sh --dry-run (US-216)', () => {
-  it('imprime el plan completo en orden: pnpm pinneado → clone → keys → build → migrate (aplicador propio) → systemd', async () => {
+  it('imprime el plan completo en orden: pnpm pinneado → clone → build → keys (con Node) → migrate (aplicador propio) → systemd', async () => {
     const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
     expect(code).toBe(0);
     const order = [
       'corepack prepare pnpm@9.12.0 --activate', // pinneado, patrón AUD-27
       'git clone',
-      'gen-keys.sh',
       'pnpm install --frozen-lockfile',
       'pnpm build',
+      'dist/keys.js gen', // claves con Node (US-277): van DESPUÉS del build, que es donde vive la CLI
       'dist/migrate.js', // aplicador propio de migraciones (US-275), no la CLI de Prisma
       'systemctl enable --now krakenos',
     ];
@@ -67,6 +76,9 @@ describe('install.sh --dry-run (US-216)', () => {
       last = at;
     }
     expect(stdout).not.toContain('prisma migrate deploy');
+    // Sin bash ni openssl para las claves, ni openssl como paquete base (US-277).
+    expect(stdout).not.toContain('gen-keys.sh');
+    expect(stdout).not.toMatch(/apt-get install .*openssl/);
     // Nada se ejecuta de verdad: toda mutación va marcada como dry-run.
     expect(stdout).toContain('dry-run$');
   });
@@ -287,7 +299,7 @@ describe('install.sh --dry-run (US-216)', () => {
     });
     expect(code).toBe(0);
     expect(stdout).toContain('--tls auto → local');
-    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).toContain('local-ca.js');
     expect(stdout).toContain('HTTPS_ENABLED=true');
     expect(stdout).toContain('TLS_CA_CERT_PATH=/etc/krakenos/tls/krakenos-ca.pem');
     expect(stdout).toMatch(/WEB_ORIGIN=https:\/\/[a-z0-9-]+\.local:3001/);
@@ -310,7 +322,7 @@ describe('install.sh --dry-run (US-216)', () => {
       '/tmp/kraken-x',
     ]);
     expect(code).toBe(0);
-    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).toContain('local-ca.js');
     expect(stdout).toContain('instalar UNA vez el certificado de la CA');
   });
 
@@ -325,7 +337,7 @@ describe('install.sh --dry-run (US-216)', () => {
     ]);
     expect(code).toBe(0);
     expect(stderr).toContain('obsoleto');
-    expect(stdout).toContain('gen-local-ca.sh');
+    expect(stdout).toContain('local-ca.js');
     expect(stdout).not.toContain('gen-cert.sh');
   });
 
@@ -339,7 +351,7 @@ describe('install.sh --dry-run (US-216)', () => {
       '/tmp/kraken-x',
     ]);
     expect(code).toBe(0);
-    expect(stdout).not.toContain('gen-local-ca.sh');
+    expect(stdout).not.toContain('local-ca.js');
     expect(stdout).not.toContain('HTTPS_ENABLED=true');
     expect(stdout).toContain('sin HTTPS');
   });
@@ -440,6 +452,27 @@ describe('install.sh --dry-run (US-216)', () => {
 describe('install.sh · root no ejecuta lo que el servicio puede modificar', () => {
   const INSTALL_DIR = '/tmp/kraken-x';
 
+  /** ¿`p` y todos sus directorios son de root y no escribibles por grupo ni otros? */
+  function cadenaDeRoot(p: string): boolean {
+    try {
+      for (let cur = realpathSync(p); ; cur = dirname(cur)) {
+        const st = statSync(cur);
+        if (st.uid !== 0 || (st.mode & 0o022) !== 0) return false;
+        if (cur === '/') return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+
+  /** El node de una unidad es de fiar para root: de root en toda su cadena, o la copia que el plan instala. */
+  function sePuedeEjecutarComoRoot(nodeBin: string, plan: string): boolean {
+    if (nodeBin === '/usr/local/lib/krakenos/node') {
+      return /install -o root -g root -m 0755 \S+ \/usr\/local\/lib\/krakenos\/node\n/.test(plan);
+    }
+    return cadenaDeRoot(nodeBin);
+  }
+
   /** Unidades de renovación que el plan escribe, con su contenido (`dry-run>`). */
   function unitsDeRenovacion(stdout: string): { path: string; body: string }[] {
     const out: { path: string; body: string }[] = [];
@@ -490,13 +523,22 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
     ]);
     expect(code).toBe(0);
     const execStart = comprobar(stdout, 'krakenos-cert-local');
-    expect(execStart).toBe('/usr/bin/env bash /usr/local/lib/krakenos/gen-local-ca.sh');
+    // `<node> /usr/local/lib/krakenos/local-ca.js`: la CLI empaquetada, en un dir de root.
+    const [nodeBin, script, ...resto] = execStart.split(' ');
+    expect(script).toBe('/usr/local/lib/krakenos/local-ca.js');
+    expect(resto).toEqual([]);
+    expect(nodeBin).toBeDefined();
+    // Y el node con el que root la ejecuta no lo puede modificar el servicio.
+    expect(sePuedeEjecutarComoRoot(nodeBin ?? '', stdout)).toBe(true);
+    // La copia de root del script de bash de versiones anteriores se retira, no se ejecuta.
+    expect(stdout).not.toMatch(/(bash|node|ExecStart=)\S* \S*gen-local-ca\.sh/);
+    expect(stdout).toContain('rm -f /usr/local/lib/krakenos/gen-local-ca.sh');
     expect(stdout).toContain('Environment=KRAKENOS_CERTS_DIR=/etc/krakenos/tls');
     expect(stdout).toContain('Environment=KRAKENOS_KEYS_DIR=/etc/krakenos/ca');
     // La copia de root, con dueño y modo explícitos, en un directorio de root.
     expect(stdout).toContain('install -d -o root -g root -m 0755 /usr/local/lib/krakenos');
     expect(stdout).toContain(
-      `install -o root -g root -m 0755 ${INSTALL_DIR}/apps/agent/scripts/gen-local-ca.sh /usr/local/lib/krakenos/gen-local-ca.sh`,
+      `install -o root -g root -m 0755 ${INSTALL_DIR}/apps/agent/dist/local-ca.js /usr/local/lib/krakenos/local-ca.js`,
     );
     // El servicio lee por grupo: dir 0750 root:servicio, la CA en un dir 0700 de root.
     expect(stdout).toContain('install -d -o root -g krakenos -m 0750 /etc/krakenos/tls');
@@ -506,6 +548,46 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
     }
     expect(stdout).not.toMatch(/TLS_\w+_PATH=\.\/certs/);
   });
+
+  it('un node que el servicio puede modificar NO lo ejecuta root: se copia a /usr/local/lib/krakenos/node', async () => {
+    // Un `node` en un directorio del usuario (como el de nvm): escribible por quien no
+    // es root, así que un timer de root no puede ejecutarlo en sitio.
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-node-'));
+    const falso = join(dir, 'node');
+    writeFileSync(falso, '#!/bin/sh\nexit 0\n');
+    chmodSync(falso, 0o755);
+    const { code, stdout } = await runInstaller(
+      ['--dry-run', '--yes', '--tls', 'local', '--dir', INSTALL_DIR],
+      { PATH: `${dir}:/usr/bin:/bin` },
+    );
+    expect(code).toBe(0);
+    expect(comprobar(stdout, 'krakenos-cert-local')).toBe(
+      '/usr/local/lib/krakenos/node /usr/local/lib/krakenos/local-ca.js',
+    );
+    expect(stdout).toContain(
+      `install -o root -g root -m 0755 ${realpathSync(falso)} /usr/local/lib/krakenos/node`,
+    );
+    // La primera emisión (como root) usa también la copia, no el node del usuario.
+    expect(stdout).toMatch(
+      /KRAKENOS_TLS_GROUP=krakenos \/usr\/local\/lib\/krakenos\/node \/usr\/local\/lib\/krakenos\/local-ca\.js/,
+    );
+    expect(stdout).not.toContain(`${falso} /usr/local/lib/krakenos/local-ca.js`);
+  });
+
+  it.skipIf(!cadenaDeRoot('/usr/bin/node'))(
+    'un node del sistema, de root y sin escritura ajena, se usa en sitio (sin copiar 100 MB)',
+    async () => {
+      const { code, stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--tls', 'local', '--dir', INSTALL_DIR],
+        { PATH: '/usr/bin:/bin' },
+      );
+      expect(code).toBe(0);
+      expect(comprobar(stdout, 'krakenos-cert-local')).toBe(
+        `${realpathSync('/usr/bin/node')} /usr/local/lib/krakenos/local-ca.js`,
+      );
+      expect(stdout).not.toContain('/usr/local/lib/krakenos/node ');
+    },
+  );
 
   it('modo tailscale: renueva escribiendo en /etc/krakenos/tls, sin chown', async () => {
     const bin = tailscaleFalso();
@@ -528,7 +610,7 @@ describe('install.sh · root no ejecuta lo que el servicio puede modificar', () 
       PATH: `${bin}:/usr/bin:/bin`,
     });
     expect(stdout).toContain('--tls auto → tailscale');
-    expect(stdout).not.toContain('gen-local-ca.sh');
+    expect(stdout).not.toContain('local-ca.js');
   });
 
   it('--update migra el certificado de la ruta vieja a /etc/krakenos/tls y reescribe el .env', async () => {

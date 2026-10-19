@@ -50,7 +50,7 @@ Pi-hole**, sin proxy inverso:
 1. **Genera el certificado** (incluye `krakenos.local` en el SAN). El instalador ya lo hace por
    defecto; a mano:
    ```bash
-   ./scripts/gen-local-ca.sh
+   pnpm ca:local        # en una instalación: ver /usr/local/lib/krakenos/local-ca.js
    ```
 2. **Activa HTTPS y configura el RP** en el `.env` del servidor:
    ```bash

@@ -49,6 +49,10 @@ export default defineConfig({
         'src/update-runner.ts',
         'src/reset-admin.ts',
         'src/migrate.ts',
+        // CLIs de claves y de la CA local (US-277): solo cablean `process` a la lógica de
+        // `crypto/*.ts`, que sí se prueba (`runKeysCli` / `runLocalCaCli`).
+        'src/keys.ts',
+        'src/local-ca.ts',
         // Cliente de Prisma 7 GENERADO (US-276): código ajeno, no se mide ni se testea.
         'src/generated/**',
       ],

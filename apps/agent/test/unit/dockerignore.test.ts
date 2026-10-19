@@ -80,7 +80,9 @@ const RUTAS_QUE_DEBEN_ENTRAR = [
   'pnpm-lock.yaml',
   'pnpm-workspace.yaml',
   'apps/agent/prisma/schema.prisma',
-  'apps/agent/scripts/gen-keys.sh',
+  // Las claves JWT las genera `dist/keys.js` (US-277): su fuente tiene que llegar a la imagen.
+  'apps/agent/src/keys.ts',
+  'apps/agent/src/crypto/keys.ts',
   'docker/entrypoint.sh',
   // US-257: la imagen es una vía de distribución, y la AGPL exige que el texto
   // de la licencia viaje CON el programa. Excluirlo aquí sería incumplirla en

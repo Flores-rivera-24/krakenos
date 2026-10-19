@@ -111,7 +111,7 @@ export function createSecretbox(key: Buffer): Secretbox {
 
 /**
  * Carga la clave desde `path`; si no existe, la **crea** (32 bytes aleatorios en
- * base64, `chmod 600`) y sus directorios. Igual que las claves RS256 (`gen-keys.sh`)
+ * base64, `chmod 600`) y sus directorios. Igual que las claves RS256 (`crypto/keys.ts`)
  * y VAPID (`ensureKeys`), la clave se materializa al arrancar si falta, de modo que el
  * cifrado "simplemente funciona" sin un paso manual. Devuelve un {@link Secretbox}.
  */

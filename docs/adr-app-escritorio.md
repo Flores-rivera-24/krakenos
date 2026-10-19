@@ -155,8 +155,9 @@ La decisión que quedaba abierta se toma: **el instalador ya no instala sobre HT
 de instalación es del usuario del servicio, y los timers de renovación corren como root. Por eso el
 material TLS sale de él: la clave de la CA en `/etc/krakenos/ca/` (`root:root` 0700), lo que sirve el
 agente en `/etc/krakenos/tls/` (`root:<servicio>` 0750; el agente lee el certificado y la clave por
-grupo, sin ser dueño), y el timer ejecuta una copia de root de `gen-local-ca.sh` en
-`/usr/local/lib/krakenos/`. Los timers no hacen `chown`, el script rechaza destinos que sean enlaces
+grupo, sin ser dueño), y el timer ejecuta una copia de root de `local-ca.js` (la CLI de la CA local, empaquetada en un
+solo fichero) en `/usr/local/lib/krakenos/`, con el `node` del sistema si es de root y, si no, una copia
+suya. Los timers no hacen `chown`, la CLI rechaza destinos que sean enlaces
 simbólicos, y `--update` migra a esa ubicación las instalaciones previas con Tailscale que tenían el
 certificado en `apps/agent/certs`. La copia de root se refresca al volver a ejecutar el instalador.
 

@@ -1,10 +1,9 @@
-import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { buildTestApp } from '../helpers/app.js';
 
 /**
@@ -12,8 +11,6 @@ import { buildTestApp } from '../helpers/app.js';
  * jamás una clave privada — ni aunque haya una al lado, ni aunque la ruta
  * configurada apunte por error a un fichero que la contiene.
  */
-const GEN = fileURLToPath(new URL('../../scripts/gen-local-ca.sh', import.meta.url));
-
 describe('GET /api/system/ca-cert', () => {
   let dir: string;
   let caPath: string;
@@ -24,15 +21,11 @@ describe('GET /api/system/ca-cert', () => {
 
   beforeAll(async () => {
     dir = mkdtempSync(join(tmpdir(), 'kraken-cacert-'));
-    execFileSync('bash', [GEN], {
-      env: {
-        ...process.env,
-        KRAKENOS_CERTS_DIR: join(dir, 'certs'),
-        KRAKENOS_KEYS_DIR: join(dir, 'keys'),
-        KRAKENOS_HOSTNAME: 'casa',
-        KRAKENOS_LAN_IP: '192.168.1.50',
-      },
-      stdio: 'ignore',
+    await ensureLocalCa({
+      certsDir: join(dir, 'certs'),
+      keysDir: join(dir, 'keys'),
+      hostname: 'casa',
+      lanIps: ['192.168.1.50'],
     });
     caPath = join(dir, 'certs', 'krakenos-ca.pem');
     keyPath = join(dir, 'keys', 'krakenos-ca-key.pem');

@@ -67,7 +67,8 @@ SERVICE_USER="${KRAKENOS_SERVICE_USER:-krakenos}"
 # de root seguiría.
 CA_DIR="${KRAKENOS_CA_DIR:-/etc/krakenos/ca}"         # root:root 0700 — clave de la CA
 TLS_DIR="${KRAKENOS_TLS_DIR:-/etc/krakenos/tls}"      # root:<servicio> 0750 — lo que se sirve
-LIB_DIR="${KRAKENOS_LIB_DIR:-/usr/local/lib/krakenos}" # root:root 0755 — copia de root del script
+LIB_DIR="${KRAKENOS_LIB_DIR:-/usr/local/lib/krakenos}" # root:root 0755 — copia de root de local-ca.js (y de node si hace falta)
+ROOT_NODE="" # el node con el que root ejecuta local-ca.js; lo fija install_root_script
 PNPM_VERSION="9.12.0" # pinneado = packageManager del repo (patrón AUD-27: sin descargas en runtime)
 NODE_MAJOR=24
 MIN_RAM_MB="${KRAKENOS_MIN_RAM_MB:-900}"
@@ -256,10 +257,10 @@ require_root() {
 
 # ---------------------------------------------------------------- dependencias
 ensure_base_packages() {
-  log "[1/7] Paquetes base (git, curl, openssl)…"
-  if ! command -v git > /dev/null || ! command -v curl > /dev/null || ! command -v openssl > /dev/null; then
+  log "[1/7] Paquetes base (git, curl)…"
+  if ! command -v git > /dev/null || ! command -v curl > /dev/null; then
     run apt-get update -qq
-    run apt-get install -y -qq git curl ca-certificates openssl
+    run apt-get install -y -qq git curl ca-certificates
   fi
 }
 
@@ -348,9 +349,6 @@ build_and_configure() {
     done
     log "    .env creado desde .env.example (sin configurar: la app te lleva a «Conectar»)"
   fi
-  if [[ ! -f "$agent/keys/jwt-private.pem" ]]; then
-    run bash "$agent/scripts/gen-keys.sh"
-  fi
   # Comprobación de actualizaciones (US-116) activa en una instalación real: sin
   # esto no hay releases → 0 tags → el update one-click no puede funcionar y toda
   # instalación corre la punta de `main` (AUD3-20). En dev sigue apagada: la línea
@@ -364,6 +362,12 @@ build_and_configure() {
   run bash -c "cd '$INSTALL_DIR' && pnpm install --frozen-lockfile"
   run bash -c "cd '$INSTALL_DIR' && pnpm --filter @krakenos/agent exec prisma generate"
   run bash -c "cd '$INSTALL_DIR' && pnpm build"
+  # Claves JWT y de secretbox (US-277): las genera Node, sin openssl, así que van
+  # después de `pnpm build` (la CLI vive en el build del agente). No sobrescribe nada:
+  # solo se invoca si falta la clave privada.
+  if [[ ! -f "$agent/keys/jwt-private.pem" ]]; then
+    run bash -c "cd '$agent' && node dist/keys.js gen"
+  fi
   # Aplicador de migraciones propio (US-275): vive en el build del agente, así que va
   # después de `pnpm build` y desde su directorio (lee ahí el .env y prisma/migrations).
   run bash -c "cd '$agent' && node dist/migrate.js"
@@ -614,12 +618,43 @@ prepare_tls_dirs() {
   fi
 }
 
-# Copia de root del script que emite certificados: el timer (root) ejecuta ESTA, no
-# la del árbol de instalación, que es del usuario del servicio.
+# ¿`path` y TODOS sus directorios son de root y no escribibles por grupo ni otros? Si no,
+# el usuario del servicio podría sustituirlo, y lo que root ejecuta no puede ser nada que
+# el servicio pueda modificar.
+root_owned_chain() {
+  local p="$1" m
+  while :; do
+    [[ "$(stat -c %u "$p" 2> /dev/null)" == 0 ]] || return 1
+    m="$(stat -c %a "$p" 2> /dev/null)" || return 1
+    (((8#$m & 8#022) == 0)) || return 1
+    [[ "$p" == / ]] && return 0
+    p="$(dirname "$p")"
+  done
+}
+
+# Copia de root de lo que emite certificados: el timer (root) ejecuta ESTO, no nada del
+# árbol de instalación, que es del usuario del servicio.
+#   · $LIB_DIR/local-ca.js — la CLI de la CA local EMPAQUETADA en un solo fichero (sin
+#     node_modules, que es del servicio): `dist/local-ca.js` del build.
+#   · el node que lo ejecuta: el del sistema si él y todos sus directorios son de root
+#     (NodeSource: /usr/bin/node); si no (nvm, un node del usuario…), una COPIA del
+#     ejecutable en $LIB_DIR/node, que sí es de root.
+# Fija ROOT_NODE para la unidad del timer y para la primera emisión.
 install_root_script() {
-  local agent="$INSTALL_DIR/apps/agent"
+  local agent="$INSTALL_DIR/apps/agent" node_bin real
   run install -d -o root -g root -m 0755 "$LIB_DIR"
-  run install -o root -g root -m 0755 "$agent/scripts/gen-local-ca.sh" "$LIB_DIR/gen-local-ca.sh"
+  run install -o root -g root -m 0755 "$agent/dist/local-ca.js" "$LIB_DIR/local-ca.js"
+  # La copia de root del script de bash de versiones anteriores ya no se usa.
+  run rm -f "$LIB_DIR/gen-local-ca.sh"
+  node_bin="$(command -v node || echo /usr/bin/node)"
+  real="$(readlink -f "$node_bin" 2> /dev/null || printf '%s' "$node_bin")"
+  if root_owned_chain "$real"; then
+    ROOT_NODE="$real"
+    run rm -f "$LIB_DIR/node"
+  else
+    run install -o root -g root -m 0755 "$real" "$LIB_DIR/node"
+    ROOT_NODE="$LIB_DIR/node"
+  fi
 }
 
 # Rutas del certificado servido en el .env (absolutas, fuera del árbol de instalación).
@@ -701,7 +736,7 @@ UNIT
   log "    renovación automática programada (timer semanal; el agente recarga el cert sin reiniciar)"
 }
 
-# Nombre corto del equipo, saneado como en gen-local-ca.sh (se le pasa por
+# Nombre corto del equipo, saneado como en crypto/local-ca.ts (se le pasa por
 # KRAKENOS_HOSTNAME para que ambos usen exactamente el mismo).
 local_hostname() {
   local h
@@ -738,7 +773,8 @@ install_avahi() {
 # privados, así que su clave no sirve para suplantar ningún sitio de internet.
 #
 # Dónde vive cada cosa (root nunca ejecuta ni escribe lo que el servicio modifica):
-#   · /usr/local/lib/krakenos/gen-local-ca.sh   copia de root del script
+#   · /usr/local/lib/krakenos/local-ca.js        copia de root de la CLI (y node, si el del
+#                                                sistema no es de root)
 #   · /etc/krakenos/ca/krakenos-ca-key.pem       clave de la CA, root 0600 en dir 0700
 #   · /etc/krakenos/tls/                         root:<servicio> 0750; el agente lee
 #                                                cert y clave del servidor POR GRUPO
@@ -750,7 +786,7 @@ setup_tls_local() {
   prepare_tls_dirs yes
   install_root_script
   run env KRAKENOS_HOSTNAME="$host" KRAKENOS_CERTS_DIR="$TLS_DIR" KRAKENOS_KEYS_DIR="$CA_DIR" \
-    KRAKENOS_TLS_GROUP="$(tls_group)" bash "$LIB_DIR/gen-local-ca.sh"
+    KRAKENOS_TLS_GROUP="$(tls_group)" "$ROOT_NODE" "$LIB_DIR/local-ca.js"
 
   set_tls_env_paths
   set_env_var TLS_CA_CERT_PATH "$TLS_DIR/krakenos-ca.pem"
@@ -771,13 +807,13 @@ setup_tls_local() {
   SUMMARY+=("la clave de la CA está en ${CA_DIR} (solo root); no la copies ni la compartas")
 }
 
-# Renovación del certificado de servidor (825 días): gen-local-ca.sh solo lo
+# Renovación del certificado de servidor (825 días): local-ca.js solo lo
 # reemite cuando quedan <60 días o cambió la IP; el agente lo recarga en caliente.
-# El timer ejecuta la COPIA DE ROOT del script y no toca nada del árbol del servicio.
+# El timer ejecuta la COPIA DE ROOT de la CLI y no toca nada del árbol del servicio.
 install_tls_local_timer() {
   local host="$1"
   [[ $NO_SERVICE -eq 1 ]] && {
-    SUMMARY+=("sin systemd: el certificado local NO se renovará solo — ejecuta ${LIB_DIR}/gen-local-ca.sh (con KRAKENOS_CERTS_DIR/KRAKENOS_KEYS_DIR) antes de que caduque")
+    SUMMARY+=("sin systemd: el certificado local NO se renovará solo — ejecuta «node ${LIB_DIR}/local-ca.js» (con KRAKENOS_CERTS_DIR/KRAKENOS_KEYS_DIR) antes de que caduque")
     return 0
   }
   write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.service" "$(
@@ -791,7 +827,7 @@ Environment=KRAKENOS_HOSTNAME=${host}
 Environment=KRAKENOS_CERTS_DIR=${TLS_DIR}
 Environment=KRAKENOS_KEYS_DIR=${CA_DIR}
 Environment=KRAKENOS_TLS_GROUP=${SERVICE_USER}
-ExecStart=/usr/bin/env bash ${LIB_DIR}/gen-local-ca.sh
+ExecStart=${ROOT_NODE} ${LIB_DIR}/local-ca.js
 UNIT
   )"
   write_file "/etc/systemd/system/${SERVICE_NAME}-cert-local.timer" "$(
@@ -929,7 +965,7 @@ refresh_tls_after_update() {
     f="$(sed -n 's/^Environment=KRAKENOS_HOSTNAME=//p' "$unit_dir/${SERVICE_NAME}-cert-local.service" 2> /dev/null | head -1)"
     install_root_script
     install_tls_local_timer "${f:-$(local_hostname)}"
-    SUMMARY+=("copia de root de gen-local-ca.sh refrescada en $LIB_DIR")
+    SUMMARY+=("copia de root de local-ca.js refrescada en $LIB_DIR")
   fi
 }
 
@@ -1088,7 +1124,7 @@ do_uninstall() {
     if has_systemd; then run systemctl disable --now "${SERVICE_NAME}-${u}.timer" || true; fi
     run rm -f "/etc/systemd/system/${SERVICE_NAME}-${u}.timer" "/etc/systemd/system/${SERVICE_NAME}-${u}.service"
   done
-  run rm -f "$LIB_DIR/gen-local-ca.sh"
+  run rm -f "$LIB_DIR/local-ca.js" "$LIB_DIR/node" "$LIB_DIR/gen-local-ca.sh"
   if [[ $PURGE -eq 1 ]]; then
     if confirm "¿Borrar TAMBIÉN $INSTALL_DIR (base de datos, claves y credenciales)? Es irreversible" || [[ $ASSUME_YES -eq 1 ]]; then
       run rm -rf "$INSTALL_DIR"

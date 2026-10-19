@@ -2,7 +2,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { Keyring, deriveKid } from '../../src/auth/keyring.js';
 
-/** Genera un par RSA-2048 en formato PEM (igual que gen-keys.sh). */
+/** Genera un par RSA-2048 en formato PEM (igual que `crypto/keys.ts`). */
 function keypair(): { privateKey: string; publicKey: string } {
   return generateKeyPairSync('rsa', {
     modulusLength: 2048,

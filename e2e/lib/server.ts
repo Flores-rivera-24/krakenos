@@ -65,7 +65,7 @@ function agentEnv(): NodeJS.ProcessEnv {
     // Claves JWT explícitas (relativas al cwd del agente): en local venían del
     // `.env` gitignored, pero en CI no hay `.env` y el agente moría al arrancar
     // («Falta la variable de entorno obligatoria: JWT_PRIVATE_KEY_PATH») — era
-    // la causa del job e2e rojo en main. Las genera `scripts/gen-keys.sh`.
+    // la causa del job e2e rojo en main. Las genera `pnpm --filter @krakenos/agent keys:gen`.
     JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
     JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',
   };

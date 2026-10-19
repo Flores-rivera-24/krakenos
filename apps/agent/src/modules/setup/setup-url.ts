@@ -23,7 +23,7 @@ const VIRTUAL_IFACE = /^(docker|br-|veth|virbr|cni|flannel)/;
 
 /**
  * Primera IPv4 **privada** (RFC 1918), o `localhost` si no hay ninguna. Como
- * `gen-local-ca.sh`: una `100.x` de Tailscale o una IP pública no ganan por ir antes
+ * `crypto/local-ca.ts`: una `100.x` de Tailscale o una IP pública no ganan por ir antes
  * en el orden. `os.networkInterfaces()` no dice cuál interfaz tiene la ruta por
  * defecto, así que la 172.16/12 (la NAT de WSL2, Docker, Hyper-V) solo se usa si no
  * hay ninguna 10.x ni 192.168.x; y se saltan las interfaces virtuales de contenedores.
