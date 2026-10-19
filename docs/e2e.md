@@ -57,7 +57,17 @@ Corregido en `apps/web/src/lib/api.ts` y `store/auth.store.ts` (no declarar JSON
 pnpm test:e2e:local                                          # build + toda la suite
 pnpm test:e2e:local e2e/tests/navegacion.spec.ts --project=chromium
 pnpm test:e2e:local --no-build -g "alarma" --headed          # sin rebuild, con ventana
+pnpm test:e2e:report                                         # abre el último informe HTML
+pnpm test:e2e:ui                                             # modo interactivo (--ui) de Playwright
 ```
+
+`test:e2e:ui` abre la ventana de Playwright (en WSL con WSLg sale sola): ves los tests en vivo con su
+línea de tiempo y, con el modo watch (el icono del ojo junto a un test), se re-ejecutan al guardar un
+cambio. Hace las mismas comprobaciones que `test:e2e:local` (puerto, librerías, navegador, build;
+`--no-build` lo salta) y pasa el resto de argumentos a Playwright, p. ej. un spec concreto. Sin
+ventana: `pnpm test:e2e:ui --en-navegador` sirve la UI en `http://127.0.0.1:9324` para abrirla desde
+cualquier navegador (también el de Windows). `test:e2e:report` sirve el informe en
+`http://localhost:9323` (si no se abre solo, pega la URL) y, si aún no hay informe, lo dice.
 
 Es el camino recomendado en una máquina de desarrollo (WSL incluido): `scripts/e2e-local.mjs`
 comprueba, **antes** de lanzar nada, lo que si falla no se parece a su causa, y **no mata ni
@@ -79,12 +89,15 @@ instala nada** por su cuenta:
 Al terminar imprime cómo abrir el informe y dónde están las trazas:
 
 ```bash
-pnpm exec playwright show-report e2e/playwright-report   # informe HTML (no se abre solo)
+pnpm test:e2e:report                                     # informe HTML (no se abre solo)
 pnpm exec playwright show-trace e2e/test-results/<carpeta>/trace.zip
 ```
 
 El informe HTML solo lo escribe la suite si se pide (la config lo activa por defecto únicamente con
-`CI`); `test:e2e:local` lo pide siempre, por eso `show-report` funciona tras una ejecución local.
+`CI`); `test:e2e:local` lo pide siempre, por eso `test:e2e:report` funciona tras una ejecución local.
+Si corres Playwright a mano (`pnpm test:e2e`) con `--reporter=html`, su línea «To open last HTML
+report run: …» no lleva la carpeta cuando el informe va a otra ruta: usa `test:e2e:report`.
+`test:e2e:local` cierra el stdin de la suite precisamente para que esa línea no salga.
 
 ## Ejecutar
 
