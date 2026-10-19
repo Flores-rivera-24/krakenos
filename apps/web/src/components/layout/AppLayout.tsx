@@ -1,6 +1,7 @@
 import { MoreHorizontal, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { LogoMark } from '@/components/ui/logo';
 import { Toaster } from '@/components/ui/toast';
 import { useEstadosListos, useSincronizarEstados } from '@/lib/integration-states';
@@ -196,7 +197,7 @@ export function AppLayout() {
           className="flex-1 animate-kr-fade-up pb-[calc(5rem+env(safe-area-inset-bottom))] outline-hidden md:pb-0"
         >
           {/* Sin esperar al estado, una entrada en frío pide los datos de un dominio sin conectar. */}
-          {estadosListos ? <Outlet /> : null}
+          {estadosListos ? <Outlet /> : <LoadingLine />}
         </main>
 
         <MobileBottomNav />

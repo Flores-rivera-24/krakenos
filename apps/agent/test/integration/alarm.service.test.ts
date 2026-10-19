@@ -464,6 +464,39 @@ describe('AlarmService (US-188)', () => {
       auditSpy.mockRestore();
     });
 
+    it('⚠️ el IoT cae con la alarma DESARMADA y luego se ARMA: avisa al armar, una sola vez', async () => {
+      // Marcar «ya avisado» sin haber auditado dejaba la casa con los sensores ciegos y sin
+      // aviso: la caída se «consumía» estando desarmada y el aviso nunca llegaba al armar.
+      const iot = new FakeIot();
+      let clock = 0;
+      const { service } = build(iot, () => clock);
+      const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+      await service.setConfig({ sensorDeviceIds: ['sensor-door'], exitDelaySec: 0 });
+      vi.spyOn(iot, 'listDevices').mockRejectedValue(new Error('broker MQTT caído'));
+
+      await service.tick(); // desarmada: nada que vigilar, nada que auditar
+      expect(faults(auditSpy)).toHaveLength(0);
+
+      await service.armAlarm('away', 'ana@x');
+      clock += 31_000;
+      await service.tick(); // armada con el IoT AÚN caído: ahora sí
+      expect(faults(auditSpy)).toHaveLength(1);
+      expect(faults(auditSpy)[0]![0].detail).toContain('broker MQTT caído');
+
+      clock += 31_000;
+      await service.tick(); // sigue la misma caída: no repite
+      expect(faults(auditSpy)).toHaveLength(1);
+
+      // Desarmar y volver a armar con el IoT todavía caído es otro armado a ciegas: avisa otra vez.
+      await service.disarmAlarm(undefined, 'ana@x');
+      clock += 31_000;
+      await service.tick();
+      await service.armAlarm('away', 'ana@x');
+      clock += 31_000;
+      await service.tick();
+      expect(faults(auditSpy)).toHaveLength(2);
+    });
+
     it('desarmada y sin detectores, un IoT caído no genera ningún aviso de sensor', async () => {
       const iot = new FakeIot();
       const { service } = build(iot, () => 0);

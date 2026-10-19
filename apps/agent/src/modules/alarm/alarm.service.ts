@@ -90,8 +90,10 @@ export class AlarmService {
   private readonly ultimosAvisosVitales = new Map<string, number>();
   /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
   private lastFailSafeMs = Number.NEGATIVE_INFINITY;
-  /** ¿Ya se avisó de la caída actual del IoT? Se rearma cuando el IoT vuelve a leerse. */
+  /** ¿Ya se AUDITÓ la caída actual del IoT? Solo se marca al auditar. Se rearma al volver a leerse. */
   private iotOutageNotified = false;
+  /** ¿Ya se registró en el log la caída actual? */
+  private iotOutageLogged = false;
 
   constructor(
     private readonly app: FastifyInstance,
@@ -283,7 +285,12 @@ export class AlarmService {
    */
   private async failSafeCheck(): Promise<void> {
     const activa = isActive(this.state);
-    if (!activa) this.faultNotified.clear();
+    if (!activa) {
+      this.faultNotified.clear();
+      // Cada ARMADO con el IoT caído es una situación nueva: desarmar y volver a armar a ciegas
+      // tiene que avisar otra vez.
+      this.iotOutageNotified = false;
+    }
     const config = await this.getConfig();
     const vigilados = activa ? config.sensorDeviceIds : [];
     // La lista se pide igualmente para los detectores de humo: va por la vista
@@ -296,20 +303,23 @@ export class AlarmService {
     // de lectura es un único aviso del IoT, con su causa, y no juzga a los sensores.
     const lectura = await this.leerDispositivos();
     if (!lectura.ok) {
-      if (!this.iotOutageNotified) {
-        this.iotOutageNotified = true;
+      // El log avisa una vez por caída; la AUDITORÍA solo se da por emitida cuando de verdad se
+      // emite. Marcarla estando desarmada «consumía» el aviso: si luego se armaba con el IoT aún
+      // caído, no llegaba nunca y los sensores quedaban ciegos sin que nadie lo supiera.
+      if (!this.iotOutageLogged) {
+        this.iotOutageLogged = true;
         this.app.log.warn(`[alarm] no se puede comprobar los sensores: ${lectura.causa}`);
-        // Solo si había algo que vigilar: con la alarma desarmada y sin lista no hay
-        // sensor ciego que contar, y el log ya lo dice.
-        if (vigilados.length > 0) {
-          this.app.audit({
-            action: 'alarm.sensor_fault',
-            detail: `No se puede leer el IoT (${lectura.causa}): los sensores no se están vigilando`,
-          });
-        }
+      }
+      if (!this.iotOutageNotified && vigilados.length > 0) {
+        this.iotOutageNotified = true;
+        this.app.audit({
+          action: 'alarm.sensor_fault',
+          detail: `No se puede leer el IoT (${lectura.causa}): los sensores no se están vigilando`,
+        });
       }
       return;
     }
+    this.iotOutageLogged = false;
     this.iotOutageNotified = false;
     const devices = lectura.devices;
     const byId = new Map(devices.map((d) => [d.id, d]));

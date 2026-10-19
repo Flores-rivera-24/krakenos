@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -16,6 +16,7 @@ const fakeSocket = vi.hoisted(() => ({
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
 import { AppLayout } from '@/components/layout/AppLayout';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 import { api } from '@/lib/api';
 import { useEstadosStore } from '@/lib/integration-states';
 import { useAuthStore } from '@/store/auth.store';
@@ -164,12 +165,72 @@ describe('AppLayout', () => {
       expect(await screen.findByText('contenido de la página')).toBeInTheDocument();
     });
 
+    // Camino de fallo del estado de dominios. Un estado DESCONOCIDO no es `not-configured`: si
+    // no se pudo leer, la página sale como siempre (con sus datos), no como «Sin configurar»
+    // ni como un vacío inventado.
+    const renderConGate = () =>
+      render(
+        <MemoryRouter>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route
+                index
+                element={
+                  <DomainGate domain="dns" title="DNS">
+                    <p>cuerpo de DNS</p>
+                  </DomainGate>
+                }
+              />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it.each([
+      ['red caída', () => Promise.reject(new Error('Failed to fetch'))],
+      [
+        'el agente responde 5xx',
+        () => Promise.reject(Object.assign(new Error('boom'), { status: 503 })),
+      ],
+      ['forma de respuesta rara', () => Promise.resolve({ otra: 'cosa' })],
+    ])(
+      '%s: la página monta con sus datos, sin «Sin configurar» ni «demostración»',
+      async (_n, fallo) => {
+        useEstadosStore.setState({ estados: null, intentado: false });
+        vi.spyOn(api, 'get').mockImplementation(((path: string) =>
+          path === '/integrations/status' ? fallo() : Promise.resolve({})) as never);
+        renderConGate();
+        expect(await screen.findByText('cuerpo de DNS')).toBeInTheDocument();
+        expect(useEstadosStore.getState().estados).toBeNull();
+        expect(screen.queryByText('Sin configurar')).not.toBeInTheDocument();
+        expect(screen.queryByText('Datos de demostración')).not.toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Ir a Conectar' })).not.toBeInTheDocument();
+      },
+    );
+
+    it('durante la espera hay un indicador de carga, no un main vacío', () => {
+      useEstadosStore.setState({ estados: null, intentado: false });
+      vi.spyOn(api, 'get').mockImplementation(() => new Promise(() => {}) as never);
+      renderConGate();
+      expect(screen.queryByText('cuerpo de DNS')).not.toBeInTheDocument();
+      expect(within(screen.getByRole('main')).getByRole('status')).toBeInTheDocument();
+    });
+
+    it('si el estado se conocía y un refresco posterior falla, se conserva (no pasa a desconocido)', async () => {
+      useEstadosStore.setState({ estados: { dns: 'not-configured' }, intentado: true });
+      vi.spyOn(api, 'get').mockImplementation((() => Promise.reject(new Error('red'))) as never);
+      renderConGate();
+      expect(await screen.findByText('Sin configurar')).toBeInTheDocument();
+      expect(screen.queryByText('cuerpo de DNS')).not.toBeInTheDocument();
+    });
+
     it('si el agente no contesta, la espera tiene tope (3 s) y no deja la pantalla en blanco', async () => {
       vi.useFakeTimers();
       useEstadosStore.setState({ estados: null, intentado: false });
       vi.spyOn(api, 'get').mockImplementation(() => new Promise(() => {}) as never);
       renderConPagina();
       expect(screen.queryByText('contenido de la página')).not.toBeInTheDocument();
+      expect(within(screen.getByRole('main')).getByRole('status')).toBeInTheDocument();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(3_100);
       });
