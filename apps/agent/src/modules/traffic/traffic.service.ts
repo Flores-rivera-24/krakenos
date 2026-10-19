@@ -10,7 +10,7 @@ import type {
 import { TRAFFIC_ROOM } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEVICE_TRAFFIC_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
-import { asNumber } from '../../db/sql-aggregate.js';
+import { asNumber, bucketStart } from '../../db/sql-aggregate.js';
 import { resolvePerDeviceTraffic } from '../../drivers/capabilities.js';
 import { normalizeTrafficSample } from './normalize.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
@@ -171,7 +171,7 @@ export class TrafficService {
     const rows = await this.app.prisma.$queryRaw<
       { bucket: number | bigint; avgRx: number; avgTx: number; sumRx: number; sumTx: number }[]
     >`
-      SELECT (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+      SELECT ${bucketStart(bucketMs)} AS bucket,
              AVG(rxBytesPerSec) AS avgRx,
              AVG(txBytesPerSec) AS avgTx,
              SUM(rxBytesPerSec) AS sumRx,
@@ -224,7 +224,7 @@ export class TrafficService {
       }[]
     >`
       SELECT mac,
-             (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+             ${bucketStart(bucketMs)} AS bucket,
              AVG(rxBytesPerSec) AS avgRx,
              AVG(txBytesPerSec) AS avgTx,
              SUM(rxBytesPerSec) AS sumRx,

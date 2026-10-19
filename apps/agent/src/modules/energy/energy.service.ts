@@ -8,7 +8,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { DAY_MS, DEFAULT_ENERGY_RETENTION_DAYS, retentionDays } from '../../config/retention.js';
-import { asNumber } from '../../db/sql-aggregate.js';
+import { asNumber, bucketStart } from '../../db/sql-aggregate.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
 /** Error de validación de la configuración de energía (precio inválido). */
@@ -193,7 +193,7 @@ export class EnergyService {
       }[]
     >`
       SELECT deviceId,
-             (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+             ${bucketStart(bucketMs)} AS bucket,
              SUM(powerW) AS sumPower,
              COUNT(*) AS samples
       FROM EnergySample

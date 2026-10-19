@@ -4,7 +4,7 @@ import type {
   HardwareDriver,
   UpdateAccessScheduleRequest,
 } from '@krakenos/types';
-import type { AccessSchedule as DbAccessSchedule } from '@prisma/client';
+import type { AccessSchedule as DbAccessSchedule } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { activeBlockedMacs } from './schedule-eval.js';
 import { evaluateBlocked, groupSchedulesByMac, type BlockReason } from './blocked-eval.js';

@@ -480,7 +480,7 @@ INSERT INTO "no_existe" ("id") VALUES ('x');`,
   });
 });
 
-// ---- Gates contra la CLI real de Prisma 5 -------------------------------------
+// ---- Gates contra la CLI real de Prisma -------------------------------------
 
 const prismaCli = createRequire(import.meta.url).resolve('prisma/build/index.js');
 
@@ -495,18 +495,22 @@ function prisma(args: string[], dbFile?: string): string {
 
 /** `prisma migrate diff` contra el schema: lanza (exit 2) si hay una sola diferencia. */
 function schemaDiff(dbFile: string): string {
-  return prisma([
-    'migrate',
-    'diff',
-    '--from-url',
-    `file:${dbFile}`,
-    '--to-schema-datamodel',
-    'prisma/schema.prisma',
-    '--exit-code',
-  ]);
+  return prisma(
+    [
+      'migrate',
+      'diff',
+      // Prisma 7 retiró `--from-url` y `--to-schema-datamodel`: la base sale del datasource de
+      // `prisma.config.ts` (que lee `DATABASE_URL`, puesta por `prisma()`) y el schema es `--to-schema`.
+      '--from-config-datasource',
+      '--to-schema',
+      'prisma/schema.prisma',
+      '--exit-code',
+    ],
+    dbFile,
+  );
 }
 
-describe('gates contra Prisma 5 real (US-275)', () => {
+describe('gates contra la CLI real de Prisma (US-275, adaptado a la 7 en US-276)', () => {
   const realRun = (dbFile: string, backupDir: string, migrationsDir = realMigrations) =>
     migrateDatabase({ dbFile, migrationsDir, backupDir });
 
@@ -529,7 +533,7 @@ describe('gates contra Prisma 5 real (US-275)', () => {
     expect(() => schemaDiff(dbFile)).toThrow();
   }, 120_000);
 
-  it('base migrada por Prisma 5: el aplicador ve 0 pendientes, checksums idénticos, integridad ok', () => {
+  it('base migrada por la CLI de Prisma: el aplicador ve 0 pendientes, checksums idénticos, integridad ok', () => {
     const root = tmp();
     const dbFile = join(root, 'prisma.db');
     prisma(['migrate', 'deploy'], dbFile);
@@ -621,15 +625,22 @@ describe('gates contra Prisma 5 real (US-275)', () => {
         recursive: true,
       });
     }
-    execFileSync(
-      process.execPath,
-      [prismaCli, 'migrate', 'deploy', '--schema', join(schemaDir, 'schema.prisma')],
-      {
-        cwd: agentRoot,
-        env: { ...process.env, DATABASE_URL: `file:${dbFile}` },
-        stdio: 'ignore',
-      },
+    // Prisma 7: el directorio de migraciones y la base salen de la CONFIG, no del schema;
+    // una config mínima (objeto plano, sin imports) apunta a la media historia.
+    const configFile = join(root, 'prisma.half.config.ts');
+    writeFileSync(
+      configFile,
+      `export default ${JSON.stringify({
+        schema: join(schemaDir, 'schema.prisma'),
+        migrations: { path: join(schemaDir, 'migrations') },
+        datasource: { url: `file:${dbFile}` },
+      })};\n`,
     );
+    execFileSync(process.execPath, [prismaCli, 'migrate', 'deploy', '--config', configFile], {
+      cwd: agentRoot,
+      env: { ...process.env, DATABASE_URL: `file:${dbFile}` },
+      stdio: 'ignore',
+    });
     expect(names(dbFile)).toHaveLength(20);
 
     const res = realRun(dbFile, join(root, 'var'));

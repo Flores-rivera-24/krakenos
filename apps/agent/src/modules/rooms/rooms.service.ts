@@ -10,7 +10,7 @@ import type {
 } from '@krakenos/types';
 import { IOT_ROOM, ROOM_ICONS } from '@krakenos/types';
 import { asEnum } from '../../util/as-enum.js';
-import type { Room as DbRoom } from '@prisma/client';
+import type { Room as DbRoom } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';

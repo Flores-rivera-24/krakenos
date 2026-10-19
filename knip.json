@@ -25,6 +25,7 @@
         "src/reset-admin.ts",
         "src/migrate.ts",
         "prisma/seed.ts",
+        "prisma.config.ts",
         "test/**/*.test.ts",
         "test/globalSetup.ts",
         "tsup.config.ts",
@@ -45,6 +46,7 @@
   "ignore": [
     "**/.stryker-tmp/**",
     "**/dist/**",
+    "apps/agent/src/generated/**",
     "qa-reports/**",
     "apps/web/public/**",
     "apps/web/scripts/bundle-budget.d.mts"

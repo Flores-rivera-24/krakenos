@@ -1,7 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../src/db/client.js';
 import bcrypt from 'bcrypt';
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 /** Crea un usuario admin inicial para desarrollo. */
 async function main(): Promise<void> {

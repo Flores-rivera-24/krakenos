@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import {
   AUTO_BACKUP_FREQUENCIES,
   type AutoBackupFrequency,

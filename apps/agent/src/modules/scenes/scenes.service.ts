@@ -8,7 +8,7 @@ import type {
 } from '@krakenos/types';
 import { IOT_ROOM, SCENE_ICONS } from '@krakenos/types';
 import { asEnum } from '../../util/as-enum.js';
-import type { Scene as DbScene } from '@prisma/client';
+import type { Scene as DbScene } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { IotError } from '../../iot/index.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';

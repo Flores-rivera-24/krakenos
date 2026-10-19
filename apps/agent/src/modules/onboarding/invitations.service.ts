@@ -6,7 +6,7 @@ import type {
   InvitationPreview,
   UserRole,
 } from '@krakenos/types';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../generated/prisma/client.js';
 import bcrypt from 'bcrypt';
 
 /** Coste de bcrypt para la contraseña que elige la persona invitada (igual que el alta normal). */

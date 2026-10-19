@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { createPrismaClient } from '../db/client.js';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 
@@ -80,7 +81,7 @@ export async function applySqlitePragmas(
 
 /** Expone un único `PrismaClient` y lo cierra al apagar el servidor. */
 export const prismaPlugin = fp(async (app: FastifyInstance) => {
-  const prisma = new PrismaClient();
+  const prisma = createPrismaClient();
   await prisma.$connect();
 
   // Best-effort: si un PRAGMA falla de verdad (FS raro, permisos), se registra y

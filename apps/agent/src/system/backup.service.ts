@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, open, readdir, rm, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../generated/prisma/client.js';
 import { buildManifestHeader, createArchiveEncryptor } from './backup.js';
 
 /**

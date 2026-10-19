@@ -114,7 +114,9 @@ describe('WellbeingService (US-184)', () => {
           },
         },
         $queryRaw: (strings: TemplateStringsArray, ...values: unknown[]) => {
-          sqlParams.push(JSON.stringify(values));
+          sqlParams.push(
+            JSON.stringify(values, (_k, v) => (typeof v === 'bigint' ? Number(v) : v)),
+          );
           return app.prisma.$queryRaw(strings, ...values);
         },
       },

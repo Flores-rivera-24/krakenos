@@ -5,9 +5,9 @@ import type {
   WellbeingRange,
   WellbeingUsage,
 } from '@krakenos/types';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
-import { asNumber } from '../../db/sql-aggregate.js';
+import { asNumber, bucketStart } from '../../db/sql-aggregate.js';
 import { resolvePerDeviceTraffic } from '../../drivers/capabilities.js';
 
 /** Ventana temporal de cada rango, en milisegundos. */
@@ -77,7 +77,7 @@ export class WellbeingService {
           { mac: string; bucket: number | bigint; sumRx: number; sumTx: number }[]
         >`
       SELECT mac,
-             (timestamp / ${bucketMs}) * ${bucketMs} AS bucket,
+             ${bucketStart(bucketMs)} AS bucket,
              SUM(rxBytesPerSec) AS sumRx,
              SUM(txBytesPerSec) AS sumTx
       FROM DeviceTrafficSample
@@ -106,8 +106,8 @@ export class WellbeingService {
       acc.rx += rxBytes;
       acc.tx += txBytes;
       acc.macs.add(row.mac.toLowerCase());
-      const bucketStart = asNumber(row.bucket);
-      acc.buckets.set(bucketStart, (acc.buckets.get(bucketStart) ?? 0) + rxBytes + txBytes);
+      const inicio = asNumber(row.bucket);
+      acc.buckets.set(inicio, (acc.buckets.get(inicio) ?? 0) + rxBytes + txBytes);
       byOwner.set(key, acc);
     }
 

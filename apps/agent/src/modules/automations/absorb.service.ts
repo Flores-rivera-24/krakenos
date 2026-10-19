@@ -1,5 +1,5 @@
 import type { IotSchedule, IotScheduleTarget, IotScheduleTime } from '@krakenos/types';
-import type { IotSchedule as DbIotSchedule } from '@prisma/client';
+import type { IotSchedule as DbIotSchedule } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { planDeAbsorcion, type HorarioOmitido } from '../../automations/absorb-schedules.js';
 

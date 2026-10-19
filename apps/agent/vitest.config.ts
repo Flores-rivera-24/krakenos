@@ -49,6 +49,8 @@ export default defineConfig({
         'src/update-runner.ts',
         'src/reset-admin.ts',
         'src/migrate.ts',
+        // Cliente de Prisma 7 GENERADO (US-276): código ajeno, no se mide ni se testea.
+        'src/generated/**',
       ],
       // Suelos recalibrados el 2026-10-13 con Vitest 4.1.11: medido sentencias 89,18 · ramas 81,29 · funciones 86,78 · líneas 91,16.
       // Motivo: Vitest >= 3.2 remapea V8 por AST (como Istanbul) y cambia qué cuenta

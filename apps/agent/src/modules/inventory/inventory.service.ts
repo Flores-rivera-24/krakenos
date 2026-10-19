@@ -11,7 +11,7 @@ import { DEVICE_ICONS } from '@krakenos/types';
 // Tipo de fila derivado del schema Prisma: si el modelo `Device` cambia, el
 // mapeo `toDevice` deja de compilar (detecta derivas de schema, US-63) en vez de
 // confiar en un `as DbDevice` ciego.
-import type { Device as DbDevice } from '@prisma/client';
+import type { Device as DbDevice } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
 import { inferDeviceType } from './identify.js';
 import { normalizeDiscovered } from './normalize.js';

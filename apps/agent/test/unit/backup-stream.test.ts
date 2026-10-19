@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'no
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { describe, expect, it } from 'vitest';
 import { decryptArchive, decryptArchiveAsync, unpackArchive } from '../../src/system/backup.js';
 import { BackupService } from '../../src/system/backup.service.js';

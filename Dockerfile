@@ -4,13 +4,14 @@
 #   · `builder` trae el toolchain nativo (python3/make/g++) para compilar bcrypt y
 #     genera el cliente de Prisma + construye web y agente.
 #   · `runtime` parte de una base limpia SIN toolchain de compilación: hereda el
-#     árbol `/app` ya construido (node_modules con el .node de bcrypt y el motor
-#     nativo de Prisma ya compilados contra la MISMA libc — ambas etapas son
+#     árbol `/app` ya construido (node_modules con los .node de bcrypt y de
+#     better-sqlite3 ya compilados contra la MISMA libc — ambas etapas son
 #     `node:24-bookworm-slim`, así que los binarios son compatibles). El resultado
 #     no lleva compiladores en la imagen final (menor superficie + tamaño).
 #
 # Nota: se copia el árbol completo (no `pnpm deploy`) a propósito, por robustez:
-# evita reconstruir node_modules y perder el cliente generado de Prisma (.prisma/client).
+# evita reconstruir node_modules y perder el cliente generado de Prisma
+# (apps/agent/src/generated/prisma, ya empaquetado en dist por tsup).
 
 # ---------- Etapa 1: build ----------
 FROM node:24-bookworm-slim AS builder
@@ -31,7 +32,8 @@ RUN pnpm install --frozen-lockfile \
 # ---------- Etapa 2: runtime ----------
 FROM node:24-bookworm-slim AS runtime
 
-# Solo runtime: openssl (claves/Prisma) + ca-certificates. Sin compiladores.
+# Solo runtime: openssl (claves JWT del entrypoint) + ca-certificates. Prisma 7 ya no
+# necesita openssl: no hay motor nativo (US-276). Sin compiladores.
 # `corepack prepare … --activate` deja pnpm 9.12.0 instalado EN LA IMAGEN (AUD-27):
 # sin esto, el primer `pnpm` en runtime hace que corepack lo descargue del registry
 # —rompe el arranque "sin nube" en una LAN aislada. Con esto, arranca offline.
