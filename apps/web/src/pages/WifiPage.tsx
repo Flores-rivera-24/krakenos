@@ -12,6 +12,7 @@ import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/wifi';
 
 function WifiPageBody() {
   const t = useT();

@@ -1,6 +1,7 @@
 import { Smartphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/vpn';
 
 const STEPS = [1, 2, 3] as const;
 

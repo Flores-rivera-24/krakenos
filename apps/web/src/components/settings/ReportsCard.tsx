@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { downloadReport } from '@/lib/reports';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 const REPORTS: { path: string; file: string; label: TranslationKey }[] = [
   { path: '/reports/devices.csv', file: 'krakenos-dispositivos.csv', label: 'reports.devices' },

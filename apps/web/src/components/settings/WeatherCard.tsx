@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { WEATHER_METRIC_KEYS } from '@/lib/automations';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Tiempo exterior (US-254) — la tarjeta del **consentimiento**.

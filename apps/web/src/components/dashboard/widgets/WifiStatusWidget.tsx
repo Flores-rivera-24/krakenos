@@ -6,6 +6,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { plural, useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** SSIDs activos y clientes conectados por red. */
 export function WifiStatusWidget() {

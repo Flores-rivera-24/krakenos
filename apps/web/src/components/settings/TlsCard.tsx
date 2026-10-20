@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Estado del TLS de la instalación (US-241).

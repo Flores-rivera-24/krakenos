@@ -53,6 +53,8 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/personas';
+import '@/lib/i18n/catalog/fragments/rutinas';
 
 const SELECT_CLASS =
   'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring';

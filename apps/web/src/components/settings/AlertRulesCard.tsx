@@ -7,6 +7,7 @@ import { claveDeAlerta, listAlertRules, updateAlertRule } from '@/lib/alerts';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /** Reglas de alerta configurables (US-112): qué eventos avisan y por qué canal. */
 export function AlertRulesCard() {

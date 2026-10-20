@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/vpn';
 
 const DOT_BY_STATE = {
   running: 'online',

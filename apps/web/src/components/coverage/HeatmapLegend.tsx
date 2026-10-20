@@ -1,6 +1,7 @@
 import type { SignalQuality } from '@krakenos/types';
 import { formatDbm, heatmapRgba, SIGNAL_QUALITY_KEYS, signalQualityColorVar } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 interface Props {
   /** Cota inferior del degradado (dBm más débil). */

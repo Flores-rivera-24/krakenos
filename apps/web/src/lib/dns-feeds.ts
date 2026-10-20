@@ -1,5 +1,6 @@
 import type { DnsFeedId } from '@krakenos/types';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/dns';
 
 /**
  * Texto de cada lista por categoría. El agente manda el **id** del feed y no su

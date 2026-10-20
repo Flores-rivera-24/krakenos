@@ -11,6 +11,7 @@ import { describeError } from '@/lib/errors';
 import { formatBytes, formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/camaras';
 
 interface Props {
   camera: Camera;

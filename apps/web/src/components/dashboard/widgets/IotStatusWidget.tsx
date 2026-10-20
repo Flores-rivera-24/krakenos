@@ -6,6 +6,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { WidgetError } from '@/components/ui/widget-error';
 import { useT } from '@/lib/i18n';
 import { useIotDevices } from '@/lib/resources';
+import '@/lib/i18n/catalog/fragments/panel';
 
 interface BackendSummary {
   name: string;

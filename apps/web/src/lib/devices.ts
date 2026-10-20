@@ -1,6 +1,7 @@
 import type { Device, DeviceIcon, DeviceType } from '@krakenos/types';
 import { deviceTypeToArtKind, type ProductArtKind } from '@/components/ui/product-art';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/inventario';
 
 /**
  * Ilustración efectiva de un dispositivo (US-178): el icono elegido a mano

@@ -8,6 +8,7 @@ import { createEnergyAlert, deleteEnergyAlert, fetchEnergyAlerts } from '@/lib/e
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/energia';
 
 /**
  * Gestión de alertas de consumo por dispositivo (US-183). Solo admin: crea/borra

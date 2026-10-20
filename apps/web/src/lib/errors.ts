@@ -1,5 +1,5 @@
 import { ApiRequestError } from '@/lib/api';
-import { es } from '@/lib/i18n/catalog/es';
+import { esRegistrado } from '@/lib/i18n/registro';
 import { getLocale, t, type TranslationKey } from '@/lib/i18n';
 
 /**
@@ -22,7 +22,7 @@ export function describeError(err: unknown, fallback: string): string {
     // Traducción por código (solo si el idioma activo no es español).
     if (getLocale() !== 'es' && err.body?.code) {
       const key = `errors.code.${err.body.code}` as TranslationKey;
-      if (key in es) {
+      if (key in esRegistrado) {
         return t(key, err.body.details as Record<string, string | number> | undefined);
       }
     }

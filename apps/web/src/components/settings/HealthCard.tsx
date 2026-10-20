@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { formatFixed, formatNumber } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Panel de salud y observabilidad (US-191). Muestra métricas internas del agente

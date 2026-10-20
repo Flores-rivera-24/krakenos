@@ -26,8 +26,9 @@ if (!container) throw new Error('No se encontró el elemento #root');
 /**
  * El catálogo del idioma resuelto se carga ANTES del primer render (US-262).
  * Los catálogos i18n son ~19 kB gzip cada uno y viajaban los dos en el chunk de
- * entrada; ahora solo `es` (la fuente y el fallback) va en el bundle y el resto
- * llega por `import()`. Se espera aquí —y no se renderiza «mientras carga»—
+ * entrada; ahora solo el núcleo de `es` (la fuente y el fallback) va en el bundle, el
+ * resto del español llega en fragmentos con la pantalla que los usa
+ * (`catalog/fragments/`) y los demás idiomas por `import()`. Se espera aquí —y no se renderiza «mientras carga»—
  * porque `t()` es síncrono: pintar antes daría una pasada en español en **cada**
  * pantalla a quien tiene la app en inglés. Para `es` resuelve en el acto.
  */

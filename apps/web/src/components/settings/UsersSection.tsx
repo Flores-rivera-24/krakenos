@@ -15,6 +15,7 @@ import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { plural, useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/usuarios';
 
 const EMPTY_FORM = {
   email: '',

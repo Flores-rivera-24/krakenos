@@ -121,7 +121,7 @@ describe('copy sin traducir (trinquete, US-270)', () => {
     const culpables = [...actual.entries()].map(([f, n]) => `${f}: ${n}`);
     expect(
       culpables,
-      'Copy visible escrito en el componente. Muévelo a `catalog/es.ts` y ' +
+      'Copy visible escrito en el componente. Muévelo al fragmento de su pantalla (`catalog/fragments/`) y ' +
         '`catalog/en.ts` y píntalo con `t()`; el catálogo `en` está tipado, así que ' +
         'falta de clave no compila. Si el texto lleva marcado en mitad de la frase ' +
         '(`<strong>`, `<code>`), la frase va **entera** al catálogo y se pinta con ' +

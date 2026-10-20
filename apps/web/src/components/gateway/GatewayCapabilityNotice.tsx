@@ -2,6 +2,7 @@ import type { GatewayCapability } from '@krakenos/types';
 import { NotConfiguredNotice } from '@/components/integrations/DomainNotice';
 import { Callout } from '@/components/ui/callout';
 import { useT, type TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/gateway';
 
 /** Las tres funciones de puerta de enlace que dependen del equipo. */
 export type GatewayFeature = 'vpn' | 'firewall' | 'qos';

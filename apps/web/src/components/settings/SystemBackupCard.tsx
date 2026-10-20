@@ -19,6 +19,7 @@ import {
 import { toast } from '@/store/toast.store';
 import { formatDateTime, formatFixed } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Copia de seguridad real (US-103) — reemplaza el falso "backup" que solo exportaba

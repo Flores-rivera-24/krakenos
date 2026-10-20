@@ -11,6 +11,7 @@ import { listPlaceableAccessPoints } from '@/lib/coverage';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 /** Bandas seleccionables por AP, en orden. */
 const ALL_BANDS: { value: WifiBand; label: string }[] = [

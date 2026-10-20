@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { formatRate, formatRateCompact, formatTime } from '@/lib/format';
 import { getSocket } from '@/lib/socket';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 const MAX_POINTS = 120;
 const TOOLTIP_STYLE = {

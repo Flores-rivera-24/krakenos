@@ -20,6 +20,7 @@ import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 import { filaAbrible } from '@/lib/a11y';
+import '@/lib/i18n/catalog/fragments/vpn';
 
 export function VpnPage() {
   const t = useT();

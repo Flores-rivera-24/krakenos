@@ -16,6 +16,7 @@ import {
 } from '@/lib/compatibility';
 import { formatDate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 /**
  * Consulta de compatibilidad de hardware (US-208). Buscador + filtro por categoría

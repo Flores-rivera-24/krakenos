@@ -1,6 +1,7 @@
 import type { HomeMode, PresenceEvent, PresenceState } from '@krakenos/types';
 import { api } from '@/lib/api';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/rutinas';
 
 export const getPresence = () => api.get<PresenceState>('/presence');
 export const getPresenceTimeline = (limit = 20) =>

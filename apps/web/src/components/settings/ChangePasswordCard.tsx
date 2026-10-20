@@ -8,6 +8,7 @@ import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { changeOwnPassword } from '@/lib/users';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /** Cambio de la propia contraseña (US-101) — disponible para cualquier usuario. */
 export function ChangePasswordCard() {

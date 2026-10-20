@@ -28,6 +28,7 @@ import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
 import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/trafico';
 
 const MAX_POINTS = 60;
 

@@ -1,4 +1,5 @@
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** Identificadores estables de los widgets del dashboard (US-36). */
 export type WidgetId =

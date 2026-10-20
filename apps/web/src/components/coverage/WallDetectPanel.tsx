@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
 import type { ProposedWall } from '@/lib/wall-propose';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 interface Props {
   /** ¿El plano tiene imagen de fondo sobre la que detectar? */

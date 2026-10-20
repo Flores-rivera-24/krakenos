@@ -6,6 +6,7 @@ import { ApiRequestError } from '@/lib/api';
 import { startStream, stopStream, streamPlaylistUrl } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/camaras';
 
 interface CameraLivePlayerProps {
   camera: Camera;

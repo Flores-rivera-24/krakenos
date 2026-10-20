@@ -8,6 +8,7 @@ import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { TuyaManager } from './TuyaManager';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 interface BackendStats {
   total: number;

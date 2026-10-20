@@ -17,6 +17,8 @@ import { createScan, deleteScan, getMeasuredHeatmap, getScan, listScans } from '
 import { describeError } from '@/lib/errors';
 import { plural, useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/sondeo';
+import '@/lib/i18n/catalog/fragments/usuarios';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 

@@ -11,6 +11,7 @@ import { useT } from '@/lib/i18n';
 import { setBedtime } from '@/lib/people';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/personas';
 
 interface Props {
   person: PersonSummary;

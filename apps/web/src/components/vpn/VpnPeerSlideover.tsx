@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Slideover } from '@/components/ui/slideover';
 import { formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/vpn';
 
 interface Props {
   peer: VpnPeer;

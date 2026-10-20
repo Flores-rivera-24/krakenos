@@ -13,6 +13,7 @@ import { canControlHome } from '@/lib/roles';
 import { createApiToken, listApiTokens, revokeApiToken } from '@/lib/tokens';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Tokens personales de API (US-174). Autoservicio: cada usuario crea, ve y revoca

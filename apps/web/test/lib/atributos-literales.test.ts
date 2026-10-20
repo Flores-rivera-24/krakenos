@@ -203,7 +203,7 @@ describe('atributos con literal a pelo (issue #88)', () => {
     expect(
       noPermitidos,
       'Un `aria-label`, `placeholder`, `title` o `alt` con texto a pelo se anuncia en ' +
-        'español aunque la interfaz esté en inglés. Muévelo a `catalog/es.ts` y ' +
+        'español aunque la interfaz esté en inglés. Muévelo al fragmento de su pantalla (`catalog/fragments/`) y ' +
         '`catalog/en.ts` y píntalo con `t()`. Si NO es copy (formato técnico, marca), ' +
         'añádelo a `PERMITIDOS` con el motivo.',
     ).toEqual([]);

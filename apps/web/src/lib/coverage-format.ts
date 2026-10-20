@@ -1,6 +1,7 @@
 import type { TranslationKey } from '@/lib/i18n';
 import type { SignalQuality, WallMaterial } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 /**
  * Etiqueta de cada material de pared/obstaculo. Guarda la **clave**, no el

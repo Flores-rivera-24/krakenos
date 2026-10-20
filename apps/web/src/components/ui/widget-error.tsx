@@ -1,6 +1,7 @@
 import { RefreshCw } from 'lucide-react';
 
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 interface WidgetErrorProps {
   /** Frase completa ya traducida («No se pudo cargar el estado del sistema.»). Sin ella, la genérica. */

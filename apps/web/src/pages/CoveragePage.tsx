@@ -40,6 +40,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { Callout } from '@/components/ui/callout';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 /** Vistas del lienzo de cobertura. */
 type CoverageView = 'edit' | 'predict' | 'survey';

@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT, type TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/firewall';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary';

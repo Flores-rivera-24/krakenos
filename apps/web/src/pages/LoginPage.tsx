@@ -15,6 +15,7 @@ import { prefersReducedMotion } from '@/lib/motion';
 import { requestAccess } from '@/lib/onboarding';
 import { completePasskeyLogin, verifyBackupCode } from '@/lib/webauthn';
 import { HttpError, useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/entrada';
 
 type HealthState = 'loading' | 'online' | 'offline';
 

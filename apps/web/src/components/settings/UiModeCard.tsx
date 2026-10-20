@@ -7,6 +7,7 @@ import { useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useState } from 'react';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 const OPTIONS: { mode: UiMode; labelKey: TranslationKey; descKey: TranslationKey }[] = [
   { mode: 'simple', labelKey: 'settings.uiMode.simple', descKey: 'settings.uiMode.simpleDesc' },

@@ -42,6 +42,7 @@ import { useT, type TranslationKey } from '@/lib/i18n';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { etiquetaDeRol } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'usuarios' | 'cuenta';
 

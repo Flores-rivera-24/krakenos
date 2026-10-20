@@ -2,6 +2,7 @@ import { ExternalLink, Scale } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KRAKENOS_REPO } from '@/lib/feedback';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /** Identificador SPDX declarado en `LICENSE` y en los `package.json` del workspace. */
 export const LICENSE_SPDX = 'AGPL-3.0-or-later';

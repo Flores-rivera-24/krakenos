@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { Locale } from '@krakenos/types';
-import { es, type TranslationKey } from './catalog/es';
+import type { TranslationKey } from './catalog/es';
+import { esRegistrado } from './registro';
 import { getLocale, setLocale, subscribeLocale } from './locale';
 
 export type { TranslationKey };
@@ -15,10 +16,14 @@ export {
 } from './locale';
 
 /**
- * Catálogos ya disponibles en memoria. `es` viaja **siempre** en el bundle: es
- * la fuente del copy y el fallback de `t()`, así que no puede ser perezoso.
+ * Catálogos ya disponibles en memoria. El **núcleo** de `es` viaja siempre en el
+ * bundle: es la fuente del copy y el fallback de `t()`, así que no puede ser
+ * perezoso. El resto del español se reparte en fragmentos por pantalla que se
+ * registran al evaluarse el módulo que los usa (`registro.ts`); `esRegistrado` es
+ * ese catálogo vivo: lo que aún no se ha registrado no está (y `t()` cae entonces a
+ * la propia clave). `en` sí es completo: es un solo chunk perezoso.
  */
-const CATALOGS: Partial<Record<Locale, Record<TranslationKey, string>>> = { es };
+const CATALOGS: Partial<Record<Locale, Readonly<Record<string, string>>>> = { es: esRegistrado };
 
 /**
  * El idioma **fuente** del copy (`catalog/es.ts`). No es lo mismo que
@@ -105,7 +110,7 @@ function interpolate(template: string, params?: TranslationParams): string {
  */
 export function t(key: TranslationKey, params?: TranslationParams): string {
   const locale = getLocale();
-  const template = CATALOGS[locale]?.[key] ?? es[key] ?? key;
+  const template = CATALOGS[locale]?.[key] ?? esRegistrado[key] ?? key;
   return interpolate(template, params);
 }
 

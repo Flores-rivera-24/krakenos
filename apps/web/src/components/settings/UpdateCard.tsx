@@ -14,6 +14,7 @@ import { useT } from '@/lib/i18n';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Actualizaciones (US-116 comprobación + US-190 one-click con rollback). Muestra

@@ -1,6 +1,7 @@
 import type { PerDeviceTrafficCapability } from '@krakenos/types';
 import { Callout } from '@/components/ui/callout';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/trafico';
 
 interface Props {
   capability: PerDeviceTrafficCapability;

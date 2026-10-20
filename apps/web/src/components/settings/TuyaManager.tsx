@@ -8,6 +8,8 @@ import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 import { invalidarIot, trasEscribir } from '@/lib/resources';
+import '@/lib/i18n/catalog/fragments/ajustes';
+import '@/lib/i18n/catalog/fragments/usuarios';
 
 const VERSIONS: TuyaProtocolVersion[] = ['3.1', '3.3', '3.4', '3.5'];
 const EMPTY: CreateTuyaDeviceRequest = {

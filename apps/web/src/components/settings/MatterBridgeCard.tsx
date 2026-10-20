@@ -9,6 +9,7 @@ import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { fetchMatterBridge, updateMatterBridge } from '@/lib/matter-bridge';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/matter';
 
 /** Clave i18n del tipo de endpoint (evita `t()` con clave dinámica no tipada). */
 const TYPE_LABEL: Record<MatterEndpointType, TranslationKey> = {

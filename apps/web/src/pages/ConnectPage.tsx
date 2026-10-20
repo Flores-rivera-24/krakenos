@@ -36,6 +36,7 @@ import {
   type DomainView,
 } from '@/lib/integrations';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 /** Categoría de la guía → ilustración de producto (US-161). */
 const CATEGORY_ART: Record<GuideCategory, ProductArtKind> = {

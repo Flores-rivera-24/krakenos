@@ -6,6 +6,7 @@ import type { CoverageTool } from '@/components/coverage/FloorPlanStage';
 import { Button } from '@/components/ui/button';
 import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 interface Props {
   tool: CoverageTool;

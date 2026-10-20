@@ -20,6 +20,7 @@ import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/controlDeAcceso';
 
 interface Props {
   mac: string;

@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** Clave i18n de la etiqueta por fase (US-239). Se traduce al renderizar. */
 const PHASE_LABEL_KEY = {

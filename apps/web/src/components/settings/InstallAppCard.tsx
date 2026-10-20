@@ -10,6 +10,7 @@ import {
 } from '@/lib/install';
 import { useInstallStore } from '@/store/install.store';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /** Texto de los estados que solo informan (sin botón). */
 const TEXTO: Partial<Record<EstadoDeInstalacion, TranslationKey>> = {

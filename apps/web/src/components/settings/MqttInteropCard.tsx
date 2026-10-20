@@ -9,6 +9,7 @@ import { describeError } from '@/lib/errors';
 import { getMqttState, updateMqtt, type MqttState } from '@/lib/interop';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Publicación MQTT saliente (US-174), admin. Publica el estado del hogar a un

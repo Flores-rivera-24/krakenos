@@ -18,6 +18,7 @@ import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/camaras';
 
 interface TileProps {
   camera: Camera;

@@ -16,6 +16,7 @@ import {
   timeStringToMinute,
 } from '@/lib/schedule-format';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/camaras';
 
 interface Props {
   camera: Camera;

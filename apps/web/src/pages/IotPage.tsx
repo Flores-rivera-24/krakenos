@@ -31,6 +31,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/iot';
 
 function DeviceCard({
   device,
