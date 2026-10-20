@@ -4,6 +4,7 @@ export * from './inventory.js';
 export * from './wifi.js';
 export * from './drivers.js';
 export * from './integrations.js';
+export * from './not-configured.js';
 export * from './socket.js';
 export * from './system.js';
 export * from './tls.js';

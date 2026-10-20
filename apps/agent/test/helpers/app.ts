@@ -6,11 +6,13 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import type {
   CameraManager,
+  DnsManager,
   FirewallManager,
   HardwareDriver,
   IotManager,
   QosManager,
   UserRole,
+  VlanManager,
   VpnManager,
 } from '@krakenos/types';
 import bcrypt from 'bcrypt';
@@ -164,6 +166,10 @@ export interface BuildTestAppOptions {
   iot?: IotManager;
   /** Fuente de cámaras a inyectar (p. ej. Frigate con transporte falso, US-214). */
   cameras?: CameraManager;
+  /** Gestor de VLANs a inyectar; por defecto un `MockVlanManager` nuevo. */
+  vlan?: VlanManager;
+  /** Gestor de DNS a inyectar; por defecto un `MockDnsManager` nuevo. */
+  dns?: DnsManager;
 }
 
 /**
@@ -419,13 +425,16 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       firewall: opts.firewall ?? new MockFirewallManager(),
       gateway,
     });
-    await app.register(vlanRoutes, { prefix: '/api/vlans', vlan: new MockVlanManager() });
+    await app.register(vlanRoutes, {
+      prefix: '/api/vlans',
+      vlan: opts.vlan ?? new MockVlanManager(),
+    });
     await app.register(qosRoutes, {
       prefix: '/api/qos',
       qos: opts.qos ?? new MockQosManager(),
       gateway,
     });
-    const dnsManager = new MockDnsManager();
+    const dnsManager = opts.dns ?? new MockDnsManager();
     await app.register(dnsRoutes, {
       prefix: '/api/dns',
       dns: dnsManager,

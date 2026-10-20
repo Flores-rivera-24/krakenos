@@ -25,6 +25,7 @@ import { etiquetaDeRol } from '@/lib/roles';
 import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 /**
  * Personas del hogar (US-240): el control parental **por quien es, no por MAC**.
@@ -259,7 +260,7 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
   );
 }
 
-export function PeoplePage() {
+function PeoplePageBody() {
   const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'admin';
@@ -354,5 +355,18 @@ export function PeoplePage() {
         />
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `driver` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function PeoplePage() {
+  const t = useT();
+  return (
+    <DomainGate domain="driver" title={t('people.title')}>
+      <PeoplePageBody />
+    </DomainGate>
   );
 }

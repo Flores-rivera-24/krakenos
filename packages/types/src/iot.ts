@@ -1,4 +1,5 @@
 import type { Id } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /**
  * Categoría de dispositivo IoT (US-244). Deriva del array para que los enums de
@@ -244,7 +245,7 @@ export interface UpdateIotStateRequest {
  * Integración IoT intercambiable. La implementación real hablaría con
  * Zigbee/Matter/Wi-Fi; `mock` simula en memoria.
  */
-export interface IotManager {
+export interface IotManager extends NotConfigurable {
   listDevices(): Promise<IotDevice[]>;
   getDevice(id: Id): Promise<IotDevice | null>;
   /** Aplica el cambio de estado a un dispositivo controlable. */

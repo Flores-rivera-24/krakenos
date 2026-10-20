@@ -1,5 +1,6 @@
 import type {
   DriverKind,
+  NotConfiguredKind,
   PerDeviceTrafficCapability,
   PerDeviceTrafficStatus,
 } from '@krakenos/types';
@@ -37,7 +38,7 @@ import type {
  * declarar si reporta el desglose, y `drivers-capabilities.test.ts` comprueba que
  * lo declarado coincide con lo que el código hace de verdad.
  */
-export const PER_DEVICE_TRAFFIC_BY_KIND: Record<DriverKind, boolean> = {
+export const PER_DEVICE_TRAFFIC_BY_KIND: Record<Exclude<DriverKind, NotConfiguredKind>, boolean> = {
   // Simulado, pero rellena el desglose de verdad (`mock.driver.ts`).
   mock: true,
   // Contabilidad real por MAC vía `nlbwmon` sobre el SSH que ya existe (US-251).
@@ -60,7 +61,8 @@ export const PER_DEVICE_TRAFFIC_BY_KIND: Record<DriverKind, boolean> = {
  * `resolvePerDeviceTraffic`.
  */
 export function reportsPerDeviceTraffic(kind: DriverKind): boolean {
-  return PER_DEVICE_TRAFFIC_BY_KIND[kind] ?? false;
+  // `none` (sin router) no reporta nada: no hay driver al que preguntar.
+  return kind === 'none' ? false : (PER_DEVICE_TRAFFIC_BY_KIND[kind] ?? false);
 }
 
 /** Capacidad estática de un kind, para los drivers que no sondean nada. */

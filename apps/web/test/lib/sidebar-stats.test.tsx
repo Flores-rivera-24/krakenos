@@ -8,6 +8,7 @@ const apiMock = vi.hoisted(() => {
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 import { useSidebarStats } from '@/lib/sidebar-stats';
+import { useEstadosStore } from '@/lib/integration-states';
 import { limpiarRecursos } from '@/lib/use-resource';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -54,4 +55,30 @@ describe('useSidebarStats y el rol', () => {
       expect(result.current.firewallActive).toBeNull();
     },
   );
+
+  /**
+   * La etiqueta «Driver» de la barra enseñaba siempre «—»: leía `health.driver` y `/health`
+   * (público y mínimo, solo `{ status: 'ok' }`) nunca lo manda. Ahora sale del estado de
+   * `/integrations/status`, una ruta autenticada. El fixture de `/health` es el REAL.
+   */
+  it('el estado del router sale del estado de integraciones, no de /health', async () => {
+    sesion('admin');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ status: 'ok' }) }),
+    );
+    useEstadosStore.setState({ estados: { driver: 'demo' } });
+    const { result } = renderHook(() => useSidebarStats(60_000, true));
+    await waitFor(() => expect(result.current.online).toBe(true));
+    expect(result.current.driverState).toBe('demo');
+  });
+
+  it('sin estado conocido, driverState es null (no inventa «sin configurar»)', async () => {
+    sesion('admin');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    useEstadosStore.setState({ estados: null });
+    const { result } = renderHook(() => useSidebarStats(60_000, true));
+    await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/iot/devices'));
+    expect(result.current.driverState).toBeNull();
+  });
 });

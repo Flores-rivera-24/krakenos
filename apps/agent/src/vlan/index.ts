@@ -1,6 +1,7 @@
 import type { VlanKind, VlanManager } from '@krakenos/types';
 import { FileJsonStore } from '../store/json-store.js';
 import { MockVlanManager } from './mock.vlan.js';
+import { NoneVlanManager } from './none.vlan.js';
 import { NetSnmpTransport } from './snmp.transport.js';
 import { SwitchVlanManager } from './switch.vlan.js';
 
@@ -27,6 +28,8 @@ export interface VlanConfig {
  */
 export function createVlanManager(config: VlanConfig): VlanManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneVlanManager();
     case 'mock':
       return new MockVlanManager();
     case 'switch': {
@@ -53,4 +56,5 @@ export function createVlanManager(config: VlanConfig): VlanManager {
 }
 
 export { MockVlanManager, VlanError } from './mock.vlan.js';
+export { NoneVlanManager } from './none.vlan.js';
 export { SwitchVlanManager } from './switch.vlan.js';

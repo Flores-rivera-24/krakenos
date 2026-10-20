@@ -27,6 +27,7 @@ import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 /** Tarjeta táctil de una habitación con estado agregado + acción de grupo (US-165). */
 function RoomTile({
@@ -249,7 +250,7 @@ function RoomEditor({
   );
 }
 
-export function RoomsPage() {
+function RoomsPageBody() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const canControl = useAuthStore((s) => canControlHome(s.user?.role));
@@ -325,5 +326,18 @@ export function RoomsPage() {
 
       {editor && <RoomEditor room={editor} onClose={() => setEditor(null)} onSaved={reload} />}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `iot` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function RoomsPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="iot" title={t('rooms.title')} blockWhenNotConfigured={false}>
+      <RoomsPageBody />
+    </DomainGate>
   );
 }

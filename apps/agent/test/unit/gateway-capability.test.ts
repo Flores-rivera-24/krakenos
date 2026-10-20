@@ -60,6 +60,30 @@ describe('resolveGatewayCapability', () => {
     ).toEqual({ status: 'supported' });
   });
 
+  it('linux + none → not-configured, tenga o no el helper (primero hay que conectarlo)', () => {
+    for (const pathExists of [hay, noHay]) {
+      expect(
+        resolveGatewayCapability({
+          kind: 'none',
+          helperPath: HELPER,
+          platform: 'linux',
+          pathExists,
+        }),
+      ).toEqual({ status: 'not-configured', reason: 'not-configured' });
+    }
+  });
+
+  it('win32 + none → unsupported/platform: conectarlo no arreglaría nada, así que gana la plataforma', () => {
+    expect(
+      resolveGatewayCapability({
+        kind: 'none',
+        helperPath: HELPER,
+        platform: 'win32',
+        pathExists: hay,
+      }),
+    ).toEqual({ status: 'unsupported', reason: 'platform' });
+  });
+
   it('comprueba la ruta que se le pasa, no una fija', () => {
     const vistas: string[] = [];
     resolveGatewayCapability({

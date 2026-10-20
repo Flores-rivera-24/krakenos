@@ -26,6 +26,7 @@ import { useT } from '@/lib/i18n';
 import { downloadReport } from '@/lib/reports';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 const CHART_COLORS = {
   bar: 'var(--kr-accent)',
@@ -40,7 +41,7 @@ const TOOLTIP_STYLE = {
   color: 'var(--kr-text-primary)',
 } as const;
 
-export function EnergyPage() {
+function EnergyPageBody() {
   const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'admin';
@@ -302,5 +303,18 @@ export function EnergyPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `iot` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function EnergyPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="iot" title={t('energy.title')}>
+      <EnergyPageBody />
+    </DomainGate>
   );
 }

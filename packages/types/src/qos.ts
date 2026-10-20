@@ -1,7 +1,8 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /** Implementaciones de gestor de QoS disponibles. */
-export type QosKind = 'mock' | 'tc';
+export type QosKind = 'none' | 'mock' | 'tc';
 
 /** Nivel de prioridad de la regla de QoS. */
 export type QosPriority = 'high' | 'normal' | 'low';
@@ -52,7 +53,7 @@ export interface UpdateQosRuleRequest {
  * control de tráfico del kernel vía un helper privilegiado; `mock` mantiene
  * las reglas en memoria.
  */
-export interface QosManager {
+export interface QosManager extends NotConfigurable {
   /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
   readonly kind: QosKind;
   listRules(): Promise<QosRule[]>;

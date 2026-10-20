@@ -1,4 +1,5 @@
 import type {
+  DomainState,
   IntegrationConfigInfo,
   IntegrationDomain,
   IntegrationKindSchema,
@@ -7,6 +8,7 @@ import type {
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 import type { GuideCategory } from '@/lib/guides';
+import { refrescarEstados } from '@/lib/integration-states';
 import type { TranslationKey } from '@/lib/i18n';
 
 /**
@@ -23,10 +25,12 @@ export interface DomainView {
   kinds: IntegrationKindSchema[];
   /** Config guardada del dominio, o `null` si hereda de `.env`. */
   current: IntegrationConfigInfo | null;
-  /** `kind` que está realmente activo (de DB o de `.env`). */
+  /** `kind` que está realmente VIVO (puede ser `none` o `mock`, que no están en `kinds`). */
   effectiveKind: string;
-  /** De dónde sale la config activa. */
+  /** De dónde sale la config viva: la base de datos o `.env` (una guardada pero desactivada no cuenta). */
   source: 'db' | 'env';
+  /** Estado del dominio: conectado, de demostración o sin configurar. */
+  state: DomainState;
 }
 
 interface OverviewResponse {
@@ -40,11 +44,14 @@ export async function getIntegrations(): Promise<DomainView[]> {
 }
 
 /** Guarda (cifrando secretos) la config de un dominio y recarga su manager en caliente. */
-export function saveIntegration(
+export async function saveIntegration(
   domain: IntegrationDomain,
   body: SaveIntegrationConfigRequest,
 ): Promise<IntegrationConfigInfo> {
-  return api.put<IntegrationConfigInfo>(`/integrations/${domain}`, body);
+  const saved = await api.put<IntegrationConfigInfo>(`/integrations/${domain}`, body);
+  // Conectar algo saca al dominio de «sin configurar»: las páginas lo saben sin esperar al sondeo.
+  void refrescarEstados();
+  return saved;
 }
 
 /** Prueba la conexión de una config propuesta, sin persistirla. */
@@ -56,8 +63,9 @@ export function testIntegration(
 }
 
 /** Borra la config guardada de un dominio (vuelve al fallback de `.env`). */
-export function deleteIntegration(domain: IntegrationDomain): Promise<void> {
-  return api.del<void>(`/integrations/${domain}`);
+export async function deleteIntegration(domain: IntegrationDomain): Promise<void> {
+  await api.del<void>(`/integrations/${domain}`);
+  void refrescarEstados();
 }
 
 /** Esquema técnico de un `kind` dentro de un `DomainView`, o `undefined` si no existe. */

@@ -36,7 +36,10 @@ pnpm test:e2e:stacks -g "se puede abrir en frío"  # un grupo
 
 Puertos: **:3001** (agente dev) · **:5173** (Vite) · **:3002** (prod). Cada stack
 tiene su **propia base de datos** efímera (`prisma/stack-{dev,prod}.db`) y crea su
-propio admin recorriendo el wizard de verdad. Todos los managers van en `mock`.
+propio admin recorriendo el wizard de verdad. Los dos montajes llevan entornos distintos a
+propósito: **`dev` en `mock`** (demostración: la app lo declara) y **`prod` con los ocho
+dominios `none`**, que es el `.env` que escribe `scripts/install.sh` (una instalación nueva no
+enseña datos inventados: `specs/sin-datos-inventados.spec.ts`).
 
 > ⚠️ Es más lenta que la suite de CI (arranca Vite y hace un build): ~2 min. No
 > sustituye a `pnpm test:e2e`; se corre **antes de publicar** y al tocar algo que

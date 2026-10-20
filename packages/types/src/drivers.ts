@@ -1,4 +1,5 @@
 import type { DiscoveredDevice } from './inventory.js';
+import type { NotConfigurable } from './not-configured.js';
 import type { PerDeviceTrafficCapability, TrafficSampleResult } from './traffic.js';
 import type {
   AccessPoint,
@@ -18,7 +19,15 @@ import type {
  * cero usuarios domésticos y cero verificaciones con hardware real. Un hogar con
  * un Catalyst es un caso que este proyecto no puede sostener ni comprobar.
  */
-export type DriverKind = 'mock' | 'openwrt' | 'pfsense' | 'unifi' | 'mikrotik' | 'omada' | 'asus';
+export type DriverKind =
+  | 'none'
+  | 'mock'
+  | 'openwrt'
+  | 'pfsense'
+  | 'unifi'
+  | 'mikrotik'
+  | 'omada'
+  | 'asus';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {
@@ -36,7 +45,7 @@ export interface DriverConfig {
  * agente depende únicamente de esta interfaz, nunca de una implementación
  * concreta.
  */
-export interface HardwareDriver {
+export interface HardwareDriver extends NotConfigurable {
   readonly kind: DriverKind;
 
   /**

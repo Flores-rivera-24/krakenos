@@ -22,6 +22,7 @@ import {
   deleteIntegrationSchema,
   overviewSchema,
   saveIntegrationSchema,
+  statusSchema,
   testIntegrationSchema,
 } from './integrations.schemas.js';
 
@@ -29,18 +30,6 @@ interface IntegrationsRoutesOpts {
   runtime: IntegrationRuntime;
   store: IntegrationConfigStore;
 }
-
-/** `kind` efectivo heredado de `.env` por dominio (cuando no hay config en DB). */
-const ENV_KIND: Record<IntegrationDomain, string> = {
-  driver: env.driver.kind,
-  vpn: env.vpn.kind,
-  iot: env.iot.kind,
-  cameras: env.cameras.kind,
-  firewall: env.firewall.kind,
-  vlan: env.vlan.kind,
-  qos: env.qos.kind,
-  dns: env.dns.kind,
-};
 
 /** ¿`kind` es válido para `domain`? En `iot`, cada backend del CSV debe existir. */
 function isKnownKind(domain: IntegrationDomain, kind: string): boolean {
@@ -113,18 +102,30 @@ export const integrationsRoutes: FastifyPluginAsync<IntegrationsRoutesOpts> = as
   app.get('/', { schema: overviewSchema }, async () => {
     const infos = await store.list();
     const byDomain = new Map(infos.map((i) => [i.domain, i]));
+    const states = runtime.states();
     const domains = INTEGRATION_DOMAINS.map((domain) => {
       const current = byDomain.get(domain) ?? null;
+      // Lo que está VIVO, no lo que hay guardado: una config guardada con `enabled: false`
+      // (o que no se pudo aplicar) deja el manager de `.env` atendiendo, y decir `source: 'db'`
+      // y `effectiveKind` de la guardada mentía sobre qué opera de verdad.
+      const live = runtime.live(domain);
       return {
         domain,
         kinds: listKinds(domain),
         current,
-        effectiveKind: current?.kind ?? ENV_KIND[domain],
-        source: current ? 'db' : 'env',
+        effectiveKind: live.kind,
+        source: live.source,
+        state: states[domain],
       };
     });
     return { domains };
   });
+
+  // Estado de los ocho dominios, SIN el catálogo ni la config: es lo que necesita cualquier
+  // pantalla para no enseñar un vacío engañoso ni datos de demostración como propios. Lectura
+  // autenticada de cualquier rol (no lleva nada sensible): kid/guest/viewer ven las mismas
+  // páginas que el admin y tienen que poder saber si lo que ven está conectado.
+  app.get('/status', { schema: statusSchema }, async () => ({ states: runtime.states() }));
 
   // Guarda la config de un dominio (cifra secretos) y recarga el manager en caliente.
   app.put<{ Params: { domain: IntegrationDomain }; Body: SaveIntegrationConfigRequest }>(

@@ -6,6 +6,7 @@ import type {
 } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
+import { DemoNoticeFor } from '@/components/integrations/DomainNotice';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -80,6 +81,8 @@ export function QosPage() {
   // Solo con un equipo que puede aplicar QoS se ofrece crear, activar o eliminar reglas: si no,
   // cada control acabaría en error. Sin saberlo todavía, tampoco.
   const canConfigure = isAdmin && capability?.status === 'supported';
+  // Sin configurar el aviso lo dice todo: la lista vacía («aún no hay reglas») culparía al usuario.
+  const sinConfigurar = capability?.status === 'not-configured';
 
   const addRule = async (e: FormEvent) => {
     e.preventDefault();
@@ -137,6 +140,8 @@ export function QosPage() {
       {isAdmin && capability && !canConfigure && (
         <GatewayCapabilityNotice capability={capability} feature="qos" />
       )}
+      {/* Nunca dos avisos a la vez: el de demostración solo sale si el equipo no tiene otro. */}
+      {isAdmin && canConfigure && <DemoNoticeFor domain="qos" />}
 
       {canConfigure && (
         <Card>
@@ -218,75 +223,79 @@ export function QosPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base text-foreground">{t('qos.rules')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary text-secondary-foreground">
-                <tr>
-                  <th className="px-3 py-2 text-left">{t('qos.col.active')}</th>
-                  <th className="px-3 py-2 text-left">{t('qos.col.name')}</th>
-                  <th className="px-3 py-2 text-left">{t('qos.col.target')}</th>
-                  <th className="px-3 py-2 text-left">{t('qos.col.priority')}</th>
-                  <th className="px-3 py-2 text-left">↓</th>
-                  <th className="px-3 py-2 text-left">↑</th>
-                  {isAdmin && <th className="px-3 py-2 text-right">{t('qos.col.action')}</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <SkeletonRows cols={isAdmin ? 7 : 6} />
-                ) : rules.length === 0 ? (
+      {!sinConfigurar && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base text-foreground">{t('qos.rules')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary text-secondary-foreground">
                   <tr>
-                    <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
-                      <p className="text-kr-muted">{t('qos.empty.title')}</p>
-                      <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                        {t('qos.empty.desc')} {canConfigure && t('qos.empty.cta')}
-                      </p>
-                    </td>
+                    <th className="px-3 py-2 text-left">{t('qos.col.active')}</th>
+                    <th className="px-3 py-2 text-left">{t('qos.col.name')}</th>
+                    <th className="px-3 py-2 text-left">{t('qos.col.target')}</th>
+                    <th className="px-3 py-2 text-left">{t('qos.col.priority')}</th>
+                    <th className="px-3 py-2 text-left">↓</th>
+                    <th className="px-3 py-2 text-left">↑</th>
+                    {isAdmin && <th className="px-3 py-2 text-right">{t('qos.col.action')}</th>}
                   </tr>
-                ) : (
-                  rules.map((r) => (
-                    <tr key={r.id} className="border-t border-border">
-                      <td className="px-3 py-2">
-                        <OptimisticSwitch
-                          checked={r.enabled}
-                          onToggle={(next) => toggleRule(r, next)}
-                          disabled={!canConfigure}
-                          errorMessage={t('qos.toggleError', { name: r.name })}
-                          aria-label={t('qos.toggleLabel', { name: r.name })}
-                        />
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <SkeletonRows cols={isAdmin ? 7 : 6} />
+                  ) : rules.length === 0 ? (
+                    <tr>
+                      <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
+                        <p className="text-kr-muted">{t('qos.empty.title')}</p>
+                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                          {t('qos.empty.desc')} {canConfigure && t('qos.empty.cta')}
+                        </p>
                       </td>
-                      <td className="px-3 py-2">{r.name}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
-                      <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
-                        {priorityLabel[r.priority]}
-                      </td>
-                      <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.downloadKbps)}</td>
-                      <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
-                      {isAdmin && (
-                        <td className="px-3 py-2 text-right">
-                          {canConfigure && (
-                            <DeleteButton
-                              onDelete={() => removeRule(r.id)}
-                              aria-label={t('qos.deleteLabel', { name: r.name })}
-                            >
-                              {t('qos.delete')}
-                            </DeleteButton>
-                          )}
-                        </td>
-                      )}
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                  ) : (
+                    rules.map((r) => (
+                      <tr key={r.id} className="border-t border-border">
+                        <td className="px-3 py-2">
+                          <OptimisticSwitch
+                            checked={r.enabled}
+                            onToggle={(next) => toggleRule(r, next)}
+                            disabled={!canConfigure}
+                            errorMessage={t('qos.toggleError', { name: r.name })}
+                            aria-label={t('qos.toggleLabel', { name: r.name })}
+                          />
+                        </td>
+                        <td className="px-3 py-2">{r.name}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
+                        <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
+                          {priorityLabel[r.priority]}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs">
+                          {formatLimit(r.downloadKbps)}
+                        </td>
+                        <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
+                        {isAdmin && (
+                          <td className="px-3 py-2 text-right">
+                            {canConfigure && (
+                              <DeleteButton
+                                onDelete={() => removeRule(r.id)}
+                                aria-label={t('qos.deleteLabel', { name: r.name })}
+                              >
+                                {t('qos.delete')}
+                              </DeleteButton>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

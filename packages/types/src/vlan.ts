@@ -1,4 +1,5 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /**
  * Implementaciones de gestor de VLANs disponibles.
@@ -8,7 +9,7 @@ import type { Id, IsoDateTime } from './common.js';
  * gestionado sigue cubierto por `switch` (SNMP q-bridge), que es la vía genérica
  * y no depende de un fabricante.
  */
-export type VlanKind = 'mock' | 'switch';
+export type VlanKind = 'none' | 'mock' | 'switch';
 
 /**
  * VLAN (segmento de red 802.1Q). El `tag` (1-4094) es la clave natural por la
@@ -51,7 +52,7 @@ export interface UpdateVlanRequest {
  * el switch/router gestionado vía su API o un helper privilegiado; `mock`
  * mantiene las definiciones en memoria.
  */
-export interface VlanManager {
+export interface VlanManager extends NotConfigurable {
   listVlans(): Promise<Vlan[]>;
   getVlan(id: Id): Promise<Vlan | null>;
   /** Busca por tag 802.1Q; `null` si no existe. */

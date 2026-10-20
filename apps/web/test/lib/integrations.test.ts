@@ -83,6 +83,7 @@ describe('lib/integrations', () => {
       current: null,
       effectiveKind: 'mock',
       source: 'env',
+      state: 'demo',
     };
     expect(kindSchemaFor(view, 'openwrt')?.label).toBe('OpenWrt');
     expect(kindSchemaFor(view, 'inexistente')).toBeUndefined();
@@ -97,5 +98,45 @@ describe('lib/integrations', () => {
     // Son la MISMA clave: es lo que las junta en una sola sección del hub.
     expect(CATEGORY_LABEL_KEYS.firewall).toBe(CATEGORY_LABEL_KEYS.vlan);
     expect(CATEGORY_LABEL_KEYS.vlan).toBe(CATEGORY_LABEL_KEYS.qos);
+  });
+
+  describe('conectar o desconectar relee el estado de los dominios', () => {
+    const lecturasDeEstado = () =>
+      apiMock.get.mock.calls.filter(([p]) => p === '/integrations/status');
+
+    beforeEach(() => {
+      apiMock.get.mockResolvedValue({ states: {} });
+    });
+
+    it('saveIntegration, tras el ÉXITO', async () => {
+      apiMock.put.mockResolvedValue({ domain: 'dns', kind: 'pihole' });
+      await saveIntegration('dns', { kind: 'pihole', config: {} });
+      await vi.waitFor(() => expect(lecturasDeEstado()).toHaveLength(1));
+    });
+
+    it('saveIntegration NO relee si el guardado falló', async () => {
+      apiMock.put.mockRejectedValue(new Error('boom'));
+      await expect(saveIntegration('dns', { kind: 'pihole', config: {} })).rejects.toThrow('boom');
+      expect(lecturasDeEstado()).toHaveLength(0);
+    });
+
+    it('deleteIntegration, tras el ÉXITO', async () => {
+      apiMock.del.mockResolvedValue(undefined);
+      await deleteIntegration('dns');
+      await vi.waitFor(() => expect(lecturasDeEstado()).toHaveLength(1));
+    });
+
+    it('deleteIntegration NO relee si el borrado falló', async () => {
+      apiMock.del.mockRejectedValue(new Error('boom'));
+      await expect(deleteIntegration('dns')).rejects.toThrow('boom');
+      expect(lecturasDeEstado()).toHaveLength(0);
+    });
+
+    it('adoptar una sugerencia (escribe la config de un dominio) también relee', async () => {
+      apiMock.post.mockResolvedValue({ suggestions: [] });
+      const { adoptSuggestion } = await import('@/lib/discovery');
+      await adoptSuggestion('hue-1');
+      await vi.waitFor(() => expect(lecturasDeEstado()).toHaveLength(1));
+    });
   });
 });

@@ -12,18 +12,28 @@
  *   la VPN, el cortafuegos o el QoS de su router.
  * - `requires-setup` — sí puede, pero falta el helper (`helper-missing`); la UI dice cómo
  *   instalarlo.
+ * - `not-configured` — el dominio está en `none`: nada conectado todavía (una instalación
+ *   nueva). Es el MISMO aviso que el de «sin configurar» de los demás dominios, no un segundo:
+ *   la página enseña uno solo. Gana la plataforma (`unsupported`) y, después, esto: antes de
+ *   hablar del helper hay que conectar el dominio.
  */
-export const GATEWAY_CAPABILITY_STATUSES = ['supported', 'unsupported', 'requires-setup'] as const;
+export const GATEWAY_CAPABILITY_STATUSES = [
+  'supported',
+  'unsupported',
+  'requires-setup',
+  'not-configured',
+] as const;
 export type GatewayCapabilityStatus = (typeof GATEWAY_CAPABILITY_STATUSES)[number];
 
 /** Por qué no está disponible. Claves estables y sin copy: el texto lo pone la web. */
-export const GATEWAY_CAPABILITY_REASONS = ['platform', 'helper-missing'] as const;
+export const GATEWAY_CAPABILITY_REASONS = ['platform', 'helper-missing', 'not-configured'] as const;
 export type GatewayCapabilityReason = (typeof GATEWAY_CAPABILITY_REASONS)[number];
 
 export type GatewayCapability =
   | { status: 'supported'; reason?: undefined }
   | { status: 'unsupported'; reason: 'platform' }
-  | { status: 'requires-setup'; reason: 'helper-missing' };
+  | { status: 'requires-setup'; reason: 'helper-missing' }
+  | { status: 'not-configured'; reason: 'not-configured' };
 
 /** Respuesta de `GET /api/firewall/status` y `GET /api/qos/status`. */
 export interface GatewayStatusResponse {

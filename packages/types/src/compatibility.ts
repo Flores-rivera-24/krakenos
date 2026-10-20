@@ -181,20 +181,20 @@ export const HARDWARE_VERIFIED_AT: Record<string, string> = {};
 
 /**
  * Ids que puede tener una ficha: `<categoría>:<kind>` de cada backend real (el
- * `mock` no aparece). **Unión cerrada derivada de los `*Kind`**: la web resuelve el
+ * `mock` y el `none` de «sin configurar» no aparecen). **Unión cerrada derivada de los `*Kind`**: la web resuelve el
  * nombre de cada ficha con un `Record<CompatEntryId, …>` exhaustivo, así que un
  * backend nuevo no compila hasta tener nombre. El agente manda el id y NO el nombre
  * (escrito en español no se podía traducir).
  */
 export type CompatEntryId =
-  | `driver:${Exclude<DriverKind, 'mock'>}`
-  | `vpn:${Exclude<VpnKind, 'mock'>}`
+  | `driver:${Exclude<DriverKind, 'mock' | 'none'>}`
+  | `vpn:${Exclude<VpnKind, 'mock' | 'none'>}`
   | `iot:${Exclude<IotKind, 'mock'>}`
-  | `cameras:${Exclude<CameraKind, 'mock'>}`
-  | `firewall:${Exclude<FirewallKind, 'mock'>}`
-  | `vlan:${Exclude<VlanKind, 'mock'>}`
-  | `qos:${Exclude<QosKind, 'mock'>}`
-  | `dns:${Exclude<DnsKind, 'mock'>}`;
+  | `cameras:${Exclude<CameraKind, 'mock' | 'none'>}`
+  | `firewall:${Exclude<FirewallKind, 'mock' | 'none'>}`
+  | `vlan:${Exclude<VlanKind, 'mock' | 'none'>}`
+  | `qos:${Exclude<QosKind, 'mock' | 'none'>}`
+  | `dns:${Exclude<DnsKind, 'mock' | 'none'>}`;
 
 export interface CompatibilityEntry {
   /**

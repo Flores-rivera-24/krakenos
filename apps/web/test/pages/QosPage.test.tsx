@@ -1,7 +1,9 @@
 import type { GatewayCapability, QosRule } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
+import { useEstadosStore } from '@/lib/integration-states';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -171,5 +173,49 @@ describe('QosPage: capacidad de puerta de enlace de este equipo', () => {
     await screen.findByText('Limitar consola');
     expect(apiMock.get).not.toHaveBeenCalledWith('/qos/status');
     expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
+  });
+
+  describe('estado del dominio (instalación nueva)', () => {
+    const conRouter = () =>
+      render(
+        <MemoryRouter>
+          <QosPage />
+        </MemoryRouter>,
+      );
+    afterEach(() => useEstadosStore.setState({ estados: null }));
+
+    it('not-configured: el MISMO aviso «Sin configurar» de las demás páginas, sin alta', async () => {
+      mockApi([], { status: 'not-configured', reason: 'not-configured' });
+      conRouter();
+      expect(await screen.findByText('Sin configurar')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Ir a Conectar' })).toHaveAttribute(
+        'href',
+        '/connect',
+      );
+      // Un solo aviso, y ninguno de los de capacidad del equipo.
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+      expect(screen.queryByText('Falta instalar el helper de puerta de enlace')).toBeNull();
+      // Y sin el vacío que culpa al usuario («aún no hay reglas»): el aviso lo dice todo.
+      expect(screen.queryByText(/Aún no hay reglas/)).toBeNull();
+    });
+
+    it('supported + demo: un aviso «Datos de demostración» y la página entera', async () => {
+      mockApi([]);
+      useEstadosStore.setState({ estados: { qos: 'demo' } });
+      conRouter();
+      expect(await screen.findByText('Datos de demostración')).toBeInTheDocument();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
+
+    it('nunca dos avisos a la vez: si el equipo no puede, solo el suyo (no el de demostración)', async () => {
+      mockApi([], { status: 'unsupported', reason: 'platform' });
+      useEstadosStore.setState({ estados: { qos: 'demo' } });
+      conRouter();
+      expect(
+        await screen.findByText('Este equipo no puede hacer de puerta de enlace'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Datos de demostración')).toBeNull();
+      expect(screen.getAllByRole('note')).toHaveLength(1);
+    });
   });
 });

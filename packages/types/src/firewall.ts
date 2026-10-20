@@ -1,7 +1,8 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /** Implementaciones de gestor de firewall disponibles. */
-export type FirewallKind = 'mock' | 'iptables';
+export type FirewallKind = 'none' | 'mock' | 'iptables';
 
 /** Qué hace la regla con el tráfico que coincide. */
 export type FirewallAction = 'allow' | 'deny';
@@ -60,7 +61,7 @@ export interface UpdateFirewallRuleRequest {
  * delega las operaciones privilegiadas a un helper vía sudoers; `mock`
  * simula las reglas en memoria.
  */
-export interface FirewallManager {
+export interface FirewallManager extends NotConfigurable {
   /** Implementación viva; la capacidad de puerta de enlace depende de ella. */
   readonly kind: FirewallKind;
   listRules(): Promise<FirewallRule[]>;

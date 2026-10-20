@@ -1,5 +1,6 @@
 import type { DriverKind, HardwareDriver } from '@krakenos/types';
 import { MockDriver } from './mock.driver.js';
+import { NoneDriver } from './none.driver.js';
 import { OpenWrtDriver } from './openwrt.driver.js';
 import { SshTransport } from './openwrt.transport.js';
 import { PfSenseDriver } from './pfsense.driver.js';
@@ -146,6 +147,8 @@ function mensajeDeRetirada(kind: string, soportados: string): string | null {
  */
 export function createDriver(config: CreateDriverConfig): HardwareDriver {
   switch (config.kind) {
+    case 'none':
+      return new NoneDriver();
     case 'mock':
       return new MockDriver();
     case 'openwrt': {
@@ -249,7 +252,7 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
       const kind = String(config.kind as string);
       const retirado = mensajeDeRetirada(
         kind,
-        'mock, openwrt, pfsense, unifi, mikrotik, omada, asus',
+        'none, mock, openwrt, pfsense, unifi, mikrotik, omada, asus',
       );
       if (retirado) throw new Error(retirado);
       throw new Error(`Driver desconocido: ${kind}`);
@@ -258,6 +261,7 @@ export function createDriver(config: CreateDriverConfig): HardwareDriver {
 }
 
 export { MockDriver } from './mock.driver.js';
+export { NoneDriver } from './none.driver.js';
 export { OpenWrtDriver } from './openwrt.driver.js';
 export { SshTransport } from './openwrt.transport.js';
 export { PfSenseDriver } from './pfsense.driver.js';

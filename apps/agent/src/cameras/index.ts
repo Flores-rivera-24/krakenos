@@ -3,6 +3,7 @@ import { safeFetch } from '../net/egress.js';
 import { createFfmpegExec, MOTION_FRAME_TIMEOUT_MS } from './ffmpeg.js';
 import { FrigateCameraManager } from './frigate.cameras.js';
 import { MockCameraManager } from './mock.cameras.js';
+import { NoneCameraManager } from './none.cameras.js';
 import { RtspCameraManager } from './rtsp.cameras.js';
 
 /** Config para la fuente RTSP real (`kind: 'rtsp'`). */
@@ -50,6 +51,8 @@ export interface CameraConfig {
  */
 export function createCameraManager(config: CameraConfig): CameraManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneCameraManager();
     case 'mock':
       return new MockCameraManager({
         hlsBaseDir: config.hls?.baseDir,
@@ -100,4 +103,5 @@ export function createCameraManager(config: CameraConfig): CameraManager {
 
 export { FrigateCameraManager } from './frigate.cameras.js';
 export { MockCameraManager } from './mock.cameras.js';
+export { NoneCameraManager } from './none.cameras.js';
 export { RtspCameraManager } from './rtsp.cameras.js';

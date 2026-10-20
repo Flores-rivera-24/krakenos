@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
+import { DomainGate } from '@/components/integrations/DomainNotice';
 
 const GROUPS_OPEN_KEY = 'kr-groups-open';
 
@@ -141,7 +142,7 @@ function DeviceTable({
   );
 }
 
-export function InventoryPage() {
+function InventoryPageBody() {
   const t = useT();
   const devices = useInventoryStore((s) => s.devices);
   const connected = useInventoryStore((s) => s.connected);
@@ -357,5 +358,18 @@ export function InventoryPage() {
 
       {selected && <DeviceDetailSlideover device={selected} onClose={() => setSelectedId(null)} />}
     </div>
+  );
+}
+
+/**
+ * La página del dominio `driver` con su estado: «sin configurar» sustituye al cuerpo y
+ * «demostración» lo avisa encima (ver `DomainGate`).
+ */
+export function InventoryPage() {
+  const t = useT();
+  return (
+    <DomainGate domain="driver" title={t('inventory.title')}>
+      <InventoryPageBody />
+    </DomainGate>
   );
 }

@@ -31,6 +31,7 @@ import { UpdateChecker } from '../../system/update-check.js';
 import { createGitPackageReader } from '../../system/target-package.js';
 import { createUpdateSpawner } from '../../system/update-spawner.js';
 import { IntegrationConfigStore } from '../../integrations/integration-config.store.js';
+import { isNotConfigured } from '../../integrations/not-configured.js';
 import { createSecretbox, generateSecretboxKey, type Secretbox } from '../../config/secretbox.js';
 import { AutoBackupService } from './auto-backup.service.js';
 import type { TlsService } from './tls.service.js';
@@ -333,7 +334,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   let lastDriverPing = 0;
   app.get('/metrics', { preHandler: app.authenticate, schema: metricsSchema }, async () => {
     const now = Date.now();
-    if (now - lastDriverPing > DRIVER_SAMPLE_THROTTLE_MS) {
+    // Sin router no hay latencia que medir: un `driver:none` en rojo sería una avería inventada.
+    if (!isNotConfigured(driver) && now - lastDriverPing > DRIVER_SAMPLE_THROTTLE_MS) {
       lastDriverPing = now;
       const start = Date.now();
       let ok = true;
@@ -527,6 +529,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     { preHandler: app.requireRole('admin'), schema: connectivityTestSchema },
     async (): Promise<ConnectivityTestResult> => {
       const start = Date.now();
+      if (isNotConfigured(driver)) {
+        return { ok: false, error: 'No hay ningún router conectado todavía' };
+      }
       try {
         const ok = await driver.healthcheck();
         return ok

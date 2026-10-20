@@ -1,5 +1,6 @@
 import type { DnsKind, DnsManager } from '@krakenos/types';
 import { MockDnsManager } from './mock.dns.js';
+import { NoneDnsManager } from './none.dns.js';
 import { PiholeDnsManager } from './pihole.dns.js';
 
 /** Config específica del gestor Pi-hole real (`kind: 'pihole'`). */
@@ -23,6 +24,8 @@ export interface DnsConfig {
  */
 export function createDnsManager(config: DnsConfig): DnsManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneDnsManager();
     case 'mock':
       return new MockDnsManager();
     case 'pihole': {
@@ -38,4 +41,5 @@ export function createDnsManager(config: DnsConfig): DnsManager {
 }
 
 export { MockDnsManager, DnsError } from './mock.dns.js';
+export { NoneDnsManager } from './none.dns.js';
 export { PiholeDnsManager } from './pihole.dns.js';

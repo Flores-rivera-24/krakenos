@@ -2,6 +2,7 @@ import type { QosKind, QosManager, QosRule } from '@krakenos/types';
 import { SudoHelperRunner } from '../privileged/runner.js';
 import { FileJsonStore } from '../store/json-store.js';
 import { MockQosManager } from './mock.qos.js';
+import { NoneQosManager } from './none.qos.js';
 import { TcQosManager } from './tc.qos.js';
 
 /** Config específica del gestor tc real (`kind: 'tc'`). */
@@ -27,6 +28,8 @@ export interface QosConfig {
  */
 export function createQosManager(config: QosConfig): QosManager {
   switch (config.kind) {
+    case 'none':
+      return new NoneQosManager();
     case 'mock':
       return new MockQosManager();
     case 'tc': {
@@ -47,4 +50,5 @@ export function createQosManager(config: QosConfig): QosManager {
 }
 
 export { MockQosManager } from './mock.qos.js';
+export { NoneQosManager } from './none.qos.js';
 export { TcQosManager } from './tc.qos.js';

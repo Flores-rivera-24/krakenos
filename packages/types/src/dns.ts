@@ -1,7 +1,8 @@
 import type { Id, IsoDateTime } from './common.js';
+import type { NotConfigurable } from './not-configured.js';
 
 /** Implementaciones de gestor de DNS disponibles. */
-export type DnsKind = 'mock' | 'pihole';
+export type DnsKind = 'none' | 'mock' | 'pihole';
 
 /** Estadísticas agregadas del resolver DNS. */
 export interface DnsStats {
@@ -113,7 +114,7 @@ export interface UpdateDnsFeedRequest {
  * Gestor de DNS intercambiable. La implementación real (`pihole`) habla con la
  * API de Pi-hole; `mock` mantiene la blocklist y las estadísticas en memoria.
  */
-export interface DnsManager {
+export interface DnsManager extends NotConfigurable {
   getStats(): Promise<DnsStats>;
   listBlocked(): Promise<BlockedDomain[]>;
   /** Añade un dominio a la blocklist. Lanza si ya existe. */

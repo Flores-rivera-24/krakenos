@@ -1,5 +1,6 @@
 import type { IotKind, IotManager } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
+import { isNotConfigured } from '../../integrations/not-configured.js';
 import { planIdMigration, remapIdsInJson, type MigrationPlan } from '../../iot/id-migration.js';
 
 /**
@@ -155,6 +156,10 @@ export class IotIdMigrationService {
   async run(): Promise<MigrationPlan | null> {
     const { app, iot, kinds } = this.deps;
     try {
+      // Contra un IoT sin configurar no hay con qué resolver los ids: se saltaría la regla del
+      // backend único y todo quedaría «sin resolver» **y marcado como hecho**, para siempre.
+      // Se deja sin marcar: cuando el usuario conecte un backend, se migra entonces.
+      if (isNotConfigured(iot)) return null;
       if (await this.alreadyDone()) return null;
 
       const persistedIds = await this.collectPersistedIds();

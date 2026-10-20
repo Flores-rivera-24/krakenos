@@ -13,6 +13,7 @@ import { DEVICE_ICONS } from '@krakenos/types';
 // confiar en un `as DbDevice` ciego.
 import type { Device as DbDevice } from '../../generated/prisma/client.js';
 import type { FastifyInstance } from 'fastify';
+import { isNotConfigured } from '../../integrations/not-configured.js';
 import { inferDeviceType } from './identify.js';
 import { normalizeDiscovered } from './normalize.js';
 import { lookupVendor } from './oui.js';
@@ -257,6 +258,9 @@ export class InventoryService {
 
   /** Ejecuta un barrido (ARP + mDNS), persiste cambios y emite eventos en tiempo real. */
   async scan(): Promise<Device[]> {
+    // Sin router conectado no hay barrido: devolver `[]` marcaría offline todo lo ya conocido
+    // y avisaría cada ciclo de un «posible fallo transitorio» que no lo es.
+    if (isNotConfigured(this.driver)) return this.list();
     const [arpRaw, mdnsRaw] = await Promise.all([this.driver.scanArp(), this.driver.scanMdns()]);
 
     // Frontera del driver: descarta entradas malformadas antes de tocarlas (US-98).
