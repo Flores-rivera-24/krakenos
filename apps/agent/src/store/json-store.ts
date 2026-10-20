@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import { mkdir, open, readFile, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { renameWithRetry } from '../system/rename-retry.js';
 
 export interface Identifiable {
   id: string;
@@ -118,7 +119,7 @@ export class FileJsonStore<T extends Identifiable> implements JsonStore<T> {
       }
       // `rename` es atómico en el mismo sistema de ficheros: el lector ve el
       // fichero anterior íntegro o el nuevo íntegro, nunca uno a medio escribir.
-      await rename(tmp, this.path);
+      await renameWithRetry(tmp, this.path);
     } catch (err) {
       // No dejar temporales huérfanos si algo falla.
       await rm(tmp, { force: true }).catch(() => undefined);

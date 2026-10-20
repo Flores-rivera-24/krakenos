@@ -77,3 +77,13 @@ export function createShutdown(
 
   return (reason, exitCode = 0) => (enCurso ??= cerrar(reason, exitCode));
 }
+
+/**
+ * Señales que piden cerrar el proceso (US-280). `SIGINT` es Ctrl+C —en Windows, además,
+ * lo que el administrador de servicios envuelto manda para parar— y `SIGTERM` es systemd o
+ * Docker. `SIGBREAK` es la que Windows envía al cerrar la consola o con Ctrl+Pausa; en
+ * Linux no existe y registrar un manejador sería ruido.
+ */
+export function shutdownSignals(platform: NodeJS.Platform = process.platform): NodeJS.Signals[] {
+  return platform === 'win32' ? ['SIGINT', 'SIGTERM', 'SIGBREAK'] : ['SIGINT', 'SIGTERM'];
+}

@@ -1,4 +1,5 @@
 import { isAbsolute, resolve } from 'node:path';
+import { agentPaths } from '../config/paths.js';
 
 /**
  * Ruta del fichero SQLite de una `DATABASE_URL` (`file:…`).
@@ -14,5 +15,5 @@ import { isAbsolute, resolve } from 'node:path';
  */
 export function resolveDbFile(databaseUrl: string): string {
   const p = databaseUrl.replace(/^file:/, '').replace(/\?.*$/, '');
-  return isAbsolute(p) ? p : resolve('prisma', p);
+  return isAbsolute(p) ? p : resolve(agentPaths().prismaDir, p);
 }

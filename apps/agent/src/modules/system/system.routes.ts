@@ -3,7 +3,8 @@ import { once } from 'node:events';
 import { createReadStream, createWriteStream, readFileSync } from 'node:fs';
 import { mkdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
+import { agentPaths } from '../../config/paths.js';
 import { fileURLToPath } from 'node:url';
 import type {
   ConnectivityTestResult,
@@ -37,7 +38,7 @@ import { createSecretbox, generateSecretboxKey, type Secretbox } from '../../con
 import { AutoBackupService } from './auto-backup.service.js';
 import type { TlsService } from './tls.service.js';
 import { disabledWithoutTls } from '../../system/tls.js';
-import type { MetricsSnapshot, StorageInfo } from '@krakenos/types';
+import type { DeployMode, MetricsSnapshot, StorageInfo } from '@krakenos/types';
 import type { InventoryService } from '../inventory/inventory.service.js';
 import { SupportService } from './support.service.js';
 import { UpdateService, type UpdateSpawner } from './update.service.js';
@@ -70,7 +71,7 @@ interface SystemRoutesOpts {
   /** Servicio de inventario compartido, para reprogramar el barrido en caliente. */
   inventoryService?: InventoryService;
   /** Modo de despliegue forzado (US-190; por defecto se autodetecta). Tests. */
-  deployMode?: 'systemd' | 'docker';
+  deployMode?: DeployMode;
   /** Spawner del proceso actualizador (US-190; por defecto el real). Tests. */
   updateSpawner?: UpdateSpawner;
   /** Directorio de traspaso del actualizador (US-190; por defecto `var/`). Tests. */
@@ -417,9 +418,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     },
     spawn: opts.updateSpawner ?? createUpdateSpawner(),
     varDir: opts.updateVarDir,
-    readTargetPackageJson: createGitPackageReader(
-      process.env.KRAKENOS_REPO_DIR ?? resolve('../..'),
-    ),
+    readTargetPackageJson: createGitPackageReader(agentPaths().repoDir),
   });
 
   // Plan de actualización (lectura autenticada): estado + modo + última ejecución.
@@ -573,7 +572,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     async (req, reply) => {
       // El archivo se escribe a un temporal y se sirve por **stream** (US-233): en la
       // escala proyectada, bufferizarlo costaba ~3 copias de la base en RAM (AUD3-15).
-      const tmpFile = resolve('var', `backup-${randomUUID()}.kbk`);
+      const tmpFile = join(agentPaths().varDir, `backup-${randomUUID()}.kbk`);
       await backupService.createToFile(req.body.passphrase, tmpFile);
       app.audit({ action: 'system.backup', userId: req.user.sub, ip: req.ip });
       const stream = createReadStream(tmpFile);
@@ -593,7 +592,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // (no se puede intercambiar la DB viva de forma segura). Admin activo y auditada.
   // El staging vive en `var/` (FUERA de `data/`), que es un destino de restore — si
   // no, un backup con una entrada `data/restore-staging` colisionaría al aplicar.
-  const restoreStagingDir = opts.restoreStagingDir ?? resolve('var/restore-staging');
+  const restoreStagingDir = opts.restoreStagingDir ?? join(agentPaths().varDir, 'restore-staging');
   app.post<{ Body: { passphrase: string; data: string } }>(
     '/restore',
     // 64 MB: evita el OOM de bufferizar base64 gigante en hardware tipo Raspberry Pi.
@@ -702,7 +701,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         });
       }
       const maxBytes = opts.maxRestoreBytes ?? MAX_RESTORE_BYTES;
-      const tmpFile = resolve('var', `restore-upload-${randomUUID()}.kbk`);
+      const tmpFile = join(agentPaths().varDir, `restore-upload-${randomUUID()}.kbk`);
       await mkdir(dirname(tmpFile), { recursive: true });
       try {
         let bytes = 0;

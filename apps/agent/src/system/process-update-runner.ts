@@ -78,6 +78,7 @@ const defaultExec: UpdateExec = async (file, args) => {
   const { stdout, stderr } = await execFileAsync(file, args, {
     timeout: 20 * 60 * 1000,
     maxBuffer: 32 * 1024 * 1024,
+    windowsHide: true,
   });
   return { stdout: stdout.toString(), stderr: stderr.toString() };
 };

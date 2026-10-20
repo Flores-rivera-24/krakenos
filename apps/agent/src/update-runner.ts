@@ -14,6 +14,7 @@ import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { agentPaths } from './config/paths.js';
 import { fileURLToPath } from 'node:url';
 import type { UpdateResult } from '@krakenos/types';
 import { ProcessUpdateRunner } from './system/process-update-runner.js';
@@ -35,7 +36,7 @@ function readAgentVersion(): string {
 
 async function main(): Promise<void> {
   const targetVersion = process.argv[2]?.replace(/^v/i, '') ?? '';
-  const varDir = resolve('var');
+  const varDir = agentPaths().varDir;
   const lockFile = resolve(varDir, 'update.lock');
   const resultFile = resolve(varDir, 'update-result.json');
   const current = readAgentVersion();
@@ -48,7 +49,7 @@ async function main(): Promise<void> {
 
   const port = Number(process.env.PORT ?? 3001);
   const runner = new ProcessUpdateRunner({
-    repoDir: process.env.KRAKENOS_REPO_DIR ?? resolve('../..'),
+    repoDir: agentPaths().repoDir,
     serviceName: process.env.KRAKENOS_SERVICE_NAME ?? 'krakenos',
     healthUrl: process.env.KRAKENOS_HEALTH_URL ?? `http://127.0.0.1:${port}/health/ready`,
     dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),

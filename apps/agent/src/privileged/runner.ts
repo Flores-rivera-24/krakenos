@@ -35,15 +35,20 @@ export type ExecFn = (file: string, args: string[]) => Promise<CommandResult>;
 
 const defaultExec: ExecFn = (file, args) =>
   new Promise((resolve) => {
-    execFile(file, args, { timeout: 15_000, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) => {
-      const code =
-        err && typeof (err as { code?: unknown }).code === 'number'
-          ? (err as { code: number }).code
-          : err
-            ? 1
-            : 0;
-      resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code });
-    });
+    execFile(
+      file,
+      args,
+      { timeout: 15_000, maxBuffer: 1024 * 1024, windowsHide: true },
+      (err, stdout, stderr) => {
+        const code =
+          err && typeof (err as { code?: unknown }).code === 'number'
+            ? (err as { code: number }).code
+            : err
+              ? 1
+              : 0;
+        resolve({ stdout: stdout ?? '', stderr: stderr ?? '', code });
+      },
+    );
   });
 
 export interface SudoHelperRunnerOptions {

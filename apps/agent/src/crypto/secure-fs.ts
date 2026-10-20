@@ -9,11 +9,11 @@ import {
   lstatSync,
   openSync,
   readFileSync,
-  renameSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { renameSyncWithRetry } from '../system/rename-retry.js';
 
 /**
  * Escritura de ficheros con material criptográfico (claves JWT, CA local, certificado
@@ -84,7 +84,7 @@ export function writeTempFile(path: string, data: string | Buffer, mode: number)
 export function commitTempFile(
   tmp: string,
   path: string,
-  rename: (from: string, to: string) => void = renameSync,
+  rename: (from: string, to: string) => void = (from, to) => renameSyncWithRetry(from, to),
 ): void {
   try {
     rename(tmp, path);
@@ -140,6 +140,7 @@ export function resolveGroupId(group: string): number {
     const out = execFileSync('getent', ['group', group], {
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],
+      windowsHide: true,
     });
     const gid = out.split(':')[2];
     if (gid && /^\d+$/.test(gid.trim())) return Number(gid.trim());

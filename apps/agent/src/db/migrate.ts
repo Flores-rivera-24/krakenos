@@ -12,6 +12,7 @@ import {
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
+import { agentPaths } from '../config/paths.js';
 import { resolveDbFile } from '../system/restore.js';
 
 /**
@@ -415,14 +416,14 @@ export function migrateDatabase(opts: MigrateOptions): MigrateResult {
 
 /** Directorio de migraciones por defecto: `prisma/migrations` respecto al cwd del agente. */
 export function defaultMigrationsDir(): string {
-  return resolve('prisma', 'migrations');
+  return agentPaths().migrationsDir;
 }
 
 /** Dónde va la copia previa: `KRAKENOS_PRE_MIGRATE_DIR` (Docker lo apunta al volumen) o `var/`. */
 export function defaultBackupDir(): string {
   return process.env.KRAKENOS_PRE_MIGRATE_DIR
     ? resolve(process.env.KRAKENOS_PRE_MIGRATE_DIR)
-    : resolve('var');
+    : agentPaths().varDir;
 }
 
 /** Migra la base de `DATABASE_URL` (o `file:./dev.db`, como el resto del agente). */

@@ -119,11 +119,17 @@ export interface UpdateStatus {
 }
 
 /**
- * Modo de despliegue (US-190). Determina si la actualización puede aplicarse
- * sola (`systemd`/bare-metal, el proceso puede reemplazarse desde fuera) o si el
- * contenedor no puede auto-reemplazarse (`docker`, se muestra el comando manual).
+ * Modo de despliegue (US-190, ampliado en US-280). Determina si la actualización puede
+ * aplicarse sola:
+ *  - `systemd`: instalación con `install.sh`; el proceso puede reemplazarse desde fuera
+ *    (única que se auto-actualiza hoy).
+ *  - `docker`: el contenedor no puede auto-reemplazarse; se muestra el comando manual.
+ *  - `windows-service`: servicio de Windows (default en `win32`; nunca `systemd`).
+ *  - `package`: instalado con el `.deb` (lo fija el paquete con `KRAKENOS_DEPLOY_MODE`).
+ * Los dos últimos todavía no tienen camino de actualización propio: no se auto-actualizan
+ * ni muestran un comando, y lo dicen.
  */
-export const DEPLOY_MODES = ['systemd', 'docker'] as const;
+export const DEPLOY_MODES = ['systemd', 'docker', 'windows-service', 'package'] as const;
 export type DeployMode = (typeof DEPLOY_MODES)[number];
 
 /** Pasos de la orquestación de actualización (US-190), en orden de ejecución. */

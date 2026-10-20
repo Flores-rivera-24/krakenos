@@ -5,6 +5,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   checkSecretFilePermissions,
   isGroupOrWorldAccessible,
+  SECRET_PERMISSIONS_NOT_APPLICABLE,
+  secretPermissionsApply,
 } from '../../src/config/secret-permissions.js';
 
 describe('secret-permissions (US-79, F8)', () => {
@@ -23,10 +25,26 @@ describe('secret-permissions (US-79, F8)', () => {
       '/secrets/key.pem': 0o600,
     };
     const stat = (p: string): number | null => modes[p] ?? null;
-    const warnings = checkSecretFilePermissions(['/secrets/.env', '/secrets/key.pem'], stat);
+    const warnings = checkSecretFilePermissions(
+      ['/secrets/.env', '/secrets/key.pem'],
+      stat,
+      'linux',
+    );
     expect(warnings).toHaveLength(1);
     expect(warnings[0]!.path).toBe('/secrets/.env');
     expect(warnings[0]!.mode).toBe('644');
+  });
+
+  it('en Windows no avisa por los bits de mode (son una ficción) y lo declara', () => {
+    // `stat` devuelve 0666, lo que en Linux sería un aviso: en win32 NO lo es.
+    const stat = (): number | null => 0o100666;
+    expect(checkSecretFilePermissions(['C:\\k\\.env'], stat, 'win32')).toEqual([]);
+    // y el mismo stat en Linux sí avisa: el silencio es de la plataforma, no del chequeo
+    expect(checkSecretFilePermissions(['/k/.env'], stat, 'linux')).toHaveLength(1);
+    expect(secretPermissionsApply('win32')).toBe(false);
+    expect(secretPermissionsApply('linux')).toBe(true);
+    expect(secretPermissionsApply('darwin')).toBe(true);
+    expect(SECRET_PERMISSIONS_NOT_APPLICABLE).toMatch(/no aplica en Windows.*ACL/);
   });
 
   it('ignora ficheros inexistentes (stat → null)', () => {

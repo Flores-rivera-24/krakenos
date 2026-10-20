@@ -28,7 +28,7 @@ export function createGitPackageReader(repoDir: string): TargetPackageReader {
       const { stdout } = await execFileAsync(
         'git',
         ['-C', repoDir, 'show', `v${version}:package.json`],
-        { timeout: 5000, maxBuffer: 1024 * 1024 },
+        { timeout: 5000, maxBuffer: 1024 * 1024, windowsHide: true },
       );
       const text = stdout.toString();
       // Solo se cachea un acierto: una etiqueta que aún no estaba puede llegar luego.

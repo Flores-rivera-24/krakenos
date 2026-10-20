@@ -31,6 +31,7 @@ export function createUpdateSpawner(): UpdateSpawner {
     const child = spawn(process.execPath, [runnerPath, targetVersion], {
       detached: true,
       stdio: 'ignore',
+      windowsHide: true,
     });
     child.unref();
     // El PID va al lock: así un actualizador muerto se detecta y no deja la

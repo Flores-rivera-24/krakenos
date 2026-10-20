@@ -1,7 +1,7 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { UpdateStatus } from '@krakenos/types';
+import type { DeployMode, UpdateStatus } from '@krakenos/types';
 import { describe, expect, it, vi } from 'vitest';
 import type { UpdateChecker } from '../../src/system/update-check.js';
 import { UpdateService } from '../../src/modules/system/update.service.js';
@@ -36,7 +36,7 @@ const DISABLED: UpdateStatus = {
 
 function make(opts: {
   status: UpdateStatus;
-  mode?: 'systemd' | 'docker';
+  mode?: DeployMode;
   window?: string;
   varDir?: string;
   now?: () => Date;
@@ -90,6 +90,18 @@ describe('UpdateService.getPlan', () => {
     expect(plan.canSelfUpdate).toBe(false);
     expect(plan.dockerCommand).toContain('docker compose pull');
   });
+
+  it.each(['windows-service', 'package'] as const)(
+    '%s: no se auto-actualiza y NO inventa un comando',
+    async (mode) => {
+      const { service } = make({ status: AVAILABLE, mode });
+      const plan = await service.getPlan();
+      expect(plan.mode).toBe(mode);
+      expect(plan.canSelfUpdate).toBe(false);
+      expect(plan.dockerCommand).toBeNull();
+      expect(plan.updateAvailable).toBe(true);
+    },
+  );
 
   it('refleja la ventana de mantenimiento válida y descarta la basura', async () => {
     const { service } = make({ status: AVAILABLE, window: '02:00-04:00' });
@@ -168,6 +180,19 @@ describe('UpdateService.apply', () => {
     expect(res.dockerCommand).toContain('docker compose pull');
     expect(spawn).not.toHaveBeenCalled();
   });
+
+  it.each(['windows-service', 'package'] as const)(
+    '%s: no lanza nada y lo dice (sin comando docker)',
+    async (mode) => {
+      const { service, spawn } = make({ status: AVAILABLE, mode });
+      const res = await service.apply(true);
+      expect(res.started).toBe(false);
+      expect(res.mode).toBe(mode);
+      expect(res.dockerCommand).toBeUndefined();
+      expect(res.message).toMatch(/todavía no se actualiza desde aquí/);
+      expect(spawn).not.toHaveBeenCalled();
+    },
+  );
 
   it('sin actualización disponible: no lanza', async () => {
     const { service, spawn } = make({ status: UP_TO_DATE });
