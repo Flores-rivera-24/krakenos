@@ -9,6 +9,7 @@ import { buildIssueUrl, type FeedbackKind } from '@/lib/feedback';
 import { useT } from '@/lib/i18n';
 import { downloadSupportBundle } from '@/lib/support';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /**
  * Soporte y diagnóstico (US-192): telemetría anónima opt-in (OFF por defecto) +

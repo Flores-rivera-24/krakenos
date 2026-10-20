@@ -29,6 +29,7 @@ import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /**
  * US-239 (AUD3-27): `TrafficWidget` importa **Recharts (98,7 kB gzip)** de forma

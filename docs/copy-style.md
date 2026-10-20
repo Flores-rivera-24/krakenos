@@ -6,9 +6,16 @@ de una voz inventada. Toda historia nueva que añada texto visible debe seguir e
 ## Idioma
 
 - **El español (es-ES) es la FUENTE del copy, no el único idioma.** La app es bilingüe:
-  el catálogo `lib/i18n/catalog/es.ts` es la fuente canónica y `en.ts` está tipado como
+  el catálogo en español es la fuente canónica y `en.ts` está tipado como
   `Record<TranslationKey, string>`, así que **falta o sobra de clave = error de typecheck**. Añadir
   copy nuevo es añadir la clave a **ambos** catálogos.
+- **El español no es un solo fichero: es un núcleo y fragmentos por pantalla.** `catalog/es-core.ts`
+  viaja en la carga inicial de todas las pantallas; el resto vive en `catalog/fragments/<pantalla>.ts`
+  y viaja con la pantalla que lo usa. **El copy nuevo de una pantalla va a su fragmento, no al núcleo**
+  (cada kB del núcleo lo paga el arranque de todas), y todo fichero que pinte una clave de fragmento
+  importa ese fragmento (`import '@/lib/i18n/catalog/fragments/<pantalla>';`): lo exige
+  `test/lib/catalogo-fragmentos.test.ts`. `catalog/es.ts` recompone el total (es de donde sale
+  `TranslationKey`) y solo lo importan los tipos y los tests.
 - Esta guía describe cómo se escribe el **valor en español**. El inglés lo sigue en espíritu
   (sentence case, sin florituras, honestidad de errores), no al pie de la letra: sus convenciones de
   puntuación son otras.

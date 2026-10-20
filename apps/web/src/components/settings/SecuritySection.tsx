@@ -26,6 +26,7 @@ import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';

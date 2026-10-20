@@ -133,7 +133,7 @@ describe('texto de JSX con literal a pelo', () => {
     expect(
       culpables,
       'Texto escrito a pelo entre etiquetas JSX: con la interfaz en inglés sale en ' +
-        'español. Muévelo a `catalog/es.ts` y `catalog/en.ts` y píntalo con `t()`. Si NO ' +
+        'español. Muévelo al fragmento de su pantalla (`catalog/fragments/`) y `catalog/en.ts` y píntalo con `t()`. Si NO ' +
         'es copy (marca, sigla, unidad), añádelo a `RETENIDOS` con el motivo.',
     ).toEqual([]);
   });

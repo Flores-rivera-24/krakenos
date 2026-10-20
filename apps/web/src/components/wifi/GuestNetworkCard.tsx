@@ -9,6 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/usuarios';
+import '@/lib/i18n/catalog/fragments/wifi';
 
 interface Props {
   network: GuestNetwork;

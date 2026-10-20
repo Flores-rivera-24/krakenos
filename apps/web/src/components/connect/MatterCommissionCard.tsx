@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { ApiRequestError } from '@/lib/api';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { commissionMatter } from '@/lib/matter-bridge';
+import '@/lib/i18n/catalog/fragments/matter';
 
 /** Código de error del comisionado → clave i18n del mensaje amable (US-172). */
 const ERROR_KEY: Record<string, TranslationKey> = {

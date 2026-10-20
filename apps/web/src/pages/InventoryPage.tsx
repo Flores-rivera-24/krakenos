@@ -22,6 +22,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import { filaAbrible } from '@/lib/a11y';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/inventario';
 
 const GROUPS_OPEN_KEY = 'kr-groups-open';
 

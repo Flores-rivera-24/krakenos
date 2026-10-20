@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
 import { useInventoryStore } from '@/store/inventory.store';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 function Stat({
   status,

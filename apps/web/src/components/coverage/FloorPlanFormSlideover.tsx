@@ -13,6 +13,7 @@ import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
 import { PlanCalibrationOverlay } from './PlanCalibrationOverlay';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 /** Mapea el motivo de fallo de importación a su clave i18n. */
 const IMPORT_ERROR_KEY: Record<PlanImportReason, TranslationKey> = {

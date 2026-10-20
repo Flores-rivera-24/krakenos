@@ -6,6 +6,7 @@ import { formatBytes } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
 import { useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/trafico';
 
 /**
  * Bienestar digital (US-184): uso de internet por persona. El servidor filtra por

@@ -22,6 +22,8 @@ import {
   revokeInvitation,
 } from '@/lib/onboarding';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/ajustes';
+import '@/lib/i18n/catalog/fragments/usuarios';
 
 const EMPTY = { email: '', displayName: '', role: 'member' as UserRole };
 

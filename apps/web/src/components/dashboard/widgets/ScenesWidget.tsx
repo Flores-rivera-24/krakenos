@@ -10,6 +10,8 @@ import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/escenas';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** Ejecuta escenas de un toque desde el dashboard (US-166). */
 export function ScenesWidget() {

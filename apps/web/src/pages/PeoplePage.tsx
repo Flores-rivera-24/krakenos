@@ -26,6 +26,7 @@ import { usePolling } from '@/lib/use-polling';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/personas';
 
 /**
  * Personas del hogar (US-240): el control parental **por quien es, no por MAC**.

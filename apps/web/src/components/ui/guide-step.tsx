@@ -4,6 +4,7 @@ import { Callout } from '@/components/ui/callout';
 import { CopyButton } from '@/components/ui/copy-button';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 export interface GuideStepProps {
   /** Número visible del paso (1-based). */

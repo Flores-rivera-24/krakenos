@@ -12,6 +12,7 @@ import { ApiRequestError, api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { t as translate, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/entrada';
 
 export function SetupPage() {
   const t = useT();

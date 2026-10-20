@@ -8,6 +8,7 @@ import type {
 } from '@krakenos/types';
 import { api } from '@/lib/api';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 /** Catálogo de compatibilidad de hardware (US-208), derivado del código. */
 export const listCompatibility = () => api.getList<CompatibilityEntry>('/compatibility');

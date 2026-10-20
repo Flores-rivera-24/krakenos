@@ -91,8 +91,7 @@ describe('etiqueta de filaAbrible con literal a pelo (issue #91)', () => {
     expect(
       culpables,
       'La etiqueta de `filaAbrible` es el `aria-label` de la fila: con texto a pelo se ' +
-        'anuncia en español aunque la interfaz esté en inglés. Muévela a ' +
-        '`catalog/es.ts` y `catalog/en.ts` y pásala con `t(...)`.',
+        'anuncia en español aunque la interfaz esté en inglés. Muévela al fragmento de su pantalla (`catalog/fragments/`) y `catalog/en.ts` y pásala con `t(...)`.',
     ).toEqual([]);
   });
 });

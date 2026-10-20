@@ -9,6 +9,7 @@ import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/panel';
 
 const SEEN_KEY = 'krakenos-alerts-seen';
 

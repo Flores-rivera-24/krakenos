@@ -12,6 +12,7 @@ import { useT } from '@/lib/i18n';
 import { acceptInvitation, previewInvitation } from '@/lib/onboarding';
 import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
+import '@/lib/i18n/catalog/fragments/entrada';
 
 /**
  * Aceptar una invitación (US-272). Pública: quien la abre todavía no tiene cuenta.

@@ -10,6 +10,7 @@ import { api } from '@/lib/api';
 import type { GuideCategory } from '@/lib/guides';
 import { refrescarEstados } from '@/lib/integration-states';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 /**
  * Cliente tipado del sistema de configuración de integraciones (US-140+),

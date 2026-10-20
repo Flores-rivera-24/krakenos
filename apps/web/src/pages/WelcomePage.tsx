@@ -6,6 +6,7 @@ import { LogoMark } from '@/components/ui/logo';
 import { NetworkCanvas } from '@/components/ui/network-canvas';
 import { api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/entrada';
 
 /**
  * Portada pública (US-269). Es lo que ve en `/` quien no tiene sesión.

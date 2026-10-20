@@ -6,6 +6,7 @@ import { describeError } from '@/lib/errors';
 import { formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/controlDeAcceso';
 
 interface Props {
   device: Device;

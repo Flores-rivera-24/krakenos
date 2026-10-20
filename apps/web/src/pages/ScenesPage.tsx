@@ -31,6 +31,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/escenas';
 
 /** Tarjeta táctil de una escena con ejecución de un toque (US-166). */
 function SceneTile({

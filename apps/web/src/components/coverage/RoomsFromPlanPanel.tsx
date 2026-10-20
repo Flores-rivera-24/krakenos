@@ -13,6 +13,7 @@ import {
   type RoomCandidate,
 } from '@/lib/rooms-from-plan';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 interface Props {
   walls: Wall[];

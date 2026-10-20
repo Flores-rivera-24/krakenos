@@ -5,6 +5,7 @@ import { TYPE_LABEL_KEYS, deviceArtKind } from '@/lib/devices';
 import { timeAgo } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/inventario';
 
 interface Props {
   device: Device;

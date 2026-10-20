@@ -4,6 +4,7 @@ import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideo
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInventoryStore } from '@/store/inventory.store';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 const MAX_NODES = 10;
 const WIDTH = 520;

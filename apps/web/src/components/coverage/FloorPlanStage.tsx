@@ -10,6 +10,7 @@ import { signalQuality } from '@krakenos/types';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { plural, useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 /** Herramienta activa del lienzo. */
 export type CoverageTool = 'select' | 'wall' | 'ap' | 'measure';

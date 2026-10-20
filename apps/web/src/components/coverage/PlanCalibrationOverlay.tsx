@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { computeCalibration } from '@/lib/coverage-import';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 interface Props {
   /** Data URL de la imagen del plano ya importada. */

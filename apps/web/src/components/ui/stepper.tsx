@@ -3,6 +3,7 @@ import { useId, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 export interface StepperStep {
   /** Identificador estable del paso. */

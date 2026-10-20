@@ -1,6 +1,7 @@
 import { StatusDot } from '@/components/ui/status-dot';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
+import '@/lib/i18n/catalog/fragments/trafico';
 
 /**
  * Marca un panel en tiempo real como "obsoleto" cuando el stream está caído o las

@@ -21,6 +21,7 @@ import {
   minuteToTimeString,
   type Traducir,
 } from '@/lib/schedule-format';
+import '@/lib/i18n/catalog/fragments/rutinas';
 
 /**
  * Clave de copy de cada magnitud del tiempo (US-254). «la temperatura baja de

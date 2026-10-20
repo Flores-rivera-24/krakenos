@@ -4,6 +4,7 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { formatUptime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
 import { useSystemStats } from '@/lib/resources';
+import '@/lib/i18n/catalog/fragments/panel';
 
 function Meter({ label, percent, detail }: { label: string; percent: number; detail: string }) {
   return (

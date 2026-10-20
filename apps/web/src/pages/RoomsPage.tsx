@@ -28,6 +28,7 @@ import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/habitaciones';
 
 /** Tarjeta táctil de una habitación con estado agregado + acción de grupo (US-165). */
 function RoomTile({

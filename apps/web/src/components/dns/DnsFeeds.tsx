@@ -8,6 +8,7 @@ import { textoDeListaDns } from '@/lib/dns-feeds';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/dns';
 
 /**
  * Listas por categoría / adlists (US-114): suscríbete a listas curadas de bloqueo

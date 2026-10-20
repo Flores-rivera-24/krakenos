@@ -7,6 +7,7 @@ import { changeLocale, useT, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { useState } from 'react';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 const OPTIONS: { locale: Locale; labelKey: TranslationKey; descKey: TranslationKey }[] = [
   { locale: 'es', labelKey: 'settings.language.es', descKey: 'settings.language.esDesc' },

@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/sondeo';
+import '@/lib/i18n/catalog/fragments/usuarios';
+import '@/lib/i18n/catalog/fragments/wifi';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];

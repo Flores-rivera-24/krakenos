@@ -1,6 +1,7 @@
 import { USER_ROLES } from '@krakenos/types';
 import { describe, expect, it } from 'vitest';
 import { navGroupsForRole, mobileNavForRole } from '@/components/layout/nav';
+import '@/lib/i18n/catalog/fragments/usuarios';
 import { t } from '@/lib/i18n';
 import { ROLE_LABEL_KEYS, canControlHome, etiquetaDeRol } from '@/lib/roles';
 

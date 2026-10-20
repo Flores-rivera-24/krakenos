@@ -8,6 +8,8 @@ import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
+import '@/lib/i18n/catalog/fragments/inventario';
+import '@/lib/i18n/catalog/fragments/wifi';
 
 export function NetworksCard() {
   const t = useT();

@@ -6,6 +6,7 @@ import { LoadingLine } from '@/components/ui/loading-line';
 import { getPredictedHeatmap, listFloorPlans } from '@/lib/coverage';
 import { SIGNAL_QUALITY_KEYS, signalQuality, signalQualityColorVar } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** Categorías en orden de mejor a peor, para la barra de distribución. */
 const QUALITIES: SignalQuality[] = ['excellent', 'good', 'fair', 'weak', 'none'];

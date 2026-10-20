@@ -1,5 +1,10 @@
 import type { AuditAction } from '@krakenos/types';
 import type { TranslationKey, TranslationParams } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/auditoria';
+import '@/lib/i18n/catalog/fragments/dns';
+import '@/lib/i18n/catalog/fragments/energia';
+import '@/lib/i18n/catalog/fragments/personas';
+import '@/lib/i18n/catalog/fragments/vlan';
 
 /**
  * Texto de cada acción de auditoría. `Record<AuditAction, …>` **exhaustivo a propósito**:

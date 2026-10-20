@@ -13,6 +13,7 @@ import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { plural, useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/panel';
 
 interface Props {
   onClose: () => void;

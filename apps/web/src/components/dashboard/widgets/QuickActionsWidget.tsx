@@ -24,6 +24,8 @@ import { useAuthStore } from '@/store/auth.store';
 import { useFavoritesStore } from '@/store/favorites.store';
 import { toast } from '@/store/toast.store';
 import { useT } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/escenas';
+import '@/lib/i18n/catalog/fragments/panel';
 
 /** Un favorito resuelto contra el estado vivo, listo para pintar el tile. */
 interface ResolvedTile {

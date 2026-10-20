@@ -27,6 +27,7 @@ import { downloadReport } from '@/lib/reports';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
+import '@/lib/i18n/catalog/fragments/energia';
 
 const CHART_COLORS = {
   bar: 'var(--kr-accent)',

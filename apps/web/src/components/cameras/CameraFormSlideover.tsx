@@ -11,6 +11,9 @@ import { createCamera, updateCamera } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { toast } from '@/store/toast.store';
+import '@/lib/i18n/catalog/fragments/camaras';
+import '@/lib/i18n/catalog/fragments/usuarios';
+import '@/lib/i18n/catalog/fragments/wifi';
 
 interface Props {
   /** Si viene una cámara, el panel edita; si no, da de alta una nueva. */

@@ -1,6 +1,7 @@
 import type { AlertEvent, AlertRule, UpdateAlertRuleRequest } from '@krakenos/types';
 import { api } from '@/lib/api';
 import type { TranslationKey } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/ajustes';
 
 /** Cliente de las reglas de alerta (US-112). */
 
