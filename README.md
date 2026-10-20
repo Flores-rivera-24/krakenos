@@ -155,7 +155,7 @@ pnpm install
 # Agente: claves RS256 + base de datos
 cd apps/agent
 cp .env.example .env
-./scripts/gen-keys.sh          # genera el par RS256 en ./keys
+pnpm keys:gen                  # genera el par RS256 (y la clave de secretbox) en ./keys, con Node
 pnpm prisma:generate          # cliente de Prisma 7 (src/generated); ya corre solo tras `pnpm install`
 pnpm prisma:migrate            # crea la base SQLite
 pnpm db:seed                   # opcional: admin@krakenos.local / changeme123
@@ -259,7 +259,7 @@ instala su certificado público una vez (Ajustes → Sistema → Conexión segur
 (sin HTTPS no funcionan la app instalable, los avisos push ni las passkeys). `--tls self` sigue
 aceptándose, pero es un alias obsoleto de `local`.
 
-Instalación manual: `cd apps/agent && ./scripts/gen-local-ca.sh` y, en `.env`, `HTTPS_ENABLED=true`.
+Instalación manual: `cd apps/agent && pnpm ca:local` y, en `.env`, `HTTPS_ENABLED=true`.
 
 
 ### Docker (demo / evaluación rápida)

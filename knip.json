@@ -24,11 +24,14 @@
         "src/update-runner.ts",
         "src/reset-admin.ts",
         "src/migrate.ts",
+        "src/keys.ts",
+        "src/local-ca.ts",
         "prisma/seed.ts",
         "prisma.config.ts",
         "test/**/*.test.ts",
         "test/globalSetup.ts",
         "tsup.config.ts",
+        "tsup.root.config.ts",
         "vitest.config.ts",
         "vitest.mutation.config.ts"
       ]

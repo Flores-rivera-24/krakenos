@@ -547,7 +547,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // todos los usuarios). OJO: no rota el par RS256 en disco, así que los **access
   // tokens** ya emitidos siguen siendo válidos hasta su `exp` (≤ accessTokenTtl).
   // La rotación real de claves es un procedimiento de despliegue con solape
-  // (scripts/rotate-keys.sh + reinicio); ver docs/jwt-key-rotation.md. Combina
+  // (`node dist/keys.js rotate` + reinicio); ver docs/jwt-key-rotation.md. Combina
   // ambos para responder a una clave comprometida (rotar + revocar refresh).
   app.post(
     '/regen-keys',

@@ -14,7 +14,7 @@ export type TlsSource =
   /** Certificado de Let's Encrypt emitido por Tailscale para `*.ts.net`. */
   | 'tailscale'
   /**
-   * Firmado por la CA local de KrakenOS (`gen-local-ca.sh`): cifra y se renueva
+   * Firmado por la CA local de KrakenOS (`crypto/local-ca.ts`): cifra y se renueva
    * solo, pero cada dispositivo debe instalar UNA vez el certificado de la CA.
    */
   | 'local-ca'

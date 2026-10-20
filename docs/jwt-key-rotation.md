@@ -2,7 +2,7 @@
 
 KrakenOS firma los JWT (access, refresh y `mfa-pending`) con un par de claves
 **RS256**: privada en disco para firmar, pública para verificar (`keys/`,
-gitignored, generadas con `scripts/gen-keys.sh`). Esta guía explica cómo **rotar**
+gitignored, generadas con `pnpm keys:gen`, o `node dist/keys.js gen`). Esta guía explica cómo **rotar**
 ese par —por caducidad periódica o porque la clave privada se vea comprometida—
 **sin cerrar todas las sesiones**.
 
@@ -33,11 +33,12 @@ Variables de entorno (ver `.env.example`):
 
 ## Procedimiento
 
-Con el helper `scripts/rotate-keys.sh` (recomendado):
+Con la CLI de claves (recomendado; hecha con Node, sin `openssl`):
 
 ```bash
 cd apps/agent
-./scripts/rotate-keys.sh          # conserva la pública actual como .prev y genera un par nuevo
+pnpm keys:rotate                  # en una instalación: node dist/keys.js rotate
+                                  # conserva la pública actual como .prev y genera un par nuevo
 ```
 
 Luego:
@@ -67,7 +68,7 @@ largo. Tras rotar (pasos 1–2), invalida de inmediato las sesiones existentes:
 
 > **Aclaración sobre `regen-keys`:** ese endpoint **no** rota el par RS256 en disco
 > ni en caliente — solo revoca los refresh tokens. La rotación real de claves es
-> este procedimiento (rotate-keys.sh + reinicio). Combínalos para una respuesta
+> este procedimiento (`keys rotate` + reinicio). Combínalos para una respuesta
 > completa a un compromiso.
 
 ## Verificación rápida tras rotar

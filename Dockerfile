@@ -17,7 +17,7 @@
 FROM node:24-bookworm-slim AS builder
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 make g++ openssl ca-certificates \
+  && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && corepack enable
 
@@ -32,13 +32,13 @@ RUN pnpm install --frozen-lockfile \
 # ---------- Etapa 2: runtime ----------
 FROM node:24-bookworm-slim AS runtime
 
-# Solo runtime: openssl (claves JWT del entrypoint) + ca-certificates. Prisma 7 ya no
-# necesita openssl: no hay motor nativo (US-276). Sin compiladores.
+# Solo runtime: ca-certificates. Sin openssl: Prisma 7 no tiene motor nativo (US-276) y las
+# claves JWT del entrypoint las genera Node (`dist/keys.js`, US-277). Sin compiladores.
 # `corepack prepare … --activate` deja pnpm 9.12.0 instalado EN LA IMAGEN (AUD-27):
 # sin esto, el primer `pnpm` en runtime hace que corepack lo descargue del registry
 # —rompe el arranque "sin nube" en una LAN aislada. Con esto, arranca offline.
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && apt-get install -y --no-install-recommends ca-certificates \
   && rm -rf /var/lib/apt/lists/* \
   && corepack enable \
   && corepack prepare pnpm@9.12.0 --activate

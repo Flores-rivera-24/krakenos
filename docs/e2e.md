@@ -109,7 +109,7 @@ pnpm test:e2e:install      # instala Chromium (una vez; en CI, --with-deps)
 pnpm test:e2e              # corre la suite
 ```
 
-Requiere las claves JWT (`apps/agent/scripts/gen-keys.sh`) y `prisma generate` hechos (como
+Requiere las claves JWT (`pnpm --filter @krakenos/agent keys:gen`) y `prisma generate` hechos (como
 el resto de la suite). En CI hay un **job aparte** (`e2e`) que no alarga `build-test`; sube
 `playwright-report/` y `test-results/` como **artefactos** solo al fallar (trazas + vídeo +
 screenshots, por `trace: 'retain-on-failure'`).

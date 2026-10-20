@@ -2,7 +2,6 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   TLS_WARN_DAYS,
@@ -11,6 +10,7 @@ import {
   disabledWithoutTls,
   readCertificateValidity,
 } from '../../src/system/tls.js';
+import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 
 /**
  * Lógica del certificado TLS (US-241). Los certificados se generan **de verdad**
@@ -78,22 +78,14 @@ describe('classifyCertificateSource (US-241)', () => {
     expect(classifyCertificateSource(validity!)).toBe('self-signed');
   });
 
-  it('reconoce el certificado emitido por la CA local (el de gen-local-ca.sh de verdad)', () => {
+  it('reconoce el certificado emitido por la CA local (el que emite local-ca.ts de verdad)', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'krakenos-tls-ca-'));
-    execFileSync(
-      'bash',
-      [fileURLToPath(new URL('../../scripts/gen-local-ca.sh', import.meta.url))],
-      {
-        env: {
-          ...process.env,
-          KRAKENOS_CERTS_DIR: join(dir, 'certs'),
-          KRAKENOS_KEYS_DIR: join(dir, 'keys'),
-          KRAKENOS_HOSTNAME: 'casa',
-          KRAKENOS_LAN_IP: '192.168.1.50',
-        },
-        stdio: 'ignore',
-      },
-    );
+    await ensureLocalCa({
+      certsDir: join(dir, 'certs'),
+      keysDir: join(dir, 'keys'),
+      hostname: 'casa',
+      lanIps: ['192.168.1.50'],
+    });
     const validity = readCertificateValidity(
       readFileSync(join(dir, 'certs', 'agent-cert.pem'), 'utf8'),
     );
