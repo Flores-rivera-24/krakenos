@@ -72,12 +72,12 @@ describe('parseFirewallRules + blockRuleDescr', () => {
   it('extrae {id, descr} y encuentra la regla de bloqueo de una MAC', () => {
     const rules = parseFirewallRules([
       { id: 0, descr: 'Default allow' },
-      { id: 1, descr: blockRuleDescr('F0:18:98:AA:BB:CC') },
+      { id: 1, descr: blockRuleDescr('F0:18:98:AA:BB:CC'), source: '192.168.1.42' },
       { id: 2 }, // sin descr → descartada
     ]);
     expect(rules).toEqual([
-      { id: 0, descr: 'Default allow' },
-      { id: 1, descr: 'krakenos-block:f0:18:98:aa:bb:cc' },
+      { id: 0, descr: 'Default allow', source: null },
+      { id: 1, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' },
     ]);
   });
 });

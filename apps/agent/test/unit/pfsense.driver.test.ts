@@ -12,6 +12,7 @@ interface Call {
   path: string;
   body?: unknown;
   apiKey?: string;
+  query?: string;
 }
 
 type Handler = (call: Call) => { status?: number; data?: unknown };
@@ -33,6 +34,7 @@ class FakeFetch {
     const call: Call = {
       method,
       path: bare,
+      query: path.split('?')[1],
       body: init.body ? JSON.parse(init.body) : undefined,
       apiKey: init.headers?.['X-API-Key'],
     };
@@ -162,7 +164,7 @@ describe('PfSenseDriver', () => {
     fake
       .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
       .on('GET /api/v2/firewall/rules', () => ({
-        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc' }],
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' }],
       }))
       .on('POST /api/v2/firewall/rule', () => ({ status: 200, data: { id: 5 } }))
       .on('POST /api/v2/firewall/apply', () => ({ data: null }));
@@ -171,6 +173,36 @@ describe('PfSenseDriver', () => {
     expect(
       fake.calls.filter((c) => c.method === 'POST' && c.path === '/api/v2/firewall/rule'),
     ).toHaveLength(0);
+  });
+
+  it('blockDevice rehace la regla si el aparato cambió de IP', async () => {
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.99' }],
+      }))
+      .on('DELETE /api/v2/firewall/rule', () => ({ data: null }))
+      .on('POST /api/v2/firewall/rule', () => ({ data: { id: 5 } }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc');
+
+    expect(fake.calls.filter((c) => c.method === 'DELETE').map((c) => c.query)).toEqual(['id=3']);
+    const posts = fake.calls.filter(
+      (c) => c.method === 'POST' && c.path === '/api/v2/firewall/rule',
+    );
+    expect(posts).toHaveLength(1);
+    expect(posts[0]!.body).toMatchObject({ source: '192.168.1.42' });
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
+  });
+
+  it('blockDevice conserva la regla existente si el aparato no aparece en ARP', async () => {
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: [] }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' }],
+      }));
+    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).resolves.toBeUndefined();
+    expect(fake.calls.some((c) => c.method !== 'GET')).toBe(false);
   });
 
   it('unblockDevice borra todas las reglas etiquetadas y aplica una sola vez', async () => {
@@ -186,7 +218,10 @@ describe('PfSenseDriver', () => {
       .on('POST /api/v2/firewall/apply', () => ({ data: null }));
     await makeDriver(fake).unblockDevice('f0:18:98:aa:bb:cc');
 
-    expect(fake.calls.filter((c) => c.method === 'DELETE')).toHaveLength(2);
+    const dels = fake.calls.filter((c) => c.method === 'DELETE');
+    expect(dels).toHaveLength(2);
+    // Orden de mayor a menor id (protege el `sort`).
+    expect(dels.map((c) => c.query)).toEqual(['id=9', 'id=7']);
     expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
   });
 

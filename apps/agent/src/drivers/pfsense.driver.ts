@@ -14,6 +14,7 @@ import type {
 import {
   blockRuleDescr,
   buildBlockRulePayload,
+  type FirewallRuleRef,
   ipForMac,
   parseFirewallRules,
   parsePfSenseArp,
@@ -114,14 +115,27 @@ export class PfSenseDriver implements HardwareDriver {
   async blockDevice(mac: string): Promise<void> {
     const arp = parsePfSenseArp(await this.opts.client.get('/api/v2/diagnostics/arp_table'));
     const ip = ipForMac(arp, mac);
-    if (!ip) throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
-    // Idempotente: si la regla de este aparato ya existe, no se crea otra (el barrido
-    // reafirma el bloqueo y duplicaba la regla en cada pasada).
     const descr = blockRuleDescr(mac);
     const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
-    if (rules.some((r) => r.descr === descr)) return;
+    const mine = rules.filter((r) => r.descr === descr);
+    if (!ip) {
+      // Apagado: si ya hay regla se conserva (el reafirmado no es un error).
+      if (mine.length > 0) return;
+      throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
+    }
+    // Idempotente: una sola regla y con la IP actual (la regla es por IP, y DHCP la
+    // puede haber cambiado). Si no cuadra, se quitan las viejas y se crea la nueva.
+    if (mine.length === 1 && mine[0]!.source === ip) return;
+    await this.deleteRules(mine);
     await this.opts.client.post('/api/v2/firewall/rule', buildBlockRulePayload(ip, mac, this.lan));
     await this.opts.client.post('/api/v2/firewall/apply', {});
+  }
+
+  /** Borra reglas de mayor a menor id (por si el id es posicional). Sin `apply`. */
+  private async deleteRules(rules: FirewallRuleRef[]): Promise<void> {
+    for (const rule of [...rules].sort((x, y) => y.id - x.id)) {
+      await this.opts.client.delete(`/api/v2/firewall/rule?id=${rule.id}`);
+    }
   }
 
   async unblockDevice(mac: string): Promise<void> {
@@ -129,12 +143,9 @@ export class PfSenseDriver implements HardwareDriver {
     const descr = blockRuleDescr(mac);
     const mine = rules.filter((r) => r.descr === descr);
     if (mine.length === 0) return; // no había regla: nada que hacer
-    // El id de pfSense es la posición en la lista: se borra de mayor a menor para que
-    // quitar una regla no desplace los ids de las que faltan. Un fallo se propaga: el
-    // llamante solo marca el aparato como desbloqueado tras el éxito del driver.
-    for (const rule of mine.sort((x, y) => y.id - x.id)) {
-      await this.opts.client.delete(`/api/v2/firewall/rule?id=${rule.id}`);
-    }
+    // Un fallo se propaga: el llamante solo marca el aparato como desbloqueado tras el
+    // éxito del driver.
+    await this.deleteRules(mine);
     await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
