@@ -121,4 +121,107 @@ describe('CompositeIotManager', () => {
     await expect(composite.stop()).resolves.toBeUndefined();
     expect(govee.stopped).toBe(true);
   });
+
+  describe('listDevices con un backend caído', () => {
+    class BrokenManager extends FakeManager {
+      constructor(private readonly err: Error) {
+        super([]);
+      }
+      override async listDevices(): Promise<IotDevice[]> {
+        throw this.err;
+      }
+    }
+
+    it('devuelve los aparatos (prefijados) del sano y avisa del caído', async () => {
+      const onError = vi.fn();
+      const composite = new CompositeIotManager(
+        [
+          { prefix: 'hue', manager: new BrokenManager(new Error('bridge caído')) },
+          { prefix: 'govee', manager: new FakeManager([device('AA:BB', 'Tira')]) },
+        ],
+        onError,
+      );
+      const list = await composite.listDevices();
+      expect(list.map((d) => d.id)).toEqual(['govee:AA:BB']);
+      expect(onError).toHaveBeenCalledTimes(1);
+      expect(onError.mock.calls[0]![0]).toBe('hue');
+      expect((onError.mock.calls[0]![1] as Error).message).toBe('bridge caído');
+    });
+
+    it('si fallan todos, rechaza con el primer error', async () => {
+      const composite = new CompositeIotManager([
+        { prefix: 'hue', manager: new BrokenManager(new Error('primero')) },
+        { prefix: 'govee', manager: new BrokenManager(new Error('segundo')) },
+      ]);
+      await expect(composite.listDevices()).rejects.toThrow('primero');
+    });
+
+    it('un miembro sano sin aparatos no oculta el fallo del otro: lista vacía, no error', async () => {
+      const onError = vi.fn();
+      const composite = new CompositeIotManager(
+        [
+          { prefix: 'hue', manager: new BrokenManager(new Error('x')) },
+          { prefix: 'govee', manager: new FakeManager([]) },
+        ],
+        onError,
+      );
+      await expect(composite.listDevices()).resolves.toEqual([]);
+      expect(onError).toHaveBeenCalledTimes(1);
+    });
+
+    it('un miembro colgado cuenta como fallo y no ciega a los demás', async () => {
+      vi.useFakeTimers();
+      try {
+        const hung = new FakeManager([]);
+        hung.listDevices = () => new Promise<IotDevice[]>(() => undefined);
+        const onError = vi.fn();
+        const composite = new CompositeIotManager(
+          [
+            { prefix: 'hue', manager: hung },
+            { prefix: 'govee', manager: new FakeManager([device('AA:BB')]) },
+          ],
+          onError,
+        );
+        const p = composite.listDevices();
+        await vi.advanceTimersByTimeAsync(10_500);
+        expect((await p).map((d) => d.id)).toEqual(['govee:AA:BB']);
+        expect(onError).toHaveBeenCalledWith(
+          'hue',
+          expect.objectContaining({ code: 'IOT_TIMEOUT' }),
+        );
+        expect(composite.listFailures()).toEqual([{ prefix: 'hue', message: expect.any(String) }]);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('onError solo avisa al pasar a caído y onRecover al volver', async () => {
+      const onError = vi.fn();
+      const onRecover = vi.fn();
+      const flaky = new FakeManager([device('1')]);
+      let down = true;
+      flaky.listDevices = async () => {
+        if (down) throw new Error('x');
+        return [device('1')];
+      };
+      const composite = new CompositeIotManager(
+        [
+          { prefix: 'hue', manager: flaky },
+          { prefix: 'govee', manager: new FakeManager([device('2')]) },
+        ],
+        onError,
+        onRecover,
+      );
+      await composite.listDevices();
+      await composite.listDevices();
+      expect(onError).toHaveBeenCalledTimes(1);
+      down = false;
+      await composite.listDevices();
+      expect(onRecover).toHaveBeenCalledWith('hue');
+      expect(composite.listFailures()).toEqual([]);
+      down = true;
+      await composite.listDevices();
+      expect(onError).toHaveBeenCalledTimes(2);
+    });
+  });
 });

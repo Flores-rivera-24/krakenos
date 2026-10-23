@@ -113,4 +113,65 @@ describe('withDeviceCache (US-229)', () => {
 
     expect(getDevice).toHaveBeenCalledTimes(2);
   });
+
+  it('una lectura colgada vence por tiempo y no congela la caché', async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const iot: IotManager = {
+        listDevices: () => {
+          calls += 1;
+          return new Promise<IotDevice[]>(() => undefined);
+        },
+        getDevice: async () => null,
+        setState: async () => ({ ...LAMP }),
+      };
+      const cached = withDeviceCache(iot, { listTimeoutMs: 50 });
+      const first = expect(cached.listDevices()).rejects.toMatchObject({ code: 'IOT_TIMEOUT' });
+      await vi.advanceTimersByTimeAsync(60);
+      await first;
+      const second = expect(cached.listDevices()).rejects.toMatchObject({ code: 'IOT_TIMEOUT' });
+      await vi.advanceTimersByTimeAsync(60);
+      await second;
+      expect(calls).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('tras un timeout, la siguiente lectura buena sí se cachea', async () => {
+    vi.useFakeTimers();
+    try {
+      let calls = 0;
+      const iot: IotManager = {
+        listDevices: () => {
+          calls += 1;
+          return calls === 1 ? new Promise<IotDevice[]>(() => undefined) : Promise.resolve([LAMP]);
+        },
+        getDevice: async () => null,
+        setState: async () => ({ ...LAMP }),
+      };
+      const cached = withDeviceCache(iot, { listTimeoutMs: 50 });
+      const first = expect(cached.listDevices()).rejects.toMatchObject({ code: 'IOT_TIMEOUT' });
+      await vi.advanceTimersByTimeAsync(60);
+      await first;
+      await cached.listDevices();
+      await cached.listDevices();
+      expect(calls).toBe(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('deja pasar los fallos parciales de la última lectura', async () => {
+    const iot = {
+      ...fakeIot([LAMP]),
+      listFailures: () => [{ prefix: 'hue', message: 'caído' }],
+    } as IotManager;
+    const cached = withDeviceCache(iot) as IotManager & {
+      listFailures?: () => { prefix: string; message: string }[];
+    };
+    await cached.listDevices();
+    expect(cached.listFailures?.()).toEqual([{ prefix: 'hue', message: 'caído' }]);
+  });
 });

@@ -96,4 +96,26 @@ describe('IotWatcher', () => {
     await watcher.tick();
     expect(events).toHaveLength(0);
   });
+
+  it('un aparato que vuelve tras un corte parcial conserva su línea base y publica su cambio', async () => {
+    const a = device({
+      id: 'hue:a',
+      kind: 'contact',
+      on: null,
+      readings: [{ metric: 'contact', value: 0, unit: '' }],
+    });
+    const b = device({ id: 'govee:b' });
+    const { watcher, events, setDevices } = setup([a, b]);
+    await watcher.tick();
+    setDevices([b]); // el backend de A cae: la lista llega parcial
+    await watcher.tick();
+    setDevices([
+      { ...a, readings: [{ metric: 'contact', value: 1, unit: '' }] }, // se abrió durante el corte
+      b,
+    ]);
+    await watcher.tick();
+    expect(events).toEqual([
+      { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },
+    ]);
+  });
 });
