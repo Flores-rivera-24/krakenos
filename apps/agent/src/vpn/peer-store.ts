@@ -1,5 +1,4 @@
-import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { FileJsonStore } from '../store/json-store.js';
 
 /** Registro persistido de un peer (lo que WireGuard no guarda: id, nombre, alta). */
 export interface StoredPeer {
@@ -41,44 +40,28 @@ export class InMemoryPeerStore implements PeerStore {
   }
 }
 
-/** Almacén respaldado por un fichero JSON (propiedad del agente, no privilegiado). */
+/**
+ * Almacén respaldado por un fichero JSON (propiedad del agente, no privilegiado).
+ * Delega en `FileJsonStore`: operaciones serializadas, escritura atómica 0600 y un
+ * JSON corrupto rechaza con `CorruptJsonStoreError` en vez de leerse como vacío
+ * (que dejaba al siguiente `add` pisando el registro entero).
+ */
 export class FilePeerStore implements PeerStore {
-  constructor(private readonly path: string) {}
+  private readonly store: FileJsonStore<StoredPeer>;
 
-  private async read(): Promise<StoredPeer[]> {
-    try {
-      return JSON.parse(await readFile(this.path, 'utf8')) as StoredPeer[];
-    } catch {
-      return [];
-    }
+  constructor(path: string) {
+    this.store = new FileJsonStore<StoredPeer>(path);
   }
 
-  private async write(peers: StoredPeer[]): Promise<void> {
-    await mkdir(dirname(this.path), { recursive: true });
-    await writeFile(this.path, JSON.stringify(peers, null, 2), {
-      encoding: 'utf8',
-      mode: 0o600, // claves de peers WireGuard: solo el dueño
-    });
-    // `mode` solo aplica al crear: un fichero que ya existía con 0644 se corrige aquí.
-    await chmod(this.path, 0o600);
+  list(): Promise<StoredPeer[]> {
+    return this.store.list();
   }
 
-  async list(): Promise<StoredPeer[]> {
-    return this.read();
+  add(peer: StoredPeer): Promise<void> {
+    return this.store.upsert(peer);
   }
 
-  async add(peer: StoredPeer): Promise<void> {
-    const peers = await this.read();
-    peers.push(peer);
-    await this.write(peers);
-  }
-
-  async removeById(id: string): Promise<StoredPeer | null> {
-    const peers = await this.read();
-    const idx = peers.findIndex((p) => p.id === id);
-    if (idx === -1) return null;
-    const [removed] = peers.splice(idx, 1);
-    await this.write(peers);
-    return removed ?? null;
+  removeById(id: string): Promise<StoredPeer | null> {
+    return this.store.removeById(id);
   }
 }
