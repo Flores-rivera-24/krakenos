@@ -20,6 +20,7 @@ import { env, publicDisclosure } from '../../config/env.js';
 import { boundFor, clampToBound } from '../../config/settings-bounds.js';
 import { rateLimitStore } from '../../plugins/rate-limit-store.js';
 import { BackupService } from '../../system/backup.service.js';
+import { keyFilePaths } from '../../system/key-paths.js';
 import { detectDeployMode } from '../../system/deploy-mode.js';
 import {
   resolveDbFile,
@@ -565,7 +566,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
   // Copia de seguridad **real** cifrada (US-103): DB + keys + data. Reemplaza el
   // falso backup que solo exportaba ajustes cosméticos. Admin-only y auditada. El
   // cuerpo de la respuesta es el archivo binario (octet-stream), listo para descargar.
-  const backupService = new BackupService(app.prisma);
+  const backupService = new BackupService(app.prisma, { keyFiles: keyFilePaths(env) });
   app.post<{ Body: { passphrase: string } }>(
     '/backup',
     { preHandler: app.requireActiveAdmin, schema: backupSchema },

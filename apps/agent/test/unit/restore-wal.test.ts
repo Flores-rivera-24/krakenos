@@ -5,6 +5,16 @@ import { createPrismaClient } from '../../src/db/client.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { applyStagedRestore } from '../../src/system/restore.js';
+import { keyFilePaths } from '../../src/system/key-paths.js';
+
+/** Rutas de las tres claves dentro de `dir` (en producción salen de `keyFilePaths(env)`). */
+function clavesEn(dir: string) {
+  return keyFilePaths({
+    jwtPrivateKeyPath: join(dir, 'jwt-private.pem'),
+    jwtPublicKeyPath: join(dir, 'jwt-public.pem'),
+    secretboxKeyPath: join(dir, 'secretbox.key'),
+  });
+}
 
 /**
  * US-274 — restaurar no hereda un `-wal` huérfano.
@@ -111,7 +121,12 @@ describe('restore y WAL huérfano (US-274)', () => {
 
     applyStagedRestore(
       staging,
-      { dbFile: vivo, keysDir: join(tmp, 'keys'), dataDir: join(tmp, 'data') },
+      {
+        dbFile: vivo,
+        keysDir: join(tmp, 'keys'),
+        keyFiles: clavesEn(join(tmp, 'keys')),
+        dataDir: join(tmp, 'data'),
+      },
       join(tmp, 'pre-restore'),
     );
 
@@ -139,7 +154,12 @@ describe('restore y WAL huérfano (US-274)', () => {
     expect(() =>
       applyStagedRestore(
         staging,
-        { dbFile: vivo, keysDir: join(tmp, 'keys'), dataDir: join(tmp, 'data') },
+        {
+          dbFile: vivo,
+          keysDir: join(tmp, 'keys'),
+          keyFiles: clavesEn(join(tmp, 'keys')),
+          dataDir: join(tmp, 'data'),
+        },
         join(tmp, 'pre-restore'),
       ),
     ).toThrow();
@@ -161,7 +181,12 @@ describe('restore y WAL huérfano (US-274)', () => {
 
     const aplicados = applyStagedRestore(
       staging,
-      { dbFile: vivo, keysDir: join(tmp, 'keys'), dataDir: join(tmp, 'data') },
+      {
+        dbFile: vivo,
+        keysDir: join(tmp, 'keys'),
+        keyFiles: clavesEn(join(tmp, 'keys')),
+        dataDir: join(tmp, 'data'),
+      },
       join(tmp, 'pre-restore'),
     );
 

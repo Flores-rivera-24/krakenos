@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { mkdir, open, rename, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
 import {
   ENVELOPE_HEADER_LEN,
   type ArchiveEntry,
@@ -33,6 +34,8 @@ export interface RestoreTargets {
   dbFile: string;
   /** Directorio de claves (`keys/`, incluida `secretbox.key`). */
   keysDir: string;
+  /** Rutas reales de las claves: mandan sobre `keysDir` para sus nombres lógicos. */
+  keyFiles: KeyFilePaths;
   /** Directorio de datos locales (`data/`). */
   dataDir: string;
 }
@@ -256,6 +259,9 @@ function listStagedFiles(dir: string): string[] {
 /** Mapea un nombre de entrada a su destino real, o `null` si no aplica. */
 function destFor(name: string, targets: RestoreTargets): string | null {
   if (name === 'db/app.db') return targets.dbFile;
+  for (const k of Object.keys(KEY_ENTRY_NAMES) as (keyof KeyFilePaths)[]) {
+    if (name === KEY_ENTRY_NAMES[k]) return targets.keyFiles[k];
+  }
   if (name.startsWith('keys/')) return join(targets.keysDir, name.slice('keys/'.length));
   if (name.startsWith('data/')) return join(targets.dataDir, name.slice('data/'.length));
   return null;

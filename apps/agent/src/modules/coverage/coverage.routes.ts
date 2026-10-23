@@ -51,10 +51,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
 
   // ---- Planos ----
 
-  app.get(
-    '/floorplans',
-    { schema: listFloorPlansSchema, preHandler: app.authenticate },
-    async () => service.listFloorPlans(),
+  app.get('/floorplans', { schema: listFloorPlansSchema, preHandler: app.authenticate }, async () =>
+    service.listFloorPlans(),
   );
 
   app.post<{ Body: CreateFloorPlanRequest }>(
@@ -82,7 +80,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     async (req, reply) => {
       const plan = await service.getFloorPlan(req.params.id);
       if (!plan) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       return reply.send(plan);
     },
@@ -96,7 +96,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
       if (imgErr) return reply.code(400).send(imgErr);
       const plan = await service.updateFloorPlan(req.params.id, req.body);
       if (!plan) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       app.audit({
         action: 'coverage.floorplan.update',
@@ -114,7 +116,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     async (req, reply) => {
       const deleted = await service.deleteFloorPlan(req.params.id);
       if (!deleted) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       app.audit({
         action: 'coverage.floorplan.delete',
@@ -132,7 +136,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     async (req, reply) => {
       const heatmap = await service.predictedHeatmap(req.params.id, req.query.band);
       if (!heatmap) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       return reply.send(heatmap);
     },
@@ -154,7 +160,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     async (req, reply) => {
       const scans = await service.listScans(req.params.id);
       if (!scans) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       return reply.send(scans);
     },
@@ -166,7 +174,9 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
     async (req, reply) => {
       const scan = await service.createScan(req.params.id, req.body);
       if (!scan) {
-        return reply.code(404).send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
+        return reply
+          .code(404)
+          .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
       app.audit({
         action: 'coverage.scan.create',

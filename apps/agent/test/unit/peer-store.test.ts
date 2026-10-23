@@ -1,7 +1,8 @@
-import { rm, stat } from 'node:fs/promises';
+import { chmod, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { CorruptJsonStoreError } from '../../src/store/json-store.js';
 import { FilePeerStore, InMemoryPeerStore, type StoredPeer } from '../../src/vpn/peer-store.js';
 
 const PEER: StoredPeer = {
@@ -47,5 +48,29 @@ describe('FilePeerStore', () => {
 
   it('devuelve lista vacía si el fichero no existe', async () => {
     expect(await new FilePeerStore(join(tmpdir(), 'krakenos-noexiste.json')).list()).toEqual([]);
+  });
+
+  it('un JSON corrupto no se lee como vacío: list rechaza y add no pisa el fichero', async () => {
+    await writeFile(path, '{ esto no es json', 'utf8');
+    const store = new FilePeerStore(path);
+    await expect(store.list()).rejects.toBeInstanceOf(CorruptJsonStoreError);
+    await expect(store.add(PEER)).rejects.toBeInstanceOf(CorruptJsonStoreError);
+    expect(await readFile(path, 'utf8')).toBe('{ esto no es json');
+  });
+
+  it('dos add concurrentes conservan los dos peers', async () => {
+    const store = new FilePeerStore(path);
+    await Promise.all([
+      store.add(PEER),
+      store.add({ ...PEER, id: 'p2', publicKey: 'PK2', allowedIps: '10.8.0.3/32' }),
+    ]);
+    expect((await store.list()).map((p) => p.id).sort()).toEqual(['p1', 'p2']);
+  });
+
+  it('un fichero existente con 0644 queda en 0600 tras escribir', async () => {
+    await writeFile(path, '[]', 'utf8');
+    await chmod(path, 0o644);
+    await new FilePeerStore(path).add(PEER);
+    expect((await stat(path)).mode & 0o777).toBe(0o600);
   });
 });

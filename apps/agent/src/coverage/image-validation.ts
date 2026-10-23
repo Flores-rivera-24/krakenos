@@ -55,9 +55,7 @@ export function parseImageDataUrl(dataUrl: string): ParsedImageDataUrl | null {
   }
 }
 
-export type ImageValidation =
-  | { ok: true; mime: AllowedImageMime }
-  | { ok: false; reason: string };
+export type ImageValidation = { ok: true; mime: AllowedImageMime } | { ok: false; reason: string };
 
 /**
  * Valida una imagen de fondo (data URL). Falla si no es un data URL base64 de
@@ -74,7 +72,10 @@ export function validateBackgroundImage(dataUrl: string): ImageValidation {
   if (!detected) return { ok: false, reason: 'El contenido no es una imagen PNG, JPEG o WebP' };
   // El contenido manda: el MIME declarado debe coincidir con lo detectado.
   if (detected !== parsed.mime) {
-    return { ok: false, reason: `El contenido (${detected}) no coincide con el tipo declarado (${parsed.mime})` };
+    return {
+      ok: false,
+      reason: `El contenido (${detected}) no coincide con el tipo declarado (${parsed.mime})`,
+    };
   }
   return { ok: true, mime: detected };
 }

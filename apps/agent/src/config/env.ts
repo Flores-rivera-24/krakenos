@@ -212,6 +212,9 @@ const https =
       }
     : null;
 
+const jwtPrivateKeyPath = resolve(required('JWT_PRIVATE_KEY_PATH'));
+const jwtPublicKeyPath = resolve(required('JWT_PUBLIC_KEY_PATH'));
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -223,8 +226,10 @@ export const env = {
   refreshTokenTtl: int('REFRESH_TOKEN_TTL', 2_592_000),
 
   /** Claves RS256 leídas desde disco al arrancar. */
-  jwtPrivateKey: readFileSync(resolve(required('JWT_PRIVATE_KEY_PATH')), 'utf8'),
-  jwtPublicKey: readFileSync(resolve(required('JWT_PUBLIC_KEY_PATH')), 'utf8'),
+  jwtPrivateKeyPath,
+  jwtPublicKeyPath,
+  jwtPrivateKey: readFileSync(jwtPrivateKeyPath, 'utf8'),
+  jwtPublicKey: readFileSync(jwtPublicKeyPath, 'utf8'),
   /**
    * Claves públicas **anteriores** (rotación RS256, US-64). Durante el solape se
    * usan solo para verificar tokens firmados con la clave previa; nunca firman.
@@ -239,6 +244,12 @@ export const env = {
    * arrancar si falta (`loadOrCreateSecretbox`), como el resto de claves de `keys/`.
    */
   secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? resolve('keys/secretbox.key'),
+
+  /**
+   * Directorio de las copias automáticas. Por defecto `data/backups`; en Docker va al
+   * volumen persistente (`/data/backups`), o la copia moriría con el contenedor.
+   */
+  backupDir: process.env.BACKUP_DIR ? resolve(process.env.BACKUP_DIR) : resolve('data/backups'),
 
   /**
    * Comprobación de actualizaciones (US-116). **Opt-in**: `UPDATE_CHECK_REPO`

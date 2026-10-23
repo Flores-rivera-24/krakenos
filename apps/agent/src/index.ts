@@ -6,6 +6,7 @@ import { MigrationError, migrateFromEnv } from './db/migrate.js';
 import { buildServer } from './server.js';
 import { createShutdown } from './system/shutdown.js';
 import { applyStagedRestore, resolveDbFile } from './system/restore.js';
+import { keyFilePaths } from './system/key-paths.js';
 
 /**
  * Aplica una restauración preparada (US-104) **antes** de abrir la base de datos:
@@ -26,6 +27,7 @@ function applyPendingRestore(): void {
       {
         dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),
         keysDir: dirname(env.secretboxKeyPath),
+        keyFiles: keyFilePaths(env),
         dataDir: resolve('data'),
       },
       preRestoreDir,
