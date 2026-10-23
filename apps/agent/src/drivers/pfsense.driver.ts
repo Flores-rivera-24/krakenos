@@ -115,21 +115,27 @@ export class PfSenseDriver implements HardwareDriver {
     const arp = parsePfSenseArp(await this.opts.client.get('/api/v2/diagnostics/arp_table'));
     const ip = ipForMac(arp, mac);
     if (!ip) throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
+    // Idempotente: si la regla de este aparato ya existe, no se crea otra (el barrido
+    // reafirma el bloqueo y duplicaba la regla en cada pasada).
+    const descr = blockRuleDescr(mac);
+    const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
+    if (rules.some((r) => r.descr === descr)) return;
     await this.opts.client.post('/api/v2/firewall/rule', buildBlockRulePayload(ip, mac, this.lan));
     await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
   async unblockDevice(mac: string): Promise<void> {
-    try {
-      const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
-      const descr = blockRuleDescr(mac);
-      const rule = rules.find((r) => r.descr === descr);
-      if (!rule) return; // no había regla: nada que hacer
+    const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
+    const descr = blockRuleDescr(mac);
+    const mine = rules.filter((r) => r.descr === descr);
+    if (mine.length === 0) return; // no había regla: nada que hacer
+    // El id de pfSense es la posición en la lista: se borra de mayor a menor para que
+    // quitar una regla no desplace los ids de las que faltan. Un fallo se propaga: el
+    // llamante solo marca el aparato como desbloqueado tras el éxito del driver.
+    for (const rule of mine.sort((x, y) => y.id - x.id)) {
       await this.opts.client.delete(`/api/v2/firewall/rule?id=${rule.id}`);
-      await this.opts.client.post('/api/v2/firewall/apply', {});
-    } catch {
-      // Best-effort: un fallo al desbloquear no debe romper el flujo.
     }
+    await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
   // ---- WiFi: no aplica a pfSense ----

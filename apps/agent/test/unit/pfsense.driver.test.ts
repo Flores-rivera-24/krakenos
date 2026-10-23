@@ -158,6 +158,47 @@ describe('PfSenseDriver', () => {
     expect(del!.path).toBe('/api/v2/firewall/rule');
   });
 
+  it('blockDevice no crea otra regla si ya existe la etiquetada para esa MAC', async () => {
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc' }],
+      }))
+      .on('POST /api/v2/firewall/rule', () => ({ status: 200, data: { id: 5 } }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await makeDriver(fake).blockDevice('F0:18:98:AA:BB:CC');
+
+    expect(
+      fake.calls.filter((c) => c.method === 'POST' && c.path === '/api/v2/firewall/rule'),
+    ).toHaveLength(0);
+  });
+
+  it('unblockDevice borra todas las reglas etiquetadas y aplica una sola vez', async () => {
+    fake
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [
+          { id: 7, descr: 'krakenos-block:f0:18:98:aa:bb:cc' },
+          { id: 8, descr: 'otra regla' },
+          { id: 9, descr: 'krakenos-block:f0:18:98:aa:bb:cc' },
+        ],
+      }))
+      .on('DELETE /api/v2/firewall/rule', () => ({ data: null }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await makeDriver(fake).unblockDevice('f0:18:98:aa:bb:cc');
+
+    expect(fake.calls.filter((c) => c.method === 'DELETE')).toHaveLength(2);
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
+  });
+
+  it('unblockDevice rechaza si el DELETE falla (no traga el error)', async () => {
+    fake
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 7, descr: 'krakenos-block:f0:18:98:aa:bb:cc' }],
+      }))
+      .on('DELETE /api/v2/firewall/rule', () => ({ status: 500, data: null }));
+    await expect(makeDriver(fake).unblockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow();
+  });
+
   it('WiFi no está soportado: getWifi lanza y multi-AP devuelve vacío', async () => {
     const driver = makeDriver(fake);
     await expect(driver.getWifi()).rejects.toThrow(/WiFi no gestionado/);
