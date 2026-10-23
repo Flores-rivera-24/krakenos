@@ -123,6 +123,11 @@ export async function buildIntegrationRuntime(
   const onIotError = (msg: string): void =>
     app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`);
 
+  const onIotListError = (prefix: string, err: unknown): void =>
+    app.log.warn(
+      `[iot] el backend ${prefix} no respondió al listar; se omite: ${err instanceof Error ? err.message : String(err)}`,
+    );
+
   /**
    * Construye un manager desde la config efectiva de `domain`. Si la config **guardada**
    * hace fallar la construcción, avisa y reintenta con `.env` (record `null`).
@@ -161,7 +166,11 @@ export async function buildIntegrationRuntime(
     (await tryBuild('vpn', (r) => createVpnManager(resolveVpnConfig(r)))).value,
     disposeManager,
   );
-  const initialIot = (await tryBuild('iot', (r) => createIotManager(resolveIotConfig(r)))).value;
+  const initialIot = (
+    await tryBuild('iot', (r) =>
+      createIotManager(resolveIotConfig(r), { onListError: onIotListError }),
+    )
+  ).value;
   startIotManager(initialIot.manager, onIotError);
   const iot = createManagerHolder<IotManager>(initialIot.manager, disposeManager);
   const tuyaStore = initialIot.tuyaStore;
@@ -204,7 +213,7 @@ export async function buildIntegrationRuntime(
       case 'iot': {
         // Reinyecta el mismo tuyaStore para no duplicar la instancia (US-63).
         const r = await tryBuild('iot', (rec) =>
-          createIotManager(resolveIotConfig(rec), { tuyaStore }),
+          createIotManager(resolveIotConfig(rec), { tuyaStore, onListError: onIotListError }),
         );
         startIotManager(r.value.manager, onIotError);
         iot.swap(r.value.manager);

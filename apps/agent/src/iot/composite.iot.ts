@@ -30,7 +30,14 @@ function splitId(id: string): { prefix: string; bareId: string } | null {
 export class CompositeIotManager implements IotManager {
   readonly kind = 'composite' as const;
 
-  constructor(private readonly entries: CompositeEntry[]) {}
+  /**
+   * `onError` recibe los fallos **parciales** de `listDevices` (prefijo del backend
+   * y motivo), para que un backend caído quede en el log y no solo ausente.
+   */
+  constructor(
+    private readonly entries: CompositeEntry[],
+    private readonly onError?: (prefix: string, err: unknown) => void,
+  ) {}
 
   /**
    * Miembros del composite. Desde US-243 **todo** manager va envuelto aquí —
@@ -65,12 +72,26 @@ export class CompositeIotManager implements IotManager {
     return { ...device, id: `${prefix}:${device.id}` };
   }
 
+  /**
+   * ⚠️ Un backend caído NO tumba la lista de los demás (`allSettled`): con
+   * `Promise.all`, un bridge apagado dejaba sin aparatos a toda la casa. Los fallos
+   * parciales se avisan por `onError`; si fallan **todos** se relanza el primer
+   * motivo, para no presentar un error total como «no hay aparatos».
+   */
   async listDevices(): Promise<IotDevice[]> {
-    const lists = await Promise.all(
+    const results = await Promise.allSettled(
       this.entries.map(async ({ prefix, manager }) =>
         (await manager.listDevices()).map((d) => this.prefixed(prefix, d)),
       ),
     );
+    const lists: IotDevice[][] = [];
+    const failures: { prefix: string; reason: unknown }[] = [];
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') lists.push(r.value);
+      else failures.push({ prefix: this.entries[i]!.prefix, reason: r.reason });
+    });
+    if (lists.length === 0 && failures.length > 0) throw failures[0]!.reason;
+    for (const f of failures) this.onError?.(f.prefix, f.reason);
     return lists.flat();
   }
 

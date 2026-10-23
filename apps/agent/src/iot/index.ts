@@ -164,7 +164,11 @@ export interface IotManagerBundle {
  */
 export function createIotManager(
   config: IotConfig,
-  deps: { tuyaStore?: FileJsonStore<TuyaDeviceRecord> } = {},
+  deps: {
+    tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
+    /** Fallo parcial al listar un backend (el resto sigue listándose). */
+    onListError?: (prefix: string, err: unknown) => void;
+  } = {},
 ): IotManagerBundle {
   // Sin configurar (`IOT_KIND=none`): ningún backend, ni envoltorio de composite (que prefija
   // ids con un backend que aquí no existe). Ver `none.iot.ts`.
@@ -198,6 +202,7 @@ export function createIotManager(
       prefix: kind,
       manager: buildIotManager(kind, config, tuyaStore),
     })),
+    deps.onListError,
   );
 
   return { manager, tuyaStore, kinds: activeKinds };
