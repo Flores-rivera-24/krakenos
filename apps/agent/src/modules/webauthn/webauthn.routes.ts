@@ -209,7 +209,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
   // Cuántos códigos sin usar quedan (para la UI; nunca expone los códigos).
   app.get(
     '/backup-codes',
-    { preHandler: app.authenticate, schema: backupCodesStatusSchema },
+    { preHandler: app.requireSession, schema: backupCodesStatusSchema },
     async (req) => ({ remaining: await backupCodes.remaining(req.user.sub) }),
   );
 
