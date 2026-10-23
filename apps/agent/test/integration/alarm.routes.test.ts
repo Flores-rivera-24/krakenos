@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ALARM_PIN_FAILURE_THRESHOLD,
   alarmPinLockout,
 } from '../../src/modules/alarm/alarm.lockout.js';
+import { AlarmBusyError, AlarmService } from '../../src/modules/alarm/alarm.service.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
 
 describe('rutas de alarma (US-188)', () => {
@@ -225,5 +226,29 @@ describe('rutas de alarma (US-188)', () => {
     expect(conPin.json().requiresPin).toBe(true);
     // Lo que NO puede pasar: que el PIN salga por ningún lado.
     expect(JSON.stringify(conPin.json())).not.toContain('4271');
+  });
+
+  it('arm con la alarma sonando o en cuenta atrás responde 409 ALARM_ACTIVE', async () => {
+    const admin = await token('admin', 'busy@krakenos.test');
+    // El servicio real vive dentro de buildTestApp; el estado `triggered` se cubre
+    // en alarm.service.test.ts. Aquí se ata solo la traducción del error a 409.
+    const spy = vi
+      .spyOn(AlarmService.prototype, 'armAlarm')
+      .mockRejectedValue(new AlarmBusyError());
+    try {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/alarm/arm',
+        headers: authHeader(admin),
+        payload: { mode: 'away' },
+      });
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toEqual({
+        code: 'ALARM_ACTIVE',
+        message: 'La alarma está sonando o en cuenta atrás: desármala con el PIN.',
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

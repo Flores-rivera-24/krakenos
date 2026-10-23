@@ -3,7 +3,11 @@ import type { FastifyInstance } from 'fastify';
 import type { MockInstance } from 'vitest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
-import { AlarmPinError, AlarmService } from '../../src/modules/alarm/alarm.service.js';
+import {
+  AlarmBusyError,
+  AlarmPinError,
+  AlarmService,
+} from '../../src/modules/alarm/alarm.service.js';
 import { buildTestApp, resetDb } from '../helpers/app.js';
 
 /** IoT falso: registra setState y expone dispositivos con reachable configurable. */
@@ -615,5 +619,60 @@ describe('AlarmService (US-188)', () => {
     await fresh.reconcile();
     expect(fresh.getStateSync().phase).toBe('armed');
     expect(fresh.getStateSync().mode).toBe('night');
+  });
+
+  describe('no se re-arma mientras cuenta atrás o suena', () => {
+    const conAlarma = async (entryDelaySec: number) => {
+      const iot = new FakeIot();
+      let clock = 0;
+      const { service, bus } = build(iot, () => clock);
+      vi.spyOn(app, 'audit').mockImplementation(() => {});
+      service.start();
+      await service.setConfig({
+        sirenDeviceId: 'siren',
+        cameraIds: ['cam-1'],
+        exitDelaySec: 0,
+        entryDelaySec,
+      });
+      await service.armAlarm('away', 'ana@x');
+      bus.publish({ type: 'motion-detected', cameraId: 'cam-1', cameraName: 'Entrada' });
+      return { service, tick: (ms: number) => ((clock = ms), service.tick()) };
+    };
+
+    it('en entry: armAlarm rechaza AlarmBusyError y el estado sigue en entry', async () => {
+      const { service } = await conAlarma(10);
+      await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+      await expect(service.armAlarm('away', 'ana@x')).rejects.toBeInstanceOf(AlarmBusyError);
+      expect(service.getStateSync().phase).toBe('entry');
+      service.stop();
+    });
+
+    it('en triggered: armAlarm rechaza AlarmBusyError y sigue sonando', async () => {
+      const { service, tick } = await conAlarma(10);
+      await vi.waitFor(() => expect(service.getStateSync().phase).toBe('entry'));
+      await tick(11_000);
+      expect(service.getStateSync().phase).toBe('triggered');
+      await expect(service.armAlarm('away', 'modo away')).rejects.toBeInstanceOf(AlarmBusyError);
+      expect(service.getStateSync().phase).toBe('triggered');
+      service.stop();
+    });
+
+    it('desde disarmed, arming y armed el armado sigue funcionando', async () => {
+      const iot = new FakeIot();
+      const { service } = build(iot, () => 0);
+      vi.spyOn(app, 'audit').mockImplementation(() => {});
+      await service.setConfig({ exitDelaySec: 30 });
+      expect(service.getStateSync().phase).toBe('disarmed');
+      await service.armAlarm('away', 'ana@x');
+      expect(service.getStateSync().phase).toBe('arming');
+      await service.armAlarm('night', 'ana@x');
+      expect(service.getStateSync().phase).toBe('arming');
+      await service.setConfig({ exitDelaySec: 0 });
+      await service.disarmAlarm(undefined, 'ana@x');
+      await service.armAlarm('away', 'ana@x');
+      expect(service.getStateSync().phase).toBe('armed');
+      await service.armAlarm('night', 'ana@x');
+      expect(service.getStateSync().mode).toBe('night');
+    });
   });
 });

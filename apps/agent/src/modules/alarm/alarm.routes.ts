@@ -5,7 +5,7 @@ import type {
 } from '@krakenos/types';
 import type { FastifyPluginAsync } from 'fastify';
 import { alarmPinLockout } from './alarm.lockout.js';
-import { AlarmPinError, type AlarmService } from './alarm.service.js';
+import { AlarmBusyError, AlarmPinError, type AlarmService } from './alarm.service.js';
 import {
   armAlarmSchema,
   disarmAlarmSchema,
@@ -33,10 +33,22 @@ export const alarmRoutes: FastifyPluginAsync<AlarmRoutesOpts> = async (app, opts
   app.post<{ Body: ArmAlarmRequest }>(
     '/arm',
     { schema: armAlarmSchema, preHandler: app.requireCapability('home.control') },
-    async (req) => {
-      const state = await alarm.armAlarm(req.body.mode, req.user.email);
-      app.audit({ action: 'alarm.armed', userId: req.user.sub, detail: req.body.mode, ip: req.ip });
-      return state;
+    async (req, reply) => {
+      try {
+        const state = await alarm.armAlarm(req.body.mode, req.user.email);
+        app.audit({
+          action: 'alarm.armed',
+          userId: req.user.sub,
+          detail: req.body.mode,
+          ip: req.ip,
+        });
+        return state;
+      } catch (err) {
+        if (err instanceof AlarmBusyError) {
+          return reply.code(409).send({ code: err.code, message: err.message });
+        }
+        throw err;
+      }
     },
   );
 
