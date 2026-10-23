@@ -242,7 +242,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.get<{ Querystring: { userId?: string } }>(
     '/sessions',
-    { schema: listSessionsSchema, preHandler: app.authenticate },
+    { schema: listSessionsSchema, preHandler: app.requireSession },
     async (req) => {
       // Solo un admin puede inspeccionar las sesiones de otro usuario.
       const target =
@@ -253,7 +253,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete<{ Params: { id: string } }>(
     '/sessions/:id',
-    { schema: revokeSessionSchema, preHandler: app.authenticate },
+    { schema: revokeSessionSchema, preHandler: app.requireSession },
     async (req, reply) => {
       const ok = await service.revokeSession(
         req.params.id,
@@ -273,7 +273,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
 
   app.delete(
     '/sessions',
-    { schema: revokeSessionsSchema, preHandler: app.authenticate },
+    { schema: revokeSessionsSchema, preHandler: app.requireSession },
     async (req, reply) => {
       // La sesión a conservar es la actual, identificada por la cookie (US-91):
       // el cliente ya no conoce el refresh token.
@@ -290,7 +290,7 @@ export const authRoutes: FastifyPluginAsync = async (app) => {
     '/change-password',
     {
       schema: changePasswordSchema,
-      preHandler: app.authenticate,
+      preHandler: app.requireSession,
       // Verifica la contraseña actual (bcrypt) → oráculo de adivinación si roban un
       // access token. Limita los intentos (defensa en profundidad).
       config: { rateLimit: { max: 10, timeWindow: '5 minutes' } },
