@@ -657,6 +657,24 @@ describe('AlarmService (US-188)', () => {
       service.stop();
     });
 
+    it('si la fase pasa a entry mientras se lee la config, armAlarm rechaza igual', async () => {
+      const { service } = build(new FakeIot(), () => 0);
+      vi.spyOn(app, 'audit').mockImplementation(() => {});
+      const real = service.getConfig.bind(service);
+      vi.spyOn(service, 'getConfig').mockImplementation(async () => {
+        const c = await real();
+        // Un sensor dispara la cuenta atrás mientras la lectura estaba pendiente.
+        (service as unknown as { state: unknown }).state = {
+          ...service.getStateSync(),
+          phase: 'entry',
+          mode: 'away',
+        };
+        return c;
+      });
+      await expect(service.armAlarm('away', 'ana@x')).rejects.toBeInstanceOf(AlarmBusyError);
+      expect(service.getStateSync().phase).toBe('entry');
+    });
+
     it('desde disarmed, arming y armed el armado sigue funcionando', async () => {
       const iot = new FakeIot();
       const { service } = build(iot, () => 0);
