@@ -257,18 +257,51 @@ describe('AutomationsPage (US-167)', () => {
         'Objetivo de la acción 1',
       ) as HTMLSelectElement;
       expect(objetivo.value).toBe('');
-      expect(within(dialog).getByRole('option', { name: 'Elige un aparato' })).toBeDisabled();
+      expect(within(dialog).getByRole('option', { name: 'Elige un dispositivo' })).toBeDisabled();
       expect(
         within(dialog).queryByRole('option', { name: 'El dispositivo del evento' }),
       ).not.toBeInTheDocument();
 
       await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
       expect(
-        await within(dialog).findByText('Elige el aparato de la acción 1.'),
+        await within(dialog).findByText('Elige el dispositivo de la acción 1.'),
       ).toBeInTheDocument();
       expect(apiMock.post).not.toHaveBeenCalled();
 
       await user.selectOptions(objetivo, TABLET.mac);
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() =>
+        expect(apiMock.post).toHaveBeenCalledWith(
+          '/automations',
+          expect.objectContaining({ actions: [{ type: 'device-block', mac: TABLET.mac }] }),
+        ),
+      );
+    });
+
+    it('cambiar a un disparador sin MAC tras elegir «el dispositivo del evento» exige dispositivo', async () => {
+      mockGets({ '/inventory/devices': [TABLET] });
+      apiMock.post.mockResolvedValue(rule());
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText('Nombre'), 'Sin internet');
+      await user.selectOptions(within(dialog).getByLabelText('Acción 1'), 'device-block');
+      expect(
+        within(dialog).getByRole('option', { name: 'El dispositivo del evento' }),
+      ).toBeInTheDocument();
+      await user.selectOptions(within(dialog).getByLabelText('Cuando'), 'time');
+
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      expect(
+        await within(dialog).findByText('Elige el dispositivo de la acción 1.'),
+      ).toBeInTheDocument();
+      expect(apiMock.post).not.toHaveBeenCalled();
+
+      await user.selectOptions(
+        within(dialog).getByLabelText('Objetivo de la acción 1'),
+        TABLET.mac,
+      );
       await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
       await waitFor(() =>
         expect(apiMock.post).toHaveBeenCalledWith(
@@ -284,7 +317,7 @@ describe('AutomationsPage (US-167)', () => {
         within(dialog).getByRole('option', { name: 'El dispositivo del evento' }),
       ).toBeInTheDocument();
       expect(
-        within(dialog).queryByRole('option', { name: 'Elige un aparato' }),
+        within(dialog).queryByRole('option', { name: 'Elige un dispositivo' }),
       ).not.toBeInTheDocument();
       await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
       await waitFor(() =>

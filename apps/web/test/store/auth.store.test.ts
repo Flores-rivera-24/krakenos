@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook, waitFor } from '@testing-library/react';
 import { useAuthStore } from '@/store/auth.store';
-import { limpiarRecursos, useResource } from '@/lib/use-resource';
+import { useResource } from '@/lib/use-resource';
 
 /** Construye una respuesta tipo `fetch` mínima. */
 function jsonResponse(status: number, body: unknown): Response {
@@ -201,9 +201,6 @@ describe('useAuthStore', () => {
       await waitFor(() => expect(result.current.data).not.toBeNull());
       unmount();
     }
-
-    beforeEach(() => limpiarRecursos());
-    afterEach(() => limpiarRecursos());
 
     it('logout vacía la caché: la siguiente lectura vuelve a pedir', async () => {
       const fetcher = vi.fn().mockResolvedValue('datos del admin');
