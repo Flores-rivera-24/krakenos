@@ -71,4 +71,9 @@ export interface FirewallManager extends NotConfigurable {
   updateRule(id: Id, patch: UpdateFirewallRuleRequest): Promise<FirewallRule | null>;
   /** Elimina una regla; devuelve `false` si no existía. */
   removeRule(id: Id): Promise<boolean>;
+  /**
+   * Reaplica al kernel lo persistido; lo llama el runtime al crear o recargar la
+   * integración. Las reglas viven en el store, pero el kernel las pierde al reiniciar.
+   */
+  start?(): Promise<void>;
 }

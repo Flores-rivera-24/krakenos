@@ -61,4 +61,9 @@ export interface QosManager extends NotConfigurable {
   createRule(input: CreateQosRuleRequest): Promise<QosRule>;
   updateRule(id: Id, patch: UpdateQosRuleRequest): Promise<QosRule | null>;
   removeRule(id: Id): Promise<boolean>;
+  /**
+   * Reaplica al kernel lo persistido; lo llama el runtime al crear o recargar la
+   * integración. Las reglas viven en el store, pero el kernel las pierde al reiniciar.
+   */
+  start?(): Promise<void>;
 }

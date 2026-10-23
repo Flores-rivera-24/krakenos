@@ -85,4 +85,31 @@ describe('IptablesFirewallManager', () => {
     expect(await fw.removeRule(rule.id)).toBe(false);
     expect(await fw.listRules()).toHaveLength(0);
   });
+
+  describe('start() — reaplica lo persistido al kernel', () => {
+    it('con reglas en el store reconstruye la cadena igual que tras createRule', async () => {
+      const store = new MemoryJsonStore<FirewallRule>();
+      const first = new IptablesFirewallManager({ runner, store, chain: 'KRAKENOS' });
+      const rule = await first.createRule({
+        name: 'x',
+        action: 'deny',
+        protocol: 'tcp',
+        port: 554,
+      });
+
+      // «Reinicio»: kernel sin reglas, mismo store en disco.
+      const after = new FakeRunner();
+      const reborn = new IptablesFirewallManager({ runner: after, store, chain: 'KRAKENOS' });
+      await reborn.start();
+
+      expect(after.called('iptables -F KRAKENOS')).toBe(true);
+      expect(after.appends()).toHaveLength(1);
+      expect(after.appends()[0]!.join(' ')).toContain(`krakenos:${rule.id}`);
+    });
+
+    it('con el store vacío no llama al helper', async () => {
+      await makeManager(runner).start();
+      expect(runner.calls).toHaveLength(0);
+    });
+  });
 });
