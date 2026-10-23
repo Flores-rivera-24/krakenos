@@ -28,7 +28,6 @@ import { buildManifestHeader, createArchiveEncryptor } from './backup.js';
  * del trozo de cifrado, y la ruta sirve el fichero por stream.
  */
 
-const DEFAULT_KEYS_DIR = resolve('keys');
 const DEFAULT_DATA_DIR = resolve('data');
 
 /** Bytes leídos de disco por vuelta (mismo orden que el trozo de cifrado). */
@@ -38,7 +37,7 @@ export interface BackupPaths {
   /** Directorio de claves (para ficheros extra); por defecto, el de `secretbox.key`. */
   keysDir?: string;
   /** Rutas reales de las claves (`keyFilePaths(env)`): mandan sobre `keysDir`. */
-  keyFiles?: KeyFilePaths;
+  keyFiles: KeyFilePaths;
   dataDir?: string;
 }
 
@@ -70,16 +69,15 @@ async function listDirEntries(dir: string, prefix: string): Promise<FileEntry[]>
 
 export class BackupService {
   private readonly keysDir: string;
-  private readonly keyFiles: KeyFilePaths | undefined;
+  private readonly keyFiles: KeyFilePaths;
   private readonly dataDir: string;
 
   constructor(
     private readonly prisma: PrismaClient,
-    paths: BackupPaths = {},
+    paths: BackupPaths,
   ) {
     this.keyFiles = paths.keyFiles;
-    this.keysDir =
-      paths.keysDir ?? (paths.keyFiles ? dirname(paths.keyFiles.secretbox) : DEFAULT_KEYS_DIR);
+    this.keysDir = paths.keysDir ?? dirname(paths.keyFiles.secretbox);
     this.dataDir = paths.dataDir ?? DEFAULT_DATA_DIR;
   }
 
@@ -90,14 +88,12 @@ export class BackupService {
   private async keyEntries(): Promise<FileEntry[]> {
     const byName = new Map<string, FileEntry>();
     for (const e of await listDirEntries(this.keysDir, 'keys')) byName.set(e.name, e);
-    if (this.keyFiles) {
-      for (const k of Object.keys(KEY_ENTRY_NAMES) as (keyof KeyFilePaths)[]) {
-        const path = this.keyFiles[k];
-        if (!existsSync(path)) continue;
-        const st = await stat(path);
-        if (st.isFile())
-          byName.set(KEY_ENTRY_NAMES[k], { name: KEY_ENTRY_NAMES[k], path, size: st.size });
-      }
+    for (const k of Object.keys(KEY_ENTRY_NAMES) as (keyof KeyFilePaths)[]) {
+      const path = this.keyFiles[k];
+      if (!existsSync(path)) continue;
+      const st = await stat(path);
+      if (st.isFile())
+        byName.set(KEY_ENTRY_NAMES[k], { name: KEY_ENTRY_NAMES[k], path, size: st.size });
     }
     return [...byName.values()];
   }

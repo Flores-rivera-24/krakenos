@@ -14,13 +14,7 @@
  *   RSSI_ap(p)    = ap.txPowerDbm - PL(d) - wallLoss(band)   con d = dist(ap, p)
  *   RSSI_celda    = max sobre APs (habilitados + banda), null si no hay o < floor.
  */
-import type {
-  ApPlacement,
-  CoverageHeatmap,
-  WallMaterial,
-  Wall,
-  WifiBand,
-} from '@krakenos/types';
+import type { ApPlacement, CoverageHeatmap, WallMaterial, Wall, WifiBand } from '@krakenos/types';
 import { ROWS_PER_YIELD, yieldToEventLoop } from './chunk.js';
 import { resolveGrid } from './grid.js';
 

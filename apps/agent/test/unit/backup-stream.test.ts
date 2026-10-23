@@ -6,6 +6,16 @@ import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { describe, expect, it } from 'vitest';
 import { decryptArchive, decryptArchiveAsync, unpackArchive } from '../../src/system/backup.js';
 import { BackupService } from '../../src/system/backup.service.js';
+import { keyFilePaths } from '../../src/system/key-paths.js';
+
+/** Rutas de las tres claves dentro de `dir` (en producción salen de `keyFilePaths(env)`). */
+function clavesEn(dir: string) {
+  return keyFilePaths({
+    jwtPrivateKeyPath: join(dir, 'jwt-private.pem'),
+    jwtPublicKeyPath: join(dir, 'jwt-public.pem'),
+    secretboxKeyPath: join(dir, 'secretbox.key'),
+  });
+}
 
 /**
  * Copia de seguridad **por streaming** (US-233 / AUD3-15).
@@ -49,7 +59,11 @@ describe('BackupService.createToFile (US-233)', () => {
     const { keysDir, dataDir, out } = sandbox();
     writeFileSync(join(keysDir, 'secretbox.key'), 'CLAVE-SECRETBOX');
     writeFileSync(join(dataDir, 'cameras.json'), '[{"rtspUrl":"rtsp://x"}]');
-    const service = new BackupService(fakePrisma(Buffer.from('CUERPO-DB')), { keysDir, dataDir });
+    const service = new BackupService(fakePrisma(Buffer.from('CUERPO-DB')), {
+      keysDir,
+      keyFiles: clavesEn(keysDir),
+      dataDir,
+    });
 
     const result = await service.createToFile(PASS, out);
     expect(result.path).toBe(out);
@@ -81,6 +95,7 @@ describe('BackupService.createToFile (US-233)', () => {
     writeFileSync(join(dataDir, 'vacio.json'), '');
     const service = new BackupService(fakePrisma(Buffer.alloc(5 * 1024 * 1024, 7)), {
       keysDir,
+      keyFiles: clavesEn(keysDir),
       dataDir,
     });
 
@@ -95,7 +110,11 @@ describe('BackupService.createToFile (US-233)', () => {
   it('el archivo escrito por streaming se abre con el descifrado síncrono (mismo formato)', async () => {
     const { keysDir, dataDir, out } = sandbox();
     writeFileSync(join(keysDir, 'jwt-private.pem'), 'PEM');
-    const service = new BackupService(fakePrisma(Buffer.from('X')), { keysDir, dataDir });
+    const service = new BackupService(fakePrisma(Buffer.from('X')), {
+      keysDir,
+      keyFiles: clavesEn(keysDir),
+      dataDir,
+    });
     await service.createToFile(PASS, out);
 
     // Ruta síncrona (la que usan los tests de formato y cualquier herramienta externa).
@@ -107,14 +126,22 @@ describe('BackupService.createToFile (US-233)', () => {
 
   it('el archivo nace con permisos 600 (contiene las claves del sistema)', async () => {
     const { keysDir, dataDir, out } = sandbox();
-    const service = new BackupService(fakePrisma(Buffer.from('X')), { keysDir, dataDir });
+    const service = new BackupService(fakePrisma(Buffer.from('X')), {
+      keysDir,
+      keyFiles: clavesEn(keysDir),
+      dataDir,
+    });
     await service.createToFile(PASS, out);
     expect(statSync(out).mode & 0o777).toBe(0o600);
   });
 
   it('una passphrase corta no escribe ningún archivo', async () => {
     const { keysDir, dataDir, out } = sandbox();
-    const service = new BackupService(fakePrisma(Buffer.from('X')), { keysDir, dataDir });
+    const service = new BackupService(fakePrisma(Buffer.from('X')), {
+      keysDir,
+      keyFiles: clavesEn(keysDir),
+      dataDir,
+    });
     await expect(service.createToFile('corta', out)).rejects.toThrow(/al menos/i);
     expect(existsSync(out)).toBe(false);
   });
@@ -130,7 +157,7 @@ describe('BackupService.createToFile (US-233)', () => {
           return 0;
         },
       } as unknown as PrismaClient,
-      { keysDir, dataDir },
+      { keysDir, keyFiles: clavesEn(keysDir), dataDir },
     );
     // Se borra el fichero justo tras medir su tamaño → el stream falla a mitad.
     const original = service['snapshotDbToFile'].bind(service);

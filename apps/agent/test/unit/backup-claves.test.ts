@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -92,6 +92,8 @@ describe('copia y restore de claves en rutas del entorno (D1)', () => {
     );
     for (const [n, b] of Object.entries(bytes)) {
       expect(readFileSync(join(destino, n)).equals(b)).toBe(true);
+      // Son secretos: quedan solo para el dueño, aunque el staging se escribiera con la umask.
+      expect(statSync(join(destino, n)).mode & 0o777).toBe(0o600);
     }
   });
 
@@ -101,16 +103,30 @@ describe('copia y restore de claves en rutas del entorno (D1)', () => {
     mkdirSync(keysDir);
     writeFileSync(join(keysDir, 'secretbox.key'), 'CLAVE');
     const archivo = join(root, 'b.kbk');
-    await new BackupService(fakePrisma(), { keysDir, dataDir: join(root, 'data') }).createToFile(
-      PASS,
-      archivo,
-    );
+    const origen = keyFilePaths({
+      jwtPrivateKeyPath: join(keysDir, 'jwt-private.pem'),
+      jwtPublicKeyPath: join(keysDir, 'jwt-public.pem'),
+      secretboxKeyPath: join(keysDir, 'secretbox.key'),
+    });
+    await new BackupService(fakePrisma(), {
+      keyFiles: origen,
+      dataDir: join(root, 'data'),
+    }).createToFile(PASS, archivo);
     const staging = join(root, 'staging');
     await stageRestoreFromFileAsync(archivo, PASS, staging);
     const vivo = join(root, 'vivo', 'keys');
     applyStagedRestore(
       staging,
-      { dbFile: join(root, 'vivo/app.db'), keysDir: vivo, dataDir: join(root, 'vivo/data') },
+      {
+        dbFile: join(root, 'vivo/app.db'),
+        keysDir: vivo,
+        keyFiles: keyFilePaths({
+          jwtPrivateKeyPath: join(vivo, 'jwt-private.pem'),
+          jwtPublicKeyPath: join(vivo, 'jwt-public.pem'),
+          secretboxKeyPath: join(vivo, 'secretbox.key'),
+        }),
+        dataDir: join(root, 'vivo/data'),
+      },
       join(root, 'pre'),
     );
     expect(readFileSync(join(vivo, 'secretbox.key'), 'utf8')).toBe('CLAVE');

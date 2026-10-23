@@ -9,6 +9,16 @@ import {
   stageRestore,
   stageRestoreAsync,
 } from '../../src/system/restore.js';
+import { keyFilePaths } from '../../src/system/key-paths.js';
+
+/** Rutas de las tres claves dentro de `dir` (en producción salen de `keyFilePaths(env)`). */
+function clavesEn(dir: string) {
+  return keyFilePaths({
+    jwtPrivateKeyPath: join(dir, 'jwt-private.pem'),
+    jwtPublicKeyPath: join(dir, 'jwt-public.pem'),
+    secretboxKeyPath: join(dir, 'secretbox.key'),
+  });
+}
 
 const PASS = 'passphrase-larga';
 const makeBackup = (entries: ArchiveEntry[]) => encryptArchive(packArchive(entries), PASS);
@@ -93,7 +103,11 @@ describe('restore (US-104)', () => {
     writeFileSync(dbFile, 'VIEJA-DB'); // preexistente → debe respaldarse
     const pre = join(tmp, 'pre');
 
-    const applied = applyStagedRestore(staging, { dbFile, keysDir, dataDir }, pre);
+    const applied = applyStagedRestore(
+      staging,
+      { dbFile, keysDir, keyFiles: clavesEn(keysDir), dataDir },
+      pre,
+    );
     expect(applied.sort()).toEqual(['db/app.db', 'keys/secretbox.key']);
     expect(readFileSync(dbFile).toString()).toBe('NUEVA-DB');
     expect(readFileSync(join(keysDir, 'secretbox.key')).toString()).toBe('NUEVA-KEY');

@@ -31,10 +31,7 @@ import { createHash } from 'node:crypto';
 import { computePredictedHeatmapAsync } from '../../coverage/propagation.js';
 import { computeMeasuredHeatmapAsync } from '../../coverage/interpolation.js';
 import { HeatmapCache } from '../../coverage/heatmap-cache.js';
-import {
-  calibratePathLossExponent,
-  type CalibrationResult,
-} from '../../coverage/calibration.js';
+import { calibratePathLossExponent, type CalibrationResult } from '../../coverage/calibration.js';
 
 /** Firma corta y estable del contenido que determina un heatmap (para la clave de caché). */
 function signature(payload: unknown): string {
@@ -223,10 +220,7 @@ export class CoverageService {
    * Ajusta el exponente de pérdida con las muestras de los recorridos de **esta
    * banda** en este plano (US-237). `null` si no hay datos suficientes.
    */
-  private async calibrationFor(
-    plan: FloorPlan,
-    band: WifiBand,
-  ): Promise<CalibrationResult | null> {
+  private async calibrationFor(plan: FloorPlan, band: WifiBand): Promise<CalibrationResult | null> {
     try {
       const scans = await this.app.prisma.surveyScan.findMany({
         where: { floorPlanId: plan.id, band },

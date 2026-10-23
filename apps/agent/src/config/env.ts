@@ -212,6 +212,9 @@ const https =
       }
     : null;
 
+const jwtPrivateKeyPath = resolve(required('JWT_PRIVATE_KEY_PATH'));
+const jwtPublicKeyPath = resolve(required('JWT_PUBLIC_KEY_PATH'));
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProd: process.env.NODE_ENV === 'production',
@@ -223,10 +226,10 @@ export const env = {
   refreshTokenTtl: int('REFRESH_TOKEN_TTL', 2_592_000),
 
   /** Claves RS256 leídas desde disco al arrancar. */
-  jwtPrivateKeyPath: resolve(required('JWT_PRIVATE_KEY_PATH')),
-  jwtPublicKeyPath: resolve(required('JWT_PUBLIC_KEY_PATH')),
-  jwtPrivateKey: readFileSync(resolve(required('JWT_PRIVATE_KEY_PATH')), 'utf8'),
-  jwtPublicKey: readFileSync(resolve(required('JWT_PUBLIC_KEY_PATH')), 'utf8'),
+  jwtPrivateKeyPath,
+  jwtPublicKeyPath,
+  jwtPrivateKey: readFileSync(jwtPrivateKeyPath, 'utf8'),
+  jwtPublicKey: readFileSync(jwtPublicKeyPath, 'utf8'),
   /**
    * Claves públicas **anteriores** (rotación RS256, US-64). Durante el solape se
    * usan solo para verificar tokens firmados con la clave previa; nunca firman.
