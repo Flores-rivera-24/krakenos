@@ -311,7 +311,8 @@ credenciales se guardan **cifradas**. No necesitas editar `.env` ni leer estos d
 **Por variable de entorno (alternativa / automatización):** cada integración también se
 selecciona con una variable `*_KIND` (por defecto `mock`); cámbiala por la integración real y
 añade sus variables en `apps/agent/.env`. Hay una **guía por integración en `docs/`** (las
-mismas guías están internalizadas en la app).
+mismas guías están internalizadas en la app); el índice completo está en
+[`docs/README.md`](docs/README.md).
 
 > **Dependencias nativas.** Algunas integraciones necesitan una dep opcional que **no está
 > en `package.json`** (CI con lockfile congelado) y se instala solo en el servidor:
@@ -325,7 +326,7 @@ Gobiernan inventario, tráfico, bloqueo y WiFi del router/switch.
 |---|---|---|---|---|
 | `mock` | — (desarrollo) | — | — | — |
 | `openwrt` | OpenWrt (SSH+UCI) | `DRIVER_HOST`, `OPENWRT_*` | `node-ssh` | `docs/openwrt-ax21-setup.md` |
-| `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | — |
+| `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | `docs/pfsense-setup.md` |
 | `unifi` | Ubiquiti UniFi (REST local) | `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD` | — | `docs/unifi-setup.md` |
 | `mikrotik` | RouterOS 7 (REST o SSH) | `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD` | `node-ssh` (SSH) | `docs/mikrotik-setup.md` |
 | `omada` | TP-Link Omada (Controller local) | `OMADA_URL`, `OMADA_USERNAME`, `OMADA_PASSWORD` | — | `docs/omada-setup.md` |
@@ -340,8 +341,8 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 | `IOT_KIND` | Ecosistema | Variables clave | Dep | Guía |
 |---|---|---|---|---|
 | `mqtt` | **MQTT Discovery** — cualquier aparato que se anuncie (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI, zigbee2mqtt) | `MQTT_DISCOVERY_URL` | `mqtt` | `docs/mqtt-discovery-setup.md` |
-| `zigbee` | zigbee2mqtt (MQTT) | `ZIGBEE2MQTT_URL` | `mqtt` | — |
-| `matter` | python-matter-server (WS) | `MATTER_SERVER_URL` | `ws` | — |
+| `zigbee` | zigbee2mqtt (MQTT) | `ZIGBEE2MQTT_URL` | `mqtt` | `docs/zigbee2mqtt-setup.md` |
+| `matter` | python-matter-server (WS) | `MATTER_SERVER_URL` | `ws` | `docs/matter-setup.md` |
 | `hue` | Philips Hue (CLIP v2 local) | `HUE_BRIDGE_URL`, `HUE_APP_KEY` | — | `docs/hue-setup.md` |
 | `govee` | Govee (API LAN/UDP) | `GOVEE_LISTEN_PORT` | — | `docs/govee-setup.md` |
 | `tuya` | Tuya local (TCP+AES) | `TUYA_CONFIG_PATH` | `tuyapi` | `docs/tuya-setup.md` |
@@ -358,14 +359,16 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 
 ### Servicios de red
 
-| Servicio | Activar (`.env`) | Vía | Notas |
-|---|---|---|---|
-| VPN WireGuard | `VPN_KIND=wireguard` + `WG_*` | helper sudoers | requiere `wg`/`wg-quick` |
-| Firewall | `FIREWALL_KIND=iptables` + `FW_*` | helper sudoers | cadena dedicada `KRAKENOS` |
-| QoS | `QOS_KIND=tc` + `TC_*` | helper sudoers | jerarquía HTB |
-| DNS / Pi-hole | `DNS_KIND=pihole` + `PIHOLE_URL`, `PIHOLE_PASSWORD` | HTTP (REST v6) | sin helper |
-| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*` | SNMP | `net-snmp` |
-| Cámaras | `CAMERAS_KIND=rtsp` + `CAMERAS_CONFIG` | ffmpeg | inventario + snapshot |
+| Servicio | Activar (`.env`) | Vía | Notas | Guía |
+|---|---|---|---|---|
+| VPN WireGuard | `VPN_KIND=wireguard` + `WG_*` | helper sudoers | requiere `wg`/`wg-quick` | `docs/wireguard-firewall-qos-setup.md` |
+| Firewall | `FIREWALL_KIND=iptables` + `FW_*` | helper sudoers | cadena dedicada `KRAKENOS` | `docs/wireguard-firewall-qos-setup.md` |
+| QoS | `QOS_KIND=tc` + `TC_*` | helper sudoers | jerarquía HTB | `docs/wireguard-firewall-qos-setup.md` |
+| DNS / Pi-hole | `DNS_KIND=pihole` + `PIHOLE_URL`, `PIHOLE_PASSWORD` | HTTP (REST v6) | sin helper | `docs/pihole-setup.md` |
+| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*` | SNMP | `net-snmp` | `docs/vlan-switch-setup.md` |
+| Cámaras RTSP | `CAMERAS_KIND=rtsp` + `CAMERAS_CONFIG` | ffmpeg | vivo HLS, movimiento, clips | `docs/rtsp-cameras-setup.md` |
+| Cámaras Frigate | `CAMERAS_KIND=frigate` + `FRIGATE_URL` | HTTP | NVR delegado | `docs/frigate-setup.md` |
+| Alertas | `SMTP_*` / `TELEGRAM_*` (push sin config) | — | email requiere `nodemailer` | `docs/alerts-setup.md` |
 
 ### Operaciones privilegiadas (helper sudoers)
 
