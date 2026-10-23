@@ -125,9 +125,19 @@ describe('PfSenseDriver', () => {
   });
 
   it('blockDevice resuelve la IP por ARP, crea la regla y aplica', async () => {
+    let created = false;
     fake
       .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
-      .on('POST /api/v2/firewall/rule', () => ({ status: 200, data: { id: 5 } }))
+      // La relectura tras el POST muestra la regla creada (sin ella, la guarda rechaza).
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: created
+          ? [{ id: 5, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' }]
+          : [],
+      }))
+      .on('POST /api/v2/firewall/rule', () => {
+        created = true;
+        return { status: 200, data: { id: 5 } };
+      })
       .on('POST /api/v2/firewall/apply', () => ({ data: null }));
     await makeDriver(fake).blockDevice('F0:18:98:AA:BB:CC');
 
@@ -270,6 +280,59 @@ describe('PfSenseDriver', () => {
       }));
     await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).resolves.toBeUndefined();
     expect(fake.calls.some((c) => c.method !== 'GET')).toBe(false);
+  });
+
+  it('blockDevice reconoce el origen con máscara /32 y solo borra la regla vieja', async () => {
+    const descr = 'krakenos-block:f0:18:98:aa:bb:cc';
+    let reads = 0;
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => {
+        reads += 1;
+        return {
+          data:
+            reads === 1
+              ? [{ id: 3, descr, source: '192.168.1.99' }]
+              : [
+                  { id: 3, descr, source: '192.168.1.99' },
+                  { id: 4, descr, source: '192.168.1.42/32' },
+                ],
+        };
+      })
+      .on('DELETE /api/v2/firewall/rule', () => ({ data: null }))
+      .on('POST /api/v2/firewall/rule', () => ({ data: { id: 4 } }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc');
+
+    expect(fake.calls.filter((c) => c.method === 'DELETE').map((c) => c.query)).toEqual(['id=3']);
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
+  });
+
+  it('blockDevice no reescribe una regla existente con máscara /32', async () => {
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42/32' }],
+      }));
+    await makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc');
+    expect(fake.calls.some((c) => c.method !== 'GET')).toBe(false);
+  });
+
+  it('blockDevice rechaza sin borrar ni aplicar si la relectura no muestra la regla nueva', async () => {
+    const descr = 'krakenos-block:f0:18:98:aa:bb:cc';
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr, source: '192.168.1.99' }],
+      }))
+      .on('DELETE /api/v2/firewall/rule', () => ({ data: null }))
+      .on('POST /api/v2/firewall/rule', () => ({ data: { id: 4 } }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow(
+      'pfSense no muestra la regla recién creada para f0:18:98:aa:bb:cc; no se retiran las anteriores',
+    );
+    expect(fake.calls.some((c) => c.method === 'DELETE')).toBe(false);
+    expect(fake.calls.some((c) => c.path === '/api/v2/firewall/apply')).toBe(false);
   });
 
   it('unblockDevice borra todas las reglas etiquetadas y aplica una sola vez', async () => {

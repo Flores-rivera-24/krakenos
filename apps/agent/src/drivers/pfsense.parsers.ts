@@ -111,6 +111,19 @@ export function parseFirewallRules(data: unknown): FirewallRuleRef[] {
   return out;
 }
 
+/**
+ * ¿El origen de una regla designa exactamente el host `ip` (IPv4)? Acepta la IP a
+ * secas y la forma CIDR de un solo host (`/32`), con espacios alrededor. No cubre
+ * (devuelve `false`): IPv6, otras máscaras, la negación (`!ip`), alias, palabras
+ * clave (`any`, `lan`…) ni un origen que llegue como objeto (el parser lo deja en
+ * `null`). No verificado contra hardware: el formato exacto de pfSense es supuesto.
+ */
+export function sameHost(source: string | null, ip: string): boolean {
+  if (source === null) return false;
+  const s = source.trim();
+  return s === ip || s === `${ip}/32`;
+}
+
 /** Busca el `ip` asociado a una `mac` dentro de la tabla ARP ya parseada. */
 export function ipForMac(arp: DiscoveredDevice[], mac: string): string | null {
   const m = mac.toLowerCase();

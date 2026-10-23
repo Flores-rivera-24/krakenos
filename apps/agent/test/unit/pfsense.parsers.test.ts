@@ -7,6 +7,7 @@ import {
   parsePfSenseArp,
   parsePfSenseInterfaceCounters,
   parsePfSenseLeases,
+  sameHost,
 } from '../../src/drivers/pfsense.parsers.js';
 
 describe('parsePfSenseArp', () => {
@@ -101,5 +102,23 @@ describe('buildBlockRulePayload', () => {
       destination: 'any',
       descr: 'krakenos-block:f0:18:98:aa:bb:cc',
     });
+  });
+});
+
+describe('sameHost', () => {
+  it('casa la IP a secas y con máscara /32', () => {
+    expect(sameHost('192.168.1.42', '192.168.1.42')).toBe(true);
+    expect(sameHost('192.168.1.42/32', '192.168.1.42')).toBe(true);
+    expect(sameHost(' 192.168.1.42/32 ', '192.168.1.42')).toBe(true);
+  });
+
+  it('no casa otra IP, otra máscara, una negación, un alias ni la ausencia de origen', () => {
+    expect(sameHost('192.168.1.43', '192.168.1.42')).toBe(false);
+    expect(sameHost('192.168.1.4', '192.168.1.42')).toBe(false);
+    expect(sameHost('192.168.1.42/24', '192.168.1.42')).toBe(false);
+    expect(sameHost('!192.168.1.42', '192.168.1.42')).toBe(false);
+    expect(sameHost('lan', '192.168.1.42')).toBe(false);
+    expect(sameHost('any', '192.168.1.42')).toBe(false);
+    expect(sameHost(null, '192.168.1.42')).toBe(false);
   });
 });

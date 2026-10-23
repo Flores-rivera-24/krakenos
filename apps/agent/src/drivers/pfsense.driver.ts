@@ -20,6 +20,7 @@ import {
   parsePfSenseArp,
   parsePfSenseInterfaceCounters,
   parsePfSenseLeases,
+  sameHost,
 } from './pfsense.parsers.js';
 import type { PfSenseClient } from './pfsense.transport.js';
 
@@ -129,7 +130,7 @@ export class PfSenseDriver implements HardwareDriver {
     // regla. Un fallo al borrar deja reglas de más (inocuo; el siguiente reafirmado limpia).
     let current = mine;
     let changed = false;
-    if (!mine.some((r) => r.source === ip)) {
+    if (!mine.some((r) => sameHost(r.source, ip))) {
       await this.opts.client.post(
         '/api/v2/firewall/rule',
         buildBlockRulePayload(ip, mac, this.lan),
@@ -140,7 +141,14 @@ export class PfSenseDriver implements HardwareDriver {
         (r) => r.descr === descr,
       );
     }
-    const keep = current.find((r) => r.source === ip);
+    const keep = current.find((r) => sameHost(r.source, ip));
+    if (!keep) {
+      // Guarda: sin ver la regla nueva, borrar «lo sobrante» sería borrarlo TODO y dejar
+      // al aparato sin bloquear respondiendo bien. Mejor fallar sin tocar nada más.
+      throw new Error(
+        `pfSense no muestra la regla recién creada para ${mac.toLowerCase()}; no se retiran las anteriores`,
+      );
+    }
     const extra = current.filter((r) => r !== keep);
     if (extra.length > 0) {
       await this.deleteRules(extra);
