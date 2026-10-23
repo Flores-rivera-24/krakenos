@@ -126,8 +126,12 @@ export class PfSenseDriver implements HardwareDriver {
     // Idempotente: una sola regla y con la IP actual (la regla es por IP, y DHCP la
     // puede haber cambiado). Si no cuadra, se quitan las viejas y se crea la nueva.
     if (mine.length === 1 && mine[0]!.source === ip) return;
-    await this.deleteRules(mine);
+    // Primero se CREA la nueva: si el POST falla no se ha quitado nada y el aparato no
+    // queda sin regla. Luego se relee (no se fía de ids anteriores al POST) y se retiran
+    // solo las viejas; un fallo ahí deja dos reglas (inocuo, el siguiente reafirmado limpia).
     await this.opts.client.post('/api/v2/firewall/rule', buildBlockRulePayload(ip, mac, this.lan));
+    const after = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
+    await this.deleteRules(after.filter((r) => r.descr === descr && r.source !== ip));
     await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
