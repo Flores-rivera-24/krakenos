@@ -235,6 +235,67 @@ describe('AutomationsPage (US-167)', () => {
     expect(screen.queryByText('Horarios de control parental')).not.toBeInTheDocument();
   });
 
+  describe('acción de bloqueo o pausa sin aparato', () => {
+    const TABLET = { mac: 'aa:bb:cc:dd:ee:09', label: 'Tablet de Marta', hostname: 'tablet' };
+
+    async function abrirConBloqueo(trigger: 'time' | 'device-new') {
+      mockGets({ '/inventory/devices': [TABLET] });
+      apiMock.post.mockResolvedValue(rule());
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText('Nombre'), 'Sin internet');
+      await user.selectOptions(within(dialog).getByLabelText('Cuando'), trigger);
+      await user.selectOptions(within(dialog).getByLabelText('Acción 1'), 'device-block');
+      return { user, dialog };
+    }
+
+    it('sin MAC en el disparador, no se guarda hasta elegir aparato', async () => {
+      const { user, dialog } = await abrirConBloqueo('time');
+      const objetivo = within(dialog).getByLabelText(
+        'Objetivo de la acción 1',
+      ) as HTMLSelectElement;
+      expect(objetivo.value).toBe('');
+      expect(within(dialog).getByRole('option', { name: 'Elige un aparato' })).toBeDisabled();
+      expect(
+        within(dialog).queryByRole('option', { name: 'El dispositivo del evento' }),
+      ).not.toBeInTheDocument();
+
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      expect(
+        await within(dialog).findByText('Elige el aparato de la acción 1.'),
+      ).toBeInTheDocument();
+      expect(apiMock.post).not.toHaveBeenCalled();
+
+      await user.selectOptions(objetivo, TABLET.mac);
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() =>
+        expect(apiMock.post).toHaveBeenCalledWith(
+          '/automations',
+          expect.objectContaining({ actions: [{ type: 'device-block', mac: TABLET.mac }] }),
+        ),
+      );
+    });
+
+    it('con MAC en el disparador, «el dispositivo del evento» sigue siendo válido', async () => {
+      const { user, dialog } = await abrirConBloqueo('device-new');
+      expect(
+        within(dialog).getByRole('option', { name: 'El dispositivo del evento' }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('option', { name: 'Elige un aparato' }),
+      ).not.toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() =>
+        expect(apiMock.post).toHaveBeenCalledWith(
+          '/automations',
+          expect.objectContaining({ actions: [{ type: 'device-block' }] }),
+        ),
+      );
+    });
+  });
+
   it('muestra el log de ejecuciones con éxito/fallo', async () => {
     mockGets({
       '/automations': [rule()],

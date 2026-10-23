@@ -2329,6 +2329,8 @@ export const en: Record<TranslationKey, string> = {
   'automations.editor.actionSceneAria': 'Scene for action {n}',
   'automations.editor.actionTargetAria': 'Target for action {n}',
   'automations.editor.eventDevice': 'The device from the event',
+  'automations.editor.pickDevice': 'Pick a device',
+  'automations.editor.actionNeedsDevice': 'Pick the device for action {n}.',
   'automations.editor.actionPauseMinutesAria': 'Pause minutes for action {n}',
   'automations.editor.minutes': 'minutes',
   'automations.editor.actionMessageAria': 'Message for action {n}',
