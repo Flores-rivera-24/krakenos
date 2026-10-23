@@ -1,3 +1,4 @@
+import { limpiarRecursos } from '@/lib/use-resource';
 import type { AuthTokens, LoginResponse, LoginResult, User } from '@krakenos/types';
 import { create } from 'zustand';
 
@@ -141,6 +142,9 @@ export const useAuthStore = create<AuthState>()((set) => ({
             ? { user: null, tokens: null, lastRefreshFailure: motivo }
             : { lastRefreshFailure: motivo },
         );
+        // Una sesión caducada vacía también las lecturas compartidas; un fallo de
+        // red (`unreachable`) las conserva, igual que conserva el usuario.
+        if (motivo === 'expired') limpiarRecursos();
         return false;
       } finally {
         refreshInFlight = null;
@@ -153,6 +157,8 @@ export const useAuthStore = create<AuthState>()((set) => ({
     // El servidor revoca el refresh de la cookie y la borra.
     await postJson('/auth/logout').catch(() => undefined);
     set({ user: null, tokens: null, lastRefreshFailure: null });
+    // Las lecturas compartidas (TTL 5 s) son datos del usuario saliente.
+    limpiarRecursos();
     // Estado por-usuario que no debe sobrevivir al cambio de cuenta (AUD-14).
     const { useFavoritesStore } = await import('./favorites.store');
     useFavoritesStore.getState().reset();

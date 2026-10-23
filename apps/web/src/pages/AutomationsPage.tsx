@@ -297,6 +297,16 @@ function RuleEditor({
       setError(t('automations.editor.errNoAction'));
       return;
     }
+    const sinAparato = actions.findIndex(
+      (a) =>
+        (a.type === 'device-block' || a.type === 'device-unblock' || a.type === 'device-pause') &&
+        !eventHasMac &&
+        a.mac === '',
+    );
+    if (sinAparato >= 0) {
+      setError(t('automations.editor.actionNeedsDevice', { n: sinAparato + 1 }));
+      return;
+    }
     setSaving(true);
     setError(null);
     const body = {
@@ -780,8 +790,12 @@ function RuleEditor({
                       value={row.mac}
                       onChange={(e) => updateAction(i, { mac: e.target.value })}
                     >
-                      {eventHasMac && (
+                      {eventHasMac ? (
                         <option value="">{t('automations.editor.eventDevice')}</option>
+                      ) : (
+                        <option value="" disabled>
+                          {t('automations.editor.pickDevice')}
+                        </option>
                       )}
                       {networkDevices.map((d) => (
                         <option key={d.mac} value={d.mac}>

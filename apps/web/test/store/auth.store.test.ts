@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
 import { useAuthStore } from '@/store/auth.store';
+import { useResource } from '@/lib/use-resource';
 
 /** Construye una respuesta tipo `fetch` mínima. */
 function jsonResponse(status: number, body: unknown): Response {
@@ -191,5 +193,53 @@ describe('useAuthStore', () => {
     await useAuthStore.getState().logout();
     expect(useFavoritesStore.getState().favorites).toHaveLength(0);
     expect(useFavoritesStore.getState().loaded).toBe(false);
+  });
+
+  describe('la caché de lecturas compartidas no sobrevive a la sesión', () => {
+    async function cargar(fetcher: () => Promise<string>) {
+      const { result, unmount } = renderHook(() => useResource('test:cache-sesion', fetcher));
+      await waitFor(() => expect(result.current.data).not.toBeNull());
+      unmount();
+    }
+
+    it('logout vacía la caché: la siguiente lectura vuelve a pedir', async () => {
+      const fetcher = vi.fn().mockResolvedValue('datos del admin');
+      await cargar(fetcher);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(204, null)));
+      await useAuthStore.getState().logout();
+
+      await cargar(fetcher);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+    it('un refresh caducado (401) vacía la caché', async () => {
+      const fetcher = vi.fn().mockResolvedValue('datos del admin');
+      await cargar(fetcher);
+
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(jsonResponse(401, { code: 'X', message: 'no' })),
+      );
+      expect(await useAuthStore.getState().refresh()).toBe(false);
+
+      await cargar(fetcher);
+      expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+    it('un fallo de red en el refresh CONSERVA la caché', async () => {
+      const fetcher = vi.fn().mockResolvedValue('datos del admin');
+      await cargar(fetcher);
+
+      useAuthStore.setState({ user: USER, tokens: TOKENS });
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('network')));
+      expect(await useAuthStore.getState().refresh()).toBe(false);
+
+      await cargar(fetcher);
+      expect(fetcher).toHaveBeenCalledTimes(1);
+    });
   });
 });
