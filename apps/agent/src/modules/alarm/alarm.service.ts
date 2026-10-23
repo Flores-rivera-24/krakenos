@@ -190,6 +190,13 @@ export class AlarmService {
 
   async armAlarm(mode: AlarmMode, by: string): Promise<AlarmState> {
     const config = await this.getConfig();
+    // Re-armar en `entry`/`triggered` anularía la cuenta atrás o la sirena sin PIN:
+    // solo `disarmAlarm` (con PIN) sale de ahí. Cubre también el auto-armado `away`.
+    // La comprobación va DESPUÉS del await y pegada a la asignación: un tick o un
+    // sensor puede cambiar la fase mientras se lee la config.
+    if (this.state.phase === 'entry' || this.state.phase === 'triggered') {
+      throw new AlarmBusyError();
+    }
     this.state = arm(mode, this.now(), config);
     this.faultNotified.clear();
     await this.persist();
@@ -445,6 +452,15 @@ export class AlarmService {
   stop(): void {
     this.loop?.stop();
     this.loop = null;
+  }
+}
+
+/** La alarma está en cuenta atrás de entrada o sonando: no se puede re-armar. */
+export class AlarmBusyError extends Error {
+  readonly code = 'ALARM_ACTIVE';
+  constructor() {
+    super('La alarma está sonando o en cuenta atrás: desármala con el PIN.');
+    this.name = 'AlarmBusyError';
   }
 }
 

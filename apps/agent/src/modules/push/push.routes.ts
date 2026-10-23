@@ -12,7 +12,9 @@ interface PushRoutesOpts {
 export const pushRoutes: FastifyPluginAsync<PushRoutesOpts> = async (app, opts) => {
   const { service } = opts;
 
-  // Todas las rutas de push requieren autenticación (cualquier rol).
+  // Todas las rutas de push requieren autenticación (cualquier rol). Suscribir y
+  // desuscribir exigen además una SESIÓN: un token de API no puede suscribir un
+  // endpoint a nombre de su emisor (la suscripción sobreviviría a revocarlo).
   app.addHook('preHandler', app.authenticate);
 
   app.get('/vapid-public-key', { schema: vapidPublicKeySchema }, async () => {
@@ -22,7 +24,7 @@ export const pushRoutes: FastifyPluginAsync<PushRoutesOpts> = async (app, opts) 
   // Guarda o actualiza la suscripción del usuario actual (upsert por endpoint).
   app.post<{ Body: PushSubscriptionPayload }>(
     '/subscribe',
-    { schema: subscribeSchema },
+    { schema: subscribeSchema, preHandler: app.requireSession },
     async (req, reply) => {
       const { endpoint, keys } = req.body;
       // El endpoint es un destino al que el agente hará POST: se valida contra la
@@ -70,7 +72,7 @@ export const pushRoutes: FastifyPluginAsync<PushRoutesOpts> = async (app, opts) 
   // Elimina la suscripción del usuario actual por endpoint.
   app.delete<{ Body: { endpoint: string } }>(
     '/subscribe',
-    { schema: unsubscribeSchema },
+    { schema: unsubscribeSchema, preHandler: app.requireSession },
     async (req, reply) => {
       await app.prisma.pushSubscription.deleteMany({
         where: { endpoint: req.body.endpoint, userId: req.user.sub },

@@ -49,7 +49,7 @@ export const armAlarmSchema = {
     required: ['mode'],
     properties: { mode: { enum: ['away', 'night'] } },
   },
-  response: { 200: alarmStateResponse, 400: errorResponse },
+  response: { 200: alarmStateResponse, 400: errorResponse, 409: errorResponse },
 } as const;
 
 export const disarmAlarmSchema = {

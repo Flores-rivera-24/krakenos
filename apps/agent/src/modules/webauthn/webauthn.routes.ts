@@ -43,7 +43,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.post(
     '/register/options',
-    { preHandler: app.authenticate, schema: registerOptionsSchema },
+    { preHandler: app.requireSession, schema: registerOptionsSchema },
     async (req, reply) => {
       const user = await app.prisma.user.findUnique({ where: { id: req.user.sub } });
       if (!user)
@@ -56,7 +56,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.post<{ Body: { response: RegistrationResponseJSON; name: string } }>(
     '/register/verify',
-    { preHandler: app.authenticate, schema: registerVerifySchema },
+    { preHandler: app.requireSession, schema: registerVerifySchema },
     async (req, reply) => {
       const user = await app.prisma.user.findUnique({ where: { id: req.user.sub } });
       if (!user)
@@ -198,7 +198,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
   // (Re)genera el lote (usuario autenticado): Ajustes → Seguridad. Se muestran una vez.
   app.post(
     '/backup-codes',
-    { preHandler: app.authenticate, schema: regenerateBackupCodesSchema },
+    { preHandler: app.requireSession, schema: regenerateBackupCodesSchema },
     async (req) => {
       const codes = await backupCodes.generate(req.user.sub);
       app.audit({ action: 'webauthn.backup-codes.regenerate', userId: req.user.sub, ip: req.ip });
@@ -209,7 +209,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
   // Cuántos códigos sin usar quedan (para la UI; nunca expone los códigos).
   app.get(
     '/backup-codes',
-    { preHandler: app.authenticate, schema: backupCodesStatusSchema },
+    { preHandler: app.requireSession, schema: backupCodesStatusSchema },
     async (req) => ({ remaining: await backupCodes.remaining(req.user.sub) }),
   );
 
@@ -252,13 +252,13 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.get(
     '/credentials',
-    { preHandler: app.authenticate, schema: listCredentialsSchema },
+    { preHandler: app.requireSession, schema: listCredentialsSchema },
     async (req) => service.listCredentials(req.user.sub),
   );
 
   app.patch<{ Params: { id: string }; Body: { name: string } }>(
     '/credentials/:id',
-    { preHandler: app.authenticate, schema: renameCredentialSchema },
+    { preHandler: app.requireSession, schema: renameCredentialSchema },
     async (req, reply) => {
       const info = await service.renameCredential(req.user.sub, req.params.id, req.body.name);
       if (!info)
@@ -269,7 +269,7 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
 
   app.delete<{ Params: { id: string } }>(
     '/credentials/:id',
-    { preHandler: app.authenticate, schema: deleteCredentialSchema },
+    { preHandler: app.requireSession, schema: deleteCredentialSchema },
     async (req, reply) => {
       const ok = await service.deleteCredential(req.user.sub, req.params.id);
       if (!ok) return reply.code(404).send({ code: 'NOT_FOUND', message: 'Passkey no encontrada' });

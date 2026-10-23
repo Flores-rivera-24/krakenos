@@ -67,6 +67,13 @@ declare module 'fastify' {
      */
     requireActiveAdmin: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
     /**
+     * preHandler para rutas de credenciales y sesiones (passkeys, códigos de
+     * recuperación, contraseña, sesiones): `authenticate` y, si la petición viene
+     * con un token de API, 403 `API_TOKEN_FORBIDDEN`. Un token que pudiera generar
+     * códigos de recuperación los canjearía en `/auth/recover` por una sesión completa.
+     */
+    requireSession: (req: FastifyRequest, reply: FastifyReply) => Promise<void>;
+    /**
      * Verifica un JWT eligiendo la clave por `kid` (rotación RS256, US-64): la
      * clave de firma actual o una previa durante el solape. Lanza si la firma,
      * el emisor/audiencia o la expiración no validan, o si el `kid` es desconocido.
@@ -224,6 +231,12 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
         });
       }
     };
+  });
+
+  app.decorate('requireSession', async (req: FastifyRequest, reply: FastifyReply) => {
+    await app.authenticate(req, reply);
+    if (reply.sent) return;
+    if (req.apiScopes) return apiTokenForbidden(reply);
   });
 
   app.decorate('requireCapability', (capability: Capability) => {
