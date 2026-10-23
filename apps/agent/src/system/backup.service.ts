@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import type { PrismaClient } from '../generated/prisma/client.js';
+import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
 import { buildManifestHeader, createArchiveEncryptor } from './backup.js';
 
 /**
@@ -34,7 +35,10 @@ const DEFAULT_DATA_DIR = resolve('data');
 const READ_CHUNK = 4 * 1024 * 1024;
 
 export interface BackupPaths {
+  /** Directorio de claves (para ficheros extra); por defecto, el de `secretbox.key`. */
   keysDir?: string;
+  /** Rutas reales de las claves (`keyFilePaths(env)`): mandan sobre `keysDir`. */
+  keyFiles?: KeyFilePaths;
   dataDir?: string;
 }
 
@@ -66,14 +70,36 @@ async function listDirEntries(dir: string, prefix: string): Promise<FileEntry[]>
 
 export class BackupService {
   private readonly keysDir: string;
+  private readonly keyFiles: KeyFilePaths | undefined;
   private readonly dataDir: string;
 
   constructor(
     private readonly prisma: PrismaClient,
     paths: BackupPaths = {},
   ) {
-    this.keysDir = paths.keysDir ?? DEFAULT_KEYS_DIR;
+    this.keyFiles = paths.keyFiles;
+    this.keysDir =
+      paths.keysDir ?? (paths.keyFiles ? dirname(paths.keyFiles.secretbox) : DEFAULT_KEYS_DIR);
     this.dataDir = paths.dataDir ?? DEFAULT_DATA_DIR;
+  }
+
+  /**
+   * Entradas `keys/…`: los ficheros del directorio de claves y, encima, las tres claves
+   * donde el entorno las pone de verdad (con su nombre lógico), sin duplicar nombres.
+   */
+  private async keyEntries(): Promise<FileEntry[]> {
+    const byName = new Map<string, FileEntry>();
+    for (const e of await listDirEntries(this.keysDir, 'keys')) byName.set(e.name, e);
+    if (this.keyFiles) {
+      for (const k of Object.keys(KEY_ENTRY_NAMES) as (keyof KeyFilePaths)[]) {
+        const path = this.keyFiles[k];
+        if (!existsSync(path)) continue;
+        const st = await stat(path);
+        if (st.isFile())
+          byName.set(KEY_ENTRY_NAMES[k], { name: KEY_ENTRY_NAMES[k], path, size: st.size });
+      }
+    }
+    return [...byName.values()];
   }
 
   /** Snapshot consistente de la base SQLite a un fichero temporal (no a memoria). */
@@ -152,7 +178,7 @@ export class BackupService {
     try {
       const entries: FileEntry[] = [
         await this.snapshotDbToFile(tmpDir),
-        ...(await listDirEntries(this.keysDir, 'keys')),
+        ...(await this.keyEntries()),
         ...(await listDirEntries(this.dataDir, 'data')),
       ];
       const bytes = await this.writeArchive(entries, passphrase, destPath);

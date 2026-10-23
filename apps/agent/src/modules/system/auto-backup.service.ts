@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, rm, stat } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import type { PrismaClient } from '../../generated/prisma/client.js';
 import {
   AUTO_BACKUP_FREQUENCIES,
@@ -9,6 +9,7 @@ import {
   type AutoBackupStatus,
 } from '@krakenos/types';
 import type { Secretbox } from '../../config/secretbox.js';
+import { env } from '../../config/env.js';
 import { BackupService } from '../../system/backup.service.js';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 
@@ -119,7 +120,7 @@ export class AutoBackupService {
   private running: Promise<AutoBackupStatus> | null = null;
 
   constructor(private readonly opts: AutoBackupOptions) {
-    this.backupDir = opts.backupDir ?? resolve('data/backups');
+    this.backupDir = opts.backupDir ?? env.backupDir;
     this.now = opts.now ?? (() => new Date());
     this.warn = opts.warn ?? (() => undefined);
   }

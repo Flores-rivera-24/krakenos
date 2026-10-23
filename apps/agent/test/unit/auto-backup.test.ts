@@ -9,7 +9,7 @@ import {
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSecretbox, generateSecretboxKey } from '../../src/config/secretbox.js';
 import {
   AutoBackupService,
@@ -296,5 +296,28 @@ describe('AutoBackupService', () => {
     await service.tick(D('2026-07-30T02:59:00'));
     await service.tick(D('2026-07-30T03:01:00'));
     expect(readdirSync(backupDir)).toHaveLength(1);
+  });
+});
+
+describe('AutoBackupService — directorio por defecto (D1)', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  it('sin `backupDir` explícito usa `env.backupDir` (BACKUP_DIR, el volumen en Docker)', async () => {
+    const volumen = join(mkdtempSync(join(tmpdir(), 'krakenos-vol-')), 'backups');
+    vi.stubEnv('BACKUP_DIR', volumen);
+    vi.resetModules();
+    const { AutoBackupService: Servicio } =
+      await import('../../src/modules/system/auto-backup.service.js');
+    const service = new Servicio({
+      prisma: fakePrisma({ autoBackupFrequency: 'daily' }),
+      secretbox: createSecretbox(generateSecretboxKey()),
+      backupService: fakeBackupService(),
+    });
+    await service.setPassphrase();
+    await service.runNow();
+    expect(readdirSync(volumen)).toHaveLength(1);
   });
 });

@@ -37,6 +37,8 @@ services:
       JWT_PRIVATE_KEY_PATH: /data/keys/jwt-private.pem
       JWT_PUBLIC_KEY_PATH: /data/keys/jwt-public.pem
       SECRETBOX_KEY_PATH: /data/keys/secretbox.key
+      # Copias automáticas DENTRO del volumen: en el default (data/backups) morían con el contenedor.
+      BACKUP_DIR: /data/backups
       # Rutas de datos de integraciones que SÍ operan dentro del contenedor.
       TUYA_CONFIG_PATH: /data/tuya-devices.json
       CAMERAS_CONFIG: /data/cameras.json

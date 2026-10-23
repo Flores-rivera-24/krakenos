@@ -223,6 +223,8 @@ export const env = {
   refreshTokenTtl: int('REFRESH_TOKEN_TTL', 2_592_000),
 
   /** Claves RS256 leídas desde disco al arrancar. */
+  jwtPrivateKeyPath: resolve(required('JWT_PRIVATE_KEY_PATH')),
+  jwtPublicKeyPath: resolve(required('JWT_PUBLIC_KEY_PATH')),
   jwtPrivateKey: readFileSync(resolve(required('JWT_PRIVATE_KEY_PATH')), 'utf8'),
   jwtPublicKey: readFileSync(resolve(required('JWT_PUBLIC_KEY_PATH')), 'utf8'),
   /**
@@ -239,6 +241,12 @@ export const env = {
    * arrancar si falta (`loadOrCreateSecretbox`), como el resto de claves de `keys/`.
    */
   secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? resolve('keys/secretbox.key'),
+
+  /**
+   * Directorio de las copias automáticas. Por defecto `data/backups`; en Docker va al
+   * volumen persistente (`/data/backups`), o la copia moriría con el contenedor.
+   */
+  backupDir: process.env.BACKUP_DIR ? resolve(process.env.BACKUP_DIR) : resolve('data/backups'),
 
   /**
    * Comprobación de actualizaciones (US-116). **Opt-in**: `UPDATE_CHECK_REPO`

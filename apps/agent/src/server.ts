@@ -11,6 +11,7 @@ import { checkSecretFilePermissions } from './config/secret-permissions.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
 import { AutoBackupService } from './modules/system/auto-backup.service.js';
 import { BackupService } from './system/backup.service.js';
+import { keyFilePaths } from './system/key-paths.js';
 import { SETTING_BOUNDS, clampToBound } from './config/settings-bounds.js';
 import { IntegrationConfigStore } from './integrations/integration-config.store.js';
 import { buildIntegrationRuntime } from './integrations/runtime.js';
@@ -349,7 +350,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   const autoBackupService = new AutoBackupService({
     prisma: app.prisma,
     secretbox,
-    backupService: new BackupService(app.prisma),
+    backupService: new BackupService(app.prisma, { keyFiles: keyFilePaths(env) }),
     warn: (message, err) => app.log.warn({ err }, message),
   });
   // Vigilancia del certificado TLS (US-241): lo relee del disco, lo aplica en
