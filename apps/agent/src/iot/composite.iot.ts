@@ -5,7 +5,19 @@ import type {
   UpdateIotStateRequest,
 } from '@krakenos/types';
 import { isControllableKind } from '@krakenos/types';
+import { withActionTimeout } from './action-timeout.js';
 import { IotError } from './mock.iot.js';
+
+/** Capacidad opcional de un manager que agrega backends: qué miembros faltan en la última lista. */
+export interface ReportsListFailures {
+  listFailures(): readonly ListFailure[];
+}
+
+/** Un miembro del composite que no respondió en la última lectura de `listDevices`. */
+export interface ListFailure {
+  prefix: string;
+  message: string;
+}
 
 /** Una integración miembro del composite, con su prefijo de id. */
 export interface CompositeEntry {
@@ -32,12 +44,26 @@ export class CompositeIotManager implements IotManager {
 
   /**
    * `onError` recibe los fallos **parciales** de `listDevices` (prefijo del backend
-   * y motivo), para que un backend caído quede en el log y no solo ausente.
+   * y motivo) solo al PASAR a caído, y `onRecover` al volver: un backend apagado se
+   * sondea ~12 veces por minuto y no debe inundar el log.
    */
   constructor(
     private readonly entries: CompositeEntry[],
     private readonly onError?: (prefix: string, err: unknown) => void,
+    private readonly onRecover?: (prefix: string) => void,
   ) {}
+
+  private failures: ListFailure[] = [];
+  private readonly down = new Set<string>();
+
+  /**
+   * Miembros que fallaron en el ÚLTIMO `listDevices` (vacío si todos respondieron).
+   * Una lista parcial se ve igual que una completa: quien vigila sensores (la
+   * alarma) necesita saber qué backends faltan para no darlos por «ausentes».
+   */
+  listFailures(): readonly ListFailure[] {
+    return this.failures;
+  }
 
   /**
    * Miembros del composite. Desde US-243 **todo** manager va envuelto aquí —
@@ -81,7 +107,7 @@ export class CompositeIotManager implements IotManager {
   async listDevices(): Promise<IotDevice[]> {
     const results = await Promise.allSettled(
       this.entries.map(async ({ prefix, manager }) =>
-        (await manager.listDevices()).map((d) => this.prefixed(prefix, d)),
+        (await withActionTimeout(() => manager.listDevices())).map((d) => this.prefixed(prefix, d)),
       ),
     );
     const lists: IotDevice[][] = [];
@@ -90,8 +116,20 @@ export class CompositeIotManager implements IotManager {
       if (r.status === 'fulfilled') lists.push(r.value);
       else failures.push({ prefix: this.entries[i]!.prefix, reason: r.reason });
     });
+    this.failures = failures.map((f) => ({
+      prefix: f.prefix,
+      message: f.reason instanceof Error ? f.reason.message : String(f.reason),
+    }));
     if (lists.length === 0 && failures.length > 0) throw failures[0]!.reason;
-    for (const f of failures) this.onError?.(f.prefix, f.reason);
+    const nowDown = new Set(failures.map((f) => f.prefix));
+    for (const f of failures) {
+      if (!this.down.has(f.prefix)) this.onError?.(f.prefix, f.reason);
+    }
+    for (const prefix of this.down) {
+      if (!nowDown.has(prefix)) this.onRecover?.(prefix);
+    }
+    this.down.clear();
+    for (const prefix of nowDown) this.down.add(prefix);
     return lists.flat();
   }
 

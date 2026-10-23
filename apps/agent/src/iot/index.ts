@@ -168,6 +168,8 @@ export function createIotManager(
     tuyaStore?: FileJsonStore<TuyaDeviceRecord>;
     /** Fallo parcial al listar un backend (el resto sigue listándose). */
     onListError?: (prefix: string, err: unknown) => void;
+    /** El backend que había fallado al listar vuelve a responder. */
+    onListRecover?: (prefix: string) => void;
   } = {},
 ): IotManagerBundle {
   // Sin configurar (`IOT_KIND=none`): ningún backend, ni envoltorio de composite (que prefija
@@ -203,6 +205,7 @@ export function createIotManager(
       manager: buildIotManager(kind, config, tuyaStore),
     })),
     deps.onListError,
+    deps.onListRecover,
   );
 
   return { manager, tuyaStore, kinds: activeKinds };

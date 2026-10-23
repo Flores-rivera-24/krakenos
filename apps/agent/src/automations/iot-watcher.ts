@@ -91,7 +91,10 @@ export class IotWatcher {
     const devices = await this.iot.listDevices();
     const current = new Map(devices.map((d) => [d.id, d]));
     const prev = this.baseline;
-    this.baseline = current;
+    // ⚠️ Lista parcial (un backend caído): los aparatos que faltan CONSERVAN su línea
+    // base. Si se olvidaran, al volver el backend `transitions(undefined, dev)` daría
+    // `[]` y una puerta abierta durante el corte no dispararía la alarma.
+    this.baseline = prev ? new Map([...prev, ...current]) : current;
     if (!prev) return; // primer barrido: fija la base
 
     for (const device of current.values()) {

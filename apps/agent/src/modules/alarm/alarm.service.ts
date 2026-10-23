@@ -13,6 +13,7 @@ import bcrypt from 'bcrypt';
 import type { FastifyInstance } from 'fastify';
 import type { HomeEventBus } from '../../automations/event-bus.js';
 import { withActionTimeout } from '../../iot/action-timeout.js';
+import type { ReportsListFailures } from '../../iot/composite.iot.js';
 import { settleWithLimit } from '../../iot/batch.js';
 import {
   advance,
@@ -86,6 +87,8 @@ export class AlarmService {
   /** Fail-safe de los detectores de humo/CO (US-245): dedupe propio, porque su
    *  vigilancia **no** se limpia al desarmar como la de los sensores de intrusión. */
   private readonly faultNotifiedVital = new Set<string>();
+  /** Backends del composite caídos ya auditados (una vez por caída). */
+  private readonly faultNotifiedBackend = new Set<string>();
   /** Último aviso de humo/CO por aparato+métrica (ms), para la ventana de rearme. */
   private readonly ultimosAvisosVitales = new Map<string, number>();
   /** Último fail-safe ejecutado (ms). `-Infinity` → el primer barrido lo corre. */
@@ -329,6 +332,23 @@ export class AlarmService {
     this.iotOutageLogged = false;
     this.iotOutageNotified = false;
     const devices = lectura.devices;
+    // Lista PARCIAL: un backend caído no entra en `devices`, y sin esto sus sensores y
+    // detectores desaparecerían sin que nadie lo supiera. Se avisa una vez por caída,
+    // armada o no (los detectores de humo/CO se vigilan siempre).
+    const caidos = new Set<string>();
+    for (const f of (this.iot as Partial<ReportsListFailures>).listFailures?.() ?? []) {
+      caidos.add(f.prefix);
+      if (this.faultNotifiedBackend.has(f.prefix)) continue;
+      this.faultNotifiedBackend.add(f.prefix);
+      this.app.audit({
+        action: 'alarm.sensor_fault',
+        detail: `el backend ${f.prefix} no responde: sus sensores y detectores no se vigilan`,
+      });
+      this.app.log.warn(`[alarm] backend IoT caído: ${f.prefix} (${f.message})`);
+    }
+    for (const prefix of this.faultNotifiedBackend) {
+      if (!caidos.has(prefix)) this.faultNotifiedBackend.delete(prefix);
+    }
     const byId = new Map(devices.map((d) => [d.id, d]));
 
     for (const id of vigilados) {

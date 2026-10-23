@@ -3,6 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import type { MockInstance } from 'vitest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
+import { CompositeIotManager } from '../../src/iot/composite.iot.js';
 import {
   AlarmBusyError,
   AlarmPinError,
@@ -65,7 +66,7 @@ describe('AlarmService (US-188)', () => {
     await resetDb(app);
   });
 
-  const build = (iot: FakeIot, now: () => number) => {
+  const build = (iot: IotManager, now: () => number) => {
     const bus = new HomeEventBus();
     const service = new AlarmService(app, iot, bus, { now });
     return { service, bus };
@@ -416,6 +417,42 @@ describe('AlarmService (US-188)', () => {
     expect(state.phase).toBe('disarmed');
     // Al desarmar tras estar activa, intenta apagar la sirena.
     expect(iot.setCalls).toContainEqual({ id: 'siren', on: false });
+  });
+
+  it('fail-safe: un backend caído (lista parcial) se audita una sola vez y de nuevo si vuelve a caer', async () => {
+    const sano = new FakeIot();
+    const caido = new FakeIot();
+    let down = true;
+    caido.listDevices = async () => {
+      if (down) throw new Error('bridge apagado');
+      return caido.devices;
+    };
+    const composite = new CompositeIotManager([
+      { prefix: 'hue', manager: caido },
+      { prefix: 'mock', manager: sano },
+    ]);
+    let clock = 0;
+    const { service } = build(composite, () => clock);
+    const auditSpy = vi.spyOn(app, 'audit').mockImplementation(() => {});
+    await service.setConfig({ sensorDeviceIds: ['mock:sensor-door'], exitDelaySec: 0 });
+    await service.armAlarm('away', 'ana@x');
+
+    await service.tick();
+    clock += 31_000;
+    await service.tick();
+    const faults = () => auditSpy.mock.calls.filter((c) => c[0].action === 'alarm.sensor_fault');
+    expect(faults()).toHaveLength(1);
+    expect(faults()[0]![0].detail).toContain('hue');
+    expect(faults()[0]![0].detail).toContain('no responde');
+
+    down = false;
+    clock += 31_000;
+    await service.tick();
+    down = true;
+    clock += 31_000;
+    await service.tick();
+    expect(faults()).toHaveLength(2);
+    auditSpy.mockRestore();
   });
 
   it('fail-safe: un sensor vigilado caído estando armada avisa una sola vez', async () => {

@@ -1,4 +1,5 @@
 import { IOT_ACTION_TIMEOUT_MS, withActionTimeout } from './action-timeout.js';
+import type { ReportsListFailures } from './composite.iot.js';
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
 
 /** Ventana de validez de la instantánea de dispositivos. */
@@ -31,14 +32,21 @@ export interface DeviceCacheOptions {
  *
  * `setState` **invalida** la instantánea: tras encender una luz, el siguiente
  * barrido debe verla encendida (si no, el `IotWatcher` publicaría una transición
- * fantasma al expirar el TTL). Un fallo de `listDevices` no se cachea.
+ * fantasma al expirar el TTL). Un fallo de `listDevices` no se cachea, y una
+ * lectura que tarda más de `listTimeoutMs` (10 s) cuenta como fallo, para que un
+ * transporte colgado no congele el barrido. Un resultado **parcial** (un backend
+ * del composite caído) sí se cachea 5 s, y `listFailures()` pasa tal cual los
+ * fallos de esa misma lectura.
  *
  * Alcance deliberado: es una vista de **lectura** para consumidores de fondo. No
  * expone `stop()` ni `commission()` — el ciclo de vida del manager lo gobierna su
  * `ManagerHolder` (`runtime.stopAll()`), y las rutas siguen recibiendo el handle
  * recargable directo, sin caché.
  */
-export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}): IotManager {
+export function withDeviceCache(
+  iot: IotManager,
+  opts: DeviceCacheOptions = {},
+): IotManager & Partial<ReportsListFailures> {
   const ttlMs = opts.ttlMs ?? DEFAULT_DEVICE_CACHE_TTL_MS;
   const now = opts.now ?? Date.now;
   const listTimeoutMs = opts.listTimeoutMs ?? IOT_ACTION_TIMEOUT_MS;
@@ -68,6 +76,9 @@ export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}):
         });
       return inFlight;
     },
+
+    /** Fallos parciales de la última lectura real (solo si el manager los reporta). */
+    listFailures: () => (iot as Partial<ReportsListFailures>).listFailures?.() ?? [],
 
     /** Sin caché: lo usan caminos puntuales que quieren el estado real de un aparato. */
     getDevice(id: string): Promise<IotDevice | null> {
