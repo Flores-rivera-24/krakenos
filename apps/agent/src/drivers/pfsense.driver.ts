@@ -123,16 +123,30 @@ export class PfSenseDriver implements HardwareDriver {
       if (mine.length > 0) return;
       throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
     }
-    // Idempotente: una sola regla y con la IP actual (la regla es por IP, y DHCP la
-    // puede haber cambiado). Si no cuadra, se quitan las viejas y se crea la nueva.
-    if (mine.length === 1 && mine[0]!.source === ip) return;
-    // Primero se CREA la nueva: si el POST falla no se ha quitado nada y el aparato no
-    // queda sin regla. Luego se relee (no se fía de ids anteriores al POST) y se retiran
-    // solo las viejas; un fallo ahí deja dos reglas (inocuo, el siguiente reafirmado limpia).
-    await this.opts.client.post('/api/v2/firewall/rule', buildBlockRulePayload(ip, mac, this.lan));
-    const after = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
-    await this.deleteRules(after.filter((r) => r.descr === descr && r.source !== ip));
-    await this.opts.client.post('/api/v2/firewall/apply', {});
+    // Idempotente: una sola regla por aparato y con la IP actual (la regla es por IP y
+    // DHCP la puede haber cambiado). Solo se crea si ninguna cubre la IP actual: primero
+    // se CREA y luego se retira lo sobrante, así un POST fallido no deja al aparato sin
+    // regla. Un fallo al borrar deja reglas de más (inocuo; el siguiente reafirmado limpia).
+    let current = mine;
+    let changed = false;
+    if (!mine.some((r) => r.source === ip)) {
+      await this.opts.client.post(
+        '/api/v2/firewall/rule',
+        buildBlockRulePayload(ip, mac, this.lan),
+      );
+      changed = true;
+      // Se relee: no se fía de ids anteriores al POST (por si el id es posicional).
+      current = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules')).filter(
+        (r) => r.descr === descr,
+      );
+    }
+    const keep = current.find((r) => r.source === ip);
+    const extra = current.filter((r) => r !== keep);
+    if (extra.length > 0) {
+      await this.deleteRules(extra);
+      changed = true;
+    }
+    if (changed) await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
   /** Borra reglas de mayor a menor id (por si el id es posicional). Sin `apply`. */
