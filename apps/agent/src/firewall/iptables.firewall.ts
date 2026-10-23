@@ -58,6 +58,15 @@ export class IptablesFirewallManager implements FirewallManager {
     }
   }
 
+  /**
+   * Reaplica al kernel las reglas persistidas (el kernel las pierde al reiniciar).
+   * Sin reglas no toca nada: no llama al helper, que en Windows ni existe.
+   */
+  async start(): Promise<void> {
+    if ((await this.opts.store.list()).length === 0) return;
+    await this.apply();
+  }
+
   async listRules(): Promise<FirewallRule[]> {
     return (await this.opts.store.list()).sort((a, b) => a.priority - b.priority);
   }

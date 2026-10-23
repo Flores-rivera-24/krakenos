@@ -7,6 +7,7 @@ import {
   parsePfSenseArp,
   parsePfSenseInterfaceCounters,
   parsePfSenseLeases,
+  sameHost,
 } from '../../src/drivers/pfsense.parsers.js';
 
 describe('parsePfSenseArp', () => {
@@ -72,12 +73,12 @@ describe('parseFirewallRules + blockRuleDescr', () => {
   it('extrae {id, descr} y encuentra la regla de bloqueo de una MAC', () => {
     const rules = parseFirewallRules([
       { id: 0, descr: 'Default allow' },
-      { id: 1, descr: blockRuleDescr('F0:18:98:AA:BB:CC') },
+      { id: 1, descr: blockRuleDescr('F0:18:98:AA:BB:CC'), source: '192.168.1.42' },
       { id: 2 }, // sin descr → descartada
     ]);
     expect(rules).toEqual([
-      { id: 0, descr: 'Default allow' },
-      { id: 1, descr: 'krakenos-block:f0:18:98:aa:bb:cc' },
+      { id: 0, descr: 'Default allow', source: null },
+      { id: 1, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' },
     ]);
   });
 });
@@ -101,5 +102,23 @@ describe('buildBlockRulePayload', () => {
       destination: 'any',
       descr: 'krakenos-block:f0:18:98:aa:bb:cc',
     });
+  });
+});
+
+describe('sameHost', () => {
+  it('casa la IP a secas y con máscara /32', () => {
+    expect(sameHost('192.168.1.42', '192.168.1.42')).toBe(true);
+    expect(sameHost('192.168.1.42/32', '192.168.1.42')).toBe(true);
+    expect(sameHost(' 192.168.1.42/32 ', '192.168.1.42')).toBe(true);
+  });
+
+  it('no casa otra IP, otra máscara, una negación, un alias ni la ausencia de origen', () => {
+    expect(sameHost('192.168.1.43', '192.168.1.42')).toBe(false);
+    expect(sameHost('192.168.1.4', '192.168.1.42')).toBe(false);
+    expect(sameHost('192.168.1.42/24', '192.168.1.42')).toBe(false);
+    expect(sameHost('!192.168.1.42', '192.168.1.42')).toBe(false);
+    expect(sameHost('lan', '192.168.1.42')).toBe(false);
+    expect(sameHost('any', '192.168.1.42')).toBe(false);
+    expect(sameHost(null, '192.168.1.42')).toBe(false);
   });
 });

@@ -3,11 +3,12 @@
  * El driver no conoce `fetch`: opera contra este cliente, que gestiona el login
  * por cookie (`TOKEN`) + el header `Csrf-Token`/`X-CSRF-Token`, renueva la sesión
  * ante un 401 y devuelve el JSON crudo. El transporte es inyectable para testear
- * el contrato sin un controller real (certificado autofirmado → en producción
- * `rejectUnauthorized: false`, fuera de este código puro).
+ * el contrato sin un controller real (certificado autofirmado → la excepción TLS
+ * la pone `initConTlsDeLan` por petición, no este código puro).
  */
 
 import { safeFetch } from '../net/egress.js';
+import { initConTlsDeLan } from '../net/lan-tls.js';
 
 export interface UnifiHttpResponse {
   status: number;
@@ -31,7 +32,8 @@ export type UnifiHttpFetch = (
 ) => Promise<UnifiHttpResponse>;
 
 const defaultFetch: UnifiHttpFetch = async (url, init) => {
-  const res = await safeFetch(url, init);
+  // Certificado autofirmado del equipo: solo se acepta si el destino es de la LAN.
+  const res = await safeFetch(url, await initConTlsDeLan(url, init ?? {}));
   return {
     status: res.status,
     ok: res.ok,

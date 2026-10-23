@@ -84,4 +84,28 @@ describe('TcQosManager', () => {
     expect(await qos.removeRule(rule.id)).toBe(false);
     expect(await qos.listRules()).toHaveLength(0);
   });
+
+  describe('start() — reaplica lo persistido al kernel', () => {
+    it('con reglas en el store reconstruye la jerarquía igual que tras createRule', async () => {
+      const store = new MemoryJsonStore<QosRule>();
+      const opts = { store, interface: 'eth0', linkKbit: 1_000_000 };
+      await new TcQosManager({ runner, ...opts }).createRule({
+        name: 'a',
+        target: '10.0.0.1',
+        downloadKbps: 1000,
+      });
+
+      const after = new FakeRunner();
+      await new TcQosManager({ runner: after, ...opts }).start();
+
+      expect(after.count('tc qdisc add dev eth0 root')).toBe(1);
+      expect(after.count('tc class add dev eth0 parent 1:1')).toBe(1);
+      expect(after.count('tc filter add dev eth0')).toBe(1);
+    });
+
+    it('con el store vacío no llama al helper', async () => {
+      await makeManager(runner).start();
+      expect(runner.calls).toHaveLength(0);
+    });
+  });
 });

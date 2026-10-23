@@ -1,5 +1,6 @@
 import { parseTerse } from './mikrotik.parsers.js';
 import { safeFetch } from '../net/egress.js';
+import { initConTlsDeLan } from '../net/lan-tls.js';
 
 /**
  * Transporte para RouterOS (MikroTik) abstraído como operaciones sobre "menús"
@@ -45,7 +46,8 @@ export type MikrotikHttpFetch = (
 ) => Promise<MikrotikHttpResponse>;
 
 const defaultFetch: MikrotikHttpFetch = async (url, init) => {
-  const res = await safeFetch(url, init);
+  // Certificado autofirmado del equipo: solo se acepta si el destino es de la LAN.
+  const res = await safeFetch(url, await initConTlsDeLan(url, init ?? {}));
   return { status: res.status, ok: res.ok, json: () => res.json(), text: () => res.text() };
 };
 

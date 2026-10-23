@@ -66,6 +66,15 @@ export class TcQosManager implements QosManager {
     }
   }
 
+  /**
+   * Reaplica al kernel la jerarquía persistida (el kernel la pierde al reiniciar).
+   * Sin reglas no toca nada: no llama al helper.
+   */
+  async start(): Promise<void> {
+    if ((await this.opts.store.list()).length === 0) return;
+    await this.apply();
+  }
+
   async listRules(): Promise<QosRule[]> {
     return (await this.opts.store.list()).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }

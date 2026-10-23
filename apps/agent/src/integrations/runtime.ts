@@ -122,6 +122,18 @@ export async function buildIntegrationRuntime(
   const liveDomains = new Map<IntegrationDomain, { kind: string; source: 'db' | 'env' }>();
   const onIotError = (msg: string): void =>
     app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`);
+  /** Reaplica al kernel lo persistido (cortafuegos y QoS); un fallo se avisa, no tumba el arranque. */
+  const startRules = (domain: 'firewall' | 'qos', manager: FirewallManager | QosManager): void => {
+    Promise.resolve()
+      .then(() => manager.start?.())
+      .catch((err: unknown) => {
+        app.log.error(
+          `[${domain}] no se pudieron reaplicar las reglas guardadas: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+  };
 
   // El composite avisa solo al pasar a caído y al volver (no en cada sondeo).
   const onIotListError = (prefix: string, err: unknown): void =>
@@ -185,18 +197,18 @@ export async function buildIntegrationRuntime(
     (await tryBuild('cameras', (r) => createCameraManager(resolveCameraConfig(r)))).value,
     disposeManager,
   );
-  const firewall = createManagerHolder<FirewallManager>(
-    (await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r)))).value,
-    disposeManager,
-  );
+  const initialFirewall = (
+    await tryBuild('firewall', (r) => createFirewallManager(resolveFirewallConfig(r)))
+  ).value;
+  startRules('firewall', initialFirewall);
+  const firewall = createManagerHolder<FirewallManager>(initialFirewall, disposeManager);
   const vlan = createManagerHolder<VlanManager>(
     (await tryBuild('vlan', (r) => createVlanManager(resolveVlanConfig(r)))).value,
     disposeManager,
   );
-  const qos = createManagerHolder<QosManager>(
-    (await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r)))).value,
-    disposeManager,
-  );
+  const initialQos = (await tryBuild('qos', (r) => createQosManager(resolveQosConfig(r)))).value;
+  startRules('qos', initialQos);
+  const qos = createManagerHolder<QosManager>(initialQos, disposeManager);
   const dns = createManagerHolder<DnsManager>(
     (await tryBuild('dns', (r) => createDnsManager(resolveDnsConfig(r)))).value,
     disposeManager,
@@ -238,6 +250,7 @@ export async function buildIntegrationRuntime(
         const r = await tryBuild('firewall', (rec) =>
           createFirewallManager(resolveFirewallConfig(rec)),
         );
+        startRules('firewall', r.value);
         firewall.swap(r.value);
         return { fallback: r.fallback };
       }
@@ -248,6 +261,7 @@ export async function buildIntegrationRuntime(
       }
       case 'qos': {
         const r = await tryBuild('qos', (rec) => createQosManager(resolveQosConfig(rec)));
+        startRules('qos', r.value);
         qos.swap(r.value);
         return { fallback: r.fallback };
       }

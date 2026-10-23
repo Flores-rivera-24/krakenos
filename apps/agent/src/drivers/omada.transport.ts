@@ -5,11 +5,12 @@
  * (token devuelto en el cuerpo del login), desempaqueta el sobre
  * `{ errorCode, msg, result }` y renueva la sesión ante 401/407 o un errorCode de
  * sesión caducada. El transporte es inyectable para testear el contrato sin un
- * controller real (certificado autofirmado → `rejectUnauthorized: false` fuera de
- * este código puro).
+ * controller real (certificado autofirmado → la excepción TLS la pone
+ * `initConTlsDeLan` por petición, no este código puro).
  */
 
 import { safeFetch } from '../net/egress.js';
+import { initConTlsDeLan } from '../net/lan-tls.js';
 
 export interface OmadaHttpResponse {
   status: number;
@@ -31,7 +32,8 @@ export type OmadaHttpFetch = (
 ) => Promise<OmadaHttpResponse>;
 
 const defaultFetch: OmadaHttpFetch = async (url, init) => {
-  const res = await safeFetch(url, init);
+  // Certificado autofirmado del equipo: solo se acepta si el destino es de la LAN.
+  const res = await safeFetch(url, await initConTlsDeLan(url, init ?? {}));
   return {
     status: res.status,
     ok: res.ok,

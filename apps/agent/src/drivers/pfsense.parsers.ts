@@ -86,10 +86,12 @@ export function parsePfSenseInterfaceCounters(data: unknown, wan: string): Iface
   return null;
 }
 
-/** Una regla de firewall mínima (id + descripción) para localizarla. */
+/** Una regla de firewall mínima (id, descripción e IP de origen) para localizarla. */
 export interface FirewallRuleRef {
   id: number;
   descr: string;
+  /** Origen de la regla (`null` si no consta). */
+  source: string | null;
 }
 
 /** Descripción con la que KrakenOS etiqueta sus reglas de bloqueo por MAC. */
@@ -97,15 +99,29 @@ export function blockRuleDescr(mac: string): string {
   return `krakenos-block:${mac.toLowerCase()}`;
 }
 
-/** Mapea `GET /api/v2/firewall/rules` a referencias {id, descr}. */
+/** Mapea `GET /api/v2/firewall/rules` a referencias {id, descr, source}. */
 export function parseFirewallRules(data: unknown): FirewallRuleRef[] {
   const out: FirewallRuleRef[] = [];
   for (const entry of asArray(data)) {
     const descr = str(entry.descr);
     const id = entry.id;
-    if (descr !== null && typeof id === 'number') out.push({ id, descr });
+    if (descr !== null && typeof id === 'number')
+      out.push({ id, descr, source: str(entry.source) });
   }
   return out;
+}
+
+/**
+ * ¿El origen de una regla designa exactamente el host `ip` (IPv4)? Acepta la IP a
+ * secas y la forma CIDR de un solo host (`/32`), con espacios alrededor. No cubre
+ * (devuelve `false`): IPv6, otras máscaras, la negación (`!ip`), alias, palabras
+ * clave (`any`, `lan`…) ni un origen que llegue como objeto (el parser lo deja en
+ * `null`). No verificado contra hardware: el formato exacto de pfSense es supuesto.
+ */
+export function sameHost(source: string | null, ip: string): boolean {
+  if (source === null) return false;
+  const s = source.trim();
+  return s === ip || s === `${ip}/32`;
 }
 
 /** Busca el `ip` asociado a una `mac` dentro de la tabla ARP ya parseada. */

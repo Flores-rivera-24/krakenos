@@ -14,11 +14,13 @@ import type {
 import {
   blockRuleDescr,
   buildBlockRulePayload,
+  type FirewallRuleRef,
   ipForMac,
   parseFirewallRules,
   parsePfSenseArp,
   parsePfSenseInterfaceCounters,
   parsePfSenseLeases,
+  sameHost,
 } from './pfsense.parsers.js';
 import type { PfSenseClient } from './pfsense.transport.js';
 
@@ -114,22 +116,70 @@ export class PfSenseDriver implements HardwareDriver {
   async blockDevice(mac: string): Promise<void> {
     const arp = parsePfSenseArp(await this.opts.client.get('/api/v2/diagnostics/arp_table'));
     const ip = ipForMac(arp, mac);
-    if (!ip) throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
-    await this.opts.client.post('/api/v2/firewall/rule', buildBlockRulePayload(ip, mac, this.lan));
+    const descr = blockRuleDescr(mac);
+    const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
+    const mine = rules.filter((r) => r.descr === descr);
+    if (!ip) {
+      // Apagado: si ya hay regla se conserva (el reafirmado no es un error).
+      if (mine.length > 0) return;
+      throw new Error(`No se encontró IP para la MAC ${mac} en la tabla ARP de pfSense`);
+    }
+    // Idempotente: una sola regla por aparato y con la IP actual (la regla es por IP y
+    // DHCP la puede haber cambiado). Solo se crea si ninguna cubre la IP actual: primero
+    // se CREA y luego se retira lo sobrante, así un POST fallido no deja al aparato sin
+    // regla. Un fallo al borrar deja reglas de más (inocuo; el siguiente reafirmado limpia).
+    let current = mine;
+    if (!mine.some((r) => sameHost(r.source, ip))) {
+      // Protección: si ya hay 3+ reglas y ninguna casa, probablemente no entendemos el
+      // formato de `source`; crear otra cada reafirmado las acumularía sin fin.
+      if (mine.length >= 3) {
+        throw new Error(
+          `pfSense tiene ${mine.length} reglas de bloqueo para ${mac.toLowerCase()} y ninguna con un origen reconocible; no se crea otra`,
+        );
+      }
+      await this.opts.client.post(
+        '/api/v2/firewall/rule',
+        buildBlockRulePayload(ip, mac, this.lan),
+      );
+      // Se relee: no se fía de ids anteriores al POST (por si el id es posicional).
+      current = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules')).filter(
+        (r) => r.descr === descr,
+      );
+    }
+    const keep = current.find((r) => sameHost(r.source, ip));
+    if (!keep) {
+      // Guarda: sin ver la regla nueva, borrar «lo sobrante» sería borrarlo TODO y dejar
+      // al aparato sin bloquear respondiendo bien. Mejor fallar sin tocar nada más.
+      throw new Error(
+        `pfSense no muestra la regla recién creada para ${mac.toLowerCase()}; no se retiran las anteriores`,
+      );
+    }
+    const extra = current.filter((r) => r !== keep);
+    if (extra.length > 0) {
+      await this.deleteRules(extra);
+    }
+    // Siempre se aplica: un POST/DELETE no recarga el filtro hasta `apply`, y si un
+    // `apply` anterior falló, el reintento no debe dar por bueno un filtro sin recargar.
     await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
-  async unblockDevice(mac: string): Promise<void> {
-    try {
-      const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
-      const descr = blockRuleDescr(mac);
-      const rule = rules.find((r) => r.descr === descr);
-      if (!rule) return; // no había regla: nada que hacer
+  /** Borra reglas de mayor a menor id (por si el id es posicional). Sin `apply`. */
+  private async deleteRules(rules: FirewallRuleRef[]): Promise<void> {
+    for (const rule of [...rules].sort((x, y) => y.id - x.id)) {
       await this.opts.client.delete(`/api/v2/firewall/rule?id=${rule.id}`);
-      await this.opts.client.post('/api/v2/firewall/apply', {});
-    } catch {
-      // Best-effort: un fallo al desbloquear no debe romper el flujo.
     }
+  }
+
+  async unblockDevice(mac: string): Promise<void> {
+    const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
+    const descr = blockRuleDescr(mac);
+    const mine = rules.filter((r) => r.descr === descr);
+    // Un fallo se propaga: el llamante solo marca el aparato como desbloqueado tras el
+    // éxito del driver.
+    // Se aplica también sin reglas: si un `apply` anterior falló tras el DELETE, el
+    // reintento lo ve vacío y aun así el filtro sigue sin recargarse.
+    await this.deleteRules(mine);
+    await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
   // ---- WiFi: no aplica a pfSense ----
