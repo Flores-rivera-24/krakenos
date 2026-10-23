@@ -1,3 +1,4 @@
+import { IOT_ACTION_TIMEOUT_MS, withActionTimeout } from './action-timeout.js';
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
 
 /** Ventana de validez de la instantánea de dispositivos. */
@@ -8,6 +9,8 @@ export interface DeviceCacheOptions {
   ttlMs?: number;
   /** Reloj inyectable (ms); por defecto `Date.now`. */
   now?: () => number;
+  /** Tope de una lectura en ms (por defecto {@link IOT_ACTION_TIMEOUT_MS}): un transporte colgado no congela la caché. */
+  listTimeoutMs?: number;
 }
 
 /**
@@ -38,6 +41,7 @@ export interface DeviceCacheOptions {
 export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}): IotManager {
   const ttlMs = opts.ttlMs ?? DEFAULT_DEVICE_CACHE_TTL_MS;
   const now = opts.now ?? Date.now;
+  const listTimeoutMs = opts.listTimeoutMs ?? IOT_ACTION_TIMEOUT_MS;
 
   let snapshot: IotDevice[] | null = null;
   let takenAt = Number.NEGATIVE_INFINITY;
@@ -53,8 +57,7 @@ export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}):
       if (snapshot && now() - takenAt < ttlMs) return snapshot;
       // Ya hay una lectura en curso: se comparte en vez de abrir otra.
       if (inFlight) return inFlight;
-      inFlight = iot
-        .listDevices()
+      inFlight = withActionTimeout(() => iot.listDevices(), listTimeoutMs)
         .then((devices) => {
           snapshot = devices;
           takenAt = now();
