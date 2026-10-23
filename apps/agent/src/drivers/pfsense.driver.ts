@@ -129,13 +129,18 @@ export class PfSenseDriver implements HardwareDriver {
     // se CREA y luego se retira lo sobrante, así un POST fallido no deja al aparato sin
     // regla. Un fallo al borrar deja reglas de más (inocuo; el siguiente reafirmado limpia).
     let current = mine;
-    let changed = false;
     if (!mine.some((r) => sameHost(r.source, ip))) {
+      // Protección: si ya hay 3+ reglas y ninguna casa, probablemente no entendemos el
+      // formato de `source`; crear otra cada reafirmado las acumularía sin fin.
+      if (mine.length >= 3) {
+        throw new Error(
+          `pfSense tiene ${mine.length} reglas de bloqueo para ${mac.toLowerCase()} y ninguna con un origen reconocible; no se crea otra`,
+        );
+      }
       await this.opts.client.post(
         '/api/v2/firewall/rule',
         buildBlockRulePayload(ip, mac, this.lan),
       );
-      changed = true;
       // Se relee: no se fía de ids anteriores al POST (por si el id es posicional).
       current = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules')).filter(
         (r) => r.descr === descr,
@@ -152,9 +157,10 @@ export class PfSenseDriver implements HardwareDriver {
     const extra = current.filter((r) => r !== keep);
     if (extra.length > 0) {
       await this.deleteRules(extra);
-      changed = true;
     }
-    if (changed) await this.opts.client.post('/api/v2/firewall/apply', {});
+    // Siempre se aplica: un POST/DELETE no recarga el filtro hasta `apply`, y si un
+    // `apply` anterior falló, el reintento no debe dar por bueno un filtro sin recargar.
+    await this.opts.client.post('/api/v2/firewall/apply', {});
   }
 
   /** Borra reglas de mayor a menor id (por si el id es posicional). Sin `apply`. */
@@ -168,9 +174,10 @@ export class PfSenseDriver implements HardwareDriver {
     const rules = parseFirewallRules(await this.opts.client.get('/api/v2/firewall/rules'));
     const descr = blockRuleDescr(mac);
     const mine = rules.filter((r) => r.descr === descr);
-    if (mine.length === 0) return; // no había regla: nada que hacer
     // Un fallo se propaga: el llamante solo marca el aparato como desbloqueado tras el
     // éxito del driver.
+    // Se aplica también sin reglas: si un `apply` anterior falló tras el DELETE, el
+    // reintento lo ve vacío y aun así el filtro sigue sin recargarse.
     await this.deleteRules(mine);
     await this.opts.client.post('/api/v2/firewall/apply', {});
   }

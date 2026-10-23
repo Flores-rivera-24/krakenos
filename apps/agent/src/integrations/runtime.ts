@@ -124,13 +124,15 @@ export async function buildIntegrationRuntime(
     app.log.error(`[iot] no se pudo arrancar la integración: ${msg}`);
   /** Reaplica al kernel lo persistido (cortafuegos y QoS); un fallo se avisa, no tumba el arranque. */
   const startRules = (domain: 'firewall' | 'qos', manager: FirewallManager | QosManager): void => {
-    manager.start?.().catch((err: unknown) => {
-      app.log.error(
-        `[${domain}] no se pudieron reaplicar las reglas guardadas: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-    });
+    Promise.resolve()
+      .then(() => manager.start?.())
+      .catch((err: unknown) => {
+        app.log.error(
+          `[${domain}] no se pudieron reaplicar las reglas guardadas: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
   };
 
   // El composite avisa solo al pasar a caído y al volver (no en cada sondeo).

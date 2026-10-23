@@ -5,8 +5,8 @@
  * (token devuelto en el cuerpo del login), desempaqueta el sobre
  * `{ errorCode, msg, result }` y renueva la sesión ante 401/407 o un errorCode de
  * sesión caducada. El transporte es inyectable para testear el contrato sin un
- * controller real (certificado autofirmado → `rejectUnauthorized: false` fuera de
- * este código puro).
+ * controller real (certificado autofirmado → la excepción TLS la pone
+ * `initConTlsDeLan` por petición, no este código puro).
  */
 
 import { safeFetch } from '../net/egress.js';

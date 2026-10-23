@@ -262,13 +262,41 @@ describe('PfSenseDriver', () => {
     expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
   });
 
-  it('blockDevice con una regla correcta no escribe nada ni aplica', async () => {
+  it('blockDevice con una regla correcta no escribe reglas pero aplica una vez', async () => {
     fake
       .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
       .on('GET /api/v2/firewall/rules', () => ({
         data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' }],
-      }));
+      }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
     await makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc');
+    expect(fake.calls.some((c) => c.method === 'DELETE')).toBe(false);
+    expect(fake.calls.some((c) => c.path === '/api/v2/firewall/rule' && c.method === 'POST')).toBe(
+      false,
+    );
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
+  });
+
+  it('blockDevice reintenta el apply si el anterior falló tras crear la regla', async () => {
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42' }],
+      }))
+      .on('POST /api/v2/firewall/apply', () => ({ status: 500, data: null }));
+    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow();
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
+  });
+
+  it('blockDevice con 3 reglas y ninguna casa con la IP rechaza antes del POST', async () => {
+    const descr = 'krakenos-block:f0:18:98:aa:bb:cc';
+    fake
+      .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
+      .on('GET /api/v2/firewall/rules', () => ({
+        data: [1, 2, 3].map((id) => ({ id, descr, source: 'formato-raro' })),
+      }))
+      .on('POST /api/v2/firewall/rule', () => ({ data: { id: 9 } }));
+    await expect(makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc')).rejects.toThrow();
     expect(fake.calls.some((c) => c.method !== 'GET')).toBe(false);
   });
 
@@ -313,9 +341,14 @@ describe('PfSenseDriver', () => {
       .on('GET /api/v2/diagnostics/arp_table', () => ({ data: ARP }))
       .on('GET /api/v2/firewall/rules', () => ({
         data: [{ id: 3, descr: 'krakenos-block:f0:18:98:aa:bb:cc', source: '192.168.1.42/32' }],
-      }));
+      }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
     await makeDriver(fake).blockDevice('f0:18:98:aa:bb:cc');
-    expect(fake.calls.some((c) => c.method !== 'GET')).toBe(false);
+    expect(fake.calls.some((c) => c.method === 'DELETE')).toBe(false);
+    expect(fake.calls.some((c) => c.path === '/api/v2/firewall/rule' && c.method === 'POST')).toBe(
+      false,
+    );
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
   });
 
   it('blockDevice rechaza sin borrar ni aplicar si la relectura no muestra la regla nueva', async () => {
@@ -333,6 +366,15 @@ describe('PfSenseDriver', () => {
     );
     expect(fake.calls.some((c) => c.method === 'DELETE')).toBe(false);
     expect(fake.calls.some((c) => c.path === '/api/v2/firewall/apply')).toBe(false);
+  });
+
+  it('unblockDevice sin reglas aplica igualmente (reintento tras un apply fallido)', async () => {
+    fake
+      .on('GET /api/v2/firewall/rules', () => ({ data: [] }))
+      .on('POST /api/v2/firewall/apply', () => ({ data: null }));
+    await makeDriver(fake).unblockDevice('f0:18:98:aa:bb:cc');
+    expect(fake.calls.some((c) => c.method === 'DELETE')).toBe(false);
+    expect(fake.calls.filter((c) => c.path === '/api/v2/firewall/apply')).toHaveLength(1);
   });
 
   it('unblockDevice borra todas las reglas etiquetadas y aplica una sola vez', async () => {

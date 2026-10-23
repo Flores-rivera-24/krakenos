@@ -25,21 +25,25 @@ beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'krakenos-drv-tls-'));
   const key = join(dir, 'k.pem');
   const cert = join(dir, 'c.pem');
-  execFileSync('openssl', [
-    'req',
-    '-x509',
-    '-newkey',
-    'rsa:2048',
-    '-keyout',
-    key,
-    '-out',
-    cert,
-    '-days',
-    '1',
-    '-nodes',
-    '-subj',
-    '/CN=localhost',
-  ]);
+  execFileSync(
+    'openssl',
+    [
+      'req',
+      '-x509',
+      '-newkey',
+      'rsa:2048',
+      '-keyout',
+      key,
+      '-out',
+      cert,
+      '-days',
+      '1',
+      '-nodes',
+      '-subj',
+      '/CN=localhost',
+    ],
+    { stdio: 'ignore' },
+  );
   server = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (_req, res) => {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end('{"errorCode":0,"result":{}}');
