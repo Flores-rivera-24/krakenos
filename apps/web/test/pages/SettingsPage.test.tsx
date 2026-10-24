@@ -210,6 +210,52 @@ describe('SettingsPage', () => {
       expect(await screen.findByText('No se pudieron cargar los ajustes.')).toBeInTheDocument();
       expect(screen.getByText('Puente Matter (Alexa / Google / Apple)')).toBeInTheDocument();
       expect(screen.getByText('Tiempo exterior')).toBeInTheDocument();
+      expect(screen.getByText('Philips Hue')).toBeInTheDocument();
+      expect(screen.getByText('Tuya')).toBeInTheDocument();
+      expect(screen.getByText('Publicar a MQTT')).toBeInTheDocument();
+    });
+
+    it('Integraciones con la lectura pendiente muestra sus tarjetas y ningún aviso', async () => {
+      setUser('admin');
+      apiMock.get.mockImplementation((path: string) =>
+        path.startsWith('/system/settings') ? new Promise(() => {}) : Promise.resolve([]),
+      );
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Integraciones' }));
+      expect(await screen.findByText('Philips Hue')).toBeInTheDocument();
+      expect(screen.getByText('Publicar a MQTT')).toBeInTheDocument();
+      expect(screen.queryByText('No se pudieron cargar los ajustes.')).not.toBeInTheDocument();
+    });
+
+    it('Reintentar relanza la lectura y el aviso desaparece al resolver', async () => {
+      setUser('admin');
+      let fallar = true;
+      apiMock.get.mockImplementation((path: string) =>
+        path.startsWith('/system/settings')
+          ? fallar
+            ? Promise.reject(new Error('500'))
+            : Promise.resolve(SETTINGS)
+          : Promise.resolve([]),
+      );
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Seguridad' }));
+      expect(await screen.findByText('No se pudieron cargar los ajustes.')).toBeInTheDocument();
+      fallar = false;
+      const reintentar = await screen.findByRole('button', { name: /reintentar/i });
+      await waitFor(() => expect(reintentar).toBeEnabled());
+      await user.click(reintentar);
+      expect(await screen.findByLabelText('Duración del access token')).toBeInTheDocument();
+      expect(screen.queryByText('No se pudieron cargar los ajustes.')).not.toBeInTheDocument();
     });
 
     it('Seguridad conserva Sesiones activas y avisa en lugar de los controles', async () => {

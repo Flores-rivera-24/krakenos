@@ -49,7 +49,12 @@ const SETTINGS = {
 function renderSection(isAdmin = true) {
   return render(
     <MemoryRouter>
-      <SecuritySection settings={SETTINGS} patch={vi.fn()} isAdmin={isAdmin} />
+      <SecuritySection
+        settings={SETTINGS}
+        patch={vi.fn()}
+        isAdmin={isAdmin}
+        ajustesPendientes={null}
+      />
     </MemoryRouter>,
   );
 }
