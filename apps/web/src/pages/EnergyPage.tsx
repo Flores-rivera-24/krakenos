@@ -279,7 +279,7 @@ function EnergyPageBody() {
                       <td className="py-2 text-foreground">{d.name ?? d.deviceId}</td>
                       <td className="py-2 text-muted-foreground">{d.room ?? '—'}</td>
                       <td className="py-2 text-warning">{formatEnergy(d.energyWh)}</td>
-                      <td className="py-2 text-primary">{formatCost(d.cost, stats.currency)}</td>
+                      <td className="py-2 text-kr-link">{formatCost(d.cost, stats.currency)}</td>
                     </tr>
                   ))}
                 </tbody>

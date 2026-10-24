@@ -374,7 +374,7 @@ function TrafficPageBody() {
             </div>
             <div>
               <p className="text-muted-foreground">{t('traffic.totalUploaded')}</p>
-              <div className="font-semibold text-primary">
+              <div className="font-semibold text-kr-link">
                 {statsLoading ? (
                   <Skeleton className="h-5 w-20" />
                 ) : stats ? (
@@ -532,7 +532,7 @@ function TrafficPageBody() {
                             {d.ip || '—'}
                           </td>
                           <td className="py-2 text-success">{formatBytes(d.rxTotal)}</td>
-                          <td className="py-2 text-primary">{formatBytes(d.txTotal)}</td>
+                          <td className="py-2 text-kr-link">{formatBytes(d.txTotal)}</td>
                         </tr>
                       );
                     })}
