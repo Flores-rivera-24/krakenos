@@ -470,6 +470,7 @@ export const en: Record<TranslationKey, string> = {
   'cameras.tileAlt': 'Camera {name}',
   'cameras.connecting': 'Connecting…',
   'cameras.noSignal': 'No signal',
+  'cameras.snapshotError': 'Could not load the image.',
   'cameras.live': '● LIVE',
   'cameras.edit': 'Edit {name}',
   'cameras.delete': 'Delete {name}',

@@ -15,6 +15,7 @@ export const esCamaras = {
   'cameras.tileAlt': 'Cámara {name}',
   'cameras.connecting': 'Conectando…',
   'cameras.noSignal': 'Sin señal',
+  'cameras.snapshotError': 'No se pudo cargar la imagen.',
   'cameras.live': '● EN VIVO',
   'cameras.edit': 'Editar {name}',
   'cameras.delete': 'Eliminar {name}',
