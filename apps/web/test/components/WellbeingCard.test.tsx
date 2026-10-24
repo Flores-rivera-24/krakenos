@@ -1,5 +1,6 @@
 import type { WellbeingUsage } from '@krakenos/types';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -74,10 +75,30 @@ describe('WellbeingCard (US-184)', () => {
     expect(await screen.findByText(/Sin datos de uso todavía/)).toBeInTheDocument();
   });
 
-  it('no rompe ante una respuesta malformada', async () => {
+  it('una respuesta con forma rara es un fallo, no «sin datos»', async () => {
     apiMock.get.mockResolvedValue({});
     render(<WellbeingCard />);
-    expect(await screen.findByText(/Sin datos de uso todavía/)).toBeInTheDocument();
+    expect(await screen.findByText('No se pudo cargar el uso de internet.')).toBeInTheDocument();
+    expect(screen.queryByText(/Sin datos de uso todavía/)).not.toBeInTheDocument();
+  });
+
+  it('un fallo de red se dice, con «Reintentar», y no cae a «asigna un dueño»', async () => {
+    apiMock.get.mockRejectedValue(new Error('caído'));
+    render(<WellbeingCard />);
+    expect(await screen.findByText('No se pudo cargar el uso de internet.')).toBeInTheDocument();
+    expect(screen.queryByText(/Asigna un dueño|Todavía no hay datos|Sin datos de uso/i)).toBeNull();
+    apiMock.get.mockReset().mockResolvedValue(usage);
+    await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByText('Ana')).toBeInTheDocument();
+  });
+
+  it('al cambiar de rango no enseña el dato del rango anterior mientras falla el nuevo', async () => {
+    render(<WellbeingCard />);
+    await screen.findByText('Ana');
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    await userEvent.click(screen.getByRole('button', { name: '24h' }));
+    expect(await screen.findByText('No se pudo cargar el uso de internet.')).toBeInTheDocument();
+    expect(screen.queryByText('Ana')).not.toBeInTheDocument();
   });
 
   // --- US-263: tres motivos distintos para no ver nada ---

@@ -924,6 +924,7 @@ export const en: Record<TranslationKey, string> = {
     'Internet usage aggregated per household member. Only you and admins see each person’s detail.',
   'wellbeing.rangeLabel': 'Range',
   'wellbeing.loading': 'Loading…',
+  'wellbeing.loadError': 'Could not load internet usage.',
   'wellbeing.empty': 'No usage data for this period yet.',
   'wellbeing.noOwnedDevices':
     "You don't have any devices assigned yet. Ask a home administrator to assign yours.",
@@ -1145,6 +1146,8 @@ export const en: Record<TranslationKey, string> = {
   'energy.priceHint':
     'Leave blank to skip cost estimation. Consumption is only measured on devices that report power.',
   'energy.alert.title': 'Consumption alerts',
+  'energy.alert.rulesError': 'Could not load the consumption alerts.',
+  'energy.alert.devicesError': 'Could not load the device list.',
   'energy.alert.device': 'Device',
   'energy.alert.metric': 'Type',
   'energy.alert.sustainedPower': 'Sustained power',

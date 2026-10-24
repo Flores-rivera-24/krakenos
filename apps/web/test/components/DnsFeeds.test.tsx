@@ -46,6 +46,16 @@ describe('DnsFeeds — feeds de categoría (US-114)', () => {
     );
   });
 
+  it('si falla la carga lo dice con «Reintentar» (no un «Cargando…» eterno) y se recupera', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    render(<DnsFeeds canEdit />);
+    expect(await screen.findByText('No se pudieron cargar las listas')).toBeInTheDocument();
+    expect(screen.queryByText('Cargando…')).not.toBeInTheDocument();
+    apiMock.get.mockReset().mockResolvedValue(FEEDS);
+    await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByText('Publicidad y rastreo')).toBeInTheDocument();
+  });
+
   it('un viewer no puede togglear (switch deshabilitado)', async () => {
     render(<DnsFeeds canEdit={false} />);
     await screen.findByText('Publicidad y rastreo');

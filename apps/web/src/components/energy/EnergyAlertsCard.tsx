@@ -3,10 +3,13 @@ import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { createEnergyAlert, deleteEnergyAlert, fetchEnergyAlerts } from '@/lib/energy';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/energia';
 
@@ -18,28 +21,26 @@ import '@/lib/i18n/catalog/fragments/energia';
  */
 export function EnergyAlertsCard() {
   const t = useT();
-  const [rules, setRules] = useState<EnergyAlertRule[]>([]);
-  const [devices, setDevices] = useState<IotDevice[]>([]);
+  const lecturaReglas = useLectura(fetchEnergyAlerts, []);
+  // Sensores no consumen de forma controlable; se ofrecen luces/enchufes.
+  const lecturaAparatos = useLectura(async () => {
+    const d = await api.getList<IotDevice>('/iot/devices');
+    return d.filter((x) => x.kind !== 'sensor');
+  }, []);
+  const rules = lecturaReglas.data ?? [];
+  const setRules = (f: (prev: EnergyAlertRule[]) => EnergyAlertRule[]) =>
+    lecturaReglas.setData((prev) => f(prev ?? []));
+  const devices = lecturaAparatos.data ?? [];
   const [deviceId, setDeviceId] = useState('');
   const [metric, setMetric] = useState<EnergyAlertMetric>('sustained-power');
   const [threshold, setThreshold] = useState('');
   const [sustainMinutes, setSustainMinutes] = useState('5');
   const [busy, setBusy] = useState(false);
 
+  const primero = lecturaAparatos.data?.[0]?.id;
   useEffect(() => {
-    void fetchEnergyAlerts()
-      .then(setRules)
-      .catch(() => setRules([]));
-    void api
-      .getList<IotDevice>('/iot/devices')
-      .then((d) => {
-        // Sensores no consumen de forma controlable; se ofrecen luces/enchufes.
-        const controllable = d.filter((x) => x.kind !== 'sensor');
-        setDevices(controllable);
-        if (controllable[0]) setDeviceId(controllable[0].id);
-      })
-      .catch(() => setDevices([]));
-  }, []);
+    if (primero) setDeviceId((cur) => cur || primero);
+  }, [primero]);
 
   const nameOf = (id: string): string => devices.find((d) => d.id === id)?.name ?? id;
 
@@ -89,6 +90,10 @@ export function EnergyAlertsCard() {
         <CardTitle>{t('energy.alert.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {lecturaReglas.data === null && lecturaReglas.failed && (
+          <WidgetError message={t('energy.alert.rulesError')} onRetry={lecturaReglas.reintentar} />
+        )}
+        {lecturaReglas.data !== null && lecturaReglas.failed && <StaleBadge />}
         {rules.length > 0 && (
           <ul className="space-y-2">
             {rules.map((r) => (
@@ -113,67 +118,74 @@ export function EnergyAlertsCard() {
           </ul>
         )}
 
-        <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">{t('energy.alert.device')}</span>
-            <select
-              value={deviceId}
-              onChange={(e) => setDeviceId(e.target.value)}
-              className="rounded-md border border-kr bg-transparent px-2 py-1"
-              aria-label={t('energy.alert.device')}
-            >
-              {devices.length === 0 && <option value="">—</option>}
-              {devices.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">{t('energy.alert.metric')}</span>
-            <select
-              value={metric}
-              onChange={(e) => setMetric(e.target.value as EnergyAlertMetric)}
-              className="rounded-md border border-kr bg-transparent px-2 py-1"
-              aria-label={t('energy.alert.metric')}
-            >
-              <option value="sustained-power">{t('energy.alert.sustainedPower')}</option>
-              <option value="daily-energy">{t('energy.alert.dailyEnergy')}</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-muted-foreground">
-              {metric === 'sustained-power'
-                ? t('energy.alert.thresholdW')
-                : t('energy.alert.thresholdWh')}
-            </span>
-            <input
-              type="number"
-              min="0"
-              value={threshold}
-              onChange={(e) => setThreshold(e.target.value)}
-              className="w-28 rounded-md border border-kr bg-transparent px-2 py-1"
-              aria-label={t('energy.alert.threshold')}
-            />
-          </label>
-          {metric === 'sustained-power' && (
+        {lecturaAparatos.data === null && lecturaAparatos.failed ? (
+          <WidgetError
+            message={t('energy.alert.devicesError')}
+            onRetry={lecturaAparatos.reintentar}
+          />
+        ) : (
+          <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-muted-foreground">{t('energy.alert.minutes')}</span>
+              <span className="text-muted-foreground">{t('energy.alert.device')}</span>
+              <select
+                value={deviceId}
+                onChange={(e) => setDeviceId(e.target.value)}
+                className="rounded-md border border-kr bg-transparent px-2 py-1"
+                aria-label={t('energy.alert.device')}
+              >
+                {devices.length === 0 && <option value="">—</option>}
+                {devices.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">{t('energy.alert.metric')}</span>
+              <select
+                value={metric}
+                onChange={(e) => setMetric(e.target.value as EnergyAlertMetric)}
+                className="rounded-md border border-kr bg-transparent px-2 py-1"
+                aria-label={t('energy.alert.metric')}
+              >
+                <option value="sustained-power">{t('energy.alert.sustainedPower')}</option>
+                <option value="daily-energy">{t('energy.alert.dailyEnergy')}</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-muted-foreground">
+                {metric === 'sustained-power'
+                  ? t('energy.alert.thresholdW')
+                  : t('energy.alert.thresholdWh')}
+              </span>
               <input
                 type="number"
-                min="1"
-                value={sustainMinutes}
-                onChange={(e) => setSustainMinutes(e.target.value)}
-                className="w-20 rounded-md border border-kr bg-transparent px-2 py-1"
-                aria-label={t('energy.alert.minutes')}
+                min="0"
+                value={threshold}
+                onChange={(e) => setThreshold(e.target.value)}
+                className="w-28 rounded-md border border-kr bg-transparent px-2 py-1"
+                aria-label={t('energy.alert.threshold')}
               />
             </label>
-          )}
-          <Button type="submit" disabled={busy || devices.length === 0}>
-            {t('energy.alert.add')}
-          </Button>
-        </form>
+            {metric === 'sustained-power' && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="text-muted-foreground">{t('energy.alert.minutes')}</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={sustainMinutes}
+                  onChange={(e) => setSustainMinutes(e.target.value)}
+                  className="w-20 rounded-md border border-kr bg-transparent px-2 py-1"
+                  aria-label={t('energy.alert.minutes')}
+                />
+              </label>
+            )}
+            <Button type="submit" disabled={busy || devices.length === 0}>
+              {t('energy.alert.add')}
+            </Button>
+          </form>
+        )}
         <p className="text-xs text-muted-foreground">{t('energy.alert.hint')}</p>
       </CardContent>
     </Card>
