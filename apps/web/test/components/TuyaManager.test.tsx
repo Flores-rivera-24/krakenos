@@ -80,4 +80,32 @@ describe('TuyaManager', () => {
       expect(apiMock.del).toHaveBeenCalledWith('/iot/tuya/devices/abcdef1234567890'),
     );
   });
+
+  it('si falla la lectura no dice "Sin focos Tuya registrados": dice el fallo y reintenta', async () => {
+    const user = userEvent.setup();
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    render(<TuyaManager reachable={new Set()} />);
+    expect(await screen.findByText(/No se pudieron cargar los focos Tuya/)).toBeInTheDocument();
+    expect(screen.queryByText('Sin focos Tuya registrados.')).toBeNull();
+    apiMock.get.mockResolvedValue(FOCOS);
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('Salón')).toBeInTheDocument();
+    expect(screen.queryByText(/No se pudieron cargar los focos Tuya/)).toBeNull();
+  });
+
+  it('en edición el selector de versión está deshabilitado (el PATCH no lo manda)', async () => {
+    const user = userEvent.setup();
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    await user.click(screen.getByRole('button', { name: 'Editar' }));
+    expect(screen.getByLabelText('Versión')).toBeDisabled();
+  });
+
+  it('al añadir, el selector de versión sigue habilitado', async () => {
+    const user = userEvent.setup();
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    await user.click(screen.getByRole('button', { name: 'Añadir foco' }));
+    expect(screen.getByLabelText('Versión')).toBeEnabled();
+  });
 });

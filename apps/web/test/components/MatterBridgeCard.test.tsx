@@ -89,4 +89,22 @@ describe('MatterBridgeCard (US-171)', () => {
     await screen.findByText(/Puente Matter/);
     expect(screen.getByRole('switch', { name: 'Activar el puente' })).toBeDisabled();
   });
+
+  it('si falla la lectura, la tarjeta no desaparece: dice el fallo y reintenta', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    renderCard();
+    expect(await screen.findByText(/No se pudo cargar el puente Matter/)).toBeInTheDocument();
+    expect(screen.queryByRole('switch')).toBeNull();
+    apiMock.get.mockResolvedValue(stateFixture());
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByRole('switch', { name: 'Activar el puente' })).toBeInTheDocument();
+    expect(screen.queryByText(/No se pudo cargar el puente Matter/)).toBeNull();
+  });
+
+  it('una respuesta con forma rara cuenta como fallo, no como tarjeta ausente', async () => {
+    apiMock.get.mockReset().mockResolvedValue({});
+    renderCard();
+    expect(await screen.findByText(/No se pudo cargar el puente Matter/)).toBeInTheDocument();
+  });
 });

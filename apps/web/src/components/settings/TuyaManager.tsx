@@ -1,9 +1,11 @@
 import type { CreateTuyaDeviceRequest, TuyaDeviceView, TuyaProtocolVersion } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
+import { WidgetError } from '@/components/ui/widget-error';
+import { useLectura } from '@/lib/use-lectura';
 import { FormError } from '@/components/ui/form-error';
 import { ApiRequestError, api } from '@/lib/api';
 import { useT } from '@/lib/i18n';
@@ -96,6 +98,7 @@ function FocoForm({
           id="tf-version"
           value={form.version}
           onChange={(e) => set('version', e.target.value)}
+          disabled={initial.deviceId !== ''}
           className="h-10 w-full rounded-md border border-kr bg-kr-surface px-3 text-kr-base text-kr-primary"
         >
           {VERSIONS.map((v) => (
@@ -131,19 +134,14 @@ function FocoForm({
 /** Gestión inline de los focos Tuya (alta/edición/borrado). Solo admin. */
 export function TuyaManager({ reachable }: Props) {
   const t = useT();
-  const [devices, setDevices] = useState<TuyaDeviceView[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = () =>
-    void api
-      .getList<TuyaDeviceView>('/iot/tuya/devices')
-      .then(setDevices)
-      .catch(() => setDevices([]));
-
-  useEffect(load, []);
+  const lectura = useLectura(() => api.getList<TuyaDeviceView>('/iot/tuya/devices'), []);
+  const devices = lectura.data;
+  const load = lectura.reintentar;
 
   const handle = async (fn: () => Promise<void>) => {
     setError(null);
@@ -256,6 +254,13 @@ export function TuyaManager({ reachable }: Props) {
                 )}
               </tr>
             ))}
+            {lectura.failed && devices === null && (
+              <tr>
+                <td colSpan={5}>
+                  <WidgetError message={t('tuya.loadError')} onRetry={lectura.reintentar} />
+                </td>
+              </tr>
+            )}
             {devices?.length === 0 && (
               <tr>
                 <td colSpan={5} className="px-3 py-6 text-center text-kr-muted">

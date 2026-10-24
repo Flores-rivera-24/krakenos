@@ -13,6 +13,7 @@ export const esMatter = {
   'matter.subtitle':
     'Expón los dispositivos que elijas a tu asistente de voz como un hub Matter en tu red local, sin cuentas ni nube extra.',
   'matter.error': 'No se pudo actualizar el puente Matter',
+  'matter.loadError': 'No se pudo cargar el puente Matter.',
   'matter.enable': 'Activar el puente',
   'matter.statusOff': 'Desactivado',
   'matter.statusWaiting': 'Esperando emparejamiento',

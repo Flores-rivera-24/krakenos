@@ -42,7 +42,6 @@ import { SRC, ficheros } from './_fuentes';
 /** Marcas de fabricante: no se traducen (término retenido de `docs/copy-style.md`). */
 const MARCAS: Record<string, string> = {
   Hue: 'marca (Philips Hue)',
-  'Philips Hue': 'marca',
   Govee: 'marca',
   Tuya: 'marca',
   Zigbee: 'estándar / marca',

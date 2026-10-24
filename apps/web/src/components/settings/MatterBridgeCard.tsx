@@ -1,5 +1,7 @@
 import type { MatterBridgeState } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { WidgetError } from '@/components/ui/widget-error';
+import { useLectura } from '@/lib/use-lectura';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -29,14 +31,15 @@ interface MatterBridgeCardProps {
  */
 export function MatterBridgeCard({ isAdmin }: MatterBridgeCardProps) {
   const t = useT();
-  const [state, setState] = useState<MatterBridgeState | null>(null);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    void fetchMatterBridge()
-      .then(setState)
-      .catch(() => setState(null));
+  // Una respuesta sin `candidates` no es un puente: cuenta como fallo, no como tarjeta ausente.
+  const lectura = useLectura<MatterBridgeState>(async () => {
+    const s = await fetchMatterBridge();
+    if (!s || !Array.isArray(s.candidates)) throw new Error('RESPUESTA_NO_ES_PUENTE');
+    return s;
   }, []);
+  const state = lectura.data;
+  const setState = lectura.setData;
 
   async function apply(patch: Parameters<typeof updateMatterBridge>[0]) {
     setBusy(true);
@@ -56,7 +59,19 @@ export function MatterBridgeCard({ isAdmin }: MatterBridgeCardProps) {
     void apply({ exposedDeviceIds: next });
   }
 
-  if (!state || !Array.isArray(state.candidates)) return null;
+  if (!state) {
+    if (lectura.loading) return null;
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('matter.title')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WidgetError message={t('matter.loadError')} onRetry={lectura.reintentar} />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
