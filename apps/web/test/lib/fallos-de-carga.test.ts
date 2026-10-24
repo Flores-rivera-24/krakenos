@@ -20,8 +20,8 @@ import { fuentes, sinComentarios } from './_fuentes';
  * Límites conocidos, que NO detecta: `.then(ok, () => setX([]))` y el
  * `try/catch`. Un fallo tragado por esas vías pasa este gate.
  *
- * Es un trinquete: lo que hoy incumple está en PENDIENTES con su cuenta, y cada
- * arreglo solo QUITA su fichero de ahí. Cuando PENDIENTES quede vacía, se borra.
+ * Es un trinquete de cero: lo único que puede tragar un fallo está en EXCEPCIONES,
+ * con su cuenta y su porqué; cualquier otra coincidencia pone el gate en rojo.
  */
 
 const FLECHA_SIN_ERROR = String.raw`\(\s*(?:_\w*)?\s*\)\s*=>\s*`;
@@ -55,13 +55,6 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
     cuantas: 1,
     porque: 'si falla, los pasos salen sin marcar y se siguen ofreciendo; no oculta nada',
   },
-};
-
-/**
- * Fichero → coincidencias que quedan por arreglar. Cada arreglo QUITA su
- * fichero de aquí (nunca lo sube); al quedar vacía, se borra el trinquete.
- */
-const PENDIENTES: Record<string, number> = {
 };
 
 describe('fallos de carga que se tragan', () => {
@@ -98,7 +91,7 @@ describe('fallos de carga que se tragan', () => {
     expect(alcance.length).toBeGreaterThan(100);
   });
 
-  it('los únicos que tragan un fallo son las excepciones y los pendientes', () => {
+  it('los únicos que tragan un fallo son las excepciones', () => {
     const medido: Record<string, number> = {};
     for (const f of alcance) {
       const n = tragaODegrada(f.codigo);
@@ -109,7 +102,7 @@ describe('fallos de carga que se tragan', () => {
       medido,
       'Un fallo de carga no se traga ni se pinta como vacío: guarda `failed` y pinta `WidgetError` (o usa `useLectura`). ' +
         'Si de verdad es legítimo, va en EXCEPCIONES con su porqué.',
-    ).toEqual(PENDIENTES);
+    ).toEqual({});
   });
 
   it('las excepciones siguen existiendo', () => {
