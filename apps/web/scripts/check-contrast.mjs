@@ -148,13 +148,22 @@ function buildPairs(tokens, theme) {
   for (const bg of BG) pairs.push({ fg: 'kr-ring', bg, large: true, kind: 'componente' });
   // Texto semántico sobre su propia tinta (`bg-success/10`…): el medidor medía el token
   // sobre la superficie lisa y no sobre lo que hay debajo del aviso.
-  for (const fg of SEMANTIC) {
-    pairs.push({ fg, bg: `${fg} 10 % sobre kr-bg-surface`, tint: fg, large: false, kind: 'tinta' });
+  for (const base of ['kr-bg-surface', 'kr-bg-elevated']) {
+    for (const fg of SEMANTIC) {
+      pairs.push({
+        fg,
+        bg: `${fg} 10 % sobre ${base}`,
+        tint: fg,
+        tintBase: base,
+        large: false,
+        kind: 'tinta',
+      });
+    }
   }
   return pairs.map((p) => {
     const fgHex = p.fg.startsWith('#') ? p.fg : tokenOrDie(tokens, p.fg, theme);
     const bgHex = p.tint
-      ? mixHex(tokenOrDie(tokens, p.tint, theme), tokenOrDie(tokens, 'kr-bg-surface', theme), 0.1)
+      ? mixHex(tokenOrDie(tokens, p.tint, theme), tokenOrDie(tokens, p.tintBase, theme), 0.1)
       : tokenOrDie(tokens, p.bg, theme);
     const r = ratio(fgHex, bgHex);
     const min = p.large ? 3 : 4.5;

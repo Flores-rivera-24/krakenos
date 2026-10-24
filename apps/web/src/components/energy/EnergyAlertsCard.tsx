@@ -133,7 +133,7 @@ export function EnergyAlertsCard() {
               <select
                 value={deviceId}
                 onChange={(e) => setDeviceId(e.target.value)}
-                className="rounded-md border border-kr bg-transparent px-2 py-1"
+                className="rounded-md border border-kr-field bg-transparent px-2 py-1"
                 aria-label={t('energy.alert.device')}
               >
                 {devices.length === 0 && <option value="">—</option>}
@@ -149,7 +149,7 @@ export function EnergyAlertsCard() {
               <select
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as EnergyAlertMetric)}
-                className="rounded-md border border-kr bg-transparent px-2 py-1"
+                className="rounded-md border border-kr-field bg-transparent px-2 py-1"
                 aria-label={t('energy.alert.metric')}
               >
                 <option value="sustained-power">{t('energy.alert.sustainedPower')}</option>
@@ -167,7 +167,7 @@ export function EnergyAlertsCard() {
                 min="0"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
-                className="w-28 rounded-md border border-kr bg-transparent px-2 py-1"
+                className="w-28 rounded-md border border-kr-field bg-transparent px-2 py-1"
                 aria-label={t('energy.alert.threshold')}
               />
             </label>
@@ -179,7 +179,7 @@ export function EnergyAlertsCard() {
                   min="1"
                   value={sustainMinutes}
                   onChange={(e) => setSustainMinutes(e.target.value)}
-                  className="w-20 rounded-md border border-kr bg-transparent px-2 py-1"
+                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1"
                   aria-label={t('energy.alert.minutes')}
                 />
               </label>

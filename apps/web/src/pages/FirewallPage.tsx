@@ -184,7 +184,7 @@ export function FirewallPage() {
                   id="fw-action"
                   value={form.action}
                   onChange={(e) => setForm({ ...form, action: e.target.value as FirewallAction })}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-sm"
                 >
                   <option value="deny">{actionLabel.deny}</option>
                   <option value="allow">{actionLabel.allow}</option>
@@ -201,7 +201,7 @@ export function FirewallPage() {
                   onChange={(e) =>
                     setForm({ ...form, protocol: e.target.value as FirewallProtocol })
                   }
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-sm"
                 >
                   {PROTOCOLS.map((p) => (
                     <option key={p} value={p}>

@@ -135,7 +135,7 @@ export function SystemBackupCard() {
                 type="file"
                 accept=".kbk,application/octet-stream"
                 onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-kr-sm text-kr-secondary file:mr-3 file:rounded-md file:border file:border-kr file:bg-kr-elevated file:px-3 file:py-1.5 file:text-kr-primary"
+                className="block w-full text-kr-sm text-kr-secondary file:mr-3 file:rounded-md file:border file:border-kr-field file:bg-kr-elevated file:px-3 file:py-1.5 file:text-kr-primary"
               />
             </div>
             <div className="space-y-1.5">
