@@ -73,7 +73,6 @@ const PENDIENTES: Record<string, number> = {
   'components/settings/IntegrationsSection.tsx': 1,
   'components/settings/MatterBridgeCard.tsx': 1,
   'components/settings/MqttInteropCard.tsx': 1,
-  'components/settings/SecuritySection.tsx': 3,
   'components/settings/SupportCard.tsx': 2,
   'components/settings/TlsCard.tsx': 1,
   'components/settings/TuyaManager.tsx': 1,

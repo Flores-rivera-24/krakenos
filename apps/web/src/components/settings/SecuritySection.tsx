@@ -7,7 +7,7 @@ import type {
   WebAuthnCredentialInfo,
 } from '@krakenos/types';
 import { KeyRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatDate, timeAgo } from '@/lib/format';
@@ -25,6 +27,7 @@ import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
 
@@ -82,7 +85,6 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
 function PasskeysCard() {
   const t = useT();
   const supported = isWebAuthnSupported();
-  const [passkeys, setPasskeys] = useState<WebAuthnCredentialInfo[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
@@ -90,23 +92,23 @@ function PasskeysCard() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Códigos de recuperación (US-59): cuántos quedan y los recién generados (una vez).
-  const [remaining, setRemaining] = useState<number | null>(null);
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
   const [regenBusy, setRegenBusy] = useState(false);
 
+  const creds = useLectura(() => api.getList<WebAuthnCredentialInfo>('/webauthn/credentials'), [], {
+    enabled: supported,
+  });
+  const codigos = useLectura(
+    async () => (await api.get<BackupCodesStatus>('/webauthn/backup-codes')).remaining,
+    [],
+    { enabled: supported },
+  );
+  const passkeys = creds.data;
+  const remaining = codigos.data;
   const load = () => {
-    void api
-      .getList<WebAuthnCredentialInfo>('/webauthn/credentials')
-      .then(setPasskeys)
-      .catch(() => setPasskeys([]));
-    void api
-      .get<BackupCodesStatus>('/webauthn/backup-codes')
-      .then((s) => setRemaining(s.remaining))
-      .catch(() => setRemaining(null));
+    creds.reintentar();
+    codigos.reintentar();
   };
-  useEffect(() => {
-    if (supported) load();
-  }, [supported]);
 
   const register = async () => {
     setError(null);
@@ -142,6 +144,8 @@ function PasskeysCard() {
       const { codes } = await api.post<BackupCodesResult>('/webauthn/backup-codes');
       setNewCodes(codes);
       load();
+    } catch (err) {
+      toast.error(describeError(err, t('security.codes.regenerateError')));
     } finally {
       setRegenBusy(false);
     }
@@ -149,8 +153,12 @@ function PasskeysCard() {
 
   const remove = async (id: string) => {
     setConfirmId(null);
-    await api.del(`/webauthn/credentials/${id}`);
-    load();
+    try {
+      await api.del(`/webauthn/credentials/${id}`);
+      load();
+    } catch (err) {
+      toast.error(describeError(err, t('security.passkey.deleteError')));
+    }
   };
 
   return (
@@ -164,7 +172,9 @@ function PasskeysCard() {
           <p className="text-kr-sm text-kr-muted">{t('security.passkey.unsupported')}</p>
         ) : (
           <>
-            {passkeys === null ? (
+            {passkeys === null && creds.failed ? (
+              <WidgetError message={t('security.passkeys.loadError')} onRetry={creds.reintentar} />
+            ) : passkeys === null ? (
               <p className="py-2 text-kr-sm text-kr-muted">{t('common.loading')}</p>
             ) : passkeys.length === 0 ? (
               <p className="text-kr-sm text-kr-muted">{t('security.passkey.empty')}</p>
@@ -244,6 +254,8 @@ function PasskeysCard() {
               </Button>
             )}
 
+            {passkeys !== null && creds.failed && <StaleBadge />}
+
             {newCodes && <CodesReveal codes={newCodes} onDismiss={() => setNewCodes(null)} />}
 
             {!newCodes && passkeys && passkeys.length > 0 && (
@@ -257,6 +269,12 @@ function PasskeysCard() {
                     </span>
                   )}
                 </p>
+                {remaining === null && codigos.failed && (
+                  <WidgetError
+                    message={t('security.codes.remainingError')}
+                    onRetry={codigos.reintentar}
+                  />
+                )}
                 <p className="text-kr-xs text-kr-muted">{t('security.codes.help')}</p>
                 <Button
                   variant="outline"
@@ -279,18 +297,13 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
   const t = useT();
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
-  const [sessions, setSessions] = useState<AuthSession[] | null>(null);
+  const lecturaSesiones = useLectura(() => api.getList<AuthSession>('/auth/sessions'), []);
+  const sessions = lecturaSesiones.data;
+  const [regenError, setRegenError] = useState<string | null>(null);
   const [confirmRegen, setConfirmRegen] = useState(false);
   const [theme, setTheme] = useState<Theme>(settings.theme === 'light' ? 'light' : 'dark');
 
-  const loadSessions = () => {
-    void api
-      .getList<AuthSession>('/auth/sessions')
-      .then(setSessions)
-      .catch(() => setSessions([]));
-  };
-
-  useEffect(loadSessions, []);
+  const loadSessions = lecturaSesiones.reintentar;
 
   const toggleTheme = async (next: boolean) => {
     const value: Theme = next ? 'dark' : 'light';
@@ -300,8 +313,12 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
   };
 
   const revoke = async (id: string) => {
-    await api.del(`/auth/sessions/${id}`);
-    loadSessions();
+    try {
+      await api.del(`/auth/sessions/${id}`);
+      loadSessions();
+    } catch (err) {
+      toast.error(describeError(err, t('security.sessionRevokeError')));
+    }
   };
 
   const closeOthers = async () => {
@@ -316,7 +333,13 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
   };
 
   const regenKeys = async () => {
-    await api.post('/system/regen-keys');
+    setRegenError(null);
+    try {
+      await api.post('/system/regen-keys');
+    } catch (err) {
+      setRegenError(describeError(err, t('security.regen.error')));
+      return;
+    }
     setConfirmRegen(false);
     await logout();
     navigate('/login');
@@ -373,7 +396,12 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           </DeleteButton>
         </CardHeader>
         <CardContent>
-          {sessions === null ? (
+          {sessions === null && lecturaSesiones.failed ? (
+            <WidgetError
+              message={t('security.sessions.loadError')}
+              onRetry={lecturaSesiones.reintentar}
+            />
+          ) : sessions === null ? (
             <p className="py-4 text-center text-kr-sm text-kr-muted">{t('common.loading')}</p>
           ) : sessions.length === 0 ? (
             <p className="py-4 text-center text-kr-sm text-kr-muted">{t('security.noSessions')}</p>
@@ -414,7 +442,14 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           </CardHeader>
           <CardContent className="flex items-center justify-between gap-3">
             <p className="text-kr-sm text-kr-secondary">{t('security.regen.warning')}</p>
-            <Button variant="destructive" size="sm" onClick={() => setConfirmRegen(true)}>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setRegenError(null);
+                setConfirmRegen(true);
+              }}
+            >
               {t('security.regen.button')}
             </Button>
           </CardContent>
@@ -427,6 +462,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
             {t('security.regen.confirmTitle')}
           </h3>
           <p className="mt-2 text-kr-sm text-kr-secondary">{t('security.regen.confirmBody')}</p>
+          {regenError && <FormError>{regenError}</FormError>}
           <div className="mt-4 flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirmRegen(false)}>
               {t('common.cancel')}

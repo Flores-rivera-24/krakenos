@@ -17,6 +17,13 @@ export const esAjustes = {
   'invitations.hideLink': 'Ocultar el enlace',
   'security.otherSessionsClosed': 'Se han cerrado las demás sesiones; esta sigue abierta',
   'security.otherSessionsError': 'No se pudieron cerrar las demás sesiones',
+  'security.passkeys.loadError': 'No se pudieron cargar las passkeys.',
+  'security.codes.remainingError': 'No se pudo comprobar cuántos códigos de recuperación quedan.',
+  'security.sessions.loadError': 'No se pudieron cargar las sesiones.',
+  'security.codes.regenerateError': 'No se pudieron regenerar los códigos de recuperación.',
+  'security.passkey.deleteError': 'No se pudo eliminar la passkey.',
+  'security.sessionRevokeError': 'No se pudo revocar la sesión.',
+  'security.regen.error': 'No se pudieron regenerar las claves.',
 
   // --- Ajustes → Cuenta: modo de la interfaz (US-176) ---
   'settings.uiMode.title': 'Modo de la aplicación',

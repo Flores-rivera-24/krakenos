@@ -183,4 +183,114 @@ describe('SecuritySection', () => {
     expect(screen.getByText('dddd-eeee-ffff')).toBeInTheDocument();
     expect(apiMock.post).toHaveBeenCalledWith('/webauthn/backup-codes');
   });
+
+  const PASSKEY = {
+    id: 'k1',
+    name: 'iPhone',
+    deviceType: 'singleDevice',
+    backedUp: false,
+    createdAt: new Date().toISOString(),
+    lastUsedAt: null,
+  };
+  function conPasskey(over: Record<string, () => Promise<unknown>> = {}) {
+    apiMock.get.mockImplementation((path: string) => {
+      const o = over[path];
+      if (o) return o();
+      if (path === '/webauthn/credentials') return Promise.resolve([PASSKEY]);
+      if (path === '/webauthn/backup-codes') return Promise.resolve({ remaining: 3 });
+      return Promise.resolve(SESSIONS);
+    });
+  }
+  const toastError = () =>
+    waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([expect.objectContaining({ kind: 'error' })]),
+    );
+
+  it('si fallan las passkeys se dice, no se pinta «sin passkeys», y reintentar las carga', async () => {
+    const user = userEvent.setup();
+    let fallar = true;
+    conPasskey({
+      '/webauthn/credentials': () =>
+        fallar ? Promise.reject(new Error('x')) : Promise.resolve([PASSKEY]),
+    });
+    renderSection();
+    expect(await screen.findByText('No se pudieron cargar las passkeys.')).toBeInTheDocument();
+    expect(screen.queryByText(/Sin passkeys registradas/)).not.toBeInTheDocument();
+    fallar = false;
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('iPhone')).toBeInTheDocument();
+  });
+
+  it('si fallan las sesiones se dice, no se pinta «sin sesiones»', async () => {
+    const user = userEvent.setup();
+    let fallar = true;
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/auth/sessions'
+        ? fallar
+          ? Promise.reject(new Error('x'))
+          : Promise.resolve(SESSIONS)
+        : Promise.resolve([]),
+    );
+    renderSection();
+    expect(await screen.findByText('No se pudieron cargar las sesiones.')).toBeInTheDocument();
+    expect(screen.queryByText('Sin sesiones activas.')).not.toBeInTheDocument();
+    fallar = false;
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findAllByRole('button', { name: /^Revocar la sesión/ })).toHaveLength(2);
+  });
+
+  it('si falla la cuenta de códigos de recuperación se dice, sin inventar un número', async () => {
+    conPasskey({ '/webauthn/backup-codes': () => Promise.reject(new Error('x')) });
+    renderSection();
+    expect(
+      await screen.findByText('No se pudo comprobar cuántos códigos de recuperación quedan.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/te quedan/)).not.toBeInTheDocument();
+  });
+
+  it('si regenerar códigos falla, avisa y no enseña códigos', async () => {
+    const user = userEvent.setup();
+    conPasskey();
+    apiMock.post.mockRejectedValue(new Error('boom'));
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Regenerar códigos' }));
+    await toastError();
+    expect(screen.queryByText('Los he guardado')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Regenerar códigos' })).toBeEnabled();
+  });
+
+  it('si borrar una passkey falla, avisa y la passkey sigue en la lista', async () => {
+    const user = userEvent.setup();
+    conPasskey();
+    apiMock.del.mockRejectedValue(new Error('boom'));
+    renderSection();
+    await screen.findByText('iPhone');
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await toastError();
+    expect(screen.getByText('iPhone')).toBeInTheDocument();
+  });
+
+  it('si revocar una sesión falla, avisa y la sesión sigue en la lista', async () => {
+    const user = userEvent.setup();
+    apiMock.del.mockRejectedValue(new Error('boom'));
+    renderSection();
+    const botones = await screen.findAllByRole('button', { name: /^Revocar la sesión/ });
+    await user.click(botones[0]!);
+    await toastError();
+    expect(screen.getAllByRole('button', { name: /^Revocar la sesión/ })).toHaveLength(2);
+  });
+
+  it('si regenerar las claves falla, el diálogo sigue abierto con el error y no se cierra la sesión', async () => {
+    const user = userEvent.setup();
+    const logout = vi.fn().mockResolvedValue(undefined);
+    useAuthStore.setState({ logout });
+    apiMock.post.mockRejectedValue(new Error('boom'));
+    renderSection();
+    await user.click(screen.getByRole('button', { name: 'Regenerar claves RS256' }));
+    await user.click(screen.getByRole('button', { name: 'Sí, regenerar' }));
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.getByText('¿Regenerar las claves RS256?')).toBeInTheDocument();
+    expect(logout).not.toHaveBeenCalled();
+  });
 });

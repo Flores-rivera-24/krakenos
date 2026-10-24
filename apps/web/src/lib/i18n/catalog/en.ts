@@ -64,6 +64,13 @@ export const en: Record<TranslationKey, string> = {
   'invitations.hideLink': 'Hide the link',
   'security.otherSessionsClosed': 'Other sessions signed out; this one stays open',
   'security.otherSessionsError': 'Could not sign out the other sessions',
+  'security.passkeys.loadError': 'Could not load the passkeys.',
+  'security.codes.remainingError': 'Could not check how many recovery codes are left.',
+  'security.sessions.loadError': 'Could not load the sessions.',
+  'security.codes.regenerateError': 'Could not regenerate the recovery codes.',
+  'security.passkey.deleteError': 'Could not delete the passkey.',
+  'security.sessionRevokeError': 'Could not revoke the session.',
+  'security.regen.error': 'Could not regenerate the keys.',
 
   // --- Errors ---
   'errors.network': 'Could not reach the server. Check your connection.',
