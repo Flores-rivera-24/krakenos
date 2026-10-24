@@ -35,9 +35,12 @@ const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';
 
 interface Props {
-  settings: Record<SystemSettingKey, string>;
+  /** `null` mientras la lectura de ajustes carga o ha fallado. */
+  settings: Record<SystemSettingKey, string> | null;
   patch: (key: SystemSettingKey, value: string) => Promise<void>;
   isAdmin: boolean;
+  /** Qué se pinta en lugar de los controles que dependen de los ajustes. */
+  ajustesPendientes: React.ReactNode;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -294,17 +297,17 @@ function PasskeysCard() {
   );
 }
 
-export function SecuritySection({ settings, patch, isAdmin }: Props) {
+function SecurityControls({
+  settings,
+  patch,
+  isAdmin,
+}: {
+  settings: Record<SystemSettingKey, string>;
+  patch: Props['patch'];
+  isAdmin: boolean;
+}) {
   const t = useT();
-  const navigate = useNavigate();
-  const logout = useAuthStore((s) => s.logout);
-  const lecturaSesiones = useLectura(() => api.getList<AuthSession>('/auth/sessions'), []);
-  const sessions = lecturaSesiones.data;
-  const [regenError, setRegenError] = useState<string | null>(null);
-  const [confirmRegen, setConfirmRegen] = useState(false);
   const [theme, setTheme] = useState<Theme>(settings.theme === 'light' ? 'light' : 'dark');
-
-  const loadSessions = lecturaSesiones.reintentar;
 
   const toggleTheme = async (next: boolean) => {
     const value: Theme = next ? 'dark' : 'light';
@@ -312,6 +315,60 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
     applyTheme(value); // efecto inmediato
     if (isAdmin) await patch('theme', value);
   };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('security.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <Row label={t('security.tokenTtl')}>
+          <select
+            className={SELECT_CLASS}
+            aria-label={t('security.tokenTtl')}
+            value={settings.accessTokenTtl}
+            disabled={!isAdmin}
+            onChange={(e) => void patch('accessTokenTtl', e.target.value)}
+          >
+            <option value="900">{t('security.ttl.15m')}</option>
+            <option value="3600">{t('security.ttl.1h')}</option>
+            <option value="28800">{t('security.ttl.8h')}</option>
+          </select>
+        </Row>
+        <Row label={t('security.loginLimit')}>
+          <select
+            className={SELECT_CLASS}
+            aria-label={t('security.loginLimit')}
+            value={settings.loginRateLimit}
+            disabled={!isAdmin}
+            onChange={(e) => void patch('loginRateLimit', e.target.value)}
+          >
+            <option value="5">{t('security.perMinute', { n: 5 })}</option>
+            <option value="10">{t('security.perMinute', { n: 10 })}</option>
+            <option value="20">{t('security.perMinute', { n: 20 })}</option>
+          </select>
+        </Row>
+        <Row label={t('security.darkTheme')}>
+          <Switch
+            checked={theme === 'dark'}
+            onCheckedChange={(v) => void toggleTheme(v)}
+            aria-label={t('security.darkTheme')}
+          />
+        </Row>
+      </CardContent>
+    </Card>
+  );
+}
+
+export function SecuritySection({ settings, patch, isAdmin, ajustesPendientes }: Props) {
+  const t = useT();
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+  const lecturaSesiones = useLectura(() => api.getList<AuthSession>('/auth/sessions'), []);
+  const sessions = lecturaSesiones.data;
+  const [regenError, setRegenError] = useState<string | null>(null);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  const loadSessions = lecturaSesiones.reintentar;
 
   const revoke = async (id: string) => {
     try {
@@ -348,46 +405,16 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('security.title')}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Row label={t('security.tokenTtl')}>
-            <select
-              className={SELECT_CLASS}
-              aria-label={t('security.tokenTtl')}
-              value={settings.accessTokenTtl}
-              disabled={!isAdmin}
-              onChange={(e) => void patch('accessTokenTtl', e.target.value)}
-            >
-              <option value="900">{t('security.ttl.15m')}</option>
-              <option value="3600">{t('security.ttl.1h')}</option>
-              <option value="28800">{t('security.ttl.8h')}</option>
-            </select>
-          </Row>
-          <Row label={t('security.loginLimit')}>
-            <select
-              className={SELECT_CLASS}
-              aria-label={t('security.loginLimit')}
-              value={settings.loginRateLimit}
-              disabled={!isAdmin}
-              onChange={(e) => void patch('loginRateLimit', e.target.value)}
-            >
-              <option value="5">{t('security.perMinute', { n: 5 })}</option>
-              <option value="10">{t('security.perMinute', { n: 10 })}</option>
-              <option value="20">{t('security.perMinute', { n: 20 })}</option>
-            </select>
-          </Row>
-          <Row label={t('security.darkTheme')}>
-            <Switch
-              checked={theme === 'dark'}
-              onCheckedChange={(v) => void toggleTheme(v)}
-              aria-label={t('security.darkTheme')}
-            />
-          </Row>
-        </CardContent>
-      </Card>
+      {settings ? (
+        <SecurityControls settings={settings} patch={patch} isAdmin={isAdmin} />
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('security.title')}</CardTitle>
+          </CardHeader>
+          <CardContent>{ajustesPendientes}</CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
