@@ -84,6 +84,19 @@ describe('TrafficPage', () => {
     expect(socketMock.on).toHaveBeenCalledWith('traffic:history', expect.any(Function));
   });
 
+  it('mientras cargan las estadísticas el HTML es válido (sin div dentro de p)', async () => {
+    mockApi();
+    apiMock.get.mockImplementation((url: string) =>
+      url.startsWith('/traffic/stats') ? new Promise(() => {}) : Promise.resolve([]),
+    );
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { container } = render(<TrafficPage />);
+    await screen.findByText('Monitor de tráfico');
+    expect(container.querySelector('p .kr-shimmer')).toBeNull();
+    expect(error.mock.calls.flat().join(' ')).not.toMatch(/validateDOMNesting|cannot be a descendant/);
+    error.mockRestore();
+  });
+
   it('muestra las tasas actuales a partir del histórico', async () => {
     mockApi({ history: [SAMPLE] });
     render(<TrafficPage />);

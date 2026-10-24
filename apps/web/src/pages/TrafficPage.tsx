@@ -362,7 +362,7 @@ function TrafficPageBody() {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground">{t('traffic.totalDownloaded')}</p>
-              <p className="font-semibold text-success">
+              <div className="font-semibold text-success">
                 {statsLoading ? (
                   <Skeleton className="h-5 w-20" />
                 ) : stats ? (
@@ -370,11 +370,11 @@ function TrafficPageBody() {
                 ) : (
                   '—'
                 )}
-              </p>
+              </div>
             </div>
             <div>
               <p className="text-muted-foreground">{t('traffic.totalUploaded')}</p>
-              <p className="font-semibold text-primary">
+              <div className="font-semibold text-primary">
                 {statsLoading ? (
                   <Skeleton className="h-5 w-20" />
                 ) : stats ? (
@@ -382,7 +382,7 @@ function TrafficPageBody() {
                 ) : (
                   '—'
                 )}
-              </p>
+              </div>
             </div>
           </div>
 
