@@ -64,7 +64,6 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
 const PENDIENTES: Record<string, number> = {
   'pages/AutomationsPage.tsx': 7,
   'pages/CamerasPage.tsx': 1,
-  'pages/EnergyPage.tsx': 1,
   'pages/IotPage.tsx': 1,
 };
 

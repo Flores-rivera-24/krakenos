@@ -1143,6 +1143,7 @@ export const en: Record<TranslationKey, string> = {
   'energy.savePrice': 'Save',
   'energy.priceSaved': 'Price updated',
   'energy.priceError': 'Could not save the price',
+  'energy.priceLoadError': 'Could not load the price.',
   'energy.priceHint':
     'Leave blank to skip cost estimation. Consumption is only measured on devices that report power.',
   'energy.alert.title': 'Consumption alerts',
