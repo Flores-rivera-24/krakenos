@@ -13,7 +13,7 @@ import type {
   WeatherMetric,
 } from '@krakenos/types';
 import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -897,6 +897,11 @@ function AutomationsPageBody() {
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
+  const fallosRef = useRef(fallos);
+  fallosRef.current = fallos;
+  const pedidas = useRef(new Set<Lista>());
+
+  // Personas del hogar (US-169): el listado es admin-only; para el resto, vacío.
   const reload = useCallback(() => {
     void listAutomations()
       .then((list) => {
@@ -913,41 +918,67 @@ function AutomationsPageBody() {
         marca('runs', false);
       })
       .catch(() => marca('runs', true));
-  }, []);
+    // Una lista de opciones que falló se vuelve a pedir en cada recarga: si no, su
+    // aviso («la lista puede estar incompleta») sobrevive a una lista ya completa.
+    // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
+    // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
+    const caidas = fallosRef.current;
+    const pedir = (lista: Lista) => {
+      const hace = !pedidas.current.has(lista) || caidas[lista];
+      pedidas.current.add(lista);
+      return hace;
+    };
+    if (pedir('iot'))
+      void api
+        .getList<IotDevice>('/iot/devices')
+        .then((l) => {
+          setIotDevices(l);
+          marca('iot', false);
+        })
+        .catch(() => marca('iot', true));
+    if (pedir('network'))
+      void api
+        .getList<Device>('/inventory/devices')
+        .then((l) => {
+          setNetworkDevices(l);
+          marca('network', false);
+        })
+        .catch(() => marca('network', true));
+    if (pedir('scenes'))
+      void listScenes()
+        .then((l) => {
+          setScenes(l);
+          marca('scenes', false);
+        })
+        .catch(() => marca('scenes', true));
+    if (pedir('cameras'))
+      void listCameras()
+        .then((l) => {
+          setCameras(l);
+          marca('cameras', false);
+        })
+        .catch(() => marca('cameras', true));
+    if (pedir('schedules'))
+      void api
+        .getList<AccessSchedule>('/access/schedules')
+        .then((list) => {
+          setAccessSchedules(Array.isArray(list) ? list : []);
+          marca('schedules', false);
+        })
+        .catch(() => marca('schedules', true));
+    if (isAdmin && pedir('users'))
+      void api
+        .getList<UserSummary>('/users')
+        .then((l) => {
+          setUsers(l);
+          marca('users', false);
+        })
+        .catch(() => marca('users', true));
+  }, [isAdmin]);
 
   useEffect(() => {
     reload();
-    void api
-      .getList<IotDevice>('/iot/devices')
-      .then(setIotDevices)
-      .catch(() => marca('iot', true));
-    void api
-      .getList<Device>('/inventory/devices')
-      .then(setNetworkDevices)
-      .catch(() => marca('network', true));
-    void listScenes()
-      .then(setScenes)
-      .catch(() => marca('scenes', true));
-    void listCameras()
-      .then(setCameras)
-      .catch(() => marca('cameras', true));
-    // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
-    // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
-    void api
-      .getList<AccessSchedule>('/access/schedules')
-      .then((list) => setAccessSchedules(Array.isArray(list) ? list : []))
-      .catch(() => marca('schedules', true));
   }, [reload]);
-
-  // Personas del hogar para los disparadores de presencia (US-169). El listado
-  // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
-  useEffect(() => {
-    if (!isAdmin) return;
-    void api
-      .getList<UserSummary>('/users')
-      .then(setUsers)
-      .catch(() => marca('users', true));
-  }, [isAdmin]);
 
   const ctx: NameContext = useMemo(
     () => ({
