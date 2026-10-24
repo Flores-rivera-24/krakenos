@@ -78,7 +78,11 @@ function TrafficPageBody() {
   const [devRange, setDevRange] = useState<TrafficRange>('hour');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [selectedMac, setSelectedMac] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Un error por lectura: que una se recupere no puede borrar el aviso de otra que sigue caída.
+  const [devError, setDevError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [liveError, setLiveError] = useState<string | null>(null);
+  const error = devError ?? statsError ?? liveError;
   // Sin esto, «aún no llegó» y «no se pudo leer» se pintan igual que «no hay».
   const [statsFailed, setStatsFailed] = useState(false);
   const [liveLoaded, setLiveLoaded] = useState(false);
@@ -109,12 +113,13 @@ function TrafficPageBody() {
       .then((r) => {
         if (!active) return;
         setDevStats(r?.devices ?? []);
+        setDevError(null);
         setPerDevice(r?.perDeviceTraffic ?? { status: 'supported' });
       })
       .catch((err) => {
         if (!active) return;
         setDevStats([]);
-        setError(describeError(err, t('traffic.loadError')));
+        setDevError(describeError(err, t('traffic.loadError')));
       });
     return () => {
       active = false;
@@ -140,13 +145,16 @@ function TrafficPageBody() {
     let active = true;
     setStats(null);
     setStatsFailed(false);
+    setStatsError(null);
     void api
       .get<TrafficStats>(`/traffic/stats?range=${range}`)
-      .then((s) => active && setStats(s))
+      .then((s) => {
+        if (active) setStats(s);
+      })
       .catch((err) => {
         if (!active) return;
         setStatsFailed(true);
-        setError(describeError(err, t('traffic.loadError')));
+        setStatsError(describeError(err, t('traffic.loadError')));
       });
     return () => {
       active = false;
@@ -163,11 +171,12 @@ function TrafficPageBody() {
         if (!active) return;
         setSamples(h);
         setLiveLoaded(true);
+        setLiveError(null);
       })
       .catch((err) => {
         if (!active) return;
         setLiveFailed(true);
-        setError(describeError(err, t('traffic.loadError')));
+        setLiveError(describeError(err, t('traffic.loadError')));
       });
 
     const onHistory = (h: TrafficSample[]) => {

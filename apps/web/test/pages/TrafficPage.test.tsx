@@ -261,6 +261,22 @@ describe('TrafficPage', () => {
   });
 
   describe('estados honestos', () => {
+    it('tras un fallo, un cambio de rango que carga bien limpia el banner', async () => {
+      let falla = true;
+      apiMock.get.mockImplementation((url: string) => {
+        if (url.startsWith('/traffic/stats'))
+          return falla ? Promise.reject(new Error('x')) : Promise.resolve(EMPTY_STATS);
+        if (url.startsWith('/traffic/devices'))
+          return Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } });
+        return Promise.resolve([]);
+      });
+      render(<TrafficPage />);
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      falla = false;
+      await userEvent.setup().click(screen.getAllByRole('button', { name: '7d' })[0]!);
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    });
+
     const pendiente = () => new Promise(() => undefined);
 
     it('mientras carga, esqueletos y ni «—» ni «esperando» ni «sin datos»', async () => {

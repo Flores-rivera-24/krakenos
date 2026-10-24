@@ -398,7 +398,7 @@ function IotPageBody() {
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
-      {isAdmin && roomsFailed && !error && <FormError>{t('iot.roomsLoadError')}</FormError>}
+      {isAdmin && roomsFailed && <FormError>{t('iot.roomsLoadError')}</FormError>}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
