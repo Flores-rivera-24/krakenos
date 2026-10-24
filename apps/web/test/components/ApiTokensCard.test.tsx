@@ -84,3 +84,23 @@ describe('ApiTokensCard (US-174)', () => {
     await waitFor(() => expect(tokensMock.revokeApiToken).toHaveBeenCalledWith('t1'));
   });
 });
+
+describe('ApiTokensCard: un fallo de carga no es «no hay tokens»', () => {
+  beforeEach(() => {
+    tokensMock.listApiTokens.mockReset();
+    setRole('admin');
+  });
+
+  it('si la lista falla lo dice con reintento y no afirma que no hay tokens', async () => {
+    tokensMock.listApiTokens.mockRejectedValueOnce(new Error('red'));
+    tokensMock.listApiTokens.mockResolvedValue([existing]);
+    render(<ApiTokensCard />);
+
+    expect(await screen.findByText('No se pudieron cargar los tokens.')).toBeInTheDocument();
+    expect(screen.queryByText('Aún no tienes tokens.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('HA')).toBeInTheDocument();
+    expect(screen.queryByText('No se pudieron cargar los tokens.')).not.toBeInTheDocument();
+  });
+});

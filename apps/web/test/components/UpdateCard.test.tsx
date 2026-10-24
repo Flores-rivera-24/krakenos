@@ -214,3 +214,31 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('UpdateCard: un fallo no se pinta como «comprobación desactivada»', () => {
+  beforeEach(() => setAdmin());
+
+  it('dice que no se pudo comprobar y reintenta', async () => {
+    apiMock.get.mockReset().mockRejectedValueOnce(new Error('red'));
+    apiMock.get.mockResolvedValue(basePlan);
+    render(<UpdateCard />);
+
+    expect(
+      await screen.findByText('No se pudo comprobar si hay una actualización.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Comprobación de actualizaciones desactivada/),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText(/disponible/i)).toBeInTheDocument();
+  });
+
+  it('si el servidor dice que está desactivada, sigue diciéndolo', async () => {
+    apiMock.get.mockReset().mockResolvedValue({ ...basePlan, enabled: false });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(/Comprobación de actualizaciones desactivada/),
+    ).toBeInTheDocument();
+  });
+});

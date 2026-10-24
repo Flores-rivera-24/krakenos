@@ -121,3 +121,31 @@ describe('HealthCard — observabilidad (US-191)', () => {
     expect(await screen.findByText(/Aún sin muestras de manager/)).toBeInTheDocument();
   });
 });
+
+describe('HealthCard: sondeo que falla con métricas ya pintadas', () => {
+  it('conserva las cifras y las marca como viejas', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      apiMock.get.mockReset().mockResolvedValueOnce(snapshot);
+      apiMock.get.mockRejectedValue(new Error('red'));
+      render(<HealthCard />);
+      expect(await screen.findByText('1 h 2 min')).toBeInTheDocument();
+      expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
+
+      await vi.advanceTimersByTimeAsync(5100);
+      expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+      expect(screen.getByText('1 h 2 min')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('una cifra en alarma lleva texto además del color', async () => {
+    apiMock.get
+      .mockReset()
+      .mockResolvedValue({ ...snapshot, http: { ...snapshot.http, errorRate: 0.2 } });
+    render(<HealthCard />);
+    expect(await screen.findByText('20,0%')).toBeInTheDocument();
+    expect(screen.getByText('Fuera de lo normal')).toBeInTheDocument();
+  });
+});

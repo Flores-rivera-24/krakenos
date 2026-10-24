@@ -155,3 +155,12 @@ describe('UsersSection en inglés: etiquetas de rol', () => {
     expect(screen.queryByText(/View only/)).not.toBeInTheDocument();
   });
 });
+
+describe('UsersSection: con error no se pinta además el spinner', () => {
+  it('muestra el fallo y no «Cargando usuarios…»', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('red'));
+    render(<UsersSection />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText('Cargando usuarios…')).not.toBeInTheDocument();
+  });
+});

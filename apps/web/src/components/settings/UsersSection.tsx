@@ -199,7 +199,9 @@ export function UsersSection() {
 
       {/* Lista de usuarios */}
       {users === null ? (
-        <LoadingLine label={t('users.loading')} />
+        error ? null : (
+          <LoadingLine label={t('users.loading')} />
+        )
       ) : (
         <div className="overflow-x-auto rounded-xl border border-kr">
           <table className="w-full text-kr-sm">

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -102,5 +102,18 @@ describe('AlertRulesCard en inglés', () => {
     // ajustes es peor que decir que no se reconoce.
     expect(await screen.findByText('Event not recognised by this version')).toBeInTheDocument();
     expect(screen.queryByText('alarm.something_new')).toBeNull();
+  });
+});
+
+describe('AlertRulesCard: un fallo de carga no deja un spinner eterno', () => {
+  it('dice que no se pudieron cargar y reintenta', async () => {
+    apiMock.get.mockReset().mockRejectedValueOnce(new Error('red'));
+    apiMock.get.mockResolvedValue(RULES);
+    render(<AlertRulesCard />);
+
+    expect(await screen.findByText('No se pudieron cargar las alertas')).toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('Dispositivo bloqueado')).toBeInTheDocument();
   });
 });

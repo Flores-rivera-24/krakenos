@@ -33,6 +33,7 @@ import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { WidgetError } from '@/components/ui/widget-error';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
@@ -112,6 +113,8 @@ export function SettingsPage() {
   const [test, setTest] = useState<ConnectivityTestResult | null>(null);
   const [testing, setTesting] = useState(false);
   const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
+  const [settingsFailed, setSettingsFailed] = useState(false);
+  const [intentoAjustes, setIntentoAjustes] = useState(0);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -153,12 +156,13 @@ export function SettingsPage() {
         setHomeName(d.settings.homeName);
         setMaintWindow(d.settings.updateMaintenanceWindow ?? '');
         setNightSuppress(d.settings.presenceNightSuppress ?? '');
+        setSettingsFailed(false);
       })
-      .catch(() => undefined);
+      .catch(() => active && setSettingsFailed(true));
     return () => {
       active = false;
     };
-  }, []);
+  }, [intentoAjustes]);
 
   useEffect(() => {
     if (!isAdmin || section !== 'cuenta') return;
@@ -203,6 +207,19 @@ export function SettingsPage() {
         setNightSuppress(data.settings.presenceNightSuppress ?? '');
     }
   };
+
+  // Sin la lectura no hay valores reales: los controles que escriben sobre ella
+  // no se ofrecen (guardar sobre defectos inventados pisaría la config de verdad).
+  const ajustesCaidos = !data && settingsFailed;
+  const errorAjustes = (
+    <WidgetError
+      message={t('settings.loadError')}
+      onRetry={() => {
+        setSettingsFailed(false);
+        setIntentoAjustes((n) => n + 1);
+      }}
+    />
+  );
 
   const setting = (key: SystemSettingKey): string => data?.settings[key] ?? '';
 
@@ -268,151 +285,161 @@ export function SettingsPage() {
                   <CardTitle>{t('settings.system.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Setting label={t('settings.system.homeName')}>
-                    <div className="flex gap-2">
-                      <Input
-                        aria-label={t('settings.system.homeName')}
-                        value={homeName}
-                        onChange={(e) => setHomeName(e.target.value)}
-                        disabled={!isAdmin}
-                        maxLength={60}
-                      />
-                      {isAdmin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void patch('homeName', homeName)}
-                          aria-label={t('settings.system.saveFor', {
-                            field: t('settings.system.homeName'),
-                          })}
+                  {ajustesCaidos ? (
+                    errorAjustes
+                  ) : (
+                    <>
+                      <Setting label={t('settings.system.homeName')}>
+                        <div className="flex gap-2">
+                          <Input
+                            aria-label={t('settings.system.homeName')}
+                            value={homeName}
+                            onChange={(e) => setHomeName(e.target.value)}
+                            disabled={!isAdmin}
+                            maxLength={60}
+                          />
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => void patch('homeName', homeName)}
+                              aria-label={t('settings.system.saveFor', {
+                                field: t('settings.system.homeName'),
+                              })}
+                            >
+                              {t('settings.system.save')}
+                            </Button>
+                          )}
+                        </div>
+                      </Setting>
+                      <Setting label={t('settings.system.timezone')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.system.timezone')}
+                          value={setting('timezone')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('timezone', e.target.value)}
                         >
-                          {t('settings.system.save')}
-                        </Button>
-                      )}
-                    </div>
-                  </Setting>
-                  <Setting label={t('settings.system.timezone')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.system.timezone')}
-                      value={setting('timezone')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('timezone', e.target.value)}
-                    >
-                      {TIMEZONES.map((tz) => (
-                        <option key={tz} value={tz}>
-                          {tz}
-                        </option>
-                      ))}
-                    </select>
-                  </Setting>
-                  <Setting label={t('settings.system.scanInterval')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.system.scanInterval')}
-                      value={setting('scanIntervalSec')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('scanIntervalSec', e.target.value)}
-                    >
-                      <option value="30">{t('settings.system.sec30')}</option>
-                      <option value="60">{t('settings.system.min1')}</option>
-                      <option value="300">{t('settings.system.min5')}</option>
-                    </select>
-                  </Setting>
-                  <Setting label={t('settings.system.presenceGrace')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.system.presenceGraceAria')}
-                      value={setting('presenceGraceMin')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('presenceGraceMin', e.target.value)}
-                    >
-                      <option value="5">{t('settings.system.min5')}</option>
-                      <option value="10">{t('settings.system.min10')}</option>
-                      <option value="20">{t('settings.system.min20')}</option>
-                      <option value="30">{t('settings.system.min30')}</option>
-                    </select>
-                  </Setting>
-                  <Setting label={t('settings.system.presenceSweeps')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.system.presenceSweepsAria')}
-                      value={setting('presenceLeaveSweeps')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('presenceLeaveSweeps', e.target.value)}
-                    >
-                      <option value="1">1</option>
-                      <option value="2">2</option>
-                      <option value="3">3</option>
-                      <option value="5">5</option>
-                    </select>
-                  </Setting>
-                  <Setting
-                    label={t('settings.system.presenceNight')}
-                    hint={t('settings.system.presenceNightHint')}
-                    hintId="presence-night-hint"
-                  >
-                    <div className="flex gap-2">
-                      <Input
-                        aria-label={t('settings.system.presenceNight')}
-                        placeholder={t('settings.system.presenceNightPlaceholder')}
-                        aria-describedby="presence-night-hint"
-                        value={nightSuppress}
-                        onChange={(e) => setNightSuppress(e.target.value)}
-                        disabled={!isAdmin}
-                        maxLength={11}
-                      />
-                      {isAdmin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void patch('presenceNightSuppress', nightSuppress.trim())}
-                          aria-label={t('settings.system.saveFor', {
-                            field: t('settings.system.presenceNight'),
-                          })}
+                          {TIMEZONES.map((tz) => (
+                            <option key={tz} value={tz}>
+                              {tz}
+                            </option>
+                          ))}
+                        </select>
+                      </Setting>
+                      <Setting label={t('settings.system.scanInterval')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.system.scanInterval')}
+                          value={setting('scanIntervalSec')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('scanIntervalSec', e.target.value)}
                         >
-                          {t('settings.system.save')}
-                        </Button>
-                      )}
-                    </div>
-                  </Setting>
-                  <Setting
-                    label={t('settings.system.maintenanceWindow')}
-                    hint={t('settings.system.maintenanceWindowHint')}
-                    hintId="maintenance-window-hint"
-                  >
-                    <div className="flex gap-2">
-                      <Input
-                        aria-label={t('settings.system.maintenanceWindow')}
-                        placeholder={t('settings.system.maintenanceWindowPlaceholder')}
-                        aria-describedby="maintenance-window-hint"
-                        value={maintWindow}
-                        onChange={(e) => setMaintWindow(e.target.value)}
-                        disabled={!isAdmin}
-                        maxLength={11}
-                      />
-                      {isAdmin && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => void patch('updateMaintenanceWindow', maintWindow.trim())}
-                          aria-label={t('settings.system.saveFor', {
-                            field: t('settings.system.maintenanceWindow'),
-                          })}
+                          <option value="30">{t('settings.system.sec30')}</option>
+                          <option value="60">{t('settings.system.min1')}</option>
+                          <option value="300">{t('settings.system.min5')}</option>
+                        </select>
+                      </Setting>
+                      <Setting label={t('settings.system.presenceGrace')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.system.presenceGraceAria')}
+                          value={setting('presenceGraceMin')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('presenceGraceMin', e.target.value)}
                         >
-                          {t('settings.system.save')}
-                        </Button>
-                      )}
-                    </div>
-                  </Setting>
-                  <Setting label={t('settings.system.https')}>
-                    <span className="flex items-center gap-2 text-kr-base">
-                      <StatusDot status={data?.info.httpsEnabled ? 'online' : 'offline'} />
-                      {data?.info.httpsEnabled
-                        ? t('settings.system.httpsOn')
-                        : t('settings.system.httpsOff')}
-                    </span>
-                  </Setting>
+                          <option value="5">{t('settings.system.min5')}</option>
+                          <option value="10">{t('settings.system.min10')}</option>
+                          <option value="20">{t('settings.system.min20')}</option>
+                          <option value="30">{t('settings.system.min30')}</option>
+                        </select>
+                      </Setting>
+                      <Setting label={t('settings.system.presenceSweeps')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.system.presenceSweepsAria')}
+                          value={setting('presenceLeaveSweeps')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('presenceLeaveSweeps', e.target.value)}
+                        >
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="5">5</option>
+                        </select>
+                      </Setting>
+                      <Setting
+                        label={t('settings.system.presenceNight')}
+                        hint={t('settings.system.presenceNightHint')}
+                        hintId="presence-night-hint"
+                      >
+                        <div className="flex gap-2">
+                          <Input
+                            aria-label={t('settings.system.presenceNight')}
+                            placeholder={t('settings.system.presenceNightPlaceholder')}
+                            aria-describedby="presence-night-hint"
+                            value={nightSuppress}
+                            onChange={(e) => setNightSuppress(e.target.value)}
+                            disabled={!isAdmin}
+                            maxLength={11}
+                          />
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void patch('presenceNightSuppress', nightSuppress.trim())
+                              }
+                              aria-label={t('settings.system.saveFor', {
+                                field: t('settings.system.presenceNight'),
+                              })}
+                            >
+                              {t('settings.system.save')}
+                            </Button>
+                          )}
+                        </div>
+                      </Setting>
+                      <Setting
+                        label={t('settings.system.maintenanceWindow')}
+                        hint={t('settings.system.maintenanceWindowHint')}
+                        hintId="maintenance-window-hint"
+                      >
+                        <div className="flex gap-2">
+                          <Input
+                            aria-label={t('settings.system.maintenanceWindow')}
+                            placeholder={t('settings.system.maintenanceWindowPlaceholder')}
+                            aria-describedby="maintenance-window-hint"
+                            value={maintWindow}
+                            onChange={(e) => setMaintWindow(e.target.value)}
+                            disabled={!isAdmin}
+                            maxLength={11}
+                          />
+                          {isAdmin && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                void patch('updateMaintenanceWindow', maintWindow.trim())
+                              }
+                              aria-label={t('settings.system.saveFor', {
+                                field: t('settings.system.maintenanceWindow'),
+                              })}
+                            >
+                              {t('settings.system.save')}
+                            </Button>
+                          )}
+                        </div>
+                      </Setting>
+                      <Setting label={t('settings.system.https')}>
+                        <span className="flex items-center gap-2 text-kr-base">
+                          <StatusDot status={data?.info.httpsEnabled ? 'online' : 'offline'} />
+                          {data?.info.httpsEnabled
+                            ? t('settings.system.httpsOn')
+                            : t('settings.system.httpsOff')}
+                        </span>
+                      </Setting>
+                    </>
+                  )}
                 </CardContent>
               </Card>
 
@@ -446,19 +473,21 @@ export function SettingsPage() {
                       </div>
                     </Setting>
                   )}
-                  <Setting label={t('settings.notifications.digest')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.notifications.digest')}
-                      value={setting('digestFrequency')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('digestFrequency', e.target.value)}
-                    >
-                      <option value="off">{t('settings.notifications.digestOff')}</option>
-                      <option value="daily">{t('settings.notifications.digestDaily')}</option>
-                      <option value="weekly">{t('settings.notifications.digestWeekly')}</option>
-                    </select>
-                  </Setting>
+                  {!ajustesCaidos && (
+                    <Setting label={t('settings.notifications.digest')}>
+                      <select
+                        className={SELECT_CLASS}
+                        aria-label={t('settings.notifications.digest')}
+                        value={setting('digestFrequency')}
+                        disabled={!isAdmin}
+                        onChange={(e) => void patch('digestFrequency', e.target.value)}
+                      >
+                        <option value="off">{t('settings.notifications.digestOff')}</option>
+                        <option value="daily">{t('settings.notifications.digestDaily')}</option>
+                        <option value="weekly">{t('settings.notifications.digestWeekly')}</option>
+                      </select>
+                    </Setting>
+                  )}
                 </CardContent>
               </Card>
 
@@ -530,39 +559,58 @@ export function SettingsPage() {
                   <CardTitle>{t('settings.retention.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <Setting label={t('settings.retention.traffic')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.retention.trafficAria')}
-                      value={setting('trafficRetentionDays')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('trafficRetentionDays', e.target.value)}
-                    >
-                      <option value="7">{t('settings.retention.d7')}</option>
-                      <option value="30">{t('settings.retention.d30')}</option>
-                      <option value="90">{t('settings.retention.d90')}</option>
-                    </select>
-                  </Setting>
-                  <Setting label={t('settings.retention.audit')}>
-                    <select
-                      className={SELECT_CLASS}
-                      aria-label={t('settings.retention.auditAria')}
-                      value={setting('auditRetentionDays')}
-                      disabled={!isAdmin}
-                      onChange={(e) => void patch('auditRetentionDays', e.target.value)}
-                    >
-                      <option value="30">{t('settings.retention.d30')}</option>
-                      <option value="90">{t('settings.retention.d90')}</option>
-                      <option value="180">{t('settings.retention.d180')}</option>
-                    </select>
-                  </Setting>
+                  {ajustesCaidos ? (
+                    errorAjustes
+                  ) : (
+                    <>
+                      <Setting label={t('settings.retention.traffic')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.retention.trafficAria')}
+                          value={setting('trafficRetentionDays')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('trafficRetentionDays', e.target.value)}
+                        >
+                          <option value="7">{t('settings.retention.d7')}</option>
+                          <option value="30">{t('settings.retention.d30')}</option>
+                          <option value="90">{t('settings.retention.d90')}</option>
+                        </select>
+                      </Setting>
+                      <Setting label={t('settings.retention.audit')}>
+                        <select
+                          className={SELECT_CLASS}
+                          aria-label={t('settings.retention.auditAria')}
+                          value={setting('auditRetentionDays')}
+                          disabled={!isAdmin}
+                          onChange={(e) => void patch('auditRetentionDays', e.target.value)}
+                        >
+                          <option value="30">{t('settings.retention.d30')}</option>
+                          <option value="90">{t('settings.retention.d90')}</option>
+                          <option value="180">{t('settings.retention.d180')}</option>
+                        </select>
+                      </Setting>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </>
           )}
 
-          {section === 'seguridad' && data && (
-            <SecuritySection settings={data.settings} patch={patch} isAdmin={isAdmin} />
+          {section === 'seguridad' &&
+            (data ? (
+              <SecuritySection settings={data.settings} patch={patch} isAdmin={isAdmin} />
+            ) : (
+              ajustesCaidos && (
+                <Card>
+                  <CardContent>{errorAjustes}</CardContent>
+                </Card>
+              )
+            ))}
+
+          {section === 'integraciones' && !data && ajustesCaidos && (
+            <Card>
+              <CardContent>{errorAjustes}</CardContent>
+            </Card>
           )}
 
           {section === 'integraciones' && data && (

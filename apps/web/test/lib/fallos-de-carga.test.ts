@@ -68,9 +68,6 @@ const PENDIENTES: Record<string, number> = {
   'components/dashboard/widgets/TrafficWidget.tsx': 1,
   'components/energy/EnergyAlertsCard.tsx': 2,
   'components/inventory/DeviceDetailSlideover.tsx': 4,
-  'components/settings/ApiTokensCard.tsx': 1,
-  'components/settings/SupportCard.tsx': 2,
-  'components/settings/TlsCard.tsx': 1,
   'components/wellbeing/WellbeingCard.tsx': 1,
   'components/dashboard/widgets/WifiStatusWidget.tsx': 1,
   'components/wifi/NetworksCard.tsx': 1,
@@ -78,7 +75,7 @@ const PENDIENTES: Record<string, number> = {
   'pages/CamerasPage.tsx': 1,
   'pages/EnergyPage.tsx': 1,
   'pages/IotPage.tsx': 1,
-  'pages/SettingsPage.tsx': 2,
+  'pages/SettingsPage.tsx': 1,
 };
 
 describe('fallos de carga que se tragan', () => {

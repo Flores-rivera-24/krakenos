@@ -116,3 +116,22 @@ describe('WeatherCard (US-254)', () => {
     expect(await screen.findByText(/No se pudo contactar con el proveedor/i)).toBeInTheDocument();
   });
 });
+
+describe('WeatherCard: carga y fallo de carga', () => {
+  it('mientras carga lo dice', async () => {
+    apiMock.get.mockReset().mockReturnValue(new Promise(() => {}));
+    render(<WeatherCard />);
+    expect(await screen.findByText('Cargando el tiempo exterior…')).toBeInTheDocument();
+  });
+
+  it('si falla dice que no se pudo cargar y reintenta', async () => {
+    apiMock.get.mockReset().mockRejectedValueOnce(new Error('red'));
+    apiMock.get.mockResolvedValue(base);
+    render(<WeatherCard />);
+
+    expect(await screen.findByText('No se pudo cargar el tiempo exterior.')).toBeInTheDocument();
+    expect(screen.queryByText('Cargando el tiempo exterior…')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByRole('button', { name: 'Activar' })).toBeInTheDocument();
+  });
+});

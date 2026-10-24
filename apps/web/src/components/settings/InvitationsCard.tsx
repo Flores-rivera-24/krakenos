@@ -278,7 +278,9 @@ export function InvitationsCard() {
       <section className="rounded-xl border border-kr bg-kr-surface p-4">
         <h3 className="text-kr-lg font-medium text-kr-primary">{t('invitations.title')}</h3>
         {invitations === null ? (
-          <LoadingLine />
+          error ? null : (
+            <LoadingLine />
+          )
         ) : invitations.length === 0 ? (
           <p className="mt-2 text-kr-sm text-kr-secondary">{t('invitations.empty')}</p>
         ) : (

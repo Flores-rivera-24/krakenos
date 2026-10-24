@@ -1,7 +1,8 @@
 import type { MetricsSnapshot } from '@krakenos/types';
-import { Activity } from 'lucide-react';
+import { Activity, AlertTriangle } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { formatFixed, formatNumber } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
@@ -56,6 +57,7 @@ export function HealthCard() {
           )
         ) : (
           <>
+            {failed && <StaleBadge />}
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
               <Metric
                 label={t('settings.health.uptime')}
@@ -141,10 +143,17 @@ export function HealthCard() {
 }
 
 function Metric({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+  const t = useT();
   return (
     <div>
       <dt className="text-kr-xs text-kr-muted">{label}</dt>
       <dd className={danger ? 'font-medium text-warning' : 'font-medium text-kr-primary'}>
+        {danger && (
+          <>
+            <AlertTriangle className="mr-1 inline h-3.5 w-3.5 align-text-bottom" aria-hidden />
+            <span className="sr-only">{t('settings.health.attention')} </span>
+          </>
+        )}
         {value}
       </dd>
     </div>
