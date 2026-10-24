@@ -164,6 +164,7 @@ export function HomeModeWidget() {
                 <p className="mb-1 text-kr-xs font-medium uppercase tracking-wide text-kr-muted">
                   {t('presence.timeline')}
                 </p>
+                {timelineFailed && !stateFailed && <StaleBadge className="mb-1" />}
                 <ul className="space-y-1">
                   {timeline.map((e) => (
                     <li key={e.id} className="flex items-center gap-2 text-kr-xs text-kr-muted">

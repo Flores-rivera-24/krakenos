@@ -283,6 +283,25 @@ describe('DeviceDetailSlideover — lecturas que fallan', () => {
     expect(screen.getByLabelText('Dueño')).toBeDisabled();
   });
 
+  it('con las listas caídas, el select no afirma «Sin VLAN»/«Sin dueño» si hay asignación', async () => {
+    apiMock.get.mockImplementation((url: string) =>
+      ['/vlans', '/rooms', '/users'].includes(url)
+        ? Promise.reject(new Error('caído'))
+        : Promise.resolve([]),
+    );
+    render(
+      <DeviceDetailSlideover
+        device={device({ vlanTag: 30, roomId: 'r1', ownerId: 'u1' })}
+        onClose={() => {}}
+      />,
+    );
+    await screen.findByText('No se pudieron cargar las VLAN.');
+    expect(screen.getByLabelText('VLAN')).toHaveDisplayValue('VLAN 30');
+    expect(screen.getByLabelText('Habitación')).toHaveDisplayValue('Habitación asignada');
+    expect(screen.getByLabelText('Dueño')).toHaveDisplayValue('Dueño asignado');
+    expect(screen.queryByRole('option', { name: /Sin VLAN|Sin habitación|Sin dueño/ })).toBeNull();
+  });
+
   it('con las lecturas bien, los selectores siguen editables y sin avisos', async () => {
     apiMock.get.mockResolvedValue([]);
     render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);

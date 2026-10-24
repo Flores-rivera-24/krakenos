@@ -398,6 +398,9 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             rooms={rooms}
             value={roomId}
             disabled={roomBusy || lecturaRooms.data === null}
+            assignedLabel={
+              lecturaRooms.data === null && roomId ? t('device.roomAssigned') : undefined
+            }
             onChange={(next) => void assignToRoom(next)}
           />
         )}
@@ -413,7 +416,11 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               disabled={ownerBusy || lecturaUsers.data === null}
               onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
             >
-              <option value="">{t('device.noOwner')}</option>
+              {lecturaUsers.data === null && ownerId ? (
+                <option value={ownerId}>{t('device.ownerAssigned')}</option>
+              ) : (
+                <option value="">{t('device.noOwner')}</option>
+              )}
               {householdUsers.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.displayName}
@@ -436,7 +443,11 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                 void assignVlan(e.target.value === '' ? null : Number(e.target.value))
               }
             >
-              <option value="">{t('device.noVlan')}</option>
+              {lecturaVlans.data === null && vlanTag !== null ? (
+                <option value={vlanTag}>VLAN {vlanTag}</option>
+              ) : (
+                <option value="">{t('device.noVlan')}</option>
+              )}
               {vlans.map((v) => (
                 <option key={v.id} value={v.tag}>
                   {v.name} (tag {v.tag})

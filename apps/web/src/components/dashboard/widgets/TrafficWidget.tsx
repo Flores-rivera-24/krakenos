@@ -80,7 +80,7 @@ export function TrafficWidget() {
       </CardHeader>
       <CardContent>
         {failed && samples.length > 0 && <StaleBadge className="mb-2" />}
-        {failed && data.length < 2 ? (
+        {failed && samples.length === 0 ? (
           <WidgetError
             message={t('widget.traffic.error')}
             onRetry={() => setIntento((n) => n + 1)}

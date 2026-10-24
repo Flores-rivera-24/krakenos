@@ -145,4 +145,22 @@ describe('EnergyAlertsCard (US-183)', () => {
     await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
     expect(await screen.findByText(/más de 500 W durante 5 min/)).toBeInTheDocument();
   });
+
+  it('tras fallar la lista de alertas, añadir una con éxito no deja «Datos obsoletos»', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/energy/alerts' ? Promise.reject(new Error('caído')) : Promise.resolve(DEVICES),
+    );
+    apiMock.post.mockResolvedValue({ ...RULE, id: 'a2', threshold: 800 });
+    renderCard();
+    await screen.findByText('No se pudieron cargar las alertas de consumo.');
+    apiMock.get.mockImplementation((path: string) =>
+      Promise.resolve(path === '/iot/devices' ? DEVICES : [{ ...RULE, id: 'a2', threshold: 800 }]),
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Umbral'), '800');
+    await user.click(screen.getByRole('button', { name: 'Añadir' }));
+    expect(await screen.findByText(/más de 800 W durante 5 min/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument());
+    expect(screen.queryByText('No se pudieron cargar las alertas de consumo.')).toBeNull();
+  });
 });

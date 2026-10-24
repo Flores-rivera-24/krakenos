@@ -130,6 +130,22 @@ describe('HomeModeWidget (US-169)', () => {
       ).toBeInTheDocument();
     });
 
+    it('timeline que falla con timeline previo: se conserva y se marca como obsoleto', async () => {
+      render(<HomeModeWidget />);
+      await screen.findByText(/Ana llegó/);
+      const handler = fakeSocket.on.mock.calls
+        .filter((c) => c[0] === 'presence:updated')
+        .at(-1)?.[1] as () => void;
+      apiMock.get
+        .mockReset()
+        .mockImplementation((path: string) =>
+          path === '/presence' ? Promise.resolve(STATE) : Promise.reject(new Error('caído')),
+        );
+      handler();
+      await waitFor(() => expect(screen.getAllByText('Datos obsoletos')).toHaveLength(1));
+      expect(screen.getByText(/Ana llegó/)).toBeInTheDocument();
+    });
+
     it('un re-sondeo que falla conserva el estado y lo marca como obsoleto', async () => {
       render(<HomeModeWidget />);
       await screen.findByRole('button', { name: /En casa/ });

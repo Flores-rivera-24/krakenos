@@ -60,6 +60,8 @@ export function EnergyAlertsCard() {
         sustainMinutes: metric === 'sustained-power' ? Number(sustainMinutes) || 5 : undefined,
       });
       setRules((prev) => [...prev, created]);
+      // El éxito de la escritura limpia un fallo anterior: se relee la lista real.
+      lecturaReglas.reintentar();
       setThreshold('');
       toast.success(t('energy.alert.saved'));
     } catch (err) {
@@ -73,6 +75,7 @@ export function EnergyAlertsCard() {
     try {
       await deleteEnergyAlert(id);
       setRules((prev) => prev.filter((r) => r.id !== id));
+      lecturaReglas.reintentar();
     } catch (err) {
       toast.error(describeError(err, t('energy.alert.error')));
     }

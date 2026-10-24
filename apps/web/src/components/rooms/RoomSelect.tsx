@@ -12,6 +12,8 @@ interface Props {
   /** Id de la habitación actual, o `null` si ninguna. */
   value: string | null;
   disabled?: boolean;
+  /** Texto neutro cuando la lista no llegó y hay una asignación: no se afirma «sin habitación». */
+  assignedLabel?: string;
   onChange: (roomId: string | null) => void;
 }
 
@@ -20,7 +22,14 @@ interface Props {
  * red y en el de IoT. Presentacional — el padre ejecuta la asignación y refleja
  * la verdad del servidor. `''` en el `<option>` = "Sin habitación".
  */
-export function RoomSelect({ id = 'room-select', rooms, value, disabled, onChange }: Props) {
+export function RoomSelect({
+  id = 'room-select',
+  rooms,
+  value,
+  disabled,
+  assignedLabel,
+  onChange,
+}: Props) {
   const t = useT();
   return (
     <div className="space-y-2">
@@ -32,7 +41,11 @@ export function RoomSelect({ id = 'room-select', rooms, value, disabled, onChang
         disabled={disabled}
         onChange={(e) => onChange(e.target.value === '' ? null : e.target.value)}
       >
-        <option value="">{t('rooms.select.none')}</option>
+        {assignedLabel ? (
+          <option value={value ?? ''}>{assignedLabel}</option>
+        ) : (
+          <option value="">{t('rooms.select.none')}</option>
+        )}
         {rooms.map((r) => (
           <option key={r.id} value={r.id}>
             {roomGlyph(r.icon)} {r.name}

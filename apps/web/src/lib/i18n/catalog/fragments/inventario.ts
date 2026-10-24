@@ -67,6 +67,8 @@ export const esInventario = {
   'device.vlansLoadError': 'No se pudieron cargar las VLAN.',
   'device.roomsLoadError': 'No se pudieron cargar las habitaciones.',
   'device.usersLoadError': 'No se pudieron cargar los usuarios.',
+  'device.roomAssigned': 'Habitación asignada',
+  'device.ownerAssigned': 'Dueño asignado',
   'device.traffic.adminOnly': 'Solo el administrador ve el tráfico de cada aparato.',
   'device.saved': 'Cambios guardados',
   'device.roomUpdated': 'Habitación actualizada',

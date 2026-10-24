@@ -230,6 +230,20 @@ describe('Dashboard widgets', () => {
     expect(screen.queryByText('No se pudo cargar el tráfico WAN.')).not.toBeInTheDocument();
   });
 
+  it('TrafficWidget: con muestras y un fallo del historial, solo «Datos obsoletos» (sin error)', async () => {
+    let rechazar: (e: Error) => void = () => {};
+    apiMock.get.mockReset().mockReturnValue(new Promise((_, rej) => (rechazar = rej)));
+    fakeSocket.on.mockClear();
+    wrap(<TrafficWidget />);
+    const onSample = fakeSocket.on.mock.calls.find((c) => c[0] === 'traffic:sample')?.[1] as (
+      s: unknown,
+    ) => void;
+    act(() => onSample({ timestamp: 1, rxBytesPerSec: 10, txBytesPerSec: 5 }));
+    await act(async () => rechazar(new Error('caído')));
+    expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+    expect(screen.queryByText('No se pudo cargar el tráfico WAN.')).not.toBeInTheDocument();
+  });
+
   it('TrafficWidget espera muestras cuando no hay datos', () => {
     wrap(<TrafficWidget />);
     expect(screen.getByText('Esperando muestras…')).toBeInTheDocument();
