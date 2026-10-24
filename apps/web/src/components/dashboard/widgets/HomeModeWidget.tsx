@@ -3,7 +3,9 @@ import { HOME_MODES } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { StatusDot } from '@/components/ui/status-dot';
+import { WidgetError } from '@/components/ui/widget-error';
 import { describeError } from '@/lib/errors';
 import { timeAgo } from '@/lib/format';
 import {
@@ -32,20 +34,32 @@ export function HomeModeWidget() {
   const [state, setState] = useState<PresenceState | null>(null);
   const [timeline, setTimeline] = useState<PresenceEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  // Un fallo conserva lo último bueno y lo marca; sin nada que conservar, se dice.
+  const [stateFailed, setStateFailed] = useState(false);
+  const [timelineFailed, setTimelineFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
   const [changing, setChanging] = useState(false);
 
   useEffect(() => {
     let active = true;
     const load = () =>
       void Promise.all([
-        getPresence().catch(() => null),
-        getPresenceTimeline(5).catch(() => [] as PresenceEvent[]),
+        getPresence().then(
+          (s) => (s && Array.isArray(s.people) ? s : null),
+          () => null,
+        ),
+        getPresenceTimeline(5).then(
+          (e) => (Array.isArray(e) ? e : null),
+          () => null,
+        ),
       ])
         .then(([s, eventos]) => {
           if (!active) return;
-          // Defensivo: un payload inesperado no debe tumbar el dashboard entero.
-          if (s && Array.isArray(s.people)) setState(s);
-          setTimeline(Array.isArray(eventos) ? eventos : []);
+          // Defensivo: un payload inesperado cuenta como fallo, no tumba el dashboard.
+          if (s) setState(s);
+          setStateFailed(s === null);
+          if (eventos) setTimeline(eventos);
+          setTimelineFailed(eventos === null);
         })
         .finally(() => active && setLoading(false));
 
@@ -59,7 +73,7 @@ export function HomeModeWidget() {
       active = false;
       socket.off('presence:updated', onUpdated);
     };
-  }, []);
+  }, [intento]);
 
   const changeMode = async (mode: HomeMode) => {
     if (!state || mode === state.mode) return;
@@ -82,11 +96,16 @@ export function HomeModeWidget() {
         {loading ? (
           <LoadingLine />
         ) : state === null ? (
-          <p className="py-4 text-center text-kr-sm text-kr-muted">
-            {t('widget.homeMode.loadError')}
-          </p>
+          <WidgetError
+            message={t('widget.homeMode.loadError')}
+            onRetry={() => {
+              setLoading(true);
+              setIntento((n) => n + 1);
+            }}
+          />
         ) : (
           <>
+            {stateFailed && <StaleBadge />}
             <div
               className="grid grid-cols-3 gap-2"
               role="group"
@@ -137,6 +156,9 @@ export function HomeModeWidget() {
               </ul>
             )}
 
+            {timelineFailed && timeline.length === 0 && (
+              <p className="text-kr-xs text-kr-muted">{t('widget.homeMode.timelineError')}</p>
+            )}
             {timeline.length > 0 && (
               <div>
                 <p className="mb-1 text-kr-xs font-medium uppercase tracking-wide text-kr-muted">

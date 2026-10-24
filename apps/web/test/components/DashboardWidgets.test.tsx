@@ -1,5 +1,5 @@
 import type { Device } from '@krakenos/types';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -196,6 +196,38 @@ describe('Dashboard widgets', () => {
     expect(screen.queryByText('auth.login')).not.toBeInTheDocument();
     // Dos son posteriores al `lastSeen`; la tercera no.
     expect(screen.getByText('2 nuevas')).toBeInTheDocument();
+  });
+
+  it('WifiStatusWidget: un fallo se dice, no se pinta como «Sin redes WiFi»', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    wrap(<WifiStatusWidget />);
+    expect(await screen.findByText('No se pudieron cargar las redes WiFi.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Reintentar/ })).toBeInTheDocument();
+    expect(screen.queryByText('Sin redes WiFi.')).not.toBeInTheDocument();
+  });
+
+  it('TrafficWidget: sin historial por fallo lo dice, no «Esperando muestras»', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    wrap(<TrafficWidget />);
+    expect(await screen.findByText('No se pudo cargar el tráfico WAN.')).toBeInTheDocument();
+    expect(screen.queryByText('Esperando muestras…')).not.toBeInTheDocument();
+  });
+
+  it('TrafficWidget: un dato que llega por socket después del fallo limpia el fallo', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    fakeSocket.on.mockClear();
+    wrap(<TrafficWidget />);
+    await screen.findByText('No se pudo cargar el tráfico WAN.');
+    const onHistory = fakeSocket.on.mock.calls.find((c) => c[0] === 'traffic:history')?.[1] as (
+      h: unknown[],
+    ) => void;
+    act(() =>
+      onHistory([
+        { timestamp: 1, rxBytesPerSec: 10, txBytesPerSec: 5 },
+        { timestamp: 2, rxBytesPerSec: 20, txBytesPerSec: 6 },
+      ]),
+    );
+    expect(screen.queryByText('No se pudo cargar el tráfico WAN.')).not.toBeInTheDocument();
   });
 
   it('TrafficWidget espera muestras cuando no hay datos', () => {

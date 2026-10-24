@@ -1,6 +1,8 @@
 import type { TrafficSample } from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { formatRate, formatRateCompact, formatTime } from '@/lib/format';
@@ -20,16 +22,31 @@ const TOOLTIP_STYLE = {
 export function TrafficWidget() {
   const t = useT();
   const [samples, setSamples] = useState<TrafficSample[]>([]);
+  // Un fallo del historial no es «esperando muestras»; lo que llega por socket lo limpia.
+  const [failed, setFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     let active = true;
     const socket = getSocket();
     void api
       .getList<TrafficSample>('/traffic/history')
-      .then((h) => active && setSamples(h.slice(-MAX_POINTS)))
-      .catch(() => undefined);
-    const onHistory = (h: TrafficSample[]) => setSamples(h.slice(-MAX_POINTS));
-    const onSample = (s: TrafficSample) => setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
+      .then((h) => {
+        if (!active) return;
+        setSamples(h.slice(-MAX_POINTS));
+        setFailed(false);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    const onHistory = (h: TrafficSample[]) => {
+      setSamples(h.slice(-MAX_POINTS));
+      setFailed(false);
+    };
+    const onSample = (s: TrafficSample) => {
+      setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
+      setFailed(false);
+    };
     socket.on('traffic:history', onHistory);
     socket.on('traffic:sample', onSample);
     return () => {
@@ -37,7 +54,7 @@ export function TrafficWidget() {
       socket.off('traffic:history', onHistory);
       socket.off('traffic:sample', onSample);
     };
-  }, []);
+  }, [intento]);
 
   const data = useMemo(
     () =>
@@ -62,7 +79,13 @@ export function TrafficWidget() {
         )}
       </CardHeader>
       <CardContent>
-        {data.length < 2 ? (
+        {failed && samples.length > 0 && <StaleBadge className="mb-2" />}
+        {failed && data.length < 2 ? (
+          <WidgetError
+            message={t('widget.traffic.error')}
+            onRetry={() => setIntento((n) => n + 1)}
+          />
+        ) : data.length < 2 ? (
           <p className="py-12 text-center text-kr-sm text-kr-muted">
             {t('widget.traffic.waiting')}
           </p>

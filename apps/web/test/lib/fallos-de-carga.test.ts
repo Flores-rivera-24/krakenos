@@ -64,12 +64,9 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
 const PENDIENTES: Record<string, number> = {
   'components/connect/CompatibilitySection.tsx': 1,
   'components/coverage/SurveyPanel.tsx': 1,
-  'components/dashboard/widgets/HomeModeWidget.tsx': 2,
-  'components/dashboard/widgets/TrafficWidget.tsx': 1,
   'components/energy/EnergyAlertsCard.tsx': 2,
   'components/inventory/DeviceDetailSlideover.tsx': 4,
   'components/wellbeing/WellbeingCard.tsx': 1,
-  'components/dashboard/widgets/WifiStatusWidget.tsx': 1,
   'components/wifi/NetworksCard.tsx': 1,
   'pages/AutomationsPage.tsx': 7,
   'pages/CamerasPage.tsx': 1,
