@@ -43,6 +43,7 @@ export const esPanel = {
   'alarmSettings.noDevices': 'Sin dispositivos disponibles.',
   'alarmSettings.siren': 'Sirena (enchufe que se enciende al disparar)',
   'alarmSettings.none': 'Ninguna',
+  'alarmSettings.sirenAssigned': 'Sirena asignada',
   'alarmSettings.lights': 'Luces que se encienden al disparar',
   'alarmSettings.sensors': 'Sensores vigilados (apertura, movimiento, humo)',
   'alarmSettings.cameras': 'Cámaras que arman el disparo',

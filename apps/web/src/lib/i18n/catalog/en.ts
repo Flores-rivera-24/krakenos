@@ -1437,6 +1437,7 @@ export const en: Record<TranslationKey, string> = {
   'alarmSettings.noDevices': 'No devices available.',
   'alarmSettings.siren': 'Siren (plug that turns on when triggered)',
   'alarmSettings.none': 'None',
+  'alarmSettings.sirenAssigned': 'Assigned siren',
   'alarmSettings.lights': 'Lights that turn on when triggered',
   'alarmSettings.sensors': 'Watched sensors (opening, motion, smoke)',
   'alarmSettings.cameras': 'Cameras that arm the trigger',

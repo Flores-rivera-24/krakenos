@@ -138,4 +138,14 @@ describe('AlarmSettingsSlideover (US-188 · US-245)', () => {
     expect(screen.getByText('No se pudieron cargar las cámaras.')).toBeInTheDocument();
     expect(screen.queryByText(/Sin dispositivos disponibles/i)).not.toBeInTheDocument();
   });
+
+  it('con la lista caída y una sirena asignada, el selector no dice «Ninguna»', async () => {
+    alarmMock.getAlarmConfig.mockResolvedValue({ ...config, sirenDeviceId: 'plug-1' });
+    apiMock.get.mockRejectedValue(new Error('boom'));
+    render(<AlarmSettingsSlideover onClose={() => {}} />);
+    await screen.findByText('No se pudieron cargar los aparatos.');
+    const sirena = screen.getByLabelText(/Sirena/);
+    expect(within(sirena).getByRole('option', { name: 'Sirena asignada' })).toBeInTheDocument();
+    expect(within(sirena).queryByRole('option', { name: 'Ninguna' })).not.toBeInTheDocument();
+  });
 });

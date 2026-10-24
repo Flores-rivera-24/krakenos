@@ -188,7 +188,11 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
               value={cfg.sirenDeviceId ?? ''}
               onChange={(e) => setCfg({ ...cfg, sirenDeviceId: e.target.value || null })}
             >
-              <option value="">{t('alarmSettings.none')}</option>
+              {leido?.devicesFailed && cfg.sirenDeviceId ? (
+                <option value={cfg.sirenDeviceId}>{t('alarmSettings.sirenAssigned')}</option>
+              ) : (
+                <option value="">{t('alarmSettings.none')}</option>
+              )}
               {plugs.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
