@@ -269,6 +269,7 @@ function PasskeysCard() {
                     </span>
                   )}
                 </p>
+                {remaining !== null && codigos.failed && <StaleBadge />}
                 {remaining === null && codigos.failed && (
                   <WidgetError
                     message={t('security.codes.remainingError')}
@@ -396,6 +397,7 @@ export function SecuritySection({ settings, patch, isAdmin }: Props) {
           </DeleteButton>
         </CardHeader>
         <CardContent>
+          {sessions !== null && lecturaSesiones.failed && <StaleBadge className="mb-2" />}
           {sessions === null && lecturaSesiones.failed ? (
             <WidgetError
               message={t('security.sessions.loadError')}

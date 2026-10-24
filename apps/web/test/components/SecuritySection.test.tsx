@@ -293,4 +293,55 @@ describe('SecuritySection', () => {
     expect(screen.getByText('¿Regenerar las claves RS256?')).toBeInTheDocument();
     expect(logout).not.toHaveBeenCalled();
   });
+
+  it('si las sesiones fallan tras un éxito, se conservan y se marcan como viejas, no como vacías', async () => {
+    const user = userEvent.setup();
+    let fallar = false;
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/auth/sessions'
+        ? fallar
+          ? Promise.reject(new Error('x'))
+          : Promise.resolve(SESSIONS)
+        : Promise.resolve([]),
+    );
+    apiMock.del.mockResolvedValue(undefined);
+    renderSection();
+    const botones = await screen.findAllByRole('button', { name: /^Revocar la sesión/ });
+    fallar = true;
+    await user.click(botones[0]!);
+    await waitFor(() => expect(screen.getByText('Datos obsoletos')).toBeInTheDocument());
+    expect(screen.getAllByRole('button', { name: /^Revocar la sesión/ })).toHaveLength(2);
+    expect(screen.queryByText('Sin sesiones activas.')).not.toBeInTheDocument();
+  });
+
+  it('si reintentar vuelve a fallar, el error sigue y el botón sigue operativo', async () => {
+    const user = userEvent.setup();
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/auth/sessions' ? Promise.reject(new Error('x')) : Promise.resolve([]),
+    );
+    renderSection();
+    await screen.findByText('No se pudieron cargar las sesiones.');
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('No se pudieron cargar las sesiones.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Reintentar' })).toBeEnabled();
+    expect(apiMock.get.mock.calls.filter((c) => c[0] === '/auth/sessions').length).toBe(2);
+  });
+
+  it('si el recuento de códigos falla tras un éxito, se conserva y se marca como viejo', async () => {
+    const user = userEvent.setup();
+    let fallar = false;
+    conPasskey({
+      '/webauthn/backup-codes': () =>
+        fallar ? Promise.reject(new Error('x')) : Promise.resolve({ remaining: 3 }),
+    });
+    apiMock.post.mockResolvedValue({ codes: ['aaaa-bbbb'] });
+    renderSection();
+    await screen.findByText(/te quedan 3/);
+    fallar = true;
+    await user.click(screen.getByRole('button', { name: 'Regenerar códigos' }));
+    await screen.findByText('aaaa-bbbb');
+    await user.click(screen.getByRole('button', { name: 'Los he guardado' }));
+    expect(await screen.findByText(/te quedan 3/)).toBeInTheDocument();
+    expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
+  });
 });
