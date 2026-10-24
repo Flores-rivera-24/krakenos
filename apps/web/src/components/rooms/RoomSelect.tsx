@@ -4,7 +4,7 @@ import { useT } from '@/lib/i18n';
 import { roomGlyph } from '@/lib/rooms';
 
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring';
+  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring';
 
 interface Props {
   id?: string;

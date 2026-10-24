@@ -112,6 +112,13 @@
   /* US-95: texto de acento accesible (enlaces/nav activa) sobre fondos oscuros. */
   --color-kr-link: var(--kr-link);
 
+  /* Controles (WCAG 1.4.11, 3:1): borde de campo, carril del interruptor apagado, anillo de foco
+     y relleno del botón destructivo. Los bordes de tarjeta/tabla siguen en `border-kr`. */
+  --color-kr-field: var(--kr-border-field);
+  --color-kr-switch-off: var(--kr-switch-off);
+  --color-kr-ring: var(--kr-ring);
+  --color-kr-danger-solid: var(--kr-danger-solid);
+
   /* Bordes sutiles: `border-kr` (y `border-kr-muted`, a mano más abajo). */
   --color-kr: var(--kr-border);
 
@@ -249,6 +256,11 @@
     --kr-danger: #f85149;
     --kr-online: #3fb950;
     --kr-offline: #666d76;
+    /* Controles: valor = el menor contraste que pasa 3:1 con margen ≥0,2 (medido con check-contrast). */
+    --kr-border-field: #6e7176; /* 3,53:1 sobre surface · 3,25:1 sobre elevated */
+    --kr-switch-off: #6e7176; /* ídem */
+    --kr-ring: #0ea5e9; /* 6,83:1 base · 6,24:1 surface · 5,74:1 elevated (el cian de siempre) */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   .dark {
@@ -286,6 +298,11 @@
     --kr-danger: #f85149;
     --kr-online: #3fb950;
     --kr-offline: #666d76;
+    /* Controles: valor = el menor contraste que pasa 3:1 con margen ≥0,2 (medido con check-contrast). */
+    --kr-border-field: #6e7176; /* 3,53:1 sobre surface · 3,25:1 sobre elevated */
+    --kr-switch-off: #6e7176; /* ídem */
+    --kr-ring: #0ea5e9; /* 6,83:1 base · 6,24:1 surface · 5,74:1 elevated (el cian de siempre) */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   /* Tema claro (US-41): se aplica cuando el <html> NO lleva la clase `dark`.
@@ -304,12 +321,19 @@
     --kr-link: #2563eb;
     /* US-160: en claro el brillo del shimmer es una sombra tenue, no un highlight blanco. */
     --kr-shimmer-highlight: rgba(0, 0, 0, 0.05);
-    --kr-success: #1a7f37;
+    /* Texto sobre su tinta al 10 %: 4,73:1 (antes #1a7f37, 4,43:1) */
+    --kr-success: #197a35;
     --kr-info: #0969da;
-    --kr-warning: #9a6700;
+    /* Texto sobre su tinta al 10 %: 4,75:1 (antes #9a6700, 4,29:1) */
+    --kr-warning: #906000;
     --kr-danger: #cf222e;
     --kr-online: #1a7f37;
     --kr-offline: #848b94;
+    /* Controles: ver el comentario del bloque oscuro. */
+    --kr-border-field: #82868c; /* 3,66:1 sobre surface · 3,23:1 sobre elevated */
+    --kr-switch-off: #82868c; /* ídem */
+    --kr-ring: #0c8ec8; /* 3,45:1 base · 3,67:1 surface · 3,24:1 elevated */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   * {

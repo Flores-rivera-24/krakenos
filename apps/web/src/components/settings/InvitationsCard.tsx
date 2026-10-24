@@ -168,7 +168,7 @@ export function InvitationsCard() {
                   onChange={(e) =>
                     setRoleFor((m) => ({ ...m, [r.id]: e.target.value as UserRole }))
                   }
-                  className="rounded-lg border border-kr bg-kr-elevated px-2 py-1.5 text-kr-sm text-kr-primary"
+                  className="rounded-lg border border-kr-field bg-kr-elevated px-2 py-1.5 text-kr-sm text-kr-primary"
                 >
                   {USER_ROLES.map((role) => (
                     <option key={role} value={role}>
@@ -257,7 +257,7 @@ export function InvitationsCard() {
               id="inv-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
-              className="h-9 w-full rounded-lg border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary"
+              className="h-9 w-full rounded-lg border border-kr-field bg-kr-elevated px-2 text-kr-sm text-kr-primary"
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
