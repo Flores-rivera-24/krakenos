@@ -248,7 +248,12 @@ describe('UpdateCard: refresco que falla con el plan ya leído', () => {
     setAdmin();
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      apiMock.get.mockReset().mockResolvedValueOnce({ ...basePlan, inProgress: true });
+      // Con `inProgress` el sondeo arranca AL MONTAR (use-polling corre al activarse):
+      // la 1.ª lectura es la carga y la 2.ª el primer sondeo; falla la 3.ª, la del intervalo.
+      apiMock.get
+        .mockReset()
+        .mockResolvedValueOnce({ ...basePlan, inProgress: true })
+        .mockResolvedValueOnce({ ...basePlan, inProgress: true });
       apiMock.get.mockRejectedValue(new Error('red'));
       render(<UpdateCard />);
       expect(await screen.findByText(/en curso|Actualizando/i)).toBeInTheDocument();
