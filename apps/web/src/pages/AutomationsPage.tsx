@@ -16,6 +16,7 @@ import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
@@ -1108,7 +1109,11 @@ function AutomationsPageBody() {
           contra el router. Se enseñan aquí para que «todas mis rutinas» sea
           cierto, y se ENLAZA a su editor en vez de duplicarlo — dos formularios
           sobre la misma fila acaban divergiendo. */}
-      {fallos.schedules && <FormError>{t('automations.listError.schedules')}</FormError>}
+      {fallos.schedules && (
+        <Callout variant="warning" standing>
+          {t('automations.listError.schedules')}
+        </Callout>
+      )}
       {rutinasDeAcceso.length > 0 && (
         <section className="space-y-2 border-t border-kr-muted pt-6">
           <h3 className="text-kr-lg font-semibold text-kr-primary">
@@ -1158,7 +1163,11 @@ function AutomationsPageBody() {
         </section>
       )}
 
-      {fallos.runs && <FormError>{t('automations.listError.runs')}</FormError>}
+      {fallos.runs && (
+        <Callout variant="warning" standing>
+          {t('automations.listError.runs')}
+        </Callout>
+      )}
       {runs.length > 0 && (
         <section className="space-y-2 border-t border-kr-muted pt-6">
           <h3 className="text-kr-lg font-semibold text-kr-primary">

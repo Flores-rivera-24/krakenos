@@ -436,6 +436,19 @@ describe('AutomationsPage (US-167)', () => {
       ).toBeInTheDocument();
     });
 
+    it('los avisos permanentes de lista caída de la página no son alertas', async () => {
+      mockGets({
+        '/access/schedules': new Error('x'),
+        '/automations/runs': new Error('x'),
+      });
+      renderPage();
+      await screen.findByText('No se pudo cargar el historial de ejecuciones.');
+      await screen.findByText(
+        'No se pudieron cargar los horarios de acceso; puede faltar alguna rutina.',
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
     it('si fallan los horarios de acceso, la página lo dice', async () => {
       mockGets({ '/access/schedules': new Error('x') });
       renderPage();
