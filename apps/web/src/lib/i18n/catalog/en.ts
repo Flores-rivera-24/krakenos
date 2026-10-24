@@ -2296,6 +2296,15 @@ export const en: Record<TranslationKey, string> = {
   'automations.subtitle': 'Your home reacts on its own: “if X happens, do Y”.',
   'automations.new': 'New automation',
   'automations.loadError': 'Could not load the automations',
+  'automations.listError.iot': 'Could not load the IoT devices; the list may be incomplete.',
+  'automations.listError.network':
+    'Could not load the network devices; the list may be incomplete.',
+  'automations.listError.scenes': 'Could not load the scenes; the list may be incomplete.',
+  'automations.listError.cameras': 'Could not load the cameras; the list may be incomplete.',
+  'automations.listError.users': 'Could not load the users; the list may be incomplete.',
+  'automations.listError.schedules':
+    'Could not load the access schedules; some routine may be missing.',
+  'automations.listError.runs': 'Could not load the run history.',
   'automations.toggleError': 'Could not change the state',
   'automations.empty.title': 'You have no automations yet.',
   'automations.empty.examples':
