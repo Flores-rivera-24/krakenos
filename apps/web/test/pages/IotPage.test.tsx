@@ -298,8 +298,8 @@ describe('IotPage', () => {
     setRole('admin');
     apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
     render(<IotPage />);
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
+    const alerts = await screen.findAllByRole('alert');
+    expect(alerts[0]).toHaveTextContent(/No se pudo conectar con el servidor/);
   });
 
   it('muestra el estado vacío honesto sin dispositivos y ofrece conectar (US-93/US-150)', async () => {
@@ -516,5 +516,43 @@ describe('IotPage · persianas y termostatos (US-265)', () => {
     // Asimétrico a propósito: 2 conmutables (TV, Foco) de 3 dispositivos, así que
     // invertir la condición no da el mismo número.
     expect(screen.getAllByRole('switch')).toHaveLength(2);
+  });
+
+  it('si la lista de habitaciones falla, un admin lo ve dicho en vez de un selector que desaparece', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/iot/devices') return Promise.resolve(DEVICES);
+      if (path === '/rooms') return Promise.reject(new Error('x'));
+      return Promise.resolve([]);
+    });
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(
+      await screen.findByText(
+        'No se pudieron cargar las habitaciones; no se puede asignar ninguna por ahora.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('si fallan aparatos y habitaciones, se dicen los dos fallos', async () => {
+    setRole('admin');
+    apiMock.get.mockRejectedValue(new Error('boom'));
+    render(<IotPage />);
+    expect(
+      await screen.findByText(
+        'No se pudieron cargar las habitaciones; no se puede asignar ninguna por ahora.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('alert').length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('si las habitaciones cargan, no avisa de nada', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(screen.queryByText(/No se pudieron cargar las habitaciones/)).not.toBeInTheDocument();
   });
 });

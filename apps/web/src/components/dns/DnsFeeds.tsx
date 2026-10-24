@@ -1,12 +1,14 @@
 import type { DnsFeed } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
 import { textoDeListaDns } from '@/lib/dns-feeds';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/dns';
 
@@ -17,26 +19,16 @@ import '@/lib/i18n/catalog/fragments/dns';
  */
 export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
   const t = useT();
-  const [feeds, setFeeds] = useState<DnsFeed[] | null>(null);
-
-  const load = async () => {
-    try {
-      setFeeds(await api.getList<DnsFeed>('/dns/feeds'));
-    } catch (err) {
-      toast.error(describeError(err, t('dns.feeds.loadError')));
-    }
-  };
-  useEffect(() => {
-    void load();
-  }, []);
+  const lectura = useLectura(() => api.getList<DnsFeed>('/dns/feeds'), []);
+  const feeds = lectura.data;
 
   const toggle = async (feed: DnsFeed, enabled: boolean) => {
-    setFeeds((cur) => cur?.map((f) => (f.id === feed.id ? { ...f, enabled } : f)) ?? cur);
+    lectura.setData((cur) => (cur ?? []).map((f) => (f.id === feed.id ? { ...f, enabled } : f)));
     try {
       await api.patch<DnsFeed>(`/dns/feeds/${feed.id}`, { enabled });
     } catch (err) {
       toast.error(describeError(err, t('dns.feeds.toggleError')));
-      await load();
+      lectura.reintentar();
     }
   };
 
@@ -47,7 +39,10 @@ export function DnsFeeds({ canEdit }: { canEdit: boolean }) {
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-kr-sm text-kr-secondary">{t('dns.feeds.hint')}</p>
-        {feeds == null ? (
+        {feeds !== null && lectura.failed && <StaleBadge />}
+        {feeds === null && lectura.failed ? (
+          <WidgetError message={t('dns.feeds.loadError')} onRetry={lectura.reintentar} />
+        ) : feeds === null ? (
           <LoadingLine />
         ) : (
           <ul className="space-y-2">

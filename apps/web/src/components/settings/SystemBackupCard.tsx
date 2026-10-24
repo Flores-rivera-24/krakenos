@@ -5,6 +5,8 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -204,14 +206,17 @@ function formatBytes(bytes: number): string {
 function AutoBackupSection() {
   const t = useT();
   const [status, setStatus] = useState<AutoBackupStatus | null>(null);
+  const [failed, setFailed] = useState(false);
   const [pass, setPass] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setStatus(await getAutoBackupStatus());
+      setFailed(false);
     } catch {
-      setStatus(null);
+      // El estado ya leído se conserva; solo sin ninguno se declara el fallo.
+      setFailed(true);
     }
   }, []);
 
@@ -239,12 +244,21 @@ function AutoBackupSection() {
     }
   };
 
-  if (!status) return null;
+  if (!status) {
+    if (!failed) return null;
+    return (
+      <div className="space-y-3 border-t border-kr pt-4">
+        <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.auto.title')}</h4>
+        <WidgetError message={t('backup.auto.loadError')} onRetry={() => void load()} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3 border-t border-kr pt-4">
       <div>
         <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.auto.title')}</h4>
+        {failed && <StaleBadge />}
         <p className="text-kr-sm text-kr-secondary">
           <RichText>{t('backup.auto.hint')}</RichText>
         </p>

@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { deleteCamera, listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
@@ -32,6 +33,8 @@ interface TileProps {
 function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete }: TileProps) {
   const t = useT();
   const [image, setImage] = useState<string | null>(null);
+  // «Aún no llegó» y «no se pudo leer» no son lo mismo; la imagen anterior se conserva.
+  const [snapshotFailed, setSnapshotFailed] = useState(false);
   // Vídeo en vivo (HLS, US-185) bajo demanda: mientras está en `false` la tarjeta
   // muestra el snapshot que se refresca cada 3 s; al activarlo transcodifica.
   const [live, setLive] = useState(false);
@@ -44,8 +47,11 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
     () =>
       api
         .get<CameraSnapshot>(`/cameras/${camera.id}/snapshot`)
-        .then((s) => setImage(s.image))
-        .catch(() => setImage(null)),
+        .then((s) => {
+          setImage(s.image);
+          setSnapshotFailed(false);
+        })
+        .catch(() => setSnapshotFailed(true)),
     [camera.id],
   );
   usePolling(cargarSnapshot, 3000, { enabled: camera.online && !live });
@@ -70,9 +76,16 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <VideoOff className="h-8 w-8" />
             <span className="text-xs">
-              {camera.online ? t('cameras.connecting') : t('cameras.noSignal')}
+              {!camera.online
+                ? t('cameras.noSignal')
+                : snapshotFailed
+                  ? t('cameras.snapshotError')
+                  : t('cameras.connecting')}
             </span>
           </div>
+        )}
+        {camera.online && !live && image && snapshotFailed && (
+          <StaleBadge className="absolute left-2 top-2" />
         )}
         {camera.online && !live && (
           <span className="absolute right-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-danger">

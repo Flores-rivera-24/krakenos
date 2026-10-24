@@ -1,14 +1,17 @@
 import type { ApiTokenInfo, ApiTokenScope } from '@krakenos/types';
 import { KeyRound, Trash2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { describeError } from '@/lib/errors';
 import { formatDate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { canControlHome } from '@/lib/roles';
 import { createApiToken, listApiTokens, revokeApiToken } from '@/lib/tokens';
 import { useAuthStore } from '@/store/auth.store';
@@ -24,21 +27,14 @@ export function ApiTokensCard() {
   const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const mayControl = canControlHome(role);
-  const [tokens, setTokens] = useState<ApiTokenInfo[]>([]);
+  const lectura = useLectura<ApiTokenInfo[]>(() => listApiTokens(), []);
+  const tokens = lectura.data;
+  const setTokens = (fn: (prev: ApiTokenInfo[]) => ApiTokenInfo[]) =>
+    lectura.setData((prev) => fn(prev ?? []));
   const [name, setName] = useState('');
   const [control, setControl] = useState(false);
   const [creating, setCreating] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void listApiTokens()
-      .then((ts) => active && setTokens(ts))
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const create = async () => {
     if (!name.trim()) return;
@@ -48,7 +44,10 @@ export function ApiTokensCard() {
         mayControl && control ? ['home.view', 'home.control'] : ['home.view'];
       const created = await createApiToken({ name: name.trim(), scopes });
       setFresh(created.token);
-      setTokens((prev) => [{ ...created }, ...prev]);
+      // Con la lista sin cargar, una lista de un solo token pasaría por la completa:
+      // se vuelve a pedir en vez de inventarla.
+      if (lectura.data === null) lectura.reintentar();
+      else setTokens((prev) => [{ ...created }, ...prev]);
       setName('');
       setControl(false);
     } catch (err) {
@@ -115,7 +114,12 @@ export function ApiTokensCard() {
           </Button>
         </div>
 
-        {tokens.length === 0 ? (
+        {lectura.failed && tokens !== null && <StaleBadge />}
+        {tokens === null ? (
+          lectura.failed ? (
+            <WidgetError message={t('settings.apiTokens.loadError')} onRetry={lectura.reintentar} />
+          ) : null
+        ) : tokens.length === 0 ? (
           <p className="text-kr-sm text-kr-muted">{t('settings.apiTokens.none')}</p>
         ) : (
           <ul className="space-y-2">

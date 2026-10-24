@@ -1,5 +1,5 @@
-import type { EnergyRange, EnergyStats } from '@krakenos/types';
-import { Coins, Download, TrendingDown, TrendingUp, Zap } from 'lucide-react';
+import type { EnergyRange } from '@krakenos/types';
+import { Coins, Download, TrendingDown, TrendingUp, Zap, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -7,6 +7,9 @@ import { EnergyAlertsCard } from '@/components/energy/EnergyAlertsCard';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { FormError } from '@/components/ui/form-error';
+import { LoadingStatCard } from '@/components/ui/loading-stat-card';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   ENERGY_RANGES,
   fetchEnergyConfig,
@@ -23,6 +26,7 @@ import {
 import { describeError } from '@/lib/errors';
 import { formatDate, formatTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { downloadReport } from '@/lib/reports';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -42,46 +46,52 @@ const TOOLTIP_STYLE = {
   color: 'var(--kr-text-primary)',
 } as const;
 
+/** Cifra de arriba: mientras llega el dato, un esqueleto; «—» solo si no hay dato que dar. */
+function EnergyStat({
+  loading,
+  ...props
+}: {
+  loading: boolean;
+  title: string;
+  value: string;
+  icon: LucideIcon;
+  accent: string;
+}) {
+  return loading ? <LoadingStatCard {...props} /> : <StatCard {...props} />;
+}
+
 function EnergyPageBody() {
   const t = useT();
   const role = useAuthStore((s) => s.user?.role);
   const isAdmin = role === 'admin';
 
   const [range, setRange] = useState<EnergyRange>('day');
-  const [stats, setStats] = useState<EnergyStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: stats,
+    failed: statsFailed,
+    loading: statsLoading,
+    reintentar: reintentarStats,
+    setData: setStats,
+  } = useLectura(() => fetchEnergyStats(range), [range]);
 
   // Formulario de precio (solo admin).
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('€');
   const [saving, setSaving] = useState(false);
 
+  // El precio es opcional para el panel, pero si no se pudo leer el formulario no
+  // puede ofrecerse vacío: guardar así borraría el precio que sí hay.
+  const {
+    data: config,
+    failed: configFailed,
+    loading: configLoading,
+    reintentar: reintentarConfig,
+  } = useLectura(fetchEnergyConfig, []);
   useEffect(() => {
-    let active = true;
-    setStats(null);
-    void fetchEnergyStats(range)
-      .then((s) => active && setStats(s))
-      .catch((err) => active && setError(describeError(err, t('energy.loadError'))));
-    return () => {
-      active = false;
-    };
-  }, [range]);
-
-  useEffect(() => {
-    let active = true;
-    void fetchEnergyConfig()
-      .then((c) => {
-        if (!active) return;
-        setPrice(c.pricePerKwh === null ? '' : String(c.pricePerKwh));
-        setCurrency(c.currency);
-      })
-      .catch(() => {
-        /* el precio es opcional; un fallo aquí no bloquea el panel */
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!config) return;
+    setPrice(config.pricePerKwh === null ? '' : String(config.pricePerKwh));
+    setCurrency(config.currency);
+  }, [config]);
 
   // Misma unidad que la tarjeta de total (`formatEnergy(stats.totalEnergyWh)`):
   // el eje y la cifra de arriba se leen en la misma escala.
@@ -134,22 +144,32 @@ function EnergyPageBody() {
         <p className="text-sm text-muted-foreground">{t('energy.subtitle')}</p>
       </div>
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
+      {statsFailed && !stats && (
+        <ErrorBanner>
+          {t('energy.loadError')}
+          <button type="button" onClick={reintentarStats} className="text-kr-link hover:underline">
+            {t('ui.retry')}
+          </button>
+        </ErrorBanner>
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard
+        <EnergyStat
+          loading={statsLoading}
           title={t('energy.totalConsumption')}
           value={stats ? formatEnergy(stats.totalEnergyWh) : '—'}
           icon={Zap}
           accent="text-warning"
         />
-        <StatCard
+        <EnergyStat
+          loading={statsLoading}
           title={t('energy.estimatedCost')}
           value={stats ? formatCost(stats.totalCost, stats.currency) : '—'}
           icon={Coins}
           accent="text-primary"
         />
-        <StatCard
+        <EnergyStat
+          loading={statsLoading}
           title={t('energy.vsPrevious')}
           value={change === null ? '—' : `${change > 0 ? '+' : ''}${change}%`}
           icon={change !== null && change > 0 ? TrendingUp : TrendingDown}
@@ -189,7 +209,9 @@ function EnergyPageBody() {
           </div>
         </CardHeader>
         <CardContent>
-          {chartData.length === 0 ? (
+          {statsLoading ? (
+            <Skeleton className="h-[260px] w-full" />
+          ) : !stats ? null : chartData.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">{t('energy.noData')}</p>
           ) : (
             <ResponsiveContainer width="100%" height={260}>
@@ -222,7 +244,12 @@ function EnergyPageBody() {
           <CardTitle>{t('energy.byDevice')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {!stats || stats.devices.length === 0 ? (
+          {statsLoading ? (
+            <div className="space-y-2 py-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+            </div>
+          ) : !stats ? null : stats.devices.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">
               {t('energy.noDevices')}
             </p>
@@ -295,10 +322,22 @@ function EnergyPageBody() {
                   aria-label={t('energy.currency')}
                 />
               </label>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || configLoading || configFailed}>
                 {t('energy.savePrice')}
               </Button>
             </form>
+            {configFailed && !config && (
+              <div className="mt-2 flex items-center gap-3">
+                <FormError>{t('energy.priceLoadError')}</FormError>
+                <button
+                  type="button"
+                  onClick={reintentarConfig}
+                  className="text-kr-sm text-kr-link hover:underline"
+                >
+                  {t('ui.retry')}
+                </button>
+              </div>
+            )}
             <p className="mt-2 text-xs text-muted-foreground">{t('energy.priceHint')}</p>
           </CardContent>
         </Card>

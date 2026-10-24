@@ -5,6 +5,7 @@ import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { buttonVariants } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
@@ -64,6 +65,8 @@ const CA_OS_KEY: Record<'windows' | 'macos' | 'android' | 'ios', TranslationKey>
 export function TlsCard() {
   const t = useT();
   const [status, setStatus] = useState<TlsStatus | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -73,16 +76,35 @@ export function TlsCard() {
       // US-263): si la respuesta no trae la forma esperada, pintar a ciegas revienta
       // la página de Ajustes entera. Se valida lo que se va a recorrer.
       .then((s) => {
-        if (active && s && typeof s === 'object' && Array.isArray(s.disabledFeatures)) {
+        if (!active) return;
+        if (s && typeof s === 'object' && Array.isArray(s.disabledFeatures)) {
           setStatus(s);
+          setFailed(false);
+        } else {
+          setFailed(true);
         }
       })
-      .catch(() => undefined);
+      .catch(() => active && setFailed(true));
     return () => {
       active = false;
     };
-  }, []);
+  }, [intento]);
 
+  if (!status && failed) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('settings.tls.title')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WidgetError
+            message={t('settings.tls.loadError')}
+            onRetry={() => setIntento((n) => n + 1)}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
   if (!status) return null;
 
   const secure = status.enabled || status.behindProxy;

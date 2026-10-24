@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WidgetError } from '@/components/ui/widget-error';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
 import { getMqttState, updateMqtt, type MqttState } from '@/lib/interop';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
 
@@ -30,26 +32,27 @@ export function MqttInteropCard() {
   const [pauseControl, setPauseControl] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const lectura = useLectura(getMqttState, []);
+  const { data: leido } = lectura;
+  // Una respuesta sin `config` no es un formulario vacío: es una lectura fallida.
+  const noCargado = lectura.failed || (!lectura.loading && !leido?.config);
+  // El render que ya tiene el dato aún no tiene los campos rellenados (lo hace el efecto).
+  const [hidratado, setHidratado] = useState<MqttState | null>(null);
+  const bloqueado = lectura.loading || noCargado || hidratado !== leido;
+
   useEffect(() => {
-    let active = true;
-    void getMqttState()
-      .then((s) => {
-        if (!active || !s || !s.config) return;
-        setState(s);
-        setEnabled(s.config.enabled);
-        setUrl(s.config.url);
-        setUsername(s.config.username);
-        setPrefix(s.config.topicPrefix);
-        setIntervalSec(String(s.config.intervalSec));
-        setDiscovery(s.config.discovery);
-        setControl(s.config.control);
-        setPauseControl(s.config.pauseControl);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (!leido?.config) return;
+    setState(leido);
+    setEnabled(leido.config.enabled);
+    setUrl(leido.config.url);
+    setUsername(leido.config.username);
+    setPrefix(leido.config.topicPrefix);
+    setIntervalSec(String(leido.config.intervalSec));
+    setDiscovery(leido.config.discovery);
+    setControl(leido.config.control);
+    setPauseControl(leido.config.pauseControl);
+    setHidratado(leido);
+  }, [leido]);
 
   const save = async () => {
     setSaving(true);
@@ -87,8 +90,17 @@ export function MqttInteropCard() {
       <CardContent className="space-y-3">
         <p className="text-kr-xs text-kr-muted">{t('settings.mqtt.desc')}</p>
 
+        {noCargado && (
+          <WidgetError message={t('settings.mqtt.loadError')} onRetry={lectura.reintentar} />
+        )}
+
         <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+          <input
+            type="checkbox"
+            disabled={bloqueado}
+            checked={enabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+          />
           {t('settings.mqtt.enabled')}
         </label>
 
@@ -96,6 +108,7 @@ export function MqttInteropCard() {
           <Label htmlFor="mqtt-url">{t('settings.mqtt.url')}</Label>
           <Input
             id="mqtt-url"
+            disabled={bloqueado}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="mqtt://192.168.1.10:1883"
@@ -104,12 +117,18 @@ export function MqttInteropCard() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="mqtt-user">{t('settings.mqtt.username')}</Label>
-            <Input id="mqtt-user" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <Input
+              id="mqtt-user"
+              disabled={bloqueado}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="mqtt-pass">{t('settings.mqtt.password')}</Label>
             <Input
               id="mqtt-pass"
+              disabled={bloqueado}
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -123,6 +142,7 @@ export function MqttInteropCard() {
             <Label htmlFor="mqtt-prefix">{t('settings.mqtt.prefix')}</Label>
             <Input
               id="mqtt-prefix"
+              disabled={bloqueado}
               value={prefix}
               onChange={(e) => setPrefix(e.target.value)}
               maxLength={64}
@@ -132,6 +152,7 @@ export function MqttInteropCard() {
             <Label htmlFor="mqtt-interval">{t('settings.mqtt.interval')}</Label>
             <Input
               id="mqtt-interval"
+              disabled={bloqueado}
               type="number"
               min={5}
               max={3600}
@@ -146,6 +167,7 @@ export function MqttInteropCard() {
             <input
               type="checkbox"
               className="mt-0.5"
+              disabled={bloqueado}
               checked={discovery}
               onChange={(e) => setDiscovery(e.target.checked)}
             />
@@ -160,6 +182,7 @@ export function MqttInteropCard() {
             <input
               type="checkbox"
               className="mt-0.5"
+              disabled={bloqueado}
               checked={control}
               onChange={(e) => setControl(e.target.checked)}
             />
@@ -174,6 +197,7 @@ export function MqttInteropCard() {
             <input
               type="checkbox"
               className="mt-0.5"
+              disabled={bloqueado}
               checked={pauseControl}
               onChange={(e) => setPauseControl(e.target.checked)}
             />
@@ -200,7 +224,7 @@ export function MqttInteropCard() {
           </div>
         )}
 
-        <Button disabled={saving} onClick={() => void save()}>
+        <Button disabled={saving || bloqueado} onClick={() => void save()}>
           {saving ? t('settings.mqtt.saving') : t('settings.mqtt.save')}
         </Button>
       </CardContent>

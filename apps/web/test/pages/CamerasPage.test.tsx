@@ -220,4 +220,15 @@ describe('CamerasPage', () => {
     );
     expect(toastMessages().some((m) => /No se pudo conectar con el servidor/.test(m))).toBe(true);
   });
+
+  it('si el snapshot falla, dice que no se pudo cargar la imagen, no «Conectando…» ni «Sin señal»', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/cameras' ? Promise.resolve([CAMERAS[0]]) : Promise.reject(new Error('x')),
+    );
+    render(<CamerasPage />);
+    expect(await screen.findByText('No se pudo cargar la imagen.')).toBeInTheDocument();
+    expect(screen.queryByText('Conectando…')).not.toBeInTheDocument();
+    expect(screen.queryByText('Sin señal')).not.toBeInTheDocument();
+  });
 });

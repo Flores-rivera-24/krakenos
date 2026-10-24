@@ -55,6 +55,8 @@ export const esIot = {
   'iot.brightnessOf': 'Brillo de {name}',
   'iot.color': 'Color',
   'iot.roomUpdated': 'Habitación actualizada',
+  'iot.roomsLoadError':
+    'No se pudieron cargar las habitaciones; no se puede asignar ninguna por ahora.',
   'iot.roomAssignError': 'No se pudo asignar la habitación',
   'iot.loadError': 'No se pudieron cargar los dispositivos',
   'iot.empty.title': 'Aún no hay dispositivos IoT.',

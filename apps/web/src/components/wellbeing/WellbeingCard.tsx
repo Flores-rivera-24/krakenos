@@ -1,9 +1,12 @@
-import type { PerDeviceTrafficCapability, PersonUsage, WellbeingRange } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import type { PerDeviceTrafficCapability, WellbeingRange } from '@krakenos/types';
+import { useState } from 'react';
 import { PerDeviceTrafficNotice } from '@/components/traffic/PerDeviceTrafficNotice';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { formatBytes } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
 import { useAuthStore } from '@/store/auth.store';
 import '@/lib/i18n/catalog/fragments/trafico';
@@ -19,27 +22,19 @@ export function WellbeingCard() {
   // Con el rol aún sin cargar se asume admin (mismo criterio que la nav).
   const notAdmin = useAuthStore((s) => s.user != null && s.user.role !== 'admin');
   const [range, setRange] = useState<WellbeingRange>('week');
-  const [people, setPeople] = useState<PersonUsage[] | null>(null);
+  // Una respuesta sin `people` es un fallo, no «sin datos»; y un fallo nunca cae a «asigna un dueño».
+  const lectura = useLectura(async () => {
+    const u = await fetchWellbeingUsage(range);
+    if (!Array.isArray(u?.people)) throw new Error('RESPUESTA_SIN_PERSONAS');
+    return u;
+  }, [range]);
+  const people = lectura.data?.people ?? null;
   // US-263/US-251: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume
   // disponible hasta saber lo contrario, para no acusar al router mientras carga.
-  const [perDevice, setPerDevice] = useState<PerDeviceTrafficCapability>({ status: 'supported' });
-  const [withOwner, setWithOwner] = useState(0);
-
-  useEffect(() => {
-    let active = true;
-    setPeople(null);
-    void fetchWellbeingUsage(range)
-      .then((u) => {
-        if (!active) return;
-        setPeople(Array.isArray(u?.people) ? u.people : []);
-        setPerDevice(u?.perDeviceTraffic ?? { status: 'supported' });
-        setWithOwner(u?.devicesWithOwner ?? 0);
-      })
-      .catch(() => active && setPeople([]));
-    return () => {
-      active = false;
-    };
-  }, [range]);
+  const perDevice: PerDeviceTrafficCapability = lectura.data?.perDeviceTraffic ?? {
+    status: 'supported',
+  };
+  const withOwner = lectura.data?.devicesWithOwner ?? 0;
 
   const max = people && people.length > 0 ? Math.max(...people.map((p) => p.totalBytes), 1) : 1;
 
@@ -67,7 +62,10 @@ export function WellbeingCard() {
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">{t('wellbeing.subtitle')}</p>
-        {people === null ? (
+        {people !== null && lectura.failed && <StaleBadge className="mb-2" />}
+        {people === null && lectura.failed ? (
+          <WidgetError message={t('wellbeing.loadError')} onRetry={lectura.reintentar} />
+        ) : people === null ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.loading')}</p>
         ) : people.length === 0 ? (
           /* Tres motivos MUY distintos para no ver nada, y hasta US-263 los tres

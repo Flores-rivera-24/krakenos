@@ -10,6 +10,7 @@ import { MapPin, Plus, Radar, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { FormError } from '@/components/ui/form-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -78,6 +79,8 @@ export function SurveyPanel({
   const [creating, setCreating] = useState(false);
 
   const [devices, setDevices] = useState<Device[]>([]);
+  // Si la lista no llega, el selector no se ofrece vacío y editable: se deshabilita con el motivo.
+  const [devicesFailed, setDevicesFailed] = useState(false);
   const [heatmapLoading, setHeatmapLoading] = useState(false);
 
   const reloadScans = useCallback(() => {
@@ -86,9 +89,7 @@ export function SurveyPanel({
     setError(null);
     void listScans(floorPlanId)
       .then((list) => active && setScans(list))
-      .catch(
-        (err) => active && setError(describeError(err, t('survey.loadError'))),
-      )
+      .catch((err) => active && setError(describeError(err, t('survey.loadError'))))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
@@ -102,9 +103,13 @@ export function SurveyPanel({
     let active = true;
     void api
       .getList<Device>('/inventory')
-      .then((list) => active && setDevices(list))
+      .then((list) => {
+        if (!active) return;
+        setDevices(list);
+        setDevicesFailed(false);
+      })
       .catch(() => {
-        /* silencioso: el desplegable simplemente queda vacío */
+        if (active) setDevicesFailed(true);
       });
     return () => {
       active = false;
@@ -309,6 +314,7 @@ export function SurveyPanel({
                 id="survey-device"
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
+                disabled={devicesFailed}
                 className="h-9 w-full rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
               >
                 <option value="">{t('survey.manualOption')}</option>
@@ -318,6 +324,7 @@ export function SurveyPanel({
                   </option>
                 ))}
               </select>
+              {devicesFailed && <FormError>{t('survey.devicesError')}</FormError>}
               <p className="text-kr-xs text-kr-muted">{t('survey.deviceHint')}</p>
             </div>
             <div className="flex gap-2">

@@ -1,12 +1,14 @@
 import type { IotDevice } from '@krakenos/types';
-import { Plus } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
-import { Button } from '@/components/ui/button';
+import { useState, type ReactNode } from 'react';
+import { Link } from 'react-router';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog } from '@/components/ui/dialog';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { StatusDot } from '@/components/ui/status-dot';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
-import { useT, type TranslationKey } from '@/lib/i18n';
+import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { TuyaManager } from './TuyaManager';
 import '@/lib/i18n/catalog/fragments/ajustes';
 
@@ -23,10 +25,16 @@ function backendStats(devices: IotDevice[], prefix: string): BackendStats {
 function IntegrationCard({
   title,
   stats,
+  unknown = false,
+  pending = false,
   children,
 }: {
   title: string;
   stats: BackendStats;
+  /** La lectura falló y no hay dato: no se sabe si está o no, y no se dice «No detectada». */
+  unknown?: boolean;
+  /** Aún no ha llegado la respuesta: ni «detectada», ni «no detectada», ni fallo. */
+  pending?: boolean;
   children?: ReactNode;
 }) {
   const t = useT();
@@ -35,13 +43,23 @@ function IntegrationCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>{title}</CardTitle>
-        <StatusDot status={active ? (stats.online > 0 ? 'online' : 'warning') : 'offline'} />
+        {!pending && (
+          <StatusDot
+            status={
+              unknown ? 'warning' : active ? (stats.online > 0 ? 'online' : 'warning') : 'offline'
+            }
+          />
+        )}
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-kr-sm text-kr-secondary">
-          {active
-            ? t('integrations.online', { online: stats.online, total: stats.total })
-            : t('integrations.undetected')}
+        <p className="text-kr-sm text-kr-secondary" aria-busy={pending || undefined}>
+          {pending
+            ? null
+            : unknown
+              ? t('integrations.unknown')
+              : active
+                ? t('integrations.online', { online: stats.online, total: stats.total })
+                : t('integrations.undetected')}
         </p>
         {children}
       </CardContent>
@@ -53,34 +71,15 @@ interface Props {
   isAdmin: boolean;
 }
 
-/**
- * Ojo: guarda la **clave**, no el texto. Con el copy ya traducido aqui, la
- * constante se congelaria con el idioma que hubiera al importar el modulo y no
- * cambiaria al cambiar de idioma (mismo motivo que los dias de la semana en
- * `schedule-format.ts`).
- */
-const DOCS: { name: string; doc: string; hint: TranslationKey }[] = [
-  { name: 'Philips Hue', doc: 'docs/hue-setup.md', hint: 'integrations.hue.hint' },
-  { name: 'Govee', doc: 'docs/govee-setup.md', hint: 'integrations.govee.hint' },
-  { name: 'Tuya', doc: 'docs/tuya-setup.md', hint: 'integrations.tuya.hint' },
-];
-
 export function IntegrationsSection({ isAdmin }: Props) {
   const t = useT();
-  const [devices, setDevices] = useState<IotDevice[]>([]);
   const [tuyaOpen, setTuyaOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    api
-      .getList<IotDevice>('/iot/devices')
-      .then((d) => active && setDevices(d))
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
+  const lectura = useLectura(() => api.getList<IotDevice>('/iot/devices'), []);
+  const devices = lectura.data ?? [];
+  // Sin dato y con fallo no se sabe qué hay: ni «No detectada» ni ofrecer re-vincular.
+  const unknown = lectura.failed && lectura.data === null;
+  // Mientras llega la primera respuesta, estado neutro.
+  const pending = lectura.data === null && !lectura.failed;
 
   const hue = backendStats(devices, 'hue');
   const govee = backendStats(devices, 'govee');
@@ -93,20 +92,26 @@ export function IntegrationsSection({ isAdmin }: Props) {
 
   return (
     <div className="space-y-6">
+      {lectura.failed &&
+        (lectura.data === null ? (
+          <WidgetError message={t('integrations.loadError')} onRetry={lectura.reintentar} />
+        ) : (
+          <StaleBadge />
+        ))}
       <div className="grid gap-4 sm:grid-cols-2">
-        <IntegrationCard title="Philips Hue" stats={hue}>
-          {hue.total === 0 && (
+        <IntegrationCard title="Philips Hue" stats={hue} unknown={unknown} pending={pending}>
+          {!unknown && !pending && hue.total === 0 && (
             <p className="text-kr-xs text-kr-muted">{t('integrations.hue.relink')}</p>
           )}
         </IntegrationCard>
 
-        <IntegrationCard title="Govee" stats={govee}>
-          {govee.total === 0 && (
+        <IntegrationCard title="Govee" stats={govee} unknown={unknown} pending={pending}>
+          {!unknown && !pending && govee.total === 0 && (
             <p className="text-kr-xs text-kr-muted">{t('integrations.govee.hint')}</p>
           )}
         </IntegrationCard>
 
-        <IntegrationCard title="Tuya" stats={tuya}>
+        <IntegrationCard title="Tuya" stats={tuya} unknown={unknown} pending={pending}>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setTuyaOpen((v) => !v)}>
               {tuyaOpen ? t('integrations.tuya.hide') : t('integrations.tuya.manage')}
@@ -114,15 +119,13 @@ export function IntegrationsSection({ isAdmin }: Props) {
           )}
         </IntegrationCard>
 
-        {/* Añadir integración */}
-        <button
-          type="button"
-          onClick={() => setAddOpen(true)}
-          className="flex min-h-[120px] items-center justify-center gap-2 rounded-xl border border-dashed border-kr text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
+        {/* Las guías de cada integración viven en /connect, no en rutas de ficheros. */}
+        <Link
+          to="/connect"
+          className={`${buttonVariants({ variant: 'outline' })} min-h-[120px] border-dashed`}
         >
-          <Plus className="h-5 w-5" />
-          {t('integrations.add')}
-        </button>
+          {t('integrations.connect')}
+        </Link>
       </div>
 
       {tuyaOpen && isAdmin && (
@@ -134,36 +137,6 @@ export function IntegrationsSection({ isAdmin }: Props) {
             <TuyaManager reachable={reachableTuya} />
           </CardContent>
         </Card>
-      )}
-
-      {addOpen && (
-        <Dialog
-          open
-          onClose={() => setAddOpen(false)}
-          aria-labelledby="dialog-add-integration-title"
-        >
-          <h3
-            id="dialog-add-integration-title"
-            className="text-kr-lg font-semibold text-kr-primary"
-          >
-            {t('integrations.add')}
-          </h3>
-          <p className="mt-1 text-kr-sm text-kr-secondary">{t('integrations.addHint')}</p>
-          <ul className="mt-4 space-y-3">
-            {DOCS.map((d) => (
-              <li key={d.name} className="rounded-md border border-kr p-3">
-                <div className="text-kr-base text-kr-primary">{d.name}</div>
-                <div className="text-kr-sm text-kr-secondary">{t(d.hint)}</div>
-                <code className="text-kr-xs text-kr-muted">{d.doc}</code>
-              </li>
-            ))}
-          </ul>
-          <div className="mt-4 flex justify-end">
-            <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>
-              {t('common.close')}
-            </Button>
-          </div>
-        </Dialog>
       )}
     </div>
   );

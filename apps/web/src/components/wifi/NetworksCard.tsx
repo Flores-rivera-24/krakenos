@@ -1,11 +1,14 @@
 import type { AccessPoint, WifiClient, WifiNetworkInfo } from '@krakenos/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useT } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
+import { useLectura } from '@/lib/use-lectura';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
 import '@/lib/i18n/catalog/fragments/inventario';
@@ -26,35 +29,28 @@ export function NetworksCard() {
       ),
     [devices],
   );
-  const [aps, setAps] = useState<AccessPoint[]>([]);
-  const [networks, setNetworks] = useState<WifiNetworkInfo[]>([]);
+  const lectura = useLectura(async () => {
+    const [a, n] = await Promise.all([
+      api.getList<AccessPoint>('/wifi/access-points'),
+      api.getList<WifiNetworkInfo>('/wifi/networks'),
+    ]);
+    return { aps: a, networks: n };
+  }, []);
+  const aps = lectura.data?.aps ?? [];
+  const networks = lectura.data?.networks ?? [];
   const [clientsOf, setClientsOf] = useState<{
     net: WifiNetworkInfo;
     clients: WifiClient[];
   } | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    void Promise.all([
-      api.getList<AccessPoint>('/wifi/access-points'),
-      api.getList<WifiNetworkInfo>('/wifi/networks'),
-    ])
-      .then(([a, n]) => {
-        if (!active) return;
-        setAps(a);
-        setNetworks(n);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
-
   const apName = (id: string) => aps.find((a) => a.id === id)?.name ?? id;
 
   const toggle = async (net: WifiNetworkInfo, next: boolean) => {
     const updated = await api.put<WifiNetworkInfo>(`/wifi/networks/${net.id}`, { enabled: next });
-    setNetworks((prev) => prev.map((n) => (n.id === updated.id ? updated : n)));
+    lectura.setData((prev) => ({
+      aps: prev?.aps ?? [],
+      networks: (prev?.networks ?? []).map((n) => (n.id === updated.id ? updated : n)),
+    }));
   };
 
   const showClients = async (net: WifiNetworkInfo) => {
@@ -68,69 +64,76 @@ export function NetworksCard() {
         <CardTitle className="text-base text-foreground">{t('wifi.networks.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          {aps.map((ap) => (
-            <span
-              key={ap.id}
-              className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
-            >
-              {ap.name} · {ap.ip}{' '}
-              <span className={ap.online ? 'text-success' : 'text-destructive'}>
-                {ap.online ? '●' : '○'}
-              </span>
-            </span>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-secondary text-secondary-foreground">
-              <tr>
-                <th className="px-3 py-2 text-left">SSID</th>
-                <th className="px-3 py-2 text-left">{t('wifi.networks.band')}</th>
-                <th className="px-3 py-2 text-left">AP</th>
-                <th className="px-3 py-2 text-left">{t('wifi.networks.clients')}</th>
-                <th className="px-3 py-2 text-right">{t('wifi.networks.active')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {networks.map((n) => (
-                <tr key={n.id} className="border-t border-border">
-                  <td className="px-3 py-2">
-                    {n.ssid}
-                    {n.isGuest && (
-                      <span className="ml-1 text-xs text-muted-foreground">
-                        {t('wifi.networks.guestTag')}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">{n.band}</td>
-                  <td className="px-3 py-2 text-muted-foreground">{apName(n.apId)}</td>
-                  <td className="px-3 py-2">
-                    <button
-                      className="text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                      onClick={() => void showClients(n)}
-                      disabled={n.clientCount === 0}
-                    >
-                      {n.clientCount}
-                    </button>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end">
-                      <OptimisticSwitch
-                        checked={n.enabled}
-                        onToggle={(next) => toggle(n, next)}
-                        disabled={!isAdmin}
-                        errorMessage={t('wifi.networks.toggleError', { ssid: n.ssid })}
-                        aria-label={t('wifi.networks.toggleLabel', { ssid: n.ssid })}
-                      />
-                    </div>
-                  </td>
-                </tr>
+        {lectura.data === null && lectura.failed ? (
+          <WidgetError message={t('wifi.networks.loadError')} onRetry={lectura.reintentar} />
+        ) : (
+          <>
+            {lectura.failed && <StaleBadge />}
+            <div className="flex flex-wrap gap-2">
+              {aps.map((ap) => (
+                <span
+                  key={ap.id}
+                  className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
+                >
+                  {ap.name} · {ap.ip}{' '}
+                  <span className={ap.online ? 'text-success' : 'text-destructive'}>
+                    {ap.online ? '●' : '○'}
+                  </span>
+                </span>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+
+            <div className="overflow-x-auto rounded-md border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-secondary text-secondary-foreground">
+                  <tr>
+                    <th className="px-3 py-2 text-left">SSID</th>
+                    <th className="px-3 py-2 text-left">{t('wifi.networks.band')}</th>
+                    <th className="px-3 py-2 text-left">AP</th>
+                    <th className="px-3 py-2 text-left">{t('wifi.networks.clients')}</th>
+                    <th className="px-3 py-2 text-right">{t('wifi.networks.active')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {networks.map((n) => (
+                    <tr key={n.id} className="border-t border-border">
+                      <td className="px-3 py-2">
+                        {n.ssid}
+                        {n.isGuest && (
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            {t('wifi.networks.guestTag')}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2">{n.band}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{apName(n.apId)}</td>
+                      <td className="px-3 py-2">
+                        <button
+                          className="text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                          onClick={() => void showClients(n)}
+                          disabled={n.clientCount === 0}
+                        >
+                          {n.clientCount}
+                        </button>
+                      </td>
+                      <td className="px-3 py-2 text-right">
+                        <div className="flex justify-end">
+                          <OptimisticSwitch
+                            checked={n.enabled}
+                            onToggle={(next) => toggle(n, next)}
+                            disabled={!isAdmin}
+                            errorMessage={t('wifi.networks.toggleError', { ssid: n.ssid })}
+                            aria-label={t('wifi.networks.toggleLabel', { ssid: n.ssid })}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </CardContent>
 
       {clientsOf && (

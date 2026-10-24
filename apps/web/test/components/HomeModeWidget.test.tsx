@@ -95,4 +95,67 @@ describe('HomeModeWidget (US-169)', () => {
     handler();
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/presence'));
   });
+
+  describe('fallos de carga', () => {
+    it('sin estado de presencia no inventa un modo: lo dice y deja reintentar', async () => {
+      apiMock.get.mockReset().mockImplementation((path: string) => {
+        if (path === '/presence') return Promise.reject(new Error('caído'));
+        return Promise.resolve(TIMELINE);
+      });
+      render(<HomeModeWidget />);
+      expect(await screen.findByText('No se pudo cargar el estado del hogar.')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /En casa/ })).not.toBeInTheDocument();
+      apiMock.get
+        .mockReset()
+        .mockImplementation((path: string) =>
+          path === '/presence' ? Promise.resolve(STATE) : Promise.resolve(TIMELINE),
+        );
+      await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+      expect(await screen.findByRole('button', { name: /En casa/ })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+    });
+
+    it('si solo falla el timeline, el modo se pinta y el timeline caído se dice aparte', async () => {
+      apiMock.get
+        .mockReset()
+        .mockImplementation((path: string) =>
+          path === '/presence' ? Promise.resolve(STATE) : Promise.reject(new Error('caído')),
+        );
+      render(<HomeModeWidget />);
+      expect(await screen.findByRole('button', { name: /En casa/ })).toBeInTheDocument();
+      expect(
+        await screen.findByText('No se pudo cargar la actividad reciente de presencia.'),
+      ).toBeInTheDocument();
+    });
+
+    it('timeline que falla con timeline previo: se conserva y se marca como obsoleto', async () => {
+      render(<HomeModeWidget />);
+      await screen.findByText(/Ana llegó/);
+      const handler = fakeSocket.on.mock.calls
+        .filter((c) => c[0] === 'presence:updated')
+        .at(-1)?.[1] as () => void;
+      apiMock.get
+        .mockReset()
+        .mockImplementation((path: string) =>
+          path === '/presence' ? Promise.resolve(STATE) : Promise.reject(new Error('caído')),
+        );
+      handler();
+      await waitFor(() => expect(screen.getAllByText('Datos obsoletos')).toHaveLength(1));
+      expect(screen.getByText(/Ana llegó/)).toBeInTheDocument();
+    });
+
+    it('un re-sondeo que falla conserva el estado y lo marca como obsoleto', async () => {
+      render(<HomeModeWidget />);
+      await screen.findByRole('button', { name: /En casa/ });
+      const handler = fakeSocket.on.mock.calls
+        .filter((c) => c[0] === 'presence:updated')
+        .at(-1)?.[1] as () => void;
+      apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+      handler();
+      expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /En casa/ })).toBeInTheDocument();
+    });
+  });
 });

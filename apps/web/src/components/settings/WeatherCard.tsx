@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { RichText } from '@/components/ui/rich-text';
+import { LoadingLine } from '@/components/ui/loading-line';
+import { WidgetError } from '@/components/ui/widget-error';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -24,14 +26,16 @@ export function WeatherCard() {
   const t = useT();
   const [status, setStatus] = useState<WeatherStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function load() {
     try {
       setStatus(await api.get<WeatherStatus>('/weather'));
       setError(null);
-    } catch (err) {
-      setError(describeError(err, t('weather.loadError')));
+      setLoadFailed(false);
+    } catch {
+      setLoadFailed(true);
     }
   }
 
@@ -60,6 +64,17 @@ export function WeatherCard() {
         <p className="text-kr-sm text-kr-secondary">{t('weather.intro')}</p>
 
         {error ? <ErrorBanner>{error}</ErrorBanner> : null}
+
+        {!status && loadFailed ? (
+          <WidgetError
+            message={t('weather.loadError')}
+            onRetry={() => {
+              setLoadFailed(false);
+              void load();
+            }}
+          />
+        ) : null}
+        {!status && !loadFailed ? <LoadingLine label={t('weather.loading')} /> : null}
 
         {status ? (
           <>

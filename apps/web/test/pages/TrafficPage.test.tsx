@@ -84,6 +84,21 @@ describe('TrafficPage', () => {
     expect(socketMock.on).toHaveBeenCalledWith('traffic:history', expect.any(Function));
   });
 
+  it('mientras cargan las estadísticas el HTML es válido (sin div dentro de p)', async () => {
+    mockApi();
+    apiMock.get.mockImplementation((url: string) =>
+      url.startsWith('/traffic/stats') ? new Promise(() => {}) : Promise.resolve([]),
+    );
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { container } = render(<TrafficPage />);
+    await screen.findByText('Monitor de tráfico');
+    expect(container.querySelector('p .kr-shimmer')).toBeNull();
+    expect(error.mock.calls.flat().join(' ')).not.toMatch(
+      /validateDOMNesting|cannot be a descendant/,
+    );
+    error.mockRestore();
+  });
+
   it('muestra las tasas actuales a partir del histórico', async () => {
     mockApi({ history: [SAMPLE] });
     render(<TrafficPage />);
@@ -192,8 +207,8 @@ describe('TrafficPage', () => {
     render(<TrafficPage />);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
-    // El estado vacío honesto de la gráfica sigue presente.
-    expect(screen.getByText(/Esperando muestras/)).toBeInTheDocument();
+    // Un fallo no es «esperando muestras»: la gráfica no afirma nada.
+    expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
   });
 
   it('marca el panel en vivo como obsoleto cuando la última muestra es vieja (US-94)', async () => {
@@ -257,6 +272,54 @@ describe('TrafficPage', () => {
 
       expect(await screen.findByText('TV del salón')).toBeInTheDocument();
       expect(screen.queryByText(/Solo el administrador ve el consumo/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('estados honestos', () => {
+    it('tras un fallo, un cambio de rango que carga bien limpia el banner', async () => {
+      let falla = true;
+      apiMock.get.mockImplementation((url: string) => {
+        if (url.startsWith('/traffic/stats'))
+          return falla ? Promise.reject(new Error('x')) : Promise.resolve(EMPTY_STATS);
+        if (url.startsWith('/traffic/devices'))
+          return Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } });
+        return Promise.resolve([]);
+      });
+      render(<TrafficPage />);
+      expect(await screen.findByRole('alert')).toBeInTheDocument();
+      falla = false;
+      await userEvent.setup().click(screen.getAllByRole('button', { name: '7d' })[0]!);
+      await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    });
+
+    const pendiente = () => new Promise(() => undefined);
+
+    it('mientras carga, esqueletos y ni «—» ni «esperando» ni «sin datos»', async () => {
+      apiMock.get.mockImplementation((url: string) =>
+        url.startsWith('/traffic/devices')
+          ? Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } })
+          : pendiente(),
+      );
+      const { container } = render(<TrafficPage />);
+      await screen.findByText('Monitor de tráfico');
+      expect(container.querySelector('.kr-shimmer')).not.toBeNull();
+      expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Sin datos históricos.')).not.toBeInTheDocument();
+      expect(screen.queryByText('—')).not.toBeInTheDocument();
+    });
+
+    it('si el histórico y las estadísticas fallan, lo dicen y no pintan vacío', async () => {
+      apiMock.get.mockImplementation((url: string) =>
+        url.startsWith('/traffic/devices')
+          ? Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } })
+          : Promise.reject(new Error('x')),
+      );
+      render(<TrafficPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /No se pudo conectar con el servidor/,
+      );
+      expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Sin datos históricos.')).not.toBeInTheDocument();
     });
   });
 });

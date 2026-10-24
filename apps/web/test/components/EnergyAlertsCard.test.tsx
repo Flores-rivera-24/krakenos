@@ -115,4 +115,52 @@ describe('EnergyAlertsCard (US-183)', () => {
     await user.click(screen.getByRole('button', { name: 'Eliminar alerta' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledWith('/energy/alerts/a1'));
   });
+
+  it('si falla la lista de aparatos lo dice y NO ofrece el formulario vacío', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.reject(new Error('caído')) : Promise.resolve([RULE]),
+    );
+    renderCard();
+    expect(await screen.findByText('No se pudo cargar la lista de aparatos.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Umbral')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Añadir' })).not.toBeInTheDocument();
+    apiMock.get.mockImplementation((path: string) =>
+      Promise.resolve(path === '/iot/devices' ? DEVICES : [RULE]),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByLabelText('Umbral')).toBeInTheDocument();
+  });
+
+  it('si falla la lista de alertas lo dice, no la pinta como «sin alertas», y reintenta', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/energy/alerts' ? Promise.reject(new Error('caído')) : Promise.resolve(DEVICES),
+    );
+    renderCard();
+    expect(
+      await screen.findByText('No se pudieron cargar las alertas de consumo.'),
+    ).toBeInTheDocument();
+    apiMock.get.mockImplementation((path: string) =>
+      Promise.resolve(path === '/iot/devices' ? DEVICES : [RULE]),
+    );
+    await userEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByText(/más de 500 W durante 5 min/)).toBeInTheDocument();
+  });
+
+  it('tras fallar la lista de alertas, añadir una con éxito no deja «Datos obsoletos»', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/energy/alerts' ? Promise.reject(new Error('caído')) : Promise.resolve(DEVICES),
+    );
+    apiMock.post.mockResolvedValue({ ...RULE, id: 'a2', threshold: 800 });
+    renderCard();
+    await screen.findByText('No se pudieron cargar las alertas de consumo.');
+    apiMock.get.mockImplementation((path: string) =>
+      Promise.resolve(path === '/iot/devices' ? DEVICES : [{ ...RULE, id: 'a2', threshold: 800 }]),
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Umbral'), '800');
+    await user.click(screen.getByRole('button', { name: 'Añadir' }));
+    expect(await screen.findByText(/más de 800 W durante 5 min/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument());
+    expect(screen.queryByText('No se pudieron cargar las alertas de consumo.')).toBeNull();
+  });
 });

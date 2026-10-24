@@ -137,3 +137,24 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
     open.mockRestore();
   });
 });
+
+describe('SupportCard: la telemetría que falla se dice y se reintenta', () => {
+  it('no deja el botón muerto sin motivo', async () => {
+    let falla = true;
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/system/update/plan') return Promise.resolve(PLAN);
+      return falla ? Promise.reject(new Error('red')) : Promise.resolve(OFF);
+    });
+    render(<SupportCard />);
+
+    expect(
+      await screen.findByText('No se pudo leer el estado de la telemetría.'),
+    ).toBeInTheDocument();
+    falla = false;
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByRole('button', { name: 'Activar' })).toBeEnabled();
+    expect(
+      screen.queryByText('No se pudo leer el estado de la telemetría.'),
+    ).not.toBeInTheDocument();
+  });
+});

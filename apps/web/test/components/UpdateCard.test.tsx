@@ -214,3 +214,59 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
+
+describe('UpdateCard: un fallo no se pinta como «comprobación desactivada»', () => {
+  beforeEach(() => setAdmin());
+
+  it('dice que no se pudo comprobar y reintenta', async () => {
+    apiMock.get.mockReset().mockRejectedValueOnce(new Error('red'));
+    apiMock.get.mockResolvedValue(basePlan);
+    render(<UpdateCard />);
+
+    expect(
+      await screen.findByText('No se pudo comprobar si hay una actualización.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Comprobación de actualizaciones desactivada/),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText(/disponible/i)).toBeInTheDocument();
+  });
+
+  it('si el servidor dice que está desactivada, sigue diciéndolo', async () => {
+    apiMock.get.mockReset().mockResolvedValue({ ...basePlan, enabled: false });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(/Comprobación de actualizaciones desactivada/),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('UpdateCard: refresco que falla con el plan ya leído', () => {
+  it('conserva el plan y lo marca como viejo', async () => {
+    setAdmin();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // Con `inProgress` el sondeo arranca AL MONTAR (use-polling corre al activarse):
+      // la 1.ª lectura es la carga y la 2.ª el primer sondeo; falla la 3.ª, la del intervalo.
+      apiMock.get
+        .mockReset()
+        .mockResolvedValueOnce({ ...basePlan, inProgress: true })
+        .mockResolvedValueOnce({ ...basePlan, inProgress: true });
+      apiMock.get.mockRejectedValue(new Error('red'));
+      render(<UpdateCard />);
+      expect(await screen.findByText(/en curso|Actualizando/i)).toBeInTheDocument();
+      expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
+
+      await vi.advanceTimersByTimeAsync(5100);
+      expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+      expect(
+        screen.queryByText('No se pudo comprobar si hay una actualización.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('1.0.0')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

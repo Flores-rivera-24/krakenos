@@ -1,6 +1,7 @@
 import type { IotDevice } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -45,7 +46,11 @@ describe('IntegrationsSection', () => {
   });
 
   it('renderiza las cards de Hue/Govee/Tuya con datos de /iot/devices', async () => {
-    render(<IntegrationsSection isAdmin />);
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/iot/devices'));
     expect(screen.getByText('Philips Hue')).toBeInTheDocument();
     expect(screen.getByText('Govee')).toBeInTheDocument();
@@ -59,18 +64,62 @@ describe('IntegrationsSection', () => {
 
   it('"Gestionar focos" despliega el gestor Tuya (admin)', async () => {
     const user = userEvent.setup();
-    render(<IntegrationsSection isAdmin />);
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
     await screen.findByText('Tuya');
     await user.click(screen.getByRole('button', { name: 'Gestionar focos' }));
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/iot/tuya/devices'));
     expect(screen.getByText('Focos Tuya')).toBeInTheDocument();
   });
 
-  it('"Añadir integración" abre el modal con las guías', async () => {
+  it('"Cómo conectar" es un enlace a /connect, sin diálogo de rutas de ficheros', async () => {
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
+    const enlace = screen.getByRole('link', { name: 'Cómo conectar' });
+    expect(enlace).toHaveAttribute('href', '/connect');
+    expect(screen.queryByRole('button', { name: /Añadir integración/ })).toBeNull();
+    expect(screen.queryByText('docs/tuya-setup.md')).toBeNull();
+  });
+
+  it('si falla la lectura no dice "No detectada": dice que no se pudo comprobar y reintenta', async () => {
     const user = userEvent.setup();
-    render(<IntegrationsSection isAdmin />);
-    await user.click(screen.getByRole('button', { name: /Añadir integración/ }));
-    expect(screen.getByRole('heading', { name: 'Añadir integración' })).toBeInTheDocument();
-    expect(screen.getByText('docs/tuya-setup.md')).toBeInTheDocument();
+    let falla = true;
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices'
+        ? falla
+          ? Promise.reject(new Error('caído'))
+          : Promise.resolve(DEVICES)
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
+    expect((await screen.findAllByText(/No se pudo comprobar/)).length).toBeGreaterThan(0);
+    expect(screen.queryByText('No detectada')).toBeNull();
+    falla = false;
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    await waitFor(() => expect(screen.getAllByText('1/1 en línea').length).toBeGreaterThan(0));
+    expect(screen.queryAllByText(/No se pudo comprobar/)).toHaveLength(0);
+  });
+
+  it('mientras carga no afirma nada: ni fallo ni "No detectada" ni "en línea"', async () => {
+    apiMock.get.mockImplementation(() => new Promise(() => undefined));
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Philips Hue');
+    expect(screen.queryAllByText(/No se pudo comprobar/)).toHaveLength(0);
+    expect(screen.queryByText('No detectada')).toBeNull();
+    expect(screen.queryByText(/en línea/)).toBeNull();
   });
 });

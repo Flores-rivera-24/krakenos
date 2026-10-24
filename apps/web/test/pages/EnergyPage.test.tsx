@@ -144,4 +144,50 @@ describe('EnergyPage (US-182)', () => {
     renderPage();
     expect(await screen.findByText(/Ningún dispositivo reporta consumo/)).toBeInTheDocument();
   });
+
+  describe('estados honestos', () => {
+    const sinDatos = 'Aún no hay datos de consumo.';
+
+    it('mientras carga, hay esqueletos y no se dice «sin datos»', async () => {
+      apiMock.get.mockImplementation((path: string) => {
+        if (path.startsWith('/energy/stats')) return new Promise(() => undefined);
+        if (path === '/energy/config') return Promise.resolve(config);
+        return Promise.resolve([]);
+      });
+      const { container } = renderPage();
+      await screen.findByText('Consumo total');
+      expect(screen.queryByText(sinDatos)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Ningún dispositivo reporta consumo/)).not.toBeInTheDocument();
+      expect(container.querySelector('.kr-shimmer')).not.toBeNull();
+    });
+
+    it('si las estadísticas fallan, lo dice, no pinta «sin datos» y el reintento pinta los datos', async () => {
+      let falla = true;
+      apiMock.get.mockImplementation((path: string) => {
+        if (path.startsWith('/energy/stats'))
+          return falla ? Promise.reject(new Error('x')) : Promise.resolve(stats());
+        if (path === '/energy/config') return Promise.resolve(config);
+        return Promise.resolve([]);
+      });
+      renderPage();
+      expect(await screen.findByText(/No se pudo cargar el consumo/)).toBeInTheDocument();
+      expect(screen.queryByText(sinDatos)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Ningún dispositivo reporta consumo/)).not.toBeInTheDocument();
+      falla = false;
+      await userEvent.setup().click(screen.getByRole('button', { name: 'Reintentar' }));
+      expect(await screen.findByText('TV')).toBeInTheDocument();
+      expect(screen.queryByText(/No se pudo cargar el consumo/)).not.toBeInTheDocument();
+    });
+
+    it('si el precio no carga, se dice y no se puede guardar', async () => {
+      apiMock.get.mockImplementation((path: string) => {
+        if (path.startsWith('/energy/stats')) return Promise.resolve(stats());
+        if (path === '/energy/config') return Promise.reject(new Error('x'));
+        return Promise.resolve([]);
+      });
+      renderPage();
+      expect(await screen.findByText('No se pudo cargar el precio.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Guardar' })).toBeDisabled();
+    });
+  });
 });

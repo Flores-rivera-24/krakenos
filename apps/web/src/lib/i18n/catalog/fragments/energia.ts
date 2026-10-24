@@ -32,9 +32,12 @@ export const esEnergia = {
   'energy.savePrice': 'Guardar',
   'energy.priceSaved': 'Precio actualizado',
   'energy.priceError': 'No se pudo guardar el precio',
+  'energy.priceLoadError': 'No se pudo cargar el precio.',
   'energy.priceHint':
     'Déjalo en blanco para no estimar coste. El consumo se mide solo en aparatos que reportan potencia.',
   'energy.alert.title': 'Alertas de consumo',
+  'energy.alert.rulesError': 'No se pudieron cargar las alertas de consumo.',
+  'energy.alert.devicesError': 'No se pudo cargar la lista de aparatos.',
   'energy.alert.device': 'Dispositivo',
   'energy.alert.metric': 'Tipo',
   'energy.alert.sustainedPower': 'Potencia sostenida',

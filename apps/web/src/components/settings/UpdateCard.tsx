@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Callout } from '@/components/ui/callout';
 import { CopyButton } from '@/components/ui/copy-button';
+import { StaleBadge } from '@/components/ui/stale-badge';
+import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
 import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
@@ -29,6 +31,7 @@ export function UpdateCard() {
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [plan, setPlan] = useState<UpdatePlan | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [applying, setApplying] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const aliveRef = useRef(true);
@@ -36,9 +39,13 @@ export function UpdateCard() {
   const load = useCallback(async () => {
     try {
       const p = await api.get<UpdatePlan>('/system/update/plan');
-      if (aliveRef.current) setPlan(p);
+      if (aliveRef.current) {
+        setPlan(p);
+        setFailed(false);
+      }
     } catch {
-      if (aliveRef.current) setPlan(null);
+      // Un plan ya leído se conserva: un sondeo caído no lo convierte en «desactivada».
+      if (aliveRef.current) setFailed(true);
     } finally {
       if (aliveRef.current) setLoading(false);
     }
@@ -105,6 +112,7 @@ export function UpdateCard() {
         <CardTitle>{t('settings.update.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {failed && plan && <StaleBadge />}
         <div className="flex items-center justify-between text-kr-base">
           <span className="text-kr-secondary">{t('settings.update.installed')}</span>
           <span className="font-mono text-kr-primary">{plan?.current ?? '—'}</span>
@@ -115,6 +123,14 @@ export function UpdateCard() {
             <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
             {t('settings.update.checking')}
           </p>
+        ) : !plan && failed ? (
+          <WidgetError
+            message={t('settings.update.loadError')}
+            onRetry={() => {
+              setLoading(true);
+              void load();
+            }}
+          />
         ) : !plan || !plan.enabled ? (
           <p className="text-kr-sm text-kr-muted">
             {t('settings.update.disabled', { env: 'UPDATE_CHECK_REPO' })}

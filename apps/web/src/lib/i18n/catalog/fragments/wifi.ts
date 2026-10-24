@@ -20,6 +20,7 @@ export const esWifi = {
 
   // --- Conectar (US-139) ---
   'wifi.networks.title': 'Puntos de acceso y redes',
+  'wifi.networks.loadError': 'No se pudieron cargar las redes WiFi.',
   'wifi.networks.toggleLabel': 'Activar red {ssid}',
   'wifi.networks.toggleError': 'No se pudo cambiar la red {ssid}',
   'wifi.main.title': 'Red principal',

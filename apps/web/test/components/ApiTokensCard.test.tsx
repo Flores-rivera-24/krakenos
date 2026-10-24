@@ -84,3 +84,42 @@ describe('ApiTokensCard (US-174)', () => {
     await waitFor(() => expect(tokensMock.revokeApiToken).toHaveBeenCalledWith('t1'));
   });
 });
+
+describe('ApiTokensCard: un fallo de carga no es «no hay tokens»', () => {
+  beforeEach(() => {
+    tokensMock.listApiTokens.mockReset();
+    setRole('admin');
+  });
+
+  it('si la lista falla lo dice con reintento y no afirma que no hay tokens', async () => {
+    tokensMock.listApiTokens.mockRejectedValueOnce(new Error('red'));
+    tokensMock.listApiTokens.mockResolvedValue([existing]);
+    render(<ApiTokensCard />);
+
+    expect(await screen.findByText('No se pudieron cargar los tokens.')).toBeInTheDocument();
+    expect(screen.queryByText('Aún no tienes tokens.')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('HA')).toBeInTheDocument();
+    expect(screen.queryByText('No se pudieron cargar los tokens.')).not.toBeInTheDocument();
+  });
+
+  it('crear con la lista sin cargar relee: no enseña una lista de uno como si fuera la completa', async () => {
+    tokensMock.listApiTokens.mockRejectedValueOnce(new Error('red'));
+    tokensMock.listApiTokens.mockResolvedValue([existing, { ...existing, id: 't3', name: 'Otro' }]);
+    tokensMock.createApiToken.mockResolvedValue({
+      ...existing,
+      id: 't2',
+      name: 'Nuevo',
+      token: 'krt_SECRETO',
+    });
+    render(<ApiTokensCard />);
+    await screen.findByText('No se pudieron cargar los tokens.');
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Nuevo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear token/ }));
+    expect(await screen.findByText('krt_SECRETO')).toBeInTheDocument();
+    // La lista real (relectura) llega completa; nunca la de un solo token.
+    expect(await screen.findByText('HA')).toBeInTheDocument();
+    expect(screen.getByText('Otro')).toBeInTheDocument();
+  });
+});

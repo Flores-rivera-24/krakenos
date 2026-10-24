@@ -1,5 +1,5 @@
 import type { TlsStatus } from '@krakenos/types';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -133,5 +133,19 @@ describe('TlsCard (US-241)', () => {
       await screen.findByText('Tu instalación se sirve por HTTPS.');
       expect(screen.queryByRole('link', { name: 'Descargar certificado' })).toBeNull();
     });
+  });
+});
+
+describe('TlsCard: un fallo de carga no hace desaparecer la tarjeta', () => {
+  it('se queda y dice que no se pudo leer, con reintento', async () => {
+    apiMock.get.mockReset().mockRejectedValueOnce(new Error('red'));
+    apiMock.get.mockResolvedValue(status());
+    render(<TlsCard />);
+
+    expect(
+      await screen.findByText('No se pudo leer el estado del certificado.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('Tu instalación se sirve por HTTPS.')).toBeInTheDocument();
   });
 });

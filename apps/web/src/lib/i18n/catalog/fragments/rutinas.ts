@@ -63,6 +63,19 @@ export const esRutinas = {
   'automations.subtitle': 'La casa reacciona sola: «si pasa X, haz Y».',
   'automations.new': 'Nueva automatización',
   'automations.loadError': 'No se pudieron cargar las automatizaciones',
+  'automations.listError.iot':
+    'No se pudieron cargar los aparatos IoT; la lista puede estar incompleta.',
+  'automations.listError.network':
+    'No se pudieron cargar los aparatos de red; la lista puede estar incompleta.',
+  'automations.listError.scenes':
+    'No se pudieron cargar las escenas; la lista puede estar incompleta.',
+  'automations.listError.cameras':
+    'No se pudieron cargar las cámaras; la lista puede estar incompleta.',
+  'automations.listError.users':
+    'No se pudieron cargar los usuarios; la lista puede estar incompleta.',
+  'automations.listError.schedules':
+    'No se pudieron cargar los horarios de acceso; puede faltar alguna rutina.',
+  'automations.listError.runs': 'No se pudo cargar el historial de ejecuciones.',
   'automations.toggleError': 'No se pudo cambiar el estado',
   'automations.empty.title': 'Aún no tienes automatizaciones.',
   'automations.empty.examples':

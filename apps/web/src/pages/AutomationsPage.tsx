@@ -13,9 +13,10 @@ import type {
   WeatherMetric,
 } from '@krakenos/types';
 import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { Callout } from '@/components/ui/callout';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
@@ -126,6 +127,18 @@ function fromAction(action: AutomationAction, base: DraftAction): DraftAction {
   }
 }
 
+/** Lecturas de apoyo del editor y de la página; una que falla se dice, no se pinta como vacía. */
+type Lista = 'iot' | 'network' | 'scenes' | 'cameras' | 'users' | 'schedules' | 'runs';
+
+/** Las que alimentan los desplegables del editor, con la frase de cada una. */
+const AVISO_DE_LISTA = {
+  iot: 'automations.listError.iot',
+  network: 'automations.listError.network',
+  scenes: 'automations.listError.scenes',
+  cameras: 'automations.listError.cameras',
+  users: 'automations.listError.users',
+} as const satisfies Partial<Record<Lista, TranslationKey>>;
+
 function RuleEditor({
   rule,
   iotDevices,
@@ -133,6 +146,7 @@ function RuleEditor({
   scenes,
   users,
   cameras,
+  fallos,
   onClose,
   onSaved,
 }: {
@@ -142,6 +156,8 @@ function RuleEditor({
   scenes: Scene[];
   users: UserSummary[];
   cameras: Camera[];
+  /** Claves de las frases de las listas que no se pudieron cargar. */
+  fallos: TranslationKey[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -402,6 +418,13 @@ function RuleEditor({
       }
     >
       <div className="space-y-5">
+        {fallos.length > 0 && (
+          <div className="space-y-1">
+            {fallos.map((k) => (
+              <FormError key={k}>{t(k)}</FormError>
+            ))}
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="auto-name">{t('automations.editor.nameLabel')}</Label>
           <Input
@@ -867,9 +890,19 @@ function AutomationsPageBody() {
   const [cameras, setCameras] = useState<Camera[]>([]);
   const [accessSchedules, setAccessSchedules] = useState<AccessSchedule[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [fallos, setFallos] = useState<Partial<Record<Lista, boolean>>>({});
+  const marca = useCallback(
+    (lista: Lista, fallo: boolean) => setFallos((prev) => ({ ...prev, [lista]: fallo })),
+    [],
+  );
   const [editing, setEditing] = useState<AutomationRule | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
 
+  const fallosRef = useRef(fallos);
+  fallosRef.current = fallos;
+  const pedidas = useRef(new Set<Lista>());
+
+  // Personas del hogar (US-169): el listado es admin-only; para el resto, vacío.
   const reload = useCallback(() => {
     void listAutomations()
       .then((list) => {
@@ -881,43 +914,72 @@ function AutomationsPageBody() {
         setError(describeError(err, t('automations.loadError')));
       });
     void listAutomationRuns()
-      .then(setRuns)
-      .catch(() => setRuns([]));
-  }, []);
+      .then((list) => {
+        setRuns(list);
+        marca('runs', false);
+      })
+      .catch(() => marca('runs', true));
+    // Una lista de opciones que falló se vuelve a pedir en cada recarga: si no, su
+    // aviso («la lista puede estar incompleta») sobrevive a una lista ya completa.
+    // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
+    // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
+    const caidas = fallosRef.current;
+    const pedir = (lista: Lista) => {
+      const hace = !pedidas.current.has(lista) || caidas[lista];
+      pedidas.current.add(lista);
+      return hace;
+    };
+    if (pedir('iot'))
+      void api
+        .getList<IotDevice>('/iot/devices')
+        .then((l) => {
+          setIotDevices(l);
+          marca('iot', false);
+        })
+        .catch(() => marca('iot', true));
+    if (pedir('network'))
+      void api
+        .getList<Device>('/inventory/devices')
+        .then((l) => {
+          setNetworkDevices(l);
+          marca('network', false);
+        })
+        .catch(() => marca('network', true));
+    if (pedir('scenes'))
+      void listScenes()
+        .then((l) => {
+          setScenes(l);
+          marca('scenes', false);
+        })
+        .catch(() => marca('scenes', true));
+    if (pedir('cameras'))
+      void listCameras()
+        .then((l) => {
+          setCameras(l);
+          marca('cameras', false);
+        })
+        .catch(() => marca('cameras', true));
+    if (pedir('schedules'))
+      void api
+        .getList<AccessSchedule>('/access/schedules')
+        .then((list) => {
+          setAccessSchedules(Array.isArray(list) ? list : []);
+          marca('schedules', false);
+        })
+        .catch(() => marca('schedules', true));
+    if (isAdmin && pedir('users'))
+      void api
+        .getList<UserSummary>('/users')
+        .then((l) => {
+          setUsers(l);
+          marca('users', false);
+        })
+        .catch(() => marca('users', true));
+  }, [isAdmin]);
 
   useEffect(() => {
     reload();
-    void api
-      .getList<IotDevice>('/iot/devices')
-      .then(setIotDevices)
-      .catch(() => setIotDevices([]));
-    void api
-      .getList<Device>('/inventory/devices')
-      .then(setNetworkDevices)
-      .catch(() => setNetworkDevices([]));
-    void listScenes()
-      .then(setScenes)
-      .catch(() => setScenes([]));
-    void listCameras()
-      .then(setCameras)
-      .catch(() => setCameras([]));
-    // Cada carga va por su lado a propósito: en un `Promise.all` un 403 de una
-    // sola tarjeta dejaría la página entera en blanco (la regresión de DnsPage).
-    void api
-      .getList<AccessSchedule>('/access/schedules')
-      .then((list) => setAccessSchedules(Array.isArray(list) ? list : []))
-      .catch(() => setAccessSchedules([]));
   }, [reload]);
-
-  // Personas del hogar para los disparadores de presencia (US-169). El listado
-  // es admin-only; para el resto (que tampoco ve el editor) se queda vacío.
-  useEffect(() => {
-    if (!isAdmin) return;
-    void api
-      .getList<UserSummary>('/users')
-      .then(setUsers)
-      .catch(() => setUsers([]));
-  }, [isAdmin]);
 
   const ctx: NameContext = useMemo(
     () => ({
@@ -1047,6 +1109,11 @@ function AutomationsPageBody() {
           contra el router. Se enseñan aquí para que «todas mis rutinas» sea
           cierto, y se ENLAZA a su editor en vez de duplicarlo — dos formularios
           sobre la misma fila acaban divergiendo. */}
+      {fallos.schedules && (
+        <Callout variant="warning" standing>
+          {t('automations.listError.schedules')}
+        </Callout>
+      )}
       {rutinasDeAcceso.length > 0 && (
         <section className="space-y-2 border-t border-kr-muted pt-6">
           <h3 className="text-kr-lg font-semibold text-kr-primary">
@@ -1096,6 +1163,11 @@ function AutomationsPageBody() {
         </section>
       )}
 
+      {fallos.runs && (
+        <Callout variant="warning" standing>
+          {t('automations.listError.runs')}
+        </Callout>
+      )}
       {runs.length > 0 && (
         <section className="space-y-2 border-t border-kr-muted pt-6">
           <h3 className="text-kr-lg font-semibold text-kr-primary">
@@ -1135,6 +1207,9 @@ function AutomationsPageBody() {
           scenes={scenes}
           users={users}
           cameras={cameras}
+          fallos={(Object.keys(AVISO_DE_LISTA) as (keyof typeof AVISO_DE_LISTA)[])
+            .filter((k) => fallos[k])
+            .map((k) => AVISO_DE_LISTA[k])}
           onClose={() => setEditorOpen(false)}
           onSaved={reload}
         />

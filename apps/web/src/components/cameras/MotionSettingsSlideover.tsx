@@ -5,10 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
+import { WidgetError } from '@/components/ui/widget-error';
 import { FormError } from '@/components/ui/form-error';
 import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import {
   diasCompletos,
   diasIniciales,
@@ -30,7 +32,6 @@ const SELECT_CLASS =
 /** Panel de configuración de la detección de movimiento de una cámara (US-186). */
 export function MotionSettingsSlideover({ camera, onClose }: Props) {
   const t = useT();
-  const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [record, setRecord] = useState(false);
   const [sensitivity, setSensitivity] = useState<MotionSensitivity>('medium');
@@ -42,29 +43,27 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const lectura = useLectura(() => getMotionConfig(camera.id), [camera.id]);
+  const { data: cfg } = lectura;
+  const [hidratado, setHidratado] = useState<typeof cfg>(null);
+  // El render que ya tiene el dato aún no tiene los campos rellenados (lo hace el efecto).
+  const loading = lectura.loading || (cfg !== null && hidratado !== cfg);
+
   useEffect(() => {
-    let active = true;
-    void getMotionConfig(camera.id)
-      .then((cfg) => {
-        if (!active) return;
-        setEnabled(cfg.enabled);
-        setRecord(cfg.record);
-        setSensitivity(cfg.sensitivity);
-        setCooldownSec(cfg.cooldownSec);
-        setArmMode(cfg.arming.mode);
-        if (cfg.arming.mode === 'schedule' && cfg.arming.windows[0]) {
-          const w = cfg.arming.windows[0];
-          setFromTime(minuteToTimeString(w.fromMinute));
-          setToTime(minuteToTimeString(w.toMinute));
-          setDays(w.days ?? ALL_DAYS);
-        }
-      })
-      .catch((err) => active && setError(describeError(err, t('cameras.motion.loadError'))))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, [camera.id, t]);
+    if (!cfg) return;
+    setEnabled(cfg.enabled);
+    setRecord(cfg.record);
+    setSensitivity(cfg.sensitivity);
+    setCooldownSec(cfg.cooldownSec);
+    setArmMode(cfg.arming.mode);
+    if (cfg.arming.mode === 'schedule' && cfg.arming.windows[0]) {
+      const w = cfg.arming.windows[0];
+      setFromTime(minuteToTimeString(w.fromMinute));
+      setToTime(minuteToTimeString(w.toMinute));
+      setDays(w.days ?? ALL_DAYS);
+    }
+    setHidratado(cfg);
+  }, [cfg]);
 
   const toggleDay = (d: number) =>
     setDays((list) => (list.includes(d) ? list.filter((x) => x !== d) : [...list, d].sort()));
@@ -109,7 +108,7 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
   const footer = (
     <div className="space-y-2">
       {error && <FormError>{error}</FormError>}
-      <Button onClick={() => void submit()} disabled={saving || loading} className="w-full">
+      <Button onClick={() => void submit()} disabled={saving || loading || !cfg} className="w-full">
         {saving ? t('cameras.motion.saving') : t('cameras.motion.save')}
       </Button>
     </div>
@@ -125,6 +124,8 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
     >
       {loading ? (
         <p className="text-kr-sm text-kr-secondary">{t('cameras.motion.loading')}</p>
+      ) : !cfg ? (
+        <WidgetError message={t('cameras.motion.loadError')} onRetry={lectura.reintentar} />
       ) : (
         <div className="space-y-5">
           <div className="flex items-center justify-between gap-3">

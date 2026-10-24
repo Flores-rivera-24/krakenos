@@ -84,4 +84,21 @@ describe('NetworksCard', () => {
     fireEvent.click(screen.getByRole('switch'));
     expect(apiMock.put).toHaveBeenCalledWith('/wifi/networks/net-1', { enabled: false });
   });
+
+  it('si falla la carga lo dice con «Reintentar» (no una tabla vacía) y se recupera', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    render(<NetworksCard />);
+    expect(await screen.findByText('No se pudieron cargar las redes WiFi.')).toBeInTheDocument();
+    expect(screen.queryByText('KrakenOS')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        Promise.resolve(path === '/wifi/access-points' ? APS : NETS),
+      );
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByText('KrakenOS')).toBeInTheDocument();
+    expect(screen.queryByText('No se pudieron cargar las redes WiFi.')).not.toBeInTheDocument();
+  });
 });

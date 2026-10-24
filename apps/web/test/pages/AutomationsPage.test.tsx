@@ -364,4 +364,99 @@ describe('AutomationsPage (US-167)', () => {
     await screen.findByText(/No se pudo conectar con el servidor/);
     expect(container.querySelector('.kr-shimmer')).toBeNull();
   });
+
+  describe('listas de opciones que fallan', () => {
+    const casos: [string, string, string][] = [
+      [
+        '/iot/devices',
+        'aparatos IoT',
+        'No se pudieron cargar los aparatos IoT; la lista puede estar incompleta.',
+      ],
+      [
+        '/inventory/devices',
+        'aparatos de red',
+        'No se pudieron cargar los aparatos de red; la lista puede estar incompleta.',
+      ],
+      ['/scenes', 'escenas', 'No se pudieron cargar las escenas; la lista puede estar incompleta.'],
+      [
+        '/cameras',
+        'cámaras',
+        'No se pudieron cargar las cámaras; la lista puede estar incompleta.',
+      ],
+      [
+        '/users',
+        'usuarios',
+        'No se pudieron cargar los usuarios; la lista puede estar incompleta.',
+      ],
+    ];
+    for (const [ruta, , frase] of casos) {
+      it(`si ${ruta} falla, el editor lo dice`, async () => {
+        mockGets({ [ruta]: new Error('x') });
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+        const dialog = await screen.findByRole('dialog');
+        expect(await within(dialog).findByText(frase)).toBeInTheDocument();
+      });
+    }
+
+    it('una lista que falló y se vuelve a leer bien limpia su aviso', async () => {
+      let escenasFallan = true;
+      mockGets({ '/automations': [rule()] });
+      const base = apiMock.get.getMockImplementation()!;
+      apiMock.get.mockImplementation((path: string) =>
+        path === '/scenes' && escenasFallan ? Promise.reject(new Error('x')) : base(path),
+      );
+      apiMock.patch.mockResolvedValue(rule({ enabled: false }));
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByText('Intruso fuera');
+      escenasFallan = false;
+      await user.click(screen.getByRole('switch', { name: 'Activar Intruso fuera' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      await user.click(await screen.findByRole('button', { name: /Nueva automatización/ }));
+      const dialog = await screen.findByRole('dialog');
+      await within(dialog).findByLabelText('Nombre');
+      expect(within(dialog).queryByText(/la lista puede estar incompleta/)).not.toBeInTheDocument();
+    });
+
+    it('con todas las listas bien, el editor no avisa de nada', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Crear la primera' }));
+      const dialog = await screen.findByRole('dialog');
+      expect(within(dialog).queryByText(/la lista puede estar incompleta/)).not.toBeInTheDocument();
+    });
+
+    it('si falla el historial de ejecuciones, la página lo dice', async () => {
+      mockGets({ '/automations/runs': new Error('x') });
+      renderPage();
+      expect(
+        await screen.findByText('No se pudo cargar el historial de ejecuciones.'),
+      ).toBeInTheDocument();
+    });
+
+    it('los avisos permanentes de lista caída de la página no son alertas', async () => {
+      mockGets({
+        '/access/schedules': new Error('x'),
+        '/automations/runs': new Error('x'),
+      });
+      renderPage();
+      await screen.findByText('No se pudo cargar el historial de ejecuciones.');
+      await screen.findByText(
+        'No se pudieron cargar los horarios de acceso; puede faltar alguna rutina.',
+      );
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    });
+
+    it('si fallan los horarios de acceso, la página lo dice', async () => {
+      mockGets({ '/access/schedules': new Error('x') });
+      renderPage();
+      expect(
+        await screen.findByText(
+          'No se pudieron cargar los horarios de acceso; puede faltar alguna rutina.',
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -2,6 +2,7 @@ import type { AlertRule } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Switch } from '@/components/ui/switch';
 import { claveDeAlerta, listAlertRules, updateAlertRule } from '@/lib/alerts';
 import { describeError } from '@/lib/errors';
@@ -13,12 +14,16 @@ import '@/lib/i18n/catalog/fragments/ajustes';
 export function AlertRulesCard() {
   const t = useT();
   const [rules, setRules] = useState<AlertRule[] | null>(null);
+  const [failed, setFailed] = useState(false);
 
   const load = async () => {
     try {
       setRules(await listAlertRules());
+      setFailed(false);
     } catch (err) {
-      toast.error(describeError(err, t('alerts.loadError')));
+      // Con reglas ya pintadas (revertir tras un toggle fallido) el aviso va en toast.
+      if (rules) toast.error(describeError(err, t('alerts.loadError')));
+      setFailed(true);
     }
   };
   useEffect(() => {
@@ -61,7 +66,11 @@ export function AlertRulesCard() {
       <CardContent>
         <p className="mb-3 text-kr-sm text-kr-secondary">{t('alerts.intro')}</p>
         {rules === null ? (
-          <LoadingLine />
+          failed ? (
+            <WidgetError message={t('alerts.loadError')} onRetry={() => void load()} />
+          ) : (
+            <LoadingLine />
+          )
         ) : (
           <div className="overflow-x-auto rounded-md border border-kr">
             <table className="w-full text-kr-sm">

@@ -36,6 +36,7 @@ export const esTrafico = {
     'Uso de internet agregado por persona del hogar. Solo tú y los administradores veis el detalle de cada uno.',
   'wellbeing.rangeLabel': 'Rango',
   'wellbeing.loading': 'Cargando…',
+  'wellbeing.loadError': 'No se pudo cargar el uso de internet.',
   'wellbeing.empty': 'Todavía no hay datos de uso en este periodo.',
   'wellbeing.noOwnedDevices':
     'Aún no tienes dispositivos asignados. Pídele a un administrador del hogar que te asigne los tuyos.',

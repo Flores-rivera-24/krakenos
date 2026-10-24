@@ -69,3 +69,13 @@ describe('InvitationsCard: caducidad de una invitación', () => {
     expect(await screen.findByText(/Caduca hace 3h/)).toBeInTheDocument();
   });
 });
+
+describe('InvitationsCard: con error no se pinta además el spinner', () => {
+  it('muestra el fallo y no la línea de carga', async () => {
+    onboardingMock.listInvitations.mockRejectedValue(new Error('red'));
+    onboardingMock.listAccessRequests.mockResolvedValue([]);
+    render(<InvitationsCard />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+});

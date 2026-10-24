@@ -1,12 +1,14 @@
 import type { TelemetrySnapshot, UpdatePlan } from '@krakenos/types';
 import { Bug, Download, LifeBuoy, MessageSquarePlus, Router } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { buildIssueUrl, type FeedbackKind } from '@/lib/feedback';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { downloadSupportBundle } from '@/lib/support';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
@@ -20,23 +22,26 @@ export function SupportCard() {
   const [telemetry, setTelemetry] = useState<TelemetrySnapshot | null>(null);
   const [busy, setBusy] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [telemetryFailed, setTelemetryFailed] = useState(false);
+  const [intento, setIntento] = useState(0);
   // Contexto para pre-rellenar el issue (US-218): versión + modo de despliegue.
-  const [plan, setPlan] = useState<UpdatePlan | null>(null);
+  // Si no llega, el issue sale sin versión: no hay nada que avisar.
+  const plan = useLectura<UpdatePlan>(() => api.get<UpdatePlan>('/system/update/plan'), []).data;
 
   useEffect(() => {
     let active = true;
     void api
       .get<TelemetrySnapshot>('/system/telemetry')
-      .then((t2) => active && setTelemetry(t2))
-      .catch(() => undefined);
-    void api
-      .get<UpdatePlan>('/system/update/plan')
-      .then((p) => active && setPlan(p))
-      .catch(() => undefined);
+      .then((t2) => {
+        if (!active) return;
+        setTelemetry(t2);
+        setTelemetryFailed(false);
+      })
+      .catch(() => active && setTelemetryFailed(true));
     return () => {
       active = false;
     };
-  }, []);
+  }, [intento]);
 
   /** Abre el issue pre-rellenado en GitHub. Nada se envía solo: el usuario pega. */
   const openIssue = (kind: FeedbackKind) => {
@@ -98,15 +103,22 @@ export function SupportCard() {
               </p>
             )}
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy || !telemetry}
-            aria-pressed={telemetry?.enabled ?? false}
-            onClick={() => void toggleTelemetry()}
-          >
-            {telemetry?.enabled ? t('settings.support.disable') : t('settings.support.enable')}
-          </Button>
+          {telemetryFailed && !telemetry ? (
+            <WidgetError
+              message={t('settings.support.telemetryLoadError')}
+              onRetry={() => setIntento((n) => n + 1)}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy || !telemetry}
+              aria-pressed={telemetry?.enabled ?? false}
+              onClick={() => void toggleTelemetry()}
+            >
+              {telemetry?.enabled ? t('settings.support.disable') : t('settings.support.enable')}
+            </Button>
+          )}
         </div>
 
         <div className="border-t border-kr pt-3">
