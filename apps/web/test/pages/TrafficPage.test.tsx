@@ -93,7 +93,9 @@ describe('TrafficPage', () => {
     const { container } = render(<TrafficPage />);
     await screen.findByText('Monitor de tráfico');
     expect(container.querySelector('p .kr-shimmer')).toBeNull();
-    expect(error.mock.calls.flat().join(' ')).not.toMatch(/validateDOMNesting|cannot be a descendant/);
+    expect(error.mock.calls.flat().join(' ')).not.toMatch(
+      /validateDOMNesting|cannot be a descendant/,
+    );
     error.mockRestore();
   });
 
