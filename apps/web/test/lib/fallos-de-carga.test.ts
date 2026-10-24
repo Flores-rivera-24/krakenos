@@ -17,8 +17,10 @@ import { fuentes, sinComentarios } from './_fuentes';
  * (`{ setX([]); }`). Alcance: `components/` y `pages/`; en `lib/` y
  * `store/` son parseos de cuerpo y el logout, legítimos.
  *
- * Límites conocidos, que NO detecta: `.then(ok, () => setX([]))` y el
- * `try/catch`. Un fallo tragado por esas vías pasa este gate.
+ * Límites conocidos, que NO detecta: `.then(ok, () => setX([]))`, el
+ * `try/catch`, `.catch((e) => setX([]))` (el parámetro tiene nombre pero no se
+ * usa) y `setX(CONSTANTE)` con un vacío guardado en una constante. Un fallo
+ * tragado por esas vías pasa este gate.
  *
  * Es un trinquete de cero: lo único que puede tragar un fallo está en EXCEPCIONES,
  * con su cuenta y su porqué; cualquier otra coincidencia pone el gate en rojo.
