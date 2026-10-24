@@ -27,6 +27,7 @@ function CheckList({
   selected,
   onToggle,
   failure,
+  unavailable,
 }: {
   label: string;
   items: { id: string; name: string }[];
@@ -34,14 +35,18 @@ function CheckList({
   onToggle: (id: string) => void;
   /** La lista no se pudo leer: se dice, no se pinta como «sin dispositivos». */
   failure?: string;
+  /** La lista no se pudo leer y el fallo ya se dice una vez fuera: aquí no se pinta «sin dispositivos». */
+  unavailable?: boolean;
 }) {
   const t = useT();
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
       {failure ? (
-        <p className="text-kr-xs text-kr-secondary">{failure}</p>
-      ) : items.length === 0 ? (
+        <p role="status" className="text-kr-xs text-kr-secondary">
+          {failure}
+        </p>
+      ) : unavailable ? null : items.length === 0 ? (
         <p className="text-kr-xs text-kr-muted">{t('alarmSettings.noDevices')}</p>
       ) : (
         <ul className="space-y-1">
@@ -168,10 +173,17 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             {t('alarmSettings.disclaimer')}
           </Callout>
 
+          {leido?.devicesFailed && (
+            <p role="status" className="text-kr-xs text-kr-secondary">
+              {t('alarmSettings.devicesLoadError')}
+            </p>
+          )}
+
           <div className="space-y-1">
             <Label htmlFor="alarm-siren">{t('alarmSettings.siren')}</Label>
             <select
               id="alarm-siren"
+              disabled={leido?.devicesFailed}
               className="w-full rounded-md border border-kr bg-kr-surface px-3 py-2 text-kr-sm"
               value={cfg.sirenDeviceId ?? ''}
               onChange={(e) => setCfg({ ...cfg, sirenDeviceId: e.target.value || null })}
@@ -190,14 +202,14 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             items={lights}
             selected={cfg.lightDeviceIds}
             onToggle={(id) => toggle('lightDeviceIds', id)}
-            failure={leido?.devicesFailed ? t('alarmSettings.devicesLoadError') : undefined}
+            unavailable={leido?.devicesFailed}
           />
           <CheckList
             label={t('alarmSettings.sensors')}
             items={sensors}
             selected={cfg.sensorDeviceIds}
             onToggle={(id) => toggle('sensorDeviceIds', id)}
-            failure={leido?.devicesFailed ? t('alarmSettings.devicesLoadError') : undefined}
+            unavailable={leido?.devicesFailed}
           />
 
           <Callout variant="info" title={t('alarmSettings.lifeSafety.title')} standing>

@@ -129,7 +129,12 @@ describe('AlarmSettingsSlideover (US-188 · US-245)', () => {
     apiMock.get.mockRejectedValue(new Error('boom'));
     camerasMock.listCameras.mockRejectedValue(new Error('boom'));
     render(<AlarmSettingsSlideover onClose={() => {}} />);
-    expect(await screen.findAllByText('No se pudieron cargar los aparatos.')).not.toHaveLength(0);
+    expect(await screen.findByText('No se pudieron cargar los aparatos.')).toHaveAttribute(
+      'role',
+      'status',
+    );
+    expect(screen.getByLabelText(/Sirena/)).toBeDisabled();
+    expect(screen.queryByText(/Tienes \d+ .* de humo o CO/i)).not.toBeInTheDocument();
     expect(screen.getByText('No se pudieron cargar las cámaras.')).toBeInTheDocument();
     expect(screen.queryByText(/Sin dispositivos disponibles/i)).not.toBeInTheDocument();
   });
