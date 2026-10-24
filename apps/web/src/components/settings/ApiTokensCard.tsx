@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CopyButton } from '@/components/ui/copy-button';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,7 +44,10 @@ export function ApiTokensCard() {
         mayControl && control ? ['home.view', 'home.control'] : ['home.view'];
       const created = await createApiToken({ name: name.trim(), scopes });
       setFresh(created.token);
-      setTokens((prev) => [{ ...created }, ...prev]);
+      // Con la lista sin cargar, una lista de un solo token pasaría por la completa:
+      // se vuelve a pedir en vez de inventarla.
+      if (lectura.data === null) lectura.reintentar();
+      else setTokens((prev) => [{ ...created }, ...prev]);
       setName('');
       setControl(false);
     } catch (err) {
@@ -110,6 +114,7 @@ export function ApiTokensCard() {
           </Button>
         </div>
 
+        {lectura.failed && tokens !== null && <StaleBadge />}
         {tokens === null ? (
           lectura.failed ? (
             <WidgetError message={t('settings.apiTokens.loadError')} onRetry={lectura.reintentar} />

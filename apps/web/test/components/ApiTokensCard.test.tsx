@@ -103,4 +103,23 @@ describe('ApiTokensCard: un fallo de carga no es «no hay tokens»', () => {
     expect(await screen.findByText('HA')).toBeInTheDocument();
     expect(screen.queryByText('No se pudieron cargar los tokens.')).not.toBeInTheDocument();
   });
+
+  it('crear con la lista sin cargar relee: no enseña una lista de uno como si fuera la completa', async () => {
+    tokensMock.listApiTokens.mockRejectedValueOnce(new Error('red'));
+    tokensMock.listApiTokens.mockResolvedValue([existing, { ...existing, id: 't3', name: 'Otro' }]);
+    tokensMock.createApiToken.mockResolvedValue({
+      ...existing,
+      id: 't2',
+      name: 'Nuevo',
+      token: 'krt_SECRETO',
+    });
+    render(<ApiTokensCard />);
+    await screen.findByText('No se pudieron cargar los tokens.');
+    fireEvent.change(screen.getByLabelText('Nombre'), { target: { value: 'Nuevo' } });
+    fireEvent.click(screen.getByRole('button', { name: /Crear token/ }));
+    expect(await screen.findByText('krt_SECRETO')).toBeInTheDocument();
+    // La lista real (relectura) llega completa; nunca la de un solo token.
+    expect(await screen.findByText('HA')).toBeInTheDocument();
+    expect(screen.getByText('Otro')).toBeInTheDocument();
+  });
 });
