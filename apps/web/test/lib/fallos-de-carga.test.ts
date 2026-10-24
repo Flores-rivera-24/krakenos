@@ -62,7 +62,6 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
  * fichero de aquí (nunca lo sube); al quedar vacía, se borra el trinquete.
  */
 const PENDIENTES: Record<string, number> = {
-  'pages/IotPage.tsx': 1,
 };
 
 describe('fallos de carga que se tragan', () => {

@@ -564,6 +564,7 @@ export const en: Record<TranslationKey, string> = {
   'iot.brightnessOf': 'Brightness of {name}',
   'iot.color': 'Color',
   'iot.roomUpdated': 'Room updated',
+  'iot.roomsLoadError': 'Could not load the rooms; none can be assigned for now.',
   'iot.roomAssignError': 'Could not assign the room',
   'iot.loadError': 'Could not load the devices',
   'iot.empty.title': 'No IoT devices yet.',

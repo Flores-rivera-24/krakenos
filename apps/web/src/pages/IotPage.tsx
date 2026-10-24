@@ -17,6 +17,7 @@ import { METRIC_LABEL, describeReading } from '@/lib/iot-readings';
 import { assignRoom, listRooms } from '@/lib/rooms';
 import { ProductArt, iotKindToArtKind } from '@/components/ui/product-art';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { FormError } from '@/components/ui/form-error';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
@@ -307,6 +308,7 @@ function IotPageBody() {
   const [rooms, setRooms] = useState<RoomWithState[]>([]);
   const [iotRoom, setIotRoom] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
+  const [roomsFailed, setRoomsFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Deriva el mapa deviceId→roomId desde el estado agregado de las habitaciones.
@@ -355,7 +357,7 @@ function IotPageBody() {
         setRooms(list);
         setIotRoom(buildRoomMap(list));
       })
-      .catch(() => active && setRooms([]));
+      .catch(() => active && setRoomsFailed(true));
 
     void api
       .getList<IotDevice>('/iot/devices')
@@ -396,6 +398,7 @@ function IotPageBody() {
       </div>
 
       {error && <ErrorBanner>{error}</ErrorBanner>}
+      {isAdmin && roomsFailed && !error && <FormError>{t('iot.roomsLoadError')}</FormError>}
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

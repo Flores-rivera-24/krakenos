@@ -517,4 +517,30 @@ describe('IotPage · persianas y termostatos (US-265)', () => {
     // invertir la condición no da el mismo número.
     expect(screen.getAllByRole('switch')).toHaveLength(2);
   });
+
+  it('si la lista de habitaciones falla, un admin lo ve dicho en vez de un selector que desaparece', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/iot/devices') return Promise.resolve(DEVICES);
+      if (path === '/rooms') return Promise.reject(new Error('x'));
+      return Promise.resolve([]);
+    });
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(
+      await screen.findByText(
+        'No se pudieron cargar las habitaciones; no se puede asignar ninguna por ahora.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('si las habitaciones cargan, no avisa de nada', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/iot/devices' ? Promise.resolve(DEVICES) : Promise.resolve([]),
+    );
+    render(<IotPage />);
+    await screen.findByText('TV');
+    expect(screen.queryByText(/No se pudieron cargar las habitaciones/)).not.toBeInTheDocument();
+  });
 });
