@@ -10,7 +10,7 @@ import type {
   VlanWithCount,
 } from '@krakenos/types';
 import { DEVICE_ICONS } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,6 +37,7 @@ import { describeError } from '@/lib/errors';
 import { listUsers } from '@/lib/users';
 import { formatDateTime } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -68,35 +69,23 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
   const [notes, setNotes] = useState(device.notes ?? '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [vlans, setVlans] = useState<VlanWithCount[]>([]);
   const [vlanTag, setVlanTag] = useState<number | null>(device.vlanTag);
   const [vlanBusy, setVlanBusy] = useState(false);
-  const [traffic, setTraffic] = useState<DeviceTrafficStats | null>(null);
-  const [rooms, setRooms] = useState<RoomWithState[]>([]);
   const [roomId, setRoomId] = useState<string | null>(device.roomId);
   const [roomBusy, setRoomBusy] = useState(false);
   // Dueño del dispositivo (US-179): base de presencia/bienestar por persona.
   const [ownerId, setOwnerId] = useState<string | null>(device.ownerId);
   const [ownerBusy, setOwnerBusy] = useState(false);
-  const [householdUsers, setHouseholdUsers] = useState<UserSummary[]>([]);
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   // Modo sencillo (US-176): sin campos técnicos (MAC/Fuentes) en el detalle.
   const simpleMode = useAuthStore((s) => s.user?.uiMode === 'simple');
 
-  // Carga las VLANs disponibles para el selector (best-effort).
-  useEffect(() => {
-    void api
-      .getList<VlanWithCount>('/vlans')
-      .then(setVlans)
-      .catch(() => setVlans([]));
-  }, []);
-
-  // Habitaciones para el selector de asignación (US-165, best-effort).
-  useEffect(() => {
-    void listRooms()
-      .then(setRooms)
-      .catch(() => setRooms([]));
-  }, []);
+  // Un selector cuya lista no llegó NO se ofrece vacío y editable: guardar desde ahí
+  // borraría la asignación real. Se deshabilita y dice por qué.
+  const lecturaVlans = useLectura(() => api.getList<VlanWithCount>('/vlans'), []);
+  const lecturaRooms = useLectura<RoomWithState[]>(listRooms, []);
+  const vlans = lecturaVlans.data ?? [];
+  const rooms = lecturaRooms.data ?? [];
 
   const assignToRoom = async (next: string | null) => {
     const previous = roomId;
@@ -115,23 +104,20 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
 
   // Histórico de tráfico de la última hora para este dispositivo (US-46). Desde
   // US-250 la fuente exige `home.activity` (solo admin), así que a los demás ni se
-  // les pide: el `catch` de abajo lo dejaría en «sin datos», que es justo la
-  // confusión que hay que evitar —no es que no haya, es que no se les enseña—.
-  useEffect(() => {
-    if (!isAdmin) {
-      setTraffic(null);
-      return;
-    }
-    void api
-      .get<DeviceTrafficReport>('/traffic/devices?range=hour')
-      .then((report) => {
-        const found = (report?.devices ?? []).find(
-          (r) => r.mac.toLowerCase() === device.mac.toLowerCase(),
-        );
-        setTraffic(found ?? null);
-      })
-      .catch(() => setTraffic(null));
-  }, [device.mac, isAdmin]);
+  // les pide: no es que no haya, es que no se les enseña. Un fallo se dice como
+  // fallo, nunca como «sin datos».
+  const lecturaTraffic = useLectura(
+    async () => {
+      const report = await api.get<DeviceTrafficReport>('/traffic/devices?range=hour');
+      const found = (report?.devices ?? []).find(
+        (r) => r.mac.toLowerCase() === device.mac.toLowerCase(),
+      );
+      return { stats: (found ?? null) as DeviceTrafficStats | null };
+    },
+    [device.mac],
+    { enabled: isAdmin },
+  );
+  const traffic = lecturaTraffic.data?.stats ?? null;
 
   // Bloqueo optimista con reversión (US-96): el botón refleja el estado al
   // instante y vuelve atrás + toast si la petición falla; la verdad la confirma
@@ -161,12 +147,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
     }
   };
 
-  useEffect(() => {
-    if (!isAdmin) return;
-    void listUsers()
-      .then(setHouseholdUsers)
-      .catch(() => setHouseholdUsers([]));
-  }, [isAdmin]);
+  const lecturaUsers = useLectura<UserSummary[]>(listUsers, [], { enabled: isAdmin });
+  const householdUsers = lecturaUsers.data ?? [];
 
   // Asignación de dueño con reversión (mismo patrón que habitación/VLAN).
   const assignOwner = async (next: string | null) => {
@@ -335,9 +317,13 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             </div>
           </div>
         </div>
-      ) : isAdmin ? (
+      ) : isAdmin && lecturaTraffic.failed ? (
+        <div className="mb-4">
+          <FormError>{t('device.traffic.error')}</FormError>
+        </div>
+      ) : isAdmin && lecturaTraffic.data ? (
         <p className="mb-4 text-kr-xs text-kr-muted">{t('device.traffic.empty')}</p>
-      ) : (
+      ) : isAdmin ? null : (
         /* «Sin datos» sería mentira: puede haberlos y no se enseñan (US-250). */
         <p className="mb-4 text-kr-xs text-kr-muted">{t('device.traffic.adminOnly')}</p>
       )}
@@ -411,19 +397,20 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
             id="d-room"
             rooms={rooms}
             value={roomId}
-            disabled={roomBusy}
+            disabled={roomBusy || lecturaRooms.data === null}
             onChange={(next) => void assignToRoom(next)}
           />
         )}
+        {isAdmin && lecturaRooms.failed && <FormError>{t('device.roomsLoadError')}</FormError>}
 
-        {isAdmin && householdUsers.length > 0 && (
+        {isAdmin && (householdUsers.length > 0 || lecturaUsers.failed) && (
           <div className="space-y-2">
             <Label htmlFor="d-owner">{t('device.owner')}</Label>
             <select
               id="d-owner"
               className={SELECT_CLASS}
               value={ownerId ?? ''}
-              disabled={ownerBusy}
+              disabled={ownerBusy || lecturaUsers.data === null}
               onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
             >
               <option value="">{t('device.noOwner')}</option>
@@ -433,6 +420,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                 </option>
               ))}
             </select>
+            {lecturaUsers.failed && <FormError>{t('device.usersLoadError')}</FormError>}
           </div>
         )}
 
@@ -443,7 +431,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
               id="d-vlan"
               className={SELECT_CLASS}
               value={vlanTag ?? ''}
-              disabled={vlanBusy}
+              disabled={vlanBusy || lecturaVlans.data === null}
               onChange={(e) =>
                 void assignVlan(e.target.value === '' ? null : Number(e.target.value))
               }
@@ -455,6 +443,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                 </option>
               ))}
             </select>
+            {lecturaVlans.failed && <FormError>{t('device.vlansLoadError')}</FormError>}
           </div>
         )}
       </div>

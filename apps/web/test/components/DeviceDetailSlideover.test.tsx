@@ -257,6 +257,51 @@ describe('DeviceDetailSlideover', () => {
   });
 });
 
+describe('DeviceDetailSlideover — lecturas que fallan', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset();
+    apiMock.patch.mockReset().mockResolvedValue(device());
+    apiMock.put.mockReset().mockResolvedValue(undefined);
+    useToastStore.setState({ toasts: [] });
+    asRole('admin');
+  });
+
+  it('VLAN, habitaciones y usuarios caídos dejan su selector deshabilitado con el motivo', async () => {
+    apiMock.get.mockImplementation((url: string) =>
+      ['/vlans', '/rooms', '/users'].includes(url)
+        ? Promise.reject(new Error('caído'))
+        : Promise.resolve([]),
+    );
+    render(
+      <DeviceDetailSlideover device={device({ vlanTag: 30, ownerId: 'u1' })} onClose={() => {}} />,
+    );
+    expect(await screen.findByText('No se pudieron cargar las VLAN.')).toBeInTheDocument();
+    expect(screen.getByText('No se pudieron cargar las habitaciones.')).toBeInTheDocument();
+    expect(screen.getByText('No se pudieron cargar los usuarios.')).toBeInTheDocument();
+    expect(screen.getByLabelText('VLAN')).toBeDisabled();
+    expect(screen.getByLabelText('Habitación')).toBeDisabled();
+    expect(screen.getByLabelText('Dueño')).toBeDisabled();
+  });
+
+  it('con las lecturas bien, los selectores siguen editables y sin avisos', async () => {
+    apiMock.get.mockResolvedValue([]);
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText('VLAN')).toBeEnabled());
+    expect(screen.queryByText(/No se pudieron cargar/)).not.toBeInTheDocument();
+  });
+
+  it('el tráfico que falla dice que no se pudo cargar, no «sin datos de tráfico»', async () => {
+    apiMock.get.mockImplementation((url: string) =>
+      url.startsWith('/traffic/devices') ? Promise.reject(new Error('caído')) : Promise.resolve([]),
+    );
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+    expect(
+      await screen.findByText('No se pudo cargar el tráfico de este aparato.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Sin datos de tráfico disponibles/)).not.toBeInTheDocument();
+  });
+});
+
 describe('DeviceDetailSlideover en inglés (issue #93)', () => {
   beforeEach(() => {
     apiMock.get.mockReset().mockResolvedValue([]);
