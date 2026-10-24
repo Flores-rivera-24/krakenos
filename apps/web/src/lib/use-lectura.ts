@@ -20,7 +20,8 @@ export interface Lectura<T> {
  * Un fallo nunca borra el dato anterior: si ya había algo pintado, se conserva y
  * `failed` avisa de que está viejo (para marcarlo con `StaleBadge`); si no había
  * nada, `data` sigue en `null` y la pantalla enseña el error, nunca «sin
- * resultados». Una lista vacía de verdad llega como `data: []`.
+ * resultados». Una lista vacía de verdad llega como `data: []`. `null` es «sin
+ * dato», no un valor: si `leer()` resuelve `null`, `loading` termina igualmente.
  *
  * No cachea ni deduplica: eso es `useResource`, para lecturas **compartidas** por
  * varias pantallas. Aquí cada consumidor pide lo suyo cuando cambian `deps`.
@@ -35,6 +36,8 @@ export function useLectura<T>(
   const [data, setData] = useState<T | null>(null);
   const [failed, setFailed] = useState(false);
   const [enVuelo, setEnVuelo] = useState(enabled);
+  // Una lectura que resolvió (aunque sea con `null`) ya no está «cargando».
+  const [resuelto, setResuelto] = useState(false);
   const [intento, setIntento] = useState(0);
   // Cambiar `deps` (no reintentar) es pedir OTRA cosa: el dato anterior es de
   // otra cosa (p. ej. otro aparato) y no se enseña mientras llega el nuevo.
@@ -43,6 +46,7 @@ export function useLectura<T>(
     setDepsPrevias(deps);
     setData(null);
     setFailed(false);
+    setResuelto(false);
     setEnVuelo(enabled);
   }
   // La función suele ser una lambda nueva en cada render; el efecto solo se
@@ -63,6 +67,7 @@ export function useLectura<T>(
         if (!active) return;
         setData(valor);
         setFailed(false);
+        setResuelto(true);
       })
       .catch(() => {
         if (!active) return;
@@ -84,7 +89,7 @@ export function useLectura<T>(
 
   // Derivado, sin efecto: al pasar `enabled` a true hay un render antes de que el
   // efecto marque la petición, y en ese render no puede pintarse «vacío».
-  const loading = enabled && data === null && (enVuelo || !failed);
+  const loading = enabled && data === null && (enVuelo || !(failed || resuelto));
 
   return { data, failed, loading, reintentar, setData };
 }

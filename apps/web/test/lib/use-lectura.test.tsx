@@ -5,6 +5,15 @@ import { useLectura } from '@/lib/use-lectura';
 afterEach(() => vi.restoreAllMocks());
 
 describe('useLectura', () => {
+  it('una lectura que resuelve null termina: loading pasa a false (no spinner eterno)', async () => {
+    const leer = vi.fn().mockResolvedValue(null);
+    const { result } = renderHook(() => useLectura<string | null>(leer, []));
+    expect(result.current.loading).toBe(true);
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toBeNull();
+    expect(result.current.failed).toBe(false);
+  });
+
   it('carga: loading true → data con el valor, failed false', async () => {
     const leer = vi.fn().mockResolvedValue([1, 2]);
     const { result } = renderHook(() => useLectura(leer, []));
