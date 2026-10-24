@@ -84,4 +84,51 @@ describe('useLectura', () => {
     expect(result.current.data).toBe(5);
     expect(leer).toHaveBeenCalledTimes(1);
   });
+
+  it('una respuesta vieja que llega tarde no pisa la de las deps nuevas', async () => {
+    const resolvers: Record<string, (v: string) => void> = {};
+    const leer = (id: string) => new Promise<string>((r) => (resolvers[id] = r));
+    const { result, rerender } = renderHook(({ id }) => useLectura(() => leer(id), [id]), {
+      initialProps: { id: 'a' },
+    });
+    rerender({ id: 'b' });
+    await act(async () => {
+      resolvers.b?.('de-b');
+    });
+    await waitFor(() => expect(result.current.data).toBe('de-b'));
+    await act(async () => {
+      resolvers.a?.('de-a');
+    });
+    expect(result.current.data).toBe('de-b');
+  });
+
+  it('enabled false→true: loading es true desde el primer render', () => {
+    const leer = vi.fn(() => new Promise<number>(() => {}));
+    const vistos: boolean[] = [];
+    const { rerender } = renderHook(
+      ({ on }) => {
+        const l = useLectura(leer, [], { enabled: on });
+        vistos.push(l.loading);
+        return l;
+      },
+      { initialProps: { on: false } },
+    );
+    vistos.length = 0;
+    rerender({ on: true });
+    expect(vistos[0]).toBe(true);
+  });
+
+  it('cambio de deps: el dato anterior no se conserva y vuelve loading', async () => {
+    const leer = vi.fn((id: string) =>
+      id === 'a' ? Promise.resolve('de-a') : new Promise<string>(() => {}),
+    );
+    const { result, rerender } = renderHook(({ id }) => useLectura(() => leer(id), [id]), {
+      initialProps: { id: 'a' },
+    });
+    await waitFor(() => expect(result.current.data).toBe('de-a'));
+    rerender({ id: 'b' });
+    expect(result.current.data).toBeNull();
+    expect(result.current.loading).toBe(true);
+    expect(result.current.failed).toBe(false);
+  });
 });

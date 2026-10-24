@@ -36,6 +36,15 @@ export function useLectura<T>(
   const [failed, setFailed] = useState(false);
   const [enVuelo, setEnVuelo] = useState(enabled);
   const [intento, setIntento] = useState(0);
+  // Cambiar `deps` (no reintentar) es pedir OTRA cosa: el dato anterior es de
+  // otra cosa (p. ej. otro aparato) y no se enseña mientras llega el nuevo.
+  const [depsPrevias, setDepsPrevias] = useState(deps);
+  if (deps.length !== depsPrevias.length || deps.some((d, i) => !Object.is(d, depsPrevias[i]))) {
+    setDepsPrevias(deps);
+    setData(null);
+    setFailed(false);
+    setEnVuelo(enabled);
+  }
   // La función suele ser una lambda nueva en cada render; el efecto solo se
   // relanza con `deps`, `enabled` o `intento`.
   const leerRef = useRef(leer);
@@ -68,7 +77,14 @@ export function useLectura<T>(
     // `deps` lo decide el consumidor (el linter del repo no revisa dependencias).
   }, [...deps, enabled, intento]);
 
-  const reintentar = useCallback(() => setIntento((n) => n + 1), []);
+  const reintentar = useCallback(() => {
+    setEnVuelo(true);
+    setIntento((n) => n + 1);
+  }, []);
 
-  return { data, failed, loading: enVuelo && data === null, reintentar, setData };
+  // Derivado, sin efecto: al pasar `enabled` a true hay un render antes de que el
+  // efecto marque la petición, y en ese render no puede pintarse «vacío».
+  const loading = enabled && data === null && (enVuelo || !failed);
+
+  return { data, failed, loading, reintentar, setData };
 }
