@@ -1,5 +1,5 @@
 import type { AlarmConfig, IotDevice } from '@krakenos/types';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -108,5 +108,29 @@ describe('AlarmSettingsSlideover (US-188 · US-245)', () => {
     expect(
       await screen.findByText(/de noche, con la casa llena, es cuando más importa/i),
     ).toBeInTheDocument();
+  });
+
+  it('si la config no carga, lo dice, no deja guardar y reintentar recupera', async () => {
+    apiMock.get.mockResolvedValue([]);
+    alarmMock.getAlarmConfig.mockRejectedValueOnce(new Error('boom'));
+    render(<AlarmSettingsSlideover onClose={() => {}} />);
+    expect(await screen.findByText('No se pudo cargar la configuración')).toBeInTheDocument();
+    const guardar = screen.getByRole('button', { name: 'Guardar' });
+    expect(guardar).toBeDisabled();
+    fireEvent.click(guardar);
+    expect(alarmMock.updateAlarmConfig).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByLabelText('Retardo de salida (s)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+  });
+
+  it('si fallan las listas de aparatos o cámaras, lo dice en vez de «sin dispositivos»', async () => {
+    apiMock.get.mockRejectedValue(new Error('boom'));
+    camerasMock.listCameras.mockRejectedValue(new Error('boom'));
+    render(<AlarmSettingsSlideover onClose={() => {}} />);
+    expect(await screen.findAllByText('No se pudieron cargar los aparatos.')).not.toHaveLength(0);
+    expect(screen.getByText('No se pudieron cargar las cámaras.')).toBeInTheDocument();
+    expect(screen.queryByText(/Sin dispositivos disponibles/i)).not.toBeInTheDocument();
   });
 });

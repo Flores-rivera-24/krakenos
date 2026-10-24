@@ -1,6 +1,7 @@
 import type { AlarmConfig, Camera, IotDevice, UpdateAlarmConfigRequest } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { WidgetError } from '@/components/ui/widget-error';
 import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,6 +13,7 @@ import { api } from '@/lib/api';
 import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { plural, useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/panel';
 
@@ -24,17 +26,22 @@ function CheckList({
   items,
   selected,
   onToggle,
+  failure,
 }: {
   label: string;
   items: { id: string; name: string }[];
   selected: string[];
   onToggle: (id: string) => void;
+  /** La lista no se pudo leer: se dice, no se pinta como «sin dispositivos». */
+  failure?: string;
 }) {
   const t = useT();
   return (
     <div className="space-y-1">
       <Label>{label}</Label>
-      {items.length === 0 ? (
+      {failure ? (
+        <p className="text-kr-xs text-kr-secondary">{failure}</p>
+      ) : items.length === 0 ? (
         <p className="text-kr-xs text-kr-muted">{t('alarmSettings.noDevices')}</p>
       ) : (
         <ul className="space-y-1">
@@ -59,33 +66,38 @@ function CheckList({
 /** Config de la alarma (US-188, admin): dispositivos, retardos, auto-armado y PIN. */
 export function AlarmSettingsSlideover({ onClose }: Props) {
   const t = useT();
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [devices, setDevices] = useState<IotDevice[]>([]);
-  const [cameras, setCameras] = useState<Camera[]>([]);
   const [cfg, setCfg] = useState<AlarmConfig | null>(null);
   const [pin, setPin] = useState('');
 
-  useEffect(() => {
-    let active = true;
-    void Promise.all([
+  // La config manda: si no se lee, no hay nada que guardar. Las listas solo
+  // ofrecen qué marcar, y si fallan se dice (no es «sin dispositivos»).
+  const lectura = useLectura(async () => {
+    let devicesFailed = false;
+    let camerasFailed = false;
+    const [config, devices, cameras] = await Promise.all([
       getAlarmConfig(),
-      api.getList<IotDevice>('/iot/devices').catch(() => [] as IotDevice[]),
-      listCameras().catch(() => [] as Camera[]),
-    ])
-      .then(([c, d, cams]) => {
-        if (!active) return;
-        setCfg(c);
-        setDevices(d);
-        setCameras(cams);
-      })
-      .catch((err) => active && setError(describeError(err, t('alarmSettings.loadError'))))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+      api.getList<IotDevice>('/iot/devices').catch(() => {
+        devicesFailed = true;
+        return [] as IotDevice[];
+      }),
+      listCameras().catch(() => {
+        camerasFailed = true;
+        return [] as Camera[];
+      }),
+    ]);
+    return { config, devices, cameras, devicesFailed, camerasFailed };
   }, []);
+  const leido = lectura.data;
+  // Con el dato leído pero `cfg` aún sin copiar (lo hace el efecto) sigue «cargando».
+  const loading = lectura.loading || (leido !== null && !cfg);
+  const devices = leido?.devices ?? [];
+  const cameras = leido?.cameras ?? [];
+
+  useEffect(() => {
+    if (leido) setCfg(leido.config);
+  }, [leido]);
 
   const toggle = (key: 'lightDeviceIds' | 'sensorDeviceIds' | 'cameraIds', id: string) =>
     setCfg((c) =>
@@ -138,7 +150,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
   const footer = (
     <div className="space-y-2">
       {error && <FormError>{error}</FormError>}
-      <Button onClick={() => void submit()} disabled={saving || loading} className="w-full">
+      <Button onClick={() => void submit()} disabled={saving || !cfg} className="w-full">
         {saving ? t('common.saving') : t('common.save')}
       </Button>
     </div>
@@ -146,8 +158,10 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
 
   return (
     <Slideover open onClose={onClose} title={t('alarmSettings.title')} footer={footer}>
-      {loading || !cfg ? (
+      {loading ? (
         <p className="text-kr-sm text-kr-secondary">{t('common.loading')}</p>
+      ) : !cfg ? (
+        <WidgetError message={t('alarmSettings.loadError')} onRetry={lectura.reintentar} />
       ) : (
         <div className="space-y-5">
           <Callout variant="warning" title={t('widget.alarm.disclaimerTitle')}>
@@ -176,12 +190,14 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             items={lights}
             selected={cfg.lightDeviceIds}
             onToggle={(id) => toggle('lightDeviceIds', id)}
+            failure={leido?.devicesFailed ? t('alarmSettings.devicesLoadError') : undefined}
           />
           <CheckList
             label={t('alarmSettings.sensors')}
             items={sensors}
             selected={cfg.sensorDeviceIds}
             onToggle={(id) => toggle('sensorDeviceIds', id)}
+            failure={leido?.devicesFailed ? t('alarmSettings.devicesLoadError') : undefined}
           />
 
           <Callout variant="info" title={t('alarmSettings.lifeSafety.title')} standing>
@@ -201,6 +217,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             items={cameras}
             selected={cfg.cameraIds}
             onToggle={(id) => toggle('cameraIds', id)}
+            failure={leido?.camerasFailed ? t('alarmSettings.camerasLoadError') : undefined}
           />
 
           <div className="grid grid-cols-2 gap-3">

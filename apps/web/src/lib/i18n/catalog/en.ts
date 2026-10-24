@@ -360,6 +360,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.mqtt.saving': 'Saving…',
   'settings.mqtt.saved': 'MQTT configuration saved',
   'settings.mqtt.error': 'Could not save the MQTT configuration',
+  'settings.mqtt.loadError':
+    'Could not load the MQTT configuration; it cannot be saved until it is read.',
   'settings.mqtt.connected': 'Connected',
   'settings.mqtt.disconnected': 'Not connected',
   'settings.mqtt.lastError': 'Last error: {error}',
@@ -1440,6 +1442,8 @@ export const en: Record<TranslationKey, string> = {
     'A smoke or CO detector warns you even if the alarm is disarmed and even if it is not ticked above: at night, with a full house, is when it matters most. Ticking it here adds the siren and the lights when the alarm is armed.',
   'alarmSettings.saved': 'Alarm settings saved',
   'alarmSettings.loadError': 'Could not load the configuration',
+  'alarmSettings.devicesLoadError': 'Could not load the devices.',
+  'alarmSettings.camerasLoadError': 'Could not load the cameras.',
   'alarmSettings.saveError': 'Could not save',
   'backup.title': 'Backup',
   'backup.intro':

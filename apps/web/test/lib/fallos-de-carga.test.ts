@@ -64,7 +64,6 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
 const PENDIENTES: Record<string, number> = {
   'components/connect/CompatibilitySection.tsx': 1,
   'components/coverage/SurveyPanel.tsx': 1,
-  'components/dashboard/AlarmSettingsSlideover.tsx': 2,
   'components/dashboard/widgets/HomeModeWidget.tsx': 2,
   'components/dashboard/widgets/TrafficWidget.tsx': 1,
   'components/energy/EnergyAlertsCard.tsx': 2,
@@ -72,7 +71,6 @@ const PENDIENTES: Record<string, number> = {
   'components/settings/ApiTokensCard.tsx': 1,
   'components/settings/IntegrationsSection.tsx': 1,
   'components/settings/MatterBridgeCard.tsx': 1,
-  'components/settings/MqttInteropCard.tsx': 1,
   'components/settings/SupportCard.tsx': 2,
   'components/settings/TlsCard.tsx': 1,
   'components/settings/TuyaManager.tsx': 1,

@@ -74,4 +74,23 @@ describe('MotionSettingsSlideover (US-186)', () => {
       expect(screen.getByRole('button', { name: dia })).toHaveAttribute('aria-pressed');
     }
   });
+
+  it('si la lectura falla, dice el fallo, no deja guardar y reintentar recupera', async () => {
+    const user = userEvent.setup();
+    camerasMock.getMotionConfig.mockReset().mockRejectedValueOnce(new Error('boom'));
+    camerasMock.getMotionConfig.mockResolvedValue(CONFIG);
+    render(<MotionSettingsSlideover camera={CAM} onClose={() => {}} />);
+    expect(
+      await screen.findByText('No se pudo cargar la configuración de movimiento'),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText('Detectar movimiento')).not.toBeInTheDocument();
+    const guardar = screen.getByRole('button', { name: 'Guardar' });
+    expect(guardar).toBeDisabled();
+    await user.click(guardar);
+    expect(camerasMock.updateMotionConfig).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByLabelText('Detectar movimiento')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Guardar' })).toBeEnabled();
+  });
 });

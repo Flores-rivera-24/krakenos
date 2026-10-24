@@ -191,6 +191,8 @@ export const esAjustes = {
   'settings.mqtt.saving': 'Guardando…',
   'settings.mqtt.saved': 'Configuración MQTT guardada',
   'settings.mqtt.error': 'No se pudo guardar la configuración MQTT',
+  'settings.mqtt.loadError':
+    'No se pudo cargar la configuración de MQTT; no se puede guardar hasta leerla.',
   'settings.mqtt.connected': 'Conectado',
   'settings.mqtt.disconnected': 'Sin conectar',
   'settings.mqtt.lastError': 'Último error: {error}',

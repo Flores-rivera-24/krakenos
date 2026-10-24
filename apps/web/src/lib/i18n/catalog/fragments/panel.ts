@@ -61,6 +61,8 @@ export const esPanel = {
     'Un detector de humo o CO avisa aunque la alarma esté desarmada y aunque no esté marcado arriba: de noche, con la casa llena, es cuando más importa. Marcarlo aquí añade la sirena y las luces cuando la alarma esté armada.',
   'alarmSettings.saved': 'Ajustes de alarma guardados',
   'alarmSettings.loadError': 'No se pudo cargar la configuración',
+  'alarmSettings.devicesLoadError': 'No se pudieron cargar los aparatos.',
+  'alarmSettings.camerasLoadError': 'No se pudieron cargar las cámaras.',
   'alarmSettings.saveError': 'No se pudo guardar',
   'widget.homeMode.loadError': 'No se pudo cargar el estado del hogar.',
   'widget.homeMode.group': 'Modo del hogar',
