@@ -596,25 +596,24 @@ export function SettingsPage() {
             </>
           )}
 
-          {section === 'seguridad' &&
-            (data ? (
-              <SecuritySection settings={data.settings} patch={patch} isAdmin={isAdmin} />
-            ) : (
-              ajustesCaidos && (
+          {section === 'seguridad' && (
+            <SecuritySection
+              settings={data?.settings ?? null}
+              patch={patch}
+              isAdmin={isAdmin}
+              ajustesPendientes={errorAjustes}
+            />
+          )}
+
+          {section === 'integraciones' && (
+            <div className="space-y-6">
+              {/* Estas tarjetas leen sus propias rutas: que /system/settings caiga no
+                  las esconde. Solo el aviso de fallo se suma encima. */}
+              {ajustesCaidos && settingsFailed && (
                 <Card>
                   <CardContent>{errorAjustes}</CardContent>
                 </Card>
-              )
-            ))}
-
-          {section === 'integraciones' && !data && ajustesCaidos && (
-            <Card>
-              <CardContent>{errorAjustes}</CardContent>
-            </Card>
-          )}
-
-          {section === 'integraciones' && data && (
-            <div className="space-y-6">
+              )}
               <IntegrationsSection isAdmin={isAdmin} />
               <MatterBridgeCard isAdmin={isAdmin} />
               {isAdmin && <MqttInteropCard />}

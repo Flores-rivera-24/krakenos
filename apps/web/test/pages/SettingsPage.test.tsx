@@ -1,6 +1,7 @@
 import type { SystemSettingsResponse } from '@krakenos/types';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -65,7 +66,11 @@ describe('SettingsPage', () => {
 
   it('renderiza las 5 secciones', () => {
     setUser('admin');
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     for (const s of ['Sistema', 'Red', 'Seguridad', 'Integraciones', 'Cuenta']) {
       expect(screen.getByRole('button', { name: s })).toBeInTheDocument();
     }
@@ -74,7 +79,11 @@ describe('SettingsPage', () => {
   it('el menú de secciones se nombra y marca la sección actual con aria-current', async () => {
     setUser('admin');
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     const menu = screen.getByRole('navigation', { name: 'Secciones de ajustes' });
     const botones = within(menu).getAllByRole('button');
     expect(botones.length).toBeGreaterThanOrEqual(5);
@@ -97,7 +106,11 @@ describe('SettingsPage', () => {
 
   it('los tres «Guardar» de Sistema dicen qué guardan', async () => {
     setUser('admin');
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await screen.findByLabelText('Supresión nocturna de salidas');
     for (const campo of [
       'Nombre del hogar',
@@ -112,7 +125,11 @@ describe('SettingsPage', () => {
 
   it('lo que significa dejar vacío un campo va en una ayuda visible, no en el placeholder', async () => {
     setUser('admin');
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     const noche = await screen.findByLabelText('Supresión nocturna de salidas');
     const ventana = screen.getByLabelText('Ventana de mantenimiento');
     // El placeholder es corto (en móvil se cortaba justo antes de decir qué pasa si está vacío)…
@@ -125,7 +142,11 @@ describe('SettingsPage', () => {
 
   it('carga los ajustes del sistema y muestra el estado de HTTPS', async () => {
     setUser('admin');
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await waitFor(() => expect(apiMock.get).toHaveBeenCalledWith('/system/settings'));
     expect(await screen.findByDisplayValue('Casa Flores')).toBeInTheDocument();
     expect(screen.getByText(/Desactivado/)).toBeInTheDocument();
@@ -134,7 +155,11 @@ describe('SettingsPage', () => {
   it('un admin puede cambiar la zona horaria: PATCH con la clave', async () => {
     setUser('admin');
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await screen.findByDisplayValue('Casa Flores');
     await user.selectOptions(screen.getByDisplayValue('Europe/Madrid'), 'UTC');
     await waitFor(() =>
@@ -149,7 +174,11 @@ describe('SettingsPage', () => {
     setUser('admin');
     apiMock.patch.mockRejectedValue(new Error('500'));
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await screen.findByDisplayValue('Casa Flores');
 
     await user.selectOptions(screen.getByDisplayValue('Europe/Madrid'), 'UTC');
@@ -160,10 +189,70 @@ describe('SettingsPage', () => {
     expect(screen.getByDisplayValue('Europe/Madrid')).toBeInTheDocument();
   });
 
+  describe('con /system/settings caído o pendiente', () => {
+    const ajustesCaidos = () =>
+      apiMock.get.mockImplementation((path: string) =>
+        path.startsWith('/system/settings')
+          ? Promise.reject(new Error('500'))
+          : Promise.resolve([]),
+      );
+
+    it('Integraciones conserva sus tarjetas y suma el aviso de fallo', async () => {
+      setUser('admin');
+      ajustesCaidos();
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Integraciones' }));
+      expect(await screen.findByText('No se pudieron cargar los ajustes.')).toBeInTheDocument();
+      expect(screen.getByText('Puente Matter (Alexa / Google / Apple)')).toBeInTheDocument();
+      expect(screen.getByText('Tiempo exterior')).toBeInTheDocument();
+    });
+
+    it('Seguridad conserva Sesiones activas y avisa en lugar de los controles', async () => {
+      setUser('admin');
+      ajustesCaidos();
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Seguridad' }));
+      expect(await screen.findByText('No se pudieron cargar los ajustes.')).toBeInTheDocument();
+      expect(screen.getByText('Sesiones activas')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Duración del access token')).not.toBeInTheDocument();
+    });
+
+    it('con la petición pendiente los controles dependientes no se ofrecen', async () => {
+      setUser('admin');
+      apiMock.get.mockImplementation((path: string) =>
+        path.startsWith('/system/settings') ? new Promise(() => {}) : Promise.resolve([]),
+      );
+      const user = userEvent.setup();
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Seguridad' }));
+      expect(await screen.findByText('Sesiones activas')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Duración del access token')).not.toBeInTheDocument();
+      expect(screen.queryByText('No se pudieron cargar los ajustes.')).not.toBeInTheDocument();
+    });
+  });
+
   it('la sección Red prueba la conexión vía connectivity-test', async () => {
     setUser('admin');
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole('button', { name: 'Red' }));
     await user.click(screen.getByRole('button', { name: 'Probar conexión' }));
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/system/connectivity-test'));
@@ -173,7 +262,11 @@ describe('SettingsPage', () => {
   it('la sección Cuenta muestra los datos del usuario', async () => {
     setUser('viewer');
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole('button', { name: 'Cuenta' }));
     expect(screen.getByText('Emilio')).toBeInTheDocument();
     expect(screen.getByText('admin@krakenos.local')).toBeInTheDocument();
@@ -185,7 +278,11 @@ describe('SettingsPage', () => {
   it('la sección Cuenta nombra el rol admin como «Administrador»', async () => {
     setUser('admin');
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole('button', { name: 'Cuenta' }));
     expect(screen.getByText('Administrador')).toBeInTheDocument();
     expect(screen.queryByText('admin')).not.toBeInTheDocument();
@@ -212,7 +309,11 @@ describe('SettingsPage', () => {
       return Promise.resolve([]);
     });
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole('button', { name: 'Cuenta' }));
 
     expect(await screen.findByText('Inicio de sesión')).toBeInTheDocument();
@@ -228,7 +329,11 @@ describe('SettingsPage', () => {
   // todo el mundo menos el admin — y nadie lo notaría.
   it('la licencia y el enlace al código se ven sin ser admin', () => {
     setUser('viewer');
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     expect(screen.getByText(/AGPL-3\.0-or-later/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /código fuente/i })).toBeInTheDocument();
     // Contraste: lo que sí es admin-only sigue oculto para este mismo usuario.
@@ -247,7 +352,11 @@ describe('SettingsPage: /system/settings falla', () => {
       return Promise.resolve([]);
     });
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
 
     expect(
       (await screen.findAllByText('No se pudieron cargar los ajustes.')).length,
@@ -281,7 +390,11 @@ describe('SettingsPage: auditoría y carga de ajustes', () => {
       return Promise.resolve([]);
     });
     const user = userEvent.setup();
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     await user.click(screen.getByRole('button', { name: 'Cuenta' }));
 
     expect(
@@ -301,7 +414,11 @@ describe('SettingsPage: auditoría y carga de ajustes', () => {
       .mockImplementation((path: string) =>
         path.startsWith('/system/settings') ? new Promise(() => {}) : Promise.resolve([]),
       );
-    render(<SettingsPage />);
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
     expect(await screen.findByText('Cargando…')).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Guardar: Nombre del hogar' }),
