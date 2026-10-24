@@ -108,4 +108,17 @@ describe('TuyaManager', () => {
     await user.click(screen.getByRole('button', { name: 'Añadir foco' }));
     expect(screen.getByLabelText('Versión')).toBeEnabled();
   });
+
+  it('si el reintento tras borrar falla, conserva los focos y los marca como viejos', async () => {
+    const user = userEvent.setup();
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    apiMock.get.mockRejectedValue(new Error('caído'));
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await user.click(screen.getByRole('button', { name: 'Sí' }));
+    await waitFor(() => expect(apiMock.del).toHaveBeenCalled());
+    expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+    expect(screen.getByText('Salón')).toBeInTheDocument();
+    expect(screen.queryByText('Sin focos Tuya registrados.')).toBeNull();
+  });
 });

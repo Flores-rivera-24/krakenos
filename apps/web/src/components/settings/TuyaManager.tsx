@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { useLectura } from '@/lib/use-lectura';
 import { FormError } from '@/components/ui/form-error';
@@ -156,6 +157,7 @@ export function TuyaManager({ reachable }: Props) {
   return (
     <div className="space-y-3">
       {error && <FormError>{error}</FormError>}
+      {lectura.failed && devices !== null && <StaleBadge />}
 
       <div className="overflow-x-auto rounded-md border border-kr">
         <table className="w-full text-kr-sm">

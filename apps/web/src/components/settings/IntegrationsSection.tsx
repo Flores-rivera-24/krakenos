@@ -26,12 +26,15 @@ function IntegrationCard({
   title,
   stats,
   unknown = false,
+  pending = false,
   children,
 }: {
   title: string;
   stats: BackendStats;
   /** La lectura falló y no hay dato: no se sabe si está o no, y no se dice «No detectada». */
   unknown?: boolean;
+  /** Aún no ha llegado la respuesta: ni «detectada», ni «no detectada», ni fallo. */
+  pending?: boolean;
   children?: ReactNode;
 }) {
   const t = useT();
@@ -40,19 +43,23 @@ function IntegrationCard({
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>{title}</CardTitle>
-        <StatusDot
-          status={
-            unknown ? 'warning' : active ? (stats.online > 0 ? 'online' : 'warning') : 'offline'
-          }
-        />
+        {!pending && (
+          <StatusDot
+            status={
+              unknown ? 'warning' : active ? (stats.online > 0 ? 'online' : 'warning') : 'offline'
+            }
+          />
+        )}
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-kr-sm text-kr-secondary">
-          {unknown
-            ? t('integrations.unknown')
-            : active
-              ? t('integrations.online', { online: stats.online, total: stats.total })
-              : t('integrations.undetected')}
+        <p className="text-kr-sm text-kr-secondary" aria-busy={pending || undefined}>
+          {pending
+            ? null
+            : unknown
+              ? t('integrations.unknown')
+              : active
+                ? t('integrations.online', { online: stats.online, total: stats.total })
+                : t('integrations.undetected')}
         </p>
         {children}
       </CardContent>
@@ -70,7 +77,9 @@ export function IntegrationsSection({ isAdmin }: Props) {
   const lectura = useLectura(() => api.getList<IotDevice>('/iot/devices'), []);
   const devices = lectura.data ?? [];
   // Sin dato y con fallo no se sabe qué hay: ni «No detectada» ni ofrecer re-vincular.
-  const unknown = lectura.data === null;
+  const unknown = lectura.failed && lectura.data === null;
+  // Mientras llega la primera respuesta, estado neutro.
+  const pending = lectura.data === null && !lectura.failed;
 
   const hue = backendStats(devices, 'hue');
   const govee = backendStats(devices, 'govee');
@@ -90,19 +99,19 @@ export function IntegrationsSection({ isAdmin }: Props) {
           <StaleBadge />
         ))}
       <div className="grid gap-4 sm:grid-cols-2">
-        <IntegrationCard title="Philips Hue" stats={hue} unknown={unknown}>
-          {!unknown && hue.total === 0 && (
+        <IntegrationCard title="Philips Hue" stats={hue} unknown={unknown} pending={pending}>
+          {!unknown && !pending && hue.total === 0 && (
             <p className="text-kr-xs text-kr-muted">{t('integrations.hue.relink')}</p>
           )}
         </IntegrationCard>
 
-        <IntegrationCard title="Govee" stats={govee} unknown={unknown}>
-          {!unknown && govee.total === 0 && (
+        <IntegrationCard title="Govee" stats={govee} unknown={unknown} pending={pending}>
+          {!unknown && !pending && govee.total === 0 && (
             <p className="text-kr-xs text-kr-muted">{t('integrations.govee.hint')}</p>
           )}
         </IntegrationCard>
 
-        <IntegrationCard title="Tuya" stats={tuya} unknown={unknown}>
+        <IntegrationCard title="Tuya" stats={tuya} unknown={unknown} pending={pending}>
           {isAdmin && (
             <Button variant="outline" size="sm" onClick={() => setTuyaOpen((v) => !v)}>
               {tuyaOpen ? t('integrations.tuya.hide') : t('integrations.tuya.manage')}

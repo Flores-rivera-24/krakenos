@@ -109,4 +109,17 @@ describe('IntegrationsSection', () => {
     await waitFor(() => expect(screen.getAllByText('1/1 en línea').length).toBeGreaterThan(0));
     expect(screen.queryAllByText(/No se pudo comprobar/)).toHaveLength(0);
   });
+
+  it('mientras carga no afirma nada: ni fallo ni "No detectada" ni "en línea"', async () => {
+    apiMock.get.mockImplementation(() => new Promise(() => undefined));
+    render(
+      <MemoryRouter>
+        <IntegrationsSection isAdmin />
+      </MemoryRouter>,
+    );
+    await screen.findByText('Philips Hue');
+    expect(screen.queryAllByText(/No se pudo comprobar/)).toHaveLength(0);
+    expect(screen.queryByText('No detectada')).toBeNull();
+    expect(screen.queryByText(/en línea/)).toBeNull();
+  });
 });
