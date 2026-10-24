@@ -2041,6 +2041,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.account.role': 'Role',
   // Audit log card
   'settings.audit.title': 'Audit log',
+  'settings.audit.loadError': 'Could not load the audit log.',
   'settings.audit.empty': 'No activity recorded.',
   // Texto de cada acción de auditoría (`AUDIT_ACTIONS`): el agente manda la clave y la web la traduce.
   'audit.action.access.pause': 'Internet paused for a device',

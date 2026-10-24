@@ -268,3 +268,43 @@ describe('SettingsPage: /system/settings falla', () => {
     expect(screen.queryByText('No se pudieron cargar los ajustes.')).not.toBeInTheDocument();
   });
 });
+
+describe('SettingsPage: auditoría y carga de ajustes', () => {
+  it('si la auditoría falla lo dice con reintento y no dice «sin actividad»', async () => {
+    setUser('admin');
+    let falla = true;
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path.startsWith('/system/settings')) return Promise.resolve(SETTINGS);
+      if (path.startsWith('/audit')) {
+        return falla ? Promise.reject(new Error('red')) : Promise.resolve([]);
+      }
+      return Promise.resolve([]);
+    });
+    const user = userEvent.setup();
+    render(<SettingsPage />);
+    await user.click(screen.getByRole('button', { name: 'Cuenta' }));
+
+    expect(
+      await screen.findByText('No se pudo cargar el registro de auditoría.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Sin actividad registrada.')).not.toBeInTheDocument();
+
+    falla = false;
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByText('Sin actividad registrada.')).toBeInTheDocument();
+  });
+
+  it('mientras /system/settings carga no ofrece guardar sobre valores vacíos', async () => {
+    setUser('admin');
+    apiMock.get
+      .mockReset()
+      .mockImplementation((path: string) =>
+        path.startsWith('/system/settings') ? new Promise(() => {}) : Promise.resolve([]),
+      );
+    render(<SettingsPage />);
+    expect(await screen.findByText('Cargando…')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Guardar: Nombre del hogar' }),
+    ).not.toBeInTheDocument();
+  });
+});

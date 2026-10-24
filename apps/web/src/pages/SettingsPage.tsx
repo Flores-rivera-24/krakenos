@@ -37,6 +37,7 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { useLectura } from '@/lib/use-lectura';
 import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
@@ -112,7 +113,6 @@ export function SettingsPage() {
   const [nightSuppress, setNightSuppress] = useState('');
   const [test, setTest] = useState<ConnectivityTestResult | null>(null);
   const [testing, setTesting] = useState(false);
-  const [audit, setAudit] = useState<AuditLogEntry[] | null>(null);
   const [settingsFailed, setSettingsFailed] = useState(false);
   const [intentoAjustes, setIntentoAjustes] = useState(0);
   const [applied, setApplied] = useState(false);
@@ -164,17 +164,14 @@ export function SettingsPage() {
     };
   }, [intentoAjustes]);
 
-  useEffect(() => {
-    if (!isAdmin || section !== 'cuenta') return;
-    let active = true;
-    void api
-      .getList<AuditLogEntry>('/audit?limit=50')
-      .then((rows) => active && setAudit(rows))
-      .catch(() => active && setAudit([]));
-    return () => {
-      active = false;
-    };
-  }, [isAdmin, section]);
+  const auditLectura = useLectura<AuditLogEntry[]>(
+    () => api.getList<AuditLogEntry>('/audit?limit=50'),
+    [],
+    {
+      enabled: isAdmin && section === 'cuenta',
+    },
+  );
+  const audit = auditLectura.data;
 
   // Limpia el temporizador del aviso "aplicado al instante" al desmontar.
   useEffect(
@@ -210,8 +207,9 @@ export function SettingsPage() {
 
   // Sin la lectura no hay valores reales: los controles que escriben sobre ella
   // no se ofrecen (guardar sobre defectos inventados pisaría la config de verdad).
-  const ajustesCaidos = !data && settingsFailed;
-  const errorAjustes = (
+  // Mientras carga tampoco: un «Guardar» sobre valores vacíos pisaría la config real.
+  const ajustesCaidos = !data;
+  const errorAjustes = settingsFailed ? (
     <WidgetError
       message={t('settings.loadError')}
       onRetry={() => {
@@ -219,6 +217,8 @@ export function SettingsPage() {
         setIntentoAjustes((n) => n + 1);
       }}
     />
+  ) : (
+    <LoadingLine />
   );
 
   const setting = (key: SystemSettingKey): string => data?.settings[key] ?? '';
@@ -679,7 +679,14 @@ export function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     {audit === null ? (
-                      <LoadingLine />
+                      auditLectura.failed ? (
+                        <WidgetError
+                          message={t('settings.audit.loadError')}
+                          onRetry={auditLectura.reintentar}
+                        />
+                      ) : (
+                        <LoadingLine />
+                      )
                     ) : audit.length === 0 ? (
                       <p className="py-6 text-center text-kr-sm text-kr-muted">
                         {t('settings.audit.empty')}

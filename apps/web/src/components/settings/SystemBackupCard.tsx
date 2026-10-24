@@ -5,6 +5,7 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
 import { api } from '@/lib/api';
@@ -257,6 +258,7 @@ function AutoBackupSection() {
     <div className="space-y-3 border-t border-kr pt-4">
       <div>
         <h4 className="text-kr-base font-medium text-kr-primary">{t('backup.auto.title')}</h4>
+        {failed && <StaleBadge />}
         <p className="text-kr-sm text-kr-secondary">
           <RichText>{t('backup.auto.hint')}</RichText>
         </p>

@@ -176,3 +176,22 @@ describe('SystemBackupCard: las copias automáticas que no se pudieron leer', ()
     expect(await screen.findByLabelText(/Frecuencia/i)).toBeInTheDocument();
   });
 });
+
+describe('SystemBackupCard: recarga fallida con el estado ya leído', () => {
+  it('conserva el estado y lo marca como viejo', async () => {
+    apiMock.get.mockReset().mockResolvedValueOnce(OFF);
+    apiMock.get.mockRejectedValue(new Error('red'));
+    apiMock.patch.mockReset().mockResolvedValue({});
+    render(<SystemBackupCard />);
+
+    const select = await screen.findByLabelText(/Frecuencia/i);
+    expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
+    fireEvent.change(select, { target: { value: 'daily' } });
+
+    expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Frecuencia/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText('No se pudo leer el estado de las copias automáticas.'),
+    ).not.toBeInTheDocument();
+  });
+});

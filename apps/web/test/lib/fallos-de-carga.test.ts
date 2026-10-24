@@ -72,7 +72,6 @@ const PENDIENTES: Record<string, number> = {
   'pages/CamerasPage.tsx': 1,
   'pages/EnergyPage.tsx': 1,
   'pages/IotPage.tsx': 1,
-  'pages/SettingsPage.tsx': 1,
 };
 
 describe('fallos de carga que se tragan', () => {

@@ -551,6 +551,7 @@ export const esAjustes = {
   'settings.account.role': 'Rol',
   // Tarjeta Registro de auditoría
   'settings.audit.title': 'Registro de auditoría',
+  'settings.audit.loadError': 'No se pudo cargar el registro de auditoría.',
   'settings.audit.empty': 'Sin actividad registrada.',
   'settings.audit.colAction': 'Acción',
   'settings.audit.colIp': 'IP',

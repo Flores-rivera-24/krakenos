@@ -242,3 +242,26 @@ describe('UpdateCard: un fallo no se pinta como «comprobación desactivada»', 
     ).toBeInTheDocument();
   });
 });
+
+describe('UpdateCard: refresco que falla con el plan ya leído', () => {
+  it('conserva el plan y lo marca como viejo', async () => {
+    setAdmin();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      apiMock.get.mockReset().mockResolvedValueOnce({ ...basePlan, inProgress: true });
+      apiMock.get.mockRejectedValue(new Error('red'));
+      render(<UpdateCard />);
+      expect(await screen.findByText(/en curso|Actualizando/i)).toBeInTheDocument();
+      expect(screen.queryByText('Datos obsoletos')).not.toBeInTheDocument();
+
+      await vi.advanceTimersByTimeAsync(5100);
+      expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
+      expect(
+        screen.queryByText('No se pudo comprobar si hay una actualización.'),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText('1.0.0')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

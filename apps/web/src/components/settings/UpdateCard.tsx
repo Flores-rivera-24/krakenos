@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Callout } from '@/components/ui/callout';
 import { CopyButton } from '@/components/ui/copy-button';
+import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -111,6 +112,7 @@ export function UpdateCard() {
         <CardTitle>{t('settings.update.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
+        {failed && plan && <StaleBadge />}
         <div className="flex items-center justify-between text-kr-base">
           <span className="text-kr-secondary">{t('settings.update.installed')}</span>
           <span className="font-mono text-kr-primary">{plan?.current ?? '—'}</span>
