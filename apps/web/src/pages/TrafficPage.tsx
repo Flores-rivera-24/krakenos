@@ -15,6 +15,8 @@ import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
+import { LoadingStatCard } from '@/components/ui/loading-stat-card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -77,6 +79,10 @@ function TrafficPageBody() {
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [selectedMac, setSelectedMac] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Sin esto, «aún no llegó» y «no se pudo leer» se pintan igual que «no hay».
+  const [statsFailed, setStatsFailed] = useState(false);
+  const [liveLoaded, setLiveLoaded] = useState(false);
+  const [liveFailed, setLiveFailed] = useState(false);
   const devices = useInventoryStore((s) => s.devices);
   const subscribe = useInventoryStore((s) => s.subscribe);
   /**
@@ -133,10 +139,15 @@ function TrafficPageBody() {
   useEffect(() => {
     let active = true;
     setStats(null);
+    setStatsFailed(false);
     void api
       .get<TrafficStats>(`/traffic/stats?range=${range}`)
       .then((s) => active && setStats(s))
-      .catch((err) => active && setError(describeError(err, t('traffic.loadError'))));
+      .catch((err) => {
+        if (!active) return;
+        setStatsFailed(true);
+        setError(describeError(err, t('traffic.loadError')));
+      });
     return () => {
       active = false;
     };
@@ -148,11 +159,25 @@ function TrafficPageBody() {
 
     void api
       .getList<TrafficSample>('/traffic/history')
-      .then((h) => active && setSamples(h))
-      .catch((err) => active && setError(describeError(err, t('traffic.loadError'))));
+      .then((h) => {
+        if (!active) return;
+        setSamples(h);
+        setLiveLoaded(true);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setLiveFailed(true);
+        setError(describeError(err, t('traffic.loadError')));
+      });
 
-    const onHistory = (h: TrafficSample[]) => setSamples(h);
-    const onSample = (s: TrafficSample) => setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
+    const onHistory = (h: TrafficSample[]) => {
+      setSamples(h);
+      setLiveLoaded(true);
+    };
+    const onSample = (s: TrafficSample) => {
+      setSamples((prev) => [...prev, s].slice(-MAX_POINTS));
+      setLiveLoaded(true);
+    };
 
     socket.on('traffic:history', onHistory);
     socket.on('traffic:sample', onSample);
@@ -174,6 +199,8 @@ function TrafficPageBody() {
   );
 
   const last = samples.at(-1);
+  const liveLoading = !last && !liveLoaded && !liveFailed;
+  const statsLoading = !stats && !statsFailed;
 
   // El panel en vivo está obsoleto si el stream está caído o la última muestra
   // dejó de refrescarse (datos congelados, US-94).
@@ -210,20 +237,39 @@ function TrafficPageBody() {
       {error && <ErrorBanner>{error}</ErrorBanner>}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <StatCard
-          title={t('traffic.download')}
-          value={last ? formatRate(last.rxBytesPerSec) : '—'}
-          icon={ArrowDownToLine}
-          accent="text-success"
-          hint="rx"
-        />
-        <StatCard
-          title={t('traffic.upload')}
-          value={last ? formatRate(last.txBytesPerSec) : '—'}
-          icon={ArrowUpFromLine}
-          accent="text-primary"
-          hint="tx"
-        />
+        {liveLoading ? (
+          <>
+            <LoadingStatCard
+              title={t('traffic.download')}
+              icon={ArrowDownToLine}
+              accent="text-success"
+              hint="rx"
+            />
+            <LoadingStatCard
+              title={t('traffic.upload')}
+              icon={ArrowUpFromLine}
+              accent="text-primary"
+              hint="tx"
+            />
+          </>
+        ) : (
+          <>
+            <StatCard
+              title={t('traffic.download')}
+              value={last ? formatRate(last.rxBytesPerSec) : '—'}
+              icon={ArrowDownToLine}
+              accent="text-success"
+              hint="rx"
+            />
+            <StatCard
+              title={t('traffic.upload')}
+              value={last ? formatRate(last.txBytesPerSec) : '—'}
+              icon={ArrowUpFromLine}
+              accent="text-primary"
+              hint="tx"
+            />
+          </>
+        )}
       </div>
 
       <Card>
@@ -232,7 +278,9 @@ function TrafficPageBody() {
           {liveStale && <StaleBadge />}
         </CardHeader>
         <CardContent>
-          {data.length === 0 ? (
+          {liveLoading ? (
+            <Skeleton className="h-[280px] w-full" />
+          ) : data.length === 0 && liveFailed ? null : data.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
               {t('traffic.waiting')}
             </p>
@@ -306,18 +354,32 @@ function TrafficPageBody() {
             <div>
               <p className="text-muted-foreground">{t('traffic.totalDownloaded')}</p>
               <p className="font-semibold text-success">
-                {stats ? formatBytes(stats.totalRxBytes) : '—'}
+                {statsLoading ? (
+                  <Skeleton className="h-5 w-20" />
+                ) : stats ? (
+                  formatBytes(stats.totalRxBytes)
+                ) : (
+                  '—'
+                )}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground">{t('traffic.totalUploaded')}</p>
               <p className="font-semibold text-primary">
-                {stats ? formatBytes(stats.totalTxBytes) : '—'}
+                {statsLoading ? (
+                  <Skeleton className="h-5 w-20" />
+                ) : stats ? (
+                  formatBytes(stats.totalTxBytes)
+                ) : (
+                  '—'
+                )}
               </p>
             </div>
           </div>
 
-          {history.length === 0 ? (
+          {statsLoading ? (
+            <Skeleton className="h-[240px] w-full" />
+          ) : statsFailed ? null : history.length === 0 ? (
             <p className="py-12 text-center text-sm text-muted-foreground">
               {t('traffic.noHistory')}
             </p>

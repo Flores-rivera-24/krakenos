@@ -192,8 +192,8 @@ describe('TrafficPage', () => {
     render(<TrafficPage />);
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent(/No se pudo conectar con el servidor/);
-    // El estado vacío honesto de la gráfica sigue presente.
-    expect(screen.getByText(/Esperando muestras/)).toBeInTheDocument();
+    // Un fallo no es «esperando muestras»: la gráfica no afirma nada.
+    expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
   });
 
   it('marca el panel en vivo como obsoleto cuando la última muestra es vieja (US-94)', async () => {
@@ -257,6 +257,38 @@ describe('TrafficPage', () => {
 
       expect(await screen.findByText('TV del salón')).toBeInTheDocument();
       expect(screen.queryByText(/Solo el administrador ve el consumo/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('estados honestos', () => {
+    const pendiente = () => new Promise(() => undefined);
+
+    it('mientras carga, esqueletos y ni «—» ni «esperando» ni «sin datos»', async () => {
+      apiMock.get.mockImplementation((url: string) =>
+        url.startsWith('/traffic/devices')
+          ? Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } })
+          : pendiente(),
+      );
+      const { container } = render(<TrafficPage />);
+      await screen.findByText('Monitor de tráfico');
+      expect(container.querySelector('.kr-shimmer')).not.toBeNull();
+      expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Sin datos históricos.')).not.toBeInTheDocument();
+      expect(screen.queryByText('—')).not.toBeInTheDocument();
+    });
+
+    it('si el histórico y las estadísticas fallan, lo dicen y no pintan vacío', async () => {
+      apiMock.get.mockImplementation((url: string) =>
+        url.startsWith('/traffic/devices')
+          ? Promise.resolve({ devices: [], perDeviceTraffic: { status: 'supported' } })
+          : Promise.reject(new Error('x')),
+      );
+      render(<TrafficPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        /No se pudo conectar con el servidor/,
+      );
+      expect(screen.queryByText(/Esperando muestras/)).not.toBeInTheDocument();
+      expect(screen.queryByText('Sin datos históricos.')).not.toBeInTheDocument();
     });
   });
 });

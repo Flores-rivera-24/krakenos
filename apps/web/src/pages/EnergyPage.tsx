@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { FormError } from '@/components/ui/form-error';
+import { LoadingStatCard } from '@/components/ui/loading-stat-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   ENERGY_RANGES,
@@ -56,18 +57,7 @@ function EnergyStat({
   icon: LucideIcon;
   accent: string;
 }) {
-  if (!loading) return <StatCard {...props} />;
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>{props.title}</CardTitle>
-        <props.icon className={`h-4 w-4 ${props.accent}`} />
-      </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-24" />
-      </CardContent>
-    </Card>
-  );
+  return loading ? <LoadingStatCard {...props} /> : <StatCard {...props} />;
 }
 
 function EnergyPageBody() {
