@@ -16,10 +16,16 @@ const TEXTO_ALIAS = /(?<![\w-])text-(?:primary|destructive)(?![\w-])/;
 /** `fichero` → fragmentos de línea permitidos, cada uno con su motivo. Falla si alguno queda obsoleto. */
 const PERMITIDOS: Record<string, Array<{ fragmento: string; motivo: string }>> = {
   'components/dashboard/StatCard.tsx': [
-    { fragmento: "accent = 'text-primary'", motivo: 'valor por defecto de `accent`: tiñe el icono' },
+    {
+      fragmento: "accent = 'text-primary'",
+      motivo: 'valor por defecto de `accent`: tiñe el icono',
+    },
   ],
   'components/ui/loading-stat-card.tsx': [
-    { fragmento: "accent = 'text-primary'", motivo: 'valor por defecto de `accent`: tiñe el icono' },
+    {
+      fragmento: "accent = 'text-primary'",
+      motivo: 'valor por defecto de `accent`: tiñe el icono',
+    },
   ],
   'pages/TrafficPage.tsx': [
     { fragmento: 'accent="text-primary"', motivo: 'acento del icono de una tarjeta de cifras' },
@@ -32,7 +38,10 @@ const PERMITIDOS: Record<string, Array<{ fragmento: string; motivo: string }>> =
   ],
 };
 
-export function hallazgos(nombre: string, codigo: string): { vistos: number; malos: string[]; usados: Set<string> } {
+export function hallazgos(
+  nombre: string,
+  codigo: string,
+): { vistos: number; malos: string[]; usados: Set<string> } {
   const malos: string[] = [];
   const usados = new Set<string>();
   let vistos = 0;
@@ -68,7 +77,9 @@ describe('texto con alias de acento', () => {
   it('la allowlist no queda obsoleta', () => {
     const usados = new Set<string>();
     for (const f of todas) hallazgos(f.nombre, f.codigo).usados.forEach((u) => usados.add(u));
-    const esperados = Object.entries(PERMITIDOS).flatMap(([n, ps]) => ps.map((p) => `${n}::${p.fragmento}`));
+    const esperados = Object.entries(PERMITIDOS).flatMap(([n, ps]) =>
+      ps.map((p) => `${n}::${p.fragmento}`),
+    );
     expect(esperados.filter((e) => !usados.has(e))).toEqual([]);
   });
 });
