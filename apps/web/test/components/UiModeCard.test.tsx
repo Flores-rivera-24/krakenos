@@ -47,6 +47,17 @@ describe('UiModeCard (US-176)', () => {
     );
   });
 
+  it('la opción activa lleva un icono de verificación y la inactiva no', () => {
+    render(<UiModeCard />);
+    const activa = screen.getByRole('button', { name: /Avanzado/ });
+    const inactiva = screen.getByRole('button', { name: /Sencillo/ });
+    const icono = activa.querySelector('svg.lucide-check');
+    expect(icono).not.toBeNull();
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
+    expect(icono).toHaveAttribute('width', '20');
+    expect(inactiva.querySelector('svg')).toBeNull();
+  });
+
   it('cambiar de modo llama al PATCH de autoservicio y actualiza el store', async () => {
     render(<UiModeCard />);
     await userEvent.click(screen.getByRole('button', { name: /Sencillo/ }));

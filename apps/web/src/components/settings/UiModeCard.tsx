@@ -1,6 +1,7 @@
 import type { UiMode, User } from '@krakenos/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { api } from '@/lib/api';
+import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
@@ -65,14 +66,19 @@ export function UiModeCard() {
               aria-disabled={saving}
               onClick={() => void change(opt.mode)}
               className={cn(
-                'rounded-lg border p-3 text-left transition-colors aria-disabled:opacity-60',
+                'flex items-start justify-between gap-2 rounded-lg border p-3 text-left transition-colors aria-disabled:opacity-60',
                 current === opt.mode
                   ? 'border-kr-accent bg-kr-accent-faint'
                   : 'border-kr bg-kr-elevated hover:border-kr-accent-glow',
               )}
             >
-              <span className="block font-medium text-kr-primary">{t(opt.labelKey)}</span>
-              <span className="block text-kr-xs text-kr-muted">{t(opt.descKey)}</span>
+              <span>
+                <span className="block font-medium text-kr-primary">{t(opt.labelKey)}</span>
+                <span className="block text-kr-xs text-kr-muted">{t(opt.descKey)}</span>
+              </span>
+              {current === opt.mode && (
+                <Check size={20} aria-hidden className="shrink-0 text-kr-link" />
+              )}
             </button>
           ))}
         </div>
