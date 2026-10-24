@@ -74,6 +74,18 @@ const CATALOG: CompatibilityEntry[] = [
 ];
 
 describe('CompatibilitySection (US-208)', () => {
+  it('si falla la lectura dice que no pudo cargar el catálogo, no «sin resultados», y reintenta', async () => {
+    compatMock.listCompatibility.mockReset().mockRejectedValue(new Error('caído'));
+    render(<CompatibilitySection />);
+    expect(
+      await screen.findByText('No se pudo cargar el catálogo de compatibilidad.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Ningún resultado|Sin resultados|no hay/i)).not.toBeInTheDocument();
+    compatMock.listCompatibility.mockReset().mockResolvedValue(CATALOG);
+    fireEvent.click(screen.getByRole('button', { name: /Reintentar/ }));
+    expect(await screen.findByText('Tuya / Smart Life')).toBeInTheDocument();
+  });
+
   it('avisa de «sin garantía» SOLO en los backends community (US-238)', async () => {
     render(<CompatibilitySection />);
     await screen.findByText('Tuya / Smart Life');

@@ -1678,6 +1678,7 @@ export const en: Record<TranslationKey, string> = {
   'survey.scanManual': ' · manual',
   'survey.deleteAria': 'Delete {name}',
   'survey.loadError': 'Could not load the walks',
+  'survey.devicesError': 'Could not load the device list.',
   'survey.openError': 'Could not open the walk',
   'survey.createError': 'Could not create the walk',
   'survey.deleteError': 'Could not delete the walk',
@@ -1871,6 +1872,7 @@ export const en: Record<TranslationKey, string> = {
   'compat.all': 'All',
   'compat.none':
     "We couldn't find that equipment. Not being listed doesn't mean it won't work: many routers with OpenWrt or standard devices work fine.",
+  'compat.loadError': 'Could not load the compatibility catalog.',
   'compat.verified': 'Verified with hardware',
   'compat.verifiedOn': 'Verified with hardware on {date}',
   'compat.unverified': 'Supported in code',

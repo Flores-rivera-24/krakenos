@@ -37,6 +37,7 @@ export const esSondeo = {
   'survey.scanManual': ' · manual',
   'survey.deleteAria': 'Eliminar {name}',
   'survey.loadError': 'No se pudieron cargar los recorridos',
+  'survey.devicesError': 'No se pudo cargar la lista de dispositivos.',
   'survey.openError': 'No se pudo abrir el recorrido',
   'survey.createError': 'No se pudo crear el recorrido',
   'survey.deleteError': 'No se pudo eliminar el recorrido',

@@ -62,8 +62,6 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
  * fichero de aquí (nunca lo sube); al quedar vacía, se borra el trinquete.
  */
 const PENDIENTES: Record<string, number> = {
-  'components/connect/CompatibilitySection.tsx': 1,
-  'components/coverage/SurveyPanel.tsx': 1,
   'components/inventory/DeviceDetailSlideover.tsx': 4,
   'components/wifi/NetworksCard.tsx': 1,
   'pages/AutomationsPage.tsx': 7,

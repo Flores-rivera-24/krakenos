@@ -213,4 +213,30 @@ describe('SurveyPanel', () => {
     await user.type(input, '-45');
     expect(onManualRssiChange).toHaveBeenCalled();
   });
+
+  it('si falla la lista de dispositivos, el selector queda deshabilitado con el motivo', async () => {
+    const user = userEvent.setup();
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    render(
+      <SurveyPanel
+        floorPlanId="plan-1"
+        defaultBand="5GHz"
+        activeScan={null}
+        onActiveScanChange={noop}
+        measuredHeatmap={null}
+        onMeasuredHeatmapChange={noop}
+        showMeasured={false}
+        onShowMeasuredChange={noop}
+        manualRssiDbm={-60}
+        onManualRssiChange={noop}
+        canEdit
+      />,
+    );
+    await screen.findByText(/Aún no hay recorridos/);
+    await user.click(screen.getByRole('button', { name: /Nuevo/ }));
+    expect(
+      await screen.findByText('No se pudo cargar la lista de dispositivos.'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Dispositivo itinerante')).toBeDisabled();
+  });
 });

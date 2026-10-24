@@ -1,9 +1,10 @@
 import type { CompatCategory, CompatibilityEntry } from '@krakenos/types';
 import { COMPAT_CATEGORIES } from '@krakenos/types';
 import { CheckCircle2, CircleDot, Search } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { WidgetError } from '@/components/ui/widget-error';
 import { cn } from '@/lib/utils';
 import {
   ETIQUETA_DE_CAPACIDAD,
@@ -16,6 +17,7 @@ import {
 } from '@/lib/compatibility';
 import { formatDate } from '@/lib/format';
 import { useT } from '@/lib/i18n';
+import { useLectura } from '@/lib/use-lectura';
 import '@/lib/i18n/catalog/fragments/conectar';
 
 /**
@@ -26,19 +28,15 @@ import '@/lib/i18n/catalog/fragments/conectar';
  */
 export function CompatibilitySection() {
   const t = useT();
-  const [entries, setEntries] = useState<CompatibilityEntry[]>([]);
+  // Una respuesta que no es lista cuenta como fallo, no como catálogo vacío.
+  const lectura = useLectura(async () => {
+    const e = await listCompatibility();
+    if (!Array.isArray(e)) throw new Error('RESPUESTA_NO_ES_LISTA');
+    return e;
+  }, []);
+  const entries: CompatibilityEntry[] = lectura.data ?? [];
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<CompatCategory | 'all'>('all');
-
-  useEffect(() => {
-    let active = true;
-    void listCompatibility()
-      .then((e) => active && Array.isArray(e) && setEntries(e))
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
 
   // El agente manda el id; el nombre sale del catálogo (traducido) y por él se
   // busca y se ordena. Un id que esta versión no conoce se declara. Sin `useMemo`
@@ -87,7 +85,9 @@ export function CompatibilitySection() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {lectura.data === null && lectura.failed ? (
+        <WidgetError message={t('compat.loadError')} onRetry={lectura.reintentar} />
+      ) : filtered.length === 0 && lectura.data === null ? null : filtered.length === 0 ? (
         <p className="rounded-lg border border-kr bg-kr-surface p-3 text-kr-sm text-kr-muted">
           {t('compat.none')}
         </p>

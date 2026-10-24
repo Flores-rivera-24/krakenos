@@ -98,6 +98,7 @@ export const esConectar = {
   'compat.all': 'Todo',
   'compat.none':
     'No encontramos ese equipo. Que no esté en la lista no significa que no funcione: muchos routers con OpenWrt o dispositivos estándar valen igual.',
+  'compat.loadError': 'No se pudo cargar el catálogo de compatibilidad.',
   'compat.verified': 'Verificado con hardware',
   'compat.verifiedOn': 'Verificado con hardware el {date}',
   'compat.unverified': 'Soportado por código',
