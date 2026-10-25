@@ -72,6 +72,8 @@ export const esCore = {
   'errors.code.VALIDATION': 'Revisa los datos e inténtalo de nuevo.',
   'errors.code.CAMERAS_CONFIG_CORRUPT':
     'El fichero de cámaras está dañado. Restáuralo desde una copia de seguridad o revísalo a mano; no se ha modificado.',
+  'errors.code.BACKUP_FROM_NEWER_VERSION':
+    'Esta copia es de una versión más nueva de KrakenOS. Actualiza KrakenOS a la versión que la hizo, o a una más reciente, y vuelve a restaurarla. No se ha cambiado nada.',
   'errors.code.SETUP_ALREADY_DONE': 'El sistema ya está configurado',
   'errors.code.SETUP_LOCK_STALE':
     'La configuración quedó bloqueada por un intento anterior. Reinicia el agente y vuelve a intentarlo.',

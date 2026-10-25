@@ -9,6 +9,7 @@ import {
 } from 'node:fs';
 import { mkdir, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { defaultMigrationsDir, findUnknownMigration } from '../db/migrate.js';
 import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
 import { renameWithRetry } from './rename-retry.js';
 import {
@@ -45,11 +46,43 @@ export interface RestoreTargets {
 export { resolveDbFile } from '../db/database-url.js';
 
 /**
+ * La copia es de una versión de KrakenOS más NUEVA que esta: su base trae migraciones
+ * que este código no conoce y, aceptada, el aplicador saldría con 1 en cada arranque.
+ */
+export class RestoreFromNewerVersionError extends Error {
+  readonly code = 'BACKUP_FROM_NEWER_VERSION';
+  constructor(readonly migration: string) {
+    super(
+      `Esta copia es de una versión más nueva de KrakenOS (trae la migración «${migration}», ` +
+        'que esta versión no conoce). Actualiza KrakenOS a la versión que la hizo, o a una más ' +
+        'reciente, y vuelve a restaurarla. No se ha cambiado nada.',
+    );
+    this.name = 'RestoreFromNewerVersionError';
+  }
+}
+
+/**
+ * Con el staging ya autenticado y publicado: si su base trae migraciones desconocidas,
+ * lo borra y lanza. Un staging aceptado así dejaría el agente en bucle de reinicio.
+ */
+function rejectIfNewer(stagingDir: string, migrationsDir: string): void {
+  const unknown = findUnknownMigration(join(stagingDir, 'db', 'app.db'), migrationsDir);
+  if (unknown === null) return;
+  rmSync(stagingDir, { recursive: true, force: true });
+  throw new RestoreFromNewerVersionError(unknown);
+}
+
+/**
  * Descifra y valida un backup, escribiendo sus ficheros en `stagingDir`. Lanza si
  * la passphrase es incorrecta, si falta la base de datos, o si algún nombre de
  * entrada no es seguro (path traversal). Devuelve los nombres escritos.
  */
-export function stageRestore(blob: Buffer, passphrase: string, stagingDir: string): string[] {
+export function stageRestore(
+  blob: Buffer,
+  passphrase: string,
+  stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
+): string[] {
   const entries = unpackArchive(decryptArchive(blob, passphrase));
   validateEntries(entries);
   rmSync(stagingDir, { recursive: true, force: true });
@@ -58,6 +91,7 @@ export function stageRestore(blob: Buffer, passphrase: string, stagingDir: strin
     mkdirSync(dirname(dest), { recursive: true });
     writeFileSync(dest, e.data);
   }
+  rejectIfNewer(stagingDir, migrationsDir);
   return entries.map((e) => e.name);
 }
 
@@ -70,6 +104,7 @@ export async function stageRestoreAsync(
   blob: Buffer,
   passphrase: string,
   stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
 ): Promise<string[]> {
   const entries = unpackArchive(await decryptArchiveAsync(blob, passphrase));
   validateEntries(entries);
@@ -79,6 +114,7 @@ export async function stageRestoreAsync(
     await mkdir(dirname(dest), { recursive: true });
     await writeFile(dest, e.data);
   }
+  rejectIfNewer(stagingDir, migrationsDir);
   return entries.map((e) => e.name);
 }
 
@@ -218,6 +254,7 @@ export async function stageRestoreFromFileAsync(
   archivePath: string,
   passphrase: string,
   stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
 ): Promise<string[]> {
   const source = await open(archivePath, 'r');
   const writer = new StagedArchiveWriter(`${stagingDir}.incoming`);
@@ -234,7 +271,9 @@ export async function stageRestoreFromFileAsync(
     }
     // Autentica ANTES de publicar: hasta aquí lo escrito es texto claro sin verificar.
     await writer.push(decryptor.final());
-    return await writer.commit(stagingDir);
+    const names = await writer.commit(stagingDir);
+    rejectIfNewer(stagingDir, migrationsDir);
+    return names;
   } catch (err) {
     await writer.discard();
     throw err;
@@ -286,6 +325,30 @@ function retireSqliteSidecars(dbFile: string, rel: string, preRestoreDir: string
     retired.push(suffix);
   }
   return retired;
+}
+
+/**
+ * Deshace `applyStagedRestore` desde `preRestoreDir`: devuelve cada fichero respaldado a
+ * su sitio y la base vieja CON su `-wal`/`-shm` (retirando antes los de la restaurada).
+ * Si no hay copia previa de la base no hay nada que devolver: lanza.
+ */
+export function revertAppliedRestore(preRestoreDir: string, targets: RestoreTargets): void {
+  if (!existsSync(join(preRestoreDir, 'db', 'app.db'))) {
+    throw new Error(`No hay copia previa de la base en ${preRestoreDir}`);
+  }
+  for (const rel of listStagedFiles(preRestoreDir)) {
+    const dest = destFor(rel, targets);
+    if (!dest) continue;
+    if (dest === targets.dbFile) {
+      for (const suffix of SQLITE_SIDECARS) rmSync(`${dest}${suffix}`, { force: true });
+    }
+    mkdirSync(dirname(dest), { recursive: true });
+    copyFileSync(join(preRestoreDir, rel), dest);
+  }
+  for (const suffix of SQLITE_SIDECARS) {
+    const bak = join(preRestoreDir, 'db', `app.db${suffix}`);
+    if (existsSync(bak)) copyFileSync(bak, `${targets.dbFile}${suffix}`);
+  }
 }
 
 /**
