@@ -10,7 +10,7 @@ import type {
   VpnKind,
 } from '@krakenos/types';
 import { agentPaths } from './paths.js';
-import { DEFAULT_TAILSCALE_SOCKET } from '../vpn/tailscale.js';
+import { defaultTailscaleSocket } from '../vpn/tailscale.js';
 import type { MerossDeviceConfig } from '../iot/meross.parsers.js';
 import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
 
@@ -341,7 +341,7 @@ export const env = {
     endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
     listenPort: int('VPN_LISTEN_PORT', 51820),
     // Socket UNIX de la LocalAPI de tailscaled (US-215, detección solo-lectura).
-    tailscaleSocketPath: process.env.TAILSCALE_SOCKET ?? DEFAULT_TAILSCALE_SOCKET,
+    tailscaleSocketPath: process.env.TAILSCALE_SOCKET ?? defaultTailscaleSocket(),
     // Solo se usa cuando VPN_KIND=wireguard (gestor real).
     wireguard: {
       interface: process.env.WG_INTERFACE ?? 'wg0',

@@ -106,3 +106,27 @@ describe('buildLocalApiRequestOptions (no-egress)', () => {
     expect(options).not.toHaveProperty('port');
   });
 });
+
+describe('Tailscale por plataforma (US-280)', () => {
+  it('en Linux el socket por defecto es el de siempre; en Windows, el named pipe de la LocalAPI', async () => {
+    const { defaultTailscaleSocket, DEFAULT_TAILSCALE_SOCKET } =
+      await import('../../src/vpn/tailscale.js');
+    expect(defaultTailscaleSocket('linux')).toBe(DEFAULT_TAILSCALE_SOCKET);
+    expect(defaultTailscaleSocket('win32')).toMatch(/^\\\\\.\\pipe\\/);
+  });
+
+  it('en Windows un fallo de permisos al abrir el pipe NO se declara «parado»: se declara no detectado', () => {
+    const eacces = Object.assign(new Error('x'), { code: 'EACCES' });
+    expect(classifyTransportError(eacces, 'linux')).toBe('stopped');
+    expect(classifyTransportError(eacces, 'win32')).toBe('not-installed');
+    const eperm = Object.assign(new Error('x'), { code: 'EPERM' });
+    expect(classifyTransportError(eperm, 'win32')).toBe('not-installed');
+  });
+
+  it('detectTailscale con plataforma inyectada usa la misma clasificación', async () => {
+    const eacces = Object.assign(new Error('x'), { code: 'EACCES' });
+    const transport = { fetchStatus: () => Promise.reject(eacces) };
+    expect((await detectTailscale(transport, 'win32')).state).toBe('not-installed');
+    expect((await detectTailscale(transport)).state).toBe('stopped');
+  });
+});
