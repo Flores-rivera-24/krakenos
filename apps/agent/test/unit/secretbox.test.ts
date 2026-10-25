@@ -111,7 +111,8 @@ describe('secretbox — cifrado de secretos en reposo (US-139)', () => {
 
       // El fichero se creó con permisos restrictivos.
       const mode = statSync(path).mode & 0o777;
-      expect(mode & 0o077).toBe(0); // ni grupo ni otros
+      // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueba en POSIX.
+      if (process.platform !== 'win32') expect(mode & 0o077).toBe(0); // ni grupo ni otros
 
       // Una segunda carga usa la MISMA clave del disco → descifra el token anterior.
       const box2 = loadOrCreateSecretbox(path);

@@ -33,7 +33,7 @@ describe('bucket temporal en SQL (US-276)', () => {
     const archivos = fuentes(SRC);
     expect(archivos.length).toBeGreaterThan(200); // guard: la recolección no se quedó vacía
     const culpables = archivos
-      .map((f) => relative(SRC, f))
+      .map((f) => relative(SRC, f).replaceAll('\\', '/'))
       // El único punto que construye el fragmento es `bucketStart()` (con BigInt).
       .filter((f) => f !== 'db/sql-aggregate.ts')
       .filter((f) => A_MANO.test(readFileSync(join(SRC, f), 'utf8')));
@@ -43,7 +43,7 @@ describe('bucket temporal en SQL (US-276)', () => {
   it('los tres informes agregados usan `bucketStart()`', () => {
     const usan = fuentes(join(SRC, 'modules'))
       .filter((f) => /bucketStart\(bucketMs\)/.test(readFileSync(f, 'utf8')))
-      .map((f) => relative(SRC, f))
+      .map((f) => relative(SRC, f).replaceAll('\\', '/'))
       .sort();
     expect(usan).toEqual([
       'modules/energy/energy.service.ts',

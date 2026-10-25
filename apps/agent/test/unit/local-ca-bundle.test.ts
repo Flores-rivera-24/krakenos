@@ -82,6 +82,9 @@ describe('dist/local-ca.js (el que ejecuta root)', () => {
     const srv = new X509Certificate(readFileSync(join(certs, 'agent-cert.pem')));
     expect(srv.checkIssued(ca)).toBe(true);
     expect(srv.verify(ca.publicKey)).toBe(true);
-    expect((statSync(join(keys, 'krakenos-ca-key.pem')).mode & 0o777).toString(8)).toBe('600');
+    // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueba en POSIX.
+    if (process.platform !== 'win32') {
+      expect((statSync(join(keys, 'krakenos-ca-key.pem')).mode & 0o777).toString(8)).toBe('600');
+    }
   });
 });

@@ -124,16 +124,20 @@ describe('BackupService.createToFile (US-233)', () => {
     expect(() => decryptArchive(readFileSync(out), 'contrasena-mala')).toThrow();
   });
 
-  it('el archivo nace con permisos 600 (contiene las claves del sistema)', async () => {
-    const { keysDir, dataDir, out } = sandbox();
-    const service = new BackupService(fakePrisma(Buffer.from('X')), {
-      keysDir,
-      keyFiles: clavesEn(keysDir),
-      dataDir,
-    });
-    await service.createToFile(PASS, out);
-    expect(statSync(out).mode & 0o777).toBe(0o600);
-  });
+  // Los bits de modo son POSIX: Windows no los tiene (stat devuelve 666).
+  it.skipIf(process.platform === 'win32')(
+    'el archivo nace con permisos 600 (contiene las claves del sistema)',
+    async () => {
+      const { keysDir, dataDir, out } = sandbox();
+      const service = new BackupService(fakePrisma(Buffer.from('X')), {
+        keysDir,
+        keyFiles: clavesEn(keysDir),
+        dataDir,
+      });
+      await service.createToFile(PASS, out);
+      expect(statSync(out).mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('una passphrase corta no escribe ningún archivo', async () => {
     const { keysDir, dataDir, out } = sandbox();

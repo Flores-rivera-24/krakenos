@@ -293,8 +293,9 @@ describe('rutas de sistema', () => {
     });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.mode).toBe('systemd');
-    expect(body.canSelfUpdate).toBe(true);
+    // En Windows el modo es `windows-service` y no hay camino de auto-actualización.
+    expect(body.mode).toBe(process.platform === 'win32' ? 'windows-service' : 'systemd');
+    expect(body.canSelfUpdate).toBe(process.platform !== 'win32');
     expect(body.enabled).toBe(false); // sin repo configurado
     expect(body.inProgress).toBe(false);
     expect(body.inProgressSince).toBeNull();
@@ -328,7 +329,7 @@ describe('rutas de sistema', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.started).toBe(false);
-    expect(body.mode).toBe('systemd');
+    expect(body.mode).toBe(process.platform === 'win32' ? 'windows-service' : 'systemd');
     expect(typeof body.message).toBe('string');
 
     // Queda auditado (el audit es fire-and-forget: el helper espera a que se persista).

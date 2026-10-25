@@ -161,7 +161,9 @@ jobs:
       - name: Test (agente)
         run: pnpm --filter @krakenos/agent test
 
+      # Aunque falle la del agente: la web es independiente y interesa ver las dos.
       - name: Test (web)
+        if: ${{ !cancelled() }}
         run: pnpm --filter @krakenos/web test
 
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar

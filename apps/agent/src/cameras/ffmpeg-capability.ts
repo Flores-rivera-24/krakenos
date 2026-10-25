@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { delimiter, isAbsolute, join, win32 } from 'node:path';
+import { isAbsolute, posix, win32 } from 'node:path';
 
 /**
  * ¿Hay un `ffmpeg` que ejecutar? (US-280). Un paquete instalado no lo trae, así que las cámaras
@@ -29,9 +29,9 @@ export function ffmpegSetupStep(input: FfmpegSetupInput): string | null {
   const env = input.env ?? process.env;
   const exists = input.exists ?? existsSync;
   const win = platform === 'win32';
-  const sep = win ? ';' : delimiter;
+  const sep = win ? ';' : ':';
   const unir = (dir: string, nombre: string) =>
-    win ? `${dir.replace(/[\\/]+$/, '')}\\${nombre}` : join(dir, nombre);
+    win ? `${dir.replace(/[\\/]+$/, '')}\\${nombre}` : posix.join(dir, nombre);
 
   if (esRuta(input.ffmpegPath, platform)) {
     if (exists(input.ffmpegPath)) return null;

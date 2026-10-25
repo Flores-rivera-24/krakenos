@@ -96,10 +96,14 @@ describe('krakenos-helper anti-inyección (caracteres de control)', () => {
     expect(stderr).toMatch(/caracteres de control/);
   });
 
-  it('rechaza un argumento con retorno de carro o tabulador', async () => {
-    expect((await runHelper(['iptables', '-A', 'KRAKENOS\rDROP'])).code).toBe(64);
-    expect((await runHelper(['tc', 'qdisc', 'show', 'dev', 'eth0\tfoo'])).code).toBe(64);
-  });
+  // El helper corre en Linux bajo sudo; en el bash de Windows el argumento con tabulador no llega igual.
+  it.skipIf(process.platform === 'win32')(
+    'rechaza un argumento con retorno de carro o tabulador',
+    async () => {
+      expect((await runHelper(['iptables', '-A', 'KRAKENOS\rDROP'])).code).toBe(64);
+      expect((await runHelper(['tc', 'qdisc', 'show', 'dev', 'eth0\tfoo'])).code).toBe(64);
+    },
+  );
 });
 
 // --- US-74 · allowlist por ÁMBITO (F1) ---

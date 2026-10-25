@@ -48,13 +48,17 @@ describe('FileJsonStore', () => {
     expect(await reopened.list()).toHaveLength(1);
   });
 
-  it('el fichero se escribe con permisos 0600 (guarda credenciales)', async () => {
-    await new FileJsonStore<Item>(path).upsert({ id: 'a', v: 1 });
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
-    // Y se mantiene tras reescribir (el temporal renombrado hereda su modo).
-    await new FileJsonStore<Item>(path).upsert({ id: 'b', v: 2 });
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
-  });
+  // Los bits de modo son POSIX: Windows no los tiene (stat devuelve 666).
+  it.skipIf(process.platform === 'win32')(
+    'el fichero se escribe con permisos 0600 (guarda credenciales)',
+    async () => {
+      await new FileJsonStore<Item>(path).upsert({ id: 'a', v: 1 });
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
+      // Y se mantiene tras reescribir (el temporal renombrado hereda su modo).
+      await new FileJsonStore<Item>(path).upsert({ id: 'b', v: 2 });
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('list() devuelve [] si el fichero no existe (no es corrupción, US-52)', async () => {
     expect(await new FileJsonStore<Item>(path).list()).toEqual([]);
@@ -79,7 +83,8 @@ describe('FileJsonStore', () => {
     expect(await readFile(path, 'utf8')).toBe(corrupt);
   });
 
-  it.skipIf(isRoot)(
+  // chmod 000 no quita el permiso de lectura en Windows: no se puede provocar el error de E/S así.
+  it.skipIf(isRoot || process.platform === 'win32')(
     'read() propaga un error de permisos, no lo traga como vacío (US-61)',
     async () => {
       await writeFile(path, '[{"id":"a","v":1}]', 'utf8');

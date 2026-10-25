@@ -41,16 +41,20 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 const mode = (p: string) => (statSync(p).mode & 0o777).toString(8);
 
 describe('writeTempFile', () => {
-  it('el fichero NACE con el modo pedido, sin depender de un chmod posterior (umask 0)', () => {
-    const antes = process.umask(0);
-    try {
-      const tmp = writeTempFile(join(dir, 'clave.pem'), 'secreto', 0o600);
-      expect(mode(tmp)).toBe('600');
-      expect(readFileSync(tmp, 'utf8')).toBe('secreto');
-    } finally {
-      process.umask(antes);
-    }
-  });
+  // Los bits de modo y el umask son POSIX: Windows no los tiene.
+  it.skipIf(process.platform === 'win32')(
+    'el fichero NACE con el modo pedido, sin depender de un chmod posterior (umask 0)',
+    () => {
+      const antes = process.umask(0);
+      try {
+        const tmp = writeTempFile(join(dir, 'clave.pem'), 'secreto', 0o600);
+        expect(mode(tmp)).toBe('600');
+        expect(readFileSync(tmp, 'utf8')).toBe('secreto');
+      } finally {
+        process.umask(antes);
+      }
+    },
+  );
 
   it('se queda en el mismo directorio que el destino (el rename es atómico) y es oculto', () => {
     const tmp = writeTempFile(join(dir, 'otra.pem'), 'x', 0o644);

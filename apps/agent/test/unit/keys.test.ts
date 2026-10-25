@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   ensureSecretboxKey,
@@ -71,9 +71,12 @@ describe('generateJwtKeys', () => {
     expect(k.asymmetricKeyType).toBe('rsa');
     expect(k.asymmetricKeyDetails?.modulusLength).toBe(2048);
     expect(emparejado(priv, pub)).toBe(true);
-    expect(mode(p.privatePath)).toBe('600');
-    expect(mode(p.publicPath)).toBe('644');
-    expect(mode(p.secretboxPath)).toBe('600');
+    if (process.platform !== 'win32') {
+      // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueban en POSIX.
+      expect(mode(p.privatePath)).toBe('600');
+      expect(mode(p.publicPath)).toBe('644');
+      expect(mode(p.secretboxPath)).toBe('600');
+    }
     expect(sinTemporales(join(p.privatePath, '..'))).toEqual([]);
   });
 
@@ -85,7 +88,8 @@ describe('generateJwtKeys', () => {
     expect(emparejado(ring.signingPrivateKey(), ring.signingPublicKey())).toBe(true);
   });
 
-  it('la clave privada nace 600 aunque el umask sea 0', () => {
+  // Windows no tiene umask ni bits de modo POSIX: no hay nada que comprobar.
+  it.skipIf(process.platform === 'win32')('la clave privada nace 600 aunque el umask sea 0', () => {
     const p = paths();
     const antes = process.umask(0);
     try {
@@ -140,9 +144,12 @@ describe('rotateJwtKeys', () => {
     expect(newPub).not.toBe(oldPub);
     expect(leer(p.prevPublicPath)).toBe(oldPub);
     expect(emparejado(newPriv, newPub)).toBe(true);
-    expect(mode(p.privatePath)).toBe('600');
-    expect(mode(p.publicPath)).toBe('644');
-    expect(mode(p.prevPublicPath)).toBe('644');
+    if (process.platform !== 'win32') {
+      // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueban en POSIX.
+      expect(mode(p.privatePath)).toBe('600');
+      expect(mode(p.publicPath)).toBe('644');
+      expect(mode(p.prevPublicPath)).toBe('644');
+    }
     expect(sinTemporales(join(p.privatePath, '..'))).toEqual([]);
     // Durante el solape el llavero verifica con las dos.
     const ring = new Keyring({ privateKey: newPriv, publicKey: newPub }, [leer(p.prevPublicPath)]);
@@ -209,28 +216,33 @@ describe('rotateJwtKeys', () => {
     expect(leer(p.privatePath)).toBe(oldPriv);
     expect(leer(p.publicPath)).toBe(oldPub);
     expect(emparejado(leer(p.privatePath), leer(p.publicPath))).toBe(true);
-    expect(mode(p.privatePath)).toBe('600');
+    // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueba en POSIX.
+    if (process.platform !== 'win32') expect(mode(p.privatePath)).toBe('600');
     // Sin temporales ni copias de la privada olvidados.
     expect(sinTemporales(join(p.privatePath, '..'))).toEqual([]);
   });
 
-  it('un fallo al escribir los temporales (antes de tocar nada) deja el par intacto', () => {
-    // root ignora los permisos de directorio: ahí no se puede provocar el fallo así.
-    if (process.getuid?.() === 0) return;
-    const p = paths();
-    generateJwtKeys(p);
-    const oldPriv = leer(p.privatePath);
-    const dir = join(p.privatePath, '..');
-    chmodSync(dir, 0o500); // sin escritura: el primer temporal ya no se puede crear
-    try {
-      expect(() => rotateJwtKeys(p)).toThrow();
-    } finally {
-      chmodSync(dir, 0o700);
-    }
-    expect(leer(p.privatePath)).toBe(oldPriv);
-    expect(emparejado(leer(p.privatePath), leer(p.publicPath))).toBe(true);
-    expect(sinTemporales(dir)).toEqual([]);
-  });
+  // El fallo se provoca quitando el permiso de escritura del directorio (chmod 500), que Windows no honra.
+  it.skipIf(process.platform === 'win32')(
+    'un fallo al escribir los temporales (antes de tocar nada) deja el par intacto',
+    () => {
+      // root ignora los permisos de directorio: ahí no se puede provocar el fallo así.
+      if (process.getuid?.() === 0) return;
+      const p = paths();
+      generateJwtKeys(p);
+      const oldPriv = leer(p.privatePath);
+      const dir = join(p.privatePath, '..');
+      chmodSync(dir, 0o500); // sin escritura: el primer temporal ya no se puede crear
+      try {
+        expect(() => rotateJwtKeys(p)).toThrow();
+      } finally {
+        chmodSync(dir, 0o700);
+      }
+      expect(leer(p.privatePath)).toBe(oldPriv);
+      expect(emparejado(leer(p.privatePath), leer(p.publicPath))).toBe(true);
+      expect(sinTemporales(dir)).toEqual([]);
+    },
+  );
 
   it('si ni siquiera se puede restaurar la privada, el error lo dice con todas las letras', () => {
     const p = paths();
@@ -255,9 +267,11 @@ describe('rotateJwtKeys', () => {
 
 describe('keyPathsFromEnv', () => {
   it('sin variables: <agente>/keys; con KRAKENOS_KEYS_DIR: ese directorio', () => {
-    expect(keyPathsFromEnv({}, '/opt/agente').privatePath).toBe('/opt/agente/keys/jwt-private.pem');
+    expect(keyPathsFromEnv({}, '/opt/agente').privatePath).toBe(
+      resolve('/opt/agente/keys/jwt-private.pem'),
+    );
     expect(keyPathsFromEnv({ KRAKENOS_KEYS_DIR: '/etc/k' }, '/opt/agente').secretboxPath).toBe(
-      '/etc/k/secretbox.key',
+      resolve('/etc/k/secretbox.key'),
     );
   });
 
@@ -269,13 +283,13 @@ describe('keyPathsFromEnv', () => {
       },
       '/app',
     );
-    expect(p.privatePath).toBe('/data/keys/jwt-private.pem');
-    expect(p.publicPath).toBe('/data/keys/jwt-public.pem');
-    expect(p.secretboxPath).toBe('/data/keys/secretbox.key');
-    expect(p.prevPublicPath).toBe('/data/keys/jwt-public.prev.pem');
+    expect(p.privatePath).toBe(resolve('/data/keys/jwt-private.pem'));
+    expect(p.publicPath).toBe(resolve('/data/keys/jwt-public.pem'));
+    expect(p.secretboxPath).toBe(resolve('/data/keys/secretbox.key'));
+    expect(p.prevPublicPath).toBe(resolve('/data/keys/jwt-public.prev.pem'));
     // Con una sola de las dos no se adivina: se usa el directorio por defecto.
     expect(keyPathsFromEnv({ JWT_PRIVATE_KEY_PATH: '/x/y.pem' }, '/app').privatePath).toBe(
-      '/app/keys/jwt-private.pem',
+      resolve('/app/keys/jwt-private.pem'),
     );
   });
 });

@@ -41,10 +41,14 @@ describe('FilePeerStore', () => {
     expect(await reopened.list()).toHaveLength(0);
   });
 
-  it('el fichero se crea con permisos 0600 (claves de peers)', async () => {
-    await new FilePeerStore(path).add(PEER);
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
-  });
+  // Los bits de modo son POSIX: Windows no los tiene (stat devuelve 666).
+  it.skipIf(process.platform === 'win32')(
+    'el fichero se crea con permisos 0600 (claves de peers)',
+    async () => {
+      await new FilePeerStore(path).add(PEER);
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('devuelve lista vacía si el fichero no existe', async () => {
     expect(await new FilePeerStore(join(tmpdir(), 'krakenos-noexiste.json')).list()).toEqual([]);
@@ -67,10 +71,14 @@ describe('FilePeerStore', () => {
     expect((await store.list()).map((p) => p.id).sort()).toEqual(['p1', 'p2']);
   });
 
-  it('un fichero existente con 0644 queda en 0600 tras escribir', async () => {
-    await writeFile(path, '[]', 'utf8');
-    await chmod(path, 0o644);
-    await new FilePeerStore(path).add(PEER);
-    expect((await stat(path)).mode & 0o777).toBe(0o600);
-  });
+  // Los bits de modo son POSIX: Windows no los tiene (stat devuelve 666).
+  it.skipIf(process.platform === 'win32')(
+    'un fichero existente con 0644 queda en 0600 tras escribir',
+    async () => {
+      await writeFile(path, '[]', 'utf8');
+      await chmod(path, 0o644);
+      await new FilePeerStore(path).add(PEER);
+      expect((await stat(path)).mode & 0o777).toBe(0o600);
+    },
+  );
 });

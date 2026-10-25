@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ProcessUpdateRunner, type UpdateExec } from '../../src/system/process-update-runner.js';
 
@@ -89,7 +89,10 @@ describe('ProcessUpdateRunner', () => {
   it('migrate ejecuta el CLI de migraciones propio (dist/migrate.js), no la CLI de Prisma', async () => {
     const { runner, calls } = make();
     await runner.migrate();
-    expect(calls).toContainEqual([process.execPath, '/opt/krakenos/apps/agent/dist/migrate.js']);
+    expect(calls).toContainEqual([
+      process.execPath,
+      resolve('/opt/krakenos/apps/agent/dist/migrate.js'),
+    ]);
     expect(calls.some((c) => c.includes('prisma'))).toBe(false);
   });
 
