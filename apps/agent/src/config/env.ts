@@ -9,7 +9,7 @@ import type {
   VlanKind,
   VpnKind,
 } from '@krakenos/types';
-import { agentPaths } from './paths.js';
+import { agentPaths, resolveStatePath } from './paths.js';
 import { defaultTailscaleSocket } from '../vpn/tailscale.js';
 import type { MerossDeviceConfig } from '../iot/meross.parsers.js';
 import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
@@ -188,7 +188,7 @@ function pemList(name: string): string[] {
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => readFileSync(resolve(p), 'utf8'));
+    .map((p) => readFileSync(resolveStatePath(p), 'utf8'));
 }
 
 const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
@@ -200,11 +200,11 @@ const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
 const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
 // Las RUTAS se conservan además del contenido (US-241): el certificado se renueva
 // solo (Tailscale, cada 90 días) y hay que poder releerlo del disco sin reiniciar.
-const tlsCertPath = httpsEnabled ? resolve(required('TLS_CERT_PATH')) : null;
-const tlsKeyPath = httpsEnabled ? resolve(required('TLS_KEY_PATH')) : null;
+const tlsCertPath = httpsEnabled ? resolveStatePath(required('TLS_CERT_PATH')) : null;
+const tlsKeyPath = httpsEnabled ? resolveStatePath(required('TLS_KEY_PATH')) : null;
 // Certificado PÚBLICO de la CA local (si la hay): lo que cada dispositivo instala.
 // Nunca apunta a `keys/`; la clave de la CA no la lee nadie salvo el script.
-const tlsCaCertPath = resolve(
+const tlsCaCertPath = resolveStatePath(
   process.env.TLS_CA_CERT_PATH ?? join(agentPaths().certsDir, 'krakenos-ca.pem'),
 );
 const https =
@@ -215,8 +215,8 @@ const https =
       }
     : null;
 
-const jwtPrivateKeyPath = resolve(required('JWT_PRIVATE_KEY_PATH'));
-const jwtPublicKeyPath = resolve(required('JWT_PUBLIC_KEY_PATH'));
+const jwtPrivateKeyPath = resolveStatePath(required('JWT_PRIVATE_KEY_PATH'));
+const jwtPublicKeyPath = resolveStatePath(required('JWT_PUBLIC_KEY_PATH'));
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',

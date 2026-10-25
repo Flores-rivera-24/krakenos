@@ -83,6 +83,15 @@ export function agentPaths(): AgentPaths {
   return cached;
 }
 
+/**
+ * Una ruta del `.env` (`./keys/…`, `./certs/…`) se resuelve contra la raíz del ESTADO, no contra el
+ * `cwd`: así `KRAKENOS_DATA_DIR` mueve también las claves JWT y los certificados, y todas quedan en el
+ * mismo árbol que `secretbox.key`. Sin la variable la raíz ES el `cwd`, y una ruta absoluta no cambia.
+ */
+export function resolveStatePath(path: string): string {
+  return resolve(agentPaths().dataRoot, path);
+}
+
 /** Solo para tests: olvida la resolución memorizada. */
 export function resetAgentPathsForTests(): void {
   cached = undefined;
