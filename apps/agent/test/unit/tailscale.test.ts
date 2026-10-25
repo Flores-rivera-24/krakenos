@@ -115,18 +115,18 @@ describe('Tailscale por plataforma (US-280)', () => {
     expect(defaultTailscaleSocket('win32')).toMatch(/^\\\\\.\\pipe\\/);
   });
 
-  it('en Windows un fallo de permisos al abrir el pipe NO se declara «parado»: se declara no detectado', () => {
+  it('en Windows un fallo de permisos al abrir el pipe NO es «parado» ni «no instalado»: es «sin permiso»', () => {
     const eacces = Object.assign(new Error('x'), { code: 'EACCES' });
     expect(classifyTransportError(eacces, 'linux')).toBe('stopped');
-    expect(classifyTransportError(eacces, 'win32')).toBe('not-installed');
+    expect(classifyTransportError(eacces, 'win32')).toBe('no-access');
     const eperm = Object.assign(new Error('x'), { code: 'EPERM' });
-    expect(classifyTransportError(eperm, 'win32')).toBe('not-installed');
+    expect(classifyTransportError(eperm, 'win32')).toBe('no-access');
   });
 
   it('detectTailscale con plataforma inyectada usa la misma clasificación', async () => {
     const eacces = Object.assign(new Error('x'), { code: 'EACCES' });
     const transport = { fetchStatus: () => Promise.reject(eacces) };
-    expect((await detectTailscale(transport, 'win32')).state).toBe('not-installed');
+    expect((await detectTailscale(transport, 'win32')).state).toBe('no-access');
     expect((await detectTailscale(transport)).state).toBe('stopped');
   });
 });

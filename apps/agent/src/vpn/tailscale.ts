@@ -42,13 +42,13 @@ export function buildLocalApiRequestOptions(socketPath: string) {
 export function classifyTransportError(
   err: unknown,
   platform: NodeJS.Platform = process.platform,
-): 'not-installed' | 'stopped' {
+): 'not-installed' | 'stopped' | 'no-access' {
   const code = (err as NodeJS.ErrnoException | null)?.code;
   if (code === 'ENOENT' || code === 'ENOTDIR') return 'not-installed';
   // US-280: en Windows la LocalAPI es un named pipe y un servicio sin privilegios puede no
-  // poder abrirlo (EACCES/EPERM). Eso no prueba que Tailscale esté parado: se declara «no
-  // detectado», que es lo único que sabemos. [verificar en E1 con un Windows real]
-  if (platform === 'win32' && (code === 'EACCES' || code === 'EPERM')) return 'not-installed';
+  // poder abrirlo (EACCES/EPERM). Eso no prueba que Tailscale esté parado ni que falte: se
+  // declara «sin permiso», que es lo único que sabemos. [verificar en E1 con un Windows real]
+  if (platform === 'win32' && (code === 'EACCES' || code === 'EPERM')) return 'no-access';
   return 'stopped';
 }
 

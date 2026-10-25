@@ -431,6 +431,7 @@ export const en: Record<TranslationKey, string> = {
   'vpn.tailscale.state.needs-login': 'Sign-in required',
   'vpn.tailscale.state.stopped': 'Installed, not responding',
   'vpn.tailscale.state.not-installed': 'Not detected',
+  'vpn.tailscale.state.no-access': 'No permission to read it',
   'vpn.tailscale.magicDns': 'MagicDNS name',
   'vpn.tailscale.magicDnsHint':
     'Connect from outside using this name as the host (same URL and port as at home).',
@@ -442,6 +443,8 @@ export const en: Record<TranslationKey, string> = {
     'Tailscale seems installed but the daemon is not responding. Start it from the server:',
   'vpn.tailscale.notInstalledHint':
     'tailscaled was not detected on the server. If your connection has no public IP, install it with one command:',
+  'vpn.tailscale.noAccessHint':
+    "KrakenOS doesn't have permission to read Tailscale on this computer, so it can't tell whether it's active. Give the KrakenOS service access, or check the status in the Tailscale app.",
   'vpn.tailscale.wireguardNote':
     'With a public IP, the WireGuard VPN above remains the recommended path.',
   'vpn.tailscale.webauthnNote': 'If you use passkeys, set WEBAUTHN_RP_ID to this name as the host.',
