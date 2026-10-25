@@ -250,6 +250,30 @@ describe('CamerasPage', () => {
     );
     render(<CamerasPage />);
     expect(await screen.findByText(/Apunta FFMPEG_PATH a ffmpeg\.exe\./)).toBeInTheDocument();
-    expect(screen.queryByText('No se pudo cargar la imagen.')).not.toBeInTheDocument();
+    expect(screen.getAllByText('No se pudo cargar la imagen.').length).toBe(1);
+  });
+
+  it('el aviso de ffmpeg va en su propio bloque con margen lateral, fuera de la superficie donde está «Ver en vivo»', async () => {
+    setRole('admin');
+    const err = Object.assign(
+      new ApiRequestError(503, { code: 'FFMPEG_REQUIRES_SETUP', message: '' }),
+      {
+        status: 503,
+        body: {
+          code: 'FFMPEG_REQUIRES_SETUP',
+          message: 'Falta ffmpeg: apunta FFMPEG_PATH a su ruta.',
+        },
+      },
+    );
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/cameras' ? Promise.resolve([CAMERAS[0]]) : Promise.reject(err),
+    );
+    render(<CamerasPage />);
+    const aviso = await screen.findByText(/Falta ffmpeg: apunta FFMPEG_PATH/);
+    expect(aviso.className).toMatch(/\bpx-4\b/);
+    const boton = screen.getByRole('button', { name: 'Ver en vivo' });
+    // Ni contiene al botón ni comparte con él la superficie posicionada.
+    expect(aviso.contains(boton)).toBe(false);
+    expect(aviso.closest('.relative')?.contains(boton) ?? false).toBe(false);
   });
 });

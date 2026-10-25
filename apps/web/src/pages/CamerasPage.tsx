@@ -89,7 +89,7 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
               {!camera.online
                 ? t('cameras.noSignal')
                 : setupNeeded
-                  ? setupNeeded
+                  ? t('cameras.snapshotError')
                   : snapshotFailed
                     ? t('cameras.snapshotError')
                     : t('cameras.connecting')}
@@ -121,6 +121,11 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
           </Button>
         )}
       </div>
+      {setupNeeded && !live && (
+        // El paso es largo: va debajo del vídeo, no encima, para que la tarjeta crezca
+        // en vez de montarse sobre «Ver en vivo».
+        <p className="px-4 pt-3 text-xs text-muted-foreground">{setupNeeded}</p>
+      )}
       <CardContent className="flex items-center justify-between gap-2 py-3">
         <div className="min-w-0">
           <span className="block truncate text-sm font-medium">{camera.name}</span>

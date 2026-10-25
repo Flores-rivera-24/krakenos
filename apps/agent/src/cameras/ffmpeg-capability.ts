@@ -52,7 +52,7 @@ export function ffmpegSetupStep(input: FfmpegSetupInput): string | null {
   }
   return win
     ? 'Falta ffmpeg: descarga ffmpeg.exe, ponlo en una carpeta fija y apunta FFMPEG_PATH a esa ruta (o añade la carpeta al PATH del servicio). Después reinicia el servicio: FFMPEG_PATH y el PATH se leen al arrancar.'
-    : 'Falta ffmpeg: instálalo (por ejemplo `sudo apt install ffmpeg`) o apunta FFMPEG_PATH a su ruta, y reinicia el servicio.';
+    : 'Falta ffmpeg: instálalo (por ejemplo sudo apt install ffmpeg) o apunta FFMPEG_PATH a su ruta, y reinicia el servicio.';
 }
 
 /**
