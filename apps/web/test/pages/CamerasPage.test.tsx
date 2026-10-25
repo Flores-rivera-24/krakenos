@@ -234,14 +234,17 @@ describe('CamerasPage', () => {
   });
   it('si el agente dice que falta ffmpeg (503), la tarjeta enseña el paso concreto, no el fallo genérico', async () => {
     setRole('admin');
-    const err = Object.assign(new ApiRequestError(), {
-      status: 503,
-      body: {
-        code: 'FFMPEG_REQUIRES_SETUP',
-        message:
-          'Las cámaras RTSP necesitan ffmpeg y no está disponible. Apunta FFMPEG_PATH a ffmpeg.exe.',
+    const err = Object.assign(
+      new ApiRequestError(503, { code: 'FFMPEG_REQUIRES_SETUP', message: '' }),
+      {
+        status: 503,
+        body: {
+          code: 'FFMPEG_REQUIRES_SETUP',
+          message:
+            'Las cámaras RTSP necesitan ffmpeg y no está disponible. Apunta FFMPEG_PATH a ffmpeg.exe.',
+        },
       },
-    });
+    );
     apiMock.get.mockImplementation((path: string) =>
       path === '/cameras' ? Promise.resolve([CAMERAS[0]]) : Promise.reject(err),
     );
