@@ -60,7 +60,7 @@ const LISTA: Record<string, Entrada> = {
   'unit/helper-script.test.ts': {
     saltos: 1,
     motivo:
-      'El helper de sudoers es un script de Linux: el argumento con tabulador no llega igual por el bash de Windows.',
+      'Solo la aserción del retorno de carro (devuelve 0 en el runner de Windows; causa NO investigada). El helper de sudoers es de Linux y no corre en Windows; la del tabulador sí corre.',
   },
   'unit/install-script.test.ts': {
     saltos: 3,
@@ -69,12 +69,12 @@ const LISTA: Record<string, Entrada> = {
   },
   'unit/json-store.test.ts': {
     saltos: 2,
-    motivo: `${MODOS}; y chmod 000 no quita el permiso de lectura, así que no se puede provocar el error de E/S.`,
+    motivo: `${MODOS} (0600); y el de lectura: la propiedad (un error de E/S se propaga, no se lee como vacío) SÍ aplica en Windows, pero chmod 000 no la provoca allí. Pendiente: reescribirlo con un fallo inyectado.`,
   },
   'unit/keys.test.ts': {
     saltos: 2,
     soloPosix: 3,
-    motivo: `${MODOS}; y no hay umask. El resto de cada test (par RS256, rotación, temporales) sí corre. El fallo de escritura se provoca con chmod 500 sobre el directorio.`,
+    motivo: `${MODOS}; y no hay umask. El resto de cada test (par RS256, rotación, temporales) sí corre. El fallo al escribir los temporales SÍ aplica en Windows (la rotación importa más allí), pero chmod 500 no lo provoca: pendiente de reescribirlo con un fallo inyectado.`,
   },
   'unit/local-ca-bundle.test.ts': {
     saltos: 0,
@@ -107,8 +107,24 @@ const LISTA: Record<string, Entrada> = {
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
 const TOTAL_MEDIDO = { ficherosConSalto: 11, saltos: 20, soloPosix: 6 };
 
-/** Saltos: `skipIf(… process.platform === 'win32' …)`, también `it.skipIf` y `describe.skipIf`. */
-const SALTO = /skipIf\((?:[^()]|\([^()]*\))*?process\.platform\s*===\s*['"]win32['"]/g;
+const WIN = String.raw`['"]win32['"]`;
+const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;
+/**
+ * Formas de saltar un test en Windows (todas cuentan como salto y entran en la lista):
+ *  - `skipIf(… process.platform === 'win32' …)` (también `it.`/`describe.`);
+ *  - `runIf(… process.platform !== 'win32' …)`, el mismo salto escrito al revés;
+ *  - `if (process.platform === 'win32') return` dentro de un test (salto «por dentro»);
+ *  - un alias: `const X = process.platform === 'win32'` (se usa luego en `skipIf(X)`/`runIf(!X)`).
+ */
+const SALTO = new RegExp(
+  [
+    String.raw`skipIf\(${ARGS}process\.platform\s*===\s*${WIN}`,
+    String.raw`runIf\(${ARGS}process\.platform\s*!==\s*${WIN}`,
+    String.raw`if\s*\(\s*process\.platform\s*===\s*${WIN}\s*\)\s*(?:\{\s*)?return\b`,
+    String.raw`\b(?:const|let|var)\s+\w+\s*=\s*process\.platform\s*[!=]==\s*${WIN}`,
+  ].join('|'),
+  'g',
+);
 /** Aserciones solo-POSIX dentro de un test que sí corre. */
 const SOLO_POSIX = /\bif\s*\(\s*process\.platform\s*!==\s*['"]win32['"]\s*\)/g;
 
@@ -140,6 +156,20 @@ describe('saltos por plataforma (US-281)', () => {
     );
     expect(contar("it.skipIf(\n  process.platform === 'win32',\n)('x', () => {})").saltos).toBe(1);
     expect(contar("if (process.platform !== 'win32') expect(1).toBe(1)").soloPosix).toBe(1);
+    expect(contar("it.runIf(process.platform !== 'win32')('x', () => {})").saltos).toBe(1);
+    expect(
+      contar("describe.runIf(!isRoot && process.platform !== 'win32')('x', () => {})").saltos,
+    ).toBe(1);
+    expect(contar("it('x', () => {\n  if (process.platform === 'win32') return;\n})").saltos).toBe(
+      1,
+    );
+    expect(
+      contar("it('x', () => {\n  if (process.platform === 'win32') { return; }\n})").saltos,
+    ).toBe(1);
+    expect(
+      contar("const ES_WIN = process.platform === 'win32';\nit.skipIf(ES_WIN)('x', () => {})")
+        .saltos,
+    ).toBe(1);
     // Lo que NO es un salto: un valor que depende de la plataforma, o skipIf de otra cosa.
     expect(contar("expect(x).toBe(process.platform === 'win32' ? 1 : 2)").saltos).toBe(0);
     expect(contar("it.skipIf(isRoot)('x', () => {})").saltos).toBe(0);

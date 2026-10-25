@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { isAbsolute, posix, win32 } from 'node:path';
+import { posix, win32 } from 'node:path';
 
 /**
  * ¿Hay un `ffmpeg` que ejecutar? (US-280). Un paquete instalado no lo trae, así que las cámaras
@@ -20,7 +20,7 @@ export interface FfmpegSetupInput {
 
 function esRuta(p: string, platform: NodeJS.Platform): boolean {
   if (platform === 'win32') return win32.isAbsolute(p) || p.includes('\\') || p.includes('/');
-  return isAbsolute(p) || p.includes('/');
+  return posix.isAbsolute(p) || p.includes('/');
 }
 
 /** `null` si el binario resuelve; si no, el paso que el usuario tiene que dar. */

@@ -222,7 +222,8 @@ describe('rotateJwtKeys', () => {
     expect(sinTemporales(join(p.privatePath, '..'))).toEqual([]);
   });
 
-  // El fallo se provoca quitando el permiso de escritura del directorio (chmod 500), que Windows no honra.
+  // La propiedad (un fallo al escribir los temporales deja el par intacto) SÍ aplica en Windows; lo que no
+  // funciona allí es el mecanismo del test: chmod 500 no impide escribir. Pendiente de reescribir con un fallo inyectado.
   it.skipIf(process.platform === 'win32')(
     'un fallo al escribir los temporales (antes de tocar nada) deja el par intacto',
     () => {

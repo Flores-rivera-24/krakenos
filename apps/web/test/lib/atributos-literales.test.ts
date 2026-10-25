@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SRC, ficheros, sinComentariosConLineas } from './_fuentes';
+import { ficheros, nombreDe, sinComentariosConLineas } from './_fuentes';
 import { cierreDe, literalesConTexto } from './_literales';
 
 /**
@@ -117,7 +117,7 @@ const PERMITIDOS: Record<string, string> = {
 function escanear(): { clave: string; texto: string }[] {
   const salida: { clave: string; texto: string }[] = [];
   for (const ruta of ficheros()) {
-    const nombre = ruta.slice(SRC.length + 1).replaceAll('\\', '/');
+    const nombre = nombreDe(ruta).replaceAll('\\', '/');
     if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
     const codigo = sinComentariosConLineas(readFileSync(ruta, 'utf8'));
     for (const h of [...literalesDeAtributo(codigo), ...literalesDeAtributoEnExpresion(codigo)]) {

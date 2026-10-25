@@ -83,7 +83,8 @@ describe('FileJsonStore', () => {
     expect(await readFile(path, 'utf8')).toBe(corrupt);
   });
 
-  // chmod 000 no quita el permiso de lectura en Windows: no se puede provocar el error de E/S así.
+  // La propiedad (un error de lectura se propaga, no se lee como vacío) SÍ aplica en Windows; lo que no
+  // funciona allí es el mecanismo del test: chmod 000 no quita el permiso. Pendiente de reescribir con un fallo inyectado.
   it.skipIf(isRoot || process.platform === 'win32')(
     'read() propaga un error de permisos, no lo traga como vacío (US-61)',
     async () => {

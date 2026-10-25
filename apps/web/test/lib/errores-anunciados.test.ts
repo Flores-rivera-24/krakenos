@@ -40,7 +40,7 @@ function aperturasDeParrafo(fuente: string): string[] {
 }
 
 const fuentes = ficheros(SRC).map((ruta) => ({
-  nombre: ruta.slice(SRC.length + 1),
+  nombre: ruta.slice(SRC.length + 1).replaceAll('\\', '/'),
   texto: readFileSync(ruta, 'utf8'),
 }));
 

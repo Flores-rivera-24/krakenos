@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { SRC, ficheros } from './_fuentes';
+import { ficheros, nombreDe } from './_fuentes';
 
 /**
  * Gate: ninguna constante de MÓDULO guarda copy ya escrito (issue de las
@@ -134,7 +134,7 @@ export function copyEnConstantes(nombre: string, fuente: string): Hallazgo[] {
 function escanear(): { nombre: string; h: Hallazgo }[] {
   const salida: { nombre: string; h: Hallazgo }[] = [];
   for (const ruta of ficheros()) {
-    const nombre = ruta.slice(SRC.length + 1).replaceAll('\\', '/');
+    const nombre = nombreDe(ruta).replaceAll('\\', '/');
     if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
     for (const h of copyEnConstantes(nombre, readFileSync(ruta, 'utf8'))) {
       salida.push({ nombre, h });

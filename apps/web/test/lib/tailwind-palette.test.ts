@@ -26,7 +26,7 @@ function listarFuentes(dir: string): string[] {
   for (const entrada of readdirSync(dir, { withFileTypes: true })) {
     const ruta = join(dir, entrada.name);
     if (entrada.isDirectory()) salida.push(...listarFuentes(ruta));
-    else if (/\.tsx?$/.test(entrada.name)) salida.push(relative(SRC, ruta));
+    else if (/\.tsx?$/.test(entrada.name)) salida.push(relative(SRC, ruta).replaceAll('\\', '/'));
   }
   return salida;
 }

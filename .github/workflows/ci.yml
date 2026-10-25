@@ -16,6 +16,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Token de solo lectura: ningún job de este workflow escribe en el repo ni en PRs (checkout,
+# setup, upload-artifact y herramientas descargadas; upload-artifact no necesita `contents: write`).
+permissions:
+  contents: read
+
 # ⚠️ Las acciones van en su mayor actual porque su RUNTIME (el Node con el que
 # GitHub las ejecuta) pasó a `node24`. Las versiones viejas declaraban `node20`,
 # que GitHub ya deprecó: los runners lo forzaban a 24 y lo avisaban en cada
@@ -126,14 +131,17 @@ jobs:
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
 
-  # Suite del agente y de la web en Windows (Fase 11). NO BLOQUEANTE al principio:
-  # `continue-on-error: true` deja el job visible sin poner rojo el PR. Pasa a bloqueante
-  # (se quita esa línea) cuando lleve 5 pasadas verdes seguidas en main. Los tests que no
-  # aplican en Windows saltan con motivo y están contados en
+  # Suite del agente y de la web en Windows (Fase 11). NO BLOQUEANTE al principio: con
+  # `continue-on-error: true` el RUN sale verde aunque falle el job, pero el check del job
+  # aparece como fallido en el PR. Eso NO bloquea el merge (no es un check requerido).
+  # Pasa a bloqueante (se quita esa línea) cuando lleve 5 pasadas verdes seguidas en main.
+  # Los tests que no aplican en Windows saltan con motivo y están contados en
   # apps/agent/test/unit/saltos-por-plataforma.test.ts.
   windows:
     name: Tests en Windows (no bloqueante)
     runs-on: windows-latest
+    # Un hijo colgado no debe gastar 6 h de minutos de Windows en un job que nadie vigila.
+    timeout-minutes: 30
     continue-on-error: true
 
     steps:
