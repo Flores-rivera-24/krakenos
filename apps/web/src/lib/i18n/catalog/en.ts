@@ -88,6 +88,8 @@ export const en: Record<TranslationKey, string> = {
     'The gateway helper isn’t installed on this computer, so the change can’t be applied.',
   'errors.code.PRIVILEGED_COMMAND_FAILED':
     'The change couldn’t be applied on the system. The details are in the server log.',
+  'errors.code.FFMPEG_REQUIRES_SETUP':
+    'RTSP cameras need ffmpeg and it isn’t available on this computer. Install it and restart the service.',
   'errors.code.DOMAIN_NOT_CONFIGURED':
     'This section isn’t connected yet. Connect it in «Connect» to make changes.',
 

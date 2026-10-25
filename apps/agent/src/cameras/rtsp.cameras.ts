@@ -117,9 +117,9 @@ export class RtspCameraManager implements CameraManager {
   }
 
   async getSnapshot(id: string): Promise<CameraSnapshot | null> {
-    this.requireFfmpeg();
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
+    this.requireFfmpeg();
 
     const { stdout, code } = await this.opts.exec(
       buildSnapshotArgs(camera.rtspUrl, { transport: this.opts.transport }),
@@ -136,9 +136,9 @@ export class RtspCameraManager implements CameraManager {
 
   async startStream(id: string): Promise<CameraStreamSession | null> {
     if (!this.hls) return null;
-    this.requireFfmpeg();
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
+    this.requireFfmpeg();
     return this.hls.start(id, camera.rtspUrl);
   }
 

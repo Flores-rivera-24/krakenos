@@ -25,6 +25,7 @@ vi.mock('@/components/cameras/CameraLivePlayer', () => ({
   ),
 }));
 
+import { ApiRequestError } from '@/lib/api';
 import { CamerasPage } from '@/pages/CamerasPage';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
@@ -230,5 +231,22 @@ describe('CamerasPage', () => {
     expect(await screen.findByText('No se pudo cargar la imagen.')).toBeInTheDocument();
     expect(screen.queryByText('Conectando…')).not.toBeInTheDocument();
     expect(screen.queryByText('Sin señal')).not.toBeInTheDocument();
+  });
+  it('si el agente dice que falta ffmpeg (503), la tarjeta enseña el paso concreto, no el fallo genérico', async () => {
+    setRole('admin');
+    const err = Object.assign(new ApiRequestError(), {
+      status: 503,
+      body: {
+        code: 'FFMPEG_REQUIRES_SETUP',
+        message:
+          'Las cámaras RTSP necesitan ffmpeg y no está disponible. Apunta FFMPEG_PATH a ffmpeg.exe.',
+      },
+    });
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/cameras' ? Promise.resolve([CAMERAS[0]]) : Promise.reject(err),
+    );
+    render(<CamerasPage />);
+    expect(await screen.findByText(/Apunta FFMPEG_PATH a ffmpeg\.exe\./)).toBeInTheDocument();
+    expect(screen.queryByText('No se pudo cargar la imagen.')).not.toBeInTheDocument();
   });
 });

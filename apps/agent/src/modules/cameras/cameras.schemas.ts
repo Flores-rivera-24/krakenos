@@ -35,6 +35,8 @@ export const snapshotSchema = {
       required: ['cameraId', 'image', 'capturedAt'],
     },
     404: errorResponse,
+    // Falta ffmpeg en el equipo (US-280): FFMPEG_REQUIRES_SETUP.
+    503: errorResponse,
   },
 } as const;
 
@@ -123,6 +125,8 @@ export const startStreamSchema = {
     },
     404: errorResponse,
     429: errorResponse,
+    // Falta ffmpeg en el equipo (US-280): FFMPEG_REQUIRES_SETUP.
+    503: errorResponse,
   },
 } as const;
 

@@ -12,6 +12,8 @@ export interface FfmpegSetupInput {
   /** `FFMPEG_PATH`: una ruta o un nombre suelto (`ffmpeg`) que se busca en el PATH. */
   ffmpegPath: string;
   platform?: NodeJS.Platform;
+  /** Cómo está desplegado el agente: en Docker no hay `apt` que valga. */
+  deployMode?: string;
   env?: Record<string, string | undefined>;
   exists?: (path: string) => boolean;
 }
@@ -33,7 +35,8 @@ export function ffmpegSetupStep(input: FfmpegSetupInput): string | null {
 
   if (esRuta(input.ffmpegPath, platform)) {
     if (exists(input.ffmpegPath)) return null;
-    return `No existe «${input.ffmpegPath}» (FFMPEG_PATH). Corrige la ruta o instala ffmpeg.`;
+    // Sin la ruta: el mensaje llega a cualquier rol con vídeo (viewer) y la ruta es del servidor.
+    return 'No existe el ffmpeg al que apunta FFMPEG_PATH. Corrige la ruta o instala ffmpeg, y reinicia el servicio.';
   }
 
   const exts = win ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean) : [''];
@@ -44,9 +47,12 @@ export function ffmpegSetupStep(input: FfmpegSetupInput): string | null {
     }
   }
 
+  if (input.deployMode === 'docker') {
+    return 'La imagen de Docker no incluye ffmpeg. Usa Frigate como fuente de cámaras o construye una imagen propia que lo incluya.';
+  }
   return win
-    ? 'Falta ffmpeg: descarga ffmpeg.exe, ponlo en una carpeta fija y apunta FFMPEG_PATH a esa ruta (o añade la carpeta al PATH del servicio). Luego no hace falta reiniciar.'
-    : 'Falta ffmpeg: instálalo (por ejemplo `sudo apt install ffmpeg`) o apunta FFMPEG_PATH a su ruta.';
+    ? 'Falta ffmpeg: descarga ffmpeg.exe, ponlo en una carpeta fija y apunta FFMPEG_PATH a esa ruta (o añade la carpeta al PATH del servicio). Después reinicia el servicio: FFMPEG_PATH y el PATH se leen al arrancar.'
+    : 'Falta ffmpeg: instálalo (por ejemplo `sudo apt install ffmpeg`) o apunta FFMPEG_PATH a su ruta, y reinicia el servicio.';
 }
 
 /**
