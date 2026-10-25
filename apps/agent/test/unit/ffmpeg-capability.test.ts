@@ -83,6 +83,8 @@ describe('ffmpegSetupStep', () => {
       exists: noHay,
     });
     expect(step).toContain('apt install ffmpeg');
+    // Texto plano: la web pinta el mensaje tal cual, sin interpretar Markdown.
+    expect(step).not.toContain('`');
   });
 
   it('en Linux lo encuentra en el PATH', () => {
