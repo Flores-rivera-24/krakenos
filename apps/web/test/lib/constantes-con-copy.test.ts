@@ -134,7 +134,7 @@ export function copyEnConstantes(nombre: string, fuente: string): Hallazgo[] {
 function escanear(): { nombre: string; h: Hallazgo }[] {
   const salida: { nombre: string; h: Hallazgo }[] = [];
   for (const ruta of ficheros()) {
-    const nombre = ruta.slice(SRC.length + 1);
+    const nombre = ruta.slice(SRC.length + 1).replaceAll('\\', '/');
     if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
     for (const h of copyEnConstantes(nombre, readFileSync(ruta, 'utf8'))) {
       salida.push({ nombre, h });

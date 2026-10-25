@@ -113,18 +113,22 @@ describe('assertNotSymlink / existsNoFollow', () => {
 });
 
 describe('applyModeAndGroup', () => {
-  it('fija el modo por descriptor y NO sigue un enlace simbólico', () => {
-    const sub = join(dir, 'modo');
-    mkdirSync(sub);
-    const real = join(sub, 'real');
-    writeFileSync(real, '', { mode: 0o600 });
-    applyModeAndGroup(real, 0o640);
-    expect(mode(real)).toBe('640');
-    symlinkSync(real, join(sub, 'enlace'));
-    // O_NOFOLLOW: abrir el enlace falla (ELOOP) en vez de tocar el destino.
-    expect(() => applyModeAndGroup(join(sub, 'enlace'), 0o666)).toThrow();
-    expect(mode(real)).toBe('640');
-  });
+  // Bits de modo POSIX y O_NOFOLLOW sobre el descriptor: Windows no los tiene.
+  it.skipIf(process.platform === 'win32')(
+    'fija el modo por descriptor y NO sigue un enlace simbólico',
+    () => {
+      const sub = join(dir, 'modo');
+      mkdirSync(sub);
+      const real = join(sub, 'real');
+      writeFileSync(real, '', { mode: 0o600 });
+      applyModeAndGroup(real, 0o640);
+      expect(mode(real)).toBe('640');
+      symlinkSync(real, join(sub, 'enlace'));
+      // O_NOFOLLOW: abrir el enlace falla (ELOOP) en vez de tocar el destino.
+      expect(() => applyModeAndGroup(join(sub, 'enlace'), 0o666)).toThrow();
+      expect(mode(real)).toBe('640');
+    },
+  );
 });
 
 describe('resolveGroupId', () => {

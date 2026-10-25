@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { es } from '@/lib/i18n/catalog/es';
 import { esCore } from '@/lib/i18n/catalog/es-core';
@@ -73,7 +73,7 @@ function fragmentos(): Fragmento[] {
 }
 
 /** Cabeza de la que cuelgan los módulos de catálogo: no son «código que usa copy». */
-const DIR_I18N = join(SRC, 'lib/i18n') + '/';
+const DIR_I18N = join(SRC, 'lib/i18n') + sep;
 const ES_COMPUESTO = join(SRC, 'lib/i18n/catalog/es.ts');
 
 /** Prefijos transversales: casi toda pantalla los pinta, y por eso viven en el núcleo. */
@@ -199,7 +199,7 @@ describe('catálogo en fragmentos', () => {
           claveAFragmento,
         )) {
           incumplidos.push(
-            `${m.ruta.slice(SRC.length + 1)} nombra \`${clave}\` (fragmento «${fragmento.nombre}») sin ` +
+            `${m.ruta.slice(SRC.length + 1).replaceAll('\\', '/')} nombra \`${clave}\` (fragmento «${fragmento.nombre}») sin ` +
               `importarlo: añade \`import '@/lib/i18n/catalog/fragments/${fragmento.nombre}';\``,
           );
         }

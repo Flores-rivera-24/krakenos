@@ -99,13 +99,13 @@ const LISTA: Record<string, Entrada> = {
     motivo: `${MODOS}: el modo 0600 de la clave (el cifrado y su reutilización sí se comprueban).`,
   },
   'unit/secure-fs.test.ts': {
-    saltos: 1,
-    motivo: `${MODOS}; y no hay umask.`,
+    saltos: 2,
+    motivo: `${MODOS}; no hay umask ni O_NOFOLLOW sobre el descriptor.`,
   },
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 11, saltos: 19, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 11, saltos: 20, soloPosix: 6 };
 
 /** Saltos: `skipIf(… process.platform === 'win32' …)`, también `it.skipIf` y `describe.skipIf`. */
 const SALTO = /skipIf\((?:[^()]|\([^()]*\))*?process\.platform\s*===\s*['"]win32['"]/g;

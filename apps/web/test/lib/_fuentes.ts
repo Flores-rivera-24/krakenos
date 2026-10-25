@@ -56,7 +56,8 @@ export interface Fuente {
 /** Las fuentes de `src/`, listas para escanear. */
 export function fuentes(): Fuente[] {
   return ficheros().map((ruta) => ({
-    nombre: ruta.slice(SRC.length + 1),
+    // Con «/» también en Windows: los gates comparan nombres como `lib/use-polling.ts`.
+    nombre: ruta.slice(SRC.length + 1).replaceAll('\\', '/'),
     codigo: sinComentarios(readFileSync(ruta, 'utf8')),
   }));
 }
