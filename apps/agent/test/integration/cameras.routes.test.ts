@@ -503,3 +503,36 @@ describe('fichero de cámaras corrupto', () => {
     expect(() => loadCameraDefinitions(p)).toThrow(CorruptJsonStoreError);
   });
 });
+
+describe('cámaras RTSP sin ffmpeg (US-280)', () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildTestApp({
+      routes: true,
+      cameras: new RtspCameraManager({
+        cameras: [{ id: 'c1', name: 'Entrada', rtspUrl: 'rtsp://10.0.0.5/s' }],
+        exec: async () => ({ stdout: Buffer.from([1]), code: 0 }),
+        ffmpegSetup: () => 'Apunta FFMPEG_PATH a ffmpeg.exe.',
+      }),
+    });
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('el snapshot responde 503 FFMPEG_REQUIRES_SETUP con el paso, no 404 «sin señal»', async () => {
+    await resetDb(app);
+    const user = await seedUser(app, { role: 'viewer' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/cameras/c1/snapshot',
+      headers: authHeader(signAccess(app, user)),
+    });
+    expect(res.statusCode).toBe(503);
+    const body = res.json<{ code: string; message: string }>();
+    expect(body.code).toBe('FFMPEG_REQUIRES_SETUP');
+    expect(body.message).toContain('Apunta FFMPEG_PATH a ffmpeg.exe.');
+  });
+});

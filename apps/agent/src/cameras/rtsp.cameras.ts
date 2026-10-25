@@ -9,6 +9,7 @@ import {
   createFfmpegStreamSpawner,
   jpegToDataUrl,
 } from './ffmpeg.js';
+import { FfmpegRequiresSetupError } from './ffmpeg-capability.js';
 import { HlsStreamManager, type StreamSpawner } from './hls-stream.js';
 import { CamerasConfigCorruptError } from './config-error.js';
 
@@ -53,6 +54,11 @@ export interface RtspCameraOptions {
    */
   motionExec?: FfmpegExec;
   transport?: string;
+  /**
+   * ¿Falta ffmpeg? (US-280). Devuelve el paso a dar o `null`. Se evalúa en CADA llamada que lo
+   * necesita, así que instalarlo no exige reiniciar. Sin él (tests), se supone que está.
+   */
+  ffmpegSetup?: () => string | null;
   /** Config de streaming HLS (US-185). Sin ella, el streaming queda desactivado. */
   hls?: RtspHlsOptions;
   /** Reloj inyectable (ms); por defecto `Date.now`. */
@@ -104,7 +110,14 @@ export class RtspCameraManager implements CameraManager {
     }));
   }
 
+  /** Lanza `FFMPEG_REQUIRES_SETUP` si no hay ffmpeg: no se culpa a la cámara de lo que falta en el equipo. */
+  private requireFfmpeg(): void {
+    const step = this.opts.ffmpegSetup?.();
+    if (step) throw new FfmpegRequiresSetupError(step);
+  }
+
   async getSnapshot(id: string): Promise<CameraSnapshot | null> {
+    this.requireFfmpeg();
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
 
@@ -123,6 +136,7 @@ export class RtspCameraManager implements CameraManager {
 
   async startStream(id: string): Promise<CameraStreamSession | null> {
     if (!this.hls) return null;
+    this.requireFfmpeg();
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
     return this.hls.start(id, camera.rtspUrl);

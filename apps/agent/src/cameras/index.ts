@@ -5,6 +5,7 @@ import { FrigateCameraManager } from './frigate.cameras.js';
 import { MockCameraManager } from './mock.cameras.js';
 import { NoneCameraManager } from './none.cameras.js';
 import { RtspCameraManager } from './rtsp.cameras.js';
+import { ffmpegSetupStep } from './ffmpeg-capability.js';
 
 /** Config para la fuente RTSP real (`kind: 'rtsp'`). */
 export interface RtspCameraConfig {
@@ -72,6 +73,7 @@ export function createCameraManager(config: CameraConfig): CameraManager {
         // del `MotionService` (antes 10 s, el doble del intervalo → apilamiento).
         motionExec: createFfmpegExec(rtsp.ffmpegPath, MOTION_FRAME_TIMEOUT_MS),
         transport: rtsp.transport,
+        ffmpegSetup: () => ffmpegSetupStep({ ffmpegPath: rtsp.ffmpegPath ?? 'ffmpeg' }),
         // Streaming HLS (US-185): solo si hay `hls.baseDir` configurado.
         hls: config.hls
           ? {
