@@ -299,7 +299,7 @@ function DnsPageBody() {
                             {q.client}
                           </td>
                           <td className="px-3 py-2">
-                            <span className={q.blocked ? 'text-destructive' : 'text-success'}>
+                            <span className={q.blocked ? 'text-danger' : 'text-success'}>
                               {q.blocked ? t('dns.blocked') : t('dns.allowed')}
                             </span>
                           </td>
@@ -379,7 +379,7 @@ function DnsPageBody() {
                       </td>
                       <td className="px-3 py-2 font-mono text-xs">{e.domain}</td>
                       <td className="px-3 py-2">
-                        <span className={e.blocked ? 'text-destructive' : 'text-success'}>
+                        <span className={e.blocked ? 'text-danger' : 'text-success'}>
                           {e.blocked ? t('dns.blocked') : t('dns.allowed')}
                         </span>
                       </td>

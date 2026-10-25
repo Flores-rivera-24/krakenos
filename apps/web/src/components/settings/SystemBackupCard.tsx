@@ -135,7 +135,7 @@ export function SystemBackupCard() {
                 type="file"
                 accept=".kbk,application/octet-stream"
                 onChange={(e) => setRestoreFile(e.target.files?.[0] ?? null)}
-                className="block w-full text-kr-sm text-kr-secondary file:mr-3 file:rounded-md file:border file:border-kr file:bg-kr-elevated file:px-3 file:py-1.5 file:text-kr-primary"
+                className="block w-full text-kr-sm text-kr-secondary file:mr-3 file:rounded-md file:border file:border-kr-field file:bg-kr-elevated file:px-3 file:py-1.5 file:text-kr-primary"
               />
             </div>
             <div className="space-y-1.5">
@@ -269,7 +269,7 @@ function AutoBackupSection() {
           <Label htmlFor="bk-auto-freq">{t('backup.auto.freq')}</Label>
           <select
             id="bk-auto-freq"
-            className="h-9 w-full rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary"
+            className="h-9 w-full rounded-md border border-kr-field bg-kr-elevated px-2 text-kr-sm text-kr-primary"
             value={status.frequency}
             onChange={(e) => void patchSetting('autoBackupFrequency', e.target.value)}
           >

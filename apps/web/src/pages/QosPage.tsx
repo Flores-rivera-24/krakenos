@@ -182,7 +182,7 @@ export function QosPage() {
                   id="qos-priority"
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value as QosPriority })}
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-sm"
                 >
                   {PRIORITIES.map((p) => (
                     <option key={p} value={p}>

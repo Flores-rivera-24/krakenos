@@ -395,7 +395,7 @@ export function LoginPage() {
                   type="checkbox"
                   checked={keepSignedIn}
                   onChange={(e) => setKeepSignedIn(e.target.checked)}
-                  className="h-4 w-4 rounded-sm border-kr accent-kr-accent"
+                  className="h-4 w-4 rounded-sm border-kr-field accent-kr-accent"
                 />
                 {t('login.keepSignedIn')}
               </label>

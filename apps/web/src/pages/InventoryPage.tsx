@@ -210,7 +210,7 @@ function InventoryPageBody() {
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t('inventory.searchPlaceholder')}
             aria-label={t('inventory.searchLabel')}
-            className="h-10 w-full rounded-md border border-kr bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            className="h-10 w-full rounded-md border border-kr-field bg-kr-elevated pl-9 pr-3 text-kr-base text-kr-primary placeholder:text-kr-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring"
           />
         </div>
 

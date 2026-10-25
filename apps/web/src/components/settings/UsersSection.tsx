@@ -169,7 +169,7 @@ export function UsersSection() {
               id="nu-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
-              className="h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary"
+              className="h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-kr-base text-kr-primary"
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
@@ -255,7 +255,7 @@ export function UsersSection() {
                             t('users.roleUpdated'),
                           )
                         }
-                        className="h-8 rounded-md border border-kr bg-kr-elevated px-2 text-kr-sm text-kr-primary disabled:opacity-50"
+                        className="h-8 rounded-md border border-kr-field bg-kr-elevated px-2 text-kr-sm text-kr-primary disabled:opacity-50"
                       >
                         {USER_ROLES.map((role) => (
                           <option key={role} value={role}>

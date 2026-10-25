@@ -299,7 +299,7 @@ export function SurveyPanel({
                 id="survey-band"
                 value={band}
                 onChange={(e) => setBand(e.target.value as WifiBand)}
-                className="h-9 w-full rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary"
               >
                 {BANDS.map((b) => (
                   <option key={b} value={b}>
@@ -315,7 +315,7 @@ export function SurveyPanel({
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
                 disabled={devicesFailed}
-                className="h-9 w-full rounded-md border border-kr bg-background px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary"
               >
                 <option value="">{t('survey.manualOption')}</option>
                 {devices.map((d) => (

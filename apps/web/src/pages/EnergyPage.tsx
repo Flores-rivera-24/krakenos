@@ -279,7 +279,7 @@ function EnergyPageBody() {
                       <td className="py-2 text-foreground">{d.name ?? d.deviceId}</td>
                       <td className="py-2 text-muted-foreground">{d.room ?? '—'}</td>
                       <td className="py-2 text-warning">{formatEnergy(d.energyWh)}</td>
-                      <td className="py-2 text-primary">{formatCost(d.cost, stats.currency)}</td>
+                      <td className="py-2 text-kr-link">{formatCost(d.cost, stats.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -307,7 +307,7 @@ function EnergyPageBody() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.15"
-                  className="w-32 rounded-md border border-kr bg-transparent px-2 py-1"
+                  className="w-32 rounded-md border border-kr-field bg-transparent px-2 py-1"
                   aria-label={t('energy.pricePerKwh')}
                 />
               </label>
@@ -318,7 +318,7 @@ function EnergyPageBody() {
                   maxLength={8}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-20 rounded-md border border-kr bg-transparent px-2 py-1"
+                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1"
                   aria-label={t('energy.currency')}
                 />
               </label>

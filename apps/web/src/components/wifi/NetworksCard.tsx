@@ -76,7 +76,7 @@ export function NetworksCard() {
                   className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
                 >
                   {ap.name} · {ap.ip}{' '}
-                  <span className={ap.online ? 'text-success' : 'text-destructive'}>
+                  <span className={ap.online ? 'text-success' : 'text-danger'}>
                     {ap.online ? '●' : '○'}
                   </span>
                 </span>
@@ -109,7 +109,7 @@ export function NetworksCard() {
                       <td className="px-3 py-2 text-muted-foreground">{apName(n.apId)}</td>
                       <td className="px-3 py-2">
                         <button
-                          className="text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
+                          className="text-kr-link hover:underline disabled:text-muted-foreground disabled:no-underline"
                           onClick={() => void showClients(n)}
                           disabled={n.clientCount === 0}
                         >

@@ -250,7 +250,7 @@ function VlanPageBody() {
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          className="h-9 rounded-md border border-input bg-background px-2 text-sm disabled:opacity-50"
+                          className="h-9 rounded-md border border-kr-field bg-background px-2 text-sm disabled:opacity-50"
                         >
                           <option value="">{t('vlan.noVlan')}</option>
                           {vlans.map((v) => (

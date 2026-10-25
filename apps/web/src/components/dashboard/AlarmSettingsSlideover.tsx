@@ -184,7 +184,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             <select
               id="alarm-siren"
               disabled={leido?.devicesFailed}
-              className="w-full rounded-md border border-kr bg-kr-surface px-3 py-2 text-kr-sm"
+              className="w-full rounded-md border border-kr-field bg-kr-surface px-3 py-2 text-kr-sm"
               value={cfg.sirenDeviceId ?? ''}
               onChange={(e) => setCfg({ ...cfg, sirenDeviceId: e.target.value || null })}
             >

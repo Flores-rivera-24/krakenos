@@ -95,23 +95,76 @@ const BG = ['kr-bg-base', 'kr-bg-surface', 'kr-bg-elevated'];
 const TEXT = ['kr-text-primary', 'kr-text-secondary', 'kr-text-muted', 'kr-link'];
 const SEMANTIC = ['kr-success', 'kr-info', 'kr-warning', 'kr-danger'];
 
-function buildPairs(tokens) {
+/** Mezcla `fg` al `pct` con `bg` por canal en sRGB: lo que hace `color-mix(in srgb, …)`. */
+function mixHex(fgHex, bgHex, pct) {
+  const f = hexToRgb(fgHex);
+  const b = hexToRgb(bgHex);
+  const c = f.map((v, i) => Math.round(pct * v + (1 - pct) * (b[i] ?? 0)));
+  return `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
+}
+
+const faltantes = new Set();
+/**
+ * Falla CERRADO: un token que el script pide y el tema no define no se mide en silencio con
+ * `undefined` (daría NaN, que no es `< min` y pasaría). Se acumulan todos para nombrarlos juntos.
+ */
+function tokenOrDie(tokens, name, theme) {
+  const v = tokens[name];
+  if (!v) faltantes.add(`--${name} (tema ${theme})`);
+  return v ?? '#000000';
+}
+
+// `kind`: texto (4,5:1 normal / 3:1 grande), componente (3:1, WCAG 1.4.11), sólido (texto sobre
+// un relleno), tinta (texto sobre su propio color al 10 % mezclado con la superficie).
+function buildPairs(tokens, theme) {
   const pairs = [];
   for (const bg of BG) {
-    for (const fg of TEXT) pairs.push({ fg, bg, large: false });
+    for (const fg of TEXT) pairs.push({ fg, bg, large: false, kind: 'texto' });
   }
   // Colores semánticos como texto sobre superficie (su uso típico en tarjetas).
-  for (const fg of SEMANTIC) pairs.push({ fg, bg: 'kr-bg-surface', large: false });
+  for (const fg of SEMANTIC) pairs.push({ fg, bg: 'kr-bg-surface', large: false, kind: 'texto' });
   // El acento solo se usa como TEXTO en iconos/logo (gráfico, umbral 3:1); como texto
   // normal se usa `kr-link`. Como FONDO de botón, el texto blanco encima.
-  pairs.push({ fg: 'kr-accent', bg: 'kr-bg-surface', large: true });
-  pairs.push({ fg: '#ffffff', bg: 'kr-accent', large: false, fgName: 'white' });
+  pairs.push({ fg: 'kr-accent', bg: 'kr-bg-surface', large: true, kind: 'texto' });
+  pairs.push({ fg: '#ffffff', bg: 'kr-accent', large: false, fgName: 'white', kind: 'sólido' });
+  // El botón destructivo: texto blanco sobre su relleno.
+  pairs.push({
+    fg: '#ffffff',
+    bg: 'kr-danger-solid',
+    large: false,
+    fgName: 'white',
+    kind: 'sólido',
+  });
   // US-231: faltaba `kr-offline`, el color del `StatusDot` de «desconectado» —el
   // indicador más repetido de toda la app—. Es gráfico, no texto: umbral 3:1.
-  for (const bg of BG) pairs.push({ fg: 'kr-offline', bg, large: true });
+  for (const bg of BG) pairs.push({ fg: 'kr-offline', bg, large: true, kind: 'componente' });
+  // Controles (WCAG 1.4.11, 3:1): el borde del campo y el carril del interruptor apagado se
+  // pintan sobre surface (tarjetas) o elevated (diálogos, paneles); el anillo de foco, sobre las tres.
+  for (const fg of ['kr-border-field', 'kr-switch-off']) {
+    for (const bg of ['kr-bg-surface', 'kr-bg-elevated']) {
+      pairs.push({ fg, bg, large: true, kind: 'componente' });
+    }
+  }
+  for (const bg of BG) pairs.push({ fg: 'kr-ring', bg, large: true, kind: 'componente' });
+  // Texto semántico sobre su propia tinta (`bg-success/10`…): el medidor medía el token
+  // sobre la superficie lisa y no sobre lo que hay debajo del aviso.
+  for (const base of ['kr-bg-surface', 'kr-bg-elevated']) {
+    for (const fg of SEMANTIC) {
+      pairs.push({
+        fg,
+        bg: `${fg} 10 % sobre ${base}`,
+        tint: fg,
+        tintBase: base,
+        large: false,
+        kind: 'tinta',
+      });
+    }
+  }
   return pairs.map((p) => {
-    const fgHex = p.fg.startsWith('#') ? p.fg : tokens[p.fg];
-    const bgHex = tokens[p.bg];
+    const fgHex = p.fg.startsWith('#') ? p.fg : tokenOrDie(tokens, p.fg, theme);
+    const bgHex = p.tint
+      ? mixHex(tokenOrDie(tokens, p.tint, theme), tokenOrDie(tokens, p.tintBase, theme), 0.1)
+      : tokenOrDie(tokens, p.bg, theme);
     const r = ratio(fgHex, bgHex);
     const min = p.large ? 3 : 4.5;
     return { ...p, fgHex, bgHex, ratio: r, min, pass: r >= min };
@@ -122,20 +175,28 @@ function table(theme, pairs) {
   const rows = pairs.map((p) => {
     const fg = p.fgName ?? p.fg;
     const status = p.pass ? '✅ AA' : '❌ FALLA';
-    return `| \`${fg}\` ${p.fgHex} | \`${p.bg}\` ${p.bgHex} | ${p.ratio.toFixed(2)}:1 | ${p.min}:1 | ${status} |`;
+    return `| ${p.kind} | \`${fg}\` ${p.fgHex} | \`${p.bg}\` ${p.bgHex} | ${p.ratio.toFixed(2)}:1 | ${p.min}:1 | ${status} |`;
   });
   return [
     `### Tema ${theme}`,
     '',
-    '| Texto | Fondo | Ratio | Mínimo AA | Resultado |',
-    '| --- | --- | --- | --- | --- |',
+    '| Tipo | Texto | Fondo | Ratio | Mínimo AA | Resultado |',
+    '| --- | --- | --- | --- | --- | --- |',
     ...rows,
     '',
   ].join('\n');
 }
 
-const darkPairs = buildPairs(darkTokens);
-const lightPairs = buildPairs(lightTokens);
+const darkPairs = buildPairs(darkTokens, 'oscuro');
+const lightPairs = buildPairs(lightTokens, 'claro');
+if (faltantes.size > 0) {
+  console.error(
+    `check-contrast: faltan tokens en ${cssPath}:\n  ${[...faltantes].join('\n  ')}\n` +
+      'Defínelos en :root, .dark y html:not(.dark) (en hex), o quita el par de buildPairs.',
+  );
+  process.exit(1);
+}
+
 const failures = [...darkPairs, ...lightPairs].filter((p) => !p.pass);
 
 const doc = `# Accesibilidad — KrakenOS
@@ -145,7 +206,7 @@ const doc = `# Accesibilidad — KrakenOS
 
 ## Contraste WCAG 2.1
 
-Umbrales AA: **4.5:1** texto normal · **3:1** texto grande / componentes. Ratios calculados
+Umbrales AA: **4.5:1** texto normal · **3:1** texto grande / componentes (bordes de campo, interruptor apagado, anillo de foco). Ratios calculados
 con la fórmula de luminancia relativa sRGB sobre los pares fondo/texto reales de la paleta.
 
 ${table('oscuro (por defecto)', darkPairs)}

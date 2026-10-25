@@ -16,8 +16,9 @@ hardcodear colores en componentes: usar siempre las utilidades `kr-*` / semánti
   y un test que cite `text-yellow-500` metería esa clase en el CSS de producción.
 - **Modo oscuro por clase:** `@custom-variant dark (&:where(.dark, .dark *))`. `<html class="dark">`
   es el default (ver `lib/theme.ts`).
-- **Tema:** `@theme inline` mapea los `--kr-*` y las variables de shadcn (`--border`, `--primary`…) a
-  nombres de utilidad, sin renombrar ninguna clase. `inline` emite `var(--kr-…)` tal cual, así que
+- **Tema:** `@theme inline` mapea los `--kr-*` a nombres de utilidad, y los alias de shadcn
+  (`--color-border`, `--color-primary`, `--color-input`, `--color-ring`…) apuntan a tokens `kr-*`:
+  ya no hay canales HSL (`--border`, `--primary`) y un color nuevo no se define en dos sitios. `inline` emite `var(--kr-…)` tal cual, así que
   el cambio de tema lo resuelve el elemento y no `:root`. Los `--animate-kr-*` van en un `@theme`
   aparte (sus `@keyframes` están fuera de las capas).
 - ⚠️ **Un color de `--color-*` genera las utilidades de TODAS las propiedades** (`bg-`, `text-`,
@@ -37,23 +38,35 @@ hardcodear colores en componentes: usar siempre las utilidades `kr-*` / semánti
 
 ## Paleta — tokens CSS
 
-| Token CSS | Valor (oscuro) | Uso |
-|---|---|---|
-| `--kr-bg-base` | `#0d1117` | Fondo principal (casi negro azulado) |
-| `--kr-bg-surface` | `#161b22` | Cards, paneles |
-| `--kr-bg-elevated` | `#1c2230` | Dropdowns, tooltips, sidebars |
-| `--kr-border` | `rgba(255,255,255,0.08)` | Bordes sutiles |
-| `--kr-border-muted` | `rgba(255,255,255,0.04)` | Bordes casi invisibles |
-| `--kr-text-primary` | `#e6edf3` | Texto principal |
-| `--kr-text-secondary` | `#8b949e` | Texto secundario |
-| `--kr-text-muted` | `#484f58` | Texto desactivado / metadata |
-| `--kr-accent` | `#2563eb` | Azul de acción (mismo que UniFi) |
-| `--kr-accent-hover` | `#1d4ed8` | Hover de acción |
-| `--kr-success` | `#3fb950` | Éxito |
-| `--kr-warning` | `#d29922` | Advertencia |
-| `--kr-danger` | `#f85149` | Error / peligro |
-| `--kr-online` | `#3fb950` | Dot verde (online) |
-| `--kr-offline` | `#484f58` | Dot gris (offline) |
+| Token CSS | Valor (oscuro) | Valor (claro) | Uso |
+|---|---|---|---|
+| `--kr-bg-base` | `#0d1117` | `#f6f8fa` | Fondo principal |
+| `--kr-bg-surface` | `#161b22` | `#ffffff` | Cards, paneles |
+| `--kr-bg-elevated` | `#1c2230` | `#eef1f4` | Dropdowns, tooltips, sidebars |
+| `--kr-border` | `rgba(255,255,255,0.08)` | `rgba(0,0,0,0.1)` | Bordes sutiles de tarjeta, tabla y sección |
+| `--kr-border-muted` | `rgba(255,255,255,0.04)` | `rgba(0,0,0,0.06)` | Bordes casi invisibles |
+| `--kr-border-field` | `#6e7176` | `#82868c` | Borde de campo (3:1 sobre surface y elevated) |
+| `--kr-switch-off` | `#6e7176` | `#82868c` | Carril del interruptor apagado (3:1) |
+| `--kr-ring` | `#0ea5e9` | `#0c8ec8` | Anillo de foco (3:1 sobre surface y elevated) |
+| `--kr-text-primary` | `#e6edf3` | `#1f2328` | Texto principal |
+| `--kr-text-secondary` | `#8b949e` | `#57606a` | Texto secundario |
+| `--kr-text-muted` | `#868f9a` | `#5f6670` | Texto desactivado / metadata (AA) |
+| `--kr-accent` | `#2563eb` | `#2563eb` | Azul de acción: fondo de botón, no texto |
+| `--kr-accent-hover` | `#1d4ed8` | `#1d4ed8` | Hover de acción |
+| `--kr-link` | `#58a6ff` | `#2563eb` | Enlaces y texto de acento |
+| `--kr-success` | `#3fb950` | `#177031` | Éxito |
+| `--kr-warning` | `#d29922` | `#855900` | Advertencia |
+| `--kr-danger` | `#f9665f` | `#bb1f2a` | Error / peligro como texto |
+| `--kr-danger-solid` | `#dc2626` | `#dc2626` | Fondo de botón destructivo (texto blanco, 4,83:1) |
+| `--kr-online` | `#3fb950` | `#1a7f37` | Dot verde (online) |
+| `--kr-offline` | `#666d76` | `#848b94` | Dot gris (offline) |
+
+**Bordes:** un **campo** (`input`, `select`, `textarea`, interruptor) lleva `border-kr-field`
+(3:1, WCAG 1.4.11); una **tarjeta o tabla** lleva `border-kr`, sutil a propósito. Un campo con
+`border-kr` lo caza `test/lib/bordes-de-campo.test.ts`.
+
+**Texto de acento:** `text-primary` y `text-destructive` son alias de fondo de botón y no valen
+como texto (3,35:1 y 3,58:1 en oscuro): el texto usa `text-kr-link` y `text-danger`.
 
 ## Utilidades de Tailwind
 
@@ -62,10 +75,10 @@ tipográfica `text-kr-base`):
 `bg-kr-base`, `bg-kr-surface`, `bg-kr-elevated`, `bg-kr-accent`, `bg-kr-accent-hover`,
 `bg-success`, `bg-warning`, `bg-danger`, `bg-online`, `bg-offline`.
 
-**Texto:** `text-kr-primary`, `text-kr-secondary`, `text-kr-muted`, `text-kr-accent`,
+**Texto:** `text-kr-primary`, `text-kr-secondary`, `text-kr-muted`, `text-kr-link`,
 `text-success`, `text-warning`, `text-danger`.
 
-**Bordes:** `border-kr`, `border-kr-muted` (+ `border-success`/`-warning`/`-danger`).
+**Bordes:** `border-kr`, `border-kr-muted`, `border-kr-field` (+ `border-success`/`-warning`/`-danger`).
 
 > Los colores semánticos (`success`/`warning`/`danger`/`online`/`offline`) y los `kr-*` de
 > `--color-*` valen para cualquier propiedad de color (`ring-*`, `outline-*`, `divide-*`…) y

@@ -17,7 +17,7 @@ import '@/lib/i18n/catalog/fragments/wifi';
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50';
+  'flex h-10 w-full rounded-md border border-kr-field bg-background px-3 py-2 text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring disabled:opacity-50';
 
 interface Props {
   network: WifiNetwork;

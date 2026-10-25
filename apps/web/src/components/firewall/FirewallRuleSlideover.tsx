@@ -16,7 +16,7 @@ import { useT, type TranslationKey } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/firewall';
 
 const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 text-kr-base text-kr-primary';
+  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-kr-base text-kr-primary';
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
 // Etiquetas visibles (el valor de la API no cambia); alineadas con FirewallPage.
 // Guardan la CLAVE, no el texto: una constante de módulo con el copy ya resuelto

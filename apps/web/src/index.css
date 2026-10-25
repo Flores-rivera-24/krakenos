@@ -44,7 +44,7 @@
 
 /* === Tema de Tailwind ===
    Antes vivía en `tailwind.config.ts`. Los **valores** siguen siendo variables CSS
-   (`--kr-*` y las de shadcn, más abajo en `:root` / `.dark` / `html:not(.dark)`):
+   (`--kr-*`, más abajo en `:root` / `.dark` / `html:not(.dark)`):
    aquí solo se les da nombre de utilidad. `inline` hace que cada utilidad emita
    `var(--kr-…)` tal cual, en vez de pasar por una variable `--color-*` intermedia,
    así el cambio de tema lo resuelve el elemento y no `:root`.
@@ -73,22 +73,22 @@
   --text-kr-2xl: 24px; /* números grandes en dashboard */
   --text-kr-2xl--line-height: 32px;
 
-  /* shadcn/ui: los canales HSL viven en `:root`/`.dark`. */
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
+  /* shadcn/ui: cada alias apunta a un token `kr-*` (atado por `test/lib/alias-shadcn.test.ts`). */
+  --color-border: var(--kr-border);
+  --color-input: var(--kr-border-field);
+  --color-ring: var(--kr-ring);
+  --color-background: var(--kr-bg-base);
+  --color-foreground: var(--kr-text-primary);
+  --color-primary: var(--kr-accent);
+  --color-primary-foreground: #ffffff;
+  --color-secondary: var(--kr-bg-elevated);
+  --color-secondary-foreground: var(--kr-text-primary);
+  --color-muted: var(--kr-bg-elevated);
+  --color-muted-foreground: var(--kr-text-secondary);
+  --color-destructive: var(--kr-danger-solid);
+  --color-destructive-foreground: #ffffff;
+  --color-card: var(--kr-bg-surface);
+  --color-card-foreground: var(--kr-text-primary);
 
   /* Semánticos KrakenOS: usables como bg-/text-/border-/ring-. */
   --color-success: var(--kr-success);
@@ -111,6 +111,13 @@
   --color-kr-secondary: var(--kr-text-secondary);
   /* US-95: texto de acento accesible (enlaces/nav activa) sobre fondos oscuros. */
   --color-kr-link: var(--kr-link);
+
+  /* Controles (WCAG 1.4.11, 3:1): borde de campo, carril del interruptor apagado, anillo de foco
+     y relleno del botón destructivo. Los bordes de tarjeta/tabla siguen en `border-kr`. */
+  --color-kr-field: var(--kr-border-field);
+  --color-kr-switch-off: var(--kr-switch-off);
+  --color-kr-ring: var(--kr-ring);
+  --color-kr-danger-solid: var(--kr-danger-solid);
 
   /* Bordes sutiles: `border-kr` (y `border-kr-muted`, a mano más abajo). */
   --color-kr: var(--kr-border);
@@ -188,22 +195,7 @@
 
 @layer base {
   :root {
-    /* shadcn/ui — mapeados a los tokens kr (ver abajo) */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 199 89% 48%;
+    /* shadcn/ui: solo queda el radio; los colores son alias de `@theme inline` hacia `--kr-*`. */
     --radius: 0.5rem;
 
     /* === Sistema de diseño KrakenOS (US-33) — paleta semántica ===
@@ -246,28 +238,18 @@
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;
-    --kr-danger: #f85149;
+    /* Texto sobre su tinta al 10 % (surface/elevated): 5,84/4,72:1; antes #f85149, 4,25 sobre elevated */
+    --kr-danger: #f9665f;
     --kr-online: #3fb950;
     --kr-offline: #666d76;
+    /* Controles: valor = el menor contraste que pasa 3:1 con margen ≥0,2 (medido con check-contrast). */
+    --kr-border-field: #6e7176; /* 3,53:1 sobre surface · 3,25:1 sobre elevated */
+    --kr-switch-off: #6e7176; /* ídem */
+    --kr-ring: #0ea5e9; /* 6,83:1 base · 6,24:1 surface · 5,74:1 elevated (el cian de siempre) */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --primary: 199 89% 48%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
-
     /* Los tokens kr-* ya tienen valores oscuros en :root; .dark los confirma. */
     --kr-bg-base: #0d1117;
     --kr-bg-surface: #161b22;
@@ -283,9 +265,15 @@
     --kr-success: #3fb950;
     --kr-info: #0ea5e9;
     --kr-warning: #d29922;
-    --kr-danger: #f85149;
+    /* Texto sobre su tinta al 10 % (surface/elevated): 5,84/4,72:1; antes #f85149, 4,25 sobre elevated */
+    --kr-danger: #f9665f;
     --kr-online: #3fb950;
     --kr-offline: #666d76;
+    /* Controles: valor = el menor contraste que pasa 3:1 con margen ≥0,2 (medido con check-contrast). */
+    --kr-border-field: #6e7176; /* 3,53:1 sobre surface · 3,25:1 sobre elevated */
+    --kr-switch-off: #6e7176; /* ídem */
+    --kr-ring: #0ea5e9; /* 6,83:1 base · 6,24:1 surface · 5,74:1 elevated (el cian de siempre) */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   /* Tema claro (US-41): se aplica cuando el <html> NO lleva la clase `dark`.
@@ -304,12 +292,21 @@
     --kr-link: #2563eb;
     /* US-160: en claro el brillo del shimmer es una sombra tenue, no un highlight blanco. */
     --kr-shimmer-highlight: rgba(0, 0, 0, 0.05);
-    --kr-success: #1a7f37;
-    --kr-info: #0969da;
-    --kr-warning: #9a6700;
-    --kr-danger: #cf222e;
+    /* Texto sobre su tinta al 10 % (surface/elevated): 6,18/4,75:1; antes #1a7f37, 4,43/4,19 */
+    --kr-success: #177031;
+    /* ídem: 6,18/4,71:1; antes #0969da, 4,51/3,99 */
+    --kr-info: #085ec3;
+    /* ídem: 6,13/4,73:1; antes #9a6700, 4,29/4,24 */
+    --kr-warning: #855900;
+    /* ídem: 6,28/4,72:1; antes #cf222e, 4,04 sobre elevated */
+    --kr-danger: #bb1f2a;
     --kr-online: #1a7f37;
     --kr-offline: #848b94;
+    /* Controles: ver el comentario del bloque oscuro. */
+    --kr-border-field: #82868c; /* 3,66:1 sobre surface · 3,23:1 sobre elevated */
+    --kr-switch-off: #82868c; /* ídem */
+    --kr-ring: #0c8ec8; /* 3,45:1 base · 3,67:1 surface · 3,24:1 elevated */
+    --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
   }
 
   * {

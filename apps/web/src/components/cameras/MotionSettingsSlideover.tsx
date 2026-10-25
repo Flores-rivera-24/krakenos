@@ -27,7 +27,7 @@ interface Props {
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const SELECT_CLASS =
-  'w-full rounded-md border border-kr bg-kr-surface px-3 py-2 text-kr-sm text-kr-primary';
+  'w-full rounded-md border border-kr-field bg-kr-surface px-3 py-2 text-kr-sm text-kr-primary';
 
 /** Panel de configuración de la detección de movimiento de una cámara (US-186). */
 export function MotionSettingsSlideover({ camera, onClose }: Props) {

@@ -58,7 +58,7 @@ import '@/lib/i18n/catalog/fragments/personas';
 import '@/lib/i18n/catalog/fragments/rutinas';
 
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring';
+  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 

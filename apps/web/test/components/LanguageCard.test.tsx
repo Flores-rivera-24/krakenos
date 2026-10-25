@@ -49,6 +49,17 @@ describe('LanguageCard (US-177)', () => {
     );
   });
 
+  it('la opción activa lleva un icono de verificación y la inactiva no', () => {
+    render(<LanguageCard />);
+    const activa = screen.getByRole('button', { name: /Español/ });
+    const inactiva = screen.getByRole('button', { name: /English/ });
+    const icono = activa.querySelector('svg.lucide-check');
+    expect(icono).not.toBeNull();
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
+    expect(icono).toHaveAttribute('width', '20');
+    expect(inactiva.querySelector('svg')).toBeNull();
+  });
+
   it('cambiar de idioma llama al PATCH de autoservicio, actualiza el store y aplica el idioma', async () => {
     render(<LanguageCard />);
     await userEvent.click(screen.getByRole('button', { name: /English/ }));

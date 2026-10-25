@@ -29,7 +29,7 @@ import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/conectar';
 
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring';
+  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring';
 
 /** Valor de un campo del formulario: booleano para `boolean`, texto para el resto. */
 type FieldValue = string | boolean;
@@ -293,7 +293,7 @@ export function IntegrationWizard({
           type="button"
           onClick={() => void runSave()}
           disabled={busy}
-          className="text-kr-sm text-kr-secondary underline underline-offset-2 hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="text-kr-sm text-kr-secondary underline underline-offset-2 hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring disabled:opacity-50"
         >
           {t('wizard.saveWithoutTest')}
         </button>
