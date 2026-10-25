@@ -88,7 +88,6 @@ function TrafficPageBody() {
   const [liveLoaded, setLiveLoaded] = useState(false);
   const [liveFailed, setLiveFailed] = useState(false);
   const devices = useInventoryStore((s) => s.devices);
-  const subscribe = useInventoryStore((s) => s.subscribe);
   /**
    * US-250: el desglose por dispositivo exige `home.activity` (solo admin). No hace
    * falta un tercer estado para «rol aún sin cargar»: `App` no monta ninguna ruta
@@ -96,8 +95,6 @@ function TrafficPageBody() {
    * usuario, así que cuando esta página se monta el rol ya está resuelto.
    */
   const activityDenied = useAuthStore((s) => s.user?.role !== 'admin');
-
-  useEffect(() => subscribe(), [subscribe]);
 
   useEffect(() => {
     if (activityDenied) {

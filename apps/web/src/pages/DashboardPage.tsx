@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Eye, EyeOff, Settings2 } from 'lucide-react';
-import { Suspense, lazy, useEffect, useMemo, useState, type ComponentType } from 'react';
+import { Suspense, lazy, useMemo, useState, type ComponentType } from 'react';
 import { GettingStarted } from '@/components/dashboard/GettingStarted';
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
 import { CoverageWidget } from '@/components/dashboard/widgets/CoverageWidget';
@@ -69,8 +69,6 @@ const WIDGET_META = Object.fromEntries(WIDGETS.map((w) => [w.id, w]));
 export function DashboardPage() {
   const t = useT();
   const connected = useInventoryStore((s) => s.connected);
-  const subscribe = useInventoryStore((s) => s.subscribe);
-  useEffect(() => subscribe(), [subscribe]);
 
   const hayDemo = useDomainsIn('demo').length > 0;
   const [layout, setLayout] = useState(loadLayout);
