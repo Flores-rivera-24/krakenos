@@ -189,6 +189,10 @@ export function UpdateCard() {
                   />
                 </div>
               </div>
+            ) : plan.mode === 'windows-service' ? (
+              <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualWindows')}</p>
+            ) : plan.mode === 'package' ? (
+              <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualPackage')}</p>
             ) : null}
           </div>
         ) : (

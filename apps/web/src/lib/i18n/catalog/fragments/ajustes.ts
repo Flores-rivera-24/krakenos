@@ -63,6 +63,10 @@ export const esAjustes = {
   'settings.update.cancelling': 'Cancelando…',
   'settings.update.cancelled': 'Actualización cancelada',
   'settings.update.cancelError': 'No se pudo cancelar la actualización',
+  'settings.update.manualWindows':
+    'En Windows, KrakenOS todavía no se actualiza solo desde aquí: instala la versión nueva a mano.',
+  'settings.update.manualPackage':
+    'Esta instalación viene de un paquete: actualiza con el gestor de paquetes del sistema.',
   'settings.update.dockerHint':
     'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
   'settings.update.copyCommand': 'Copiar comando',

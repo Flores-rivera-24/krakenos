@@ -104,9 +104,12 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
   });
 
-  it.each(['windows-service', 'package'] as const)(
-    'en modo %s (sin camino de actualización) no inventa botón ni comando, pero avisa de la versión',
-    async (mode) => {
+  it.each([
+    ['windows-service', /instala la versión nueva a mano/],
+    ['package', /gestor de paquetes del sistema/],
+  ] as const)(
+    'en modo %s (sin camino de actualización) no inventa botón ni comando, avisa de la versión y dice por qué no hay botón',
+    async (mode, porQue) => {
       apiMock.get.mockResolvedValue({
         ...basePlan,
         mode,
@@ -115,6 +118,7 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
       });
       render(<UpdateCard />);
       expect(await screen.findByText(/1\.2\.0/)).toBeInTheDocument();
+      expect(await screen.findByText(porQue)).toBeInTheDocument();
       expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
       // sin comando no hay bloque del comando (antes: una caja vacía con «copiar»)
       expect(screen.queryByText(/docker compose pull/)).not.toBeInTheDocument();

@@ -236,6 +236,10 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.cancelling': 'Cancelling…',
   'settings.update.cancelled': 'Update cancelled',
   'settings.update.cancelError': 'Could not cancel the update',
+  'settings.update.manualWindows':
+    'On Windows, KrakenOS can’t update itself from here yet: install the new version by hand.',
+  'settings.update.manualPackage':
+    'This install comes from a package: update it with the system package manager.',
   'settings.update.dockerHint': "In Docker the container can't update itself. Use this command:",
   'settings.update.copyCommand': 'Copy command',
   'settings.update.copied': 'Copied!',
