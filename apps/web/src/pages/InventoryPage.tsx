@@ -147,7 +147,6 @@ function InventoryPageBody() {
   const t = useT();
   const devices = useInventoryStore((s) => s.devices);
   const connected = useInventoryStore((s) => s.connected);
-  const subscribe = useInventoryStore((s) => s.subscribe);
   const rescan = useInventoryStore((s) => s.rescan);
   // Modo sencillo (US-176): sin columnas técnicas (MAC/fabricante).
   const simpleMode = useAuthStore((s) => s.user?.uiMode === 'simple');
@@ -164,8 +163,6 @@ function InventoryPageBody() {
   // tarjetas (apila a 1 columna), que es táctil y no desborda (US-97). El toggle
   // grid/lista solo se ofrece en ≥md, donde la tabla sí cabe.
   const effectiveView = isMobile ? 'grid' : view;
-
-  useEffect(() => subscribe(), [subscribe]);
 
   useEffect(() => {
     try {

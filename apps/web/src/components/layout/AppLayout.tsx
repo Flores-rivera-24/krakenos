@@ -11,6 +11,7 @@ import { useFocusTrap } from '@/lib/use-focus-trap';
 import { useRouteAnnounce } from '@/lib/use-route-announce';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
+import { useInventoryStore } from '@/store/inventory.store';
 import { useConnectionStore } from '@/store/connection.store';
 import { AppSidebar } from './AppSidebar';
 import { mobileNavForRole, type NavItem } from './nav';
@@ -156,6 +157,12 @@ export function AppLayout() {
 
   // Refleja el estado real del stream Socket.io en el indicador de conexión (US-94).
   useEffect(() => useConnectionStore.getState().subscribe(), []);
+
+  // El agente emite `inventory:snapshot` UNA vez por conexión. La suscripción vive aquí, con el
+  // mismo ciclo de vida que el socket y registrada antes de que se retrase el Outlet: si la hiciera
+  // cada página, el snapshot llegaría antes de que existiera el listener y el inventario quedaría
+  // vacío hasta el siguiente barrido.
+  useEffect(() => useInventoryStore.getState().subscribe(), []);
 
   // Estado de cada dominio (conectado / demostración / sin configurar), una sola lectura para
   // la barra lateral y todas las páginas (ver `lib/integration-states.ts`).
