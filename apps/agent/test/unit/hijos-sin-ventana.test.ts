@@ -52,16 +52,28 @@ function argumentos(src: string, desde: number): string {
 export function llamadasSinVentanaOculta(fuente: string): string[] {
   const src = sinComentarios(fuente);
   const nombres = new Set<string>();
-  for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*['"]node:child_process['"]/g)) {
+  const MODULO = `['"](?:node:)?child_process['"]`;
+  for (const m of src.matchAll(new RegExp(`import\\s*\\{([^}]*)\\}\\s*from\\s*${MODULO}`, 'g'))) {
     for (const parte of (m[1] ?? '').split(',')) {
       const [original, alias] = parte.trim().split(/\s+as\s+/);
       if (original && FUNCIONES.has(original)) nombres.add(alias ?? original);
     }
   }
-  if (nombres.size === 0) return [];
+  // `import * as cp from …` / `import cp from …`: se llama como `cp.spawn(…)`.
+  const espacios = new Set<string>();
+  for (const m of src.matchAll(
+    new RegExp(`import\\s+(?:\\*\\s+as\\s+)?(\\w+)\\s+from\\s*${MODULO}`, 'g'),
+  )) {
+    if (m[1]) espacios.add(m[1]);
+  }
+  if (nombres.size === 0 && espacios.size === 0) return [];
   // `const execFileAsync = promisify(execFile)`: otro nombre para la misma función.
-  for (const m of src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*promisify\(\s*(\w+)\s*\)/g)) {
-    if (m[1] && m[2] && nombres.has(m[2])) nombres.add(m[1]);
+  for (const m of src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*promisify\(\s*([\w.]+)\s*\)/g)) {
+    const origen = m[2] ?? '';
+    const [ns, fn] = origen.split('.');
+    if (m[1] && (nombres.has(origen) || (fn && ns && espacios.has(ns) && FUNCIONES.has(fn)))) {
+      nombres.add(m[1]);
+    }
   }
   const malas: string[] = [];
   for (const nombre of nombres) {
@@ -69,6 +81,18 @@ export function llamadasSinVentanaOculta(fuente: string): string[] {
       const abre = (m.index ?? 0) + m[0].length - 1;
       if (!/windowsHide\s*:\s*true/.test(argumentos(src, abre))) {
         malas.push(`línea ${src.slice(0, m.index).split('\n').length}: ${nombre}(…)`);
+      }
+    }
+  }
+  for (const ns of espacios) {
+    for (const m of src.matchAll(
+      new RegExp(`(?<![\\w.$])${ns}\\.(?:${[...FUNCIONES].join('|')})\\s*\\(`, 'g'),
+    )) {
+      const abre = (m.index ?? 0) + m[0].length - 1;
+      if (!/windowsHide\s*:\s*true/.test(argumentos(src, abre))) {
+        malas.push(
+          `línea ${src.slice(0, m.index).split('\n').length}: ${m[0].slice(0, -1).trim()}(…)`,
+        );
       }
     }
   }
@@ -85,7 +109,9 @@ function ficheros(dir: string): string[] {
 
 describe('hijos sin ventana en Windows (US-280)', () => {
   const todos = ficheros(SRC);
-  const usuarios = todos.filter((f) => /node:child_process/.test(readFileSync(f, 'utf8')));
+  const usuarios = todos.filter((f) =>
+    /from\s*['"](?:node:)?child_process['"]/.test(readFileSync(f, 'utf8')),
+  );
 
   it('recorre un árbol de tamaño creíble y encuentra a los usuarios de child_process', () => {
     expect(todos.length).toBeGreaterThan(150);
@@ -138,6 +164,23 @@ describe('hijos sin ventana en Windows (US-280)', () => {
       ).toHaveLength(1);
       // y un método llamado igual no es la función importada
       expect(llamadasSinVentanaOculta(`${cabecera}foo.spawn('ls');`)).toEqual([]);
+    });
+
+    it('detecta el módulo SIN prefijo node:, el import por espacio de nombres y el de por defecto', () => {
+      expect(
+        llamadasSinVentanaOculta("import { spawn } from 'child_process';\nspawn('ls', []);"),
+      ).toHaveLength(1);
+      expect(
+        llamadasSinVentanaOculta("import * as cp from 'node:child_process';\ncp.spawn('ls', []);"),
+      ).toHaveLength(1);
+      expect(
+        llamadasSinVentanaOculta("import cp from 'child_process';\ncp.execFile('ls', [], cb);"),
+      ).toHaveLength(1);
+      expect(
+        llamadasSinVentanaOculta(
+          "import * as cp from 'child_process';\ncp.spawn('ls', [], { windowsHide: true });",
+        ),
+      ).toEqual([]);
     });
 
     it('un fichero que no importa child_process no produce hallazgos', () => {

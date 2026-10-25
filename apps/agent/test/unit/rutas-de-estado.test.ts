@@ -34,6 +34,15 @@ const DIR_DE_ESTADO = new RegExp(
   `\\b(?:resolve|join)\\(\\s*(?:[^()]*?,\\s*)?['"\`](?:\\.{1,2}/)?${DIRECTORIOS_DE_ESTADO}(?:['"\`/]|\\$\\{)`,
   'g',
 );
+/**
+ * Una constante de módulo con una ruta de estado dentro (`const X = 'data/extra-deps.json'`): se
+ * resolvería contra el cwd o el repo y `KRAKENOS_DATA_DIR` no la movería. Solo asignaciones de
+ * `const`/`let` (no nombres lógicos dentro de un objeto, como `KEY_ENTRY_NAMES`).
+ */
+const CONSTANTE_DE_RUTA = new RegExp(
+  `\\b(?:const|let)\\s+\\w+\\s*(?::\\s*[\\w<>\\[\\]| ]+?)?=\\s*['"\`](?:\\.{1,2}/)?${DIRECTORIOS_DE_ESTADO}/[^'"\`]*['"\`]\\s*;`,
+  'g',
+);
 /** `resolve('../…')`: subir desde el `cwd` (la web construida, la raíz del repo). */
 const SUBIR_DESDE_CWD = /\b(?:resolve|join)\(\s*['"`]\.\.[/'"`]/g;
 
@@ -47,7 +56,7 @@ function sinComentarios(src: string): string {
 export function hallazgosDeRutas(fuente: string): string[] {
   const limpio = sinComentarios(fuente);
   const out: string[] = [];
-  for (const re of [CWD, DIR_DE_ESTADO, SUBIR_DESDE_CWD]) {
+  for (const re of [CWD, DIR_DE_ESTADO, SUBIR_DESDE_CWD, CONSTANTE_DE_RUTA]) {
     for (const m of limpio.matchAll(re)) {
       const linea = limpio.slice(0, m.index).split('\n').length;
       out.push(`${linea}: ${m[0].replace(/\s+/g, ' ')}`);
@@ -113,6 +122,8 @@ describe('rutas de estado: todo pasa por config/paths.ts (US-280)', () => {
       ["join(agentDir, 'keys')", 1],
       ["resolve('../web/dist')", 1],
       ["resolve('../..')", 1],
+      ["const EXTRA_DEPS_FILE = 'data/extra-deps.json';", 1],
+      ["export const STORE: string = './var/hls';", 1],
       ['const d = process.cwd();', 1],
       ['const d = process\n  .cwd();', 1],
       ["resolve(\n  'data/vlans.json',\n)", 1],
@@ -128,6 +139,8 @@ describe('rutas de estado: todo pasa por config/paths.ts (US-280)', () => {
       ["name.startsWith('keys/')"],
       ["listDirEntries(this.keysDir, 'keys')"],
       ["const x = 'data'"],
+      ["export const KEY_NAMES = { a: 'keys/jwt-private.pem' };"],
+      ["const url = 'data/x'.length;"],
     ])('no marca %j', (codigo) => {
       expect(hallazgosDeRutas(codigo)).toEqual([]);
     });

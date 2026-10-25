@@ -16,9 +16,10 @@
 
 import { copyFile, readFile, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
+import { agentPaths } from '../config/paths.js';
 import { promisify } from 'node:util';
-import { EXTRA_DEPS_FILE, parseExtraDeps } from './extra-deps.js';
+import { EXTRA_DEPS_FILENAME, parseExtraDeps } from './extra-deps.js';
 import { safeFetch } from '../net/egress.js';
 import {
   checkNodeRequirement,
@@ -104,7 +105,7 @@ export interface ProcessUpdateRunnerOptions {
   useSudo?: boolean;
   /** Snapshot de la DB inyectable (por defecto `VACUUM INTO` con fallback). */
   dbSnapshot?: DbSnapshot;
-  /** Manifiesto de deps opcionales (por defecto `<agentDir>/data/extra-deps.json`). */
+  /** Manifiesto de deps opcionales (por defecto `<dataDir>/extra-deps.json`). */
   extraDepsFile?: string;
   /** Versión de Node en ejecución (por defecto `process.version`; inyectable en tests). */
   nodeVersion?: string;
@@ -142,7 +143,7 @@ export class ProcessUpdateRunner implements UpdateRunner {
     this.sleep = opts.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
     this.useSudo = opts.useSudo ?? true;
     this.agentDir = opts.agentDir ?? resolve(opts.repoDir, 'apps/agent');
-    this.extraDepsFile = opts.extraDepsFile ?? resolve(this.agentDir, EXTRA_DEPS_FILE);
+    this.extraDepsFile = opts.extraDepsFile ?? join(agentPaths().dataDir, EXTRA_DEPS_FILENAME);
     this.currentNode = opts.nodeVersion ?? process.version;
     this.warn = opts.warn ?? ((message) => process.stderr.write(`${message}\n`));
     this.snapshot = opts.dbSnapshot ?? createDefaultSnapshot(this.warn);

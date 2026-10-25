@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
  */
 const SRC = fileURLToPath(new URL('../../src', import.meta.url));
 const PROPIETARIO = 'system/rename-retry.ts';
-const IMPORT_FS = /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"]node:fs(?:\/promises)?['"]/g;
+const IMPORT_FS = /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"](?:node:)?fs(?:\/promises)?['"]/g;
 const MIEMBRO = /\b(?:fs|fsp|promises)\s*\.\s*rename(?:Sync)?\s*\(/;
 
 function ficheros(dir: string): string[] {
@@ -54,6 +54,13 @@ describe('rename solo con reintento (US-280)', () => {
     expect(importaRename("import {\n  mkdir,\n  rename,\n} from 'node:fs/promises';")).toBe(true);
     expect(importaRename("import { renameSync } from 'node:fs';")).toBe(true);
     expect(importaRename('await fs.rename(a, b)')).toBe(true);
+    // sin prefijo node:, y por espacio de nombres
+    expect(importaRename("import { rename } from 'fs';")).toBe(true);
+    expect(importaRename("import { rename } from 'fs/promises';")).toBe(true);
+    expect(importaRename("import * as fs from 'fs';\nfs.renameSync(a, b);")).toBe(true);
+    expect(
+      importaRename("import { promises as fsp } from 'node:fs';\nawait fsp.rename(a, b);"),
+    ).toBe(true);
     expect(importaRename("// import { rename } from 'node:fs';\nconst a = 1;")).toBe(false);
     expect(importaRename("import { renameWithRetry } from './rename-retry.js';")).toBe(false);
   });
