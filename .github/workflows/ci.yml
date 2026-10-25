@@ -126,6 +126,44 @@ jobs:
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
 
+  # Suite del agente y de la web en Windows (Fase 11). NO BLOQUEANTE al principio:
+  # `continue-on-error: true` deja el job visible sin poner rojo el PR. Pasa a bloqueante
+  # (se quita esa línea) cuando lleve 5 pasadas verdes seguidas en main. Los tests que no
+  # aplican en Windows saltan con motivo y están contados en
+  # apps/agent/test/unit/saltos-por-plataforma.test.ts.
+  windows:
+    name: Tests en Windows (no bloqueante)
+    runs-on: windows-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate JWT keys (agent)
+        run: pnpm --filter @krakenos/agent keys:gen
+
+      - name: Generate Prisma client
+        run: pnpm --filter @krakenos/agent prisma:generate
+
+      - name: Test (agente)
+        run: pnpm --filter @krakenos/agent test
+
+      - name: Test (web)
+        run: pnpm --filter @krakenos/web test
+
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
   e2e:

@@ -1,0 +1,13 @@
+# Finales de línea: LF siempre. Los tests que leen fuentes y comparan texto no deben ver CRLF
+# en el checkout de Windows (core.autocrlf del runner), y los scripts .sh con CRLF no ejecutan.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.db binary
