@@ -7,9 +7,10 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs';
-import { mkdir, open, rename, rm, writeFile, type FileHandle } from 'node:fs/promises';
+import { mkdir, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
+import { renameWithRetry } from './rename-retry.js';
 import {
   ENVELOPE_HEADER_LEN,
   type ArchiveEntry,
@@ -189,7 +190,7 @@ class StagedArchiveWriter {
     }
     await rm(stagingDir, { recursive: true, force: true });
     await mkdir(dirname(stagingDir), { recursive: true });
-    await rename(this.tmpDir, stagingDir);
+    await renameWithRetry(this.tmpDir, stagingDir);
     return this.entries.map((e) => e.name);
   }
 

@@ -59,3 +59,25 @@ describe.each(CASOS)('describeError: $code', (caso) => {
     expect(texto).not.toBe('fallback');
   });
 });
+
+/**
+ * Falta ffmpeg (cámaras RTSP). El agente manda el copy con el paso concreto (variable por
+ * plataforma), así que en español se pinta tal cual; en otro idioma se traduce por `code` la parte fija.
+ */
+describe('describeError: FFMPEG_REQUIRES_SETUP', () => {
+  const mensaje = 'Las cámaras RTSP necesitan ffmpeg y no está disponible. Reinicia el servicio.';
+
+  it('en español se pinta el mensaje del agente, con su paso', () => {
+    const err = new ApiRequestError(503, { code: 'FFMPEG_REQUIRES_SETUP', message: mensaje });
+    expect(describeError(err, 'fallback')).toBe(mensaje);
+  });
+
+  it('en inglés se traduce por código', () => {
+    setLocale('en', { persist: false });
+    const err = new ApiRequestError(503, { code: 'FFMPEG_REQUIRES_SETUP', message: mensaje });
+    const texto = describeError(err, 'fallback');
+    expect(texto).toBe(en['errors.code.FFMPEG_REQUIRES_SETUP' as keyof typeof en]);
+    expect(texto).toMatch(/ffmpeg/);
+    expect(texto).not.toBe(mensaje);
+  });
+});

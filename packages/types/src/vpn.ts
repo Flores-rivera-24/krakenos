@@ -64,7 +64,13 @@ export interface CreatePeerResult {
  * guía y muestra** — no administra el tailnet (hacer `tailscale up` es
  * interactivo/OAuth y queda fuera a propósito).
  */
-export const TAILSCALE_STATES = ['running', 'needs-login', 'stopped', 'not-installed'] as const;
+export const TAILSCALE_STATES = [
+  'running',
+  'needs-login',
+  'stopped',
+  'not-installed',
+  'no-access',
+] as const;
 export type TailscaleState = (typeof TAILSCALE_STATES)[number];
 
 /** Resultado de la detección del `tailscaled` local (US-215). Solo lectura. */

@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import type {
   CameraKind,
   DnsKind,
@@ -9,7 +9,8 @@ import type {
   VlanKind,
   VpnKind,
 } from '@krakenos/types';
-import { DEFAULT_TAILSCALE_SOCKET } from '../vpn/tailscale.js';
+import { agentPaths, resolveStatePath } from './paths.js';
+import { defaultTailscaleSocket } from '../vpn/tailscale.js';
 import type { MerossDeviceConfig } from '../iot/meross.parsers.js';
 import type { ShellyDeviceConfig } from '../iot/shelly.parsers.js';
 
@@ -187,7 +188,7 @@ function pemList(name: string): string[] {
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean)
-    .map((p) => readFileSync(resolve(p), 'utf8'));
+    .map((p) => readFileSync(resolveStatePath(p), 'utf8'));
 }
 
 const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
@@ -199,11 +200,13 @@ const driverKind = (process.env.DRIVER_KIND ?? 'mock') as DriverKind;
 const httpsEnabled = process.env.HTTPS_ENABLED === 'true';
 // Las RUTAS se conservan además del contenido (US-241): el certificado se renueva
 // solo (Tailscale, cada 90 días) y hay que poder releerlo del disco sin reiniciar.
-const tlsCertPath = httpsEnabled ? resolve(required('TLS_CERT_PATH')) : null;
-const tlsKeyPath = httpsEnabled ? resolve(required('TLS_KEY_PATH')) : null;
+const tlsCertPath = httpsEnabled ? resolveStatePath(required('TLS_CERT_PATH')) : null;
+const tlsKeyPath = httpsEnabled ? resolveStatePath(required('TLS_KEY_PATH')) : null;
 // Certificado PÚBLICO de la CA local (si la hay): lo que cada dispositivo instala.
 // Nunca apunta a `keys/`; la clave de la CA no la lee nadie salvo el script.
-const tlsCaCertPath = resolve(process.env.TLS_CA_CERT_PATH ?? './certs/krakenos-ca.pem');
+const tlsCaCertPath = resolveStatePath(
+  process.env.TLS_CA_CERT_PATH ?? join(agentPaths().certsDir, 'krakenos-ca.pem'),
+);
 const https =
   tlsCertPath && tlsKeyPath
     ? {
@@ -212,8 +215,8 @@ const https =
       }
     : null;
 
-const jwtPrivateKeyPath = resolve(required('JWT_PRIVATE_KEY_PATH'));
-const jwtPublicKeyPath = resolve(required('JWT_PUBLIC_KEY_PATH'));
+const jwtPrivateKeyPath = resolveStatePath(required('JWT_PRIVATE_KEY_PATH'));
+const jwtPublicKeyPath = resolveStatePath(required('JWT_PUBLIC_KEY_PATH'));
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
@@ -243,13 +246,15 @@ export const env = {
    * configuradas desde la UI se guardan cifradas en la DB con esta clave. Se genera al
    * arrancar si falta (`loadOrCreateSecretbox`), como el resto de claves de `keys/`.
    */
-  secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? resolve('keys/secretbox.key'),
+  secretboxKeyPath: process.env.SECRETBOX_KEY_PATH ?? join(agentPaths().keysDir, 'secretbox.key'),
 
   /**
    * Directorio de las copias automáticas. Por defecto `data/backups`; en Docker va al
    * volumen persistente (`/data/backups`), o la copia moriría con el contenedor.
    */
-  backupDir: process.env.BACKUP_DIR ? resolve(process.env.BACKUP_DIR) : resolve('data/backups'),
+  backupDir: process.env.BACKUP_DIR
+    ? resolve(process.env.BACKUP_DIR)
+    : join(agentPaths().dataDir, 'backups'),
 
   /**
    * Comprobación de actualizaciones (US-116). **Opt-in**: `UPDATE_CHECK_REPO`
@@ -336,7 +341,7 @@ export const env = {
     endpoint: process.env.VPN_ENDPOINT ?? 'vpn.krakenos.local',
     listenPort: int('VPN_LISTEN_PORT', 51820),
     // Socket UNIX de la LocalAPI de tailscaled (US-215, detección solo-lectura).
-    tailscaleSocketPath: process.env.TAILSCALE_SOCKET ?? DEFAULT_TAILSCALE_SOCKET,
+    tailscaleSocketPath: process.env.TAILSCALE_SOCKET ?? defaultTailscaleSocket(),
     // Solo se usa cuando VPN_KIND=wireguard (gestor real).
     wireguard: {
       interface: process.env.WG_INTERFACE ?? 'wg0',
@@ -344,7 +349,7 @@ export const env = {
       dns: process.env.WG_DNS ?? '10.8.0.1',
       helperPath: process.env.WG_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
       useSudo: (process.env.WG_USE_SUDO ?? 'true') !== 'false',
-      peerStorePath: process.env.WG_PEER_STORE ?? resolve('data/wg-peers.json'),
+      peerStorePath: process.env.WG_PEER_STORE ?? join(agentPaths().dataDir, 'wg-peers.json'),
       serverPublicKey: process.env.WG_SERVER_PUBLIC_KEY || undefined,
     },
   },
@@ -382,7 +387,7 @@ export const env = {
     },
     // Solo se usa cuando IOT_KIND=tuya (protocolo Tuya local, focos genéricos).
     tuya: {
-      configPath: process.env.TUYA_CONFIG_PATH ?? resolve('data/tuya-devices.json'),
+      configPath: process.env.TUYA_CONFIG_PATH ?? join(agentPaths().dataDir, 'tuya-devices.json'),
     },
     // Solo se usa cuando IOT_KIND=kasa (TP-Link Kasa/Tapo, protocolo local).
     kasa: {
@@ -414,7 +419,7 @@ export const env = {
     kind: (process.env.CAMERAS_KIND ?? 'mock') as CameraKind,
     // Solo se usa cuando CAMERAS_KIND=rtsp (snapshot vía ffmpeg).
     rtsp: {
-      configPath: process.env.CAMERAS_CONFIG ?? resolve('data/cameras.json'),
+      configPath: process.env.CAMERAS_CONFIG ?? join(agentPaths().dataDir, 'cameras.json'),
       ffmpegPath: process.env.FFMPEG_PATH ?? 'ffmpeg',
       transport: process.env.CAMERAS_RTSP_TRANSPORT ?? 'tcp',
     },
@@ -427,12 +432,12 @@ export const env = {
     // `data/`, que es destino de restore), con límite de streams concurrentes y
     // auto-apagado por inactividad para no transcodificar 24/7 en hardware modesto.
     hls: {
-      baseDir: process.env.CAMERAS_HLS_DIR ?? resolve('var/hls'),
+      baseDir: process.env.CAMERAS_HLS_DIR ?? join(agentPaths().varDir, 'hls'),
       maxConcurrent: clamp(int('CAMERAS_MAX_STREAMS', 2), 1, 16),
       idleTimeoutMs: clamp(int('CAMERAS_STREAM_IDLE_SEC', 30), 5, 3600) * 1000,
     },
     // Clips grabados por movimiento (US-187): en `data/` (persistente, gitignored).
-    recordingsDir: process.env.CAMERAS_RECORDINGS_DIR ?? resolve('data/recordings'),
+    recordingsDir: process.env.CAMERAS_RECORDINGS_DIR ?? join(agentPaths().dataDir, 'recordings'),
   },
 
   firewall: {
@@ -442,7 +447,7 @@ export const env = {
       chain: process.env.FW_CHAIN ?? 'KRAKENOS',
       helperPath: process.env.FW_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
       useSudo: (process.env.FW_USE_SUDO ?? 'true') !== 'false',
-      ruleStorePath: process.env.FW_RULE_STORE ?? resolve('data/firewall-rules.json'),
+      ruleStorePath: process.env.FW_RULE_STORE ?? join(agentPaths().dataDir, 'firewall-rules.json'),
     },
   },
 
@@ -453,7 +458,7 @@ export const env = {
       host: process.env.VLAN_SWITCH_HOST ?? '',
       community: process.env.VLAN_SWITCH_COMMUNITY ?? 'private',
       port: int('VLAN_SWITCH_SNMP_PORT', 161),
-      storePath: process.env.VLAN_STORE ?? resolve('data/vlans.json'),
+      storePath: process.env.VLAN_STORE ?? join(agentPaths().dataDir, 'vlans.json'),
     },
   },
 
@@ -465,7 +470,7 @@ export const env = {
       linkKbit: int('TC_LINK_KBIT', 1_000_000),
       helperPath: process.env.TC_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
       useSudo: (process.env.TC_USE_SUDO ?? 'true') !== 'false',
-      ruleStorePath: process.env.TC_RULE_STORE ?? resolve('data/qos-rules.json'),
+      ruleStorePath: process.env.TC_RULE_STORE ?? join(agentPaths().dataDir, 'qos-rules.json'),
     },
   },
 
@@ -485,7 +490,7 @@ export const env = {
    */
   web: {
     serve: process.env.SERVE_WEB !== 'false',
-    distPath: process.env.WEB_DIST_PATH ?? resolve('../web/dist'),
+    distPath: process.env.WEB_DIST_PATH ?? agentPaths().webDistDir,
   },
 
   /**

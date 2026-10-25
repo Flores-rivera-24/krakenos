@@ -39,9 +39,17 @@ export function buildLocalApiRequestOptions(socketPath: string) {
  * (conexión rechazada, permisos, timeout) → `stopped` (hay rastro, pero el
  * daemon no responde).
  */
-export function classifyTransportError(err: unknown): 'not-installed' | 'stopped' {
+export function classifyTransportError(
+  err: unknown,
+  platform: NodeJS.Platform = process.platform,
+): 'not-installed' | 'stopped' | 'no-access' {
   const code = (err as NodeJS.ErrnoException | null)?.code;
-  return code === 'ENOENT' || code === 'ENOTDIR' ? 'not-installed' : 'stopped';
+  if (code === 'ENOENT' || code === 'ENOTDIR') return 'not-installed';
+  // US-280: en Windows la LocalAPI es un named pipe y un servicio sin privilegios puede no
+  // poder abrirlo (EACCES/EPERM). Eso no prueba que Tailscale esté parado ni que falte: se
+  // declara «sin permiso», que es lo único que sabemos. [verificar en E1 con un Windows real]
+  if (platform === 'win32' && (code === 'EACCES' || code === 'EPERM')) return 'no-access';
+  return 'stopped';
 }
 
 const EMPTY: Omit<TailscaleStatus, 'state'> = {
@@ -93,16 +101,27 @@ export function parseTailscaleStatusJson(raw: string): TailscaleStatus {
 }
 
 /** Detecta el estado combinando transporte + parser; nunca lanza. */
-export async function detectTailscale(transport: TailscaleTransport): Promise<TailscaleStatus> {
+export async function detectTailscale(
+  transport: TailscaleTransport,
+  platform: NodeJS.Platform = process.platform,
+): Promise<TailscaleStatus> {
   try {
     return parseTailscaleStatusJson(await transport.fetchStatus());
   } catch (err) {
-    return { state: classifyTransportError(err), ...EMPTY };
+    return { state: classifyTransportError(err, platform), ...EMPTY };
   }
 }
 
 /** Ruta por defecto del socket de tailscaled en Linux. */
 export const DEFAULT_TAILSCALE_SOCKET = '/var/run/tailscale/tailscaled.sock';
+
+/** Named pipe de la LocalAPI en Windows (US-280). [verificar en E1] nombre y acceso sin administrador. */
+export const WINDOWS_TAILSCALE_PIPE =
+  '\\\\.\\pipe\\ProtectedPrefix\\Administrators\\Tailscale\\tailscaled';
+
+export function defaultTailscaleSocket(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? WINDOWS_TAILSCALE_PIPE : DEFAULT_TAILSCALE_SOCKET;
+}
 
 const LOCALAPI_TIMEOUT_MS = 2000;
 

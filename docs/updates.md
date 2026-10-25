@@ -38,7 +38,10 @@ Con esa variable, **Ajustes → Sistema → Actualizaciones** muestra:
 
 Desde **Ajustes → Sistema → Actualizaciones**, un admin puede aplicar la actualización
 sin tocar la terminal. El comportamiento depende del **modo de despliegue** (se detecta
-solo: `KRAKENOS_DEPLOY_MODE`, luego `/.dockerenv`, si no → `systemd`):
+solo: `KRAKENOS_DEPLOY_MODE` (`systemd`, `docker`, `windows-service` o `package`), luego
+Windows → `windows-service`, luego `/.dockerenv` → `docker`, si no → `systemd`). Solo `systemd`
+se actualiza sola desde la UI; en Docker se muestra el comando, y `windows-service` y `package`
+no tienen todavía actualización desde la UI.
 
 ### Bare-metal / systemd — actualización automática con rollback
 

@@ -148,6 +148,8 @@ export function createFfmpegStreamSpawner(
   return ({ rtspUrl, outputDir }) => {
     const child = spawn(ffmpegPath, buildHlsArgs(rtspUrl, outputDir, HLS_PLAYLIST_NAME, opts), {
       stdio: 'ignore',
+      // En Windows, sin esto cada ffmpeg abre una ventana de consola (US-280).
+      windowsHide: true,
     });
     // Un ffmpeg que muere solo (cámara caída) no debe tumbar el proceso del agente.
     child.on('error', () => {});
@@ -260,6 +262,7 @@ export function createFfmpegExec(
             // mientras el barrido lanzaba otro cada 5 s. El spawner de streaming
             // ya usaba SIGKILL por esta misma razón (ver `createFfmpegStreamSpawner`).
             killSignal: 'SIGKILL',
+            windowsHide: true,
           },
           (err, stdout) => {
             const out = (stdout as Buffer | undefined) ?? Buffer.alloc(0);

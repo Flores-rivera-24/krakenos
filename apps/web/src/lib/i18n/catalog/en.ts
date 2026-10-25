@@ -88,6 +88,8 @@ export const en: Record<TranslationKey, string> = {
     'The gateway helper isn’t installed on this computer, so the change can’t be applied.',
   'errors.code.PRIVILEGED_COMMAND_FAILED':
     'The change couldn’t be applied on the system. The details are in the server log.',
+  'errors.code.FFMPEG_REQUIRES_SETUP':
+    'RTSP cameras need ffmpeg and it isn’t available on this computer. Install it and restart the service.',
   'errors.code.DOMAIN_NOT_CONFIGURED':
     'This section isn’t connected yet. Connect it in «Connect» to make changes.',
 
@@ -234,6 +236,10 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.cancelling': 'Cancelling…',
   'settings.update.cancelled': 'Update cancelled',
   'settings.update.cancelError': 'Could not cancel the update',
+  'settings.update.manualWindows':
+    'On Windows, KrakenOS can’t update itself from here yet: install the new version by hand.',
+  'settings.update.manualPackage':
+    'This install comes from a package: update it with the system package manager.',
   'settings.update.dockerHint': "In Docker the container can't update itself. Use this command:",
   'settings.update.copyCommand': 'Copy command',
   'settings.update.copied': 'Copied!',
@@ -431,6 +437,7 @@ export const en: Record<TranslationKey, string> = {
   'vpn.tailscale.state.needs-login': 'Sign-in required',
   'vpn.tailscale.state.stopped': 'Installed, not responding',
   'vpn.tailscale.state.not-installed': 'Not detected',
+  'vpn.tailscale.state.no-access': 'No permission to read it',
   'vpn.tailscale.magicDns': 'MagicDNS name',
   'vpn.tailscale.magicDnsHint':
     'Connect from outside using this name as the host (same URL and port as at home).',
@@ -442,6 +449,8 @@ export const en: Record<TranslationKey, string> = {
     'Tailscale seems installed but the daemon is not responding. Start it from the server:',
   'vpn.tailscale.notInstalledHint':
     'tailscaled was not detected on the server. If your connection has no public IP, install it with one command:',
+  'vpn.tailscale.noAccessHint':
+    "KrakenOS doesn't have permission to read Tailscale on this computer, so it can't tell whether it's active. Give the KrakenOS service access, or check the status in the Tailscale app.",
   'vpn.tailscale.wireguardNote':
     'With a public IP, the WireGuard VPN above remains the recommended path.',
   'vpn.tailscale.webauthnNote': 'If you use passkeys, set WEBAUTHN_RP_ID to this name as the host.',

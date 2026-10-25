@@ -13,6 +13,7 @@ const DOT_BY_STATE = {
   'needs-login': 'warning',
   stopped: 'warning',
   'not-installed': 'offline',
+  'no-access': 'warning',
 } as const;
 
 const INSTALL_COMMAND = 'curl -fsSL https://tailscale.com/install.sh | sh';
@@ -131,6 +132,8 @@ export function TailscaleCard() {
             <p>{t('vpn.tailscale.stoppedHint')}</p>
             <CommandLine command={START_COMMAND} />
           </>
+        ) : status.state === 'no-access' ? (
+          <p>{t('vpn.tailscale.noAccessHint')}</p>
         ) : (
           <>
             <p>{t('vpn.tailscale.notInstalledHint')}</p>

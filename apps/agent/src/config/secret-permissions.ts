@@ -11,6 +11,20 @@ import { statSync } from 'node:fs';
  * fichero con secretos es accesible más allá de su propietario.
  */
 
+/**
+ * ¿Tiene sentido mirar los bits de `mode`? En Windows `stat().mode` es una ficción (siempre
+ * 0666/0444 según el atributo de solo lectura): avisaría de «legible por todos» en CADA
+ * arranque aunque la ACL del directorio lo restrinja. Allí los permisos los fija el
+ * instalador con ACL (US-280), así que el chequeo se declara «no aplica» en vez de mentir.
+ */
+export function secretPermissionsApply(platform: NodeJS.Platform = process.platform): boolean {
+  return platform !== 'win32';
+}
+
+/** Texto de log cuando el chequeo no aplica. */
+export const SECRET_PERMISSIONS_NOT_APPLICABLE =
+  'Permisos de los ficheros con secretos: no aplica en Windows (los fija el instalador con ACL).';
+
 /** ¿El modo concede lectura/escritura a grupo u otros (más laxo que 0600)? */
 export function isGroupOrWorldAccessible(mode: number): boolean {
   return (mode & 0o077) !== 0;
@@ -36,13 +50,16 @@ const defaultStat: StatMode = (path) => {
 /**
  * Revisa los permisos de los ficheros indicados y devuelve un aviso por cada uno
  * accesible por grupo u otros. Ignora los que no existen (p. ej. el `.env` no está
- * cuando la config viene de systemd). `stat` es inyectable para tests.
+ * cuando la config viene de systemd). `stat` y `platform` son inyectables para tests; en
+ * Windows no avisa de nada (ver `secretPermissionsApply`).
  */
 export function checkSecretFilePermissions(
   paths: string[],
   stat: StatMode = defaultStat,
+  platform: NodeJS.Platform = process.platform,
 ): SecretFileWarning[] {
   const warnings: SecretFileWarning[] = [];
+  if (!secretPermissionsApply(platform)) return warnings;
   for (const path of paths) {
     const mode = stat(path);
     if (mode !== null && isGroupOrWorldAccessible(mode)) {

@@ -2,7 +2,8 @@ import { createReadStream } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, rm, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { basename, dirname, join, resolve } from 'node:path';
+import { basename, dirname, join } from 'node:path';
+import { agentPaths } from '../config/paths.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
 import { buildManifestHeader, createArchiveEncryptor } from './backup.js';
@@ -28,7 +29,7 @@ import { buildManifestHeader, createArchiveEncryptor } from './backup.js';
  * del trozo de cifrado, y la ruta sirve el fichero por stream.
  */
 
-const DEFAULT_DATA_DIR = resolve('data');
+const DEFAULT_DATA_DIR = agentPaths().dataDir;
 
 /** Bytes leídos de disco por vuelta (mismo orden que el trozo de cifrado). */
 const READ_CHUNK = 4 * 1024 * 1024;

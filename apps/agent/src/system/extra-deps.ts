@@ -19,8 +19,8 @@
  * bandera de pnpm, así que se filtran.
  */
 
-/** Nombre de fichero del manifiesto, relativo al directorio del agente. */
-export const EXTRA_DEPS_FILE = 'data/extra-deps.json';
+/** Nombre del manifiesto; vive en `agentPaths().dataDir` (lo mueve `KRAKENOS_DATA_DIR`). */
+export const EXTRA_DEPS_FILENAME = 'extra-deps.json';
 
 /** Tope de paquetes: el manifiesto es una lista corta, no un package.json. */
 export const MAX_EXTRA_DEPS = 32;

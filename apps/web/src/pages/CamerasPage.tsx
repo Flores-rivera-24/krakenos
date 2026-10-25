@@ -11,7 +11,7 @@ import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
-import { api } from '@/lib/api';
+import { api, ApiRequestError } from '@/lib/api';
 import { deleteCamera, listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
@@ -35,6 +35,8 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
   const [image, setImage] = useState<string | null>(null);
   // «Aún no llegó» y «no se pudo leer» no son lo mismo; la imagen anterior se conserva.
   const [snapshotFailed, setSnapshotFailed] = useState(false);
+  // Falta ffmpeg en el equipo: el agente manda el paso concreto, que no es un fallo de la cámara.
+  const [setupNeeded, setSetupNeeded] = useState<string | null>(null);
   // Vídeo en vivo (HLS, US-185) bajo demanda: mientras está en `false` la tarjeta
   // muestra el snapshot que se refresca cada 3 s; al activarlo transcodifica.
   const [live, setLive] = useState(false);
@@ -50,9 +52,17 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
         .then((s) => {
           setImage(s.image);
           setSnapshotFailed(false);
+          setSetupNeeded(null);
         })
-        .catch(() => setSnapshotFailed(true)),
-    [camera.id],
+        .catch((err: unknown) => {
+          setSnapshotFailed(true);
+          setSetupNeeded(
+            err instanceof ApiRequestError && err.body?.code === 'FFMPEG_REQUIRES_SETUP'
+              ? describeError(err, t('cameras.snapshotError'))
+              : null,
+          );
+        }),
+    [camera.id, t],
   );
   usePolling(cargarSnapshot, 3000, { enabled: camera.online && !live });
 
@@ -78,9 +88,11 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
             <span className="text-xs">
               {!camera.online
                 ? t('cameras.noSignal')
-                : snapshotFailed
-                  ? t('cameras.snapshotError')
-                  : t('cameras.connecting')}
+                : setupNeeded
+                  ? setupNeeded
+                  : snapshotFailed
+                    ? t('cameras.snapshotError')
+                    : t('cameras.connecting')}
             </span>
           </div>
         )}

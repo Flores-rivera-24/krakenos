@@ -175,7 +175,7 @@ export function UpdateCard() {
                   </Button>
                 )
               )
-            ) : (
+            ) : plan.dockerCommand ? (
               <div className="space-y-2">
                 <p className="text-kr-sm text-kr-secondary">{t('settings.update.dockerHint')}</p>
                 <div className="flex items-center gap-2">
@@ -183,13 +183,17 @@ export function UpdateCard() {
                     {plan.dockerCommand}
                   </code>
                   <CopyButton
-                    value={plan.dockerCommand ?? ''}
+                    value={plan.dockerCommand}
                     label={t('settings.update.copyCommand')}
                     copiedLabel={t('settings.update.copied')}
                   />
                 </div>
               </div>
-            )}
+            ) : plan.mode === 'windows-service' ? (
+              <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualWindows')}</p>
+            ) : plan.mode === 'package' ? (
+              <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualPackage')}</p>
+            ) : null}
           </div>
         ) : (
           <p className="flex items-center gap-2 text-kr-sm text-success">

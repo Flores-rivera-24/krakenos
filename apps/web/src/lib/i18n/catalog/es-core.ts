@@ -82,6 +82,9 @@ export const esCore = {
     'Falta instalar el helper de puerta de enlace en este equipo: sin él no se puede aplicar el cambio.',
   'errors.code.PRIVILEGED_COMMAND_FAILED':
     'No se pudo aplicar el cambio en el sistema. El detalle está en el registro del servidor.',
+  // Cámaras RTSP sin ffmpeg: el agente manda el copy con el paso concreto; esto es la parte fija.
+  'errors.code.FFMPEG_REQUIRES_SETUP':
+    'Las cámaras RTSP necesitan ffmpeg y no está disponible en este equipo. Instálalo y reinicia el servicio.',
   // Dominio sin conectar (instalación nueva): el copy del agente, verbatim.
   'errors.code.DOMAIN_NOT_CONFIGURED':
     'Este apartado todavía no está conectado. Conéctalo en «Conectar» para poder hacer cambios.',

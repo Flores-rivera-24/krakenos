@@ -53,6 +53,7 @@ export const esVpn = {
   'vpn.tailscale.state.needs-login': 'Falta iniciar sesión',
   'vpn.tailscale.state.stopped': 'Instalado, sin responder',
   'vpn.tailscale.state.not-installed': 'No detectado',
+  'vpn.tailscale.state.no-access': 'Sin permiso para leerlo',
   'vpn.tailscale.magicDns': 'Nombre MagicDNS',
   'vpn.tailscale.magicDnsHint':
     'Entra desde fuera usando este nombre como host (misma URL y puerto que en casa).',
@@ -64,6 +65,8 @@ export const esVpn = {
     'Hay rastro de Tailscale pero el daemon no responde. Arráncalo desde el servidor:',
   'vpn.tailscale.notInstalledHint':
     'No se detecta tailscaled en el servidor. Si tu conexión no tiene IP pública, instálalo con un comando:',
+  'vpn.tailscale.noAccessHint':
+    'KrakenOS no tiene permiso para leer Tailscale en este equipo, así que no puede decir si está activo. Dale acceso al servicio de KrakenOS o consulta el estado en la aplicación de Tailscale.',
   'vpn.tailscale.wireguardNote':
     'Con IP pública, la VPN WireGuard de arriba sigue siendo la vía recomendada.',
   'vpn.tailscale.webauthnNote':

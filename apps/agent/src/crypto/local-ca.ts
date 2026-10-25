@@ -11,6 +11,7 @@ import { mkdirSync, readFileSync } from 'node:fs';
 import { hostname as osHostname, networkInterfaces } from 'node:os';
 import { join, resolve } from 'node:path';
 import * as x509 from '@peculiar/x509';
+import { resolvePaths } from '../config/paths.js';
 import {
   applyModeAndGroup,
   assertNotSymlink,
@@ -488,8 +489,8 @@ export async function runLocalCaCli(
 ): Promise<number> {
   try {
     await ensureLocalCa({
-      certsDir: env.KRAKENOS_CERTS_DIR || join(agentDir, 'certs'),
-      keysDir: env.KRAKENOS_KEYS_DIR || join(agentDir, 'keys'),
+      certsDir: env.KRAKENOS_CERTS_DIR || resolvePaths(env, agentDir).certsDir,
+      keysDir: env.KRAKENOS_KEYS_DIR || resolvePaths(env, agentDir).keysDir,
       hostname: env.KRAKENOS_HOSTNAME || undefined,
       lanIps: env.KRAKENOS_LAN_IP ? env.KRAKENOS_LAN_IP.split(/\s+/).filter(Boolean) : undefined,
       tlsGroup: env.KRAKENOS_TLS_GROUP || undefined,

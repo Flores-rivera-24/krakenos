@@ -55,6 +55,18 @@ describe('TailscaleCard (US-215)', () => {
     ).toBeInTheDocument();
   });
 
+  it('sin permiso (Windows): lo declara, no propone instalar nada ni usa comandos de Linux', async () => {
+    apiMock.get.mockResolvedValue(status({ state: 'no-access' }));
+    render(<TailscaleCard />);
+
+    expect(await screen.findByText('Sin permiso para leerlo')).toBeInTheDocument();
+    expect(
+      screen.getByText(/KrakenOS no tiene permiso para leer Tailscale en este equipo/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/install\.sh/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sudo /)).not.toBeInTheDocument();
+  });
+
   it('falta iniciar sesión: muestra el comando `tailscale up`', async () => {
     apiMock.get.mockResolvedValue(status({ state: 'needs-login' }));
     render(<TailscaleCard />);

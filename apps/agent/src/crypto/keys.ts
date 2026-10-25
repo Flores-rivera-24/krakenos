@@ -1,6 +1,8 @@
 import { generateKeyPairSync } from 'node:crypto';
-import { mkdirSync, readFileSync, renameSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
+import { resolvePaths } from '../config/paths.js';
+import { renameSyncWithRetry } from '../system/rename-retry.js';
 import { generateSecretboxKey } from '../config/secretbox.js';
 import {
   commitTempFile,
@@ -130,7 +132,10 @@ export interface RotateOps {
  * una ventana de dos llamadas al sistema; con dos ficheros no hay forma de cerrarla del
  * todo sin cambiar el formato del par.
  */
-export function rotateJwtKeys(paths: KeyPaths, ops: RotateOps = { rename: renameSync }): void {
+export function rotateJwtKeys(
+  paths: KeyPaths,
+  ops: RotateOps = { rename: (from, to) => renameSyncWithRetry(from, to) },
+): void {
   const dir = dirname(paths.privatePath);
   if (!existsNoFollow(paths.privatePath) || !existsNoFollow(paths.publicPath)) {
     throw new NoCurrentKeysError(dir);
@@ -180,7 +185,7 @@ export interface CliIo {
 
 /**
  * Rutas desde el entorno. Con `JWT_PRIVATE_KEY_PATH` y `JWT_PUBLIC_KEY_PATH` ambos fijados
- * (la imagen de Docker los fija) se respetan; si no, `KRAKENOS_KEYS_DIR` o `<agente>/keys`.
+ * (la imagen de Docker los fija) se respetan; si no, `KRAKENOS_KEYS_DIR`, `<KRAKENOS_DATA_DIR>/keys` o `<agente>/keys`.
  */
 export function keyPathsFromEnv(env: NodeJS.ProcessEnv, agentDir: string): KeyPaths {
   const priv = env.JWT_PRIVATE_KEY_PATH;
@@ -196,7 +201,9 @@ export function keyPathsFromEnv(env: NodeJS.ProcessEnv, agentDir: string): KeyPa
         : join(dir, 'secretbox.key'),
     };
   }
-  const paths = keyPathsFromDir(resolve(env.KRAKENOS_KEYS_DIR || join(agentDir, 'keys')));
+  const paths = keyPathsFromDir(
+    resolve(env.KRAKENOS_KEYS_DIR || resolvePaths(env, agentDir).keysDir),
+  );
   if (env.SECRETBOX_KEY_PATH) paths.secretboxPath = resolve(env.SECRETBOX_KEY_PATH);
   return paths;
 }

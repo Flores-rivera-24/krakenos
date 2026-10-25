@@ -1,10 +1,12 @@
 import 'dotenv/config';
-import { existsSync, renameSync, rmSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { env } from './config/env.js';
+import { agentPaths } from './config/paths.js';
 import { MigrationError, migrateFromEnv } from './db/migrate.js';
 import { buildServer } from './server.js';
-import { createShutdown } from './system/shutdown.js';
+import { renameSyncWithRetry } from './system/rename-retry.js';
+import { createShutdown, shutdownSignals } from './system/shutdown.js';
 import { applyStagedRestore, resolveDbFile } from './system/restore.js';
 import { keyFilePaths } from './system/key-paths.js';
 
@@ -17,10 +19,10 @@ import { keyFilePaths } from './system/key-paths.js';
  * bucle de reinicio (era un riesgo real en hardware desatendido).
  */
 function applyPendingRestore(): void {
-  const stagingDir = resolve('var/restore-staging');
+  const stagingDir = join(agentPaths().varDir, 'restore-staging');
   if (!existsSync(stagingDir)) return;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const preRestoreDir = resolve(`var/pre-restore-${stamp}`);
+  const preRestoreDir = join(agentPaths().varDir, `pre-restore-${stamp}`);
   try {
     const applied = applyStagedRestore(
       stagingDir,
@@ -28,7 +30,7 @@ function applyPendingRestore(): void {
         dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),
         keysDir: dirname(env.secretboxKeyPath),
         keyFiles: keyFilePaths(env),
-        dataDir: resolve('data'),
+        dataDir: agentPaths().dataDir,
       },
       preRestoreDir,
     );
@@ -36,9 +38,9 @@ function applyPendingRestore(): void {
       `[restore] Restauración aplicada: ${applied.length} ficheros. Copia previa en ${preRestoreDir}\n`,
     );
   } catch (err) {
-    const failedDir = resolve(`var/restore-failed-${stamp}`);
+    const failedDir = join(agentPaths().varDir, `restore-failed-${stamp}`);
     try {
-      renameSync(stagingDir, failedDir);
+      renameSyncWithRetry(stagingDir, failedDir);
     } catch {
       rmSync(stagingDir, { recursive: true, force: true });
     }
@@ -74,8 +76,7 @@ async function main(): Promise<void> {
   const app = await buildServer();
 
   const shutdown = createShutdown({ app, exit: (code) => process.exit(code) });
-  process.on('SIGINT', () => void shutdown('SIGINT'));
-  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  for (const signal of shutdownSignals()) process.on(signal, () => void shutdown(signal));
 
   // Red de seguridad de proceso: sin esto, una sola promesa sin `.catch()` en
   // cualquier handler (p. ej. un driver caído) tumbaría el agente y con él el

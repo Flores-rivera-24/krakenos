@@ -21,6 +21,7 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
+import { agentPaths } from '../../config/paths.js';
 import type {
   ApplyUpdateResponse,
   UpdateBlockedCode,
@@ -28,7 +29,7 @@ import type {
   UpdatePlan,
   UpdateResult,
 } from '@krakenos/types';
-import { DOCKER_UPDATE_COMMAND } from '../../system/deploy-mode.js';
+import { canAutoUpdate, DOCKER_UPDATE_COMMAND } from '../../system/deploy-mode.js';
 import { isWithinWindow, parseMaintenanceWindow } from '../../system/maintenance-window.js';
 import {
   isLockStale,
@@ -83,7 +84,7 @@ export class UpdateService {
   private readonly isProcessAlive: (pid: number) => boolean;
 
   constructor(private readonly opts: UpdateServiceOptions) {
-    const varDir = opts.varDir ?? resolve('var');
+    const varDir = opts.varDir ?? agentPaths().varDir;
     this.lockFile = resolve(varDir, 'update.lock');
     this.resultFile = resolve(varDir, 'update-result.json');
     this.now = opts.now ?? (() => new Date());
@@ -124,7 +125,7 @@ export class UpdateService {
   }
 
   private get canSelfUpdate(): boolean {
-    return this.opts.mode === 'systemd';
+    return canAutoUpdate(this.opts.mode);
   }
 
   /** Lee el resultado de la última actualización (parseo defensivo, patrón US-63). */
@@ -201,6 +202,15 @@ export class UpdateService {
         message:
           'En Docker el contenedor no puede auto-reemplazarse. Actualiza con el comando indicado.',
         dockerCommand: DOCKER_UPDATE_COMMAND,
+      };
+    }
+    if (!canAutoUpdate(mode)) {
+      // `windows-service` y `package` (US-280): aún no hay camino de actualización
+      // propio (ni comando manual que dar), así que se dice tal cual en vez de fingir uno.
+      return {
+        started: false,
+        mode,
+        message: 'Este modo de instalación todavía no se actualiza desde aquí.',
       };
     }
 

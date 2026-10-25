@@ -1,4 +1,9 @@
-import { AUTO_BACKUP_FREQUENCIES, SYSTEM_SETTING_KEYS, UPDATE_STEPS } from '@krakenos/types';
+import {
+  AUTO_BACKUP_FREQUENCIES,
+  DEPLOY_MODES,
+  SYSTEM_SETTING_KEYS,
+  UPDATE_STEPS,
+} from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
 
 /** `GET /api/system/ca-cert` — certificado público de la CA local. Sin schema de 200: es un PEM. */
@@ -174,7 +179,7 @@ export const updatePlanSchema = {
         current: { type: 'string' },
         latest: { type: ['string', 'null'] },
         updateAvailable: { type: 'boolean' },
-        mode: { type: 'string', enum: ['systemd', 'docker'] },
+        mode: { type: 'string', enum: [...DEPLOY_MODES] },
         canSelfUpdate: { type: 'boolean' },
         dockerCommand: { type: ['string', 'null'] },
         inProgress: { type: 'boolean' },
@@ -219,7 +224,7 @@ export const updateApplySchema = {
       additionalProperties: false,
       properties: {
         started: { type: 'boolean' },
-        mode: { type: 'string', enum: ['systemd', 'docker'] },
+        mode: { type: 'string', enum: [...DEPLOY_MODES] },
         message: { type: 'string' },
         dockerCommand: { type: 'string' },
       },
