@@ -4,6 +4,8 @@ import { revertAppliedRestore, type RestoreTargets } from './restore.js';
 export interface AppliedRestore {
   preRestoreDir: string;
   targets: RestoreTargets;
+  /** Destinos que la restauración creó (no existían antes): la reversión los retira. */
+  added: string[];
 }
 
 /**
@@ -27,9 +29,10 @@ export function migrateWithRestoreSafety(opts: {
     opts.log(
       `[restore] La copia restaurada es de una versión más nueva (migración «${err.migration ?? '?'}» ` +
         `desconocida): se devuelve la base anterior desde ${opts.restored.preRestoreDir}. ` +
-        'Actualiza KrakenOS y vuelve a restaurar la copia.',
+        'El archivo .kbk original sigue disponible: actualiza KrakenOS y vuelve a restaurarlo. ' +
+        'Si esta reversión fallara, la base anterior sigue en esa carpeta para rescatarla a mano.',
     );
-    revertAppliedRestore(opts.restored.preRestoreDir, opts.restored.targets);
+    revertAppliedRestore(opts.restored.preRestoreDir, opts.restored.targets, opts.restored.added);
     return { result: opts.migrate(), revertedRestore: true };
   }
 }

@@ -31,11 +31,12 @@ function applyPendingRestore(): AppliedRestore | null {
       keyFiles: keyFilePaths(env),
       dataDir: agentPaths().dataDir,
     };
-    const applied = applyStagedRestore(stagingDir, targets, preRestoreDir);
+    const report = { added: [] as string[] };
+    const applied = applyStagedRestore(stagingDir, targets, preRestoreDir, report);
     process.stdout.write(
       `[restore] Restauración aplicada: ${applied.length} ficheros. Copia previa en ${preRestoreDir}\n`,
     );
-    return { preRestoreDir, targets };
+    return { preRestoreDir, targets, added: report.added };
   } catch (err) {
     const failedDir = join(agentPaths().varDir, `restore-failed-${stamp}`);
     try {
