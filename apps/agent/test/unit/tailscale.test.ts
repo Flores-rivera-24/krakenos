@@ -127,6 +127,6 @@ describe('Tailscale por plataforma (US-280)', () => {
     const eacces = Object.assign(new Error('x'), { code: 'EACCES' });
     const transport = { fetchStatus: () => Promise.reject(eacces) };
     expect((await detectTailscale(transport, 'win32')).state).toBe('no-access');
-    expect((await detectTailscale(transport)).state).toBe('stopped');
+    expect((await detectTailscale(transport, 'linux')).state).toBe('stopped');
   });
 });

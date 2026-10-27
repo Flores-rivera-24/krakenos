@@ -1,9 +1,9 @@
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { es } from '@/lib/i18n/catalog/es';
 import { esCore } from '@/lib/i18n/catalog/es-core';
 import { esRegistrado } from '@/lib/i18n/registro';
-import { SRC } from './_fuentes';
+import { SRC, nombreDe } from './_fuentes';
 import {
   analizarFuente,
   cierreEstatico,
@@ -73,7 +73,7 @@ function fragmentos(): Fragmento[] {
 }
 
 /** Cabeza de la que cuelgan los módulos de catálogo: no son «código que usa copy». */
-const DIR_I18N = join(SRC, 'lib/i18n') + '/';
+const DIR_I18N = join(SRC, 'lib/i18n') + sep;
 const ES_COMPUESTO = join(SRC, 'lib/i18n/catalog/es.ts');
 
 /** Prefijos transversales: casi toda pantalla los pinta, y por eso viven en el núcleo. */
@@ -199,7 +199,7 @@ describe('catálogo en fragmentos', () => {
           claveAFragmento,
         )) {
           incumplidos.push(
-            `${m.ruta.slice(SRC.length + 1)} nombra \`${clave}\` (fragmento «${fragmento.nombre}») sin ` +
+            `${nombreDe(m.ruta)} nombra \`${clave}\` (fragmento «${fragmento.nombre}») sin ` +
               `importarlo: añade \`import '@/lib/i18n/catalog/fragments/${fragmento.nombre}';\``,
           );
         }
@@ -245,7 +245,7 @@ describe('catálogo en fragmentos', () => {
       // código de la app arrastra los ~25 fragmentos al chunk que lo haga.
       const culpables = modulosDeApp()
         .filter((m) => m.estaticos.includes(ES_COMPUESTO))
-        .map((m) => m.ruta.slice(SRC.length + 1));
+        .map((m) => nombreDe(m.ruta));
       expect(
         culpables,
         'Importa `@/lib/i18n/registro` (esRegistrado) para consultar el catálogo en ' +

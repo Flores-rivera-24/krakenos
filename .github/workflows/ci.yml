@@ -16,6 +16,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Token de solo lectura: ningún job de este workflow escribe en el repo ni en PRs (checkout,
+# setup, upload-artifact y herramientas descargadas; upload-artifact no necesita `contents: write`).
+permissions:
+  contents: read
+
 # ⚠️ Las acciones van en su mayor actual porque su RUNTIME (el Node con el que
 # GitHub las ejecuta) pasó a `node24`. Las versiones viejas declaraban `node20`,
 # que GitHub ya deprecó: los runners lo forzaban a 24 y lo avisaban en cada
@@ -125,6 +130,49 @@ jobs:
           chmod +x /tmp/osv-scanner
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
+
+  # Suite del agente y de la web en Windows (Fase 11). NO BLOQUEANTE al principio: con
+  # `continue-on-error: true` el RUN sale verde aunque falle el job, pero el check del job
+  # aparece como fallido en el PR. Eso NO bloquea el merge (no es un check requerido).
+  # Pasa a bloqueante (se quita esa línea) cuando lleve 5 pasadas verdes seguidas en main.
+  # Los tests que no aplican en Windows saltan con motivo y están contados en
+  # apps/agent/test/unit/saltos-por-plataforma.test.ts.
+  windows:
+    name: Tests en Windows (no bloqueante)
+    runs-on: windows-latest
+    # Un hijo colgado no debe gastar 6 h de minutos de Windows en un job que nadie vigila.
+    timeout-minutes: 30
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate JWT keys (agent)
+        run: pnpm --filter @krakenos/agent keys:gen
+
+      - name: Generate Prisma client
+        run: pnpm --filter @krakenos/agent prisma:generate
+
+      - name: Test (agente)
+        run: pnpm --filter @krakenos/agent test
+
+      # Aunque falle la del agente: la web es independiente y interesa ver las dos.
+      - name: Test (web)
+        if: ${{ !cancelled() }}
+        run: pnpm --filter @krakenos/web test
 
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).

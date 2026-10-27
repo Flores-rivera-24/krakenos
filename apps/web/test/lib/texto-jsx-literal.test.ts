@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { SRC, ficheros } from './_fuentes';
+import { ficheros, nombreDe } from './_fuentes';
 
 /**
  * Gate: ningún TEXTO de JSX (lo que va entre etiquetas) está escrito a pelo.
@@ -84,7 +84,7 @@ function escanear(): { nombre: string; texto: string; linea: number }[] {
   const salida: { nombre: string; texto: string; linea: number }[] = [];
   for (const ruta of ficheros()) {
     if (!ruta.endsWith('.tsx')) continue;
-    const nombre = ruta.slice(SRC.length + 1);
+    const nombre = nombreDe(ruta);
     for (const h of textosDeJsx(nombre, readFileSync(ruta, 'utf8'))) {
       salida.push({ nombre, ...h });
     }

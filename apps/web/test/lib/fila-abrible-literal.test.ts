@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SRC, ficheros, sinComentariosConLineas } from './_fuentes';
+import { ficheros, nombreDe, sinComentariosConLineas } from './_fuentes';
 import { literalesConTexto, llamadasA } from './_literales';
 
 /**
@@ -81,7 +81,7 @@ describe('etiqueta de filaAbrible con literal a pelo (issue #91)', () => {
   it('ninguna fila abrible escribe su etiqueta a pelo', () => {
     const culpables: string[] = [];
     for (const ruta of ficheros()) {
-      const nombre = ruta.slice(SRC.length + 1);
+      const nombre = nombreDe(ruta);
       if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
       const codigo = sinComentariosConLineas(readFileSync(ruta, 'utf8'));
       for (const h of etiquetasConLiteral(codigo)) {

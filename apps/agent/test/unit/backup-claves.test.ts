@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { unpackArchive } from '../../src/system/backup.js';
@@ -36,9 +36,9 @@ describe('copia y restore de claves en rutas del entorno (D1)', () => {
       secretboxKeyPath: '/data/keys/secretbox.key',
     });
     expect(p).toEqual({
-      jwtPrivate: '/data/keys/jwt-private.pem',
-      jwtPublic: '/data/keys/jwt-public.pem',
-      secretbox: '/data/keys/secretbox.key',
+      jwtPrivate: resolve('/data/keys/jwt-private.pem'),
+      jwtPublic: resolve('/data/keys/jwt-public.pem'),
+      secretbox: resolve('/data/keys/secretbox.key'),
     });
   });
 
@@ -93,7 +93,8 @@ describe('copia y restore de claves en rutas del entorno (D1)', () => {
     for (const [n, b] of Object.entries(bytes)) {
       expect(readFileSync(join(destino, n)).equals(b)).toBe(true);
       // Son secretos: quedan solo para el dueño, aunque el staging se escribiera con la umask.
-      expect(statSync(join(destino, n)).mode & 0o777).toBe(0o600);
+      // Windows no tiene bits de modo POSIX (stat devuelve 666): solo se comprueba en POSIX.
+      if (process.platform !== 'win32') expect(statSync(join(destino, n)).mode & 0o777).toBe(0o600);
     }
   });
 

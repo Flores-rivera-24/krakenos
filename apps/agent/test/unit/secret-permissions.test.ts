@@ -59,7 +59,8 @@ describe('secret-permissions (US-79, F8)', () => {
     });
     afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-    it('no avisa de un fichero 0600 y sí de uno 0644', () => {
+    // Los bits de modo son POSIX: Windows no los tiene, así que no hay fichero «demasiado abierto».
+    it.skipIf(process.platform === 'win32')('no avisa de un fichero 0600 y sí de uno 0644', () => {
       const tight = join(dir, 'tight.env');
       const loose = join(dir, 'loose.env');
       writeFileSync(tight, 'SECRET=1');

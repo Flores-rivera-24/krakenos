@@ -41,16 +41,20 @@ afterAll(() => rmSync(dir, { recursive: true, force: true }));
 const mode = (p: string) => (statSync(p).mode & 0o777).toString(8);
 
 describe('writeTempFile', () => {
-  it('el fichero NACE con el modo pedido, sin depender de un chmod posterior (umask 0)', () => {
-    const antes = process.umask(0);
-    try {
-      const tmp = writeTempFile(join(dir, 'clave.pem'), 'secreto', 0o600);
-      expect(mode(tmp)).toBe('600');
-      expect(readFileSync(tmp, 'utf8')).toBe('secreto');
-    } finally {
-      process.umask(antes);
-    }
-  });
+  // Los bits de modo y el umask son POSIX: Windows no los tiene.
+  it.skipIf(process.platform === 'win32')(
+    'el fichero NACE con el modo pedido, sin depender de un chmod posterior (umask 0)',
+    () => {
+      const antes = process.umask(0);
+      try {
+        const tmp = writeTempFile(join(dir, 'clave.pem'), 'secreto', 0o600);
+        expect(mode(tmp)).toBe('600');
+        expect(readFileSync(tmp, 'utf8')).toBe('secreto');
+      } finally {
+        process.umask(antes);
+      }
+    },
+  );
 
   it('se queda en el mismo directorio que el destino (el rename es atómico) y es oculto', () => {
     const tmp = writeTempFile(join(dir, 'otra.pem'), 'x', 0o644);
@@ -109,18 +113,22 @@ describe('assertNotSymlink / existsNoFollow', () => {
 });
 
 describe('applyModeAndGroup', () => {
-  it('fija el modo por descriptor y NO sigue un enlace simbólico', () => {
-    const sub = join(dir, 'modo');
-    mkdirSync(sub);
-    const real = join(sub, 'real');
-    writeFileSync(real, '', { mode: 0o600 });
-    applyModeAndGroup(real, 0o640);
-    expect(mode(real)).toBe('640');
-    symlinkSync(real, join(sub, 'enlace'));
-    // O_NOFOLLOW: abrir el enlace falla (ELOOP) en vez de tocar el destino.
-    expect(() => applyModeAndGroup(join(sub, 'enlace'), 0o666)).toThrow();
-    expect(mode(real)).toBe('640');
-  });
+  // Bits de modo POSIX y O_NOFOLLOW sobre el descriptor: Windows no los tiene.
+  it.skipIf(process.platform === 'win32')(
+    'fija el modo por descriptor y NO sigue un enlace simbólico',
+    () => {
+      const sub = join(dir, 'modo');
+      mkdirSync(sub);
+      const real = join(sub, 'real');
+      writeFileSync(real, '', { mode: 0o600 });
+      applyModeAndGroup(real, 0o640);
+      expect(mode(real)).toBe('640');
+      symlinkSync(real, join(sub, 'enlace'));
+      // O_NOFOLLOW: abrir el enlace falla (ELOOP) en vez de tocar el destino.
+      expect(() => applyModeAndGroup(join(sub, 'enlace'), 0o666)).toThrow();
+      expect(mode(real)).toBe('640');
+    },
+  );
 });
 
 describe('resolveGroupId', () => {

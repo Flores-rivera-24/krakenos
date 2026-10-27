@@ -40,7 +40,7 @@ function aperturasDeParrafo(fuente: string): string[] {
 }
 
 const fuentes = ficheros(SRC).map((ruta) => ({
-  nombre: ruta.slice(SRC.length + 1),
+  nombre: ruta.slice(SRC.length + 1).replaceAll('\\', '/'),
   texto: readFileSync(ruta, 'utf8'),
 }));
 
@@ -61,7 +61,7 @@ describe('errores en pantalla anunciados (US-268)', () => {
   it('la primitiva compartida existe y es la que se usa', () => {
     // Si alguien vuelve a escribir el `<p>` a mano en vez de usar `FormError`,
     // el test de arriba lo caza; esto ata que la primitiva siga siendo `alert`.
-    const primitiva = fuentes.find((f) => f.nombre.endsWith(join('ui', 'form-error.tsx')));
+    const primitiva = fuentes.find((f) => f.nombre.endsWith('ui/form-error.tsx'));
     expect(primitiva).toBeDefined();
     expect(primitiva!.texto).toContain('role="alert"');
   });

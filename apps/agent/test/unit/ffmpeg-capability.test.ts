@@ -87,6 +87,19 @@ describe('ffmpegSetupStep', () => {
     expect(step).not.toContain('`');
   });
 
+  it('con la plataforma inyectada, «ruta» la decide esa plataforma y no el sistema que corre el test', () => {
+    // `C:\\…` no es una ruta en Linux (no hay barra ni empieza por «/»): se busca en el PATH.
+    // Con el `isAbsolute` nativo, en Windows esto se tomaría por ruta y devolvería null.
+    expect(
+      ffmpegSetupStep({
+        ffmpegPath: 'C:\\ffmpeg\\ffmpeg.exe',
+        platform: 'linux',
+        env: { PATH: '/usr/bin' },
+        exists: (p) => p === 'C:\\ffmpeg\\ffmpeg.exe',
+      }),
+    ).not.toBeNull();
+  });
+
   it('en Linux lo encuentra en el PATH', () => {
     expect(
       ffmpegSetupStep({

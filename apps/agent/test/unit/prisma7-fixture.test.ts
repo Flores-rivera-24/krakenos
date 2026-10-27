@@ -1,5 +1,6 @@
 import { createECDH, createHash, createPrivateKey, sign } from 'node:crypto';
 import { rmSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createPrismaClient } from '../../src/db/client.js';
 import { migrateDatabase } from '../../src/db/migrate.js';
@@ -73,7 +74,7 @@ describe('Prisma 7 sobre la fixture escrita por Prisma 5 (US-276)', () => {
     // haber nada pendiente (la fixture lleva todas las migraciones vigentes).
     const res = migrateDatabase({
       dbFile: copia.dbFile,
-      migrationsDir: new URL('../../prisma/migrations', import.meta.url).pathname,
+      migrationsDir: fileURLToPath(new URL('../../prisma/migrations', import.meta.url)),
       backupDir: `${dir}/var`,
     });
     expect(res.applied).toEqual([]);

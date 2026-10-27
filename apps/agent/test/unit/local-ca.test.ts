@@ -335,40 +335,48 @@ describe('ensureLocalCa', () => {
     expect(x509(a.serverCertPath).checkIssued(x509(a.caCertPath))).toBe(true);
   });
 
-  it('claves con modo 600 y ninguna clave en certs/ salvo la del servidor', async () => {
-    const d = dirNuevo();
-    const r = await ensureLocalCa(opts(d));
-    expect(mode(r.caKeyPath)).toBe('600');
-    expect(mode(r.serverKeyPath)).toBe('600');
-    expect(mode(r.caCertPath)).toBe('644');
-    expect(mode(r.serverCertPath)).toBe('644');
-    // Como los que escribe openssl: terminan en salto de línea, así que se pueden
-    // concatenar con `cat` sin pegar el END de uno al BEGIN del siguiente.
-    for (const f of [r.caCertPath, r.serverCertPath, r.caKeyPath, r.serverKeyPath]) {
-      expect(readFileSync(f, 'utf8').endsWith('-----\n'), f).toBe(true);
-    }
-    expect(readFileSync(r.caCertPath, 'utf8')).not.toContain('PRIVATE KEY');
-    expect(readFileSync(r.serverCertPath, 'utf8')).not.toContain('PRIVATE KEY');
-    // Sin temporales olvidados.
-    expect(readdirSync(d.certs).sort()).toEqual([
-      'agent-cert.pem',
-      'agent-key.pem',
-      'krakenos-ca.pem',
-    ]);
-    expect(readdirSync(d.keys)).toEqual(['krakenos-ca-key.pem']);
-  });
-
-  it('los modos no dependen del umask del proceso', async () => {
-    const d = dirNuevo();
-    const antes = process.umask(0o077);
-    try {
+  // Los bits de modo son POSIX: Windows no los tiene (stat devuelve 666).
+  it.skipIf(process.platform === 'win32')(
+    'claves con modo 600 y ninguna clave en certs/ salvo la del servidor',
+    async () => {
+      const d = dirNuevo();
       const r = await ensureLocalCa(opts(d));
+      expect(mode(r.caKeyPath)).toBe('600');
+      expect(mode(r.serverKeyPath)).toBe('600');
       expect(mode(r.caCertPath)).toBe('644');
       expect(mode(r.serverCertPath)).toBe('644');
-    } finally {
-      process.umask(antes);
-    }
-  });
+      // Como los que escribe openssl: terminan en salto de línea, así que se pueden
+      // concatenar con `cat` sin pegar el END de uno al BEGIN del siguiente.
+      for (const f of [r.caCertPath, r.serverCertPath, r.caKeyPath, r.serverKeyPath]) {
+        expect(readFileSync(f, 'utf8').endsWith('-----\n'), f).toBe(true);
+      }
+      expect(readFileSync(r.caCertPath, 'utf8')).not.toContain('PRIVATE KEY');
+      expect(readFileSync(r.serverCertPath, 'utf8')).not.toContain('PRIVATE KEY');
+      // Sin temporales olvidados.
+      expect(readdirSync(d.certs).sort()).toEqual([
+        'agent-cert.pem',
+        'agent-key.pem',
+        'krakenos-ca.pem',
+      ]);
+      expect(readdirSync(d.keys)).toEqual(['krakenos-ca-key.pem']);
+    },
+  );
+
+  // El umask y los bits de modo son POSIX: Windows no los tiene.
+  it.skipIf(process.platform === 'win32')(
+    'los modos no dependen del umask del proceso',
+    async () => {
+      const d = dirNuevo();
+      const antes = process.umask(0o077);
+      try {
+        const r = await ensureLocalCa(opts(d));
+        expect(mode(r.caCertPath)).toBe('644');
+        expect(mode(r.serverCertPath)).toBe('644');
+      } finally {
+        process.umask(antes);
+      }
+    },
+  );
 
   it('una IP pública no entra en el SAN (rompería la verificación) y se avisa', async () => {
     const d = dirNuevo();
@@ -441,19 +449,23 @@ describe('ensureLocalCa', () => {
     expect(readdirSync(join(d.dir, 'real'))).toEqual([]);
   });
 
-  it('con tlsGroup la clave del servidor es legible por el grupo (640) y la de la CA no', async () => {
-    const d = dirNuevo();
-    const grupo = execFileSync('id', ['-gn'], { encoding: 'utf8' }).trim();
-    const r = await ensureLocalCa(opts(d, { tlsGroup: grupo }));
-    expect(mode(r.serverKeyPath)).toBe('640');
-    expect(mode(r.serverCertPath)).toBe('644');
-    expect(mode(r.caCertPath)).toBe('644');
-    expect(mode(r.caKeyPath)).toBe('600');
-    // Se reaplica sin reemisión (corrige instalaciones previas).
-    execFileSync('chmod', ['600', r.serverKeyPath]);
-    await ensureLocalCa(opts(d, { tlsGroup: grupo }));
-    expect(mode(r.serverKeyPath)).toBe('640');
-  });
+  // Grupos y bits de modo POSIX (`id -gn`, `chmod`): no existen en Windows.
+  it.skipIf(process.platform === 'win32')(
+    'con tlsGroup la clave del servidor es legible por el grupo (640) y la de la CA no',
+    async () => {
+      const d = dirNuevo();
+      const grupo = execFileSync('id', ['-gn'], { encoding: 'utf8' }).trim();
+      const r = await ensureLocalCa(opts(d, { tlsGroup: grupo }));
+      expect(mode(r.serverKeyPath)).toBe('640');
+      expect(mode(r.serverCertPath)).toBe('644');
+      expect(mode(r.caCertPath)).toBe('644');
+      expect(mode(r.caKeyPath)).toBe('600');
+      // Se reaplica sin reemisión (corrige instalaciones previas).
+      execFileSync('chmod', ['600', r.serverKeyPath]);
+      await ensureLocalCa(opts(d, { tlsGroup: grupo }));
+      expect(mode(r.serverKeyPath)).toBe('640');
+    },
+  );
 
   it('un grupo que no existe es un error nombrado, no un fallo mudo', async () => {
     const d = dirNuevo();

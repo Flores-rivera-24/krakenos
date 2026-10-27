@@ -56,7 +56,10 @@ function runInstaller(
   });
 }
 
-describe('install.sh --dry-run (US-216)', () => {
+// install.sh es el instalador de Debian/Ubuntu (apt, systemd, sudo, root): en Windows no aplica.
+// Se salta TODO el fichero, no solo lo que hoy falla: lo que pasa en el bash de Windows no prueba
+// nada del instalador real. El de Windows tiene su propia historia.
+describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', () => {
   it('imprime el plan completo en orden: pnpm pinneado → clone → build → keys (con Node) → migrate (aplicador propio) → systemd', async () => {
     const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
     expect(code).toBe(0);
@@ -449,303 +452,312 @@ describe('install.sh --dry-run (US-216)', () => {
  * `ExecStartPost=chown` sobre rutas suyas seguía enlaces simbólicos (`ln -sf
  * /etc/shadow agent-key.pem`). Estos tests habrían cazado ambas cosas.
  */
-describe('install.sh · root no ejecuta lo que el servicio puede modificar', () => {
-  const INSTALL_DIR = '/tmp/kraken-x';
+describe.skipIf(process.platform === 'win32')(
+  'install.sh · root no ejecuta lo que el servicio puede modificar',
+  () => {
+    const INSTALL_DIR = '/tmp/kraken-x';
 
-  /** ¿`p` y todos sus directorios son de root y no escribibles por grupo ni otros? */
-  function cadenaDeRoot(p: string): boolean {
-    try {
-      for (let cur = realpathSync(p); ; cur = dirname(cur)) {
-        const st = statSync(cur);
-        if (st.uid !== 0 || (st.mode & 0o022) !== 0) return false;
-        if (cur === '/') return true;
+    /** ¿`p` y todos sus directorios son de root y no escribibles por grupo ni otros? */
+    function cadenaDeRoot(p: string): boolean {
+      try {
+        for (let cur = realpathSync(p); ; cur = dirname(cur)) {
+          const st = statSync(cur);
+          if (st.uid !== 0 || (st.mode & 0o022) !== 0) return false;
+          if (cur === '/') return true;
+        }
+      } catch {
+        return false;
       }
-    } catch {
-      return false;
     }
-  }
 
-  /** El node de una unidad es de fiar para root: de root en toda su cadena, o la copia que el plan instala. */
-  function sePuedeEjecutarComoRoot(nodeBin: string, plan: string): boolean {
-    if (nodeBin === '/usr/local/lib/krakenos/node') {
-      return /install -o root -g root -m 0755 \S+ \/usr\/local\/lib\/krakenos\/node\n/.test(plan);
+    /** El node de una unidad es de fiar para root: de root en toda su cadena, o la copia que el plan instala. */
+    function sePuedeEjecutarComoRoot(nodeBin: string, plan: string): boolean {
+      if (nodeBin === '/usr/local/lib/krakenos/node') {
+        return /install -o root -g root -m 0755 \S+ \/usr\/local\/lib\/krakenos\/node\n/.test(plan);
+      }
+      return cadenaDeRoot(nodeBin);
     }
-    return cadenaDeRoot(nodeBin);
-  }
 
-  /** Unidades de renovación que el plan escribe, con su contenido (`dry-run>`). */
-  function unitsDeRenovacion(stdout: string): { path: string; body: string }[] {
-    const out: { path: string; body: string }[] = [];
-    const lines = stdout.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const m = /^dry-run\$ write (\/etc\/systemd\/system\/\S*-cert\S*\.(?:service|timer))$/.exec(
-        lines[i] ?? '',
+    /** Unidades de renovación que el plan escribe, con su contenido (`dry-run>`). */
+    function unitsDeRenovacion(stdout: string): { path: string; body: string }[] {
+      const out: { path: string; body: string }[] = [];
+      const lines = stdout.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        const m = /^dry-run\$ write (\/etc\/systemd\/system\/\S*-cert\S*\.(?:service|timer))$/.exec(
+          lines[i] ?? '',
+        );
+        if (!m) continue;
+        const body: string[] = [];
+        while ((lines[i + 1] ?? '').startsWith('dry-run>')) body.push((lines[++i] ?? '').slice(11));
+        out.push({ path: m[1] ?? '', body: body.join('\n') });
+      }
+      return out;
+    }
+
+    /** Un `tailscale` falso que responde como un nodo con MagicDNS. */
+    function tailscaleFalso(): string {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-ts-'));
+      const bin = join(dir, 'tailscale');
+      writeFileSync(bin, '#!/bin/sh\necho \'{"Self":{"DNSName": "casa.tailnet-abc.ts.net."}}\'\n');
+      chmodSync(bin, 0o755);
+      return dir;
+    }
+
+    function comprobar(stdout: string, esperaUnidad: string) {
+      const units = unitsDeRenovacion(stdout);
+      const service = units.find((u) => u.path.endsWith(`${esperaUnidad}.service`));
+      expect(service, `falta la unidad ${esperaUnidad}.service en el plan`).toBeDefined();
+      for (const u of units) {
+        // Ninguna unidad ejecuta nada bajo el árbol de instalación…
+        expect(u.body, u.path).not.toContain(INSTALL_DIR);
+        // …ni hace chown (que sigue enlaces) sobre rutas que el servicio controla.
+        expect(u.body, u.path).not.toMatch(/ExecStartPost=.*chown/);
+      }
+      const execStart = /^ExecStart=(.*)$/m.exec(service?.body ?? '')?.[1] ?? '';
+      return execStart;
+    }
+
+    it('modo local: el timer ejecuta la copia de root y todo el TLS vive en /etc/krakenos', async () => {
+      const { code, stdout } = await runInstaller([
+        '--dry-run',
+        '--yes',
+        '--tls',
+        'local',
+        '--dir',
+        INSTALL_DIR,
+      ]);
+      expect(code).toBe(0);
+      const execStart = comprobar(stdout, 'krakenos-cert-local');
+      // `<node> /usr/local/lib/krakenos/local-ca.js`: la CLI empaquetada, en un dir de root.
+      const [nodeBin, script, ...resto] = execStart.split(' ');
+      expect(script).toBe('/usr/local/lib/krakenos/local-ca.js');
+      expect(resto).toEqual([]);
+      expect(nodeBin).toBeDefined();
+      // Y el node con el que root la ejecuta no lo puede modificar el servicio.
+      expect(sePuedeEjecutarComoRoot(nodeBin ?? '', stdout)).toBe(true);
+      // La copia de root del script de bash de versiones anteriores se retira, no se ejecuta.
+      expect(stdout).not.toMatch(/(bash|node|ExecStart=)\S* \S*gen-local-ca\.sh/);
+      expect(stdout).toContain('rm -f /usr/local/lib/krakenos/gen-local-ca.sh');
+      expect(stdout).toContain('Environment=KRAKENOS_CERTS_DIR=/etc/krakenos/tls');
+      expect(stdout).toContain('Environment=KRAKENOS_KEYS_DIR=/etc/krakenos/ca');
+      // La copia de root, con dueño y modo explícitos, en un directorio de root.
+      expect(stdout).toContain('install -d -o root -g root -m 0755 /usr/local/lib/krakenos');
+      expect(stdout).toContain(
+        `install -o root -g root -m 0755 ${INSTALL_DIR}/apps/agent/dist/local-ca.js /usr/local/lib/krakenos/local-ca.js`,
       );
-      if (!m) continue;
-      const body: string[] = [];
-      while ((lines[i + 1] ?? '').startsWith('dry-run>')) body.push((lines[++i] ?? '').slice(11));
-      out.push({ path: m[1] ?? '', body: body.join('\n') });
-    }
-    return out;
-  }
+      // El servicio lee por grupo: dir 0750 root:servicio, la CA en un dir 0700 de root.
+      expect(stdout).toContain('install -d -o root -g krakenos -m 0750 /etc/krakenos/tls');
+      expect(stdout).toContain('install -d -o root -g root -m 0700 /etc/krakenos/ca');
+      for (const v of ['TLS_CERT_PATH', 'TLS_KEY_PATH', 'TLS_CA_CERT_PATH']) {
+        expect(stdout).toMatch(new RegExp(`${v}=/etc/krakenos/tls/\\S+ en`));
+      }
+      expect(stdout).not.toMatch(/TLS_\w+_PATH=\.\/certs/);
+    });
 
-  /** Un `tailscale` falso que responde como un nodo con MagicDNS. */
-  function tailscaleFalso(): string {
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-ts-'));
-    const bin = join(dir, 'tailscale');
-    writeFileSync(bin, '#!/bin/sh\necho \'{"Self":{"DNSName": "casa.tailnet-abc.ts.net."}}\'\n');
-    chmodSync(bin, 0o755);
-    return dir;
-  }
-
-  function comprobar(stdout: string, esperaUnidad: string) {
-    const units = unitsDeRenovacion(stdout);
-    const service = units.find((u) => u.path.endsWith(`${esperaUnidad}.service`));
-    expect(service, `falta la unidad ${esperaUnidad}.service en el plan`).toBeDefined();
-    for (const u of units) {
-      // Ninguna unidad ejecuta nada bajo el árbol de instalación…
-      expect(u.body, u.path).not.toContain(INSTALL_DIR);
-      // …ni hace chown (que sigue enlaces) sobre rutas que el servicio controla.
-      expect(u.body, u.path).not.toMatch(/ExecStartPost=.*chown/);
-    }
-    const execStart = /^ExecStart=(.*)$/m.exec(service?.body ?? '')?.[1] ?? '';
-    return execStart;
-  }
-
-  it('modo local: el timer ejecuta la copia de root y todo el TLS vive en /etc/krakenos', async () => {
-    const { code, stdout } = await runInstaller([
-      '--dry-run',
-      '--yes',
-      '--tls',
-      'local',
-      '--dir',
-      INSTALL_DIR,
-    ]);
-    expect(code).toBe(0);
-    const execStart = comprobar(stdout, 'krakenos-cert-local');
-    // `<node> /usr/local/lib/krakenos/local-ca.js`: la CLI empaquetada, en un dir de root.
-    const [nodeBin, script, ...resto] = execStart.split(' ');
-    expect(script).toBe('/usr/local/lib/krakenos/local-ca.js');
-    expect(resto).toEqual([]);
-    expect(nodeBin).toBeDefined();
-    // Y el node con el que root la ejecuta no lo puede modificar el servicio.
-    expect(sePuedeEjecutarComoRoot(nodeBin ?? '', stdout)).toBe(true);
-    // La copia de root del script de bash de versiones anteriores se retira, no se ejecuta.
-    expect(stdout).not.toMatch(/(bash|node|ExecStart=)\S* \S*gen-local-ca\.sh/);
-    expect(stdout).toContain('rm -f /usr/local/lib/krakenos/gen-local-ca.sh');
-    expect(stdout).toContain('Environment=KRAKENOS_CERTS_DIR=/etc/krakenos/tls');
-    expect(stdout).toContain('Environment=KRAKENOS_KEYS_DIR=/etc/krakenos/ca');
-    // La copia de root, con dueño y modo explícitos, en un directorio de root.
-    expect(stdout).toContain('install -d -o root -g root -m 0755 /usr/local/lib/krakenos');
-    expect(stdout).toContain(
-      `install -o root -g root -m 0755 ${INSTALL_DIR}/apps/agent/dist/local-ca.js /usr/local/lib/krakenos/local-ca.js`,
-    );
-    // El servicio lee por grupo: dir 0750 root:servicio, la CA en un dir 0700 de root.
-    expect(stdout).toContain('install -d -o root -g krakenos -m 0750 /etc/krakenos/tls');
-    expect(stdout).toContain('install -d -o root -g root -m 0700 /etc/krakenos/ca');
-    for (const v of ['TLS_CERT_PATH', 'TLS_KEY_PATH', 'TLS_CA_CERT_PATH']) {
-      expect(stdout).toMatch(new RegExp(`${v}=/etc/krakenos/tls/\\S+ en`));
-    }
-    expect(stdout).not.toMatch(/TLS_\w+_PATH=\.\/certs/);
-  });
-
-  it('un node que el servicio puede modificar NO lo ejecuta root: se copia a /usr/local/lib/krakenos/node', async () => {
-    // Un `node` en un directorio del usuario (como el de nvm): escribible por quien no
-    // es root, así que un timer de root no puede ejecutarlo en sitio.
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-node-'));
-    const falso = join(dir, 'node');
-    writeFileSync(falso, '#!/bin/sh\nexit 0\n');
-    chmodSync(falso, 0o755);
-    const { code, stdout } = await runInstaller(
-      ['--dry-run', '--yes', '--tls', 'local', '--dir', INSTALL_DIR],
-      { PATH: `${dir}:/usr/bin:/bin` },
-    );
-    expect(code).toBe(0);
-    expect(comprobar(stdout, 'krakenos-cert-local')).toBe(
-      '/usr/local/lib/krakenos/node /usr/local/lib/krakenos/local-ca.js',
-    );
-    expect(stdout).toContain(
-      `install -o root -g root -m 0755 ${realpathSync(falso)} /usr/local/lib/krakenos/node`,
-    );
-    // La primera emisión (como root) usa también la copia, no el node del usuario.
-    expect(stdout).toMatch(
-      /KRAKENOS_TLS_GROUP=krakenos \/usr\/local\/lib\/krakenos\/node \/usr\/local\/lib\/krakenos\/local-ca\.js/,
-    );
-    expect(stdout).not.toContain(`${falso} /usr/local/lib/krakenos/local-ca.js`);
-  });
-
-  it.skipIf(!cadenaDeRoot('/usr/bin/node'))(
-    'un node del sistema, de root y sin escritura ajena, se usa en sitio (sin copiar 100 MB)',
-    async () => {
+    it('un node que el servicio puede modificar NO lo ejecuta root: se copia a /usr/local/lib/krakenos/node', async () => {
+      // Un `node` en un directorio del usuario (como el de nvm): escribible por quien no
+      // es root, así que un timer de root no puede ejecutarlo en sitio.
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-node-'));
+      const falso = join(dir, 'node');
+      writeFileSync(falso, '#!/bin/sh\nexit 0\n');
+      chmodSync(falso, 0o755);
       const { code, stdout } = await runInstaller(
         ['--dry-run', '--yes', '--tls', 'local', '--dir', INSTALL_DIR],
-        { PATH: '/usr/bin:/bin' },
+        { PATH: `${dir}:/usr/bin:/bin` },
       );
       expect(code).toBe(0);
       expect(comprobar(stdout, 'krakenos-cert-local')).toBe(
-        `${realpathSync('/usr/bin/node')} /usr/local/lib/krakenos/local-ca.js`,
+        '/usr/local/lib/krakenos/node /usr/local/lib/krakenos/local-ca.js',
       );
-      expect(stdout).not.toContain('/usr/local/lib/krakenos/node ');
-    },
-  );
-
-  it('modo tailscale: renueva escribiendo en /etc/krakenos/tls, sin chown', async () => {
-    const bin = tailscaleFalso();
-    const { code, stdout } = await runInstaller(
-      ['--dry-run', '--yes', '--tls', 'tailscale', '--dir', INSTALL_DIR],
-      { PATH: `${bin}:/usr/bin:/bin` },
-    );
-    expect(code).toBe(0);
-    const execStart = comprobar(stdout, 'krakenos-cert');
-    expect(execStart).toContain('tailscale cert');
-    expect(execStart).toContain('--cert-file /etc/krakenos/tls/agent-cert.pem');
-    expect(execStart).toContain('--key-file /etc/krakenos/tls/agent-key.pem');
-    expect(stdout).toMatch(/TLS_KEY_PATH=\/etc\/krakenos\/tls\/agent-key\.pem en/);
-    expect(stdout).not.toMatch(/chown.*\/etc\/krakenos/);
-  });
-
-  it('auto elige tailscale si hay Tailscale con sesión, y lo dice', async () => {
-    const bin = tailscaleFalso();
-    const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', INSTALL_DIR], {
-      PATH: `${bin}:/usr/bin:/bin`,
+      expect(stdout).toContain(
+        `install -o root -g root -m 0755 ${realpathSync(falso)} /usr/local/lib/krakenos/node`,
+      );
+      // La primera emisión (como root) usa también la copia, no el node del usuario.
+      expect(stdout).toMatch(
+        /KRAKENOS_TLS_GROUP=krakenos \/usr\/local\/lib\/krakenos\/node \/usr\/local\/lib\/krakenos\/local-ca\.js/,
+      );
+      expect(stdout).not.toContain(`${falso} /usr/local/lib/krakenos/local-ca.js`);
     });
-    expect(stdout).toContain('--tls auto → tailscale');
-    expect(stdout).not.toContain('local-ca.js');
-  });
 
-  it('--update migra el certificado de la ruta vieja a /etc/krakenos/tls y reescribe el .env', async () => {
-    // Instalación antigua: Tailscale con el material en apps/agent/certs.
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-'));
-    execFileSync('git', ['init', '-q', dir]);
-    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
-    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
-    writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
-    writeFileSync(
-      join(dir, 'apps/agent/.env'),
-      'HTTPS_ENABLED=true\nTLS_CERT_PATH=./certs/agent-cert.pem\n',
+    it.skipIf(!cadenaDeRoot('/usr/bin/node'))(
+      'un node del sistema, de root y sin escritura ajena, se usa en sitio (sin copiar 100 MB)',
+      async () => {
+        const { code, stdout } = await runInstaller(
+          ['--dry-run', '--yes', '--tls', 'local', '--dir', INSTALL_DIR],
+          { PATH: '/usr/bin:/bin' },
+        );
+        expect(code).toBe(0);
+        expect(comprobar(stdout, 'krakenos-cert-local')).toBe(
+          `${realpathSync('/usr/bin/node')} /usr/local/lib/krakenos/local-ca.js`,
+        );
+        expect(stdout).not.toContain('/usr/local/lib/krakenos/node ');
+      },
     );
-    const { code, stdout } = await runInstaller(['--dry-run', '--yes', '--update', '--dir', dir], {
-      KRAKENOS_SERVICE_USER: userInfo().username,
+
+    it('modo tailscale: renueva escribiendo en /etc/krakenos/tls, sin chown', async () => {
+      const bin = tailscaleFalso();
+      const { code, stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--tls', 'tailscale', '--dir', INSTALL_DIR],
+        { PATH: `${bin}:/usr/bin:/bin` },
+      );
+      expect(code).toBe(0);
+      const execStart = comprobar(stdout, 'krakenos-cert');
+      expect(execStart).toContain('tailscale cert');
+      expect(execStart).toContain('--cert-file /etc/krakenos/tls/agent-cert.pem');
+      expect(execStart).toContain('--key-file /etc/krakenos/tls/agent-key.pem');
+      expect(stdout).toMatch(/TLS_KEY_PATH=\/etc\/krakenos\/tls\/agent-key\.pem en/);
+      expect(stdout).not.toMatch(/chown.*\/etc\/krakenos/);
     });
-    expect(code).toBe(0);
-    expect(stdout).toContain('migrando el certificado');
-    expect(stdout).toContain(
-      'mv -f /etc/krakenos/tls/agent-key.pem.nuevo /etc/krakenos/tls/agent-key.pem',
-    );
-    expect(stdout).toContain('chmod 0640 /etc/krakenos/tls/agent-key.pem.nuevo');
-    expect(stdout).toContain('TLS_CERT_PATH=/etc/krakenos/tls/agent-cert.pem');
-    expect(stdout).toContain('TLS_KEY_PATH=/etc/krakenos/tls/agent-key.pem');
-    expect(stdout).toContain('TLS migrado');
-  });
 
-  it('--update NO migra un enlace simbólico (un enlace a /etc/shadow no se vuelve legible)', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-ln-'));
-    execFileSync('git', ['init', '-q', dir]);
-    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
-    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
-    symlinkSync('/etc/shadow', join(dir, 'apps/agent/certs/agent-key.pem'));
-    const { stdout, stderr } = await runInstaller(
-      ['--dry-run', '--yes', '--update', '--dir', dir],
-      {
-        KRAKENOS_SERVICE_USER: userInfo().username,
-      },
-    );
-    expect(stdout + stderr).toContain('TLS NO migrado');
-    expect(stdout).not.toContain('agent-key.pem.nuevo');
-  });
+    it('auto elige tailscale si hay Tailscale con sesión, y lo dice', async () => {
+      const bin = tailscaleFalso();
+      const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', INSTALL_DIR], {
+        PATH: `${bin}:/usr/bin:/bin`,
+      });
+      expect(stdout).toContain('--tls auto → tailscale');
+      expect(stdout).not.toContain('local-ca.js');
+    });
 
-  it('--update NO migra un enlace DURO (pasa -f y ! -L, pero apunta a un fichero de root)', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-hl-'));
-    execFileSync('git', ['init', '-q', dir]);
-    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
-    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
-    const objetivo = join(dir, 'objetivo');
-    writeFileSync(objetivo, 'secreto');
-    linkSync(objetivo, join(dir, 'apps/agent/certs/agent-key.pem'));
-    const { stdout, stderr } = await runInstaller(
-      ['--dry-run', '--yes', '--update', '--dir', dir],
-      {
-        KRAKENOS_SERVICE_USER: userInfo().username,
-      },
-    );
-    expect(stdout + stderr).toContain('TLS NO migrado');
-    expect(stdout).not.toContain('agent-key.pem.nuevo');
-    // Y no se movió NADA: el certificado tampoco (no queda el par partido).
-    expect(stdout).not.toContain('agent-cert.pem.nuevo');
-  });
+    it('--update migra el certificado de la ruta vieja a /etc/krakenos/tls y reescribe el .env', async () => {
+      // Instalación antigua: Tailscale con el material en apps/agent/certs.
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-'));
+      execFileSync('git', ['init', '-q', dir]);
+      mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+      writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+      writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
+      writeFileSync(
+        join(dir, 'apps/agent/.env'),
+        'HTTPS_ENABLED=true\nTLS_CERT_PATH=./certs/agent-cert.pem\n',
+      );
+      const { code, stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--update', '--dir', dir],
+        {
+          KRAKENOS_SERVICE_USER: userInfo().username,
+        },
+      );
+      expect(code).toBe(0);
+      expect(stdout).toContain('migrando el certificado');
+      expect(stdout).toContain(
+        'mv -f /etc/krakenos/tls/agent-key.pem.nuevo /etc/krakenos/tls/agent-key.pem',
+      );
+      expect(stdout).toContain('chmod 0640 /etc/krakenos/tls/agent-key.pem.nuevo');
+      expect(stdout).toContain('TLS_CERT_PATH=/etc/krakenos/tls/agent-cert.pem');
+      expect(stdout).toContain('TLS_KEY_PATH=/etc/krakenos/tls/agent-key.pem');
+      expect(stdout).toContain('TLS migrado');
+    });
 
-  it('--update NO migra un fichero de otro propietario', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-own-'));
-    execFileSync('git', ['init', '-q', dir]);
-    mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
-    writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
-    writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
-    // El servicio "es" otro usuario distinto del dueño de los ficheros.
-    const { stdout, stderr } = await runInstaller(
-      ['--dry-run', '--yes', '--update', '--dir', dir],
-      {
-        KRAKENOS_SERVICE_USER: 'nadie-que-exista',
-      },
-    );
-    expect(stdout + stderr).toContain('TLS NO migrado');
-    expect(stdout).not.toContain('.nuevo');
-  });
-});
+    it('--update NO migra un enlace simbólico (un enlace a /etc/shadow no se vuelve legible)', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-ln-'));
+      execFileSync('git', ['init', '-q', dir]);
+      mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+      writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+      symlinkSync('/etc/shadow', join(dir, 'apps/agent/certs/agent-key.pem'));
+      const { stdout, stderr } = await runInstaller(
+        ['--dry-run', '--yes', '--update', '--dir', dir],
+        {
+          KRAKENOS_SERVICE_USER: userInfo().username,
+        },
+      );
+      expect(stdout + stderr).toContain('TLS NO migrado');
+      expect(stdout).not.toContain('agent-key.pem.nuevo');
+    });
+
+    it('--update NO migra un enlace DURO (pasa -f y ! -L, pero apunta a un fichero de root)', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-hl-'));
+      execFileSync('git', ['init', '-q', dir]);
+      mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+      writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+      const objetivo = join(dir, 'objetivo');
+      writeFileSync(objetivo, 'secreto');
+      linkSync(objetivo, join(dir, 'apps/agent/certs/agent-key.pem'));
+      const { stdout, stderr } = await runInstaller(
+        ['--dry-run', '--yes', '--update', '--dir', dir],
+        {
+          KRAKENOS_SERVICE_USER: userInfo().username,
+        },
+      );
+      expect(stdout + stderr).toContain('TLS NO migrado');
+      expect(stdout).not.toContain('agent-key.pem.nuevo');
+      // Y no se movió NADA: el certificado tampoco (no queda el par partido).
+      expect(stdout).not.toContain('agent-cert.pem.nuevo');
+    });
+
+    it('--update NO migra un fichero de otro propietario', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-mig-own-'));
+      execFileSync('git', ['init', '-q', dir]);
+      mkdirSync(join(dir, 'apps/agent/certs'), { recursive: true });
+      writeFileSync(join(dir, 'apps/agent/certs/agent-cert.pem'), 'x');
+      writeFileSync(join(dir, 'apps/agent/certs/agent-key.pem'), 'x');
+      // El servicio "es" otro usuario distinto del dueño de los ficheros.
+      const { stdout, stderr } = await runInstaller(
+        ['--dry-run', '--yes', '--update', '--dir', dir],
+        {
+          KRAKENOS_SERVICE_USER: 'nadie-que-exista',
+        },
+      );
+      expect(stdout + stderr).toContain('TLS NO migrado');
+      expect(stdout).not.toContain('.nuevo');
+    });
+  },
+);
 
 /**
  * Una instalación real NO arranca en `mock`: el mock inventa dispositivos, peers VPN, reglas
  * y cámaras como si fueran del usuario. El instalador escribe `*_KIND=none` en el `.env` que
  * CREA; el default de `env.ts` y el `.env.example` (desarrollo) siguen siendo `mock`.
  */
-describe('install.sh: los ocho dominios arrancan sin configurar', () => {
-  const EXAMPLE = fileURLToPath(new URL('../../.env.example', import.meta.url));
-  const KINDS = ['DRIVER', 'VPN', 'IOT', 'CAMERAS', 'FIREWALL', 'VLAN', 'QOS', 'DNS'];
+describe.skipIf(process.platform === 'win32')(
+  'install.sh: los ocho dominios arrancan sin configurar',
+  () => {
+    const EXAMPLE = fileURLToPath(new URL('../../.env.example', import.meta.url));
+    const KINDS = ['DRIVER', 'VPN', 'IOT', 'CAMERAS', 'FIREWALL', 'VLAN', 'QOS', 'DNS'];
 
-  /** Las órdenes `sed` del plan, tal y como el instalador las imprimiría para ejecutarlas. */
-  async function sedsDelPlan(): Promise<string[]> {
-    const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
-    return stdout
-      .split('\n')
-      .filter((l) => l.startsWith('dry-run$ sed -i ') && l.includes('_KIND='));
-  }
-
-  const kindsDe = (texto: string) =>
-    Object.fromEntries(
-      [...texto.matchAll(/^([A-Z]+)_KIND=(.*)$/gm)].map((m) => [m[1]!, m[2]!.trim()]),
-    );
-
-  it('el plan escribe none en los ocho, sobre el .env que crea', async () => {
-    const seds = await sedsDelPlan();
-    expect(seds).toHaveLength(KINDS.length);
-    for (const k of KINDS) {
-      expect(seds.some((l) => l.includes(`${k}_KIND=none`))).toBe(true);
+    /** Las órdenes `sed` del plan, tal y como el instalador las imprimiría para ejecutarlas. */
+    async function sedsDelPlan(): Promise<string[]> {
+      const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', '/tmp/kraken-x']);
+      return stdout
+        .split('\n')
+        .filter((l) => l.startsWith('dry-run$ sed -i ') && l.includes('_KIND='));
     }
-    for (const l of seds) expect(l.endsWith('/tmp/kraken-x/apps/agent/.env')).toBe(true);
-  });
 
-  it('aplicado de verdad sobre el .env.example: los ocho quedan en none y nada más cambia', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'krakenos-env-'));
-    const envFile = join(dir, '.env');
-    writeFileSync(envFile, readFileSync(EXAMPLE, 'utf8'));
-    for (const linea of await sedsDelPlan()) {
-      const expr = /sed -i (\S+) /.exec(linea)![1]!;
-      execFileSync('sed', ['-i', expr, envFile]);
-    }
-    const antes = readFileSync(EXAMPLE, 'utf8').split('\n');
-    const despues = readFileSync(envFile, 'utf8').split('\n');
-    expect(despues).toHaveLength(antes.length);
-    const cambiadas = despues.filter((l, i) => l !== antes[i]);
-    expect(cambiadas.sort()).toEqual(KINDS.map((k) => `${k}_KIND=none`).sort());
-    const kinds = kindsDe(readFileSync(envFile, 'utf8'));
-    for (const k of KINDS) expect(kinds[k], k).toBe('none');
-  });
+    const kindsDe = (texto: string) =>
+      Object.fromEntries(
+        [...texto.matchAll(/^([A-Z]+)_KIND=(.*)$/gm)].map((m) => [m[1]!, m[2]!.trim()]),
+      );
 
-  it('el .env.example (desarrollo) sigue en mock: dev y tests no cambian', () => {
-    const kinds = kindsDe(readFileSync(EXAMPLE, 'utf8'));
-    for (const k of KINDS) expect(kinds[k], k).toBe('mock');
-  });
+    it('el plan escribe none en los ocho, sobre el .env que crea', async () => {
+      const seds = await sedsDelPlan();
+      expect(seds).toHaveLength(KINDS.length);
+      for (const k of KINDS) {
+        expect(seds.some((l) => l.includes(`${k}_KIND=none`))).toBe(true);
+      }
+      for (const l of seds) expect(l.endsWith('/tmp/kraken-x/apps/agent/.env')).toBe(true);
+    });
 
-  it('el instalador ya no promete «modo mock»', () => {
-    expect(readFileSync(SCRIPT, 'utf8')).not.toContain('todo arranca en modo mock');
-  });
-});
+    it('aplicado de verdad sobre el .env.example: los ocho quedan en none y nada más cambia', async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'krakenos-env-'));
+      const envFile = join(dir, '.env');
+      writeFileSync(envFile, readFileSync(EXAMPLE, 'utf8'));
+      for (const linea of await sedsDelPlan()) {
+        const expr = /sed -i (\S+) /.exec(linea)![1]!;
+        execFileSync('sed', ['-i', expr, envFile]);
+      }
+      const antes = readFileSync(EXAMPLE, 'utf8').split('\n');
+      const despues = readFileSync(envFile, 'utf8').split('\n');
+      expect(despues).toHaveLength(antes.length);
+      const cambiadas = despues.filter((l, i) => l !== antes[i]);
+      expect(cambiadas.sort()).toEqual(KINDS.map((k) => `${k}_KIND=none`).sort());
+      const kinds = kindsDe(readFileSync(envFile, 'utf8'));
+      for (const k of KINDS) expect(kinds[k], k).toBe('none');
+    });
+
+    it('el .env.example (desarrollo) sigue en mock: dev y tests no cambian', () => {
+      const kinds = kindsDe(readFileSync(EXAMPLE, 'utf8'));
+      for (const k of KINDS) expect(kinds[k], k).toBe('mock');
+    });
+
+    it('el instalador ya no promete «modo mock»', () => {
+      expect(readFileSync(SCRIPT, 'utf8')).not.toContain('todo arranca en modo mock');
+    });
+  },
+);

@@ -14,6 +14,15 @@ import { join } from 'node:path';
 
 export const SRC = join(process.cwd(), 'src');
 
+/**
+ * Nombre de un fichero de `src/` relativo a `src/` y SIEMPRE con «/» (también en Windows):
+ * los gates comparan y citan nombres como `lib/use-polling.ts`. Es el único sitio que
+ * normaliza; los gates llaman a esto y no a `slice`/`relative`.
+ */
+export function nombreDe(ruta: string): string {
+  return ruta.slice(SRC.length + 1).replaceAll('\\', '/');
+}
+
 /** Todos los `.ts`/`.tsx` bajo `src/`, en rutas absolutas. */
 export function ficheros(dir: string = SRC): string[] {
   return readdirSync(dir).flatMap((entrada) => {
@@ -56,7 +65,7 @@ export interface Fuente {
 /** Las fuentes de `src/`, listas para escanear. */
 export function fuentes(): Fuente[] {
   return ficheros().map((ruta) => ({
-    nombre: ruta.slice(SRC.length + 1),
+    nombre: nombreDe(ruta),
     codigo: sinComentarios(readFileSync(ruta, 'utf8')),
   }));
 }
