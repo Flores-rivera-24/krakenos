@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
@@ -9,13 +9,15 @@ import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import {
   checkSecretFilePermissions,
-  SECRET_PERMISSIONS_NOT_APPLICABLE,
-  secretPermissionsApply,
+  secretPermissionsStartupNotice,
 } from './config/secret-permissions.js';
+import { agentPaths } from './config/paths.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
 import { AutoBackupService } from './modules/system/auto-backup.service.js';
 import { BackupService } from './system/backup.service.js';
 import { keyFilePaths } from './system/key-paths.js';
+import { defaultBackupDir } from './db/migrate.js';
+import { resolveDbFile } from './db/database-url.js';
 import { SETTING_BOUNDS, clampToBound } from './config/settings-bounds.js';
 import { IntegrationConfigStore } from './integrations/integration-config.store.js';
 import { buildIntegrationRuntime } from './integrations/runtime.js';
@@ -163,7 +165,21 @@ export async function buildServer(): Promise<FastifyInstance> {
     resolve('.env'),
     ...(process.env.JWT_PRIVATE_KEY_PATH ? [resolve(process.env.JWT_PRIVATE_KEY_PATH)] : []),
   ];
-  if (!secretPermissionsApply()) app.log.info(`[config] ${SECRET_PERMISSIONS_NOT_APPLICABLE}`);
+  const paths = agentPaths();
+  const keys = keyFilePaths(env);
+  const secretsNotice = secretPermissionsStartupNotice(process.platform, {
+    stateRoot: paths.dataRoot,
+    candidates: [
+      dirname(keys.jwtPrivate),
+      dirname(keys.jwtPublic),
+      dirname(keys.secretbox),
+      resolve('.env'),
+      dirname(resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db')),
+      env.backupDir,
+      defaultBackupDir(),
+    ],
+  });
+  if (secretsNotice) app.log.warn(`[config] ${secretsNotice.message}`);
   for (const w of checkSecretFilePermissions(secretPaths)) {
     app.log.warn(
       `[config] El fichero con secretos ${w.path} es legible por grupo/otros (modo ${w.mode}); ` +
