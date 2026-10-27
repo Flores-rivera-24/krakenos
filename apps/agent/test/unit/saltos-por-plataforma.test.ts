@@ -110,23 +110,32 @@ const TOTAL_MEDIDO = { ficherosConSalto: 11, saltos: 20, soloPosix: 6 };
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;
 /**
+ * La comparación con win32 admite las dos órdenes de operandos y la igualdad débil:
+ * `process.platform === 'win32'`, `'win32' === process.platform`, `==`, `!==`, `!=`.
+ * EQ = «es Windows»; NE = «no es Windows».
+ */
+const PLAT = String.raw`process\.platform`;
+const EQ = String.raw`(?:${PLAT}\s*===?\s*${WIN}|${WIN}\s*===?\s*${PLAT})`;
+const NE = String.raw`(?:${PLAT}\s*!==?\s*${WIN}|${WIN}\s*!==?\s*${PLAT})`;
+/**
  * Formas de saltar un test en Windows (todas cuentan como salto y entran en la lista):
  *  - `skipIf(… process.platform === 'win32' …)` (también `it.`/`describe.`);
  *  - `runIf(… process.platform !== 'win32' …)`, el mismo salto escrito al revés;
  *  - `if (process.platform === 'win32') return` dentro de un test (salto «por dentro»);
  *  - un alias: `const X = process.platform === 'win32'` (se usa luego en `skipIf(X)`/`runIf(!X)`).
+ * Cada una, también con la igualdad invertida (`'win32' === process.platform`) o débil (`==`, `!=`).
  */
 const SALTO = new RegExp(
   [
-    String.raw`skipIf\(${ARGS}process\.platform\s*===\s*${WIN}`,
-    String.raw`runIf\(${ARGS}process\.platform\s*!==\s*${WIN}`,
-    String.raw`if\s*\(\s*process\.platform\s*===\s*${WIN}\s*\)\s*(?:\{\s*)?return\b`,
-    String.raw`\b(?:const|let|var)\s+\w+\s*=\s*process\.platform\s*[!=]==\s*${WIN}`,
+    String.raw`skipIf\(${ARGS}${EQ}`,
+    String.raw`runIf\(${ARGS}${NE}`,
+    String.raw`if\s*\(\s*${EQ}\s*\)\s*(?:\{\s*)?return\b`,
+    String.raw`\b(?:const|let|var)\s+\w+\s*=\s*(?:${EQ}|${NE})`,
   ].join('|'),
   'g',
 );
 /** Aserciones solo-POSIX dentro de un test que sí corre. */
-const SOLO_POSIX = /\bif\s*\(\s*process\.platform\s*!==\s*['"]win32['"]\s*\)/g;
+const SOLO_POSIX = new RegExp(String.raw`\bif\s*\(\s*${NE}\s*\)`, 'g');
 
 function contar(texto: string): { saltos: number; soloPosix: number } {
   return {
@@ -170,6 +179,23 @@ describe('saltos por plataforma (US-281)', () => {
       contar("const ES_WIN = process.platform === 'win32';\nit.skipIf(ES_WIN)('x', () => {})")
         .saltos,
     ).toBe(1);
+    // Igualdad invertida y débil.
+    expect(contar("it.skipIf('win32' === process.platform)('x', () => {})").saltos).toBe(1);
+    expect(contar("it.skipIf(process.platform == 'win32')('x', () => {})").saltos).toBe(1);
+    expect(contar("it.skipIf('win32' == process.platform)('x', () => {})").saltos).toBe(1);
+    expect(contar("it.runIf('win32' !== process.platform)('x', () => {})").saltos).toBe(1);
+    expect(contar("it.runIf(process.platform != 'win32')('x', () => {})").saltos).toBe(1);
+    expect(contar("it.runIf('win32' != process.platform)('x', () => {})").saltos).toBe(1);
+    expect(contar("it('x', () => {\n  if ('win32' === process.platform) return;\n})").saltos).toBe(
+      1,
+    );
+    expect(
+      contar("it('x', () => {\n  if (process.platform == 'win32') { return; }\n})").saltos,
+    ).toBe(1);
+    expect(contar("const ES_WIN = 'win32' === process.platform;").saltos).toBe(1);
+    expect(contar("const NO_WIN = 'win32' != process.platform;").saltos).toBe(1);
+    expect(contar("if ('win32' !== process.platform) expect(1).toBe(1)").soloPosix).toBe(1);
+    expect(contar("if (process.platform != 'win32') expect(1).toBe(1)").soloPosix).toBe(1);
     // Lo que NO es un salto: un valor que depende de la plataforma, o skipIf de otra cosa.
     expect(contar("expect(x).toBe(process.platform === 'win32' ? 1 : 2)").saltos).toBe(0);
     expect(contar("it.skipIf(isRoot)('x', () => {})").saltos).toBe(0);

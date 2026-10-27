@@ -106,3 +106,150 @@ describe('krakenos-helper anti-inyección (caracteres de control)', () => {
     expect((await runHelper(['tc', 'qdisc', 'show', 'dev', 'eth0\tfoo'])).code).toBe(64);
   });
 });
+
+// --- US-74 · allowlist por ÁMBITO (F1) ---
+describe('krakenos-helper allowlist por ámbito (US-74)', () => {
+  describe('iptables — solo la cadena dedicada y su enlace en FORWARD', () => {
+    it('permite las operaciones reales del firewall sobre la cadena KRAKENOS', async () => {
+      expect((await runHelper(['iptables', '-N', 'KRAKENOS'])).code).toBe(0);
+      expect((await runHelper(['iptables', '-F', 'KRAKENOS'])).code).toBe(0);
+      expect(
+        (
+          await runHelper([
+            'iptables',
+            '-A',
+            'KRAKENOS',
+            '-p',
+            'tcp',
+            '--dport',
+            '443',
+            '-j',
+            'DROP',
+          ])
+        ).code,
+      ).toBe(0);
+    });
+
+    it('permite enlazar/comprobar el salto desde FORWARD solo hacia la cadena', async () => {
+      expect((await runHelper(['iptables', '-C', 'FORWARD', '-j', 'KRAKENOS'])).code).toBe(0);
+      expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'KRAKENOS'])).code).toBe(0);
+      expect((await runHelper(['iptables', '-D', 'FORWARD', '-j', 'KRAKENOS'])).code).toBe(0);
+    });
+
+    it('rechaza operar sobre cualquier otra cadena', async () => {
+      expect((await runHelper(['iptables', '-A', 'INPUT', '-j', 'ACCEPT'])).code).toBe(64);
+      expect((await runHelper(['iptables', '-F', 'OUTPUT'])).code).toBe(64);
+      expect((await runHelper(['iptables', '-F'])).code).toBe(64); // -F sin cadena = flush total
+    });
+
+    it('rechaza reglas arbitrarias en FORWARD (solo el salto exacto a la cadena)', async () => {
+      expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'ACCEPT'])).code).toBe(64);
+      expect(
+        (await runHelper(['iptables', '-A', 'FORWARD', '-j', 'KRAKENOS', '-p', 'tcp'])).code,
+      ).toBe(64);
+      expect((await runHelper(['iptables', '-F', 'FORWARD'])).code).toBe(64);
+    });
+
+    it('rechaza tocar otra tabla distinta de filter (-t/--table)', async () => {
+      expect(
+        (await runHelper(['iptables', '-t', 'nat', '-A', 'KRAKENOS', '-j', 'MASQUERADE'])).code,
+      ).toBe(64);
+      expect(
+        (await runHelper(['iptables', '-A', 'KRAKENOS', '--table', 'nat', '-j', 'ACCEPT'])).code,
+      ).toBe(64);
+    });
+  });
+
+  describe('tc — solo la interfaz de QoS configurada', () => {
+    it('permite qdisc/class/filter sobre la interfaz por defecto (eth0)', async () => {
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth0', 'root'])).code).toBe(0);
+      expect(
+        (
+          await runHelper([
+            'tc',
+            'qdisc',
+            'add',
+            'dev',
+            'eth0',
+            'root',
+            'handle',
+            '1:',
+            'htb',
+            'default',
+            '99',
+          ])
+        ).code,
+      ).toBe(0);
+      expect(
+        (
+          await runHelper([
+            'tc',
+            'filter',
+            'add',
+            'dev',
+            'eth0',
+            'protocol',
+            'ip',
+            'parent',
+            '1:',
+            'prio',
+            '1',
+            'u32',
+            'match',
+            'ip',
+            'dst',
+            '10.0.0.5',
+            'flowid',
+            '1:10',
+          ])
+        ).code,
+      ).toBe(0);
+    });
+
+    it('rechaza otra interfaz', async () => {
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth1', 'root'])).code).toBe(64);
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'wg0', 'root'])).code).toBe(64);
+    });
+
+    it('rechaza una operación tc sin "dev <iface>"', async () => {
+      expect((await runHelper(['tc', 'qdisc', 'show'])).code).toBe(64);
+    });
+  });
+
+  describe('wg / wg-quick — solo la interfaz WireGuard', () => {
+    it('permite show/set y wg-quick save sobre wg0', async () => {
+      expect((await runHelper(['wg', 'show', 'wg0', 'dump'])).code).toBe(0);
+      expect((await runHelper(['wg', 'show', 'wg0', 'public-key'])).code).toBe(0);
+      expect((await runHelper(['wg', 'set', 'wg0', 'peer', 'AAA=', 'remove'])).code).toBe(0);
+      expect((await runHelper(['wg-quick', 'save', 'wg0'])).code).toBe(0);
+    });
+
+    it('rechaza otra interfaz', async () => {
+      expect((await runHelper(['wg', 'show', 'wg1', 'dump'])).code).toBe(64);
+      expect((await runHelper(['wg', 'set', 'eth0', 'peer', 'AAA=', 'remove'])).code).toBe(64);
+      expect((await runHelper(['wg-quick', 'save', 'wg1'])).code).toBe(64);
+    });
+  });
+
+  describe('ámbito configurable (root-owned, no por el agente)', () => {
+    const scope = {
+      KRAKENOS_FW_CHAIN: 'MYCHAIN',
+      KRAKENOS_TC_IFACE: 'enp3s0',
+      KRAKENOS_WG_IFACE: 'wg9',
+    };
+
+    it('permite el ámbito configurado y rechaza el por defecto', async () => {
+      expect((await runHelper(['iptables', '-F', 'MYCHAIN'], scope)).code).toBe(0);
+      expect((await runHelper(['iptables', '-A', 'FORWARD', '-j', 'MYCHAIN'], scope)).code).toBe(0);
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'enp3s0', 'root'], scope)).code).toBe(
+        0,
+      );
+      expect((await runHelper(['wg', 'show', 'wg9', 'dump'], scope)).code).toBe(0);
+
+      // Con un ámbito a medida, los defaults dejan de estar permitidos.
+      expect((await runHelper(['iptables', '-F', 'KRAKENOS'], scope)).code).toBe(64);
+      expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth0', 'root'], scope)).code).toBe(64);
+      expect((await runHelper(['wg', 'show', 'wg0', 'dump'], scope)).code).toBe(64);
+    });
+  });
+});

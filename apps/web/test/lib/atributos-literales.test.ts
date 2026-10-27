@@ -117,7 +117,7 @@ const PERMITIDOS: Record<string, string> = {
 function escanear(): { clave: string; texto: string }[] {
   const salida: { clave: string; texto: string }[] = [];
   for (const ruta of ficheros()) {
-    const nombre = nombreDe(ruta).replaceAll('\\', '/');
+    const nombre = nombreDe(ruta);
     if (nombre.includes('lib/i18n/catalog/') || nombre.includes('lib/guides/')) continue;
     const codigo = sinComentariosConLineas(readFileSync(ruta, 'utf8'));
     for (const h of [...literalesDeAtributo(codigo), ...literalesDeAtributoEnExpresion(codigo)]) {
