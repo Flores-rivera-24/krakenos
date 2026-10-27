@@ -73,6 +73,26 @@ export function checksumOf(sql: string | Buffer): string {
   return createHash('sha256').update(sql).digest('hex');
 }
 
+/** `\r\n` → `\n`. Un `\r` suelto no se toca. */
+export function normalizeEol(sql: string): string {
+  return sql.replace(/\r\n/g, '\n');
+}
+
+/**
+ * Checksums que valen para un fichero: los bytes tal cual, normalizado a LF y
+ * normalizado a LF y luego a CRLF. Git para Windows convierte a CRLF al hacer
+ * checkout, y una base creada en un lado tiene que arrancar en el otro.
+ */
+function acceptedChecksums(m: MigrationFile): Set<string> {
+  const lf = normalizeEol(m.sql);
+  return new Set([
+    m.checksum,
+    checksumOf(m.sql),
+    checksumOf(lf),
+    checksumOf(lf.replace(/\n/g, '\r\n')),
+  ]);
+}
+
 /** Lee el `migration.sql` de cada subdirectorio de `dir`, en orden de nombre (el de Prisma). Ignora `migration_lock.toml`. */
 export function readMigrations(dir: string): MigrationFile[] {
   const names = readdirSync(dir, { withFileTypes: true })
@@ -84,7 +104,10 @@ export function readMigrations(dir: string): MigrationFile[] {
     const file = join(dir, name, 'migration.sql');
     if (!existsSync(file)) continue;
     const raw = readFileSync(file);
-    out.push({ name, sql: raw.toString('utf8'), checksum: checksumOf(raw) });
+    const sql = raw.toString('utf8');
+    // El checksum que se registra es el del contenido normalizado a LF (en un
+    // checkout LF coincide con el de Prisma).
+    out.push({ name, sql, checksum: checksumOf(normalizeEol(sql)) });
   }
   return out;
 }
@@ -125,7 +148,7 @@ export function planMigrations(
         a.name,
       );
     }
-    if (file.checksum !== a.checksum) {
+    if (!acceptedChecksums(file).has(a.checksum)) {
       throw new MigrationError(
         'CHECKSUM_CHANGED',
         `La migración «${a.name}» ya estaba aplicada y su contenido ha cambiado desde entonces ` +
