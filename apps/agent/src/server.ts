@@ -9,9 +9,9 @@ import type { FastifyInstance } from 'fastify';
 import { env, trustProxyWarnings } from './config/env.js';
 import {
   checkSecretFilePermissions,
-  SECRET_PERMISSIONS_NOT_APPLICABLE,
-  secretPermissionsApply,
+  secretPermissionsStartupNotice,
 } from './config/secret-permissions.js';
+import { agentPaths } from './config/paths.js';
 import { loadOrCreateSecretbox } from './config/secretbox.js';
 import { AutoBackupService } from './modules/system/auto-backup.service.js';
 import { BackupService } from './system/backup.service.js';
@@ -163,7 +163,8 @@ export async function buildServer(): Promise<FastifyInstance> {
     resolve('.env'),
     ...(process.env.JWT_PRIVATE_KEY_PATH ? [resolve(process.env.JWT_PRIVATE_KEY_PATH)] : []),
   ];
-  if (!secretPermissionsApply()) app.log.info(`[config] ${SECRET_PERMISSIONS_NOT_APPLICABLE}`);
+  const secretsNotice = secretPermissionsStartupNotice(process.platform, agentPaths());
+  if (secretsNotice) app.log[secretsNotice.level](`[config] ${secretsNotice.message}`);
   for (const w of checkSecretFilePermissions(secretPaths)) {
     app.log.warn(
       `[config] El fichero con secretos ${w.path} es legible por grupo/otros (modo ${w.mode}); ` +

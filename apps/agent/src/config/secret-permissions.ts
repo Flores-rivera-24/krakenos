@@ -14,8 +14,9 @@ import { statSync } from 'node:fs';
 /**
  * ¿Tiene sentido mirar los bits de `mode`? En Windows `stat().mode` es una ficción (siempre
  * 0666/0444 según el atributo de solo lectura): avisaría de «legible por todos» en CADA
- * arranque aunque la ACL del directorio lo restrinja. Allí los permisos los fija el
- * instalador con ACL (US-280), así que el chequeo se declara «no aplica» en vez de mentir.
+ * arranque aunque la ACL del directorio lo restrinja. El instalador de Windows (que fijaría
+ * la ACL) aún no existe: hasta entonces el chequeo se declara «no aplica» y el arranque avisa
+ * con `secretPermissionsStartupNotice`, en vez de mentir.
  */
 export function secretPermissionsApply(platform: NodeJS.Platform = process.platform): boolean {
   return platform !== 'win32';
@@ -23,8 +24,32 @@ export function secretPermissionsApply(platform: NodeJS.Platform = process.platf
 
 /** Texto de log cuando el chequeo no aplica. */
 export const SECRET_PERMISSIONS_NOT_APPLICABLE =
-  'Permisos de los ficheros con secretos: no aplica en Windows (los fija el instalador con ACL).';
+  'Permisos de los ficheros con secretos: no aplica en Windows (los modos de fichero no existen allí; la ACL no se ha comprobado).';
 
+export interface SecretPermissionsNotice {
+  level: 'warn';
+  message: string;
+}
+
+/**
+ * Aviso de arranque según la plataforma: `null` donde el chequeo de modos aplica. En Windows
+ * NO se lee la ACL (la salida de `icacls` está localizada y sería frágil): se declara que no
+ * se ha comprobado quién puede leer las carpetas con secretos.
+ */
+export function secretPermissionsStartupNotice(
+  platform: NodeJS.Platform,
+  dirs: { dataDir: string; keysDir: string },
+): SecretPermissionsNotice | null {
+  if (secretPermissionsApply(platform)) return null;
+  return {
+    level: 'warn',
+    message:
+      'En Windows los modos de fichero (0600/0700) no restringen nada y no se ha comprobado ni ' +
+      `fijado quién puede leer la carpeta de datos (${dirs.dataDir}) ni la de claves (${dirs.keysDir}): ` +
+      'otras cuentas del equipo podrían leer las claves, la base y las copias. Usa una carpeta ' +
+      'de datos dentro del perfil de la cuenta que corre el agente, o restringe esas carpetas con `icacls`.',
+  };
+}
 /** ¿El modo concede lectura/escritura a grupo u otros (más laxo que 0600)? */
 export function isGroupOrWorldAccessible(mode: number): boolean {
   return (mode & 0o077) !== 0;
