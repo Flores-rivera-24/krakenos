@@ -5,7 +5,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   checkSecretFilePermissions,
   isGroupOrWorldAccessible,
-  SECRET_PERMISSIONS_NOT_APPLICABLE,
   secretPermissionsApply,
 } from '../../src/config/secret-permissions.js';
 
@@ -44,7 +43,6 @@ describe('secret-permissions (US-79, F8)', () => {
     expect(secretPermissionsApply('win32')).toBe(false);
     expect(secretPermissionsApply('linux')).toBe(true);
     expect(secretPermissionsApply('darwin')).toBe(true);
-    expect(SECRET_PERMISSIONS_NOT_APPLICABLE).toMatch(/no aplica en Windows.*ACL/);
   });
 
   it('ignora ficheros inexistentes (stat → null)', () => {

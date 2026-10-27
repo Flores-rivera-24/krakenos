@@ -1,4 +1,6 @@
 import { statSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 /**
  * Verificación de permisos de los ficheros con secretos al arrancar (US-79, F8).
@@ -22,34 +24,60 @@ export function secretPermissionsApply(platform: NodeJS.Platform = process.platf
   return platform !== 'win32';
 }
 
-/** Texto de log cuando el chequeo no aplica. */
-export const SECRET_PERMISSIONS_NOT_APPLICABLE =
-  'Permisos de los ficheros con secretos: no aplica en Windows (los modos de fichero no existen allí; la ACL no se ha comprobado).';
-
 export interface SecretPermissionsNotice {
-  level: 'warn';
   message: string;
+}
+
+export interface SecretFolders {
+  /** Raíz del estado (`KRAKENOS_DATA_DIR`): contiene `prisma/`, `data/`, `var/` y `keys/`. */
+  stateRoot: string;
+  /** Rutas con secretos ya resueltas (claves, `.env`, base, copias…); solo se nombran las de fuera. */
+  candidates: string[];
+}
+
+const WIN = path.win32;
+
+/** ¿`child` cuelga de `parent`? Windows no distingue mayúsculas, y `win32.relative` tampoco. */
+function isInside(parent: string, child: string): boolean {
+  const rel = WIN.relative(parent, child);
+  return rel === '' || (!rel.startsWith('..') && !WIN.isAbsolute(rel));
+}
+
+/** El log se pega en issues públicas: el prefijo del perfil no debe llevar el nombre de usuario. */
+function hideProfile(p: string, home: string): string {
+  return home !== '' && isInside(home, p)
+    ? `%USERPROFILE%${WIN.relative(home, p) === '' ? '' : '\\' + WIN.relative(home, p)}`
+    : p;
 }
 
 /**
  * Aviso de arranque según la plataforma: `null` donde el chequeo de modos aplica. En Windows
  * NO se lee la ACL (la salida de `icacls` está localizada y sería frágil): se declara que no
- * se ha comprobado quién puede leer las carpetas con secretos.
+ * se ha comprobado quién puede leer las carpetas con secretos, nombrando la raíz del estado y
+ * solo las rutas con secretos que caen fuera de ella.
  */
 export function secretPermissionsStartupNotice(
   platform: NodeJS.Platform,
-  dirs: { dataDir: string; keysDir: string },
+  folders: SecretFolders,
+  homedir: string = os.homedir(),
 ): SecretPermissionsNotice | null {
   if (secretPermissionsApply(platform)) return null;
+  const outside: string[] = [];
+  for (const c of folders.candidates) {
+    const known = outside.some((o) => WIN.relative(o, c) === '');
+    if (!isInside(folders.stateRoot, c) && !known) outside.push(c);
+  }
+  const names = [folders.stateRoot, ...outside].map((p) => hideProfile(p, homedir));
   return {
-    level: 'warn',
     message:
       'En Windows los modos de fichero (0600/0700) no restringen nada y no se ha comprobado ni ' +
-      `fijado quién puede leer la carpeta de datos (${dirs.dataDir}) ni la de claves (${dirs.keysDir}): ` +
-      'otras cuentas del equipo podrían leer las claves, la base y las copias. Usa una carpeta ' +
-      'de datos dentro del perfil de la cuenta que corre el agente, o restringe esas carpetas con `icacls`.',
+      `fijado quién puede leer estas carpetas con secretos (${names.join(', ')}): otras cuentas ` +
+      'del equipo podrían leer las claves, la base y las copias. Mueve la raíz de datos ' +
+      '(`KRAKENOS_DATA_DIR`) dentro del perfil de la cuenta que corre el agente, o restringe ' +
+      'esas carpetas con `icacls`.',
   };
 }
+
 /** ¿El modo concede lectura/escritura a grupo u otros (más laxo que 0600)? */
 export function isGroupOrWorldAccessible(mode: number): boolean {
   return (mode & 0o077) !== 0;
