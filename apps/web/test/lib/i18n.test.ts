@@ -109,6 +109,17 @@ describe('describeError localizado (US-177)', () => {
     expect(en['errors.code.CAMERAS_CONFIG_CORRUPT']).toMatch(/cameras file is damaged/);
   });
 
+  it('traduce el rechazo de una copia de una versión más nueva y en español conserva el texto del servidor', () => {
+    const err = new ApiRequestError(409, {
+      code: 'BACKUP_FROM_NEWER_VERSION',
+      message: 'texto del servidor',
+    });
+    expect(describeError(err, 'fallback')).toBe('texto del servidor');
+    setLocale('en', { persist: false });
+    expect(describeError(err, 'fallback')).toBe(en['errors.code.BACKUP_FROM_NEWER_VERSION']);
+    expect(en['errors.code.BACKUP_FROM_NEWER_VERSION']).toMatch(/newer version of KrakenOS/);
+  });
+
   it('sin código conocido, cae al mensaje del servidor', () => {
     setLocale('en', { persist: false });
     const err = new ApiRequestError(500, { code: 'WHATEVER', message: 'server text' });

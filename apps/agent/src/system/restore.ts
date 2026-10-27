@@ -9,8 +9,9 @@ import {
 } from 'node:fs';
 import { mkdir, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import { defaultMigrationsDir, findUnknownMigration } from '../db/migrate.js';
 import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
-import { renameWithRetry } from './rename-retry.js';
+import { renameSyncWithRetry, renameWithRetry } from './rename-retry.js';
 import {
   ENVELOPE_HEADER_LEN,
   type ArchiveEntry,
@@ -45,19 +46,60 @@ export interface RestoreTargets {
 export { resolveDbFile } from '../db/database-url.js';
 
 /**
+ * La copia es de una versión de KrakenOS más NUEVA que esta: su base trae migraciones
+ * que este código no conoce y, aceptada, el aplicador saldría con 1 en cada arranque.
+ */
+export class RestoreFromNewerVersionError extends Error {
+  readonly code = 'BACKUP_FROM_NEWER_VERSION';
+  constructor(readonly migration: string) {
+    super(
+      `Esta copia es de una versión más nueva de KrakenOS (trae la migración «${migration}», ` +
+        'que esta versión no conoce). Actualiza KrakenOS a la versión que la hizo, o a una más ' +
+        'reciente, y vuelve a restaurarla. No se ha cambiado nada.',
+    );
+    this.name = 'RestoreFromNewerVersionError';
+  }
+}
+
+/**
+ * Sobre un directorio ya autenticado y aún NO publicado: lanza si su base trae
+ * migraciones desconocidas. Un staging aceptado así dejaría el agente en bucle de
+ * reinicio. No borra nada: quien llama limpia SU directorio temporal, de modo que un
+ * rechazo nunca toca una restauración que ya estuviera pendiente en el staging.
+ */
+function rejectIfNewer(dir: string, migrationsDir: string): void {
+  const unknown = findUnknownMigration(join(dir, 'db', 'app.db'), migrationsDir);
+  if (unknown !== null) throw new RestoreFromNewerVersionError(unknown);
+}
+
+/**
  * Descifra y valida un backup, escribiendo sus ficheros en `stagingDir`. Lanza si
  * la passphrase es incorrecta, si falta la base de datos, o si algún nombre de
  * entrada no es seguro (path traversal). Devuelve los nombres escritos.
  */
-export function stageRestore(blob: Buffer, passphrase: string, stagingDir: string): string[] {
+export function stageRestore(
+  blob: Buffer,
+  passphrase: string,
+  stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
+): string[] {
   const entries = unpackArchive(decryptArchive(blob, passphrase));
   validateEntries(entries);
-  rmSync(stagingDir, { recursive: true, force: true });
-  for (const e of entries) {
-    const dest = join(stagingDir, e.name);
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, e.data);
+  const incoming = `${stagingDir}.incoming`;
+  rmSync(incoming, { recursive: true, force: true });
+  try {
+    for (const e of entries) {
+      const dest = join(incoming, e.name);
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, e.data);
+    }
+    rejectIfNewer(incoming, migrationsDir);
+  } catch (err) {
+    rmSync(incoming, { recursive: true, force: true });
+    throw err;
   }
+  rmSync(stagingDir, { recursive: true, force: true });
+  renameSyncWithRetry(incoming, stagingDir);
   return entries.map((e) => e.name);
 }
 
@@ -70,15 +112,25 @@ export async function stageRestoreAsync(
   blob: Buffer,
   passphrase: string,
   stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
 ): Promise<string[]> {
   const entries = unpackArchive(await decryptArchiveAsync(blob, passphrase));
   validateEntries(entries);
-  await rm(stagingDir, { recursive: true, force: true });
-  for (const e of entries) {
-    const dest = join(stagingDir, e.name);
-    await mkdir(dirname(dest), { recursive: true });
-    await writeFile(dest, e.data);
+  const incoming = `${stagingDir}.incoming`;
+  await rm(incoming, { recursive: true, force: true });
+  try {
+    for (const e of entries) {
+      const dest = join(incoming, e.name);
+      await mkdir(dirname(dest), { recursive: true });
+      await writeFile(dest, e.data);
+    }
+    rejectIfNewer(incoming, migrationsDir);
+  } catch (err) {
+    await rm(incoming, { recursive: true, force: true });
+    throw err;
   }
+  await rm(stagingDir, { recursive: true, force: true });
+  await renameWithRetry(incoming, stagingDir);
   return entries.map((e) => e.name);
 }
 
@@ -179,7 +231,7 @@ class StagedArchiveWriter {
    * Cierra el último fichero y mueve el staging temporal al definitivo. Solo debe
    * llamarse **después** de que `final()` del descifrador haya autenticado.
    */
-  async commit(stagingDir: string): Promise<string[]> {
+  async commit(stagingDir: string, beforePublish?: (tmpDir: string) => void): Promise<string[]> {
     if (this.handle) {
       await this.handle.close();
       this.handle = null;
@@ -188,6 +240,8 @@ class StagedArchiveWriter {
     if (this.index < this.entries.length || this.remaining > 0) {
       throw new Error('Backup dañado (payload truncado)');
     }
+    // Última comprobación sobre el temporal: si lanza, el staging previo sigue intacto.
+    beforePublish?.(this.tmpDir);
     await rm(stagingDir, { recursive: true, force: true });
     await mkdir(dirname(stagingDir), { recursive: true });
     await renameWithRetry(this.tmpDir, stagingDir);
@@ -218,6 +272,7 @@ export async function stageRestoreFromFileAsync(
   archivePath: string,
   passphrase: string,
   stagingDir: string,
+  migrationsDir: string = defaultMigrationsDir(),
 ): Promise<string[]> {
   const source = await open(archivePath, 'r');
   const writer = new StagedArchiveWriter(`${stagingDir}.incoming`);
@@ -234,7 +289,7 @@ export async function stageRestoreFromFileAsync(
     }
     // Autentica ANTES de publicar: hasta aquí lo escrito es texto claro sin verificar.
     await writer.push(decryptor.final());
-    return await writer.commit(stagingDir);
+    return await writer.commit(stagingDir, (tmp) => rejectIfNewer(tmp, migrationsDir));
   } catch (err) {
     await writer.discard();
     throw err;
@@ -289,6 +344,36 @@ function retireSqliteSidecars(dbFile: string, rel: string, preRestoreDir: string
 }
 
 /**
+ * Deshace `applyStagedRestore` desde `preRestoreDir`: devuelve cada fichero respaldado a
+ * su sitio y la base vieja CON su `-wal`/`-shm` (retirando antes los de la restaurada).
+ * Si no hay copia previa de la base no hay nada que devolver: lanza.
+ */
+export function revertAppliedRestore(
+  preRestoreDir: string,
+  targets: RestoreTargets,
+  /** Destinos que la restauración CREÓ (no existían antes): se retiran. */
+  added: string[] = [],
+): void {
+  if (!existsSync(join(preRestoreDir, 'db', 'app.db'))) {
+    throw new Error(`No hay copia previa de la base en ${preRestoreDir}`);
+  }
+  for (const rel of listStagedFiles(preRestoreDir)) {
+    const dest = destFor(rel, targets);
+    if (!dest) continue;
+    if (dest === targets.dbFile) {
+      for (const suffix of SQLITE_SIDECARS) rmSync(`${dest}${suffix}`, { force: true });
+    }
+    mkdirSync(dirname(dest), { recursive: true });
+    copyFileSync(join(preRestoreDir, rel), dest);
+  }
+  for (const dest of added) rmSync(dest, { force: true });
+  for (const suffix of SQLITE_SIDECARS) {
+    const bak = join(preRestoreDir, 'db', `app.db${suffix}`);
+    if (existsSync(bak)) copyFileSync(bak, `${targets.dbFile}${suffix}`);
+  }
+}
+
+/**
  * Aplica un restore preparado: respalda cada fichero actual en `preRestoreDir` y
  * coloca el del staging en su sitio. Al terminar borra el staging. Devuelve los
  * nombres aplicados. Pensado para ejecutarse **al arrancar**, antes de abrir la DB.
@@ -297,6 +382,8 @@ export function applyStagedRestore(
   stagingDir: string,
   targets: RestoreTargets,
   preRestoreDir: string,
+  /** Si se pasa, recibe los destinos creados por la restauración (no existían antes). */
+  report?: { added: string[] },
 ): string[] {
   const applied: { rel: string; dest: string; existed: boolean; sidecars: string[] }[] = [];
   try {
@@ -339,5 +426,6 @@ export function applyStagedRestore(
     throw err;
   }
   rmSync(stagingDir, { recursive: true, force: true });
+  if (report) report.added = applied.filter((a) => !a.existed).map((a) => a.dest);
   return applied.map((a) => a.rel);
 }

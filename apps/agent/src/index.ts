@@ -7,7 +7,8 @@ import { MigrationError, migrateFromEnv } from './db/migrate.js';
 import { buildServer } from './server.js';
 import { renameSyncWithRetry } from './system/rename-retry.js';
 import { createShutdown, shutdownSignals } from './system/shutdown.js';
-import { applyStagedRestore, resolveDbFile } from './system/restore.js';
+import { type AppliedRestore, migrateWithRestoreSafety } from './system/boot-migrate.js';
+import { applyStagedRestore, resolveDbFile, type RestoreTargets } from './system/restore.js';
 import { keyFilePaths } from './system/key-paths.js';
 
 /**
@@ -18,25 +19,24 @@ import { keyFilePaths } from './system/key-paths.js';
  * continúa el arranque, de modo que un backup dañado/incompleto no deje la caja en un
  * bucle de reinicio (era un riesgo real en hardware desatendido).
  */
-function applyPendingRestore(): void {
+function applyPendingRestore(): AppliedRestore | null {
   const stagingDir = join(agentPaths().varDir, 'restore-staging');
-  if (!existsSync(stagingDir)) return;
+  if (!existsSync(stagingDir)) return null;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
   const preRestoreDir = join(agentPaths().varDir, `pre-restore-${stamp}`);
   try {
-    const applied = applyStagedRestore(
-      stagingDir,
-      {
-        dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),
-        keysDir: dirname(env.secretboxKeyPath),
-        keyFiles: keyFilePaths(env),
-        dataDir: agentPaths().dataDir,
-      },
-      preRestoreDir,
-    );
+    const targets: RestoreTargets = {
+      dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),
+      keysDir: dirname(env.secretboxKeyPath),
+      keyFiles: keyFilePaths(env),
+      dataDir: agentPaths().dataDir,
+    };
+    const report = { added: [] as string[] };
+    const applied = applyStagedRestore(stagingDir, targets, preRestoreDir, report);
     process.stdout.write(
       `[restore] Restauración aplicada: ${applied.length} ficheros. Copia previa en ${preRestoreDir}\n`,
     );
+    return { preRestoreDir, targets, added: report.added };
   } catch (err) {
     const failedDir = join(agentPaths().varDir, `restore-failed-${stamp}`);
     try {
@@ -49,6 +49,7 @@ function applyPendingRestore(): void {
       `[restore] La restauración FALLÓ (${msg}); se aparta en ${failedDir} y se continúa el arranque. ` +
         `Copia previa (rescate) en ${preRestoreDir}.\n`,
     );
+    return null;
   }
 }
 
@@ -58,9 +59,12 @@ function applyPendingRestore(): void {
  * código no cuentan la misma historia, NO arranca: seguir con un esquema que no es el
  * que el código espera falla más tarde y lejos de la causa.
  */
-function migrateOrExit(): void {
+function migrateOrExit(restored: AppliedRestore | null): void {
   try {
-    migrateFromEnv((m) => process.stdout.write(`${m}\n`));
+    const log = (m: string): void => void process.stdout.write(`${m}\n`);
+    // Si la copia recién restaurada es de una versión más nueva, devuelve la base previa
+    // en vez de salir con 1 en bucle (ver `migrateWithRestoreSafety`).
+    migrateWithRestoreSafety({ restored, migrate: () => migrateFromEnv(log), log });
   } catch (err) {
     const code = err instanceof MigrationError ? ` (${err.code})` : '';
     process.stderr.write(
@@ -71,8 +75,7 @@ function migrateOrExit(): void {
 }
 
 async function main(): Promise<void> {
-  applyPendingRestore();
-  migrateOrExit();
+  migrateOrExit(applyPendingRestore());
   const app = await buildServer();
 
   const shutdown = createShutdown({ app, exit: (code) => process.exit(code) });

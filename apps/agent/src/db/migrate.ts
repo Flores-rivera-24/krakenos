@@ -13,7 +13,7 @@ import {
 import { dirname, join, resolve } from 'node:path';
 import Database from 'better-sqlite3';
 import { agentPaths } from '../config/paths.js';
-import { resolveDbFile } from '../system/restore.js';
+import { resolveDbFile } from './database-url.js';
 
 /**
  * Aplicador de migraciones propio (US-275).
@@ -138,6 +138,28 @@ export function planMigrations(
 
   const done = new Set(live.map((a) => a.name));
   return disk.filter((m) => !done.has(m.name));
+}
+
+/**
+ * Nombre de la primera migración aplicada en `dbFile` que `migrationsDir` no conoce
+ * (la base es de una versión más nueva que este código), o `null`. Abre la base en
+ * SOLO LECTURA y nunca lanza: un fichero que no es SQLite o sin historial no es
+ * «más nuevo» (del resto se ocupa el aplicador al arrancar). Otros desajustes del
+ * planificador (checksum, a medias) tampoco se tratan aquí.
+ */
+export function findUnknownMigration(dbFile: string, migrationsDir: string): string | null {
+  let db: Database.Database | undefined;
+  try {
+    db = new Database(dbFile, { readonly: true, fileMustExist: true });
+    planMigrations(readMigrations(migrationsDir), readApplied(db));
+    return null;
+  } catch (err) {
+    return err instanceof MigrationError && err.code === 'UNKNOWN_APPLIED'
+      ? (err.migration ?? null)
+      : null;
+  } finally {
+    db?.close();
+  }
 }
 
 export interface ForeignKeyViolation {

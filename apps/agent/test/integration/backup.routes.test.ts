@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -225,6 +225,34 @@ describe('restauración por subida directa (US-233)', () => {
     // Se prepara donde se le dijo, y el staging real del checkout queda intacto.
     expect(readdirSync(stagingDir).length).toBeGreaterThanOrEqual(1);
     if (!realStagingExistia) expect(existsSync(realStagingDir)).toBe(false);
+  });
+
+  it('rechaza con 409 BACKUP_FROM_NEWER_VERSION una copia de una versión más nueva y no deja staging', async () => {
+    rmSync(stagingDir, { recursive: true, force: true }); // el de un test anterior
+    await app.prisma.$executeRawUnsafe(
+      `INSERT INTO _prisma_migrations (id, checksum, finished_at, migration_name, started_at, applied_steps_count)
+       VALUES ('futura-154', 'abc', 1, '29990101000000_futura', 1, 1)`,
+    );
+    let blob: Buffer;
+    try {
+      blob = await makeBackup('copia-larga-1');
+    } finally {
+      await app.prisma.$executeRawUnsafe(`DELETE FROM _prisma_migrations WHERE id = 'futura-154'`);
+    }
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/system/restore/upload',
+      headers: {
+        ...authHeader(adminToken),
+        'content-type': 'application/octet-stream',
+        'x-restore-passphrase': 'copia-larga-1',
+      },
+      payload: blob,
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().code).toBe('BACKUP_FROM_NEWER_VERSION');
+    expect(res.json().message).toContain('Actualiza KrakenOS');
+    expect(existsSync(stagingDir)).toBe(false);
   });
 
   it('con la contraseña incorrecta responde 400 sin decir por qué falló el cifrado', async () => {

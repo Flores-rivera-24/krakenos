@@ -25,6 +25,7 @@ import { keyFilePaths } from '../../system/key-paths.js';
 import { detectDeployMode } from '../../system/deploy-mode.js';
 import {
   resolveDbFile,
+  RestoreFromNewerVersionError,
   stageRestoreAsync,
   stageRestoreFromFileAsync,
 } from '../../system/restore.js';
@@ -603,6 +604,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
         const blob = Buffer.from(req.body.data, 'base64');
         staged = await stageRestoreAsync(blob, req.body.passphrase, restoreStagingDir);
       } catch (err) {
+        if (err instanceof RestoreFromNewerVersionError) {
+          return reply.code(409).send({ code: err.code, message: err.message });
+        }
         return reply.code(400).send({
           code: 'RESTORE_INVALID',
           message: err instanceof Error ? err.message : 'La copia de seguridad no es válida.',
@@ -734,6 +738,9 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
             code: 'RESTORE_TOO_LARGE',
             message: 'La copia supera el tamaño máximo admitido.',
           });
+        }
+        if (err instanceof RestoreFromNewerVersionError) {
+          return reply.code(409).send({ code: err.code, message: err.message });
         }
         return reply.code(400).send({
           code: 'RESTORE_INVALID',

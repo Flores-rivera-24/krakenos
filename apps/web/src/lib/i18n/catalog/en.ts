@@ -79,6 +79,8 @@ export const en: Record<TranslationKey, string> = {
   'errors.code.VALIDATION': 'Check the details and try again.',
   'errors.code.CAMERAS_CONFIG_CORRUPT':
     'The cameras file is damaged. Restore it from a backup or check it by hand; it has not been modified.',
+  'errors.code.BACKUP_FROM_NEWER_VERSION':
+    'This backup comes from a newer version of KrakenOS. Update KrakenOS to the version that made it, or a later one, and restore it again. Nothing has been changed.',
   'errors.code.SETUP_ALREADY_DONE': 'This system is already set up',
   'errors.code.SETUP_LOCK_STALE':
     'Setup was left locked by an earlier attempt. Restart the agent and try again.',

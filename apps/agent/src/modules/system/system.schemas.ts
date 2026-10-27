@@ -441,6 +441,7 @@ export const restoreSchema = {
       },
     },
     400: errorResponse,
+    409: errorResponse,
   },
 } as const;
 
@@ -535,6 +536,7 @@ export const restoreUploadSchema = {
       },
     },
     400: errorResponse,
+    409: errorResponse,
     413: errorResponse,
   },
 } as const;
