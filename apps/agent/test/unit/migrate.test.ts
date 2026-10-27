@@ -18,6 +18,7 @@ import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   checksumOf,
+  normalizeEol,
   MigrationError,
   migrateDatabase,
   newViolations,
@@ -181,6 +182,58 @@ describe('piezas puras (US-275)', () => {
     expect(planMigrations([a, b, c], [row(a), row(b), row(c)])).toEqual([]);
   });
 
+  it('planMigrations: fichero con CRLF y fila con el checksum en LF: válido, nada pendiente', () => {
+    const lf = 'CREATE TABLE a (x INT);\nCREATE TABLE b (y INT);\n';
+    const crlf = lf.replace(/\n/g, '\r\n');
+    const f: MigrationFile = { name: 'a', sql: crlf, checksum: checksumOf(crlf) };
+    expect(planMigrations([f], [row(f, { checksum: checksumOf(lf) })])).toEqual([]);
+  });
+
+  it('planMigrations: finales mixtos y fila con el checksum de los bytes crudos: válido', () => {
+    const mixto = 'CREATE TABLE a (x INT);\r\nINSERT INTO a VALUES (1);\nSELECT 1;\r\n';
+    const f: MigrationFile = { name: 'a', sql: mixto, checksum: checksumOf(normalizeEol(mixto)) };
+    expect(planMigrations([f], [row(f, { checksum: checksumOf(mixto) })])).toEqual([]);
+  });
+
+  it('planMigrations: fichero en LF y fila con el checksum en CRLF: válido', () => {
+    const lf = 'CREATE TABLE a (x INT);\nCREATE TABLE b (y INT);\n';
+    const crlf = lf.replace(/\n/g, '\r\n');
+    const f: MigrationFile = { name: 'a', sql: lf, checksum: checksumOf(lf) };
+    expect(planMigrations([f], [row(f, { checksum: checksumOf(crlf) })])).toEqual([]);
+  });
+
+  it('planMigrations: un cambio de contenido real sigue siendo CHECKSUM_CHANGED, con o sin cambio de finales', () => {
+    const lf = 'CREATE TABLE a (x INT);\nCREATE TABLE b (y INT);\n';
+    const editado = lf.replace('y INT', 'y TEXT');
+    const mismoFinal: MigrationFile = { name: 'a', sql: editado, checksum: checksumOf(editado) };
+    expectRefusal(
+      () => planMigrations([mismoFinal], [row(mismoFinal, { checksum: checksumOf(lf) })]),
+      'CHECKSUM_CHANGED',
+      '«a»',
+    );
+    const crlf = editado.replace(/\n/g, '\r\n');
+    const otroFinal: MigrationFile = { name: 'a', sql: crlf, checksum: checksumOf(editado) };
+    expectRefusal(
+      () => planMigrations([otroFinal], [row(otroFinal, { checksum: checksumOf(lf) })]),
+      'CHECKSUM_CHANGED',
+      '«a»',
+    );
+  });
+
+  it('un \\r suelto no se normaliza', () => {
+    const f = 'a\rb\n';
+    const dir = tmp();
+    writeMigrations(dir, { m1: f });
+    expect(readMigrations(dir)[0]?.checksum).toBe(checksumOf(f));
+  });
+
+  it('readMigrations sobre un checkout CRLF: checksum normalizado a LF', () => {
+    const lf = M1;
+    const dir = tmp();
+    writeMigrations(dir, { '001_a': lf.replace(/\n/g, '\r\n') });
+    expect(readMigrations(dir)[0]?.checksum).toBe(checksumOf(lf));
+  });
+
   it('planMigrations: una fila resuelta como rolled-back cuenta como pendiente', () => {
     const [a, b] = [file('a'), file('b')] as [MigrationFile, MigrationFile];
     const plan = planMigrations([a, b], [row(a), row(b, { finishedAt: null, rolledBackAt: 5 })]);
@@ -234,6 +287,32 @@ describe('piezas puras (US-275)', () => {
 });
 
 describe('migrateDatabase sobre una base sintética (US-275)', () => {
+  it('checkout CRLF: una base migrada con la versión LF arranca sin error', () => {
+    const { run, migrationsDir } = setup();
+    run();
+    const crlf = Object.fromEntries(
+      Object.entries(BASE).map(([n, sql]) => [n, sql.replace(/\n/g, '\r\n')]),
+    );
+    writeMigrations(migrationsDir, crlf);
+    expect(run().applied).toEqual([]);
+  });
+
+  it('checkout CRLF: aplicar desde cero registra el checksum normalizado a LF', () => {
+    const crlf = Object.fromEntries(
+      Object.entries(BASE).map(([n, sql]) => [n, sql.replace(/\n/g, '\r\n')]),
+    );
+    const { run, dbFile } = setup(crlf);
+    expect(run().applied).toEqual(['001_a', '002_b', '003_c']);
+    inspect(dbFile, (db) => {
+      const rows = db
+        .prepare('SELECT migration_name n, checksum c FROM _prisma_migrations ORDER BY n')
+        .all() as { n: string; c: string }[];
+      expect(rows.map((r) => [r.n, r.c])).toEqual(
+        Object.entries(BASE).map(([n, sql]) => [n, checksumOf(sql)]),
+      );
+    });
+  });
+
   it('base nueva: aplica todo en orden, escribe el historial compatible con Prisma y no hace copia', () => {
     const { run, dbFile, backupDir } = setup();
     const res = run();
