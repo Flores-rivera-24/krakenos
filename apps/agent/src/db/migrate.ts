@@ -20,7 +20,8 @@ import { resolveDbFile } from './database-url.js';
  *
  * Sustituye a `prisma migrate deploy` SIN cambiar el formato: lee las mismas
  * `prisma/migrations/<nombre>/migration.sql` y deja la misma tabla `_prisma_migrations`
- * (mismas columnas, `checksum` = sha256 hex del fichero), así que una base migrada
+ * (mismas columnas, `checksum` = sha256 hex del contenido normalizado a LF, igual al de
+ * Prisma en un checkout LF), así que una base migrada
  * por este aplicador la acepta la CLI de Prisma y viceversa. Lo atan los gates de
  * `test/unit/migrate.test.ts` contra la CLI real.
  *
@@ -79,18 +80,15 @@ export function normalizeEol(sql: string): string {
 }
 
 /**
- * Checksums que valen para un fichero: los bytes tal cual, normalizado a LF y
- * normalizado a LF y luego a CRLF. Git para Windows convierte a CRLF al hacer
- * checkout, y una base creada en un lado tiene que arrancar en el otro.
+ * Checksums que valen para un fichero, todos derivados de `m.sql`: el contenido tal
+ * cual, normalizado a LF y normalizado a LF y luego a CRLF. Lo que se registra es
+ * el normalizado a LF; se aceptan además las variantes de finales de línea porque
+ * Git para Windows convierte a CRLF al hacer checkout y una base creada en un lado
+ * tiene que arrancar en el otro (el crudo cubre finales mixtos escritos por Prisma).
  */
 function acceptedChecksums(m: MigrationFile): Set<string> {
   const lf = normalizeEol(m.sql);
-  return new Set([
-    m.checksum,
-    checksumOf(m.sql),
-    checksumOf(lf),
-    checksumOf(lf.replace(/\n/g, '\r\n')),
-  ]);
+  return new Set([checksumOf(m.sql), checksumOf(lf), checksumOf(lf.replace(/\n/g, '\r\n'))]);
 }
 
 /** Lee el `migration.sql` de cada subdirectorio de `dir`, en orden de nombre (el de Prisma). Ignora `migration_lock.toml`. */
@@ -152,7 +150,7 @@ export function planMigrations(
       throw new MigrationError(
         'CHECKSUM_CHANGED',
         `La migración «${a.name}» ya estaba aplicada y su contenido ha cambiado desde entonces ` +
-          `(checksum de la base ${a.checksum.slice(0, 12)}…, el del fichero ${file.checksum.slice(0, 12)}…). ` +
+          `(checksum de la base ${a.checksum.slice(0, 12)}…, el del fichero, normalizado a LF, ${file.checksum.slice(0, 12)}…). ` +
           'Una migración aplicada no se edita: crea una nueva.',
         a.name,
       );

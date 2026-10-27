@@ -18,6 +18,7 @@ import Database from 'better-sqlite3';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   checksumOf,
+  normalizeEol,
   MigrationError,
   migrateDatabase,
   newViolations,
@@ -184,8 +185,14 @@ describe('piezas puras (US-275)', () => {
   it('planMigrations: fichero con CRLF y fila con el checksum en LF: válido, nada pendiente', () => {
     const lf = 'CREATE TABLE a (x INT);\nCREATE TABLE b (y INT);\n';
     const crlf = lf.replace(/\n/g, '\r\n');
-    const f: MigrationFile = { name: 'a', sql: crlf, checksum: checksumOf(lf) };
+    const f: MigrationFile = { name: 'a', sql: crlf, checksum: checksumOf(crlf) };
     expect(planMigrations([f], [row(f, { checksum: checksumOf(lf) })])).toEqual([]);
+  });
+
+  it('planMigrations: finales mixtos y fila con el checksum de los bytes crudos: válido', () => {
+    const mixto = 'CREATE TABLE a (x INT);\r\nINSERT INTO a VALUES (1);\nSELECT 1;\r\n';
+    const f: MigrationFile = { name: 'a', sql: mixto, checksum: checksumOf(normalizeEol(mixto)) };
+    expect(planMigrations([f], [row(f, { checksum: checksumOf(mixto) })])).toEqual([]);
   });
 
   it('planMigrations: fichero en LF y fila con el checksum en CRLF: válido', () => {
