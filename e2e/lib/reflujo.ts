@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { loginApi } from './api.js';
 import { MOVIL_ESTRECHO } from './tactil.js';
 
 /**
@@ -17,6 +18,10 @@ interface Textos {
   sesiones: string;
   mqtt: string;
   peligro: string;
+  vistas: string;
+  editar: string;
+  herramientasPlano: string;
+  nuevaAutomatizacion: string;
   /** Botón de exportar de Energía (cabecera lista) y título de Tráfico. */
   exportar: string;
   ancho: string;
@@ -30,6 +35,10 @@ export const TEXTOS_ES: Textos = {
   sesiones: 'Sesiones activas',
   mqtt: 'Publicar a MQTT',
   peligro: 'Zona de peligro',
+  vistas: 'Vista',
+  editar: 'Editar',
+  herramientasPlano: 'Herramientas del plano',
+  nuevaAutomatizacion: 'Nueva automatización',
   exportar: 'Exportar CSV',
   ancho: 'Ancho de banda (Mbps)',
   cerrar: 'Cerrar',
@@ -42,6 +51,10 @@ export const TEXTOS_EN: Textos = {
   sesiones: 'Active sessions',
   mqtt: 'Publish to MQTT',
   peligro: 'Danger zone',
+  vistas: 'View',
+  editar: 'Edit',
+  herramientasPlano: 'Floor plan tools',
+  nuevaAutomatizacion: 'New automation',
   exportar: 'Export CSV',
   ancho: 'Bandwidth (Mbps)',
   cerrar: 'Close',
@@ -161,19 +174,77 @@ export function registrarReflujo(textos: Textos, entrar: (page: Page) => Promise
       expect(fuera, 'celdas fuera del panel del diálogo').toEqual([]);
     });
 
-    test('Cobertura: la barra de herramientas cabe', async ({ page }) => {
+    test('Wi-Fi: un nombre de cliente muy largo se recorta dentro del panel', async ({ page }) => {
+      const largo = 'dispositivo-con-un-nombre-larguisimo-de-prueba-0123456789-abcdefghij';
+      // Se responde SOLO la lista de clientes de la red (misma forma que el mock: WifiClient[]).
+      await page.route('**/api/wifi/networks/*/clients', (ruta) =>
+        ruta.fulfill({
+          json: [{ mac: 'de:ad:be:ef:00:01', hostname: largo, ip: '192.168.1.50', signalDbm: -61 }],
+        }),
+      );
       await entrar(page);
-      await irA(page, '/coverage', textos.mas);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await page.waitForTimeout(800);
-      await sinDesborde(page, 'Cobertura');
+      await irA(page, '/wifi', textos.mas);
+      const clientes = page
+        .locator('table button')
+        .filter({ hasText: /^[1-9]\d*$/ })
+        .first();
+      await clientes.click();
+      const dialogo = page.getByRole('dialog');
+      const celda = dialogo.locator('tbody td').first();
+      await expect(celda).toHaveText(largo);
+      await expect(celda).toHaveAttribute('title', largo);
+      await sinDesborde(page, 'Wi-Fi con un nombre largo');
+      const medida = await celda.evaluate((td) => {
+        const panel = td.closest('[role="dialog"]')!.getBoundingClientRect();
+        const caja = td.getBoundingClientRect();
+        return {
+          dentro: caja.left >= panel.left - 1 && caja.right <= panel.right + 1,
+          // `scrollWidth > clientWidth`: el texto se corta (con puntos suspensivos), no se desborda.
+          recortado: td.scrollWidth > td.clientWidth,
+        };
+      });
+      expect(medida, 'la celda cabe en el panel y recorta el texto').toEqual({
+        dentro: true,
+        recortado: true,
+      });
+    });
+
+    test('Cobertura: la barra de herramientas cabe', async ({ page, request }) => {
+      // Sin plano la página solo enseña su estado vacío y no hay barra que medir: se crea uno
+      // por API y se retira al terminar (los flujos comparten una sola DB).
+      const token = await loginApi(request);
+      const cabeceras = { Authorization: `Bearer ${token}` };
+      const creado = await request.post('/api/coverage/floorplans', {
+        headers: cabeceras,
+        data: { name: 'Plano de reflujo', widthM: 10, heightM: 8 },
+      });
+      expect(
+        creado.ok(),
+        `crear el plano de prueba: ${creado.status()} ${await creado.text()}`,
+      ).toBe(true);
+      const { id } = (await creado.json()) as { id: string };
+      try {
+        await entrar(page);
+        await irA(page, '/coverage', textos.mas);
+        const editar = page
+          .getByRole('group', { name: textos.vistas })
+          .getByRole('button', { name: textos.editar });
+        await expect(editar).toBeVisible();
+        if ((await editar.getAttribute('aria-pressed')) !== 'true') await editar.click();
+        // La barra de herramientas del plano tiene que estar pintada: es lo que se mide.
+        await expect(page.getByRole('group', { name: textos.herramientasPlano })).toBeVisible();
+        await sinDesborde(page, 'Cobertura');
+      } finally {
+        await request.delete(`/api/coverage/floorplans/${id}`, { headers: cabeceras });
+      }
     });
 
     test('Automatizaciones cabe', async ({ page }) => {
       await entrar(page);
       await irA(page, '/automations', textos.mas);
-      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-      await page.waitForTimeout(800);
+      // El dato: la lista ya cargó (sin esqueletos) y el botón de alta del admin está pintado.
+      await expect(page.getByRole('button', { name: textos.nuevaAutomatizacion })).toBeVisible();
+      await expect(page.locator('.kr-shimmer')).toHaveCount(0);
       await sinDesborde(page, 'Automatizaciones');
     });
   });

@@ -536,8 +536,8 @@ export function CoveragePage() {
               </Callout>
             )}
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+              <div className="space-y-3 max-lg:min-w-0">
                 {view === 'predict' && heatmapLoading ? (
                   <Skeleton className="h-[420px] w-full rounded-xl" />
                 ) : (

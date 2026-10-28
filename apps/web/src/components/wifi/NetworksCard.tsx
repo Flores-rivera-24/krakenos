@@ -156,19 +156,20 @@ export function NetworksCard() {
                 </tr>
               </thead>
               <tbody>
-                {clientsOf.clients.map((c) => (
-                  <tr key={c.mac} className="border-t border-border">
-                    {/* Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC. */}
-                    <td
-                      className="max-w-40 truncate py-1 md:max-w-none"
-                      title={inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
-                    >
-                      {inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
-                    </td>
-                    <td className="py-1 font-mono text-xs">{c.ip}</td>
-                    <td className="py-1">{c.signalDbm} dBm</td>
-                  </tr>
-                ))}
+                {clientsOf.clients.map((c) => {
+                  // Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC.
+                  const nombre = inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac;
+                  return (
+                    <tr key={c.mac} className="border-t border-border">
+                      {/* El recorte es solo del celular: en escritorio la celda no cambia. */}
+                      <td className="py-1 max-md:max-w-40 max-md:truncate" title={nombre}>
+                        {nombre}
+                      </td>
+                      <td className="py-1 font-mono text-xs">{c.ip}</td>
+                      <td className="py-1">{c.signalDbm} dBm</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
