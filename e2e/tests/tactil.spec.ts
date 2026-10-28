@@ -93,6 +93,26 @@ test.describe('celular', () => {
     await expectTapTarget(page, page.getByRole('button', { name: 'Cerrar' }));
   });
 
+  test('un término de glosario en línea NO amplía su área: no roba el toque a las líneas vecinas', async ({
+    page,
+  }) => {
+    await login(page);
+    await irA(page, '/dns');
+    const termino = page.locator('p button[aria-expanded]').first();
+    await expect(termino).toBeVisible();
+    const caja = (await termino.boundingBox())!;
+    for (const dy of [-21, 21]) {
+      const cae = await termino.evaluate(
+        (el, p) => {
+          const e = document.elementFromPoint(p.x, p.y);
+          return !!e && el.contains(e);
+        },
+        { x: caja.x + caja.width / 2, y: caja.y + caja.height / 2 + dy },
+      );
+      expect(cae, `a ${dy} px en vertical del término`).toBe(false);
+    }
+  });
+
   test('cerrar sesión de la barra superior mide al menos 44 px de alto', async ({ page }) => {
     await login(page);
     const salir = page.locator('header').getByRole('button', { name: 'Salir' });

@@ -9,6 +9,15 @@ const axe = configureAxe({
 });
 
 describe('HelpHint', () => {
+  it('el disparador de icono lleva tap-target y el de texto en línea no (su ::before robaría el toque a las líneas vecinas)', () => {
+    const { unmount } = render(<HelpHint content="c" />);
+    const icono = screen.getByRole('button', { name: 'Más información' });
+    expect(icono).toHaveClass('tap-target', 'relative');
+    unmount();
+    render(<HelpHint content="c">SSID</HelpHint>);
+    expect(screen.getByRole('button', { name: 'SSID' })).not.toHaveClass('tap-target');
+  });
+
   it('tiene etiqueta accesible por defecto y arranca cerrado', () => {
     render(<HelpHint content="Explicación" />);
     const trigger = screen.getByRole('button', { name: 'Más información' });

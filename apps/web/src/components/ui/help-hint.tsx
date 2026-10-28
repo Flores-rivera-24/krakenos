@@ -86,8 +86,9 @@ export function HelpHint({
         aria-describedby={open ? bubbleId : undefined}
         onClick={() => setPinned((p) => !p)}
         className={cn(
-          'relative tap-target inline-flex items-center gap-1 rounded-sm text-kr-secondary hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring',
-          children == null && 'h-5 w-5 justify-center rounded-full',
+          'inline-flex items-center gap-1 rounded-sm text-kr-secondary hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring',
+          // Solo el icono: con texto en línea (GlossaryTerm) el ::before de 44 px taparía las líneas vecinas.
+          children == null && 'relative tap-target h-5 w-5 justify-center rounded-full',
           triggerClassName,
         )}
       >
