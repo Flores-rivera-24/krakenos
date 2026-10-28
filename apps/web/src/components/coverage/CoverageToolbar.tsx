@@ -57,6 +57,7 @@ export function CoverageToolbar({
               disabled={!canEdit}
               aria-pressed={active}
               title={t(label)}
+              aria-label={t(label)}
               onClick={() => onToolChange(id)}
               className={cn(
                 'flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 md:h-9 md:min-w-0 md:justify-start text-kr-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
@@ -76,6 +77,7 @@ export function CoverageToolbar({
         <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
           <span className="hidden md:inline">{t('coverage.toolbar.material')}</span>
           <select
+            aria-label={t('coverage.toolbar.material')}
             value={wallMaterial}
             disabled={!canEdit}
             onChange={(e) => onWallMaterialChange(e.target.value as WallMaterial)}

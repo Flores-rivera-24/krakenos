@@ -2,6 +2,8 @@ import type { ApPlacement, FloorPlan } from '@krakenos/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FloorPlanStage, type CoverageTool } from '@/components/coverage/FloorPlanStage';
+import { t } from '@/lib/i18n';
+import '@/lib/i18n/catalog/fragments/cobertura';
 
 const ap: ApPlacement = {
   id: 'ap-1',
@@ -37,7 +39,7 @@ function montar(tool: CoverageTool, readOnly = false) {
       pxPerM={20}
     />,
   );
-  return screen.getByRole('img');
+  return screen.getByRole('group');
 }
 
 describe('FloorPlanStage: gestos táctiles', () => {
@@ -83,7 +85,7 @@ describe('FloorPlanStage: gestos táctiles', () => {
         onMoveAp={onMoveAp}
       />,
     );
-    const svg = screen.getByRole('img');
+    const svg = screen.getByRole('group');
     const { setPointerCapture, releasePointerCapture } = conCaptura(svg);
     const asa = screen.getByRole('button', { name: /AP salón/ });
     fireEvent.pointerDown(asa, { pointerId: 1, clientX: 100, clientY: 80 });
@@ -109,7 +111,7 @@ describe('FloorPlanStage: gestos táctiles', () => {
         onAddWall={onAddWall}
       />,
     );
-    const svg = screen.getByRole('img');
+    const svg = screen.getByRole('group');
     const { releasePointerCapture } = conCaptura(svg);
     fireEvent.pointerDown(svg, { pointerId: 1, clientX: 20, clientY: 20 });
     fireEvent.pointerMove(svg, { pointerId: 1, clientX: 120, clientY: 20 });
@@ -123,5 +125,98 @@ describe('FloorPlanStage: gestos táctiles', () => {
     fireEvent.pointerMove(svg, { pointerId: 2, clientX: 120, clientY: 20 });
     fireEvent.pointerUp(svg, { pointerId: 2 });
     expect(onAddWall).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('FloorPlanStage: teclado y lector', () => {
+  const ariaPlano = 'Plano Casa: 40×30 m con 1 punto de acceso';
+
+  function editar(apOver: Partial<ApPlacement> = {}) {
+    const onMoveAp = vi.fn();
+    const a = { ...ap, ...apOver };
+    render(
+      <FloorPlanStage
+        plan={plan}
+        walls={[]}
+        accessPoints={[a]}
+        tool="select"
+        pxPerM={20}
+        onMoveAp={onMoveAp}
+      />,
+    );
+    return { onMoveAp, boton: screen.getByRole('button', { name: /AP salón/ }) };
+  }
+
+  it('el plano es un grupo con nombre, no una imagen', () => {
+    editar();
+    expect(screen.getByRole('group', { name: ariaPlano })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: ariaPlano })).toBeNull();
+  });
+
+  it('en edición, ArrowRight mueve el AP 0,1 m', () => {
+    const { onMoveAp, boton } = editar();
+    fireEvent.keyDown(boton, { key: 'ArrowRight' });
+    expect(onMoveAp).toHaveBeenCalledTimes(1);
+    const [id, x, y] = onMoveAp.mock.calls[0] as [string, number, number];
+    expect(id).toBe('ap-1');
+    expect(x).toBeCloseTo(5.1, 6);
+    expect(y).toBeCloseTo(4, 6);
+  });
+
+  it('cada flecha mueve en su sentido', () => {
+    const { onMoveAp, boton } = editar();
+    fireEvent.keyDown(boton, { key: 'ArrowLeft' });
+    fireEvent.keyDown(boton, { key: 'ArrowUp' });
+    fireEvent.keyDown(boton, { key: 'ArrowDown' });
+    const [l, u, d] = onMoveAp.mock.calls as [string, number, number][];
+    expect([l![1], l![2]]).toEqual([expect.closeTo(4.9, 6), 4]);
+    expect([u![1], u![2]]).toEqual([5, expect.closeTo(3.9, 6)]);
+    expect([d![1], d![2]]).toEqual([5, expect.closeTo(4.1, 6)]);
+  });
+
+  it('con Mayús, 1 m', () => {
+    const { onMoveAp, boton } = editar();
+    fireEvent.keyDown(boton, { key: 'ArrowDown', shiftKey: true });
+    expect(onMoveAp).toHaveBeenCalledWith('ap-1', 5, 5);
+  });
+
+  it('en el borde no se sale', () => {
+    const { onMoveAp, boton } = editar({ x: 40 });
+    fireEvent.keyDown(boton, { key: 'ArrowRight' });
+    for (const [, x] of onMoveAp.mock.calls as [string, number][])
+      expect(x).toBeLessThanOrEqual(40);
+  });
+
+  it('otras teclas no mueven ni se interceptan', () => {
+    const { onMoveAp, boton } = editar();
+    expect(fireEvent.keyDown(boton, { key: 'Tab' })).toBe(true);
+    expect(onMoveAp).not.toHaveBeenCalled();
+    expect(fireEvent.keyDown(boton, { key: 'ArrowRight' })).toBe(false);
+  });
+
+  it('en lectura las flechas no llaman a onMoveAp y el AP no es un botón', () => {
+    const onMoveAp = vi.fn();
+    render(
+      <FloorPlanStage
+        plan={plan}
+        walls={[]}
+        accessPoints={[ap]}
+        tool="select"
+        readOnly
+        pxPerM={20}
+        onMoveAp={onMoveAp}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: /AP salón/ })).toBeNull();
+    const img = screen.getByRole('img', { name: /AP salón/ });
+    fireEvent.keyDown(img, { key: 'ArrowRight' });
+    expect(onMoveAp).not.toHaveBeenCalled();
+    expect(img).not.toHaveAttribute('tabindex');
+  });
+
+  it('el AP en edición describe cómo moverlo', () => {
+    const { boton } = editar();
+    expect(boton).toHaveAccessibleDescription(t('coverage.ap.moveHint'));
+    expect(t('coverage.ap.moveHint')).toBe('Usa las flechas para moverlo 0,1 m; con Mayús, 1 m.');
   });
 });

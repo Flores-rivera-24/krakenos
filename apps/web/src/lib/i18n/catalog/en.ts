@@ -1360,6 +1360,7 @@ export const en: Record<TranslationKey, string> = {
   'coverage.tool.ap': 'Access point',
   'coverage.tool.measure': 'Measure',
   'coverage.plan.aria.one': 'Plan {name}: {w}×{h} m with {aps} access point',
+  'coverage.ap.moveHint': 'Use the arrow keys to move it 0.1 m; hold Shift for 1 m.',
   'coverage.plan.aria.other': 'Plan {name}: {w}×{h} m with {aps} access points',
   'coverage.plan.namePlaceholder': 'e.g. Ground floor',
   'coverage.plan.deleted': 'Plan deleted',
