@@ -212,4 +212,40 @@ describe('ScenesPage (US-166)', () => {
     resolveDevices([LIGHT]);
     await screen.findByLabelText(`Incluir ${LIGHT.name}`);
   });
+
+  it('pulsar el nombre del aparato marca la casilla y no toca el estado; el Switch no va dentro del label', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Crear escena' }));
+    const casilla = await screen.findByLabelText(`Incluir ${LIGHT.name}`);
+    await user.click(casilla); // incluir el aparato: aparece su interruptor
+    expect(casilla).toBeChecked();
+    const interruptor = screen.getByRole('switch', {
+      name: `Estado de ${LIGHT.name} en la escena`,
+    });
+    const estado = interruptor.getAttribute('aria-checked');
+
+    // Clic en el interruptor: cambia el estado y la casilla sigue marcada.
+    await user.click(interruptor);
+    expect(interruptor).toHaveAttribute('aria-checked', estado === 'true' ? 'false' : 'true');
+    expect(casilla).toBeChecked();
+
+    // Clic en el nombre: desmarca la casilla y el interruptor desaparece.
+    await user.click(screen.getByText(LIGHT.name, { selector: 'span' }));
+    expect(casilla).not.toBeChecked();
+    expect(
+      screen.queryByRole('switch', { name: `Estado de ${LIGHT.name} en la escena` }),
+    ).toBeNull();
+  });
+
+  it('el Switch de estado no está dentro de un <label>', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(await screen.findByRole('button', { name: 'Crear escena' }));
+    await user.click(await screen.findByLabelText(`Incluir ${LIGHT.name}`));
+    const interruptor = screen.getByRole('switch', {
+      name: `Estado de ${LIGHT.name} en la escena`,
+    });
+    expect(interruptor.closest('label')).toBeNull();
+  });
 });
