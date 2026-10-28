@@ -1,7 +1,6 @@
 import { Moon, Sun } from 'lucide-react';
-import { useState } from 'react';
 import { useT } from '@/lib/i18n';
-import { getTheme, toggleTheme } from '@/lib/theme';
+import { toggleTheme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -14,13 +13,13 @@ interface Props {
  */
 export function ThemeToggle({ collapsed }: Props) {
   const t = useT();
-  const [theme, setTheme] = useState(getTheme());
+  const theme = useTheme();
   const isDark = theme === 'dark';
 
   return (
     <button
       type="button"
-      onClick={() => setTheme(toggleTheme())}
+      onClick={() => toggleTheme()}
       aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
       title={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
       className={cn(

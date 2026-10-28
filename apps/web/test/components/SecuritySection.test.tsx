@@ -19,6 +19,8 @@ const webauthnMock = vi.hoisted(() => ({
 vi.mock('@/lib/webauthn', () => webauthnMock);
 
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { applyTheme } from '@/lib/theme';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
@@ -46,12 +48,12 @@ const SETTINGS = {
   theme: 'dark',
 } as Record<SystemSettingKey, string>;
 
-function renderSection(isAdmin = true) {
+function renderSection(isAdmin = true, patch = vi.fn(), settings = SETTINGS) {
   return render(
     <MemoryRouter>
       <SecuritySection
-        settings={SETTINGS}
-        patch={vi.fn()}
+        settings={settings}
+        patch={patch}
         isAdmin={isAdmin}
         ajustesPendientes={null}
       />
@@ -348,5 +350,36 @@ describe('SecuritySection', () => {
     await user.click(screen.getByRole('button', { name: 'Los he guardado' }));
     expect(await screen.findByText(/te quedan 3/)).toBeInTheDocument();
     expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
+  });
+
+  describe('tema', () => {
+    it('lee el tema local, no el del servidor, y al cambiarlo no escribe `theme` al servidor', async () => {
+      applyTheme('dark');
+      const patch = vi.fn();
+      renderSection(true, patch, { ...SETTINGS, theme: 'light' });
+      const sw = await screen.findByRole('switch', { name: 'Tema oscuro' });
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+      await userEvent.click(sw);
+      expect(sw).toHaveAttribute('aria-checked', 'false');
+      expect(patch).not.toHaveBeenCalledWith('theme', expect.anything());
+      applyTheme('dark');
+    });
+
+    it('el interruptor y el botón de la barra lateral cambian a la vez', async () => {
+      applyTheme('dark');
+      render(
+        <MemoryRouter>
+          <ThemeToggle collapsed={false} />
+          <SecuritySection settings={SETTINGS} patch={vi.fn()} isAdmin ajustesPendientes={null} />
+        </MemoryRouter>,
+      );
+      const sw = await screen.findByRole('switch', { name: 'Tema oscuro' });
+      await userEvent.click(sw);
+      expect(sw).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByRole('button', { name: 'Cambiar a modo oscuro' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cambiar a modo oscuro' }));
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+      applyTheme('dark');
+    });
   });
 });

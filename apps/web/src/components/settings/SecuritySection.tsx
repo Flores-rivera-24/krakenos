@@ -22,7 +22,7 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatDate, timeAgo } from '@/lib/format';
-import { applyTheme, type Theme } from '@/lib/theme';
+import { applyTheme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
@@ -307,14 +307,7 @@ function SecurityControls({
   isAdmin: boolean;
 }) {
   const t = useT();
-  const [theme, setTheme] = useState<Theme>(settings.theme === 'light' ? 'light' : 'dark');
-
-  const toggleTheme = async (next: boolean) => {
-    const value: Theme = next ? 'dark' : 'light';
-    setTheme(value);
-    applyTheme(value); // efecto inmediato
-    if (isAdmin) await patch('theme', value);
-  };
+  const theme = useTheme();
 
   return (
     <Card>
@@ -351,7 +344,7 @@ function SecurityControls({
         <Row label={t('security.darkTheme')}>
           <Switch
             checked={theme === 'dark'}
-            onCheckedChange={(v) => void toggleTheme(v)}
+            onCheckedChange={(v) => applyTheme(v ? 'dark' : 'light')}
             aria-label={t('security.darkTheme')}
           />
         </Row>
