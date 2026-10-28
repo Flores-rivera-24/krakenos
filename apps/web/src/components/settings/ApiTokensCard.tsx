@@ -3,6 +3,7 @@ import { KeyRound, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { CopyButton } from '@/components/ui/copy-button';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
@@ -143,14 +144,12 @@ export function ApiTokensCard() {
                       : t('settings.apiTokens.neverUsed')}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
+                <DeleteButton
                   aria-label={t('settings.apiTokens.revoke')}
-                  onClick={() => void revoke(tk.id)}
+                  onDelete={() => revoke(tk.id)}
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
-                </Button>
+                </DeleteButton>
               </li>
             ))}
           </ul>

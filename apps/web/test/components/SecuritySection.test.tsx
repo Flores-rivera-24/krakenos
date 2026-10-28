@@ -266,6 +266,18 @@ describe('SecuritySection', () => {
     expect(screen.getByRole('button', { name: 'Regenerar códigos' })).toBeEnabled();
   });
 
+  it('un clic en eliminar una passkey no borra; Confirmar sí', async () => {
+    const user = userEvent.setup();
+    conPasskey();
+    apiMock.del.mockResolvedValue(undefined);
+    renderSection();
+    await screen.findByText('iPhone');
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(apiMock.del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(apiMock.del).toHaveBeenCalledTimes(1));
+  });
+
   it('si borrar una passkey falla, avisa y la passkey sigue en la lista', async () => {
     const user = userEvent.setup();
     conPasskey();

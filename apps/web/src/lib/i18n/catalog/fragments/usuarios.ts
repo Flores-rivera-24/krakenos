@@ -43,7 +43,6 @@ export const esUsuarios = {
     'Da acceso a un familiar o a personal. «Observador» ve el estado pero no cambia nada.',
   'users.create': 'Crear usuario',
   'users.creating': 'Creando…',
-  'users.confirmDelete': '¿Eliminar a {email}? Esta acción no se puede deshacer.',
   'users.you': '(tú)',
   'users.apiTokens': '{n} {unidad}',
   'users.apiToken.one': 'token de API',

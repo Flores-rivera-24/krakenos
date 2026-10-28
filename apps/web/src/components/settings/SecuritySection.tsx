@@ -92,7 +92,6 @@ function PasskeysCard() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Códigos de recuperación (US-59): cuántos quedan y los recién generados (una vez).
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
@@ -155,7 +154,6 @@ function PasskeysCard() {
   };
 
   const remove = async (id: string) => {
-    setConfirmId(null);
     try {
       await api.del(`/webauthn/credentials/${id}`);
       load();
@@ -203,20 +201,7 @@ function PasskeysCard() {
                             })}
                       </span>
                     </span>
-                    {confirmId === pk.id ? (
-                      <span className="flex items-center gap-1">
-                        <Button variant="destructive" size="sm" onClick={() => void remove(pk.id)}>
-                          {t('common.confirm')}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
-                          {t('common.cancel')}
-                        </Button>
-                      </span>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmId(pk.id)}>
-                        {t('common.delete')}
-                      </Button>
-                    )}
+                    <DeleteButton onDelete={() => remove(pk.id)}>{t('common.delete')}</DeleteButton>
                   </li>
                 ))}
               </ul>

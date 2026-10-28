@@ -77,10 +77,12 @@ describe('ApiTokensCard (US-174)', () => {
     expect(screen.queryByText('Controlar dispositivos')).not.toBeInTheDocument();
   });
 
-  it('revoca un token', async () => {
+  it('un clic en revocar no revoca; Confirmar sí', async () => {
     render(<ApiTokensCard />);
     await screen.findByText('HA');
     fireEvent.click(screen.getByRole('button', { name: 'Revocar' }));
+    expect(tokensMock.revokeApiToken).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(tokensMock.revokeApiToken).toHaveBeenCalledWith('t1'));
   });
 });

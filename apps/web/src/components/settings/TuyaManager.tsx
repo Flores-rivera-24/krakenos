@@ -1,6 +1,7 @@
 import type { CreateTuyaDeviceRequest, TuyaDeviceView, TuyaProtocolVersion } from '@krakenos/types';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -137,7 +138,6 @@ export function TuyaManager({ reachable }: Props) {
   const t = useT();
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const lectura = useLectura(() => api.getList<TuyaDeviceView>('/iot/tuya/devices'), []);
@@ -211,46 +211,23 @@ export function TuyaManager({ reachable }: Props) {
                       {d.deviceId.slice(0, 8)}…
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {deletingId === d.deviceId ? (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="text-kr-xs text-kr-secondary">{t('tuya.deleteQ')}</span>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() =>
-                              handle(async () => {
-                                await trasEscribir(
-                                  api.del(`/iot/tuya/devices/${d.deviceId}`),
-                                  invalidarIot,
-                                );
-                                setDeletingId(null);
-                              })
-                            }
-                          >
-                            {t('common.yes')}
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setDeletingId(null)}>
-                            {t('common.no')}
-                          </Button>
-                        </span>
-                      ) : (
-                        <span className="inline-flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingId(d.deviceId)}
-                          >
-                            {t('common.edit')}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeletingId(d.deviceId)}
-                          >
-                            {t('common.delete')}
-                          </Button>
-                        </span>
-                      )}
+                      <span className="inline-flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setEditingId(d.deviceId)}>
+                          {t('common.edit')}
+                        </Button>
+                        <DeleteButton
+                          onDelete={() =>
+                            handle(async () => {
+                              await trasEscribir(
+                                api.del(`/iot/tuya/devices/${d.deviceId}`),
+                                invalidarIot,
+                              );
+                            })
+                          }
+                        >
+                          {t('common.delete')}
+                        </DeleteButton>
+                      </span>
                     </td>
                   </>
                 )}

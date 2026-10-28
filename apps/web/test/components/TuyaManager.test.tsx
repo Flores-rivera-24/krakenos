@@ -67,15 +67,14 @@ describe('TuyaManager', () => {
     );
   });
 
-  it('eliminar pide confirmación inline antes del DELETE', async () => {
+  it('un clic en eliminar no borra; Confirmar sí', async () => {
     const user = userEvent.setup();
     render(<TuyaManager reachable={new Set()} />);
     await screen.findByText('Salón');
 
     await user.click(screen.getByRole('button', { name: 'Eliminar' }));
-    expect(screen.getByText('¿Eliminar?')).toBeInTheDocument();
     expect(apiMock.del).not.toHaveBeenCalled();
-    await user.click(screen.getByRole('button', { name: 'Sí' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() =>
       expect(apiMock.del).toHaveBeenCalledWith('/iot/tuya/devices/abcdef1234567890'),
     );
@@ -115,7 +114,7 @@ describe('TuyaManager', () => {
     await screen.findByText('Salón');
     apiMock.get.mockRejectedValue(new Error('caído'));
     await user.click(screen.getByRole('button', { name: 'Eliminar' }));
-    await user.click(screen.getByRole('button', { name: 'Sí' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalled());
     expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
     expect(screen.getByText('Salón')).toBeInTheDocument();
