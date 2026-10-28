@@ -15,6 +15,9 @@ import { ficheros, nombreDe, sinComentariosConLineas } from './_fuentes';
  * de letra sin `md:`: `cn` (tailwind-merge) lo dejaría ganar al `text-base` de la base y el campo
  * volvería a hacer zoom, sin un solo error.
  *
+ * Limitación: `tokensDe` solo ve literales y constantes de módulo en MAYÚSCULAS; una clase que llegue por
+ * prop o por otra variable no se ve.
+ *
  * Casillas, radios, rangos, ficheros, colores y botones no son campos de texto: quedan fuera.
  * El e2e `tactil.spec.ts` mide el efecto real (font-size calculado y altura).
  */
@@ -138,6 +141,8 @@ export function defectosDe(c: Campo): string[] {
   if (chica.length) falta.push(`letra sin md: (${chica.join(', ')})`);
   if (nativo) {
     if (!c.tokens.includes('text-base')) falta.push('sin text-base');
+    else if (!c.tokens.some((x) => /^md:text-/.test(x)))
+      falta.push('text-base sin md:text-… (crecería a 16 px en escritorio)');
     if (c.etiqueta !== 'textarea') {
       if (!c.tokens.includes('min-h-11')) falta.push('sin min-h-11');
       if (!c.tokens.includes('md:min-h-0')) falta.push('sin md:min-h-0');
@@ -193,6 +198,7 @@ describe('campos editables en el celular', () => {
       '<input\n  type="text"\n  className={cn(\n    "text-base",\n    "text-sm",\n  )}\n/>',
       '<Input id="a" className="text-sm md:text-sm" />',
       '<textarea className="rounded-md" />',
+      '<select className="text-base min-h-11 md:min-h-0" />',
     ];
     for (const m of malo) expect(hallazgosDe('muestra.tsx', m)).toHaveLength(1);
 

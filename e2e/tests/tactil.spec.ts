@@ -348,4 +348,15 @@ test.describe('escritorio', () => {
     expect(await lista.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
     expect((await lista.boundingBox())!.height).toBe(40);
   });
+  test('el precio de Energía mide lo mismo que antes: 14 px de letra y 30 px de alto', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.getByRole('link', { name: 'Energía' }).first().click();
+    const precio = page.getByLabel('Precio por kWh');
+    await expect(precio).toBeVisible();
+    await expect(precio).toBeEnabled();
+    expect(await precio.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
+    expect((await precio.boundingBox())!.height).toBe(30);
+  });
 });

@@ -499,7 +499,7 @@ export function CoveragePage() {
                       prev.map((w) => (w.id === selectedWallId ? { ...w, material } : w)),
                     );
                   }}
-                  className="h-8 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base min-h-11 md:min-h-0"
+                  className="h-8 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base md:text-kr-sm min-h-11 md:min-h-0"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
