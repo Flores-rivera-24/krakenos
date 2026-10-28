@@ -106,7 +106,9 @@ test.describe('móvil', () => {
     await page.evaluate(() => window.scrollTo(0, 1500));
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(1000);
 
-    await page.getByRole('link', { name: 'Conectar' }).first().click();
+    // Conectar ya no está en la barra inferior (decisión del dueño, 2026-10-27): vive en «Más».
+    await page.getByRole('button', { name: 'Más' }).click();
+    await page.getByRole('dialog').getByRole('link', { name: 'Conectar' }).click();
     await expect(page).toHaveURL(/\/connect$/);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     // Precondición: que la página de destino PUEDA desplazarse. Sin el arreglo, el navegador
