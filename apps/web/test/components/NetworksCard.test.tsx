@@ -70,10 +70,24 @@ describe('NetworksCard', () => {
     render(<NetworksCard />);
     await screen.findByText('KrakenOS');
 
-    fireEvent.click(screen.getByRole('button', { name: '1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Clientes de KrakenOS: 1' }));
     expect(await screen.findByText(/Clientes ·/)).toBeInTheDocument();
     expect(screen.getByText('laptop')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/wifi/networks/net-1/clients');
+  });
+
+  it('el botón de clientes dice de qué red son', async () => {
+    setRole('admin');
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/wifi/access-points') return Promise.resolve(APS);
+      if (path === '/wifi/networks')
+        return Promise.resolve([{ ...NETS[0]!, ssid: 'Casa', clientCount: 12 }]);
+      return Promise.resolve(CLIENTS);
+    });
+    render(<NetworksCard />);
+    await screen.findByText('Casa');
+    const boton = screen.getByRole('button', { name: 'Clientes de Casa: 12' });
+    expect(boton).toHaveAttribute('type', 'button');
   });
 
   it('un admin puede alternar una red (PUT)', async () => {

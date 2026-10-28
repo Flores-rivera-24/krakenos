@@ -64,6 +64,7 @@ export const esWifi = {
   'wifi.networks.active': 'Activa',
   'wifi.networks.guestTag': '(invitados)',
   'wifi.networks.clientsOf': 'Clientes · {ssid}',
+  'wifi.networks.clientsButton': 'Clientes de {ssid}: {n}',
   'wifi.networks.signal': 'Señal',
 } as const;
 

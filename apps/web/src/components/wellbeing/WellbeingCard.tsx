@@ -104,7 +104,7 @@ export function WellbeingCard() {
                     {formatBytes(p.totalBytes)}
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-muted">
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${Math.max(2, (p.totalBytes / max) * 100)}%` }}

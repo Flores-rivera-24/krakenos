@@ -11,6 +11,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { formatBytes } from '@/lib/format';
 import { WellbeingCard } from '@/components/wellbeing/WellbeingCard';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -50,6 +51,15 @@ describe('WellbeingCard (US-184)', () => {
     expect(await screen.findByText('Ana')).toBeInTheDocument();
     // El grupo sin dueño se localiza a partir de userId === null.
     expect(screen.getByText('Sin asignar')).toBeInTheDocument();
+  });
+
+  it('las barras de uso por persona no se anuncian; el valor sigue como texto', async () => {
+    render(<WellbeingCard />);
+    await screen.findByText('Ana');
+    const filas = screen.getAllByRole('listitem');
+    const barra = filas[0]!.querySelector('.h-2');
+    expect(barra).toHaveAttribute('aria-hidden', 'true');
+    expect(filas[0]).toHaveTextContent(formatBytes(2_500_000));
   });
 
   it('un dueño sin nombre se llama «Desconocido», no vacío ni null', async () => {

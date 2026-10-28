@@ -125,6 +125,7 @@ export const esPanel = {
   'widget.traffic.error': 'No se pudo cargar el tráfico WAN.',
   'widget.traffic.down': 'Descarga',
   'widget.traffic.up': 'Subida',
+  'widget.traffic.chartAria': 'Gráfico de tráfico WAN. Ahora: descarga {down}, subida {up}.',
   'widget.wifi.empty': 'Sin redes WiFi.',
   'widget.wifi.error': 'No se pudieron cargar las redes WiFi.',
   'widget.toggle.on': 'Encender',

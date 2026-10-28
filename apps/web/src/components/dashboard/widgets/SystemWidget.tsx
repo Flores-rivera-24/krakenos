@@ -13,7 +13,7 @@ function Meter({ label, percent, detail }: { label: string; percent: number; det
         <span className="text-kr-secondary">{label}</span>
         <span className="text-kr-primary">{detail}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-kr-elevated">
+      <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-kr-elevated">
         <div
           className="h-full rounded-full bg-kr-accent transition-all"
           style={{ width: `${Math.min(100, percent)}%` }}

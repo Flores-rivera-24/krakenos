@@ -1,6 +1,6 @@
 import type { TrafficSample } from '@krakenos/types';
 import { useEffect, useMemo, useState } from 'react';
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -90,42 +90,56 @@ export function TrafficWidget() {
             {t('widget.traffic.waiting')}
           </p>
         ) : (
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="rx" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--kr-accent)" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="var(--kr-accent)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="tx" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="var(--kr-success)" stopOpacity={0.4} />
-                  <stop offset="95%" stopColor="var(--kr-success)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="t" stroke="var(--kr-text-secondary)" fontSize={11} minTickGap={40} />
-              <YAxis
-                stroke="var(--kr-text-secondary)"
-                fontSize={11}
-                tickFormatter={(v: number) => formatRateCompact(v)}
-                width={46}
-              />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatRate(v)} />
-              <Area
-                type="monotone"
-                dataKey="rx"
-                name={t('widget.traffic.down')}
-                stroke="var(--kr-accent)"
-                fill="url(#rx)"
-              />
-              <Area
-                type="monotone"
-                dataKey="tx"
-                name={t('widget.traffic.up')}
-                stroke="var(--kr-success)"
-                fill="url(#tx)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          <div
+            role="img"
+            aria-label={t('widget.traffic.chartAria', {
+              down: formatRate(last?.rxBytesPerSec ?? 0),
+              up: formatRate(last?.txBytesPerSec ?? 0),
+            })}
+          >
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="rx" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--kr-accent)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--kr-accent)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="tx" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="var(--kr-success)" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="var(--kr-success)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="t"
+                  stroke="var(--kr-text-secondary)"
+                  fontSize={11}
+                  minTickGap={40}
+                />
+                <YAxis
+                  stroke="var(--kr-text-secondary)"
+                  fontSize={11}
+                  tickFormatter={(v: number) => formatRateCompact(v)}
+                  width={46}
+                />
+                <Legend />
+                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatRate(v)} />
+                <Area
+                  type="monotone"
+                  dataKey="rx"
+                  name={t('widget.traffic.down')}
+                  stroke="var(--kr-accent)"
+                  fill="url(#rx)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tx"
+                  name={t('widget.traffic.up')}
+                  stroke="var(--kr-success)"
+                  fill="url(#tx)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </CardContent>
     </Card>
