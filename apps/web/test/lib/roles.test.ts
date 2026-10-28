@@ -94,5 +94,8 @@ describe('lib/roles + nav por rol (US-179)', () => {
 
     const admin = mobileNavForRole('admin');
     expect(admin.primary.map((i) => i.to)).toContain('/traffic');
+    // 4 destinos + «Más» = 5 celdas; Conectar va en «Más», el primero (General va antes).
+    expect(admin.primary.map((i) => i.to)).toEqual(['/', '/inventory', '/iot', '/traffic']);
+    expect(admin.secondary.map((i) => i.to)[0]).toBe('/connect');
   });
 });

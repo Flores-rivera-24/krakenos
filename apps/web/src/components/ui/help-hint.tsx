@@ -1,5 +1,5 @@
 import { HelpCircle } from 'lucide-react';
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
@@ -15,6 +15,21 @@ export interface HelpHintProps {
   /** Clases extra para el botón disparador (p. ej. para envolver texto inline). */
   triggerClassName?: string;
   className?: string;
+}
+
+/**
+ * Desplazamiento horizontal (px) que mete la burbuja en `[margin, viewportWidth - margin]`.
+ * 0 si ya cabe; si es más ancha que el hueco, se alinea a su izquierda.
+ */
+export function clampHintShift(
+  rect: { left: number; right: number },
+  viewportWidth: number,
+  margin = 8,
+): number {
+  const hueco = viewportWidth - 2 * margin;
+  if (rect.right - rect.left > hueco || rect.left < margin) return margin - rect.left;
+  if (rect.right > viewportWidth - margin) return viewportWidth - margin - rect.right;
+  return 0;
 }
 
 /**
@@ -35,6 +50,7 @@ export function HelpHint({
   const t = useT();
   const bubbleId = useId();
   const containerRef = useRef<HTMLSpanElement>(null);
+  const bubbleRef = useRef<HTMLSpanElement>(null);
   // El estado se deriva de tres fuentes independientes: ratón, foco y clic
   // fijado. Así, salir con el ratón no cierra si sigue enfocado, y al revés.
   const [hover, setHover] = useState(false);
@@ -47,6 +63,16 @@ export function HelpHint({
     setFocus(false);
     setPinned(false);
   };
+
+  // Al abrir: se mide la burbuja SIN desplazamiento adicional y se le aplica el ajuste que la
+  // mete en la pantalla (a 320 px el `-translate-x-1/2` centrado la sacaba por un lado).
+  useLayoutEffect(() => {
+    const el = bubbleRef.current;
+    if (!open || !el) return;
+    el.style.setProperty('--hint-shift', '0px');
+    const shift = clampHintShift(el.getBoundingClientRect(), document.documentElement.clientWidth);
+    el.style.setProperty('--hint-shift', `${shift}px`);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +113,8 @@ export function HelpHint({
         onClick={() => setPinned((p) => !p)}
         className={cn(
           'inline-flex items-center gap-1 rounded-sm text-kr-secondary hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring',
-          children == null && 'h-5 w-5 justify-center rounded-full',
+          // Solo el icono: con texto en línea (GlossaryTerm) el ::before de 44 px taparía las líneas vecinas.
+          children == null && 'relative tap-target h-5 w-5 justify-center rounded-full',
           triggerClassName,
         )}
       >
@@ -95,10 +122,11 @@ export function HelpHint({
       </button>
       {open && (
         <span
+          ref={bubbleRef}
           id={bubbleId}
           role="tooltip"
           className={cn(
-            'absolute left-1/2 z-50 w-max max-w-xs -translate-x-1/2 rounded-md border border-kr bg-kr-elevated px-3 py-2 text-left text-kr-sm font-normal text-kr-primary shadow-lg',
+            'absolute left-1/2 z-50 w-max max-w-[min(20rem,calc(100vw-1rem))] translate-x-[calc(-50%+var(--hint-shift,0px))] rounded-md border border-kr bg-kr-elevated px-3 py-2 text-left text-kr-sm font-normal text-kr-primary shadow-lg',
             placement === 'top' ? 'bottom-full mb-2' : 'top-full mt-2',
           )}
         >

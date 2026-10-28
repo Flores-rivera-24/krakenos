@@ -100,7 +100,7 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
           <StaleBadge className="absolute left-2 top-2" />
         )}
         {camera.online && !live && (
-          <span className="absolute right-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-danger">
+          <span className="absolute right-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-kr-xs font-medium text-danger">
             {t('cameras.live')}
           </span>
         )}

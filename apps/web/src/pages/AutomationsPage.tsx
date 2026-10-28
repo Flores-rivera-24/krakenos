@@ -58,7 +58,7 @@ import '@/lib/i18n/catalog/fragments/personas';
 import '@/lib/i18n/catalog/fragments/rutinas';
 
 const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring';
+  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-base md:text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring min-h-11 md:min-h-0';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -386,7 +386,7 @@ function RuleEditor({
           aria-label={diasCompletos(t)[d]}
           onClick={() => onToggle(d)}
           className={cn(
-            'h-9 w-11 rounded-md border text-kr-xs transition-colors',
+            'h-11 w-11 rounded-md border md:h-9 text-kr-xs transition-colors',
             selected.includes(d)
               ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
               : 'border-kr bg-kr-elevated text-kr-muted',

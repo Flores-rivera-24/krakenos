@@ -105,7 +105,12 @@ function DeviceCard({
           <CardTitle className="text-sm text-foreground">{device.name}</CardTitle>
         </div>
         <div className="flex items-center gap-1">
-          <FavoriteButton kind="iot" ref_={device.id} label={device.name} />
+          <FavoriteButton
+            kind="iot"
+            ref_={device.id}
+            label={device.name}
+            className="h-11 w-11 md:h-8 md:w-8"
+          />
           {/* US-265: el interruptor es de `light`/`plug` y la lista vive en el
               contrato. Antes se pintaba para todo lo que no fuese `sensor`, así que
               una cerradura, un detector de humo y un sensor de contacto tenían un

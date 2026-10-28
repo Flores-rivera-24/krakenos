@@ -100,7 +100,7 @@ function FocoForm({
           value={form.version}
           onChange={(e) => set('version', e.target.value)}
           disabled={initial.deviceId !== ''}
-          className="h-10 w-full rounded-md border border-kr-field bg-kr-surface px-3 text-kr-base text-kr-primary"
+          className="h-10 w-full rounded-md border border-kr-field bg-kr-surface px-3 text-base md:text-kr-base text-kr-primary min-h-11 md:min-h-0"
         >
           {VERSIONS.map((v) => (
             <option key={v} value={v}>

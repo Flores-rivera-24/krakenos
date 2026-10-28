@@ -269,7 +269,7 @@ function AutoBackupSection() {
           <Label htmlFor="bk-auto-freq">{t('backup.auto.freq')}</Label>
           <select
             id="bk-auto-freq"
-            className="h-9 w-full rounded-md border border-kr-field bg-kr-elevated px-2 text-kr-sm text-kr-primary"
+            className="h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
             value={status.frequency}
             onChange={(e) => void patchSetting('autoBackupFrequency', e.target.value)}
           >

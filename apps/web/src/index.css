@@ -176,6 +176,33 @@
   }
 }
 
+/* === `tap-target`: área de toque de 44 px sin cambiar el aspecto ===
+   La US-235 solo resolvió `Button` (44 px bajo `md` en `buttonVariants`); lo que no es `Button`
+   (interruptor, estrella, cierres, ayuda, copiar) quedaba en 20-32 px. Esta utilidad ensancha el
+   área tocable con un `::before` transparente centrado de al menos 2,75 rem que bajo `md`
+   (48 rem) desaparece: en escritorio no cambia nada.
+   NO fija `position`: el control la declara él (`relative|absolute|fixed|sticky`), o el
+   `::before` se ancla a un ancestro y cubre media pantalla. Lo ata `test/lib/tap-target.test.ts`.
+   Regla de uso: control AISLADO -> `tap-target`; controles CONTIGUOS (dos áreas ampliadas a menos
+   de 44 px entre centros se pisan y el toque cae en el equivocado) -> tamaño real. Y un padre con
+   `overflow-hidden` recorta el área ampliada. Lo mide `e2e/tests/tactil.spec.ts`. */
+@utility tap-target {
+  &::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 2.75rem);
+    height: max(100%, 2.75rem);
+    transform: translate(-50%, -50%);
+  }
+  @variant md {
+    &::before {
+      content: none;
+    }
+  }
+}
+
 /* Colores con nombre que significan algo distinto según la propiedad (ver arriba).
    Sin modificador de opacidad: nunca lo han admitido (la v3 tampoco lo generaba). */
 @utility bg-kr-base {

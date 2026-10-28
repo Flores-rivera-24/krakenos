@@ -299,7 +299,7 @@ export function SurveyPanel({
                 id="survey-band"
                 value={band}
                 onChange={(e) => setBand(e.target.value as WifiBand)}
-                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
               >
                 {BANDS.map((b) => (
                   <option key={b} value={b}>
@@ -315,7 +315,7 @@ export function SurveyPanel({
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
                 disabled={devicesFailed}
-                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary"
+                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
               >
                 <option value="">{t('survey.manualOption')}</option>
                 {devices.map((d) => (
@@ -382,7 +382,7 @@ export function SurveyPanel({
                       type="button"
                       onClick={() => void handleDelete(scan.id)}
                       aria-label={t('survey.deleteAria', { name: scan.name })}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
+                      className="relative tap-target flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>

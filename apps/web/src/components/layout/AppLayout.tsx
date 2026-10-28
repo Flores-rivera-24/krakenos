@@ -34,7 +34,7 @@ function CargandoPagina() {
 
 const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 
-// Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 6 celdas encojan por
+// Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 5 celdas (4 destinos y «Más») encojan por
 // igual a ≤375px (en vez de `min-w-[4rem]`, que sumaba 384px y desbordaba), y la
 // etiqueta trunca para no solaparse con la vecina (US-97).
 const BOTTOM_ITEM_BASE = 'flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 px-0.5 py-2';
@@ -77,7 +77,7 @@ function MobileBottomNav() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="mas-secciones-titulo"
-            className="absolute inset-x-0 bottom-14 rounded-t-xl border-t border-kr bg-kr-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] rounded-t-xl border-t border-kr bg-kr-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -91,7 +91,7 @@ function MobileBottomNav() {
                 type="button"
                 aria-label={t('common.close')}
                 onClick={() => setMoreOpen(false)}
-                className="-m-2 p-2 text-kr-secondary"
+                className="relative tap-target -m-2 p-2 text-kr-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -128,7 +128,7 @@ function MobileBottomNav() {
         {primary.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="w-full truncate text-center text-[10px] leading-tight">
+            <span className="w-full truncate text-center text-kr-xs leading-tight">
               {t(labelKey)}
             </span>
           </NavLink>
@@ -140,7 +140,7 @@ function MobileBottomNav() {
           className={cn(BOTTOM_ITEM_BASE, moreOpen ? 'text-kr-link' : 'text-kr-secondary')}
         >
           <MoreHorizontal className="h-5 w-5 shrink-0" />
-          <span className="w-full truncate text-center text-[10px] leading-tight">
+          <span className="w-full truncate text-center text-kr-xs leading-tight">
             {t('layout.more')}
           </span>
         </button>
@@ -179,7 +179,7 @@ export function AppLayout() {
   useRouteAnnounce(mainRef);
 
   return (
-    <div className="flex min-h-screen bg-kr-base text-kr-primary">
+    <div className="flex min-h-dvh bg-kr-base text-kr-primary">
       {/* Skip-link (US-235): con teclado había que tabular por toda la navegación
           en CADA vista antes de llegar al contenido. Invisible hasta enfocarlo. */}
       <a
@@ -202,7 +202,7 @@ export function AppLayout() {
             type="button"
             onClick={() => void logout()}
             aria-label={t('common.logout')}
-            className="text-kr-sm text-kr-secondary hover:text-kr-primary"
+            className="min-h-11 px-2 text-kr-sm text-kr-secondary hover:text-kr-primary md:min-h-0 md:px-0"
           >
             {t('common.logout')}
           </button>

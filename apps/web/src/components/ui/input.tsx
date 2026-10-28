@@ -7,7 +7,7 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
       type={type}
       ref={ref}
       className={cn(
-        'flex h-10 w-full rounded-md border border-kr-field bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'flex min-h-11 md:min-h-0 h-10 w-full rounded-md border border-kr-field bg-background px-3 py-2 text-base md:text-sm placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}

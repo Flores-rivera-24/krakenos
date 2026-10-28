@@ -178,7 +178,7 @@ function EnergyPageBody() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle>{t('energy.consumptionChart', { unit })}</CardTitle>
           <div className="flex items-center gap-2">
             <div className="flex gap-1" role="group" aria-label={t('energy.rangeLabel')}>
@@ -188,7 +188,7 @@ function EnergyPageBody() {
                   type="button"
                   onClick={() => setRange(r.value)}
                   aria-pressed={range === r.value}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
                     range === r.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -307,7 +307,7 @@ function EnergyPageBody() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.15"
-                  className="w-32 rounded-md border border-kr-field bg-transparent px-2 py-1"
+                  className="w-32 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
                   aria-label={t('energy.pricePerKwh')}
                 />
               </label>
@@ -318,7 +318,7 @@ function EnergyPageBody() {
                   maxLength={8}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1"
+                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
                   aria-label={t('energy.currency')}
                 />
               </label>

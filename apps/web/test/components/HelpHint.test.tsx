@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { configureAxe, toHaveNoViolations } from 'jest-axe';
 import { describe, expect, it } from 'vitest';
-import { HelpHint } from '@/components/ui/help-hint';
+import { HelpHint, clampHintShift } from '@/components/ui/help-hint';
 
 expect.extend(toHaveNoViolations);
 const axe = configureAxe({
@@ -9,6 +9,15 @@ const axe = configureAxe({
 });
 
 describe('HelpHint', () => {
+  it('el disparador de icono lleva tap-target y el de texto en línea no (su ::before robaría el toque a las líneas vecinas)', () => {
+    const { unmount } = render(<HelpHint content="c" />);
+    const icono = screen.getByRole('button', { name: 'Más información' });
+    expect(icono).toHaveClass('tap-target', 'relative');
+    unmount();
+    render(<HelpHint content="c">SSID</HelpHint>);
+    expect(screen.getByRole('button', { name: 'SSID' })).not.toHaveClass('tap-target');
+  });
+
   it('tiene etiqueta accesible por defecto y arranca cerrado', () => {
     render(<HelpHint content="Explicación" />);
     const trigger = screen.getByRole('button', { name: 'Más información' });
@@ -95,5 +104,23 @@ describe('HelpHint', () => {
     const { container } = render(<HelpHint content="Explicación clara del término" />);
     fireEvent.click(screen.getByRole('button'));
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('clampHintShift', () => {
+  it('mete en pantalla una burbuja que se sale por la izquierda', () => {
+    expect(clampHintShift({ left: -114, right: 174 }, 320)).toBe(122);
+  });
+  it('mete en pantalla una burbuja que se sale por la derecha', () => {
+    expect(clampHintShift({ left: 200, right: 340 }, 320)).toBe(-28);
+  });
+  it('no mueve una burbuja que ya cabe', () => {
+    expect(clampHintShift({ left: 20, right: 300 }, 320)).toBe(0);
+  });
+  it('si es más ancha que el hueco, la alinea a la izquierda del hueco', () => {
+    expect(clampHintShift({ left: -20, right: 400 }, 320)).toBe(28);
+  });
+  it('respeta un margen distinto', () => {
+    expect(clampHintShift({ left: 0, right: 100 }, 320, 16)).toBe(16);
   });
 });

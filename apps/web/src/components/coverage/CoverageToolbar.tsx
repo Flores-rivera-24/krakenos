@@ -59,7 +59,7 @@ export function CoverageToolbar({
               title={t(label)}
               onClick={() => onToolChange(id)}
               className={cn(
-                'flex h-9 items-center gap-1.5 rounded-md px-2.5 text-kr-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 md:h-9 md:min-w-0 md:justify-start text-kr-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                 active
                   ? 'bg-kr-accent text-white'
                   : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
@@ -79,7 +79,7 @@ export function CoverageToolbar({
             value={wallMaterial}
             disabled={!canEdit}
             onChange={(e) => onWallMaterialChange(e.target.value as WallMaterial)}
-            className="h-9 rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary disabled:opacity-50"
+            className="h-9 rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0"
           >
             {WALL_MATERIALS.map((m) => (
               <option key={m} value={m}>

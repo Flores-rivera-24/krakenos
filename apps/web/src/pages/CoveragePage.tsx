@@ -401,7 +401,7 @@ export function CoveragePage() {
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
                 aria-label={t('coverage.planLabel')}
-                className="h-9 rounded-md border border-kr-field bg-background px-2 text-kr-sm text-kr-primary"
+                className="h-9 rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
               >
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -422,7 +422,7 @@ export function CoveragePage() {
                     aria-pressed={view === v.id}
                     onClick={() => setView(v.id)}
                     className={cn(
-                      'h-8 rounded-sm px-3 text-kr-sm transition-colors',
+                      'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
                       view === v.id
                         ? 'bg-kr-accent text-white'
                         : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
@@ -446,7 +446,7 @@ export function CoveragePage() {
                       aria-pressed={band === b}
                       onClick={() => setBand(b)}
                       className={cn(
-                        'h-8 rounded-sm px-3 text-kr-sm transition-colors',
+                        'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
                         band === b
                           ? 'bg-kr-accent text-white'
                           : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
@@ -499,7 +499,7 @@ export function CoveragePage() {
                       prev.map((w) => (w.id === selectedWallId ? { ...w, material } : w)),
                     );
                   }}
-                  className="h-8 rounded-md border border-kr-field bg-background px-2 text-kr-primary"
+                  className="h-8 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base md:text-kr-sm min-h-11 md:min-h-0"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
@@ -536,8 +536,8 @@ export function CoveragePage() {
               </Callout>
             )}
 
-            <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
+              <div className="space-y-3 max-lg:min-w-0">
                 {view === 'predict' && heatmapLoading ? (
                   <Skeleton className="h-[420px] w-full rounded-xl" />
                 ) : (

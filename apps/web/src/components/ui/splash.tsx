@@ -28,7 +28,7 @@ export function Splash({ label, fullScreen = true, className }: SplashProps) {
       aria-label={texto}
       className={cn(
         'relative flex flex-col items-center justify-center gap-7 overflow-hidden bg-kr-base',
-        fullScreen ? 'min-h-screen' : 'min-h-[60vh] w-full',
+        fullScreen ? 'min-h-dvh' : 'min-h-[60vh] w-full',
         'animate-kr-fade-in',
         className,
       )}

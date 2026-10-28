@@ -155,7 +155,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                 <DeleteButton
                   onDelete={() => remove(s)}
                   aria-label={t('access.deleteLabel', { name: s.name })}
-                  className="px-1 text-kr-secondary hover:text-danger"
+                  className="min-w-11 px-1 text-kr-secondary hover:text-danger md:min-w-0"
                 >
                   ✕
                 </DeleteButton>

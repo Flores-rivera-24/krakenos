@@ -78,7 +78,7 @@ export function Slideover({
             type="button"
             onClick={onClose}
             aria-label={t('common.close')}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
+            className="relative tap-target flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
           >
             <X className="h-5 w-5" />
           </button>

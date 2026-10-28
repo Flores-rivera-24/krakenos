@@ -210,6 +210,15 @@ export function FloorPlanStage({
     }
   };
 
+  // Un cancelamiento del sistema (gesto, llamada) suelta el AP y descarta el trazo sin guardarlo.
+  const onSvgPointerCancel = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (dragApRef.current || wallDraft) {
+      dragApRef.current = null;
+      setWallDraft(null);
+      svgRef.current?.releasePointerCapture(e.pointerId);
+    }
+  };
+
   const onApPointerDown = (e: React.PointerEvent<SVGGElement>, ap: ApPlacement) => {
     if (readOnly || tool !== 'select') return;
     e.stopPropagation();
@@ -218,12 +227,11 @@ export function FloorPlanStage({
     svgRef.current?.setPointerCapture(e.pointerId);
   };
 
-  const cursor =
-    readOnly || tool === 'select'
-      ? 'default'
-      : tool === 'ap'
-        ? 'copy'
-        : 'crosshair';
+  const cursor = readOnly || tool === 'select' ? 'default' : tool === 'ap' ? 'copy' : 'crosshair';
+  // Solo en lectura el dedo desplaza la página sobre el plano. Con cualquier herramienta de
+  // edición el svg se queda en `touch-none`: Chrome ignora `touch-action` en los hijos del svg,
+  // así que con `pan-*` el navegador cancela el arrastre de un AP a los pocos píxeles.
+  const touchClass = readOnly ? 'touch-pan-x touch-pan-y' : 'touch-none';
 
   const samples = surveySamples ?? [];
 
@@ -251,7 +259,7 @@ export function FloorPlanStage({
           width={widthPx}
           height={heightPx}
           viewBox={`0 0 ${widthPx} ${heightPx}`}
-          className="absolute inset-0 touch-none select-none"
+          className={`absolute inset-0 select-none ${touchClass}`}
           style={{ cursor }}
           role="img"
           aria-label={plural(accessPoints.length, {
@@ -261,6 +269,7 @@ export function FloorPlanStage({
           onPointerDown={onBackgroundPointerDown}
           onPointerMove={onSvgPointerMove}
           onPointerUp={onSvgPointerUp}
+          onPointerCancel={onSvgPointerCancel}
         >
           {/* Rejilla de 1 m para dar sensación de escala. */}
           <MeterGrid widthM={plan.widthM} heightM={plan.heightM} pxPerM={pxPerM} />

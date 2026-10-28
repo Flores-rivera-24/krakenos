@@ -103,8 +103,11 @@ export const NAV_GROUPS: NavGroup[] = [
 /** Lista plana de todos los ítems, en orden. */
 export const NAV_ITEMS: NavItem[] = NAV_GROUPS.flatMap((g) => g.items);
 
-/** Los 5 ítems más frecuentes para la bottom-nav móvil. */
-export const MOBILE_PRIMARY: NavItem[] = [CONNECT, DASHBOARD, DEVICES, IOT, TRAFFIC];
+/**
+ * Los 4 ítems más frecuentes para la bottom-nav móvil; con «Más» son 5 celdas. Conectar vive en «Más»
+ * (decisión del dueño, 2026-10-27): con 6 celdas las etiquetas a 11 px no caben.
+ */
+export const MOBILE_PRIMARY: NavItem[] = [DASHBOARD, DEVICES, IOT, TRAFFIC];
 
 /** El resto de ítems, accesibles desde el botón "Más" de la bottom-nav. */
 export const MOBILE_SECONDARY: NavItem[] = NAV_ITEMS.filter((i) => !MOBILE_PRIMARY.includes(i));
