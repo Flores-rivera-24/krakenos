@@ -171,6 +171,23 @@ test.describe('celular', () => {
     const caja = (await salir.boundingBox())!;
     expect(caja.height).toBeGreaterThanOrEqual(44);
   });
+
+  test('los campos del celular son de 16 px (sin zoom al enfocar) y de 44 px de alto', async ({
+    page,
+  }) => {
+    await page.goto('/login');
+    const correo = page.getByLabel('Correo electrónico');
+    await expect(correo).toBeVisible();
+    expect(await correo.evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px');
+    expect((await correo.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+    await login(page);
+    await irA(page, '/settings');
+    const lista = page.locator('main select:visible').first();
+    await expect(lista).toBeVisible();
+    expect(await lista.evaluate((el) => getComputedStyle(el).fontSize)).toBe('16px');
+    expect((await lista.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
 });
 
 test.describe('celular: capas', () => {
@@ -315,5 +332,20 @@ test.describe('escritorio', () => {
     const estrella = interruptor.locator('xpath=preceding-sibling::button[@aria-pressed][1]');
     const cajaEstrella = (await estrella.boundingBox())!;
     expect([cajaEstrella.width, cajaEstrella.height]).toEqual([32, 32]);
+  });
+
+  test('los campos miden lo mismo que antes: 14 px de letra y 40 px de alto', async ({ page }) => {
+    await page.goto('/login');
+    const correo = page.getByLabel('Correo electrónico');
+    await expect(correo).toBeVisible();
+    expect(await correo.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
+    expect((await correo.boundingBox())!.height).toBe(40);
+
+    await login(page);
+    await page.getByRole('link', { name: 'Ajustes' }).first().click();
+    const lista = page.locator('main select:visible').first();
+    await expect(lista).toBeVisible();
+    expect(await lista.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
+    expect((await lista.boundingBox())!.height).toBe(40);
   });
 });

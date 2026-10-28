@@ -32,7 +32,7 @@ import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
 
 const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-kr-base text-kr-primary disabled:opacity-50';
+  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0';
 
 interface Props {
   /** `null` mientras la lectura de ajustes carga o ha fallado. */

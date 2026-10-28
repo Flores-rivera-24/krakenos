@@ -307,7 +307,7 @@ function EnergyPageBody() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.15"
-                  className="w-32 rounded-md border border-kr-field bg-transparent px-2 py-1"
+                  className="w-32 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base min-h-11 md:min-h-0"
                   aria-label={t('energy.pricePerKwh')}
                 />
               </label>
@@ -318,7 +318,7 @@ function EnergyPageBody() {
                   maxLength={8}
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1"
+                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base min-h-11 md:min-h-0"
                   aria-label={t('energy.currency')}
                 />
               </label>

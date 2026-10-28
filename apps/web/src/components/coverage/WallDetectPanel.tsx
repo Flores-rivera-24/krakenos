@@ -73,7 +73,7 @@ export function WallDetectPanel({
                 <select
                   value={material}
                   onChange={(e) => onMaterialChange(e.target.value as WallMaterial)}
-                  className="h-8 flex-1 rounded-md border border-kr-field bg-background px-2 text-kr-primary"
+                  className="h-8 flex-1 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base min-h-11 md:min-h-0"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
