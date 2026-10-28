@@ -37,13 +37,12 @@ function montar(tool: CoverageTool, readOnly = false) {
       pxPerM={20}
     />,
   );
-  const svg = screen.getByRole('img');
-  return { svg };
+  return screen.getByRole('img');
 }
 
 describe('FloorPlanStage: gestos táctiles', () => {
   it('en solo lectura el svg deja desplazar en los dos ejes', () => {
-    const { svg } = montar('select', true);
+    const svg = montar('select', true);
     expect(svg).toHaveClass('touch-pan-x', 'touch-pan-y');
     expect(svg).not.toHaveClass('touch-none');
   });
@@ -51,7 +50,7 @@ describe('FloorPlanStage: gestos táctiles', () => {
   it.each<CoverageTool>(['select', 'wall', 'ap', 'measure'])(
     'con la herramienta %s (editando) el svg bloquea el gesto',
     (tool) => {
-      const { svg } = montar(tool);
+      const svg = montar(tool);
       expect(svg).toHaveClass('touch-none');
       expect(svg).not.toHaveClass('touch-pan-x');
       expect(svg).not.toHaveClass('touch-pan-y');
@@ -59,11 +58,20 @@ describe('FloorPlanStage: gestos táctiles', () => {
   );
 
   it('el cursor no cambia: «seleccionar» sigue siendo default', () => {
-    const { svg } = montar('select');
+    const svg = montar('select');
     expect(svg).toHaveStyle({ cursor: 'default' });
   });
 
-  it('tras un pointercancel el AP deja de seguir al puntero', () => {
+  // jsdom no implementa la captura de puntero en el svg: se dobla para poder observarla.
+  function conCaptura(svg: Element) {
+    const setPointerCapture = vi.fn();
+    const releasePointerCapture = vi.fn();
+    Object.defineProperty(svg, 'setPointerCapture', { value: setPointerCapture });
+    Object.defineProperty(svg, 'releasePointerCapture', { value: releasePointerCapture });
+    return { setPointerCapture, releasePointerCapture };
+  }
+
+  it('tras un pointercancel el AP deja de seguir al puntero y se libera la captura', () => {
     const onMoveAp = vi.fn();
     render(
       <FloorPlanStage
@@ -76,12 +84,44 @@ describe('FloorPlanStage: gestos táctiles', () => {
       />,
     );
     const svg = screen.getByRole('img');
+    const { setPointerCapture, releasePointerCapture } = conCaptura(svg);
     const asa = screen.getByRole('button', { name: /AP salón/ });
     fireEvent.pointerDown(asa, { pointerId: 1, clientX: 100, clientY: 80 });
+    expect(setPointerCapture).toHaveBeenCalledWith(1);
     fireEvent.pointerMove(svg, { pointerId: 1, clientX: 110, clientY: 90 });
     expect(onMoveAp).toHaveBeenCalledTimes(1);
+    expect(releasePointerCapture).not.toHaveBeenCalled();
     fireEvent.pointerCancel(svg, { pointerId: 1 });
+    expect(releasePointerCapture).toHaveBeenCalledWith(1);
     fireEvent.pointerMove(svg, { pointerId: 1, clientX: 200, clientY: 200 });
     expect(onMoveAp).toHaveBeenCalledTimes(1);
+  });
+
+  it('un trazo de pared cancelado no guarda la pared; uno terminado sí', () => {
+    const onAddWall = vi.fn();
+    render(
+      <FloorPlanStage
+        plan={plan}
+        walls={[]}
+        accessPoints={[ap]}
+        tool="wall"
+        pxPerM={20}
+        onAddWall={onAddWall}
+      />,
+    );
+    const svg = screen.getByRole('img');
+    const { releasePointerCapture } = conCaptura(svg);
+    fireEvent.pointerDown(svg, { pointerId: 1, clientX: 20, clientY: 20 });
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 120, clientY: 20 });
+    fireEvent.pointerCancel(svg, { pointerId: 1 });
+    fireEvent.pointerUp(svg, { pointerId: 1 });
+    expect(onAddWall).not.toHaveBeenCalled();
+    expect(releasePointerCapture).toHaveBeenCalledWith(1);
+
+    // Control positivo: el mismo trazo, terminado, sí guarda.
+    fireEvent.pointerDown(svg, { pointerId: 2, clientX: 20, clientY: 20 });
+    fireEvent.pointerMove(svg, { pointerId: 2, clientX: 120, clientY: 20 });
+    fireEvent.pointerUp(svg, { pointerId: 2 });
+    expect(onAddWall).toHaveBeenCalledTimes(1);
   });
 });
