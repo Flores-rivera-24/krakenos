@@ -19,7 +19,7 @@ interface Props {
 }
 
 /** Tiempo tras el que «Confirmar» vuelve a su estado normal. */
-const DESARMAR_MS = 5000;
+const DESARMAR_MS = 10000;
 
 /**
  * Botón de borrado con **confirmación de dos pasos** y estado pendiente por fila.
@@ -35,8 +35,12 @@ const DESARMAR_MS = 5000;
  *   que es ambiguo con lector de pantalla: el nombre del control cambiaría bajo
  *   el dedo sin avisar.
  *
- * Se **desarma solo** a los 5 s: dejarlo armado indefinidamente convierte un
- * click distraído un minuto después en un borrado.
+ * Se **desarma solo** a los 10 s: dejarlo armado indefinidamente convierte un
+ * click distraído un minuto después en un borrado, y menos tiempo no le alcanza
+ * a quien lee la pregunta con lector de pantalla o teclea despacio. Al desarmarse
+ * (por tiempo o con «Cancelar») el foco vuelve al botón original solo si estaba
+ * dentro de la confirmación: el `<span>` armado se desmonta y el foco caería en
+ * `<body>`, pero si el usuario ya se fue a otro control no se le arrebata.
  */
 export function DeleteButton({
   onDelete,
@@ -50,6 +54,15 @@ export function DeleteButton({
   const [pending, setPending] = useState(false);
   const [armado, setArmado] = useState(false);
   const confirmarRef = useRef<HTMLButtonElement>(null);
+  const originalRef = useRef<HTMLButtonElement>(null);
+  const grupoRef = useRef<HTMLSpanElement>(null);
+  const devolverFoco = useRef(false);
+
+  // Se decide ANTES de que React desmonte el grupo: después, el foco ya está en <body>.
+  const desarmar = () => {
+    devolverFoco.current = grupoRef.current?.contains(document.activeElement) ?? false;
+    setArmado(false);
+  };
 
   // Al armar, el foco va a «Confirmar»: con teclado la acción continúa donde
   // estaba en vez de perderse, y el lector de pantalla lee el botón nuevo.
@@ -58,8 +71,14 @@ export function DeleteButton({
   }, [armado]);
 
   useEffect(() => {
+    if (armado || !devolverFoco.current) return;
+    devolverFoco.current = false;
+    originalRef.current?.focus();
+  }, [armado]);
+
+  useEffect(() => {
     if (!armado) return;
-    const id = setTimeout(() => setArmado(false), DESARMAR_MS);
+    const id = setTimeout(desarmar, DESARMAR_MS);
     return () => clearTimeout(id);
   }, [armado]);
 
@@ -78,7 +97,12 @@ export function DeleteButton({
 
   if (armado && !pending) {
     return (
-      <span className="inline-flex items-center gap-1">
+      <span
+        ref={grupoRef}
+        role="group"
+        aria-label={rest['aria-label']}
+        className="inline-flex items-center gap-1"
+      >
         <Button
           ref={confirmarRef}
           type="button"
@@ -97,7 +121,7 @@ export function DeleteButton({
           size="sm"
           onClick={(e) => {
             e.stopPropagation();
-            setArmado(false);
+            desarmar();
           }}
         >
           {t('common.cancel')}
@@ -108,6 +132,7 @@ export function DeleteButton({
 
   return (
     <Button
+      ref={originalRef}
       type="button"
       variant={variant}
       size="sm"

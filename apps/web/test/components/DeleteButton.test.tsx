@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { DeleteButton } from '@/components/ui/delete-button';
 
@@ -56,7 +56,7 @@ describe('DeleteButton', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
 
         act(() => {
-          vi.advanceTimersByTime(6000);
+          vi.advanceTimersByTime(10000);
         });
 
         expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull();
@@ -65,6 +65,74 @@ describe('DeleteButton', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+
+    it('sigue armado a los 9 s', () => {
+      vi.useFakeTimers();
+      try {
+        render(<DeleteButton onDelete={() => Promise.resolve()}>Eliminar</DeleteButton>);
+        fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+        act(() => {
+          vi.advanceTimersByTime(9000);
+        });
+        expect(screen.getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('al desarmarse por tiempo, el foco vuelve al botón original', () => {
+      vi.useFakeTimers();
+      try {
+        render(<DeleteButton onDelete={() => Promise.resolve()}>Eliminar</DeleteButton>);
+        fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+        expect(screen.getByRole('button', { name: 'Confirmar' })).toHaveFocus();
+        act(() => {
+          vi.advanceTimersByTime(10000);
+        });
+        expect(screen.getByRole('button', { name: 'Eliminar' })).toHaveFocus();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('«Cancelar» devuelve el foco al botón original', () => {
+      render(<DeleteButton onDelete={() => Promise.resolve()}>Eliminar</DeleteButton>);
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+      expect(screen.getByRole('button', { name: 'Eliminar' })).toHaveFocus();
+    });
+
+    it('si el foco ya salió del grupo, desarmarse no lo mueve', () => {
+      vi.useFakeTimers();
+      try {
+        render(
+          <div>
+            <DeleteButton onDelete={() => Promise.resolve()}>Eliminar</DeleteButton>
+            <button type="button">Otro</button>
+          </div>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+        screen.getByRole('button', { name: 'Otro' }).focus();
+        act(() => {
+          vi.advanceTimersByTime(10000);
+        });
+        expect(screen.getByRole('button', { name: 'Otro' })).toHaveFocus();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('el grupo de confirmación se llama como el botón', () => {
+      render(
+        <DeleteButton onDelete={() => Promise.resolve()} aria-label="Eliminar escena Cine">
+          Eliminar
+        </DeleteButton>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar escena Cine' }));
+      const grupo = screen.getByRole('group', { name: 'Eliminar escena Cine' });
+      expect(within(grupo).getByRole('button', { name: 'Confirmar' })).toBeInTheDocument();
+      expect(within(grupo).getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     });
 
     it('`skipConfirm` borra directo (solo para lo trivial y reversible)', async () => {
