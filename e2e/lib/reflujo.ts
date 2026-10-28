@@ -20,6 +20,8 @@ interface Textos {
   sesiones: string;
   mqtt: string;
   peligro: string;
+  /** Botón de revocar una sesión (su nombre accesible), prueba de que la lista ya pintó filas. */
+  revocarSesion: RegExp;
   vistas: string;
   editar: string;
   herramientasPlano: string;
@@ -38,6 +40,7 @@ export const TEXTOS_ES: Textos = {
   sesiones: 'Sesiones activas',
   mqtt: 'Publicar a MQTT',
   peligro: 'Zona de peligro',
+  revocarSesion: /^Revocar la sesión creada/,
   vistas: 'Vista',
   editar: 'Editar',
   herramientasPlano: 'Herramientas del plano',
@@ -55,6 +58,7 @@ export const TEXTOS_EN: Textos = {
   sesiones: 'Active sessions',
   mqtt: 'Publish to MQTT',
   peligro: 'Danger zone',
+  revocarSesion: /^Revoke the session created/,
   vistas: 'View',
   editar: 'Edit',
   herramientasPlano: 'Floor plan tools',
@@ -171,7 +175,9 @@ export function registrarReflujo(textos: Textos, entrar: (page: Page) => Promise
     test('Tráfico: la cabecera del gráfico cabe', async ({ page }) => {
       await entrar(page);
       await irA(page, '/traffic', textos.mas);
+      // El título es estático: se espera al gráfico ya pintado (llegan muestras cada 2 s).
       await expect(page.getByText(textos.ancho)).toBeVisible();
+      await expect(page.locator('main .recharts-surface').first()).toBeVisible();
       await sinDesborde(page, 'Tráfico');
     });
 
@@ -179,6 +185,8 @@ export function registrarReflujo(textos: Textos, entrar: (page: Page) => Promise
       await entrar(page);
       await irA(page, '/settings', textos.mas);
       await seccion(page, textos.secciones.seguridad);
+      // Lo que cambia son las filas de sesión: se espera a una («Revocar» de la propia sesión).
+      await expect(page.getByRole('button', { name: textos.revocarSesion }).first()).toBeVisible();
       await expect(page.getByText(textos.sesiones, { exact: true })).toBeVisible();
       await expect(page.getByText(textos.peligro)).toBeVisible();
       await sinDesborde(page, 'Ajustes > Seguridad');
