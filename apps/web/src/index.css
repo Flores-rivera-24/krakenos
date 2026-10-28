@@ -374,6 +374,11 @@
       sans-serif;
     @apply bg-kr-base text-kr-primary transition-colors duration-200;
   }
+  /* No había regla de foco: los controles crudos dependían del outline del navegador, casi invisible en oscuro. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--kr-ring);
+    outline-offset: 2px;
+  }
 }
 
 /* === US-160 · Lenguaje "tecnológico": shimmer, rejilla y anillos ===

@@ -135,3 +135,61 @@ for (const enlace of PAGINAS) {
     await expect(page.locator('h1')).toHaveCount(1);
   });
 }
+
+/**
+ * Foco visible en todo control (tanda 4). Sin una regla global, un `<button>` crudo
+ * dependía del outline del navegador, casi invisible sobre el fondo oscuro.
+ *
+ * Se navega por la barra lateral (un `goto` perdería el access token en memoria) y se
+ * tabula de verdad: `:focus-visible` solo se activa con la modalidad de teclado.
+ */
+async function tabularHasta(page: Page, buscado: string): Promise<void> {
+  for (let i = 0; i < 120; i++) {
+    await page.keyboard.press('Tab');
+    const llegado = await page.evaluate(
+      (selector) => document.activeElement?.matches(selector) ?? false,
+      buscado,
+    );
+    if (llegado) return;
+  }
+  throw new Error(`Tab no llegó a ${buscado} en 120 pulsaciones`);
+}
+
+test('un botón sin estilo de foco propio enseña el anillo al tabular', async ({ page }) => {
+  await page.getByRole('link', { name: 'Energía' }).first().click();
+  await esperarPintado(page);
+  await tabularHasta(page, '[role="group"] > button[aria-pressed]');
+
+  // `transition-colors` de Tailwind incluye `outline-color`: se mide con reintento, no a mitad de la transición.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const el = document.activeElement as HTMLElement;
+        const cs = getComputedStyle(el);
+        // Se resuelve el token a un color computado con un elemento auxiliar.
+        const sonda = document.createElement('span');
+        sonda.style.color = getComputedStyle(document.documentElement).getPropertyValue(
+          '--kr-ring',
+        );
+        document.body.appendChild(sonda);
+        const anillo = getComputedStyle(sonda).color;
+        sonda.remove();
+        return `${cs.outlineStyle} ${cs.outlineWidth} ${cs.outlineColor} | ${anillo}`;
+      }),
+    )
+    .toMatch(/^solid 2px (rgb\([^)]*\)) \| \1$/);
+});
+
+test('un control con anillo propio no suma un outline', async ({ page }) => {
+  await page.getByRole('link', { name: 'Energía' }).first().click();
+  await esperarPintado(page);
+  // El botón de exportar es un `Button` de ui/button.tsx (outline-hidden + ring).
+  await tabularHasta(page, 'button[aria-label*="CSV"]');
+
+  const { estilo, color } = await page.evaluate(() => {
+    const cs = getComputedStyle(document.activeElement as HTMLElement);
+    return { estilo: cs.outlineStyle, color: cs.outlineColor };
+  });
+  const transparente = /rgba\(\s*\d+,\s*\d+,\s*\d+,\s*0\s*\)|transparent/.test(color);
+  expect(estilo === 'none' || transparente).toBe(true);
+});
