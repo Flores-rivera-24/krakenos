@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { login } from '../lib/auth.js';
-import { MOVIL, expectTapTarget } from '../lib/tactil.js';
+import { MOVIL, MOVIL_ESTRECHO, expectTapTarget } from '../lib/tactil.js';
 
 /**
  * Área de toque en el celular (390 px): los controles pequeños que no son `Button` llevan la
@@ -173,8 +173,112 @@ test.describe('celular', () => {
   });
 });
 
+test.describe('celular: capas', () => {
+  test.use({ viewport: MOVIL });
+
+  test('un toast cabe entero en la pantalla y queda por encima de la barra inferior', async ({
+    page,
+  }) => {
+    await login(page);
+    await irA(page, '/iot');
+    const favorito = page.getByRole('button', { name: /como favorito$/ }).first();
+    await expect(favorito).toBeVisible();
+    await favorito.click();
+    const descartar = page.getByRole('button', { name: 'Descartar' }).first();
+    await expect(descartar).toBeVisible();
+    const toast = descartar.locator('xpath=ancestor::div[@aria-live][1]/*[1]');
+    const caja = (await toast.boundingBox())!;
+    const ancho = await page.evaluate(() => window.innerWidth);
+    const barra = (await page.locator('nav.fixed').boundingBox())!;
+    expect(caja.x).toBeGreaterThanOrEqual(0);
+    expect(caja.x + caja.width).toBeLessThanOrEqual(ancho);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(barra.y);
+    // Deshace el favorito para no dejar estado en la base compartida.
+    await descartar.click();
+    await page
+      .getByRole('button', { name: /^Quitar .* de favoritos$/ })
+      .first()
+      .click();
+  });
+
+  test('el panel «Más» no se solapa con la barra inferior', async ({ page }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Más', exact: true }).click();
+    const panel = page.getByRole('dialog');
+    await expect(panel).toBeVisible();
+    const barra = (await page.locator('nav.fixed').boundingBox())!;
+    const caja = (await panel.boundingBox())!;
+    expect(caja.y + caja.height).toBeLessThanOrEqual(barra.y);
+  });
+
+  test('un diálogo apaisado (844 × 390) se desplaza y su último control es alcanzable', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await login(page);
+    await irA(page, '/wifi');
+    // El número de clientes de una red es el botón que abre la lista (diálogo de «Redes»).
+    const clientes = page.locator('td button:not([disabled])').first();
+    await expect(clientes).toBeVisible();
+    await clientes.click();
+    const dialogo = page.getByRole('dialog');
+    await expect(dialogo).toBeVisible();
+    const medidas = await dialogo.evaluate((el) => ({
+      alto: el.getBoundingClientRect().height,
+      scroll: el.scrollHeight,
+      cliente: el.clientHeight,
+    }));
+    expect(medidas.alto).toBeLessThanOrEqual(390);
+    expect(medidas.scroll > medidas.cliente || medidas.alto < 390).toBe(true);
+    const ultimo = dialogo.getByRole('button').last();
+    await ultimo.scrollIntoViewIfNeeded();
+    const caja = (await ultimo.boundingBox())!;
+    expect(caja.y).toBeGreaterThanOrEqual(0);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(390);
+  });
+});
+
+test.describe('celular estrecho', () => {
+  test.use({ viewport: MOVIL_ESTRECHO });
+
+  test('la burbuja de ayuda de la red WiFi queda dentro de la pantalla', async ({ page }) => {
+    await login(page);
+    await irA(page, '/wifi');
+    const ayuda = page.getByRole('button', { name: '¿Qué es un SSID oculto?' });
+    await expect(ayuda).toBeVisible();
+    await ayuda.click();
+    const burbuja = page.getByRole('tooltip');
+    await expect(burbuja).toBeVisible();
+    const caja = (await burbuja.boundingBox())!;
+    expect(caja.x).toBeGreaterThanOrEqual(0);
+    expect(caja.x + caja.width).toBeLessThanOrEqual(320);
+  });
+});
+
 test.describe('escritorio', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
+
+  test('el toast sigue en la esquina inferior derecha con su ancho de siempre', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.getByRole('link', { name: 'IoT', exact: true }).first().click();
+    const favorito = page.getByRole('button', { name: /como favorito$/ }).first();
+    await expect(favorito).toBeVisible();
+    await favorito.click();
+    const descartar = page.getByRole('button', { name: 'Descartar' }).first();
+    await expect(descartar).toBeVisible();
+    const contenedor = descartar.locator('xpath=ancestor::div[@aria-live][1]');
+    const caja = (await contenedor.boundingBox())!;
+    expect(caja.width).toBe(384);
+    expect(caja.x + caja.width).toBe(1280 - 16);
+    expect(caja.y + caja.height).toBe(800 - 16);
+    await descartar.click();
+    await page
+      .getByRole('button', { name: /^Quitar .* de favoritos$/ })
+      .first()
+      .click();
+  });
 
   test('el interruptor mide lo mismo que antes: 24 px de alto', async ({ page }) => {
     await login(page);

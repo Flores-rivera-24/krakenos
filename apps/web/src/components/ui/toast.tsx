@@ -73,7 +73,10 @@ export function Toaster() {
       aria-live="polite"
       // `aria-atomic="false"`: se anuncia solo el toast nuevo, no toda la pila.
       aria-atomic="false"
-      className="pointer-events-none fixed bottom-4 right-4 z-60 flex w-full max-w-sm flex-col gap-2"
+      // Bajo `md` ocupa el ancho (con 1rem a cada lado) y sube por encima de la barra inferior de
+      // `AppLayout`: 3.5rem de la barra (el `bottom-14` de su panel «Más») + 1rem de aire. Con
+      // `md:` vuelve a la esquina inferior derecha de siempre.
+      className="pointer-events-none fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-4 right-4 z-60 flex w-auto max-w-sm flex-col gap-2 md:bottom-4 md:left-auto md:w-full"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} />

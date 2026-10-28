@@ -77,7 +77,7 @@ function MobileBottomNav() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="mas-secciones-titulo"
-            className="absolute inset-x-0 bottom-14 rounded-t-xl border-t border-kr bg-kr-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            className="absolute inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] rounded-t-xl border-t border-kr bg-kr-elevated p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -179,7 +179,7 @@ export function AppLayout() {
   useRouteAnnounce(mainRef);
 
   return (
-    <div className="flex min-h-screen bg-kr-base text-kr-primary">
+    <div className="flex min-h-dvh bg-kr-base text-kr-primary">
       {/* Skip-link (US-235): con teclado había que tabular por toda la navegación
           en CADA vista antes de llegar al contenido. Invisible hasta enfocarlo. */}
       <a
