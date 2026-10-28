@@ -87,6 +87,7 @@ function FocoForm({
         <Input
           id="tf-localKey"
           type="password"
+          autoComplete="new-password"
           value={form.localKey}
           onChange={(e) => set('localKey', e.target.value)}
           placeholder={initial.deviceId ? t('tuya.unchanged') : ''}

@@ -109,6 +109,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
           <Input
             id="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             placeholder={t('wifi.passPlaceholder')}
             onChange={(e) => setPassword(e.target.value)}

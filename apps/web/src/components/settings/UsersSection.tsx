@@ -156,6 +156,7 @@ export function UsersSection() {
             <Input
               id="nu-pass"
               type="password"
+              autoComplete="new-password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
@@ -329,6 +330,7 @@ export function UsersSection() {
                         <div className="mt-2 flex justify-end gap-2">
                           <Input
                             type="password"
+                            autoComplete="new-password"
                             aria-label={t('users.newPassOf', { email: u.email })}
                             placeholder={t('users.newPass')}
                             value={resetValue}
