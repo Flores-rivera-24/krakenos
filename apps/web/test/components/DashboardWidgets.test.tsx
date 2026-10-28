@@ -1,5 +1,5 @@
 import type { Device } from '@krakenos/types';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -273,6 +273,12 @@ describe('Dashboard widgets', () => {
       expect(nombre).toMatch(/^Gráfico de tráfico WAN\. Ahora: descarga /);
       expect(nombre).toContain(formatRate(2_000_000));
       expect(nombre).toContain(formatRate(500_000));
+    });
+
+    it('el texto de la leyenda va en un token de texto, no en el color de la serie', async () => {
+      const grafico = await conMuestras();
+      const texto = within(grafico as HTMLElement).getByText('Descarga');
+      expect(texto).toHaveClass('text-kr-secondary');
     });
 
     it('el gráfico tiene leyenda', async () => {

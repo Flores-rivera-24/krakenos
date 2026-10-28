@@ -121,7 +121,9 @@ export function TrafficWidget() {
                   tickFormatter={(v: number) => formatRateCompact(v)}
                   width={46}
                 />
-                <Legend />
+                <Legend
+                  formatter={(value: string) => <span className="text-kr-secondary">{value}</span>}
+                />
                 <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => formatRate(v)} />
                 <Area
                   type="monotone"
