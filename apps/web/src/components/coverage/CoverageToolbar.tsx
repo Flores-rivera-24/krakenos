@@ -59,7 +59,7 @@ export function CoverageToolbar({
               title={t(label)}
               onClick={() => onToolChange(id)}
               className={cn(
-                'flex h-9 items-center gap-1.5 rounded-md px-2.5 text-kr-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                'flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-md px-2.5 md:h-9 md:min-w-0 md:justify-start text-kr-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50',
                 active
                   ? 'bg-kr-accent text-white'
                   : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',

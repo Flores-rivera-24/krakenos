@@ -382,7 +382,7 @@ export function SurveyPanel({
                       type="button"
                       onClick={() => void handleDelete(scan.id)}
                       aria-label={t('survey.deleteAria', { name: scan.name })}
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
+                      className="relative tap-target flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-kr-secondary hover:bg-kr-elevated hover:text-danger"
                     >
                       <Trash2 className="h-4 w-4" aria-hidden />
                     </button>

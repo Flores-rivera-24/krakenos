@@ -188,7 +188,7 @@ function EnergyPageBody() {
                   type="button"
                   onClick={() => setRange(r.value)}
                   aria-pressed={range === r.value}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
                     range === r.value
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-muted text-muted-foreground hover:bg-muted/80'

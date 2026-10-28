@@ -422,7 +422,7 @@ export function CoveragePage() {
                     aria-pressed={view === v.id}
                     onClick={() => setView(v.id)}
                     className={cn(
-                      'h-8 rounded-sm px-3 text-kr-sm transition-colors',
+                      'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
                       view === v.id
                         ? 'bg-kr-accent text-white'
                         : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
@@ -446,7 +446,7 @@ export function CoveragePage() {
                       aria-pressed={band === b}
                       onClick={() => setBand(b)}
                       className={cn(
-                        'h-8 rounded-sm px-3 text-kr-sm transition-colors',
+                        'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
                         band === b
                           ? 'bg-kr-accent text-white'
                           : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',

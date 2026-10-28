@@ -386,7 +386,7 @@ function RuleEditor({
           aria-label={diasCompletos(t)[d]}
           onClick={() => onToggle(d)}
           className={cn(
-            'h-9 w-11 rounded-md border text-kr-xs transition-colors',
+            'h-11 w-11 rounded-md border md:h-9 text-kr-xs transition-colors',
             selected.includes(d)
               ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
               : 'border-kr bg-kr-elevated text-kr-muted',

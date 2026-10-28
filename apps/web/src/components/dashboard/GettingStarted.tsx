@@ -115,7 +115,7 @@ export function GettingStarted() {
           type="button"
           onClick={dismiss}
           aria-label={t('gettingStarted.dismiss')}
-          className="rounded-sm p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
+          className="relative tap-target rounded-sm p-1 text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary"
         >
           <X className="h-4 w-4" />
         </button>

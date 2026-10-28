@@ -111,10 +111,10 @@ export function EnergyAlertsCard() {
                 <button
                   type="button"
                   onClick={() => void onDelete(r.id)}
-                  className="text-muted-foreground hover:text-danger"
+                  className="relative tap-target text-muted-foreground hover:text-danger"
                   aria-label={t('energy.alert.delete')}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
               </li>
             ))}

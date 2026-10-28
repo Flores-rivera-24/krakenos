@@ -113,6 +113,57 @@ test.describe('celular', () => {
     }
   });
 
+  test('borrar una alerta de energía', async ({ page }) => {
+    await login(page);
+    await irA(page, '/energy');
+    await page.getByLabel('Umbral', { exact: true }).fill('150');
+    await page.getByRole('button', { name: 'Añadir', exact: true }).click();
+    const borrar = page.getByRole('button', { name: 'Eliminar alerta' }).first();
+    await expect(borrar).toBeVisible();
+    await expectTapTarget(page, borrar);
+  });
+
+  test('mover y ocultar un widget del dashboard (modo edición) con sus vecinos', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Personalizar' }).click();
+    const subir = page.getByRole('button', { name: /^Subir / }).first();
+    await expect(subir).toBeVisible();
+    // La barra inferior es fija: se centra la fila para que no quede tapada al medir.
+    await subir.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    const fila = subir.locator('..');
+    const botones = fila.getByRole('button');
+    await expect(botones).toHaveCount(3);
+    await expectTapTarget(page, botones.nth(0), { vecinos: [botones.nth(1)] });
+    await expectTapTarget(page, botones.nth(1), { vecinos: [botones.nth(0), botones.nth(2)] });
+    await expectTapTarget(page, botones.nth(2), { vecinos: [botones.nth(1)] });
+  });
+
+  test('rango de Energía con sus hermanos', async ({ page }) => {
+    await login(page);
+    await irA(page, '/energy');
+    const botones = page.getByRole('group', { name: 'Rango' }).getByRole('button');
+    await expect(botones.first()).toBeVisible();
+    const n = await botones.count();
+    for (let i = 0; i < n; i++) {
+      const vecinos = [];
+      if (i > 0) vecinos.push(botones.nth(i - 1));
+      if (i < n - 1) vecinos.push(botones.nth(i + 1));
+      await expectTapTarget(page, botones.nth(i), { vecinos });
+    }
+  });
+
+  test('estrella y interruptor de IoT son contiguos: ninguna pisa a la otra', async ({ page }) => {
+    await login(page);
+    await irA(page, '/iot');
+    const interruptor = page.getByRole('switch').first();
+    await expect(interruptor).toBeVisible();
+    const estrella = interruptor.locator('xpath=preceding-sibling::button[@aria-pressed][1]');
+    await expectTapTarget(page, estrella, { vecinos: [interruptor] });
+    await expectTapTarget(page, interruptor, { vecinos: [estrella] });
+  });
+
   test('cerrar sesión de la barra superior mide al menos 44 px de alto', async ({ page }) => {
     await login(page);
     const salir = page.locator('header').getByRole('button', { name: 'Salir' });
@@ -138,5 +189,27 @@ test.describe('escritorio', () => {
       return !!e && el.contains(e);
     });
     expect(cae).toBe(false);
+  });
+  test('mover/ocultar del dashboard, el rango de Energía y la estrella de IoT miden lo mismo que antes', async ({
+    page,
+  }) => {
+    await login(page);
+    await page.getByRole('button', { name: 'Personalizar' }).click();
+    const subir = page.getByRole('button', { name: /^Subir / }).first();
+    await expect(subir).toBeVisible();
+    const cajaSubir = (await subir.boundingBox())!;
+    expect([cajaSubir.width, cajaSubir.height]).toEqual([24, 24]);
+
+    await page.getByRole('link', { name: 'Energía' }).first().click();
+    const rango = page.getByRole('group', { name: 'Rango' }).getByRole('button').first();
+    await expect(rango).toBeVisible();
+    expect((await rango.boundingBox())!.height).toBe(24);
+
+    await page.getByRole('link', { name: 'IoT', exact: true }).first().click();
+    const interruptor = page.getByRole('switch').first();
+    await expect(interruptor).toBeVisible();
+    const estrella = interruptor.locator('xpath=preceding-sibling::button[@aria-pressed][1]');
+    const cajaEstrella = (await estrella.boundingBox())!;
+    expect([cajaEstrella.width, cajaEstrella.height]).toEqual([32, 32]);
   });
 });

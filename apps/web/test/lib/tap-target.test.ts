@@ -78,6 +78,15 @@ const PRIMITIVAS: { fichero: string; fragmento: string }[] = [
   },
   { fichero: 'components/ui/copy-button.tsx', fragmento: 'inline-flex shrink-0 items-center' },
   { fichero: 'components/layout/AppLayout.tsx', fragmento: '-m-2 p-2 text-kr-secondary' },
+  {
+    fichero: 'components/energy/EnergyAlertsCard.tsx',
+    fragmento: 'relative tap-target text-muted-foreground',
+  },
+  { fichero: 'components/coverage/SurveyPanel.tsx', fragmento: 'relative tap-target flex h-7 w-7' },
+  {
+    fichero: 'components/dashboard/GettingStarted.tsx',
+    fragmento: 'relative tap-target rounded-sm',
+  },
 ];
 
 describe('tap-target', () => {
