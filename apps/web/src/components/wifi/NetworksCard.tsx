@@ -146,27 +146,32 @@ export function NetworksCard() {
               {t('common.close')}
             </Button>
           </div>
-          <table className="w-full text-sm">
-            <thead className="text-left text-xs text-muted-foreground">
-              <tr>
-                <th className="py-1">{t('inventory.col.device')}</th>
-                <th className="py-1">IP</th>
-                <th className="py-1">{t('wifi.networks.signal')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {clientsOf.clients.map((c) => (
-                <tr key={c.mac} className="border-t border-border">
-                  {/* Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC. */}
-                  <td className="py-1">
-                    {inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
-                  </td>
-                  <td className="py-1 font-mono text-xs">{c.ip}</td>
-                  <td className="py-1">{c.signalDbm} dBm</td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-muted-foreground">
+                <tr>
+                  <th className="py-1">{t('inventory.col.device')}</th>
+                  <th className="py-1">IP</th>
+                  <th className="py-1">{t('wifi.networks.signal')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {clientsOf.clients.map((c) => (
+                  <tr key={c.mac} className="border-t border-border">
+                    {/* Apodo del inventario primero (US-178): "Móvil de Ana", no la MAC. */}
+                    <td
+                      className="max-w-40 truncate py-1 md:max-w-none"
+                      title={inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
+                    >
+                      {inventoryLabels.get(c.mac.toLowerCase()) ?? c.hostname ?? c.mac}
+                    </td>
+                    <td className="py-1 font-mono text-xs">{c.ip}</td>
+                    <td className="py-1">{c.signalDbm} dBm</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Dialog>
       )}
     </Card>

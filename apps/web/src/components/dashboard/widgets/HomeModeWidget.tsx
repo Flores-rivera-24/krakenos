@@ -119,7 +119,7 @@ export function HomeModeWidget() {
                   disabled={!canControl || changing}
                   onClick={() => void changeMode(mode)}
                   className={cn(
-                    'flex min-h-14 flex-col items-center justify-center gap-1 rounded-lg border text-kr-sm transition-colors disabled:cursor-default disabled:opacity-60',
+                    'flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 break-words rounded-lg border text-kr-sm transition-colors disabled:cursor-default disabled:opacity-60',
                     state.mode === mode
                       ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
                       : 'border-kr bg-kr-elevated text-kr-secondary hover:text-kr-primary',

@@ -114,7 +114,7 @@ export function MqttInteropCard() {
             placeholder="mqtt://192.168.1.10:1883"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="mqtt-user">{t('settings.mqtt.username')}</Label>
             <Input
@@ -137,7 +137,7 @@ export function MqttInteropCard() {
             <p className="text-kr-xs text-kr-muted">{t('settings.mqtt.passwordKeep')}</p>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="mqtt-prefix">{t('settings.mqtt.prefix')}</Label>
             <Input

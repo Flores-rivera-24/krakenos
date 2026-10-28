@@ -279,7 +279,7 @@ function TrafficPageBody() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle>{t('traffic.bandwidth')}</CardTitle>
           {liveStale && <StaleBadge />}
         </CardHeader>

@@ -178,7 +178,7 @@ function EnergyPageBody() {
       </div>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
+        <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle>{t('energy.consumptionChart', { unit })}</CardTitle>
           <div className="flex items-center gap-2">
             <div className="flex gap-1" role="group" aria-label={t('energy.rangeLabel')}>
