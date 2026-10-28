@@ -55,7 +55,7 @@ export function FavoriteButton({ kind, ref_, label, className }: Props) {
       }
       title={isFav ? t('ui.favorite.remove') : t('ui.favorite.add')}
       className={cn(
-        'inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
+        'relative tap-target inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors disabled:opacity-50',
         isFav ? 'text-kr-accent' : 'text-kr-muted hover:text-kr-secondary',
         className,
       )}

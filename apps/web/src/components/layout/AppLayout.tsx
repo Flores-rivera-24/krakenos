@@ -91,7 +91,7 @@ function MobileBottomNav() {
                 type="button"
                 aria-label={t('common.close')}
                 onClick={() => setMoreOpen(false)}
-                className="-m-2 p-2 text-kr-secondary"
+                className="relative tap-target -m-2 p-2 text-kr-secondary"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -202,7 +202,7 @@ export function AppLayout() {
             type="button"
             onClick={() => void logout()}
             aria-label={t('common.logout')}
-            className="text-kr-sm text-kr-secondary hover:text-kr-primary"
+            className="min-h-11 px-2 text-kr-sm text-kr-secondary hover:text-kr-primary md:min-h-0 md:px-0"
           >
             {t('common.logout')}
           </button>

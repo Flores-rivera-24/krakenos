@@ -43,7 +43,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         type="button"
         aria-label={t('common.dismiss')}
         onClick={() => dismiss(toast.id)}
-        className="shrink-0 text-kr-muted hover:text-kr-primary"
+        className="relative tap-target shrink-0 text-kr-muted hover:text-kr-primary"
       >
         <X className="h-4 w-4" />
       </button>
