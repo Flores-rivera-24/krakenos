@@ -67,6 +67,19 @@ describe('TuyaManager', () => {
     );
   });
 
+  it('con un foco en edición y el alta abierta, cada etiqueta apunta a su propio campo', async () => {
+    const user = userEvent.setup();
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    await user.click(screen.getByRole('button', { name: 'Editar' }));
+    await user.click(screen.getByRole('button', { name: 'Añadir foco' }));
+    const ips = screen.getAllByLabelText('IP');
+    expect(ips).toHaveLength(2);
+    expect(ips[0]).not.toBe(ips[1]);
+    expect(ips[0]?.tagName).toBe('INPUT');
+    expect(ips[1]?.tagName).toBe('INPUT');
+  });
+
   it('un clic en eliminar no borra; Confirmar sí', async () => {
     const user = userEvent.setup();
     render(<TuyaManager reachable={new Set()} />);

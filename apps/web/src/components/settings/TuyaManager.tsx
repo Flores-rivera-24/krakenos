@@ -1,5 +1,5 @@
 import type { CreateTuyaDeviceRequest, TuyaDeviceView, TuyaProtocolVersion } from '@krakenos/types';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +41,7 @@ function FocoForm({
   onCancel: () => void;
 }) {
   const t = useT();
+  const uid = useId();
   const [form, setForm] = useState(initial);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof CreateTuyaDeviceRequest, v: string) => setForm({ ...form, [k]: v });
@@ -48,44 +49,44 @@ function FocoForm({
   return (
     <div className="grid gap-3 rounded-md border border-kr bg-kr-elevated p-3 sm:grid-cols-2">
       <div className="space-y-1">
-        <Label htmlFor="tf-name" className="text-kr-xs">
+        <Label htmlFor={`${uid}-name`} className="text-kr-xs">
           {t('tuya.name')}
         </Label>
         <Input
-          id="tf-name"
+          id={`${uid}-name`}
           value={form.name}
           onChange={(e) => set('name', e.target.value)}
           maxLength={80}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-ip" className="text-kr-xs">
+        <Label htmlFor={`${uid}-ip`} className="text-kr-xs">
           IP
         </Label>
         <Input
-          id="tf-ip"
+          id={`${uid}-ip`}
           value={form.ip}
           onChange={(e) => set('ip', e.target.value)}
           placeholder="192.168.1.x"
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-deviceId" className="text-kr-xs">
+        <Label htmlFor={`${uid}-deviceId`} className="text-kr-xs">
           Device ID
         </Label>
         <Input
-          id="tf-deviceId"
+          id={`${uid}-deviceId`}
           value={form.deviceId}
           onChange={(e) => set('deviceId', e.target.value)}
           disabled={initial.deviceId !== ''}
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-localKey" className="text-kr-xs">
+        <Label htmlFor={`${uid}-localKey`} className="text-kr-xs">
           Local Key
         </Label>
         <Input
-          id="tf-localKey"
+          id={`${uid}-localKey`}
           type="password"
           autoComplete="new-password"
           value={form.localKey}
@@ -94,11 +95,11 @@ function FocoForm({
         />
       </div>
       <div className="space-y-1">
-        <Label htmlFor="tf-version" className="text-kr-xs">
+        <Label htmlFor={`${uid}-version`} className="text-kr-xs">
           {t('tuya.version')}
         </Label>
         <select
-          id="tf-version"
+          id={`${uid}-version`}
           value={form.version}
           onChange={(e) => set('version', e.target.value)}
           disabled={initial.deviceId !== ''}

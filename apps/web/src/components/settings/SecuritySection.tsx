@@ -7,7 +7,7 @@ import type {
   WebAuthnCredentialInfo,
 } from '@krakenos/types';
 import { KeyRound } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,10 +43,20 @@ interface Props {
   ajustesPendientes: React.ReactNode;
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid gap-2 sm:grid-cols-[200px_1fr] sm:items-center">
-      <Label className="text-kr-secondary">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-kr-secondary">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -292,6 +302,7 @@ function SecurityControls({
   isAdmin: boolean;
 }) {
   const t = useT();
+  const uid = useId();
   const theme = useTheme();
 
   return (
@@ -300,10 +311,10 @@ function SecurityControls({
         <CardTitle>{t('security.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Row label={t('security.tokenTtl')}>
+        <Row label={t('security.tokenTtl')} htmlFor={`${uid}-ttl`}>
           <select
+            id={`${uid}-ttl`}
             className={SELECT_CLASS}
-            aria-label={t('security.tokenTtl')}
             value={settings.accessTokenTtl}
             disabled={!isAdmin}
             onChange={(e) => void patch('accessTokenTtl', e.target.value)}
@@ -313,10 +324,10 @@ function SecurityControls({
             <option value="28800">{t('security.ttl.8h')}</option>
           </select>
         </Row>
-        <Row label={t('security.loginLimit')}>
+        <Row label={t('security.loginLimit')} htmlFor={`${uid}-limit`}>
           <select
+            id={`${uid}-limit`}
             className={SELECT_CLASS}
-            aria-label={t('security.loginLimit')}
             value={settings.loginRateLimit}
             disabled={!isAdmin}
             onChange={(e) => void patch('loginRateLimit', e.target.value)}
@@ -326,11 +337,11 @@ function SecurityControls({
             <option value="20">{t('security.perMinute', { n: 20 })}</option>
           </select>
         </Row>
-        <Row label={t('security.darkTheme')}>
+        <Row label={t('security.darkTheme')} htmlFor={`${uid}-dark`}>
           <Switch
+            id={`${uid}-dark`}
             checked={theme === 'dark'}
             onCheckedChange={(v) => applyTheme(v ? 'dark' : 'light')}
-            aria-label={t('security.darkTheme')}
           />
         </Row>
       </CardContent>

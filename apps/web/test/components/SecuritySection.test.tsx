@@ -62,6 +62,17 @@ function renderSection(isAdmin = true, patch = vi.fn(), settings = SETTINGS) {
 }
 
 describe('SecuritySection', () => {
+  it.each([
+    ['Duración del access token', 'combobox'],
+    ['Límite de intentos de login', 'combobox'],
+    ['Tema oscuro', 'switch'],
+  ])('pulsar la etiqueta «%s» enfoca su control', async (texto, rol) => {
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(screen.getByText(texto));
+    expect(document.activeElement).toBe(screen.getByRole(rol, { name: texto }));
+  });
+
   beforeEach(() => {
     useToastStore.setState({ toasts: [] });
     apiMock.get
