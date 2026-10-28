@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 /**
  * Gate de los saltos por plataforma (US-281, Fase 11).
  *
- * La suite corre también en `windows-latest` (job no bloqueante de `ci.yml`). Lo que NO
+ * La suite corre también en `windows-latest` (job `windows` de `ci.yml`, bloqueante). Lo que NO
  * aplica en Windows se salta con `skipIf(process.platform === 'win32')` y un MOTIVO. Sin
  * contarlos, cada salto es una excepción silenciosa: la suite parece portable porque
  * deja de mirar justo donde duele.

@@ -131,18 +131,15 @@ jobs:
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
 
-  # Suite del agente y de la web en Windows (Fase 11). NO BLOQUEANTE al principio: con
-  # `continue-on-error: true` el RUN sale verde aunque falle el job, pero el check del job
-  # aparece como fallido en el PR. Eso NO bloquea el merge (no es un check requerido).
-  # Pasa a bloqueante (se quita esa línea) cuando lleve 5 pasadas verdes seguidas en main.
+  # Suite del agente y de la web en Windows (Fase 11). Bloqueante desde que llevó 5 pasadas
+  # verdes seguidas en main (hasta 30fb79b): si falla, el run sale rojo.
   # Los tests que no aplican en Windows saltan con motivo y están contados en
   # apps/agent/test/unit/saltos-por-plataforma.test.ts.
   windows:
-    name: Tests en Windows (no bloqueante)
+    name: Tests en Windows
     runs-on: windows-latest
-    # Un hijo colgado no debe gastar 6 h de minutos de Windows en un job que nadie vigila.
+    # Un hijo colgado no debe gastar 6 h de minutos de Windows: el job falla a los 30 min.
     timeout-minutes: 30
-    continue-on-error: true
 
     steps:
       - name: Checkout
