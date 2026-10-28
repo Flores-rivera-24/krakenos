@@ -177,6 +177,8 @@ export function FloorPlanStage({
       return;
     }
     if (readOnly) return;
+    // Alt+← es «atrás» del navegador, Ctrl/⌘ son atajos suyos: no son nuestros.
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
     const paso = e.shiftKey ? 1 : 0.1;
     const delta =
       e.key === 'ArrowLeft'
@@ -189,8 +191,10 @@ export function FloorPlanStage({
               ? { x: 0, y: paso }
               : null;
     if (!delta) return;
-    e.preventDefault();
     const next = clamp({ x: ap.x + delta.x, y: ap.y + delta.y });
+    // En el borde no hay movimiento: la tecla queda libre y no se llama a onMoveAp.
+    if (next.x === ap.x && next.y === ap.y) return;
+    e.preventDefault();
     onMoveAp?.(ap.id, next.x, next.y);
   };
 

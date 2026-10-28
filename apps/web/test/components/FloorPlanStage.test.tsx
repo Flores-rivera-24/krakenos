@@ -182,10 +182,18 @@ describe('FloorPlanStage: teclado y lector', () => {
 
   it('en el borde no se sale', () => {
     const { onMoveAp, boton } = editar({ x: 40 });
-    fireEvent.keyDown(boton, { key: 'ArrowRight' });
-    for (const [, x] of onMoveAp.mock.calls as [string, number][])
-      expect(x).toBeLessThanOrEqual(40);
+    expect(fireEvent.keyDown(boton, { key: 'ArrowRight' })).toBe(true);
+    expect(onMoveAp).not.toHaveBeenCalled();
   });
+
+  it.each([{ altKey: true }, { ctrlKey: true }, { metaKey: true }])(
+    'con un modificador del navegador (%o) la flecha no mueve ni se intercepta',
+    (mod) => {
+      const { onMoveAp, boton } = editar();
+      expect(fireEvent.keyDown(boton, { key: 'ArrowRight', ...mod })).toBe(true);
+      expect(onMoveAp).not.toHaveBeenCalled();
+    },
+  );
 
   it('otras teclas no mueven ni se interceptan', () => {
     const { onMoveAp, boton } = editar();
