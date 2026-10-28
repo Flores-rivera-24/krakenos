@@ -1,10 +1,11 @@
 import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { type Toast, type ToastKind, useToastStore } from '@/store/toast.store';
 
-const TOAST_TTL_MS = 4000;
+/** Un error se lee con calma: dura más que una confirmación. */
+export const TOAST_TTL_MS: Record<ToastKind, number> = { success: 4000, info: 4000, error: 10000 };
 
 const ICONS: Record<ToastKind, typeof CheckCircle2> = {
   success: CheckCircle2,
@@ -23,15 +24,31 @@ function ToastItem({ toast }: { toast: Toast }) {
   const dismiss = useToastStore((s) => s.dismiss);
   const Icon = ICONS[toast.kind];
 
-  // Auto-descarte: la acción del store es estable y el id no cambia, así que el
-  // temporizador se programa una sola vez por toast.
+  // Auto-descarte con pausa: mientras el puntero está encima o el foco dentro, el reloj se detiene
+  // y al soltarlo corre solo lo que quedaba. La acción del store es estable y el id no cambia.
+  const [encima, setEncima] = useState(false);
+  const [conFoco, setConFoco] = useState(false);
+  const pausado = encima || conFoco;
+  const restante = useRef(TOAST_TTL_MS[toast.kind]);
+
   useEffect(() => {
-    const timer = setTimeout(() => dismiss(toast.id), TOAST_TTL_MS);
-    return () => clearTimeout(timer);
-  }, [toast.id, dismiss]);
+    if (pausado) return;
+    const inicio = Date.now();
+    const timer = setTimeout(() => dismiss(toast.id), restante.current);
+    return () => {
+      clearTimeout(timer);
+      restante.current = Math.max(0, restante.current - (Date.now() - inicio));
+    };
+  }, [pausado, toast.id, dismiss]);
 
   return (
     <div
+      onMouseEnter={() => setEncima(true)}
+      onMouseLeave={() => setEncima(false)}
+      onFocus={() => setConFoco(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setConFoco(false);
+      }}
       className={cn(
         'pointer-events-auto flex items-start gap-2 rounded-md border bg-kr-surface px-3 py-2 text-kr-sm shadow-lg',
         ACCENT[toast.kind],
