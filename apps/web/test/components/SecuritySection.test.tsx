@@ -2,7 +2,7 @@ import type { AuthSession, SystemSettingKey } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -19,6 +19,8 @@ const webauthnMock = vi.hoisted(() => ({
 vi.mock('@/lib/webauthn', () => webauthnMock);
 
 import { SecuritySection } from '@/components/settings/SecuritySection';
+import { ThemeToggle } from '@/components/layout/ThemeToggle';
+import { applyTheme } from '@/lib/theme';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
 
@@ -46,12 +48,12 @@ const SETTINGS = {
   theme: 'dark',
 } as Record<SystemSettingKey, string>;
 
-function renderSection(isAdmin = true) {
+function renderSection(isAdmin = true, patch = vi.fn(), settings = SETTINGS) {
   return render(
     <MemoryRouter>
       <SecuritySection
-        settings={SETTINGS}
-        patch={vi.fn()}
+        settings={settings}
+        patch={patch}
         isAdmin={isAdmin}
         ajustesPendientes={null}
       />
@@ -60,6 +62,20 @@ function renderSection(isAdmin = true) {
 }
 
 describe('SecuritySection', () => {
+  it.each([
+    ['Duración del access token', 'combobox'],
+    ['Límite de intentos de login', 'combobox'],
+    ['Tema oscuro', 'switch'],
+  ])('pulsar la etiqueta «%s» enfoca su control', async (texto, rol) => {
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(screen.getByText(texto));
+    expect(document.activeElement).toBe(screen.getByRole(rol, { name: texto }));
+  });
+
+  // Pulsar «Tema oscuro» alterna el tema real del documento: se devuelve al de partida.
+  afterEach(() => applyTheme('dark'));
+
   beforeEach(() => {
     useToastStore.setState({ toasts: [] });
     apiMock.get
@@ -264,6 +280,18 @@ describe('SecuritySection', () => {
     expect(screen.getByRole('button', { name: 'Regenerar códigos' })).toBeEnabled();
   });
 
+  it('un clic en eliminar una passkey no borra; Confirmar sí', async () => {
+    const user = userEvent.setup();
+    conPasskey();
+    apiMock.del.mockResolvedValue(undefined);
+    renderSection();
+    await screen.findByText('iPhone');
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    expect(apiMock.del).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    await waitFor(() => expect(apiMock.del).toHaveBeenCalledTimes(1));
+  });
+
   it('si borrar una passkey falla, avisa y la passkey sigue en la lista', async () => {
     const user = userEvent.setup();
     conPasskey();
@@ -348,5 +376,34 @@ describe('SecuritySection', () => {
     await user.click(screen.getByRole('button', { name: 'Los he guardado' }));
     expect(await screen.findByText(/te quedan 3/)).toBeInTheDocument();
     expect(screen.getByText('Datos obsoletos')).toBeInTheDocument();
+  });
+
+  describe('tema', () => {
+    it('lee el tema local, no el del servidor, y al cambiarlo no escribe `theme` al servidor', async () => {
+      applyTheme('dark');
+      const patch = vi.fn();
+      renderSection(true, patch, { ...SETTINGS, theme: 'light' });
+      const sw = await screen.findByRole('switch', { name: 'Tema oscuro' });
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+      await userEvent.click(sw);
+      expect(sw).toHaveAttribute('aria-checked', 'false');
+      expect(patch).not.toHaveBeenCalledWith('theme', expect.anything());
+    });
+
+    it('el interruptor y el botón de la barra lateral cambian a la vez', async () => {
+      applyTheme('dark');
+      render(
+        <MemoryRouter>
+          <ThemeToggle collapsed={false} />
+          <SecuritySection settings={SETTINGS} patch={vi.fn()} isAdmin ajustesPendientes={null} />
+        </MemoryRouter>,
+      );
+      const sw = await screen.findByRole('switch', { name: 'Tema oscuro' });
+      await userEvent.click(sw);
+      expect(sw).toHaveAttribute('aria-checked', 'false');
+      expect(screen.getByRole('button', { name: 'Cambiar a modo oscuro' })).toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: 'Cambiar a modo oscuro' }));
+      expect(sw).toHaveAttribute('aria-checked', 'true');
+    });
   });
 });

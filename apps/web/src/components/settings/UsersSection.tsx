@@ -3,6 +3,7 @@ import { USER_ROLES } from '@krakenos/types';
 import { useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,7 +92,6 @@ export function UsersSection() {
   };
 
   const remove = async (u: UserSummary) => {
-    if (!confirm(t('users.confirmDelete', { email: u.email }))) return;
     setBusyId(u.id);
     try {
       await deleteUser(u.id);
@@ -156,6 +156,7 @@ export function UsersSection() {
             <Input
               id="nu-pass"
               type="password"
+              autoComplete="new-password"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               required
@@ -310,20 +311,31 @@ export function UsersSection() {
                         >
                           {t('users.password')}
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          disabled={busy || isSelf}
-                          title={isSelf ? t('users.cannotDeleteSelf') : undefined}
-                          onClick={() => void remove(u)}
-                        >
-                          {t('common.delete')}
-                        </Button>
+                        {isSelf ? (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            disabled
+                            title={t('users.cannotDeleteSelf')}
+                          >
+                            {t('common.delete')}
+                          </Button>
+                        ) : (
+                          <DeleteButton
+                            variant="destructive"
+                            disabled={busy}
+                            aria-label={t('users.deleteAria', { email: u.email })}
+                            onDelete={() => remove(u)}
+                          >
+                            {t('common.delete')}
+                          </DeleteButton>
+                        )}
                       </div>
                       {resetFor === u.id && (
                         <div className="mt-2 flex justify-end gap-2">
                           <Input
                             type="password"
+                            autoComplete="new-password"
                             aria-label={t('users.newPassOf', { email: u.email })}
                             placeholder={t('users.newPass')}
                             value={resetValue}

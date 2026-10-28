@@ -302,14 +302,16 @@ function SceneEditor({
               const row = rowFor(d);
               return (
                 <li key={d.id} className="rounded-lg border border-kr bg-kr-elevated p-3">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={row.include}
-                      onChange={(e) => update(d, { include: e.target.checked })}
-                      aria-label={t('scenes.includeLabel', { name: d.name })}
-                    />
-                    <span className="flex-1 truncate text-kr-sm text-kr-primary">{d.name}</span>
+                  <div className="flex items-center gap-2">
+                    <label className="relative tap-target flex flex-1 items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={row.include}
+                        onChange={(e) => update(d, { include: e.target.checked })}
+                        aria-label={t('scenes.includeLabel', { name: d.name })}
+                      />
+                      <span className="flex-1 truncate text-kr-sm text-kr-primary">{d.name}</span>
+                    </label>
                     {row.include && (
                       <Switch
                         checked={row.on}
@@ -317,7 +319,7 @@ function SceneEditor({
                         aria-label={t('scenes.stateLabel', { name: d.name })}
                       />
                     )}
-                  </label>
+                  </div>
                   {row.include && d.kind === 'light' && row.on && (
                     <div className="mt-2 flex items-center gap-2">
                       <span className="text-kr-xs text-kr-muted">{t('scenes.brightness')}</span>

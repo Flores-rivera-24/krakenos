@@ -179,8 +179,6 @@ export const esCore = {
   'common.optional': 'opcional',
   'common.copy': 'Copiar',
   'common.copied': 'Copiado',
-  'common.yes': 'Sí',
-  'common.no': 'No',
   'common.edit': 'Editar',
 
   // --- Glosario (US-144/150) ---

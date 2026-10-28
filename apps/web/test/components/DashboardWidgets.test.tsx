@@ -1,5 +1,5 @@
 import type { Device } from '@krakenos/types';
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,6 +25,17 @@ const fakeSocket = vi.hoisted(() => ({
 }));
 vi.mock('@/lib/socket', () => ({ getSocket: () => fakeSocket }));
 
+// jsdom mide 0×0: sin tamaño, Recharts no pinta ni la leyenda.
+vi.mock('recharts', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  const { cloneElement } = await import('react');
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactElement }) =>
+      cloneElement(children, { width: 600, height: 200 } as never),
+  };
+});
+
 import { AlertsWidget } from '@/components/dashboard/widgets/AlertsWidget';
 import { DeviceCountWidget } from '@/components/dashboard/widgets/DeviceCountWidget';
 import { IotStatusWidget } from '@/components/dashboard/widgets/IotStatusWidget';
@@ -32,6 +43,7 @@ import { NetworkTopologyWidget } from '@/components/dashboard/widgets/NetworkTop
 import { SystemWidget } from '@/components/dashboard/widgets/SystemWidget';
 import { TrafficWidget } from '@/components/dashboard/widgets/TrafficWidget';
 import { WifiStatusWidget } from '@/components/dashboard/widgets/WifiStatusWidget';
+import { formatRate } from '@/lib/format';
 import { changeLocale, setLocale } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -242,6 +254,48 @@ describe('Dashboard widgets', () => {
     await act(async () => rechazar(new Error('caído')));
     expect(await screen.findByText('Datos obsoletos')).toBeInTheDocument();
     expect(screen.queryByText('No se pudo cargar el tráfico WAN.')).not.toBeInTheDocument();
+  });
+
+  describe('TrafficWidget con muestras', () => {
+    const MUESTRAS = [
+      { timestamp: 1, rxBytesPerSec: 10, txBytesPerSec: 5 },
+      { timestamp: 2, rxBytesPerSec: 2_000_000, txBytesPerSec: 500_000 },
+    ];
+    async function conMuestras() {
+      apiMock.get.mockReset().mockResolvedValue(MUESTRAS);
+      wrap(<TrafficWidget />);
+      return await screen.findByRole('img', { name: /descarga.*subida/i });
+    }
+
+    it('el gráfico de tráfico se anuncia con sus valores actuales', async () => {
+      const grafico = await conMuestras();
+      const nombre = grafico.getAttribute('aria-label') ?? '';
+      expect(nombre).toMatch(/^Gráfico de tráfico WAN\. Ahora: descarga /);
+      expect(nombre).toContain(formatRate(2_000_000));
+      expect(nombre).toContain(formatRate(500_000));
+    });
+
+    it('el texto de la leyenda va en un token de texto, no en el color de la serie', async () => {
+      const grafico = await conMuestras();
+      const texto = within(grafico as HTMLElement).getByText('Descarga');
+      expect(texto).toHaveClass('text-kr-secondary');
+    });
+
+    it('el gráfico tiene leyenda', async () => {
+      const grafico = await conMuestras();
+      const leyenda = grafico.querySelector('.recharts-legend-wrapper');
+      expect(leyenda).not.toBeNull();
+      expect(leyenda).toHaveTextContent('Descarga');
+      expect(leyenda).toHaveTextContent('Subida');
+    });
+  });
+
+  it('las barras de CPU/RAM no se anuncian; el valor sigue como texto', async () => {
+    wrap(<SystemWidget />);
+    expect(await screen.findByText('50%')).toBeInTheDocument();
+    const barras = document.querySelectorAll('.h-2.rounded-full');
+    expect(barras).toHaveLength(2);
+    barras.forEach((b) => expect(b).toHaveAttribute('aria-hidden', 'true'));
   });
 
   it('TrafficWidget espera muestras cuando no hay datos', () => {

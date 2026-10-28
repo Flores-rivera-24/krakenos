@@ -60,3 +60,20 @@ describe('CoverageToolbar: botón de guardar y material (issue #92)', () => {
     );
   });
 });
+
+describe('CoverageToolbar: nombres sin depender de la etiqueta visible', () => {
+  it('cada herramienta tiene nombre propio (aria-label)', () => {
+    montar();
+    for (const n of ['Seleccionar', 'Pared', 'Punto de acceso', 'Medir']) {
+      expect(screen.getByRole('button', { name: n })).toHaveAttribute('aria-label', n);
+    }
+  });
+
+  it('el selector de material tiene nombre propio', () => {
+    montar({ tool: 'wall' });
+    expect(screen.getByRole('combobox', { name: 'Material' })).toHaveAttribute(
+      'aria-label',
+      'Material',
+    );
+  });
+});

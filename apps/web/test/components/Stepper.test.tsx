@@ -15,6 +15,13 @@ const STEPS: StepperStep[] = [
   { id: 's3', title: 'Listo', content: <p>Contenido 3</p> },
 ];
 
+// El título se anuncia como texto en «Paso n de m: …»: un nodo no se puede convertir.
+const NODO_NO_VALE: StepperStep[] = [
+  // @ts-expect-error title es string
+  { id: 'x', title: <b>x</b>, content: <p>c</p> },
+];
+void NODO_NO_VALE;
+
 function renderStepper(props: Partial<Parameters<typeof Stepper>[0]> = {}) {
   const onStepChange = vi.fn();
   const onComplete = vi.fn();

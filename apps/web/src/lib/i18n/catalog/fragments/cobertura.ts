@@ -15,6 +15,7 @@ export const esCobertura = {
   'coverage.tool.ap': 'Punto de acceso',
   'coverage.tool.measure': 'Medir',
   'coverage.plan.aria.one': 'Plano {name}: {w}×{h} m con {aps} punto de acceso',
+  'coverage.ap.moveHint': 'Usa las flechas para moverlo 0,1 m; con Mayús, 1 m.',
   'coverage.plan.aria.other': 'Plano {name}: {w}×{h} m con {aps} puntos de acceso',
   'coverage.plan.namePlaceholder': 'p. ej. Planta baja',
   'coverage.plan.deleted': 'Plano eliminado',

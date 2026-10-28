@@ -109,6 +109,11 @@ export function NetworksCard() {
                       <td className="px-3 py-2 text-muted-foreground">{apName(n.apId)}</td>
                       <td className="px-3 py-2">
                         <button
+                          type="button"
+                          aria-label={t('wifi.networks.clientsButton', {
+                            ssid: n.ssid,
+                            n: n.clientCount,
+                          })}
                           className="text-kr-link hover:underline disabled:text-muted-foreground disabled:no-underline"
                           onClick={() => void showClients(n)}
                           disabled={n.clientCount === 0}

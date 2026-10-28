@@ -113,7 +113,6 @@ export function SupportCard() {
               variant="outline"
               size="sm"
               disabled={busy || !telemetry}
-              aria-pressed={telemetry?.enabled ?? false}
               onClick={() => void toggleTelemetry()}
             >
               {telemetry?.enabled ? t('settings.support.disable') : t('settings.support.enable')}

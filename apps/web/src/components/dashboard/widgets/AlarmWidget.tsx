@@ -225,6 +225,7 @@ export function AlarmWidget() {
                   {(pinNeeded || state.requiresPin) && (
                     <Input
                       type="password"
+                      autoComplete="off"
                       inputMode="numeric"
                       placeholder={t('widget.alarm.pinLabel')}
                       value={pin}

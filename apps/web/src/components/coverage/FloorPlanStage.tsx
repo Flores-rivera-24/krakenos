@@ -7,7 +7,7 @@ import type {
   WallMaterial,
 } from '@krakenos/types';
 import { signalQuality } from '@krakenos/types';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { heatmapRgba, signalQualityColorVar, WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { plural, useT } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/cobertura';
@@ -167,6 +167,37 @@ export function FloorPlanStage({
     [plan.widthM, plan.heightM],
   );
 
+  const hintBaseId = useId();
+
+  // Flechas sobre un AP en edición: 0,1 m, o 1 m con Mayús; acotado como el arrastre.
+  const onApKeyDown = (e: React.KeyboardEvent<SVGGElement>, ap: ApPlacement) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onSelectAp?.(ap.id);
+      return;
+    }
+    if (readOnly) return;
+    // Alt+← es «atrás» del navegador, Ctrl/⌘ son atajos suyos: no son nuestros.
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
+    const paso = e.shiftKey ? 1 : 0.1;
+    const delta =
+      e.key === 'ArrowLeft'
+        ? { x: -paso, y: 0 }
+        : e.key === 'ArrowRight'
+          ? { x: paso, y: 0 }
+          : e.key === 'ArrowUp'
+            ? { x: 0, y: -paso }
+            : e.key === 'ArrowDown'
+              ? { x: 0, y: paso }
+              : null;
+    if (!delta) return;
+    const next = clamp({ x: ap.x + delta.x, y: ap.y + delta.y });
+    // En el borde no hay movimiento: la tecla queda libre y no se llama a onMoveAp.
+    if (next.x === ap.x && next.y === ap.y) return;
+    e.preventDefault();
+    onMoveAp?.(ap.id, next.x, next.y);
+  };
+
   const onBackgroundPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (readOnly) return;
     const p = clamp(toMeters(e));
@@ -261,7 +292,7 @@ export function FloorPlanStage({
           viewBox={`0 0 ${widthPx} ${heightPx}`}
           className={`absolute inset-0 select-none ${touchClass}`}
           style={{ cursor }}
-          role="img"
+          role="group"
           aria-label={plural(accessPoints.length, {
             one: t('coverage.plan.aria.one', planAriaParams),
             other: t('coverage.plan.aria.other', planAriaParams),
@@ -377,22 +408,21 @@ export function FloorPlanStage({
           ))}
 
           {/* Puntos de acceso (arrastrables) */}
-          {accessPoints.map((ap) => (
+          {accessPoints.map((ap) => {
+            const hintId = `${hintBaseId}-${ap.id}`;
+            return (
             <g
               key={ap.id}
-              role="button"
+              role={readOnly ? 'img' : 'button'}
               tabIndex={readOnly ? undefined : 0}
               aria-label={`${ap.name} (${Math.round(ap.x)}, ${Math.round(ap.y)} m)`}
+              aria-describedby={readOnly ? undefined : hintId}
               className={readOnly ? undefined : 'cursor-grab active:cursor-grabbing'}
               onPointerDown={(e) => onApPointerDown(e, ap)}
               onClick={() => onSelectAp?.(ap.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectAp?.(ap.id);
-                }
-              }}
+              onKeyDown={readOnly ? undefined : (e) => onApKeyDown(e, ap)}
             >
+              {!readOnly && <desc id={hintId}>{t('coverage.ap.moveHint')}</desc>}
               <circle
                 cx={ap.x * pxPerM}
                 cy={ap.y * pxPerM}
@@ -412,7 +442,8 @@ export function FloorPlanStage({
                 {ap.name}
               </text>
             </g>
-          ))}
+            );
+          })}
         </svg>
       </div>
     </div>

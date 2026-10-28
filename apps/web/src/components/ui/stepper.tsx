@@ -9,7 +9,7 @@ export interface StepperStep {
   /** Identificador estable del paso. */
   id: string;
   /** Título del paso (encabezado del contenido). */
-  title: ReactNode;
+  title: string;
   /** Contenido renderizado del paso (solo se muestra el paso activo). */
   content: ReactNode;
   /** Descripción corta opcional bajo el título. */
@@ -90,7 +90,7 @@ export function Stepper({
     <div className={cn('flex flex-col gap-4', className)}>
       {/* Anuncio para lectores de pantalla al cambiar de paso. */}
       <span className="sr-only" role="status" aria-live="polite">
-        {t('stepper.stepOfWith', { n: active + 1, total, title: String(step.title) })}
+        {t('stepper.stepOfWith', { n: active + 1, total, title: step.title })}
       </span>
 
       {/* Indicador de progreso: texto + barra segmentada (decorativa). */}

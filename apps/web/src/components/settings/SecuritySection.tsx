@@ -7,7 +7,7 @@ import type {
   WebAuthnCredentialInfo,
 } from '@krakenos/types';
 import { KeyRound } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,7 +22,7 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatDate, timeAgo } from '@/lib/format';
-import { applyTheme, type Theme } from '@/lib/theme';
+import { applyTheme, useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { isWebAuthnSupported, startRegistration } from '@/lib/webauthn';
 import { useAuthStore } from '@/store/auth.store';
@@ -43,10 +43,20 @@ interface Props {
   ajustesPendientes: React.ReactNode;
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="grid gap-2 sm:grid-cols-[200px_1fr] sm:items-center">
-      <Label className="text-kr-secondary">{label}</Label>
+      <Label htmlFor={htmlFor} className="text-kr-secondary">
+        {label}
+      </Label>
       {children}
     </div>
   );
@@ -92,7 +102,6 @@ function PasskeysCard() {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   // Códigos de recuperación (US-59): cuántos quedan y los recién generados (una vez).
   const [newCodes, setNewCodes] = useState<string[] | null>(null);
@@ -155,7 +164,6 @@ function PasskeysCard() {
   };
 
   const remove = async (id: string) => {
-    setConfirmId(null);
     try {
       await api.del(`/webauthn/credentials/${id}`);
       load();
@@ -203,20 +211,7 @@ function PasskeysCard() {
                             })}
                       </span>
                     </span>
-                    {confirmId === pk.id ? (
-                      <span className="flex items-center gap-1">
-                        <Button variant="destructive" size="sm" onClick={() => void remove(pk.id)}>
-                          {t('common.confirm')}
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => setConfirmId(null)}>
-                          {t('common.cancel')}
-                        </Button>
-                      </span>
-                    ) : (
-                      <Button variant="ghost" size="sm" onClick={() => setConfirmId(pk.id)}>
-                        {t('common.delete')}
-                      </Button>
-                    )}
+                    <DeleteButton onDelete={() => remove(pk.id)}>{t('common.delete')}</DeleteButton>
                   </li>
                 ))}
               </ul>
@@ -307,14 +302,8 @@ function SecurityControls({
   isAdmin: boolean;
 }) {
   const t = useT();
-  const [theme, setTheme] = useState<Theme>(settings.theme === 'light' ? 'light' : 'dark');
-
-  const toggleTheme = async (next: boolean) => {
-    const value: Theme = next ? 'dark' : 'light';
-    setTheme(value);
-    applyTheme(value); // efecto inmediato
-    if (isAdmin) await patch('theme', value);
-  };
+  const uid = useId();
+  const theme = useTheme();
 
   return (
     <Card>
@@ -322,10 +311,10 @@ function SecurityControls({
         <CardTitle>{t('security.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Row label={t('security.tokenTtl')}>
+        <Row label={t('security.tokenTtl')} htmlFor={`${uid}-ttl`}>
           <select
+            id={`${uid}-ttl`}
             className={SELECT_CLASS}
-            aria-label={t('security.tokenTtl')}
             value={settings.accessTokenTtl}
             disabled={!isAdmin}
             onChange={(e) => void patch('accessTokenTtl', e.target.value)}
@@ -335,10 +324,10 @@ function SecurityControls({
             <option value="28800">{t('security.ttl.8h')}</option>
           </select>
         </Row>
-        <Row label={t('security.loginLimit')}>
+        <Row label={t('security.loginLimit')} htmlFor={`${uid}-limit`}>
           <select
+            id={`${uid}-limit`}
             className={SELECT_CLASS}
-            aria-label={t('security.loginLimit')}
             value={settings.loginRateLimit}
             disabled={!isAdmin}
             onChange={(e) => void patch('loginRateLimit', e.target.value)}
@@ -348,11 +337,11 @@ function SecurityControls({
             <option value="20">{t('security.perMinute', { n: 20 })}</option>
           </select>
         </Row>
-        <Row label={t('security.darkTheme')}>
+        <Row label={t('security.darkTheme')} htmlFor={`${uid}-dark`}>
           <Switch
+            id={`${uid}-dark`}
             checked={theme === 'dark'}
-            onCheckedChange={(v) => void toggleTheme(v)}
-            aria-label={t('security.darkTheme')}
+            onCheckedChange={(v) => applyTheme(v ? 'dark' : 'light')}
           />
         </Row>
       </CardContent>

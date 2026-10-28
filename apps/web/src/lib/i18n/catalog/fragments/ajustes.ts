@@ -422,7 +422,6 @@ export const esAjustes = {
   'tuya.version': 'Versión',
   'tuya.unchanged': 'sin cambios',
   'tuya.col.status': 'Estado',
-  'tuya.deleteQ': '¿Eliminar?',
   'tuya.empty': 'Sin focos Tuya registrados.',
   'tuya.loadError': 'No se pudieron cargar los focos Tuya.',
   'tuya.add': 'Añadir foco',

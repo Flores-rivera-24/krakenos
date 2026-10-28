@@ -15,11 +15,11 @@ interface DialogProps {
 }
 
 /**
- * Modal accesible mínimo (overlay + contenido), sin dependencias externas. Se monta vía
- * `createPortal` en `document.body`, como `Slideover`: el `<main>` conserva un `transform`
- * tras su animación de entrada y eso lo convierte en el bloque contenedor de todo `fixed`
- * de dentro. Sin portal, el diálogo se centraba en `main` (no en la ventana), el fondo solo
- * cubría `main` y la barra inferior del celular se pintaba encima del panel.
+ * Diálogo modal sin dependencias externas. Se monta vía `createPortal` en `document.body`,
+ * como `Slideover`: el `<main>` conserva un `transform` tras su animación de entrada y eso lo
+ * convierte en el bloque contenedor de todo `fixed` de dentro. Escape lo maneja el propio
+ * `Dialog` (su `keydown`); el foco inicial, el ciclo con Tab y la devolución del foco los da
+ * `useFocusTrap`. El cierre visible lo pinta el consumidor.
  */
 export function Dialog({
   open,

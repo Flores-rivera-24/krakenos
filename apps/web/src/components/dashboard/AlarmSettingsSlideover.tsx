@@ -277,6 +277,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
             <Input
               id="alarm-pin"
               type="password"
+              autoComplete="new-password"
               inputMode="numeric"
               placeholder={cfg.hasPin ? '••••' : t('alarmSettings.noPin')}
               value={pin}

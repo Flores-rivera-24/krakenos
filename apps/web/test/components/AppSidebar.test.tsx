@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // `ThemeToggle` (US-44) usa lib/theme; lo mockeamos para aislar el sidebar.
 const themeMock = vi.hoisted(() => ({
   getTheme: vi.fn(() => 'dark'),
+  useTheme: vi.fn(() => 'dark'),
   toggleTheme: vi.fn(() => 'light'),
   applyTheme: vi.fn(),
 }));

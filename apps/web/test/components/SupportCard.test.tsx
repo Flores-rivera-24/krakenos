@@ -49,9 +49,12 @@ describe('SupportCard — telemetría opt-in + bundle (US-192)', () => {
   it('muestra la telemetría desactivada por defecto (opt-in)', async () => {
     render(<SupportCard />);
     expect(await screen.findByRole('button', { name: 'Activar' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Activar' })).toHaveAttribute(
+  });
+
+  it('el botón de telemetría no declara aria-pressed (su texto ya dice la acción)', async () => {
+    render(<SupportCard />);
+    expect(await screen.findByRole('button', { name: 'Activar' })).not.toHaveAttribute(
       'aria-pressed',
-      'false',
     );
   });
 

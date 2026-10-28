@@ -147,6 +147,7 @@ export function SetupPage() {
           <Input
             id="password"
             type="password"
+            autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -158,6 +159,7 @@ export function SetupPage() {
           <Input
             id="confirm"
             type="password"
+            autoComplete="new-password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required
