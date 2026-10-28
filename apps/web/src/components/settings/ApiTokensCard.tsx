@@ -82,7 +82,7 @@ export function ApiTokensCard() {
           <div className="space-y-2 rounded-lg border border-success/40 bg-success/10 p-3">
             <p className="text-kr-xs text-success">{t('settings.apiTokens.copyHint')}</p>
             <div className="flex items-center gap-2">
-              <code className="min-w-0 flex-1 truncate rounded-md bg-kr-elevated px-2 py-1 font-mono text-kr-xs text-kr-primary">
+              <code className="min-w-0 flex-1 overflow-x-auto break-all rounded-md bg-kr-elevated px-2 py-1 font-mono text-kr-xs text-kr-primary">
                 {fresh}
               </code>
               <CopyButton value={fresh} />

@@ -128,7 +128,7 @@ function MobileBottomNav() {
         {primary.map(({ to, labelKey, icon: Icon, end }) => (
           <NavLink key={to} to={to} end={end} className={bottomLinkClass}>
             <Icon className="h-5 w-5 shrink-0" />
-            <span className="w-full truncate text-center text-[10px] leading-tight">
+            <span className="w-full truncate text-center text-kr-xs leading-tight">
               {t(labelKey)}
             </span>
           </NavLink>
@@ -140,7 +140,7 @@ function MobileBottomNav() {
           className={cn(BOTTOM_ITEM_BASE, moreOpen ? 'text-kr-link' : 'text-kr-secondary')}
         >
           <MoreHorizontal className="h-5 w-5 shrink-0" />
-          <span className="w-full truncate text-center text-[10px] leading-tight">
+          <span className="w-full truncate text-center text-kr-xs leading-tight">
             {t('layout.more')}
           </span>
         </button>

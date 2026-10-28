@@ -181,7 +181,7 @@ function VlanPageBody() {
                   </p>
                 </div>
                 {v.isolated && (
-                  <span className="rounded-sm bg-warning/15 px-2 py-0.5 text-[10px] text-warning">
+                  <span className="rounded-sm bg-warning/15 px-2 py-0.5 text-kr-xs text-warning">
                     {t('vlan.isolated')}
                   </span>
                 )}

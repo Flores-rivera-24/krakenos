@@ -64,7 +64,7 @@ export function GuideStep({
         {children && <div className="text-kr-sm text-kr-secondary">{children}</div>}
         {command && (
           <div className="flex items-center gap-2 rounded-md border border-kr bg-kr-base px-3 py-2">
-            <code className="min-w-0 flex-1 truncate font-mono text-kr-sm text-kr-primary">
+            <code className="min-w-0 flex-1 overflow-x-auto break-all font-mono text-kr-sm text-kr-primary">
               {command}
             </code>
             <CopyButton value={command} />

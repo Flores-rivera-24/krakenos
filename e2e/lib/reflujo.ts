@@ -13,6 +13,8 @@ import { MOVIL_ESTRECHO } from './tactil.js';
 interface Textos {
   /** Panel «Más» de la barra inferior. */
   mas: RegExp;
+  /** Nombre de «Conectar», que vive en el panel «Más». */
+  conectar: string;
   secciones: { seguridad: string; integraciones: string };
   /** Títulos que prueban que la sección ya pintó. */
   sesiones: string;
@@ -31,6 +33,7 @@ interface Textos {
 
 export const TEXTOS_ES: Textos = {
   mas: /^Más$/,
+  conectar: 'Conectar',
   secciones: { seguridad: 'Seguridad', integraciones: 'Integraciones' },
   sesiones: 'Sesiones activas',
   mqtt: 'Publicar a MQTT',
@@ -47,6 +50,7 @@ export const TEXTOS_ES: Textos = {
 
 export const TEXTOS_EN: Textos = {
   mas: /^More$/,
+  conectar: 'Connect',
   secciones: { seguridad: 'Security', integraciones: 'Integrations' },
   sesiones: 'Active sessions',
   mqtt: 'Publish to MQTT',
@@ -115,6 +119,46 @@ export function registrarReflujo(textos: Textos, entrar: (page: Page) => Promise
           botones.filter((b) => b.scrollWidth > b.clientWidth + 1).map((b) => b.textContent),
         );
       expect(salen, 'botones de modo con texto recortado').toEqual([]);
+    });
+
+    test('la barra inferior no recorta ninguna etiqueta', async ({ page }) => {
+      // Decisión del dueño 2026-10-27: la barra lleva 4 destinos + «Más» (5 celdas) y se mide a 360 px.
+      // A 320 px «Dispositivos» (66 px a 11 px) se recorta ~6 px con 5 celdas y se aceptó.
+      await page.setViewportSize({ width: 360, height: 640 });
+      await entrar(page);
+      await page.locator('nav a:visible').first().waitFor();
+      // Las etiquetas llevan `truncate`: si no caben, scrollWidth > clientWidth (con puntos suspensivos).
+      const medidas = await page.evaluate(() => {
+        const barra = Array.from(document.querySelectorAll('nav')).find(
+          (n) => getComputedStyle(n).position === 'fixed',
+        );
+        if (!barra) return null;
+        return Array.from(barra.querySelectorAll('a > span, button > span')).map((e) => ({
+          texto: e.textContent,
+          tam: getComputedStyle(e).fontSize,
+          scroll: e.scrollWidth,
+          cliente: e.clientWidth,
+        }));
+      });
+      expect(medidas, 'barra inferior fija encontrada').not.toBeNull();
+      expect(medidas!.length, 'etiquetas medidas').toBeGreaterThanOrEqual(5);
+      expect(
+        medidas!.filter((m) => m.scroll > m.cliente),
+        'etiquetas recortadas en la barra inferior',
+      ).toEqual([]);
+      expect(
+        medidas!.filter((m) => parseFloat(m.tam) < 11),
+        'etiquetas por debajo de 11 px',
+      ).toEqual([]);
+    });
+
+    test('Conectar vive en el panel «Más» y se llega desde ahí', async ({ page }) => {
+      await entrar(page);
+      await page.locator('nav a:visible').first().waitFor();
+      await expect(page.locator('nav a[href="/connect"]:visible')).toHaveCount(0);
+      await page.getByRole('button', { name: textos.mas }).click();
+      await page.getByRole('dialog').getByRole('link', { name: textos.conectar }).click();
+      await expect(page).toHaveURL(/\/connect$/);
     });
 
     test('Energía: la cabecera del gráfico cabe', async ({ page }) => {

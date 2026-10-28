@@ -153,7 +153,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {collapsed ? (
         gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
       ) : (
-        <p className="px-3 pb-0.5 text-[10px] font-semibold uppercase tracking-wider text-kr-muted">
+        <p className="px-3 pb-0.5 text-kr-xs font-semibold uppercase tracking-wider text-kr-muted">
           {t(group.labelKey)}
         </p>
       )}
