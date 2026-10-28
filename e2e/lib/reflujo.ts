@@ -98,6 +98,37 @@ async function sinDesborde(page: Page, donde: string): Promise<void> {
     );
 }
 
+/**
+ * Margen que Chromium reserva para la flecha nativa de un `<select>` DENTRO del ancho del
+ * contenido (el `padding` del CSS no la cuenta). Medido en Chromium: ~20 px; se usa 24 px de margen.
+ */
+const FLECHA_SELECT_PX = 24;
+
+/** Ningún `<select>` visible corta el texto de su opción elegida (se mide con canvas, no con scrollWidth). */
+async function selectoresSinCortar(page: Page, donde: string): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate((flecha) => {
+          const ctx = document.createElement('canvas').getContext('2d')!;
+          return Array.from(document.querySelectorAll('select'))
+            .filter((s) => s.getClientRects().length > 0)
+            .map((s) => {
+              const c = getComputedStyle(s);
+              ctx.font = c.font;
+              const texto = s.selectedOptions[0]?.textContent ?? '';
+              const necesario = ctx.measureText(texto).width;
+              const disponible =
+                s.clientWidth - parseFloat(c.paddingLeft) - parseFloat(c.paddingRight) - flecha;
+              return { id: s.id, texto, necesario: Math.ceil(necesario), disponible };
+            })
+            .filter((m) => m.necesario > m.disponible);
+        }, FLECHA_SELECT_PX),
+      { message: `${donde}: selectores que cortan su valor`, timeout: 5000 },
+    )
+    .toEqual([]);
+}
+
 /** Cambia de sección en Ajustes (la barra de secciones es el único `nav` con botones). */
 async function seccion(page: Page, nombre: string): Promise<void> {
   const nav = page.locator('nav[aria-label]').filter({ has: page.getByRole('button') });
@@ -198,6 +229,13 @@ export function registrarReflujo(textos: Textos, entrar: (page: Page) => Promise
       await seccion(page, textos.secciones.integraciones);
       await expect(page.getByText(textos.mqtt, { exact: true })).toBeVisible();
       await sinDesborde(page, 'Ajustes > Integraciones');
+    });
+
+    test('ningún selector corta su valor', async ({ page }) => {
+      await entrar(page);
+      await irA(page, '/wifi', textos.mas);
+      await expect(page.locator('select#security')).toBeVisible();
+      await selectoresSinCortar(page, 'Wi-Fi');
     });
 
     test('Wi-Fi: el diálogo de clientes cabe en su panel', async ({ page }) => {
