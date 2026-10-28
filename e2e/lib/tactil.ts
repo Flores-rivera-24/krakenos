@@ -8,6 +8,18 @@ export const MOVIL_ESTRECHO = { width: 320, height: 640 };
 /** Mitad del área mínima de toque (44 px). */
 const MEDIO = 21;
 
+/**
+ * Espera a que terminen las animaciones de `#contenido` (el `<main>`): entra con `animate-kr-fade-up`
+ * (0,4 s de `translateY(8px)`) en cada navegación y, mientras corre, `toBeVisible()` ya pasa pero la
+ * caja cae a mitad de camino (31.99998 en vez de 32). Solo las de ese elemento: las del documento
+ * incluyen skeletons y pulsos infinitos que nunca terminan.
+ */
+export async function esperarContenidoQuieto(page: Page): Promise<void> {
+  await page
+    .locator('#contenido')
+    .evaluate((el) => Promise.all(el.getAnimations().map((a) => a.finished)).then(() => undefined));
+}
+
 interface Punto {
   etiqueta: string;
   x: number;
@@ -28,6 +40,7 @@ export async function expectTapTarget(
   target: Locator,
   opts: { vecinos?: Locator[] } = {},
 ): Promise<void> {
+  await esperarContenidoQuieto(page);
   await target.scrollIntoViewIfNeeded();
   const caja = await target.boundingBox();
   expect(caja, 'el control no tiene caja: no está en pantalla').not.toBeNull();

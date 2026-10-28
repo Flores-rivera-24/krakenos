@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { login } from '../lib/auth.js';
-import { MOVIL, MOVIL_ESTRECHO, expectTapTarget } from '../lib/tactil.js';
+import { MOVIL, MOVIL_ESTRECHO, esperarContenidoQuieto, expectTapTarget } from '../lib/tactil.js';
 
 /**
  * Área de toque en el celular (390 px): los controles pequeños que no son `Button` llevan la
@@ -228,11 +228,21 @@ test.describe('celular: capas', () => {
     expect(caja.y + caja.height).toBeLessThanOrEqual(barra.y);
   });
 
-  test('un diálogo apaisado (844 × 390) se desplaza y su último control es alcanzable', async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 844, height: 390 });
-    await login(page);
+  /** ~25 clientes con la forma real de `WifiClient[]`, para que la lista desborde el panel. */
+  async function conVeinticincoClientes(page: Page): Promise<void> {
+    await page.route('**/api/wifi/networks/*/clients', (ruta) =>
+      ruta.fulfill({
+        json: Array.from({ length: 25 }, (_, i) => ({
+          mac: `de:ad:be:ef:00:${i.toString(16).padStart(2, '0')}`,
+          hostname: `cliente-${i + 1}`,
+          ip: `192.168.1.${50 + i}`,
+          signalDbm: -50 - i,
+        })),
+      }),
+    );
+  }
+
+  async function abrirClientes(page: Page) {
     await irA(page, '/wifi');
     // El número de clientes de una red es el botón que abre la lista (diálogo de «Redes»).
     const clientes = page.locator('td button:not([disabled])').first();
@@ -240,18 +250,57 @@ test.describe('celular: capas', () => {
     await clientes.click();
     const dialogo = page.getByRole('dialog');
     await expect(dialogo).toBeVisible();
+    await expect(dialogo.locator('tbody tr')).toHaveCount(25);
+    return dialogo;
+  }
+
+  test('un diálogo apaisado (844 × 390) cabe en la ventana y se desplaza por dentro', async ({
+    page,
+  }) => {
+    await conVeinticincoClientes(page);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await login(page);
+    const dialogo = await abrirClientes(page);
+    // Sin desplazar la página: el panel está entero en la ventana (no centrado en `main`).
+    const caja = (await dialogo.boundingBox())!;
+    expect(caja.y).toBeGreaterThanOrEqual(0);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(390);
     const medidas = await dialogo.evaluate((el) => ({
-      alto: el.getBoundingClientRect().height,
       scroll: el.scrollHeight,
       cliente: el.clientHeight,
     }));
-    expect(medidas.alto).toBeLessThanOrEqual(390);
-    expect(medidas.scroll > medidas.cliente || medidas.alto < 390).toBe(true);
-    const ultimo = dialogo.getByRole('button').last();
-    await ultimo.scrollIntoViewIfNeeded();
-    const caja = (await ultimo.boundingBox())!;
+    expect(medidas.scroll).toBeGreaterThan(medidas.cliente);
+    // El último cliente se alcanza desplazando EL PANEL, no la página.
+    const ultima = dialogo.locator('tbody tr').last();
+    await ultima.scrollIntoViewIfNeeded();
+    const fila = (await ultima.boundingBox())!;
+    const panel = (await dialogo.boundingBox())!;
+    expect(fila.y).toBeGreaterThanOrEqual(panel.y);
+    expect(fila.y + fila.height).toBeLessThanOrEqual(panel.y + panel.height + 1);
+  });
+
+  test('un diálogo con la página desplazada queda en la ventana y la barra inferior no lo tapa', async ({
+    page,
+  }) => {
+    await conVeinticincoClientes(page);
+    await login(page);
+    await irA(page, '/wifi');
+    await expect(page.locator('td button:not([disabled])').first()).toBeVisible();
+    await esperarContenidoQuieto(page);
+    // Página larga desplazada hacia abajo antes de abrir.
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    const dialogo = await abrirClientes(page);
+    const alto = await page.evaluate(() => window.innerHeight);
+    const caja = (await dialogo.boundingBox())!;
     expect(caja.y).toBeGreaterThanOrEqual(0);
-    expect(caja.y + caja.height).toBeLessThanOrEqual(390);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(alto);
+    // Lo que hay en el centro del borde inferior del diálogo pertenece al diálogo (no a la barra).
+    const encima = await dialogo.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hallado = document.elementFromPoint(r.x + r.width / 2, r.y + r.height - 2);
+      return !!hallado && el.contains(hallado);
+    });
+    expect(encima, 'la barra inferior tapa el borde del diálogo').toBe(true);
   });
 });
 
@@ -287,9 +336,9 @@ test.describe('escritorio', () => {
     await expect(descartar).toBeVisible();
     const contenedor = descartar.locator('xpath=ancestor::div[@aria-live][1]');
     const caja = (await contenedor.boundingBox())!;
-    expect(caja.width).toBe(384);
-    expect(caja.x + caja.width).toBe(1280 - 16);
-    expect(caja.y + caja.height).toBe(800 - 16);
+    expect(caja.width).toBeCloseTo(384, 1);
+    expect(caja.x + caja.width).toBeCloseTo(1280 - 16, 1);
+    expect(caja.y + caja.height).toBeCloseTo(800 - 16, 1);
     await descartar.click();
     await page
       .getByRole('button', { name: /^Quitar .* de favoritos$/ })
@@ -302,7 +351,8 @@ test.describe('escritorio', () => {
     await page.getByRole('link', { name: 'Ajustes' }).first().click();
     const interruptor = page.getByRole('switch').first();
     await expect(interruptor).toBeVisible();
-    expect((await interruptor.boundingBox())!.height).toBe(24);
+    await esperarContenidoQuieto(page);
+    expect((await interruptor.boundingBox())!.height).toBeCloseTo(24, 1);
     // El área ampliada no existe: sin `::before`, un punto 20 px por encima ya no es suyo.
     const cae = await interruptor.evaluate((el) => {
       const r = el.getBoundingClientRect();
@@ -318,20 +368,25 @@ test.describe('escritorio', () => {
     await page.getByRole('button', { name: 'Personalizar' }).click();
     const subir = page.getByRole('button', { name: /^Subir / }).first();
     await expect(subir).toBeVisible();
+    await esperarContenidoQuieto(page);
     const cajaSubir = (await subir.boundingBox())!;
-    expect([cajaSubir.width, cajaSubir.height]).toEqual([24, 24]);
+    expect(cajaSubir.width).toBeCloseTo(24, 1);
+    expect(cajaSubir.height).toBeCloseTo(24, 1);
 
     await page.getByRole('link', { name: 'Energía' }).first().click();
     const rango = page.getByRole('group', { name: 'Rango' }).getByRole('button').first();
     await expect(rango).toBeVisible();
-    expect((await rango.boundingBox())!.height).toBe(24);
+    await esperarContenidoQuieto(page);
+    expect((await rango.boundingBox())!.height).toBeCloseTo(24, 1);
 
     await page.getByRole('link', { name: 'IoT', exact: true }).first().click();
     const interruptor = page.getByRole('switch').first();
     await expect(interruptor).toBeVisible();
     const estrella = interruptor.locator('xpath=preceding-sibling::button[@aria-pressed][1]');
+    await esperarContenidoQuieto(page);
     const cajaEstrella = (await estrella.boundingBox())!;
-    expect([cajaEstrella.width, cajaEstrella.height]).toEqual([32, 32]);
+    expect(cajaEstrella.width).toBeCloseTo(32, 1);
+    expect(cajaEstrella.height).toBeCloseTo(32, 1);
   });
 
   test('los campos miden lo mismo que antes: 14 px de letra y 40 px de alto', async ({ page }) => {
@@ -339,14 +394,15 @@ test.describe('escritorio', () => {
     const correo = page.getByLabel('Correo electrónico');
     await expect(correo).toBeVisible();
     expect(await correo.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
-    expect((await correo.boundingBox())!.height).toBe(40);
+    expect((await correo.boundingBox())!.height).toBeCloseTo(40, 1);
 
     await login(page);
     await page.getByRole('link', { name: 'Ajustes' }).first().click();
     const lista = page.locator('main select:visible').first();
     await expect(lista).toBeVisible();
+    await esperarContenidoQuieto(page);
     expect(await lista.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
-    expect((await lista.boundingBox())!.height).toBe(40);
+    expect((await lista.boundingBox())!.height).toBeCloseTo(40, 1);
   });
   test('el precio de Energía mide lo mismo que antes: 14 px de letra y 30 px de alto', async ({
     page,
@@ -356,7 +412,8 @@ test.describe('escritorio', () => {
     const precio = page.getByLabel('Precio por kWh');
     await expect(precio).toBeVisible();
     await expect(precio).toBeEnabled();
+    await esperarContenidoQuieto(page);
     expect(await precio.evaluate((el) => getComputedStyle(el).fontSize)).toBe('14px');
-    expect((await precio.boundingBox())!.height).toBe(30);
+    expect((await precio.boundingBox())!.height).toBeCloseTo(30, 1);
   });
 });
