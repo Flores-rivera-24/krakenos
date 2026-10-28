@@ -34,7 +34,7 @@ function CargandoPagina() {
 
 const COLLAPSE_KEY = 'krakenos-sidebar-collapsed';
 
-// Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 6 celdas encojan por
+// Reparto equitativo: `min-w-0 flex-1 basis-0` deja que las 5 celdas (4 destinos y «Más») encojan por
 // igual a ≤375px (en vez de `min-w-[4rem]`, que sumaba 384px y desbordaba), y la
 // etiqueta trunca para no solaparse con la vecina (US-97).
 const BOTTOM_ITEM_BASE = 'flex min-w-0 flex-1 basis-0 flex-col items-center gap-0.5 px-0.5 py-2';
