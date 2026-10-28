@@ -2,7 +2,7 @@ import type { AuthSession, SystemSettingKey } from '@krakenos/types';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -72,6 +72,9 @@ describe('SecuritySection', () => {
     await user.click(screen.getByText(texto));
     expect(document.activeElement).toBe(screen.getByRole(rol, { name: texto }));
   });
+
+  // Pulsar «Tema oscuro» alterna el tema real del documento: se devuelve al de partida.
+  afterEach(() => applyTheme('dark'));
 
   beforeEach(() => {
     useToastStore.setState({ toasts: [] });
@@ -385,7 +388,6 @@ describe('SecuritySection', () => {
       await userEvent.click(sw);
       expect(sw).toHaveAttribute('aria-checked', 'false');
       expect(patch).not.toHaveBeenCalledWith('theme', expect.anything());
-      applyTheme('dark');
     });
 
     it('el interruptor y el botón de la barra lateral cambian a la vez', async () => {
@@ -402,7 +404,6 @@ describe('SecuritySection', () => {
       expect(screen.getByRole('button', { name: 'Cambiar a modo oscuro' })).toBeInTheDocument();
       await userEvent.click(screen.getByRole('button', { name: 'Cambiar a modo oscuro' }));
       expect(sw).toHaveAttribute('aria-checked', 'true');
-      applyTheme('dark');
     });
   });
 });

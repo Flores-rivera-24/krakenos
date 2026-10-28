@@ -51,6 +51,11 @@ export function camposDeContrasena(nombre: string, codigo: string): Campo[] {
     }
     ts.forEachChild(nodo, visitar);
   };
+  // Falla cerrado: un fuente que no parsea daría una lista vacía y el gate pasaría en falso.
+  const diagnosticos = (sf as unknown as { parseDiagnostics?: unknown[] }).parseDiagnostics;
+  if (diagnosticos && diagnosticos.length > 0) {
+    throw new Error(`No se pudo analizar ${nombre}: ${diagnosticos.length} error(es) de sintaxis`);
+  }
   visitar(sf);
   return salida;
 }
@@ -75,6 +80,10 @@ describe('autocompletar-contrasenas', () => {
     expect(camposSinAutocompletar('const a = <Input type="text" />;')).toBe(0);
     expect(camposSinAutocompletar('// <Input type="password" />\nconst a = 1;')).toBe(0);
     expect(camposSinAutocompletar('/* <Input type="password" /> */\nconst a = 1;')).toBe(0);
+  });
+
+  it('falla cerrado ante un fuente que no se puede analizar', () => {
+    expect(() => camposSinAutocompletar('const a = <Input type="password"')).toThrow(/x\.tsx/);
   });
 
   const todos = ficheros()

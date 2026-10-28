@@ -17,8 +17,9 @@ interface DialogProps {
 /**
  * Diálogo modal sin dependencias externas. Se monta vía `createPortal` en `document.body`,
  * como `Slideover`: el `<main>` conserva un `transform` tras su animación de entrada y eso lo
- * convierte en el bloque contenedor de todo `fixed` de dentro. El foco inicial y Escape los da
- * el primitivo (`useFocusTrap`); el cierre visible lo pinta el consumidor.
+ * convierte en el bloque contenedor de todo `fixed` de dentro. Escape lo maneja el propio
+ * `Dialog` (su `keydown`); el foco inicial, el ciclo con Tab y la devolución del foco los da
+ * `useFocusTrap`. El cierre visible lo pinta el consumidor.
  */
 export function Dialog({
   open,
