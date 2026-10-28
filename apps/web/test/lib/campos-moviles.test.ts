@@ -141,8 +141,12 @@ export function defectosDe(c: Campo): string[] {
   if (chica.length) falta.push(`letra sin md: (${chica.join(', ')})`);
   if (nativo) {
     if (!c.tokens.includes('text-base')) falta.push('sin text-base');
-    else if (!c.tokens.some((x) => /^md:text-/.test(x)))
-      falta.push('text-base sin md:text-… (crecería a 16 px en escritorio)');
+    else if (
+      !c.tokens.some((x) =>
+        /^md:text-(?:xs|sm|base|lg|xl|2xl|kr-(?:xs|sm|base|lg|xl|2xl))$/.test(x),
+      )
+    )
+      falta.push('text-base sin md:text-<tamaño> (crecería a 16 px en escritorio)');
     if (c.etiqueta !== 'textarea') {
       if (!c.tokens.includes('min-h-11')) falta.push('sin min-h-11');
       if (!c.tokens.includes('md:min-h-0')) falta.push('sin md:min-h-0');
@@ -199,6 +203,8 @@ describe('campos editables en el celular', () => {
       '<Input id="a" className="text-sm md:text-sm" />',
       '<textarea className="rounded-md" />',
       '<select className="text-base min-h-11 md:min-h-0" />',
+      // `md:text-<color>` no devuelve el tamaño: en escritorio el campo seguiría en 16 px.
+      '<select className="text-base min-h-11 md:min-h-0 md:text-kr-primary" />',
     ];
     for (const m of malo) expect(hallazgosDe('muestra.tsx', m)).toHaveLength(1);
 

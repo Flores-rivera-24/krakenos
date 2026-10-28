@@ -80,12 +80,15 @@ const PRIMITIVAS: { fichero: string; fragmento: string }[] = [
   { fichero: 'components/layout/AppLayout.tsx', fragmento: '-m-2 p-2 text-kr-secondary' },
   {
     fichero: 'components/energy/EnergyAlertsCard.tsx',
-    fragmento: 'relative tap-target text-muted-foreground',
+    fragmento: 'text-muted-foreground hover:text-danger',
   },
-  { fichero: 'components/coverage/SurveyPanel.tsx', fragmento: 'relative tap-target flex h-7 w-7' },
+  {
+    fichero: 'components/coverage/SurveyPanel.tsx',
+    fragmento: 'flex h-7 w-7 shrink-0 items-center justify-center rounded-md',
+  },
   {
     fichero: 'components/dashboard/GettingStarted.tsx',
-    fragmento: 'relative tap-target rounded-sm',
+    fragmento: 'rounded-sm p-1 text-kr-secondary hover:bg-kr-elevated',
   },
 ];
 
