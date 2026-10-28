@@ -16,6 +16,8 @@ interface Props {
    * guardado). Si estás dudando, no lo pongas.
    */
   skipConfirm?: boolean;
+  /** Deshabilita el botón (p. ej. mientras otra operación sobre la misma fila está en vuelo). */
+  disabled?: boolean;
 }
 
 /** Tiempo tras el que «Confirmar» vuelve a su estado normal. */
@@ -48,6 +50,7 @@ export function DeleteButton({
   variant = 'ghost',
   className,
   skipConfirm,
+  disabled,
   ...rest
 }: Props) {
   const t = useT();
@@ -136,7 +139,7 @@ export function DeleteButton({
       type="button"
       variant={variant}
       size="sm"
-      disabled={pending}
+      disabled={pending || disabled}
       aria-busy={pending}
       aria-label={rest['aria-label']}
       onClick={(e) => {

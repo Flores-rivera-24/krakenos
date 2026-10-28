@@ -20,6 +20,22 @@ describe('DeleteButton', () => {
       expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument();
     });
 
+    it('con `disabled`, el click no arma la confirmación', () => {
+      const onDelete = vi.fn().mockResolvedValue(undefined);
+      render(
+        <DeleteButton onDelete={onDelete} disabled>
+          Eliminar
+        </DeleteButton>,
+      );
+
+      const boton = screen.getByRole('button', { name: 'Eliminar' });
+      expect(boton).toBeDisabled();
+      fireEvent.click(boton);
+
+      expect(screen.queryByRole('button', { name: 'Confirmar' })).toBeNull();
+      expect(onDelete).not.toHaveBeenCalled();
+    });
+
     it('el segundo click sí borra', async () => {
       const onDelete = vi.fn().mockResolvedValue(undefined);
       render(<DeleteButton onDelete={onDelete}>Eliminar</DeleteButton>);

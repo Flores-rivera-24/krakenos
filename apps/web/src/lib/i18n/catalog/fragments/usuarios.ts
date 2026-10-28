@@ -24,6 +24,7 @@ export const esUsuarios = {
   'users.active': 'Activo',
   'users.disabled': 'Deshabilitado',
   'users.disable': 'Deshabilitar',
+  'users.deleteAria': 'Eliminar a {email}',
   'users.enable': 'Habilitar',
   'users.wasDisabled': 'Usuario deshabilitado',
   'users.wasEnabled': 'Usuario habilitado',

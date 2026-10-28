@@ -321,7 +321,12 @@ export function UsersSection() {
                             {t('common.delete')}
                           </Button>
                         ) : (
-                          <DeleteButton variant="destructive" onDelete={() => remove(u)}>
+                          <DeleteButton
+                            variant="destructive"
+                            disabled={busy}
+                            aria-label={t('users.deleteAria', { email: u.email })}
+                            onDelete={() => remove(u)}
+                          >
                             {t('common.delete')}
                           </DeleteButton>
                         )}

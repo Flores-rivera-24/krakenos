@@ -1569,6 +1569,7 @@ export const en: Record<TranslationKey, string> = {
   'users.active': 'Active',
   'users.disabled': 'Disabled',
   'users.disable': 'Disable',
+  'users.deleteAria': 'Delete {email}',
   'users.enable': 'Enable',
   'users.wasDisabled': 'User disabled',
   'users.wasEnabled': 'User enabled',

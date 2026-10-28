@@ -186,10 +186,34 @@ describe('UsersSection: borrar un usuario', () => {
     });
     render(<UsersSection />);
     await screen.findByText('ana@krakenos.test');
-    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await user.click(screen.getByRole('button', { name: 'Eliminar a ana@krakenos.test' }));
+    expect(screen.getByRole('group', { name: 'Eliminar a ana@krakenos.test' })).toBeInTheDocument();
     expect(apiMock.del).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     await waitFor(() => expect(apiMock.del).toHaveBeenCalledTimes(1));
     expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  it('con una operación en vuelo sobre el usuario, «Eliminar» está deshabilitado', async () => {
+    const user = userEvent.setup();
+    apiMock.get.mockReset().mockResolvedValue([summary()]);
+    apiMock.patch.mockReset().mockReturnValue(new Promise(() => {}));
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
+      tokens: { accessToken: 't', expiresIn: 900 },
+    });
+    render(<UsersSection />);
+    await screen.findByText('ana@krakenos.test');
+    const eliminar = screen.getByRole('button', { name: 'Eliminar a ana@krakenos.test' });
+    expect(eliminar).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Deshabilitar' }));
+    await waitFor(() => expect(eliminar).toBeDisabled());
   });
 });
