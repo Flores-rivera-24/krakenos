@@ -160,7 +160,7 @@ export function HomeModeWidget() {
             )}
             {timeline.length > 0 && (
               <div>
-                <p className="mb-1 text-kr-xs font-medium uppercase tracking-wide text-kr-muted">
+                <p className="mb-1 text-kr-xs font-medium text-kr-muted">
                   {t('presence.timeline')}
                 </p>
                 {timelineFailed && !stateFailed && <StaleBadge className="mb-1" />}

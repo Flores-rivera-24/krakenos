@@ -160,4 +160,14 @@ describe('SupportCard: la telemetría que falla se dice y se reintenta', () => {
       screen.queryByText('No se pudo leer el estado de la telemetría.'),
     ).not.toBeInTheDocument();
   });
+
+  it('el icono del título es de 20 px y se oculta a los lectores (el título ya nombra la tarjeta)', async () => {
+    const { container } = render(<SupportCard />);
+    await waitFor(() =>
+      expect(container.querySelector('svg.lucide-life-buoy.text-kr-accent')).not.toBeNull(),
+    );
+    const icono = container.querySelector('svg.lucide-life-buoy.text-kr-accent')!;
+    expect(icono).toHaveClass('h-5', 'w-5');
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
+  });
 });

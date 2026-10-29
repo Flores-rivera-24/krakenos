@@ -83,7 +83,7 @@ export function MqttInteropCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Radio className="h-4 w-4 text-kr-accent" aria-hidden />
+          <Radio className="h-5 w-5 text-kr-accent" aria-hidden />
           {t('settings.mqtt.title')}
         </CardTitle>
       </CardHeader>

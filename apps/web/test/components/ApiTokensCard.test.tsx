@@ -50,6 +50,16 @@ describe('ApiTokensCard (US-174)', () => {
   });
   afterEach(() => setLocale('es', { persist: false }));
 
+  it('el icono del título es de 20 px y se oculta a los lectores (el título ya nombra la tarjeta)', async () => {
+    const { container } = render(<ApiTokensCard />);
+    await waitFor(() =>
+      expect(container.querySelector('svg.lucide-key-round.text-kr-accent')).not.toBeNull(),
+    );
+    const icono = container.querySelector('svg.lucide-key-round.text-kr-accent')!;
+    expect(icono).toHaveClass('h-5', 'w-5');
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('lista los tokens existentes', async () => {
     render(<ApiTokensCard />);
     expect(await screen.findByText('HA')).toBeInTheDocument();

@@ -175,7 +175,7 @@ function PasskeysCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-        <KeyRound className="h-5 w-5 text-kr-accent" />
+        <KeyRound className="h-5 w-5 text-kr-accent" aria-hidden />
         <CardTitle>{t('security.passkeys')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">

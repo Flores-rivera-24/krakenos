@@ -406,4 +406,15 @@ describe('SecuritySection', () => {
       expect(sw).toHaveAttribute('aria-checked', 'true');
     });
   });
+
+  it('el icono de las passkeys se oculta a los lectores (el título ya las nombra)', async () => {
+    renderSection();
+    await waitFor(() =>
+      expect(document.querySelector('svg.lucide-key-round.text-kr-accent')).not.toBeNull(),
+    );
+    expect(document.querySelector('svg.lucide-key-round.text-kr-accent')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
+  });
 });

@@ -106,4 +106,14 @@ describe('MqttInteropCard (US-174)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guardar/ }));
     expect(interopMock.updateMqtt).not.toHaveBeenCalled();
   });
+
+  it('el icono del título es de 20 px y se oculta a los lectores (el título ya nombra la tarjeta)', async () => {
+    const { container } = render(<MqttInteropCard />);
+    await waitFor(() =>
+      expect(container.querySelector('svg.lucide-radio.text-kr-accent')).not.toBeNull(),
+    );
+    const icono = container.querySelector('svg.lucide-radio.text-kr-accent')!;
+    expect(icono).toHaveClass('h-5', 'w-5');
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
+  });
 });

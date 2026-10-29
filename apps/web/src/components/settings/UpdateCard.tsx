@@ -8,7 +8,6 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
-import { StatusDot } from '@/components/ui/status-dot';
 import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { formatTime } from '@/lib/format';
@@ -209,7 +208,6 @@ export function UpdateCard() {
 
         {plan?.enabled && !loading && !plan.inProgress && (
           <div className="flex items-center gap-2 text-kr-xs text-kr-muted">
-            <StatusDot status="online" />
             {t('settings.update.checkedAgainst')}
           </div>
         )}

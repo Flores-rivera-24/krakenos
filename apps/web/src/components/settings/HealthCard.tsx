@@ -42,7 +42,7 @@ export function HealthCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-kr-accent" aria-hidden />
+          <Activity className="h-5 w-5 text-kr-accent" aria-hidden />
           {t('settings.health.title')}
         </CardTitle>
       </CardHeader>
@@ -110,7 +110,7 @@ export function HealthCard() {
             </dl>
 
             <div>
-              <h4 className="mb-1 text-kr-xs font-medium uppercase tracking-wide text-kr-muted">
+              <h4 className="mb-1 text-kr-xs font-medium text-kr-muted">
                 {t('settings.health.managers')}
               </h4>
               {metrics.managers.length === 0 ? (
