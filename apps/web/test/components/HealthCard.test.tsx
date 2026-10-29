@@ -112,7 +112,9 @@ describe('HealthCard — observabilidad (US-191)', () => {
   it('muestra un error si no se pueden cargar las métricas', async () => {
     apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
     render(<HealthCard />);
-    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo cargar las métricas/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /No se pudieron cargar las métricas/,
+    );
   });
 
   it('indica cuando aún no hay muestras de manager', async () => {

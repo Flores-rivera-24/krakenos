@@ -134,7 +134,7 @@ export function ApiTokensCard() {
                   <p className="text-kr-xs text-kr-muted">
                     <span className="font-mono">{tk.prefix}…</span> ·{' '}
                     {tk.scopes.includes('home.control')
-                      ? `${t('settings.apiTokens.scopeView')} + ${t('settings.apiTokens.scopeControl')}`
+                      ? t('settings.apiTokens.scopeBoth')
                       : t('settings.apiTokens.scopeView')}
                     {' · '}
                     {tk.lastUsedAt

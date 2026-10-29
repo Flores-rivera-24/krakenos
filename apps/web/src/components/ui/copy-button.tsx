@@ -8,7 +8,7 @@ export interface CopyButtonProps {
   value: string;
   /** Etiqueta accesible en estado normal. Por defecto "Copiar". */
   label?: string;
-  /** Etiqueta accesible/visible tras copiar. Por defecto "¡Copiado!". */
+  /** Etiqueta accesible/visible tras copiar. Por defecto "Copiado". */
   copiedLabel?: string;
   /** Muestra el texto junto al icono (por defecto solo icono). */
   showLabel?: boolean;
@@ -23,7 +23,7 @@ const DEFAULT_FEEDBACK_MS = 1500;
 
 /**
  * Botón que copia `value` al portapapeles y muestra un feedback efímero
- * (icono Copy → Check + "¡Copiado!") durante ~1.5 s. Degrada con elegancia si
+ * (icono Copy → Check + "Copiado") durante ~1.5 s. Degrada con elegancia si
  * el portapapeles no está disponible (contexto no seguro o navegador viejo): no
  * lanza ni deja la UI en un estado inconsistente. Sin dependencias externas.
  */
@@ -38,7 +38,7 @@ export function CopyButton({
 }: CopyButtonProps) {
   const t = useT();
   const textoCopiar = label ?? t('ui.copy');
-  const textoCopiado = copiedLabel ?? t('ui.copied');
+  const textoCopiado = copiedLabel ?? t('common.copied');
   const [copied, setCopied] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 

@@ -132,7 +132,7 @@ function PasskeysCard() {
       const attestation = await startRegistration(options);
       const result = await api.post<RegisterPasskeyResult>('/webauthn/register/verify', {
         response: attestation,
-        name: name.trim() || 'Passkey',
+        name: name.trim() || t('security.passkey.defaultName'),
       });
       setName('');
       setAdding(false);

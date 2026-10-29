@@ -11,6 +11,7 @@ export const esUsuarios = {
   // --- Conectar (US-139) ---
   'users.add': 'Añadir usuario',
   'users.name': 'Nombre',
+  'users.email': 'Correo electrónico',
   'users.initialPass': 'Contraseña inicial',
   'users.expires': 'Caduca (invitado)',
   'users.loading': 'Cargando usuarios…',

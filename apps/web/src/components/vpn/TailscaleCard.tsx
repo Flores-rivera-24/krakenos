@@ -36,11 +36,7 @@ function CommandLine({ command }: { command: string }) {
       <code className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs">
         {command}
       </code>
-      <CopyButton
-        value={command}
-        label={t('vpn.tailscale.copy')}
-        copiedLabel={t('vpn.tailscale.copied')}
-      />
+      <CopyButton value={command} label={t('vpn.tailscale.copy')} />
     </div>
   );
 }
@@ -98,11 +94,7 @@ export function TailscaleCard() {
                   <span className="text-muted-foreground">{t('vpn.tailscale.magicDns')}</span>
                   <span className="flex min-w-0 items-center gap-2">
                     <span className="truncate font-mono text-xs">{status.magicDnsName}</span>
-                    <CopyButton
-                      value={status.magicDnsName}
-                      label={t('vpn.tailscale.copy')}
-                      copiedLabel={t('vpn.tailscale.copied')}
-                    />
+                    <CopyButton value={status.magicDnsName} label={t('vpn.tailscale.copy')} />
                   </span>
                 </div>
                 <p className="text-kr-xs text-kr-secondary">{t('vpn.tailscale.magicDnsHint')}</p>

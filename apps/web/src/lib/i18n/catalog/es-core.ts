@@ -211,7 +211,6 @@ export const esCore = {
   'connection.live': 'En tiempo real',
   'connection.reconnecting': 'Reconectando…',
   'connection.offline': 'Sin conexión',
-  'ui.copied': '¡Copiado!',
   'ui.favorite.pinned': 'Fijado: {label}',
   'ui.favorite.unpinned': 'Quitado de favoritos: {label}',
   'ui.favorite.removeAria': 'Quitar {label} de favoritos',

@@ -41,6 +41,7 @@ export const esInventario = {
 
   // --- Conectar (US-139) ---
   'device.name': 'Nombre',
+  'device.hostname': 'Hostname',
   'device.noName': 'Sin nombre',
   'device.type': 'Tipo',
   'device.icon': 'Icono',

@@ -24,6 +24,30 @@ beforeAll(() => ensureCatalog('en'));
 afterEach(() => setLocale('es', { persist: false }));
 
 describe('catálogo i18n (US-177)', () => {
+  it('el «¡Copiado!» duplicado no existe: todos copian con common.copied', () => {
+    for (const k of ['ui.copied', 'settings.update.copied', 'vpn.tailscale.copied']) {
+      expect(k in es).toBe(false);
+      expect(k in en).toBe(false);
+    }
+    expect(Object.values(es)).not.toContain('¡Copiado!');
+    expect(Object.values(en)).not.toContain('Copied!');
+  });
+
+  it('las frases de Ajustes salen completas del catálogo', () => {
+    expect(es['settings.health.error']).toBe('No se pudieron cargar las métricas.');
+    expect(es['tuya.opError']).toBe('No se pudo completar la operación.');
+    expect(en['tuya.opError']).toBe('Could not complete the operation.');
+    expect(es['matter.exposeAria']).toBe('Exponer {name}');
+    expect(en['matter.exposeAria']).toBe('Expose {name}');
+    expect(es['settings.apiTokens.scopeBoth']).toBe(
+      'Leer el estado del hogar y controlar dispositivos',
+    );
+    expect(es['security.passkey.defaultName']).toBe('Passkey');
+    expect(es['users.email']).toBe('Correo electrónico');
+    expect(en['users.email']).toBe('Email address');
+    expect(es['device.hostname']).toBe('Hostname');
+  });
+
   it('paridad de claves es/en (ninguna falta ni sobra)', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(es).sort());
   });

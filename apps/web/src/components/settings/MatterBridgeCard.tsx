@@ -136,7 +136,7 @@ export function MatterBridgeCard({ isAdmin }: MatterBridgeCardProps) {
                         checked={c.exposed}
                         disabled={!isAdmin || busy}
                         onCheckedChange={(v) => toggleDevice(c.deviceId, v)}
-                        aria-label={`${t('matter.expose')} ${c.name}`}
+                        aria-label={t('matter.exposeAria', { name: c.name })}
                       />
                     </li>
                   ))}

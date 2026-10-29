@@ -182,11 +182,7 @@ export function UpdateCard() {
                   <code className="min-w-0 flex-1 overflow-x-auto break-all rounded-md bg-kr-elevated px-2 py-1 font-mono text-kr-xs text-kr-primary">
                     {plan.dockerCommand}
                   </code>
-                  <CopyButton
-                    value={plan.dockerCommand}
-                    label={t('settings.update.copyCommand')}
-                    copiedLabel={t('settings.update.copied')}
-                  />
+                  <CopyButton value={plan.dockerCommand} label={t('settings.update.copyCommand')} />
                 </div>
               </div>
             ) : plan.mode === 'windows-service' ? (

@@ -26,7 +26,7 @@ export const esMatter = {
     'Al escanear el QR, Alexa/Google/Apple pueden avisar de que el dispositivo «no está certificado». Es normal: KrakenOS usa un identificador de prueba. Puedes continuar; algunos ecosistemas pueden limitar ciertas funciones.',
   'matter.devices': 'Dispositivos a exponer',
   'matter.noDevices': 'No hay dispositivos controlables que exponer todavía.',
-  'matter.expose': 'Exponer',
+  'matter.exposeAria': 'Exponer {name}',
   'matter.type.onoff': 'enchufe/luz',
   'matter.type.dimmable': 'luz regulable',
   'matter.type.color': 'luz de color',

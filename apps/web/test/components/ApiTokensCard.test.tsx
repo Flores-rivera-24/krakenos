@@ -70,6 +70,18 @@ describe('ApiTokensCard (US-174)', () => {
     expect(screen.getByText(/No se volverá a mostrar/)).toBeInTheDocument();
   });
 
+  it('un token que también controla dice su alcance con una frase entera, no con «+»', async () => {
+    tokensMock.listApiTokens.mockResolvedValue([
+      { ...existing, scopes: ['home.view', 'home.control'] },
+    ]);
+    render(<ApiTokensCard />);
+    await screen.findByText('HA');
+    expect(
+      screen.getByText(/Leer el estado del hogar y controlar dispositivos/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\+ Controlar/)).not.toBeInTheDocument();
+  });
+
   it('un viewer no ve la opción de controlar dispositivos', async () => {
     setRole('viewer');
     render(<ApiTokensCard />);
