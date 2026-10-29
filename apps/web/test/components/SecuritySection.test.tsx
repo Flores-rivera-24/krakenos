@@ -242,6 +242,13 @@ describe('SecuritySection', () => {
     await screen.findByText('aaaa-bbbb-cccc');
 
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    // Mide como sus vecinos: mismas clases de tamaño que «Descargar como .txt».
+    const copiar = screen.getByRole('button', { name: /copiar/i });
+    const descargarBtn = screen.getByRole('button', { name: 'Descargar como .txt' });
+    for (const c of ['min-h-11', 'px-3', 'md:h-9', 'md:min-h-0', 'text-sm']) {
+      expect(copiar).toHaveClass(c);
+      expect(descargarBtn).toHaveClass(c);
+    }
     await user.click(screen.getByRole('button', { name: /copiar/i }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('aaaa-bbbb-cccc\ndddd-eeee-ffff'));
 
