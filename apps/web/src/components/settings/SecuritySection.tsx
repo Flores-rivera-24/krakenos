@@ -103,7 +103,7 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
         ))}
       </ul>
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <CopyButton value={texto} showLabel />
+        <CopyButton value={texto} showLabel variant="button" />
         <Button size="sm" variant="outline" onClick={descargar}>
           <Download className="h-4 w-4" aria-hidden />
           {t('security.codes.download')}

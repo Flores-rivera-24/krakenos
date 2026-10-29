@@ -1,5 +1,6 @@
 import { Check, Copy } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
@@ -16,6 +17,12 @@ export interface CopyButtonProps {
   feedbackMs?: number;
   /** Callback tras una copia correcta. */
   onCopied?: (value: string) => void;
+  /**
+   * `compact` (por defecto): botón pequeño para ir solo junto a un comando.
+   * `button`: toma el aspecto y el tamaño de un `Button` outline `sm`, para ir en
+   * una fila de acciones con otros botones.
+   */
+  variant?: 'compact' | 'button';
   className?: string;
 }
 
@@ -34,6 +41,7 @@ export function CopyButton({
   showLabel = false,
   feedbackMs = DEFAULT_FEEDBACK_MS,
   onCopied,
+  variant = 'compact',
   className,
 }: CopyButtonProps) {
   const t = useT();
@@ -69,7 +77,9 @@ export function CopyButton({
       aria-label={copied ? textoCopiado : textoCopiar}
       data-copied={copied}
       className={cn(
-        'relative tap-target inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring',
+        variant === 'button'
+          ? buttonVariants({ variant: 'outline', size: 'sm' })
+          : 'relative tap-target inline-flex shrink-0 items-center gap-1.5 rounded-md border border-kr bg-kr-surface px-2 py-1 text-kr-sm text-kr-secondary transition-colors hover:bg-kr-elevated hover:text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring',
         copied && 'border-success text-success',
         className,
       )}
