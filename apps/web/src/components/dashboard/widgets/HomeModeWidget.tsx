@@ -1,6 +1,7 @@
 import type { HomeMode, PresenceEvent, PresenceState } from '@krakenos/types';
 import { HOME_MODES } from '@krakenos/types';
-import { useEffect, useState } from 'react';
+import { LogIn, LogOut } from 'lucide-react';
+import { createElement, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -11,7 +12,7 @@ import { timeAgo } from '@/lib/format';
 import {
   getPresence,
   getPresenceTimeline,
-  MODE_GLYPHS,
+  MODE_ICONS,
   MODE_LABEL_KEYS,
   setHomeMode,
 } from '@/lib/presence';
@@ -125,9 +126,7 @@ export function HomeModeWidget() {
                       : 'border-kr bg-kr-elevated text-kr-secondary hover:text-kr-primary',
                   )}
                 >
-                  <span aria-hidden className="text-xl">
-                    {MODE_GLYPHS[mode]}
-                  </span>
+                  {createElement(MODE_ICONS[mode], { 'aria-hidden': true, className: 'h-5 w-5' })}
                   {t(MODE_LABEL_KEYS[mode])}
                 </button>
               ))}
@@ -168,7 +167,11 @@ export function HomeModeWidget() {
                 <ul className="space-y-1">
                   {timeline.map((e) => (
                     <li key={e.id} className="flex items-center gap-2 text-kr-xs text-kr-muted">
-                      <span aria-hidden>{e.kind === 'arrived' ? '→🏠' : '🏠→'}</span>
+                      {e.kind === 'arrived' ? (
+                        <LogIn aria-hidden className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <LogOut aria-hidden className="h-4 w-4 shrink-0" />
+                      )}
                       <span className="min-w-0 flex-1 truncate">
                         {e.kind === 'arrived'
                           ? t('presence.arrived', { name: e.displayName })

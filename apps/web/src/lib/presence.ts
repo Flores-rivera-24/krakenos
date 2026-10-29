@@ -1,4 +1,5 @@
 import type { HomeMode, PresenceEvent, PresenceState } from '@krakenos/types';
+import { DoorOpen, House, Moon, type LucideIcon } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { TranslationKey } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/rutinas';
@@ -23,8 +24,8 @@ export const MODE_LABEL_KEYS: Record<HomeMode, TranslationKey> = {
   night: 'homeMode.night',
 };
 
-export const MODE_GLYPHS: Record<HomeMode, string> = {
-  home: '🏠',
-  away: '🚪',
-  night: '🌙',
+export const MODE_ICONS: Record<HomeMode, LucideIcon> = {
+  home: House,
+  away: DoorOpen,
+  night: Moon,
 };

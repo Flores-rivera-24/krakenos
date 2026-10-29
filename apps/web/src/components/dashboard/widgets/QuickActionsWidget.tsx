@@ -1,4 +1,5 @@
 import type { Device, Favorite, IotDevice, RoomWithState, Scene } from '@krakenos/types';
+import { Lightbulb, Monitor, Plug, Thermometer, type LucideIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -16,8 +17,8 @@ import {
   useRooms,
   useScenes,
 } from '@/lib/resources';
-import { roomGlyph } from '@/lib/rooms';
-import { runScene, sceneGlyph } from '@/lib/scenes';
+import { roomIcon } from '@/lib/rooms';
+import { runScene, sceneIcon } from '@/lib/scenes';
 import { getSocket } from '@/lib/socket';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
@@ -31,7 +32,7 @@ import '@/lib/i18n/catalog/fragments/panel';
 interface ResolvedTile {
   key: string;
   label: string;
-  glyph: string;
+  Icon: LucideIcon;
   /** Si es un IoT controlable, su estado on + acción de toggle. */
   iot?: { id: string; on: boolean };
   /** Si es una escena, su id para ejecutarla de un toque. */
@@ -56,7 +57,7 @@ function resolveTiles(
       tiles.push({
         key: fav.id,
         label: d.name,
-        glyph: d.kind === 'plug' ? '🔌' : d.kind === 'sensor' ? '🌡️' : '💡',
+        Icon: d.kind === 'plug' ? Plug : d.kind === 'sensor' ? Thermometer : Lightbulb,
         iot: d.on !== null ? { id: d.id, on: d.on } : undefined,
         to: '/iot',
         online: d.reachable,
@@ -67,7 +68,7 @@ function resolveTiles(
       tiles.push({
         key: fav.id,
         label: d.label ?? d.hostname ?? d.mac,
-        glyph: '🖥️',
+        Icon: Monitor,
         to: '/inventory',
         online: d.online,
       });
@@ -77,7 +78,7 @@ function resolveTiles(
       tiles.push({
         key: fav.id,
         label: r.name,
-        glyph: roomGlyph(r.icon),
+        Icon: roomIcon(r.icon),
         to: '/rooms',
         online: !r.anyUnreachable,
       });
@@ -87,7 +88,7 @@ function resolveTiles(
       tiles.push({
         key: fav.id,
         label: s.name,
-        glyph: sceneGlyph(s.icon),
+        Icon: sceneIcon(s.icon),
         sceneId: s.id,
         to: '/scenes',
         online: true,
@@ -196,9 +197,7 @@ export function QuickActionsWidget() {
                 className="flex min-h-12 items-center justify-between gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-2"
               >
                 <Link to={tile.to} className="flex min-w-0 items-center gap-2">
-                  <span aria-hidden className="text-xl">
-                    {tile.glyph}
-                  </span>
+                  <tile.Icon aria-hidden className="h-5 w-5 shrink-0" />
                   <span className="min-w-0">
                     <span className="block truncate text-kr-sm text-kr-primary">{tile.label}</span>
                     <span className="flex items-center gap-1 text-kr-xs text-kr-muted">

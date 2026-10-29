@@ -1,5 +1,5 @@
 import type { CreateRoomRequest, RoomIcon, RoomWithState } from '@krakenos/types';
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import {
   createRoom,
   deleteRoom,
   listRooms,
-  roomGlyph,
+  roomIcon,
   runRoomAction,
   updateRoom,
 } from '@/lib/rooms';
@@ -82,7 +82,7 @@ function RoomTile({
               aria-hidden
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated text-2xl"
             >
-              {roomGlyph(room.icon)}
+              {createElement(roomIcon(room.icon), { 'aria-hidden': true, className: 'h-5 w-5' })}
             </span>
             <span className="min-w-0">
               <span className="block truncate text-kr-base font-medium text-kr-primary">
@@ -241,7 +241,7 @@ function RoomEditor({
                     : 'border-kr bg-kr-elevated hover:border-kr-muted',
                 )}
               >
-                {opt.glyph}
+                <opt.Icon aria-hidden className="h-5 w-5" />
               </button>
             ))}
           </div>

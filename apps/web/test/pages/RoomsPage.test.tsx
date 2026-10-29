@@ -93,6 +93,26 @@ describe('RoomsPage (US-165)', () => {
     expect(screen.queryByText(/encendido\(s\)/)).not.toBeInTheDocument();
   });
 
+  it('el icono de la habitación es un svg oculto, no un emoji, y el selector conserva sus nombres', async () => {
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/rooms'
+        ? Promise.resolve([room({ id: 'r2', name: 'Cocina', icon: 'kitchen' })])
+        : Promise.resolve([]),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    const nombre = await screen.findByText('Cocina');
+    const tarjeta = nombre.closest('li, div[class*="rounded"]') as HTMLElement;
+    expect(tarjeta.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(tarjeta.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+
+    await user.click(screen.getByRole('button', { name: /Nueva habitación/ }));
+    const opcion = await screen.findByRole('button', { name: 'Cocina', pressed: false });
+    expect(opcion.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(opcion.textContent).toBe('');
+  });
+
   it('rinde un tile con el estado agregado y ejecuta la acción de grupo', async () => {
     apiMock.get.mockImplementation((path: string) =>
       path === '/rooms' ? Promise.resolve([room()]) : Promise.resolve([]),

@@ -85,6 +85,13 @@ describe('ScenesPage (US-166)', () => {
     expect(screen.getByRole('button', { name: /Cine/ })).toBeInTheDocument();
   });
 
+  it('las plantillas llevan un svg oculto en vez de emoji', async () => {
+    renderPage();
+    const cine = await screen.findByRole('button', { name: /Cine/ });
+    expect(cine.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(cine.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
   it('concuerda en número: «1 dispositivo» y «2 dispositivos»', async () => {
     apiMock.get.mockImplementation((path: string) => {
       if (path === '/iot/devices') return Promise.resolve([LIGHT]);

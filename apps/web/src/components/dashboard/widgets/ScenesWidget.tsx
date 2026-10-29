@@ -1,11 +1,11 @@
 import type { Scene } from '@krakenos/types';
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { Link } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { describeError } from '@/lib/errors';
 import { useScenes } from '@/lib/resources';
-import { runScene, sceneGlyph } from '@/lib/scenes';
+import { runScene, sceneIcon } from '@/lib/scenes';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
@@ -61,9 +61,10 @@ export function ScenesWidget() {
                 onClick={() => void run(scene)}
                 className="flex min-h-10 items-center gap-2 rounded-lg border border-kr bg-kr-elevated px-3 py-1.5 text-kr-sm text-kr-primary transition-colors hover:border-kr-accent disabled:opacity-50"
               >
-                <span aria-hidden className="text-lg">
-                  {sceneGlyph(scene.icon)}
-                </span>
+                {createElement(sceneIcon(scene.icon), {
+                  'aria-hidden': true,
+                  className: 'h-5 w-5',
+                })}
                 {busy === scene.id ? t('widget.scenes.running') : scene.name}
               </button>
             ))}

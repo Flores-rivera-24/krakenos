@@ -92,6 +92,17 @@ describe('QuickActionsWidget (US-170)', () => {
     );
   });
 
+  it('la ficha pinta un svg oculto en vez de un emoji', async () => {
+    useFavoritesStore.setState({
+      favorites: [{ id: 'f1', kind: 'iot', ref: 'light-salon', order: 0, createdAt: '' }],
+      loaded: true,
+    });
+    renderWidget();
+    const ficha = (await screen.findByText('Luz salón')).closest('li') as HTMLElement;
+    expect(ficha.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(ficha.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
   it('ignora un favorito que ya no existe en el snapshot', async () => {
     useFavoritesStore.setState({
       favorites: [{ id: 'f2', kind: 'iot', ref: 'borrado', order: 0, createdAt: '' }],

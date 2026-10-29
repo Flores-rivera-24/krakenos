@@ -7,6 +7,18 @@ import type {
   SceneRunResult,
   UpdateSceneRequest,
 } from '@krakenos/types';
+import {
+  Bath,
+  Clapperboard,
+  DoorOpen,
+  Moon,
+  PartyPopper,
+  Sparkles,
+  Sunrise,
+  Target,
+  UtensilsCrossed,
+  type LucideIcon,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import type { TranslationKey } from '@/lib/i18n';
 import {
@@ -17,26 +29,26 @@ import {
 } from '@/lib/resources';
 
 /**
- * Catálogo de iconos de escena (US-166): glifo (emoji). El nombre visible de cada
- * icono vive en el catálogo i18n (`scenes.icon.<icon>`), no aquí.
+ * Catálogo de iconos de escena (US-166): componente de lucide. El nombre visible de
+ * cada icono vive en el catálogo i18n (`scenes.icon.<icon>`), no aquí.
  */
-export const SCENE_ICONS: { icon: SceneIcon; glyph: string }[] = [
-  { icon: 'night', glyph: '🌙' },
-  { icon: 'movie', glyph: '🎬' },
-  { icon: 'leave', glyph: '🚪' },
-  { icon: 'morning', glyph: '🌅' },
-  { icon: 'dinner', glyph: '🍽️' },
-  { icon: 'relax', glyph: '🛀' },
-  { icon: 'party', glyph: '🎉' },
-  { icon: 'focus', glyph: '🎯' },
-  { icon: 'scene', glyph: '✨' },
+export const SCENE_ICONS: { icon: SceneIcon; Icon: LucideIcon }[] = [
+  { icon: 'night', Icon: Moon },
+  { icon: 'movie', Icon: Clapperboard },
+  { icon: 'leave', Icon: DoorOpen },
+  { icon: 'morning', Icon: Sunrise },
+  { icon: 'dinner', Icon: UtensilsCrossed },
+  { icon: 'relax', Icon: Bath },
+  { icon: 'party', Icon: PartyPopper },
+  { icon: 'focus', Icon: Target },
+  { icon: 'scene', Icon: Sparkles },
 ];
 
-const GLYPH_BY_ICON = new Map(SCENE_ICONS.map((s) => [s.icon, s.glyph]));
+const ICON_BY_KEY = new Map(SCENE_ICONS.map((s) => [s.icon, s.Icon]));
 
-/** Glifo del icono de una escena (cae al genérico si es desconocido). */
-export function sceneGlyph(icon: SceneIcon): string {
-  return GLYPH_BY_ICON.get(icon) ?? '✨';
+/** Icono de una escena (cae al genérico si es desconocido). */
+export function sceneIcon(icon: SceneIcon): LucideIcon {
+  return ICON_BY_KEY.get(icon) ?? Sparkles;
 }
 
 /** Plantillas sugeridas al crear la primera escena (US-166). `preset` fija el estado. */

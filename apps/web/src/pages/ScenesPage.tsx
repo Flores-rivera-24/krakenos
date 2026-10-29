@@ -1,5 +1,5 @@
 import type { IotDevice, Scene, SceneAction, SceneIcon } from '@krakenos/types';
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
   deleteScene,
   listScenes,
   runScene,
-  sceneGlyph,
+  sceneIcon,
   updateScene,
 } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
@@ -78,7 +78,7 @@ function SceneTile({
               aria-hidden
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated text-2xl"
             >
-              {sceneGlyph(scene.icon)}
+              {createElement(sceneIcon(scene.icon), { 'aria-hidden': true, className: 'h-5 w-5' })}
             </span>
             <span className="min-w-0">
               <span className="block truncate text-kr-base font-medium text-kr-primary">
@@ -281,7 +281,7 @@ function SceneEditor({
                     : 'border-kr bg-kr-elevated hover:border-kr-muted',
                 )}
               >
-                {opt.glyph}
+                <opt.Icon aria-hidden className="h-5 w-5" />
               </button>
             ))}
           </div>
@@ -426,7 +426,11 @@ function ScenesPageBody() {
               <div className="flex flex-wrap justify-center gap-2">
                 {SCENE_TEMPLATES.map((tpl) => (
                   <Button key={tpl.nameKey} variant="outline" onClick={() => openNew(tpl)}>
-                    {sceneGlyph(tpl.icon)} {t(`scenes.icon.${tpl.icon}`)}
+                    {createElement(sceneIcon(tpl.icon), {
+                      'aria-hidden': true,
+                      className: 'h-4 w-4',
+                    })}
+                    {t(`scenes.icon.${tpl.icon}`)}
                   </Button>
                 ))}
                 <Button onClick={() => openNew(null)}>{t('scenes.empty.cta')}</Button>
