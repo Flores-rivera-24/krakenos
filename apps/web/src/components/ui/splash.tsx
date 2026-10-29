@@ -3,15 +3,8 @@ import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
 /**
- * Pantalla de carga de marca (US-160) — reemplaza el texto plano "Cargando…".
- * El isotipo Orbital late dentro de un anillo que gira, con ondas de radar que se
- * expanden y una barra de progreso con shimmer. Fondo con rejilla técnica sutil.
- *
- * Usada como fallback de `Suspense` (cambio de ruta) y durante el bootstrap de
- * sesión. `fullScreen={false}` la encaja dentro de un contenedor (p. ej. el área
- * de contenido) para transiciones entre páginas sin tapar la barra lateral.
- *
- * Todo el movimiento respeta prefers-reduced-motion (los anillos quedan quietos).
+ * Fallback de `Suspense` y del bootstrap de sesión. `fullScreen={false}` la encaja en el área de
+ * contenido para no tapar la barra lateral. Todo el movimiento respeta prefers-reduced-motion.
  */
 export interface SplashProps {
   label?: string;

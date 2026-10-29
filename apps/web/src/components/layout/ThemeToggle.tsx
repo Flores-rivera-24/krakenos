@@ -7,10 +7,7 @@ interface Props {
   collapsed: boolean;
 }
 
-/**
- * Botón para alternar tema claro/oscuro desde la sidebar (US-44). Reutiliza `lib/theme.ts`.
- * En modo oscuro muestra `Sun` ("cambiar a claro"); en claro, `Moon` ("cambiar a oscuro").
- */
+/** Muestra el icono del tema al que cambia: `Sun` en oscuro, `Moon` en claro. */
 export function ThemeToggle({ collapsed }: Props) {
   const t = useT();
   const theme = useTheme();

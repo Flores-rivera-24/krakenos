@@ -2,11 +2,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
-/**
- * Línea de carga compacta (US-162): un spinner de acento + texto, centrada. Unifica
- * el "Cargando…" plano de los widgets del dashboard y otros paneles pequeños. El
- * `role="status"` la anuncia; el spinner queda decorativo (el texto ya informa).
- */
+/** `role="status"` anuncia la carga; el spinner es decorativo porque el texto ya informa. */
 export function LoadingLine({ label, className }: { label?: string; className?: string }) {
   const t = useT();
   return (

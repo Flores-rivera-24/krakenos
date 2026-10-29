@@ -26,18 +26,8 @@ function Meter({ label, percent, detail }: { label: string; percent: number; det
 /** Estado del servidor: uptime, CPU%, RAM%. */
 export function SystemWidget() {
   const t = useT();
-  /**
-   * US-262: dos arreglos en el mismo sitio.
-   *
-   *  - `/system/stats` la pedía **también** la barra lateral, así que abrir el
-   *    dashboard la pedía dos veces en el mismo tick.
-   *  - El sondeo era un `setInterval` a pelo, no `usePolling`: seguía preguntando
-   *    cada 5 s con la pestaña **oculta**, que es exactamente el gasto que US-239
-   *    (AUD3-27) fue a quitar y que este widget se saltaba.
-   *
-   * US-234 sigue vigente: el fallo se distingue de «cargando», o el widget gira
-   * para siempre y nadie sabe que el agente no contesta.
-   */
+  // Comparte con la barra lateral una sola petición y sondea sin gastar con la pestaña oculta.
+  // El fallo se distingue de «cargando»: si no, el widget gira para siempre sin avisar de que el agente no contesta.
   const { data: stats, error, refetch } = useSystemStats({ pollMs: 5000 });
 
   return (

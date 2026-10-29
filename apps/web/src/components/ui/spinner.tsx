@@ -2,14 +2,9 @@ import { cn } from '@/lib/utils';
 import { useT } from '@/lib/i18n';
 
 /**
- * Spinner de carga (US-160). Anillo de acento que gira — el gesto de "trabajo en
- * curso" reutilizable para estados de datos (a nivel de página o de sección),
- * distinto del `Loader2` de los botones de mutación. Tokens kr-*, sin colores
- * hardcodeados. Respeta prefers-reduced-motion (motion-reduce:animate-none).
- *
- * Accesible: por defecto lleva `role="status"` + label en español para lectores
- * de pantalla; pásale `label=""` (o envuélvelo en algo con su propio texto) para
- * silenciarlo cuando el contexto ya anuncia la carga.
+ * Para estados de datos de página o sección; los botones de mutación usan `Loader2`.
+ * Lleva `role="status"` salvo con `label=""`, que lo vuelve decorativo cuando el contexto ya anuncia la carga.
+ * Respeta prefers-reduced-motion.
  */
 export interface SpinnerProps {
   /** 16 / 20 / 28 / 40 px. */

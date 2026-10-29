@@ -12,14 +12,7 @@ export interface GlossaryHintProps {
   placement?: 'top' | 'bottom';
 }
 
-/**
- * Pista de ayuda contextual (US-150) respaldada por el glosario compartido: dado
- * el `termKey`, muestra un pequeño "?" que revela la definición en español llano.
- *
- * Solo **compone** `HelpHint` + `getGlossaryEntry` (no reconstruye nada ni edita
- * el glosario). Si el término no está en el glosario, cae al `fallback` en texto
- * llano; si tampoco lo hay, no renderiza nada.
- */
+/** Término fuera del glosario: cae al `fallback`; sin él, no renderiza nada. */
 export function GlossaryHint({ termKey, fallback, placement }: GlossaryHintProps) {
   const t = useT();
   const entry = getGlossaryEntry(termKey);
