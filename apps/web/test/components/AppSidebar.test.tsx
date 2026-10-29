@@ -237,4 +237,11 @@ describe('AppSidebar', () => {
     await user.click(screen.getByRole('button', { name: 'Cambiar a modo claro' }));
     expect(themeMock.toggleTheme).toHaveBeenCalled();
   });
+
+  it('el enlace activo no lleva brillo: bastan la barra de acento y el fondo', () => {
+    renderSidebar({ collapsed: false });
+    const activo = screen.getByRole('link', { name: /Dashboard/ });
+    expect(activo.className).toContain('bg-kr-elevated');
+    expect(activo.className).not.toContain('shadow-kr-glow');
+  });
 });

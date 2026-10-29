@@ -1,7 +1,7 @@
 import type { IsoDateTime } from './common.js';
 
 /**
- * Iconos de escena (US-166). Clave estable mapeada a un glifo en el frontend (no
+ * Iconos de escena (US-166). Clave estable mapeada a un icono en la web (no
  * una URL), coherente con el modo self-hosted + CSP `connect-src 'self'`. **Fuente
  * única** (`as const`): los schemas del agente derivan su enum de aquí (AUD-17), no
  * duplican la lista.

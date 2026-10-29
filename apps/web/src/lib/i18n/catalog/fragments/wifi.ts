@@ -11,7 +11,7 @@ export const esWifi = {
   // --- Red WiFi (US-15) ---
   'wifi.title': 'Red WiFi',
   'wifi.subtitle.admin': 'Gestiona tu red principal y la de invitados.',
-  'wifi.subtitle.readonly': 'Solo lectura — se requiere rol admin para editar.',
+  'wifi.subtitle.readonly': 'Solo lectura · se requiere rol admin para editar.',
   'wifi.loadError': 'No se pudo cargar la configuración WiFi',
   'wifi.empty.title': 'Aún no hay configuración WiFi disponible.',
   'wifi.empty.desc':

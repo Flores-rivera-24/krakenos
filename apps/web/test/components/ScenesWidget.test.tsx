@@ -58,6 +58,14 @@ describe('ScenesWidget (US-166)', () => {
     expect(await screen.findByText(/Crea tu primera escena/)).toBeInTheDocument();
   });
 
+  it('el icono de la escena es un svg oculto, sin emoji', async () => {
+    apiMock.get.mockReset().mockResolvedValue([SCENE]);
+    renderWidget();
+    const boton = await screen.findByRole('button', { name: /Cine/ });
+    expect(boton.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(boton.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+  });
+
   it('lista escenas y las ejecuta de un toque (POST run)', async () => {
     apiMock.get.mockReset().mockResolvedValue([SCENE]);
     apiMock.post.mockResolvedValue({ applied: 0, failed: [] });

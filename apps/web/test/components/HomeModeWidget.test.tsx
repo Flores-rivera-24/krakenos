@@ -67,6 +67,16 @@ describe('HomeModeWidget (US-169)', () => {
     expect(screen.getByText(/señal débil/)).toBeInTheDocument();
   });
 
+  it('los modos y la línea de tiempo usan svg ocultos, sin emoji', async () => {
+    render(<HomeModeWidget />);
+    const homeBtn = await screen.findByRole('button', { name: /En casa/ });
+    expect(homeBtn.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(homeBtn.textContent).not.toMatch(/\p{Extended_Pictographic}/u);
+    const fila = screen.getByText(/Ana llegó/).closest('li') as HTMLElement;
+    expect(fila.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(fila.textContent).not.toMatch(/\p{Extended_Pictographic}|→/u);
+  });
+
   it('cambiar de modo llama a POST /presence/mode y refleja la respuesta', async () => {
     render(<HomeModeWidget />);
     await screen.findByRole('button', { name: /En casa/ });

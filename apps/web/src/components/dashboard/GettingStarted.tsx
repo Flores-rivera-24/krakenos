@@ -1,4 +1,4 @@
-import { ArrowRight, CheckCircle2, Circle, Rocket, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Circle, Router, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { getIntegrations } from '@/lib/integrations';
@@ -102,7 +102,7 @@ export function GettingStarted() {
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-kr-elevated text-kr-accent">
-            <Rocket className="h-5 w-5" aria-hidden />
+            <Router className="h-5 w-5" aria-hidden />
           </span>
           <div>
             <h3 id="onboarding-title" className="text-kr-lg font-semibold text-kr-primary">

@@ -15,7 +15,7 @@ import { MqttInteropCard } from '@/components/settings/MqttInteropCard';
 import { IntegrationsSection } from '@/components/settings/IntegrationsSection';
 import { MatterBridgeCard } from '@/components/settings/MatterBridgeCard';
 import { ReportsCard } from '@/components/settings/ReportsCard';
-import { SecuritySection } from '@/components/settings/SecuritySection';
+import { SecuritySection, type PatchResult } from '@/components/settings/SecuritySection';
 import { SystemBackupCard } from '@/components/settings/SystemBackupCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
 import { MobileAccessCard } from '@/components/vpn/MobileAccessCard';
@@ -181,17 +181,19 @@ export function SettingsPage() {
     [],
   );
 
-  const patch = async (key: SystemSettingKey, value: string) => {
+  const patch = async (key: SystemSettingKey, value: string): Promise<PatchResult> => {
     setError(null);
     try {
       const next = await api.patch<SystemSettingsResponse>('/system/settings', { key, value });
       setData(next);
       // Ajustes en caliente (US-47): confirmar que el cambio ya tiene efecto.
-      if (next.appliedImmediately) {
+      const aplicadoAlInstante = Boolean(next.appliedImmediately);
+      if (aplicadoAlInstante) {
         setApplied(true);
         if (appliedTimer.current) clearTimeout(appliedTimer.current);
         appliedTimer.current = setTimeout(() => setApplied(false), 2500);
       }
+      return { ok: true, aplicadoAlInstante };
     } catch {
       // US-55: no fallar en silencio. Avisa y revierte visualmente el control. Los
       // selects ya muestran el valor guardado (controlados por `data`); el input de
@@ -202,6 +204,7 @@ export function SettingsPage() {
         setMaintWindow(data.settings.updateMaintenanceWindow ?? '');
       if (key === 'presenceNightSuppress' && data)
         setNightSuppress(data.settings.presenceNightSuppress ?? '');
+      return { ok: false, aplicadoAlInstante: false };
     }
   };
 

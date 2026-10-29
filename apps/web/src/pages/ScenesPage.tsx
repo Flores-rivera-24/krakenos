@@ -1,5 +1,5 @@
 import type { IotDevice, Scene, SceneAction, SceneIcon } from '@krakenos/types';
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -23,7 +23,7 @@ import {
   deleteScene,
   listScenes,
   runScene,
-  sceneGlyph,
+  sceneIcon,
   updateScene,
 } from '@/lib/scenes';
 import { cn } from '@/lib/utils';
@@ -74,11 +74,8 @@ function SceneTile({
             disabled={!isAdmin}
             className="flex items-center gap-3 text-left disabled:cursor-default"
           >
-            <span
-              aria-hidden
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated text-2xl"
-            >
-              {sceneGlyph(scene.icon)}
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated">
+              {createElement(sceneIcon(scene.icon), { 'aria-hidden': true, className: 'h-5 w-5' })}
             </span>
             <span className="min-w-0">
               <span className="block truncate text-kr-base font-medium text-kr-primary">
@@ -275,13 +272,13 @@ function SceneEditor({
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(
-                  'flex h-12 items-center justify-center rounded-lg border text-2xl transition-colors',
+                  'flex h-12 items-center justify-center rounded-lg border transition-colors',
                   icon === opt.icon
                     ? 'border-kr-accent bg-kr-accent-faint'
                     : 'border-kr bg-kr-elevated hover:border-kr-muted',
                 )}
               >
-                {opt.glyph}
+                <opt.Icon aria-hidden className="h-5 w-5" />
               </button>
             ))}
           </div>
@@ -402,7 +399,7 @@ function ScenesPageBody() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('scenes.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('scenes.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('scenes.subtitle')}</p>
         </div>
         {isAdmin && <Button onClick={() => openNew(null)}>{t('scenes.newTitle')}</Button>}
@@ -426,7 +423,11 @@ function ScenesPageBody() {
               <div className="flex flex-wrap justify-center gap-2">
                 {SCENE_TEMPLATES.map((tpl) => (
                   <Button key={tpl.nameKey} variant="outline" onClick={() => openNew(tpl)}>
-                    {sceneGlyph(tpl.icon)} {t(`scenes.icon.${tpl.icon}`)}
+                    {createElement(sceneIcon(tpl.icon), {
+                      'aria-hidden': true,
+                      className: 'h-4 w-4',
+                    })}
+                    {t(`scenes.icon.${tpl.icon}`)}
                   </Button>
                 ))}
                 <Button onClick={() => openNew(null)}>{t('scenes.empty.cta')}</Button>

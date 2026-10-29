@@ -10,7 +10,6 @@ interface SwitchProps {
   'aria-labelledby'?: string;
 }
 
-/** Toggle accesible sin dependencias externas. */
 export function Switch({
   checked,
   onCheckedChange,

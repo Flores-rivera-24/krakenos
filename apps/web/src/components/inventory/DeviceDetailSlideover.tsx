@@ -291,7 +291,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       <dl className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-kr bg-kr-elevated p-3">
         <Field label="IP" value={device.ip} />
         {!simpleMode && <Field label="MAC" value={device.mac} />}
-        <Field label="Hostname" value={device.hostname ?? '—'} />
+        <Field label={t('device.hostname')} value={device.hostname ?? '—'} />
         <Field label={t('device.vendor')} value={device.vendor ?? '—'} />
         {!simpleMode && (
           <Field label={t('device.sources')} value={device.sources.join(', ') || '—'} />

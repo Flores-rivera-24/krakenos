@@ -36,6 +36,17 @@ describe('RoomSelect (US-165)', () => {
     expect(screen.getByRole('option', { name: /Cocina/ })).toBeInTheDocument();
   });
 
+  it('el <option> lleva solo el nombre, sin emoji', () => {
+    render(
+      <RoomSelect
+        rooms={[room({ name: 'Cocina', icon: 'kitchen' })]}
+        value={null}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByRole('option', { name: 'Cocina' }).textContent).toBe('Cocina');
+  });
+
   it('emite el id elegido, o null al elegir «Sin habitación»', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();

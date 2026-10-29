@@ -73,7 +73,6 @@ export const esVpn = {
     'Si usas passkeys, configura WEBAUTHN_RP_ID con este nombre como host.',
   'vpn.tailscale.loadError': 'No se pudo consultar Tailscale',
   'vpn.tailscale.copy': 'Copiar',
-  'vpn.tailscale.copied': '¡Copiado!',
   'vpn.mobile.title': 'Tu móvil en 3 pasos',
   'vpn.mobile.desc': 'Con esto, abrir la app en el teléfono conecta directo — en casa y fuera.',
   'vpn.mobile.step1.title': 'Instala la app (PWA)',

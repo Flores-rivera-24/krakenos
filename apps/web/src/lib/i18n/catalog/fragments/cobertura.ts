@@ -61,7 +61,7 @@ export const esCobertura = {
   'coverage.wall.brick': 'Ladrillo',
   'coverage.wall.concrete': 'Hormigón',
   'coverage.wall.metal': 'Metal',
-  'coverage.wall.aria': '{material} — {x1},{y1} a {x2},{y2} m',
+  'coverage.wall.aria': '{material} · {x1},{y1} a {x2},{y2} m',
 
   // --- Cobertura WiFi (US-151) ---
   'coverage.title': 'Cobertura WiFi',
@@ -158,6 +158,7 @@ export const esCobertura = {
   'coverage.rooms.aps': '{count} AP dentro',
   'coverage.rooms.create': 'Crear',
   'coverage.rooms.creating': 'Creando…',
+  'coverage.rooms.done': 'Creada',
   'coverage.rooms.created': 'Habitación «{name}» creada',
   'coverage.rooms.error': 'No se pudo crear la habitación',
   'coverage.rooms.namePlaceholder': 'Nombre de la habitación',

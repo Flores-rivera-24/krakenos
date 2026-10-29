@@ -292,3 +292,17 @@ describe('UpdateCard: refresco que falla con el plan ya leído', () => {
     }
   });
 });
+
+describe('UpdateCard: sin señales fijas', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset();
+    setAdmin('admin');
+  });
+
+  it('«Comprobado contra…» va sin punto de estado (era un verde fijo que no medía nada)', async () => {
+    apiMock.get.mockResolvedValue(basePlan);
+    render(<UpdateCard />);
+    await screen.findByText(/Comprobado contra/);
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+  });
+});

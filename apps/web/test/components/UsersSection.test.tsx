@@ -76,7 +76,7 @@ describe('UsersSection — roles del hogar (US-179)', () => {
       </>,
     );
 
-    await user.type(await screen.findByLabelText('Email'), 'visita@krakenos.test');
+    await user.type(await screen.findByLabelText('Correo electrónico'), 'visita@krakenos.test');
     await user.type(screen.getByLabelText('Nombre'), 'Visita');
     await user.type(screen.getByLabelText('Contraseña inicial'), 'password123');
     await user.selectOptions(screen.getByLabelText('Rol'), 'guest');

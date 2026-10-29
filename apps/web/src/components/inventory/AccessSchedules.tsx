@@ -1,4 +1,5 @@
 import type { AccessSchedule } from '@krakenos/types';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -136,10 +137,8 @@ export function AccessSchedules({ mac, canEdit }: Props) {
               <p className="text-kr-xs text-kr-muted">
                 {minutesToHHMM(s.startMinute)}–{minutesToHHMM(s.endMinute)} ·{' '}
                 {(Array.isArray(s.days) ? s.days : []).map((d) => diasIniciales(t)[d]).join(' ')}
-                {/* US-240: un horario de persona se gobierna desde Personas y el
-                    servidor lo replica a todos sus aparatos. Editarlo aquí lo
-                    dejaría descuadrado con el resto sin avisar, así que se marca y
-                    no se toca desde el dispositivo. */}
+                {/* Un horario de persona se gobierna desde Personas y el servidor lo replica;
+                    editarlo aquí lo descuadraría, así que se marca y no se toca. */}
                 {s.personId && ` · ${t('access.byPerson')}`}
               </p>
             </div>
@@ -157,7 +156,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                   aria-label={t('access.deleteLabel', { name: s.name })}
                   className="min-w-11 px-1 text-kr-secondary hover:text-danger md:min-w-0"
                 >
-                  ✕
+                  <X className="h-4 w-4" aria-hidden />
                 </DeleteButton>
               </>
             )}

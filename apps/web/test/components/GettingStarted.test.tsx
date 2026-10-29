@@ -64,3 +64,12 @@ describe('GettingStarted — primeros pasos (US-145)', () => {
     await waitFor(() => expect(container).toBeEmptyDOMElement());
   });
 });
+
+describe('GettingStarted · icono de la cabecera', () => {
+  it('usa Router y no Rocket (un router es lo que se conecta primero)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const fuente = readFileSync('src/components/dashboard/GettingStarted.tsx', 'utf8');
+    expect(fuente).not.toMatch(/\bRocket\b/);
+    expect(fuente).toMatch(/\bRouter\b/);
+  });
+});

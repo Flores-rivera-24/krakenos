@@ -90,6 +90,45 @@ describe('SystemBackupCard — copias automáticas', () => {
     expect(screen.getByText(/fuera del servidor/i)).toBeInTheDocument();
   });
 
+  it('la contraseña generada se puede copiar', async () => {
+    apiMock.get.mockResolvedValue(OFF);
+    apiMock.post.mockResolvedValue({ passphraseSet: true, generated: 'contrasena-generada-1' });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(<SystemBackupCard />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Generar contraseña' }));
+    await screen.findByText('contrasena-generada-1');
+    fireEvent.click(screen.getByRole('button', { name: /copiar$/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('contrasena-generada-1'));
+  });
+
+  it('cambiar la frecuencia avisa con «Cambios guardados»', async () => {
+    apiMock.get.mockResolvedValue(OFF);
+    apiMock.patch.mockResolvedValue({});
+    render(<SystemBackupCard />);
+    fireEvent.change(await screen.findByLabelText('Frecuencia'), { target: { value: 'weekly' } });
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados'));
+    expect(toastMock.success).toHaveBeenCalledTimes(1);
+  });
+
+  it('la retención solo guarda si el valor cambió', async () => {
+    apiMock.get.mockResolvedValue(OFF);
+    apiMock.patch.mockResolvedValue({});
+    render(<SystemBackupCard />);
+    const keep = await screen.findByLabelText(/copias que se conservan/i);
+    fireEvent.blur(keep);
+    expect(apiMock.patch).not.toHaveBeenCalled();
+    fireEvent.change(keep, { target: { value: '10' } });
+    fireEvent.blur(keep);
+    await waitFor(() =>
+      expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
+        key: 'autoBackupRetention',
+        value: '10',
+      }),
+    );
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados'));
+  });
+
   it('avisa cuando no hay copia reciente (stale)', async () => {
     apiMock.get.mockResolvedValue({
       ...OFF,

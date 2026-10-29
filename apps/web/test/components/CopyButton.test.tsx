@@ -19,12 +19,12 @@ beforeEach(() => {
 afterEach(() => setClipboard(undefined));
 
 describe('CopyButton', () => {
-  it('copia el valor y muestra el feedback "¡Copiado!"', async () => {
+  it('copia el valor y muestra el feedback "Copiado"', async () => {
     render(<CopyButton value="clave-secreta" />);
     const btn = screen.getByRole('button', { name: 'Copiar' });
 
     fireEvent.click(btn);
-    expect(await screen.findByRole('button', { name: '¡Copiado!' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Copiado' })).toBeInTheDocument();
     expect(writeText).toHaveBeenCalledWith('clave-secreta');
     expect(btn).toHaveAttribute('data-copied', 'true');
     expect(btn).toHaveClass('text-success');
@@ -40,7 +40,7 @@ describe('CopyButton', () => {
   it('revierte el feedback tras feedbackMs', async () => {
     render(<CopyButton value="v" feedbackMs={50} />);
     fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
-    await screen.findByRole('button', { name: '¡Copiado!' });
+    await screen.findByRole('button', { name: 'Copiado' });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Copiar' })).toBeInTheDocument());
   });
 
@@ -48,7 +48,7 @@ describe('CopyButton', () => {
     render(<CopyButton value="v" showLabel />);
     expect(screen.getByText('Copiar')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Copiar' }));
-    expect(await screen.findByText('¡Copiado!')).toBeInTheDocument();
+    expect(await screen.findByText('Copiado')).toBeInTheDocument();
   });
 
   it('acepta etiquetas personalizadas', async () => {

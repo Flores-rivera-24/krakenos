@@ -24,6 +24,30 @@ beforeAll(() => ensureCatalog('en'));
 afterEach(() => setLocale('es', { persist: false }));
 
 describe('catálogo i18n (US-177)', () => {
+  it('el «¡Copiado!» duplicado no existe: todos copian con common.copied', () => {
+    for (const k of ['ui.copied', 'settings.update.copied', 'vpn.tailscale.copied']) {
+      expect(k in es).toBe(false);
+      expect(k in en).toBe(false);
+    }
+    expect(Object.values(es)).not.toContain('¡Copiado!');
+    expect(Object.values(en)).not.toContain('Copied!');
+  });
+
+  it('las frases de Ajustes salen completas del catálogo', () => {
+    expect(es['settings.health.error']).toBe('No se pudieron cargar las métricas.');
+    expect(es['tuya.opError']).toBe('No se pudo completar la operación.');
+    expect(en['tuya.opError']).toBe('Could not complete the operation.');
+    expect(es['matter.exposeAria']).toBe('Exponer {name}');
+    expect(en['matter.exposeAria']).toBe('Expose {name}');
+    expect(es['settings.apiTokens.scopeBoth']).toBe(
+      'Leer el estado del hogar y controlar dispositivos',
+    );
+    expect(es['security.passkey.defaultName']).toBe('Passkey');
+    expect(es['users.email']).toBe('Correo electrónico');
+    expect(en['users.email']).toBe('Email address');
+    expect(es['device.hostname']).toBe('Hostname');
+  });
+
   it('paridad de claves es/en (ninguna falta ni sobra)', () => {
     expect(Object.keys(en).sort()).toEqual(Object.keys(es).sort());
   });
@@ -124,5 +148,29 @@ describe('describeError localizado (US-177)', () => {
     setLocale('en', { persist: false });
     const err = new ApiRequestError(500, { code: 'WHATEVER', message: 'server text' });
     expect(describeError(err, 'fallback')).toBe('server text');
+  });
+});
+
+// Las etiquetas cortas separan con punto medio, no con raya (los incisos de frase completa conservan la raya).
+describe('separador de etiquetas cortas', () => {
+  const CLAVES = [
+    'coverage.wall.aria',
+    'wizard.secretStored',
+    'inventory.noRealtime',
+    'iot.subtitle.viewer',
+    'alarmSettings.pinSet',
+    'widget.alarm.phase.entry',
+    'wifi.subtitle.readonly',
+  ] as const;
+
+  describe.each([
+    ['es', es],
+    ['en', en],
+  ] as const)('%s', (_idioma, catalogo) => {
+    it.each(CLAVES)('%s separa con « · » y no con «—»', (clave) => {
+      const valor = catalogo[clave];
+      expect(valor).not.toContain('—');
+      expect(valor).toContain(' · ');
+    });
   });
 });

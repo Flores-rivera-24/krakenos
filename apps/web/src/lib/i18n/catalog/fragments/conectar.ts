@@ -42,7 +42,7 @@ export const esConectar = {
   'connect.dismiss': 'Descartar',
   'connect.wizardTitle': 'Conectar {name}',
   'connect.wizardSubtitle': 'Te guiamos paso a paso',
-  'connect.connected': '✓ Conectado',
+  'connect.connected': 'Conectado',
   'connect.tier.1': 'Muy fácil',
   'connect.tier.2': 'Fácil',
   'connect.tier.3': 'Intermedio',
@@ -85,7 +85,7 @@ export const esConectar = {
   'wizard.test.ok': 'Conexión correcta',
   'wizard.test.fail': 'No se pudo conectar',
   'wizard.troubleshooting': '¿Problemas?',
-  'wizard.secretStored': '•••••• (guardado — deja en blanco para conservar)',
+  'wizard.secretStored': '•••••• (guardado · deja en blanco para conservar)',
   'wizard.testError': 'No se pudo probar {name}',
   'wizard.saveError': 'No se pudo guardar {name}',
   'wizard.savedFallback':

@@ -83,6 +83,14 @@ describe('MatterBridgeCard (US-171)', () => {
     expect(screen.getByText(/no está certificado/)).toBeInTheDocument();
   });
 
+  it('cada interruptor de aparato se nombra con una frase entera que incluye el aparato', async () => {
+    apiMock.get.mockResolvedValue(stateFixture({ enabled: true, running: true }));
+    renderCard(true);
+    await screen.findByText(/Puente Matter/);
+    expect(screen.getByRole('switch', { name: 'Exponer Luz salón' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Exponer TV' })).toBeInTheDocument();
+  });
+
   it('un viewer ve el estado pero no puede togglear (controles deshabilitados)', async () => {
     apiMock.get.mockResolvedValue(stateFixture({ enabled: true, running: true }));
     renderCard(false);

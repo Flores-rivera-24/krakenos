@@ -141,7 +141,7 @@ export function FirewallPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h1 className="text-xl font-semibold">{t('firewall.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('firewall.title')}</h1>
           <HelpHint content={t('firewall.help')} label={t('firewall.helpLabel')} />
         </div>
         <p className="text-sm text-muted-foreground">{t('firewall.subtitle')}</p>

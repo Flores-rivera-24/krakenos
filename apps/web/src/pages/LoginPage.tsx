@@ -256,7 +256,6 @@ export function LoginPage() {
 
   return (
     <div className="grid min-h-screen bg-kr-base lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-      {/* ── Panel del formulario ────────────────────────────────────────── */}
       <div className="relative flex flex-col justify-center bg-kr-surface px-6 py-10 sm:px-10 lg:border-r lg:border-kr">
         <div className="mx-auto w-full max-w-[340px]">
           <div className="mb-8 flex items-center gap-2.5">
@@ -616,7 +615,6 @@ export function LoginPage() {
         </div>
       </div>
 
-      {/* ── Escenario de marca ──────────────────────────────────────────── */}
       <BrandStage tagline={t('login.tagline')} />
     </div>
   );
@@ -661,6 +659,7 @@ function BrandStage({ tagline }: { tagline: string }) {
       aria-hidden="true"
       className="relative hidden overflow-hidden bg-kr-base lg:grid lg:place-items-center"
     >
+      {/* Rejilla de red y halo tras la marca: es la firma visual de KrakenOS, la misma que las otras pantallas de entrada. */}
       <NetworkCanvas variant="grid" />
       <div className="relative z-10 flex flex-col items-center gap-6 px-8 text-center">
         <div

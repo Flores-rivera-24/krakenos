@@ -131,7 +131,7 @@ export function UsersSection() {
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="nu-email">Email</Label>
+            <Label htmlFor="nu-email">{t('users.email')}</Label>
             <Input
               id="nu-email"
               type="email"

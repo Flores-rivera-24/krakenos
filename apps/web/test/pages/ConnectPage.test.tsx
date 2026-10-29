@@ -224,3 +224,19 @@ describe('ConnectPage — detectados en tu red', () => {
     expect(screen.queryByText('Bridge Philips Hue')).not.toBeInTheDocument();
   });
 });
+
+describe('ConnectPage · integración conectada', () => {
+  it('el distintivo dice «Conectado» y lleva un icono oculto al lector', async () => {
+    apiMock.get.mockReset().mockResolvedValue({
+      domains: DOMAINS.map((d) =>
+        d.domain === 'driver'
+          ? { ...d, current: { kind: 'openwrt', enabled: true, config: {} } }
+          : d,
+      ),
+    });
+    renderPage();
+    const insignia = await screen.findByText('Conectado');
+    expect(insignia.textContent).toBe('Conectado');
+    expect(insignia.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+});

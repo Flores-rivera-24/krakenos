@@ -27,10 +27,10 @@ export function HeatmapLegend({ minDbm = -85, maxDbm = -45, className }: Props) 
   // Construye el degradado muestreando la misma función que el canvas.
   const stops: string[] = [];
   for (let i = 0; i <= GRADIENT_STEPS; i++) {
-    const t = i / GRADIENT_STEPS;
+    const frac = i / GRADIENT_STEPS;
     // De izquierda (débil, minDbm) a derecha (fuerte, maxDbm).
-    const dbm = minDbm + (maxDbm - minDbm) * t;
-    stops.push(`${heatmapRgba(dbm, 1)} ${Math.round(t * 100)}%`);
+    const dbm = minDbm + (maxDbm - minDbm) * frac;
+    stops.push(`${heatmapRgba(dbm, 1)} ${Math.round(frac * 100)}%`);
   }
   const gradient = `linear-gradient(to right, ${stops.join(', ')})`;
 

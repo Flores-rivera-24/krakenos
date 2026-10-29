@@ -6,10 +6,11 @@ import type {
   SystemSettingKey,
   WebAuthnCredentialInfo,
 } from '@krakenos/types';
-import { KeyRound } from 'lucide-react';
+import { Download, KeyRound } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/components/ui/button';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { Dialog } from '@/components/ui/dialog';
@@ -34,10 +35,19 @@ import '@/lib/i18n/catalog/fragments/ajustes';
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0';
 
+/**
+ * `ok`: el cambio se guardó (el fallo ya lo avisa quien lo implementa).
+ * `aplicadoAlInstante`: el servidor lo aplicó en caliente y la página ya lo anuncia con su banner.
+ */
+export interface PatchResult {
+  ok: boolean;
+  aplicadoAlInstante: boolean;
+}
+
 interface Props {
   /** `null` mientras la lectura de ajustes carga o ha fallado. */
   settings: Record<SystemSettingKey, string> | null;
-  patch: (key: SystemSettingKey, value: string) => Promise<void>;
+  patch: (key: SystemSettingKey, value: string) => Promise<PatchResult>;
   isAdmin: boolean;
   /** Qué se pinta en lugar de los controles que dependen de los ajustes. */
   ajustesPendientes: React.ReactNode;
@@ -69,6 +79,17 @@ function Row({
  */
 function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => void }) {
   const t = useT();
+  const texto = codes.join('\n');
+  const descargar = () => {
+    const url = URL.createObjectURL(new Blob([texto], { type: 'text/plain' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'krakenos-codigos-de-recuperacion.txt';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
   return (
     <div className="space-y-3 rounded-md border border-warning bg-kr-elevated p-3">
       <p className="text-kr-sm text-kr-primary">
@@ -81,7 +102,12 @@ function CodesReveal({ codes, onDismiss }: { codes: string[]; onDismiss: () => v
           </li>
         ))}
       </ul>
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <CopyButton value={texto} showLabel />
+        <Button size="sm" variant="outline" onClick={descargar}>
+          <Download className="h-4 w-4" aria-hidden />
+          {t('security.codes.download')}
+        </Button>
         <Button size="sm" onClick={onDismiss}>
           {t('security.codes.saved')}
         </Button>
@@ -132,7 +158,7 @@ function PasskeysCard() {
       const attestation = await startRegistration(options);
       const result = await api.post<RegisterPasskeyResult>('/webauthn/register/verify', {
         response: attestation,
-        name: name.trim() || 'Passkey',
+        name: name.trim() || t('security.passkey.defaultName'),
       });
       setName('');
       setAdding(false);
@@ -175,7 +201,7 @@ function PasskeysCard() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center gap-2 space-y-0">
-        <KeyRound className="h-5 w-5 text-kr-accent" />
+        <KeyRound className="h-5 w-5 text-kr-accent" aria-hidden />
         <CardTitle>{t('security.passkeys')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -304,6 +330,11 @@ function SecurityControls({
   const t = useT();
   const uid = useId();
   const theme = useTheme();
+  const guardar = async (key: SystemSettingKey, value: string) => {
+    const { ok, aplicadoAlInstante } = await patch(key, value);
+    // Un ajuste en caliente ya se anuncia con el banner de la página: un solo aviso.
+    if (ok && !aplicadoAlInstante) toast.success(t('common.saved'));
+  };
 
   return (
     <Card>
@@ -317,7 +348,7 @@ function SecurityControls({
             className={SELECT_CLASS}
             value={settings.accessTokenTtl}
             disabled={!isAdmin}
-            onChange={(e) => void patch('accessTokenTtl', e.target.value)}
+            onChange={(e) => void guardar('accessTokenTtl', e.target.value)}
           >
             <option value="900">{t('security.ttl.15m')}</option>
             <option value="3600">{t('security.ttl.1h')}</option>
@@ -330,7 +361,7 @@ function SecurityControls({
             className={SELECT_CLASS}
             value={settings.loginRateLimit}
             disabled={!isAdmin}
-            onChange={(e) => void patch('loginRateLimit', e.target.value)}
+            onChange={(e) => void guardar('loginRateLimit', e.target.value)}
           >
             <option value="5">{t('security.perMinute', { n: 5 })}</option>
             <option value="10">{t('security.perMinute', { n: 10 })}</option>

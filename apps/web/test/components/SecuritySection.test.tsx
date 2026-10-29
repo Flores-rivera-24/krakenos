@@ -205,6 +205,83 @@ describe('SecuritySection', () => {
     expect(apiMock.post).toHaveBeenCalledWith('/webauthn/backup-codes');
   });
 
+  it('los códigos de recuperación se copian juntos y se descargan como .txt sin tocar la red', async () => {
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/webauthn/credentials')
+        return Promise.resolve([
+          {
+            id: 'k1',
+            name: 'iPhone',
+            deviceType: 'singleDevice',
+            backedUp: false,
+            createdAt: new Date().toISOString(),
+            lastUsedAt: null,
+          },
+        ]);
+      if (path === '/webauthn/backup-codes') return Promise.resolve({ remaining: 3 });
+      return Promise.resolve(SESSIONS);
+    });
+    apiMock.post.mockImplementation((path: string) =>
+      path === '/webauthn/backup-codes'
+        ? Promise.resolve({ codes: ['aaaa-bbbb-cccc', 'dddd-eeee-ffff'] })
+        : Promise.resolve(undefined),
+    );
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const blobs: Blob[] = [];
+    const createObjectURL = vi.fn((b: Blob) => {
+      blobs.push(b);
+      return 'blob:codigos';
+    });
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    const user = userEvent.setup();
+    renderSection();
+    await user.click(await screen.findByRole('button', { name: 'Regenerar códigos' }));
+    await screen.findByText('aaaa-bbbb-cccc');
+
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    await user.click(screen.getByRole('button', { name: /copiar/i }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('aaaa-bbbb-cccc\ndddd-eeee-ffff'));
+
+    await user.click(screen.getByRole('button', { name: 'Descargar como .txt' }));
+    expect(blobs).toHaveLength(1);
+    expect(blobs[0]!.type).toMatch(/^text\/plain/);
+    expect(await blobs[0]!.text()).toBe('aaaa-bbbb-cccc\ndddd-eeee-ffff');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:codigos');
+    // La descarga no pide nada al servidor.
+    expect(apiMock.post).toHaveBeenCalledTimes(1);
+    click.mockRestore();
+  });
+
+  it('cambiar el TTL del token guarda y avisa con «Cambios guardados»', async () => {
+    const patch = vi.fn().mockResolvedValue({ ok: true, aplicadoAlInstante: false });
+    const user = userEvent.setup();
+    renderSection(true, patch);
+    await user.selectOptions(await screen.findByLabelText(/duración del access token/i), '3600');
+    expect(patch).toHaveBeenCalledWith('accessTokenTtl', '3600');
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts).toEqual([
+        expect.objectContaining({ kind: 'success', message: 'Cambios guardados' }),
+      ]),
+    );
+  });
+
+  it.each([
+    ['aplicado al instante (ya hay un banner)', { ok: true, aplicadoAlInstante: true }],
+    ['con fallo al guardar', { ok: false, aplicadoAlInstante: false }],
+  ])('cambiar el TTL %s no saca el toast de guardado', async (_caso, resultado) => {
+    const patch = vi.fn().mockResolvedValue(resultado);
+    const user = userEvent.setup();
+    renderSection(true, patch);
+    await user.selectOptions(await screen.findByLabelText(/duración del access token/i), '3600');
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('accessTokenTtl', '3600'));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(useToastStore.getState().toasts).toEqual([]);
+  });
+
   const PASSKEY = {
     id: 'k1',
     name: 'iPhone',
@@ -405,5 +482,16 @@ describe('SecuritySection', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Cambiar a modo oscuro' }));
       expect(sw).toHaveAttribute('aria-checked', 'true');
     });
+  });
+
+  it('el icono de las passkeys se oculta a los lectores (el título ya las nombra)', async () => {
+    renderSection();
+    await waitFor(() =>
+      expect(document.querySelector('svg.lucide-key-round.text-kr-accent')).not.toBeNull(),
+    );
+    expect(document.querySelector('svg.lucide-key-round.text-kr-accent')).toHaveAttribute(
+      'aria-hidden',
+      'true',
+    );
   });
 });

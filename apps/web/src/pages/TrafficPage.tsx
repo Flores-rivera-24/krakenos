@@ -236,7 +236,7 @@ function TrafficPageBody() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold">{t('traffic.title')}</h1>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('traffic.title')}</h1>
         <p className="text-sm text-muted-foreground">{t('traffic.subtitle')}</p>
       </div>
 

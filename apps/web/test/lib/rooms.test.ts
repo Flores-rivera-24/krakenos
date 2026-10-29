@@ -15,21 +15,30 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { ROOM_ICONS as CLAVES_DE_HABITACION } from '@krakenos/types';
 import { t } from '@/lib/i18n';
-import { ROOM_ICONS, assignRoom, createRoom, roomGlyph, runRoomAction } from '@/lib/rooms';
+import { CookingPot, House } from 'lucide-react';
+import { ROOM_ICONS, assignRoom, createRoom, roomIcon, runRoomAction } from '@/lib/rooms';
 
 describe('lib/rooms (US-165)', () => {
-  it('roomGlyph devuelve el glifo del icono, o la casa genérica si es desconocido', () => {
-    expect(roomGlyph('kitchen')).toBe('🍳');
+  it('roomIcon devuelve el componente del icono, o la casa genérica si es desconocido', () => {
+    expect(roomIcon('kitchen')).toBe(CookingPot);
     // Icono desconocido → casa genérica (defensivo).
-    expect(roomGlyph('inexistente' as never)).toBe('🏠');
+    expect(roomIcon('inexistente' as never)).toBe(House);
   });
 
-  it('el catálogo de iconos cubre todos los kinds sin glifos vacíos', () => {
+  it('el catálogo de iconos cubre todos los kinds sin iconos vacíos', () => {
     expect(ROOM_ICONS.length).toBeGreaterThanOrEqual(10);
     expect(
-      ROOM_ICONS.every((r) => r.glyph.length > 0 && t(`rooms.icon.${r.icon}`).length > 0),
+      ROOM_ICONS.every((r) => r.Icon !== undefined && t(`rooms.icon.${r.icon}`).length > 0),
     ).toBe(true);
+  });
+
+  it('cada icono del contrato tiene el suyo, y solo `generic` usa el de respaldo', () => {
+    for (const clave of CLAVES_DE_HABITACION) {
+      if (clave === 'generic') expect(roomIcon(clave)).toBe(House);
+      else expect(roomIcon(clave), clave).not.toBe(House);
+    }
   });
 
   it('los helpers llaman al endpoint correcto', () => {

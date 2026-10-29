@@ -8,33 +8,46 @@ import type {
   RoomWithState,
   UpdateRoomRequest,
 } from '@krakenos/types';
+import {
+  Bath,
+  BedDouble,
+  Car,
+  CookingPot,
+  House,
+  Laptop,
+  Sofa,
+  ToyBrick,
+  Trees,
+  UtensilsCrossed,
+  type LucideIcon,
+} from 'lucide-react';
 import { api } from '@/lib/api';
 import { invalidarHabitaciones, invalidarIot, trasEscribir } from '@/lib/resources';
 
 /**
- * Catálogo de iconos de habitación (US-165): glifo (emoji). Se pinta inline
- * (self-hosted, sin assets externos, coherente con la CSP `connect-src 'self'`).
- * El orden es el que ve el usuario en el selector; el nombre visible de cada
- * icono vive en el catálogo i18n (`rooms.icon.<icon>`), no aquí.
+ * Catálogo de iconos de habitación (US-165): componente de lucide. La base guarda
+ * solo la clave (`Room.icon`); el icono se resuelve aquí. El orden es el que ve el
+ * usuario en el selector; el nombre visible de cada icono vive en el catálogo i18n
+ * (`rooms.icon.<icon>`), no aquí.
  */
-export const ROOM_ICONS: { icon: RoomIcon; glyph: string }[] = [
-  { icon: 'living', glyph: '🛋️' },
-  { icon: 'bedroom', glyph: '🛏️' },
-  { icon: 'kitchen', glyph: '🍳' },
-  { icon: 'bathroom', glyph: '🛁' },
-  { icon: 'dining', glyph: '🍽️' },
-  { icon: 'office', glyph: '💻' },
-  { icon: 'kids', glyph: '🧸' },
-  { icon: 'garage', glyph: '🚗' },
-  { icon: 'garden', glyph: '🌳' },
-  { icon: 'generic', glyph: '🏠' },
+export const ROOM_ICONS: { icon: RoomIcon; Icon: LucideIcon }[] = [
+  { icon: 'living', Icon: Sofa },
+  { icon: 'bedroom', Icon: BedDouble },
+  { icon: 'kitchen', Icon: CookingPot },
+  { icon: 'bathroom', Icon: Bath },
+  { icon: 'dining', Icon: UtensilsCrossed },
+  { icon: 'office', Icon: Laptop },
+  { icon: 'kids', Icon: ToyBrick },
+  { icon: 'garage', Icon: Car },
+  { icon: 'garden', Icon: Trees },
+  { icon: 'generic', Icon: House },
 ];
 
-const GLYPH_BY_ICON = new Map(ROOM_ICONS.map((r) => [r.icon, r.glyph]));
+const ICON_BY_KEY = new Map(ROOM_ICONS.map((r) => [r.icon, r.Icon]));
 
-/** Glifo del icono de una habitación (cae a la casa genérica si es desconocido). */
-export function roomGlyph(icon: RoomIcon): string {
-  return GLYPH_BY_ICON.get(icon) ?? '🏠';
+/** Icono de una habitación (cae a la casa genérica si es desconocido). */
+export function roomIcon(icon: RoomIcon): LucideIcon {
+  return ICON_BY_KEY.get(icon) ?? House;
 }
 
 export const listRooms = () => api.getList<RoomWithState>('/rooms');

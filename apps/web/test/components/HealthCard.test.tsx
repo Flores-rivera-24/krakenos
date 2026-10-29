@@ -1,5 +1,5 @@
 import type { MetricsSnapshot } from '@krakenos/types';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -112,7 +112,9 @@ describe('HealthCard — observabilidad (US-191)', () => {
   it('muestra un error si no se pueden cargar las métricas', async () => {
     apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
     render(<HealthCard />);
-    expect(await screen.findByRole('alert')).toHaveTextContent(/No se pudo cargar las métricas/);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /No se pudieron cargar las métricas/,
+    );
   });
 
   it('indica cuando aún no hay muestras de manager', async () => {
@@ -147,5 +149,31 @@ describe('HealthCard: sondeo que falla con métricas ya pintadas', () => {
     render(<HealthCard />);
     expect(await screen.findByText('20,0%')).toBeInTheDocument();
     expect(screen.getByText('Fuera de lo normal')).toBeInTheDocument();
+  });
+});
+
+describe('HealthCard · errores de un gestor', () => {
+  it('dice «2 errores» y «1 error» en texto, no con un glifo', async () => {
+    apiMock.get.mockReset().mockResolvedValue({
+      ...snapshot,
+      managers: [
+        { name: 'driver:mock', count: 7, errors: 2, avgLatencyMs: 8, maxLatencyMs: 9 },
+        { name: 'iot:mock', count: 7, errors: 1, avgLatencyMs: 8, maxLatencyMs: 9 },
+      ],
+    });
+    render(<HealthCard />);
+    expect(await screen.findByText(/2 errores/)).toBeInTheDocument();
+    expect(screen.getByText(/1 error(?!es)/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('✕');
+  });
+
+  it('el icono del título es de 20 px y se oculta a los lectores (el título ya nombra la tarjeta)', async () => {
+    const { container } = render(<HealthCard />);
+    await waitFor(() =>
+      expect(container.querySelector('svg.lucide-activity.text-kr-accent')).not.toBeNull(),
+    );
+    const icono = container.querySelector('svg.lucide-activity.text-kr-accent')!;
+    expect(icono).toHaveClass('h-5', 'w-5');
+    expect(icono).toHaveAttribute('aria-hidden', 'true');
   });
 });

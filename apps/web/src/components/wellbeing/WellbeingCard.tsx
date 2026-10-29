@@ -12,9 +12,8 @@ import { useAuthStore } from '@/store/auth.store';
 import '@/lib/i18n/catalog/fragments/trafico';
 
 /**
- * Bienestar digital (US-184): uso de internet por persona. El servidor filtra por
- * rol (un admin ve el hogar; el resto solo lo suyo), así que aquí solo se pinta
- * lo recibido. Se muestra junto al tráfico de red (misma naturaleza que US-46).
+ * Bienestar digital: uso de internet por persona. El servidor filtra por rol
+ * (un admin ve el hogar; el resto solo lo suyo), así que aquí solo se pinta lo recibido.
  */
 export function WellbeingCard() {
   const t = useT();
@@ -29,7 +28,7 @@ export function WellbeingCard() {
     return u;
   }, [range]);
   const people = lectura.data?.people ?? null;
-  // US-263/US-251: sin desglose por dispositivo esto está vacío SIEMPRE. Se asume
+  // Sin desglose por dispositivo esto está vacío SIEMPRE. Se asume
   // disponible hasta saber lo contrario, para no acusar al router mientras carga.
   const perDevice: PerDeviceTrafficCapability = lectura.data?.perDeviceTraffic ?? {
     status: 'supported',
@@ -68,9 +67,7 @@ export function WellbeingCard() {
         ) : people === null ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.loading')}</p>
         ) : people.length === 0 ? (
-          /* Tres motivos MUY distintos para no ver nada, y hasta US-263 los tres
-             decían «asigna un dueño a los dispositivos» — mandando al usuario a
-             configurar algo que no arreglaba nada. */
+          /* Tres motivos distintos para no ver nada; solo el último (`withOwner === 0`) se arregla asignando dueños. */
           perDevice.status !== 'supported' ? (
             <PerDeviceTrafficNotice
               capability={perDevice}

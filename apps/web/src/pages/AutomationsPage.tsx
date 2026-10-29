@@ -14,6 +14,7 @@ import type {
 } from '@krakenos/types';
 import { HOME_MODES, SUN_OFFSET_MAX_MIN, WEATHER_METRICS, WEATHER_UNITS } from '@krakenos/types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
@@ -759,7 +760,7 @@ function RuleEditor({
                       aria-label={t('automations.editor.removeActionAria', { n: i + 1 })}
                       onClick={() => setActions((prev) => prev.filter((_, j) => j !== i))}
                     >
-                      ✕
+                      <X className="h-4 w-4" aria-hidden />
                     </Button>
                   )}
                 </div>
@@ -1021,7 +1022,7 @@ function AutomationsPageBody() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('automations.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('automations.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('automations.subtitle')}</p>
         </div>
         {isAdmin && (
@@ -1176,12 +1177,19 @@ function AutomationsPageBody() {
           <ul className="divide-y divide-kr-muted overflow-hidden rounded-lg border border-kr">
             {runs.slice(0, 20).map((run) => (
               <li key={run.id} className="flex items-center gap-3 bg-kr-surface px-3 py-2">
-                <span
-                  aria-hidden
-                  className={cn('text-kr-sm', run.ok ? 'text-success' : 'text-danger')}
-                >
-                  {run.ok ? '✓' : '✕'}
-                </span>
+                {run.ok ? (
+                  <Check
+                    role="img"
+                    aria-label={t('automations.runs.ok')}
+                    className="h-4 w-4 shrink-0 text-success"
+                  />
+                ) : (
+                  <X
+                    role="img"
+                    aria-label={t('automations.runs.failed')}
+                    className="h-4 w-4 shrink-0 text-danger"
+                  />
+                )}
                 <div className="min-w-0 flex-1">
                   <span className="block truncate text-kr-sm text-kr-primary">
                     {ruleName(run.ruleId)} · {run.event}

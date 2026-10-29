@@ -1,5 +1,5 @@
 import type { CreateRoomRequest, RoomIcon, RoomWithState } from '@krakenos/types';
-import { useCallback, useEffect, useState } from 'react';
+import { createElement, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,7 +16,7 @@ import {
   createRoom,
   deleteRoom,
   listRooms,
-  roomGlyph,
+  roomIcon,
   runRoomAction,
   updateRoom,
 } from '@/lib/rooms';
@@ -78,11 +78,8 @@ function RoomTile({
             disabled={!isAdmin}
             className="flex items-center gap-3 text-left disabled:cursor-default"
           >
-            <span
-              aria-hidden
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated text-2xl"
-            >
-              {roomGlyph(room.icon)}
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated">
+              {createElement(roomIcon(room.icon), { 'aria-hidden': true, className: 'h-5 w-5' })}
             </span>
             <span className="min-w-0">
               <span className="block truncate text-kr-base font-medium text-kr-primary">
@@ -235,13 +232,13 @@ function RoomEditor({
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(
-                  'flex h-12 items-center justify-center rounded-lg border text-2xl transition-colors',
+                  'flex h-12 items-center justify-center rounded-lg border transition-colors',
                   icon === opt.icon
                     ? 'border-kr-accent bg-kr-accent-faint'
                     : 'border-kr bg-kr-elevated hover:border-kr-muted',
                 )}
               >
-                {opt.glyph}
+                <opt.Icon aria-hidden className="h-5 w-5" />
               </button>
             ))}
           </div>
@@ -282,7 +279,7 @@ function RoomsPageBody() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('rooms.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('rooms.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('rooms.subtitle')}</p>
         </div>
         {isAdmin && <Button onClick={() => setEditor('new')}>{t('rooms.newTitle')}</Button>}

@@ -40,7 +40,7 @@ function WifiPageBody() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold">{t('wifi.title')}</h1>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('wifi.title')}</h1>
         <p className="text-sm text-muted-foreground">
           {isAdmin ? t('wifi.subtitle.admin') : t('wifi.subtitle.readonly')}
         </p>

@@ -70,7 +70,6 @@ export const esAjustes = {
   'settings.update.dockerHint':
     'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
   'settings.update.copyCommand': 'Copiar comando',
-  'settings.update.copied': '¡Copiado!',
   'settings.update.maintenanceWindow': 'Ventana de mantenimiento: {window}',
   'settings.update.started': 'Actualización iniciada',
   'settings.update.error': 'No se pudo iniciar la actualización',
@@ -86,7 +85,7 @@ export const esAjustes = {
   // --- Ajustes → Salud del sistema (US-191) ---
   'settings.health.title': 'Salud del sistema',
   'settings.health.loading': 'Cargando métricas…',
-  'settings.health.error': 'No se pudo cargar las métricas.',
+  'settings.health.error': 'No se pudieron cargar las métricas.',
   'settings.health.uptime': 'Tiempo activo',
   'settings.health.memory': 'Memoria del agente',
   'settings.health.heap': 'Heap de V8 (usado / reservado)',
@@ -102,6 +101,8 @@ export const esAjustes = {
   'settings.health.noManagers': 'Aún sin muestras de manager.',
   'settings.health.opsCount.one': '{count} llamada',
   'settings.health.opsCount.other': '{count} llamadas',
+  'settings.health.errors.one': '{count} error',
+  'settings.health.errors.other': '{count} errores',
   'settings.health.diskValue': '{free} · {pct}% usado',
 
   // --- Ajustes → Soporte y diagnóstico (US-192) ---
@@ -160,6 +161,7 @@ export const esAjustes = {
   'settings.apiTokens.scopes': 'Permisos',
   'settings.apiTokens.scopeView': 'Leer el estado del hogar',
   'settings.apiTokens.scopeControl': 'Controlar dispositivos',
+  'settings.apiTokens.scopeBoth': 'Leer el estado del hogar y controlar dispositivos',
   'settings.apiTokens.create': 'Crear token',
   'settings.apiTokens.creating': 'Creando…',
   'settings.apiTokens.error': 'No se pudo crear el token',
@@ -357,6 +359,7 @@ export const esAjustes = {
   'security.title': 'Seguridad',
   'security.passkeys': 'Passkeys',
   'security.passkey.unsupported': 'Tu navegador no admite passkeys.',
+  'security.passkey.defaultName': 'Passkey',
   'security.passkey.name': 'Nombre para esta passkey',
   'security.passkey.namePlaceholder': 'MacBook, iPhone, YubiKey…',
   'security.passkey.register': 'Registrar',
@@ -373,6 +376,7 @@ export const esAjustes = {
     'Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez para entrar si pierdes tu passkey.',
   'security.codes.onceOnly': 'No se volverán a mostrar.',
   'security.codes.saved': 'Los he guardado',
+  'security.codes.download': 'Descargar como .txt',
   'security.tokenTtl': 'Duración del access token',
   'security.loginLimit': 'Límite de intentos de login',
   'security.darkTheme': 'Tema oscuro',
@@ -425,7 +429,7 @@ export const esAjustes = {
   'tuya.empty': 'Sin focos Tuya registrados.',
   'tuya.loadError': 'No se pudieron cargar los focos Tuya.',
   'tuya.add': 'Añadir foco',
-  'tuya.opError': 'No se pudo completar la operación',
+  'tuya.opError': 'No se pudo completar la operación.',
   'integrations.online': '{online}/{total} en línea',
   'integrations.undetected': 'No detectada',
   'integrations.connect': 'Cómo conectar',

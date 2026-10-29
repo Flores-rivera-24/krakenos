@@ -64,6 +64,7 @@ describe('RoomsFromPlanPanel (US-196)', () => {
       expect(roomsMock.createRoom).toHaveBeenCalledWith({ name: 'Habitación 1' }),
     );
     await waitFor(() => expect(toastMock.success).toHaveBeenCalled());
+    expect(await screen.findByRole('button', { name: 'Creada' })).toBeDisabled();
   });
 
   it('sin recintos cerrados lo dice honestamente', () => {

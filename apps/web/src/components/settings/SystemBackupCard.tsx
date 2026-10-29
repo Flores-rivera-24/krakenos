@@ -2,6 +2,7 @@ import type { AutoBackupStatus } from '@krakenos/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -227,6 +228,7 @@ function AutoBackupSection() {
   const patchSetting = async (key: string, value: string) => {
     try {
       await api.patch('/system/settings', { key, value });
+      toast.success(t('common.saved'));
       await load();
     } catch (err) {
       toast.error(describeError(err, t('backup.settingError')));
@@ -286,7 +288,10 @@ function AutoBackupSection() {
             min={1}
             max={60}
             defaultValue={status.retention}
-            onBlur={(e) => void patchSetting('autoBackupRetention', e.target.value)}
+            onBlur={(e) => {
+              if (e.target.value !== String(status.retention))
+                void patchSetting('autoBackupRetention', e.target.value);
+            }}
           />
         </div>
       </div>
@@ -341,7 +346,10 @@ function AutoBackupSection() {
 
       {pass && (
         <Callout variant="warning" title={t('backup.auto.keepPassTitle')}>
-          <code className="break-all font-mono text-kr-sm">{pass}</code>
+          <div className="flex items-center gap-2">
+            <code className="break-all font-mono text-kr-sm">{pass}</code>
+            <CopyButton value={pass} />
+          </div>
           <p className="mt-1">{t('backup.auto.keepPassBody')}</p>
         </Callout>
       )}

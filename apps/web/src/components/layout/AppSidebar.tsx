@@ -102,7 +102,7 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
           'group relative flex items-center gap-3 rounded-lg px-3 py-2 text-kr-base transition-all duration-150',
           collapsed && 'justify-center px-0',
           isActive
-            ? 'bg-kr-elevated text-kr-primary shadow-kr-glow-sm'
+            ? 'bg-kr-elevated text-kr-primary'
             : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
         )
       }
@@ -159,9 +159,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {collapsed ? (
         gi > 0 && <div className="mx-2 my-1.5 border-t border-kr-muted" />
       ) : (
-        <p className="px-3 pb-0.5 text-kr-xs font-semibold uppercase tracking-wider text-kr-muted">
-          {t(group.labelKey)}
-        </p>
+        <p className="px-3 pb-0.5 text-kr-xs font-semibold text-kr-muted">{t(group.labelKey)}</p>
       )}
       {group.items.map((item) => (
         <div key={item.to} className="relative">

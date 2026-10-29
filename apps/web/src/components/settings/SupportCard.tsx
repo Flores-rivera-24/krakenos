@@ -85,7 +85,7 @@ export function SupportCard() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <LifeBuoy className="h-4 w-4 text-kr-accent" aria-hidden />
+          <LifeBuoy className="h-5 w-5 text-kr-accent" aria-hidden />
           {t('settings.support.title')}
         </CardTitle>
       </CardHeader>

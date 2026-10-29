@@ -34,7 +34,6 @@ const RETENIDOS: Record<string, string> = {
   WiFi: 'término retenido (copy-style)',
   IoT: 'término retenido (copy-style)',
   Uptime: 'jerga deliberada de modo avanzado (copy-style)',
-  Email: 'nombre de canal (copy-style)',
   'Device ID': 'campo de la cuenta de Tuya, tal como lo llama el fabricante',
   'Local Key': 'campo de la cuenta de Tuya, tal como lo llama el fabricante',
   '(tag': 'primera mitad de «(tag N)»: «tag» es el término técnico de VLAN en ambos idiomas',

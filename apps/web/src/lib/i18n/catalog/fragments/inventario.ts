@@ -32,7 +32,7 @@ export const esInventario = {
   'inventory.view.grid': 'Vista de cuadrícula',
   'inventory.view.list': 'Vista de lista',
   'inventory.scan': 'Escanear',
-  'inventory.noRealtime': 'Sin conexión en tiempo real — reintentando…',
+  'inventory.noRealtime': 'Sin conexión en tiempo real · reintentando…',
   'inventory.empty.title': 'Aún no hay dispositivos.',
   'inventory.empty.desc':
     'KrakenOS descubre solo los aparatos conectados a tu red (móviles, ordenadores, tele, enchufes inteligentes…). Pulsa «Escanear la red» para buscarlos ahora.',
@@ -41,6 +41,7 @@ export const esInventario = {
 
   // --- Conectar (US-139) ---
   'device.name': 'Nombre',
+  'device.hostname': 'Hostname',
   'device.noName': 'Sin nombre',
   'device.type': 'Tipo',
   'device.icon': 'Icono',
