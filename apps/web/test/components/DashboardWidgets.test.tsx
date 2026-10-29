@@ -1,5 +1,7 @@
 import type { Device } from '@krakenos/types';
 import { act, render, screen, within } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -287,6 +289,48 @@ describe('Dashboard widgets', () => {
       expect(leyenda).not.toBeNull();
       expect(leyenda).toHaveTextContent('Descarga');
       expect(leyenda).toHaveTextContent('Subida');
+    });
+
+    it('dos gráficos a la vez no comparten ids de degradado y cada área apunta a los suyos', async () => {
+      apiMock.get.mockReset().mockResolvedValue(MUESTRAS);
+      wrap(
+        <>
+          <TrafficWidget />
+          <TrafficWidget />
+        </>,
+      );
+      const graficos = await screen.findAllByRole('img', { name: /descarga.*subida/i });
+      expect(graficos).toHaveLength(2);
+
+      const todosLosIds = graficos.flatMap((g) =>
+        Array.from(g.querySelectorAll('linearGradient'), (el) => el.id),
+      );
+      expect(todosLosIds).toHaveLength(4);
+      expect(new Set(todosLosIds).size).toBe(4);
+
+      for (const g of graficos) {
+        const idsPropios = Array.from(g.querySelectorAll('linearGradient'), (el) => el.id);
+        const rellenos = Array.from(g.querySelectorAll('[fill^="url(#"]'), (el) =>
+          el.getAttribute('fill'),
+        );
+        expect(rellenos).toHaveLength(2);
+        for (const relleno of rellenos) {
+          const id = relleno?.slice('url(#'.length, -1) ?? '';
+          expect(idsPropios).toContain(id);
+        }
+      }
+    });
+
+    it('el estilo del tooltip usa un token, no un rgba suelto', () => {
+      // El estilo viaja como prop de Recharts y solo se pinta al pasar el ratón: se lee del fuente.
+      // `process.cwd()` es apps/web (como en `_fuentes.ts`); `import.meta.url` no es `file:` en jsdom.
+      const fuente = readFileSync(
+        join(process.cwd(), 'src/components/dashboard/widgets/TrafficWidget.tsx'),
+        'utf8',
+      );
+      const bloque = /const TOOLTIP_STYLE = \{[\s\S]*?\} as const;/.exec(fuente)?.[0] ?? '';
+      expect(bloque).toContain('var(--kr-border)');
+      expect(bloque).not.toContain('rgba(');
     });
   });
 

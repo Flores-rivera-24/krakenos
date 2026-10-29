@@ -1,5 +1,5 @@
 import type { TrafficSample } from '@krakenos/types';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Area, AreaChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
@@ -13,7 +13,7 @@ import '@/lib/i18n/catalog/fragments/panel';
 const MAX_POINTS = 120;
 const TOOLTIP_STYLE = {
   backgroundColor: 'var(--kr-bg-elevated)',
-  border: '1px solid rgba(255,255,255,0.08)',
+  border: '1px solid var(--kr-border)',
   borderRadius: '0.5rem',
   fontSize: '0.8rem',
 } as const;
@@ -21,6 +21,8 @@ const TOOLTIP_STYLE = {
 /** Gráfica de área rx/tx en tiempo real (vía WebSocket `traffic:sample`). */
 export function TrafficWidget() {
   const t = useT();
+  // Ids de degradado únicos por instancia: dos gráficos a la vez no pueden compartir `#rx`/`#tx`.
+  const uid = useId();
   const [samples, setSamples] = useState<TrafficSample[]>([]);
   // Un fallo del historial no es «esperando muestras»; lo que llega por socket lo limpia.
   const [failed, setFailed] = useState(false);
@@ -100,11 +102,11 @@ export function TrafficWidget() {
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                 <defs>
-                  <linearGradient id="rx" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`${uid}-rx`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--kr-accent)" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="var(--kr-accent)" stopOpacity={0} />
                   </linearGradient>
-                  <linearGradient id="tx" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id={`${uid}-tx`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="var(--kr-success)" stopOpacity={0.4} />
                     <stop offset="95%" stopColor="var(--kr-success)" stopOpacity={0} />
                   </linearGradient>
@@ -130,14 +132,14 @@ export function TrafficWidget() {
                   dataKey="rx"
                   name={t('widget.traffic.down')}
                   stroke="var(--kr-accent)"
-                  fill="url(#rx)"
+                  fill={`url(#${uid}-rx)`}
                 />
                 <Area
                   type="monotone"
                   dataKey="tx"
                   name={t('widget.traffic.up')}
                   stroke="var(--kr-success)"
-                  fill="url(#tx)"
+                  fill={`url(#${uid}-tx)`}
                 />
               </AreaChart>
             </ResponsiveContainer>
