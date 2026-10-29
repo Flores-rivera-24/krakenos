@@ -24,6 +24,10 @@ import { describe, expect, it } from 'vitest';
  * ninguno solo.
  */
 
+// Pantallas de entrada: tienen su propia composición de marca (logo, título
+// centrado, tipografía de bienvenida), así que no siguen el estilo de título de la app.
+const PANTALLAS_DE_ENTRADA = ['LoginPage', 'SetupPage', 'WelcomePage', 'InvitePage'];
+
 // Igual que `tailwind-palette.test.ts`: vitest corre con el cwd del paquete.
 const DIR_PAGINAS = join(process.cwd(), 'src', 'pages');
 
@@ -52,5 +56,33 @@ describe('jerarquía de encabezados de las páginas (US-266)', () => {
       )
       .map((p) => p.nombre);
     expect(reincidentes).toEqual([]);
+  });
+
+  it('las páginas de la app titulan con la misma clase', () => {
+    // Un solo estilo de título para todas las páginas de la app: 20 px, semibold
+    // y color de acento. Las pantallas de entrada tienen su propia composición de
+    // marca y quedan fuera de la comparación.
+    const CLASES_REQUERIDAS = ['text-kr-xl', 'font-semibold', 'text-kr-primary'];
+    const CLASES_PROHIBIDAS = ['text-xl', 'text-2xl', 'text-kr-2xl'];
+
+    const incumplen: string[] = [];
+    for (const { nombre, fuente } of paginas) {
+      if (PANTALLAS_DE_ENTRADA.includes(nombre.replace(/\.tsx$/, ''))) continue;
+      const clasesDeH1 = [...fuente.matchAll(/<h1\b[^>]*?className="([^"]*)"/g)].map((m) =>
+        m[1]!.split(/\s+/),
+      );
+      if (clasesDeH1.length === 0) {
+        incumplen.push(`${nombre}: sin <h1>`);
+        continue;
+      }
+      for (const clases of clasesDeH1) {
+        const faltan = CLASES_REQUERIDAS.filter((c) => !clases.includes(c));
+        const sobran = CLASES_PROHIBIDAS.filter((c) => clases.includes(c));
+        if (faltan.length > 0 || sobran.length > 0) {
+          incumplen.push(`${nombre}: faltan [${faltan.join(' ')}] sobran [${sobran.join(' ')}]`);
+        }
+      }
+    }
+    expect(incumplen).toEqual([]);
   });
 });

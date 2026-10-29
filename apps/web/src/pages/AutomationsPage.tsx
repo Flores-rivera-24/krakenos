@@ -1022,7 +1022,7 @@ function AutomationsPageBody() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('automations.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('automations.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('automations.subtitle')}</p>
         </div>
         {isAdmin && (

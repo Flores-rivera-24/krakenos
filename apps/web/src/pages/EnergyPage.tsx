@@ -140,7 +140,7 @@ function EnergyPageBody() {
   return (
     <div className="space-y-6 p-6">
       <div>
-        <h1 className="text-xl font-semibold">{t('energy.title')}</h1>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('energy.title')}</h1>
         <p className="text-sm text-muted-foreground">{t('energy.subtitle')}</p>
       </div>
 

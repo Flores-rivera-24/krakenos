@@ -130,7 +130,7 @@ export function QosPage() {
     <div className="space-y-6 p-6">
       <div>
         <div className="flex items-center gap-1.5">
-          <h1 className="text-xl font-semibold">{t('qos.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('qos.title')}</h1>
           <GlossaryHint termKey="qos" />
         </div>
         <p className="text-sm text-muted-foreground">{t('qos.subtitle')}</p>

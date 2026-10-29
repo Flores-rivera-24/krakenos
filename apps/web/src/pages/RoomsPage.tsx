@@ -282,7 +282,7 @@ function RoomsPageBody() {
     <div className="space-y-6 p-6">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">{t('rooms.title')}</h1>
+          <h1 className="text-kr-xl font-semibold text-kr-primary">{t('rooms.title')}</h1>
           <p className="text-sm text-muted-foreground">{t('rooms.subtitle')}</p>
         </div>
         {isAdmin && <Button onClick={() => setEditor('new')}>{t('rooms.newTitle')}</Button>}

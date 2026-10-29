@@ -299,7 +299,7 @@ export function ConnectPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 p-6">
       <header className="space-y-3">
-        <h1 className="text-kr-2xl font-semibold text-kr-primary">{t('connect.title')}</h1>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{t('connect.title')}</h1>
         <p className="max-w-2xl text-kr-base text-kr-secondary">{t('connect.intro')}</p>
         <Callout variant="info" title={t('connect.explore.title')}>
           {t('connect.explore.before')}
