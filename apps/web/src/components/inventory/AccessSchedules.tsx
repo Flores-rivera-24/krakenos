@@ -1,4 +1,5 @@
 import type { AccessSchedule } from '@krakenos/types';
+import { X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -157,7 +158,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
                   aria-label={t('access.deleteLabel', { name: s.name })}
                   className="min-w-11 px-1 text-kr-secondary hover:text-danger md:min-w-0"
                 >
-                  ✕
+                  <X className="h-4 w-4" aria-hidden />
                 </DeleteButton>
               </>
             )}

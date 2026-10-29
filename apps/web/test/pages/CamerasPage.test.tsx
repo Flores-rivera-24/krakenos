@@ -277,3 +277,14 @@ describe('CamerasPage', () => {
     expect(aviso.closest('.relative')?.contains(boton) ?? false).toBe(false);
   });
 });
+
+describe('CamerasPage · insignia «En vivo»', () => {
+  it('dice «En vivo» sin glifo y con un punto decorativo oculto al lector', async () => {
+    setRole('admin');
+    mockList();
+    render(<CamerasPage />);
+    const insignia = await screen.findByText('En vivo');
+    expect(insignia.textContent).toBe('En vivo');
+    expect(insignia.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+  });
+});

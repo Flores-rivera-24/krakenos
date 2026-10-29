@@ -275,6 +275,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.health.noManagers': 'No manager samples yet.',
   'settings.health.opsCount.one': '{count} call',
   'settings.health.opsCount.other': '{count} calls',
+  'settings.health.errors.one': '{count} error',
+  'settings.health.errors.other': '{count} errors',
   'settings.health.diskValue': '{free} · {pct}% used',
 
   // --- Settings → Support & diagnostics (US-192) ---
@@ -482,7 +484,7 @@ export const en: Record<TranslationKey, string> = {
   'cameras.connecting': 'Connecting…',
   'cameras.noSignal': 'No signal',
   'cameras.snapshotError': 'Could not load the image.',
-  'cameras.live': '● LIVE',
+  'cameras.live': 'Live',
   'cameras.edit': 'Edit {name}',
   'cameras.delete': 'Delete {name}',
   'cameras.loadError': 'Could not load the cameras',
@@ -1211,7 +1213,7 @@ export const en: Record<TranslationKey, string> = {
   'connect.dismiss': 'Dismiss',
   'connect.wizardTitle': 'Connect {name}',
   'connect.wizardSubtitle': 'We guide you step by step',
-  'connect.connected': '✓ Connected',
+  'connect.connected': 'Connected',
   'connect.tier.1': 'Very easy',
   'connect.tier.2': 'Easy',
   'connect.tier.3': 'Intermediate',
@@ -1349,8 +1351,7 @@ export const en: Record<TranslationKey, string> = {
   'scenes.partial': '{applied} applied, {failed} did not respond',
   'scenes.ran': 'Scene «{name}» activated',
   'widget.scenes.createFirst': 'Create your first scene →',
-  'widget.quickActions.empty':
-    'Star your favourite devices and rooms with the ⭐ to keep them here.',
+  'widget.quickActions.empty': 'Star your favourite devices and rooms to keep them here.',
   'gettingStarted.welcome': 'Welcome to KrakenOS!',
   'gettingStarted.intro': 'Connect your devices in a few minutes. We guide you through each step.',
   'gettingStarted.dismiss': 'Dismiss getting started',
@@ -2325,6 +2326,8 @@ export const en: Record<TranslationKey, string> = {
   'automations.list.when': 'When ',
   'automations.list.activateAria': 'Enable {name}',
   'automations.runs.title': 'Recent runs',
+  'automations.runs.ok': 'Run succeeded',
+  'automations.runs.failed': 'Run failed',
   // Automation editor
   'automations.editor.editTitle': 'Edit automation',
   'automations.editor.saving': 'Saving…',

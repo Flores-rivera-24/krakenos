@@ -1,5 +1,5 @@
 import type { ApPlacement, Wall } from '@krakenos/types';
-import { DoorOpen } from 'lucide-react';
+import { Check, DoorOpen } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,9 @@ export function RoomsFromPlanPanel({ walls, accessPoints, widthM, heightM, canEd
     setCreatingId(index);
     try {
       await createRoom({ name: item.name.trim() });
-      setItems((prev) => prev?.map((it, i) => (i === index ? { ...it, created: true } : it)) ?? null);
+      setItems(
+        (prev) => prev?.map((it, i) => (i === index ? { ...it, created: true } : it)) ?? null,
+      );
       toast.success(t('coverage.rooms.created', { name: item.name.trim() }));
     } catch (err) {
       toast.error(describeError(err, t('coverage.rooms.error')));
@@ -95,7 +97,9 @@ export function RoomsFromPlanPanel({ walls, accessPoints, widthM, heightM, canEd
           <p className="text-kr-secondary">{t('coverage.rooms.none')}</p>
         ) : (
           <>
-            <p className="text-kr-secondary">{t('coverage.rooms.found', { count: items.length })}</p>
+            <p className="text-kr-secondary">
+              {t('coverage.rooms.found', { count: items.length })}
+            </p>
             <ul className="space-y-2">
               {items.map((it, i) => {
                 const apCount = accessPoints.filter((ap) => apInCandidate(ap, it.candidate)).length;
@@ -118,11 +122,13 @@ export function RoomsFromPlanPanel({ walls, accessPoints, widthM, heightM, canEd
                         disabled={it.created || creatingId === i || !it.name.trim()}
                         onClick={() => void create(i)}
                       >
-                        {it.created
-                          ? '✓'
-                          : creatingId === i
-                            ? t('coverage.rooms.creating')
-                            : t('coverage.rooms.create')}
+                        {it.created ? (
+                          <Check className="h-4 w-4" aria-hidden />
+                        ) : creatingId === i ? (
+                          t('coverage.rooms.creating')
+                        ) : (
+                          t('coverage.rooms.create')
+                        )}
                       </Button>
                     </div>
                   </li>

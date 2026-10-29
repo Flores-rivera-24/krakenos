@@ -127,7 +127,15 @@ export function HealthCard() {
                             one: t('settings.health.opsCount.one', { count: m.count }),
                             other: t('settings.health.opsCount.other', { count: m.count }),
                           })}
-                          {m.errors > 0 ? ` · ${m.errors} ✕` : ''}
+                          {m.errors > 0 && (
+                            <>
+                              {' · '}
+                              {plural(m.errors, {
+                                one: t('settings.health.errors.one', { count: m.errors }),
+                                other: t('settings.health.errors.other', { count: m.errors }),
+                              })}
+                            </>
+                          )}
                         </span>
                       </span>
                     </li>

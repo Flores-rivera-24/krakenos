@@ -102,6 +102,8 @@ export const esAjustes = {
   'settings.health.noManagers': 'Aún sin muestras de manager.',
   'settings.health.opsCount.one': '{count} llamada',
   'settings.health.opsCount.other': '{count} llamadas',
+  'settings.health.errors.one': '{count} error',
+  'settings.health.errors.other': '{count} errores',
   'settings.health.diskValue': '{free} · {pct}% usado',
 
   // --- Ajustes → Soporte y diagnóstico (US-192) ---

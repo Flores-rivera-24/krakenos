@@ -35,7 +35,7 @@ export const esPanel = {
   'widget.alarm.disclaimerTitle': 'No sustituye una alarma certificada',
   'widget.scenes.createFirst': 'Crea tu primera escena →',
   'widget.quickActions.empty':
-    'Fija tus dispositivos y habitaciones favoritos con la estrella ⭐ para tenerlos aquí.',
+    'Fija tus dispositivos y habitaciones favoritos con la estrella para tenerlos aquí.',
   'gettingStarted.welcome': '¡Bienvenido a KrakenOS!',
   'gettingStarted.intro': 'Conecta tus dispositivos en unos minutos. Te guiamos en cada paso.',
   'gettingStarted.dismiss': 'Descartar primeros pasos',

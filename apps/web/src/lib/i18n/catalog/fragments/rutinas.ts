@@ -84,6 +84,8 @@ export const esRutinas = {
   'automations.list.when': 'Cuando ',
   'automations.list.activateAria': 'Activar {name}',
   'automations.runs.title': 'Últimas ejecuciones',
+  'automations.runs.ok': 'Ejecución correcta',
+  'automations.runs.failed': 'Ejecución fallida',
   // Editor de automatización
   'automations.editor.editTitle': 'Editar automatización',
   'automations.editor.saving': 'Guardando…',

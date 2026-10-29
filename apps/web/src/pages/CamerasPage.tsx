@@ -1,5 +1,5 @@
 import type { Camera, CameraSnapshot } from '@krakenos/types';
-import { Film, Pause, Pencil, Play, Plus, Radar, Trash2, VideoOff } from 'lucide-react';
+import { Circle, Film, Pause, Pencil, Play, Plus, Radar, Trash2, VideoOff } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { CameraFormSlideover } from '@/components/cameras/CameraFormSlideover';
 import { CameraLivePlayer } from '@/components/cameras/CameraLivePlayer';
@@ -101,6 +101,7 @@ function CameraTile({ camera, isAdmin, onEdit, onMotion, onRecordings, onDelete 
         )}
         {camera.online && !live && (
           <span className="absolute right-2 top-2 rounded-sm bg-black/60 px-1.5 py-0.5 text-kr-xs font-medium text-danger">
+            <Circle className="mr-1 inline h-2 w-2 fill-current align-baseline" aria-hidden />
             {t('cameras.live')}
           </span>
         )}

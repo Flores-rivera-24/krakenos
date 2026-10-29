@@ -149,3 +149,19 @@ describe('HealthCard: sondeo que falla con métricas ya pintadas', () => {
     expect(screen.getByText('Fuera de lo normal')).toBeInTheDocument();
   });
 });
+
+describe('HealthCard · errores de un gestor', () => {
+  it('dice «2 errores» y «1 error» en texto, no con un glifo', async () => {
+    apiMock.get.mockReset().mockResolvedValue({
+      ...snapshot,
+      managers: [
+        { name: 'driver:mock', count: 7, errors: 2, avgLatencyMs: 8, maxLatencyMs: 9 },
+        { name: 'iot:mock', count: 7, errors: 1, avgLatencyMs: 8, maxLatencyMs: 9 },
+      ],
+    });
+    render(<HealthCard />);
+    expect(await screen.findByText(/2 errores/)).toBeInTheDocument();
+    expect(screen.getByText(/1 error(?!es)/)).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain('✕');
+  });
+});

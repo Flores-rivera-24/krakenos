@@ -42,7 +42,7 @@ export const esConectar = {
   'connect.dismiss': 'Descartar',
   'connect.wizardTitle': 'Conectar {name}',
   'connect.wizardSubtitle': 'Te guiamos paso a paso',
-  'connect.connected': '✓ Conectado',
+  'connect.connected': 'Conectado',
   'connect.tier.1': 'Muy fácil',
   'connect.tier.2': 'Fácil',
   'connect.tier.3': 'Intermedio',

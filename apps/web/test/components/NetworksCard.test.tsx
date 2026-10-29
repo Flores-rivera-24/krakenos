@@ -116,3 +116,31 @@ describe('NetworksCard', () => {
     expect(screen.queryByText('No se pudieron cargar las redes WiFi.')).not.toBeInTheDocument();
   });
 });
+
+describe('NetworksCard · estado del AP', () => {
+  it('el AP en línea se señala con un punto con nombre accesible, no con un carácter', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/wifi/access-points') return Promise.resolve(APS);
+      if (path === '/wifi/networks') return Promise.resolve(NETS);
+      return Promise.resolve(CLIENTS);
+    });
+    render(<NetworksCard />);
+    await screen.findByText('KrakenOS');
+    expect(screen.getByRole('img', { name: 'En línea' })).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[●○]/);
+  });
+
+  it('el AP caído se nombra como desconectado', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockImplementation((path: string) => {
+      if (path === '/wifi/access-points')
+        return Promise.resolve([{ ...APS[0], online: false }] as AccessPoint[]);
+      if (path === '/wifi/networks') return Promise.resolve(NETS);
+      return Promise.resolve(CLIENTS);
+    });
+    render(<NetworksCard />);
+    await screen.findByText('KrakenOS');
+    expect(screen.getByRole('img', { name: 'Desconectado' })).toBeInTheDocument();
+  });
+});

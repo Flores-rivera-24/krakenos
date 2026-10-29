@@ -4,6 +4,7 @@ import type {
   IntegrationDomain,
   IntegrationKindSchema,
 } from '@krakenos/types';
+import { Check } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { CompatibilitySection } from '@/components/connect/CompatibilitySection';
@@ -488,7 +489,12 @@ function ConnectCard({ guide, connected, onClick }: ConnectCardProps) {
       <span className="min-w-0 flex-1 space-y-1">
         <span className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-kr-primary">{guide.displayName}</span>
-          {connected && <Badge variant="online">{t('connect.connected')}</Badge>}
+          {connected && (
+            <Badge variant="online">
+              <Check className="mr-1 h-4 w-4" aria-hidden />
+              {t('connect.connected')}
+            </Badge>
+          )}
         </span>
         {guide.vendor && (
           <span className="block truncate text-kr-xs text-kr-muted">{guide.vendor}</span>

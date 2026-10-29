@@ -349,6 +349,34 @@ describe('AutomationsPage (US-167)', () => {
     expect(screen.getByText('device-block: no encontrado')).toBeInTheDocument();
   });
 
+  it('una ejecución fallida se identifica por nombre accesible, no solo por un glifo', async () => {
+    mockGets({
+      '/automations': [rule()],
+      '/automations/runs': [
+        {
+          id: 'run1',
+          ruleId: 'r1',
+          event: 'x',
+          ok: false,
+          detail: null,
+          createdAt: '2026-07-09T10:00:00.000Z',
+        },
+        {
+          id: 'run2',
+          ruleId: 'r1',
+          event: 'y',
+          ok: true,
+          detail: null,
+          createdAt: '2026-07-09T10:01:00.000Z',
+        },
+      ],
+    });
+    renderPage();
+    expect(await screen.findByRole('img', { name: 'Ejecución fallida' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Ejecución correcta' })).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/[✓✕]/);
+  });
+
   it('un viewer no ve el botón de crear ni los switches', async () => {
     asRole('viewer');
     mockGets({ '/automations': [rule()] });

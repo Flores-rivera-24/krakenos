@@ -1,6 +1,7 @@
 import type { AccessPoint, WifiClient, WifiNetworkInfo } from '@krakenos/types';
 import { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { StatusDot } from '@/components/ui/status-dot';
 import { useT } from '@/lib/i18n';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
@@ -75,10 +76,7 @@ export function NetworksCard() {
                   key={ap.id}
                   className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground"
                 >
-                  {ap.name} · {ap.ip}{' '}
-                  <span className={ap.online ? 'text-success' : 'text-danger'}>
-                    {ap.online ? '●' : '○'}
-                  </span>
+                  {ap.name} · {ap.ip} <StatusDot status={ap.online ? 'online' : 'offline'} />
                 </span>
               ))}
             </div>
