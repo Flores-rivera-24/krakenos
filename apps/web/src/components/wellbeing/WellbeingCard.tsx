@@ -67,7 +67,7 @@ export function WellbeingCard() {
         ) : people === null ? (
           <p className="py-8 text-center text-sm text-muted-foreground">{t('wellbeing.loading')}</p>
         ) : people.length === 0 ? (
-          /* Tres motivos distintos para no ver nada; solo el último se arregla asignando dueños. */
+          /* Tres motivos distintos para no ver nada; solo el último (`withOwner === 0`) se arregla asignando dueños. */
           perDevice.status !== 'supported' ? (
             <PerDeviceTrafficNotice
               capability={perDevice}

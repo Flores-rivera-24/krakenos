@@ -74,10 +74,7 @@ function SceneTile({
             disabled={!isAdmin}
             className="flex items-center gap-3 text-left disabled:cursor-default"
           >
-            <span
-              aria-hidden
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated text-2xl"
-            >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-kr-muted bg-kr-elevated">
               {createElement(sceneIcon(scene.icon), { 'aria-hidden': true, className: 'h-5 w-5' })}
             </span>
             <span className="min-w-0">
@@ -275,7 +272,7 @@ function SceneEditor({
                 aria-pressed={icon === opt.icon}
                 onClick={() => setIcon(opt.icon)}
                 className={cn(
-                  'flex h-12 items-center justify-center rounded-lg border text-2xl transition-colors',
+                  'flex h-12 items-center justify-center rounded-lg border transition-colors',
                   icon === opt.icon
                     ? 'border-kr-accent bg-kr-accent-faint'
                     : 'border-kr bg-kr-elevated hover:border-kr-muted',

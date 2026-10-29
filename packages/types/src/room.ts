@@ -1,7 +1,7 @@
 import type { Id, IsoDateTime } from './common.js';
 
 /**
- * Icono de una habitación. Clave estable mapeada a un glifo/emoji en el frontend
+ * Icono de una habitación. Clave estable mapeada a un icono en la web
  * (no una URL): así la habitación se reconoce de un vistazo sin depender de assets.
  */
 /**

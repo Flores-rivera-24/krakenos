@@ -9,7 +9,7 @@ export const getPresenceTimeline = (limit = 20) =>
   api.getList<PresenceEvent>(`/presence/timeline?limit=${limit}`);
 export const setHomeMode = (mode: HomeMode) => api.post<PresenceState>('/presence/mode', { mode });
 
-/** Etiquetas y glifos humanos de los modos del hogar (US-169). */
+/** Etiquetas e iconos de los modos del hogar (US-169). */
 /**
  * Etiqueta de cada modo del hogar, ya traducida al idioma activo.
  *
