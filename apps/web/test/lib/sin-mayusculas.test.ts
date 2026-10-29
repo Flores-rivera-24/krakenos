@@ -33,7 +33,7 @@ describe('rótulos en caja normal', () => {
     const todas = fuentes();
     expect(todas.length).toBeGreaterThan(150);
     const culpables = todas
-      .filter((f) => f.nombre.endsWith('.tsx') && conClase(f.codigo))
+      .filter((f) => conClase(f.codigo))
       .map((f) => f.nombre)
       .filter((n) => !(n in EXCEPCIONES));
     expect(

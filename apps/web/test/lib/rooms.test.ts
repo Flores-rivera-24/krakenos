@@ -15,6 +15,7 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
+import { ROOM_ICONS as CLAVES_DE_HABITACION } from '@krakenos/types';
 import { t } from '@/lib/i18n';
 import { CookingPot, House } from 'lucide-react';
 import { ROOM_ICONS, assignRoom, createRoom, roomIcon, runRoomAction } from '@/lib/rooms';
@@ -31,6 +32,13 @@ describe('lib/rooms (US-165)', () => {
     expect(
       ROOM_ICONS.every((r) => r.Icon !== undefined && t(`rooms.icon.${r.icon}`).length > 0),
     ).toBe(true);
+  });
+
+  it('cada icono del contrato tiene el suyo, y solo `generic` usa el de respaldo', () => {
+    for (const clave of CLAVES_DE_HABITACION) {
+      if (clave === 'generic') expect(roomIcon(clave)).toBe(House);
+      else expect(roomIcon(clave), clave).not.toBe(House);
+    }
   });
 
   it('los helpers llaman al endpoint correcto', () => {

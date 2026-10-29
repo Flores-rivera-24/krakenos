@@ -14,6 +14,9 @@ import { ficheros, nombreDe, sinComentariosConLineas } from './_fuentes';
  *
  * Mira el **código** (sin comentarios: explicar la regla no delata al fichero) y los **valores**
  * del catálogo, que es donde se esconde el copy. `EXCEPCIONES` va vacía a propósito.
+ *
+ * Ojo: `\p{Extended_Pictographic}` también casa `©`, `®`, `™`, `↔` y `▶`. Si alguno hace falta
+ * en el copy algún día, va a `EXCEPCIONES` con su porqué; no se cambia la regex.
  */
 
 const GLIFO = /[\p{Extended_Pictographic}✓✔✕✖✗✘●○]/gu;
