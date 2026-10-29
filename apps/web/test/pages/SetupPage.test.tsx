@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
@@ -68,6 +70,13 @@ describe('SetupPage', () => {
     apiMock.get.mockReset().mockResolvedValue({ needsSetup: true });
     apiMock.post.mockReset().mockResolvedValue(LOGIN_RESPONSE);
     useAuthStore.setState({ setSession: vi.fn() });
+  });
+
+  it('el fondo es el NetworkCanvas de las demás pantallas de entrada, no el AuthBackdrop', async () => {
+    const { container } = renderPage();
+    await screen.findByLabelText('Tu nombre');
+    expect(container.querySelector('canvas[aria-hidden="true"]')).not.toBeNull();
+    expect(existsSync(resolve(__dirname, '../../src/components/ui/auth-backdrop.tsx'))).toBe(false);
   });
 
   it('redirige a login si el sistema ya está configurado', async () => {

@@ -1,12 +1,12 @@
 import type { LoginResponse, SetupInitRequest, SetupStatus } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { AuthBackdrop } from '@/components/ui/auth-backdrop';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LogoMark } from '@/components/ui/logo';
+import { NetworkCanvas } from '@/components/ui/network-canvas';
 import { Splash } from '@/components/ui/splash';
 import { ApiRequestError, api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
@@ -99,7 +99,7 @@ export function SetupPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-kr-base p-4">
-      <AuthBackdrop />
+      <NetworkCanvas variant="grid" />
       <form
         onSubmit={onSubmit}
         className="relative z-10 w-full max-w-md space-y-4 rounded-xl border border-kr bg-kr-surface p-6 shadow-kr-glow-sm"
