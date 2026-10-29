@@ -1381,6 +1381,7 @@ export const en: Record<TranslationKey, string> = {
   'common.saving': 'Saving…',
   'common.saveChanges': 'Save changes',
   'common.saveError': 'Could not save',
+  'common.saved': 'Changes saved.',
   'common.cancel': 'Cancel',
   'access.title': 'Parental controls · schedules',
   'access.add': 'Add schedule',
@@ -1542,6 +1543,7 @@ export const en: Record<TranslationKey, string> = {
   'security.codes.reveal':
     'Keep these recovery codes somewhere safe. Each one works once to sign in if you lose your passkey.',
   'security.codes.onceOnly': 'They will not be shown again.',
+  'security.codes.download': 'Download as .txt',
   'security.codes.saved': 'I have saved them',
   'security.tokenTtl': 'Access token lifetime',
   'security.loginLimit': 'Login attempt limit',

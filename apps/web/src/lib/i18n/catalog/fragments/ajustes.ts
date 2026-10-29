@@ -376,6 +376,7 @@ export const esAjustes = {
     'Guarda estos códigos de recuperación en un lugar seguro. Cada uno sirve una vez para entrar si pierdes tu passkey.',
   'security.codes.onceOnly': 'No se volverán a mostrar.',
   'security.codes.saved': 'Los he guardado',
+  'security.codes.download': 'Descargar como .txt',
   'security.tokenTtl': 'Duración del access token',
   'security.loginLimit': 'Límite de intentos de login',
   'security.darkTheme': 'Tema oscuro',

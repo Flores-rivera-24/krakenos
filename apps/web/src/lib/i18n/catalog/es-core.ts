@@ -168,6 +168,7 @@ export const esCore = {
   'common.saving': 'Guardando…',
   'common.saveChanges': 'Guardar cambios',
   'common.saveError': 'No se pudo guardar',
+  'common.saved': 'Cambios guardados.',
   'common.cancel': 'Cancelar',
   'access.startTime': 'Hora de inicio',
   'access.endTime': 'Hora de fin',

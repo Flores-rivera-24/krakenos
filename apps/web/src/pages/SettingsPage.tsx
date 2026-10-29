@@ -181,7 +181,7 @@ export function SettingsPage() {
     [],
   );
 
-  const patch = async (key: SystemSettingKey, value: string) => {
+  const patch = async (key: SystemSettingKey, value: string): Promise<boolean> => {
     setError(null);
     try {
       const next = await api.patch<SystemSettingsResponse>('/system/settings', { key, value });
@@ -192,6 +192,7 @@ export function SettingsPage() {
         if (appliedTimer.current) clearTimeout(appliedTimer.current);
         appliedTimer.current = setTimeout(() => setApplied(false), 2500);
       }
+      return true;
     } catch {
       // US-55: no fallar en silencio. Avisa y revierte visualmente el control. Los
       // selects ya muestran el valor guardado (controlados por `data`); el input de
@@ -202,6 +203,7 @@ export function SettingsPage() {
         setMaintWindow(data.settings.updateMaintenanceWindow ?? '');
       if (key === 'presenceNightSuppress' && data)
         setNightSuppress(data.settings.presenceNightSuppress ?? '');
+      return false;
     }
   };
 
