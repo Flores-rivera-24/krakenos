@@ -102,12 +102,12 @@ describe('SystemBackupCard — copias automáticas', () => {
     await waitFor(() => expect(writeText).toHaveBeenCalledWith('contrasena-generada-1'));
   });
 
-  it('cambiar la frecuencia avisa con «Cambios guardados.»', async () => {
+  it('cambiar la frecuencia avisa con «Cambios guardados»', async () => {
     apiMock.get.mockResolvedValue(OFF);
     apiMock.patch.mockResolvedValue({});
     render(<SystemBackupCard />);
     fireEvent.change(await screen.findByLabelText('Frecuencia'), { target: { value: 'weekly' } });
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados.'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados'));
     expect(toastMock.success).toHaveBeenCalledTimes(1);
   });
 
@@ -126,7 +126,7 @@ describe('SystemBackupCard — copias automáticas', () => {
         value: '10',
       }),
     );
-    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados.'));
+    await waitFor(() => expect(toastMock.success).toHaveBeenCalledWith('Cambios guardados'));
   });
 
   it('avisa cuando no hay copia reciente (stale)', async () => {

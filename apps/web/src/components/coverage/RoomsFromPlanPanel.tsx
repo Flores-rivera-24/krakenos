@@ -123,7 +123,10 @@ export function RoomsFromPlanPanel({ walls, accessPoints, widthM, heightM, canEd
                         onClick={() => void create(i)}
                       >
                         {it.created ? (
-                          <Check className="h-4 w-4" aria-hidden />
+                          <>
+                            <Check className="h-4 w-4" aria-hidden />
+                            {t('coverage.rooms.done')}
+                          </>
                         ) : creatingId === i ? (
                           t('coverage.rooms.creating')
                         ) : (

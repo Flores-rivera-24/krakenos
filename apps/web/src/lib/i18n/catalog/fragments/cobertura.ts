@@ -158,6 +158,7 @@ export const esCobertura = {
   'coverage.rooms.aps': '{count} AP dentro',
   'coverage.rooms.create': 'Crear',
   'coverage.rooms.creating': 'Creando…',
+  'coverage.rooms.done': 'Creada',
   'coverage.rooms.created': 'Habitación «{name}» creada',
   'coverage.rooms.error': 'No se pudo crear la habitación',
   'coverage.rooms.namePlaceholder': 'Nombre de la habitación',

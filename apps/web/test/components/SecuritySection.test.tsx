@@ -256,17 +256,30 @@ describe('SecuritySection', () => {
     click.mockRestore();
   });
 
-  it('cambiar el TTL del token guarda y avisa con «Cambios guardados.»', async () => {
-    const patch = vi.fn().mockResolvedValue(true);
+  it('cambiar el TTL del token guarda y avisa con «Cambios guardados»', async () => {
+    const patch = vi.fn().mockResolvedValue({ ok: true, aplicadoAlInstante: false });
     const user = userEvent.setup();
     renderSection(true, patch);
     await user.selectOptions(await screen.findByLabelText(/duración del access token/i), '3600');
     expect(patch).toHaveBeenCalledWith('accessTokenTtl', '3600');
     await waitFor(() =>
       expect(useToastStore.getState().toasts).toEqual([
-        expect.objectContaining({ kind: 'success', message: 'Cambios guardados.' }),
+        expect.objectContaining({ kind: 'success', message: 'Cambios guardados' }),
       ]),
     );
+  });
+
+  it.each([
+    ['aplicado al instante (ya hay un banner)', { ok: true, aplicadoAlInstante: true }],
+    ['con fallo al guardar', { ok: false, aplicadoAlInstante: false }],
+  ])('cambiar el TTL %s no saca el toast de guardado', async (_caso, resultado) => {
+    const patch = vi.fn().mockResolvedValue(resultado);
+    const user = userEvent.setup();
+    renderSection(true, patch);
+    await user.selectOptions(await screen.findByLabelText(/duración del access token/i), '3600');
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('accessTokenTtl', '3600'));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(useToastStore.getState().toasts).toEqual([]);
   });
 
   const PASSKEY = {

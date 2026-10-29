@@ -35,11 +35,19 @@ import '@/lib/i18n/catalog/fragments/ajustes';
 const SELECT_CLASS =
   'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0';
 
+/**
+ * `ok`: el cambio se guardó (el fallo ya lo avisa quien lo implementa).
+ * `aplicadoAlInstante`: el servidor lo aplicó en caliente y la página ya lo anuncia con su banner.
+ */
+export interface PatchResult {
+  ok: boolean;
+  aplicadoAlInstante: boolean;
+}
+
 interface Props {
   /** `null` mientras la lectura de ajustes carga o ha fallado. */
   settings: Record<SystemSettingKey, string> | null;
-  /** Resuelve `true` si el cambio se guardó (el fallo ya lo avisa quien lo implementa). */
-  patch: (key: SystemSettingKey, value: string) => Promise<boolean>;
+  patch: (key: SystemSettingKey, value: string) => Promise<PatchResult>;
   isAdmin: boolean;
   /** Qué se pinta en lugar de los controles que dependen de los ajustes. */
   ajustesPendientes: React.ReactNode;
@@ -323,7 +331,9 @@ function SecurityControls({
   const uid = useId();
   const theme = useTheme();
   const guardar = async (key: SystemSettingKey, value: string) => {
-    if (await patch(key, value)) toast.success(t('common.saved'));
+    const { ok, aplicadoAlInstante } = await patch(key, value);
+    // Un ajuste en caliente ya se anuncia con el banner de la página: un solo aviso.
+    if (ok && !aplicadoAlInstante) toast.success(t('common.saved'));
   };
 
   return (
