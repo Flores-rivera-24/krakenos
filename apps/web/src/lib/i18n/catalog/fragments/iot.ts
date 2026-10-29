@@ -14,7 +14,7 @@ export const esIot = {
     'IoT son los aparatos «inteligentes» de casa (luces, enchufes, sensores) que se conectan a la red. Desde aquí puedes encenderlos, apagarlos y ver sus lecturas.',
   'iot.helpLabel': '¿Qué es IoT?',
   'iot.subtitle.admin': 'Controla luces, enchufes, persianas y termostatos.',
-  'iot.subtitle.viewer': 'Solo lectura — requiere rol admin.',
+  'iot.subtitle.viewer': 'Solo lectura · requiere rol admin.',
   'iot.patchError': 'No se pudo aplicar el cambio',
   'iot.toggleError': 'No se pudo cambiar {name}',
   'iot.turnOn': 'Encender {name}',

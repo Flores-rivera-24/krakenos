@@ -85,7 +85,7 @@ export const esConectar = {
   'wizard.test.ok': 'Conexión correcta',
   'wizard.test.fail': 'No se pudo conectar',
   'wizard.troubleshooting': '¿Problemas?',
-  'wizard.secretStored': '•••••• (guardado — deja en blanco para conservar)',
+  'wizard.secretStored': '•••••• (guardado · deja en blanco para conservar)',
   'wizard.testError': 'No se pudo probar {name}',
   'wizard.saveError': 'No se pudo guardar {name}',
   'wizard.savedFallback':

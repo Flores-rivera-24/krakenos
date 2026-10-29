@@ -126,3 +126,27 @@ describe('describeError localizado (US-177)', () => {
     expect(describeError(err, 'fallback')).toBe('server text');
   });
 });
+
+// Las etiquetas cortas separan con punto medio, no con raya (los incisos de frase completa conservan la raya).
+describe('separador de etiquetas cortas', () => {
+  const CLAVES = [
+    'coverage.wall.aria',
+    'wizard.secretStored',
+    'inventory.noRealtime',
+    'iot.subtitle.viewer',
+    'alarmSettings.pinSet',
+    'widget.alarm.phase.entry',
+    'wifi.subtitle.readonly',
+  ] as const;
+
+  describe.each([
+    ['es', es],
+    ['en', en],
+  ] as const)('%s', (_idioma, catalogo) => {
+    it.each(CLAVES)('%s separa con « · » y no con «—»', (clave) => {
+      const valor = catalogo[clave];
+      expect(valor).not.toContain('—');
+      expect(valor).toContain(' · ');
+    });
+  });
+});
