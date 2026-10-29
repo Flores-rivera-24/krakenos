@@ -162,6 +162,109 @@ test.describe('justo por encima del umbral (1440×600)', () => {
   });
 });
 
+/**
+ * Las barras de desplazamiento las pinta el navegador, no un token: sin `color-scheme` las
+ * dibuja en claro (pista blanca) también sobre el tema oscuro. Y con la barra colapsada
+ * (64 px) la de la lista se comía el ancho de los iconos y el contador tapaba el icono.
+ */
+test.describe('barras de desplazamiento y barra colapsada (1440×600)', () => {
+  test.use({ viewport: { width: 1440, height: 600 } });
+
+  test('las barras de desplazamiento siguen al tema', async ({ page }) => {
+    await login(page);
+    const esquema = () =>
+      page.evaluate(() => getComputedStyle(document.documentElement).colorScheme);
+    const lista = page.locator('aside nav > div').first();
+    expect(await esquema()).toBe('dark');
+    // La de la lista lleva los colores de la paleta, no los del sistema.
+    expect(await lista.evaluate((el) => getComputedStyle(el).scrollbarColor)).not.toBe('auto');
+
+    await page.locator('aside').getByRole('button', { name: 'Cambiar a modo claro' }).click();
+    await expect.poll(esquema).toBe('light');
+  });
+
+  test('colapsada: cada icono cabe entero, el contador no lo tapa y el pie no se desborda', async ({
+    page,
+  }) => {
+    await login(page);
+    const aside = page.locator('aside');
+    await aside.getByRole('button', { name: 'Colapsar menú' }).click();
+    await expect(aside).toHaveAttribute('data-collapsed', 'true');
+    // La animación de ancho dura 200 ms: se mide con la barra ya quieta.
+    await expect.poll(async () => (await aside.boundingBox())!.width).toBe(64);
+
+    const medidas = await aside
+      .locator('nav > div')
+      .first()
+      .evaluate((lista) => {
+        const l = lista.getBoundingClientRect();
+        // `clientWidth` descuenta la barra de desplazamiento: es el hueco donde se ve algo.
+        const contenido = {
+          izq: l.left + lista.clientLeft,
+          der: l.left + lista.clientLeft + lista.clientWidth,
+        };
+        return {
+          desbordeHorizontal: lista.scrollWidth - lista.clientWidth,
+          alto: lista.scrollHeight - lista.clientHeight,
+          enlaces: [...lista.querySelectorAll('a')].map((a) => {
+            const icono = a.querySelector('svg')!.getBoundingClientRect();
+            const contador = a.querySelector('span[aria-label]')?.getBoundingClientRect() ?? null;
+            return {
+              nombre: a.getAttribute('title'),
+              iconoDentro: icono.left >= contenido.izq - 0.5 && icono.right <= contenido.der + 0.5,
+              contador: contador && {
+                dentro:
+                  contador.left >= contenido.izq - 0.5 && contador.right <= contenido.der + 0.5,
+                centroSobreIcono: (() => {
+                  const x = contador.left + contador.width / 2;
+                  const y = contador.top + contador.height / 2;
+                  return x > icono.left && x < icono.right && y > icono.top && y < icono.bottom;
+                })(),
+              },
+            };
+          }),
+        };
+      });
+    // Precondiciones: la lista tiene scroll propio (si cupiera, no habría barra que mirar)
+    // y al menos un enlace lleva contador (los datos de demostración traen desconocidos).
+    expect(medidas.alto, 'la lista debería tener scroll propio').toBeGreaterThan(100);
+    // Sin barra visible, lo que queda por debajo se anuncia con la sombra de `scroll-sombra`.
+    expect(
+      await aside
+        .locator('nav > div')
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundAttachment),
+    ).toContain('local');
+    expect(medidas.enlaces.filter((e) => e.contador).length).toBeGreaterThan(0);
+
+    expect(
+      medidas.desbordeHorizontal,
+      'la lista no debe desplazarse en horizontal',
+    ).toBeLessThanOrEqual(0);
+    for (const e of medidas.enlaces) {
+      expect(e.iconoDentro, `icono de «${e.nombre}» recortado`).toBe(true);
+      if (e.contador) {
+        expect(e.contador.dentro, `contador de «${e.nombre}» recortado`).toBe(true);
+        expect(e.contador.centroSobreIcono, `el contador de «${e.nombre}» tapa el icono`).toBe(
+          false,
+        );
+      }
+    }
+
+    // El pie (estado, tema, avatar y «Salir») cabe en los 64 px de la barra.
+    const fueraDelPie = await aside.evaluate((el) => {
+      const a = el.getBoundingClientRect();
+      return [...el.lastElementChild!.querySelectorAll('*')]
+        .filter((h) => {
+          const r = h.getBoundingClientRect();
+          return r.width > 0 && (r.left < a.left - 0.5 || r.right > a.right + 0.5);
+        })
+        .map((h) => h.outerHTML.slice(0, 80));
+    });
+    expect(fueraDelPie, 'elementos del pie que se salen de la barra').toEqual([]);
+  });
+});
+
 for (const { ancho, alto } of [
   { ancho: 844, alto: 390 },
   { ancho: 1024, alto: 500 },

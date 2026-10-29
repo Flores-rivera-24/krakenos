@@ -75,6 +75,23 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
         other: t(badgeInfo.other, { n: badge }),
       })
     : '';
+  const contador =
+    badgeInfo && badge > 0 ? (
+      <span
+        className={cn(
+          'rounded-full px-1.5 py-0.5 text-kr-xs font-semibold',
+          badgeInfo.alert
+            ? 'bg-kr-accent text-white'
+            : 'border border-kr bg-kr-surface text-kr-secondary',
+          collapsed &&
+            'absolute -top-1.5 left-[calc(100%-6px)] min-w-4 px-1 py-0 text-center leading-4 ring-2 ring-kr-surface',
+        )}
+        aria-label={badgeText}
+        title={badgeText}
+      >
+        {badge}
+      </span>
+    ) : null;
   return (
     <NavLink
       to={to}
@@ -99,25 +116,14 @@ function SidebarItem({ item, collapsed, badge }: SidebarItemProps) {
               className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-kr-accent"
             />
           )}
-          <Icon
-            className={cn('h-5 w-5 shrink-0 transition-colors', isActive && 'text-kr-accent')}
-          />
+          {/* Colapsada, el contador se ancla a la esquina superior derecha del icono, por
+              fuera de él: centrado en la fila quedaba encima del dibujo. */}
+          <span className="relative flex shrink-0">
+            <Icon className={cn('h-5 w-5 transition-colors', isActive && 'text-kr-accent')} />
+            {collapsed && contador}
+          </span>
           {!collapsed && <span className="flex-1 truncate">{label}</span>}
-          {badgeInfo && badge > 0 && (
-            <span
-              className={cn(
-                'rounded-full px-1.5 py-0.5 text-kr-xs font-semibold',
-                badgeInfo.alert
-                  ? 'bg-kr-accent text-white'
-                  : 'border border-kr bg-kr-surface text-kr-secondary',
-                collapsed && 'absolute right-1 top-1 px-1 py-0',
-              )}
-              aria-label={badgeText}
-              title={badgeText}
-            >
-              {badge}
-            </span>
-          )}
+          {!collapsed && contador}
         </>
       )}
     </NavLink>
@@ -180,7 +186,9 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         // Ventana baja (variante `bajo`, `index.css`): la barra ENTERA hace scroll —cabecera,
         // lista, Ajustes y pie, en ese orden— y la lista deja de tener scroll propio.
         'bajo:overflow-y-auto',
-        collapsed ? 'w-16' : 'w-[220px]',
+        // En 64 px una barra de desplazamiento del sistema (15-17 px en Windows) se come el
+        // icono: colapsada se oculta (rueda, toque y Tab siguen desplazando); abierta, fina.
+        collapsed ? 'w-16 [scrollbar-width:none]' : 'w-[220px] [scrollbar-width:thin]',
       )}
     >
       {/* Marca + toggle de colapso */}
@@ -216,8 +224,18 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       {/* Navegación por grupos con cabecera (US-163). Lo que cabe se desplaza por dentro;
           el grupo «Sistema» (Ajustes) va fijo debajo, para que no quede enterrado en una
           ventana baja. Es UN solo <nav>: dos landmarks iguales no se distinguirían. */}
-      <nav className="flex min-h-0 flex-1 flex-col px-3 py-2 bajo:min-h-fit bajo:flex-none">
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bajo:flex-none bajo:overflow-visible">
+      <nav
+        className={cn(
+          'flex min-h-0 flex-1 flex-col py-2 bajo:min-h-fit bajo:flex-none',
+          collapsed ? 'px-2' : 'px-3',
+        )}
+      >
+        <div
+          className={cn(
+            'min-h-0 flex-1 space-y-3 overflow-y-auto bajo:flex-none bajo:overflow-visible',
+            collapsed ? 'scroll-sombra [scrollbar-width:none]' : '[scrollbar-width:thin]',
+          )}
+        >
           {scrollGroups.map((group, gi) => renderGroup(group, gi))}
         </div>
         {pinnedGroup && (
@@ -261,7 +279,8 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
 
         <ThemeToggle collapsed={collapsed} />
 
-        <div className={cn('flex items-center gap-2', collapsed && 'justify-center')}>
+        {/* Colapsada, avatar y «Salir» se apilan: en fila suman 68 px y la barra deja 40. */}
+        <div className={cn('flex items-center gap-2', collapsed && 'flex-col')}>
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-kr-elevated text-kr-sm font-semibold text-kr-primary">
             {user ? initials(user.displayName) : '?'}
           </div>

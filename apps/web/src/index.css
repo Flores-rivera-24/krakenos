@@ -219,6 +219,19 @@
     border-color: var(--kr-border-muted);
   }
 }
+/* Pista de «hay más» en una lista con scroll sin barra visible (la barra lateral colapsada):
+   una sombra arriba y abajo que solo asoma mientras queda contenido por ese lado. Las capas
+   `local` tapan la sombra cuando el borde del contenido llega al del contenedor. */
+@utility scroll-sombra {
+  --kr-scroll-sombra: color-mix(in srgb, var(--kr-text-primary) 22%, transparent);
+  background:
+    linear-gradient(var(--kr-bg-surface) 30%, transparent) center top / 100% 40px no-repeat local,
+    linear-gradient(transparent, var(--kr-bg-surface) 70%) center bottom / 100% 40px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, var(--kr-scroll-sombra), transparent) center top / 100%
+      14px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, var(--kr-scroll-sombra), transparent) center bottom /
+      100% 14px no-repeat scroll;
+}
 
 @layer base {
   :root {
@@ -277,6 +290,9 @@
   }
 
   .dark {
+    /* Lo que pinta el navegador (barras de desplazamiento, controles nativos) sigue al
+       tema: sin `color-scheme` lo dibuja en claro, con la pista blanca sobre el fondo oscuro. */
+    color-scheme: dark;
     /* Los tokens kr-* ya tienen valores oscuros en :root; .dark los confirma. */
     --kr-bg-base: #0d1117;
     --kr-bg-surface: #161b22;
@@ -306,6 +322,7 @@
   /* Tema claro (US-41): se aplica cuando el <html> NO lleva la clase `dark`.
      Mayor especificidad que :root, así sobreescribe los valores oscuros por defecto. */
   html:not(.dark) {
+    color-scheme: light;
     --kr-bg-base: #f6f8fa;
     --kr-bg-surface: #ffffff;
     --kr-bg-elevated: #eef1f4;
@@ -334,6 +351,12 @@
     --kr-switch-off: #82868c; /* ídem */
     --kr-ring: #0c8ec8; /* 3,45:1 base · 3,67:1 surface · 3,24:1 elevated */
     --kr-danger-solid: #dc2626; /* texto blanco encima: 4,83:1 */
+  }
+
+  /* Las barras de desplazamiento con la paleta (el pulgar es un control: 3:1, como el borde
+     de un campo). `scrollbar-color` se hereda, así que basta con declararlo en la raíz. */
+  html {
+    scrollbar-color: var(--kr-border-field) transparent;
   }
 
   * {
