@@ -75,6 +75,7 @@ function montarPaquete(): void {
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'keys.js'), KEYS_JS);
   writeFileSync(join(pkg, 'app', 'agent', '.env.example'), ENV_EXAMPLE);
   copyFileSync(join(LAUNCHERS, 'first-run.mjs'), join(pkg, 'app', 'first-run.mjs'));
+  copyFileSync(join(LAUNCHERS, '..', 'relink.mjs'), join(pkg, 'app', 'relink.mjs'));
   if (WIN) {
     copyFileSync(join(LAUNCHERS, 'krakenos.cmd'), join(pkg, 'krakenos.cmd'));
   } else {

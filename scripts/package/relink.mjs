@@ -49,8 +49,10 @@ async function enlacesDe(dir) {
 export async function relinkPnpmJunctions(nodeModulesRoot) {
   const pnpm = join(nodeModulesRoot, '.pnpm');
   const candidatos = await enlacesDe(nodeModulesRoot);
+  // El hoist (`.pnpm/node_modules/*`) también lleva enlaces; no es un paquete de `.pnpm`.
+  candidatos.push(...(await enlacesDe(join(pnpm, 'node_modules'))));
   for (const d of await readdir(pnpm).catch(() => [])) {
-    if (d === 'lock.yaml') continue;
+    if (d === 'lock.yaml' || d === 'node_modules') continue;
     candidatos.push(...(await enlacesDe(join(pnpm, d, 'node_modules'))));
   }
   const relinked = [];

@@ -17,9 +17,6 @@ import { createHash } from 'node:crypto';
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from '../../../../scripts/package/prune.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { enlacesSanos } from '../../../../scripts/package/launchers/first-run.mjs';
-// prettier-ignore
-// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
@@ -357,6 +354,31 @@ describe('relinkPnpmJunctions', () => {
     expect(r.unresolved.some((x: string) => x.includes('raro'))).toBe(true);
   });
 
+  it('rehace también el hoist de .pnpm/node_modules (y su @scope)', async () => {
+    const { nm, pnpm, viejo } = arbolMovido();
+    mkdirSync(join(pnpm, 'h@1/node_modules/h'), { recursive: true });
+    mkdirSync(join(pnpm, 's@1/node_modules/@sc/s'), { recursive: true });
+    mkdirSync(join(pnpm, 'node_modules/@sc'), { recursive: true });
+    symlinkSync(join(viejo, 'h@1/node_modules/h'), join(pnpm, 'node_modules/h'));
+    symlinkSync(join(viejo, 's@1/node_modules/@sc/s'), join(pnpm, 'node_modules/@sc/s'));
+    await relinkPnpmJunctions(nm);
+    expect(realpathSync(join(pnpm, 'node_modules/h'))).toBe(
+      realpathSync(join(pnpm, 'h@1/node_modules/h')),
+    );
+    expect(realpathSync(join(pnpm, 'node_modules/@sc/s'))).toBe(
+      realpathSync(join(pnpm, 's@1/node_modules/@sc/s')),
+    );
+  });
+
+  it('una rotura parcial (primer enlace sano, otro roto) también se rehace', async () => {
+    const { nm, pnpm, viejo } = arbolMovido();
+    symlinkSync(join(pnpm, 'b@1/node_modules/b'), join(nm, '0-sano'));
+    symlinkSync(join(viejo, 'b@1/node_modules/b'), join(nm, 'z-roto'));
+    const r = await relinkPnpmJunctions(nm);
+    expect(r.relinked.some((x: string) => x.endsWith('z-roto'))).toBe(true);
+    expect(realpathSync(join(nm, 'z-roto'))).toBe(realpathSync(join(pnpm, 'b@1/node_modules/b')));
+  });
+
   it('encadenado con pruneUnreachable: solo cae el huerfano', async () => {
     const { nm, pnpm } = arbolMovido();
     await relinkPnpmJunctions(nm);
@@ -364,23 +386,5 @@ describe('relinkPnpmJunctions', () => {
     expect(r.removed).toEqual(['huerfano@1']);
     expect(existsSync(join(pnpm, 'a@1'))).toBe(true);
     expect(existsSync(join(pnpm, 'b@1'))).toBe(true);
-  });
-});
-
-describe('enlacesSanos (comprobación barata del primer arranque)', () => {
-  let base = '';
-  afterEach(() => rmSync(base, { recursive: true, force: true }));
-
-  it('false con el primer enlace roto, true con uno sano o sin enlaces', () => {
-    base = mkdtempSync(join(tmpdir(), 'pkg-sanos-'));
-    const nm = join(base, 'node_modules');
-    mkdirSync(join(nm, 'real'), { recursive: true });
-    expect(enlacesSanos(nm)).toBe(true);
-    expect(enlacesSanos(join(base, 'no-existe'))).toBe(true);
-    symlinkSync(join(base, 'no-existe-destino'), join(nm, 'roto'));
-    expect(enlacesSanos(nm)).toBe(false);
-    rmSync(join(nm, 'roto'));
-    symlinkSync(join(nm, 'real'), join(nm, 'sano'));
-    expect(enlacesSanos(nm)).toBe(true);
   });
 });
