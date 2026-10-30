@@ -26,7 +26,7 @@ import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 import { collectThirdPartyLicenses } from '../../../../scripts/package/licenses.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { findWalLeftovers, lineaStartWindows, parsePidDeLog } from '../../../../scripts/package-smoke.mjs';
+import { assertEstadoConservado, findWalLeftovers, huellasDeEstado, lineaStartWindows, parsePidDeLog } from '../../../../scripts/package-smoke.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
@@ -495,6 +495,33 @@ describe('findWalLeftovers', () => {
     mkdirSync(join(base, 'prisma'), { recursive: true });
     writeFileSync(join(base, 'prisma', 'x.db'), '');
     expect(findWalLeftovers(base)).toEqual([]);
+  });
+});
+
+describe('estado que conserva el segundo arranque', () => {
+  let dir = '';
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+  const monta = () => {
+    dir = mkdtempSync(join(tmpdir(), 'pkg-estado-'));
+    fichero(join(dir, 'keys', 'jwt-private.pem'), 'privada');
+    fichero(join(dir, 'keys', 'secretbox.key'), 'caja');
+    fichero(join(dir, '.env'), 'PORT=1\n');
+  };
+
+  it('pasa si nada cambió', () => {
+    monta();
+    assertEstadoConservado(huellasDeEstado(dir), huellasDeEstado(dir));
+  });
+
+  it('lanza nombrando el fichero que cambió o desapareció', () => {
+    monta();
+    const antes = huellasDeEstado(dir);
+    fichero(join(dir, 'keys', 'secretbox.key'), 'otra');
+    expect(() => assertEstadoConservado(antes, huellasDeEstado(dir))).toThrow('keys/secretbox.key');
+    rmSync(join(dir, '.env'));
+    expect(() => assertEstadoConservado(antes, huellasDeEstado(dir))).toThrow(
+      /jwt|secretbox|\.env/,
+    );
   });
 });
 

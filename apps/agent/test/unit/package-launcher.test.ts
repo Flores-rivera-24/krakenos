@@ -6,6 +6,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  realpathSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -132,6 +133,16 @@ describe('first-run.mjs (puro)', () => {
     expect(out).toContain('PORT=3001');
   });
 
+  it('con la plantilla REAL de apps/agent/.env.example deja exactamente ocho *_KIND=none y ningún mock', () => {
+    const real = readFileSync(
+      join(LAUNCHERS, '..', '..', '..', 'apps', 'agent', '.env.example'),
+      'utf8',
+    );
+    const out = withKindsNone(real);
+    expect(out.match(/^\w+_KIND=none$/gm)).toHaveLength(8);
+    expect(out).not.toMatch(/^\w+_KIND=mock$/m);
+  });
+
   it('no toca un .env que ya existe', () => {
     writeFileSync(join(raiz, '.env'), 'PORT=4999\n');
     writeFileSync(join(raiz, 'plantilla'), ENV_EXAMPLE);
@@ -142,10 +153,42 @@ describe('first-run.mjs (puro)', () => {
 
 // El .cmd solo se ejecuta en Windows y el sh solo fuera: cada uno necesita su intérprete.
 describe.runIf(WIN)('krakenos.cmd (Windows)', () => {
-  it('arranca y propaga el código de salida', () => {
+  // Las rutas pueden llegar en forma corta (RUNNER~1) por un lado y larga por el otro.
+  const real = (p: string) => realpathSync.native(p).toLowerCase();
+
+  it('sin variables: modo package, producción, cwd = %LOCALAPPDATA%\\KrakenOS, y el código de salida', () => {
     const r = lanzar();
     expect(r.status).toBe(7);
-    expect(leerIndex().env.NODE_ENV).toBe('production');
+    const idx = leerIndex();
+    const datosPorDefecto = join(raiz, 'localappdata', 'KrakenOS');
+    expect(idx.env.KRAKENOS_DEPLOY_MODE).toBe('package');
+    expect(idx.env.NODE_ENV).toBe('production');
+    expect(real(idx.env.KRAKENOS_APP_DIR)).toBe(real(join(pkg, 'app', 'agent')));
+    expect(real(idx.env.KRAKENOS_DATA_DIR)).toBe(real(datosPorDefecto));
+    expect(real(idx.cwd)).toBe(real(datosPorDefecto));
+    expect(existsSync(datosPorDefecto)).toBe(true);
+  });
+
+  it('respeta KRAKENOS_DATA_DIR y KRAKENOS_DEPLOY_MODE del entorno', () => {
+    datos = join(raiz, 'mis datos');
+    lanzar({ KRAKENOS_DATA_DIR: datos, KRAKENOS_DEPLOY_MODE: 'docker' });
+    const idx = leerIndex();
+    expect(idx.env.KRAKENOS_DATA_DIR).toBe(datos);
+    expect(idx.env.KRAKENOS_DEPLOY_MODE).toBe('docker');
+    expect(real(idx.cwd)).toBe(real(datos));
+  });
+
+  it('primer arranque: genera claves y .env; el segundo no toca ninguno', () => {
+    datos = join(raiz, 'mis datos');
+    lanzar({ KRAKENOS_DATA_DIR: datos });
+    expect(llamadasKeys()).toEqual(['gen']);
+    const env1 = readFileSync(join(datos, '.env'), 'utf8');
+    expect(env1.match(/^\w+_KIND=none$/gm)).toHaveLength(8);
+
+    writeFileSync(join(datos, '.env'), 'PORT=4999\n');
+    lanzar({ KRAKENOS_DATA_DIR: datos });
+    expect(llamadasKeys()).toEqual(['gen']);
+    expect(readFileSync(join(datos, '.env'), 'utf8')).toBe('PORT=4999\n');
   });
 });
 
