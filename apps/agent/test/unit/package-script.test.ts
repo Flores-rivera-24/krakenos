@@ -1,10 +1,26 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync, existsSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readlinkSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from '../../../../scripts/package/prune.mjs';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+import { enlacesSanos } from '../../../../scripts/package/launchers/first-run.mjs';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { collectThirdPartyLicenses } from '../../../../scripts/package/licenses.mjs';
@@ -286,5 +302,85 @@ describe('collectThirdPartyLicenses', () => {
     expect(texto).toContain('ISC');
     expect(texto).toContain('Copyright Alfa Texto');
     expect(texto.indexOf('alfa@1.0.0')).toBeLessThan(texto.indexOf('zeta@2.0.0'));
+  });
+});
+
+describe('relinkPnpmJunctions', () => {
+  let base = '';
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  /** Un node_modules ya movido: sus enlaces apuntan en ABSOLUTO a la ruta vieja que ya no existe. */
+  function arbolMovido() {
+    base = mkdtempSync(join(tmpdir(), 'pkg-relink-'));
+    const nm = join(base, 'nuevo', 'node_modules');
+    const viejo = join(base, 'old', 'node_modules', '.pnpm');
+    const pnpm = join(nm, '.pnpm');
+    for (const [dir, nombre] of [
+      ['a@1', 'a'],
+      ['b@1', 'b'],
+      ['huerfano@1', 'huerfano'],
+    ] as const) {
+      mkdirSync(join(pnpm, dir, 'node_modules', nombre), { recursive: true });
+    }
+    // node_modules/a -> a@1 ; a@1 depende de b ; ambos en absoluto hacia la ruta vieja
+    symlinkSync(join(viejo, 'a@1/node_modules/a'), join(nm, 'a'));
+    symlinkSync(join(viejo, 'b@1/node_modules/b'), join(pnpm, 'a@1/node_modules/b'));
+    return { nm, pnpm, viejo };
+  }
+
+  it('rehace los enlaces absolutos rotos hacia el .pnpm nuevo', async () => {
+    const { nm, pnpm } = arbolMovido();
+    const r = await relinkPnpmJunctions(nm);
+    expect(r.relinked.length).toBe(2);
+    expect(realpathSync(join(nm, 'a'))).toBe(realpathSync(join(pnpm, 'a@1/node_modules/a')));
+    expect(realpathSync(join(pnpm, 'a@1/node_modules/b'))).toBe(
+      realpathSync(join(pnpm, 'b@1/node_modules/b')),
+    );
+  });
+
+  it('no toca un enlace sano', async () => {
+    const { nm, pnpm } = arbolMovido();
+    symlinkSync(join(pnpm, 'b@1/node_modules/b'), join(nm, 'sano'));
+    const antes = readlinkSync(join(nm, 'sano'));
+    const r = await relinkPnpmJunctions(nm);
+    expect(readlinkSync(join(nm, 'sano'))).toBe(antes);
+    expect(r.relinked.some((x: string) => x.includes('sano'))).toBe(false);
+  });
+
+  it('un enlace roto hacia fuera de .pnpm no se toca y se reporta', async () => {
+    const { nm } = arbolMovido();
+    const destino = join(base, 'ajeno', 'no-existe');
+    symlinkSync(destino, join(nm, 'raro'));
+    const r = await relinkPnpmJunctions(nm);
+    expect(lstatSync(join(nm, 'raro')).isSymbolicLink()).toBe(true);
+    expect(readlinkSync(join(nm, 'raro'))).toBe(destino);
+    expect(r.unresolved.some((x: string) => x.includes('raro'))).toBe(true);
+  });
+
+  it('encadenado con pruneUnreachable: solo cae el huerfano', async () => {
+    const { nm, pnpm } = arbolMovido();
+    await relinkPnpmJunctions(nm);
+    const r = await pruneUnreachable(nm);
+    expect(r.removed).toEqual(['huerfano@1']);
+    expect(existsSync(join(pnpm, 'a@1'))).toBe(true);
+    expect(existsSync(join(pnpm, 'b@1'))).toBe(true);
+  });
+});
+
+describe('enlacesSanos (comprobación barata del primer arranque)', () => {
+  let base = '';
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  it('false con el primer enlace roto, true con uno sano o sin enlaces', () => {
+    base = mkdtempSync(join(tmpdir(), 'pkg-sanos-'));
+    const nm = join(base, 'node_modules');
+    mkdirSync(join(nm, 'real'), { recursive: true });
+    expect(enlacesSanos(nm)).toBe(true);
+    expect(enlacesSanos(join(base, 'no-existe'))).toBe(true);
+    symlinkSync(join(base, 'no-existe-destino'), join(nm, 'roto'));
+    expect(enlacesSanos(nm)).toBe(false);
+    rmSync(join(nm, 'roto'));
+    symlinkSync(join(nm, 'real'), join(nm, 'sano'));
+    expect(enlacesSanos(nm)).toBe(true);
   });
 });

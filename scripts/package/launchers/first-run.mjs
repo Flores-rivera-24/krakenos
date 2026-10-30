@@ -11,7 +11,7 @@
  * - Sin `keys/jwt-private.pem`: ejecuta `app/agent/dist/keys.js gen`.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -46,6 +46,30 @@ function defaultRun(cmd, args, cwd) {
   return spawnSync(cmd, args, { cwd, stdio: 'inherit' }).status ?? 1;
 }
 
+/**
+ * ¿El primer enlace de nivel superior de `node_modules` apunta a algo que existe? Es la
+ * comprobación barata de cada arranque: solo si falla se recorre todo (`relink.mjs`).
+ */
+export function enlacesSanos(nm) {
+  let nombres;
+  try {
+    nombres = readdirSync(nm);
+  } catch {
+    return true;
+  }
+  for (const n of nombres) {
+    if (n === '.bin' || n === '.pnpm' || n.startsWith('@')) continue;
+    if (!lstatSync(join(nm, n)).isSymbolicLink()) continue;
+    try {
+      statSync(join(nm, n));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function main(dataDir = process.cwd()) {
   const appDir = dirname(fileURLToPath(import.meta.url));
   if (ensureEnv(dataDir, join(appDir, 'agent', '.env.example'))) {
@@ -56,6 +80,13 @@ export function main(dataDir = process.cwd()) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   try {
+    // Si el usuario movió la carpeta, los enlaces absolutos de pnpm en Windows quedan rotos.
+    const nm = join(dirname(fileURLToPath(import.meta.url)), 'agent', 'node_modules');
+    if (!enlacesSanos(nm)) {
+      const { relinkPnpmJunctions } = await import('./relink.mjs');
+      const r = await relinkPnpmJunctions(nm);
+      console.log(`Enlaces de dependencias rehechos: ${r.relinked.length}`);
+    }
     main();
   } catch (e) {
     console.error(`KrakenOS: no se pudo preparar el primer arranque: ${e.message}`);

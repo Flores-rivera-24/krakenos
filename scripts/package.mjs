@@ -30,6 +30,7 @@ import {
 } from './package/node-runtime.mjs';
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from './package/prune.mjs';
 import { collectThirdPartyLicenses } from './package/licenses.mjs';
+import { relinkPnpmJunctions } from './package/relink.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TOTAL = 9;
@@ -144,6 +145,9 @@ async function main() {
   paso(5, 'copiando agente, web, migraciones y lanzador');
   await rename(join(tmpDeploy, 'node_modules'), join(agente, 'node_modules'));
   await rm(tmpDeploy, { recursive: true, force: true });
+  // En Windows los enlaces de pnpm son absolutos hacia el deploy temporal: hay que rehacerlos.
+  const rl = await relinkPnpmJunctions(join(agente, 'node_modules'));
+  console.log(`    enlaces de pnpm rehechos: ${rl.relinked.length}`);
   await cp(join(RAIZ, 'apps/agent/dist'), join(agente, 'dist'), { recursive: true });
   await cp(join(RAIZ, 'apps/agent/prisma/migrations'), join(agente, 'prisma', 'migrations'), {
     recursive: true,
@@ -153,6 +157,7 @@ async function main() {
   await cp(join(RAIZ, 'apps/web/dist'), join(app, 'web', 'dist'), { recursive: true });
   await copyFile(join(RAIZ, 'LICENSE'), join(pkg, 'LICENSE'));
   await copyFile(join(RAIZ, 'scripts/package/launchers/first-run.mjs'), join(app, 'first-run.mjs'));
+  await copyFile(join(RAIZ, 'scripts/package/relink.mjs'), join(app, 'relink.mjs'));
   const lanzador = join(pkg, target.launcher);
   await mkdir(dirname(lanzador), { recursive: true });
   await copyFile(
