@@ -305,12 +305,9 @@ async function main() {
 
     await renombrarConReintento(pkg, movida);
     console.log(`==> carpeta renombrada a ${movida}`);
-    let falloDeRonda = false;
+    let fallaDevolver = null;
     try {
       await ronda('segundo arranque (carpeta movida)', movida, env, port);
-    } catch (e) {
-      falloDeRonda = true;
-      throw e;
     } finally {
       // Si esto falla no debe tapar el error original de la ronda: se avisa y se conserva.
       try {
@@ -318,9 +315,11 @@ async function main() {
         console.log(`==> carpeta devuelta a ${pkg}`);
       } catch (e) {
         console.error(`    no se pudo devolver ${movida} a ${pkg}: ${e.message}`);
-        if (!falloDeRonda) throw e;
+        fallaDevolver = e;
       }
     }
+    // Solo se llega aquí si la ronda salió bien: entonces sí se informa de este fallo.
+    if (fallaDevolver) throw fallaDevolver;
     assertEstadoConservado(antes, huellasDeEstado(datos));
     console.log('==> claves y .env intactos tras el segundo arranque');
 
