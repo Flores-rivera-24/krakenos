@@ -103,7 +103,7 @@ export function SurveyPanel({
   useEffect(() => {
     let active = true;
     void api
-      .getList<Device>('/inventory')
+      .getList<Device>('/inventory/devices')
       .then((list) => {
         if (!active) return;
         setDevices(list);

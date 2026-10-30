@@ -105,7 +105,7 @@ describe('CoveragePage', () => {
     coverageMock.getMeasuredHeatmap
       .mockReset()
       .mockResolvedValue({ ...HEATMAP, source: 'measured' });
-    apiMock.get.mockReset().mockResolvedValue([]); // /inventory (SurveyPanel)
+    apiMock.get.mockReset().mockResolvedValue([]); // /inventory/devices (SurveyPanel)
   });
 
   it('carga los planos y muestra el seleccionado', async () => {

@@ -1,5 +1,5 @@
-import type { SurveyScan, SurveyScanDetail } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import type { Device, SurveyScan, SurveyScanDetail } from '@krakenos/types';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,6 +33,26 @@ const SCAN: SurveyScan = {
 
 const SCAN_DETAIL: SurveyScanDetail = { ...SCAN, samples: [] };
 
+const DEVICE: Device = {
+  id: 'd1',
+  mac: 'aa:bb:cc:dd:ee:01',
+  ip: '10.0.0.5',
+  hostname: 'portatil',
+  label: 'Portátil de Ana',
+  notes: null,
+  icon: null,
+  roomId: null,
+  ownerId: null,
+  vendor: null,
+  type: 'computer',
+  isBlocked: false,
+  online: true,
+  vlanTag: null,
+  sources: ['arp'],
+  firstSeen: '2026-06-17T00:00:00.000Z',
+  lastSeen: '2026-06-17T00:00:00.000Z',
+};
+
 function noop(): void {
   /* no-op */
 }
@@ -44,7 +64,7 @@ describe('SurveyPanel', () => {
     coverageMock.getMeasuredHeatmap.mockReset();
     coverageMock.getScan.mockReset().mockResolvedValue(SCAN_DETAIL);
     coverageMock.listScans.mockReset().mockResolvedValue([]);
-    apiMock.get.mockReset().mockResolvedValue([]); // /inventory
+    apiMock.get.mockReset().mockResolvedValue([]); // /inventory/devices
   });
 
   it('muestra el estado vacío sin surveys', async () => {
@@ -119,6 +139,44 @@ describe('SurveyPanel', () => {
     );
     await waitFor(() => expect(coverageMock.getScan).toHaveBeenCalledWith('scan-1'));
     expect(onActiveScanChange).toHaveBeenCalledWith(SCAN_DETAIL);
+  });
+
+  it('ofrece como itinerantes los dispositivos del inventario (pide la ruta que existe)', async () => {
+    // Responde como el servidor: solo `/inventory/devices` existe; cualquier
+    // otra ruta es un 404. Con el mock agnóstico a la ruta, pedir `/inventory`
+    // pasaba en verde mientras la app real deshabilitaba el selector.
+    apiMock.get.mockImplementation((path: string) =>
+      path === '/inventory/devices'
+        ? Promise.resolve([DEVICE])
+        : Promise.reject(new Error(`404 ${path}`)),
+    );
+    const user = userEvent.setup();
+    render(
+      <SurveyPanel
+        floorPlanId="plan-1"
+        defaultBand="5GHz"
+        activeScan={null}
+        onActiveScanChange={noop}
+        measuredHeatmap={null}
+        onMeasuredHeatmapChange={noop}
+        showMeasured={false}
+        onShowMeasuredChange={noop}
+        manualRssiDbm={-60}
+        onManualRssiChange={noop}
+        canEdit
+      />,
+    );
+    await screen.findByText(/Aún no hay recorridos/);
+    await user.click(screen.getByRole('button', { name: /Nuevo/ }));
+
+    const selector = screen.getByLabelText('Dispositivo itinerante');
+    expect(
+      await within(selector).findByRole('option', { name: 'Portátil de Ana' }),
+    ).toBeInTheDocument();
+    expect(selector).toBeEnabled();
+    expect(
+      screen.queryByText('No se pudo cargar la lista de dispositivos.'),
+    ).not.toBeInTheDocument();
   });
 
   it('con un survey activo, alternar a "Ver mapa medido" pide el heatmap medido', async () => {
