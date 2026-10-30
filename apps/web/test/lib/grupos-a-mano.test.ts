@@ -40,7 +40,7 @@ export function botonesConPressed(nombre: string, codigo: string): number[] {
   const visitar = (nodo: ts.Node): void => {
     if (
       (ts.isJsxOpeningElement(nodo) || ts.isJsxSelfClosingElement(nodo)) &&
-      nodo.tagName.getText(sf) === 'button' &&
+      ['button', 'Button'].includes(nodo.tagName.getText(sf)) &&
       nodo.attributes.properties.some(
         (p) => ts.isJsxAttribute(p) && p.name.getText(sf) === 'aria-pressed',
       )
@@ -59,6 +59,8 @@ describe('grupos-a-mano', () => {
     expect(
       botonesConPressed('x.tsx', '[\n<button type="button" aria-pressed={x}>a</button>]'),
     ).toEqual([2]);
+    expect(botonesConPressed('x.tsx', '[<Button aria-pressed={x} />]')).toEqual([1]);
+    expect(botonesConPressed('x.tsx', '[<Button variant="ghost" />]')).toEqual([]);
     expect(botonesConPressed('x.tsx', '[<ToggleChip pressed />, <g aria-pressed />]')).toEqual([]);
     expect(
       botonesConPressed('x.tsx', '[<button type="button" />,\n// <button aria-pressed>\n]'),
