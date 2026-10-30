@@ -25,6 +25,10 @@ import { collectThirdPartyLicenses } from '../../../../scripts/package/licenses.
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { findWalLeftovers, lineaStartWindows, parsePidDeLog } from '../../../../scripts/package-smoke.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+import { checkSize, dirSizeMb } from '../../../../scripts/package/size-budget.mjs';
+import { readFileSync } from 'node:fs';
 // El @ts-expect-error solo cubre la linea siguiente: sin prettier-ignore Prettier parte el import
 // en varias lineas y el error de tipos queda fuera de su alcance.
 // prettier-ignore
@@ -430,4 +434,44 @@ describe('parsePidDeLog', () => {
     expect(parsePidDeLog('arrancando...\n')).toBeNull();
     expect(parsePidDeLog('')).toBeNull();
   });
+});
+
+describe('checkSize', () => {
+  it('pasa por debajo y justo en el tope', () => {
+    expect(() => checkSize(100, { maxMb: 110, measuredMb: 105 })).not.toThrow();
+    expect(() => checkSize(110, { maxMb: 110, measuredMb: 105 })).not.toThrow();
+  });
+
+  it('lanza nombrando las dos cifras cuando se pasa del tope', () => {
+    expect(() => checkSize(120.4, { maxMb: 110, measuredMb: 105 })).toThrow(/120\.4.*110/s);
+  });
+});
+
+describe('dirSizeMb', () => {
+  let base = '';
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  it('suma los ficheros de forma recursiva, en MB', async () => {
+    base = mkdtempSync(join(tmpdir(), 'pkg-size-'));
+    mkdirSync(join(base, 'a', 'b'), { recursive: true });
+    writeFileSync(join(base, 'x.bin'), Buffer.alloc(1048576));
+    writeFileSync(join(base, 'a', 'b', 'y.bin'), Buffer.alloc(524288));
+    expect(await dirSizeMb(base)).toBeCloseTo(1.5, 5);
+  });
+});
+
+describe('size-budget.json', () => {
+  const presupuesto = JSON.parse(
+    readFileSync(join(__dirname, '../../../../scripts/package/size-budget.json'), 'utf8'),
+  ) as Record<string, { maxMb: number; measuredMb: number }>;
+
+  it.each(['win-x64', 'linux-x64', 'linux-arm64'])(
+    '%s tiene tope razonable sobre lo medido',
+    (id) => {
+      const b = presupuesto[id];
+      expect(b).toBeDefined();
+      expect(b!.maxMb).toBeGreaterThanOrEqual(b!.measuredMb);
+      expect(b!.maxMb).toBeLessThanOrEqual(b!.measuredMb * 1.05 + 1);
+    },
+  );
 });

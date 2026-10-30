@@ -171,6 +171,87 @@ jobs:
         if: ${{ !cancelled() }}
         run: pnpm --filter @krakenos/web test
 
+  # Carpeta autocontenida (`pnpm package`, Fase 11): Node + agente + web + lanzador, un runner por
+  # plataforma (no hay compilación cruzada). Prueba el paquete como lo usaría una persona: arranca,
+  # responde /health/ready, sirve la web, se mueve de carpeta y se para sin dejar -wal/-shm.
+  # `continue-on-error` en Windows y arm64 hasta llevar 5 pasadas verdes seguidas en main (como hizo
+  # el job de Windows de los tests, PR #164); en cuanto las lleve, se quita `experimental`.
+  package:
+    name: Paquete (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, target: linux-x64, experimental: false }
+          - { os: windows-latest, target: win-x64, experimental: true }
+          - { os: ubuntu-24.04-arm, target: linux-arm64, experimental: true }
+    # Todos los pasos con bash (existe también en los runners de Windows): un glob de shell
+    # no se expande igual en pwsh y la verificación de Node necesita `gpgv` de Git for Windows.
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # `pnpm package` verifica la firma de Node con `gpgv`. En Windows viene con Git for Windows,
+      # pero no está en el PATH de PowerShell/pnpm: se añade al FINAL, para que sus tar/sort/find
+      # de MSYS no tapen a los de Windows.
+      - name: Empaquetar (pnpm package)
+        run: |
+          command -v gpgv >/dev/null || export PATH="$PATH:/c/Program Files/Git/usr/bin"
+          command -v gpgv
+          pnpm package
+
+      - name: Smoke del paquete
+        run: |
+          dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
+          echo "paquete: $dir"
+          node scripts/package-smoke.mjs "$dir"
+
+      # Negativo de la firma: con una SHASUMS256.txt alterada, la verificación de Node TIENE que
+      # fallar (y por la firma, no por otra cosa). Si pasara, la verificación sería decorativa.
+      - name: Negativo de la firma de Node (SHASUMS256.txt alterada)
+        run: |
+          command -v gpgv >/dev/null || export PATH="$PATH:/c/Program Files/Git/usr/bin"
+          cache="$RUNNER_TEMP/node-alterada"
+          rm -rf "$cache" && mkdir -p "$cache"
+          cp .cache/node/SHASUMS256.txt .cache/node/SHASUMS256.txt.sig "$cache/"
+          # 'Z' no es un dígito hexadecimal: la línea cambia siempre.
+          sed '1s/./Z/' "$cache/SHASUMS256.txt" > "$cache/alterada.txt"
+          mv "$cache/alterada.txt" "$cache/SHASUMS256.txt"
+          if KRAKENOS_NODE_CACHE="$cache" node scripts/package.mjs --only-node > "$RUNNER_TEMP/negativo.log" 2>&1; then
+            cat "$RUNNER_TEMP/negativo.log"
+            echo "::error::la verificación de Node aceptó una SHASUMS256.txt alterada"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/negativo.log"
+          grep -q "no verifica" "$RUNNER_TEMP/negativo.log" || { echo "::error::falló, pero no por la firma"; exit 1; }
+          echo "OK: la firma rechazó la SHASUMS256.txt alterada"
+
+      - name: Subir el paquete
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-${{ matrix.target }}
+          path: out/krakenos-*-${{ matrix.target }}
+          retention-days: 7
+
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
   e2e:

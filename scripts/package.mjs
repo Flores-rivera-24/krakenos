@@ -12,7 +12,6 @@ import {
   cp,
   mkdir,
   readFile,
-  readdir,
   realpath,
   rename,
   rm,
@@ -31,8 +30,14 @@ import {
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from './package/prune.mjs';
 import { collectThirdPartyLicenses } from './package/licenses.mjs';
 import { relinkPnpmJunctions } from './package/relink.mjs';
+import { checkSize, dirSizeMb } from './package/size-budget.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Carpeta de la caché de Node (llavero, SHASUMS, firma y archivo). KRAKENOS_NODE_CACHE la
+// cambia: la CI la usa para probar que una SHASUMS256.txt alterada NO pasa la firma.
+const CACHE_NODE = process.env.KRAKENOS_NODE_CACHE
+  ? resolve(process.env.KRAKENOS_NODE_CACHE)
+  : join(RAIZ, '.cache', 'node');
 const TOTAL = 9;
 const paso = (n, texto) => console.log(`==> [${n}/${TOTAL}] ${texto}`);
 
@@ -73,7 +78,7 @@ async function descargar(url, destino) {
 
 /** Baja y verifica Node (llavero → firma → suma) y devuelve la ruta del archivo verificado. */
 async function nodeVerificado(target) {
-  const cache = join(RAIZ, '.cache', 'node');
+  const cache = CACHE_NODE;
   const base = `https://nodejs.org/dist/v${NODE_VERSION}`;
   const keyring = join(cache, 'pubring.kbx');
   await descargar(NODE_KEYRING.url, keyring);
@@ -81,8 +86,10 @@ async function nodeVerificado(target) {
 
   const sums = join(cache, 'SHASUMS256.txt');
   const sig = join(cache, 'SHASUMS256.txt.sig');
-  await descargar(`${base}/SHASUMS256.txt`, sums);
-  await descargar(`${base}/SHASUMS256.txt.sig`, sig);
+  // Si ya están en la caché se reutilizan: nada se da por bueno sin pasar la firma de abajo,
+  // y así una copia alterada a mano se ve rechazada en vez de sobrescrita en silencio.
+  if (!existsSync(sums)) await descargar(`${base}/SHASUMS256.txt`, sums);
+  if (!existsSync(sig)) await descargar(`${base}/SHASUMS256.txt.sig`, sig);
   await verifySignature({
     run: ejecutarCapturando,
     dir: cache,
@@ -100,6 +107,12 @@ async function nodeVerificado(target) {
 
 async function main() {
   const target = resolveTarget(process.platform, process.arch);
+  // Solo el paso de Node (descarga a la caché + verificación): la CI lo usa para el negativo de la firma.
+  if (process.argv.includes('--only-node')) {
+    await nodeVerificado(target);
+    console.log('Node verificado (llavero, firma y suma).');
+    return;
+  }
   const rootPkg = JSON.parse(await readFile(join(RAIZ, 'package.json'), 'utf8'));
   const sha = await new Promise((ok, fallo) => {
     let out = '';
@@ -201,18 +214,13 @@ async function main() {
   paso(9, 'comprobando que no viaja ningún secreto');
   await assertNoSecrets(pkg);
 
-  console.log(`Paquete listo: ${pkg} (${(await tamanoMb(pkg)).toFixed(1)} MB)`);
-}
-
-async function tamanoMb(dir) {
-  let total = 0;
-  for (const e of await readdir(dir, { withFileTypes: true })) {
-    const r = join(dir, e.name);
-    if (e.isDirectory()) total += (await tamanoMb(r)) * 1048576;
-    else if (!e.isSymbolicLink())
-      total += (await import('node:fs/promises').then((m) => m.stat(r))).size;
-  }
-  return total / 1048576;
+  const mb = await dirSizeMb(pkg);
+  console.log(`Paquete listo: ${pkg} (${mb.toFixed(1)} MB)`);
+  const presupuesto = JSON.parse(
+    await readFile(join(RAIZ, 'scripts/package/size-budget.json'), 'utf8'),
+  )[target.id];
+  if (!presupuesto) throw new Error(`size-budget.json no tiene entrada para ${target.id}`);
+  checkSize(mb, presupuesto);
 }
 
 main().catch((e) => {

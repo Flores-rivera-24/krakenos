@@ -1,0 +1,6 @@
+{
+  "_nota": "PROVISIONAL hasta la primera medida en la CI. maxMb = medido + 5 %, redondeado arriba.",
+  "win-x64": { "measuredMb": 500, "maxMb": 500 },
+  "linux-x64": { "measuredMb": 500, "maxMb": 500 },
+  "linux-arm64": { "measuredMb": 500, "maxMb": 500 }
+}
