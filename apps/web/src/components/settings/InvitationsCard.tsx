@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { RichText } from '@/components/ui/rich-text';
 import { describeError } from '@/lib/errors';
@@ -162,20 +163,20 @@ export function InvitationsCard() {
                   </p>
                   {r.note && <p className="mt-1 text-kr-xs text-kr-muted">«{r.note}»</p>}
                 </div>
-                <select
+                <Select
                   aria-label={t('requests.roleFor', { name: r.displayName })}
                   value={roleFor[r.id] ?? 'member'}
                   onChange={(e) =>
                     setRoleFor((m) => ({ ...m, [r.id]: e.target.value as UserRole }))
                   }
-                  className="rounded-lg border border-kr-field bg-kr-elevated px-2 py-1.5 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
+                  className="w-auto"
                 >
                   {USER_ROLES.map((role) => (
                     <option key={role} value={role}>
                       {t(ROLE_LABEL_KEYS[role])}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button
                   type="button"
                   onClick={() => void onDecide(r, 'approve')}
@@ -253,18 +254,17 @@ export function InvitationsCard() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="inv-role">{t('users.col.role')}</Label>
-            <select
+            <Select
               id="inv-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
-              className="h-9 w-full rounded-lg border border-kr-field bg-kr-elevated px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
                   {t(ROLE_LABEL_KEYS[role])}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="sm:col-span-4">
             <Button type="submit" disabled={creating}>

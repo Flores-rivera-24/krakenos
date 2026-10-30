@@ -56,6 +56,7 @@ export const esCamaras = {
   'cameras.motion.armNever': 'Nunca',
   'cameras.motion.armSchedule': 'Según horario',
   'cameras.motion.from': 'Desde',
+  'cameras.motion.days': 'Días',
   'cameras.motion.to': 'Hasta',
   'cameras.motion.loading': 'Cargando…',
   'cameras.motion.saving': 'Guardando…',

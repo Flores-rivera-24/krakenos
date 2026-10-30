@@ -17,6 +17,7 @@ import {
 import { timeAgo } from '@/lib/format';
 import { type TranslationKey, useT } from '@/lib/i18n';
 import { useIsMobile } from '@/lib/use-is-mobile';
+import { ToggleChip, ToggleChipGroup } from '@/components/ui/toggle-chip';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -263,27 +264,17 @@ function InventoryPageBody() {
 
       {/* Filtros rápidos (solo "All Devices") */}
       {tab === 'all' && (
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => {
-            const active = filters.includes(f.value);
-            return (
-              <button
-                key={f.value}
-                type="button"
-                aria-pressed={active}
-                onClick={() => toggleFilter(f.value)}
-                className={cn(
-                  'rounded-full border px-3 py-1 text-kr-sm font-medium transition-colors',
-                  active
-                    ? 'border-kr-accent bg-kr-accent text-white'
-                    : 'border-kr bg-kr-elevated text-kr-secondary hover:text-kr-primary',
-                )}
-              >
-                {t(f.key)}
-              </button>
-            );
-          })}
-        </div>
+        <ToggleChipGroup aria-label={t('inventory.filter.title')}>
+          {FILTERS.map((f) => (
+            <ToggleChip
+              key={f.value}
+              pressed={filters.includes(f.value)}
+              onPressedChange={() => toggleFilter(f.value)}
+            >
+              {t(f.key)}
+            </ToggleChip>
+          ))}
+        </ToggleChipGroup>
       )}
 
       {/* Conexión en tiempo real caída: el inventario llega por Socket.io (US-93). */}

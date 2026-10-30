@@ -5,6 +5,7 @@ import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recha
 import { StatCard } from '@/components/dashboard/StatCard';
 import { EnergyAlertsCard } from '@/components/energy/EnergyAlertsCard';
 import { Button } from '@/components/ui/button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { FormError } from '@/components/ui/form-error';
@@ -181,23 +182,12 @@ function EnergyPageBody() {
         <CardHeader className="flex-row flex-wrap items-center justify-between gap-2 space-y-0">
           <CardTitle>{t('energy.consumptionChart', { unit })}</CardTitle>
           <div className="flex items-center gap-2">
-            <div className="flex gap-1" role="group" aria-label={t('energy.rangeLabel')}>
-              {ENERGY_RANGES.map((r) => (
-                <button
-                  key={r.value}
-                  type="button"
-                  onClick={() => setRange(r.value)}
-                  aria-pressed={range === r.value}
-                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
-                    range === r.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
+            <SegmentedControl
+              options={ENERGY_RANGES}
+              value={range}
+              onChange={setRange}
+              aria-label={t('energy.rangeLabel')}
+            />
             <Button
               variant="outline"
               size="sm"

@@ -145,6 +145,10 @@ test.describe('celular', () => {
     await irA(page, '/energy');
     const botones = page.getByRole('group', { name: 'Rango' }).getByRole('button');
     await expect(botones.first()).toBeVisible();
+    // La barra inferior es fija: se centra el grupo para que no quede tapado al medir.
+    await page
+      .getByRole('group', { name: 'Rango' })
+      .evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const n = await botones.count();
     for (let i = 0; i < n; i++) {
       const vecinos = [];
@@ -377,7 +381,7 @@ test.describe('escritorio', () => {
     const rango = page.getByRole('group', { name: 'Rango' }).getByRole('button').first();
     await expect(rango).toBeVisible();
     await esperarContenidoQuieto(page);
-    expect((await rango.boundingBox())!.height).toBeCloseTo(24, 1);
+    expect((await rango.boundingBox())!.height).toBeCloseTo(32, 1);
 
     await page.getByRole('link', { name: 'IoT', exact: true }).first().click();
     const interruptor = page.getByRole('switch').first();

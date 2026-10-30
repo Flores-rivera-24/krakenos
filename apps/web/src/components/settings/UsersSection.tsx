@@ -7,6 +7,7 @@ import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { StatusDot } from '@/components/ui/status-dot';
 import { describeError } from '@/lib/errors';
@@ -166,18 +167,17 @@ export function UsersSection() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="nu-role">{t('users.col.role')}</Label>
-            <select
+            <Select
               id="nu-role"
               value={form.role}
               onChange={(e) => setForm({ ...form, role: e.target.value as UserRole })}
-              className="h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary min-h-11 md:min-h-0"
             >
               {USER_ROLES.map((role) => (
                 <option key={role} value={role}>
                   {t(ROLE_LABEL_KEYS[role])}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           {form.role === 'guest' && (
             <div className="space-y-1.5">
@@ -245,7 +245,7 @@ export function UsersSection() {
                       )}
                     </td>
                     <td className="px-3 py-2.5">
-                      <select
+                      <Select
                         aria-label={t('users.roleOf', { email: u.email })}
                         value={u.role}
                         disabled={busy}
@@ -256,14 +256,14 @@ export function UsersSection() {
                             t('users.roleUpdated'),
                           )
                         }
-                        className="h-8 rounded-md border border-kr-field bg-kr-elevated px-2 text-base md:text-kr-sm text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0"
+                        className="w-auto"
                       >
                         {USER_ROLES.map((role) => (
                           <option key={role} value={role}>
                             {t(ROLE_LABEL_KEYS[role])}
                           </option>
                         ))}
-                      </select>
+                      </Select>
                       {u.expiresAt && (
                         <div className="mt-1 text-kr-xs text-kr-muted">
                           {t('users.expiresAt', { date: formatDateTime(u.expiresAt) })}

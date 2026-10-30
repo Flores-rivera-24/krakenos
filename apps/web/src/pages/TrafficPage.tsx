@@ -16,6 +16,7 @@ import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { LoadingStatCard } from '@/components/ui/loading-stat-card';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { api } from '@/lib/api';
@@ -337,23 +338,12 @@ function TrafficPageBody() {
       <Card>
         <CardHeader className="flex-row items-center justify-between space-y-0">
           <CardTitle>{t('traffic.history')}</CardTitle>
-          <div className="flex gap-1" role="group" aria-label={t('traffic.rangeLabel')}>
-            {WAN_RANGES.map((r) => (
-              <button
-                key={r.value}
-                type="button"
-                onClick={() => setRange(r.value)}
-                aria-pressed={range === r.value}
-                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
-                  range === r.value
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            options={WAN_RANGES}
+            value={range}
+            onChange={setRange}
+            aria-label={t('traffic.rangeLabel')}
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -445,23 +435,12 @@ function TrafficPageBody() {
             <CardTitle>{t('traffic.byDevice')}</CardTitle>
             {/* Sin permiso no hay nada que acotar por rango: el selector sobra. */}
             {!activityDenied && (
-              <div className="flex gap-1" role="group" aria-label={t('traffic.deviceRangeLabel')}>
-                {RANGES.map((r) => (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => setDevRange(r.value)}
-                    aria-pressed={devRange === r.value}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
-                      devRange === r.value
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                    }`}
-                  >
-                    {r.label}
-                  </button>
-                ))}
-              </div>
+              <SegmentedControl
+                options={RANGES}
+                value={devRange}
+                onChange={setDevRange}
+                aria-label={t('traffic.deviceRangeLabel')}
+              />
             )}
           </CardHeader>
           <CardContent>

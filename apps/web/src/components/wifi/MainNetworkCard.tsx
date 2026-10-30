@@ -1,5 +1,6 @@
 import type { UpdateWifiRequest, WifiBand, WifiNetwork, WifiSecurity } from '@krakenos/types';
 import { useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,9 +17,6 @@ import '@/lib/i18n/catalog/fragments/wifi';
 
 const BANDS: WifiBand[] = ['2.4GHz', '5GHz', '6GHz'];
 const SECURITIES: WifiSecurity[] = ['open', 'wpa2', 'wpa3', 'wpa2/wpa3'];
-const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr-field bg-background px-3 py-2 text-base md:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring disabled:opacity-50 min-h-11 md:min-h-0';
-
 interface Props {
   network: WifiNetwork;
   isAdmin: boolean;
@@ -125,9 +123,8 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
               <Label htmlFor="band">{t('survey.band')}</Label>
               <GlossaryHint termKey="banda-24-5-6" />
             </div>
-            <select
+            <Select
               id="band"
-              className={SELECT_CLASS}
               value={band}
               onChange={(e) => setBand(e.target.value as WifiBand)}
               disabled={!isAdmin}
@@ -137,16 +134,15 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
                   {b}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="space-y-2">
             <div className="flex items-center gap-1.5">
               <Label htmlFor="security">{t('wifi.security')}</Label>
               <HelpHint content={t('wifi.security.help')} label={t('wifi.security.helpLabel')} />
             </div>
-            <select
+            <Select
               id="security"
-              className={SELECT_CLASS}
               value={security}
               onChange={(e) => setSecurity(e.target.value as WifiSecurity)}
               disabled={!isAdmin}
@@ -156,7 +152,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
                   {s === 'open' ? t('wifi.security.open') : s.toUpperCase()}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
         </div>
 

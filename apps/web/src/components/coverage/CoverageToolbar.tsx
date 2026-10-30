@@ -3,6 +3,7 @@ import { WALL_MATERIALS } from '@krakenos/types';
 import { MousePointer2, Ruler, Save, Slash, Wifi } from 'lucide-react';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import type { CoverageTool } from '@/components/coverage/FloorPlanStage';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { cn } from '@/lib/utils';
@@ -76,19 +77,19 @@ export function CoverageToolbar({
       {tool === 'wall' && (
         <label className="flex items-center gap-2 text-kr-sm text-kr-secondary">
           <span className="hidden md:inline">{t('coverage.toolbar.material')}</span>
-          <select
+          <Select
             aria-label={t('coverage.toolbar.material')}
             value={wallMaterial}
             disabled={!canEdit}
             onChange={(e) => onWallMaterialChange(e.target.value as WallMaterial)}
-            className="h-9 rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0"
+            className="w-auto"
           >
             {WALL_MATERIALS.map((m) => (
               <option key={m} value={m}>
                 {t(WALL_MATERIAL_KEYS[m])}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
 

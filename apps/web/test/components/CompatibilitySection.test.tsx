@@ -192,6 +192,21 @@ describe('CompatibilitySection (US-208)', () => {
     expect(await screen.findByText('No reconocido (driver:nuevo)')).toBeInTheDocument();
   });
 
+  it('pulsar la categoría activa no la deja sin ninguna', async () => {
+    render(<CompatibilitySection />);
+    await screen.findByText('Router OpenWrt');
+    const chip = screen.getByRole('button', { name: 'Dispositivos inteligentes' });
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByText('Router OpenWrt')).toBeNull();
+    expect(screen.getByText('Philips Hue')).toBeInTheDocument();
+    fireEvent.click(chip);
+    expect(chip).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Todo' })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByText('Router OpenWrt')).toBeNull();
+    expect(screen.getByText('Philips Hue')).toBeInTheDocument();
+  });
+
   it('busca por marca/modelo', async () => {
     render(<CompatibilitySection />);
     await screen.findByText('Router OpenWrt');

@@ -6,6 +6,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { RichText } from '@/components/ui/rich-text';
@@ -269,16 +270,15 @@ function AutoBackupSection() {
       <div className="grid max-w-lg gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="bk-auto-freq">{t('backup.auto.freq')}</Label>
-          <select
+          <Select
             id="bk-auto-freq"
-            className="h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
             value={status.frequency}
             onChange={(e) => void patchSetting('autoBackupFrequency', e.target.value)}
           >
             <option value="off">{t('backup.auto.off')}</option>
             <option value="daily">{t('backup.auto.daily')}</option>
             <option value="weekly">{t('backup.auto.weekly')}</option>
-          </select>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="bk-auto-keep">{t('backup.auto.keep')}</Label>

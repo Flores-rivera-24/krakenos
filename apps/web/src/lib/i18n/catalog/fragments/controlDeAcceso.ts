@@ -27,6 +27,7 @@ export const esControlDeAcceso = {
   'access.from': 'De',
   'access.to': 'a',
   'access.pickDay': 'Elige al menos un día.',
+  'access.days': 'Días',
   'access.created': 'Horario creado',
   'access.loadError': 'No se pudieron cargar los horarios',
   'access.createError': 'No se pudo crear el horario',

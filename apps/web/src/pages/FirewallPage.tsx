@@ -9,6 +9,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { FirewallRuleSlideover } from '@/components/firewall/FirewallRuleSlideover';
 import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
 import { DemoNoticeFor } from '@/components/integrations/DomainNotice';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -180,35 +181,33 @@ export function FirewallPage() {
                     label={t('firewall.actionHelpLabel')}
                   />
                 </div>
-                <select
+                <Select
                   id="fw-action"
                   value={form.action}
                   onChange={(e) => setForm({ ...form, action: e.target.value as FirewallAction })}
-                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-base md:text-sm min-h-11 md:min-h-0"
                 >
                   <option value="deny">{actionLabel.deny}</option>
                   <option value="allow">{actionLabel.allow}</option>
-                </select>
+                </Select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">
                   <Label htmlFor="fw-protocol">{t('firewall.protocol')}</Label>
                   <GlossaryHint termKey="protocolo" />
                 </div>
-                <select
+                <Select
                   id="fw-protocol"
                   value={form.protocol}
                   onChange={(e) =>
                     setForm({ ...form, protocol: e.target.value as FirewallProtocol })
                   }
-                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-base md:text-sm min-h-11 md:min-h-0"
                 >
                   {PROTOCOLS.map((p) => (
                     <option key={p} value={p}>
                       {protocolLabel[p]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">

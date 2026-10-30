@@ -1,5 +1,6 @@
 import type { AlarmConfig, Camera, IotDevice, UpdateAlarmConfigRequest } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { WidgetError } from '@/components/ui/widget-error';
 import { Callout } from '@/components/ui/callout';
@@ -181,10 +182,9 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
 
           <div className="space-y-1">
             <Label htmlFor="alarm-siren">{t('alarmSettings.siren')}</Label>
-            <select
+            <Select
               id="alarm-siren"
               disabled={leido?.devicesFailed}
-              className="w-full rounded-md border border-kr-field bg-kr-surface px-3 py-2 text-base md:text-kr-sm min-h-11 md:min-h-0"
               value={cfg.sirenDeviceId ?? ''}
               onChange={(e) => setCfg({ ...cfg, sirenDeviceId: e.target.value || null })}
             >
@@ -198,7 +198,7 @@ export function AlarmSettingsSlideover({ onClose }: Props) {
                   {d.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
 
           <CheckList

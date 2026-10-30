@@ -1,5 +1,6 @@
 import type { CreateVlanRequest, Device, VlanWithCount } from '@krakenos/types';
 import { useEffect, useState, type FormEvent } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -240,7 +241,7 @@ function VlanPageBody() {
                       <td className="px-3 py-2">{d.label ?? d.hostname ?? d.mac}</td>
                       <td className="px-3 py-2 font-mono text-xs">{d.ip}</td>
                       <td className="px-3 py-2">
-                        <select
+                        <Select
                           aria-label={t('vlan.deviceVlanLabel', { name: d.label ?? d.mac })}
                           value={d.vlanTag ?? ''}
                           disabled={!isAdmin}
@@ -250,7 +251,7 @@ function VlanPageBody() {
                               e.target.value === '' ? null : Number(e.target.value),
                             )
                           }
-                          className="h-9 rounded-md border border-kr-field bg-background px-2 text-base md:text-sm disabled:opacity-50 min-h-11 md:min-h-0"
+                          className="w-auto"
                         >
                           <option value="">{t('vlan.noVlan')}</option>
                           {vlans.map((v) => (
@@ -258,7 +259,7 @@ function VlanPageBody() {
                               {v.name} (#{v.tag})
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </td>
                     </tr>
                   ))

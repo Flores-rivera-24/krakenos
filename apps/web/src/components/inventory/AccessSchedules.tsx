@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import {
-  diasCompletos,
   diasIniciales,
   createSchedule,
   deleteSchedule,
@@ -19,7 +18,7 @@ import {
 } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
+import { DayPicker } from '@/components/ui/day-picker';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/controlDeAcceso';
 
@@ -177,25 +176,7 @@ export function AccessSchedules({ mac, canEdit }: Props) {
             placeholder={t('access.namePlaceholder')}
             maxLength={60}
           />
-          <div className="flex gap-1">
-            {diasIniciales(t).map((label, d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => toggleDay(d)}
-                aria-pressed={days.includes(d)}
-                aria-label={diasCompletos(t)[d]}
-                className={cn(
-                  'h-8 w-8 rounded-md border text-kr-sm',
-                  days.includes(d)
-                    ? 'border-kr-accent bg-kr-accent text-white'
-                    : 'border-kr text-kr-secondary hover:bg-kr-elevated',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <DayPicker selected={days} onToggle={toggleDay} aria-label={t('access.days')} />
           <div className="flex items-center gap-2 text-kr-sm text-kr-secondary">
             <span>{t('access.from')}</span>
             <Input
