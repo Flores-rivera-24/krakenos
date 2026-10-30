@@ -287,7 +287,7 @@ async function main() {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
+if (import.meta.main) {
   main().catch((e) => {
     console.error(`Smoke FALLÓ: ${e.message}`);
     process.exit(1);

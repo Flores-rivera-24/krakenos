@@ -54,7 +54,8 @@ export function main(dataDir = process.cwd()) {
   ensureKeys(dataDir, join(appDir, 'agent', 'dist', 'keys.js'));
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// import.meta.main (Node >= 24.2) y no comparar con argv[1]: bajo un enlace simbólico no coinciden.
+if (import.meta.main) {
   try {
     // Si el usuario movió la carpeta, los enlaces absolutos de pnpm en Windows quedan rotos.
     const nm = join(dirname(fileURLToPath(import.meta.url)), 'agent', 'node_modules');

@@ -7,6 +7,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -85,7 +86,7 @@ function montarPaquete(): void {
   }
 }
 
-function lanzar(extra: Record<string, string> = {}) {
+function lanzar(extra: Record<string, string> = {}, paquete = pkg) {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     HOME: join(raiz, 'home'),
@@ -104,7 +105,7 @@ function lanzar(extra: Record<string, string> = {}) {
       encoding: 'utf8',
     });
   }
-  return spawnSync(join(pkg, 'bin', 'krakenos'), [], { env, encoding: 'utf8' });
+  return spawnSync(join(paquete, 'bin', 'krakenos'), [], { env, encoding: 'utf8' });
 }
 
 const leerIndex = () => JSON.parse(readFileSync(join(registro, 'index.json'), 'utf8'));
@@ -149,6 +150,16 @@ describe.runIf(WIN)('krakenos.cmd (Windows)', () => {
 });
 
 describe.skipIf(WIN)('bin/krakenos (Linux)', () => {
+  it('con el paquete bajo un enlace simbólico, el primer arranque crea .env y claves', () => {
+    // Node resuelve el enlace en import.meta.url pero no en argv[1], y el lanzador conserva el enlace.
+    symlinkSync(join(raiz, 'Mis cosas'), join(raiz, 'enlace'));
+    datos = join(raiz, 'mis datos');
+    const r = lanzar({ KRAKENOS_DATA_DIR: datos }, join(raiz, 'enlace', 'krakenos-0.0.0-test'));
+    expect(r.status).toBe(7);
+    expect(existsSync(join(datos, '.env'))).toBe(true);
+    expect(existsSync(join(datos, 'keys', 'jwt-private.pem'))).toBe(true);
+  });
+
   it('sin variables: modo package, producción, cwd = datos, y el código de salida de index.js', () => {
     const r = lanzar();
     expect(r.status).toBe(7);
