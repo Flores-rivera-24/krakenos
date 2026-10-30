@@ -89,7 +89,7 @@ describe('assertSha256', () => {
 });
 
 describe('verifySignature', () => {
-  it('llama a gpg con ./keyring y cwd = dir, y resuelve con code 0', async () => {
+  it('llama a gpgv con ./keyring y cwd = dir, y resuelve con code 0', async () => {
     const llamadas: Array<[string, string[], { cwd: string }]> = [];
     await verifySignature({
       run: async (cmd: string, args: string[], opts: { cwd: string }) => {
@@ -103,15 +103,8 @@ describe('verifySignature', () => {
     });
     expect(llamadas).toEqual([
       [
-        'gpg',
-        [
-          '--no-default-keyring',
-          '--keyring',
-          './pubring.kbx',
-          '--verify',
-          'SHASUMS256.txt.sig',
-          'SHASUMS256.txt',
-        ],
+        'gpgv',
+        ['--keyring', './pubring.kbx', 'SHASUMS256.txt.sig', 'SHASUMS256.txt'],
         { cwd: '/cache/node' },
       ],
     ]);

@@ -56,7 +56,9 @@ function ejecutarCapturando(cmd, args, { cwd } = {}) {
     let stderr = '';
     const p = spawn(cmd, args, { cwd, stdio: ['ignore', 'ignore', 'pipe'] });
     p.stderr.on('data', (d) => (stderr += d));
-    p.on('error', fallo);
+    p.on('error', (e) =>
+      fallo(new Error(`No pude ejecutar ${cmd} (¿está instalado y en el PATH?): ${e.message}`)),
+    );
     p.on('close', (code) => ok({ code: code ?? 1, stderr }));
   });
 }

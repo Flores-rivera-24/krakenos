@@ -55,8 +55,11 @@ export async function assertSha256(filePath, expected) {
 
 /**
  * `keyring`, `signature` y `file` son nombres de archivo DENTRO de `dir`, que es el cwd de gpg.
- * El gpg de Git for Windows (MSYS) no admite una ruta con letra de unidad en `--keyring`
- * (`keyblock resource '(null)': General error`), y sin el `./` busca el archivo en su homedir.
+ * Se usa `gpgv` y no `gpg`: la opción `use-keyboxd` del `common.conf` del usuario (gpg 2.4 la
+ * crea al configurarse) hace que `gpg` ignore `--keyring` y falle con «No public key»; `gpgv`
+ * existe justo para verificar contra un llavero dado y no lee esa configuración.
+ * El gpgv de Git for Windows (MSYS) no admite una ruta con letra de unidad en `--keyring`,
+ * y sin el `./` busca el archivo en su homedir.
  * @param {{ run: (cmd: string, args: string[], opts: { cwd: string }) => Promise<{ code: number, stderr: string }>,
  *           dir: string, keyring: string, signature: string, file: string }} opts
  * @returns {Promise<void>}
@@ -67,11 +70,9 @@ export async function verifySignature({ run, dir, keyring, signature, file }) {
       throw new Error(`Se esperaba un nombre de archivo dentro de ${dir}, no una ruta: ${nombre}`);
     }
   }
-  const { code, stderr } = await run(
-    'gpg',
-    ['--no-default-keyring', '--keyring', `./${keyring}`, '--verify', signature, file],
-    { cwd: dir },
-  );
+  const { code, stderr } = await run('gpgv', ['--keyring', `./${keyring}`, signature, file], {
+    cwd: dir,
+  });
   if (code !== 0)
-    throw new Error(`La firma de ${file} no verifica (gpg salió con ${code}): ${stderr}`);
+    throw new Error(`La firma de ${file} no verifica (gpgv salió con ${code}): ${stderr}`);
 }
