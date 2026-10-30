@@ -160,6 +160,7 @@ async function main() {
       join(dirname(bsReal), 'prebuild-install', 'bin.js'),
       '--runtime=node',
       `--target=${NODE_VERSION}`,
+      '--verbose',
     ],
     { cwd: bsReal },
   );
