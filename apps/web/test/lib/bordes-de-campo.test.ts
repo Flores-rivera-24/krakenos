@@ -30,7 +30,7 @@ export function hallazgos(nombre: string, codigo: string): { vistos: number; mal
   let vistos = 0;
   const linea = (i: number) => codigo.slice(0, i).split('\n').length;
 
-  for (const m of codigo.matchAll(/<(input|select|textarea)\b/g)) {
+  for (const m of codigo.matchAll(/<(input|select|textarea|Select)\b/g)) {
     vistos++;
     let prof = 0;
     let fin = m.index + m[0].length;

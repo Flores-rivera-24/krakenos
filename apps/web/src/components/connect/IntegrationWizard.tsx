@@ -12,6 +12,7 @@ import {
   type ManufacturerAppDependency,
 } from '@krakenos/types';
 import { useMemo, useState, type ReactNode } from 'react';
+import { Select } from '@/components/ui/select';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
@@ -27,9 +28,6 @@ import { useT } from '@/lib/i18n';
 import { saveIntegration, testIntegration } from '@/lib/integrations';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/conectar';
-
-const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-base md:text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring min-h-11 md:min-h-0';
 
 /** Valor de un campo del formulario: booleano para `boolean`, texto para el resto. */
 type FieldValue = string | boolean;
@@ -434,9 +432,8 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
     );
   } else if (field.type === 'select') {
     control = (
-      <select
+      <Select
         id={id}
-        className={SELECT_CLASS}
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -446,7 +443,7 @@ function FieldRow({ field, guide, value, secretStored, onChange }: FieldRowProps
             {o.label}
           </option>
         ))}
-      </select>
+      </Select>
     );
   } else {
     control = (

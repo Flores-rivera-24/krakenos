@@ -1,6 +1,7 @@
 import type { EnergyAlertMetric, EnergyAlertRule, IotDevice } from '@krakenos/types';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -130,10 +131,10 @@ export function EnergyAlertsCard() {
           <form onSubmit={onAdd} className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">{t('energy.alert.device')}</span>
-              <select
+              <Select
                 value={deviceId}
                 onChange={(e) => setDeviceId(e.target.value)}
-                className="rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
+                className="w-auto"
                 aria-label={t('energy.alert.device')}
               >
                 {devices.length === 0 && <option value="">—</option>}
@@ -142,19 +143,19 @@ export function EnergyAlertsCard() {
                     {d.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">{t('energy.alert.metric')}</span>
-              <select
+              <Select
                 value={metric}
                 onChange={(e) => setMetric(e.target.value as EnergyAlertMetric)}
-                className="rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
+                className="w-auto"
                 aria-label={t('energy.alert.metric')}
               >
                 <option value="sustained-power">{t('energy.alert.sustainedPower')}</option>
                 <option value="daily-energy">{t('energy.alert.dailyEnergy')}</option>
-              </select>
+              </Select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="text-muted-foreground">

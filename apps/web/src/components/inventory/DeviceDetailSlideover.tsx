@@ -11,6 +11,7 @@ import type {
 } from '@krakenos/types';
 import { DEVICE_ICONS } from '@krakenos/types';
 import { useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,9 +43,6 @@ import { useOptimisticToggle } from '@/lib/use-optimistic-toggle';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/inventario';
-
-const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-base md:text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring min-h-11 md:min-h-0';
 
 interface Props {
   device: Device;
@@ -352,24 +350,18 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="d-type">{t('device.type')}</Label>
-          <select
-            id="d-type"
-            className={SELECT_CLASS}
-            value={type}
-            onChange={(e) => setType(e.target.value as DeviceType)}
-          >
+          <Select id="d-type" value={type} onChange={(e) => setType(e.target.value as DeviceType)}>
             {DEVICE_TYPES.map((tipo) => (
               <option key={tipo} value={tipo}>
                 {t(TYPE_LABEL_KEYS[tipo])}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="d-icon">{t('device.icon')}</Label>
-          <select
+          <Select
             id="d-icon"
-            className={SELECT_CLASS}
             value={icon ?? ''}
             onChange={(e) => setIcon(e.target.value === '' ? null : (e.target.value as DeviceIcon))}
           >
@@ -379,7 +371,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                 {t(DEVICE_ICON_LABEL_KEYS[k])}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="d-notes">{t('device.notes')}</Label>
@@ -409,9 +401,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         {isAdmin && (householdUsers.length > 0 || lecturaUsers.failed) && (
           <div className="space-y-2">
             <Label htmlFor="d-owner">{t('device.owner')}</Label>
-            <select
+            <Select
               id="d-owner"
-              className={SELECT_CLASS}
               value={ownerId ?? ''}
               disabled={ownerBusy || lecturaUsers.data === null}
               onChange={(e) => void assignOwner(e.target.value === '' ? null : e.target.value)}
@@ -426,7 +417,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                   {u.displayName}
                 </option>
               ))}
-            </select>
+            </Select>
             {lecturaUsers.failed && <FormError>{t('device.usersLoadError')}</FormError>}
           </div>
         )}
@@ -434,9 +425,8 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
         {isAdmin && (
           <div className="space-y-2">
             <Label htmlFor="d-vlan">VLAN</Label>
-            <select
+            <Select
               id="d-vlan"
-              className={SELECT_CLASS}
               value={vlanTag ?? ''}
               disabled={vlanBusy || lecturaVlans.data === null}
               onChange={(e) =>
@@ -453,7 +443,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
                   {v.name} (tag {v.tag})
                 </option>
               ))}
-            </select>
+            </Select>
             {lecturaVlans.failed && <FormError>{t('device.vlansLoadError')}</FormError>}
           </div>
         )}

@@ -36,7 +36,7 @@ const TIPOS_EXCLUIDOS = new Set([
   'image',
 ]);
 
-const TAG = /<(input|select|textarea|Input|Textarea)(?=[\s/>])/g;
+const TAG = /<(input|select|textarea|Input|Textarea|Select)(?=[\s/>])/g;
 /** Tamaño de letra de campo SIN prefijo que no es `text-base`. */
 const LETRA_CHICA = /^text-(?:xs|sm|lg|xl|\dxl|kr-(?:xs|sm|base|lg|xl|2xl)|\[[^\]]*\])$/;
 
@@ -185,9 +185,9 @@ describe('campos editables en el celular', () => {
         else componentes++;
       }
     }
-    // Medido el 2026-10-27: 65 nativos editables, 108 componentes, 19 excluidos por tipo.
-    expect(nativos).toBeGreaterThan(40);
-    expect(componentes).toBeGreaterThan(80);
+    // Medido el 2026-10-29 (con `Select` contado como componente): 8 nativos editables, 166 componentes, 19 excluidos por tipo.
+    expect(nativos).toBeGreaterThan(4);
+    expect(componentes).toBeGreaterThan(120);
     expect(excluidos).toBeGreaterThan(10);
   });
 

@@ -8,6 +8,7 @@ import type {
 import { useCallback, useEffect, useState } from 'react';
 import { MapPin, Plus, Radar, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { FormError } from '@/components/ui/form-error';
@@ -295,27 +296,25 @@ export function SurveyPanel({
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="survey-band">{t('survey.band')}</Label>
-              <select
+              <Select
                 id="survey-band"
                 value={band}
                 onChange={(e) => setBand(e.target.value as WifiBand)}
-                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
               >
                 {BANDS.map((b) => (
                   <option key={b} value={b}>
                     {b}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="survey-device">{t('survey.device')}</Label>
-              <select
+              <Select
                 id="survey-device"
                 value={deviceMac}
                 onChange={(e) => setDeviceMac(e.target.value)}
                 disabled={devicesFailed}
-                className="h-9 w-full rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
               >
                 <option value="">{t('survey.manualOption')}</option>
                 {devices.map((d) => (
@@ -323,7 +322,7 @@ export function SurveyPanel({
                     {deviceName(d)}
                   </option>
                 ))}
-              </select>
+              </Select>
               {devicesFailed && <FormError>{t('survey.devicesError')}</FormError>}
               <p className="text-kr-xs text-kr-muted">{t('survey.deviceHint')}</p>
             </div>

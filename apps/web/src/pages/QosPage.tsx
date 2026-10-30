@@ -7,6 +7,7 @@ import type {
 import { useEffect, useState, type FormEvent } from 'react';
 import { GatewayCapabilityNotice } from '@/components/gateway/GatewayCapabilityNotice';
 import { DemoNoticeFor } from '@/components/integrations/DomainNotice';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DeleteButton } from '@/components/ui/delete-button';
@@ -178,18 +179,17 @@ export function QosPage() {
                   <Label htmlFor="qos-priority">{t('qos.priority')}</Label>
                   <HelpHint content={t('qos.priorityHelp')} label={t('qos.priorityHelpLabel')} />
                 </div>
-                <select
+                <Select
                   id="qos-priority"
                   value={form.priority}
                   onChange={(e) => setForm({ ...form, priority: e.target.value as QosPriority })}
-                  className="h-10 w-full rounded-md border border-kr-field bg-background px-3 text-base md:text-sm min-h-11 md:min-h-0"
                 >
                   {PRIORITIES.map((p) => (
                     <option key={p} value={p}>
                       {priorityLabel[p]}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-1.5">

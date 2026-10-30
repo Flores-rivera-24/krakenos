@@ -1,5 +1,6 @@
 import { WALL_MATERIALS, type WallMaterial } from '@krakenos/types';
 import { ScanLine } from 'lucide-react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { useT } from '@/lib/i18n';
@@ -70,17 +71,17 @@ export function WallDetectPanel({
               </p>
               <label className="flex items-center gap-2 text-kr-secondary">
                 <span>{t('coverage.detect.material')}</span>
-                <select
+                <Select
                   value={material}
                   onChange={(e) => onMaterialChange(e.target.value as WallMaterial)}
-                  className="h-8 flex-1 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base md:text-kr-sm min-h-11 md:min-h-0"
+                  className="flex-1 w-auto"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
                       {t(WALL_MATERIAL_KEYS[m])}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <div className="flex gap-2">
                 <Button size="sm" onClick={onAccept}>

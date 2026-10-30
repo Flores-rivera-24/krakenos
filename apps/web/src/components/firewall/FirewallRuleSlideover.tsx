@@ -5,6 +5,7 @@ import type {
   UpdateFirewallRuleRequest,
 } from '@krakenos/types';
 import { useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,8 +16,6 @@ import { ApiRequestError, api } from '@/lib/api';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/firewall';
 
-const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary min-h-11 md:min-h-0';
 const PROTOCOLS: FirewallProtocol[] = ['any', 'tcp', 'udp'];
 // Etiquetas visibles (el valor de la API no cambia); alineadas con FirewallPage.
 // Guardan la CLAVE, no el texto: una constante de módulo con el copy ya resuelto
@@ -110,21 +109,19 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
             <Label htmlFor="fr-action">{t('firewall.action')}</Label>
-            <select
+            <Select
               id="fr-action"
-              className={SELECT_CLASS}
               value={action}
               onChange={(e) => setAction(e.target.value as FirewallAction)}
             >
               <option value="deny">{t(ACTION_LABEL_KEY.deny)}</option>
               <option value="allow">{t(ACTION_LABEL_KEY.allow)}</option>
-            </select>
+            </Select>
           </div>
           <div className="space-y-2">
             <Label htmlFor="fr-protocol">{t('firewall.protocol')}</Label>
-            <select
+            <Select
               id="fr-protocol"
-              className={SELECT_CLASS}
               value={protocol}
               onChange={(e) => setProtocol(e.target.value as FirewallProtocol)}
             >
@@ -136,7 +133,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
                   </option>
                 );
               })}
-            </select>
+            </Select>
           </div>
         </div>
         <div className="space-y-2">

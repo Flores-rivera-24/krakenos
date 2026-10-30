@@ -20,6 +20,7 @@ import { WALL_MATERIAL_KEYS } from '@/lib/coverage-format';
 import { SurveyPanel } from '@/components/coverage/SurveyPanel';
 import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -397,18 +398,18 @@ export function CoveragePage() {
           <>
             {/* Barra superior: selector de plano + vista + banda */}
             <div className="flex flex-wrap items-center gap-3">
-              <select
+              <Select
                 value={selectedId ?? ''}
                 onChange={(e) => setSelectedId(e.target.value)}
                 aria-label={t('coverage.planLabel')}
-                className="h-9 rounded-md border border-kr-field bg-background px-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0"
+                className="w-auto"
               >
                 {plans.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name}
                   </option>
                 ))}
-              </select>
+              </Select>
 
               <div
                 className="flex items-center gap-1 rounded-md border border-kr p-0.5"
@@ -490,7 +491,7 @@ export function CoveragePage() {
             {view === 'edit' && isAdmin && selectedWallId && (
               <div className="flex flex-wrap items-center gap-2 rounded-xl border border-kr bg-kr-surface p-3 text-kr-sm">
                 <span className="text-kr-secondary">{t('coverage.wall.selected')}</span>
-                <select
+                <Select
                   aria-label={t('coverage.wall.materialLabel')}
                   value={editWalls.find((w) => w.id === selectedWallId)?.material ?? 'drywall'}
                   onChange={(e) => {
@@ -499,14 +500,14 @@ export function CoveragePage() {
                       prev.map((w) => (w.id === selectedWallId ? { ...w, material } : w)),
                     );
                   }}
-                  className="h-8 rounded-md border border-kr-field bg-background px-2 text-kr-primary text-base md:text-kr-sm min-h-11 md:min-h-0"
+                  className="w-auto"
                 >
                   {WALL_MATERIALS.map((m) => (
                     <option key={m} value={m}>
                       {t(WALL_MATERIAL_KEYS[m])}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button size="sm" variant="outline" onClick={() => setSelectedWallId(null)}>
                   {t('coverage.wall.deselect')}
                 </Button>

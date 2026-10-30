@@ -1,5 +1,6 @@
 import type { Camera, MotionArming, MotionSensitivity } from '@krakenos/types';
 import { useEffect, useState } from 'react';
+import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,9 +27,6 @@ interface Props {
 }
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
-const SELECT_CLASS =
-  'w-full rounded-md border border-kr-field bg-kr-surface px-3 py-2 text-base md:text-kr-sm text-kr-primary min-h-11 md:min-h-0';
-
 /** Panel de configuración de la detección de movimiento de una cámara (US-186). */
 export function MotionSettingsSlideover({ camera, onClose }: Props) {
   const t = useT();
@@ -154,16 +152,15 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="motion-sensitivity">{t('cameras.motion.sensitivity')}</Label>
-            <select
+            <Select
               id="motion-sensitivity"
-              className={SELECT_CLASS}
               value={sensitivity}
               onChange={(e) => setSensitivity(e.target.value as MotionSensitivity)}
             >
               <option value="low">{t('cameras.motion.sensLow')}</option>
               <option value="medium">{t('cameras.motion.sensMedium')}</option>
               <option value="high">{t('cameras.motion.sensHigh')}</option>
-            </select>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -180,16 +177,15 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="motion-arm">{t('cameras.motion.arming')}</Label>
-            <select
+            <Select
               id="motion-arm"
-              className={SELECT_CLASS}
               value={armMode}
               onChange={(e) => setArmMode(e.target.value as MotionArming['mode'])}
             >
               <option value="always">{t('cameras.motion.armAlways')}</option>
               <option value="never">{t('cameras.motion.armNever')}</option>
               <option value="schedule">{t('cameras.motion.armSchedule')}</option>
-            </select>
+            </Select>
           </div>
 
           {armMode === 'schedule' && (
