@@ -1,6 +1,7 @@
 import type { EnergyAlertMetric, EnergyAlertRule, IotDevice } from '@krakenos/types';
 import { Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -163,24 +164,24 @@ export function EnergyAlertsCard() {
                   ? t('energy.alert.thresholdW')
                   : t('energy.alert.thresholdWh')}
               </span>
-              <input
+              <Input
                 type="number"
                 min="0"
                 value={threshold}
                 onChange={(e) => setThreshold(e.target.value)}
-                className="w-28 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
+                className="w-28"
                 aria-label={t('energy.alert.threshold')}
               />
             </label>
             {metric === 'sustained-power' && (
               <label className="flex flex-col gap-1 text-sm">
                 <span className="text-muted-foreground">{t('energy.alert.minutes')}</span>
-                <input
+                <Input
                   type="number"
                   min="1"
                   value={sustainMinutes}
                   onChange={(e) => setSustainMinutes(e.target.value)}
-                  className="w-20 rounded-md border border-kr-field bg-transparent px-2 py-1 text-base md:text-sm min-h-11 md:min-h-0"
+                  className="w-20"
                   aria-label={t('energy.alert.minutes')}
                 />
               </label>
