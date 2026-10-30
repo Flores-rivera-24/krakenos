@@ -14,6 +14,7 @@ export const esInventario = {
   'inventory.filter.offline': 'Desconectados',
   'inventory.filter.blocked': 'Bloqueados',
   'inventory.filter.unknown': 'Sin identificar',
+  'inventory.filter.title': 'Filtros',
   'inventory.status.blocked': 'Bloqueado',
   'inventory.status.online': 'En línea',
   'inventory.status.offline': 'Desconectado',

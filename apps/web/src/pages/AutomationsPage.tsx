@@ -44,15 +44,10 @@ import { listCameras } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { formatDateTime } from '@/lib/format';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
-import {
-  diasCompletos,
-  diasIniciales,
-  minuteToTimeString,
-  timeStringToMinute,
-} from '@/lib/schedule-format';
+import { minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
 import { MODE_LABEL_KEYS } from '@/lib/presence';
 import { listScenes } from '@/lib/scenes';
-import { cn } from '@/lib/utils';
+import { DayPicker } from '@/components/ui/day-picker';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
@@ -375,28 +370,6 @@ function RuleEditor({
     triggerType === 'device-online' ||
     triggerType === 'device-offline';
 
-  const dayPicker = (selected: number[], onToggle: (d: number) => void, label: string) => (
-    <div className="flex flex-wrap gap-1" role="group" aria-label={label}>
-      {diasIniciales(t).map((text, d) => (
-        <button
-          key={d}
-          type="button"
-          aria-pressed={selected.includes(d)}
-          aria-label={diasCompletos(t)[d]}
-          onClick={() => onToggle(d)}
-          className={cn(
-            'h-11 w-11 rounded-md border md:h-9 text-kr-xs transition-colors',
-            selected.includes(d)
-              ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
-              : 'border-kr bg-kr-elevated text-kr-muted',
-          )}
-        >
-          {text}
-        </button>
-      ))}
-    </div>
-  );
-
   return (
     <Slideover
       open
@@ -602,11 +575,11 @@ function RuleEditor({
           )}
           {triggerType === 'time' && (
             <div className="space-y-2">
-              {dayPicker(
-                timeDays,
-                (d) => setTimeDays((prev) => toggleIn(prev, d)),
-                t('automations.editor.triggerDaysAria'),
-              )}
+              <DayPicker
+                selected={timeDays}
+                onToggle={(d) => setTimeDays((prev) => toggleIn(prev, d))}
+                aria-label={t('automations.editor.triggerDaysAria')}
+              />
               <Input
                 type="time"
                 aria-label={t('automations.editor.triggerTimeAria')}
@@ -617,11 +590,11 @@ function RuleEditor({
           )}
           {triggerType === 'sun' && (
             <div className="space-y-2">
-              {dayPicker(
-                timeDays,
-                (d) => setTimeDays((prev) => toggleIn(prev, d)),
-                t('automations.editor.triggerDaysAria'),
-              )}
+              <DayPicker
+                selected={timeDays}
+                onToggle={(d) => setTimeDays((prev) => toggleIn(prev, d))}
+                aria-label={t('automations.editor.triggerDaysAria')}
+              />
               <div className="flex flex-wrap items-center gap-2">
                 <Select
                   aria-label={t('automations.editor.sunEventAria')}
@@ -691,11 +664,11 @@ function RuleEditor({
           </label>
           {withWindow && (
             <div className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
-              {dayPicker(
-                windowDays,
-                (d) => setWindowDays((prev) => toggleIn(prev, d)),
-                t('automations.editor.windowDaysAria'),
-              )}
+              <DayPicker
+                selected={windowDays}
+                onToggle={(d) => setWindowDays((prev) => toggleIn(prev, d))}
+                aria-label={t('automations.editor.windowDaysAria')}
+              />
               <div className="flex items-center gap-2">
                 <Input
                   type="time"

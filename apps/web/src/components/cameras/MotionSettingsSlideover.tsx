@@ -12,13 +12,9 @@ import { getMotionConfig, updateMotionConfig } from '@/lib/cameras';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { useLectura } from '@/lib/use-lectura';
-import {
-  diasCompletos,
-  diasIniciales,
-  minuteToTimeString,
-  timeStringToMinute,
-} from '@/lib/schedule-format';
+import { minuteToTimeString, timeStringToMinute } from '@/lib/schedule-format';
 import { toast } from '@/store/toast.store';
+import { DayPicker } from '@/components/ui/day-picker';
 import '@/lib/i18n/catalog/fragments/camaras';
 
 interface Props {
@@ -210,25 +206,11 @@ export function MotionSettingsSlideover({ camera, onClose }: Props) {
                   />
                 </div>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {ALL_DAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => toggleDay(d)}
-                    aria-pressed={days.includes(d)}
-                    aria-label={diasCompletos(t)[d]}
-                    className={
-                      'rounded-sm px-2 py-1 text-kr-xs ' +
-                      (days.includes(d)
-                        ? 'bg-kr-accent text-white'
-                        : 'border border-kr text-kr-secondary')
-                    }
-                  >
-                    {diasIniciales(t)[d]}
-                  </button>
-                ))}
-              </div>
+              <DayPicker
+                selected={days}
+                onToggle={toggleDay}
+                aria-label={t('cameras.motion.days')}
+              />
             </div>
           )}
         </div>

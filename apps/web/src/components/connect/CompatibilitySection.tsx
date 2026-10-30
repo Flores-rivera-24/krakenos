@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { WidgetError } from '@/components/ui/widget-error';
+import { ToggleChip, ToggleChipGroup } from '@/components/ui/toggle-chip';
 import { cn } from '@/lib/utils';
 import {
   ETIQUETA_DE_CAPACIDAD,
@@ -74,16 +75,16 @@ export function CompatibilitySection() {
         />
       </div>
 
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('compat.title')}>
-        <FilterChip active={category === 'all'} onClick={() => setCategory('all')}>
+      <ToggleChipGroup aria-label={t('compat.title')}>
+        <ToggleChip pressed={category === 'all'} onPressedChange={() => setCategory('all')}>
           {t('compat.all')}
-        </FilterChip>
+        </ToggleChip>
         {COMPAT_CATEGORIES.map((c) => (
-          <FilterChip key={c} active={category === c} onClick={() => setCategory(c)}>
+          <ToggleChip key={c} pressed={category === c} onPressedChange={() => setCategory(c)}>
             {etiquetaCompat(ETIQUETA_DE_CATEGORIA, c, t)}
-          </FilterChip>
+          </ToggleChip>
         ))}
-      </div>
+      </ToggleChipGroup>
 
       {lectura.data === null && lectura.failed ? (
         <WidgetError message={t('compat.loadError')} onRetry={lectura.reintentar} />
@@ -155,31 +156,5 @@ export function CompatibilitySection() {
         </ul>
       )}
     </section>
-  );
-}
-
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn(
-        'rounded-full border px-3 py-1 text-kr-xs transition-colors',
-        active
-          ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
-          : 'border-kr text-kr-secondary hover:bg-kr-elevated',
-      )}
-    >
-      {children}
-    </button>
   );
 }

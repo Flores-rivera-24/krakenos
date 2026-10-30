@@ -5,11 +5,11 @@ import { Callout } from '@/components/ui/callout';
 import { Input } from '@/components/ui/input';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
-import { diasCompletos, diasIniciales, hhmmToMinutes, minutesToHHMM } from '@/lib/access';
+import { hhmmToMinutes, minutesToHHMM } from '@/lib/access';
 import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { setBedtime } from '@/lib/people';
-import { cn } from '@/lib/utils';
+import { DayPicker } from '@/components/ui/day-picker';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/personas';
 
@@ -78,25 +78,7 @@ export function BedtimeSlideover({ person, onClose, onSaved }: Props) {
 
         <div className="space-y-2">
           <p className="text-kr-sm font-medium text-kr-primary">{t('people.bedtime.days')}</p>
-          <div className="flex flex-wrap gap-1">
-            {diasIniciales(t).map((label, d) => (
-              <button
-                key={d}
-                type="button"
-                onClick={() => toggleDay(d)}
-                aria-pressed={days.includes(d)}
-                aria-label={diasCompletos(t)[d]}
-                className={cn(
-                  'h-9 w-9 rounded-md border text-kr-sm',
-                  days.includes(d)
-                    ? 'border-kr-accent bg-kr-accent text-white'
-                    : 'border-kr text-kr-secondary hover:bg-kr-elevated',
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <DayPicker selected={days} onToggle={toggleDay} aria-label={t('people.bedtime.days')} />
         </div>
 
         <div className="flex flex-wrap items-center gap-2 text-kr-sm text-kr-secondary">
