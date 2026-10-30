@@ -15,11 +15,13 @@
  */
 /* global AbortSignal */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { renombrarConReintento } from './package/rename-retry.mjs';
 
 const WIN = process.platform === 'win32';
 const AQUI = dirname(fileURLToPath(import.meta.url));
@@ -39,6 +41,30 @@ export function findWalLeftovers(dataDir) {
   };
   if (existsSync(dataDir)) walk(dataDir);
   return found;
+}
+
+/** Ficheros que el primer arranque crea y el segundo no puede regenerar ni tocar. */
+export const FICHEROS_DE_ESTADO = ['keys/jwt-private.pem', 'keys/secretbox.key', '.env'];
+
+/** sha256 de cada fichero de estado bajo `dataDir` (`null` si falta). */
+export function huellasDeEstado(dataDir) {
+  const out = {};
+  for (const f of FICHEROS_DE_ESTADO) {
+    const ruta = join(dataDir, f);
+    out[f] = existsSync(ruta)
+      ? createHash('sha256').update(readFileSync(ruta)).digest('hex')
+      : null;
+  }
+  return out;
+}
+
+/** Lanza nombrando el primer fichero cuya huella cambió (o desapareció) entre dos lecturas. */
+export function assertEstadoConservado(antes, despues) {
+  for (const f of FICHEROS_DE_ESTADO) {
+    if (antes[f] === null) throw new Error(`${f} no existía tras el primer arranque`);
+    if (antes[f] !== despues[f])
+      throw new Error(`${f} cambió o desapareció entre el primer y el segundo arranque`);
+  }
 }
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -203,7 +229,15 @@ async function parar({ hijo, st }) {
       );
     }
     // El cmd interior se queda en «Terminate batch job (Y/N)?»; node ya salió, así que /F es seguro.
-    if (st.padrePid !== null) spawnSync('taskkill', ['/PID', String(st.padrePid), '/T', '/F']);
+    if (st.padrePid !== null) {
+      spawnSync('taskkill', ['/PID', String(st.padrePid), '/T', '/F']);
+      // Sin esperar, el cmd aún tiene la carpeta del paquete como cwd/handle y el rename da EPERM.
+      await esperarA(
+        () => !vivo(st.padrePid),
+        ESPERA_PARADA_MS,
+        `el cmd envoltorio (pid ${st.padrePid}) no salió tras taskkill`,
+      );
+    }
   } else {
     hijo.kill('SIGTERM');
     await esperarA(() => st.cerro, ESPERA_PARADA_MS, 'el agente no salió tras SIGTERM');
@@ -267,15 +301,28 @@ async function main() {
   const movida = `${pkg} movido`;
   try {
     await ronda('primer arranque', pkg, env, port);
+    const antes = huellasDeEstado(datos);
 
-    renameSync(pkg, movida);
+    await renombrarConReintento(pkg, movida);
     console.log(`==> carpeta renombrada a ${movida}`);
+    let falloDeRonda = false;
     try {
       await ronda('segundo arranque (carpeta movida)', movida, env, port);
+    } catch (e) {
+      falloDeRonda = true;
+      throw e;
     } finally {
-      renameSync(movida, pkg);
-      console.log(`==> carpeta devuelta a ${pkg}`);
+      // Si esto falla no debe tapar el error original de la ronda: se avisa y se conserva.
+      try {
+        await renombrarConReintento(movida, pkg);
+        console.log(`==> carpeta devuelta a ${pkg}`);
+      } catch (e) {
+        console.error(`    no se pudo devolver ${movida} a ${pkg}: ${e.message}`);
+        if (!falloDeRonda) throw e;
+      }
     }
+    assertEstadoConservado(antes, huellasDeEstado(datos));
+    console.log('==> claves y .env intactos tras el segundo arranque');
 
     const restos = findWalLeftovers(datos);
     if (restos.length > 0)
