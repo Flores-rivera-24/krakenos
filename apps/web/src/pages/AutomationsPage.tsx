@@ -22,6 +22,7 @@ import { DeleteButton } from '@/components/ui/delete-button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
@@ -57,9 +58,6 @@ import { toast } from '@/store/toast.store';
 import { DomainGate } from '@/components/integrations/DomainNotice';
 import '@/lib/i18n/catalog/fragments/personas';
 import '@/lib/i18n/catalog/fragments/rutinas';
-
-const SELECT_CLASS =
-  'flex h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 py-2 text-base md:text-kr-base text-kr-primary focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-kr-ring min-h-11 md:min-h-0';
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
@@ -439,9 +437,8 @@ function RuleEditor({
 
         <div className="space-y-2">
           <Label htmlFor="auto-when">{t('automations.editor.whenLabel')}</Label>
-          <select
+          <Select
             id="auto-when"
-            className={SELECT_CLASS}
             value={triggerType}
             onChange={(e) => setTriggerType(e.target.value as TriggerType)}
           >
@@ -459,12 +456,11 @@ function RuleEditor({
             <option value="person-arrived">{t('automations.trigger.personArrived')}</option>
             <option value="person-left">{t('automations.trigger.personLeft')}</option>
             <option value="mode-changed">{t('automations.trigger.modeChanged')}</option>
-          </select>
+          </Select>
 
           {(triggerType === 'device-online' || triggerType === 'device-offline') && (
-            <select
+            <Select
               aria-label={t('automations.editor.networkDeviceAria')}
-              className={SELECT_CLASS}
               value={triggerMac}
               onChange={(e) => setTriggerMac(e.target.value)}
             >
@@ -473,12 +469,11 @@ function RuleEditor({
                   {networkLabel(d)}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {(triggerType === 'iot-on' || triggerType === 'iot-off') && (
-            <select
+            <Select
               aria-label={t('automations.editor.iotDeviceAria')}
-              className={SELECT_CLASS}
               value={triggerDevice}
               onChange={(e) => setTriggerDevice(e.target.value)}
             >
@@ -487,12 +482,11 @@ function RuleEditor({
                   {d.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {triggerType === 'energy-threshold' && (
-            <select
+            <Select
               aria-label={t('automations.editor.iotDeviceAria')}
-              className={SELECT_CLASS}
               value={triggerDevice}
               onChange={(e) => setTriggerDevice(e.target.value)}
             >
@@ -502,13 +496,13 @@ function RuleEditor({
                   {d.name}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {triggerType === 'motion-detected' && (
             <div className="flex flex-wrap items-center gap-2">
-              <select
+              <Select
                 aria-label={t('automations.editor.cameraAria')}
-                className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                className="w-auto min-w-40 flex-1"
                 value={triggerCamera}
                 onChange={(e) => setTriggerCamera(e.target.value)}
               >
@@ -518,11 +512,11 @@ function RuleEditor({
                     {c.name}
                   </option>
                 ))}
-              </select>
+              </Select>
               {/* Filtro por objeto (Frigate, US-214): solo aplica con detección nativa. */}
-              <select
+              <Select
                 aria-label={t('automations.editor.labelAria')}
-                className={cn(SELECT_CLASS, 'w-auto min-w-36 flex-1')}
+                className="w-auto min-w-36 flex-1"
                 value={triggerLabel}
                 onChange={(e) => setTriggerLabel(e.target.value)}
               >
@@ -532,15 +526,15 @@ function RuleEditor({
                 <option value="dog">{t('automations.label.dog')}</option>
                 <option value="cat">{t('automations.label.cat')}</option>
                 <option value="package">{t('automations.label.package')}</option>
-              </select>
+              </Select>
             </div>
           )}
           {triggerType === 'weather-threshold' && (
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <select
+                <Select
                   aria-label={t('automations.editor.weatherMetricAria')}
-                  className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                  className="w-auto min-w-40 flex-1"
                   value={weatherMetric}
                   onChange={(e) => setWeatherMetric(e.target.value as WeatherMetric)}
                 >
@@ -549,16 +543,16 @@ function RuleEditor({
                       {t(`automations.weather.${m}` as TranslationKey)}
                     </option>
                   ))}
-                </select>
-                <select
+                </Select>
+                <Select
                   aria-label={t('automations.editor.comparisonAria')}
-                  className={cn(SELECT_CLASS, 'w-auto')}
+                  className="w-auto"
                   value={sensorOp}
                   onChange={(e) => setSensorOp(e.target.value as 'gt' | 'lt')}
                 >
                   <option value="gt">{t('automations.editor.opGt')}</option>
                   <option value="lt">{t('automations.editor.opLt')}</option>
-                </select>
+                </Select>
                 <Input
                   type="number"
                   aria-label={t('automations.editor.thresholdAria')}
@@ -576,9 +570,9 @@ function RuleEditor({
 
           {triggerType === 'sensor-threshold' && (
             <div className="flex flex-wrap items-center gap-2">
-              <select
+              <Select
                 aria-label={t('automations.editor.sensorAria')}
-                className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                className="w-auto min-w-40 flex-1"
                 value={triggerDevice}
                 onChange={(e) => setTriggerDevice(e.target.value)}
               >
@@ -587,16 +581,16 @@ function RuleEditor({
                     {d.name}
                   </option>
                 ))}
-              </select>
-              <select
+              </Select>
+              <Select
                 aria-label={t('automations.editor.comparisonAria')}
-                className={cn(SELECT_CLASS, 'w-auto')}
+                className="w-auto"
                 value={sensorOp}
                 onChange={(e) => setSensorOp(e.target.value as 'gt' | 'lt')}
               >
                 <option value="gt">{t('automations.editor.opGt')}</option>
                 <option value="lt">{t('automations.editor.opLt')}</option>
-              </select>
+              </Select>
               <Input
                 type="number"
                 aria-label={t('automations.editor.thresholdAria')}
@@ -629,15 +623,15 @@ function RuleEditor({
                 t('automations.editor.triggerDaysAria'),
               )}
               <div className="flex flex-wrap items-center gap-2">
-                <select
+                <Select
                   aria-label={t('automations.editor.sunEventAria')}
-                  className={cn(SELECT_CLASS, 'w-auto min-w-40 flex-1')}
+                  className="w-auto min-w-40 flex-1"
                   value={sunEvent}
                   onChange={(e) => setSunEvent(e.target.value as 'sunrise' | 'sunset')}
                 >
                   <option value="sunrise">{t('automations.sun.sunrise')}</option>
                   <option value="sunset">{t('automations.sun.sunset')}</option>
-                </select>
+                </Select>
                 <Input
                   type="number"
                   aria-label={t('automations.editor.sunOffsetAria')}
@@ -658,9 +652,8 @@ function RuleEditor({
             </div>
           )}
           {(triggerType === 'person-arrived' || triggerType === 'person-left') && (
-            <select
+            <Select
               aria-label={t('automations.editor.personAria')}
-              className={SELECT_CLASS}
               value={triggerUserId}
               onChange={(e) => setTriggerUserId(e.target.value)}
             >
@@ -670,12 +663,11 @@ function RuleEditor({
                   {u.displayName}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
           {triggerType === 'mode-changed' && (
-            <select
+            <Select
               aria-label={t('automations.editor.modeAria')}
-              className={SELECT_CLASS}
               value={triggerMode}
               onChange={(e) => setTriggerMode(e.target.value as HomeMode)}
             >
@@ -684,7 +676,7 @@ function RuleEditor({
                   {t(MODE_LABEL_KEYS[m])}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </div>
 
@@ -739,9 +731,8 @@ function RuleEditor({
             {actions.map((row, i) => (
               <li key={i} className="space-y-2 rounded-lg border border-kr bg-kr-elevated p-3">
                 <div className="flex items-center gap-2">
-                  <select
+                  <Select
                     aria-label={t('automations.editor.actionAria', { n: i + 1 })}
-                    className={SELECT_CLASS}
                     value={row.type}
                     onChange={(e) => updateAction(i, { type: e.target.value as ActionType })}
                   >
@@ -751,7 +742,7 @@ function RuleEditor({
                     <option value="device-unblock">{t('automations.action.deviceUnblock')}</option>
                     <option value="device-pause">{t('automations.action.devicePause')}</option>
                     <option value="notify">{t('automations.action.notify')}</option>
-                  </select>
+                  </Select>
                   {actions.length > 1 && (
                     <Button
                       variant="ghost"
@@ -767,9 +758,8 @@ function RuleEditor({
 
                 {row.type === 'iot-set' && (
                   <div className="flex items-center gap-2">
-                    <select
+                    <Select
                       aria-label={t('automations.editor.actionDeviceAria', { n: i + 1 })}
-                      className={SELECT_CLASS}
                       value={row.deviceId}
                       onChange={(e) => updateAction(i, { deviceId: e.target.value })}
                     >
@@ -778,22 +768,21 @@ function RuleEditor({
                           {d.name}
                         </option>
                       ))}
-                    </select>
-                    <select
+                    </Select>
+                    <Select
                       aria-label={t('automations.editor.actionStateAria', { n: i + 1 })}
-                      className={cn(SELECT_CLASS, 'w-auto')}
+                      className="w-auto"
                       value={row.on ? 'on' : 'off'}
                       onChange={(e) => updateAction(i, { on: e.target.value === 'on' })}
                     >
                       <option value="on">{t('automations.editor.stateOn')}</option>
                       <option value="off">{t('automations.editor.stateOff')}</option>
-                    </select>
+                    </Select>
                   </div>
                 )}
                 {row.type === 'scene-run' && (
-                  <select
+                  <Select
                     aria-label={t('automations.editor.actionSceneAria', { n: i + 1 })}
-                    className={SELECT_CLASS}
                     value={row.sceneId}
                     onChange={(e) => updateAction(i, { sceneId: e.target.value })}
                   >
@@ -802,15 +791,14 @@ function RuleEditor({
                         {s.name}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
                 {(row.type === 'device-block' ||
                   row.type === 'device-unblock' ||
                   row.type === 'device-pause') && (
                   <div className="space-y-2">
-                    <select
+                    <Select
                       aria-label={t('automations.editor.actionTargetAria', { n: i + 1 })}
-                      className={SELECT_CLASS}
                       value={row.mac}
                       onChange={(e) => updateAction(i, { mac: e.target.value })}
                     >
@@ -826,7 +814,7 @@ function RuleEditor({
                           {networkLabel(d)}
                         </option>
                       ))}
-                    </select>
+                    </Select>
                     {row.type === 'device-pause' && (
                       <div className="flex items-center gap-2">
                         <Input
