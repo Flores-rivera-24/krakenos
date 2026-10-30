@@ -6,16 +6,7 @@
  * Disposición y razones: docs/internal/plan-us284-package-2026-10-29.md.
  */
 import { spawn } from 'node:child_process';
-import {
-  chmod,
-  copyFile,
-  cp,
-  mkdir,
-  readFile,
-  realpath,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { chmod, copyFile, cp, mkdir, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
