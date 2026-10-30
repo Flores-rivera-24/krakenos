@@ -6,6 +6,8 @@ export default tseslint.config(
   {
     ignores: [
       '**/dist/**',
+      // Salida de `pnpm package`: copia de código ajeno (node_modules, builds).
+      'out/**',
       '**/node_modules/**',
       // Worktrees transitorios de agentes/editor (checkouts espejo; no son fuente a lintar).
       '**/.claude/**',

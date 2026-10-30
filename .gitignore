@@ -54,6 +54,10 @@ pnpm-debug.log*
 # al terminar bien, pero una ejecución interrumpida los deja atrás.
 .stryker-tmp/
 
+# Paquete autocontenido (pnpm package) y la caché de Node descargado.
+/out/
+/.cache/node/
+
 # Editor / OS
 .DS_Store
 .idea/
