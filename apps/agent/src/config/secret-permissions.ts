@@ -68,6 +68,19 @@ export function secretPermissionsStartupNotice(
     if (!isInside(folders.stateRoot, c) && !known) outside.push(c);
   }
   const names = [folders.stateRoot, ...outside].map((p) => hideProfile(p, homedir));
+  const dentroDelPerfil =
+    homedir !== '' &&
+    isInside(homedir, folders.stateRoot) &&
+    outside.every((o) => isInside(homedir, o));
+  if (dentroDelPerfil) {
+    return {
+      message:
+        'En Windows los modos de fichero (0600/0700) no restringen nada y no se ha leído la ACL ' +
+        `de las carpetas con secretos (${names.join(', ')}), que están dentro del perfil de la ` +
+        'cuenta que corre el agente. Para comprobar quién puede leerlas, ejecuta `icacls` sobre ' +
+        'cada una.',
+    };
+  }
   return {
     message:
       'En Windows los modos de fichero (0600/0700) no restringen nada y no se ha comprobado ni ' +

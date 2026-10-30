@@ -58,6 +58,14 @@ export function explicitOrigin(raw: string | undefined): string | null {
   return u.origin;
 }
 
+/** ¿Es la dirección de escucha (`HOST`) de loopback? Solo se alcanza desde el propio equipo. */
+export function isLoopbackHost(host: string): boolean {
+  const h = host.toLowerCase();
+  return (
+    h === 'localhost' || h === '::1' || h === '[::1]' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)
+  );
+}
+
 export interface SetupUrlParts {
   scheme: 'http' | 'https';
   host: string;
@@ -76,16 +84,21 @@ export interface ResolveSetupUrlOptions {
   https: boolean;
   port: number;
   token: string;
+  /** Dirección en la que escucha el agente (`HOST`). En loopback, la URL apunta a `127.0.0.1`. */
+  host?: string;
   interfaces?: Interfaces;
 }
 
-/** URL del asistente: el origen de la instalación si está fijado; si no, la IP privada de la LAN. */
+/**
+ * URL del asistente: el origen de la instalación si está fijado; si no, `127.0.0.1` cuando el
+ * agente solo escucha en loopback (la IP de la LAN no respondería); si no, la IP privada de la LAN.
+ */
 export function resolveSetupUrl(o: ResolveSetupUrlOptions): string {
   const origin = explicitOrigin(o.webOrigin);
   if (origin) return `${origin}/setup?token=${encodeURIComponent(o.token)}`;
   return buildSetupUrl({
     scheme: o.https ? 'https' : 'http',
-    host: firstLanIpv4(o.interfaces),
+    host: o.host !== undefined && isLoopbackHost(o.host) ? '127.0.0.1' : firstLanIpv4(o.interfaces),
     port: o.port,
     token: o.token,
   });

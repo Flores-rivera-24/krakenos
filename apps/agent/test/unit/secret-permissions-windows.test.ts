@@ -73,6 +73,39 @@ describe('aviso de secretos en Windows (el instalador de Windows aún no existe)
     expect(notice!.message).toContain('D:\\otra');
   });
 
+  describe('con todo dentro del perfil', () => {
+    const inProfile = {
+      stateRoot: 'C:\\Users\\marta\\AppData\\Local\\KrakenOS\\data',
+      candidates: ['c:\\USERS\\Marta\\AppData\\Local\\KrakenOS\\data\\keys', `${HOME}\\.env`],
+    };
+
+    it('no recomienda mover la raíz, dice que no se leyó la ACL y cómo comprobarla', () => {
+      const notice = secretPermissionsStartupNotice('win32', inProfile, HOME);
+      expect(notice).not.toBeNull();
+      expect(notice!.message).not.toMatch(/Mueve/);
+      expect(notice!.message).not.toMatch(/KRAKENOS_DATA_DIR/);
+      expect(notice!.message).toMatch(/no se ha leído/i);
+      expect(notice!.message).toMatch(/icacls/);
+      expect(notice!.message).toContain('%USERPROFILE%\\AppData\\Local\\KrakenOS\\data');
+      expect(notice!.message).not.toMatch(/marta/i);
+    });
+
+    it('si una ruta con secretos cae fuera del perfil, el aviso es el de siempre', () => {
+      const notice = secretPermissionsStartupNotice(
+        'win32',
+        { ...inProfile, candidates: [...inProfile.candidates, 'D:\\claves'] },
+        HOME,
+      );
+      expect(notice!.message).toMatch(/Mueve la raíz de datos/);
+      expect(notice!.message).toContain('D:\\claves');
+    });
+
+    it('sin perfil conocido no se da por dentro', () => {
+      const notice = secretPermissionsStartupNotice('win32', inProfile, '');
+      expect(notice!.message).toMatch(/Mueve la raíz de datos/);
+    });
+  });
+
   it('en linux y darwin no emite nada', () => {
     const dirs = { stateRoot: ROOT, candidates: [] };
     expect(secretPermissionsStartupNotice('linux', dirs, HOME)).toBeNull();
