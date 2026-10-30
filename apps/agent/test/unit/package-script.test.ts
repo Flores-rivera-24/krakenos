@@ -21,6 +21,9 @@ import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { collectThirdPartyLicenses } from '../../../../scripts/package/licenses.mjs';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+import { findWalLeftovers } from '../../../../scripts/package-smoke.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 // El @ts-expect-error solo cubre la linea siguiente: sin prettier-ignore Prettier parte el import
 // en varias lineas y el error de tipos queda fuera de su alcance.
@@ -386,5 +389,26 @@ describe('relinkPnpmJunctions', () => {
     expect(r.removed).toEqual(['huerfano@1']);
     expect(existsSync(join(pnpm, 'a@1'))).toBe(true);
     expect(existsSync(join(pnpm, 'b@1'))).toBe(true);
+  });
+});
+
+describe('findWalLeftovers', () => {
+  let base = '';
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  it('devuelve los -wal y -shm que quedan tras parar el agente', () => {
+    base = mkdtempSync(join(tmpdir(), 'pkg-wal-'));
+    mkdirSync(join(base, 'prisma'), { recursive: true });
+    writeFileSync(join(base, 'prisma', 'x.db'), '');
+    writeFileSync(join(base, 'prisma', 'x.db-wal'), '');
+    writeFileSync(join(base, 'prisma', 'x.db-shm'), '');
+    expect(findWalLeftovers(base).sort()).toEqual(['prisma/x.db-shm', 'prisma/x.db-wal']);
+  });
+
+  it('devuelve [] si la base se cerró limpia', () => {
+    base = mkdtempSync(join(tmpdir(), 'pkg-wal-'));
+    mkdirSync(join(base, 'prisma'), { recursive: true });
+    writeFileSync(join(base, 'prisma', 'x.db'), '');
+    expect(findWalLeftovers(base)).toEqual([]);
   });
 });
