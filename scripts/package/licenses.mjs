@@ -5,7 +5,7 @@
 import { lstat, readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const FICHERO_LICENCIA = /^(licen[cs]e|copying)(\.[a-z]+)?$/i;
+const FICHERO_LICENCIA = /^(licen[cs]e|copying)([.-][\w.-]+)?$/i;
 
 function licenciaDeclarada(pj) {
   const l = pj.license ?? pj.licenses;
@@ -48,6 +48,8 @@ export async function collectThirdPartyLicenses(nodeModulesRoot) {
         continue;
       }
       if (typeof pj.name !== 'string' || typeof pj.version !== 'string') continue;
+      // Los paquetes del propio monorepo no son de terceros.
+      if (pj.name.startsWith('@krakenos/')) continue;
       const id = `${pj.name}@${pj.version}`;
       if (vistos.has(id)) continue;
       const fichero = (await readdir(ruta)).find((f) => FICHERO_LICENCIA.test(f));

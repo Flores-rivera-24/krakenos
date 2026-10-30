@@ -16,7 +16,10 @@ import { createHash } from 'node:crypto';
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from '../../../../scripts/package/prune.mjs';
 // prettier-ignore
-// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+// @ts-expect-error — script de utilidad en JS puro.
+import { renombrarConReintento } from '../../../../scripts/package/rename-retry.mjs';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro.
 import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
@@ -306,6 +309,84 @@ describe('collectThirdPartyLicenses', () => {
     expect(texto).toContain('ISC');
     expect(texto).toContain('Copyright Alfa Texto');
     expect(texto.indexOf('alfa@1.0.0')).toBeLessThan(texto.indexOf('zeta@2.0.0'));
+  });
+});
+
+describe('collectThirdPartyLicenses (nombres de fichero y paquetes propios)', () => {
+  let dir = '';
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('reconoce LICENSE-MIT.txt y deja fuera los paquetes @krakenos/*', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'pkg-lic2-'));
+    const pnpm = join(dir, '.pnpm');
+    const crea = (carpeta: string, nombre: string, version: string, lic?: [string, string]) => {
+      const p = join(pnpm, carpeta, 'node_modules', nombre);
+      fichero(join(p, 'package.json'), JSON.stringify({ name: nombre, version, license: 'MIT' }));
+      if (lic) fichero(join(p, lic[0]), lic[1]);
+    };
+    crea('beta@1.0.0', 'beta', '1.0.0', ['LICENSE-MIT.txt', 'Texto MIT de beta']);
+    crea('krakenos+types@0.0.0', '@krakenos/types', '0.0.0', ['LICENSE', 'Texto propio']);
+    const texto = await collectThirdPartyLicenses(dir);
+    expect(texto).toContain('Texto MIT de beta');
+    expect(texto).not.toContain('@krakenos/types');
+    expect(texto).not.toContain('Texto propio');
+  });
+});
+
+describe('renombrarConReintento', () => {
+  const err = (code: string) => Object.assign(new Error(code), { code });
+  const base = (rename: () => Promise<void>, win: boolean) => {
+    const esperas: number[] = [];
+    const logs: string[] = [];
+    return {
+      esperas,
+      logs,
+      opts: {
+        rename,
+        win,
+        dormir: async (ms: number) => void esperas.push(ms),
+        log: (m: string) => void logs.push(m),
+      },
+    };
+  };
+
+  it('en win32 reintenta ante EPERM hasta que pasa, con espera creciente y una línea por intento', async () => {
+    let fallos = 3;
+    const b = base(async () => {
+      if (fallos-- > 0) throw err('EPERM');
+    }, true);
+    await renombrarConReintento('a', 'b', b.opts);
+    expect(b.esperas).toEqual([250, 500, 1000]);
+    expect(b.logs).toHaveLength(3);
+  });
+
+  it('en win32 acaba lanzando si siempre falla, sin pasarse de unos 15 s', async () => {
+    const b = base(async () => {
+      throw err('EBUSY');
+    }, true);
+    await expect(renombrarConReintento('a', 'b', b.opts)).rejects.toThrow('EBUSY');
+    expect(b.esperas.length).toBeGreaterThan(3);
+    expect(b.esperas.reduce((x, y) => x + y, 0)).toBeLessThanOrEqual(15_000);
+  });
+
+  it('fuera de win32 es un solo intento', async () => {
+    let llamadas = 0;
+    const b = base(async () => {
+      llamadas++;
+      throw err('EPERM');
+    }, false);
+    await expect(renombrarConReintento('a', 'b', b.opts)).rejects.toThrow('EPERM');
+    expect(llamadas).toBe(1);
+  });
+
+  it('un error que no es transitorio (ENOENT) no se reintenta ni en win32', async () => {
+    let llamadas = 0;
+    const b = base(async () => {
+      llamadas++;
+      throw err('ENOENT');
+    }, true);
+    await expect(renombrarConReintento('a', 'b', b.opts)).rejects.toThrow('ENOENT');
+    expect(llamadas).toBe(1);
   });
 });
 

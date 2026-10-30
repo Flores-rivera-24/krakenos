@@ -232,7 +232,7 @@ jobs:
           command -v gpgv >/dev/null || export PATH="$PATH:/c/Program Files/Git/usr/bin"
           cache="$RUNNER_TEMP/node-alterada"
           rm -rf "$cache" && mkdir -p "$cache"
-          cp .cache/node/SHASUMS256.txt .cache/node/SHASUMS256.txt.sig "$cache/"
+          cp .cache/node/*/SHASUMS256.txt .cache/node/*/SHASUMS256.txt.sig "$cache/"
           # 'Z' no es un dígito hexadecimal: la línea cambia siempre.
           sed '1s/./Z/' "$cache/SHASUMS256.txt" > "$cache/alterada.txt"
           mv "$cache/alterada.txt" "$cache/SHASUMS256.txt"

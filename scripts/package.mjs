@@ -13,7 +13,6 @@ import {
   mkdir,
   readFile,
   realpath,
-  rename,
   rm,
   writeFile,
 } from 'node:fs/promises';
@@ -29,15 +28,18 @@ import {
 } from './package/node-runtime.mjs';
 import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from './package/prune.mjs';
 import { collectThirdPartyLicenses } from './package/licenses.mjs';
+import { renombrarConReintento } from './package/rename-retry.mjs';
 import { relinkPnpmJunctions } from './package/relink.mjs';
 import { checkSize, dirSizeMb } from './package/size-budget.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // Carpeta de la caché de Node (llavero, SHASUMS, firma y archivo). KRAKENOS_NODE_CACHE la
 // cambia: la CI la usa para probar que una SHASUMS256.txt alterada NO pasa la firma.
+// Sin la variable, la caché lleva la versión en la ruta: al subir NODE_VERSION no se reutiliza
+// la SHASUMS de la anterior.
 const CACHE_NODE = process.env.KRAKENOS_NODE_CACHE
   ? resolve(process.env.KRAKENOS_NODE_CACHE)
-  : join(RAIZ, '.cache', 'node');
+  : join(RAIZ, '.cache', 'node', NODE_VERSION);
 const TOTAL = 9;
 const paso = (n, texto) => console.log(`==> [${n}/${TOTAL}] ${texto}`);
 
@@ -90,18 +92,30 @@ async function nodeVerificado(target) {
   // y así una copia alterada a mano se ve rechazada en vez de sobrescrita en silencio.
   if (!existsSync(sums)) await descargar(`${base}/SHASUMS256.txt`, sums);
   if (!existsSync(sig)) await descargar(`${base}/SHASUMS256.txt.sig`, sig);
-  await verifySignature({
-    run: ejecutarCapturando,
-    dir: cache,
-    keyring: 'pubring.kbx',
-    signature: 'SHASUMS256.txt.sig',
-    file: 'SHASUMS256.txt',
-  });
+  const pista = (e) =>
+    new Error(
+      `${e.message}\nSi no modificaste ${cache} a propósito, bórrala y vuelve a empaquetar.`,
+    );
+  try {
+    await verifySignature({
+      run: ejecutarCapturando,
+      dir: cache,
+      keyring: 'pubring.kbx',
+      signature: 'SHASUMS256.txt.sig',
+      file: 'SHASUMS256.txt',
+    });
+  } catch (e) {
+    throw pista(e);
+  }
 
   const esperada = expectedSha256(await readFile(sums, 'utf8'), target.nodeArchive);
   const archivo = join(cache, target.nodeArchive);
   if (!existsSync(archivo)) await descargar(`${base}/${target.nodeArchive}`, archivo);
-  await assertSha256(archivo, esperada);
+  try {
+    await assertSha256(archivo, esperada);
+  } catch (e) {
+    throw pista(e);
+  }
   return archivo;
 }
 
@@ -132,7 +146,7 @@ async function main() {
   const agente = join(app, 'agent');
 
   paso(1, `destino ${target.id}, versión ${version}`);
-  await rm(pkg, { recursive: true, force: true });
+  await rm(pkg, { recursive: true, force: true, maxRetries: 5, retryDelay: 500 });
   await rm(tmpDeploy, { recursive: true, force: true });
   await mkdir(agente, { recursive: true });
 
@@ -148,19 +162,29 @@ async function main() {
 
   paso(4, 'prebuild de better-sqlite3 para esta plataforma');
   const bsReal = await realpath(join(tmpDeploy, 'node_modules', 'better-sqlite3'));
-  await ejecutar(process.execPath, [join(dirname(bsReal), 'prebuild-install', 'bin.js')], {
-    cwd: bsReal,
-  });
+  // --runtime/--target: el binario es para el Node que se empaqueta, no para el del host.
+  await ejecutar(
+    process.execPath,
+    [
+      join(dirname(bsReal), 'prebuild-install', 'bin.js'),
+      '--runtime=node',
+      `--target=${NODE_VERSION}`,
+    ],
+    { cwd: bsReal },
+  );
   if (!existsSync(join(bsReal, 'build', 'Release', 'better_sqlite3.node'))) {
     throw new Error('prebuild-install no dejó better_sqlite3.node: no se compila en silencio');
   }
 
   paso(5, 'copiando agente, web, migraciones y lanzador');
-  await rename(join(tmpDeploy, 'node_modules'), join(agente, 'node_modules'));
+  await renombrarConReintento(join(tmpDeploy, 'node_modules'), join(agente, 'node_modules'));
   await rm(tmpDeploy, { recursive: true, force: true });
   // En Windows los enlaces de pnpm son absolutos hacia el deploy temporal: hay que rehacerlos.
   const rl = await relinkPnpmJunctions(join(agente, 'node_modules'));
-  console.log(`    enlaces de pnpm rehechos: ${rl.relinked.length}`);
+  console.log(
+    `    enlaces de pnpm rehechos: ${rl.relinked.length}; sin resolver: ${rl.unresolved.length}`,
+  );
+  for (const u of rl.unresolved) console.log(`      sin resolver: ${u}`);
   await cp(join(RAIZ, 'apps/agent/dist'), join(agente, 'dist'), { recursive: true });
   await cp(join(RAIZ, 'apps/agent/prisma/migrations'), join(agente, 'prisma', 'migrations'), {
     recursive: true,
