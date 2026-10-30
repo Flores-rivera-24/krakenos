@@ -45,4 +45,17 @@ describe('DayPicker', () => {
     render(<DayPicker selected={[]} onToggle={() => {}} aria-label="Días" disabled />);
     for (const b of screen.getAllByRole('button')) expect(b).toBeDisabled();
   });
+
+  it('en móvil las siete casillas se reparten en una fila y desde md vuelven a ser cuadradas', () => {
+    render(<DayPicker selected={[]} onToggle={() => {}} aria-label="Días" />);
+    expect(screen.getByRole('group', { name: 'Días' })).toHaveClass(
+      'grid',
+      'grid-cols-7',
+      'md:flex',
+      'md:flex-wrap',
+    );
+    for (const b of screen.getAllByRole('button')) {
+      expect(b).toHaveClass('h-11', 'w-full', 'min-w-0', 'md:h-9', 'md:w-9');
+    }
+  });
 });

@@ -43,7 +43,7 @@ describe('SegmentedControl', () => {
       <SegmentedControl options={OPCIONES} value="a" onChange={onChange} aria-label="Rango" />,
     );
     fireEvent.click(screen.getByRole('button', { name: 'Uno' }));
-    expect(onChange.mock.calls.every(([v]) => v === 'a')).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Uno', pressed: true })).toBeInTheDocument();
   });
 
@@ -52,7 +52,7 @@ describe('SegmentedControl', () => {
       <SegmentedControl options={OPCIONES} value="a" onChange={() => {}} aria-label="Rango" />,
     );
     for (const b of screen.getAllByRole('button')) {
-      expect(b).toHaveClass('min-h-11', 'md:h-8');
+      expect(b).toHaveClass('min-h-11', 'min-w-11', 'md:h-8', 'md:min-h-0');
     }
   });
 

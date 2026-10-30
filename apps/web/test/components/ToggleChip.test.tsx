@@ -62,6 +62,27 @@ describe('ToggleChip', () => {
     expect(screen.getByRole('button', { name: 'B' })).toHaveClass('border-kr', 'bg-kr-elevated');
   });
 
+  it('deshabilitado se ve y se comporta como tal', () => {
+    render(
+      <ToggleChip pressed={false} onPressedChange={() => {}} disabled>
+        Off
+      </ToggleChip>,
+    );
+    const boton = screen.getByRole('button', { name: 'Off' });
+    expect(boton).toBeDisabled();
+    expect(boton).toHaveClass('disabled:cursor-not-allowed', 'disabled:opacity-50');
+  });
+
+  it('un aria-pressed del llamador no pisa el calculado', () => {
+    const extra: object = { 'aria-pressed': false };
+    render(
+      <ToggleChip pressed onPressedChange={() => {}} {...extra}>
+        Forzado
+      </ToggleChip>,
+    );
+    expect(screen.getByRole('button', { name: 'Forzado' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
   it('no envía formularios', async () => {
     const onSubmit = vi.fn((e: React.FormEvent) => e.preventDefault());
     render(

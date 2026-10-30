@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 
 export interface ToggleChipProps extends Omit<
   ButtonHTMLAttributes<HTMLButtonElement>,
-  'onChange' | 'type'
+  'onChange' | 'type' | 'aria-pressed'
 > {
   pressed: boolean;
   onPressedChange: (next: boolean) => void;
@@ -21,7 +21,6 @@ export const ToggleChip = forwardRef<HTMLButtonElement, ToggleChipProps>(functio
     <button
       ref={ref}
       type="button"
-      aria-pressed={pressed}
       onClick={(e) => {
         onClick?.(e);
         onPressedChange(!pressed);
@@ -34,9 +33,11 @@ export const ToggleChip = forwardRef<HTMLButtonElement, ToggleChipProps>(functio
         pressed
           ? 'border-kr-accent bg-kr-accent-faint text-kr-primary'
           : 'border-kr bg-kr-elevated text-kr-muted hover:text-kr-primary',
+        'disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...rest}
+      aria-pressed={pressed}
     />
   );
 });
