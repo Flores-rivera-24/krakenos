@@ -8,6 +8,7 @@ import { formatBytes } from '@/lib/format';
 import { plural, useT } from '@/lib/i18n';
 import { useLectura } from '@/lib/use-lectura';
 import { WELLBEING_RANGES, fetchWellbeingUsage } from '@/lib/wellbeing';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { useAuthStore } from '@/store/auth.store';
 import '@/lib/i18n/catalog/fragments/trafico';
 
@@ -41,23 +42,12 @@ export function WellbeingCard() {
     <Card>
       <CardHeader className="flex-row items-center justify-between space-y-0">
         <CardTitle>{t('wellbeing.title')}</CardTitle>
-        <div className="flex gap-1" role="group" aria-label={t('wellbeing.rangeLabel')}>
-          {WELLBEING_RANGES.map((r) => (
-            <button
-              key={r.value}
-              type="button"
-              onClick={() => setRange(r.value)}
-              aria-pressed={range === r.value}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors min-h-11 min-w-11 md:min-h-0 md:min-w-0 ${
-                range === r.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          options={WELLBEING_RANGES}
+          value={range}
+          onChange={setRange}
+          aria-label={t('wellbeing.rangeLabel')}
+        />
       </CardHeader>
       <CardContent>
         <p className="mb-3 text-xs text-muted-foreground">{t('wellbeing.subtitle')}</p>

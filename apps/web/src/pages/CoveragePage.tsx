@@ -21,6 +21,7 @@ import { SurveyPanel } from '@/components/coverage/SurveyPanel';
 import { RoomsFromPlanPanel } from '@/components/coverage/RoomsFromPlanPanel';
 import { WallDetectPanel } from '@/components/coverage/WallDetectPanel';
 import { Select } from '@/components/ui/select';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,7 +38,6 @@ import { proposeWalls, type ProposedWall } from '@/lib/wall-propose';
 import { describeError } from '@/lib/errors';
 import { formatFixed } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
-import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { Callout } from '@/components/ui/callout';
@@ -411,52 +411,20 @@ export function CoveragePage() {
                 ))}
               </Select>
 
-              <div
-                className="flex items-center gap-1 rounded-md border border-kr p-0.5"
-                role="group"
+              <SegmentedControl
+                options={VIEWS.map((v) => ({ value: v.id, label: t(v.label) }))}
+                value={view}
+                onChange={setView}
                 aria-label={t('coverage.viewLabel')}
-              >
-                {VIEWS.map((v) => (
-                  <button
-                    key={v.id}
-                    type="button"
-                    aria-pressed={view === v.id}
-                    onClick={() => setView(v.id)}
-                    className={cn(
-                      'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
-                      view === v.id
-                        ? 'bg-kr-accent text-white'
-                        : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
-                    )}
-                  >
-                    {t(v.label)}
-                  </button>
-                ))}
-              </div>
+              />
 
               {view === 'predict' && (
-                <div
-                  className="flex items-center gap-1 rounded-md border border-kr p-0.5"
-                  role="group"
+                <SegmentedControl
+                  options={BANDS.map((b) => ({ value: b, label: b }))}
+                  value={band}
+                  onChange={setBand}
                   aria-label={t('coverage.bandLabel')}
-                >
-                  {BANDS.map((b) => (
-                    <button
-                      key={b}
-                      type="button"
-                      aria-pressed={band === b}
-                      onClick={() => setBand(b)}
-                      className={cn(
-                        'h-11 min-w-11 rounded-sm px-3 text-kr-sm transition-colors md:h-8 md:min-w-0',
-                        band === b
-                          ? 'bg-kr-accent text-white'
-                          : 'text-kr-secondary hover:bg-kr-elevated hover:text-kr-primary',
-                      )}
-                    >
-                      {b}
-                    </button>
-                  ))}
-                </div>
+                />
               )}
 
               {isAdmin && (

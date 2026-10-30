@@ -377,7 +377,7 @@ test.describe('escritorio', () => {
     const rango = page.getByRole('group', { name: 'Rango' }).getByRole('button').first();
     await expect(rango).toBeVisible();
     await esperarContenidoQuieto(page);
-    expect((await rango.boundingBox())!.height).toBeCloseTo(24, 1);
+    expect((await rango.boundingBox())!.height).toBeCloseTo(32, 1);
 
     await page.getByRole('link', { name: 'IoT', exact: true }).first().click();
     const interruptor = page.getByRole('switch').first();
