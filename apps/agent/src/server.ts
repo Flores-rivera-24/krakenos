@@ -75,7 +75,7 @@ import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
 import { setupToken } from './modules/setup/setup-token.js';
-import { resolveSetupUrl } from './modules/setup/setup-url.js';
+import { explicitOrigin, isLoopbackHost, resolveSetupUrl } from './modules/setup/setup-url.js';
 import { accessRequestsRoutes, invitationsRoutes } from './modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
 import { camerasRoutes } from './modules/cameras/cameras.routes.js';
@@ -759,18 +759,27 @@ export async function buildServer(): Promise<FastifyInstance> {
       webOrigin: process.env.WEB_ORIGIN,
       https: env.https !== null,
       port: env.port,
+      host: env.host,
       token,
     });
+    const soloEsteEquipo = isLoopbackHost(env.host);
     // Onboarding (US-105): además del token, imprime la URL lista para abrir y un
     // QR escaneable. Va por `process.stdout.write` DIRECTO, no por pino (AUD-26): en
     // producción el logger es NDJSON y el QR/multilínea quedaría con `\n` escapados,
     // ilegible en `journalctl`/`docker logs`. Escribirlo crudo lo mantiene legible.
     let out = `\n[setup] Sistema sin administrador. Abre en tu navegador:\n    ${setupUrl}\n`;
-    try {
-      const qr = await QRCode.toString(setupUrl, { type: 'terminal', small: true });
-      out += `\n[setup] O escanéalo con tu móvil (mismo WiFi):\n${qr}\n`;
-    } catch {
-      // El QR es opcional; si falla, la URL de arriba basta.
+    if (soloEsteEquipo && explicitOrigin(process.env.WEB_ORIGIN) === null) {
+      // Con el agente en loopback, el móvil no puede llegar: un QR llevaría a una dirección muerta.
+      out +=
+        '\n[setup] El agente solo escucha en este equipo (HOST=' +
+        `${env.host}). Para abrirlo desde el móvil, pon HOST=0.0.0.0 y reinícialo.\n`;
+    } else {
+      try {
+        const qr = await QRCode.toString(setupUrl, { type: 'terminal', small: true });
+        out += `\n[setup] O escanéalo con tu móvil (mismo WiFi):\n${qr}\n`;
+      } catch {
+        // El QR es opcional; si falla, la URL de arriba basta.
+      }
     }
     out += `\n[setup] (token de configuración: ${token})\n\n`;
     process.stdout.write(out);

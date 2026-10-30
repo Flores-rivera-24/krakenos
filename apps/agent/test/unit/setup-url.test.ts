@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildSetupUrl,
   firstLanIpv4,
+  isLoopbackHost,
   isPrivateIpv4,
   resolveSetupUrl,
 } from '../../src/modules/setup/setup-url.js';
@@ -125,6 +126,44 @@ describe('resolveSetupUrl', () => {
     expect(resolveSetupUrl({ ...base, webOrigin: undefined, interfaces: nifs({ lo: [lo] }) })).toBe(
       'http://localhost:3001/setup?token=tok',
     );
+  });
+});
+
+describe('resolveSetupUrl con el HOST de escucha', () => {
+  const ifaces = nifs({
+    eth0: [{ family: 'IPv4', internal: false, address: '192.168.1.42' }],
+  });
+  const base = { https: false, port: 3001, token: 'tok', interfaces: ifaces };
+
+  it('con HOST en loopback y sin WEB_ORIGIN, la URL usa 127.0.0.1', () => {
+    for (const host of ['127.0.0.1', '127.1.2.3', '::1', '[::1]', 'localhost', 'LOCALHOST']) {
+      expect(resolveSetupUrl({ ...base, webOrigin: undefined, host })).toBe(
+        'http://127.0.0.1:3001/setup?token=tok',
+      );
+    }
+  });
+
+  it('con HOST en loopback, un WEB_ORIGIN fijado sigue mandando', () => {
+    expect(
+      resolveSetupUrl({ ...base, webOrigin: 'https://casa.local:8443', host: '127.0.0.1' }),
+    ).toBe('https://casa.local:8443/setup?token=tok');
+  });
+
+  it('con 0.0.0.0 o una IP de la LAN, igual que sin HOST', () => {
+    for (const host of ['0.0.0.0', '192.168.1.42', '::']) {
+      expect(resolveSetupUrl({ ...base, webOrigin: undefined, host })).toBe(
+        'http://192.168.1.42:3001/setup?token=tok',
+      );
+    }
+  });
+});
+
+describe('isLoopbackHost', () => {
+  it('reconoce loopback y rechaza lo demás', () => {
+    for (const h of ['127.0.0.1', '127.9.9.9', '::1', '[::1]', 'localhost'])
+      expect(isLoopbackHost(h)).toBe(true);
+    for (const h of ['0.0.0.0', '::', '192.168.1.5', '1127.0.0.1', 'casa.local', ''])
+      expect(isLoopbackHost(h)).toBe(false);
   });
 });
 
