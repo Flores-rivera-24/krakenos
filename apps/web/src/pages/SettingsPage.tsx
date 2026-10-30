@@ -32,6 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { LoadingLine } from '@/components/ui/loading-line';
 import { WidgetError } from '@/components/ui/widget-error';
 import { StatusDot } from '@/components/ui/status-dot';
@@ -68,9 +69,6 @@ const TIMEZONES = [
   'America/Mexico_City',
   'Asia/Tokyo',
 ];
-
-const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0';
 
 function Setting({
   label,
@@ -316,8 +314,7 @@ export function SettingsPage() {
                         </div>
                       </Setting>
                       <Setting label={t('settings.system.timezone')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.system.timezone')}
                           value={setting('timezone')}
                           disabled={!isAdmin}
@@ -328,11 +325,10 @@ export function SettingsPage() {
                               {tz}
                             </option>
                           ))}
-                        </select>
+                        </Select>
                       </Setting>
                       <Setting label={t('settings.system.scanInterval')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.system.scanInterval')}
                           value={setting('scanIntervalSec')}
                           disabled={!isAdmin}
@@ -341,11 +337,10 @@ export function SettingsPage() {
                           <option value="30">{t('settings.system.sec30')}</option>
                           <option value="60">{t('settings.system.min1')}</option>
                           <option value="300">{t('settings.system.min5')}</option>
-                        </select>
+                        </Select>
                       </Setting>
                       <Setting label={t('settings.system.presenceGrace')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.system.presenceGraceAria')}
                           value={setting('presenceGraceMin')}
                           disabled={!isAdmin}
@@ -355,11 +350,10 @@ export function SettingsPage() {
                           <option value="10">{t('settings.system.min10')}</option>
                           <option value="20">{t('settings.system.min20')}</option>
                           <option value="30">{t('settings.system.min30')}</option>
-                        </select>
+                        </Select>
                       </Setting>
                       <Setting label={t('settings.system.presenceSweeps')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.system.presenceSweepsAria')}
                           value={setting('presenceLeaveSweeps')}
                           disabled={!isAdmin}
@@ -369,7 +363,7 @@ export function SettingsPage() {
                           <option value="2">2</option>
                           <option value="3">3</option>
                           <option value="5">5</option>
-                        </select>
+                        </Select>
                       </Setting>
                       <Setting
                         label={t('settings.system.presenceNight')}
@@ -478,8 +472,7 @@ export function SettingsPage() {
                   )}
                   {!ajustesCaidos && (
                     <Setting label={t('settings.notifications.digest')}>
-                      <select
-                        className={SELECT_CLASS}
+                      <Select
                         aria-label={t('settings.notifications.digest')}
                         value={setting('digestFrequency')}
                         disabled={!isAdmin}
@@ -488,7 +481,7 @@ export function SettingsPage() {
                         <option value="off">{t('settings.notifications.digestOff')}</option>
                         <option value="daily">{t('settings.notifications.digestDaily')}</option>
                         <option value="weekly">{t('settings.notifications.digestWeekly')}</option>
-                      </select>
+                      </Select>
                     </Setting>
                   )}
                 </CardContent>
@@ -567,8 +560,7 @@ export function SettingsPage() {
                   ) : (
                     <>
                       <Setting label={t('settings.retention.traffic')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.retention.trafficAria')}
                           value={setting('trafficRetentionDays')}
                           disabled={!isAdmin}
@@ -577,11 +569,10 @@ export function SettingsPage() {
                           <option value="7">{t('settings.retention.d7')}</option>
                           <option value="30">{t('settings.retention.d30')}</option>
                           <option value="90">{t('settings.retention.d90')}</option>
-                        </select>
+                        </Select>
                       </Setting>
                       <Setting label={t('settings.retention.audit')}>
-                        <select
-                          className={SELECT_CLASS}
+                        <Select
                           aria-label={t('settings.retention.auditAria')}
                           value={setting('auditRetentionDays')}
                           disabled={!isAdmin}
@@ -590,7 +581,7 @@ export function SettingsPage() {
                           <option value="30">{t('settings.retention.d30')}</option>
                           <option value="90">{t('settings.retention.d90')}</option>
                           <option value="180">{t('settings.retention.d180')}</option>
-                        </select>
+                        </Select>
                       </Setting>
                     </>
                   )}

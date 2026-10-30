@@ -16,6 +16,7 @@ import { DeleteButton } from '@/components/ui/delete-button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -31,9 +32,6 @@ import { useT } from '@/lib/i18n';
 import { useLectura } from '@/lib/use-lectura';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
-
-const SELECT_CLASS =
-  'h-10 w-full rounded-md border border-kr-field bg-kr-elevated px-3 text-base md:text-kr-base text-kr-primary disabled:opacity-50 min-h-11 md:min-h-0';
 
 /**
  * `ok`: el cambio se guardó (el fallo ya lo avisa quien lo implementa).
@@ -343,9 +341,8 @@ function SecurityControls({
       </CardHeader>
       <CardContent className="space-y-4">
         <Row label={t('security.tokenTtl')} htmlFor={`${uid}-ttl`}>
-          <select
+          <Select
             id={`${uid}-ttl`}
-            className={SELECT_CLASS}
             value={settings.accessTokenTtl}
             disabled={!isAdmin}
             onChange={(e) => void guardar('accessTokenTtl', e.target.value)}
@@ -353,12 +350,11 @@ function SecurityControls({
             <option value="900">{t('security.ttl.15m')}</option>
             <option value="3600">{t('security.ttl.1h')}</option>
             <option value="28800">{t('security.ttl.8h')}</option>
-          </select>
+          </Select>
         </Row>
         <Row label={t('security.loginLimit')} htmlFor={`${uid}-limit`}>
-          <select
+          <Select
             id={`${uid}-limit`}
-            className={SELECT_CLASS}
             value={settings.loginRateLimit}
             disabled={!isAdmin}
             onChange={(e) => void guardar('loginRateLimit', e.target.value)}
@@ -366,7 +362,7 @@ function SecurityControls({
             <option value="5">{t('security.perMinute', { n: 5 })}</option>
             <option value="10">{t('security.perMinute', { n: 10 })}</option>
             <option value="20">{t('security.perMinute', { n: 20 })}</option>
-          </select>
+          </Select>
         </Row>
         <Row label={t('security.darkTheme')} htmlFor={`${uid}-dark`}>
           <Switch

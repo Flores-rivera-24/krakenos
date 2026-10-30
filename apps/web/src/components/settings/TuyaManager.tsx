@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { StatusDot } from '@/components/ui/status-dot';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
@@ -98,19 +99,18 @@ function FocoForm({
         <Label htmlFor={`${uid}-version`} className="text-kr-xs">
           {t('tuya.version')}
         </Label>
-        <select
+        <Select
           id={`${uid}-version`}
           value={form.version}
           onChange={(e) => set('version', e.target.value)}
           disabled={initial.deviceId !== ''}
-          className="h-10 w-full rounded-md border border-kr-field bg-kr-surface px-3 text-base md:text-kr-base text-kr-primary min-h-11 md:min-h-0"
         >
           {VERSIONS.map((v) => (
             <option key={v} value={v}>
               {v}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
       <div className="flex items-end gap-2">
         <Button

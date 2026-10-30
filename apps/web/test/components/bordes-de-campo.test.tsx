@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -27,6 +28,11 @@ describe('bordes de campo', () => {
     }
   });
 
+  it('Select (que usan los ajustes) lleva border-kr-field', () => {
+    render(<Select aria-label="lista" />);
+    expect(screen.getByLabelText('lista').className).toContain('border-kr-field');
+  });
+
   it('el botón destructivo pinta blanco sobre bg-kr-danger-solid', () => {
     render(<Button variant="destructive">Borrar</Button>);
     const b = screen.getByRole('button', { name: 'Borrar' });
@@ -46,7 +52,9 @@ describe('bordes de campo', () => {
     'components/wifi/MainNetworkCard.tsx',
   ])('los selects de %s llevan border-kr-field', (ruta) => {
     const fuente = readFileSync(join(process.cwd(), 'src', ruta), 'utf8');
-    expect(fuente).toContain('border-kr-field');
+    // Un `<select>` a mano lleva el token; si no queda ninguno, el campo sale de `<Select>` (que ya lo trae).
+    if (/<select\b/.test(fuente)) expect(fuente).toContain('border-kr-field');
+    else expect(fuente).toMatch(/<Select\b/);
     // Ningún borde de campo a la antigua en una línea de clase de select/campo.
     expect(fuente).not.toMatch(/h-\d+[^'"`]*border border-(kr|input) /);
   });
