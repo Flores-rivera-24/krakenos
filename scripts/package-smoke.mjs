@@ -165,26 +165,41 @@ async function parar({ hijo, st }) {
     if (st.nodePid === null) throw new Error(`no se vio el pid de node en el log:\n${st.salida}`);
     // El padre de node es el cmd interior; hay que saberlo ANTES de que node salga.
     st.padrePid = pidPadre(st.nodePid);
-    const ps = spawnSync(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-ExecutionPolicy',
-        'Bypass',
-        '-File',
-        join(AQUI, 'package', 'ctrlc.ps1'),
-        '-TargetPid',
-        String(st.nodePid),
-      ],
-      { encoding: 'utf8' },
+    // Un runner de CI hereda «ignorar Ctrl+C» (SetConsoleCtrlHandler(NULL, TRUE)) y node ni se entera:
+    // si tras Ctrl+C sigue vivo, se prueba con Ctrl+Pausa (SIGBREAK, que el agente también atiende).
+    const mandar = (evento) => {
+      const ps = spawnSync(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-File',
+          join(AQUI, 'package', 'ctrlc.ps1'),
+          '-TargetPid',
+          String(st.nodePid),
+          '-Event',
+          String(evento),
+        ],
+        { encoding: 'utf8' },
+      );
+      if (ps.status !== 0)
+        throw new Error(`ctrlc.ps1 falló (${ps.status}): ${ps.stdout}${ps.stderr}`);
+    };
+    mandar(0);
+    const salioConCtrlC = await esperarA(() => !vivo(st.nodePid), 5_000, 'sigue vivo').then(
+      () => true,
+      () => false,
     );
-    if (ps.status !== 0)
-      throw new Error(`ctrlc.ps1 falló (${ps.status}): ${ps.stdout}${ps.stderr}`);
-    await esperarA(
-      () => !vivo(st.nodePid),
-      ESPERA_PARADA_MS,
-      `node (pid ${st.nodePid}) no salió tras Ctrl+C`,
-    );
+    if (!salioConCtrlC) {
+      console.log('    node ignoró Ctrl+C; se manda Ctrl+Pausa (SIGBREAK)');
+      mandar(1);
+      await esperarA(
+        () => !vivo(st.nodePid),
+        ESPERA_PARADA_MS,
+        `node (pid ${st.nodePid}) no salió tras Ctrl+C ni Ctrl+Pausa`,
+      );
+    }
     // El cmd interior se queda en «Terminate batch job (Y/N)?»; node ya salió, así que /F es seguro.
     if (st.padrePid !== null) spawnSync('taskkill', ['/PID', String(st.padrePid), '/T', '/F']);
   } else {

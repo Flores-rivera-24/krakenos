@@ -1,4 +1,4 @@
-param([int]$TargetPid)
+param([int]$TargetPid, [int]$Event = 0)  # 0 = CTRL_C, 1 = CTRL_BREAK
 Add-Type -Namespace W -Name K -MemberDefinition @'
 [DllImport("kernel32.dll", SetLastError=true)] public static extern bool FreeConsole();
 [DllImport("kernel32.dll", SetLastError=true)] public static extern bool AttachConsole(uint p);
@@ -8,7 +8,7 @@ Add-Type -Namespace W -Name K -MemberDefinition @'
 [W.K]::FreeConsole() | Out-Null
 if (-not [W.K]::AttachConsole($TargetPid)) { Write-Output "AttachConsole fallo: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())"; exit 2 }
 [W.K]::SetConsoleCtrlHandler([IntPtr]::Zero, $true) | Out-Null
-$ok = [W.K]::GenerateConsoleCtrlEvent(0, 0)
+$ok = [W.K]::GenerateConsoleCtrlEvent([uint32]$Event, 0)
 Start-Sleep -Seconds 1
 [W.K]::FreeConsole() | Out-Null
-Write-Output "CtrlC enviado: $ok"
+Write-Output "Evento $Event enviado: $ok"
