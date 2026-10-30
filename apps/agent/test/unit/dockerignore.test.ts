@@ -26,7 +26,10 @@ const ROOT = fileURLToPath(new URL('../../../../', import.meta.url));
 const patterns = readFileSync(`${ROOT}.dockerignore`, 'utf8')
   .split('\n')
   .map((l) => l.trim())
-  .filter((l) => l !== '' && !l.startsWith('#'));
+  .filter((l) => l !== '' && !l.startsWith('#'))
+  // Docker limpia la barra inicial y la final de cada patrón: `/out/` significa `out`
+  // en la raíz del contexto, anclado.
+  .map((l) => l.replace(/^\//, '').replace(/\/$/, ''));
 
 /**
  * Traduce un patrón de `.dockerignore` a regex. Docker usa sintaxis Go
@@ -106,6 +109,10 @@ const RUTAS_QUE_DEBEN_QUEDARSE_FUERA = [
   'BACKLOG.md',
   'apps/agent/coverage',
   'apps/web/coverage',
+  // Salida y caché de `pnpm package` (US-284), ancladas a la raíz.
+  'out',
+  'out/krakenos-0.1.0-linux-x64/app/agent/dist/index.js',
+  '.cache/node/node-v24.21.0-linux-x64.tar.xz',
 ];
 
 const excluye = (ruta: string) => patterns.filter((p) => toRegExp(p).test(ruta));

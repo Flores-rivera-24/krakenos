@@ -85,6 +85,11 @@ const LISTA: Record<string, Entrada> = {
     saltos: 3,
     motivo: `${MODOS}; y los grupos (id -gn, chmod) y el umask no existen.`,
   },
+  'unit/package-launcher.test.ts': {
+    saltos: 1,
+    motivo:
+      'Un solo alias (WIN) gobierna dos bloques. Cada lanzador necesita su intérprete: krakenos.cmd solo corre en Windows (cmd.exe) y bin/krakenos (sh) solo fuera de él. Es un salto por diseño, no un test que falle.',
+  },
   'unit/peer-store.test.ts': {
     saltos: 2,
     motivo: `${MODOS}: el fichero de peers queda 0600.`,
@@ -105,7 +110,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 11, saltos: 20, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 12, saltos: 21, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

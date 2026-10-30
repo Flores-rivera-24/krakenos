@@ -1,6 +1,8 @@
 # Finales de línea: LF siempre. Los tests que leen fuentes y comparan texto no deben ver CRLF
 # en el checkout de Windows (core.autocrlf del runner), y los scripts .sh con CRLF no ejecutan.
 * text=auto eol=lf
+# El lanzador de Windows se ejecuta con cmd.exe, que quiere CRLF (etiquetas, `||`, multilínea).
+*.cmd text eol=crlf
 *.png binary
 *.jpg binary
 *.jpeg binary

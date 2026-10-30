@@ -13,6 +13,10 @@ apps/agent/data
 apps/agent/.env
 **/.env
 
+# Salida y caché de `pnpm package`: no son fuente de la imagen.
+/out/
+/.cache/node/
+
 # Docs internos gitignored y ruido.
 CLAUDE.md
 SPECS.md
