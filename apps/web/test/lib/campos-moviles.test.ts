@@ -173,22 +173,26 @@ describe('campos editables en el celular', () => {
     fuente: readFileSync(ruta, 'utf8'),
   }));
 
-  it('la recolección ve los campos (guard de tamaño mínimo)', () => {
-    let nativos = 0;
-    let componentes = 0;
-    let excluidos = 0;
-    for (const f of todas) {
-      const r = camposEditables(sinComentariosConLineas(f.fuente));
-      excluidos += r.excluidos;
-      for (const c of r.campos) {
-        if (c.etiqueta === c.etiqueta.toLowerCase()) nativos++;
-        else componentes++;
-      }
-    }
-    // Medido el 2026-10-29 (con `Select` contado como componente): 8 nativos editables, 166 componentes, 19 excluidos por tipo.
-    expect(nativos).toBeGreaterThan(4);
-    expect(componentes).toBeGreaterThan(120);
-    expect(excluidos).toBeGreaterThan(10);
+  it('el recorrido ve ficheros (no depende de cuántos campos queden)', () => {
+    expect(todas.length).toBeGreaterThan(100);
+  });
+
+  it('control positivo: la recolección cuenta un nativo, un Input y un Select, y no ve comentarios', () => {
+    const muestra = [
+      '// <input className="x" />',
+      '/* <select className="x" /> */',
+      'export const A = () => (',
+      '  <>',
+      '    <input className="x" />',
+      '    <Input className="x" />',
+      '    <Select className="x" />',
+      '    <input type="hidden" />',
+      '  </>',
+      ');',
+    ].join('\n');
+    const r = camposEditables(sinComentariosConLineas(muestra));
+    expect(r.campos.map((c) => c.etiqueta)).toEqual(['input', 'Input', 'Select']);
+    expect(r.excluidos).toBe(1);
   });
 
   it('todo campo editable lleva text-base y min-h-11 con su deshacer en md:, y ninguna letra chica sin md:', () => {
