@@ -89,16 +89,17 @@ describe('assertSha256', () => {
 });
 
 describe('verifySignature', () => {
-  it('llama a gpg con los argumentos exactos y resuelve con code 0', async () => {
-    const llamadas: Array<[string, string[]]> = [];
+  it('llama a gpg con ./keyring y cwd = dir, y resuelve con code 0', async () => {
+    const llamadas: Array<[string, string[], { cwd: string }]> = [];
     await verifySignature({
-      run: async (cmd: string, args: string[]) => {
-        llamadas.push([cmd, args]);
-        return { code: 0, stderr: '' };
+      run: async (cmd: string, args: string[], opts: { cwd: string }) => {
+        llamadas.push([cmd, args, opts]);
+        return { code: 0, stderr: 'gpg: WARNING: not certified' };
       },
-      keyring: '/k/pubring.kbx',
-      signature: '/s/SHASUMS256.txt.sig',
-      file: '/s/SHASUMS256.txt',
+      dir: '/cache/node',
+      keyring: 'pubring.kbx',
+      signature: 'SHASUMS256.txt.sig',
+      file: 'SHASUMS256.txt',
     });
     expect(llamadas).toEqual([
       [
@@ -106,11 +107,12 @@ describe('verifySignature', () => {
         [
           '--no-default-keyring',
           '--keyring',
-          '/k/pubring.kbx',
+          './pubring.kbx',
           '--verify',
-          '/s/SHASUMS256.txt.sig',
-          '/s/SHASUMS256.txt',
+          'SHASUMS256.txt.sig',
+          'SHASUMS256.txt',
         ],
+        { cwd: '/cache/node' },
       ],
     ]);
   });
@@ -119,11 +121,33 @@ describe('verifySignature', () => {
     await expect(
       verifySignature({
         run: async () => ({ code: 1, stderr: 'BAD signature' }),
+        dir: 'd',
         keyring: 'k',
         signature: 's',
         file: 'f',
       }),
     ).rejects.toThrow(/BAD signature/);
+  });
+
+  it.each([
+    ['keyring', 'sub/pubring.kbx'],
+    ['signature', 'C:\\x\\SHASUMS256.txt.sig'],
+    ['file', '../SHASUMS256.txt'],
+  ])('lanza si %s trae un separador de ruta', async (campo, valor) => {
+    let llamado = false;
+    const opts = {
+      run: async () => {
+        llamado = true;
+        return { code: 0, stderr: '' };
+      },
+      dir: 'd',
+      keyring: 'k',
+      signature: 's',
+      file: 'f',
+      [campo]: valor,
+    };
+    await expect(verifySignature(opts)).rejects.toThrow(/nombre de archivo/);
+    expect(llamado).toBe(false);
   });
 });
 

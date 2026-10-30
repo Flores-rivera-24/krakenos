@@ -51,10 +51,10 @@ function ejecutar(cmd, args, opts = {}) {
 }
 
 /** Como `ejecutar`, pero captura stderr y devuelve el código (lo que pide `verifySignature`). */
-function ejecutarCapturando(cmd, args) {
+function ejecutarCapturando(cmd, args, { cwd } = {}) {
   return new Promise((ok, fallo) => {
     let stderr = '';
-    const p = spawn(cmd, args, { stdio: ['ignore', 'ignore', 'pipe'] });
+    const p = spawn(cmd, args, { cwd, stdio: ['ignore', 'ignore', 'pipe'] });
     p.stderr.on('data', (d) => (stderr += d));
     p.on('error', fallo);
     p.on('close', (code) => ok({ code: code ?? 1, stderr }));
@@ -80,7 +80,13 @@ async function nodeVerificado(target) {
   const sig = join(cache, 'SHASUMS256.txt.sig');
   await descargar(`${base}/SHASUMS256.txt`, sums);
   await descargar(`${base}/SHASUMS256.txt.sig`, sig);
-  await verifySignature({ run: ejecutarCapturando, keyring, signature: sig, file: sums });
+  await verifySignature({
+    run: ejecutarCapturando,
+    dir: cache,
+    keyring: 'pubring.kbx',
+    signature: 'SHASUMS256.txt.sig',
+    file: 'SHASUMS256.txt',
+  });
 
   const esperada = expectedSha256(await readFile(sums, 'utf8'), target.nodeArchive);
   const archivo = join(cache, target.nodeArchive);
@@ -158,7 +164,12 @@ async function main() {
   const ext = join(outDir, '.node-tmp');
   await rm(ext, { recursive: true, force: true });
   await mkdir(ext, { recursive: true });
-  await ejecutar('tar', [archivo.endsWith('.zip') ? '-xf' : '-xJf', archivo, '-C', ext]);
+  // En Windows, el tar.exe del sistema (bsdtar): un GNU tar de Git en el PATH no abre el zip.
+  const tar =
+    process.platform === 'win32'
+      ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+      : 'tar';
+  await ejecutar(tar, [archivo.endsWith('.zip') ? '-xf' : '-xJf', archivo, '-C', ext]);
   const raizNode = join(ext, target.nodeArchive.replace(/\.(zip|tar\.xz)$/, ''));
   const destNode = join(pkg, 'node');
   const nodeBin = target.nodeBin.replace(/^node\//, '');

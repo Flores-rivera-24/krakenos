@@ -54,19 +54,24 @@ export async function assertSha256(filePath, expected) {
 }
 
 /**
- * @param {{ run: (cmd: string, args: string[]) => Promise<{ code: number, stderr: string }>,
- *           keyring: string, signature: string, file: string }} opts
+ * `keyring`, `signature` y `file` son nombres de archivo DENTRO de `dir`, que es el cwd de gpg.
+ * El gpg de Git for Windows (MSYS) no admite una ruta con letra de unidad en `--keyring`
+ * (`keyblock resource '(null)': General error`), y sin el `./` busca el archivo en su homedir.
+ * @param {{ run: (cmd: string, args: string[], opts: { cwd: string }) => Promise<{ code: number, stderr: string }>,
+ *           dir: string, keyring: string, signature: string, file: string }} opts
  * @returns {Promise<void>}
  */
-export async function verifySignature({ run, keyring, signature, file }) {
-  const { code, stderr } = await run('gpg', [
-    '--no-default-keyring',
-    '--keyring',
-    keyring,
-    '--verify',
-    signature,
-    file,
-  ]);
+export async function verifySignature({ run, dir, keyring, signature, file }) {
+  for (const nombre of [keyring, signature, file]) {
+    if (/[/\\]/.test(nombre)) {
+      throw new Error(`Se esperaba un nombre de archivo dentro de ${dir}, no una ruta: ${nombre}`);
+    }
+  }
+  const { code, stderr } = await run(
+    'gpg',
+    ['--no-default-keyring', '--keyring', `./${keyring}`, '--verify', signature, file],
+    { cwd: dir },
+  );
   if (code !== 0)
     throw new Error(`La firma de ${file} no verifica (gpg salió con ${code}): ${stderr}`);
 }
