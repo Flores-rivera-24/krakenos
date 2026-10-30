@@ -22,7 +22,11 @@ import { shutdownSignals } from '../../src/system/shutdown.js';
  */
 
 const AGENT_DIR = fileURLToPath(new URL('../..', import.meta.url));
-const TSX_CLI = fileURLToPath(new URL('../../node_modules/tsx/dist/cli.mjs', import.meta.url));
+// `node --import` y no el CLI de tsx: el CLI es un proceso padre que solo reenvía SIGINT/SIGTERM,
+// y un SIGHUP lo mataría a él antes de llegar al agente.
+const TSX_LOADER = fileURLToPath(
+  new URL('../../node_modules/tsx/dist/esm/index.mjs', import.meta.url),
+);
 
 function puertoLibre(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -53,13 +57,13 @@ async function esperarListo(port: number, hijo: ChildProcess, salida: () => stri
 }
 
 describe('señales de cierre por plataforma', () => {
-  it('en Linux y macOS: SIGINT y SIGTERM', () => {
-    expect(shutdownSignals('linux')).toEqual(['SIGINT', 'SIGTERM']);
-    expect(shutdownSignals('darwin')).toEqual(['SIGINT', 'SIGTERM']);
+  it('en Linux y macOS: SIGINT, SIGTERM y SIGHUP (cerrar la terminal)', () => {
+    expect(shutdownSignals('linux')).toEqual(['SIGINT', 'SIGTERM', 'SIGHUP']);
+    expect(shutdownSignals('darwin')).toEqual(['SIGINT', 'SIGTERM', 'SIGHUP']);
   });
 
-  it('en Windows se añade SIGBREAK (cierre de consola)', () => {
-    expect(shutdownSignals('win32')).toEqual(['SIGINT', 'SIGTERM', 'SIGBREAK']);
+  it('en Windows se añade SIGBREAK (Ctrl+Pausa); SIGHUP es cerrar la consola', () => {
+    expect(shutdownSignals('win32')).toEqual(['SIGINT', 'SIGTERM', 'SIGBREAK', 'SIGHUP']);
   });
 });
 
@@ -74,59 +78,63 @@ describe.skipIf(process.platform === 'win32')('cierre con SIGINT del agente real
     hijo = undefined;
   });
 
-  it('sale con 0 y deja el WAL volcado', { timeout: 90_000 }, async () => {
-    tmp = mkdtempSync(join(tmpdir(), 'krakenos-sigint-'));
-    const estado = join(tmp, 'estado');
-    mkdirSync(join(estado, 'prisma'), { recursive: true });
-    const keys = keyPathsFromDir(join(estado, 'keys'));
-    generateJwtKeys(keys);
-    const port = await puertoLibre();
+  it.each(['SIGINT', 'SIGHUP'] as const)(
+    'con %s sale con 0 y deja el WAL volcado',
+    { timeout: 90_000 },
+    async (senal) => {
+      tmp = mkdtempSync(join(tmpdir(), 'krakenos-sigint-'));
+      const estado = join(tmp, 'estado');
+      mkdirSync(join(estado, 'prisma'), { recursive: true });
+      const keys = keyPathsFromDir(join(estado, 'keys'));
+      generateJwtKeys(keys);
+      const port = await puertoLibre();
 
-    // Entorno MÍNIMO y explícito: nada del de los tests (su DATABASE_URL, NODE_ENV…).
-    const env: NodeJS.ProcessEnv = {
-      PATH: process.env.PATH,
-      HOME: tmp,
-      NODE_ENV: 'production',
-      PORT: String(port),
-      HOST: '127.0.0.1',
-      SERVE_WEB: 'false',
-      DRIVER_KIND: 'mock',
-      WEB_ORIGIN: 'http://localhost:5173',
-      KRAKENOS_DATA_DIR: estado,
-      KRAKENOS_APP_DIR: AGENT_DIR,
-      DATABASE_URL: 'file:./sigint.db', // relativa: cuelga de <KRAKENOS_DATA_DIR>/prisma
-      JWT_PRIVATE_KEY_PATH: keys.privatePath,
-      JWT_PUBLIC_KEY_PATH: keys.publicPath,
-    };
-    let salida = '';
-    // El cwd es el directorio temporal, NO apps/agent: lo que se prueba es que el agente
-    // ya no supone dónde arranca.
-    hijo = spawn(process.execPath, [TSX_CLI, join(AGENT_DIR, 'src/index.ts')], {
-      cwd: tmp,
-      env,
-      windowsHide: true,
-    });
-    hijo.stdout?.on('data', (d: Buffer) => (salida += d.toString()));
-    hijo.stderr?.on('data', (d: Buffer) => (salida += d.toString()));
-    const salio = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) =>
-      hijo!.once('exit', (code, signal) => resolve({ code, signal })),
-    );
+      // Entorno MÍNIMO y explícito: nada del de los tests (su DATABASE_URL, NODE_ENV…).
+      const env: NodeJS.ProcessEnv = {
+        PATH: process.env.PATH,
+        HOME: tmp,
+        NODE_ENV: 'production',
+        PORT: String(port),
+        HOST: '127.0.0.1',
+        SERVE_WEB: 'false',
+        DRIVER_KIND: 'mock',
+        WEB_ORIGIN: 'http://localhost:5173',
+        KRAKENOS_DATA_DIR: estado,
+        KRAKENOS_APP_DIR: AGENT_DIR,
+        DATABASE_URL: 'file:./sigint.db', // relativa: cuelga de <KRAKENOS_DATA_DIR>/prisma
+        JWT_PRIVATE_KEY_PATH: keys.privatePath,
+        JWT_PUBLIC_KEY_PATH: keys.publicPath,
+      };
+      let salida = '';
+      // El cwd es el directorio temporal, NO apps/agent: lo que se prueba es que el agente
+      // ya no supone dónde arranca.
+      hijo = spawn(process.execPath, ['--import', TSX_LOADER, join(AGENT_DIR, 'src/index.ts')], {
+        cwd: tmp,
+        env,
+        windowsHide: true,
+      });
+      hijo.stdout?.on('data', (d: Buffer) => (salida += d.toString()));
+      hijo.stderr?.on('data', (d: Buffer) => (salida += d.toString()));
+      const salio = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) =>
+        hijo!.once('exit', (code, signal) => resolve({ code, signal })),
+      );
 
-    await esperarListo(port, hijo, () => salida);
+      await esperarListo(port, hijo, () => salida);
 
-    const db = join(estado, 'prisma', 'sigint.db');
-    const wal = `${db}-wal`;
-    expect(existsSync(db), 'la base vive bajo KRAKENOS_DATA_DIR').toBe(true);
-    // Precondición: el WAL tiene contenido sin volcar. Si no, el test no probaría nada.
-    expect(existsSync(wal) && statSync(wal).size > 0, 'WAL con contenido antes de cerrar').toBe(
-      true,
-    );
+      const db = join(estado, 'prisma', 'sigint.db');
+      const wal = `${db}-wal`;
+      expect(existsSync(db), 'la base vive bajo KRAKENOS_DATA_DIR').toBe(true);
+      // Precondición: el WAL tiene contenido sin volcar. Si no, el test no probaría nada.
+      expect(existsSync(wal) && statSync(wal).size > 0, 'WAL con contenido antes de cerrar').toBe(
+        true,
+      );
 
-    hijo.kill('SIGINT');
-    const { code, signal } = await salio;
+      hijo.kill(senal);
+      const { code, signal } = await salio;
 
-    expect({ code, signal }, salida).toEqual({ code: 0, signal: null });
-    const walTrasCerrar = existsSync(wal) ? statSync(wal).size : 0;
-    expect(walTrasCerrar, 'sin -wal con contenido tras salir').toBe(0);
-  });
+      expect({ code, signal }, salida).toEqual({ code: 0, signal: null });
+      const walTrasCerrar = existsSync(wal) ? statSync(wal).size : 0;
+      expect(walTrasCerrar, 'sin -wal con contenido tras salir').toBe(0);
+    },
+  );
 });
