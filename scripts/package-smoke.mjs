@@ -9,12 +9,13 @@
  *
  * - Linux: se para con `SIGTERM`.
  * - Windows: Node no puede mandar Ctrl+C a un hijo, así que el lanzador se arranca con consola
- *   propia (`detached`) y `scripts/package/ctrlc.ps1` se la manda desde fuera. `taskkill /F` sobre
+ *   propia (`cmd /c start`, ver `lineaStartWindows`) y `scripts/package/ctrlc.ps1` se la manda
+ *   desde fuera. La salida va a un fichero de log, de donde se lee el pid de node. `taskkill /F` sobre
  *   node no vale: mata sin avisar y deja el WAL.
  */
 /* global AbortSignal */
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -71,20 +72,77 @@ async function esperarA(cond, ms, texto) {
   throw new Error(texto);
 }
 
+/**
+ * Argumentos (en un solo texto, para `windowsVerbatimArguments`) con los que `cmd.exe` abre
+ * una consola NUEVA y minimizada (`start`) que ejecuta el lanzador y vuelca su salida en `log`.
+ * Sin consola propia no hay a quién mandarle Ctrl+C: `spawn({ detached })` en Windows crea el
+ * proceso sin consola y `AttachConsole` falla. Las comillas dobles exteriores son las que `cmd /c` quita.
+ */
+export function lineaStartWindows(lanzador, log) {
+  return `/d /c start "krakenos-smoke" /min cmd.exe /d /c ""${lanzador}" > "${log}" 2>&1"`;
+}
+
+/** pid de node: pino escribe `"pid":N` en cada línea. `null` si el log aún no lo trae. */
+export function parsePidDeLog(texto) {
+  const m = /"pid":(\d+)/.exec(texto);
+  return m ? Number(m[1]) : null;
+}
+
+/** Borra una carpeta temporal sin tapar el error que la dejó ocupada: avisa y sigue. */
+function borrarSinTapar(ruta) {
+  try {
+    rmSync(ruta, { recursive: true, force: true });
+  } catch (e) {
+    console.error(`    no se pudo borrar ${ruta}: ${e.message}`);
+  }
+}
+
+function pidPadre(pid) {
+  const r = spawnSync(
+    'powershell.exe',
+    [
+      '-NoProfile',
+      '-Command',
+      `(Get-CimInstance Win32_Process -Filter 'ProcessId=${pid}').ParentProcessId`,
+    ],
+    { encoding: 'utf8' },
+  );
+  const n = Number((r.stdout ?? '').trim());
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
 /** Arranca el lanzador; devuelve lo necesario para sondearlo y pararlo. */
 function arrancar(pkg, env) {
   const lanzador = WIN ? join(pkg, 'krakenos.cmd') : join(pkg, 'bin', 'krakenos');
-  const hijo = WIN
-    ? spawn('cmd.exe', ['/d', '/c', lanzador], { env, detached: true, windowsHide: true })
-    : spawn(lanzador, [], { env });
-  const st = { salida: '', cerro: false, nodePid: WIN ? null : hijo.pid };
+  if (WIN) {
+    // El log vive fuera de la carpeta de datos, en su propia carpeta temporal.
+    const logDir = mkdtempSync(join(tmpdir(), 'krakenos-smoke-log-'));
+    const log = join(logDir, 'agente.log');
+    const hijo = spawn('cmd.exe', [lineaStartWindows(lanzador, log)], {
+      env,
+      windowsVerbatimArguments: true,
+      windowsHide: true,
+      stdio: 'ignore',
+    });
+    // El cmd de spawn sale enseguida con 0: no dice nada de si el agente vive.
+    const st = {
+      logDir,
+      log,
+      nodePid: null,
+      padrePid: null,
+      get salida() {
+        return existsSync(log) ? readFileSync(log, 'utf8') : '';
+      },
+      get cerro() {
+        return this.nodePid !== null && !vivo(this.nodePid);
+      },
+    };
+    return { hijo, st };
+  }
+  const hijo = spawn(lanzador, [], { env });
+  const st = { salida: '', cerro: false, nodePid: hijo.pid };
   const recoge = (d) => {
     st.salida += d.toString();
-    // pino escribe `"pid":N` en cada línea; en Windows el pid del spawn es el de cmd.exe.
-    if (WIN && st.nodePid === null) {
-      const m = /"pid":(\d+)/.exec(st.salida);
-      if (m) st.nodePid = Number(m[1]);
-    }
   };
   hijo.stdout.on('data', recoge);
   hijo.stderr.on('data', recoge);
@@ -95,6 +153,7 @@ function arrancar(pkg, env) {
 }
 
 async function sondear(url, st) {
+  if (WIN && st.nodePid === null) st.nodePid = parsePidDeLog(st.salida);
   const res = await fetch(url, { signal: AbortSignal.timeout(3000) }).catch(() => null);
   if (!res && st.cerro) throw new Error(`el agente salió antes de responder:\n${st.salida}`);
   return res;
@@ -102,7 +161,10 @@ async function sondear(url, st) {
 
 async function parar({ hijo, st }) {
   if (WIN) {
+    st.nodePid ??= parsePidDeLog(st.salida);
     if (st.nodePid === null) throw new Error(`no se vio el pid de node en el log:\n${st.salida}`);
+    // El padre de node es el cmd interior; hay que saberlo ANTES de que node salga.
+    st.padrePid = pidPadre(st.nodePid);
     const ps = spawnSync(
       'powershell.exe',
       [
@@ -123,8 +185,8 @@ async function parar({ hijo, st }) {
       ESPERA_PARADA_MS,
       `node (pid ${st.nodePid}) no salió tras Ctrl+C`,
     );
-    // El cmd envoltorio se queda en «Terminate batch job (Y/N)?»; node ya salió, así que /F es seguro.
-    spawnSync('taskkill', ['/PID', String(hijo.pid), '/T', '/F']);
+    // El cmd interior se queda en «Terminate batch job (Y/N)?»; node ya salió, así que /F es seguro.
+    if (st.padrePid !== null) spawnSync('taskkill', ['/PID', String(st.padrePid), '/T', '/F']);
   } else {
     hijo.kill('SIGTERM');
     await esperarA(() => st.cerro, ESPERA_PARADA_MS, 'el agente no salió tras SIGTERM');
@@ -133,12 +195,14 @@ async function parar({ hijo, st }) {
 
 /** Limpieza de último recurso si algo falló antes de parar con normalidad. */
 function matar({ hijo, st }) {
-  if (st.cerro) return;
   if (WIN) {
-    if (st.nodePid !== null && vivo(st.nodePid))
+    st.nodePid ??= parsePidDeLog(st.salida);
+    if (st.nodePid !== null && vivo(st.nodePid)) {
+      st.padrePid ??= pidPadre(st.nodePid);
       spawnSync('taskkill', ['/PID', String(st.nodePid), '/T', '/F']);
-    spawnSync('taskkill', ['/PID', String(hijo.pid), '/T', '/F']);
-  } else {
+    }
+    if (st.padrePid !== null) spawnSync('taskkill', ['/PID', String(st.padrePid), '/T', '/F']);
+  } else if (!st.cerro) {
     hijo.kill('SIGTERM');
   }
 }
@@ -169,6 +233,8 @@ async function ronda(etiqueta, pkg, env, port) {
   } catch (e) {
     matar(p);
     throw e;
+  } finally {
+    if (WIN) borrarSinTapar(p.st.logDir);
   }
 }
 
@@ -200,7 +266,7 @@ async function main() {
     console.log('==> findWalLeftovers: []');
     console.log('Smoke OK');
   } finally {
-    rmSync(datos, { recursive: true, force: true });
+    borrarSinTapar(datos);
   }
 }
 

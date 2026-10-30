@@ -23,7 +23,7 @@ import { relinkPnpmJunctions } from '../../../../scripts/package/relink.mjs';
 import { collectThirdPartyLicenses } from '../../../../scripts/package/licenses.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { findWalLeftovers } from '../../../../scripts/package-smoke.mjs';
+import { findWalLeftovers, lineaStartWindows, parsePidDeLog } from '../../../../scripts/package-smoke.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 // El @ts-expect-error solo cubre la linea siguiente: sin prettier-ignore Prettier parte el import
 // en varias lineas y el error de tipos queda fuera de su alcance.
@@ -410,5 +410,24 @@ describe('findWalLeftovers', () => {
     mkdirSync(join(base, 'prisma'), { recursive: true });
     writeFileSync(join(base, 'prisma', 'x.db'), '');
     expect(findWalLeftovers(base)).toEqual([]);
+  });
+});
+
+describe('lineaStartWindows', () => {
+  it('abre una consola propia con start /min y redirige el lanzador al log', () => {
+    expect(lineaStartWindows('C:\\Mi carpeta\\krakenos.cmd', 'C:\\tmp x\\agente.log')).toBe(
+      '/d /c start "krakenos-smoke" /min cmd.exe /d /c ""C:\\Mi carpeta\\krakenos.cmd" > "C:\\tmp x\\agente.log" 2>&1"',
+    );
+  });
+});
+
+describe('parsePidDeLog', () => {
+  it('saca el pid del primer "pid":N que escribe pino', () => {
+    expect(parsePidDeLog('basura\n{"level":30,"pid":4321,"hostname":"x"}\n{"pid":9}')).toBe(4321);
+  });
+
+  it('devuelve null si aun no hay ninguna linea con pid', () => {
+    expect(parsePidDeLog('arrancando...\n')).toBeNull();
+    expect(parsePidDeLog('')).toBeNull();
   });
 });
