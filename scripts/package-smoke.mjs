@@ -183,7 +183,9 @@ async function parar({ hijo, st }) {
         ],
         { encoding: 'utf8' },
       );
-      if (ps.status !== 0)
+      // 0xC000013A (STATUS_CONTROL_C_EXIT): Ctrl+Pausa también llega al propio powershell, que no lo ignora.
+      const murioPorElEvento = evento === 1 && ps.status === 0xc000013a;
+      if (ps.status !== 0 && !murioPorElEvento)
         throw new Error(`ctrlc.ps1 falló (${ps.status}): ${ps.stdout}${ps.stderr}`);
     };
     mandar(0);
