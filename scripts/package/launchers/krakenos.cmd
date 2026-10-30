@@ -11,7 +11,7 @@ rem Sin esto el agente no arranca: pino-pretty es devDependency y no viaja en el
 set "NODE_ENV=production"
 
 if not exist "%KRAKENOS_DATA_DIR%" mkdir "%KRAKENOS_DATA_DIR%"
-cd /d "%KRAKENOS_DATA_DIR%"
+cd /d "%KRAKENOS_DATA_DIR%" || exit /b 1
 
 "%PKG%\node\node.exe" "%PKG%\app\first-run.mjs"
 if errorlevel 1 exit /b %ERRORLEVEL%
