@@ -180,15 +180,18 @@ function SceneEditor({
     toast.info(t('scenes.captured'));
   };
 
-  const buildActions = (): SceneAction[] =>
-    devices
+  const buildActions = (): SceneAction[] => [
+    ...devices
       .filter((d) => draft[d.id]?.include)
       .map((d) => {
         const row = rowFor(d);
         const action: SceneAction = { deviceId: d.id, on: row.on };
         if (d.kind === 'light' && row.brightness !== null) action.brightness = row.brightness;
         return action;
-      });
+      }),
+    // Lo que no vino en la lista (carga fallida, aparato desaparecido) no se borra al guardar.
+    ...(scene?.actions ?? []).filter((a) => !devices.some((d) => d.id === a.deviceId)),
+  ];
 
   const save = async () => {
     const trimmed = name.trim();
