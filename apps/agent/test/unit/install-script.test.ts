@@ -428,6 +428,34 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     expect(nodesource).toContain('set -o pipefail');
   });
 
+  it('install.sh carga la biblioteca y no redefine sus funciones', () => {
+    const src = readFileSync(SCRIPT, 'utf8');
+    expect(src).toMatch(/source .*krakenos-system\.sh/);
+    const movidas = [
+      'install_sudoers',
+      'ensure_service_user',
+      'tls_group',
+      'prepare_tls_dirs',
+      'root_owned_chain',
+      'set_tls_env_paths',
+      'setup_tls_tailscale',
+      'install_tls_renew_timer',
+      'local_hostname',
+      'install_avahi',
+      'setup_tls_local',
+      'install_tls_local_timer',
+      'resolve_tls_mode',
+      'setup_tls',
+      'tls_source_ok',
+      'copy_tls_file',
+    ];
+    for (const n of movidas) {
+      expect(src, `${n} debe vivir solo en la biblioteca`).not.toMatch(
+        new RegExp(`^${n}\\(\\)`, 'm'),
+      );
+    }
+  });
+
   it('rechaza rutas con metacaracteres o relativas (se interpolan en bash -c)', async () => {
     for (const dir of ["/tmp/kraken'x", '/tmp/kraken x', 'relativa/kraken', '/tmp/kraken$HOME']) {
       const { code, stderr } = await runInstaller(['--dry-run', '--yes', '--dir', dir]);

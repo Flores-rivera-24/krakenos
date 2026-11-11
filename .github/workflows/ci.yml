@@ -556,5 +556,6 @@ jobs:
           shellcheck --version
           shellcheck --severity=warning \
             scripts/install.sh \
+            scripts/lib/krakenos-system.sh \
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh
