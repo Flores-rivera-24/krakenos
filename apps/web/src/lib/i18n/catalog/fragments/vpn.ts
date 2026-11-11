@@ -99,6 +99,9 @@ export const esVpn = {
 
   // --- Barrido de copy a pelo (componentes) ---
   'vpn.peerRowAria': 'Ver el peer {name}',
+  'vpn.adminOnly': 'Solo el administrador ve la VPN y sus dispositivos',
+  'vpn.adminOnlyDesc':
+    'La VPN decide quién entra a la red de casa desde fuera, así que verla y cambiarla se reserva a quien administra la instalación.',
 } as const;
 
 registrarFragmento(esVpn);

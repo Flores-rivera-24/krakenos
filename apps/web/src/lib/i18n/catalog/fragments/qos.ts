@@ -52,6 +52,9 @@ export const esQos = {
   'qos.createError': 'No se pudo crear la regla',
   'qos.ruleRemoved': 'Regla eliminada',
   'qos.removeError': 'No se pudo eliminar',
+  'qos.adminOnly': 'Solo el administrador ve las reglas de QoS',
+  'qos.adminOnlyDesc':
+    'Las reglas deciden qué prioridad y qué ancho de banda tiene cada dispositivo de la red de casa, así que verlas y cambiarlas se reserva a quien administra la instalación.',
 } as const;
 
 registrarFragmento(esQos);
