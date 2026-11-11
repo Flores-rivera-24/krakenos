@@ -1,10 +1,23 @@
 use std::path::PathBuf;
 use url::Url;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub struct Config {
     pub origin: Option<Url>,
     pub setup_token: Option<String>,
+}
+
+// A mano para que el token de un solo uso no llegue nunca a un log.
+impl std::fmt::Debug for Config {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Config")
+            .field("origin", &self.origin)
+            .field(
+                "setup_token",
+                &self.setup_token.as_ref().map(|_| "<redactado>"),
+            )
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,7 +71,10 @@ pub fn resolver_config(args: &[String], fichero: Option<&str>) -> Result<Config,
         (None, None) => None,
     };
     let origin = origen.as_deref().map(parsear_origen).transpose()?;
-    Ok(Config { origin, setup_token })
+    Ok(Config {
+        origin,
+        setup_token,
+    })
 }
 
 pub fn url_de_setup(origin: &Url, token: &str) -> Url {
@@ -122,6 +138,15 @@ mod tests {
                 otro => panic!("esperaba Ilegible, salió {otro:?}"),
             }
         }
+    }
+
+    #[test]
+    fn debug_no_imprime_el_token() {
+        let c = resolver_config(&args(&["--setup-token", "secreto-123"]), None).unwrap();
+        let salida = format!("{:?}", c);
+        assert!(!salida.contains("secreto-123"));
+        assert!(salida.contains("<redactado>"));
+        assert!(format!("{:?}", Config::default()).contains("None"));
     }
 
     #[test]

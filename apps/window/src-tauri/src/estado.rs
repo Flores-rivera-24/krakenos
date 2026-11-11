@@ -121,7 +121,12 @@ mod tests {
         let previo = Destino::Local("no-responde");
         let d = siguiente_destino(&previo, Some(&ruta), &Estado::Activo, Some(&o));
         assert_eq!(d, Some(Destino::Agente(ruta)));
-        let d = siguiente_destino(&Destino::Local("no-responde"), None, &Estado::Activo, Some(&o));
+        let d = siguiente_destino(
+            &Destino::Local("no-responde"),
+            None,
+            &Estado::Activo,
+            Some(&o),
+        );
         assert_eq!(d, Some(Destino::Agente(o)));
     }
 
@@ -129,7 +134,10 @@ mod tests {
     fn mismo_estado_no_navega() {
         let o = u("https://casa.local:3001/");
         let en_agente = Destino::Agente(u("https://casa.local:3001/devices"));
-        assert_eq!(siguiente_destino(&en_agente, None, &Estado::Activo, Some(&o)), None);
+        assert_eq!(
+            siguiente_destino(&en_agente, None, &Estado::Activo, Some(&o)),
+            None
+        );
         let local = Destino::Local("no-responde");
         let nuevo = Estado::NoResponde(Motivo::TiempoAgotado);
         let d = siguiente_destino(&local, None, &nuevo, Some(&o));
@@ -140,7 +148,12 @@ mod tests {
     fn sin_origen_va_a_sin_configurar() {
         let d = siguiente_destino(&Destino::Local("no-responde"), None, &Estado::Activo, None);
         assert_eq!(d, Some(Destino::Local("sin-configurar")));
-        let d = siguiente_destino(&Destino::Local("sin-configurar"), None, &Estado::Activo, None);
+        let d = siguiente_destino(
+            &Destino::Local("sin-configurar"),
+            None,
+            &Estado::Activo,
+            None,
+        );
         assert_eq!(d, None);
     }
 }
