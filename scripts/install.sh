@@ -94,14 +94,39 @@ SUMMARY=()
 # `chown -R` posterior NO cambia el modo (AUD3-06).
 umask 077
 
-# Biblioteca compartida (sudoers validado y TLS): vive junto al script, también en
-# /opt/krakenos/scripts cuando se ejecuta con --update. Su contrato está en su cabecera.
-# shellcheck source=scripts/lib/krakenos-system.sh
-source "$(dirname -- "$(readlink -f -- "$0")")/lib/krakenos-system.sh"
+# Biblioteca compartida (sudoers validado y TLS). Su contrato está en su cabecera.
+# Se resuelve en dos pasos: (a) junto al script, también en /opt/krakenos/scripts con
+# --update; (b) con `curl | sudo bash` el script llega por stdin ($0 = bash) y no hay
+# nada al lado: entonces la carga load_system_lib, cuando el código ya está descargado.
+SYSTEM_LIB_LOADED=0
+_dir="$(dirname -- "$(readlink -f -- "$0" 2> /dev/null || printf '%s' "$0")")"
+if [[ -f "$_dir/lib/krakenos-system.sh" ]]; then
+  # shellcheck source=scripts/lib/krakenos-system.sh
+  source "$_dir/lib/krakenos-system.sh"
+  SYSTEM_LIB_LOADED=1
+fi
+unset _dir
 
 log() { printf '==> %s\n' "$*"; }
 warn() { printf 'AVISO: %s\n' "$*" >&2; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+
+# Carga tardía de la biblioteca (instalación por stdin): del código ya descargado en
+# $INSTALL_DIR; en dry-run, que no descarga nada, de la copia que indica --from-local.
+load_system_lib() {
+  [[ $SYSTEM_LIB_LOADED -eq 1 ]] && return 0
+  local f
+  for f in "$INSTALL_DIR/scripts/lib/krakenos-system.sh" \
+    "${FROM_LOCAL:+$FROM_LOCAL/scripts/lib/krakenos-system.sh}"; do
+    if [[ -n "$f" && -f "$f" ]]; then
+      # shellcheck source=scripts/lib/krakenos-system.sh
+      source "$f"
+      SYSTEM_LIB_LOADED=1
+      return 0
+    fi
+  done
+  die "falta scripts/lib/krakenos-system.sh en $INSTALL_DIR: el código descargado no es una versión con esta biblioteca"
+}
 
 # Ejecuta el comando, o lo imprime como plan con --dry-run. Todo lo que MUTA el
 # sistema pasa por aquí; las comprobaciones de solo-lectura corren siempre.
@@ -735,6 +760,7 @@ do_update() {
     log "    ejecutando como $SERVICE_USER (no como root: no rompe los permisos del árbol)"
   fi
   run bash -c "cd '$INSTALL_DIR/apps/agent' && ${as_user}node dist/update-runner.js '${version:-0.0.0}'"
+  load_system_lib # tras el update-runner el árbol ya es el nuevo (instalación por stdin)
   refresh_tls_after_update
   print_summary
   log "Resultado en $INSTALL_DIR/apps/agent/var/update-result.json (y en la card de Ajustes → Sistema)."
@@ -846,6 +872,7 @@ main() {
   ensure_node
   ensure_pnpm
   fetch_source
+  load_system_lib
   build_and_configure
   # TLS antes de arrancar el servicio: el agente lee el cert al iniciar, así que
   # emitirlo después dejaría la primera ejecución en HTTP hasta el siguiente

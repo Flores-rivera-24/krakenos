@@ -456,6 +456,37 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     }
   });
 
+  it('install.sh por stdin (curl | bash) no falla al cargar la biblioteca', async () => {
+    // Con el script en stdin `$0` es `bash`: no hay lib/ al lado y la biblioteca se carga
+    // tras fetch_source (en dry-run, de la copia local que --from-local indica).
+    const raiz = fileURLToPath(new URL('../../../../', import.meta.url));
+    const { code, stdout, stderr } = await new Promise<{
+      code: number;
+      stdout: string;
+      stderr: string;
+    }>((resolvePromise) => {
+      const child = execFile(
+        'bash',
+        ['-s', '--', '--dry-run', '--yes', '--dir', '/tmp/kraken-x', '--from-local', raiz],
+        { env: { ...process.env, ...SUPPORTED_ENV }, cwd: tmpdir() },
+        (err, so, se) =>
+          resolvePromise({
+            code:
+              err && typeof (err as { code?: unknown }).code === 'number'
+                ? (err as { code: number }).code
+                : 0,
+            stdout: so,
+            stderr: se,
+          }),
+      );
+      child.stdin?.end(readFileSync(SCRIPT));
+    });
+    expect(stderr).not.toContain('No such file');
+    expect(stderr).not.toContain('krakenos-system.sh');
+    expect(code).toBe(0);
+    expect(stdout).toContain('local-ca.js');
+  });
+
   it('rechaza rutas con metacaracteres o relativas (se interpolan en bash -c)', async () => {
     for (const dir of ["/tmp/kraken'x", '/tmp/kraken x', 'relativa/kraken', '/tmp/kraken$HOME']) {
       const { code, stderr } = await runInstaller(['--dry-run', '--yes', '--dir', dir]);
