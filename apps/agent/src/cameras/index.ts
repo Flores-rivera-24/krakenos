@@ -1,12 +1,19 @@
 import type { CameraKind, CameraManager } from '@krakenos/types';
 import { safeFetch } from '../net/egress.js';
 import { createFfmpegExec, MOTION_FRAME_TIMEOUT_MS } from './ffmpeg.js';
-import { FrigateCameraManager } from './frigate.cameras.js';
+import { FrigateCameraManager, type FrigateFetch } from './frigate.cameras.js';
 import { MockCameraManager } from './mock.cameras.js';
 import { NoneCameraManager } from './none.cameras.js';
 import { RtspCameraManager } from './rtsp.cameras.js';
 import { detectDeployMode } from '../system/deploy-mode.js';
 import { ffmpegSetupStep } from './ffmpeg-capability.js';
+
+/** Tope de una petición a Frigate: un clip o un segmento tarda más que el general de `safeFetch`. */
+export const FRIGATE_DOWNLOAD_TIMEOUT_MS = 120_000;
+
+/** Toda petición saliente pasa por la política de egress (SSRF); también las JSON pequeñas comparten el tope. */
+export const frigateFetch: FrigateFetch = (url) =>
+  safeFetch(url, { signal: AbortSignal.timeout(FRIGATE_DOWNLOAD_TIMEOUT_MS) });
 
 /** Config para la fuente RTSP real (`kind: 'rtsp'`). */
 export interface RtspCameraConfig {
@@ -94,8 +101,7 @@ export function createCameraManager(config: CameraConfig): CameraManager {
       return new FrigateCameraManager({
         baseUrl: frigate.url,
         go2rtcUrl: frigate.go2rtcUrl,
-        // Toda petición saliente pasa por la política de egress (SSRF).
-        fetchImpl: (url) => safeFetch(url),
+        fetchImpl: frigateFetch,
       });
     }
     default: {
