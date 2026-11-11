@@ -203,6 +203,27 @@ describe.skipIf(WIN)('bin/krakenos (Linux)', () => {
     expect(existsSync(join(datos, 'keys', 'jwt-private.pem'))).toBe(true);
   });
 
+  it('arranca llamado por un enlace simbólico', () => {
+    mkdirSync(join(raiz, 'usr', 'bin'), { recursive: true });
+    const enlace = join(raiz, 'usr', 'bin', 'krakenos');
+    symlinkSync(join(pkg, 'bin', 'krakenos'), enlace);
+    const r = spawnSync(enlace, [], {
+      env: { ...process.env, HOME: join(raiz, 'home'), RECORD_DIR: registro },
+      encoding: 'utf8',
+    });
+    expect(r.status).toBe(7);
+    expect(leerIndex().env.KRAKENOS_APP_DIR).toBe(realpathSync(join(pkg, 'app', 'agent')));
+  });
+
+  it('sin HOME ni KRAKENOS_DATA_DIR falla diciendo qué falta', () => {
+    const r = spawnSync(join(pkg, 'bin', 'krakenos'), [], {
+      env: { PATH: process.env.PATH ?? '', RECORD_DIR: registro },
+      encoding: 'utf8',
+    });
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/KRAKENOS_DATA_DIR/);
+  });
+
   it('sin variables: modo package, producción, cwd = datos, y el código de salida de index.js', () => {
     const r = lanzar();
     expect(r.status).toBe(7);
