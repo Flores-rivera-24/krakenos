@@ -74,7 +74,11 @@ import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
 import { PushService } from './modules/push/push.service.js';
 import { clearStaleSetupClaim, setupRoutes } from './modules/setup/setup.routes.js';
-import { setupToken } from './modules/setup/setup-token.js';
+import {
+  removeSetupTokenFile,
+  setupToken,
+  writeSetupTokenFile,
+} from './modules/setup/setup-token.js';
 import { explicitOrigin, isLoopbackHost, resolveSetupUrl } from './modules/setup/setup-url.js';
 import { accessRequestsRoutes, invitationsRoutes } from './modules/onboarding/onboarding.routes.js';
 import { usersRoutes } from './modules/users/users.routes.js';
@@ -118,7 +122,13 @@ import { registerErrorHandler } from './plugins/error-handler.js';
 import { serializarPeticion } from './observability/log-redact.js';
 
 /** Construye la instancia de Fastify con todos los plugins y rutas. */
-export async function buildServer(): Promise<FastifyInstance> {
+export interface BuildServerOptions {
+  /** Fichero del token de setup; por defecto el del estado real. Los tests inyectan un temporal. */
+  setupTokenFile?: string;
+}
+
+export async function buildServer(opts: BuildServerOptions = {}): Promise<FastifyInstance> {
+  const setupTokenFile = opts.setupTokenFile ?? agentPaths().setupTokenFile;
   const logger = {
     level: env.isProd ? 'info' : 'debug',
     transport: env.isProd ? undefined : { target: 'pino-pretty' },
@@ -259,7 +269,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   if (telegram.enabled) app.log.info('[alerts] alertas por Telegram habilitadas (bot configurado)');
 
   // Módulos del MVP.
-  await app.register(setupRoutes, { prefix: '/api/setup' });
+  await app.register(setupRoutes, { prefix: '/api/setup', setupTokenFile });
   await app.register(authRoutes, { prefix: '/api/auth' });
   // Tokens personales de API con scopes (US-174): autoservicio, gestión session-only.
   await app.register(tokensRoutes, { prefix: '/api/tokens' });
@@ -753,6 +763,9 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
 
     const token = setupToken.ensure();
+    await writeSetupTokenFile(setupTokenFile, token).catch((err: unknown) =>
+      app.log.warn({ err }, 'No se pudo escribir el fichero del token de setup'),
+    );
     // El origen solo cuenta si `WEB_ORIGIN` está fijado de verdad (env.webOrigin
     // trae un valor por defecto de dev que no distingue «fijado» de «ausente»).
     const setupUrl = resolveSetupUrl({
@@ -783,6 +796,10 @@ export async function buildServer(): Promise<FastifyInstance> {
     }
     out += `\n[setup] (token de configuración: ${token})\n\n`;
     process.stdout.write(out);
+  } else {
+    await removeSetupTokenFile(setupTokenFile).catch((err: unknown) =>
+      app.log.warn({ err }, 'No se pudo borrar el fichero del token de setup'),
+    );
   }
 
   // Sirve el frontend compilado en el mismo puerto (si está activado y construido).

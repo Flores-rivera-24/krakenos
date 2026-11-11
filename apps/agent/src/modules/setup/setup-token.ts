@@ -1,4 +1,5 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { chmod, rm, writeFile } from 'node:fs/promises';
 
 /**
  * Token de configuración out-of-band para `/setup/init` (US-81, F10).
@@ -46,3 +47,14 @@ export const setupToken = {
     token = null;
   },
 };
+
+/** Copia el token a un fichero solo del servicio (0600): el postinst de un paquete lo lee sin consola. */
+export async function writeSetupTokenFile(path: string, token: string): Promise<void> {
+  await writeFile(path, `${token}\n`, { mode: 0o600 });
+  // `mode` solo aplica al crear: si el fichero ya existía, se aprieta aparte.
+  await chmod(path, 0o600);
+}
+
+export async function removeSetupTokenFile(path: string): Promise<void> {
+  await rm(path, { force: true });
+}

@@ -156,6 +156,8 @@ export interface BuildTestAppOptions {
    * las claves de desarrollo.
    */
   restoreStagingDir?: string;
+  /** Fichero del token de setup; por defecto un temporal. NUNCA el real (`<data>/setup-token`). */
+  setupTokenFile?: string;
   /** Certificado público de la CA local (`GET /api/system/ca-cert`); por defecto el de `env`. */
   caCertPath?: string;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
@@ -220,7 +222,11 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
     // Push: decorado como en producción (las claves VAPID se generan al vuelo).
     const pushService = new PushService(app);
     app.decorate('push', pushService);
-    await app.register(setupRoutes, { prefix: '/api/setup' });
+    await app.register(setupRoutes, {
+      prefix: '/api/setup',
+      setupTokenFile:
+        opts.setupTokenFile ?? join(mkdtempSync(join(tmpdir(), 'krakenos-setup-')), 'setup-token'),
+    });
     await app.register(authRoutes, { prefix: '/api/auth' });
     await app.register(tokensRoutes, { prefix: '/api/tokens' });
     await app.register(usersRoutes, { prefix: '/api/users' });

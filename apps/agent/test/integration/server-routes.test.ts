@@ -1,7 +1,14 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, describe, expect, it } from 'vitest';
 import { buildServer } from '../../src/server.js';
 import { buildTestApp } from '../helpers/app.js';
+
+/** El arranque real escribe el token de setup: nunca en el estado de desarrollo. */
+const tokenTemporal = (): string =>
+  join(mkdtempSync(join(tmpdir(), 'krakenos-setup-')), 'setup-token');
 
 /**
  * AUD-21: el cableado REAL (`buildServer`) nunca se ejercitaba en unit/integración
@@ -20,7 +27,7 @@ describe('paridad de rutas server real ↔ test-app (AUD-21)', () => {
   });
 
   it('el test-app cubre todas las rutas /api del servidor real', async () => {
-    real = await buildServer();
+    real = await buildServer({ setupTokenFile: tokenTemporal() });
     testApp = await buildTestApp({ routes: true });
 
     const routesOf = (app: FastifyInstance): Set<string> => {
@@ -80,7 +87,7 @@ describe('paridad de rutas server real ↔ test-app (AUD-21)', () => {
       await seeder.close();
     }
 
-    const arrancado = await buildServer();
+    const arrancado = await buildServer({ setupTokenFile: tokenTemporal() });
     try {
       const candado = await arrancado.prisma.setting.findUnique({
         where: { key: 'setup.claimed' },
