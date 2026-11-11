@@ -52,6 +52,36 @@ describe('useLectura', () => {
     expect(leer).toHaveBeenCalledTimes(2);
   });
 
+  it('reintentar limpia el fallo mientras vuelve a pedir', async () => {
+    let resolver: (v: string) => void = () => {};
+    const leer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('x'))
+      .mockReturnValueOnce(new Promise<string>((r) => (resolver = r)));
+    const { result } = renderHook(() => useLectura(leer, []));
+    await waitFor(() => expect(result.current.failed).toBe(true));
+    act(() => result.current.reintentar());
+    expect(result.current.failed).toBe(false);
+    expect(result.current.loading).toBe(true);
+    await act(async () => resolver('ok'));
+    await waitFor(() => expect(result.current.data).toBe('ok'));
+    expect(result.current.failed).toBe(false);
+  });
+
+  it('dos reintentos seguidos no lanzan dos peticiones en vuelo', async () => {
+    const leer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('x'))
+      .mockReturnValue(new Promise<string>(() => {}));
+    const { result } = renderHook(() => useLectura(leer, []));
+    await waitFor(() => expect(result.current.failed).toBe(true));
+    act(() => {
+      result.current.reintentar();
+      result.current.reintentar();
+    });
+    expect(leer).toHaveBeenCalledTimes(2);
+  });
+
   it('reintentar que vuelve a fallar: failed sigue true y loading vuelve a false', async () => {
     const leer = vi.fn().mockRejectedValue(new Error('x'));
     const { result } = renderHook(() => useLectura(leer, []));
