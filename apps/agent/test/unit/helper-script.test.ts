@@ -4,6 +4,21 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { FirewallRule } from '@krakenos/types';
+import {
+  iptablesAppendArgsForRule,
+  iptablesCheckLinkArgs,
+  iptablesFlushArgs,
+  iptablesLinkArgs,
+  iptablesNewChainArgs,
+} from '../../src/firewall/iptables.helpers.js';
+import {
+  tcFilterIpArgs,
+  tcLeafClassArgs,
+  tcQdiscAddRootArgs,
+  tcQdiscDelRootArgs,
+  tcRootClassArgs,
+} from '../../src/qos/tc.helpers.js';
 
 const SCRIPT = fileURLToPath(new URL('../../scripts/krakenos-helper.sh', import.meta.url));
 
@@ -251,5 +266,73 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
       expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth0', 'root'], scope)).code).toBe(64);
       expect((await runHelper(['wg', 'show', 'wg0', 'dump'], scope)).code).toBe(64);
     });
+  });
+});
+
+describe('krakenos-helper lista cerrada de argumentos', () => {
+  it('rechaza opciones que cargan código o cambian de tabla', async () => {
+    const malos: string[][] = [
+      ['iptables', '-A', 'KRAKENOS', '-M', '/tmp/x', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '--modprobe=/tmp/x', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '-tnat', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '--table=nat', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '--tab', 'nat', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '-m', 'osf', '-j', 'DROP'],
+      ['iptables', '-A', 'KRAKENOS', '-j', 'LOG'],
+      ['tc', 'filter', 'add', 'dev', 'eth0', 'bpf', 'obj', '/tmp/x.o'],
+      ['tc', 'filter', 'add', 'dev', 'eth0', 'u32', 'action', 'mirred'],
+      ['tc', '-b', '/tmp/f', 'qdisc', 'add', 'dev', 'eth0'],
+      ['tc', 'qdisc', 'add', 'dev', 'eth0', 'root', '-batch', '/tmp/f'],
+      ['tc', 'filter', 'add', 'dev', 'eth0', 'object-file', '/tmp/x.o'],
+      ['tc', 'qdisc', 'add', 'dev', 'eth0', 'exec', '/tmp/x'],
+      ['tc', 'qdisc', 'add', 'dev', 'eth0', '-force'],
+    ];
+    for (const argv of malos) {
+      expect((await runHelper(argv)).code, argv.join(' ')).toBe(64);
+    }
+  });
+
+  it('acepta todo lo que emiten los constructores', async () => {
+    const reglas: FirewallRule[] = [];
+    for (const protocol of ['tcp', 'udp', 'any'] as const) {
+      for (const action of ['allow', 'block'] as const) {
+        for (const extra of [
+          { source: null, destination: null, port: null },
+          { source: '192.168.1.10', destination: null, port: 443 },
+          { source: '192.168.1.0/24', destination: '10.0.0.5', port: 22 },
+        ]) {
+          reglas.push({
+            id: `r_${protocol}-${action}`,
+            name: 'x',
+            action,
+            protocol,
+            enabled: true,
+            priority: 1,
+            ...extra,
+          } as FirewallRule);
+        }
+      }
+    }
+    const ipt = [
+      iptablesNewChainArgs('KRAKENOS'),
+      iptablesFlushArgs('KRAKENOS'),
+      iptablesCheckLinkArgs('KRAKENOS'),
+      iptablesLinkArgs('KRAKENOS'),
+      ...reglas.flatMap((r) => iptablesAppendArgsForRule('KRAKENOS', r)),
+    ];
+    const tc = [
+      tcQdiscDelRootArgs('eth0'),
+      tcQdiscAddRootArgs('eth0', 9999),
+      tcRootClassArgs('eth0', 100000),
+      tcLeafClassArgs('eth0', 10, 5000, 4),
+      tcFilterIpArgs('eth0', 4, '192.168.1.20', 10),
+      tcFilterIpArgs('eth0', 1, '192.168.1.0/24', 11),
+    ];
+    expect(ipt.length).toBeGreaterThanOrEqual(8);
+    expect(tc.length).toBeGreaterThanOrEqual(4);
+    // Los constructores anteponen el binario (`iptables`/`tc`): es el argv del helper.
+    for (const argv of [...ipt, ...tc]) {
+      expect((await runHelper(argv)).code, argv.join(' ')).toBe(0);
+    }
   });
 });
