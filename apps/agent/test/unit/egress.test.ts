@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, Socket } from 'node:net';
 import { lookup } from 'node:dns/promises';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
   assertHostAllowed,
   assertUrlAllowed,
   blockedReason,
+  SAFE_FETCH_TIMEOUT_MS,
   extractHost,
   safeFetch,
 } from '../../src/net/egress.js';
@@ -312,5 +313,164 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
   it('respeta la política: el mismo servidor loopback se bloquea en modo estricto', async () => {
     await expect(safeFetch(url('/ok'), {}, STRICT)).rejects.toBeInstanceOf(EgressBlockedError);
     expect(hits).toEqual([]); // ni se intentó la conexión
+  });
+});
+
+describe('safeFetch: credenciales entre orígenes y tope de tiempo', () => {
+  interface Recibida {
+    method?: string;
+    url?: string;
+    headers: Record<string, string | string[] | undefined>;
+    body: string;
+  }
+  let a: Server;
+  let b: Server;
+  let colgado: Server;
+  let urlA = '';
+  let urlB = '';
+  let urlColgado = '';
+  const enA: Recibida[] = [];
+  const enB: Recibida[] = [];
+  const sockets = new Set<Socket>();
+
+  const escucha = async (s: Server): Promise<string> => {
+    await new Promise<void>((resolve) => s.listen(0, '127.0.0.1', resolve));
+    return `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+  };
+  const registra = (
+    dest: Recibida[],
+    respuesta: (r: Recibida) => [number, Record<string, string>],
+  ) =>
+    createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (c: Buffer) => chunks.push(c));
+      req.on('end', () => {
+        const r: Recibida = {
+          method: req.method,
+          url: req.url,
+          headers: req.headers,
+          body: Buffer.concat(chunks).toString(),
+        };
+        dest.push(r);
+        const [status, headers] = respuesta(r);
+        res.writeHead(status, headers);
+        res.end('ok');
+      });
+    });
+
+  beforeAll(async () => {
+    b = registra(enB, () => [200, {}]);
+    urlB = await escucha(b);
+    a = registra(enA, (r) => {
+      if (r.url === '/otro-origen') return [302, { location: `${urlB}/destino` }];
+      if (r.url === '/otro-origen-307') return [307, { location: `${urlB}/destino` }];
+      if (r.url === '/mismo-origen') return [302, { location: '/otra' }];
+      if (r.url === '/mismo-origen-307') return [307, { location: '/otra' }];
+      return [200, {}];
+    });
+    urlA = await escucha(a);
+    colgado = createServer(() => {
+      /* acepta y nunca contesta */
+    });
+    colgado.on('connection', (s) => {
+      sockets.add(s);
+      s.on('close', () => sockets.delete(s));
+    });
+    urlColgado = await escucha(colgado);
+  });
+
+  afterAll(async () => {
+    for (const s of sockets) s.destroy();
+    await Promise.all([a, b, colgado].map((s) => new Promise<void>((r) => s.close(() => r()))));
+  });
+
+  beforeEach(() => {
+    enA.length = 0;
+    enB.length = 0;
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const conCredenciales = (): RequestInit => ({
+    method: 'POST',
+    headers: {
+      authorization: 'Basic x',
+      cookie: 's=1',
+      'x-api-key': 'k',
+      'proxy-authorization': 'p',
+      'x-otra': 'queda',
+    },
+    body: 'secreto',
+  });
+
+  for (const ruta of ['/otro-origen', '/otro-origen-307']) {
+    it(`no reenvía credenciales ni cuerpo a otro origen (${ruta})`, async () => {
+      await safeFetch(`${urlA}${ruta}`, conCredenciales(), LENIENT);
+      expect(enA[0]?.body).toBe('secreto'); // el primer salto sí las lleva
+      expect(enB).toHaveLength(1);
+      const r = enB[0]!;
+      expect(r.method).toBe('GET');
+      expect(r.body).toBe('');
+      for (const h of ['authorization', 'cookie', 'x-api-key', 'proxy-authorization']) {
+        expect(r.headers[h]).toBeUndefined();
+      }
+      expect(r.headers['x-otra']).toBe('queda');
+    });
+  }
+
+  it('no hereda el dispatcher en un salto a otro origen', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: new Headers({ location: 'http://8.8.4.4/x' }),
+      } as Response)
+      .mockResolvedValueOnce({ status: 200, headers: new Headers() } as Response);
+    const dispatcher = { marca: 'lan' };
+    await safeFetch('http://8.8.8.8/', { dispatcher } as unknown as RequestInit, LENIENT);
+    const [primera, segunda] = fetchSpy.mock.calls.map((c) => c[1] as Record<string, unknown>);
+    expect(primera?.dispatcher).toBe(dispatcher);
+    expect(segunda).not.toHaveProperty('dispatcher');
+  });
+
+  it('conserva las cabeceras en una redirección del mismo origen', async () => {
+    await safeFetch(`${urlA}/mismo-origen`, conCredenciales(), LENIENT);
+    expect(enA.map((r) => r.url)).toEqual(['/mismo-origen', '/otra']);
+    expect(enA[1]?.headers.authorization).toBe('Basic x');
+    expect(enA[1]?.headers['x-api-key']).toBe('k');
+    expect(enA[1]?.method).toBe('GET'); // 302 → GET sin cuerpo
+    expect(enA[1]?.body).toBe('');
+  });
+
+  it('un 307 del mismo origen conserva método y cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-origen-307`, conCredenciales(), LENIENT);
+    expect(enA[1]?.method).toBe('POST');
+    expect(enA[1]?.body).toBe('secreto');
+    expect(enA[1]?.headers.authorization).toBe('Basic x');
+  });
+
+  it('corta una petición que no responde (signal propio de 200 ms)', async () => {
+    const t0 = Date.now();
+    await expect(
+      safeFetch(urlColgado, { signal: AbortSignal.timeout(200) }, LENIENT),
+    ).rejects.toThrow();
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+
+  it('sin signal usa SAFE_FETCH_TIMEOUT_MS y aborta al llegar al tope', async () => {
+    expect(SAFE_FETCH_TIMEOUT_MS).toBe(10_000);
+    const real = AbortSignal.timeout.bind(AbortSignal);
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => real(150));
+    await expect(safeFetch(urlColgado, {}, LENIENT)).rejects.toThrow();
+    expect(spy).toHaveBeenCalledWith(SAFE_FETCH_TIMEOUT_MS);
+  });
+
+  it('respeta el signal del llamante: no lo pisa con el del tope', async () => {
+    const spy = vi.spyOn(AbortSignal, 'timeout');
+    const ctl = new AbortController();
+    const motivo = new Error('cancelado por el llamante');
+    setTimeout(() => ctl.abort(motivo), 50);
+    await expect(safeFetch(urlColgado, { signal: ctl.signal }, LENIENT)).rejects.toBe(motivo);
+    expect(spy).not.toHaveBeenCalled();
   });
 });
