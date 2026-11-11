@@ -1,0 +1,12 @@
+{
+  "name": "@krakenos/window",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ventana de escritorio de KrakenOS para Windows (Tauri 2)",
+  "scripts": {
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.12.4"
+  }
+}

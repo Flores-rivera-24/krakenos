@@ -93,3 +93,6 @@ apps/*/coverage/
 
 # Metadatos de descarga de Windows (Alternate Data Stream)
 *:Zone.Identifier
+
+# Compilación de la ventana de Windows (Tauri/Rust)
+/apps/window/src-tauri/target/
