@@ -364,6 +364,8 @@ describe('safeFetch: credenciales entre orígenes y tope de tiempo', () => {
     a = registra(enA, (r) => {
       if (r.url === '/otro-origen') return [302, { location: `${urlB}/destino` }];
       if (r.url === '/otro-origen-307') return [307, { location: `${urlB}/destino` }];
+      if (r.url === '/mismo-301') return [301, { location: '/otra' }];
+      if (r.url === '/mismo-303') return [303, { location: '/otra' }];
       if (r.url === '/mismo-origen') return [302, { location: '/otra' }];
       if (r.url === '/mismo-origen-307') return [307, { location: '/otra' }];
       return [200, {}];
@@ -403,7 +405,7 @@ describe('safeFetch: credenciales entre orígenes y tope de tiempo', () => {
     body: 'secreto',
   });
 
-  for (const ruta of ['/otro-origen', '/otro-origen-307']) {
+  for (const ruta of ['/otro-origen']) {
     it(`no reenvía credenciales ni cuerpo a otro origen (${ruta})`, async () => {
       await safeFetch(`${urlA}${ruta}`, conCredenciales(), LENIENT);
       expect(enA[0]?.body).toBe('secreto'); // el primer salto sí las lleva
@@ -440,6 +442,31 @@ describe('safeFetch: credenciales entre orígenes y tope de tiempo', () => {
     expect(enA[1]?.headers['x-api-key']).toBe('k');
     expect(enA[1]?.method).toBe('GET'); // 302 → GET sin cuerpo
     expect(enA[1]?.body).toBe('');
+  });
+
+  it('DELETE con 301 al mismo origen llega como DELETE', async () => {
+    await safeFetch(`${urlA}/mismo-301`, { method: 'DELETE' }, LENIENT);
+    expect(enA.map((r) => r.method)).toEqual(['DELETE', 'DELETE']);
+  });
+
+  it('PUT con cuerpo y 302 al mismo origen llega como PUT con el mismo cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-origen`, { method: 'PUT', body: 'datos' }, LENIENT);
+    expect(enA[1]?.method).toBe('PUT');
+    expect(enA[1]?.body).toBe('datos');
+  });
+
+  it('PUT con 303 al mismo origen llega como GET sin cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-303`, { method: 'PUT', body: 'datos' }, LENIENT);
+    expect(enA[1]?.method).toBe('GET');
+    expect(enA[1]?.body).toBe('');
+  });
+
+  it('PUT con 307 a OTRO origen se rechaza y el destino no recibe nada', async () => {
+    await expect(
+      safeFetch(`${urlA}/otro-origen-307`, { method: 'PUT', body: 'datos' }, LENIENT),
+    ).rejects.toMatchObject({ code: 'EGRESS_BLOCKED', message: /escritura a otro origen/ });
+    expect(enA).toHaveLength(1);
+    expect(enB).toHaveLength(0);
   });
 
   it('un 307 del mismo origen conserva método y cuerpo', async () => {

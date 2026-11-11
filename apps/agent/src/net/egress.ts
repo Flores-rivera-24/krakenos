@@ -249,7 +249,7 @@ const CABECERAS_DE_CREDENCIAL = ['authorization', 'cookie', 'x-api-key', 'proxy-
  * la política (un 3xx no puede reapuntar a metadata/interno), en vez de dejar que
  * `fetch` siga redirecciones a ciegas. Un salto a **otro origen** va sin
  * `dispatcher` (la excepción TLS de un aparato de LAN no se hereda), sin cuerpo y
- * sin credenciales; 301/302/303 siguen como `GET` sin cuerpo. Sin `signal` propio
+ * sin credenciales; la redirección sigue la semántica de fetch (301/302 solo POST→GET, 303 todo menos HEAD→GET) y una escritura a otro origen se rechaza. Sin `signal` propio
  * corta a los `SAFE_FETCH_TIMEOUT_MS` (cubre también la lectura del cuerpo).
  */
 export async function safeFetch(
@@ -273,10 +273,22 @@ export async function safeFetch(
       if (!location) return res; // redirect sin destino: se devuelve tal cual
       const next = new URL(location, url);
       const otroOrigen = next.origin !== origin;
-      const conservaMetodo = res.status === 307 || res.status === 308;
-      if (otroOrigen || !conservaMetodo) {
+      // Semántica del estándar fetch: 301/302 solo convierten POST en GET; 303, todo
+      // salvo GET/HEAD; el resto (307/308…) conserva método y cuerpo.
+      const metodo = (actual.method ?? 'GET').toUpperCase();
+      const aGet =
+        ((res.status === 301 || res.status === 302) && metodo === 'POST') ||
+        (res.status === 303 && metodo !== 'GET' && metodo !== 'HEAD');
+      const siguiente = aGet ? 'GET' : metodo;
+      if (otroOrigen && siguiente !== 'GET' && siguiente !== 'HEAD') {
+        throw new EgressBlockedError(
+          `redirección de una escritura (${siguiente}) a otro origen`,
+          next.toString(),
+        );
+      }
+      if (aGet || otroOrigen) {
         const { body: _body, ...sinCuerpo } = actual;
-        actual = { ...sinCuerpo, method: 'GET' };
+        actual = { ...sinCuerpo, method: aGet ? 'GET' : metodo };
       }
       if (otroOrigen) {
         const headers = new Headers(actual.headers);
