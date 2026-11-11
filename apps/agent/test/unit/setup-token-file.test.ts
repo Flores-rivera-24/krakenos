@@ -1,4 +1,14 @@
-import { mkdtempSync, writeFileSync, readFileSync, statSync, chmodSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import {
+  chmodSync,
+  lstatSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -31,6 +41,27 @@ describe('fichero del token de setup', () => {
     await writeSetupTokenFile(f, 'nuevo');
     expect(readFileSync(f, 'utf8')).toBe('nuevo\n');
     expect(statSync(f).mode & 0o777).toBe(0o600);
+  });
+
+  posix('no escribe a través de un enlace simbólico plantado', async () => {
+    const f = tmp();
+    const otro = tmp();
+    writeFileSync(otro, 'intacto\n');
+    symlinkSync(otro, f);
+    await writeSetupTokenFile(f, 'tok');
+    expect(readFileSync(otro, 'utf8')).toBe('intacto\n');
+    expect(lstatSync(f).isSymbolicLink()).toBe(false);
+    expect(readFileSync(f, 'utf8')).toBe('tok\n');
+  });
+
+  it('el fichero del token está ignorado por git y por docker', () => {
+    const raiz = resolve(__dirname, '../../../..');
+    expect(() =>
+      execFileSync('git', ['check-ignore', '-q', 'apps/agent/setup-token'], { cwd: raiz }),
+    ).not.toThrow();
+    expect(readFileSync(join(raiz, '.dockerignore'), 'utf8')).toMatch(
+      /^apps\/agent\/setup-token$/m,
+    );
   });
 
   it('borrar un fichero que no existe no falla', async () => {
