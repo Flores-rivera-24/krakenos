@@ -97,7 +97,8 @@ umask 077
 # Biblioteca compartida (sudoers validado y TLS). Su contrato está en su cabecera.
 # Se resuelve en dos pasos: (a) junto al script, también en /opt/krakenos/scripts con
 # --update; (b) con `curl | sudo bash` el script llega por stdin ($0 = bash) y no hay
-# nada al lado: entonces la carga load_system_lib, cuando el código ya está descargado.
+# nada al lado: entonces la descarga load_system_lib. Lo de junto a $0 es la misma
+# frontera de confianza que el propio install.sh, que root ya está ejecutando.
 SYSTEM_LIB_LOADED=0
 _dir="$(dirname -- "$(readlink -f -- "$0" 2> /dev/null || printf '%s' "$0")")"
 if [[ -f "$_dir/lib/krakenos-system.sh" ]]; then
@@ -111,21 +112,30 @@ log() { printf '==> %s\n' "$*"; }
 warn() { printf 'AVISO: %s\n' "$*" >&2; }
 die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
-# Carga tardía de la biblioteca (instalación por stdin): del código ya descargado en
-# $INSTALL_DIR; en dry-run, que no descarga nada, de la copia que indica --from-local.
+# Carga tardía de la biblioteca (instalación por stdin, sin lib/ junto al script). NUNCA
+# se lee del árbol de instalación: es del usuario del servicio (`chown -R`) y root
+# ejecutaría código que él pudo modificar. Se descarga del mismo repo y ref que el
+# código fuente a un temporal de root (0600, mktemp) que se borra al salir. En dry-run
+# con --from-local se usa la copia que indica el operador.
 load_system_lib() {
   [[ $SYSTEM_LIB_LOADED -eq 1 ]] && return 0
-  local f
-  for f in "$INSTALL_DIR/scripts/lib/krakenos-system.sh" \
-    "${FROM_LOCAL:+$FROM_LOCAL/scripts/lib/krakenos-system.sh}"; do
-    if [[ -n "$f" && -f "$f" ]]; then
-      # shellcheck source=scripts/lib/krakenos-system.sh
-      source "$f"
-      SYSTEM_LIB_LOADED=1
-      return 0
-    fi
-  done
-  die "falta scripts/lib/krakenos-system.sh en $INSTALL_DIR: el código descargado no es una versión con esta biblioteca"
+  local f ref tmp
+  if [[ $DRY_RUN -eq 1 && -n "$FROM_LOCAL" && -f "$FROM_LOCAL/scripts/lib/krakenos-system.sh" ]]; then
+    f="$FROM_LOCAL/scripts/lib/krakenos-system.sh"
+  else
+    ref="$(resolve_ref)"
+    [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || die "referencia no válida para descargar la biblioteca: $ref"
+    tmp="$(mktemp)"
+    # El trap se instala tras crear el temporal: si mktemp falla no hay nada que borrar.
+    # shellcheck disable=SC2064 # se expande ahora a propósito: el nombre ya es fijo
+    trap "rm -f '$tmp'" EXIT
+    curl -fsSL -o "$tmp" "https://raw.githubusercontent.com/${REPO}/${ref}/scripts/lib/krakenos-system.sh" ||
+      die "no se pudo descargar scripts/lib/krakenos-system.sh (${REPO}@${ref}): revisa la conexión o instala desde un clon con git"
+    f="$tmp"
+  fi
+  # shellcheck source=scripts/lib/krakenos-system.sh
+  source "$f"
+  SYSTEM_LIB_LOADED=1
 }
 
 # Ejecuta el comando, o lo imprime como plan con --dry-run. Todo lo que MUTA el

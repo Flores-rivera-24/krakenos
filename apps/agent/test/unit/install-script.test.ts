@@ -487,6 +487,66 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     expect(stdout).toContain('local-ca.js');
   });
 
+  it('por stdin no carga la biblioteca del árbol de instalación', () => {
+    const src = readFileSync(SCRIPT, 'utf8');
+    const cuerpo = /^load_system_lib\(\) \{[\s\S]*?^\}/m.exec(src)?.[0] ?? '';
+    expect(cuerpo).not.toBe('');
+    // El árbol es del usuario del servicio: root no puede ejecutar nada de ahí.
+    expect(cuerpo.replace(/^\s*#.*$/gm, '')).not.toContain('INSTALL_DIR');
+  });
+
+  it('por stdin descarga la biblioteca a un temporal de root', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-curl-'));
+    const registro = join(dir, 'url.txt');
+    const biblioteca = fileURLToPath(
+      new URL('../../../../scripts/lib/krakenos-system.sh', import.meta.url),
+    );
+    // `curl` falso: apunta la URL y escribe la biblioteca real en el destino de -o.
+    writeFileSync(
+      join(dir, 'curl'),
+      `#!/usr/bin/env bash
+out=""; url=""
+while [ $# -gt 0 ]; do
+  case "$1" in -o) out="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
+done
+printf '%s\\n' "$url" >> '${registro}'
+cp '${biblioteca}' "$out"
+`,
+    );
+    chmodSync(join(dir, 'curl'), 0o755);
+    const { code, stdout, stderr } = await new Promise<{
+      code: number;
+      stdout: string;
+      stderr: string;
+    }>((resolvePromise) => {
+      const child = execFile(
+        'bash',
+        ['-s', '--', '--dry-run', '--yes', '--dir', '/tmp/kraken-x', '--branch', 'v9.9.9'],
+        {
+          env: { ...process.env, ...SUPPORTED_ENV, PATH: `${dir}:${process.env.PATH ?? ''}` },
+          cwd: tmpdir(),
+        },
+        (err, so, se) =>
+          resolvePromise({
+            code:
+              err && typeof (err as { code?: unknown }).code === 'number'
+                ? (err as { code: number }).code
+                : 0,
+            stdout: so,
+            stderr: se,
+          }),
+      );
+      child.stdin?.end(readFileSync(SCRIPT));
+    });
+    expect(stderr).not.toContain('No such file');
+    expect(code).toBe(0);
+    expect(stdout).toContain('local-ca.js');
+    const urls = readFileSync(registro, 'utf8').trim().split('\n');
+    expect(urls).toEqual([
+      'https://raw.githubusercontent.com/Flores-rivera-24/krakenos/v9.9.9/scripts/lib/krakenos-system.sh',
+    ]);
+  });
+
   it('rechaza rutas con metacaracteres o relativas (se interpolan en bash -c)', async () => {
     for (const dir of ["/tmp/kraken'x", '/tmp/kraken x', 'relativa/kraken', '/tmp/kraken$HOME']) {
       const { code, stderr } = await runInstaller(['--dry-run', '--yes', '--dir', dir]);
