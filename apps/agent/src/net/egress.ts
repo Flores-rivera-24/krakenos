@@ -289,6 +289,13 @@ export async function safeFetch(
       if (aGet || otroOrigen) {
         const { body: _body, ...sinCuerpo } = actual;
         actual = { ...sinCuerpo, method: aGet ? 'GET' : metodo };
+        if (aGet && actual.headers) {
+          // Como el estándar fetch: sin cuerpo no hay descriptor de cuerpo.
+          const headers = new Headers(actual.headers);
+          headers.delete('content-type');
+          headers.delete('content-length');
+          actual = { ...actual, headers };
+        }
       }
       if (otroOrigen) {
         const headers = new Headers(actual.headers);

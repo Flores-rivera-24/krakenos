@@ -245,12 +245,16 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
   let server: Server;
   let port = 0;
   let hits: string[] = [];
+  let cabeceras: Record<string, string | string[] | undefined>[] = [];
 
   beforeAll(async () => {
     server = createServer((req, res) => {
       const url = req.url ?? '/';
       hits.push(url);
-      if (url === '/redirect-a-bloqueada') {
+      cabeceras.push(req.headers);
+      if (url === '/post-a-get') {
+        res.writeHead(302, { location: '/destino-get' });
+      } else if (url === '/redirect-a-bloqueada') {
         res.writeHead(302, { location: `http://0.0.0.0:${port}/trampa` });
       } else if (url === '/redirect-a-metadata') {
         res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' });
@@ -273,9 +277,22 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
 
   beforeEach(() => {
     hits = [];
+    cabeceras = [];
   });
 
   const url = (path: string) => `http://127.0.0.1:${port}${path}`;
+
+  it('un POST que un 302 convierte en GET llega sin content-type ni content-length', async () => {
+    await safeFetch(
+      url('/post-a-get'),
+      { method: 'POST', body: '{"a":1}', headers: { 'content-type': 'application/json' } },
+      LENIENT,
+    );
+    expect(hits).toEqual(['/post-a-get', '/destino-get']);
+    expect(cabeceras[0]?.['content-type']).toBe('application/json');
+    expect(cabeceras[1]?.['content-type']).toBeUndefined();
+    expect(cabeceras[1]?.['content-length']).toBeUndefined();
+  });
 
   it('NO sigue un redirect real hacia una dirección prohibida (mata redirect:follow)', async () => {
     await expect(safeFetch(url('/redirect-a-bloqueada'), {}, LENIENT)).rejects.toBeInstanceOf(
