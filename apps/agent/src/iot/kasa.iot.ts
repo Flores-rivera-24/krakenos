@@ -90,6 +90,7 @@ export class KasaIotManager implements IotManager {
 
   async getDevice(id: string): Promise<IotDevice | null> {
     const { family, ip } = parseDeviceId(id);
+    if (!(await this.isKnownHost(family, ip))) return null;
     if (family === 'kasa') return this.fetchKasa(ip).catch(() => null);
     if (family === 'tapo' && this.opts.tapo) return this.fetchTapo(ip).catch(() => null);
     return null;
@@ -97,9 +98,33 @@ export class KasaIotManager implements IotManager {
 
   async setState(id: string, input: UpdateIotStateRequest): Promise<IotDevice> {
     const { family, ip } = parseDeviceId(id);
+    if (!(await this.isKnownHost(family, ip)))
+      throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
     if (family === 'kasa') return this.setKasa(ip, input);
     if (family === 'tapo') return this.setTapo(ip, input);
     throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
+  }
+
+  /**
+   * Un id solo vale si su host es uno de los que `listDevices` produce para esa
+   * familia: configurado a mano o descubierto. Sin esto, un id `kasa:<host>` a
+   * medida (p. ej. 169.254.169.254) hacía que el agente abriera una conexión
+   * hacia donde el cliente quisiera.
+   */
+  private async isKnownHost(family: string, host: string): Promise<boolean> {
+    if (family === 'kasa') {
+      if (host === '') return false;
+      if ((this.opts.kasaIps ?? []).includes(host)) return true;
+      const found = await this.opts.kasa.discover().catch(() => []);
+      return found.some((d) => d.ip === host);
+    }
+    if (family === 'tapo' && this.opts.tapo) {
+      if (host === '') return false;
+      if ((this.opts.tapoIps ?? []).includes(host)) return true;
+      const found = await this.opts.tapo.discover().catch((): string[] => []);
+      return found.includes(host);
+    }
+    return false;
   }
 
   // ---- Kasa ----

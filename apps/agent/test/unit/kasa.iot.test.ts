@@ -79,7 +79,7 @@ describe('KasaIotManager', () => {
 
   it('setState enruta a Kasa por el prefijo kasa: y envía set_relay_state', async () => {
     const kasa = new FakeKasa([], { '192.168.1.60': plugSysinfo('Cafetera', false) });
-    const mgr = new KasaIotManager({ kasa });
+    const mgr = new KasaIotManager({ kasa, kasaIps: ['192.168.1.60'] });
     await mgr.setState('kasa:192.168.1.60', { on: true });
     expect(
       kasa.sent.some((s) => s.cmd.includes('set_relay_state') && s.cmd.includes('"state":1')),
@@ -88,7 +88,7 @@ describe('KasaIotManager', () => {
 
   it('setState en una bombilla Kasa usa transition_light_state con el brillo', async () => {
     const kasa = new FakeKasa([], { '192.168.1.61': bulbSysinfo('Luz', true, 30) });
-    const mgr = new KasaIotManager({ kasa });
+    const mgr = new KasaIotManager({ kasa, kasaIps: ['192.168.1.61'] });
     await mgr.setState('kasa:192.168.1.61', { brightness: 75 });
     const cmd = kasa.sent.find((s) => s.cmd.includes('transition_light_state'));
     expect(cmd).toBeDefined();
@@ -106,11 +106,78 @@ describe('KasaIotManager', () => {
 
   it('getDevice devuelve null para un prefijo desconocido y consulta el correcto', async () => {
     const kasa = new FakeKasa([], { '192.168.1.60': plugSysinfo('Cafetera', true) });
-    const mgr = new KasaIotManager({ kasa });
+    const mgr = new KasaIotManager({ kasa, kasaIps: ['192.168.1.60'] });
     expect(await mgr.getDevice('zigbee:abc')).toBeNull();
     expect(await mgr.getDevice('kasa:192.168.1.60')).toMatchObject({
       id: 'kasa:192.168.1.60',
       on: true,
+    });
+  });
+
+  describe('ids de aparato: solo valen los hosts configurados o descubiertos de su familia', () => {
+    const rechazados = [
+      'kasa:example.com',
+      'kasa:8.8.8.8',
+      'kasa:169.254.169.254',
+      'kasa:127.0.0.1',
+      'kasa:',
+      'tapo:192.168.1.20',
+    ];
+    const sysinfo = {
+      '192.168.1.20': plugSysinfo('A', false),
+      'enchufe-sala.lan': plugSysinfo('B', false),
+    };
+
+    it('acepta los hosts Kasa configurados (IP y nombre) al leer y al cambiar', async () => {
+      const kasa = new FakeKasa([], sysinfo);
+      const mgr = new KasaIotManager({
+        kasa,
+        tapo: new FakeTapo([]),
+        kasaIps: ['192.168.1.20', 'enchufe-sala.lan'],
+      });
+      for (const id of ['kasa:192.168.1.20', 'kasa:enchufe-sala.lan']) {
+        expect(await mgr.getDevice(id)).toMatchObject({ id });
+        expect(await mgr.setState(id, { on: true })).toMatchObject({ id });
+      }
+    });
+
+    it.each(rechazados)('rechaza %s como desconocido y no abre conexión', async (id) => {
+      const kasa = new FakeKasa([], sysinfo);
+      const tapo = new FakeTapo([]);
+      const mgr = new KasaIotManager({
+        kasa,
+        tapo,
+        kasaIps: ['192.168.1.20', 'enchufe-sala.lan'],
+      });
+      expect(await mgr.getDevice(id)).toBeNull();
+      await expect(mgr.setState(id, { on: true })).rejects.toMatchObject({
+        code: 'IOT_NOT_FOUND',
+      });
+      expect(kasa.sent).toEqual([]);
+      expect(tapo.requests).toEqual([]);
+    });
+
+    it('sin ningún host configurado, cualquier id rechaza', async () => {
+      const kasa = new FakeKasa([], sysinfo);
+      const tapo = new FakeTapo([]);
+      const mgr = new KasaIotManager({ kasa, tapo });
+      for (const id of ['kasa:192.168.1.20', 'tapo:192.168.1.20']) {
+        expect(await mgr.getDevice(id)).toBeNull();
+        await expect(mgr.setState(id, { on: true })).rejects.toMatchObject({
+          code: 'IOT_NOT_FOUND',
+        });
+      }
+      expect(kasa.sent).toEqual([]);
+      expect(tapo.requests).toEqual([]);
+    });
+
+    it('acepta un host que solo aparece en el descubrimiento de su familia', async () => {
+      const kasa = new FakeKasa(
+        [{ ip: '192.168.1.20', sysinfo: sysinfo['192.168.1.20'] }],
+        sysinfo,
+      );
+      const mgr = new KasaIotManager({ kasa });
+      expect(await mgr.getDevice('kasa:192.168.1.20')).toMatchObject({ id: 'kasa:192.168.1.20' });
     });
   });
 });
