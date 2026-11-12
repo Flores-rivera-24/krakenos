@@ -174,4 +174,20 @@ describe('withDeviceCache (US-229)', () => {
     await cached.listDevices();
     expect(cached.listFailures?.()).toEqual([{ prefix: 'hue', message: 'caído' }]);
   });
+
+  it('los fallos son los de la lectura que respalda el snapshot, no los del manager en vivo', async () => {
+    let fallos = [{ prefix: 'hue', message: 'caído' }];
+    const iot = { ...fakeIot([LAMP]), listFailures: () => fallos } as IotManager;
+    const cached = withDeviceCache(iot) as IotManager & {
+      listFailures?: () => { prefix: string; message: string }[];
+    };
+    await cached.listDevices();
+    fallos = []; // otra llamada sin caché ve volver el backend; la caché no ha releído
+    await cached.listDevices(); // sirve el snapshot
+    expect(cached.listFailures?.()).toEqual([{ prefix: 'hue', message: 'caído' }]);
+  });
+
+  it('no expone listFailures si el manager de abajo no lo tiene', () => {
+    expect(withDeviceCache(fakeIot([LAMP])).listFailures).toBeUndefined();
+  });
 });

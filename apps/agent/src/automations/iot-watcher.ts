@@ -96,10 +96,12 @@ export class IotWatcher {
     // su línea base. Si se olvidaran, al volver el backend `transitions(undefined, dev)` daría
     // `[]` y una puerta abierta durante el corte no dispararía la alarma. Los de un backend
     // sano que faltan sí se olvidan (ya no existen: si reaparecen, es un alta nueva).
-    const caidos = new Set(
-      ((this.iot as Partial<ReportsListFailures>).listFailures?.() ?? []).map((f) => f.prefix),
+    // Sin reporte de fallos (método ausente) no se sabe qué falta por qué: se conserva todo.
+    const reporte = (this.iot as Partial<ReportsListFailures>).listFailures?.();
+    const caidos = new Set((reporte ?? []).map((f) => f.prefix));
+    const kept = [...(prev ?? [])].filter(
+      ([id]) => !reporte || caidos.has(id.slice(0, id.indexOf(':'))),
     );
-    const kept = [...(prev ?? [])].filter(([id]) => caidos.has(id.slice(0, id.indexOf(':'))));
     this.baseline = prev ? new Map([...kept, ...current]) : current;
     if (!prev) return; // primer barrido: fija la base
 

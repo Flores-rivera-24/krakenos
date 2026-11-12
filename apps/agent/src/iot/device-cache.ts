@@ -1,5 +1,5 @@
 import { IOT_ACTION_TIMEOUT_MS, withActionTimeout } from './action-timeout.js';
-import type { ReportsListFailures } from './composite.iot.js';
+import type { ListFailure, ReportsListFailures } from './composite.iot.js';
 import type { IotDevice, IotManager, UpdateIotStateRequest } from '@krakenos/types';
 
 /** Ventana de validez de la instantánea de dispositivos. */
@@ -54,13 +54,17 @@ export function withDeviceCache(
   let snapshot: IotDevice[] | null = null;
   let takenAt = Number.NEGATIVE_INFINITY;
   let inFlight: Promise<IotDevice[]> | null = null;
+  // Fallos de la MISMA lectura que respalda `snapshot`: pedirlos al manager en vivo los
+  // mezclaría con una lectura posterior y el vigilante olvidaría la base de un backend caído.
+  let failures: readonly ListFailure[] = [];
+  const reporter = iot as Partial<ReportsListFailures>;
 
   function invalidate(): void {
     snapshot = null;
     takenAt = Number.NEGATIVE_INFINITY;
   }
 
-  return {
+  const cache: IotManager & Partial<ReportsListFailures> = {
     async listDevices(): Promise<IotDevice[]> {
       if (snapshot && now() - takenAt < ttlMs) return snapshot;
       // Ya hay una lectura en curso: se comparte en vez de abrir otra.
@@ -68,6 +72,7 @@ export function withDeviceCache(
       inFlight = withActionTimeout(() => iot.listDevices(), listTimeoutMs)
         .then((devices) => {
           snapshot = devices;
+          failures = reporter.listFailures?.() ?? [];
           takenAt = now();
           return devices;
         })
@@ -76,9 +81,6 @@ export function withDeviceCache(
         });
       return inFlight;
     },
-
-    /** Fallos parciales de la última lectura real (solo si el manager los reporta). */
-    listFailures: () => (iot as Partial<ReportsListFailures>).listFailures?.() ?? [],
 
     /** Sin caché: lo usan caminos puntuales que quieren el estado real de un aparato. */
     getDevice(id: string): Promise<IotDevice | null> {
@@ -91,4 +93,7 @@ export function withDeviceCache(
       return device;
     },
   };
+  // Solo se expone si el manager de abajo lo reporta: su ausencia significa «no sé».
+  if (reporter.listFailures) cache.listFailures = () => failures;
+  return cache;
 }

@@ -17,12 +17,12 @@ function device(over: Partial<IotDevice> & { id: string }): IotDevice {
   };
 }
 
-function setup(initial: IotDevice[]) {
+function setup(initial: IotDevice[], reportsFailures = true) {
   let devices = initial;
   let failures: { prefix: string; message: string }[] = [];
   const iot = {
     listDevices: async () => devices,
-    listFailures: () => failures,
+    ...(reportsFailures ? { listFailures: () => failures } : {}),
     getDevice: async () => null,
     setState: async () => {
       throw new Error('no aplica');
@@ -160,6 +160,18 @@ describe('IotWatcher', () => {
     setDevices([abierto('hue:a', 1), abierto('govee:b', 1)]);
     await watcher.tick();
     // a conservó su base (hue estaba caído) y dispara; b se olvidó y es alta nueva
+    expect(events).toEqual([
+      { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },
+    ]);
+  });
+
+  it('si el manager no reporta fallos, conserva la línea base de lo que falta', async () => {
+    const { watcher, events, setDevices } = setup([abierto('hue:a', 0)], false);
+    await watcher.tick();
+    setDevices([]);
+    await watcher.tick();
+    setDevices([abierto('hue:a', 1)]);
+    await watcher.tick();
     expect(events).toEqual([
       { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },
     ]);
