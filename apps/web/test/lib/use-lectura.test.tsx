@@ -68,18 +68,21 @@ describe('useLectura', () => {
     expect(result.current.failed).toBe(false);
   });
 
-  it('dos reintentos seguidos no lanzan dos peticiones en vuelo', async () => {
+  it('dos reintentos en actos separados lanzan dos peticiones y solo aplica la última', async () => {
+    const resolvers: Array<(v: string) => void> = [];
     const leer = vi
       .fn()
       .mockRejectedValueOnce(new Error('x'))
-      .mockReturnValue(new Promise<string>(() => {}));
+      .mockImplementation(() => new Promise<string>((r) => resolvers.push(r)));
     const { result } = renderHook(() => useLectura(leer, []));
     await waitFor(() => expect(result.current.failed).toBe(true));
-    act(() => {
-      result.current.reintentar();
-      result.current.reintentar();
-    });
-    expect(leer).toHaveBeenCalledTimes(2);
+    act(() => result.current.reintentar());
+    act(() => result.current.reintentar());
+    expect(leer).toHaveBeenCalledTimes(3);
+    // La primera respuesta llega tarde, ya descartada: no pisa a la segunda.
+    await act(async () => resolvers[1]?.('nuevo'));
+    await act(async () => resolvers[0]?.('viejo'));
+    expect(result.current.data).toBe('nuevo');
   });
 
   it('reintentar que vuelve a fallar: failed sigue true y loading vuelve a false', async () => {
