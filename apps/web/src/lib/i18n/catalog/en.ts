@@ -2075,7 +2075,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.retention.d7': '7 days',
   'settings.retention.d30': '30 days',
   'settings.retention.d90': '90 days',
-  'settings.retention.dN': '{n} days',
+  'settings.retention.dN.one': '1 day',
+  'settings.retention.dN.other': '{n} days',
   'settings.retention.d180': '180 days',
   // Account card
   'settings.account.title': 'Account',

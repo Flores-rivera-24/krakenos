@@ -231,6 +231,33 @@ describe('SettingsPage', () => {
     expect(elegida(sel('Retención del registro de auditoría'))).toBe('365 días');
   });
 
+  it('una retención de 1 día concuerda en singular y 14 en plural', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: {
+              ...SETTINGS.settings,
+              trafficRetentionDays: '1',
+              auditRetentionDays: '14',
+            },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Red' }));
+    const elegida = (name: string) =>
+      (screen.getByLabelText(name) as HTMLSelectElement).selectedOptions[0]?.textContent;
+    expect(elegida('Retención del historial de tráfico')).toBe('1 día');
+    expect(elegida('Retención del registro de auditoría')).toBe('14 días');
+  });
+
   // Caracterización: hoy ya pasa, porque cada PATCH lleva una sola clave.
   it('guardar otro campo no cambia scanIntervalSec en el cuerpo enviado', async () => {
     setUser('admin');

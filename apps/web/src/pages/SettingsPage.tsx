@@ -42,7 +42,7 @@ import { describeError } from '@/lib/errors';
 import { useLectura } from '@/lib/use-lectura';
 import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
-import { useT, type TranslationKey } from '@/lib/i18n';
+import { plural, useT, type TranslationKey } from '@/lib/i18n';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { etiquetaDeRol } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
@@ -605,7 +605,11 @@ export function SettingsPage() {
                               { value: '90', label: t('settings.retention.d90') },
                             ],
                             setting('trafficRetentionDays'),
-                            (n) => t('settings.retention.dN', { n }),
+                            (n) =>
+                              plural(Number(n), {
+                                one: t('settings.retention.dN.one'),
+                                other: t('settings.retention.dN.other', { n }),
+                              }),
                           ).map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}
@@ -627,7 +631,11 @@ export function SettingsPage() {
                               { value: '180', label: t('settings.retention.d180') },
                             ],
                             setting('auditRetentionDays'),
-                            (n) => t('settings.retention.dN', { n }),
+                            (n) =>
+                              plural(Number(n), {
+                                one: t('settings.retention.dN.one'),
+                                other: t('settings.retention.dN.other', { n }),
+                              }),
                           ).map((o) => (
                             <option key={o.value} value={o.value}>
                               {o.label}

@@ -551,7 +551,8 @@ export const esAjustes = {
   'settings.retention.d7': '7 días',
   'settings.retention.d30': '30 días',
   'settings.retention.d90': '90 días',
-  'settings.retention.dN': '{n} días',
+  'settings.retention.dN.one': '1 día',
+  'settings.retention.dN.other': '{n} días',
   'settings.retention.d180': '180 días',
   // Tarjeta Cuenta
   'settings.account.title': 'Cuenta',
