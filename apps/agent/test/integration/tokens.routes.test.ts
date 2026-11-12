@@ -1,6 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+import {
+  authHeader,
+  buildTestApp,
+  eventually,
+  resetDb,
+  seedUser,
+  signAccess,
+} from '../helpers/app.js';
 
 /** Cabecera Bearer con un token de API en claro. */
 const tokenHeader = (token: string) => ({ authorization: `Bearer ${token}` });
@@ -31,6 +38,38 @@ describe('tokens de API (US-174)', () => {
   });
   beforeEach(async () => {
     await resetDb(app);
+  });
+
+  it('lastUsedAt se escribe una vez por minuto, no en cada petición', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const token = await createToken(app, signAccess(app, admin), ['home.view']);
+    const usar = () =>
+      app.inject({ method: 'GET', url: '/api/tokens', headers: tokenHeader(token) });
+    const leer = async () => (await app.prisma.apiToken.findFirstOrThrow()).lastUsedAt;
+
+    // Primera petición: lastUsedAt era null, se escribe (fire-and-forget).
+    await usar();
+    const primera = await eventually(async () => {
+      const v = await leer();
+      expect(v).not.toBeNull();
+      return v!;
+    });
+
+    // Dos peticiones más dentro del minuto: ninguna lo reescribe.
+    await usar();
+    await usar();
+    expect(await leer()).toEqual(primera);
+
+    // Con la última marca de hace 2 minutos, la siguiente petición la actualiza.
+    const vieja = new Date(Date.now() - 120_000);
+    await app.prisma.apiToken.updateMany({ data: { lastUsedAt: vieja } });
+    await usar();
+    const nueva = await eventually(async () => {
+      const v = await leer();
+      expect(v!.getTime()).toBeGreaterThan(vieja.getTime() + 60_000);
+      return v!;
+    });
+    expect(nueva.getTime()).toBeGreaterThan(primera.getTime() - 1);
   });
 
   it('crea un token y devuelve el valor en claro una vez; la lista lo omite', async () => {

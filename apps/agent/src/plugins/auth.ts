@@ -85,6 +85,8 @@ declare module 'fastify' {
 /** Emisor/audiencia de los JWT: acota dónde son válidos los tokens de KrakenOS. */
 const JWT_ISSUER = 'krakenos';
 const JWT_AUDIENCE = 'krakenos';
+/** Intervalo mínimo entre escrituras de `lastUsedAt` de un mismo token de API. */
+const LAST_USED_MIN_INTERVAL_MS = 60_000;
 
 /** Lee el `kid` de la cabecera de un JWT sin verificar la firma (`undefined` si no hay). */
 function readKid(token: string): string | undefined {
@@ -174,10 +176,13 @@ export const authPlugin = fp(async (app: FastifyInstance, opts: AuthPluginOption
     req.user = { sub: row.userId, email: owner.email, role, type: 'access', iat: 0, exp: 0 };
     // Los scopes guardados se re-acotan al rol vigente (nunca lo superan).
     req.apiScopes = parseScopes(row.scopes).filter((s) => can(role, s as Capability));
-    // Marca de último uso, best-effort (no bloquea ni rompe la petición).
-    void app.prisma.apiToken
-      .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
-      .catch(() => undefined);
+    // Marca de último uso, best-effort (no bloquea ni rompe la petición) y como
+    // mucho una vez por minuto: un cliente que sondea no escribe en cada petición.
+    if (!row.lastUsedAt || Date.now() - row.lastUsedAt.getTime() > LAST_USED_MIN_INTERVAL_MS) {
+      void app.prisma.apiToken
+        .update({ where: { id: row.id }, data: { lastUsedAt: new Date() } })
+        .catch(() => undefined);
+    }
   };
 
   app.decorate('authenticate', async (req: FastifyRequest, reply: FastifyReply) => {
