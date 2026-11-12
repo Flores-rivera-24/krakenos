@@ -257,4 +257,4 @@ function main() {
 
 // Solo actúa como CLI cuando se ejecuta directamente; al importarlo desde un test
 // se exponen las funciones puras sin efectos.
-if (process.argv[1] && import.meta.url === `file://${process.argv[1]}`) main();
+if (import.meta.main) main();
