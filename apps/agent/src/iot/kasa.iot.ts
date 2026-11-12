@@ -13,6 +13,7 @@ import {
   parseTapoDeviceInfo,
   tapoToIotDevice,
 } from './kasa.parsers.js';
+import { classifyIp } from '../net/egress.js';
 import type { KasaTransport, TapoTransport } from './kasa.transport.js';
 import { IotError } from './mock.iot.js';
 import { unreachableDevice } from './unreachable.js';
@@ -38,10 +39,17 @@ export interface KasaIotOptions {
 export class KasaIotManager implements IotManager {
   readonly kind = 'kasa' as const;
 
+  /** Hosts vistos por el broadcast en el último `listDevices` (solo IP privada). */
+  private readonly seen: { kasa: Set<string>; tapo: Set<string> } = {
+    kasa: new Set<string>(),
+    tapo: new Set<string>(),
+  };
+
   constructor(private readonly opts: KasaIotOptions) {}
 
   async listDevices(): Promise<IotDevice[]> {
     const devices: IotDevice[] = [];
+    const seen = { kasa: new Set<string>(), tapo: new Set<string>() };
 
     // --- Kasa: broadcast + IPs configuradas no descubiertas ---
     const seenKasa = new Set<string>();
@@ -50,6 +58,7 @@ export class KasaIotManager implements IotManager {
         const state = parseKasaSysinfo(d.ip, d.sysinfo);
         if (state) {
           seenKasa.add(d.ip);
+          if (isPrivateIp(d.ip)) seen.kasa.add(d.ip);
           devices.push(kasaToIotDevice(state));
         }
       }
@@ -70,7 +79,10 @@ export class KasaIotManager implements IotManager {
     if (this.opts.tapo) {
       const tapoIps = new Set(this.opts.tapoIps ?? []);
       try {
-        for (const ip of await this.opts.tapo.discover()) tapoIps.add(ip);
+        for (const ip of await this.opts.tapo.discover()) {
+          tapoIps.add(ip);
+          if (isPrivateIp(ip)) seen.tapo.add(ip);
+        }
       } catch {
         // discovery best-effort
       }
@@ -85,12 +97,14 @@ export class KasaIotManager implements IotManager {
       }
     }
 
+    this.seen.kasa = seen.kasa;
+    this.seen.tapo = seen.tapo;
     return devices;
   }
 
   async getDevice(id: string): Promise<IotDevice | null> {
     const { family, ip } = parseDeviceId(id);
-    if (!(await this.isKnownHost(family, ip))) return null;
+    if (!this.isKnownHost(family, ip)) return null;
     if (family === 'kasa') return this.fetchKasa(ip).catch(() => null);
     if (family === 'tapo' && this.opts.tapo) return this.fetchTapo(ip).catch(() => null);
     return null;
@@ -98,7 +112,7 @@ export class KasaIotManager implements IotManager {
 
   async setState(id: string, input: UpdateIotStateRequest): Promise<IotDevice> {
     const { family, ip } = parseDeviceId(id);
-    if (!(await this.isKnownHost(family, ip)))
+    if (!this.isKnownHost(family, ip))
       throw new IotError('IOT_NOT_FOUND', 'Dispositivo no encontrado');
     if (family === 'kasa') return this.setKasa(ip, input);
     if (family === 'tapo') return this.setTapo(ip, input);
@@ -106,24 +120,16 @@ export class KasaIotManager implements IotManager {
   }
 
   /**
-   * Un id solo vale si su host es uno de los que `listDevices` produce para esa
-   * familia: configurado a mano o descubierto. Sin esto, un id `kasa:<host>` a
-   * medida (p. ej. 169.254.169.254) hacía que el agente abriera una conexión
-   * hacia donde el cliente quisiera.
+   * Un id solo vale si su host es configurado o fue visto (IP privada) en el
+   * último `listDevices`. Nunca lanza discover ni abre conexión: un id `kasa:<host>`
+   * a medida no puede mover tráfico del agente ni forzar un barrido UDP.
    */
-  private async isKnownHost(family: string, host: string): Promise<boolean> {
-    if (family === 'kasa') {
-      if (host === '') return false;
-      if ((this.opts.kasaIps ?? []).includes(host)) return true;
-      const found = await this.opts.kasa.discover().catch(() => []);
-      return found.some((d) => d.ip === host);
-    }
-    if (family === 'tapo' && this.opts.tapo) {
-      if (host === '') return false;
-      if ((this.opts.tapoIps ?? []).includes(host)) return true;
-      const found = await this.opts.tapo.discover().catch((): string[] => []);
-      return found.includes(host);
-    }
+  private isKnownHost(family: string, host: string): boolean {
+    if (host === '') return false;
+    if (family === 'kasa')
+      return (this.opts.kasaIps ?? []).includes(host) || this.seen.kasa.has(host);
+    if (family === 'tapo' && this.opts.tapo)
+      return (this.opts.tapoIps ?? []).includes(host) || this.seen.tapo.has(host);
     return false;
   }
 
@@ -190,3 +196,5 @@ function parseDeviceId(id: string): { family: string; ip: string } {
   const i = id.indexOf(':');
   return i === -1 ? { family: '', ip: id } : { family: id.slice(0, i), ip: id.slice(i + 1) };
 }
+
+const isPrivateIp = (ip: string): boolean => classifyIp(ip)?.private === true;

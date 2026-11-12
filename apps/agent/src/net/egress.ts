@@ -84,7 +84,7 @@ interface IpClass {
   private: boolean;
 }
 
-function classifyIp(rawIp: string): IpClass | null {
+export function classifyIp(rawIp: string): IpClass | null {
   const ip = unmapV6(rawIp);
   const v4 = ipv4Octets(ip);
   if (v4) {
