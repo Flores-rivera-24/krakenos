@@ -72,6 +72,12 @@ const TIMEZONES = [
   'Asia/Tokyo',
 ];
 
+/** Si el valor guardado no está en la lista, se añade (ordenado) para que el desplegable no enseñe otro. */
+function conValorActual(opciones: readonly string[], valor: string): string[] {
+  if (!valor || opciones.includes(valor)) return [...opciones];
+  return [...opciones, valor].sort((a, b) => Number(a) - Number(b));
+}
+
 function Setting({
   label,
   hint,
@@ -363,10 +369,13 @@ export function SettingsPage() {
                           disabled={!isAdmin}
                           onChange={(e) => void patch('presenceLeaveSweeps', e.target.value)}
                         >
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="5">5</option>
+                          {conValorActual(['1', '2', '3', '5'], setting('presenceLeaveSweeps')).map(
+                            (n) => (
+                              <option key={n} value={n}>
+                                {n}
+                              </option>
+                            ),
+                          )}
                         </Select>
                       </Setting>
                       <Setting

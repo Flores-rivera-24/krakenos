@@ -170,6 +170,32 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('un valor guardado que no está en la lista se muestra seleccionado, no el primero', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: { ...SETTINGS.settings, presenceLeaveSweeps: '7' },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    const select = screen.getByLabelText('Barridos consecutivos para confirmar una salida');
+    expect(select).toHaveValue('7');
+    expect(within(select).getByRole('option', { name: '7' })).toBeInTheDocument();
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['1', '2', '3', '5', '7']);
+  });
+
   it('muestra un error y no falla en silencio si el PATCH falla (US-55)', async () => {
     setUser('admin');
     apiMock.patch.mockRejectedValue(new Error('500'));
