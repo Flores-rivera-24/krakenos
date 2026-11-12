@@ -37,6 +37,10 @@ updates:
       day: monday
     cooldown:
       default-days: 14
+    # El proyecto fija Node 24; la versión mayor se sube a mano.
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: 'build'
     labels: [dependencies]
