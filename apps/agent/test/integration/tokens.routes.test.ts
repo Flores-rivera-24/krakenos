@@ -44,7 +44,7 @@ describe('tokens de API (US-174)', () => {
     const admin = await seedUser(app, { role: 'admin' });
     const token = await createToken(app, signAccess(app, admin), ['home.view']);
     const usar = () =>
-      app.inject({ method: 'GET', url: '/api/tokens', headers: tokenHeader(token) });
+      app.inject({ method: 'GET', url: '/api/iot/devices', headers: tokenHeader(token) });
     const leer = async () => (await app.prisma.apiToken.findFirstOrThrow()).lastUsedAt;
 
     // Primera petición: lastUsedAt era null, se escribe (fire-and-forget).
@@ -70,6 +70,17 @@ describe('tokens de API (US-174)', () => {
       return v!;
     });
     expect(nueva.getTime()).toBeGreaterThan(primera.getTime() - 1);
+  });
+
+  it('dos peticiones simultáneas con el mismo token responden 2xx', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const token = await createToken(app, signAccess(app, admin), ['home.view']);
+    const res = await Promise.all(
+      [1, 2].map(() =>
+        app.inject({ method: 'GET', url: '/api/iot/devices', headers: tokenHeader(token) }),
+      ),
+    );
+    expect(res.map((r) => r.statusCode)).toEqual([200, 200]);
   });
 
   it('crea un token y devuelve el valor en claro una vez; la lista lo omite', async () => {
