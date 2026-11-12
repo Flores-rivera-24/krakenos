@@ -27,7 +27,8 @@ export function describeError(err: unknown, fallback: string): string {
       }
     }
     const message = err.body?.message?.trim();
-    return message ? message : `${fallback} (error ${err.status}).`;
+    // El base puede acabar en punto: sin quitarlo saldría «…operación. (error 409).».
+    return message ? message : `${fallback.replace(/\.$/, '')} (error ${err.status}).`;
   }
   return t('errors.network');
 }

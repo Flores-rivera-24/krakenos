@@ -53,7 +53,7 @@ describe('TuyaManager', () => {
     await user.click(screen.getByRole('button', { name: 'Eliminar' }));
     await user.click(screen.getByRole('button', { name: 'Confirmar' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No se pudo completar la operación. (error 409).',
+      'No se pudo completar la operación (error 409).',
     );
   });
 
