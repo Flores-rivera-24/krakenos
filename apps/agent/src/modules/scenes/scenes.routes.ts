@@ -68,6 +68,8 @@ export const scenesRoutes: FastifyPluginAsync<ScenesRoutesOpts> = async (app, op
         detail: req.params.id,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(scene);
     },
   );
@@ -103,6 +105,8 @@ export const scenesRoutes: FastifyPluginAsync<ScenesRoutesOpts> = async (app, op
         detail: `${req.params.id} · ${result.applied} ok, ${result.failed.length} fallo(s)`,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );

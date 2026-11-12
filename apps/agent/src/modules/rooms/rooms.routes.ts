@@ -56,6 +56,8 @@ export const roomsRoutes: FastifyPluginAsync<RoomsRoutesOpts> = async (app, opts
         return reply.code(404).send({ code: 'NOT_FOUND', message: 'Habitación no encontrada' });
       }
       app.audit({ action: 'room.update', userId: req.user.sub, detail: req.params.id, ip: req.ip });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(room);
     },
   );
@@ -110,6 +112,8 @@ export const roomsRoutes: FastifyPluginAsync<RoomsRoutesOpts> = async (app, opts
         detail: `${req.params.id} · ${result.applied} ok, ${result.failed.length} fallo(s)`,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );

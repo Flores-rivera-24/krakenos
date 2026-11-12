@@ -86,6 +86,8 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
       if (!network) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(network);
     },
   );
@@ -107,6 +109,8 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
         detail: network.id,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(network);
     },
   );
@@ -119,6 +123,8 @@ export const wifiRoutes: FastifyPluginAsync<WifiRoutesOpts> = async (app, opts) 
       if (!clients) {
         return reply.code(404).send({ code: 'NETWORK_NOT_FOUND', message: 'Red no encontrada' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(clients);
     },
   );

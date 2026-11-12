@@ -135,6 +135,8 @@ export const dnsRoutes: FastifyPluginAsync<DnsRoutesOpts> = async (app, opts) =>
           detail: `${feed.id}=${feed.enabled}`,
           ip: req.ip,
         });
+        // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+        // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
         return reply.send(feed);
       } catch (err) {
         if (err instanceof DnsError && err.code === 'FEED_UNKNOWN') {

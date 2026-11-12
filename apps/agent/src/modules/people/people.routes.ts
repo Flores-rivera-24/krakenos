@@ -47,6 +47,8 @@ export const peopleRoutes: FastifyPluginAsync<PeopleRoutesOpts> = async (app, op
         detail: `${req.params.id} · ${req.body.minutes}m · ${result.applied}/${result.applied + result.failed}`,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );
@@ -65,6 +67,8 @@ export const peopleRoutes: FastifyPluginAsync<PeopleRoutesOpts> = async (app, op
         detail: `${req.params.id} · ${result.applied}/${result.applied + result.failed}`,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );
@@ -83,6 +87,8 @@ export const peopleRoutes: FastifyPluginAsync<PeopleRoutesOpts> = async (app, op
         detail: `${req.params.id} · ${req.body.startMinute}-${req.body.endMinute} · ${result.applied} dispositivo(s)`,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );
@@ -101,6 +107,8 @@ export const peopleRoutes: FastifyPluginAsync<PeopleRoutesOpts> = async (app, op
         detail: req.params.id,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(result);
     },
   );

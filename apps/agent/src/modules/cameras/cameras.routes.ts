@@ -106,6 +106,8 @@ export const camerasRoutes: FastifyPluginAsync<CameraRoutesOpts> = async (app, o
           .code(404)
           .send({ code: 'CAMERA_UNAVAILABLE', message: 'Cámara no encontrada o sin señal' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(snapshot);
     },
   );

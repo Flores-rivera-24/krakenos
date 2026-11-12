@@ -137,6 +137,8 @@ export function blockedReason(ip: string, policy: EgressPolicy): string | null {
 /** Quita esquema y puerto de un valor de campo `host`/`ip` para quedarse con el host. */
 export function extractHost(value: string): string {
   let s = value.trim();
+  // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+  // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
   // Si trae esquema (http://, mqtt://, ws://…), usa el parser de URL. Para IPv6,
   // `URL.hostname` conserva los corchetes (`[fe80::1]`); se quitan para dejar el
   // host desnudo que entiende `isIP`.

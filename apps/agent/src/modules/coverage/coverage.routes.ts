@@ -84,6 +84,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
           .code(404)
           .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(plan);
     },
   );
@@ -106,6 +108,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
         detail: plan.id,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(plan);
     },
   );
@@ -140,6 +144,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
           .code(404)
           .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(heatmap);
     },
   );
@@ -164,6 +170,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
           .code(404)
           .send({ code: 'FLOORPLAN_NOT_FOUND', message: 'Plano no encontrado' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(scans);
     },
   );
@@ -196,6 +204,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
       if (!scan) {
         return reply.code(404).send({ code: 'SCAN_NOT_FOUND', message: 'Survey no encontrado' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(scan);
     },
   );
@@ -244,6 +254,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
         detail: req.params.scanId,
         ip: req.ip,
       });
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(outcome.result);
     },
   );
@@ -256,6 +268,8 @@ export const coverageRoutes: FastifyPluginAsync<CoverageRoutesOpts> = async (app
       if (!heatmap) {
         return reply.code(404).send({ code: 'SCAN_NOT_FOUND', message: 'Survey no encontrado' });
       }
+      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
+      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(heatmap);
     },
   );
