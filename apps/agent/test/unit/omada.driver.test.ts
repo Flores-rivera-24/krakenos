@@ -142,6 +142,42 @@ describe('OmadaDriver', () => {
     fake = withContext(new FakeFetch());
   });
 
+  describe('resolución del site', () => {
+    const TRAFFIC = { data: { wanDownload: 1, wanUpload: 2 } };
+    function conSites(sites: { name: string; key: string }[], siteName: string) {
+      fake.on(`GET /api/v2/${OMADAC}/users/current`, () => ({ data: { privilege: { sites } } }));
+      fake.on(`GET /api/v2/${OMADAC}/sites/B/dashboard/overviewDashboard`, () => TRAFFIC);
+      fake.on(`GET /api/v2/${OMADAC}/sites/A/dashboard/overviewDashboard`, () => TRAFFIC);
+      const client = new OmadaClient({
+        url: 'https://omada.test',
+        username: 'admin',
+        password: 'pw',
+        fetch: fake.fetch,
+      });
+      return new OmadaDriver({ client, siteName });
+    }
+    const dosSites = [
+      { name: 'A', key: 'A' },
+      { name: 'B', key: 'B' },
+    ];
+
+    it('con varios sites y un nombre que no coincide, lanza nombrándolo y no opera sobre otro', async () => {
+      await expect(conSites(dosSites, 'C').getTrafficSample()).rejects.toThrow(/C/);
+      expect(fake.calls.some((c) => c.path.includes('/sites/'))).toBe(false);
+    });
+
+    it('con un solo site y otro nombre, usa ese único site', async () => {
+      await conSites([{ name: 'A', key: 'A' }], 'C').getTrafficSample();
+      expect(fake.calls.some((c) => c.path.includes('/sites/A/'))).toBe(true);
+    });
+
+    it('con varios sites y el nombre exacto, usa ese', async () => {
+      await conSites(dosSites, 'B').getTrafficSample();
+      expect(fake.calls.some((c) => c.path.includes('/sites/B/'))).toBe(true);
+      expect(fake.calls.some((c) => c.path.includes('/sites/A/'))).toBe(false);
+    });
+  });
+
   it('scanArp mapea clientes activos (MAC con guiones → :)', async () => {
     fake.on(`GET /api/v2/${OMADAC}/clients`, () => ({ data: CLIENTS }));
     const devices = await makeDriver(fake).scanArp();
