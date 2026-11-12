@@ -1,5 +1,9 @@
 import type { IotDevice, IotManager } from '@krakenos/types';
 import { describe, expect, it, vi } from 'vitest';
+import { HomeEventBus } from '../../src/automations/event-bus.js';
+import { IotWatcher } from '../../src/automations/iot-watcher.js';
+import { createManagerHolder } from '../../src/integrations/manager-holder.js';
+import type { ListFailure } from '../../src/iot/composite.iot.js';
 import { withDeviceCache } from '../../src/iot/device-cache.js';
 
 /**
@@ -200,5 +204,84 @@ describe('withDeviceCache (US-229)', () => {
     delete vivo.listFailures;
     await cached.listDevices();
     expect(cached.listFailures()).toBeUndefined();
+  });
+
+  describe('carrera con el swap del manager', () => {
+    const sensor = (id: string, value: number): IotDevice => ({
+      ...LAMP,
+      id,
+      kind: 'contact',
+      on: null,
+      readings: [{ metric: 'contact', value, unit: '' }],
+    });
+    type Fake = IotManager & { failures: ListFailure[]; listFailures(): ListFailure[] };
+    function fake(list: () => Promise<IotDevice[]>, failures: ListFailure[]): Fake {
+      return {
+        failures,
+        listFailures() {
+          return this.failures;
+        },
+        listDevices: list,
+        getDevice: async () => null,
+        setState: async () => LAMP,
+      };
+    }
+    const CAIDO: ListFailure = { prefix: 'hue', message: 'caído' };
+
+    it('los fallos salen de la misma instancia que listó, aunque haya swap a media lectura', async () => {
+      let release!: () => void;
+      const a = fake(async () => {
+        await new Promise<void>((r) => (release = r));
+        return [sensor('govee:b', 0)];
+      }, [CAIDO]);
+      const holder = createManagerHolder<IotManager>(a);
+      const cached = withDeviceCache(holder.handle, { ttlMs: 0 });
+
+      const lectura = cached.listDevices();
+      holder.swap(fake(async () => [sensor('govee:b', 0)], [])); // B no ha listado: sin fallos
+      release();
+      await lectura;
+
+      expect(cached.listFailures()).toEqual([CAIDO]);
+    });
+
+    it('con IotWatcher real, el aparato del backend caído sí publica su transición tras el swap', async () => {
+      let release: () => void = () => {};
+      const a = fake(async () => [sensor('hue:a', 0), sensor('govee:b', 0)], []);
+      const holder = createManagerHolder<IotManager>(a);
+      const cached = withDeviceCache(holder.handle, { ttlMs: 0 });
+      const events: unknown[] = [];
+      const bus = new HomeEventBus();
+      bus.subscribe((e) => {
+        events.push(e);
+      });
+      const watcher = new IotWatcher(cached, bus);
+      await watcher.tick(); // línea base: hue:a = 0
+
+      holder.swap(
+        fake(
+          async () => {
+            await new Promise<void>((r) => (release = r));
+            return [sensor('govee:b', 0)];
+          },
+          [CAIDO],
+        ),
+      );
+      const tick = watcher.tick();
+      const nueva = fake(async () => [sensor('govee:b', 0)], []);
+      holder.swap(nueva); // el admin guarda la config a media lectura
+      release();
+      await tick;
+
+      nueva.failures = [CAIDO];
+      await watcher.tick(); // hue sigue caído
+      nueva.failures = [];
+      nueva.listDevices = async () => [sensor('hue:a', 1), sensor('govee:b', 0)];
+      await watcher.tick(); // vuelve con la puerta abierta
+
+      expect(events).toContainEqual(
+        expect.objectContaining({ type: 'sensor-reading', deviceId: 'hue:a', value: 1 }),
+      );
+    });
   });
 });

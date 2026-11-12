@@ -71,10 +71,13 @@ export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}):
       if (snapshot && now() - takenAt < ttlMs) return snapshot;
       // Ya hay una lectura en curso: se comparte en vez de abrir otra.
       if (inFlight) return inFlight;
+      // Se captura ANTES de listar: el handle del holder liga cada método a la instancia viva al
+      // leerlo, y un `swap` a media lectura haría que `listFailures` viniera de otra instancia.
+      const fallos = (iot as Partial<ReportsListFailures>).listFailures?.bind(iot);
       inFlight = withActionTimeout(() => iot.listDevices(), listTimeoutMs)
         .then((devices) => {
           snapshot = devices;
-          failures = (iot as Partial<ReportsListFailures>).listFailures?.();
+          failures = fallos?.();
           takenAt = now();
           return devices;
         })
