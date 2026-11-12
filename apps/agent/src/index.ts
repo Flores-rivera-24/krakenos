@@ -16,14 +16,6 @@ import {
 } from './system/restore.js';
 import { keyFilePaths } from './system/key-paths.js';
 
-/**
- * Aplica una restauración preparada (US-104) **antes** de abrir la base de datos:
- * coloca DB/keys/data del staging en su sitio, respaldando lo actual. El staging y
- * las copias previas viven en `var/` (FUERA de `data/`, que es un destino de restore,
- * si no colisionarían). NUNCA propaga el error: si algo falla, aparta el staging y
- * continúa el arranque, de modo que un backup dañado/incompleto no deje la caja en un
- * bucle de reinicio (era un riesgo real en hardware desatendido).
- */
 /** Mejor esfuerzo: una poda que falla no puede tumbar el arranque ni fingir que la restauración falló. */
 function podarRespaldos(): void {
   try {
@@ -33,6 +25,14 @@ function podarRespaldos(): void {
   }
 }
 
+/**
+ * Aplica una restauración preparada (US-104) **antes** de abrir la base de datos:
+ * coloca DB/keys/data del staging en su sitio, respaldando lo actual. El staging y
+ * las copias previas viven en `var/` (FUERA de `data/`, que es un destino de restore,
+ * si no colisionarían). NUNCA propaga el error: si algo falla, aparta el staging y
+ * continúa el arranque, de modo que un backup dañado/incompleto no deje la caja en un
+ * bucle de reinicio (era un riesgo real en hardware desatendido).
+ */
 function applyPendingRestore(): AppliedRestore | null {
   const stagingDir = join(agentPaths().varDir, 'restore-staging');
   if (!existsSync(stagingDir)) return null;
