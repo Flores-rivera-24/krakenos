@@ -266,4 +266,12 @@ describe.skipIf(WIN)('bin/krakenos (Linux)', () => {
     expect(llamadasKeys()).toEqual(['gen']);
     expect(readFileSync(join(datos, '.env'), 'utf8')).toBe('PORT=4999\n');
   });
+
+  it('first-run no crea .env cuando la configuración viene del sistema', () => {
+    datos = join(raiz, 'mis datos');
+    const r = lanzar({ KRAKENOS_DATA_DIR: datos, KRAKENOS_ENV_FROM_SYSTEM: '1' });
+    expect(r.status).toBe(7);
+    expect(existsSync(join(datos, '.env'))).toBe(false);
+    expect(existsSync(join(datos, 'keys', 'jwt-private.pem'))).toBe(true);
+  });
 });

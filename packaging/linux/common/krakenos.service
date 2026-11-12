@@ -1,0 +1,34 @@
+# Unidad de systemd de KrakenOS para los paquetes de Linux (.deb y Arch).
+#
+# El código vive en /usr/lib/krakenos (de root, el servicio no lo modifica) y el estado en
+# /var/lib/krakenos. La configuración, en /etc/krakenos/krakenos.env: la carga systemd (como root)
+# y por eso el servicio no necesita poder leerla. Las claves de firma las crea el lanzador en el
+# primer arranque (/var/lib/krakenos/keys).
+
+[Unit]
+Description=KrakenOS — Home Control
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=krakenos
+Group=krakenos
+EnvironmentFile=/etc/krakenos/krakenos.env
+# El .env del paquete ya está cargado: first-run.mjs no crea un segundo .env en los datos.
+Environment=KRAKENOS_ENV_FROM_SYSTEM=1
+WorkingDirectory=/var/lib/krakenos
+ExecStart=/usr/lib/krakenos/bin/krakenos
+Restart=on-failure
+RestartSec=5
+# IMPRESCINDIBLE para la actualización one-click: el paso `restart` reinicia ESTA unidad y, con el
+# KillMode por defecto (control-group), systemd mataría también al actualizador a mitad de su
+# secuencia. Con `process` solo se señaliza al proceso principal.
+KillMode=process
+# false: el helper de VPN/firewall/QoS se invoca con `sudo` (opt-in: krakenos-setup --with-helper).
+NoNewPrivileges=false
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

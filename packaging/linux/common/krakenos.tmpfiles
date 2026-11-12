@@ -1,0 +1,2 @@
+# Directorio de estado de KrakenOS (systemd-tmpfiles): base de datos, claves y datos del agente.
+d /var/lib/krakenos 0750 krakenos krakenos -

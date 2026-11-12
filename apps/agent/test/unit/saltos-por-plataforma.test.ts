@@ -76,6 +76,16 @@ const LISTA: Record<string, Entrada> = {
     soloPosix: 3,
     motivo: `${MODOS}; y no hay umask. El resto de cada test (par RS256, rotación, temporales) sí corre. El fallo al escribir los temporales SÍ aplica en Windows (la rotación importa más allí), pero chmod 500 no lo provoca: pendiente de reescribirlo con un fallo inyectado.`,
   },
+  'unit/krakenos-setup.test.ts': {
+    saltos: 1,
+    motivo:
+      'krakenos-setup es un script de bash de root para los paquetes de Linux (stat -c, enlaces duros, rutas POSIX): no existe en Windows.',
+  },
+  'unit/linux-common.test.ts': {
+    saltos: 1,
+    motivo:
+      'El árbol de los paquetes de Linux se comprueba por modos POSIX (0o022, 0640) y enlaces; solo esos dos tests saltan, los del .env y la unidad corren en Windows.',
+  },
   'unit/local-ca-bundle.test.ts': {
     saltos: 0,
     soloPosix: 1,
@@ -107,10 +117,15 @@ const LISTA: Record<string, Entrada> = {
     saltos: 2,
     motivo: `${MODOS}; no hay umask ni O_NOFOLLOW sobre el descriptor.`,
   },
+  'unit/setup-token-file.test.ts': {
+    saltos: 1,
+    motivo:
+      'Fichero del token de setup: modo 0600 y enlaces, que Windows no tiene (los casos de contenido sí corren).',
+  },
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 12, saltos: 21, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 15, saltos: 24, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

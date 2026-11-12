@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+#
+# krakenos-setup — pasos de root de KrakenOS instalado como paquete (.deb / Arch).
+#
+#   krakenos-setup tls [auto|tailscale|local|none]   HTTPS (por defecto: auto)
+#   krakenos-setup --with-helper                     regla sudoers del helper (VPN/firewall/QoS)
+#   krakenos-setup setup-url [--wait SEGUNDOS]       URL de /setup con el token (por defecto 30 s)
+#
+# Opciones: --dry-run (imprime los comandos sin ejecutarlos), --root DIR (SOLO para pruebas:
+# prefija todas las rutas y toma al usuario actual como usuario del servicio).
+#
+# Corre como root, así que carga la biblioteca de SU PROPIO directorio (root 0755 en el paquete),
+# jamás de /var/lib/krakenos, que es del servicio.
+set -euo pipefail
+umask 077
+
+SELF="$(readlink -f -- "$0")"
+LIBEXEC="$(dirname -- "$SELF")"
+
+DRY_RUN=0
+ROOT=""
+WAIT=30
+CMD=""
+TLS_MODE=auto
+ARGS=("$@")
+i=0
+while ((i < ${#ARGS[@]})); do
+  case "${ARGS[i]}" in
+    --dry-run) DRY_RUN=1 ;;
+    --root) i=$((i + 1)); ROOT="${ARGS[i]:?--root necesita un directorio}" ;;
+    --wait) i=$((i + 1)); WAIT="${ARGS[i]:-}" ;;
+    --with-helper) CMD=with-helper ;;
+    tls | setup-url) CMD="${ARGS[i]}" ;;
+    auto | tailscale | local | none) TLS_MODE="${ARGS[i]}"; [[ $CMD == tls ]] || CMD=bad ;;
+    *) CMD=bad; BAD="${ARGS[i]}" ;;
+  esac
+  i=$((i + 1))
+done
+[[ $WAIT =~ ^[0-9]{1,4}$ ]] || { echo "ERROR: --wait necesita un número de segundos" >&2; exit 2; }
+[[ $CMD != bad && -n $CMD ]] || {
+  echo "uso: krakenos-setup tls [auto|tailscale|local|none] | --with-helper | setup-url [--wait N] [--dry-run]${BAD:+ (no entiendo «$BAD»)}" >&2
+  exit 2
+}
+
+# --- contrato de la biblioteca (ver el encabezado de lib/krakenos-system.sh) ---------------------
+log() { printf '==> %s\n' "$*"; }
+warn() { printf 'AVISO: %s\n' "$*" >&2; }
+die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
+run() {
+  if [[ $DRY_RUN -eq 1 ]]; then printf 'dry-run$ %s\n' "$*"; else "$@"; fi
+}
+write_file() {
+  local path="$1" content="$2"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ write %s\n' "$path"
+    printf '%s\n' "$content" | sed 's/^/dry-run>   /'
+    return 0
+  fi
+  printf '%s\n' "$content" > "$path"
+}
+
+SERVICE_NAME=krakenos
+SERVICE_USER=krakenos
+[[ -z $ROOT ]] || SERVICE_USER="$(id -un)"
+ENV_FILE="$ROOT/etc/krakenos/krakenos.env"
+ENV_EXAMPLE="$ENV_FILE"
+TLS_DIR="$ROOT/etc/krakenos/tls"
+CA_DIR="$ROOT/etc/krakenos/ca"
+LIB_DIR="$ROOT/usr/lib/krakenos/app/agent/dist"
+# shellcheck disable=SC2034 # la lee la biblioteca
+ROOT_NODE="$ROOT/usr/lib/krakenos/node/bin/node"
+DATA_DIR="$ROOT/var/lib/krakenos"
+SUMMARY=()
+# shellcheck disable=SC2034 # la lee la biblioteca
+INSTALL_DIR="$DATA_DIR"
+
+has_systemd() {
+  case "${KRAKENOS_ASSUME_SYSTEMD:-}" in
+    yes) return 0 ;;
+    no) return 1 ;;
+  esac
+  [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null
+}
+NO_SERVICE=0
+has_systemd || NO_SERVICE=1
+
+agent_port() {
+  local port=""
+  [[ -r $ENV_FILE ]] && port="$(sed -n 's/^PORT=\([0-9]\{1,5\}\).*/\1/p' "$ENV_FILE" | tail -1)"
+  printf '%s' "${port:-3001}"
+}
+set_env_var() {
+  local key="$1" value="$2"
+  if [[ $DRY_RUN -eq 1 ]]; then
+    printf 'dry-run$ %s=%s en %s\n' "$key" "$value" "$ENV_FILE"
+  elif grep -q "^${key}=" "$ENV_FILE" 2> /dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$value" >> "$ENV_FILE"
+  fi
+}
+tailscale_fqdn() {
+  tailscale status --json 2> /dev/null | sed -n 's/.*"DNSName": *"\([^"]*\)\..*/\1/p' | head -1
+}
+
+# shellcheck source=scripts/lib/krakenos-system.sh
+source "$LIBEXEC/lib/krakenos-system.sh"
+
+# En el paquete: el usuario lo crea systemd-sysusers, el código y node ya son de root, y avahi es
+# una dependencia del gestor de paquetes (no se instala con apt desde aquí).
+ensure_service_user() { :; }
+install_root_script() { :; }
+install_avahi() {
+  SUMMARY+=("para que <equipo>.local resuelva, instala avahi y libnss-mdns (o nss-mdns) con el gestor de paquetes")
+}
+
+print_summary() {
+  local s
+  [[ ${#SUMMARY[@]} -eq 0 ]] || log "Resumen:"
+  for s in "${SUMMARY[@]}"; do printf '  - %s\n' "$s"; done
+}
+
+cmd_tls() {
+  [[ $DRY_RUN -eq 1 || -f $ENV_FILE ]] || die "no existe $ENV_FILE: ¿está instalado el paquete?"
+  setup_tls
+  [[ $TLS_MODE == none ]] || log "Reinicia el servicio para aplicar HTTPS: systemctl restart krakenos"
+  print_summary
+}
+
+cmd_helper() {
+  install_sudoers "$ROOT/etc/sudoers.d/krakenos" "# KrakenOS — el servicio puede ejecutar SOLO el helper (allowlist propia por verbo y ámbito).
+krakenos ALL=(root) NOPASSWD: /usr/lib/krakenos/libexec/krakenos-helper"
+  print_summary
+}
+
+# Imprime la URL de /setup con el token. Nunca falla la instalación: sin token, dice qué mirar.
+cmd_setup_url() {
+  local f="$DATA_DIR/setup-token" waited=0 token="" origin
+  while [[ ! -e $f && ! -L $f && $waited -lt $WAIT ]]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  if [[ -e $f || -L $f ]]; then
+    # El fichero es del servicio: se lee SOLO si es normal, de un enlace y suyo, y abriéndolo
+    # por la ruta tras comprobarlo (nunca el contenido de un destino de enlace).
+    if tls_source_ok "$f" && [[ ! -L $f ]]; then
+      read -r token < "$f" || true
+    else
+      warn "$f no es un fichero normal del servicio (enlace u otro propietario): no se lee"
+    fi
+  fi
+  if [[ ! $token =~ ^[A-Za-z0-9._~-]+$ ]]; then
+    echo "No hay token de configuración todavía. Mira por qué: journalctl -u krakenos"
+    return 0
+  fi
+  origin="$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" 2> /dev/null | tail -1)"
+  # El valor de la plantilla (http://localhost:5173) es del modo desarrollo, no del paquete.
+  [[ $origin == https://* ]] || origin="http://localhost:$(agent_port)"
+  echo "Abre para crear el administrador: ${origin}/setup?token=${token}"
+}
+
+case "$CMD" in
+  tls) cmd_tls ;;
+  with-helper) cmd_helper ;;
+  setup-url) cmd_setup_url ;;
+esac
