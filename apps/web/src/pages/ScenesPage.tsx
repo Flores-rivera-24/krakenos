@@ -160,10 +160,12 @@ function SceneEditor({
   /**
    * Fila efectiva de un dispositivo: si llegó DESPUÉS de sembrar el draft (carga
    * tardía del snapshot IoT), cae a una fila por defecto en vez de crashear con
-   * `draft[d.id]!` (AUD-12).
+   * `draft[d.id]!` (AUD-12). La fila por defecto sale de las acciones de la escena
+   * (como `initialDraft`): si no, un aparato que ya estaba en la escena llegaría
+   * desmarcado y guardar la vaciaría.
    */
   const rowFor = (d: IotDevice): DraftAction =>
-    draft[d.id] ?? { include: false, on: d.on ?? true, brightness: d.brightness ?? null };
+    draft[d.id] ?? initialDraft([d], scene?.actions ?? [])[d.id]!;
 
   const update = (d: IotDevice, patch: Partial<DraftAction>) =>
     setDraft((prev) => ({ ...prev, [d.id]: { ...rowFor(d), ...prev[d.id], ...patch } }));
@@ -182,7 +184,7 @@ function SceneEditor({
 
   const buildActions = (): SceneAction[] => [
     ...devices
-      .filter((d) => draft[d.id]?.include)
+      .filter((d) => rowFor(d).include)
       .map((d) => {
         const row = rowFor(d);
         const action: SceneAction = { deviceId: d.id, on: row.on };

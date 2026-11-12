@@ -309,6 +309,32 @@ describe('ScenesPage (US-166)', () => {
       expect(body.actions).toEqual(original.actions);
     });
 
+    it('si los aparatos llegan después de abrir el editor, quedan marcados y renombrar no vacía la escena', async () => {
+      let resolveDevices: (d: IotDevice[]) => void = () => undefined;
+      apiMock.get.mockImplementation((path: string) => {
+        if (path === '/scenes') return Promise.resolve([original]);
+        if (path === '/iot/devices') return new Promise((res) => (resolveDevices = res));
+        return Promise.resolve([]);
+      });
+      apiMock.patch.mockReset().mockResolvedValue(original);
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await act(async () => resolveDevices([dev('a'), dev('b')]));
+      expect(await within(dialog).findByLabelText('Incluir Luz a')).toBeChecked();
+      expect(within(dialog).getByLabelText('Incluir Luz b')).toBeChecked();
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      // Las luces añaden su brillo al guardar (comportamiento previo): se compara lo que importa.
+      expect(body.actions.map((x) => [x.deviceId, x.on])).toEqual([
+        ['a', true],
+        ['b', false],
+        ['c', true],
+      ]);
+      expect(body.actions[2]).toEqual({ deviceId: 'c', on: true, brightness: 40 });
+    });
+
     it('un aparato presente y marcado no se duplica', async () => {
       servir([dev('a'), dev('b')]);
       const user = userEvent.setup();
@@ -333,9 +359,7 @@ describe('ScenesPage (US-166)', () => {
     });
 
     it('una escena nueva con la lista vacía no inventa acciones', async () => {
-      apiMock.get.mockImplementation((path: string) =>
-        Promise.resolve(path === '/iot/devices' ? [] : []),
-      );
+      apiMock.get.mockImplementation(() => Promise.resolve([]));
       apiMock.post.mockReset().mockResolvedValue(scene());
       const user = userEvent.setup();
       renderPage();
