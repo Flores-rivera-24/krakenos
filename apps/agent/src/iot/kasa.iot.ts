@@ -55,6 +55,8 @@ export class KasaIotManager implements IotManager {
     const seenKasa = new Set<string>();
     try {
       for (const d of await this.opts.kasa.discover()) {
+        // Un host descubierto que no es privado ni lo declaró el admin se ignora.
+        if (!isPrivateIp(d.ip) && !(this.opts.kasaIps ?? []).includes(d.ip)) continue;
         const state = parseKasaSysinfo(d.ip, d.sysinfo);
         if (state) {
           seenKasa.add(d.ip);
@@ -80,6 +82,7 @@ export class KasaIotManager implements IotManager {
       const tapoIps = new Set(this.opts.tapoIps ?? []);
       try {
         for (const ip of await this.opts.tapo.discover()) {
+          if (!isPrivateIp(ip) && !(this.opts.tapoIps ?? []).includes(ip)) continue;
           tapoIps.add(ip);
           if (isPrivateIp(ip)) seen.tapo.add(ip);
         }

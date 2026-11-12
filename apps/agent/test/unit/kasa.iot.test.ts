@@ -64,6 +64,28 @@ const tapoInfo = (model: string, on: boolean) => ({
 });
 
 describe('KasaIotManager', () => {
+  describe('discover con IP pública', () => {
+    const PUBLICA = '8.8.8.8';
+    it('no lista ni consulta un host descubierto que no es privado', async () => {
+      const kasa = new FakeKasa([{ ip: PUBLICA, sysinfo: plugSysinfo('Ajeno', true) }]);
+      const tapo = new FakeTapo([PUBLICA], { [PUBLICA]: tapoInfo('P110', true) });
+      const mgr = new KasaIotManager({ kasa, tapo });
+      expect(await mgr.listDevices()).toEqual([]);
+      expect(kasa.sent).toEqual([]);
+      expect(tapo.requests).toEqual([]);
+    });
+
+    it('un host público configurado por el admin sigue funcionando', async () => {
+      const kasa = new FakeKasa([{ ip: PUBLICA, sysinfo: plugSysinfo('Mío', true) }], {
+        [PUBLICA]: plugSysinfo('Mío', true),
+      });
+      const tapo = new FakeTapo([PUBLICA], { [PUBLICA]: tapoInfo('P110', true) });
+      const mgr = new KasaIotManager({ kasa, tapo, kasaIps: [PUBLICA], tapoIps: [PUBLICA] });
+      const ids = (await mgr.listDevices()).map((d) => d.id).sort();
+      expect(ids).toEqual([`kasa:${PUBLICA}`, `tapo:${PUBLICA}`]);
+    });
+  });
+
   it('listDevices combina dispositivos Kasa (broadcast) y Tapo (config)', async () => {
     const kasa = new FakeKasa([{ ip: '192.168.1.60', sysinfo: plugSysinfo('Cafetera', true) }]);
     const tapo = new FakeTapo([], { '192.168.1.70': tapoInfo('L530', true) });
