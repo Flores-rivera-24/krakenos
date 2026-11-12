@@ -51,6 +51,8 @@ export const REDACTADO = '***';
  */
 export function redactUrl(url: string): string {
   if (typeof url !== 'string' || url === '') return url;
+  // El token de una invitación va en el segmento de la ruta, no en la query.
+  url = url.replace(/(\/redeem\/)[^/?#]+/, `$1${REDACTADO}`);
   const corte = url.indexOf('?');
   if (corte === -1) return url;
 
