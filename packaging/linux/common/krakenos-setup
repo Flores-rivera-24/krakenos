@@ -22,6 +22,8 @@ ROOT=""
 WAIT=30
 CMD=""
 TLS_MODE=auto
+INVALID=0
+BAD=
 ARGS=("$@")
 i=0
 while ((i < ${#ARGS[@]})); do
@@ -31,13 +33,13 @@ while ((i < ${#ARGS[@]})); do
     --wait) i=$((i + 1)); WAIT="${ARGS[i]:-}" ;;
     --with-helper) CMD=with-helper ;;
     tls | setup-url) CMD="${ARGS[i]}" ;;
-    auto | tailscale | local | none) TLS_MODE="${ARGS[i]}"; [[ $CMD == tls ]] || CMD=bad ;;
-    *) CMD=bad; BAD="${ARGS[i]}" ;;
+    auto | tailscale | local | none) TLS_MODE="${ARGS[i]}"; [[ $CMD == tls ]] || { INVALID=1; BAD="${ARGS[i]}"; } ;;
+    *) INVALID=1; BAD="${ARGS[i]}" ;;
   esac
   i=$((i + 1))
 done
 [[ $WAIT =~ ^[0-9]{1,4}$ ]] || { echo "ERROR: --wait necesita un número de segundos" >&2; exit 2; }
-[[ $CMD != bad && -n $CMD ]] || {
+[[ $INVALID -eq 0 && -n $CMD ]] || {
   echo "uso: krakenos-setup tls [auto|tailscale|local|none] | --with-helper | setup-url [--wait N] [--dry-run]${BAD:+ (no entiendo «$BAD»)}" >&2
   exit 2
 }
@@ -59,6 +61,7 @@ write_file() {
   printf '%s\n' "$content" > "$path"
 }
 
+# shellcheck disable=SC2034 # la lee la biblioteca
 SERVICE_NAME=krakenos
 SERVICE_USER=krakenos
 [[ -z $ROOT ]] || SERVICE_USER="$(id -un)"
@@ -70,6 +73,8 @@ LIB_DIR="$ROOT/usr/lib/krakenos/app/agent/dist"
 # shellcheck disable=SC2034 # la lee la biblioteca
 ROOT_NODE="$ROOT/usr/lib/krakenos/node/bin/node"
 DATA_DIR="$ROOT/var/lib/krakenos"
+# Misma ruta que instala el paquete y que fija krakenos.env (HELPER_PATH en linux-common.mjs).
+HELPER_PATH=/usr/lib/krakenos/libexec/krakenos-helper
 SUMMARY=()
 # shellcheck disable=SC2034 # la lee la biblioteca
 INSTALL_DIR="$DATA_DIR"
@@ -81,6 +86,7 @@ has_systemd() {
   esac
   [[ -d /run/systemd/system ]] && command -v systemctl > /dev/null
 }
+# shellcheck disable=SC2034 # la lee la biblioteca
 NO_SERVICE=0
 has_systemd || NO_SERVICE=1
 
@@ -129,8 +135,19 @@ cmd_tls() {
 
 cmd_helper() {
   install_sudoers "$ROOT/etc/sudoers.d/krakenos" "# KrakenOS — el servicio puede ejecutar SOLO el helper (allowlist propia por verbo y ámbito).
-krakenos ALL=(root) NOPASSWD: /usr/lib/krakenos/libexec/krakenos-helper"
+krakenos ALL=(root) NOPASSWD: $HELPER_PATH"
   print_summary
+}
+
+# Lee el token SIN privilegio de root, con tope de tiempo y de tamaño: el fichero está en un
+# directorio que escribe el servicio, y comprobar-y-luego-leer como root dejaba colar un FIFO
+# (cuelga la instalación) o un enlace (root lee otro fichero).
+leer_token() {
+  if [[ $(id -u) -eq 0 ]]; then
+    timeout 5 runuser -u "$SERVICE_USER" -- head -c 256 -- "$1" 2> /dev/null
+  else
+    timeout 5 head -c 256 -- "$1" 2> /dev/null
+  fi
 }
 
 # Imprime la URL de /setup con el token. Nunca falla la instalación: sin token, dice qué mirar.
@@ -144,7 +161,7 @@ cmd_setup_url() {
     # El fichero es del servicio: se lee SOLO si es normal, de un enlace y suyo, y abriéndolo
     # por la ruta tras comprobarlo (nunca el contenido de un destino de enlace).
     if tls_source_ok "$f" && [[ ! -L $f ]]; then
-      read -r token < "$f" || true
+      token="$(leer_token "$f")" || token=""
     else
       warn "$f no es un fichero normal del servicio (enlace u otro propietario): no se lee"
     fi

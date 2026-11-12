@@ -36,9 +36,10 @@ beforeEach(async () => {
 });
 afterEach(() => rmSync(raiz, { recursive: true, force: true }));
 
-function correr(args: string[], extra: NodeJS.ProcessEnv = {}) {
+function correr(args: string[], extra: NodeJS.ProcessEnv = {}, timeout = 60000) {
   return spawnSync(setup, ['--root', join(raiz, 'root'), ...args], {
     encoding: 'utf8',
+    timeout,
     env: { PATH: '/usr/bin:/bin', ...extra },
   });
 }
@@ -83,8 +84,14 @@ describe.skipIf(WIN)('krakenos-setup', () => {
 
   it('un modo de TLS desconocido es un error', () => {
     const r = correr(['--dry-run', 'tls', 'raro']);
-    expect(r.status).not.toBe(0);
+    expect(r.status).toBe(2);
     expect(r.stderr).toContain('raro');
+  });
+
+  it('un modo de TLS inválido falla aunque el orden sea otro', () => {
+    const r = correr(['--dry-run', 'auto', 'tls']);
+    expect(r.status).toBe(2);
+    expect(r.stdout).not.toContain('--tls auto');
   });
 
   it('setup-url imprime la URL con el token', () => {
@@ -121,6 +128,15 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     r = correr(['setup-url', '--wait', '1']);
     expect(r.status).toBe(0);
     expect(r.stdout + r.stderr).not.toContain('CONTENIDO-AJENO');
+    expect(r.stdout).not.toContain('token=');
+  });
+
+  it('setup-url no se cuelga con un FIFO en el lugar del token ni imprime nada', () => {
+    mkdirSync(dirDatos(), { recursive: true });
+    expect(spawnSync('mkfifo', [join(dirDatos(), 'setup-token')]).status).toBe(0);
+    const r = correr(['setup-url', '--wait', '1'], {}, 20000);
+    expect(r.error).toBeUndefined();
+    expect(r.status).toBe(0);
     expect(r.stdout).not.toContain('token=');
   });
 
