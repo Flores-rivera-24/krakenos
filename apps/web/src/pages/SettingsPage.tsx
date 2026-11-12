@@ -72,10 +72,18 @@ const TIMEZONES = [
   'Asia/Tokyo',
 ];
 
+type Opcion = { value: string; label: string };
+
 /** Si el valor guardado no está en la lista, se añade (ordenado) para que el desplegable no enseñe otro. */
-function conValorActual(opciones: readonly string[], valor: string): string[] {
-  if (!valor || opciones.includes(valor)) return [...opciones];
-  return [...opciones, valor].sort((a, b) => Number(a) - Number(b));
+function conValorActual(
+  opciones: readonly Opcion[],
+  valor: string,
+  etiqueta: (v: string) => string = (v) => v,
+): Opcion[] {
+  if (!valor || opciones.some((o) => o.value === valor)) return [...opciones];
+  return [...opciones, { value: valor, label: etiqueta(valor) }].sort(
+    (x, y) => Number(x.value) - Number(y.value),
+  );
 }
 
 function Setting({
@@ -344,9 +352,19 @@ export function SettingsPage() {
                           disabled={!isAdmin}
                           onChange={(e) => void patch('scanIntervalSec', e.target.value)}
                         >
-                          <option value="30">{t('settings.system.sec30')}</option>
-                          <option value="60">{t('settings.system.min1')}</option>
-                          <option value="300">{t('settings.system.min5')}</option>
+                          {conValorActual(
+                            [
+                              { value: '30', label: t('settings.system.sec30') },
+                              { value: '60', label: t('settings.system.min1') },
+                              { value: '300', label: t('settings.system.min5') },
+                            ],
+                            setting('scanIntervalSec'),
+                            (n) => t('settings.system.secN', { n }),
+                          ).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
                         </Select>
                       </Setting>
                       <Setting label={t('settings.system.presenceGrace')}>
@@ -369,13 +387,14 @@ export function SettingsPage() {
                           disabled={!isAdmin}
                           onChange={(e) => void patch('presenceLeaveSweeps', e.target.value)}
                         >
-                          {conValorActual(['1', '2', '3', '5'], setting('presenceLeaveSweeps')).map(
-                            (n) => (
-                              <option key={n} value={n}>
-                                {n}
-                              </option>
-                            ),
-                          )}
+                          {conValorActual(
+                            ['1', '2', '3', '5'].map((n) => ({ value: n, label: n })),
+                            setting('presenceLeaveSweeps'),
+                          ).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
                         </Select>
                       </Setting>
                       <Setting
@@ -579,9 +598,19 @@ export function SettingsPage() {
                           disabled={!isAdmin}
                           onChange={(e) => void patch('trafficRetentionDays', e.target.value)}
                         >
-                          <option value="7">{t('settings.retention.d7')}</option>
-                          <option value="30">{t('settings.retention.d30')}</option>
-                          <option value="90">{t('settings.retention.d90')}</option>
+                          {conValorActual(
+                            [
+                              { value: '7', label: t('settings.retention.d7') },
+                              { value: '30', label: t('settings.retention.d30') },
+                              { value: '90', label: t('settings.retention.d90') },
+                            ],
+                            setting('trafficRetentionDays'),
+                            (n) => t('settings.retention.dN', { n }),
+                          ).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
                         </Select>
                       </Setting>
                       <Setting label={t('settings.retention.audit')}>
@@ -591,9 +620,19 @@ export function SettingsPage() {
                           disabled={!isAdmin}
                           onChange={(e) => void patch('auditRetentionDays', e.target.value)}
                         >
-                          <option value="30">{t('settings.retention.d30')}</option>
-                          <option value="90">{t('settings.retention.d90')}</option>
-                          <option value="180">{t('settings.retention.d180')}</option>
+                          {conValorActual(
+                            [
+                              { value: '30', label: t('settings.retention.d30') },
+                              { value: '90', label: t('settings.retention.d90') },
+                              { value: '180', label: t('settings.retention.d180') },
+                            ],
+                            setting('auditRetentionDays'),
+                            (n) => t('settings.retention.dN', { n }),
+                          ).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
                         </Select>
                       </Setting>
                     </>

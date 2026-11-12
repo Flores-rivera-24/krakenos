@@ -508,6 +508,7 @@ export const esAjustes = {
   'settings.system.timezone': 'Zona horaria',
   'settings.system.scanInterval': 'Intervalo de escaneo',
   'settings.system.sec30': '30 segundos',
+  'settings.system.secN': '{n} segundos',
   'settings.system.min1': '1 minuto',
   'settings.system.min5': '5 minutos',
   'settings.system.min10': '10 minutos',
@@ -550,6 +551,7 @@ export const esAjustes = {
   'settings.retention.d7': '7 días',
   'settings.retention.d30': '30 días',
   'settings.retention.d90': '90 días',
+  'settings.retention.dN': '{n} días',
   'settings.retention.d180': '180 días',
   // Tarjeta Cuenta
   'settings.account.title': 'Cuenta',

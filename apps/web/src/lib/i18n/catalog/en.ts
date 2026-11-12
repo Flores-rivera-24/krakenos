@@ -2032,6 +2032,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.system.timezone': 'Time zone',
   'settings.system.scanInterval': 'Scan interval',
   'settings.system.sec30': '30 seconds',
+  'settings.system.secN': '{n} seconds',
   'settings.system.min1': '1 minute',
   'settings.system.min5': '5 minutes',
   'settings.system.min10': '10 minutes',
@@ -2074,6 +2075,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.retention.d7': '7 days',
   'settings.retention.d30': '30 days',
   'settings.retention.d90': '90 days',
+  'settings.retention.dN': '{n} days',
   'settings.retention.d180': '180 days',
   // Account card
   'settings.account.title': 'Account',

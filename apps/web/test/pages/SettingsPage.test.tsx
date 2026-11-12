@@ -196,6 +196,67 @@ describe('SettingsPage', () => {
     ).toEqual(['1', '2', '3', '5', '7']);
   });
 
+  it('un intervalo y una retención guardados fuera de lista se muestran con su etiqueta, no el primero', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: {
+              ...SETTINGS.settings,
+              scanIntervalSec: '45',
+              trafficRetentionDays: '14',
+              auditRetentionDays: '365',
+            },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    const sel = (name: string) => screen.getByLabelText(name) as HTMLSelectElement;
+    const elegida = (s: HTMLSelectElement) => s.selectedOptions[0]?.textContent;
+    expect(sel('Intervalo de escaneo')).toHaveValue('45');
+    expect(elegida(sel('Intervalo de escaneo'))).toBe('45 segundos');
+    expect(
+      within(sel('Intervalo de escaneo'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['30 segundos', '45 segundos', '1 minuto', '5 minutos']);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Red' }));
+    expect(elegida(sel('Retención del historial de tráfico'))).toBe('14 días');
+    expect(elegida(sel('Retención del registro de auditoría'))).toBe('365 días');
+  });
+
+  // Caracterización: hoy ya pasa, porque cada PATCH lleva una sola clave.
+  it('guardar otro campo no cambia scanIntervalSec en el cuerpo enviado', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: { ...SETTINGS.settings, scanIntervalSec: '45' },
+          })
+        : Promise.resolve([]),
+    );
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    await user.selectOptions(screen.getByDisplayValue('Europe/Madrid'), 'UTC');
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledTimes(1));
+    expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
+      key: 'timezone',
+      value: 'UTC',
+    });
+  });
+
   it('muestra un error y no falla en silencio si el PATCH falla (US-55)', async () => {
     setUser('admin');
     apiMock.patch.mockRejectedValue(new Error('500'));
