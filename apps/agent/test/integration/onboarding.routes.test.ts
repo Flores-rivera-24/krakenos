@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { USER_ROLES } from '@krakenos/types';
 import { MAX_PENDING_ACCESS_REQUESTS } from '../../src/modules/onboarding/access-requests.service.js';
 import { ACCESS_REQUEST_RETENTION_DAYS, pruneAccessRequests } from '../../src/config/retention.js';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
@@ -41,6 +42,13 @@ describe('alta de usuarios: invitaciones y solicitudes', () => {
   }
 
   describe('invitaciones (US-272)', () => {
+    it('cada rol de USER_ROLES se puede invitar', async () => {
+      for (const role of USER_ROLES) {
+        const { invitation } = await invitar(`invitado-${role}@krakenos.test`, role);
+        expect(invitation.id).toBeTruthy();
+      }
+    });
+
     /**
      * El punto de toda la historia. Antes, el alta era que el admin tecleara ÉL una
      * contraseña y se la mandara por WhatsApp: la contraseña más reutilizada de la

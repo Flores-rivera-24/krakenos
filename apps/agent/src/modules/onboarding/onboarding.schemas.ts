@@ -5,12 +5,14 @@
  * **públicas**, así que lo que no está declarado no entra.
  */
 
+import { USER_ROLES } from '@krakenos/types';
+
 const errorResponse = {
   type: 'object',
   properties: { code: { type: 'string' }, message: { type: 'string' } },
 } as const;
 
-const ROLE = { type: 'string', enum: ['admin', 'member', 'kid', 'guest', 'viewer'] } as const;
+const ROLE = { type: 'string', enum: [...USER_ROLES] } as const;
 
 const invitationResponse = {
   type: 'object',
