@@ -14,6 +14,11 @@ export interface DeviceCacheOptions {
   listTimeoutMs?: number;
 }
 
+/** Lo que expone la caché: siempre `listFailures`, pero `undefined` = «el manager no reportó». */
+export type CachedIotManager = IotManager & {
+  listFailures(): readonly ListFailure[] | undefined;
+};
+
 /**
  * Vista cacheada de un `IotManager` para los **barridos de fondo** (US-229 /
  * AUD3-18).
@@ -43,10 +48,7 @@ export interface DeviceCacheOptions {
  * `ManagerHolder` (`runtime.stopAll()`), y las rutas siguen recibiendo el handle
  * recargable directo, sin caché.
  */
-export function withDeviceCache(
-  iot: IotManager,
-  opts: DeviceCacheOptions = {},
-): IotManager & Partial<ReportsListFailures> {
+export function withDeviceCache(iot: IotManager, opts: DeviceCacheOptions = {}): CachedIotManager {
   const ttlMs = opts.ttlMs ?? DEFAULT_DEVICE_CACHE_TTL_MS;
   const now = opts.now ?? Date.now;
   const listTimeoutMs = opts.listTimeoutMs ?? IOT_ACTION_TIMEOUT_MS;
@@ -56,15 +58,15 @@ export function withDeviceCache(
   let inFlight: Promise<IotDevice[]> | null = null;
   // Fallos de la MISMA lectura que respalda `snapshot`: pedirlos al manager en vivo los
   // mezclaría con una lectura posterior y el vigilante olvidaría la base de un backend caído.
-  let failures: readonly ListFailure[] = [];
-  const reporter = iot as Partial<ReportsListFailures>;
+  // `undefined` = el manager de esa lectura no los reporta (p. ej. `none` antes de un `swap`).
+  let failures: readonly ListFailure[] | undefined;
 
   function invalidate(): void {
     snapshot = null;
     takenAt = Number.NEGATIVE_INFINITY;
   }
 
-  const cache: IotManager & Partial<ReportsListFailures> = {
+  const cache: CachedIotManager = {
     async listDevices(): Promise<IotDevice[]> {
       if (snapshot && now() - takenAt < ttlMs) return snapshot;
       // Ya hay una lectura en curso: se comparte en vez de abrir otra.
@@ -72,7 +74,7 @@ export function withDeviceCache(
       inFlight = withActionTimeout(() => iot.listDevices(), listTimeoutMs)
         .then((devices) => {
           snapshot = devices;
-          failures = reporter.listFailures?.() ?? [];
+          failures = (iot as Partial<ReportsListFailures>).listFailures?.();
           takenAt = now();
           return devices;
         })
@@ -92,8 +94,9 @@ export function withDeviceCache(
       invalidate();
       return device;
     },
+
+    /** Fallos de la lectura que respalda el snapshot; `undefined` si esa lectura no los reportó. */
+    listFailures: () => failures,
   };
-  // Solo se expone si el manager de abajo lo reporta: su ausencia significa «no sé».
-  if (reporter.listFailures) cache.listFailures = () => failures;
   return cache;
 }

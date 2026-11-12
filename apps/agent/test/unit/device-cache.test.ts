@@ -168,9 +168,7 @@ describe('withDeviceCache (US-229)', () => {
       ...fakeIot([LAMP]),
       listFailures: () => [{ prefix: 'hue', message: 'caído' }],
     } as IotManager;
-    const cached = withDeviceCache(iot) as IotManager & {
-      listFailures?: () => { prefix: string; message: string }[];
-    };
+    const cached = withDeviceCache(iot);
     await cached.listDevices();
     expect(cached.listFailures?.()).toEqual([{ prefix: 'hue', message: 'caído' }]);
   });
@@ -178,16 +176,29 @@ describe('withDeviceCache (US-229)', () => {
   it('los fallos son los de la lectura que respalda el snapshot, no los del manager en vivo', async () => {
     let fallos = [{ prefix: 'hue', message: 'caído' }];
     const iot = { ...fakeIot([LAMP]), listFailures: () => fallos } as IotManager;
-    const cached = withDeviceCache(iot) as IotManager & {
-      listFailures?: () => { prefix: string; message: string }[];
-    };
+    const cached = withDeviceCache(iot);
     await cached.listDevices();
     fallos = []; // otra llamada sin caché ve volver el backend; la caché no ha releído
     await cached.listDevices(); // sirve el snapshot
     expect(cached.listFailures?.()).toEqual([{ prefix: 'hue', message: 'caído' }]);
   });
 
-  it('no expone listFailures si el manager de abajo no lo tiene', () => {
-    expect(withDeviceCache(fakeIot([LAMP])).listFailures).toBeUndefined();
+  it('sin método en la lectura, listFailures() es undefined («no reportado»), no una lista vacía', async () => {
+    const cached = withDeviceCache(fakeIot([LAMP]), { ttlMs: 0 });
+    await cached.listDevices();
+    expect(cached.listFailures()).toBeUndefined();
+  });
+
+  it('el manager de abajo gana listFailures tras un swap en caliente: la caché lo recoge', async () => {
+    const vivo = fakeIot([LAMP]) as IotManager & { listFailures?: () => unknown };
+    const cached = withDeviceCache(vivo, { ttlMs: 0 });
+    await cached.listDevices();
+    expect(cached.listFailures()).toBeUndefined();
+    vivo.listFailures = () => [{ prefix: 'hue', message: 'caído' }];
+    await cached.listDevices();
+    expect(cached.listFailures()).toEqual([{ prefix: 'hue', message: 'caído' }]);
+    delete vivo.listFailures;
+    await cached.listDevices();
+    expect(cached.listFailures()).toBeUndefined();
   });
 });

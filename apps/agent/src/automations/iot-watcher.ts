@@ -1,4 +1,4 @@
-import type { ReportsListFailures } from '../iot/composite.iot.js';
+import type { ListFailure } from '../iot/composite.iot.js';
 import type { HomeEvent, IotDevice, IotManager } from '@krakenos/types';
 import type { FastifyBaseLogger } from 'fastify';
 import { createTickLoop, type TickLoop } from '../system/tick-loop.js';
@@ -97,7 +97,9 @@ export class IotWatcher {
     // `[]` y una puerta abierta durante el corte no dispararía la alarma. Los de un backend
     // sano que faltan sí se olvidan (ya no existen: si reaparecen, es un alta nueva).
     // Sin reporte de fallos (método ausente) no se sabe qué falta por qué: se conserva todo.
-    const reporte = (this.iot as Partial<ReportsListFailures>).listFailures?.();
+    const reporte = (
+      this.iot as { listFailures?: () => readonly ListFailure[] | undefined }
+    ).listFailures?.();
     const caidos = new Set((reporte ?? []).map((f) => f.prefix));
     const kept = [...(prev ?? [])].filter(
       ([id]) => !reporte || caidos.has(id.slice(0, id.indexOf(':'))),
