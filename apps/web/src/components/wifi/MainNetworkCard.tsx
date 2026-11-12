@@ -9,7 +9,8 @@ import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/sondeo';
 import '@/lib/i18n/catalog/fragments/usuarios';
@@ -51,8 +52,7 @@ export function MainNetworkCard({ network, isAdmin, onUpdated }: Props) {
       setPassword('');
       setFeedback({ ok: true, msg: t('wifi.saved') });
     } catch (err) {
-      const msg = err instanceof ApiRequestError ? err.body.message : t('wifi.saveError');
-      setFeedback({ ok: false, msg });
+      setFeedback({ ok: false, msg: describeError(err, t('wifi.saveError')) });
     } finally {
       setSaving(false);
     }

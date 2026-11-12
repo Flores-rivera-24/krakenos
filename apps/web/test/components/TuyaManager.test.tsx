@@ -1,7 +1,7 @@
 import type { TuyaDeviceView } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -15,9 +15,21 @@ const apiMock = vi.hoisted(() => {
     del: vi.fn(),
   };
 });
-vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
+vi.mock('@/lib/api', () => ({
+  api: apiMock,
+  ApiRequestError: class ApiRequestError extends Error {
+    constructor(
+      readonly status: number,
+      readonly body: { code: string; message: string },
+    ) {
+      super(body.message);
+    }
+  },
+}));
 
 import { TuyaManager } from '@/components/settings/TuyaManager';
+import { ApiRequestError } from '@/lib/api';
+import { changeLocale, setLocale } from '@/lib/i18n';
 
 const FOCOS: TuyaDeviceView[] = [
   { deviceId: 'abcdef1234567890', ip: '192.168.1.50', name: 'Salón', version: '3.3' },
@@ -29,6 +41,37 @@ describe('TuyaManager', () => {
     apiMock.post.mockReset().mockResolvedValue(undefined);
     apiMock.patch.mockReset().mockResolvedValue(undefined);
     apiMock.del.mockReset().mockResolvedValue(undefined);
+  });
+
+  afterEach(() => setLocale('es', { persist: false }));
+
+  it('un rechazo sin mensaje se pinta con el texto base, no vacío', async () => {
+    const user = userEvent.setup();
+    apiMock.del.mockRejectedValue(new ApiRequestError(409, { code: 'X_DESCONOCIDO', message: '' }));
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo completar la operación. (error 409).',
+    );
+  });
+
+  it('en inglés el error del servidor se traduce por su código', async () => {
+    const user = userEvent.setup();
+    apiMock.del.mockRejectedValue(
+      new ApiRequestError(400, { code: 'VALIDATION', message: 'Revisa los datos' }),
+    );
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    await user.click(screen.getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm' }));
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Check the details and try again.'),
+    );
   });
 
   it('lista los focos registrados (sin localKey en la respuesta)', async () => {

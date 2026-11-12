@@ -305,6 +305,23 @@ describe('SettingsPage', () => {
     expect(await screen.findByText(/OK · 3 ms/)).toBeInTheDocument();
   });
 
+  it('si la prueba de conexión rechaza, se pinta como fallo y el botón se rehabilita', async () => {
+    setUser('admin');
+    apiMock.post.mockRejectedValueOnce(new Error('caído'));
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Red' }));
+    await user.click(screen.getByRole('button', { name: 'Probar conexión' }));
+    expect(
+      await screen.findByText('No se pudo conectar con el servidor. Revisa tu conexión.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Probar conexión' })).toBeEnabled();
+  });
+
   it('la sección Cuenta muestra los datos del usuario', async () => {
     setUser('viewer');
     const user = userEvent.setup();

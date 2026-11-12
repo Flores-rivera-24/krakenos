@@ -10,7 +10,8 @@ import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { useLectura } from '@/lib/use-lectura';
 import { FormError } from '@/components/ui/form-error';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { invalidarIot, trasEscribir } from '@/lib/resources';
 import '@/lib/i18n/catalog/fragments/ajustes';
@@ -152,7 +153,7 @@ export function TuyaManager({ reachable }: Props) {
       await fn();
       load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : t('tuya.opError'));
+      setError(describeError(err, t('tuya.opError')));
     }
   };
 

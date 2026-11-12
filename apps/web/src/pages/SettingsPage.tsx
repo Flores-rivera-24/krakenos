@@ -38,6 +38,7 @@ import { WidgetError } from '@/components/ui/widget-error';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Switch } from '@/components/ui/switch';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useLectura } from '@/lib/use-lectura';
 import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
@@ -46,6 +47,7 @@ import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/pus
 import { etiquetaDeRol } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
+import '@/lib/i18n/catalog/fragments/conectar';
 
 type Section = 'sistema' | 'red' | 'seguridad' | 'integraciones' | 'usuarios' | 'cuenta';
 
@@ -229,6 +231,8 @@ export function SettingsPage() {
     setTest(null);
     try {
       setTest(await api.post<ConnectivityTestResult>('/system/connectivity-test'));
+    } catch (err) {
+      setTest({ ok: false, error: describeError(err, t('wizard.test.fail')) });
     } finally {
       setTesting(false);
     }
