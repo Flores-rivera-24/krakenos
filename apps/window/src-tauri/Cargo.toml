@@ -10,3 +10,10 @@ name = "krakenos_window"
 [dependencies]
 url = "=2.5.8"
 serde_json = "=1.0.154"
+tauri = { version = "=2.12.4", features = ["tray-icon"] }
+tauri-plugin-single-instance = "=2.5.4"
+tauri-plugin-autostart = "=2.7.0"
+sys-locale = "=0.3.2"
+
+[build-dependencies]
+tauri-build = "=2.7.3"
