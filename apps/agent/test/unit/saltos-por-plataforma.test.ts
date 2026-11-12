@@ -94,6 +94,10 @@ const LISTA: Record<string, Entrada> = {
     saltos: 2,
     motivo: `${MODOS}: el fichero de peers queda 0600.`,
   },
+  'unit/restore-poda.test.ts': {
+    saltos: 1,
+    motivo: `${MODOS}: el respaldo de una restauración nace 0700 y sus ficheros 0600 (la poda sí corre).`,
+  },
   'unit/secret-permissions.test.ts': {
     saltos: 1,
     motivo: `${MODOS}: no hay fichero «demasiado abierto» que avisar.`,
@@ -110,7 +114,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 12, saltos: 21, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 13, saltos: 22, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { existsSync, rmSync } from 'node:fs';
+import { chmodSync, existsSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { env } from './config/env.js';
 import { agentPaths } from './config/paths.js';
@@ -8,7 +8,12 @@ import { buildServer } from './server.js';
 import { renameSyncWithRetry } from './system/rename-retry.js';
 import { createShutdown, shutdownSignals } from './system/shutdown.js';
 import { type AppliedRestore, migrateWithRestoreSafety } from './system/boot-migrate.js';
-import { applyStagedRestore, resolveDbFile, type RestoreTargets } from './system/restore.js';
+import {
+  applyStagedRestore,
+  pruneRestoreBackups,
+  resolveDbFile,
+  type RestoreTargets,
+} from './system/restore.js';
 import { keyFilePaths } from './system/key-paths.js';
 
 /**
@@ -19,6 +24,15 @@ import { keyFilePaths } from './system/key-paths.js';
  * continúa el arranque, de modo que un backup dañado/incompleto no deje la caja en un
  * bucle de reinicio (era un riesgo real en hardware desatendido).
  */
+/** Mejor esfuerzo: una poda que falla no puede tumbar el arranque ni fingir que la restauración falló. */
+function podarRespaldos(): void {
+  try {
+    pruneRestoreBackups(agentPaths().varDir);
+  } catch {
+    // los respaldos sobrantes se podarán en el próximo arranque
+  }
+}
+
 function applyPendingRestore(): AppliedRestore | null {
   const stagingDir = join(agentPaths().varDir, 'restore-staging');
   if (!existsSync(stagingDir)) return null;
@@ -36,6 +50,7 @@ function applyPendingRestore(): AppliedRestore | null {
     process.stdout.write(
       `[restore] Restauración aplicada: ${applied.length} ficheros. Copia previa en ${preRestoreDir}\n`,
     );
+    podarRespaldos();
     return { preRestoreDir, targets, added: report.added };
   } catch (err) {
     const failedDir = join(agentPaths().varDir, `restore-failed-${stamp}`);
@@ -44,6 +59,12 @@ function applyPendingRestore(): AppliedRestore | null {
     } catch {
       rmSync(stagingDir, { recursive: true, force: true });
     }
+    try {
+      chmodSync(failedDir, 0o700); // lleva el contenido de la copia: nadie más lo lee
+    } catch {
+      // mejor esfuerzo (el staging pudo borrarse en vez de apartarse)
+    }
+    podarRespaldos();
     const msg = err instanceof Error ? err.message : 'error desconocido';
     process.stderr.write(
       `[restore] La restauración FALLÓ (${msg}); se aparta en ${failedDir} y se continúa el arranque. ` +
