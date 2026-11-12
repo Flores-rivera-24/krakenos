@@ -259,13 +259,10 @@ describe('withDeviceCache (US-229)', () => {
       await watcher.tick(); // línea base: hue:a = 0
 
       holder.swap(
-        fake(
-          async () => {
-            await new Promise<void>((r) => (release = r));
-            return [sensor('govee:b', 0)];
-          },
-          [CAIDO],
-        ),
+        fake(async () => {
+          await new Promise<void>((r) => (release = r));
+          return [sensor('govee:b', 0)];
+        }, [CAIDO]),
       );
       const tick = watcher.tick();
       const nueva = fake(async () => [sensor('govee:b', 0)], []);
