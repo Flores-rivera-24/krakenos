@@ -39,6 +39,12 @@ describe('redactUrl', () => {
     expect(redactUrl('/api/invitations/list/abc123DEF')).toBe('/api/invitations/list/abc123DEF');
   });
 
+  it('redacta el token del enlace de la SPA /invitacion/<token>, y no toca /invitaciones', () => {
+    expect(redactUrl('/invitacion/abc123DEF')).toBe(`/invitacion/${REDACTADO}`);
+    expect(redactUrl('/invitacion/abc123DEF?x=1')).toBe(`/invitacion/${REDACTADO}?x=1`);
+    expect(redactUrl('/invitaciones/abc123DEF')).toBe('/invitaciones/abc123DEF');
+  });
+
   it('no toca una URL sin query', () => {
     expect(redactUrl('/api/iot/devices')).toBe('/api/iot/devices');
     expect(redactUrl('')).toBe('');
