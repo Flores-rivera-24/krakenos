@@ -1,3 +1,4 @@
+import type { ReportsListFailures } from '../iot/composite.iot.js';
 import type { HomeEvent, IotDevice, IotManager } from '@krakenos/types';
 import type { FastifyBaseLogger } from 'fastify';
 import { createTickLoop, type TickLoop } from '../system/tick-loop.js';
@@ -91,10 +92,15 @@ export class IotWatcher {
     const devices = await this.iot.listDevices();
     const current = new Map(devices.map((d) => [d.id, d]));
     const prev = this.baseline;
-    // ⚠️ Lista parcial (un backend caído): los aparatos que faltan CONSERVAN su línea
-    // base. Si se olvidaran, al volver el backend `transitions(undefined, dev)` daría
-    // `[]` y una puerta abierta durante el corte no dispararía la alarma.
-    this.baseline = prev ? new Map([...prev, ...current]) : current;
+    // ⚠️ Lista parcial (un backend caído): los aparatos de ESE backend que faltan CONSERVAN
+    // su línea base. Si se olvidaran, al volver el backend `transitions(undefined, dev)` daría
+    // `[]` y una puerta abierta durante el corte no dispararía la alarma. Los de un backend
+    // sano que faltan sí se olvidan (ya no existen: si reaparecen, es un alta nueva).
+    const caidos = new Set(
+      ((this.iot as Partial<ReportsListFailures>).listFailures?.() ?? []).map((f) => f.prefix),
+    );
+    const kept = [...(prev ?? [])].filter(([id]) => caidos.has(id.slice(0, id.indexOf(':'))));
+    this.baseline = prev ? new Map([...kept, ...current]) : current;
     if (!prev) return; // primer barrido: fija la base
 
     for (const device of current.values()) {
