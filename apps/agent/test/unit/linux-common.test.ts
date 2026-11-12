@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { renderEnvFile, stageCommonTree } from '../../../../scripts/package/linux-common.mjs';
+import { HELPER_PATH, renderEnvFile, stageCommonTree } from '../../../../scripts/package/linux-common.mjs';
 // prettier-ignore
 // @ts-expect-error — idem.
 import { KIND_VARS } from '../../../../scripts/package/launchers/first-run.mjs';
@@ -81,6 +81,38 @@ describe('renderEnvFile', () => {
   });
 });
 
+describe('el helper privilegiado en el paquete', () => {
+  const PLANTILLA_HELPER = `${PLANTILLA}WG_HELPER_PATH=/usr/local/bin/krakenos-helper\nFW_HELPER_PATH=/usr/local/bin/krakenos-helper\nTC_HELPER_PATH=/usr/local/bin/krakenos-helper\n`;
+
+  it('el .env apunta las tres variables al helper del paquete, sin duplicarlas', () => {
+    const out: string = renderEnvFile(PLANTILLA_HELPER);
+    expect(HELPER_PATH).toBe('/usr/lib/krakenos/libexec/krakenos-helper');
+    for (const k of ['WG', 'FW', 'TC']) {
+      expect(out).toMatch(new RegExp(`^${k}_HELPER_PATH=${HELPER_PATH}$`, 'm'));
+      expect(out.match(new RegExp(`^${k}_HELPER_PATH=`, 'gm'))).toHaveLength(1);
+    }
+    expect(out).not.toContain('/usr/local/bin');
+  });
+
+  it('la plantilla real fija las tres variables y la regla de sudoers usa la MISMA ruta', () => {
+    const real = readFileSync(join(RAIZ_REPO, 'apps', 'agent', '.env.example'), 'utf8');
+    const out: string = renderEnvFile(real);
+    for (const k of ['WG', 'FW', 'TC']) expect(out).toContain(`${k}_HELPER_PATH=${HELPER_PATH}\n`);
+    const setup = readFileSync(
+      join(RAIZ_REPO, 'packaging', 'linux', 'common', 'krakenos-setup'),
+      'utf8',
+    );
+    expect(setup).toContain(`HELPER_PATH=${HELPER_PATH}\n`);
+    expect(setup).toMatch(/NOPASSWD: \$HELPER_PATH/);
+  });
+
+  it.skipIf(WIN)('stageCommonTree instala el helper en esa ruta', async () => {
+    const root = join(raiz, 'root');
+    await stageCommonTree(paqueteFalso(), root);
+    expect(lstatSync(join(root, HELPER_PATH)).mode & 0o777).toBe(0o755);
+  });
+});
+
 describe('stageCommonTree', () => {
   it.skipIf(WIN)('no deja nada escribible por otros bajo usr/lib/krakenos', async () => {
     const root = join(raiz, 'root');
@@ -126,6 +158,8 @@ describe('la unidad systemd', () => {
     expect(unidad).toMatch(/^EnvironmentFile=\/etc\/krakenos\/krakenos\.env$/m);
     expect(unidad).toMatch(/^Environment=KRAKENOS_ENV_FROM_SYSTEM=1$/m);
     expect(unidad).toMatch(/^User=krakenos$/m);
+    // wg-quick save (vía sudo) hereda ProtectSystem=full y escribiría /etc/wireguard en solo lectura.
+    expect(unidad).toMatch(/^ReadWritePaths=-\/etc\/wireguard$/m);
     expect(unidad).toMatch(/^ExecStart=\/usr\/lib\/krakenos\/bin\/krakenos$/m);
     expect(unidad).toMatch(/^WorkingDirectory=\/var\/lib\/krakenos$/m);
   });

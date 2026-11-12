@@ -29,6 +29,8 @@ KillMode=process
 NoNewPrivileges=false
 ProtectSystem=full
 ProtectHome=true
+# `wg-quick save` (vía sudo) hereda ProtectSystem=full y no podría guardar los peers en /etc/wireguard.
+ReadWritePaths=-/etc/wireguard
 
 [Install]
 WantedBy=multi-user.target

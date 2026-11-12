@@ -13,6 +13,9 @@ import { withKindsNone } from './launchers/first-run.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/** Dónde instala el paquete el helper privilegiado; el .env y la regla de sudoers apuntan aquí. */
+export const HELPER_PATH = '/usr/lib/krakenos/libexec/krakenos-helper';
+
 /** Fija `KEY=valor`: reemplaza las líneas existentes (dejando una sola) o la añade si falta. */
 function setKey(text, key, value) {
   const re = new RegExp(`^${key}=.*$`, 'gm');
@@ -27,6 +30,7 @@ export function renderEnvFile(envExample) {
   out = setKey(out, 'HOST', '0.0.0.0');
   out = setKey(out, 'KRAKENOS_DATA_DIR', '/var/lib/krakenos');
   out = setKey(out, 'KRAKENOS_DEPLOY_MODE', 'package');
+  for (const k of ['WG', 'FW', 'TC']) out = setKey(out, `${k}_HELPER_PATH`, HELPER_PATH);
   return out;
 }
 
@@ -68,7 +72,7 @@ export async function stageCommonTree(pkgDir, rootDir) {
   // Inactivo: nada lo ejecuta hasta que `krakenos-setup --with-helper` instala la regla de sudoers.
   await poner(
     join(REPO, 'apps', 'agent', 'scripts', 'krakenos-helper.sh'),
-    join(libexec, 'krakenos-helper'),
+    join(rootDir, HELPER_PATH),
     0o755,
   );
   await chmod(libexec, 0o755);
