@@ -6,6 +6,7 @@ import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideo
 import { Button } from '@/components/ui/button';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { GlossaryHint } from '@/components/ui/glossary-hint';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { StatusDot } from '@/components/ui/status-dot';
 import {
   type ActiveFilter,
@@ -212,49 +213,43 @@ function InventoryPageBody() {
           />
         </div>
 
-        <div className="inline-flex rounded-md border border-kr bg-kr-elevated p-0.5">
-          {(['all', 'groups'] as const).map((tabKey) => (
-            <button
-              key={tabKey}
-              type="button"
-              onClick={() => setTab(tabKey)}
-              className={cn(
-                'rounded-sm px-3 py-1.5 text-kr-sm font-medium transition-colors',
-                tab === tabKey
-                  ? 'bg-kr-accent text-white'
-                  : 'text-kr-secondary hover:text-kr-primary',
-              )}
-            >
-              {tabKey === 'all' ? t('inventory.tab.all') : t('inventory.tab.groups')}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          aria-label={t('inventory.tabLabel')}
+          value={tab}
+          onChange={setTab}
+          options={[
+            { value: 'all', label: t('inventory.tab.all') },
+            { value: 'groups', label: t('inventory.tab.groups') },
+          ]}
+        />
 
         <div className="ml-auto flex items-center gap-2">
-          <div className="hidden rounded-md border border-kr bg-kr-elevated p-0.5 md:inline-flex">
-            <button
-              type="button"
-              aria-label={t('inventory.view.grid')}
-              onClick={() => setView('grid')}
-              className={cn(
-                'rounded-sm p-1.5',
-                view === 'grid' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
-              )}
-            >
-              <LayoutGrid className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              aria-label={t('inventory.view.list')}
-              onClick={() => setView('list')}
-              className={cn(
-                'rounded-sm p-1.5',
-                view === 'list' ? 'bg-kr-elevated text-kr-primary' : 'text-kr-muted',
-              )}
-            >
-              <List className="h-5 w-5" />
-            </button>
-          </div>
+          <SegmentedControl
+            aria-label={t('inventory.viewLabel')}
+            className="hidden md:inline-flex"
+            value={view}
+            onChange={setView}
+            options={[
+              {
+                value: 'grid',
+                label: (
+                  <>
+                    <LayoutGrid className="h-5 w-5" />
+                    <span className="sr-only">{t('inventory.view.grid')}</span>
+                  </>
+                ),
+              },
+              {
+                value: 'list',
+                label: (
+                  <>
+                    <List className="h-5 w-5" />
+                    <span className="sr-only">{t('inventory.view.list')}</span>
+                  </>
+                ),
+              },
+            ]}
+          />
           <Button onClick={rescan} variant="outline" size="sm">
             <RefreshCw className="h-4 w-4" />
             {t('inventory.scan')}

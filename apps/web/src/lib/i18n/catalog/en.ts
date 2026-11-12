@@ -906,6 +906,8 @@ export const en: Record<TranslationKey, string> = {
   'inventory.col.lastSeen': 'Last seen',
   'inventory.searchPlaceholder': 'Search…',
   'inventory.searchLabel': 'Search devices',
+  'inventory.tabLabel': 'Show',
+  'inventory.viewLabel': 'View',
   'inventory.tab.all': 'All',
   'inventory.tab.groups': 'Groups',
   'inventory.view.grid': 'Grid view',

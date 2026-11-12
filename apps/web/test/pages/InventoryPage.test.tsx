@@ -1,5 +1,5 @@
 import type { Device } from '@krakenos/types';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -170,6 +170,49 @@ describe('InventoryPage', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Vista de lista' }));
     expect(screen.getByRole('table')).toBeInTheDocument();
+  });
+
+  it('los selectores de pestaña y de vista son grupos con nombre y anuncian cuál está activa', async () => {
+    const user = userEvent.setup();
+    render(<InventoryPage />);
+
+    const pestanas = screen.getByRole('group', { name: 'Mostrar' });
+    expect(within(pestanas).getByRole('button', { name: 'Todos' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(pestanas).getByRole('button', { name: 'Grupos' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await user.click(within(pestanas).getByRole('button', { name: 'Grupos' }));
+    expect(within(pestanas).getByRole('button', { name: 'Grupos' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(pestanas).getByRole('button', { name: 'Todos' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+
+    const vista = screen.getByRole('group', { name: 'Vista' });
+    expect(within(vista).getByRole('button', { name: 'Vista de cuadrícula' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(vista).getByRole('button', { name: 'Vista de lista' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    await user.click(within(vista).getByRole('button', { name: 'Vista de lista' }));
+    expect(within(vista).getByRole('button', { name: 'Vista de lista' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(within(vista).getByRole('button', { name: 'Vista de cuadrícula' })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
   });
 
   it('en móvil fuerza las tarjetas aunque se pulse "List view" (US-97)', async () => {
