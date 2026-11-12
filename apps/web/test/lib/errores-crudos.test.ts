@@ -29,7 +29,8 @@ describe('errores del servidor sin pintar crudos', () => {
   }));
 
   it('recorre el árbol: si el recorrido se rompe, no pasa en vacío', () => {
-    expect(todas.length).toBeGreaterThan(200);
+    // medido: 265 (2026-11-11)
+    expect(todas.length).toBeGreaterThan(250);
   });
 
   it('el detector cuenta (control positivo sintético)', () => {
