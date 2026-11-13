@@ -162,16 +162,21 @@ fn main() {
         })
         .setup(move |app| {
             autoarranque_primera_vez(app.handle());
-            let w = WebviewWindowBuilder::new(
+            WebviewWindowBuilder::new(
                 app,
                 "main",
-                WebviewUrl::App(format!("index.html?estado={estado_inicial}").into()),
+                WebviewUrl::App(format!("index.html?estado={estado_inicial}&reintento=2").into()),
             )
             .title("KrakenOS")
             .inner_size(1280.0, 800.0)
             .visible(!oculta)
             .build()?;
-            let base_local = w.url()?;
+            // `w.url()` aquí todavía es about:blank: la base de la página local se fija a mano.
+            let base_local = Url::parse(if cfg!(windows) {
+                "http://tauri.localhost/index.html"
+            } else {
+                "tauri://localhost/index.html"
+            })?;
             let sin_origen = app.state::<Config>().origin.is_none();
 
             let (abrir, salir) = if en {
