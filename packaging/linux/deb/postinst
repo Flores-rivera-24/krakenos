@@ -12,12 +12,20 @@ case "$1" in
 
     if [ -d /run/systemd/system ]; then
       # Instalación nueva (sin versión anterior configurada): HTTPS por defecto, como install.sh.
-      if [ -z "$2" ]; then
-        "$SETUP" tls auto || echo "AVISO: no se pudo configurar HTTPS; ejecuta 'sudo krakenos-setup tls' después." >&2
+      # Si falla, NO se arranca: serviría HTTP plano y el enlace de configuración llevaría el token sin cifrar.
+      if [ -z "$2" ] && ! "$SETUP" tls auto; then
+        cat >&2 <<'MSG'
+AVISO: no se pudo configurar HTTPS (krakenos-setup tls auto falló).
+KrakenOS NO se ha arrancado ni habilitado, para no servir sin HTTPS. Para terminar:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+Si de verdad quieres HTTP sin cifrar:
+  sudo krakenos-setup tls none && sudo systemctl enable --now krakenos
+MSG
+        exit 0
       fi
-      systemctl daemon-reload
-      systemctl enable krakenos.service
-      systemctl restart krakenos.service
+      systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
+      systemctl enable krakenos.service || { echo "ERROR: no se pudo habilitar krakenos.service." >&2; exit 1; }
+      systemctl restart krakenos.service || { echo "ERROR: no se pudo arrancar krakenos.service (mira 'journalctl -u krakenos')." >&2; exit 1; }
       "$SETUP" setup-url --wait 30 || true
     else
       echo "KrakenOS: systemd no está en marcha; el servicio no se arranca. Inícialo con 'systemctl start krakenos'." >&2

@@ -66,6 +66,7 @@ SERVICE_NAME=krakenos
 SERVICE_USER=krakenos
 [[ -z $ROOT ]] || SERVICE_USER="$(id -un)"
 ENV_FILE="$ROOT/etc/krakenos/krakenos.env"
+# shellcheck disable=SC2034 # la lee la biblioteca (plantilla del .env: en el paquete es el propio .env)
 ENV_EXAMPLE="$ENV_FILE"
 TLS_DIR="$ROOT/etc/krakenos/tls"
 CA_DIR="$ROOT/etc/krakenos/ca"

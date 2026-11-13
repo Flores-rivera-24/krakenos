@@ -6,10 +6,11 @@ case "$1" in
   purge)
     rm -rf /var/lib/krakenos
     rm -rf /etc/krakenos
-    rm -rf /etc/systemd/system/krakenos-cert.service
-    rm -rf /etc/systemd/system/krakenos-cert.timer
-    rm -rf /etc/systemd/system/krakenos-cert-local.service
-    rm -rf /etc/systemd/system/krakenos-cert-local.timer
+    rm -f /etc/systemd/system/krakenos-cert.service
+    rm -f /etc/systemd/system/krakenos-cert.timer
+    rm -f /etc/systemd/system/krakenos-cert-local.service
+    rm -f /etc/systemd/system/krakenos-cert-local.timer
+    rm -f /etc/sudoers.d/krakenos
     deluser --system krakenos > /dev/null 2>&1 || true
     delgroup --system krakenos > /dev/null 2>&1 || true
     ;;

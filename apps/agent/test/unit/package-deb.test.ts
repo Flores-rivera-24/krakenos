@@ -36,7 +36,9 @@ describe('renderControl', () => {
     const c = renderControl(base);
     expect(c).toContain('Package: krakenos\n');
     expect(c).toContain('Version: 0.1.0\n');
-    expect(c).toContain('Depends: adduser, systemd, ca-certificates\n');
+    expect(c).toContain(
+      'Depends: adduser, systemd, ca-certificates, libc6, libstdc++6, libgcc-s1\n',
+    );
     expect(c).toContain('Recommends: ffmpeg, libnss-mdns, avahi-daemon\n');
     expect(c).toContain('Suggests: wireguard-tools, sudo\n');
     expect(c).toContain('Installed-Size: 1234\n');
@@ -51,6 +53,11 @@ describe('renderControl', () => {
   });
 });
 
+it('la regla de sudoers que borra postrm es la que escribe krakenos-setup', () => {
+  const setup = readFileSync(DEB + '../common/krakenos-setup', 'utf8');
+  expect(setup).toContain('install_sudoers "$ROOT/etc/sudoers.d/krakenos"');
+});
+
 describe('scripts de mantenimiento', () => {
   it('conffiles lista solo /etc/krakenos/krakenos.env', () => {
     expect(leer('conffiles').trim().split('\n')).toEqual(['/etc/krakenos/krakenos.env']);
@@ -62,6 +69,22 @@ describe('scripts de mantenimiento', () => {
       .filter((x) => x.includes('setup-url'));
     expect(l.length).toBeGreaterThan(0);
     for (const x of l) expect(x).toMatch(/\|\| true\s*$/);
+  });
+
+  it('postinst: si tls auto falla en una instalación nueva, no arranca ni pide setup-url', () => {
+    const t = leer('postinst');
+    expect(t).toMatch(
+      /if \[ -z "\$2" \] && ! "\$SETUP" tls auto; then[\s\S]*?exit 0\s*\n\s*fi[\s\S]*systemctl restart[\s\S]*setup-url/,
+    );
+    expect(t).toContain('sudo krakenos-setup tls auto');
+    expect(t).toContain('sudo systemctl enable --now krakenos');
+    expect(t).toContain('sudo krakenos-setup tls none');
+  });
+
+  it('postinst: un systemctl que falla lo dice por stderr antes de salir con error', () => {
+    const t = leer('postinst');
+    for (const c of ['enable krakenos.service', 'restart krakenos.service'])
+      expect(t).toMatch(new RegExp(`systemctl ${c} \\|\\| \\{[^}]*>&2[^}]*exit 1`));
   });
 
   it('los tres scripts son POSIX sh con set -e', () => {
@@ -85,11 +108,15 @@ describe('scripts de mantenimiento', () => {
     expect(rm.length).toBeGreaterThan(0);
     for (const x of rm) {
       expect(x).not.toContain('$');
-      expect(x).toMatch(/^\s*rm -rf( \/[\w./-]+)+\s*$/);
+      expect(x).toMatch(/^\s*rm -(rf|f)( \/[\w./-]+)+\s*$/);
       expect(x).not.toMatch(/ \/(\s|$)| \/\*/);
     }
     for (const r of ['/var/lib/krakenos', '/etc/krakenos'])
       expect(rm.some((x) => x.trim().endsWith(r) || x.includes(r + ' '))).toBe(true);
+    // Un fichero suelto se borra con rm -f; solo los dos directorios llevan -r.
+    for (const x of rm.filter((l) => /\.(service|timer)$|sudoers/.test(l)))
+      expect(x).toMatch(/rm -f /);
+    expect(rm.map((x) => x.trim())).toContain('rm -f /etc/sudoers.d/krakenos');
     expect(t).toMatch(/deluser --system krakenos.*\|\| true/);
     expect(t).toMatch(/purge\)/);
   });

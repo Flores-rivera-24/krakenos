@@ -12,7 +12,6 @@ krakenos: hardening-no-pie [usr/lib/krakenos/node/bin/node]
 # musl; better-sqlite3 se compila sin strip). Se usa el que casa con la plataforma del paquete.
 krakenos: binary-from-other-architecture [usr/lib/krakenos/app/agent/node_modules/*]
 krakenos: library-not-linked-against-libc [usr/lib/krakenos/app/agent/node_modules/*]
-krakenos: missing-dependency-on-libc *
 krakenos: shared-library-is-executable * [usr/lib/krakenos/app/agent/node_modules/*]
 krakenos: unstripped-binary-or-object [usr/lib/krakenos/app/agent/node_modules/*]
 krakenos: executable-not-elf-or-script [usr/lib/krakenos/app/agent/node_modules/*]
