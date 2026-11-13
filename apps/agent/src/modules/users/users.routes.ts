@@ -62,8 +62,6 @@ export const usersRoutes: FastifyPluginAsync = async (app) => {
           detail: req.params.id,
           ip: req.ip,
         });
-        // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-        // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
         return reply.send(result.user);
       } catch (err) {
         if (err instanceof UserError) {

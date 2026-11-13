@@ -511,8 +511,10 @@ jobs:
       # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
       # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
       # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
-      # Los falsos positivos se suprimen por línea (`nosemgrep` con su porqué),
-      # nunca con `--exclude-rule`: eso apagaría la regla en todo el repo.
+      # Los falsos positivos se suprimen por línea (`nosemgrep` con su porqué).
+      # Única regla excluida: `direct-response-write` es de Express (marca como XSS
+      # todo `res.send(objeto)`); el agente es Fastify y serializa por el schema de
+      # `response`. Medido el 2026-11-11: 31 falsos positivos y 0 aciertos.
       - name: SAST (semgrep)
         env:
           SEMGREP_VERSION: '1.95.0'
@@ -523,6 +525,7 @@ jobs:
               --config p/default \
               --config p/javascript \
               --config p/typescript \
+              --exclude-rule javascript.express.security.audit.xss.direct-response-write.direct-response-write \
               --error \
               --metrics off \
               --disable-version-check \

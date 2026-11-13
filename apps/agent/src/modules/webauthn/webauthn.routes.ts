@@ -74,8 +74,6 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
         // Al registrar la PRIMERA passkey se generan códigos de recuperación (US-59),
         // que se muestran una sola vez en la respuesta.
         const codes = await backupCodes.generateIfNone(user.id);
-        // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-        // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
         return reply.send(codes ? { credential, backupCodes: codes } : { credential });
       } catch (err) {
         if (err instanceof WebAuthnError) {
@@ -265,8 +263,6 @@ export const webauthnRoutes: FastifyPluginAsync<WebAuthnRoutesOpts> = async (app
       const info = await service.renameCredential(req.user.sub, req.params.id, req.body.name);
       if (!info)
         return reply.code(404).send({ code: 'NOT_FOUND', message: 'Passkey no encontrada' });
-      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(info);
     },
   );

@@ -48,8 +48,6 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
           .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.update', userId: req.user.sub, detail: device.mac, ip: req.ip });
-      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(device);
     },
   );
@@ -71,8 +69,6 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
           .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.block', userId: req.user.sub, detail: device.mac, ip: req.ip });
-      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(device);
     },
   );
@@ -88,8 +84,6 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
           .send({ code: 'DEVICE_NOT_FOUND', message: 'Dispositivo no encontrado' });
       }
       app.audit({ action: 'device.unblock', userId: req.user.sub, detail: device.mac, ip: req.ip });
-      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(device);
     },
   );
@@ -111,8 +105,6 @@ export const inventoryRoutes: FastifyPluginAsync<InventoryRoutesOpts> = async (a
         detail: `${device.mac} → ${req.body.tag ?? 'sin VLAN'}`,
         ip: req.ip,
       });
-      // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-      // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
       return reply.send(device);
     },
   );

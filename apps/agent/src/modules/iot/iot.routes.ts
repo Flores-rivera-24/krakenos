@@ -33,8 +33,6 @@ export const iotRoutes: FastifyPluginAsync<IotRoutesOpts> = async (app, opts) =>
           detail: device.id,
           ip: req.ip,
         });
-        // Fastify serializa este objeto como JSON (no hay HTML ni render de Express): no hay XSS reflejado.
-        // nosemgrep: javascript.express.security.audit.xss.direct-response-write.direct-response-write
         return reply.send(device);
       } catch (err) {
         if (err instanceof IotError) {
