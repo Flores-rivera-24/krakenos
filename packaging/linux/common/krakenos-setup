@@ -130,7 +130,14 @@ print_summary() {
 cmd_tls() {
   [[ $DRY_RUN -eq 1 || -f $ENV_FILE ]] || die "no existe $ENV_FILE: ¿está instalado el paquete?"
   setup_tls
-  [[ $TLS_MODE == none ]] || log "Reinicia el servicio para aplicar HTTPS: systemctl restart krakenos"
+  if [[ $TLS_MODE != none ]]; then
+    # Tras un fallo de TLS en la instalación el servicio ni se habilitó: reiniciar no basta.
+    if has_systemd && systemctl is-enabled --quiet krakenos 2> /dev/null; then
+      log "Reinicia el servicio para aplicar HTTPS: systemctl restart krakenos"
+    else
+      log "Habilita y arranca el servicio: systemctl enable --now krakenos"
+    fi
+  fi
   print_summary
 }
 

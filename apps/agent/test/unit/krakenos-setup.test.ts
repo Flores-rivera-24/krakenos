@@ -67,6 +67,25 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(r.stdout).not.toContain('useradd');
   });
 
+  it('tls dice cómo arrancar el servicio cuando no está habilitado', () => {
+    const r = correr(['--dry-run', 'tls', 'local'], { KRAKENOS_ASSUME_SYSTEMD: 'yes' });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/Habilita y arranca el servicio: systemctl enable --now krakenos$/m);
+  });
+
+  it('tls pide solo reiniciar cuando el servicio ya está habilitado', () => {
+    const bin = join(raiz, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'systemctl'), '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    const r = correr(['--dry-run', 'tls', 'local'], {
+      KRAKENOS_ASSUME_SYSTEMD: 'yes',
+      PATH: `${bin}:/usr/bin:/bin`,
+    });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('systemctl restart krakenos');
+    expect(r.stdout).not.toMatch(/enable --now krakenos$/m);
+  });
+
   it('tls none avisa de lo que se pierde', () => {
     const r = correr(['--dry-run', 'tls', 'none']);
     expect(r.status, r.stderr).toBe(0);
