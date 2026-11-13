@@ -14,6 +14,9 @@ pub fn cliente(tope: Duration) -> Client {
         .expect("cliente HTTP del sondeo")
 }
 
+// Cualquier fallo del handshake TLS: schannel no deja distinguir de forma fiable «certificado no
+// válido» de otros fallos (el texto del error depende del idioma de Windows), así que la página
+// local habla de «conexión segura» y solo menciona el certificado como causa posible.
 fn es_tls(e: &reqwest::Error) -> bool {
     let mut fuente: Option<&(dyn std::error::Error + 'static)> = Some(e);
     while let Some(f) = fuente {

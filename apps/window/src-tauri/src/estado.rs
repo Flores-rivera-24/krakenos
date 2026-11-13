@@ -25,14 +25,15 @@ pub enum ErrorSondeo {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Destino {
     Agente(Url),
-    /// Página local: "no-responde" | "no-listo" | "sin-configurar" | "certificado".
+    /// Página local: "inicial" (neutra, antes de medir) | "no-responde" | "no-listo" |
+    /// "sin-configurar" | "certificado" (fallo de TLS: no se sabe si es el certificado).
     Local(&'static str),
 }
 
-/// 2xx = activo; cualquier otro código (el agente responde 503 si no está listo) = no listo.
+/// Activo es exactamente 200; cualquier otra respuesta (el agente da 503 si no está listo) = no listo.
 pub fn estado_desde_sondeo(r: Result<u16, ErrorSondeo>) -> Estado {
     match r {
-        Ok(200..=299) => Estado::Activo,
+        Ok(200) => Estado::Activo,
         Ok(_) => Estado::NoListo,
         Err(ErrorSondeo::Tls) => Estado::NoResponde(Motivo::Certificado),
         Err(ErrorSondeo::TiempoAgotado) => Estado::NoResponde(Motivo::TiempoAgotado),
@@ -61,6 +62,50 @@ pub fn siguiente_destino(
         (Some(_), Estado::NoResponde(_)) => Destino::Local("no-responde"),
     };
     (&objetivo != actual).then_some(objetivo)
+}
+
+/// Sondeos fallidos seguidos que hacen falta para sacar al usuario del agente.
+pub const FALLOS_PARA_SALIR: u32 = 2;
+/// Segundos hasta el re-sondeo de confirmación tras un primer fallo dentro del agente.
+pub const CONFIRMACION_SEGS: u64 = 1;
+
+/// Qué hacer tras un sondeo: adónde navegar, la racha de fallos que queda y cuándo volver a sondear.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Decision {
+    pub destino: Option<Destino>,
+    pub fallos: u32,
+    pub siguiente_en_segs: u64,
+}
+
+/// Entrar al agente basta con un sondeo bueno; salir de él exige `FALLOS_PARA_SALIR` seguidos
+/// (el primero se confirma con un re-sondeo rápido), para que un fallo aislado no recargue la ruta
+/// y se lleve un formulario a medias. Con la página local ya en pantalla no hay nada que confirmar.
+pub fn decidir(
+    actual: &Destino,
+    ultima_ruta_agente: Option<&Url>,
+    nuevo: &Estado,
+    origin: Option<&Url>,
+    fallos_previos: u32,
+) -> Decision {
+    let fallos = if *nuevo == Estado::Activo {
+        0
+    } else {
+        fallos_previos.saturating_add(1)
+    };
+    if matches!(actual, Destino::Agente(_)) && fallos > 0 && fallos < FALLOS_PARA_SALIR {
+        return Decision {
+            destino: None,
+            fallos,
+            siguiente_en_segs: CONFIRMACION_SEGS,
+        };
+    }
+    let destino = siguiente_destino(actual, ultima_ruta_agente, nuevo, origin);
+    let queda = destino.as_ref().unwrap_or(actual);
+    Decision {
+        siguiente_en_segs: intervalo_segs(queda),
+        destino,
+        fallos,
+    }
 }
 
 /// Texto de la bandeja: solo lo medido (`None` = sin origen configurado).
@@ -147,6 +192,13 @@ mod tests {
     #[test]
     fn estado_503_es_no_listo() {
         assert_eq!(estado_desde_sondeo(Ok(503)), Estado::NoListo);
+    }
+
+    #[test]
+    fn solo_el_200_es_activo() {
+        for codigo in [201, 204, 301, 302, 401, 404, 500, 503] {
+            assert_eq!(estado_desde_sondeo(Ok(codigo)), Estado::NoListo, "{codigo}");
+        }
     }
 
     #[test]
@@ -318,5 +370,69 @@ mod tests {
         assert_eq!(aplicar_setup(&Estado::Activo, &mut pend), Some(setup));
         assert_eq!(pend, None);
         assert_eq!(aplicar_setup(&Estado::Activo, &mut pend), None);
+    }
+
+    fn en_agente() -> Destino {
+        Destino::Agente(u("http://localhost:3001/inventory"))
+    }
+
+    const FALLO: Estado = Estado::NoResponde(Motivo::TiempoAgotado);
+
+    #[test]
+    fn un_fallo_aislado_no_saca_del_agente_y_reconfirma_en_1_s() {
+        let o = u("http://localhost:3001/");
+        let d = decidir(&en_agente(), None, &FALLO, Some(&o), 0);
+        assert_eq!(
+            d,
+            Decision {
+                destino: None,
+                fallos: 1,
+                siguiente_en_segs: 1
+            }
+        );
+        // un 503 aislado cuenta igual
+        let d = decidir(&en_agente(), None, &Estado::NoListo, Some(&o), 0);
+        assert_eq!(d.destino, None);
+    }
+
+    #[test]
+    fn dos_fallos_seguidos_si_sacan_y_la_local_sondea_cada_2_s() {
+        let o = u("http://localhost:3001/");
+        let d = decidir(&en_agente(), None, &FALLO, Some(&o), 1);
+        assert_eq!(d.destino, Some(Destino::Local("no-responde")));
+        assert_eq!(d.fallos, 2);
+        assert_eq!(d.siguiente_en_segs, 2);
+    }
+
+    #[test]
+    fn un_exito_entre_dos_fallos_reinicia_la_racha() {
+        let o = u("http://localhost:3001/");
+        let ok = decidir(&en_agente(), None, &Estado::Activo, Some(&o), 1);
+        assert_eq!(ok.fallos, 0);
+        assert_eq!(ok.destino, None);
+        assert_eq!(ok.siguiente_en_segs, 5);
+        let otra_vez = decidir(&en_agente(), None, &FALLO, Some(&o), ok.fallos);
+        assert_eq!(otra_vez.destino, None, "vuelve a ser un fallo aislado");
+    }
+
+    #[test]
+    fn con_la_pagina_local_en_pantalla_no_se_confirma_nada() {
+        let o = u("http://localhost:3001/");
+        let local = Destino::Local("inicial");
+        let d = decidir(&local, None, &FALLO, Some(&o), 0);
+        assert_eq!(d.destino, Some(Destino::Local("no-responde")));
+        let d = decidir(&Destino::Local("no-responde"), None, &FALLO, Some(&o), 5);
+        assert_eq!(d.destino, None);
+        assert_eq!(d.siguiente_en_segs, 2);
+        // entrar al agente basta con un sondeo bueno
+        let d = decidir(
+            &Destino::Local("no-responde"),
+            None,
+            &Estado::Activo,
+            Some(&o),
+            3,
+        );
+        assert_eq!(d.destino, Some(Destino::Agente(o)));
+        assert_eq!(d.fallos, 0);
     }
 }

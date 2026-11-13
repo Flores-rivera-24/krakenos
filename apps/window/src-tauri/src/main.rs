@@ -5,8 +5,8 @@ use krakenos_window::config::{
     Destino as DestinoSegunda,
 };
 use krakenos_window::estado::{
-    aplicar_setup, destino_actual, estado_desde_sondeo, intervalo_segs, ruta_a_recordar,
-    siguiente_destino, texto_bandeja, url_local, Destino,
+    aplicar_setup, decidir, destino_actual, estado_desde_sondeo, intervalo_segs, ruta_a_recordar,
+    texto_bandeja, url_local, Destino,
 };
 use krakenos_window::sondeo::{cliente, sondear};
 use std::sync::Mutex;
@@ -17,6 +17,8 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use url::Url;
 
+/// Estado neutro de la página local (solo la marca): lo que se ve antes de medir.
+const ESTADO_INICIAL: &str = "inicial";
 const ARG_AUTOARRANQUE: &str = "--autostarted";
 
 /// Enlace de `/setup` con su token, a entregar una sola vez con el agente activo.
@@ -28,12 +30,14 @@ fn poner_tooltip(app: &AppHandle, texto: &str) {
     }
 }
 
-/// Corre en su propio hilo. Un ciclo cada 2 s (página local) o 5 s (agente): mide, actualiza la bandeja y navega si toca.
+/// Corre en su propio hilo; el primer sondeo es inmediato. Ciclo de 2 s (página local) o 5 s (agente),
+/// y 1 s tras un primer fallo dentro del agente: mide, actualiza la bandeja y navega si toca.
 /// Nada de esto registra URLs: la de `/setup` lleva el token.
 fn vigilar(app: AppHandle, origin: Url, base_local: Url, en: bool, estado_inicial: &'static str) {
     let http = cliente(Duration::from_secs(3));
     let mut local = Destino::Local(estado_inicial);
     let mut ultima: Option<Url> = None;
+    let mut fallos = 0u32;
     loop {
         let Some(w) = app.get_webview_window("main") else {
             return;
@@ -53,24 +57,27 @@ fn vigilar(app: AppHandle, origin: Url, base_local: Url, en: bool, estado_inicia
             &estado,
             &mut app.state::<SetupPendiente>().0.lock().unwrap(),
         );
-        let mut destino = siguiente_destino(&actual, ultima.as_ref(), &estado, Some(&origin));
+        let mut decision = decidir(&actual, ultima.as_ref(), &estado, Some(&origin), fallos);
+        fallos = decision.fallos;
         if let Some(u) = setup {
-            destino = Some(Destino::Agente(u));
+            decision.destino = Some(Destino::Agente(u));
         }
-        let siguiente = match destino {
-            Some(d) => {
-                match &d {
-                    Destino::Agente(u) => navegar(&w, u.clone()),
-                    Destino::Local(e) => {
-                        navegar(&w, url_local(&base_local, e, intervalo_segs(&d)));
-                        local = d.clone();
-                    }
+        let mut en_pantalla = actual;
+        if let Some(d) = decision.destino {
+            match &d {
+                Destino::Agente(u) => navegar(&w, u.clone()),
+                Destino::Local(e) => {
+                    navegar(&w, url_local(&base_local, e, intervalo_segs(&d)));
+                    local = d.clone();
                 }
-                d
             }
-            None => actual,
+            en_pantalla = d;
+        }
+        let espera = match en_pantalla {
+            Destino::Agente(_) => decision.siguiente_en_segs,
+            Destino::Local(_) => intervalo_segs(&en_pantalla),
         };
-        std::thread::sleep(Duration::from_secs(intervalo_segs(&siguiente)));
+        std::thread::sleep(Duration::from_secs(espera));
     }
 }
 
@@ -125,9 +132,9 @@ fn main() {
         eprintln!("configuración inválida: {que}");
         Config::default()
     });
-    // Hasta que el sondeo (siguiente tarea) decida, se enseña la página local.
+    // Hasta el primer sondeo la página local no afirma nada: estado neutro «inicial».
     let estado_inicial = if config.origin.is_some() {
-        "no-responde"
+        ESTADO_INICIAL
     } else {
         "sin-configurar"
     };
@@ -165,7 +172,7 @@ fn main() {
             WebviewWindowBuilder::new(
                 app,
                 "main",
-                WebviewUrl::App(format!("index.html?estado={estado_inicial}&reintento=2").into()),
+                WebviewUrl::App(format!("index.html?estado={estado_inicial}").into()),
             )
             .title("KrakenOS")
             .inner_size(1280.0, 800.0)

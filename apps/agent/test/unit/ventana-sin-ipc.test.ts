@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import vm from 'node:vm';
 import { describe, expect, it } from 'vitest';
 
 const ROOT = resolve(__dirname, '../../../..');
@@ -74,5 +75,47 @@ describe('ventana de Windows: la web del agente no tiene IPC de Tauri', () => {
     expect(leer(resolve(ROOT, '.gitignore')).split('\n')).toContain(
       '/apps/window/src-tauri/target/',
     );
+  });
+
+  describe('la página local no afirma nada antes de medir', () => {
+    const app = leer(resolve(ROOT, 'apps/window/pagina/app.js'));
+    const main = leer(resolve(TAURI, 'src/main.rs'));
+    const ESTADOS = ['no-responde', 'no-listo', 'sin-configurar', 'certificado'];
+
+    /** Ejecuta app.js con un DOM mínimo y devuelve lo que pinta. */
+    function pintar(search: string, language: string) {
+      const els: Record<string, { textContent: string }> = {
+        titulo: { textContent: 'KrakenOS' },
+        detalle: { textContent: '' },
+        reintento: { textContent: '' },
+      };
+      vm.runInNewContext(app, {
+        URLSearchParams,
+        location: { search },
+        navigator: { language },
+        document: { documentElement: {}, getElementById: (id: string) => els[id] },
+      });
+      return {
+        titulo: els.titulo!.textContent,
+        detalle: els.detalle!.textContent,
+        reintento: els.reintento!.textContent,
+      };
+    }
+
+    it('el Rust arranca la ventana con el estado neutro y sin reintento', () => {
+      expect(main).toContain('const ESTADO_INICIAL: &str = "inicial";');
+      expect(main).toMatch(/ESTADO_INICIAL\s*\} else \{\s*"sin-configurar"/);
+      expect(main).toContain('format!("index.html?estado={estado_inicial}")');
+    });
+
+    for (const idioma of ['es', 'en']) {
+      it(`el estado inicial (${idioma}) solo pinta la marca: sin detalle, sin reintento, sin ningún título de estado`, () => {
+        const titulos = ESTADOS.map((e) => pintar(`?estado=${e}&reintento=2`, idioma).titulo);
+        for (const q of ['?estado=inicial&reintento=2', '?estado=inicial', '', '?estado=raro']) {
+          expect(pintar(q, idioma)).toEqual({ titulo: 'KrakenOS', detalle: '', reintento: '' });
+        }
+        for (const t of titulos) expect(t).not.toBe('KrakenOS');
+      });
+    }
   });
 });
