@@ -85,6 +85,24 @@ pub fn url_de_setup(origin: &Url, token: &str) -> Url {
     url
 }
 
+/// Qué hace la ventana ya abierta cuando llega una segunda ejecución.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Destino {
+    SoloMostrar,
+    Setup(Url),
+}
+
+/// Los args de la segunda copia son entrada no confiable: su `--origin` se ignora
+/// siempre; solo se acepta su `--setup-token`, y solo hacia el origen ya configurado.
+pub fn destino_segunda_ejecucion(args: &[String], origen_configurado: Option<&Url>) -> Destino {
+    match (valor_de(args, "--setup-token"), origen_configurado) {
+        (Some(token), Some(origen)) if !token.is_empty() => {
+            Destino::Setup(url_de_setup(origen, &token))
+        }
+        _ => Destino::SoloMostrar,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -170,6 +188,38 @@ mod tests {
         assert_eq!(
             url_de_setup(&o, "a b&c=d").as_str(),
             "https://casa.local:3001/setup?token=a+b%26c%3Dd"
+        );
+    }
+
+    #[test]
+    fn segunda_ejecucion_ignora_origin_ajeno() {
+        let conf = Url::parse("https://casa.local:3001/").unwrap();
+        let d = destino_segunda_ejecucion(
+            &args(&["x.exe", "--origin", "https://otro", "--setup-token", "T"]),
+            Some(&conf),
+        );
+        assert_eq!(d, Destino::Setup(url_de_setup(&conf, "T")));
+    }
+
+    #[test]
+    fn segunda_ejecucion_sin_origen_configurado_no_navega() {
+        let d = destino_segunda_ejecucion(
+            &args(&["x.exe", "--origin", "https://otro", "--setup-token", "T"]),
+            None,
+        );
+        assert_eq!(d, Destino::SoloMostrar);
+    }
+
+    #[test]
+    fn segunda_ejecucion_sin_token_solo_muestra() {
+        let conf = Url::parse("https://casa.local/").unwrap();
+        assert_eq!(
+            destino_segunda_ejecucion(&args(&["x.exe"]), Some(&conf)),
+            Destino::SoloMostrar
+        );
+        assert_eq!(
+            destino_segunda_ejecucion(&args(&["x.exe", "--setup-token", ""]), Some(&conf)),
+            Destino::SoloMostrar
         );
     }
 }

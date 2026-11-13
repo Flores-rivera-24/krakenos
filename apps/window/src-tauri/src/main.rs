@@ -1,6 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use krakenos_window::config::{resolver_config, ruta_config, url_de_setup, Config};
+use krakenos_window::config::{
+    destino_segunda_ejecucion, resolver_config, ruta_config, Config, ConfigError, Destino,
+};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
@@ -36,19 +38,27 @@ fn autoarranque_primera_vez(app: &AppHandle) {
     if marca.exists() {
         return;
     }
-    if let Err(e) = app.autolaunch().enable() {
-        eprintln!("no se pudo activar el autoarranque: {e}");
+    if std::fs::create_dir_all(&dir).is_err() || std::fs::write(&marca, b"").is_err() {
+        eprintln!("no se pudo escribir la marca de primera ejecución: sin autoarranque");
         return;
     }
-    let _ = std::fs::create_dir_all(&dir);
-    let _ = std::fs::write(marca, b"");
+    if let Err(e) = app.autolaunch().enable() {
+        eprintln!("no se pudo activar el autoarranque: {e}");
+        let _ = std::fs::remove_file(&marca);
+    }
 }
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let fichero = std::fs::read_to_string(ruta_config()).ok();
     let config = resolver_config(&args, fichero.as_deref()).unwrap_or_else(|e| {
-        eprintln!("configuración inválida: {e:?}");
+        // Sin el valor: el origen de --origin puede llevar usuario:clave@.
+        let que = match e {
+            ConfigError::Ilegible(_) => "fichero ilegible",
+            ConfigError::EsquemaNoHttp(_) => "el origen no es http(s)",
+            ConfigError::UrlInvalida(_) => "el origen no es una URL válida",
+        };
+        eprintln!("configuración inválida: {que}");
         Config::default()
     });
     // Hasta que el sondeo (siguiente tarea) decida, se enseña la página local.
@@ -63,14 +73,12 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             mostrar(app);
-            let Some(cfg) = resolver_config(&args, None).ok() else {
-                return;
-            };
-            let origin = cfg.origin.or_else(|| app.state::<Config>().origin.clone());
-            if let (Some(token), Some(origin), Some(w)) =
-                (cfg.setup_token, origin, app.get_webview_window("main"))
-            {
-                navegar(&w, url_de_setup(&origin, &token));
+            let origen = app.state::<Config>().origin.clone();
+            if let (Destino::Setup(url), Some(w)) = (
+                destino_segunda_ejecucion(&args, origen.as_ref()),
+                app.get_webview_window("main"),
+            ) {
+                navegar(&w, url);
             }
         }))
         .plugin(tauri_plugin_autostart::init(
