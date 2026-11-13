@@ -1,14 +1,78 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use krakenos_window::config::{
-    destino_segunda_ejecucion, resolver_config, ruta_config, Config, ConfigError, Destino,
+    destino_segunda_ejecucion, resolver_config, ruta_config, url_de_setup, Config, ConfigError,
+    Destino as DestinoSegunda,
 };
+use krakenos_window::estado::{
+    aplicar_setup, destino_actual, estado_desde_sondeo, intervalo_segs, ruta_a_recordar,
+    siguiente_destino, texto_bandeja, url_local, Destino,
+};
+use krakenos_window::sondeo::{cliente, sondear};
+use std::sync::Mutex;
+use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use url::Url;
 
 const ARG_AUTOARRANQUE: &str = "--autostarted";
+
+/// Enlace de `/setup` con su token, a entregar una sola vez con el agente activo.
+struct SetupPendiente(Mutex<Option<Url>>);
+
+fn poner_tooltip(app: &AppHandle, texto: &str) {
+    if let Some(t) = app.tray_by_id("principal") {
+        let _ = t.set_tooltip(Some(texto));
+    }
+}
+
+/// Corre en su propio hilo. Un ciclo cada 2 s (página local) o 5 s (agente): mide, actualiza la bandeja y navega si toca.
+/// Nada de esto registra URLs: la de `/setup` lleva el token.
+fn vigilar(app: AppHandle, origin: Url, base_local: Url, en: bool, estado_inicial: &'static str) {
+    let http = cliente(Duration::from_secs(3));
+    let mut local = Destino::Local(estado_inicial);
+    let mut ultima: Option<Url> = None;
+    loop {
+        let Some(w) = app.get_webview_window("main") else {
+            return;
+        };
+        let url_ahora = w.url().ok();
+        let actual = match &url_ahora {
+            Some(u) => destino_actual(u, &origin, &local),
+            None => local.clone(),
+        };
+        if let Destino::Agente(u) = &actual {
+            ultima = ruta_a_recordar(u, &origin).or(ultima);
+        }
+        let estado = estado_desde_sondeo(tauri::async_runtime::block_on(sondear(&http, &origin)));
+        poner_tooltip(&app, texto_bandeja(Some(&estado), en));
+
+        let setup = aplicar_setup(
+            &estado,
+            &mut app.state::<SetupPendiente>().0.lock().unwrap(),
+        );
+        let mut destino = siguiente_destino(&actual, ultima.as_ref(), &estado, Some(&origin));
+        if let Some(u) = setup {
+            destino = Some(Destino::Agente(u));
+        }
+        let siguiente = match destino {
+            Some(d) => {
+                match &d {
+                    Destino::Agente(u) => navegar(&w, u.clone()),
+                    Destino::Local(e) => {
+                        navegar(&w, url_local(&base_local, e, intervalo_segs(&d)));
+                        local = d.clone();
+                    }
+                }
+                d
+            }
+            None => actual,
+        };
+        std::thread::sleep(Duration::from_secs(intervalo_segs(&siguiente)));
+    }
+}
 
 fn en_ingles() -> bool {
     sys_locale::get_locale().is_some_and(|l| l.to_lowercase().starts_with("en"))
@@ -67,6 +131,11 @@ fn main() {
     } else {
         "sin-configurar"
     };
+    // El token del primer arranque se entrega una sola vez, igual que el de una segunda ejecución.
+    let setup_inicial = match (&config.origin, &config.setup_token) {
+        (Some(o), Some(t)) if !t.is_empty() => Some(url_de_setup(o, t)),
+        _ => None,
+    };
     let oculta = args.iter().any(|a| a == ARG_AUTOARRANQUE);
     let en = en_ingles();
 
@@ -74,17 +143,16 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             mostrar(app);
             let origen = app.state::<Config>().origin.clone();
-            if let (Destino::Setup(url), Some(w)) = (
-                destino_segunda_ejecucion(&args, origen.as_ref()),
-                app.get_webview_window("main"),
-            ) {
-                navegar(&w, url);
+            // No se navega aquí: con el agente caído enseñaría una página de error.
+            if let DestinoSegunda::Setup(url) = destino_segunda_ejecucion(&args, origen.as_ref()) {
+                *app.state::<SetupPendiente>().0.lock().unwrap() = Some(url);
             }
         }))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![ARG_AUTOARRANQUE]),
         ))
+        .manage(SetupPendiente(Mutex::new(setup_inicial)))
         .manage(config)
         .on_window_event(|w, e| {
             if let WindowEvent::CloseRequested { api, .. } = e {
@@ -94,7 +162,7 @@ fn main() {
         })
         .setup(move |app| {
             autoarranque_primera_vez(app.handle());
-            WebviewWindowBuilder::new(
+            let w = WebviewWindowBuilder::new(
                 app,
                 "main",
                 WebviewUrl::App(format!("index.html?estado={estado_inicial}").into()),
@@ -103,6 +171,8 @@ fn main() {
             .inner_size(1280.0, 800.0)
             .visible(!oculta)
             .build()?;
+            let base_local = w.url()?;
+            let sin_origen = app.state::<Config>().origin.is_none();
 
             let (abrir, salir) = if en {
                 ("Open KrakenOS", "Quit window")
@@ -117,10 +187,10 @@ fn main() {
                 ],
             )?;
             let mut tray = TrayIconBuilder::with_id("principal")
-                .tooltip(if en {
-                    "KrakenOS: connecting"
+                .tooltip(if sin_origen {
+                    texto_bandeja(None, en)
                 } else {
-                    "KrakenOS: conectando"
+                    "KrakenOS"
                 })
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -143,6 +213,11 @@ fn main() {
                 tray = tray.icon(icono.clone());
             }
             tray.build(app)?;
+            // Sin origen no hay nada que medir: se queda la página «sin configurar».
+            if let Some(origin) = app.state::<Config>().origin.clone() {
+                let app = app.handle().clone();
+                std::thread::spawn(move || vigilar(app, origin, base_local, en, estado_inicial));
+            }
             Ok(())
         })
         .run(tauri::generate_context!())
