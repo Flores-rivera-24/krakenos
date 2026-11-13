@@ -199,10 +199,13 @@ rutas» no puede leerse como «está todo bien».
 `pnpm qa:deadcode` sale con código 1 mientras quede algún hallazgo, y algunos se quedan
 a propósito, así que no corre en CI. Lo aceptado hoy:
 
-- `apps/web/scripts/bundle-budget.d.mts`: falso positivo. Es la declaración de tipos de
-  `bundle-budget.mjs` que TypeScript resuelve al importar el `.mjs`, y knip no sigue esa
-  resolución.
-- `DP_MODE_NEW`/`DP_MODE_OLD` (Tuya): constantes de un modo pendiente de implementar.
+- `apps/agent/scripts/fixtures-prisma5/*`: generador de la fixture de migraciones. Se
+  ejecuta a mano cuando hay que regenerarla y ningún código lo importa.
+- `@prisma/client` (dependencia de `apps/agent`): la importa el código generado de
+  Prisma, que knip ignora, y por eso no ve el uso.
+- `./relink.mjs` (`scripts/package/launchers/first-run.mjs`): el empaquetado lo copia al
+  lado del lanzador; en el repo vive en `scripts/package/`, así que el import relativo no
+  resuelve.
 - Funciones del cliente cuyo endpoint existe pero aún no tiene pantalla
   (`listMotionEvents`, `getRecordingConfig`, `updateRecordingConfig`,
   `updateEnergyAlert`, `captureScene`): se conservan hasta decidir si se les hace UI o
