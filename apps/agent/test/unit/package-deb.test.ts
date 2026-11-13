@@ -93,7 +93,12 @@ describe('scripts de mantenimiento', () => {
     const t = leer('postinst');
     for (const timer of ['krakenos-cert.timer', 'krakenos-cert-local.timer'])
       expect(t).toContain(timer);
-    expect(t).toMatch(/\[ -f "\/etc\/systemd\/system\/\$t" \][\s\S]*systemctl enable --now "\$t"/);
+    // Solo si el servicio NO estaba habilitado antes (remove): una actualización no toca los timers.
+    expect(t).toMatch(/systemctl is-enabled --quiet krakenos\.service[^\n]*was_enabled=1/);
+    expect(t.indexOf('was_enabled=1')).toBeLessThan(t.indexOf('systemctl enable krakenos.service'));
+    expect(t).toMatch(
+      /\[ "\$was_enabled" -eq 0 \] && \[ -f "\/etc\/systemd\/system\/\$t" \][\s\S]*systemctl enable --now "\$t"/,
+    );
     // Tras `systemctl restart krakenos` y antes del enlace de setup.
     expect(t.indexOf('enable --now "$t"')).toBeGreaterThan(t.indexOf('restart krakenos.service'));
   });

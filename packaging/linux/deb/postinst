@@ -24,11 +24,15 @@ MSG
         exit 0
       fi
       systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
+      # Estado previo del servicio: tras `remove`, prerm lo deshabilitó todo; en una actualización sigue habilitado.
+      was_enabled=0
+      systemctl is-enabled --quiet krakenos.service 2> /dev/null && was_enabled=1
       systemctl enable krakenos.service || { echo "ERROR: no se pudo habilitar krakenos.service." >&2; exit 1; }
       systemctl restart krakenos.service || { echo "ERROR: no se pudo arrancar krakenos.service (mira 'journalctl -u krakenos')." >&2; exit 1; }
-      # prerm los deshabilita al quitar el paquete: si sus unidades siguen (remove sin purge), se reactivan.
+      # prerm los deshabilita al quitar el paquete: si sus unidades siguen (remove sin purge) y el servicio
+      # no estaba habilitado, se reactivan. En una actualización no se tocan (el usuario pudo deshabilitarlos).
       for t in krakenos-cert.timer krakenos-cert-local.timer; do
-        if [ -f "/etc/systemd/system/$t" ]; then
+        if [ "$was_enabled" -eq 0 ] && [ -f "/etc/systemd/system/$t" ]; then
           systemctl enable --now "$t" || echo "AVISO: no se pudo habilitar $t." >&2
         fi
       done
