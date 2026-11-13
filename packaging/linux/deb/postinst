@@ -26,6 +26,12 @@ MSG
       systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
       systemctl enable krakenos.service || { echo "ERROR: no se pudo habilitar krakenos.service." >&2; exit 1; }
       systemctl restart krakenos.service || { echo "ERROR: no se pudo arrancar krakenos.service (mira 'journalctl -u krakenos')." >&2; exit 1; }
+      # prerm los deshabilita al quitar el paquete: si sus unidades siguen (remove sin purge), se reactivan.
+      for t in krakenos-cert.timer krakenos-cert-local.timer; do
+        if [ -f "/etc/systemd/system/$t" ]; then
+          systemctl enable --now "$t" || echo "AVISO: no se pudo habilitar $t." >&2
+        fi
+      done
       "$SETUP" setup-url --wait 30 || true
     else
       echo "KrakenOS: systemd no está en marcha; el servicio no se arranca. Inícialo con 'systemctl start krakenos'." >&2

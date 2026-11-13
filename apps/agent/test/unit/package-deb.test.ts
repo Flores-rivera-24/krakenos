@@ -89,6 +89,15 @@ describe('scripts de mantenimiento', () => {
       expect(t).toMatch(new RegExp(`systemctl ${c} \\|\\| \\{[^}]*>&2[^}]*exit 1`));
   });
 
+  it('postinst: reactiva los timers de TLS que prerm deshabilitó (remove sin purge y reinstalar)', () => {
+    const t = leer('postinst');
+    for (const timer of ['krakenos-cert.timer', 'krakenos-cert-local.timer'])
+      expect(t).toContain(timer);
+    expect(t).toMatch(/\[ -f "\/etc\/systemd\/system\/\$t" \][\s\S]*systemctl enable --now "\$t"/);
+    // Tras `systemctl restart krakenos` y antes del enlace de setup.
+    expect(t.indexOf('enable --now "$t"')).toBeGreaterThan(t.indexOf('restart krakenos.service'));
+  });
+
   it('los tres scripts son POSIX sh con set -e', () => {
     for (const f of ['postinst', 'prerm', 'postrm']) {
       const t = leer(f);
