@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { Select } from '@/components/ui/select';
 import { StatusDot } from '@/components/ui/status-dot';
 import { StaleBadge } from '@/components/ui/stale-badge';
@@ -236,6 +237,13 @@ export function TuyaManager({ reachable }: Props) {
                 )}
               </tr>
             ))}
+            {lectura.loading && (
+              <tr>
+                <td colSpan={5}>
+                  <LoadingLine />
+                </td>
+              </tr>
+            )}
             {lectura.failed && devices === null && (
               <tr>
                 <td colSpan={5}>
