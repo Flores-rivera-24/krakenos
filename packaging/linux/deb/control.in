@@ -7,7 +7,7 @@ Installed-Size: @SIZE@
 Depends: adduser, systemd, ca-certificates, libc6, libstdc++6, libgcc-s1
 Recommends: ffmpeg, libnss-mdns, avahi-daemon
 Suggests: wireguard-tools, sudo
-Maintainer: KrakenOS <krakenos@users.noreply.github.com>
+Maintainer: José Luis Flores Rivera <31547366+Flores-rivera-24@users.noreply.github.com>
 Homepage: https://github.com/Flores-rivera-24/krakenos
 Description: gestión de red doméstica e IoT, en tu propio servidor
  KrakenOS corre en un servidor local, sin nube de terceros, y reúne el

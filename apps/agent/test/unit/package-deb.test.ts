@@ -43,7 +43,9 @@ describe('renderControl', () => {
     expect(c).toContain('Suggests: wireguard-tools, sudo\n');
     expect(c).toContain('Installed-Size: 1234\n');
     expect(c).toContain('Architecture: amd64\n');
-    expect(c).toMatch(/^Maintainer: .+ <.+@.+>$/m);
+    expect(c).toContain(
+      'Maintainer: José Luis Flores Rivera <31547366+Flores-rivera-24@users.noreply.github.com>\n',
+    );
     expect(c).toMatch(/^Homepage: https:\/\//m);
     expect(c).toMatch(/^Description: .+\n .+/m);
     expect(c.endsWith('\n')).toBe(true);
