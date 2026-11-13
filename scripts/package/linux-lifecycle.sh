@@ -31,7 +31,16 @@ SETUP=/usr/lib/krakenos/libexec/krakenos-setup
 CERT=/etc/krakenos/tls/agent-cert.pem
 WORK="$(mktemp -d)"
 [[ -n $WORK && -d $WORK ]] || { echo "ERROR: mktemp falló" >&2; exit 2; }
-trap 'rm -rf -- "${WORK:?}"' EXIT
+TOKEN_FILE=/var/lib/krakenos/setup-token
+# Si el script muere entre mover el token y restaurarlo, no deja un FIFO en /var/lib/krakenos.
+limpiar() {
+  rm -rf -- "${WORK:?}"
+  if [[ -e /var/lib/krakenos/setup-token.orig ]]; then
+    rm -f -- /var/lib/krakenos/setup-token
+    mv -- /var/lib/krakenos/setup-token.orig /var/lib/krakenos/setup-token || true
+  fi
+}
+trap limpiar EXIT
 STEP="0"
 STEP_TITLE="preparación"
 
@@ -133,6 +142,8 @@ if ! active; then
   fail "systemctl is-active krakenos = $(systemctl is-active krakenos || true) tras instalar"
 fi
 ok "krakenos activo"
+grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "HTTPS por defecto: WEB_ORIGIN en $ENV_FILE es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
+ok "WEB_ORIGIN es https (HTTPS por defecto)"
 wait_ready
 ok "/health/ready = 200 en $(base_url)"
 getent passwd krakenos > /dev/null || fail "no existe el usuario krakenos"
@@ -144,7 +155,6 @@ ok "certificado local emitido"
 # =================================================================================================
 paso 2 "crear el administrador y entrar"
 # (a) un FIFO en lugar del token no cuelga la lectura de root y no deja un `head` huérfano.
-TOKEN_FILE=/var/lib/krakenos/setup-token
 [[ -f $TOKEN_FILE ]] || fail "no existe $TOKEN_FILE tras el primer arranque"
 runuser -u krakenos -- mv -- "$TOKEN_FILE" "$TOKEN_FILE.orig"
 runuser -u krakenos -- mkfifo "$TOKEN_FILE"
@@ -189,8 +199,16 @@ ok "login = 200 en $NEW_PORT"
 
 # =================================================================================================
 paso 4 "instalar el paquete nuevo encima ($(basename -- "$NEW"))"
+# El usuario deshabilita a propósito el timer de renovación: una actualización no debe tocarlo.
+if [[ -f /etc/systemd/system/krakenos-cert-local.timer ]]; then
+  systemctl disable --now krakenos-cert-local.timer > /dev/null 2>&1 || fail "no se pudo deshabilitar krakenos-cert-local.timer a mano"
+fi
 pkg_install "$NEW"
 need_active
+if [[ -f /etc/systemd/system/krakenos-cert-local.timer ]]; then
+  ! systemctl is-enabled --quiet krakenos-cert-local.timer || fail "la actualización rehabilitó krakenos-cert-local.timer que el usuario había deshabilitado"
+  ok "una actualización no toca un timer deshabilitado a mano"
+fi
 [[ "$(agent_port)" == "$NEW_PORT" ]] || fail "PORT quedó en '$(agent_port)' tras actualizar (se esperaba $NEW_PORT): el paquete pisó krakenos.env"
 grep -q '^# editado por linux-lifecycle$' "$ENV_FILE" || fail "krakenos.env perdió la edición del usuario al actualizar"
 ok "krakenos.env conserva la edición del usuario (PORT=$NEW_PORT)"
