@@ -12,12 +12,30 @@ const leer = (ruta: string) => readFileSync(ruta, 'utf8');
  * permisos solo para la ventana `main` y lo que usa el Rust.
  */
 describe('ventana de Windows: la web del agente no tiene IPC de Tauri', () => {
-  const capabilities = existsSync(resolve(TAURI, 'capabilities'))
-    ? readdirSync(resolve(TAURI, 'capabilities')).filter((f) => f.endsWith('.json'))
+  // Tauri carga también .json5 y .toml de esa carpeta: se lista TODO y solo vale .json.
+  const todo = existsSync(resolve(TAURI, 'capabilities'))
+    ? readdirSync(resolve(TAURI, 'capabilities'))
     : [];
+  const capabilities = todo.filter((f) => f.endsWith('.json'));
 
   it('hay capabilities que leer (guard de tamaño)', () => {
     expect(capabilities.length).toBeGreaterThan(0);
+  });
+
+  it('en capabilities/ solo hay .json (Tauri también carga .json5 y .toml)', () => {
+    expect(todo.filter((f) => !f.endsWith('.json'))).toEqual([]);
+  });
+
+  it('tauri.conf.json no declara capabilities en línea', () => {
+    const conf = JSON.parse(leer(resolve(TAURI, 'tauri.conf.json')));
+    expect(conf.app.security?.capabilities).toBeUndefined();
+  });
+
+  it('no hay configuración por plataforma ni Tauri.toml que Tauri fusione', () => {
+    const raros = readdirSync(TAURI).filter(
+      (f) => /^tauri\..+\.conf\./i.test(f) || /^tauri\.toml$/i.test(f),
+    );
+    expect(raros).toEqual([]);
   });
 
   it('withGlobalTauri es false', () => {
@@ -29,6 +47,7 @@ describe('ventana de Windows: la web del agente no tiene IPC de Tauri', () => {
     for (const f of capabilities) {
       const cap = JSON.parse(leer(resolve(TAURI, 'capabilities', f)));
       expect(cap.remote, f).toBeUndefined();
+      expect(cap.webviews, f).toBeUndefined();
       expect(cap.windows, f).toEqual(['main']);
     }
   });
