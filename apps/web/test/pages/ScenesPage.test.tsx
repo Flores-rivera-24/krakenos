@@ -255,4 +255,120 @@ describe('ScenesPage (US-166)', () => {
     });
     expect(interruptor.closest('label')).toBeNull();
   });
+
+  describe('editar conserva lo que no se ve', () => {
+    const dev = (id: string): IotDevice => ({ ...LIGHT, id, name: `Luz ${id}` });
+    const original: Scene = scene({
+      actions: [
+        { deviceId: 'a', on: true },
+        { deviceId: 'b', on: false },
+        { deviceId: 'c', on: true, brightness: 40 },
+      ],
+    });
+
+    function servir(devices: IotDevice[] | Error) {
+      apiMock.get.mockImplementation((path: string) => {
+        if (path === '/scenes') return Promise.resolve([original]);
+        if (path === '/iot/devices') {
+          return devices instanceof Error ? Promise.reject(devices) : Promise.resolve(devices);
+        }
+        return Promise.resolve([]);
+      });
+      apiMock.patch.mockReset().mockResolvedValue(original);
+    }
+
+    async function renombrarYGuardar(user: ReturnType<typeof userEvent.setup>) {
+      await user.click(await screen.findByRole('button', { name: /3 dispositivos/ }));
+      const dialog = await screen.findByRole('dialog');
+      const nombre = within(dialog).getByLabelText('Nombre');
+      await user.clear(nombre);
+      await user.type(nombre, 'Otra');
+      return dialog;
+    }
+
+    it('conserva las acciones de los aparatos que no vinieron en la lista', async () => {
+      servir([dev('a'), dev('b')]);
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      expect(body.actions).toHaveLength(3);
+      expect(body.actions[2]).toEqual({ deviceId: 'c', on: true, brightness: 40 });
+    });
+
+    it('con la lista de aparatos fallida, renombrar no vacía la escena', async () => {
+      servir(new Error('bridge caído'));
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      expect(body.actions).toEqual(original.actions);
+    });
+
+    it('si los aparatos llegan después de abrir el editor, quedan marcados y renombrar no vacía la escena', async () => {
+      let resolveDevices: (d: IotDevice[]) => void = () => undefined;
+      apiMock.get.mockImplementation((path: string) => {
+        if (path === '/scenes') return Promise.resolve([original]);
+        if (path === '/iot/devices') return new Promise((res) => (resolveDevices = res));
+        return Promise.resolve([]);
+      });
+      apiMock.patch.mockReset().mockResolvedValue(original);
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await act(async () => resolveDevices([dev('a'), dev('b')]));
+      expect(await within(dialog).findByLabelText('Incluir Luz a')).toBeChecked();
+      expect(within(dialog).getByLabelText('Incluir Luz b')).toBeChecked();
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      // Las luces añaden su brillo al guardar (comportamiento previo): se compara lo que importa.
+      expect(body.actions.map((x) => [x.deviceId, x.on])).toEqual([
+        ['a', true],
+        ['b', false],
+        ['c', true],
+      ]);
+      expect(body.actions[2]).toEqual({ deviceId: 'c', on: true, brightness: 40 });
+    });
+
+    it('un aparato presente y marcado no se duplica', async () => {
+      servir([dev('a'), dev('b')]);
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      expect(body.actions.filter((x) => x.deviceId === 'a')).toHaveLength(1);
+    });
+
+    it('un aparato presente y desmarcado se quita de la escena', async () => {
+      servir([dev('a'), dev('b')]);
+      const user = userEvent.setup();
+      renderPage();
+      const dialog = await renombrarYGuardar(user);
+      await user.click(within(dialog).getByLabelText('Incluir Luz a'));
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+      const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+      expect(body.actions.map((x) => x.deviceId)).toEqual(['b', 'c']);
+    });
+
+    it('una escena nueva con la lista vacía no inventa acciones', async () => {
+      apiMock.get.mockImplementation(() => Promise.resolve([]));
+      apiMock.post.mockReset().mockResolvedValue(scene());
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByRole('button', { name: 'Crear escena' }));
+      const dialog = await screen.findByRole('dialog');
+      await user.type(within(dialog).getByLabelText('Nombre'), 'Vacía');
+      await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      await waitFor(() => expect(apiMock.post).toHaveBeenCalled());
+      expect(apiMock.post.mock.calls[0]?.[1]).toMatchObject({ name: 'Vacía', actions: [] });
+    });
+  });
 });

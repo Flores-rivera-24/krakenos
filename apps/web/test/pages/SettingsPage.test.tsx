@@ -170,6 +170,120 @@ describe('SettingsPage', () => {
     );
   });
 
+  it('un valor guardado que no está en la lista se muestra seleccionado, no el primero', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: { ...SETTINGS.settings, presenceLeaveSweeps: '7' },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    const select = screen.getByLabelText('Barridos consecutivos para confirmar una salida');
+    expect(select).toHaveValue('7');
+    expect(within(select).getByRole('option', { name: '7' })).toBeInTheDocument();
+    expect(
+      within(select)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['1', '2', '3', '5', '7']);
+  });
+
+  it('un intervalo y una retención guardados fuera de lista se muestran con su etiqueta, no el primero', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: {
+              ...SETTINGS.settings,
+              scanIntervalSec: '45',
+              trafficRetentionDays: '14',
+              auditRetentionDays: '365',
+            },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    const sel = (name: string) => screen.getByLabelText(name) as HTMLSelectElement;
+    const elegida = (s: HTMLSelectElement) => s.selectedOptions[0]?.textContent;
+    expect(sel('Intervalo de escaneo')).toHaveValue('45');
+    expect(elegida(sel('Intervalo de escaneo'))).toBe('45 segundos');
+    expect(
+      within(sel('Intervalo de escaneo'))
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['30 segundos', '45 segundos', '1 minuto', '5 minutos']);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Red' }));
+    expect(elegida(sel('Retención del historial de tráfico'))).toBe('14 días');
+    expect(elegida(sel('Retención del registro de auditoría'))).toBe('365 días');
+  });
+
+  it('una retención de 1 día concuerda en singular y 14 en plural', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: {
+              ...SETTINGS.settings,
+              trafficRetentionDays: '1',
+              auditRetentionDays: '14',
+            },
+          })
+        : Promise.resolve([]),
+    );
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Red' }));
+    const elegida = (name: string) =>
+      (screen.getByLabelText(name) as HTMLSelectElement).selectedOptions[0]?.textContent;
+    expect(elegida('Retención del historial de tráfico')).toBe('1 día');
+    expect(elegida('Retención del registro de auditoría')).toBe('14 días');
+  });
+
+  // Caracterización: hoy ya pasa, porque cada PATCH lleva una sola clave.
+  it('guardar otro campo no cambia scanIntervalSec en el cuerpo enviado', async () => {
+    setUser('admin');
+    apiMock.get.mockImplementation((path: string) =>
+      path.startsWith('/system/settings')
+        ? Promise.resolve({
+            ...SETTINGS,
+            settings: { ...SETTINGS.settings, scanIntervalSec: '45' },
+          })
+        : Promise.resolve([]),
+    );
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await screen.findByDisplayValue('Casa Flores');
+    await user.selectOptions(screen.getByDisplayValue('Europe/Madrid'), 'UTC');
+    await waitFor(() => expect(apiMock.patch).toHaveBeenCalledTimes(1));
+    expect(apiMock.patch).toHaveBeenCalledWith('/system/settings', {
+      key: 'timezone',
+      value: 'UTC',
+    });
+  });
+
   it('muestra un error y no falla en silencio si el PATCH falla (US-55)', async () => {
     setUser('admin');
     apiMock.patch.mockRejectedValue(new Error('500'));
@@ -303,6 +417,23 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Probar conexión' }));
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/system/connectivity-test'));
     expect(await screen.findByText(/OK · 3 ms/)).toBeInTheDocument();
+  });
+
+  it('si la prueba de conexión rechaza, se pinta como fallo y el botón se rehabilita', async () => {
+    setUser('admin');
+    apiMock.post.mockRejectedValueOnce(new Error('caído'));
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    await user.click(screen.getByRole('button', { name: 'Red' }));
+    await user.click(screen.getByRole('button', { name: 'Probar conexión' }));
+    expect(
+      await screen.findByText('No se pudo conectar con el servidor. Revisa tu conexión.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Probar conexión' })).toBeEnabled();
   });
 
   it('la sección Cuenta muestra los datos del usuario', async () => {

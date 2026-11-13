@@ -12,6 +12,7 @@ vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error
 
 import { NetworksCard } from '@/components/wifi/NetworksCard';
 import { useAuthStore } from '@/store/auth.store';
+import { useToastStore } from '@/store/toast.store';
 
 const APS: AccessPoint[] = [
   {
@@ -74,6 +75,36 @@ describe('NetworksCard', () => {
     expect(await screen.findByText(/Clientes ·/)).toBeInTheDocument();
     expect(screen.getByText('laptop')).toBeInTheDocument();
     expect(apiMock.get).toHaveBeenCalledWith('/wifi/networks/net-1/clients');
+  });
+
+  it('si falla la lectura de clientes avisa con un toast y no deja un rechazo sin atender', async () => {
+    setRole('admin');
+    useToastStore.setState({ toasts: [] });
+    const sinAtender: unknown[] = [];
+    const alRechazo = (motivo: unknown) => sinAtender.push(motivo);
+    process.on('unhandledRejection', alRechazo);
+    try {
+      apiMock.get.mockImplementation((path: string) =>
+        path.endsWith('/clients')
+          ? Promise.reject(new Error('caído'))
+          : Promise.resolve(path === '/wifi/access-points' ? APS : NETS),
+      );
+      render(<NetworksCard />);
+      await screen.findByText('KrakenOS');
+      fireEvent.click(screen.getByRole('button', { name: 'Clientes de KrakenOS: 1' }));
+      await waitFor(() =>
+        expect(useToastStore.getState().toasts).toEqual([
+          expect.objectContaining({
+            kind: 'error',
+            message: 'No se pudo conectar con el servidor. Revisa tu conexión.',
+          }),
+        ]),
+      );
+      await new Promise((r) => setTimeout(r, 20));
+      expect(sinAtender).toEqual([]);
+    } finally {
+      process.off('unhandledRejection', alRechazo);
+    }
   });
 
   it('el botón de clientes dice de qué red son', async () => {

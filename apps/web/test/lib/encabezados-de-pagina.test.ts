@@ -128,6 +128,18 @@ describe('jerarquía de encabezados de las páginas (US-266)', () => {
     expect(incumplen).toEqual([]);
   });
 
+  it('el título que un dominio sin configurar pone en lugar de la página usa el mismo estilo', () => {
+    // `DomainGate` reemplaza el cuerpo de la página (y con él su <h1>) por este título.
+    const DIR = join(process.cwd(), 'src', 'components', 'integrations');
+    const fuentes = readdirSync(DIR)
+      .filter((f) => f.endsWith('.tsx'))
+      .map((f) => ({ nombre: f, fuente: readFileSync(join(DIR, f), 'utf8') }))
+      .filter((p) => /<h1[\s>]/.test(p.fuente));
+    // Guard: si el glob o el filtro se rompen, no pasa en vacío.
+    expect(fuentes.length).toBeGreaterThan(0);
+    expect(fuentes.flatMap((p) => problemasDeTitulo(p.nombre, p.fuente))).toEqual([]);
+  });
+
   it('PANTALLAS_DE_ENTRADA no tiene entradas obsoletas', () => {
     // Una entrada que ya no existe es una exención muerta: falla para que se retire.
     const obsoletas = PANTALLAS_DE_ENTRADA.filter(
