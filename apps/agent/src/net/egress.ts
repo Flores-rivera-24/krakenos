@@ -84,7 +84,7 @@ interface IpClass {
   private: boolean;
 }
 
-function classifyIp(rawIp: string): IpClass | null {
+export function classifyIp(rawIp: string): IpClass | null {
   const ip = unmapV6(rawIp);
   const v4 = ipv4Octets(ip);
   if (v4) {
@@ -238,11 +238,19 @@ export async function assertUrlAllowed(
 /** Máximo de redirects que sigue `safeFetch` (cada salto se revalida). */
 const MAX_REDIRECTS = 3;
 
+/** Tope de una petición saliente cuando el llamante no trae su propio `signal`. */
+export const SAFE_FETCH_TIMEOUT_MS = 10_000;
+
+/** Cabeceras que identifican al llamante: no viajan a otro origen. */
+const CABECERAS_DE_CREDENCIAL = ['authorization', 'cookie', 'x-api-key', 'proxy-authorization'];
+
 /**
  * `fetch` con guardia de egress: valida la URL inicial y **cada redirect** contra
  * la política (un 3xx no puede reapuntar a metadata/interno), en vez de dejar que
- * `fetch` siga redirecciones a ciegas. El resto de opciones se pasan tal cual; el
- * llamante añade su `signal`/timeout y cabeceras.
+ * `fetch` siga redirecciones a ciegas. Un salto a **otro origen** va sin
+ * `dispatcher` (la excepción TLS de un aparato de LAN no se hereda), sin cuerpo y
+ * sin credenciales; la redirección sigue la semántica de fetch (301/302 solo POST→GET, 303 todo menos HEAD→GET) y una escritura a otro origen se rechaza. Sin `signal` propio
+ * corta a los `SAFE_FETCH_TIMEOUT_MS` (cubre también la lectura del cuerpo).
  */
 export async function safeFetch(
   rawUrl: string,
@@ -250,14 +258,55 @@ export async function safeFetch(
   policy: EgressPolicy = DEFAULT_EGRESS_POLICY,
 ): Promise<Response> {
   let current = rawUrl;
+  let origin: string | null = null;
+  let actual: RequestInit = {
+    ...init,
+    signal: init.signal ?? AbortSignal.timeout(SAFE_FETCH_TIMEOUT_MS),
+  };
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     const url = await assertUrlAllowed(current, policy);
-    const res = await fetch(url, { ...init, redirect: 'manual' });
+    origin ??= url.origin;
+    const res = await fetch(url, { ...actual, redirect: 'manual' });
     // 3xx con Location → validar el destino y volver a pedir manualmente.
     if (res.status >= 300 && res.status < 400) {
       const location = res.headers.get('location');
       if (!location) return res; // redirect sin destino: se devuelve tal cual
-      current = new URL(location, url).toString();
+      const next = new URL(location, url);
+      const otroOrigen = next.origin !== origin;
+      // Semántica del estándar fetch: 301/302 solo convierten POST en GET; 303, todo
+      // salvo GET/HEAD; el resto (307/308…) conserva método y cuerpo.
+      const metodo = (actual.method ?? 'GET').toUpperCase();
+      const aGet =
+        ((res.status === 301 || res.status === 302) && metodo === 'POST') ||
+        (res.status === 303 && metodo !== 'GET' && metodo !== 'HEAD');
+      const siguiente = aGet ? 'GET' : metodo;
+      if (otroOrigen && siguiente !== 'GET' && siguiente !== 'HEAD') {
+        throw new EgressBlockedError(
+          `redirección de una escritura (${siguiente}) a otro origen`,
+          next.toString(),
+        );
+      }
+      if (aGet || otroOrigen) {
+        const { body: _body, ...sinCuerpo } = actual;
+        actual = { ...sinCuerpo, method: aGet ? 'GET' : metodo };
+        if (aGet && actual.headers) {
+          // Como el estándar fetch: sin cuerpo no hay descriptor de cuerpo.
+          const headers = new Headers(actual.headers);
+          headers.delete('content-type');
+          headers.delete('content-length');
+          actual = { ...actual, headers };
+        }
+      }
+      if (otroOrigen) {
+        const headers = new Headers(actual.headers);
+        for (const h of CABECERAS_DE_CREDENCIAL) headers.delete(h);
+        const { dispatcher: _dispatcher, ...sinDispatcher } = actual as RequestInit & {
+          dispatcher?: unknown;
+        };
+        actual = { ...sinDispatcher, headers };
+        origin = next.origin; // los saltos siguientes ya van sin credenciales: se compara con el nuevo
+      }
+      current = next.toString();
       continue;
     }
     return res;

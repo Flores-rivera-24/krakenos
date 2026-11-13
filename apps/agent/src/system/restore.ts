@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -9,7 +10,7 @@ import {
 } from 'node:fs';
 import { mkdir, open, rm, writeFile, type FileHandle } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { defaultMigrationsDir, findUnknownMigration } from '../db/migrate.js';
+import { KEEP_BACKUPS, defaultMigrationsDir, findUnknownMigration } from '../db/migrate.js';
 import { KEY_ENTRY_NAMES, type KeyFilePaths } from './key-paths.js';
 import { renameSyncWithRetry, renameWithRetry } from './rename-retry.js';
 import {
@@ -323,6 +324,30 @@ function destFor(name: string, targets: RestoreTargets): string | null {
   return null;
 }
 
+/** Copia a un respaldo con credenciales dentro: directorios 0700, ficheros 0600. */
+function backupCopy(src: string, bak: string): void {
+  mkdirSync(dirname(bak), { recursive: true, mode: 0o700 });
+  copyFileSync(src, bak);
+  chmodSync(bak, 0o600);
+}
+
+const RESTORE_BACKUP_RES = [/^pre-restore-\d{4}-.+Z$/, /^restore-failed-\d{4}-.+Z$/];
+
+/**
+ * Poda los respaldos de restauraciones (`pre-restore-*`, `restore-failed-*`) dejando los
+ * `keep` más recientes de cada familia (el ISO saneado ordena por fecha como texto).
+ * Lo que no casa con el patrón no se toca.
+ */
+export function pruneRestoreBackups(varDir: string, keep: number = KEEP_BACKUPS): void {
+  const names = readdirSync(varDir);
+  for (const re of RESTORE_BACKUP_RES) {
+    const ours = names.filter((n) => re.test(n)).sort();
+    for (const old of ours.slice(0, Math.max(0, ours.length - keep))) {
+      rmSync(join(varDir, old), { recursive: true, force: true });
+    }
+  }
+}
+
 const SQLITE_SIDECARS = ['-wal', '-shm'] as const;
 
 /**
@@ -335,8 +360,7 @@ function retireSqliteSidecars(dbFile: string, rel: string, preRestoreDir: string
     const file = `${dbFile}${suffix}`;
     if (!existsSync(file)) continue;
     const bak = join(preRestoreDir, `${rel}${suffix}`);
-    mkdirSync(dirname(bak), { recursive: true });
-    copyFileSync(file, bak);
+    backupCopy(file, bak);
     rmSync(file, { force: true });
     retired.push(suffix);
   }
@@ -395,8 +419,7 @@ export function applyStagedRestore(
       // Respalda lo actual (para poder revertir si un fichero posterior falla).
       if (existed) {
         const bak = join(preRestoreDir, rel);
-        mkdirSync(dirname(bak), { recursive: true });
-        copyFileSync(dest, bak);
+        backupCopy(dest, bak);
       }
       // Los `-wal`/`-shm` de la base vieja se retiran ANTES de publicar la nueva
       // (US-274): un WAL no está atado al fichero principal, y SQLite lo

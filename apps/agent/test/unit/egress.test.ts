@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import type { AddressInfo, Socket } from 'node:net';
 import { lookup } from 'node:dns/promises';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -8,6 +8,7 @@ import {
   assertHostAllowed,
   assertUrlAllowed,
   blockedReason,
+  SAFE_FETCH_TIMEOUT_MS,
   extractHost,
   safeFetch,
 } from '../../src/net/egress.js';
@@ -244,12 +245,16 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
   let server: Server;
   let port = 0;
   let hits: string[] = [];
+  let cabeceras: Record<string, string | string[] | undefined>[] = [];
 
   beforeAll(async () => {
     server = createServer((req, res) => {
       const url = req.url ?? '/';
       hits.push(url);
-      if (url === '/redirect-a-bloqueada') {
+      cabeceras.push(req.headers);
+      if (url === '/post-a-get') {
+        res.writeHead(302, { location: '/destino-get' });
+      } else if (url === '/redirect-a-bloqueada') {
         res.writeHead(302, { location: `http://0.0.0.0:${port}/trampa` });
       } else if (url === '/redirect-a-metadata') {
         res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' });
@@ -272,9 +277,22 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
 
   beforeEach(() => {
     hits = [];
+    cabeceras = [];
   });
 
   const url = (path: string) => `http://127.0.0.1:${port}${path}`;
+
+  it('un POST que un 302 convierte en GET llega sin content-type ni content-length', async () => {
+    await safeFetch(
+      url('/post-a-get'),
+      { method: 'POST', body: '{"a":1}', headers: { 'content-type': 'application/json' } },
+      LENIENT,
+    );
+    expect(hits).toEqual(['/post-a-get', '/destino-get']);
+    expect(cabeceras[0]?.['content-type']).toBe('application/json');
+    expect(cabeceras[1]?.['content-type']).toBeUndefined();
+    expect(cabeceras[1]?.['content-length']).toBeUndefined();
+  });
 
   it('NO sigue un redirect real hacia una dirección prohibida (mata redirect:follow)', async () => {
     await expect(safeFetch(url('/redirect-a-bloqueada'), {}, LENIENT)).rejects.toBeInstanceOf(
@@ -312,5 +330,191 @@ describe('safeFetch contra un servidor HTTP real (US-230)', () => {
   it('respeta la política: el mismo servidor loopback se bloquea en modo estricto', async () => {
     await expect(safeFetch(url('/ok'), {}, STRICT)).rejects.toBeInstanceOf(EgressBlockedError);
     expect(hits).toEqual([]); // ni se intentó la conexión
+  });
+});
+
+describe('safeFetch: credenciales entre orígenes y tope de tiempo', () => {
+  interface Recibida {
+    method?: string;
+    url?: string;
+    headers: Record<string, string | string[] | undefined>;
+    body: string;
+  }
+  let a: Server;
+  let b: Server;
+  let colgado: Server;
+  let urlA = '';
+  let urlB = '';
+  let urlColgado = '';
+  const enA: Recibida[] = [];
+  const enB: Recibida[] = [];
+  const sockets = new Set<Socket>();
+
+  const escucha = async (s: Server): Promise<string> => {
+    await new Promise<void>((resolve) => s.listen(0, '127.0.0.1', resolve));
+    return `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+  };
+  const registra = (
+    dest: Recibida[],
+    respuesta: (r: Recibida) => [number, Record<string, string>],
+  ) =>
+    createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (c: Buffer) => chunks.push(c));
+      req.on('end', () => {
+        const r: Recibida = {
+          method: req.method,
+          url: req.url,
+          headers: req.headers,
+          body: Buffer.concat(chunks).toString(),
+        };
+        dest.push(r);
+        const [status, headers] = respuesta(r);
+        res.writeHead(status, headers);
+        res.end('ok');
+      });
+    });
+
+  beforeAll(async () => {
+    b = registra(enB, () => [200, {}]);
+    urlB = await escucha(b);
+    a = registra(enA, (r) => {
+      if (r.url === '/otro-origen') return [302, { location: `${urlB}/destino` }];
+      if (r.url === '/otro-origen-307') return [307, { location: `${urlB}/destino` }];
+      if (r.url === '/mismo-301') return [301, { location: '/otra' }];
+      if (r.url === '/mismo-303') return [303, { location: '/otra' }];
+      if (r.url === '/mismo-origen') return [302, { location: '/otra' }];
+      if (r.url === '/mismo-origen-307') return [307, { location: '/otra' }];
+      return [200, {}];
+    });
+    urlA = await escucha(a);
+    colgado = createServer(() => {
+      /* acepta y nunca contesta */
+    });
+    colgado.on('connection', (s) => {
+      sockets.add(s);
+      s.on('close', () => sockets.delete(s));
+    });
+    urlColgado = await escucha(colgado);
+  });
+
+  afterAll(async () => {
+    for (const s of sockets) s.destroy();
+    await Promise.all([a, b, colgado].map((s) => new Promise<void>((r) => s.close(() => r()))));
+  });
+
+  beforeEach(() => {
+    enA.length = 0;
+    enB.length = 0;
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  const conCredenciales = (): RequestInit => ({
+    method: 'POST',
+    headers: {
+      authorization: 'Basic x',
+      cookie: 's=1',
+      'x-api-key': 'k',
+      'proxy-authorization': 'p',
+      'x-otra': 'queda',
+    },
+    body: 'secreto',
+  });
+
+  for (const ruta of ['/otro-origen']) {
+    it(`no reenvía credenciales ni cuerpo a otro origen (${ruta})`, async () => {
+      await safeFetch(`${urlA}${ruta}`, conCredenciales(), LENIENT);
+      expect(enA[0]?.body).toBe('secreto'); // el primer salto sí las lleva
+      expect(enB).toHaveLength(1);
+      const r = enB[0]!;
+      expect(r.method).toBe('GET');
+      expect(r.body).toBe('');
+      for (const h of ['authorization', 'cookie', 'x-api-key', 'proxy-authorization']) {
+        expect(r.headers[h]).toBeUndefined();
+      }
+      expect(r.headers['x-otra']).toBe('queda');
+    });
+  }
+
+  it('no hereda el dispatcher en un salto a otro origen', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: new Headers({ location: 'http://8.8.4.4/x' }),
+      } as Response)
+      .mockResolvedValueOnce({ status: 200, headers: new Headers() } as Response);
+    const dispatcher = { marca: 'lan' };
+    await safeFetch('http://8.8.8.8/', { dispatcher } as unknown as RequestInit, LENIENT);
+    const [primera, segunda] = fetchSpy.mock.calls.map((c) => c[1] as Record<string, unknown>);
+    expect(primera?.dispatcher).toBe(dispatcher);
+    expect(segunda).not.toHaveProperty('dispatcher');
+  });
+
+  it('conserva las cabeceras en una redirección del mismo origen', async () => {
+    await safeFetch(`${urlA}/mismo-origen`, conCredenciales(), LENIENT);
+    expect(enA.map((r) => r.url)).toEqual(['/mismo-origen', '/otra']);
+    expect(enA[1]?.headers.authorization).toBe('Basic x');
+    expect(enA[1]?.headers['x-api-key']).toBe('k');
+    expect(enA[1]?.method).toBe('GET'); // 302 → GET sin cuerpo
+    expect(enA[1]?.body).toBe('');
+  });
+
+  it('DELETE con 301 al mismo origen llega como DELETE', async () => {
+    await safeFetch(`${urlA}/mismo-301`, { method: 'DELETE' }, LENIENT);
+    expect(enA.map((r) => r.method)).toEqual(['DELETE', 'DELETE']);
+  });
+
+  it('PUT con cuerpo y 302 al mismo origen llega como PUT con el mismo cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-origen`, { method: 'PUT', body: 'datos' }, LENIENT);
+    expect(enA[1]?.method).toBe('PUT');
+    expect(enA[1]?.body).toBe('datos');
+  });
+
+  it('PUT con 303 al mismo origen llega como GET sin cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-303`, { method: 'PUT', body: 'datos' }, LENIENT);
+    expect(enA[1]?.method).toBe('GET');
+    expect(enA[1]?.body).toBe('');
+  });
+
+  it('PUT con 307 a OTRO origen se rechaza y el destino no recibe nada', async () => {
+    await expect(
+      safeFetch(`${urlA}/otro-origen-307`, { method: 'PUT', body: 'datos' }, LENIENT),
+    ).rejects.toMatchObject({ code: 'EGRESS_BLOCKED', message: /escritura a otro origen/ });
+    expect(enA).toHaveLength(1);
+    expect(enB).toHaveLength(0);
+  });
+
+  it('un 307 del mismo origen conserva método y cuerpo', async () => {
+    await safeFetch(`${urlA}/mismo-origen-307`, conCredenciales(), LENIENT);
+    expect(enA[1]?.method).toBe('POST');
+    expect(enA[1]?.body).toBe('secreto');
+    expect(enA[1]?.headers.authorization).toBe('Basic x');
+  });
+
+  it('corta una petición que no responde (signal propio de 200 ms)', async () => {
+    const t0 = Date.now();
+    await expect(
+      safeFetch(urlColgado, { signal: AbortSignal.timeout(200) }, LENIENT),
+    ).rejects.toThrow();
+    expect(Date.now() - t0).toBeLessThan(2000);
+  });
+
+  it('sin signal usa SAFE_FETCH_TIMEOUT_MS y aborta al llegar al tope', async () => {
+    expect(SAFE_FETCH_TIMEOUT_MS).toBe(10_000);
+    const real = AbortSignal.timeout.bind(AbortSignal);
+    const spy = vi.spyOn(AbortSignal, 'timeout').mockImplementation(() => real(150));
+    await expect(safeFetch(urlColgado, {}, LENIENT)).rejects.toThrow();
+    expect(spy).toHaveBeenCalledWith(SAFE_FETCH_TIMEOUT_MS);
+  });
+
+  it('respeta el signal del llamante: no lo pisa con el del tope', async () => {
+    const spy = vi.spyOn(AbortSignal, 'timeout');
+    const ctl = new AbortController();
+    const motivo = new Error('cancelado por el llamante');
+    setTimeout(() => ctl.abort(motivo), 50);
+    await expect(safeFetch(urlColgado, { signal: ctl.signal }, LENIENT)).rejects.toBe(motivo);
+    expect(spy).not.toHaveBeenCalled();
   });
 });

@@ -17,10 +17,12 @@ function device(over: Partial<IotDevice> & { id: string }): IotDevice {
   };
 }
 
-function setup(initial: IotDevice[]) {
+function setup(initial: IotDevice[], reportsFailures = true) {
   let devices = initial;
+  let failures: { prefix: string; message: string }[] = [];
   const iot = {
     listDevices: async () => devices,
+    ...(reportsFailures ? { listFailures: () => failures } : {}),
     getDevice: async () => null,
     setState: async () => {
       throw new Error('no aplica');
@@ -32,7 +34,13 @@ function setup(initial: IotDevice[]) {
     events.push(e);
   });
   const watcher = new IotWatcher(iot, bus);
-  return { watcher, events, setDevices: (d: IotDevice[]) => (devices = d) };
+  return {
+    watcher,
+    events,
+    setDevices: (d: IotDevice[]) => (devices = d),
+    setFailures: (prefixes: string[]) =>
+      (failures = prefixes.map((prefix) => ({ prefix, message: 'caído' }))),
+  };
 }
 
 /** Observador de transiciones IoT (US-167). */
@@ -105,14 +113,64 @@ describe('IotWatcher', () => {
       readings: [{ metric: 'contact', value: 0, unit: '' }],
     });
     const b = device({ id: 'govee:b' });
-    const { watcher, events, setDevices } = setup([a, b]);
+    const { watcher, events, setDevices, setFailures } = setup([a, b]);
     await watcher.tick();
     setDevices([b]); // el backend de A cae: la lista llega parcial
+    setFailures(['hue']);
     await watcher.tick();
+    setFailures([]);
     setDevices([
       { ...a, readings: [{ metric: 'contact', value: 1, unit: '' }] }, // se abrió durante el corte
       b,
     ]);
+    await watcher.tick();
+    expect(events).toEqual([
+      { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },
+    ]);
+  });
+
+  const abierto = (id: string, value: number) =>
+    device({
+      id,
+      kind: 'contact',
+      on: null,
+      readings: [{ metric: 'contact', value, unit: '' }],
+    });
+
+  it('un aparato que desaparece con todos los backends sanos se olvida: al volver es un alta nueva', async () => {
+    const { watcher, events, setDevices } = setup([abierto('hue:a', 0), device({ id: 'govee:b' })]);
+    await watcher.tick();
+    setDevices([device({ id: 'govee:b' })]); // lo borraron: ningún backend caído
+    await watcher.tick();
+    setDevices([abierto('hue:a', 1), device({ id: 'govee:b' })]); // reaparece con otro estado
+    await watcher.tick();
+    expect(events).toEqual([]);
+  });
+
+  it('con un backend caído, el aparato de OTRO backend sano que desaparece sí se olvida', async () => {
+    const { watcher, events, setDevices, setFailures } = setup([
+      abierto('hue:a', 0),
+      abierto('govee:b', 0),
+    ]);
+    await watcher.tick();
+    setDevices([]); // hue cae (lista parcial) y govee, sano, ya no tiene b
+    setFailures(['hue']);
+    await watcher.tick();
+    setFailures([]);
+    setDevices([abierto('hue:a', 1), abierto('govee:b', 1)]);
+    await watcher.tick();
+    // a conservó su base (hue estaba caído) y dispara; b se olvidó y es alta nueva
+    expect(events).toEqual([
+      { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },
+    ]);
+  });
+
+  it('si el manager no reporta fallos, conserva la línea base de lo que falta', async () => {
+    const { watcher, events, setDevices } = setup([abierto('hue:a', 0)], false);
+    await watcher.tick();
+    setDevices([]);
+    await watcher.tick();
+    setDevices([abierto('hue:a', 1)]);
     await watcher.tick();
     expect(events).toEqual([
       { type: 'sensor-reading', deviceId: 'hue:a', metric: 'contact', value: 1, prevValue: 0 },

@@ -1,4 +1,9 @@
-import type { HomeEvent, PresenceState, PresenceEvent as PresenceEventDto } from '@krakenos/types';
+import type {
+  HomeEvent,
+  PersonPresence,
+  PresenceState,
+  PresenceEvent as PresenceEventDto,
+} from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { HomeEventBus } from '../../src/automations/event-bus.js';
@@ -271,6 +276,28 @@ describe('presencia y modos del hogar (US-169)', () => {
       .then((r) => r.json())) as PresenceState;
     expect(asAna.people.map((p) => p.displayName)).toEqual(['Ana']);
     expect(asAna.people[0]).toMatchObject({ home: true, deviceCount: 1 });
+  });
+
+  it('GET /api/presence sirve cada persona con exactamente las claves de PersonPresence', async () => {
+    await seedPerson('Ana', 'aa:bb:cc:00:00:30', true);
+    // No compila si PersonPresence gana o pierde una clave.
+    const claves: Record<keyof PersonPresence, true> = {
+      userId: true,
+      displayName: true,
+      home: true,
+      since: true,
+      deviceCount: true,
+      signal: true,
+    };
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/presence',
+      headers: authHeader(adminToken),
+    });
+    const { people } = res.json() as PresenceState;
+    expect(people).toHaveLength(1);
+    expect(Object.keys(people[0]!).sort()).toEqual(Object.keys(claves).sort());
+    expect(['fresh', 'stale']).toContain(people[0]!.signal);
   });
 
   it('privacidad: el timeline también se acota por rol', async () => {
