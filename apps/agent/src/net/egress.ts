@@ -137,7 +137,7 @@ export function blockedReason(ip: string, policy: EgressPolicy): string | null {
 /** Quita esquema y puerto de un valor de campo `host`/`ip` para quedarse con el host. */
 export function extractHost(value: string): string {
   let s = value.trim();
-  // Si trae esquema (http://, mqtt://, ws://…), usa el parser de URL. Para IPv6,
+  // Si trae esquema (http://, mqtt://, ws…), usa el parser de URL. Para IPv6,
   // `URL.hostname` conserva los corchetes (`[fe80::1]`); se quitan para dejar el
   // host desnudo que entiende `isIP`.
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) {

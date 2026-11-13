@@ -9,7 +9,7 @@ import fp from 'fastify-plugin';
  * - `style-src 'unsafe-inline'`: React/Recharts aplican estilos inline.
  * - `img-src data:`: snapshots de cámara y QR de VPN viajan como data URLs.
  * - `connect-src 'self'`: fetch/XHR/WebSocket/beacon **solo al mismo origen**.
- *   En CSP3 `'self'` cubre el WebSocket de Socket.io del mismo host (`ws://`/`wss://`),
+ *   En CSP3 `'self'` cubre el WebSocket de Socket.io del mismo host (`ws:`/`wss:`),
  *   así que NO hace falta el comodín `ws: wss:` — y quitarlo cierra un canal de
  *   exfiltración: con tokens legibles por JS (localStorage, ver F13/US-90), el
  *   comodín dejaba que un XSS enviara el token a `wss://atacante`. La app es

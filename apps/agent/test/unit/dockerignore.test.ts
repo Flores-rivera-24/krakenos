@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
  * US-231 (AUD3-33) — **la imagen de GHCR podía romperse sin que ningún build en
  * verde lo detectara.**
  *
- * `docker.yml` solo se dispara con cambios en `Dockerfile`/`docker/`/`compose`/
+ * En los PR, `docker.yml` solo se dispara con cambios en `Dockerfile`/`docker/`/`compose`/
  * `.dockerignore`, **no** con `apps/**`. Así que un patrón de `.dockerignore` que
  * se trague un directorio FUENTE no lo caza nadie: `build-test` no construye la
  * imagen y `docker.yml` no se ejecuta. El fallo aparecería ya publicado.

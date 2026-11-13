@@ -127,6 +127,7 @@ jobs:
           curl -sSfL --retry 3 --retry-delay 2 --retry-all-errors \
             -o /tmp/osv-scanner \
             https://github.com/google/osv-scanner/releases/download/v2.4.0/osv-scanner_linux_amd64
+          echo "15314940c10d26af9c6649f150b8a47c1262e8fc7e17b1d1029b0e479e8ed8a0  /tmp/osv-scanner" | sha256sum --check -
           chmod +x /tmp/osv-scanner
           /tmp/osv-scanner --lockfile=pnpm-lock.yaml --format=json > /tmp/osv.json || true
           node scripts/audit-osv.mjs /tmp/osv.json
@@ -495,6 +496,7 @@ jobs:
           GITLEAKS_VERSION: '8.21.2'
         run: |
           curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          echo "5bc41815076e6ed6ef8fbecc9d9b75bcae31f39029ceb55da08086315316e3ba  gitleaks.tar.gz" | sha256sum --check -
           tar -xzf gitleaks.tar.gz gitleaks
           ./gitleaks detect \
             --source . \
@@ -509,15 +511,10 @@ jobs:
       # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
       # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
       # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
-      #
-      # `--exclude-rule`: tres reglas son falsos positivos para este código y se
-      # silencian de forma explícita (no se desactiva el resto del SAST):
-      #   - express…direct-response-write: el backend es Fastify (API JSON, no HTML
-      #     de Express); `reply.send` serializa JSON, no hay XSS reflejado.
-      #   - detect-non-literal-regexp: el `new RegExp` de cisco-netconf.parsers usa un
-      #     nombre de tag interno (no entrada de usuario), no es ReDoS explotable.
-      #   - detect-insecure-websocket: el único match es un `ws://` dentro de un
-      #     comentario doc de la CSP, no código.
+      # Los falsos positivos se suprimen por línea (`nosemgrep` con su porqué).
+      # Única regla excluida: `direct-response-write` es de Express (marca como XSS
+      # todo `res.send(objeto)`); el agente es Fastify y serializa por el schema de
+      # `response`. Medido el 2026-11-11: 31 falsos positivos y 0 aciertos.
       - name: SAST (semgrep)
         env:
           SEMGREP_VERSION: '1.95.0'
@@ -529,8 +526,6 @@ jobs:
               --config p/javascript \
               --config p/typescript \
               --exclude-rule javascript.express.security.audit.xss.direct-response-write.direct-response-write \
-              --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp \
-              --exclude-rule javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket \
               --error \
               --metrics off \
               --disable-version-check \
