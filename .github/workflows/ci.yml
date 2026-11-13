@@ -225,6 +225,22 @@ jobs:
           echo "paquete: $dir"
           node scripts/package-smoke.mjs "$dir"
 
+      # `.deb` (US-287): se construyen dos (uno viejo `0.0.0~ci1` y el real), `lintian` no admite
+      # errores y el ciclo de vida completo (instalar, actualizar con `krakenos.env` editado,
+      # desinstalar, reinstalar y purgar) corre como root con systemd real, en x64 y en arm64.
+      - name: .deb (lintian y ciclo de vida)
+        if: ${{ startsWith(matrix.target, 'linux-') }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lintian
+          dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
+          old="$(node scripts/package-deb.mjs "$dir" --version 0.0.0~ci1)"
+          new="$(node scripts/package-deb.mjs "$dir")"
+          echo "viejo: $old"
+          echo "nuevo: $new"
+          lintian --fail-on error "$old" "$new"
+          sudo scripts/package/linux-lifecycle.sh deb "$old" "$new"
+
       # Negativo de la firma: con una SHASUMS256.txt alterada, la verificación de Node TIENE que
       # fallar (y por la firma, no por otra cosa). Si pasara, la verificación sería decorativa.
       - name: Negativo de la firma de Node (SHASUMS256.txt alterada)
@@ -554,8 +570,11 @@ jobs:
           tar -xJf "$RUNNER_TEMP/shellcheck.tar.xz" -C "$RUNNER_TEMP/shellcheck" --strip-components=1
           export PATH="$RUNNER_TEMP/shellcheck:$PATH"
           shellcheck --version
-          shellcheck --severity=warning \
+          # -x: krakenos-setup carga la biblioteca compartida (su `source=` la resuelve).
+          shellcheck -x --severity=warning \
             scripts/install.sh \
             scripts/lib/krakenos-system.sh \
+            scripts/package/linux-lifecycle.sh \
+            packaging/linux/common/krakenos-setup \
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh

@@ -139,3 +139,20 @@ describe('scripts de mantenimiento', () => {
       expect(t).toContain(u);
   });
 });
+
+describe('ci.yml (job package)', () => {
+  const CI = readFileSync(
+    fileURLToPath(new URL('../../../../.github/workflows/ci.yml', import.meta.url)),
+    'utf8',
+  );
+  const job = CI.slice(CI.indexOf('\n  package:'), CI.indexOf('\n  e2e:'));
+
+  it('prueba el ciclo de vida en las dos arquitecturas', () => {
+    expect(job).toContain('linux-x64');
+    expect(job).toContain('linux-arm64');
+    expect(job).toMatch(/startsWith\(matrix\.target, 'linux-'\)/);
+    expect(job).toMatch(/--version 0\.0\.0~ci1/);
+    expect(job).toMatch(/lintian --fail-on error/);
+    expect(job).toMatch(/sudo scripts\/package\/linux-lifecycle\.sh deb /);
+  });
+});
