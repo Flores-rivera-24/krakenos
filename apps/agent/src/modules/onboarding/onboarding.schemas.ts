@@ -111,8 +111,6 @@ export const acceptInvitationSchema = {
   response: { 400: errorResponse, 404: errorResponse },
 } as const;
 
-// ---------------------------------------------------------------------------
-
 const accessRequestResponse = {
   type: 'object',
   properties: {

@@ -16,7 +16,6 @@ function mockViewport(mobile: boolean) {
   });
 }
 
-// Socket falso para el store de inventario.
 const fakeSocket = vi.hoisted(() => ({
   connected: true,
   on: vi.fn(),
