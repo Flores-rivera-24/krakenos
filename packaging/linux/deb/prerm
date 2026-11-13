@@ -1,0 +1,15 @@
+#!/bin/sh
+# Al quitar el paquete (no al actualizarlo: el postinst nuevo reinicia el servicio).
+set -e
+
+case "$1" in
+  remove)
+    if [ -d /run/systemd/system ]; then
+      systemctl disable --now krakenos.service || true
+      systemctl disable --now krakenos-cert.timer || true
+      systemctl disable --now krakenos-cert-local.timer || true
+    fi
+    ;;
+esac
+
+exit 0

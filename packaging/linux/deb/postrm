@@ -1,0 +1,22 @@
+#!/bin/sh
+# Solo rutas literales: nunca una ruta construida con una variable que pueda quedar vacía.
+set -e
+
+case "$1" in
+  purge)
+    rm -rf /var/lib/krakenos
+    rm -rf /etc/krakenos
+    rm -rf /etc/systemd/system/krakenos-cert.service
+    rm -rf /etc/systemd/system/krakenos-cert.timer
+    rm -rf /etc/systemd/system/krakenos-cert-local.service
+    rm -rf /etc/systemd/system/krakenos-cert-local.timer
+    deluser --system krakenos > /dev/null 2>&1 || true
+    delgroup --system krakenos > /dev/null 2>&1 || true
+    ;;
+esac
+
+if [ -d /run/systemd/system ]; then
+  systemctl daemon-reload || true
+fi
+
+exit 0

@@ -1,0 +1,28 @@
+#!/bin/sh
+# Lo ejecuta root al instalar o actualizar. Solo llama a binarios de root (/usr/lib/krakenos es de
+# root); nada que el usuario del servicio pueda modificar.
+set -e
+
+SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+
+case "$1" in
+  configure)
+    systemd-sysusers krakenos.conf
+    systemd-tmpfiles --create krakenos.conf
+
+    if [ -d /run/systemd/system ]; then
+      # Instalación nueva (sin versión anterior configurada): HTTPS por defecto, como install.sh.
+      if [ -z "$2" ]; then
+        "$SETUP" tls auto || echo "AVISO: no se pudo configurar HTTPS; ejecuta 'sudo krakenos-setup tls' después." >&2
+      fi
+      systemctl daemon-reload
+      systemctl enable krakenos.service
+      systemctl restart krakenos.service
+      "$SETUP" setup-url --wait 30 || true
+    else
+      echo "KrakenOS: systemd no está en marcha; el servicio no se arranca. Inícialo con 'systemctl start krakenos'." >&2
+    fi
+    ;;
+esac
+
+exit 0
