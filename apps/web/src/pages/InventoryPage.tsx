@@ -306,7 +306,6 @@ function InventoryPageBody() {
           <DeviceTable devices={filtered} onSelect={setSelectedId} simpleMode={simpleMode} />
         )
       ) : (
-        // Pestaña "Groups": acordeones por tipo
         <div className="space-y-3">
           {DEVICE_TYPES.filter((type) => grouped[type].length > 0).map((type) => {
             const items = grouped[type];

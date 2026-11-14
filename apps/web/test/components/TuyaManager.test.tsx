@@ -148,6 +148,30 @@ describe('TuyaManager', () => {
     expect(screen.queryByText(/No se pudieron cargar los focos Tuya/)).toBeNull();
   });
 
+  it('al reintentar tras un fallo muestra que está cargando, no una tabla en blanco', async () => {
+    const user = userEvent.setup();
+    apiMock.get.mockReset().mockRejectedValue(new Error('caído'));
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText(/No se pudieron cargar los focos Tuya/);
+    let resolver: (v: TuyaDeviceView[]) => void = () => {};
+    apiMock.get.mockReturnValue(new Promise<TuyaDeviceView[]>((r) => (resolver = r)));
+    await user.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando');
+    expect(screen.queryByText('Sin focos Tuya registrados.')).toBeNull();
+    await act(async () => resolver(FOCOS));
+    expect(await screen.findByText('Salón')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('en la primera carga también muestra que está cargando', async () => {
+    let resolver: (v: TuyaDeviceView[]) => void = () => {};
+    apiMock.get.mockReset().mockReturnValue(new Promise<TuyaDeviceView[]>((r) => (resolver = r)));
+    render(<TuyaManager reachable={new Set()} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Cargando');
+    await act(async () => resolver(FOCOS));
+    expect(await screen.findByText('Salón')).toBeInTheDocument();
+  });
+
   it('en edición el selector de versión está deshabilitado (el PATCH no lo manda)', async () => {
     const user = userEvent.setup();
     render(<TuyaManager reachable={new Set()} />);
