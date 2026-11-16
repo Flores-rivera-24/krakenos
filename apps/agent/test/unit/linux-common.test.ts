@@ -81,6 +81,28 @@ describe('renderEnvFile', () => {
   });
 });
 
+describe('renderEnvFile: comentarios de fin de línea', () => {
+  // systemd `EnvironmentFile=` no los entiende y los deja dentro del valor.
+  it('la plantilla real no deja ninguna línea activa con comentario al final', () => {
+    const real = readFileSync(join(RAIZ_REPO, 'apps', 'agent', '.env.example'), 'utf8');
+    const out: string = renderEnvFile(real);
+    const activas = out.split('\n').filter((l) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(l));
+    expect(activas.length).toBeGreaterThan(10);
+    for (const l of activas) expect(l, l).not.toMatch(/\s#|\s$/);
+    expect(out).toMatch(/^MIKROTIK_WAN_IFACE=ether1$/m);
+    expect(out).toMatch(/^ACCESS_TOKEN_TTL=900$/m);
+    // Las líneas de comentario completas y las comentadas no se tocan.
+    expect(out).toContain('# WEB_DIST_PATH=../web/dist   # ruta al build');
+  });
+
+  it('un # pegado al valor o dentro de comillas no se corta', () => {
+    const out: string = renderEnvFile('A=x#y   # c\nB="a # b"  # c\nC=\'q # r\'\n');
+    expect(out).toMatch(/^A=x#y$/m);
+    expect(out).toMatch(/^B="a # b"  # c$/m);
+    expect(out).toMatch(/^C='q # r'$/m);
+  });
+});
+
 describe('el helper privilegiado en el paquete', () => {
   const PLANTILLA_HELPER = `${PLANTILLA}WG_HELPER_PATH=/usr/local/bin/krakenos-helper\nFW_HELPER_PATH=/usr/local/bin/krakenos-helper\nTC_HELPER_PATH=/usr/local/bin/krakenos-helper\n`;
 

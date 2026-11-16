@@ -31,7 +31,15 @@ export function renderEnvFile(envExample) {
   out = setKey(out, 'KRAKENOS_DATA_DIR', '/var/lib/krakenos');
   out = setKey(out, 'KRAKENOS_DEPLOY_MODE', 'package');
   for (const k of ['WG', 'FW', 'TC']) out = setKey(out, `${k}_HELPER_PATH`, HELPER_PATH);
-  return out;
+  return sinComentariosDeLinea(out);
+}
+
+/** systemd `EnvironmentFile=` deja `valor   # nota` entero como valor: se quita la nota de las líneas activas sin comillas. */
+function sinComentariosDeLinea(text) {
+  return text.replace(
+    /^([A-Za-z_][A-Za-z0-9_]*=)([^"'\n]*)$/gm,
+    (_m, k, v) => k + v.replace(/\s+#.*$/, '').trimEnd(),
+  );
 }
 
 /** Quita escritura a grupo y otros en todo el árbol (los enlaces simbólicos no tienen modo propio). */
