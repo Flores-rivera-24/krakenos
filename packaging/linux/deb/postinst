@@ -58,7 +58,16 @@ MSG
         echo "Si aún no creaste el administrador: sudo krakenos-setup setup-url"
       fi
     else
-      echo "KrakenOS: systemd no está en marcha; el servicio no se arranca. Inícialo con 'systemctl start krakenos'." >&2
+      # Sin systemd no se pudo configurar HTTPS: se marca como pendiente para que ni arrancar a mano ni la
+      # siguiente actualización sirvan en HTTP plano.
+      if [ -z "$2" ]; then
+        touch "$PENDIENTE"
+      fi
+      cat >&2 <<'MSG'
+KrakenOS: systemd no está en marcha; ni se configuró HTTPS ni se arrancó el servicio.
+Cuando haya systemd:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+MSG
     fi
     ;;
 esac

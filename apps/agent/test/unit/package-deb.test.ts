@@ -104,6 +104,16 @@ describe('scripts de mantenimiento', () => {
     expect(t.match(/setup-url --wait/g)).toHaveLength(1);
   });
 
+  it('postinst: sin systemd, una instalación nueva deja el HTTPS marcado como pendiente', () => {
+    const t = leer('postinst');
+    const sinSystemd = t.slice(t.lastIndexOf('    else\n'));
+    expect(sinSystemd).toMatch(/if \[ -z "\$2" \]; then\s*\n\s*touch "\$PENDIENTE"\s*\n\s*fi/);
+    expect(sinSystemd).toContain(
+      'sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos',
+    );
+    expect(sinSystemd).not.toContain('systemctl start krakenos');
+  });
+
   it('postinst: un systemctl que falla lo dice por stderr antes de salir con error', () => {
     const t = leer('postinst');
     for (const c of ['enable krakenos.service', 'restart krakenos.service'])
