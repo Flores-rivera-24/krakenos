@@ -96,15 +96,10 @@ ssh root@192.168.1.1 'cat /proc/net/arp; echo OK'
 Si ves la tabla ARP y `OK`, el driver podrá descubrir dispositivos. Si SSH pide aceptar la
 huella del host, acéptala una vez.
 
-## 5. Instalar la dependencia SSH del agente
+## 5. La dependencia SSH del agente
 
-El driver carga `node-ssh` con **import perezoso** (no está en `package.json` para no romper
-el lockfile de CI). Instálalo en el servidor:
-
-```bash
-cd apps/agent
-pnpm add node-ssh
-```
+El driver carga `node-ssh` con **import perezoso**, pero ya es una dependencia normal del agente:
+viene con `pnpm install --frozen-lockfile` y con los paquetes, no hay que instalar nada.
 
 ## 6. Configurar el `.env`
 

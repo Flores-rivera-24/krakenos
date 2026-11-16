@@ -2,7 +2,7 @@
 
 La integración `meross` controla enchufes e interruptores Meross (MSS110, MSS210,
 MSS310, regletas MSS425…) **sin la app ni la nube de Meross**, hablando con ellos a través de un
-**broker MQTT local**. Requiere el paquete `mqtt` en el servidor (import perezoso, igual que
+**broker MQTT local**. Usa el paquete `mqtt`, que ya viene con el agente (import perezoso, igual que
 zigbee2mqtt).
 
 > Los dispositivos Meross se conectan por MQTT a `iot.meross.com`. Para control local hay que
@@ -11,12 +11,11 @@ zigbee2mqtt).
 
 ---
 
-## 1. Instalar el broker y la dependencia
+## 1. Instalar el broker
 
 ```bash
 # En el servidor:
 sudo apt install mosquitto
-pnpm add mqtt        # dependencia opcional del agente (no va en package.json)
 ```
 
 Configura Mosquitto para escuchar en `1883` en tu LAN (y, si quieres, TLS en `8883`).

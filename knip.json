@@ -28,6 +28,10 @@
     "@stryker-mutator/core",
     "@stryker-mutator/vitest-runner",
     "pino-pretty",
+    "mqtt",
+    "net-snmp",
+    "node-ssh",
+    "ws",
     "vite",
     "vitest"
   ],

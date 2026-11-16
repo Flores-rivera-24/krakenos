@@ -68,8 +68,8 @@ interface Subscription {
 
 /**
  * Transporte MQTT real sobre `mqtt`. La dependencia se carga con import dinámico
- * (especificador no-literal) para no exigirla en `install`/tests/typecheck: solo
- * se instala en el servidor (`pnpm add mqtt`). No se cubre con unit tests
+ * (especificador no-literal) para no cargarla al arrancar: solo se carga si se
+ * usa MQTT. No se cubre con unit tests
  * (requiere broker); la lógica testeable vive en los parsers puros y en el
  * `ZigbeeIotManager` con un transporte falso.
  */
@@ -92,7 +92,7 @@ export class MqttClientTransport implements MqttTransport {
         // decirle a quien configura MQTT Discovery que «la integración Zigbee»
         // necesita algo lo manda a buscar donde no es.
         throw new Error(
-          'Esta integración requiere el paquete "mqtt". Instálalo en el servidor (pnpm add mqtt).',
+          'Esta integración requiere el paquete "mqtt". La instalación está incompleta: reinstala las dependencias (pnpm install --frozen-lockfile).',
         );
       })) as { connect: (url: string, opts: Record<string, unknown>) => unknown };
       const client = mqtt.connect(this.opts.url, {

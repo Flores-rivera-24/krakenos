@@ -179,7 +179,7 @@ export class SshMikrotikTransport implements MikrotikTransport {
       const moduleName = 'node-ssh';
       const mod = (await import(moduleName).catch(() => {
         throw new Error(
-          'El driver MikroTik en modo SSH requiere el paquete "node-ssh". Instálalo en el servidor (pnpm add node-ssh).',
+          'El driver MikroTik en modo SSH requiere el paquete "node-ssh". La instalación está incompleta: reinstala las dependencias (pnpm install --frozen-lockfile).',
         );
       })) as { NodeSSH: new () => unknown };
       const ssh = new mod.NodeSSH() as {

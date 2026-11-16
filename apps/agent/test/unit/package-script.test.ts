@@ -216,6 +216,16 @@ describe('pruneNodeModules', () => {
     expect(r.freedBytes).toBeGreaterThan(0);
   });
 
+  it('quita los tests de ssh2 (traen una clave .pem que el guardián prohíbe) y conserva su lib', async () => {
+    arbol(true);
+    const ssh2 = join(dir, '.pnpm/ssh2@1.17.0/node_modules/ssh2');
+    fichero(join(ssh2, 'test/fixtures/https_key.pem'));
+    fichero(join(ssh2, 'lib/client.js'));
+    await pruneNodeModules(dir);
+    expect(existsSync(join(ssh2, 'test'))).toBe(false);
+    expect(existsSync(join(ssh2, 'lib/client.js'))).toBe(true);
+  });
+
   it('falla cerrado si no hay WASM de SQLite', async () => {
     arbol(false);
     await expect(pruneNodeModules(dir)).rejects.toThrow(/sqlite/i);

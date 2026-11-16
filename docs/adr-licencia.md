@@ -44,7 +44,8 @@ Inventario completo del árbol de dependencias (`pnpm licenses list`, 2026-07-30
 |---|---|
 | **Producción** (287 paquetes) | MIT 232 · ISC 29 · Apache-2.0 14 · BSD-3-Clause 8 · BSD-2-Clause 1 · 0BSD 1 · «MIT AND ISC» 1 (`victory-vendor`) · MPL-2.0 1 (`web-push`) |
 | **+ desarrollo** (total) | las anteriores + BlueOak-1.0.0 6 · MIT-0 2 · Python-2.0 1 (`argparse`) · CC-BY-4.0 1 (`caniuse-lite`) · CC0-1.0 1 (`mdn-data`) · MPL-2.0 (`axe-core`) |
-| **Opcionales de integraciones** (no van en `package.json`, se instalan en el servidor) | `node-ssh`, `mqtt`, `net-snmp`, `ws`, `tuyapi` → MIT · `@matter/main` → Apache-2.0 |
+| **Incluidas de integraciones** (en `package.json` del agente; van en el paquete) | `node-ssh`, `mqtt`, `net-snmp`, `ws` → MIT |
+| **Opcionales de integraciones** (no van en `package.json`, se instalan en el servidor) | `tuyapi` → MIT · `@matter/main` → Apache-2.0 |
 
 **Ninguna es incompatible con AGPL-3.0.** Las tres que no son permisivas obvias:
 

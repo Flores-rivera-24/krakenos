@@ -40,7 +40,7 @@ export class WebSocketTransport implements WsTransport {
         const moduleName = 'ws';
         const mod = (await import(moduleName).catch(() => {
           throw new Error(
-            'La integración Matter requiere el paquete "ws". Instálalo en el servidor (pnpm add ws).',
+            'La integración Matter requiere el paquete "ws". La instalación está incompleta: reinstala las dependencias (pnpm install --frozen-lockfile).',
           );
         })) as { WebSocket?: unknown; default?: unknown };
         const WebSocketCtor = (mod.WebSocket ?? mod.default) as new (url: string) => {

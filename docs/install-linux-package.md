@@ -176,12 +176,13 @@ una instalación por paquete (ver [Actualizaciones](updates.md)). El aviso de ve
 opcional: para activarlo, añade `UPDATE_CHECK_REPO=Flores-rivera-24/krakenos` a
 `/etc/krakenos/krakenos.env` y reinicia el servicio.
 
-## Integraciones que necesitan paquetes extra
+## Integraciones y librerías
 
-Los routers por SSH, MQTT/zigbee2mqtt, SNMP y el WebSocket usan librerías opcionales (`node-ssh`,
-`mqtt`, `net-snmp`, `ws`) que `install.sh --with-deps` instala con pnpm. El paquete **no las incluye**
-y hoy **no hay una forma soportada de instalarlas en él**: el código es de root y el paquete no trae
-pnpm. Esas integraciones no conectarán en una instalación por paquete.
+Los routers por SSH, MQTT/zigbee2mqtt, SNMP y el WebSocket usan `node-ssh`, `mqtt`, `net-snmp` y
+`ws`: el paquete **las incluye**, así que esas integraciones funcionan sin instalar nada más.
+Solo `tuyapi` (Tuya) y `@matter/main` (puente Matter) siguen siendo opcionales y el paquete
+**no las incluye**: hoy no hay una forma soportada de instalarlas en él (el código es de root y el
+paquete no trae pnpm).
 
 ## Quitar: `remove` frente a `purge`
 

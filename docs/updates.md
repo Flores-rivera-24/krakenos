@@ -95,14 +95,14 @@ ejecución real se verifica en despliegue.
 
 ### Las deps opcionales sobreviven al update
 
-`node-ssh`, `mqtt`, `net-snmp`, `ws`, `tuyapi` y `@matter/main` no están en
-`package.json` a propósito, así que `pnpm install --frozen-lockfile` **las poda** en
+`tuyapi` y `@matter/main` no están en `package.json` a propósito (`node-ssh`, `mqtt`,
+`net-snmp` y `ws` sí, y no necesitan manifiesto), así que `pnpm install --frozen-lockfile` **las poda** en
 cada actualización: antes el usuario perdía su router SSH o su zigbee2mqtt
 sin ningún aviso. Ahora la lista vive en `apps/agent/data/extra-deps.json` (untracked,
 sobrevive al `git checkout`) y el paso `apply` la reinstala.
 
-- El instalador lo escribe con `--with-deps` / `--with-all`.
-- Puedes editarlo a mano: es un JSON con nombres de paquete (`["mqtt","ws"]`).
+- El instalador ya no lo escribe: créalo a mano.
+- Es un JSON con nombres de paquete (`["tuyapi"]`); puedes editarlo a mano: es un JSON con nombres de paquete (`["mqtt","ws"]`).
 - Si la reinstalación falla, la actualización **no** se revierte por ello: avisa en el
   log (`journalctl -u krakenos`) diciendo qué instalar a mano. Un paquete abandonado en
   el registro no debe dejarte en un bucle de rollback.

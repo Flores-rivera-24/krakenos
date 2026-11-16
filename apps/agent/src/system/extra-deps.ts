@@ -2,16 +2,16 @@
  * Deps opcionales de integraciones que sobreviven a una actualización (US-232 /
  * AUD3-22).
  *
- * `node-ssh`, `mqtt`, `net-snmp`, `ws`, `tuyapi` y `@matter/main` **no están en
- * `package.json`** a propósito (CI con lockfile congelado) y se cargan con import
- * perezoso: cada guía manda instalarlas a mano en el servidor. El problema es que
- * el actualizador hace `git checkout` + `pnpm install --frozen-lockfile`, que
+ * `tuyapi` y `@matter/main` **no están en `package.json`** a propósito (CI con
+ * lockfile congelado) y se cargan con import perezoso: cada guía manda instalarlas
+ * a mano en el servidor. (`node-ssh`, `mqtt`, `net-snmp` y `ws` ya son dependencias
+ * normales del agente y no necesitan manifiesto.) El problema es que el
+ * actualizador hace `git checkout` + `pnpm install --frozen-lockfile`, que
  * **poda** justo esas deps → el usuario perdía su router SSH o su zigbee2mqtt en
  * cada update, sin ningún mensaje.
  *
  * La solución es un manifiesto en `data/` (untracked, se conserva entre updates)
- * que el instalador escribe con `--with-deps` y el actualizador vuelve a aplicar
- * tras el `apply`.
+ * que se escribe a mano y el actualizador vuelve a aplicar tras el `apply`.
  *
  * Módulo **puro**: parseo defensivo (patrón US-63) + validación de nombres. Los
  * nombres van a la **argv de `pnpm add`**: aunque `execFile` no usa shell (no hay
