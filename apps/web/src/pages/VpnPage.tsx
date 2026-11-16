@@ -10,6 +10,7 @@ import { GlossaryTerm } from '@/components/ui/glossary-term';
 import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { Skeleton, SkeletonRows } from '@/components/ui/skeleton';
 import { TailscaleCard } from '@/components/vpn/TailscaleCard';
@@ -18,18 +19,23 @@ import { api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
 import { getGlossaryEntry } from '@/lib/guides/glossary';
 import { useT } from '@/lib/i18n';
+import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import { filaAbrible } from '@/lib/a11y';
 import '@/lib/i18n/catalog/fragments/vpn';
 
 export function VpnPage() {
   const t = useT();
+  // Con el rol aún sin cargar sí se pide (como el resto de páginas); con otro rol, no.
+  const notAdmin = useAuthStore((s) => s.user != null && s.user.role !== 'admin');
   const [status, setStatus] = useState<VpnStatusResponse | null>(null);
   const [peers, setPeers] = useState<VpnPeer[]>([]);
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // La carga falló: «sin dispositivos» no es un hecho comprobado, así que no se pinta el vacío.
+  const [loadFailed, setLoadFailed] = useState(false);
   // Peer abierto en el slideover; `config` solo está presente al recién crearlo.
   const [selected, setSelected] = useState<{ peer: VpnPeer; config?: PeerConfig } | null>(null);
 
@@ -38,12 +44,18 @@ export function VpnPage() {
       .then(([s, p]) => {
         setStatus(s);
         setPeers(p);
+        setLoadFailed(false);
       })
-      .catch((err) => setError(describeError(err, t('vpn.loadError'))));
+      .catch((err) => {
+        setLoadFailed(true);
+        setError(describeError(err, t('vpn.loadError')));
+      });
 
   useEffect(() => {
+    // Todo el módulo de VPN es solo admin en el servidor: a otro rol ni se le pide.
+    if (notAdmin) return;
     void load().finally(() => setLoading(false));
-  }, []);
+  }, [notAdmin]);
 
   // Solo con el estado cargado y un equipo que puede ser servidor se ofrece el alta: si no,
   // el formulario acabaría en error (o, mientras carga, parpadearía y desaparecería).
@@ -96,80 +108,88 @@ export function VpnPage() {
         </p>
       </div>
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
+      {notAdmin && (
+        <Callout variant="info" standing title={t('vpn.adminOnly')}>
+          {t('vpn.adminOnlyDesc')}
+        </Callout>
+      )}
+
+      {error && !notAdmin && <ErrorBanner>{error}</ErrorBanner>}
 
       {/* Nunca dos avisos a la vez: el de demostración solo sale si el equipo no tiene otro. */}
       {canConfigure && <DemoNoticeFor domain="vpn" />}
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle className="text-base text-foreground">{t('vpn.server')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {loading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-              </div>
-            ) : status ? (
-              <>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('vpn.status')}</span>
-                  <span className={status.enabled ? 'text-success' : 'text-muted-foreground'}>
-                    {status.enabled ? t('vpn.status.active') : t('vpn.status.inactive')}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('vpn.endpoint')}</span>
-                  <span className="font-mono text-xs">{status.endpoint ?? '—'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">{t('vpn.devices')}</span>
-                  <span>{status.peerCount}</span>
-                </div>
-              </>
-            ) : (
-              <p className="text-kr-muted">{t('vpn.unavailable')}</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {capability && !canConfigure ? (
-          <div className="lg:col-span-2">
-            <GatewayCapabilityNotice capability={capability} feature="vpn" />
-          </div>
-        ) : canConfigure ? (
-          <Card className="lg:col-span-2">
+      {!notAdmin && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-1">
             <CardHeader>
-              <span className="flex items-center gap-1.5">
-                <CardTitle className="text-base text-foreground">{t('vpn.addDevice')}</CardTitle>
-                <HelpHint content={t('vpn.qrHelp')} label={t('vpn.qrHelp.label')} />
-              </span>
+              <CardTitle className="text-base text-foreground">{t('vpn.server')}</CardTitle>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={addPeer} className="flex items-end gap-3">
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="peer-name">{t('vpn.name')}</Label>
-                  <Input
-                    id="peer-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder={t('vpn.namePlaceholder')}
-                    maxLength={60}
-                  />
+            <CardContent className="space-y-2 text-sm">
+              {loading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
-                <Button type="submit" disabled={busy}>
-                  {busy ? t('vpn.adding') : t('vpn.addDevice')}
-                </Button>
-              </form>
+              ) : status ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('vpn.status')}</span>
+                    <span className={status.enabled ? 'text-success' : 'text-muted-foreground'}>
+                      {status.enabled ? t('vpn.status.active') : t('vpn.status.inactive')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('vpn.endpoint')}</span>
+                    <span className="font-mono text-xs">{status.endpoint ?? '—'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{t('vpn.devices')}</span>
+                    <span>{status.peerCount}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-kr-muted">{t('vpn.unavailable')}</p>
+              )}
             </CardContent>
           </Card>
-        ) : null}
-      </div>
 
-      {!sinConfigurar && (
+          {capability && !canConfigure ? (
+            <div className="lg:col-span-2">
+              <GatewayCapabilityNotice capability={capability} feature="vpn" />
+            </div>
+          ) : canConfigure ? (
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <span className="flex items-center gap-1.5">
+                  <CardTitle className="text-base text-foreground">{t('vpn.addDevice')}</CardTitle>
+                  <HelpHint content={t('vpn.qrHelp')} label={t('vpn.qrHelp.label')} />
+                </span>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={addPeer} className="flex items-end gap-3">
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="peer-name">{t('vpn.name')}</Label>
+                    <Input
+                      id="peer-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder={t('vpn.namePlaceholder')}
+                      maxLength={60}
+                    />
+                  </div>
+                  <Button type="submit" disabled={busy}>
+                    {busy ? t('vpn.adding') : t('vpn.addDevice')}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      )}
+
+      {!notAdmin && !sinConfigurar && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base text-foreground">{t('vpn.authorized')}</CardTitle>
@@ -188,6 +208,12 @@ export function VpnPage() {
                 <tbody>
                   {loading ? (
                     <SkeletonRows cols={4} />
+                  ) : peers.length === 0 && loadFailed ? (
+                    <tr>
+                      <td colSpan={4} className="px-3 py-8 text-center text-kr-muted">
+                        {t('vpn.loadError')}
+                      </td>
+                    </tr>
                   ) : peers.length === 0 ? (
                     <tr>
                       <td colSpan={4} className="px-3 py-8 text-center">
@@ -240,7 +266,7 @@ export function VpnPage() {
       {/* Acceso remoto sin puertos (US-215): Tailscale para CGNAT. La guía «Tu móvil
           en 3 pasos» se mudó a Ajustes → Cuenta en US-240: aquí solo la veía quien
           tiene «Red avanzada», que es justo quien no la necesita. */}
-      <TailscaleCard />
+      {!notAdmin && <TailscaleCard />}
 
       {selected && (
         <VpnPeerSlideover

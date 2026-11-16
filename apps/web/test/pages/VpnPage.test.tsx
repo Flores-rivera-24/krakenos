@@ -4,7 +4,7 @@ import type {
   VpnPeer,
   VpnStatusResponse,
 } from '@krakenos/types';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { useEstadosStore } from '@/lib/integration-states';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,6 +18,7 @@ const apiMock = vi.hoisted(() => {
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: class extends Error {} }));
 
 import { VpnPage } from '@/pages/VpnPage';
+import { useAuthStore } from '@/store/auth.store';
 
 const STATUS: VpnStatusResponse = {
   enabled: true,
@@ -52,6 +53,47 @@ function mockApi(capability: GatewayCapability = { status: 'supported' }, peers:
     return Promise.resolve([]);
   });
 }
+
+function setRole(role: 'admin' | 'viewer' | null) {
+  useAuthStore.setState({
+    user: role && { id: 'u', email: 'a@b.c', displayName: 'E', role, createdAt: '', updatedAt: '' },
+  });
+}
+
+describe('VpnPage: lecturas de administrador', () => {
+  beforeEach(() => {
+    mockApi();
+    setRole(null);
+  });
+  afterEach(() => setRole(null));
+
+  it('un viewer no pide las lecturas de administrador', async () => {
+    setRole('viewer');
+    render(<VpnPage />);
+    const aviso = await screen.findByRole('note');
+    expect(aviso).toHaveTextContent('Solo el administrador ve la VPN y sus dispositivos');
+    expect(apiMock.get.mock.calls.filter(([p]) => String(p).startsWith('/vpn'))).toHaveLength(0);
+    expect(screen.queryByText(/Sin dispositivos/)).toBeNull();
+  });
+
+  it('si el rol llega después de montar, no queda pintado el error de la petición ya lanzada', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('403'));
+    render(<VpnPage />);
+    expect(apiMock.get).toHaveBeenCalledWith('/vpn/status');
+    act(() => setRole('viewer'));
+    await screen.findByRole('note');
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  it('un admin con la lectura caída ve el error y no el estado vacío ni el aviso de admin', async () => {
+    setRole('admin');
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<VpnPage />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText(/Sin dispositivos/)).toBeNull();
+    expect(screen.queryByText('Solo el administrador ve la VPN y sus dispositivos')).toBeNull();
+  });
+});
 
 describe('VpnPage', () => {
   beforeEach(() => {

@@ -9,6 +9,8 @@ updates:
       interval: weekly
       day: monday
     open-pull-requests-limit: 5
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: 'build'
     labels: [dependencies]
@@ -22,6 +24,23 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    cooldown:
+      default-days: 14
     commit-message:
       prefix: 'ci'
+    labels: [dependencies]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    cooldown:
+      default-days: 14
+    # El proyecto fija Node 24; la versión mayor se sube a mano.
+    ignore:
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
+    commit-message:
+      prefix: 'build'
     labels: [dependencies]

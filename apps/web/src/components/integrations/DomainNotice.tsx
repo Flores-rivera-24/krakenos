@@ -89,7 +89,7 @@ export function DomainGate({ domain, title, blockWhenNotConfigured = true, child
   if (state === 'not-configured' && blockWhenNotConfigured) {
     return (
       <div className="space-y-6 p-6">
-        <h1 className="text-xl font-semibold">{title}</h1>
+        <h1 className="text-kr-xl font-semibold text-kr-primary">{title}</h1>
         <NotConfiguredNotice domain={domain} />
       </div>
     );

@@ -62,6 +62,48 @@ require_tc_dev() {
   [ -n "$found" ] || deny "tc sin 'dev $want'"
 }
 
+_ipv4='^([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?$'
+
+# Lista cerrada de la cadena propia: solo lo que emiten los constructores de
+# `iptables.helpers.ts`. Cualquier otro token (-m osf, -M, -tnat, --table=, -j LOG…)
+# se rechaza, porque iptables abrevia opciones y carga módulos/programas.
+#   check_iptables_rule <token>...   (los tokens tras `<op> <cadena>`)
+check_iptables_rule() {
+  local a
+  while [ "$#" -gt 0 ]; do
+    a="$1"; shift
+    case "$a" in
+      -p) [[ "${1:-}" =~ ^(tcp|udp|icmp)$ ]] || deny "iptables -p ${1:-}"; shift ;;
+      -s|-d) [[ "${1:-}" =~ $_ipv4 ]] || deny "iptables $a ${1:-}"; shift ;;
+      --dport)
+        [[ "${1:-}" =~ ^[0-9]{1,5}$ ]] && [ "$((10#$1))" -ge 1 ] && [ "$((10#$1))" -le 65535 ] \
+          || deny "iptables --dport ${1:-}"
+        shift ;;
+      -m) [ "${1:-}" = "comment" ] || deny "iptables -m ${1:-}"; shift ;;
+      --comment) [[ "${1:-}" =~ ^krakenos:[A-Za-z0-9_-]+$ ]] || deny "iptables --comment"; shift ;;
+      -j) [[ "${1:-}" =~ ^(ACCEPT|DROP)$ ]] || deny "iptables -j ${1:-}"; shift ;;
+      *) deny "iptables argumento no permitido: $a" ;;
+    esac
+  done
+}
+
+# tc: lista cerrada de palabras de `tc.helpers.ts`. `bpf`, `obj`, `action`, `-b`,
+# `exec`… no están, así que caen en el `*)`. La interfaz tras `dev` ya la acota
+# `require_tc_dev`; aquí solo se admiten números y `<n>:<m>` / `<n>kbit` / IPv4.
+check_tc_tokens() {
+  local a
+  for a in "$@"; do
+    case "$a" in
+      qdisc|class|filter|add|del|dev|parent|root|handle|htb|default|classid|rate|ceil|prio|protocol|ip|u32|match|dst|flowid) ;;
+      "$KRAKENOS_TC_IFACE") ;;
+      *)
+        [[ "$a" =~ ^[0-9]+(kbit)?$ ]] || [[ "$a" =~ ^[0-9]+:[0-9]*$ ]] || [[ "$a" =~ $_ipv4 ]] \
+          || deny "tc argumento no permitido: $a"
+        ;;
+    esac
+  done
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -100,6 +142,11 @@ case "$cmd" in
       esac
     done
     if [ "$chain" = "$KRAKENOS_FW_CHAIN" ]; then
+      case "$op" in
+        -N|-F) [ "$#" -eq 2 ] || deny "iptables $op con argumentos extra" ;;
+        -L) { [ "$#" -eq 2 ] || { [ "$#" -eq 3 ] && [ "${3:-}" = "-n" ]; }; } || deny "iptables -L con argumentos extra" ;;
+        *) check_iptables_rule "${@:3}" ;;
+      esac
       exec iptables "$@"
     elif [ "$chain" = "FORWARD" ]; then
       # En FORWARD solo se admite gestionar el SALTO a nuestra cadena, exacto:
@@ -124,6 +171,7 @@ case "$cmd" in
       *) deny "tc $obj" ;;
     esac
     require_tc_dev "$KRAKENOS_TC_IFACE" "$@"
+    check_tc_tokens "$@"
     exec tc "$@"
     ;;
   *)

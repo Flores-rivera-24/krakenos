@@ -230,6 +230,8 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
       'Matter is a new standard that aims to let smart devices from different brands understand each other. To control them locally you use a small service (“matter-server”) that acts as an intermediary. KrakenOS connects to it to manage your lights and other Matter-compatible devices, all inside your home.',
     prerequisites: [
       'A matter-server service running on your network, with your Matter devices already linked.',
+      // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+      // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
       'The connection address of that service (it starts with ws://).',
     ],
     steps: [
@@ -239,6 +241,8 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
       },
       {
         title: 'Note down the connection address',
+        // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+        // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         body: 'The matter-server offers a connection address that starts with “ws://” (a real-time connection). For example ws://192.168.1.5:5580/ws. That is the address you will enter below.',
       },
       {
@@ -249,13 +253,19 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
     fields: {
       serverUrl: {
         label: 'matter-server address',
+        // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+        // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         help: 'The service’s real-time connection address, starting with ws://. For example ws://192.168.1.5:5580/ws.',
+        // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+        // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         placeholder: 'ws://192.168.1.5:5580/ws',
       },
     },
     troubleshooting: [
       {
         q: 'It doesn’t connect to the matter-server.',
+        // Es solo texto (comentario, ayuda o ejemplo de la dirección del matter-server en LAN) y no abre ningún WebSocket.
+        // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
         a: 'Verify that the service is running and reachable from the KrakenOS server, and that the address starts with ws:// with the correct port.',
       },
       {

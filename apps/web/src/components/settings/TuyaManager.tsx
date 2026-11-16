@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button';
 import { DeleteButton } from '@/components/ui/delete-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { LoadingLine } from '@/components/ui/loading-line';
 import { Select } from '@/components/ui/select';
 import { StatusDot } from '@/components/ui/status-dot';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { useLectura } from '@/lib/use-lectura';
 import { FormError } from '@/components/ui/form-error';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useT } from '@/lib/i18n';
 import { invalidarIot, trasEscribir } from '@/lib/resources';
 import '@/lib/i18n/catalog/fragments/ajustes';
@@ -152,7 +154,7 @@ export function TuyaManager({ reachable }: Props) {
       await fn();
       load();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : t('tuya.opError'));
+      setError(describeError(err, t('tuya.opError')));
     }
   };
 
@@ -235,6 +237,13 @@ export function TuyaManager({ reachable }: Props) {
                 )}
               </tr>
             ))}
+            {lectura.loading && (
+              <tr>
+                <td colSpan={5}>
+                  <LoadingLine />
+                </td>
+              </tr>
+            )}
             {lectura.failed && devices === null && (
               <tr>
                 <td colSpan={5}>

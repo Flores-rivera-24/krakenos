@@ -5,13 +5,14 @@ import { HOME_MODES } from '@krakenos/types';
 const person = {
   type: 'object',
   additionalProperties: false,
-  required: ['userId', 'displayName', 'home', 'since', 'deviceCount'],
+  required: ['userId', 'displayName', 'home', 'since', 'deviceCount', 'signal'],
   properties: {
     userId: { type: 'string' },
     displayName: { type: 'string' },
     home: { type: 'boolean' },
     since: { type: ['string', 'null'] },
     deviceCount: { type: 'integer' },
+    signal: { enum: ['fresh', 'stale'] },
   },
 } as const;
 
