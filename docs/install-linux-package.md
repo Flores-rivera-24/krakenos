@@ -65,16 +65,17 @@ mientras no haya administrador): imprime una línea que recuerda este comando.
 
 ## Dónde vive cada cosa
 
-| Qué                                                              | Dónde                        |
-| ---------------------------------------------------------------- | ---------------------------- |
-| Código y Node.js incluido (de root; el servicio no los modifica) | `/usr/lib/krakenos/`         |
-| Configuración (variables de entorno)                             | `/etc/krakenos/krakenos.env` |
-| Certificado y clave HTTPS                                        | `/etc/krakenos/tls/`         |
-| Clave de la CA propia (solo si usas HTTPS `local`; solo root)    | `/etc/krakenos/ca/`          |
-| Estado: base de datos, claves de firma, datos de integraciones   | `/var/lib/krakenos/`         |
-| Unidad de systemd                                                | `krakenos.service`           |
-| Usuario de servicio                                              | `krakenos` (sin shell)       |
-| Herramienta de administración                                    | `krakenos-setup`             |
+| Qué                                                              | Dónde                           |
+| ---------------------------------------------------------------- | ------------------------------- |
+| Código y Node.js incluido (de root; el servicio no los modifica) | `/usr/lib/krakenos/`            |
+| Configuración (variables de entorno)                             | `/etc/krakenos/krakenos.env`    |
+| Rutas y modo que fija el paquete (no se editan)                  | `/usr/lib/krakenos/package.env` |
+| Certificado y clave HTTPS                                        | `/etc/krakenos/tls/`            |
+| Clave de la CA propia (solo si usas HTTPS `local`; solo root)    | `/etc/krakenos/ca/`             |
+| Estado: base de datos, claves de firma, datos de integraciones   | `/var/lib/krakenos/`            |
+| Unidad de systemd                                                | `krakenos.service`              |
+| Usuario de servicio                                              | `krakenos` (sin shell)          |
+| Herramienta de administración                                    | `krakenos-setup`                |
 
 `krakenos.env` lo lee systemd como root: el servicio no necesita poder leerlo, y el archivo no es
 legible por otros usuarios. La instalación lo crea una sola vez desde la plantilla de referencia
@@ -84,6 +85,12 @@ legible por otros usuarios. La instalación lo crea una sola vez desde la planti
 sudo nano /etc/krakenos/krakenos.env
 sudo systemctl restart krakenos
 ```
+
+Las rutas del directorio de datos y del helper y el modo de despliegue (`KRAKENOS_DATA_DIR`,
+`KRAKENOS_DEPLOY_MODE`, `WG_HELPER_PATH`, `FW_HELPER_PATH`, `TC_HELPER_PATH`) **no** viven ahí: las
+fija el paquete en `/usr/lib/krakenos/package.env`, que el servicio carga después de `krakenos.env` y
+por eso gana. Aunque las pongas o borres en tu archivo, el servicio sigue usando las del paquete.
+`HOST` y `PORT` sí son tuyos.
 
 El archivo no admite comentarios al final de una línea con valor (`PORT=3001  # nota`): systemd los
 tomaría como parte del valor. Los comentarios van en su propia línea.
@@ -257,7 +264,7 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
 4. **Traslada tu configuración.** El `krakenos.env` del paquete es nuevo; el viejo no se copia solo.
    Revisa `/opt/krakenos/apps/agent/.env` y pasa a `/etc/krakenos/krakenos.env` lo que hubieras
    cambiado (`PORT`, `WEB_ORIGIN`, ajustes de TLS, `UPDATE_CHECK_REPO`…). No copies las líneas de
-   rutas ni `KRAKENOS_DEPLOY_MODE`: el paquete las fija. Si usabas el helper, actívalo ahora: la
+   rutas ni `KRAKENOS_DEPLOY_MODE`: el paquete las fija (aunque las copiaras, no tendrían efecto). Si usabas el helper, actívalo ahora: la
    regla de sudo vieja autoriza `/usr/local/bin/krakenos-helper`, y el paquete usa otra ruta, así que
    hasta entonces la VPN, el firewall y la QoS fallan.
 
@@ -269,8 +276,8 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
 
 5. **Comprueba.** El servicio activo (`systemctl is-active krakenos`), entra con tu usuario de
    siempre, y verifica que tus dispositivos, integraciones y copias siguen ahí. Revisa en especial las
-   que usaban SSH, MQTT, SNMP o WebSocket: el paquete no trae esas librerías (ver «Integraciones que
-   necesitan paquetes extra»).
+   que usaban SSH, MQTT, SNMP o WebSocket: el paquete incluye esas librerías (ver «Integraciones y
+   librerías»).
 
 6. **Retira lo viejo** cuando estés seguro: el árbol `/opt/krakenos`, `/usr/local/lib/krakenos` (la
    copia de root de la renovación del certificado local, si existe) y, si usabas el helper,

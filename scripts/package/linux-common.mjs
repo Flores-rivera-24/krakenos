@@ -24,14 +24,41 @@ function setKey(text, key, value) {
   return seen ? out : `${out}${out.endsWith('\n') || out === '' ? '' : '\n'}${key}=${value}\n`;
 }
 
-/** El `.env` del paquete: la plantilla con los ocho kinds en none, modo package y datos en /var/lib. */
+/**
+ * Claves que son del PAQUETE y no del usuario: rutas que el paquete instala y modo de despliegue.
+ * Si viven en `krakenos.env` (que el usuario edita o borra), basta un cambio para dejar el servicio
+ * roto o apuntando a otro helper. Van en `package.env`, que la unidad carga DESPUÉS del del usuario.
+ * `HOST` y `PORT` NO están: son elección legítima de quien instala (p. ej. `HOST=127.0.0.1` tras un proxy).
+ */
+const CLAVES_DEL_PAQUETE = {
+  KRAKENOS_DATA_DIR: '/var/lib/krakenos',
+  KRAKENOS_DEPLOY_MODE: 'package',
+  WG_HELPER_PATH: HELPER_PATH,
+  FW_HELPER_PATH: HELPER_PATH,
+  TC_HELPER_PATH: HELPER_PATH,
+};
+
+/** `package.env`: root:root 0644, sin secretos, con SOLO las claves que fija el paquete. */
+export function renderPackageEnv() {
+  const lineas = Object.entries(CLAVES_DEL_PAQUETE).map(([k, v]) => `${k}=${v}`);
+  return [
+    '# Lo fija el paquete de KrakenOS y se vuelve a escribir en cada actualización: no lo edites.',
+    '# La unidad lo carga DESPUÉS de /etc/krakenos/krakenos.env, así que estas claves ganan.',
+    ...lineas,
+    '',
+  ].join('\n');
+}
+
+/** El `krakenos.env` del usuario: la plantilla con los ocho kinds en none y HOST abierto a la LAN. */
 export function renderEnvFile(envExample) {
   let out = withKindsNone(envExample);
   out = setKey(out, 'HOST', '0.0.0.0');
-  out = setKey(out, 'KRAKENOS_DATA_DIR', '/var/lib/krakenos');
-  out = setKey(out, 'KRAKENOS_DEPLOY_MODE', 'package');
-  for (const k of ['WG', 'FW', 'TC']) out = setKey(out, `${k}_HELPER_PATH`, HELPER_PATH);
-  return sinComentariosDeLinea(out);
+  for (const k of Object.keys(CLAVES_DEL_PAQUETE))
+    out = out.replace(new RegExp(`^${k}=.*\\n?`, 'gm'), '');
+  return sinComentariosDeLinea(
+    `# KRAKENOS_DATA_DIR, KRAKENOS_DEPLOY_MODE y WG_/FW_/TC_HELPER_PATH las fija el paquete en\n` +
+      `# /usr/lib/krakenos/package.env (se carga después de este archivo): aquí no tienen efecto.\n${out}`,
+  );
 }
 
 /** systemd `EnvironmentFile=` deja `valor   # nota` entero como valor: se quita la nota de las líneas activas sin comillas. */
@@ -113,6 +140,10 @@ export async function stageCommonTree(pkgDir, rootDir) {
   );
   await chmod(env, 0o644);
   await chmod(dirname(env), 0o755);
+
+  // Claves del paquete (root, 0644, sin secretos): la unidad lo carga después del `krakenos.env` del usuario.
+  await writeFile(join(lib, 'package.env'), renderPackageEnv());
+  await chmod(join(lib, 'package.env'), 0o644);
 
   const bin = join(rootDir, 'usr', 'bin');
   await mkdir(bin, { recursive: true });

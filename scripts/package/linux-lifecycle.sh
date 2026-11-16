@@ -28,6 +28,7 @@ NEW="$(readlink -f -- "$NEW")"
 
 ENV_FILE=/etc/krakenos/krakenos.env
 SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+SETUP_HELPER=/usr/lib/krakenos/libexec/krakenos-helper
 CERT=/etc/krakenos/tls/agent-cert.pem
 WORK="$(mktemp -d)"
 [[ -n $WORK && -d $WORK ]] || { echo "ERROR: mktemp falló" >&2; exit 2; }
@@ -112,6 +113,18 @@ wait_ready() { # hasta 60 s, sin dormir a ciegas
 }
 active() { systemctl is-active --quiet krakenos; }
 need_active() { active || fail "systemctl is-active krakenos = $(systemctl is-active krakenos || true)"; }
+# Lo que ve de verdad el proceso del servicio (no lo que dice el archivo): /proc/<pid>/environ.
+env_del_servicio() { # $1 = clave
+  local pid
+  pid="$(systemctl show -p MainPID --value krakenos)"
+  [[ $pid =~ ^[1-9][0-9]*$ ]] || fail "krakenos no tiene MainPID (¿no está activo?)"
+  tr '\0' '\n' < "/proc/$pid/environ" | sed -n "s/^$1=//p" | tail -n 1
+}
+claves_del_paquete_intactas() { # $1 = en qué momento se comprueba
+  [[ "$(env_del_servicio KRAKENOS_DEPLOY_MODE)" == package ]] || fail "$1: KRAKENOS_DEPLOY_MODE del servicio es '$(env_del_servicio KRAKENOS_DEPLOY_MODE)' (lo pisó krakenos.env)"
+  [[ "$(env_del_servicio KRAKENOS_DATA_DIR)" == /var/lib/krakenos ]] || fail "$1: KRAKENOS_DATA_DIR del servicio es '$(env_del_servicio KRAKENOS_DATA_DIR)' (lo pisó krakenos.env)"
+  [[ "$(env_del_servicio WG_HELPER_PATH)" == "$SETUP_HELPER" ]] || fail "$1: WG_HELPER_PATH del servicio es '$(env_del_servicio WG_HELPER_PATH)' (lo pisó krakenos.env)"
+}
 sha() { sha256sum -- "$1" | cut -d' ' -f1; }
 
 # El administrador de prueba: la contraseña vive solo en estos ficheros 0600.
@@ -232,11 +245,15 @@ NEW_PORT=3107
 [[ $OLD_PORT != "$NEW_PORT" ]] || NEW_PORT=3108
 sed -i "s/^PORT=.*/PORT=$NEW_PORT/" "$ENV_FILE"
 printf '# editado por linux-lifecycle\n' >> "$ENV_FILE"
+# El usuario cambia a mano las claves que fija el paquete: no deben llegar al servicio (package.env gana).
+printf 'KRAKENOS_DEPLOY_MODE=git\nKRAKENOS_DATA_DIR=/tmp/otro-sitio\nWG_HELPER_PATH=/tmp/otro-helper\n' >> "$ENV_FILE"
 [[ "$(agent_port)" == "$NEW_PORT" ]] || fail "no se pudo editar PORT en $ENV_FILE"
 systemctl restart krakenos || fail "systemctl restart krakenos falló"
 need_active
 wait_ready
 ok "el servicio responde en el puerto $NEW_PORT (antes $OLD_PORT)"
+claves_del_paquete_intactas "tras editar krakenos.env"
+ok "las claves que fija el paquete no cambian aunque krakenos.env diga otra cosa"
 login
 ok "login = 200 en $NEW_PORT"
 
@@ -257,6 +274,7 @@ grep -q '^# editado por linux-lifecycle$' "$ENV_FILE" || fail "krakenos.env perd
 ok "krakenos.env conserva la edición del usuario (PORT=$NEW_PORT)"
 wait_ready
 ok "el servicio responde en $NEW_PORT tras actualizar"
+claves_del_paquete_intactas "tras actualizar"
 login
 ok "login = 200 tras actualizar (los datos sobreviven)"
 [[ "$(sha "$CERT")" == "$CERT_SHA_1" ]] || fail "actualizar regeneró el certificado TLS"

@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { HELPER_PATH, renderEnvFile, stageCommonTree } from '../../../../scripts/package/linux-common.mjs';
+import { HELPER_PATH, renderEnvFile, renderPackageEnv, stageCommonTree } from '../../../../scripts/package/linux-common.mjs';
 // prettier-ignore
 // @ts-expect-error — idem.
 import { KIND_VARS } from '../../../../scripts/package/launchers/first-run.mjs';
@@ -71,14 +71,43 @@ describe('renderEnvFile', () => {
     expect(out).not.toContain('mock');
   });
 
-  it('fija el modo package y el directorio de datos, sin duplicar claves', () => {
+  it('conserva HOST (elección del usuario) y NO lleva activas las claves que fija el paquete', () => {
     const out: string = renderEnvFile(PLANTILLA);
-    expect(out).toMatch(/^KRAKENOS_DATA_DIR=\/var\/lib\/krakenos$/m);
-    expect(out).toMatch(/^KRAKENOS_DEPLOY_MODE=package$/m);
     expect(out).toMatch(/^HOST=0\.0\.0\.0$/m);
-    for (const k of ['HOST', 'KRAKENOS_DATA_DIR', 'KRAKENOS_DEPLOY_MODE'])
-      expect(out.match(new RegExp(`^${k}=`, 'gm'))).toHaveLength(1);
+    expect(out.match(/^HOST=/gm)).toHaveLength(1);
     expect(out).toContain('PORT=3001');
+    // Ni una sola línea activa de las claves del paquete: el usuario las cambiaría sin efecto (o peor).
+    for (const k of Object.keys(PACKAGE_ENV_ESPERADO))
+      expect(out, k).not.toMatch(new RegExp(`^${k}=`, 'm'));
+    expect(out).toMatch(/^# .*package\.env/m);
+  });
+});
+
+/** Claves que son del paquete y no del usuario (rutas del paquete y modo de despliegue). */
+const PACKAGE_ENV_ESPERADO: Record<string, string> = {
+  KRAKENOS_DATA_DIR: '/var/lib/krakenos',
+  KRAKENOS_DEPLOY_MODE: 'package',
+  WG_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
+  FW_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
+  TC_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
+};
+
+describe('renderPackageEnv: las claves que el usuario no debe poder romper', () => {
+  it('lleva exactamente las claves del paquete, una vez cada una, y nada más', () => {
+    const out: string = renderPackageEnv();
+    const activas = out.split('\n').filter((l) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(l));
+    expect(Object.fromEntries(activas.map((l) => l.split(/=(.*)/s).slice(0, 2)))).toEqual(
+      PACKAGE_ENV_ESPERADO,
+    );
+    expect(activas).toHaveLength(Object.keys(PACKAGE_ENV_ESPERADO).length);
+  });
+
+  it('no lleva HOST ni PORT (son del usuario), ni secretos, ni comentarios de fin de línea', () => {
+    const out: string = renderPackageEnv();
+    expect(out).not.toMatch(/^(HOST|PORT)=/m);
+    expect(out).not.toMatch(/SECRET|PASSWORD|TOKEN|KEY=/i);
+    for (const l of out.split('\n').filter((x) => /^[A-Za-z_]/.test(x)))
+      expect(l).not.toMatch(/\s#/);
   });
 });
 
@@ -107,20 +136,18 @@ describe('renderEnvFile: comentarios de fin de línea', () => {
 describe('el helper privilegiado en el paquete', () => {
   const PLANTILLA_HELPER = `${PLANTILLA}WG_HELPER_PATH=/usr/local/bin/krakenos-helper\nFW_HELPER_PATH=/usr/local/bin/krakenos-helper\nTC_HELPER_PATH=/usr/local/bin/krakenos-helper\n`;
 
-  it('el .env apunta las tres variables al helper del paquete, sin duplicarlas', () => {
-    const out: string = renderEnvFile(PLANTILLA_HELPER);
+  it('el archivo del paquete apunta las tres variables al helper del paquete', () => {
+    const out: string = renderPackageEnv();
     expect(HELPER_PATH).toBe('/usr/lib/krakenos/libexec/krakenos-helper');
-    for (const k of ['WG', 'FW', 'TC']) {
-      expect(out).toMatch(new RegExp(`^${k}_HELPER_PATH=${HELPER_PATH}$`, 'm'));
-      expect(out.match(new RegExp(`^${k}_HELPER_PATH=`, 'gm'))).toHaveLength(1);
-    }
+    for (const k of ['WG', 'FW', 'TC']) expect(out).toContain(`${k}_HELPER_PATH=${HELPER_PATH}\n`);
     expect(out).not.toContain('/usr/local/bin');
+    // El del usuario ya no las lleva activas, ni siquiera con la plantilla vieja.
+    expect(renderEnvFile(PLANTILLA_HELPER)).not.toMatch(/^[WFT][GWC]_HELPER_PATH=/m);
   });
 
   it('la plantilla real fija las tres variables y la regla de sudoers usa la MISMA ruta', () => {
     const real = readFileSync(join(RAIZ_REPO, 'apps', 'agent', '.env.example'), 'utf8');
-    const out: string = renderEnvFile(real);
-    for (const k of ['WG', 'FW', 'TC']) expect(out).toContain(`${k}_HELPER_PATH=${HELPER_PATH}\n`);
+    expect(renderEnvFile(real)).not.toMatch(/^[WFT][GWC]_HELPER_PATH=/m);
     const setup = readFileSync(
       join(RAIZ_REPO, 'packaging', 'linux', 'common', 'krakenos-setup'),
       'utf8',
@@ -168,8 +195,13 @@ describe('stageCommonTree', () => {
       'usr/lib/krakenos/bin/krakenos',
     ])
       expect(lstatSync(join(root, f)).isFile(), f).toBe(true);
+    // Las claves del paquete, aparte y de root: el usuario no las toca editando krakenos.env.
+    expect(modo('usr/lib/krakenos/package.env')).toBe(0o644);
+    expect(readFileSync(join(root, 'usr/lib/krakenos/package.env'), 'utf8')).toBe(
+      renderPackageEnv(),
+    );
     const env = readFileSync(join(root, 'usr/share/krakenos/krakenos.env'), 'utf8');
-    expect(env).toMatch(/^KRAKENOS_DEPLOY_MODE=package$/m);
+    expect(env).not.toMatch(/^KRAKENOS_DEPLOY_MODE=/m);
   });
 });
 
@@ -181,6 +213,13 @@ describe('la unidad systemd', () => {
   it('lleva KillMode=process y EnvironmentFile', () => {
     expect(unidad).toMatch(/^KillMode=process$/m);
     expect(unidad).toMatch(/^EnvironmentFile=\/etc\/krakenos\/krakenos\.env$/m);
+    // El último archivo gana en systemd: el del paquete va DESPUÉS del del usuario para blindar sus claves.
+    // (`Environment=` no sirve: `EnvironmentFile=` lo pisa.)
+    const archivos = unidad.match(/^EnvironmentFile=.*$/gm);
+    expect(archivos).toEqual([
+      'EnvironmentFile=/etc/krakenos/krakenos.env',
+      'EnvironmentFile=/usr/lib/krakenos/package.env',
+    ]);
     expect(unidad).toMatch(/^Environment=KRAKENOS_ENV_FROM_SYSTEM=1$/m);
     expect(unidad).toMatch(/^User=krakenos$/m);
     // wg-quick save (vía sudo) hereda ProtectSystem=full y escribiría /etc/wireguard en solo lectura.
