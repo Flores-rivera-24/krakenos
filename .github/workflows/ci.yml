@@ -273,6 +273,105 @@ jobs:
           path: out/krakenos-*-${{ matrix.target }}
           retention-days: 7
 
+      # upload-artifact no conserva el bit de ejecución: el paquete de Arch (job `package-arch`) parte
+      # de este tar, que sí lo conserva, para no reconstruir Node y el agente.
+      - name: Empaquetar la carpeta en tar (para el paquete de Arch)
+        if: ${{ matrix.target == 'linux-x64' }}
+        run: tar -cf "$RUNNER_TEMP/krakenos-linux-x64.tar" -C out "$(cd out && ls -d krakenos-*-linux-x64)"
+
+      - name: Subir el tar (para el paquete de Arch)
+        if: ${{ matrix.target == 'linux-x64' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-linux-x64-tar
+          path: ${{ runner.temp }}/krakenos-linux-x64.tar
+          retention-days: 7
+
+  # Paquete de Arch / CachyOS (`pacman -U`, US-294). Se arma con `makepkg` como usuario NO root dentro de
+  # `archlinux:base-devel` y se prueba (instalar, actualizar, desinstalar, reinstalar y purgar) en un
+  # contenedor `archlinux` con systemd como PID 1. Las dos imágenes van fijadas por digest (índice multi-
+  # arquitectura; leído el 2026-11-16): al subirlas, cambiar ambos y revisar. Arch es rolling y la imagen
+  # fijada envejece: `pacman -Syu` pone al día lo que haga falta, pero el digest sigue siendo el punto de
+  # partida reproducible. Bloqueante: es x64 y el contenedor tiene systemd; si la CI de otra imagen
+  # (cgroups, systemd) fallara por el runner y no por el paquete, se baja a `continue-on-error`.
+  package-arch:
+    name: Paquete de Arch (linux-x64)
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ARCH_BASE_DEVEL: archlinux@sha256:fa2d4ce3310ddd90a4208e5168be8ad367da5129af1245f38fd2d803bcbe3239
+      ARCH_BASE: archlinux@sha256:d4594bb2300cba11f41c2f27923eb56f63d9988909c402f9c95517d1e362c899
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Solo se arma el directorio de makepkg (no hace falta pnpm ni dependencias).
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+
+      - name: Bajar el paquete de linux-x64
+        uses: actions/download-artifact@v8
+        with:
+          name: krakenos-linux-x64-tar
+          path: ${{ runner.temp }}/dl
+
+      - name: Armar el directorio de makepkg (uno viejo y el real)
+        run: |
+          mkdir -p "$RUNNER_TEMP/pkg"
+          tar -xf "$RUNNER_TEMP/dl/krakenos-linux-x64.tar" -C "$RUNNER_TEMP/pkg"
+          dir="$(ls -d "$RUNNER_TEMP"/pkg/krakenos-*-linux-x64 | head -n 1)"
+          old_dir="$(node scripts/package-arch.mjs "$dir" --version 0.0.0-ci.1 --out "$RUNNER_TEMP/arch")"
+          new_dir="$(node scripts/package-arch.mjs "$dir" --out "$RUNNER_TEMP/arch")"
+          echo "OLD_DIR=$(basename "$old_dir")" >> "$GITHUB_ENV"
+          echo "NEW_DIR=$(basename "$new_dir")" >> "$GITHUB_ENV"
+
+      # makepkg no corre como root: se crea `builder` con el mismo uid que el directorio montado.
+      # namcap: los errores (E:) rompen el job; los avisos (W:) se ven pero se aceptan, porque salen de
+      # lo que KrakenOS lleva dentro a propósito: el Node.js oficial y los `.node` precompilados del
+      # agente (sin PIE ni RELRO completos, sin strip, librerías enlazadas que namcap no relaciona con
+      # una dependencia, binarios de otras plataformas) y los scriptlets, que llaman a
+      # systemd-sysusers/tmpfiles A MANO porque los hooks de pacman corren después del scriptlet.
+      - name: makepkg y namcap (contenedor Arch base-devel, usuario no root)
+        run: |
+          docker run --rm -v "$RUNNER_TEMP/arch:/work" "$ARCH_BASE_DEVEL" bash -euo pipefail -c '
+            # La imagen fijada envejece: sin un keyring al día, `pacman -Su` puede rechazar firmas nuevas.
+            pacman -Sy --noconfirm archlinux-keyring
+            pacman -Su --noconfirm namcap
+            useradd -m -u '"$(id -u)"' builder
+            chown -R builder /work
+            for d in /work/krakenos-*-arch; do
+              ( cd "$d" && su builder -c "makepkg --noconfirm" )
+            done
+            for d in /work/krakenos-*-arch; do
+              ( cd "$d"
+                namcap PKGBUILD | tee /tmp/namcap-pkgbuild.txt
+                namcap ./*.pkg.tar.zst | tee /tmp/namcap-pkg.txt
+                if grep -E " E: " /tmp/namcap-pkgbuild.txt /tmp/namcap-pkg.txt; then exit 1; fi )
+            done
+          '
+
+      - name: Ciclo de vida (contenedor Arch con systemd como PID 1)
+        run: |
+          docker run -d --name arch-systemd --privileged --cgroupns=host \
+            -v /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            -v "$RUNNER_TEMP/arch:/work:ro" \
+            -v "$GITHUB_WORKSPACE/scripts/package/linux-lifecycle.sh:/usr/local/bin/linux-lifecycle.sh:ro" \
+            --entrypoint /usr/lib/systemd/systemd "$ARCH_BASE"
+          for i in $(seq 1 60); do
+            st="$(docker exec arch-systemd systemctl is-system-running 2>/dev/null || true)"
+            case "$st" in running|degraded) break ;; esac
+            sleep 1
+          done
+          echo "systemd: $st"
+          case "$st" in running|degraded) ;; *) docker logs arch-systemd | tail -n 30; exit 1 ;; esac
+          old="$(docker exec arch-systemd sh -c "ls /work/$OLD_DIR/*.pkg.tar.zst")"
+          new="$(docker exec arch-systemd sh -c "ls /work/$NEW_DIR/*.pkg.tar.zst")"
+          docker exec -e GITHUB_ACTIONS arch-systemd bash /usr/local/bin/linux-lifecycle.sh arch "$old" "$new"
+
   # Ventana de escritorio de Windows (Tauri 2, apps/window). Compila el crate, corre `cargo test`
   # y clippy estricto y construye el .exe sin instalador. Rust va fijado a la versión exacta de
   # apps/window/src-tauri/rust-toolchain.toml (si divergen, el gate ventana-sin-ipc.test.ts falla).
@@ -645,6 +744,7 @@ jobs:
             packaging/linux/deb/postinst \
             packaging/linux/deb/prerm \
             packaging/linux/deb/postrm \
+            packaging/linux/arch/krakenos.install \
             scripts/package/launchers/krakenos \
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh
