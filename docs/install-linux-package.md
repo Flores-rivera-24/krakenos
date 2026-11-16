@@ -137,7 +137,8 @@ sudo krakenos-setup --with-helper
 
 Esto instala `/etc/sudoers.d/krakenos` (se valida con `visudo` antes de ponerla en su sitio), que
 permite al usuario `krakenos` ejecutar **solo** ese helper, con su propia lista de operaciones
-permitidas. Sin el helper, esas tres funciones no están disponibles.
+permitidas. También crea `/etc/wireguard` si falta y reinicia el servicio (si estaba en marcha), para
+que pueda guardar ahí los peers de la VPN. Sin el helper, esas tres funciones no están disponibles.
 
 ## Actualizar
 

@@ -136,6 +136,22 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(r.stdout).toContain('/etc/sudoers.d/krakenos');
   });
 
+  it('--with-helper crea /etc/wireguard (0700) y reinicia el servicio si hay systemd', () => {
+    // ReadWritePaths=-/etc/wireguard se ignora si la ruta no existía al arrancar la unidad.
+    const r = correr(['--dry-run', '--with-helper'], { KRAKENOS_ASSUME_SYSTEMD: 'yes' });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/dry-run\$ install -d -m 0700 -o root -g root .*\/etc\/wireguard\n/);
+    expect(r.stdout).toContain('dry-run$ systemctl try-restart krakenos');
+    expect(r.stdout.indexOf('/etc/wireguard')).toBeLessThan(r.stdout.indexOf('try-restart'));
+  });
+
+  it('--with-helper sin systemd no intenta reiniciar nada', () => {
+    const r = correr(['--dry-run', '--with-helper'], { KRAKENOS_ASSUME_SYSTEMD: 'no' });
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('/etc/wireguard');
+    expect(r.stdout).not.toContain('try-restart');
+  });
+
   it('un modo de TLS desconocido es un error', () => {
     const r = correr(['--dry-run', 'tls', 'raro']);
     expect(r.status).toBe(2);
