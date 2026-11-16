@@ -150,7 +150,8 @@ sudo apt install ./krakenos_<versión nueva>_amd64.deb
 Los datos, las claves y el certificado se conservan, y el servicio se reinicia solo. **Un
 `/etc/krakenos/krakenos.env` que hayas editado se conserva**: si la versión nueva trajera otro,
 `apt` te preguntaría qué hacer. Una actualización no vuelve a tocar el HTTPS ni los temporizadores
-de renovación del certificado.
+de renovación del certificado, salvo que HTTPS hubiera quedado pendiente de una instalación fallida:
+entonces se reintenta (ver «Si la instalación no pudo configurar HTTPS»).
 
 La actualización con un clic de **Ajustes → Sistema → Actualizaciones** **no está disponible** en
 una instalación por paquete (ver [Actualizaciones](updates.md)). El aviso de versión nueva es
@@ -259,6 +260,7 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
 ### Volver atrás (antes del paso 6)
 
 ```bash
+RESPALDO=~/respaldo-krakenos   # el mismo del paso 0
 sudo systemctl disable --now krakenos
 sudo apt remove krakenos
 sudo cp -a "$RESPALDO"/krakenos*.service "$RESPALDO"/krakenos*.timer /etc/systemd/system/
@@ -266,7 +268,10 @@ sudo cp -a "$RESPALDO"/krakenos-update /etc/sudoers.d/
 sudo cp -a "$RESPALDO"/krakenos /etc/sudoers.d/   # solo si usabas el helper
 sudo systemctl daemon-reload
 sudo systemctl enable --now krakenos
-sudo systemctl enable --now krakenos-cert-local.timer   # o krakenos-cert.timer, el que tuvieras
+# solo los temporizadores de renovación que estaban en el respaldo
+for t in krakenos-cert-local.timer krakenos-cert.timer; do
+  [ -f "$RESPALDO/$t" ] && sudo systemctl enable --now "$t"
+done
 ```
 
 `/opt/krakenos` sigue intacto, pero lo que se haya guardado en el paquete después de la copia no
