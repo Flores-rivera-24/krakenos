@@ -97,3 +97,5 @@ apps/*/coverage/
 
 # Compilación de la ventana de Windows (Tauri/Rust)
 /apps/window/src-tauri/target/
+# `tauri-build` genera aquí los esquemas JSON de las capabilities en cada compilación.
+/apps/window/src-tauri/gen/
