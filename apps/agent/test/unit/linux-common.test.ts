@@ -99,7 +99,7 @@ describe('renderEnvFile: comentarios de fin de línea', () => {
   it('un # pegado al valor o dentro de comillas no se corta', () => {
     const out: string = renderEnvFile('A=x#y   # c\nB="a # b"  # c\nC=\'q # r\'\n');
     expect(out).toMatch(/^A=x#y$/m);
-    expect(out).toMatch(/^B="a # b"  # c$/m);
+    expect(out).toMatch(/^B="a # b" {2}# c$/m);
     expect(out).toMatch(/^C='q # r'$/m);
   });
 });
