@@ -1,0 +1,42 @@
+# KrakenOS es un paquete autocontenido: lleva su propio Node.js (la carpeta de `pnpm package`, con
+# Node fijado y verificado por firma) y las dependencias de producción ya resueltas. Los avisos de
+# Lintian sobre ese contenido de terceros se aceptan; los de nuestros propios ficheros, uno a uno.
+
+# El binario oficial de Node.js viaja dentro a propósito (no se depende del `nodejs` de la distro):
+# trae zlib embebido, sin símbolos de depuración y sin PIE por como lo compila el proyecto Node.
+krakenos: embedded-library zlib [usr/lib/krakenos/node/bin/node]
+krakenos: unstripped-binary-or-object [usr/lib/krakenos/node/bin/node]
+krakenos: hardening-no-pie [usr/lib/krakenos/node/bin/node]
+
+# Módulos nativos precompilados de las dependencias (bcrypt trae prebuilds de varias plataformas y de
+# musl; better-sqlite3 se compila sin strip). Se usa el que casa con la plataforma del paquete.
+krakenos: binary-from-other-architecture [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: library-not-linked-against-libc [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: shared-library-is-executable * [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: unstripped-binary-or-object [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: executable-not-elf-or-script [usr/lib/krakenos/app/agent/node_modules/*]
+
+# Scripts y ficheros de desarrollo que los paquetes de npm publican junto al código. El Node del
+# paquete es el intérprete (no hay `nodejs` de la distro): por eso no hay dependencia, y el
+# `#!/usr/bin/env node` de estos scripts de utilidad no se usa en ejecución.
+krakenos: missing-dep-for-interpreter node * [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: wrong-path-for-interpreter * [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: script-not-executable [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: package-contains-eslint-config-file [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: package-contains-npm-ignore-file [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: package-contains-vcs-control-file [usr/lib/krakenos/app/agent/node_modules/*]
+krakenos: privacy-breach-generic * [usr/lib/krakenos/app/agent/node_modules/*]
+
+# Paquete nativo sin historial de Debian: los cambios van en las notas de cada versión del proyecto.
+krakenos: no-changelog *
+
+# `krakenos-setup` es una herramienta de root del propio paquete; su uso está en `--help` y en la guía.
+krakenos: no-manual-page [usr/bin/krakenos-setup]
+
+# Biblioteca de shell que `krakenos-setup` carga con `source`; no se ejecuta sola.
+krakenos: script-not-executable [usr/lib/krakenos/libexec/lib/krakenos-system.sh]
+
+# El servicio se activa y se reinicia con `systemctl` directamente (sin debhelper/dh-systemd), y el
+# reinicio ocurre en el postinst, tanto al instalar como al actualizar.
+krakenos: maintainer-script-calls-systemctl [postinst:*]
+krakenos: maintainer-script-calls-systemctl [prerm:*]

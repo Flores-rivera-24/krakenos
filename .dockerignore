@@ -11,6 +11,7 @@
 apps/agent/keys
 apps/agent/data
 apps/agent/.env
+apps/agent/setup-token
 **/.env
 
 # Salida y caché de `pnpm package`: no son fuente de la imagen.

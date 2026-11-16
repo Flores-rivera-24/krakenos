@@ -8,6 +8,8 @@
  * - Sin `<datos>/.env`: lo crea desde `app/agent/.env.example` con los ocho `*_KIND=none`
  *   (igual que `scripts/install.sh`: una instalación real no arranca en `mock`). Si ya existe,
  *   no se toca: conserva lo que el usuario eligiera.
+ * - Con `KRAKENOS_ENV_FROM_SYSTEM=1` (la unidad de systemd de los paquetes de Linux, que ya carga
+ *   `/etc/krakenos/krakenos.env`) no crea nada: un segundo `.env` competiría con ese fichero.
  * - Sin `keys/jwt-private.pem`: ejecuta `app/agent/dist/keys.js gen`.
  */
 import { spawnSync } from 'node:child_process';
@@ -48,7 +50,8 @@ function defaultRun(cmd, args, cwd) {
 
 export function main(dataDir = process.cwd()) {
   const appDir = dirname(fileURLToPath(import.meta.url));
-  if (ensureEnv(dataDir, join(appDir, 'agent', '.env.example'))) {
+  const envDelSistema = process.env.KRAKENOS_ENV_FROM_SYSTEM === '1';
+  if (!envDelSistema && ensureEnv(dataDir, join(appDir, 'agent', '.env.example'))) {
     console.log(`Configuración creada en ${join(dataDir, '.env')}`);
   }
   ensureKeys(dataDir, join(appDir, 'agent', 'dist', 'keys.js'));

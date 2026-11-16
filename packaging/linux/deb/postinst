@@ -1,0 +1,78 @@
+#!/bin/sh
+# Lo ejecuta root al instalar o actualizar. Solo llama a binarios de root (/usr/lib/krakenos es de
+# root); nada que el usuario del servicio pueda modificar.
+set -e
+
+SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+# Marcador de root: HTTPS quedó sin configurar. Lo borra `krakenos-setup tls <modo>` al terminar bien.
+PENDIENTE=/etc/krakenos/.https-pendiente
+
+case "$1" in
+  configure)
+    # krakenos.env NO es conffile: `tls auto` lo reescribe en toda instalación y dpkg preguntaría en
+    # cada versión. Se crea aquí desde la plantilla (root, 0600) y nunca se pisa.
+    # Un archivo recién creado trae HTTP: equivale a HTTPS pendiente (si el usuario lo borró en una
+    # máquina ya configurada, una actualización no debe arrancar sin cifrar; `tls auto` borra el marcador).
+    install -d -m 0755 /etc/krakenos
+    if [ ! -e /etc/krakenos/krakenos.env ]; then
+      install -m 0600 -o root -g root /usr/share/krakenos/krakenos.env /etc/krakenos/krakenos.env
+      touch "$PENDIENTE"
+    fi
+    systemd-sysusers krakenos.conf
+    systemd-tmpfiles --create krakenos.conf
+
+    if [ -d /run/systemd/system ]; then
+      # Instalación nueva, o un intento anterior que dejó HTTPS pendiente: HTTPS por defecto, como install.sh.
+      # Si falla, NO se arranca: serviría HTTP plano y el enlace de configuración llevaría el token sin cifrar.
+      # El marcador evita que la siguiente actualización (con $2 no vacío) arranque sin cifrar.
+      mostrar_url=0
+      if [ -z "$2" ] || [ -f "$PENDIENTE" ]; then
+        if ! "$SETUP" tls auto; then
+          touch "$PENDIENTE"
+          cat >&2 <<'MSG'
+AVISO: no se pudo configurar HTTPS (krakenos-setup tls auto falló).
+KrakenOS no se ha arrancado ni reiniciado, para no servir sin HTTPS. Para terminar:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+Si de verdad quieres HTTP sin cifrar:
+  sudo krakenos-setup tls none && sudo systemctl enable --now krakenos
+MSG
+          exit 0
+        fi
+        mostrar_url=1
+      fi
+      systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
+      # Estado previo del servicio: tras `remove`, prerm lo deshabilitó todo; en una actualización sigue habilitado.
+      was_enabled=0
+      systemctl is-enabled --quiet krakenos.service 2> /dev/null && was_enabled=1
+      systemctl enable krakenos.service || { echo "ERROR: no se pudo habilitar krakenos.service." >&2; exit 1; }
+      systemctl restart krakenos.service || { echo "ERROR: no se pudo arrancar krakenos.service (mira 'journalctl -u krakenos')." >&2; exit 1; }
+      # prerm los deshabilita al quitar el paquete: si sus unidades siguen (remove sin purge) y el servicio
+      # no estaba habilitado, se reactivan. En una actualización no se tocan (el usuario pudo deshabilitarlos).
+      for t in krakenos-cert.timer krakenos-cert-local.timer; do
+        if [ "$was_enabled" -eq 0 ] && [ -f "/etc/systemd/system/$t" ]; then
+          systemctl enable --now "$t" || echo "AVISO: no se pudo habilitar $t." >&2
+        fi
+      done
+      # Solo en una instalación nueva el agente acaba de crear (o va a crear) el token de setup; en una
+      # actualización normal ya hay administrador y esperar 30 s no llevaría a nada.
+      if [ "$mostrar_url" -eq 1 ]; then
+        "$SETUP" setup-url --wait 30 || true
+      else
+        echo "Si aún no creaste el administrador: sudo krakenos-setup setup-url"
+      fi
+    else
+      # Sin systemd no se pudo configurar HTTPS: se marca como pendiente para que ni arrancar a mano ni la
+      # siguiente actualización sirvan en HTTP plano.
+      if [ -z "$2" ]; then
+        touch "$PENDIENTE"
+      fi
+      cat >&2 <<'MSG'
+KrakenOS: systemd no está en marcha; ni se configuró HTTPS ni se arrancó el servicio.
+Cuando haya systemd:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+MSG
+    fi
+    ;;
+esac
+
+exit 0

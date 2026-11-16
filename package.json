@@ -14,6 +14,7 @@
     "build": "pnpm -r build",
     "prod": "bash scripts/prod.sh",
     "package": "node scripts/package.mjs",
+    "package:deb": "node scripts/package-deb.mjs",
     "dev": "pnpm -r --parallel dev",
     "dev:agent": "pnpm --filter @krakenos/agent dev",
     "dev:web": "pnpm --filter @krakenos/web dev",

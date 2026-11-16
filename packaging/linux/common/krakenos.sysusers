@@ -1,0 +1,2 @@
+# Usuario de servicio de KrakenOS (systemd-sysusers).
+u krakenos - "KrakenOS" /var/lib/krakenos /usr/sbin/nologin
