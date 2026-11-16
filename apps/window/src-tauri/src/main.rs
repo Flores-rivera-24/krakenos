@@ -5,6 +5,7 @@ use krakenos_window::config::{
     destino_segunda_ejecucion, resolver_config, ruta_config, url_de_setup, Config, ConfigError,
     Destino as DestinoSegunda,
 };
+use krakenos_window::enlaces::es_web_externa;
 use krakenos_window::estado::{
     aplicar_setup, decidir, destino_actual, estado_desde_sondeo, intervalo_segs, ruta_a_recordar,
     texto_bandeja, url_local, Destino,
@@ -14,6 +15,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::webview::NewWindowResponse;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use url::Url;
 
@@ -174,6 +176,18 @@ fn main() {
                 WebviewUrl::App(format!("index.html?estado={estado_inicial}").into()),
             )
             .title("KrakenOS")
+            // Nunca una ventana dentro de la app: lo web va al navegador del sistema; el resto, a nada.
+            .on_new_window(|url, _| {
+                if es_web_externa(&url) {
+                    // Sin shell: `open` pasa la URL por entorno a PowerShell; en segundo plano para no bloquear.
+                    std::thread::spawn(move || {
+                        if let Err(e) = open::that(url.as_str()) {
+                            eprintln!("no se pudo abrir el enlace: {e}");
+                        }
+                    });
+                }
+                NewWindowResponse::Deny
+            })
             .inner_size(1280.0, 800.0)
             .visible(!oculta)
             .build()?;
