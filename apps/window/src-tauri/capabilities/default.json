@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "La ventana main no recibe permisos: la web del agente no llama a Tauri; todo lo que hace la app va desde Rust.",
+  "windows": ["main"],
+  "permissions": []
+}
