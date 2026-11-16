@@ -4,7 +4,8 @@ El paquete `.deb` instala KrakenOS en Debian, Ubuntu y derivados con **su propio
 falta instalar Node, pnpm ni clonar el repositorio. Es la alternativa a `scripts/install.sh`.
 
 - Arquitecturas: **amd64** y **arm64**. El archivo se llama `krakenos_<versión>_<arquitectura>.deb`.
-- Requiere **systemd**. Sin systemd el paquete se instala, pero no arranca el servicio.
+- Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
+  deja HTTPS pendiente y el mensaje de la instalación dice qué ejecutar cuando haya systemd.
 - Todavía no hay repositorio apt ni firma del paquete, y el `.deb` aún no se adjunta a las versiones
   publicadas: por ahora se construye desde el repositorio (siguiente apartado) y se instala desde el
   archivo.
@@ -59,7 +60,8 @@ sudo krakenos-setup setup-url
 
 Espera hasta 30 segundos a que el servicio escriba el token (`--wait N` cambia la espera). Si aún no
 hay token, el comando lo dice y remite a `journalctl -u krakenos`. El enlace lleva el token: no lo
-compartas.
+compartas. Una **actualización** del paquete no espera ni imprime ese enlace (el token solo existe
+mientras no haya administrador): imprime una línea que recuerda este comando.
 
 ## Dónde vive cada cosa
 
@@ -75,12 +77,19 @@ compartas.
 | Herramienta de administración                                    | `krakenos-setup`             |
 
 `krakenos.env` lo lee systemd como root: el servicio no necesita poder leerlo, y el archivo no es
-legible por otros usuarios. Para cambiar un ajuste (por ejemplo `PORT`), edítalo y reinicia:
+legible por otros usuarios. La instalación lo crea una sola vez desde la plantilla de referencia
+`/usr/share/krakenos/krakenos.env` y no lo vuelve a tocar. Para cambiar un ajuste, edítalo y reinicia:
 
 ```bash
 sudo nano /etc/krakenos/krakenos.env
 sudo systemctl restart krakenos
 ```
+
+**Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
+anterior: las passkeys y el enlace de `/setup` dejarían de coincidir. Con HTTPS local, vuelve a
+correr `sudo krakenos-setup tls local` (los reescribe con el puerto nuevo y conserva el certificado y
+la CA) y luego reinicia el servicio. Con HTTPS por Tailscale esas variables no llevan puerto, y con
+`tls none` ajusta `WEB_ORIGIN` a mano.
 
 El agente **nunca corre como root**. Los registros: `journalctl -u krakenos`.
 
@@ -120,6 +129,9 @@ Si de verdad quieres HTTP sin cifrar:
 ```bash
 sudo krakenos-setup tls none && sudo systemctl enable --now krakenos
 ```
+
+Lo mismo vale si instalaste sin systemd: el paquete dejó HTTPS pendiente y, cuando haya systemd, el
+primer comando es el de arriba.
 
 Mientras no termines uno de los dos caminos, el paquete recuerda que HTTPS quedó pendiente y, si
 instalas una versión nueva, vuelve a intentar `tls auto` y no arranca sin cifrar. Termina estos pasos
