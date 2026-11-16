@@ -217,7 +217,6 @@ export const PLUGS_GUIDES_EN: GuideTranslations = {
     prerequisites: [
       'An MQTT broker on your network (Mosquitto is the usual one): the “postman” your devices’ messages go through. The same one you already use for zigbee2mqtt works.',
       'Your devices set up to publish to it, with automatic announcement enabled.',
-      'The "mqtt" package installed on the KrakenOS server (or having installed with the extra dependencies option).',
     ],
     steps: [
       {

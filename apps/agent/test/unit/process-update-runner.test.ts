@@ -193,6 +193,27 @@ describe('ProcessUpdateRunner — deps opcionales (US-232)', () => {
     );
   });
 
+  it('no reinstala lo que ya declara el package.json del agente (un manifiesto viejo las subiría a la última versión)', async () => {
+    const agentDir = mkdtempSync(join(tmpdir(), 'krakenos-agent-'));
+    writeFileSync(
+      join(agentDir, 'package.json'),
+      JSON.stringify({ dependencies: { 'node-ssh': '13.2.1', mqtt: '5.16.1' } }),
+    );
+    const { runner, calls } = make({
+      extraDepsFile: withManifest('["node-ssh","mqtt","tuyapi"]'),
+      agentDir,
+    });
+    await runner.fetch('1.2.0');
+    await runner.apply();
+    const adds = calls.map((c) => c.join(' ')).filter((c) => c.includes(' add '));
+    expect(adds).toEqual([`pnpm --dir ${agentDir} add tuyapi`]);
+
+    const todas = make({ extraDepsFile: withManifest('["node-ssh","mqtt"]'), agentDir });
+    await todas.runner.fetch('1.2.0');
+    await todas.runner.apply();
+    expect(todas.calls.some((c) => c.includes('add'))).toBe(false);
+  });
+
   it('sin manifiesto no ejecuta ningún pnpm add', async () => {
     const { runner, calls } = make({ extraDepsFile: '/no/existe/extra-deps.json' });
     await runner.fetch('1.2.0');

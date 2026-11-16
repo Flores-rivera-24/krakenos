@@ -41,8 +41,7 @@ hogar a un **broker MQTT local**. Es **opt-in y off por defecto**.
   metadata de nube ni link-local (solo LAN/loopback).
 - La contraseña del broker se guarda **cifrada** (secretbox) y **nunca** se devuelve por
   la API ni aparece en ningún payload.
-- Requiere el paquete `mqtt` en el servidor (`pnpm add mqtt`); es una dependencia
-  opcional de runtime (no viaja en la imagen por defecto). La conexión real se verifica
+- Usa el paquete `mqtt`, que ya viene con el agente (carga perezosa). La conexión real se verifica
   en el despliegue (checklist de verificación con hardware).
 
 ### Topics publicados

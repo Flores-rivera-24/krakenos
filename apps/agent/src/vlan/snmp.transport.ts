@@ -29,8 +29,8 @@ export interface NetSnmpOptions {
 
 /**
  * Transporte SNMP real sobre `net-snmp` (SNMPv2c). La dependencia se carga con
- * import dinámico (especificador no-literal) para no exigirla en
- * `install`/tests/typecheck: solo se instala en el servidor (`pnpm add net-snmp`).
+ * import dinámico (especificador no-literal) para no cargarla al
+ * arrancar: solo se carga si se usa el switch.
  * No se cubre con unit tests (requiere un switch); la lógica testeable vive en
  * los builders puros y en `SwitchVlanManager` con un transporte falso.
  */
@@ -48,7 +48,7 @@ export class NetSnmpTransport implements SnmpTransport {
       const moduleName = 'net-snmp';
       const snmp = (await import(moduleName).catch(() => {
         throw new Error(
-          'El gestor de VLANs por switch requiere el paquete "net-snmp". Instálalo en el servidor (pnpm add net-snmp).',
+          'El gestor de VLANs por switch requiere el paquete "net-snmp". La instalación está incompleta: reinstala las dependencias (pnpm install --frozen-lockfile).',
         );
       })) as {
         createSession: (host: string, community: string, opts: Record<string, unknown>) => unknown;

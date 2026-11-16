@@ -36,21 +36,11 @@ const CATEGORY_CAPABILITIES: Record<CompatCategory, CompatCapability[]> = {
 };
 
 /**
- * Kinds que exigen una **dependencia opcional** en el servidor (no viaja en la
- * imagen). Co-localizado y pequeño; refleja los `import` perezosos del código.
+ * Kinds que exigen algo **aparte** en el servidor: `tuyapi` (no viaja con el agente)
+ * y `ffmpeg` (binario del sistema). `node-ssh`, `mqtt`, `net-snmp` y `ws` ya son
+ * dependencias del agente y van dentro de los paquetes: no cuentan como extra.
  */
-const EXTRA_DEP_KINDS = new Set<string>([
-  'driver:openwrt',
-  'driver:mikrotik',
-  'driver:asus',
-  'iot:zigbee',
-  'iot:mqtt',
-  'iot:meross',
-  'iot:matter',
-  'iot:tuya',
-  'vlan:switch',
-  'cameras:rtsp',
-]);
+const EXTRA_DEP_KINDS = new Set<string>(['iot:tuya', 'cameras:rtsp']);
 
 /**
  * Kinds cuya capacidad de **tráfico por dispositivo** depende de un paquete en el

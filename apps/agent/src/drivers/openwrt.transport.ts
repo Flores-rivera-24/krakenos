@@ -29,8 +29,8 @@ export interface SshTransportOptions {
 
 /**
  * Transporte SSH real sobre `node-ssh`. La dependencia se carga de forma
- * **perezosa** (import dinámico) para no exigirla en `install`/tests/typecheck:
- * solo se necesita en un despliegue real con un router OpenWrt. La conexión se
+ * **perezosa** (import dinámico) para no cargarla al arrancar:
+ * solo se necesita con un router OpenWrt. La conexión se
  * reutiliza entre comandos y se cierra con `dispose()`.
  *
  * No se cubre con unit tests (requiere `ssh2`/hardware); su verificación es
@@ -48,12 +48,12 @@ export class SshTransport implements OpenWrtTransport {
     dispose: () => void;
   }> {
     if (!this.connection) {
-      // Import dinámico con especificador no-literal: `node-ssh` es opcional y
-      // solo se instala en producción, así que TS no debe resolverlo en build.
+      // Import dinámico con especificador no-literal: carga perezosa: `node-ssh` solo
+      // se carga si se usa este driver.
       const moduleName = 'node-ssh';
       const mod = (await import(moduleName).catch(() => {
         throw new Error(
-          'El driver OpenWrt requiere el paquete "node-ssh". Instálalo en el servidor (pnpm add node-ssh).',
+          'El driver OpenWrt requiere el paquete "node-ssh". La instalación está incompleta: reinstala las dependencias (pnpm install --frozen-lockfile).',
         );
       })) as { NodeSSH: new () => unknown };
       const ssh = new mod.NodeSSH() as {

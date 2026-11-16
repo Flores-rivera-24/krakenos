@@ -6,7 +6,7 @@ modos** seleccionables por `.env`, sobre un transporte inyectable:
 | Modo | `MIKROTIK_MODE` | Requisito | Recomendado para |
 |---|---|---|---|
 | **REST** | `rest` (por defecto) | RouterOS **≥ 7** con el servicio `www-ssl`/`www` activo | la mayoría de routers actuales |
-| **SSH+CLI** | `ssh` | acceso SSH + paquete `node-ssh` en el servidor | RouterOS **6** (sin REST) |
+| **SSH+CLI** | `ssh` | acceso SSH (`node-ssh` ya viene con el agente) | RouterOS **6** (sin REST) |
 
 No hay nada que programar: el código del driver ya existe. Solo hay que **habilitar el modo**
 en el router y **configurar el `.env`** del agente.
@@ -47,11 +47,7 @@ Si tu router no tiene REST (RouterOS 6), usa SSH:
 /ip service enable ssh
 ```
 
-Instala la dependencia en el **servidor** (no va en `package.json`; carga perezosa):
-
-```bash
-pnpm add node-ssh
-```
+La dependencia `node-ssh` ya viene con el agente (carga perezosa): no hay que instalar nada.
 
 El driver traduce las operaciones a comandos CLI (`/ip arp print terse`, `/ip firewall
 address-list add …`) y parsea la salida `terse`.

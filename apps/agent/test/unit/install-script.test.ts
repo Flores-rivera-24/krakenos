@@ -265,12 +265,28 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     expect(stdout).not.toContain('krakenos-helper');
     expect(stdout).not.toContain('pnpm add');
     expect(stdout).toContain('Qué quedó FUERA');
-    for (const missing of ['--with-helper', '--with-ffmpeg', '--with-deps', '--with-all']) {
+    for (const missing of ['--with-helper', '--with-ffmpeg', '--with-all']) {
       expect(stdout, `el resumen debe señalar ${missing}`).toContain(missing);
     }
+    // Las deps de integraciones ya vienen en el lockfile: no hay nada que avisar.
+    expect(stdout).not.toContain('sin deps de integraciones');
   });
 
-  it('--with-all instala los tres extras, pero con --tls none el TLS sigue faltando y se avisa', async () => {
+  it('--with-deps se acepta por compatibilidad pero ya no instala ni escribe manifiesto', async () => {
+    const { code, stdout } = await runInstaller([
+      '--dry-run',
+      '--yes',
+      '--with-deps',
+      '--dir',
+      '/tmp/kraken-x',
+    ]);
+    expect(code).toBe(0);
+    expect(stdout).not.toContain('pnpm add');
+    expect(stdout).not.toContain('extra-deps.json');
+    expect(stdout).not.toContain('sin deps de integraciones');
+  });
+
+  it('--with-all instala helper y ffmpeg, pero con --tls none el TLS sigue faltando y se avisa', async () => {
     const { code, stdout } = await runInstaller([
       '--dry-run',
       '--yes',
@@ -283,9 +299,8 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     expect(code).toBe(0);
     expect(stdout).toContain('krakenos-helper');
     expect(stdout).toContain('ffmpeg');
-    expect(stdout).toContain('pnpm add node-ssh mqtt net-snmp ws');
-    // El manifiesto que el actualizador reinstala tras cada update (AUD3-22).
-    expect(stdout).toContain('extra-deps.json');
+    expect(stdout).not.toContain('pnpm add');
+    expect(stdout).not.toContain('extra-deps.json');
     // US-241: el TLS NO es un extra más — `--with-all` no lo incluye a propósito,
     // porque implica elegir entre Tailscale y autofirmado. Y sin él se dice qué
     // deja de funcionar, en vez de dar la instalación por completa.

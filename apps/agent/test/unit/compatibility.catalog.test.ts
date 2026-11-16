@@ -45,10 +45,14 @@ describe('buildCompatibilityCatalog (US-208)', () => {
     expect(byId('iot:hue')?.requirements).toEqual(
       expect.arrayContaining(['address', 'credentials']),
     );
-    // OpenWrt: host + contraseña + dep node-ssh.
+    // OpenWrt: host + contraseña. `node-ssh` ya viaja con el agente: no es un extra.
     expect(byId('driver:openwrt')?.requirements).toEqual(
-      expect.arrayContaining(['address', 'credentials', 'extra-dependency']),
+      expect.arrayContaining(['address', 'credentials']),
     );
+    // Solo piden algo aparte en el servidor Tuya (`tuyapi`) y las cámaras (ffmpeg).
+    expect(
+      catalog.filter((e) => e.requirements.includes('extra-dependency')).map((e) => e.id),
+    ).toEqual(['cameras:rtsp', 'iot:tuya']);
   });
 
   it('nada está verificado con hardware real todavía (US-86): la fecha es null', () => {
