@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 // prettier-ignore
@@ -61,8 +61,14 @@ it('la regla de sudoers que borra postrm es la que escribe krakenos-setup', () =
 });
 
 describe('scripts de mantenimiento', () => {
-  it('conffiles lista solo /etc/krakenos/krakenos.env', () => {
-    expect(leer('conffiles').trim().split('\n')).toEqual(['/etc/krakenos/krakenos.env']);
+  it('no hay conffiles: krakenos.env lo crea postinst desde /usr/share, antes que nada', () => {
+    // Si lo fuera, `tls auto` lo modifica en toda instalación y dpkg preguntaría en cada versión.
+    expect(existsSync(DEB + 'conffiles')).toBe(false);
+    const t = leer('postinst');
+    const cfg = t.slice(t.indexOf('configure)'));
+    expect(cfg).toMatch(
+      /configure\)(\s*\n\s*#.*)*\s*\n\s*install -d -m 0755 \/etc\/krakenos\s*\n\s*if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600 -o root -g root \/usr\/share\/krakenos\/krakenos\.env \/etc\/krakenos\/krakenos\.env\s*\n\s*fi\s*\n\s*systemd-sysusers/,
+    );
   });
 
   it('postinst no falla si setup-url no encuentra el token', () => {

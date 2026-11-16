@@ -67,7 +67,6 @@ async function main() {
     await chmod(join(raiz, 'usr', 'share', 'lintian', 'overrides', 'krakenos'), 0o644);
     // dpkg-deb exige 0755 en los directorios del sistema que crea el paquete.
     for (const d of [
-      'etc',
       'usr',
       'usr/lib',
       'usr/lib/systemd',
@@ -77,7 +76,6 @@ async function main() {
       'usr/bin',
     ])
       await chmod(join(raiz, d), 0o755);
-    await chmod(join(raiz, 'etc', 'krakenos'), 0o755);
 
     const du = ejecutar('du', ['-sk', '--apparent-size', raiz]);
     const installedSizeKb = Number.parseInt(du, 10);
@@ -85,13 +83,11 @@ async function main() {
     const ctl = join(raiz, 'DEBIAN');
     await mkdir(ctl, { mode: 0o755 });
     await writeFile(join(ctl, 'control'), renderControl({ version: v, arch, installedSizeKb }));
-    await cp(join(DEB, 'conffiles'), join(ctl, 'conffiles'));
     for (const s of ['postinst', 'prerm', 'postrm']) {
       await cp(join(DEB, s), join(ctl, s));
       await chmod(join(ctl, s), 0o755);
     }
     await chmod(join(ctl, 'control'), 0o644);
-    await chmod(join(ctl, 'conffiles'), 0o644);
 
     await mkdir(out, { recursive: true });
     const deb = join(out, debFileName(v, arch));

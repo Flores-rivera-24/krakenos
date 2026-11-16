@@ -60,7 +60,7 @@ async function poner(src, dst, mode) {
 
 /**
  * @param {string} pkgDir carpeta autocontenida de US-284 (`bin/`, `node/`, `app/`…)
- * @param {string} rootDir raíz del paquete (`<root>/usr/lib/krakenos`, `<root>/etc/krakenos`…)
+ * @param {string} rootDir raíz del paquete (`<root>/usr/lib/krakenos`, `<root>/usr/share/krakenos`…)
  */
 export async function stageCommonTree(pkgDir, rootDir) {
   const lib = join(rootDir, 'usr', 'lib', 'krakenos');
@@ -102,14 +102,17 @@ export async function stageCommonTree(pkgDir, rootDir) {
     0o644,
   );
 
-  // 0640 root:root: lo lee systemd (EnvironmentFile), no el servicio.
-  const env = join(rootDir, 'etc', 'krakenos', 'krakenos.env');
+  // Plantilla de referencia, sin secretos (solo rutas y valores por defecto): 0644. NO va en
+  // /etc: el postinst la copia a /etc/krakenos/krakenos.env (0600) solo si no existe, para que
+  // dpkg no la trate como conffile (`tls auto` la modifica en toda instalación).
+  const env = join(rootDir, 'usr', 'share', 'krakenos', 'krakenos.env');
   await mkdir(dirname(env), { recursive: true });
   await writeFile(
     env,
     renderEnvFile(await readFile(join(pkgDir, 'app', 'agent', '.env.example'), 'utf8')),
   );
-  await chmod(env, 0o640);
+  await chmod(env, 0o644);
+  await chmod(dirname(env), 0o755);
 
   const bin = join(rootDir, 'usr', 'bin');
   await mkdir(bin, { recursive: true });

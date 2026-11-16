@@ -33,10 +33,6 @@ krakenos: no-changelog *
 # `krakenos-setup` es una herramienta de root del propio paquete; su uso está en `--help` y en la guía.
 krakenos: no-manual-page [usr/bin/krakenos-setup]
 
-# `krakenos.env` es 0640 root:root a propósito: lleva el secreto de cifrado y lo carga systemd (como
-# root) con EnvironmentFile=; el servicio no necesita leerlo.
-krakenos: non-standard-file-perm 0640 != 0644 [etc/krakenos/krakenos.env]
-
 # Biblioteca de shell que `krakenos-setup` carga con `source`; no se ejecuta sola.
 krakenos: script-not-executable [usr/lib/krakenos/libexec/lib/krakenos-system.sh]
 

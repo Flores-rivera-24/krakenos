@@ -1,5 +1,6 @@
 import {
   chmodSync,
+  existsSync,
   lstatSync,
   mkdirSync,
   mkdtempSync,
@@ -156,7 +157,9 @@ describe('stageCommonTree', () => {
     expect(modo(`${lib}/krakenos-setup`)).toBe(0o755);
     expect(modo(`${lib}/krakenos-helper`)).toBe(0o755);
     expect(modo(`${lib}/lib/krakenos-system.sh`) & 0o111).toBe(0);
-    expect(modo('etc/krakenos/krakenos.env')).toBe(0o640);
+    // Plantilla sin secretos (el postinst la copia a /etc/krakenos con 0600): nada de /etc en el paquete.
+    expect(modo('usr/share/krakenos/krakenos.env')).toBe(0o644);
+    expect(existsSync(join(root, 'etc'))).toBe(false);
     expect(lstatSync(join(root, 'usr/bin/krakenos-setup')).isSymbolicLink()).toBe(true);
     for (const f of [
       'usr/lib/systemd/system/krakenos.service',
@@ -165,7 +168,7 @@ describe('stageCommonTree', () => {
       'usr/lib/krakenos/bin/krakenos',
     ])
       expect(lstatSync(join(root, f)).isFile(), f).toBe(true);
-    const env = readFileSync(join(root, 'etc/krakenos/krakenos.env'), 'utf8');
+    const env = readFileSync(join(root, 'usr/share/krakenos/krakenos.env'), 'utf8');
     expect(env).toMatch(/^KRAKENOS_DEPLOY_MODE=package$/m);
   });
 });

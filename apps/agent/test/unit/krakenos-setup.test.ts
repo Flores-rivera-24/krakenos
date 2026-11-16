@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import {
+  copyFileSync,
   existsSync,
   linkSync,
   mkdirSync,
@@ -40,6 +41,12 @@ beforeEach(async () => {
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), '//');
   if (WIN) return;
   await stageCommonTree(pkg, join(raiz, 'root'));
+  // Lo que hace el postinst: la plantilla de /usr/share pasa a /etc/krakenos (no es conffile).
+  mkdirSync(join(raiz, 'root', 'etc', 'krakenos'), { recursive: true });
+  copyFileSync(
+    join(raiz, 'root', 'usr', 'share', 'krakenos', 'krakenos.env'),
+    join(raiz, 'root', 'etc', 'krakenos', 'krakenos.env'),
+  );
   setup = join(raiz, 'root', 'usr', 'lib', 'krakenos', 'libexec', 'krakenos-setup');
 });
 afterEach(() => rmSync(raiz, { recursive: true, force: true }));

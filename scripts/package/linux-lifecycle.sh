@@ -62,9 +62,9 @@ fail() {
 pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de /setup con el token)
   local rc=0
   case "$KIND" in
-    # force-confold: en CI no hay terminal para la pregunta de dpkg y es lo que haría quien quiere
-    # conservar su configuración.
-    deb) DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
+    # Sin --force-conf*: krakenos.env no es conffile, así que dpkg no debe preguntar nada; si algún
+    # día pregunta, sin terminal falla y la CI lo ve.
+    deb) DEBIAN_FRONTEND=noninteractive apt-get install -y "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
     arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
   esac
   tail -n 6 "$WORK/pkg.log" | redact | sed 's/^/  | /'
@@ -225,7 +225,7 @@ pkg_remove
 ! active || fail "krakenos sigue activo tras desinstalar"
 [[ -d /var/lib/krakenos ]] || fail "desinstalar borró /var/lib/krakenos (solo purge debe hacerlo)"
 [[ ! -e /usr/lib/krakenos ]] || fail "/usr/lib/krakenos sigue existiendo tras desinstalar"
-[[ -f $ENV_FILE ]] || fail "desinstalar borró $ENV_FILE (es conffile: solo purge)"
+[[ -f $ENV_FILE ]] || fail "desinstalar borró $ENV_FILE (lo crea el postinst y solo purge debe borrarlo)"
 ok "servicio parado; datos y configuración conservados; código retirado"
 # (c) los enlaces *.wants de la unidad y de los timers no quedan colgando.
 colgando="$(find /etc/systemd/system -xtype l -name 'krakenos*' 2> /dev/null || true)"

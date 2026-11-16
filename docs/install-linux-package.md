@@ -147,9 +147,11 @@ Construye (o consigue) el `.deb` nuevo e instálalo encima:
 sudo apt install ./krakenos_<versión nueva>_amd64.deb
 ```
 
-Los datos, las claves y el certificado se conservan, y el servicio se reinicia solo. **Un
-`/etc/krakenos/krakenos.env` que hayas editado se conserva**: si la versión nueva trajera otro,
-`apt` te preguntaría qué hacer. Una actualización no vuelve a tocar el HTTPS ni los temporizadores
+Los datos, las claves y el certificado se conservan, y el servicio se reinicia solo. **Tu
+`/etc/krakenos/krakenos.env` no se toca**: el paquete solo lo crea si no existe y no es un archivo
+de configuración de dpkg, así que `apt` no te pregunta nada. Si una versión nueva añade variables,
+sin ellas rige su valor por defecto; la plantilla de referencia con todas queda en
+`/usr/share/krakenos/krakenos.env`. Una actualización no vuelve a tocar el HTTPS ni los temporizadores
 de renovación del certificado, salvo que HTTPS hubiera quedado pendiente de una instalación fallida:
 entonces se reintenta (ver «Si la instalación no pudo configurar HTTPS»).
 

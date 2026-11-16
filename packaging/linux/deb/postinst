@@ -9,6 +9,12 @@ PENDIENTE=/etc/krakenos/.https-pendiente
 
 case "$1" in
   configure)
+    # krakenos.env NO es conffile: `tls auto` lo reescribe en toda instalación y dpkg preguntaría en
+    # cada versión. Se crea aquí desde la plantilla (root, 0600) y nunca se pisa.
+    install -d -m 0755 /etc/krakenos
+    if [ ! -e /etc/krakenos/krakenos.env ]; then
+      install -m 0600 -o root -g root /usr/share/krakenos/krakenos.env /etc/krakenos/krakenos.env
+    fi
     systemd-sysusers krakenos.conf
     systemd-tmpfiles --create krakenos.conf
 
