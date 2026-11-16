@@ -145,6 +145,7 @@ export class RtspCameraManager implements CameraManager {
   async getMotionFrame(id: string): Promise<Uint8Array | null> {
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
+    this.requireFfmpeg();
     const exec = this.opts.motionExec ?? this.opts.exec;
     const { stdout, code } = await exec(
       buildMotionFrameArgs(camera.rtspUrl, MOTION_FRAME_WIDTH, MOTION_FRAME_HEIGHT, {
@@ -175,6 +176,7 @@ export class RtspCameraManager implements CameraManager {
   async recordClip(id: string, durationSec: number): Promise<Uint8Array | null> {
     const camera = this.getCameras().find((c) => c.id === id);
     if (!camera || camera.enabled === false) return null;
+    this.requireFfmpeg();
     const exec = this.opts.clipExec ?? this.opts.exec;
     const { stdout, code } = await exec(
       buildClipArgs(camera.rtspUrl, durationSec, { transport: this.opts.transport }),

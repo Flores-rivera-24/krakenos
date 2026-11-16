@@ -4,7 +4,8 @@ import bcrypt from 'bcrypt';
 import type { FastifyPluginAsync } from 'fastify';
 import { sendSession } from '../../auth/session-cookie.js';
 import { AuthService } from '../auth/auth.service.js';
-import { setupToken } from './setup-token.js';
+import { agentPaths } from '../../config/paths.js';
+import { removeSetupTokenFile, setupToken } from './setup-token.js';
 import { setupInitSchema, setupStatusSchema } from './setup.schemas.js';
 
 /** ¿El error es una violación de unicidad de Prisma (P2002)? */
@@ -50,7 +51,13 @@ export async function clearStaleSetupClaim(prisma: SetupClaimPrisma): Promise<bo
   return count > 0;
 }
 
-export const setupRoutes: FastifyPluginAsync = async (app) => {
+export interface SetupRoutesOptions {
+  /** Fichero del token de setup (se borra al crear el admin); por defecto el del estado real. */
+  setupTokenFile?: string;
+}
+
+export const setupRoutes: FastifyPluginAsync<SetupRoutesOptions> = async (app, opts) => {
+  const tokenFile = opts.setupTokenFile ?? agentPaths().setupTokenFile;
   const auth = new AuthService(app);
 
   app.get('/status', { schema: setupStatusSchema }, async () => {
@@ -134,6 +141,9 @@ export const setupRoutes: FastifyPluginAsync = async (app) => {
 
       // Admin creado: el token de setup ya no sirve (de un solo uso).
       setupToken.clear();
+      await removeSetupTokenFile(tokenFile).catch((err: unknown) =>
+        app.log.warn({ err }, 'No se pudo borrar el fichero del token de setup'),
+      );
 
       // Inicia sesión inmediatamente: refresh en cookie httpOnly, access en el cuerpo (US-91).
       const session = await auth.login(email, password);

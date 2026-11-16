@@ -3,7 +3,6 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Mock del cliente API: capturamos las llamadas sin tocar la red.
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
   // sigan valiendo tal cual: es el mismo GET, con la forma comprobada.
@@ -19,11 +18,19 @@ const apiMock = vi.hoisted(() => {
 });
 vi.mock('@/lib/api', () => ({
   api: apiMock,
-  ApiRequestError: class ApiRequestError extends Error {},
+  ApiRequestError: class ApiRequestError extends Error {
+    constructor(
+      readonly status: number,
+      readonly body: { code: string; message: string },
+    ) {
+      super(body.message);
+    }
+  },
 }));
 
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Toaster } from '@/components/ui/toast';
+import { ApiRequestError } from '@/lib/api';
 import { changeLocale, setLocale } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import { useToastStore } from '@/store/toast.store';
@@ -66,6 +73,35 @@ describe('DeviceDetailSlideover', () => {
     apiMock.put.mockReset().mockResolvedValue(undefined);
     apiMock.del.mockReset().mockResolvedValue(undefined);
     useToastStore.setState({ toasts: [] });
+  });
+
+  it('un rechazo sin mensaje se pinta con el texto base, no vacío', async () => {
+    asRole('viewer');
+    apiMock.patch.mockRejectedValue(
+      new ApiRequestError(409, { code: 'X_DESCONOCIDO', message: '' }),
+    );
+    render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('No se pudo guardar (error 409).');
+  });
+
+  it('en inglés el error del servidor se traduce por su código', async () => {
+    asRole('viewer');
+    apiMock.patch.mockRejectedValue(
+      new ApiRequestError(400, { code: 'VALIDATION', message: 'Revisa los datos' }),
+    );
+    await act(async () => {
+      await changeLocale('en', { persist: false });
+    });
+    try {
+      render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
+      await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
+      await waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('Check the details and try again.'),
+      );
+    } finally {
+      setLocale('es', { persist: false });
+    }
   });
 
   it('muestra los datos del dispositivo', () => {

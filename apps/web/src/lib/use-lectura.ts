@@ -83,6 +83,7 @@ export function useLectura<T>(
   }, [...deps, enabled, intento]);
 
   const reintentar = useCallback(() => {
+    setFailed(false);
     setEnVuelo(true);
     setIntento((n) => n + 1);
   }, []);

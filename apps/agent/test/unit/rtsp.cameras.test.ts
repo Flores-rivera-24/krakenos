@@ -54,6 +54,19 @@ describe('RtspCameraManager', () => {
     expect(ff.calls[0]).toContain('rtsp://u:p@10.0.0.5/s1');
   });
 
+  it('sin ffmpeg, movimiento y grabación rechazan como getSnapshot y no llaman a exec', async () => {
+    const sinFfmpeg = new RtspCameraManager({
+      cameras: CAMERAS,
+      exec: ff.exec,
+      ffmpegSetup: () => 'Instala ffmpeg.',
+    });
+    const esperado = { code: 'FFMPEG_REQUIRES_SETUP' };
+    await expect(sinFfmpeg.getSnapshot('cam-entrada')).rejects.toMatchObject(esperado);
+    await expect(sinFfmpeg.getMotionFrame('cam-entrada')).rejects.toMatchObject(esperado);
+    await expect(sinFfmpeg.recordClip('cam-entrada', 5)).rejects.toMatchObject(esperado);
+    expect(ff.calls).toEqual([]);
+  });
+
   it('devuelve null si la cámara no existe o está deshabilitada', async () => {
     expect(await cameras.getSnapshot('no-existe')).toBeNull();
     expect(await cameras.getSnapshot('cam-garaje')).toBeNull();

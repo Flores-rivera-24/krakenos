@@ -12,7 +12,8 @@ import { Label } from '@/components/ui/label';
 import { Slideover } from '@/components/ui/slideover';
 import { Switch } from '@/components/ui/switch';
 import { FormError } from '@/components/ui/form-error';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/firewall';
 
@@ -69,7 +70,7 @@ export function FirewallRuleSlideover({ rule, canEdit, onClose, onSaved }: Props
       onSaved();
       onClose();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : t('common.saveError'));
+      setError(describeError(err, t('common.saveError')));
     } finally {
       setSaving(false);
     }

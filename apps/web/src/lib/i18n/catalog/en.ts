@@ -431,6 +431,9 @@ export const en: Record<TranslationKey, string> = {
     'Give your phone or computer a name and press “Add device”: you’ll get a QR to connect it to your network from anywhere with the WireGuard app.',
   'vpn.delete': 'Delete',
   'vpn.deleteLabel': 'Delete {name}',
+  'vpn.adminOnly': 'Only the administrator sees the VPN and its devices',
+  'vpn.adminOnlyDesc':
+    'The VPN decides who can reach the home network from outside, so seeing and changing it is limited to whoever administers the installation.',
 
   // --- Tailscale + acceso móvil (US-215) ---
   'vpn.tailscale.title': 'Remote access via Tailscale',
@@ -676,6 +679,9 @@ export const en: Record<TranslationKey, string> = {
     'Create a rule above to, for example, prioritize video calls or limit a download.',
   'qos.delete': 'Delete',
   'qos.deleteLabel': 'Delete rule {name}',
+  'qos.adminOnly': 'Only the administrator sees the QoS rules',
+  'qos.adminOnlyDesc':
+    'The rules decide how much priority and bandwidth each device on the home network gets, so seeing and changing them is limited to whoever administers the installation.',
   'qos.toggleError': 'Could not update {name}',
   'qos.toggleLabel': 'Enable rule {name}',
   'qos.loadError': 'Could not load the rules',
@@ -900,6 +906,8 @@ export const en: Record<TranslationKey, string> = {
   'inventory.col.lastSeen': 'Last seen',
   'inventory.searchPlaceholder': 'Search…',
   'inventory.searchLabel': 'Search devices',
+  'inventory.tabLabel': 'Show',
+  'inventory.viewLabel': 'View',
   'inventory.tab.all': 'All',
   'inventory.tab.groups': 'Groups',
   'inventory.view.grid': 'Grid view',
@@ -2024,6 +2032,7 @@ export const en: Record<TranslationKey, string> = {
   'settings.system.timezone': 'Time zone',
   'settings.system.scanInterval': 'Scan interval',
   'settings.system.sec30': '30 seconds',
+  'settings.system.secN': '{n} seconds',
   'settings.system.min1': '1 minute',
   'settings.system.min5': '5 minutes',
   'settings.system.min10': '10 minutes',
@@ -2066,6 +2075,8 @@ export const en: Record<TranslationKey, string> = {
   'settings.retention.d7': '7 days',
   'settings.retention.d30': '30 days',
   'settings.retention.d90': '90 days',
+  'settings.retention.dN.one': '1 day',
+  'settings.retention.dN.other': '{n} days',
   'settings.retention.d180': '180 days',
   // Account card
   'settings.account.title': 'Account',

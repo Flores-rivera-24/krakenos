@@ -16,6 +16,7 @@ import { HelpHint } from '@/components/ui/help-hint';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
+import { Callout } from '@/components/ui/callout';
 import { ErrorBanner } from '@/components/ui/error-banner';
 import { SkeletonRows } from '@/components/ui/skeleton';
 import { api } from '@/lib/api';
@@ -46,6 +47,8 @@ function formatLimit(kbps: number): string {
 export function QosPage() {
   const t = useT();
   const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
+  // Con el rol aún sin cargar sí se pide (como el resto de páginas); con otro rol, no.
+  const notAdmin = useAuthStore((s) => s.user != null && s.user.role !== 'admin');
   const priorityLabel: Record<QosPriority, string> = {
     high: t('qos.priority.high'),
     normal: t('qos.priority.normal'),
@@ -60,12 +63,20 @@ export function QosPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // La carga falló: «sin reglas» no es un hecho comprobado, así que no se pinta el estado vacío.
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const load = () =>
     api
       .getList<QosRule>('/qos/rules')
-      .then(setRules)
-      .catch((err) => setError(describeError(err, t('qos.loadError'))));
+      .then((list) => {
+        setRules(list);
+        setLoadFailed(false);
+      })
+      .catch((err) => {
+        setLoadFailed(true);
+        setError(describeError(err, t('qos.loadError')));
+      });
 
   const loadCapability = () =>
     api
@@ -74,11 +85,12 @@ export function QosPage() {
       .catch((err) => setError(describeError(err, t('qos.loadError'))));
 
   useEffect(() => {
-    // `/qos/status` es solo admin como el resto del módulo: a otro rol no se le pide.
+    // Todo el módulo de QoS es solo admin en el servidor: a otro rol ni se le pide.
+    if (notAdmin) return;
     void Promise.all([load(), isAdmin ? loadCapability() : Promise.resolve()]).finally(() =>
       setLoading(false),
     );
-  }, []);
+  }, [notAdmin, isAdmin]);
 
   // Solo con un equipo que puede aplicar QoS se ofrece crear, activar o eliminar reglas: si no,
   // cada control acabaría en error. Sin saberlo todavía, tampoco.
@@ -137,7 +149,7 @@ export function QosPage() {
         <p className="text-sm text-muted-foreground">{t('qos.subtitle')}</p>
       </div>
 
-      {error && <ErrorBanner>{error}</ErrorBanner>}
+      {error && !notAdmin && <ErrorBanner>{error}</ErrorBanner>}
 
       {isAdmin && capability && !canConfigure && (
         <GatewayCapabilityNotice capability={capability} feature="qos" />
@@ -230,70 +242,87 @@ export function QosPage() {
             <CardTitle className="text-base text-foreground">{t('qos.rules')}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto rounded-md border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary text-secondary-foreground">
-                  <tr>
-                    <th className="px-3 py-2 text-left">{t('qos.col.active')}</th>
-                    <th className="px-3 py-2 text-left">{t('qos.col.name')}</th>
-                    <th className="px-3 py-2 text-left">{t('qos.col.target')}</th>
-                    <th className="px-3 py-2 text-left">{t('qos.col.priority')}</th>
-                    <th className="px-3 py-2 text-left">↓</th>
-                    <th className="px-3 py-2 text-left">↑</th>
-                    {isAdmin && <th className="px-3 py-2 text-right">{t('qos.col.action')}</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <SkeletonRows cols={isAdmin ? 7 : 6} />
-                  ) : rules.length === 0 ? (
+            {notAdmin ? (
+              <Callout variant="info" standing title={t('qos.adminOnly')}>
+                {t('qos.adminOnlyDesc')}
+              </Callout>
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-border">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary text-secondary-foreground">
                     <tr>
-                      <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
-                        <p className="text-kr-muted">{t('qos.empty.title')}</p>
-                        <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
-                          {t('qos.empty.desc')} {canConfigure && t('qos.empty.cta')}
-                        </p>
-                      </td>
+                      <th className="px-3 py-2 text-left">{t('qos.col.active')}</th>
+                      <th className="px-3 py-2 text-left">{t('qos.col.name')}</th>
+                      <th className="px-3 py-2 text-left">{t('qos.col.target')}</th>
+                      <th className="px-3 py-2 text-left">{t('qos.col.priority')}</th>
+                      <th className="px-3 py-2 text-left">↓</th>
+                      <th className="px-3 py-2 text-left">↑</th>
+                      {isAdmin && <th className="px-3 py-2 text-right">{t('qos.col.action')}</th>}
                     </tr>
-                  ) : (
-                    rules.map((r) => (
-                      <tr key={r.id} className="border-t border-border">
-                        <td className="px-3 py-2">
-                          <OptimisticSwitch
-                            checked={r.enabled}
-                            onToggle={(next) => toggleRule(r, next)}
-                            disabled={!canConfigure}
-                            errorMessage={t('qos.toggleError', { name: r.name })}
-                            aria-label={t('qos.toggleLabel', { name: r.name })}
-                          />
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <SkeletonRows cols={isAdmin ? 7 : 6} />
+                    ) : rules.length === 0 && loadFailed ? (
+                      <tr>
+                        <td
+                          colSpan={isAdmin ? 7 : 6}
+                          className="px-3 py-8 text-center text-kr-muted"
+                        >
+                          {t('qos.loadError')}
                         </td>
-                        <td className="px-3 py-2">{r.name}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
-                        <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
-                          {priorityLabel[r.priority]}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs">
-                          {formatLimit(r.downloadKbps)}
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs">{formatLimit(r.uploadKbps)}</td>
-                        {isAdmin && (
-                          <td className="px-3 py-2 text-right">
-                            {canConfigure && (
-                              <DeleteButton
-                                onDelete={() => removeRule(r.id)}
-                                aria-label={t('qos.deleteLabel', { name: r.name })}
-                              >
-                                {t('qos.delete')}
-                              </DeleteButton>
-                            )}
-                          </td>
-                        )}
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ) : rules.length === 0 ? (
+                      <tr>
+                        <td colSpan={isAdmin ? 7 : 6} className="px-3 py-8 text-center">
+                          <p className="text-kr-muted">{t('qos.empty.title')}</p>
+                          <p className="mx-auto mt-1 max-w-md text-kr-xs text-kr-secondary">
+                            {t('qos.empty.desc')} {canConfigure && t('qos.empty.cta')}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      rules.map((r) => (
+                        <tr key={r.id} className="border-t border-border">
+                          <td className="px-3 py-2">
+                            <OptimisticSwitch
+                              checked={r.enabled}
+                              onToggle={(next) => toggleRule(r, next)}
+                              disabled={!canConfigure}
+                              errorMessage={t('qos.toggleError', { name: r.name })}
+                              aria-label={t('qos.toggleLabel', { name: r.name })}
+                            />
+                          </td>
+                          <td className="px-3 py-2">{r.name}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{r.target}</td>
+                          <td className={`px-3 py-2 ${PRIORITY_CLASS[r.priority]}`}>
+                            {priorityLabel[r.priority]}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {formatLimit(r.downloadKbps)}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-xs">
+                            {formatLimit(r.uploadKbps)}
+                          </td>
+                          {isAdmin && (
+                            <td className="px-3 py-2 text-right">
+                              {canConfigure && (
+                                <DeleteButton
+                                  onDelete={() => removeRule(r.id)}
+                                  aria-label={t('qos.deleteLabel', { name: r.name })}
+                                >
+                                  {t('qos.delete')}
+                                </DeleteButton>
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

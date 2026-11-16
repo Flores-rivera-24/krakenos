@@ -28,6 +28,8 @@ export const esInventario = {
   'inventory.col.lastSeen': 'Visto por última vez',
   'inventory.searchPlaceholder': 'Buscar…',
   'inventory.searchLabel': 'Buscar dispositivos',
+  'inventory.tabLabel': 'Mostrar',
+  'inventory.viewLabel': 'Vista',
   'inventory.tab.all': 'Todos',
   'inventory.tab.groups': 'Grupos',
   'inventory.view.grid': 'Vista de cuadrícula',

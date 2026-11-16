@@ -110,15 +110,15 @@ Un posicionamiento honesto declara también lo que no se es:
 KrakenOS y Home Assistant **conviven, no compiten**. HA es imbatible en amplitud de integraciones;
 KrakenOS aporta lo que HA no tiene de serie:
 
-| | Home Assistant | KrakenOS |
-|---|---|---|
-| Integraciones IoT (amplitud) | **~2.800**, comunidad enorme | las esenciales, guiadas |
-| Cobertura WiFi + plano de la casa | — | **✓** (heatmap RF + import de plano) |
-| Control parental de **red** | parcial (add-ons) | **✓** (por dispositivo, horarios, pausa) |
-| Presencia + bienestar por persona | trackers | **✓** (WiFi local + privacidad por rol) |
-| Seguridad de red (inventario/DNS/VLAN/QoS/firewall/VPN) | parcial | **✓** integrado |
-| Automatizaciones avanzadas | **✓✓** (YAML/Node-RED) | básicas por frases |
-| Cámaras con ML | vía Frigate | básico → **Frigate** |
+|                                                         | Home Assistant               | KrakenOS                                 |
+| ------------------------------------------------------- | ---------------------------- | ---------------------------------------- |
+| Integraciones IoT (amplitud)                            | **~2.800**, comunidad enorme | las esenciales, guiadas                  |
+| Cobertura WiFi + plano de la casa                       | —                            | **✓** (heatmap RF + import de plano)     |
+| Control parental de **red**                             | parcial (add-ons)            | **✓** (por dispositivo, horarios, pausa) |
+| Presencia + bienestar por persona                       | trackers                     | **✓** (WiFi local + privacidad por rol)  |
+| Seguridad de red (inventario/DNS/VLAN/QoS/firewall/VPN) | parcial                      | **✓** integrado                          |
+| Automatizaciones avanzadas                              | **✓✓** (YAML/Node-RED)       | básicas por frases                       |
+| Cámaras con ML                                          | vía Frigate                  | básico → **Frigate**                     |
 
 **Cómo conviven:** KrakenOS publica el estado del hogar (luces, enchufes, energía, modo, alarma) a un
 broker MQTT local que HA descubre solo (**MQTT Discovery**), y expone además lo que HA no tiene de
@@ -209,12 +209,12 @@ curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scri
   | sudo bash -s -- --with-all
 ```
 
-| Bandera | Qué habilita |
-|---|---|
-| `--with-helper` | helper privilegiado + sudoers → **VPN WireGuard, firewall, QoS** |
-| `--with-ffmpeg` | `ffmpeg` → **cámaras RTSP** (vídeo en vivo, movimiento, grabación) |
-| `--with-deps` | deps de integraciones (`node-ssh`, `mqtt`, `net-snmp`, `ws`) → routers por SSH, zigbee2mqtt, SNMP, Matter |
-| `--with-all` | las tres |
+| Bandera         | Qué habilita                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| `--with-helper` | helper privilegiado + sudoers → **VPN WireGuard, firewall, QoS**                                          |
+| `--with-ffmpeg` | `ffmpeg` → **cámaras RTSP** (vídeo en vivo, movimiento, grabación)                                        |
+| `--with-deps`   | deps de integraciones (`node-ssh`, `mqtt`, `net-snmp`, `ws`) → routers por SSH, zigbee2mqtt, SNMP, Matter |
+| `--with-all`    | las tres                                                                                                  |
 
 Sin banderas, KrakenOS se instala y funciona, pero esas funciones concretas no operan
 hasta que las añadas (re-ejecuta el instalador con la bandera que falte). Después:
@@ -227,6 +227,10 @@ sudo bash /opt/krakenos/scripts/install.sh --uninstall   # desinstalar (conserva
 > `--update` reusa el mismo camino que el botón «Actualizar ahora» de la app
 > (backup → apply → migrate → restart → healthcheck, con rollback) y **conserva las deps
 > opcionales** que instalaste. Detalle en [`docs/updates.md`](docs/updates.md).
+
+> Alternativa sin Node ni `git` en el servidor: el **paquete `.deb`** (Debian/Ubuntu, amd64 y arm64),
+> con su propio Node. Aún no se descarga de ninguna página de versiones: se construye desde este
+> repositorio. Guía en [`docs/install-linux-package.md`](docs/install-linux-package.md).
 
 > El smoke del instalador corre en CI sobre un Debian limpio en cada push. Las partes
 > privilegiadas (VPN/firewall/QoS/cámaras) se verifican con hardware real.
@@ -260,7 +264,6 @@ instala su certificado público una vez (Ajustes → Sistema → Conexión segur
 aceptándose, pero es un alias obsoleto de `local`.
 
 Instalación manual: `cd apps/agent && pnpm ca:local` y, en `.env`, `HTTPS_ENABLED=true`.
-
 
 ### Docker (demo / evaluación rápida)
 
@@ -321,15 +324,15 @@ mismas guías están internalizadas en la app).
 
 Gobiernan inventario, tráfico, bloqueo y WiFi del router/switch.
 
-| `DRIVER_KIND` | Hardware | Variables clave | Dep | Guía |
-|---|---|---|---|---|
-| `mock` | — (desarrollo) | — | — | — |
-| `openwrt` | OpenWrt (SSH+UCI) | `DRIVER_HOST`, `OPENWRT_*` | `node-ssh` | `docs/openwrt-ax21-setup.md` |
-| `pfsense` | pfSense (REST API v2) | `DRIVER_HOST`, `PFSENSE_API_KEY` | — | — |
-| `unifi` | Ubiquiti UniFi (REST local) | `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD` | — | `docs/unifi-setup.md` |
-| `mikrotik` | RouterOS 7 (REST o SSH) | `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD` | `node-ssh` (SSH) | `docs/mikrotik-setup.md` |
-| `omada` | TP-Link Omada (Controller local) | `OMADA_URL`, `OMADA_USERNAME`, `OMADA_PASSWORD` | — | `docs/omada-setup.md` |
-| `asus` | ASUS / Merlin (`appGet.cgi`) | `ASUS_HOST`, `ASUS_USERNAME`, `ASUS_PASSWORD` | — | `docs/asus-setup.md` |
+| `DRIVER_KIND` | Hardware                         | Variables clave                                       | Dep              | Guía                         |
+| ------------- | -------------------------------- | ----------------------------------------------------- | ---------------- | ---------------------------- |
+| `mock`        | — (desarrollo)                   | —                                                     | —                | —                            |
+| `openwrt`     | OpenWrt (SSH+UCI)                | `DRIVER_HOST`, `OPENWRT_*`                            | `node-ssh`       | `docs/openwrt-ax21-setup.md` |
+| `pfsense`     | pfSense (REST API v2)            | `DRIVER_HOST`, `PFSENSE_API_KEY`                      | —                | —                            |
+| `unifi`       | Ubiquiti UniFi (REST local)      | `UNIFI_URL`, `UNIFI_USERNAME`, `UNIFI_PASSWORD`       | —                | `docs/unifi-setup.md`        |
+| `mikrotik`    | RouterOS 7 (REST o SSH)          | `MIKROTIK_HOST`, `MIKROTIK_USER`, `MIKROTIK_PASSWORD` | `node-ssh` (SSH) | `docs/mikrotik-setup.md`     |
+| `omada`       | TP-Link Omada (Controller local) | `OMADA_URL`, `OMADA_USERNAME`, `OMADA_PASSWORD`       | —                | `docs/omada-setup.md`        |
+| `asus`        | ASUS / Merlin (`appGet.cgi`)     | `ASUS_HOST`, `ASUS_USERNAME`, `ASUS_PASSWORD`         | —                | `docs/asus-setup.md`         |
 
 > pfSense no gestiona WiFi (los AP van aparte).
 
@@ -337,17 +340,17 @@ Gobiernan inventario, tráfico, bloqueo y WiFi del router/switch.
 
 Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIND=hue,govee,kasa`.
 
-| `IOT_KIND` | Ecosistema | Variables clave | Dep | Guía |
-|---|---|---|---|---|
-| `mqtt` | **MQTT Discovery** — cualquier aparato que se anuncie (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI, zigbee2mqtt) | `MQTT_DISCOVERY_URL` | `mqtt` | `docs/mqtt-discovery-setup.md` |
-| `zigbee` | zigbee2mqtt (MQTT) | `ZIGBEE2MQTT_URL` | `mqtt` | — |
-| `matter` | python-matter-server (WS) | `MATTER_SERVER_URL` | `ws` | — |
-| `hue` | Philips Hue (CLIP v2 local) | `HUE_BRIDGE_URL`, `HUE_APP_KEY` | — | `docs/hue-setup.md` |
-| `govee` | Govee (API LAN/UDP) | `GOVEE_LISTEN_PORT` | — | `docs/govee-setup.md` |
-| `tuya` | Tuya local (TCP+AES) | `TUYA_CONFIG_PATH` | `tuyapi` | `docs/tuya-setup.md` |
-| `kasa` | TP-Link Kasa/Tapo (local) | `KASA_DEVICES`, `TAPO_EMAIL`, `TAPO_PASSWORD` | — | `docs/kasa-tapo-setup.md` |
-| `shelly` | Shelly (REST Gen1 / RPC Gen2) | `SHELLY_DEVICES` | — | `docs/shelly-setup.md` |
-| `meross` | Meross (MQTT local) | `MEROSS_BROKER_HOST`, `MEROSS_DEVICES` | `mqtt` | `docs/meross-setup.md` |
+| `IOT_KIND` | Ecosistema                                                                                                     | Variables clave                               | Dep      | Guía                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | -------- | ------------------------------ |
+| `mqtt`     | **MQTT Discovery** — cualquier aparato que se anuncie (ESPHome, Tasmota, OpenBeken, Z-Wave JS UI, zigbee2mqtt) | `MQTT_DISCOVERY_URL`                          | `mqtt`   | `docs/mqtt-discovery-setup.md` |
+| `zigbee`   | zigbee2mqtt (MQTT)                                                                                             | `ZIGBEE2MQTT_URL`                             | `mqtt`   | —                              |
+| `matter`   | python-matter-server (WS)                                                                                      | `MATTER_SERVER_URL`                           | `ws`     | —                              |
+| `hue`      | Philips Hue (CLIP v2 local)                                                                                    | `HUE_BRIDGE_URL`, `HUE_APP_KEY`               | —        | `docs/hue-setup.md`            |
+| `govee`    | Govee (API LAN/UDP)                                                                                            | `GOVEE_LISTEN_PORT`                           | —        | `docs/govee-setup.md`          |
+| `tuya`     | Tuya local (TCP+AES)                                                                                           | `TUYA_CONFIG_PATH`                            | `tuyapi` | `docs/tuya-setup.md`           |
+| `kasa`     | TP-Link Kasa/Tapo (local)                                                                                      | `KASA_DEVICES`, `TAPO_EMAIL`, `TAPO_PASSWORD` | —        | `docs/kasa-tapo-setup.md`      |
+| `shelly`   | Shelly (REST Gen1 / RPC Gen2)                                                                                  | `SHELLY_DEVICES`                              | —        | `docs/shelly-setup.md`         |
+| `meross`   | Meross (MQTT local)                                                                                            | `MEROSS_BROKER_HOST`, `MEROSS_DEVICES`        | `mqtt`   | `docs/meross-setup.md`         |
 
 > **`switchbot` ya no existe.** El backend pedía la API de **nube** de SwitchBot con el host cambiado
 > por una IP de la LAN: no hay API local en el Hub Mini ni en el Hub 2, así que no podía funcionar.
@@ -358,14 +361,14 @@ Luces, enchufes y sensores. Admite **lista** para combinar ecosistemas: `IOT_KIN
 
 ### Servicios de red
 
-| Servicio | Activar (`.env`) | Vía | Notas |
-|---|---|---|---|
-| VPN WireGuard | `VPN_KIND=wireguard` + `WG_*` | helper sudoers | requiere `wg`/`wg-quick` |
-| Firewall | `FIREWALL_KIND=iptables` + `FW_*` | helper sudoers | cadena dedicada `KRAKENOS` |
-| QoS | `QOS_KIND=tc` + `TC_*` | helper sudoers | jerarquía HTB |
-| DNS / Pi-hole | `DNS_KIND=pihole` + `PIHOLE_URL`, `PIHOLE_PASSWORD` | HTTP (REST v6) | sin helper |
-| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*` | SNMP | `net-snmp` |
-| Cámaras | `CAMERAS_KIND=rtsp` + `CAMERAS_CONFIG` | ffmpeg | inventario + snapshot |
+| Servicio       | Activar (`.env`)                                    | Vía            | Notas                      |
+| -------------- | --------------------------------------------------- | -------------- | -------------------------- |
+| VPN WireGuard  | `VPN_KIND=wireguard` + `WG_*`                       | helper sudoers | requiere `wg`/`wg-quick`   |
+| Firewall       | `FIREWALL_KIND=iptables` + `FW_*`                   | helper sudoers | cadena dedicada `KRAKENOS` |
+| QoS            | `QOS_KIND=tc` + `TC_*`                              | helper sudoers | jerarquía HTB              |
+| DNS / Pi-hole  | `DNS_KIND=pihole` + `PIHOLE_URL`, `PIHOLE_PASSWORD` | HTTP (REST v6) | sin helper                 |
+| VLANs (switch) | `VLAN_KIND=switch` + `VLAN_SWITCH_*`                | SNMP           | `net-snmp`                 |
+| Cámaras        | `CAMERAS_KIND=rtsp` + `CAMERAS_CONFIG`              | ffmpeg         | inventario + snapshot      |
 
 ### Operaciones privilegiadas (helper sudoers)
 
@@ -424,24 +427,24 @@ con mocks y recorre los flujos clave por la UI; corre en su propio job de CI (ve
   semgrep** (reglas por defecto + JS/TS, acotado a `src/`; **bloquea** ante hallazgos).
 
 Además: **CodeQL** (análisis semántico de seguridad) en cada push, y un workflow **Docker** que
-construye la imagen y hace un *smoke test* de `/health` cuando cambia el empaquetado.
+construye la imagen y hace un _smoke test_ de `/health` cuando cambia el empaquetado.
 
 ---
 
 ## Scripts raíz
 
-| Script | Acción |
-|---|---|
-| `pnpm dev` | agente + web en paralelo (hot-reload) |
-| `pnpm dev:agent` | solo agente en watch |
-| `pnpm dev:web` | solo web (requiere el agente) |
-| `pnpm build` | compilar/bundlear todos los paquetes |
-| `pnpm prod` | producción en un comando (build + migrar + arrancar API+UI) |
-| `pnpm test` | tests (Vitest) de agente y web |
-| `pnpm typecheck` | typecheck de todo el monorepo |
-| `pnpm lint` | ESLint |
-| `pnpm format` | Prettier (formatea en lugar); la CI comprueba el formato con `pnpm format:check`, así que ejecútalo antes de commitear |
-| `pnpm clean` | limpiar dist/, node_modules |
+| Script           | Acción                                                                                                                 |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`       | agente + web en paralelo (hot-reload)                                                                                  |
+| `pnpm dev:agent` | solo agente en watch                                                                                                   |
+| `pnpm dev:web`   | solo web (requiere el agente)                                                                                          |
+| `pnpm build`     | compilar/bundlear todos los paquetes                                                                                   |
+| `pnpm prod`      | producción en un comando (build + migrar + arrancar API+UI)                                                            |
+| `pnpm test`      | tests (Vitest) de agente y web                                                                                         |
+| `pnpm typecheck` | typecheck de todo el monorepo                                                                                          |
+| `pnpm lint`      | ESLint                                                                                                                 |
+| `pnpm format`    | Prettier (formatea en lugar); la CI comprueba el formato con `pnpm format:check`, así que ejecútalo antes de commitear |
+| `pnpm clean`     | limpiar dist/, node_modules                                                                                            |
 
 ---
 
@@ -460,7 +463,7 @@ En corto, y sin que esto sustituya a la licencia:
 - **Puedes estudiarlo, modificarlo y compartirlo.** Si distribuyes tu versión —o la ofreces por red—,
   tienes que publicar tu código bajo la misma licencia y dar acceso a él a quien la use. Eso es la
   §13 de la AGPL, y es la razón de elegirla: que este proyecto no pueda cerrarse.
-- **La app lo cumple de serie:** Ajustes → Sistema → *Acerca de* enseña la licencia y el enlace al
+- **La app lo cumple de serie:** Ajustes → Sistema → _Acerca de_ enseña la licencia y el enlace al
   código fuente a cualquiera que la use, no solo al administrador.
 
 Las **dependencias de terceros conservan sus propias licencias** (MIT, ISC, Apache-2.0, BSD, MPL-2.0

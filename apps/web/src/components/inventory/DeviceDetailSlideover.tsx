@@ -27,7 +27,7 @@ import { Sparkline } from '@/components/ui/sparkline';
 import { StatusDot } from '@/components/ui/status-dot';
 import { Textarea } from '@/components/ui/textarea';
 import { FormError } from '@/components/ui/form-error';
-import { ApiRequestError, api } from '@/lib/api';
+import { api } from '@/lib/api';
 import {
   DEVICE_ICON_LABEL_KEYS,
   DEVICE_TYPES,
@@ -191,7 +191,7 @@ export function DeviceDetailSlideover({ device, onClose }: Props) {
       toast.success(t('device.saved'));
       onClose();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.body.message : t('common.saveError'));
+      setError(describeError(err, t('common.saveError')));
     } finally {
       setSaving(false);
     }

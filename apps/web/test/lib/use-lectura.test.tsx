@@ -52,6 +52,39 @@ describe('useLectura', () => {
     expect(leer).toHaveBeenCalledTimes(2);
   });
 
+  it('reintentar limpia el fallo mientras vuelve a pedir', async () => {
+    let resolver: (v: string) => void = () => {};
+    const leer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('x'))
+      .mockReturnValueOnce(new Promise<string>((r) => (resolver = r)));
+    const { result } = renderHook(() => useLectura(leer, []));
+    await waitFor(() => expect(result.current.failed).toBe(true));
+    act(() => result.current.reintentar());
+    expect(result.current.failed).toBe(false);
+    expect(result.current.loading).toBe(true);
+    await act(async () => resolver('ok'));
+    await waitFor(() => expect(result.current.data).toBe('ok'));
+    expect(result.current.failed).toBe(false);
+  });
+
+  it('dos reintentos en actos separados lanzan dos peticiones y solo aplica la última', async () => {
+    const resolvers: Array<(v: string) => void> = [];
+    const leer = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('x'))
+      .mockImplementation(() => new Promise<string>((r) => resolvers.push(r)));
+    const { result } = renderHook(() => useLectura(leer, []));
+    await waitFor(() => expect(result.current.failed).toBe(true));
+    act(() => result.current.reintentar());
+    act(() => result.current.reintentar());
+    expect(leer).toHaveBeenCalledTimes(3);
+    // La primera respuesta llega tarde, ya descartada: no pisa a la segunda.
+    await act(async () => resolvers[1]?.('nuevo'));
+    await act(async () => resolvers[0]?.('viejo'));
+    expect(result.current.data).toBe('nuevo');
+  });
+
   it('reintentar que vuelve a fallar: failed sigue true y loading vuelve a false', async () => {
     const leer = vi.fn().mockRejectedValue(new Error('x'));
     const { result } = renderHook(() => useLectura(leer, []));

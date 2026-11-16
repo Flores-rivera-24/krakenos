@@ -1,5 +1,5 @@
 import type { GatewayCapability, QosRule } from '@krakenos/types';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { useEstadosStore } from '@/lib/integration-states';
 import userEvent from '@testing-library/user-event';
@@ -96,12 +96,32 @@ describe('QosPage', () => {
     );
   });
 
-  it('un viewer no ve el formulario de creación', async () => {
+  it('un viewer no pide las lecturas de administrador', async () => {
     setRole('viewer');
     render(<QosPage />);
-    await screen.findByText('Limitar consola');
+    const aviso = await screen.findByRole('note');
+    expect(aviso).toHaveTextContent('Solo el administrador ve las reglas de QoS');
+    expect(apiMock.get.mock.calls.filter(([p]) => String(p).startsWith('/qos'))).toHaveLength(0);
+    expect(screen.queryByText(/Aún no hay reglas de QoS/)).toBeNull();
     expect(screen.queryByText('Nueva regla')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Añadir regla/ })).not.toBeInTheDocument();
+  });
+
+  it('si el rol llega después de montar, no queda pintado el error de la petición ya lanzada', async () => {
+    useAuthStore.setState({ user: null });
+    apiMock.get.mockReset().mockRejectedValue(new Error('403'));
+    render(<QosPage />);
+    expect(apiMock.get).toHaveBeenCalledWith('/qos/rules');
+    act(() => setRole('viewer'));
+    await screen.findByRole('note');
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  it('un admin con la lectura caída ve el error y no el estado vacío ni el aviso de admin', async () => {
+    apiMock.get.mockReset().mockRejectedValue(new Error('boom'));
+    render(<QosPage />);
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    expect(screen.queryByText(/Aún no hay reglas de QoS/)).toBeNull();
+    expect(screen.queryByText('Solo el administrador ve las reglas de QoS')).toBeNull();
   });
 
   it('muestra un banner role="alert" si la carga falla (US-93)', async () => {
@@ -164,15 +184,6 @@ describe('QosPage: capacidad de puerta de enlace de este equipo', () => {
     render(<QosPage />);
     expect(await screen.findByText(/Aún no hay reglas de QoS/)).toBeInTheDocument();
     expect(screen.queryByText(/Crea una regla arriba/)).toBeNull();
-  });
-
-  it('un viewer no pide la capacidad (es solo admin) ni ve aviso', async () => {
-    setRole('viewer');
-    mockApi([RULE], { status: 'unsupported', reason: 'platform' });
-    render(<QosPage />);
-    await screen.findByText('Limitar consola');
-    expect(apiMock.get).not.toHaveBeenCalledWith('/qos/status');
-    expect(screen.queryByText('Este equipo no puede hacer de puerta de enlace')).toBeNull();
   });
 
   describe('estado del dominio (instalación nueva)', () => {

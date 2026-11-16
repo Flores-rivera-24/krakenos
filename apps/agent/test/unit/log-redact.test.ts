@@ -26,6 +26,25 @@ describe('redactUrl', () => {
     expect(mixto).not.toContain('SECRETO');
   });
 
+  it('redacta el token de una invitación que va en el segmento de la ruta', () => {
+    for (const url of [
+      '/api/invitations/redeem/abc123DEF',
+      '/api/invitations/redeem/abc123DEF?x=1',
+    ]) {
+      const out = redactUrl(url);
+      expect(out).not.toContain('abc123DEF');
+      expect(out.startsWith(`/api/invitations/redeem/${REDACTADO}`)).toBe(true);
+    }
+    expect(redactUrl('/api/invitations/redeem/abc123DEF?x=1')).toContain('x=1');
+    expect(redactUrl('/api/invitations/list/abc123DEF')).toBe('/api/invitations/list/abc123DEF');
+  });
+
+  it('redacta el token del enlace de la SPA /invitacion/<token>, y no toca /invitaciones', () => {
+    expect(redactUrl('/invitacion/abc123DEF')).toBe(`/invitacion/${REDACTADO}`);
+    expect(redactUrl('/invitacion/abc123DEF?x=1')).toBe(`/invitacion/${REDACTADO}?x=1`);
+    expect(redactUrl('/invitaciones/abc123DEF')).toBe('/invitaciones/abc123DEF');
+  });
+
   it('no toca una URL sin query', () => {
     expect(redactUrl('/api/iot/devices')).toBe('/api/iot/devices');
     expect(redactUrl('')).toBe('');

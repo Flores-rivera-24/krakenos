@@ -144,6 +144,16 @@ describe('describeError localizado (US-177)', () => {
     expect(en['errors.code.BACKUP_FROM_NEWER_VERSION']).toMatch(/newer version of KrakenOS/);
   });
 
+  it('sin mensaje del servidor, el texto base lleva una sola puntuación final', () => {
+    const sin = new ApiRequestError(409, { code: 'X_DESCONOCIDO', message: '' });
+    expect(describeError(sin, 'No se pudo completar la operación.')).toBe(
+      'No se pudo completar la operación (error 409).',
+    );
+    expect(describeError(sin, 'No se pudo completar la operación')).toBe(
+      'No se pudo completar la operación (error 409).',
+    );
+  });
+
   it('sin código conocido, cae al mensaje del servidor', () => {
     setLocale('en', { persist: false });
     const err = new ApiRequestError(500, { code: 'WHATEVER', message: 'server text' });

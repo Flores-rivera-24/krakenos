@@ -50,6 +50,7 @@ pnpm-debug.log*
 # regeneran con `pnpm qa:*` y cambian en cada máquina. Lo que sí se versiona es
 # el umbral que deben superar, que vive en la config de cada herramienta.
 /qa-reports/
+/apps/agent/setup-token
 # Sandboxes temporales de Stryker: copia del árbol por mutante. Se limpian solos
 # al terminar bien, pero una ejecución interrumpida los deja atrás.
 .stryker-tmp/

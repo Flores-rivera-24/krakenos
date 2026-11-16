@@ -9,6 +9,8 @@ import { OptimisticSwitch } from '@/components/ui/optimistic-switch';
 import { StaleBadge } from '@/components/ui/stale-badge';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
+import { describeError } from '@/lib/errors';
+import { toast } from '@/store/toast.store';
 import { useLectura } from '@/lib/use-lectura';
 import { useAuthStore } from '@/store/auth.store';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -55,8 +57,12 @@ export function NetworksCard() {
   };
 
   const showClients = async (net: WifiNetworkInfo) => {
-    const clients = await api.getList<WifiClient>(`/wifi/networks/${net.id}/clients`);
-    setClientsOf({ net, clients });
+    try {
+      const clients = await api.getList<WifiClient>(`/wifi/networks/${net.id}/clients`);
+      setClientsOf({ net, clients });
+    } catch (err) {
+      toast.error(describeError(err, t('ui.loadFailed')));
+    }
   };
 
   return (

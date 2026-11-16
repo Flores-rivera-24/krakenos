@@ -34,6 +34,8 @@ export interface AgentPaths {
   dataDir: string;
   /** `<dataRoot>/var`: traspasos, staging de restauración, copias previas. */
   varDir: string;
+  /** `<dataRoot>/setup-token`: el token de setup, 0600, para quien configura el servicio sin consola. */
+  setupTokenFile: string;
   /** `<dataRoot>/keys`: claves JWT y secretbox. */
   keysDir: string;
   /** `<dataRoot>/certs`: certificados públicos (la CA local). */
@@ -62,6 +64,7 @@ export function resolvePaths(env: Record<string, string | undefined>, cwd: strin
     appRoot,
     dataDir: resolve(dataRoot, 'data'),
     varDir: resolve(dataRoot, 'var'),
+    setupTokenFile: resolve(dataRoot, 'setup-token'),
     keysDir: resolve(dataRoot, 'keys'),
     certsDir: resolve(dataRoot, 'certs'),
     prismaDir: resolve(dataRoot, 'prisma'),

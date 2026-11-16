@@ -1,0 +1,15 @@
+Package: krakenos
+Version: @VERSION@
+Section: net
+Priority: optional
+Architecture: @ARCH@
+Installed-Size: @SIZE@
+Depends: adduser, systemd, ca-certificates, libc6, libstdc++6, libgcc-s1
+Recommends: ffmpeg, libnss-mdns, avahi-daemon
+Suggests: wireguard-tools, sudo
+Maintainer: José Luis Flores Rivera <31547366+Flores-rivera-24@users.noreply.github.com>
+Homepage: https://github.com/Flores-rivera-24/krakenos
+Description: gestión de red doméstica e IoT, en tu propio servidor
+ KrakenOS corre en un servidor local, sin nube de terceros, y reúne el
+ inventario de la red, el WiFi, la VPN WireGuard, el control parental y los
+ aparatos IoT en una sola interfaz web. Incluye su propio Node.js.

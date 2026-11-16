@@ -71,7 +71,9 @@ export class OmadaDriver implements HardwareDriver {
       if (!omadacId) throw new Error('No se pudo autodetectar el omadacId (GET /api/info)');
     }
     const sites = parseSites(await this.opts.client.get(`/api/v2/${omadacId}/users/current`));
-    const site = sites.find((s) => s.name === this.siteName) ?? sites[0];
+    // Con varios sites, uno que no coincide es un error: no se opera sobre otro cualquiera.
+    const site =
+      sites.find((s) => s.name === this.siteName) ?? (sites.length === 1 ? sites[0] : undefined);
     if (!site) throw new Error(`No se encontró el site Omada: ${this.siteName}`);
     this.context = { omadacId, siteId: site.id };
     return this.context;

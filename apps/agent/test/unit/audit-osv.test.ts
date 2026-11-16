@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // El @ts-expect-error solo cubre la linea siguiente: sin prettier-ignore Prettier parte el import
 // en varias lineas y el error de tipos queda fuera de su alcance.
@@ -155,5 +159,38 @@ describe('analyzeReport', () => {
     const { prodCriticals, bySeverity } = analyzeReport({ results: [] }, PROD);
     expect(prodCriticals).toHaveLength(0);
     expect(bySeverity.size).toBe(0);
+  });
+});
+
+describe('audit-osv como CLI', () => {
+  const SCRIPT = resolve(__dirname, '../../../../scripts/audit-osv.mjs');
+
+  // Sin argumentos debe salir 2 con «Uso:»; salir 0 mudo sería un gate abierto.
+  function sinArgumentos(ruta: string) {
+    const r = spawnSync(process.execPath, [ruta], { encoding: 'utf8' });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('Uso:');
+  }
+
+  it('falla cerrado cuando se invoca por un enlace simbólico', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'osv-'));
+    try {
+      copyFileSync(SCRIPT, join(dir, 'real.mjs'));
+      symlinkSync(join(dir, 'real.mjs'), join(dir, 'enlace.mjs'));
+      sinArgumentos(join(dir, 'enlace.mjs'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('falla cerrado cuando la ruta tiene espacios', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'osv-'));
+    try {
+      mkdirSync(join(dir, 'con espacio'));
+      copyFileSync(SCRIPT, join(dir, 'con espacio', 'audit-osv.mjs'));
+      sinArgumentos(join(dir, 'con espacio', 'audit-osv.mjs'));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

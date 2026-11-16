@@ -1,3 +1,6 @@
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { clearStaleSetupClaim } from '../../src/modules/setup/setup.routes.js';
@@ -21,9 +24,10 @@ function initBody(extra: Record<string, unknown> = {}): Record<string, unknown> 
 
 describe('rutas de setup', () => {
   let app: FastifyInstance;
+  const tokenFile = join(mkdtempSync(join(tmpdir(), 'krakenos-setup-')), 'setup-token');
 
   beforeAll(async () => {
-    app = await buildTestApp({ routes: true });
+    app = await buildTestApp({ routes: true, setupTokenFile: tokenFile });
   });
 
   afterAll(async () => {
@@ -33,6 +37,13 @@ describe('rutas de setup', () => {
   beforeEach(async () => {
     await resetDb(app);
     setupToken.reset();
+  });
+
+  it('init borra el fichero del token de setup', async () => {
+    writeFileSync(tokenFile, 'x\n');
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.statusCode).toBe(200);
+    expect(existsSync(tokenFile)).toBe(false);
   });
 
   it('status pasa de needsSetup:true a false tras inicializar', async () => {

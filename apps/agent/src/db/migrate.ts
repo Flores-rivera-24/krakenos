@@ -215,6 +215,9 @@ export function preMigrateFileName(now: Date): string {
   return `pre-migrate-${now.toISOString().replace(/[:.]/g, '-')}.db`;
 }
 
+/** Cuántas copias previas se conservan (también las de una restauración). */
+export const KEEP_BACKUPS = 3;
+
 const PRE_MIGRATE_RE = /^pre-migrate-.+\.db$/;
 
 /** Qué copias previas sobran para quedarse con las `keep` más recientes. Pura. */
@@ -403,7 +406,7 @@ function applyOne(db: Database.Database, m: MigrationFile, now: () => Date): voi
 export function migrateDatabase(opts: MigrateOptions): MigrateResult {
   const log = opts.log ?? (() => undefined);
   const now = opts.now ?? ((): Date => new Date());
-  const keep = opts.keepBackups ?? 3;
+  const keep = opts.keepBackups ?? KEEP_BACKUPS;
 
   const disk = readMigrations(opts.migrationsDir);
   if (disk.length === 0) {
