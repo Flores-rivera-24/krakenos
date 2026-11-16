@@ -228,8 +228,8 @@ sudo bash /opt/krakenos/scripts/install.sh --uninstall   # desinstalar (conserva
 > (backup → apply → migrate → restart → healthcheck, con rollback) y **conserva las deps
 > opcionales** que instalaste. Detalle en [`docs/updates.md`](docs/updates.md).
 
-> Alternativa sin Node ni `git` en el servidor: el **paquete `.deb`** (Debian/Ubuntu, amd64 y arm64),
-> con su propio Node. Aún no se descarga de ninguna página de versiones: se construye desde este
+> Alternativa sin Node ni `git` en el servidor: el **paquete `.deb`** (Debian/Ubuntu, amd64 y arm64) o el
+> **paquete de Arch** (Arch/CachyOS, x86_64), con su propio Node. Aún no se descarga de ninguna página de versiones: se construye desde este
 > repositorio. Guía en [`docs/install-linux-package.md`](docs/install-linux-package.md).
 
 > El smoke del instalador corre en CI sobre un Debian limpio en cada push. Las partes

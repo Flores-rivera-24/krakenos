@@ -1,0 +1,92 @@
+# shellcheck shell=bash
+# Scriptlets de pacman para KrakenOS (los ejecuta root, en bash). MANTENER alineado con
+# packaging/linux/deb/postinst y prerm: la lógica es la misma (HTTPS por defecto, marcador de HTTPS
+# pendiente, servicio habilitado solo si HTTPS quedó bien). Diferencias: pacman llama a post_install
+# o post_upgrade (no hay `$2` vacío) y, a diferencia de dpkg, sus hooks de sysusers/tmpfiles corren
+# DESPUÉS del scriptlet: por eso se llaman aquí a mano. Solo se ejecuta lo que es de root
+# (/usr/lib/krakenos); nada que el usuario del servicio pueda modificar.
+
+SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+# Marcador de root: HTTPS quedó sin configurar. Lo borra `krakenos-setup tls <modo>` al terminar bien.
+PENDIENTE=/etc/krakenos/.https-pendiente
+
+# $1 = nueva | actualizacion
+_krakenos_configurar() {
+  # krakenos.env no es del paquete (`tls auto` lo reescribe en toda instalación): se crea desde la
+  # plantilla (root, 0600) y nunca se pisa. Uno recién creado trae HTTP: equivale a HTTPS pendiente.
+  install -d -m 0755 /etc/krakenos
+  if [ ! -e /etc/krakenos/krakenos.env ]; then
+    install -m 0600 -o root -g root /usr/share/krakenos/krakenos.env /etc/krakenos/krakenos.env
+    touch "$PENDIENTE"
+  fi
+  systemd-sysusers krakenos.conf
+  systemd-tmpfiles --create krakenos.conf
+
+  if [ -d /run/systemd/system ]; then
+    # Instalación nueva, o un intento anterior que dejó HTTPS pendiente: HTTPS por defecto.
+    # Si falla, NO se arranca: serviría HTTP plano y el enlace de configuración llevaría el token sin cifrar.
+    mostrar_url=0
+    if [ "$1" = nueva ] || [ -f "$PENDIENTE" ]; then
+      if ! "$SETUP" tls auto; then
+        touch "$PENDIENTE"
+        cat >&2 <<'MSG'
+AVISO: no se pudo configurar HTTPS (krakenos-setup tls auto falló).
+KrakenOS no se ha arrancado ni reiniciado, para no servir sin HTTPS. Para terminar:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+Si de verdad quieres HTTP sin cifrar:
+  sudo krakenos-setup tls none && sudo systemctl enable --now krakenos
+MSG
+        return 0
+      fi
+      mostrar_url=1
+    fi
+    systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; return 1; }
+    # Estado previo: tras `pacman -R`, pre_remove lo deshabilitó todo; en una actualización sigue habilitado.
+    was_enabled=0
+    systemctl is-enabled --quiet krakenos.service 2> /dev/null && was_enabled=1
+    systemctl enable krakenos.service || { echo "ERROR: no se pudo habilitar krakenos.service." >&2; return 1; }
+    systemctl restart krakenos.service || { echo "ERROR: no se pudo arrancar krakenos.service (mira 'journalctl -u krakenos')." >&2; return 1; }
+    # pre_remove deshabilita los timers de TLS: si sus unidades siguen (desinstalar sin borrar /etc) y el
+    # servicio no estaba habilitado, se reactivan. En una actualización no se tocan.
+    for t in krakenos-cert.timer krakenos-cert-local.timer; do
+      if [ "$was_enabled" -eq 0 ] && [ -f "/etc/systemd/system/$t" ]; then
+        systemctl enable --now "$t" || echo "AVISO: no se pudo habilitar $t." >&2
+      fi
+    done
+    # Solo con administrador por crear el agente tiene (o va a crear) el token de setup.
+    if [ "$mostrar_url" -eq 1 ]; then
+      "$SETUP" setup-url --wait 30 || true
+    else
+      echo "Si aún no creaste el administrador: sudo krakenos-setup setup-url"
+    fi
+  else
+    # Sin systemd no se pudo configurar HTTPS: se marca pendiente para que ni arrancar a mano ni la
+    # siguiente actualización sirvan en HTTP plano.
+    if [ "$1" = nueva ]; then
+      touch "$PENDIENTE"
+    fi
+    cat >&2 <<'MSG'
+KrakenOS: systemd no está en marcha; ni se configuró HTTPS ni se arrancó el servicio.
+Cuando haya systemd:
+  sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
+MSG
+  fi
+  return 0
+}
+
+post_install() {
+  _krakenos_configurar nueva
+}
+
+post_upgrade() {
+  _krakenos_configurar actualizacion
+}
+
+pre_remove() {
+  if [ -d /run/systemd/system ]; then
+    systemctl disable --now krakenos.service || true
+    systemctl disable --now krakenos-cert.timer || true
+    systemctl disable --now krakenos-cert-local.timer || true
+  fi
+  return 0
+}

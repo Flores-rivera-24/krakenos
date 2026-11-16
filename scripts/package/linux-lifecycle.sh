@@ -83,9 +83,15 @@ pkg_purge() {
   case "$KIND" in
     deb) DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch)
-      # pacman no purga: la documentación del paquete manda borrar los datos y la configuración a mano.
+      # pacman no purga: la guía (docs/install-linux-package.md, «Quitar») manda borrar a mano los datos,
+      # la configuración, las unidades de renovación del certificado, la regla de sudo y el usuario que
+      # creó sysusers. Mantener estos comandos iguales a los de la guía (lo ata package-arch.test.ts).
       pacman -Rns --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
       rm -rf /var/lib/krakenos /etc/krakenos
+      rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
+      userdel krakenos
+      groupdel krakenos 2> /dev/null || true
+      systemctl daemon-reload
       ;;
   esac
 }

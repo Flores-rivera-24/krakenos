@@ -1,7 +1,10 @@
-# Instalar KrakenOS con el paquete `.deb`
+# Instalar KrakenOS con el paquete `.deb` o el de Arch
 
-El paquete `.deb` instala KrakenOS en Debian, Ubuntu y derivados con **su propio Node.js**: no hace
-falta instalar Node, pnpm ni clonar el repositorio. Es la alternativa a `scripts/install.sh`.
+El paquete `.deb` instala KrakenOS en Debian, Ubuntu y derivados, y el paquete de Arch (`.pkg.tar.zst`)
+en Arch Linux y CachyOS, los dos con **su propio Node.js**: no hace falta instalar Node, pnpm ni clonar
+el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escrita con los comandos de
+`apt`; lo que cambia con `pacman` está en [Paquete de Arch](#paquete-de-arch-pacman). Todo lo demás
+(dónde vive cada cosa, `/setup`, HTTPS, el helper) vale para los dos.
 
 - Arquitecturas: **amd64** y **arm64**. El archivo se llama `krakenos_<versión>_<arquitectura>.deb`.
 - Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
@@ -202,6 +205,56 @@ Tras `remove`, volver a instalar el paquete recupera la instalación como estaba
 puede deshacer**: antes, exporta una copia cifrada desde **Ajustes → Sistema → Copia de seguridad**
 y guárdala fuera del servidor (ver [Recuperación](recovery.md)).
 
+## Paquete de Arch (`pacman`)
+
+Para Arch Linux y CachyOS, **x86_64**. No hay repositorio ni AUR, y aún no se adjunta a las versiones
+publicadas: se construye desde el repositorio y se instala desde el archivo. El paquete hace lo mismo
+que el `.deb` (usuario `krakenos`, HTTPS por defecto, servicio habilitado, enlace de `/setup`, la
+misma carpeta de código, datos y configuración) y requiere **systemd**; sin él se instala, deja HTTPS
+pendiente y el mensaje dice qué ejecutar.
+
+**Construir.** Hace falta el repositorio clonado, Node 24.21.0, pnpm 9, `base-devel` y acceso a internet.
+`makepkg` **no corre como root**:
+
+```bash
+pnpm package                                   # deja out/krakenos-<versión>-linux-x64/
+pnpm package:arch out/krakenos-<versión>-linux-x64
+cd out/krakenos-<versión>-arch
+makepkg                                        # deja krakenos-<versión>-1-x86_64.pkg.tar.zst
+```
+
+(Una versión de prueba como `0.1.0-rc.1` queda como `0.1.0rc1`: pacman no admite `-` en la versión.)
+
+**Instalar y actualizar** (el mismo comando; el paquete nuevo se instala encima):
+
+```bash
+sudo pacman -U krakenos-<versión>-1-x86_64.pkg.tar.zst
+```
+
+`pacman -U` resuelve las dependencias (`systemd`, `glibc`, `gcc-libs`, `ca-certificates`) pero **no
+instala las opcionales**: `ffmpeg` (cámaras), `nss-mdns` y `avahi` (que `<equipo>.local` resuelva),
+`wireguard-tools`, `sudo`, `iptables` e `iproute2` (el helper). Instálalas con `sudo pacman -S …` si las
+necesitas. Como en el `.deb`, tu `/etc/krakenos/krakenos.env` no se toca al actualizar: el paquete no lo
+trae (lo crea la instalación desde la plantilla), así que pacman no deja `.pacnew`.
+
+**Quitar.** pacman no tiene «purge»:
+
+```bash
+sudo pacman -R krakenos      # para el servicio; conserva datos, configuración, usuario y regla de sudo
+```
+
+Para borrar **todo** (no se puede deshacer; antes exporta una copia cifrada, ver
+[Recuperación](recovery.md)):
+
+```bash
+sudo pacman -Rns krakenos
+sudo rm -rf /var/lib/krakenos /etc/krakenos
+sudo rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
+sudo userdel krakenos
+sudo groupdel krakenos   # si userdel no lo quitó ya
+sudo systemctl daemon-reload
+```
+
 ## Pasar de `install.sh` al paquete
 
 > **Paso manual.** No está automatizado ni se prueba en la integración continua. Hazlo con calma y
@@ -254,7 +307,7 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
    se copia `var/` (copias previas a migraciones y resultado de actualizaciones del árbol viejo).
    Si la copia de la base falla y sigues, el paquete arranca con una base vacía y pide `/setup`.
 
-3. **Instala el paquete** (ver «Instalar»). Si ya tenías HTTPS por `install.sh`, el certificado está
+3. **Instala el paquete** (ver «Instalar», o «Paquete de Arch»). Si ya tenías HTTPS por `install.sh`, el certificado está
    en la misma ruta, `/etc/krakenos/tls`, y no se reemplaza si ya era de CA propia (si era por
    Tailscale, mira el aviso de la sección de HTTPS). Si tenías `tls none`, el paquete activa HTTPS
    local y cambia `WEB_ORIGIN`: las passkeys registradas con otro origen dejan de servir. Al final,
