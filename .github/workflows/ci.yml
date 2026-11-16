@@ -229,6 +229,8 @@ jobs:
       # `.deb` (US-287): se construyen dos (uno viejo `0.0.0~ci1` y el real), `lintian` no admite
       # errores y el ciclo de vida completo (instalar, actualizar con `krakenos.env` editado,
       # desinstalar, reinstalar y purgar) corre como root con systemd real, en x64 y en arm64.
+      # Ojo: el arm64 es `continue-on-error` (experimental), así que su lintian o su ciclo de vida
+      # pueden fallar con la CI en verde; solo el de x64 bloquea.
       - name: .deb (lintian y ciclo de vida)
         if: ${{ startsWith(matrix.target, 'linux-') }}
         run: |
@@ -571,5 +573,9 @@ jobs:
             scripts/lib/krakenos-system.sh \
             scripts/package/linux-lifecycle.sh \
             packaging/linux/common/krakenos-setup \
+            packaging/linux/deb/postinst \
+            packaging/linux/deb/prerm \
+            packaging/linux/deb/postrm \
+            scripts/package/launchers/krakenos \
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh
