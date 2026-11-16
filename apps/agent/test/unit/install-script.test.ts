@@ -547,6 +547,20 @@ cp '${biblioteca}' "$out"
     ]);
   });
 
+  it('por stdin y sin --branch la biblioteca sale de main, no de la última etiqueta', async () => {
+    const { urls } = await descargaPorStdin([]);
+    expect(urls).toEqual([
+      'https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scripts/lib/krakenos-system.sh',
+    ]);
+  });
+
+  it('por stdin rechaza un --branch con ".." antes de descargar nada', async () => {
+    const { code, stderr, urls } = await descargaPorStdin(['--branch', 'a/../b']);
+    expect(code).toBe(1);
+    expect(stderr).toContain('referencia no válida');
+    expect(urls).toEqual([]);
+  });
+
   it('rechaza rutas con metacaracteres o relativas (se interpolan en bash -c)', async () => {
     for (const dir of ["/tmp/kraken'x", '/tmp/kraken x', 'relativa/kraken', '/tmp/kraken$HOME']) {
       const { code, stderr } = await runInstaller(['--dry-run', '--yes', '--dir', dir]);
@@ -880,3 +894,57 @@ describe.skipIf(process.platform === 'win32')(
     });
   },
 );
+
+async function descargaPorStdin(
+  extra: string[],
+): Promise<{ code: number; stderr: string; urls: string[] }> {
+  const dir = mkdtempSync(join(tmpdir(), 'kraken-curl-'));
+  const registro = join(dir, 'url.txt');
+  writeFileSync(registro, '');
+  // Un clon con una etiqueta: es lo que resolve_ref elegiría en una instalación sin --branch.
+  const repo = join(dir, 'repo');
+  mkdirSync(repo);
+  for (const a of [
+    ['init', '-q'],
+    ['-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 'x'],
+    ['tag', 'v1.2.3'],
+  ]) {
+    execFileSync('git', ['-C', repo, ...a]);
+  }
+  const biblioteca = fileURLToPath(
+    new URL('../../../../scripts/lib/krakenos-system.sh', import.meta.url),
+  );
+  writeFileSync(
+    join(dir, 'curl'),
+    `#!/usr/bin/env bash
+out=""; url=""
+while [ $# -gt 0 ]; do
+  case "$1" in -o) out="$2"; shift 2 ;; -*) shift ;; *) url="$1"; shift ;; esac
+done
+printf '%s\\n' "$url" >> '${registro}'
+cp '${biblioteca}' "$out"
+`,
+  );
+  chmodSync(join(dir, 'curl'), 0o755);
+  const r = await new Promise<{ code: number; stderr: string }>((resolvePromise) => {
+    const child = execFile(
+      'bash',
+      ['-s', '--', '--dry-run', '--yes', '--dir', repo, ...extra],
+      {
+        env: { ...process.env, ...SUPPORTED_ENV, PATH: `${dir}:${process.env.PATH ?? ''}` },
+        cwd: tmpdir(),
+      },
+      (err, _so, se) =>
+        resolvePromise({
+          code:
+            err && typeof (err as { code?: unknown }).code === 'number'
+              ? (err as { code: number }).code
+              : 0,
+          stderr: se,
+        }),
+    );
+    child.stdin?.end(readFileSync(SCRIPT));
+  });
+  const txt = readFileSync(registro, 'utf8').trim();
+  return { ...r, urls: txt ? txt.split('\n') : [] };
+}

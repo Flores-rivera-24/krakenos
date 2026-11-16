@@ -114,8 +114,8 @@ die() { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 # Carga tardía de la biblioteca (instalación por stdin, sin lib/ junto al script). NUNCA
 # se lee del árbol de instalación: es del usuario del servicio (`chown -R`) y root
-# ejecutaría código que él pudo modificar. Se descarga del mismo repo y ref que el
-# código fuente a un temporal de root (0600, mktemp) que se borra al salir. En dry-run
+# ejecutaría código que él pudo modificar. Se descarga del mismo repo y de la rama del
+# script (--branch o main) a un temporal de root (0600, mktemp) que se borra al salir. En dry-run
 # con --from-local se usa la copia que indica el operador.
 load_system_lib() {
   [[ $SYSTEM_LIB_LOADED -eq 1 ]] && return 0
@@ -123,8 +123,11 @@ load_system_lib() {
   if [[ $DRY_RUN -eq 1 && -n "$FROM_LOCAL" && -f "$FROM_LOCAL/scripts/lib/krakenos-system.sh" ]]; then
     f="$FROM_LOCAL/scripts/lib/krakenos-system.sh"
   else
-    ref="$(resolve_ref)"
-    [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ ]] || die "referencia no válida para descargar la biblioteca: $ref"
+    # La rama del propio script (main en el one-liner documentado), NO la última etiqueta:
+    # las etiquetas viejas no traen scripts/lib/ y el contrato script↔biblioteca solo
+    # vale dentro de un mismo ref. fetch_source sigue usando resolve_ref para el código.
+    ref="${BRANCH:-main}"
+    [[ "$ref" =~ ^[A-Za-z0-9._/-]+$ && "$ref" != *..* ]] || die "referencia no válida para descargar la biblioteca: $ref"
     tmp="$(mktemp)"
     # El trap se instala tras crear el temporal: si mktemp falla no hay nada que borrar.
     # shellcheck disable=SC2064 # se expande ahora a propósito: el nombre ya es fijo
