@@ -21,7 +21,7 @@ case "$1" in
           touch "$PENDIENTE"
           cat >&2 <<'MSG'
 AVISO: no se pudo configurar HTTPS (krakenos-setup tls auto falló).
-KrakenOS NO se ha arrancado ni habilitado, para no servir sin HTTPS. Para terminar:
+KrakenOS no se ha arrancado ni reiniciado, para no servir sin HTTPS. Para terminar:
   sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
 Si de verdad quieres HTTP sin cifrar:
   sudo krakenos-setup tls none && sudo systemctl enable --now krakenos

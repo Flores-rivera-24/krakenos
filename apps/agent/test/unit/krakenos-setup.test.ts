@@ -105,6 +105,15 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(existsSync(marcador)).toBe(false);
   });
 
+  it('tls conserva el marcador de HTTPS pendiente cuando falla', () => {
+    const marcador = join(raiz, 'root', 'etc', 'krakenos', '.https-pendiente');
+    writeFileSync(marcador, '');
+    // Sin Tailscale en el PATH de prueba, `tls tailscale` muere antes de terminar.
+    const r = correr(['tls', 'tailscale']);
+    expect(r.status).not.toBe(0);
+    expect(existsSync(marcador)).toBe(true);
+  });
+
   it('tls none avisa de lo que se pierde', () => {
     const r = correr(['--dry-run', 'tls', 'none']);
     expect(r.status, r.stderr).toBe(0);
