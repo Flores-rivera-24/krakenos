@@ -85,6 +85,9 @@ sudo nano /etc/krakenos/krakenos.env
 sudo systemctl restart krakenos
 ```
 
+El archivo no admite comentarios al final de una línea con valor (`PORT=3001  # nota`): systemd los
+tomaría como parte del valor. Los comentarios van en su propia línea.
+
 **Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
 anterior: las passkeys y el enlace de `/setup` dejarían de coincidir. Con HTTPS local, vuelve a
 correr `sudo krakenos-setup tls local` (los reescribe con el puerto nuevo y conserva el certificado y
