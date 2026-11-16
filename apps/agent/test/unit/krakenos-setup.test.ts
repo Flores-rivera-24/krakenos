@@ -1,5 +1,13 @@
 import { spawnSync } from 'node:child_process';
-import { linkSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  linkSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -84,6 +92,17 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(r.status, r.stderr).toBe(0);
     expect(r.stdout).toContain('systemctl restart krakenos');
     expect(r.stdout).not.toMatch(/enable --now krakenos$/m);
+  });
+
+  it('tls borra el marcador de HTTPS pendiente al terminar bien, también con none; --dry-run no', () => {
+    const marcador = join(raiz, 'root', 'etc', 'krakenos', '.https-pendiente');
+    writeFileSync(marcador, '');
+    const seco = correr(['--dry-run', 'tls', 'none']);
+    expect(seco.status, seco.stderr).toBe(0);
+    expect(existsSync(marcador)).toBe(true);
+    const r = correr(['tls', 'none']);
+    expect(r.status, r.stderr).toBe(0);
+    expect(existsSync(marcador)).toBe(false);
   });
 
   it('tls none avisa de lo que se pierde', () => {

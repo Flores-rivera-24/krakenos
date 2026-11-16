@@ -75,9 +75,13 @@ describe('scripts de mantenimiento', () => {
 
   it('postinst: si tls auto falla en una instalación nueva, no arranca ni pide setup-url', () => {
     const t = leer('postinst');
+    // Instalación nueva O marcador de un intento fallido anterior: una actualización no arranca sin HTTPS.
     expect(t).toMatch(
-      /if \[ -z "\$2" \] && ! "\$SETUP" tls auto; then[\s\S]*?exit 0\s*\n\s*fi[\s\S]*systemctl restart[\s\S]*setup-url/,
+      /if \[ -z "\$2" \] \|\| \[ -f "\$PENDIENTE" \]; then\s*\n\s*if ! "\$SETUP" tls auto; then[\s\S]*?exit 0\s*\n\s*fi\s*\n\s*fi[\s\S]*systemctl restart[\s\S]*setup-url/,
     );
+    expect(t).toContain('PENDIENTE=/etc/krakenos/.https-pendiente');
+    // El marcador se crea ANTES del exit 0 del fallo.
+    expect(t).toMatch(/touch "\$PENDIENTE"[\s\S]*?exit 0/);
     expect(t).toContain('sudo krakenos-setup tls auto');
     expect(t).toContain('sudo systemctl enable --now krakenos');
     expect(t).toContain('sudo krakenos-setup tls none');
@@ -133,6 +137,8 @@ describe('scripts de mantenimiento', () => {
     for (const x of rm.filter((l) => /\.(service|timer)$|sudoers/.test(l)))
       expect(x).toMatch(/rm -f /);
     expect(rm.map((x) => x.trim())).toContain('rm -f /etc/sudoers.d/krakenos');
+    // /etc/krakenos entero (rm -rf) se lleva también el marcador de HTTPS pendiente.
+    expect(rm.map((x) => x.trim())).toContain('rm -rf /etc/krakenos');
     expect(t).toMatch(/deluser --system krakenos.*\|\| true/);
     expect(t).toMatch(/purge\)/);
   });

@@ -4,6 +4,8 @@
 set -e
 
 SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+# Marcador de root: HTTPS quedó sin configurar. Lo borra `krakenos-setup tls <modo>` al terminar bien.
+PENDIENTE=/etc/krakenos/.https-pendiente
 
 case "$1" in
   configure)
@@ -11,17 +13,21 @@ case "$1" in
     systemd-tmpfiles --create krakenos.conf
 
     if [ -d /run/systemd/system ]; then
-      # Instalación nueva (sin versión anterior configurada): HTTPS por defecto, como install.sh.
+      # Instalación nueva, o un intento anterior que dejó HTTPS pendiente: HTTPS por defecto, como install.sh.
       # Si falla, NO se arranca: serviría HTTP plano y el enlace de configuración llevaría el token sin cifrar.
-      if [ -z "$2" ] && ! "$SETUP" tls auto; then
-        cat >&2 <<'MSG'
+      # El marcador evita que la siguiente actualización (con $2 no vacío) arranque sin cifrar.
+      if [ -z "$2" ] || [ -f "$PENDIENTE" ]; then
+        if ! "$SETUP" tls auto; then
+          touch "$PENDIENTE"
+          cat >&2 <<'MSG'
 AVISO: no se pudo configurar HTTPS (krakenos-setup tls auto falló).
 KrakenOS NO se ha arrancado ni habilitado, para no servir sin HTTPS. Para terminar:
   sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos
 Si de verdad quieres HTTP sin cifrar:
   sudo krakenos-setup tls none && sudo systemctl enable --now krakenos
 MSG
-        exit 0
+          exit 0
+        fi
       fi
       systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
       # Estado previo del servicio: tras `remove`, prerm lo deshabilitó todo; en una actualización sigue habilitado.
