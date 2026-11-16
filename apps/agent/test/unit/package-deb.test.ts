@@ -67,7 +67,7 @@ describe('scripts de mantenimiento', () => {
     const t = leer('postinst');
     const cfg = t.slice(t.indexOf('configure)'));
     expect(cfg).toMatch(
-      /configure\)(\s*\n\s*#.*)*\s*\n\s*install -d -m 0755 \/etc\/krakenos\s*\n\s*if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600 -o root -g root \/usr\/share\/krakenos\/krakenos\.env \/etc\/krakenos\/krakenos\.env\s*\n\s*fi\s*\n\s*systemd-sysusers/,
+      /configure\)(\s*\n\s*#.*)*\s*\n\s*install -d -m 0755 \/etc\/krakenos\s*\n\s*if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600 -o root -g root \/usr\/share\/krakenos\/krakenos\.env \/etc\/krakenos\/krakenos\.env\s*\n\s*touch \"\$PENDIENTE\"\s*\n\s*fi\s*\n\s*systemd-sysusers/,
     );
   });
 
@@ -112,6 +112,14 @@ describe('scripts de mantenimiento', () => {
       'sudo krakenos-setup tls auto && sudo systemctl enable --now krakenos',
     );
     expect(sinSystemd).not.toContain('systemctl start krakenos');
+  });
+
+  it('postinst: un archivo de entorno recién repuesto deja HTTPS pendiente', () => {
+    // Si el usuario lo borró, la plantilla vuelve en HTTP y una actualización ($2 no vacío) arrancaría sin cifrar.
+    const t = leer('postinst');
+    expect(t).toMatch(
+      /if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600[^\n]*\n\s*touch "\$PENDIENTE"\s*\n\s*fi/,
+    );
   });
 
   it('postinst: un systemctl que falla lo dice por stderr antes de salir con error', () => {

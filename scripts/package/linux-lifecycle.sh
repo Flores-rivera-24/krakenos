@@ -35,6 +35,8 @@ TOKEN_FILE=/var/lib/krakenos/setup-token
 # Si el script muere entre mover el token y restaurarlo, no deja un FIFO en /var/lib/krakenos.
 limpiar() {
   rm -rf -- "${WORK:?}"
+  # Resto de un paso 0 a medias: un archivo donde debe ir el directorio de TLS.
+  [[ -f /etc/krakenos/tls && ! -L /etc/krakenos/tls ]] && rm -f -- /etc/krakenos/tls
   if [[ -e /var/lib/krakenos/setup-token.orig ]]; then
     rm -f -- /var/lib/krakenos/setup-token
     mv -- /var/lib/krakenos/setup-token.orig /var/lib/krakenos/setup-token || true
@@ -158,6 +160,15 @@ if [[ $KIND == deb ]]; then
   grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "tras arreglar HTTPS, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
   wait_ready
   ok "HTTPS arreglado y reinstalado: marcador borrado, servicio activo y WEB_ORIGIN https"
+  # El usuario borra el archivo de entorno: reinstalar lo repone con HTTP, y debe quedar HTTPS otra vez.
+  rm -f "$ENV_FILE"
+  DEBIAN_FRONTEND=noninteractive dpkg -i "$NEW" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i tras borrar $ENV_FILE falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
+  [[ -f $ENV_FILE ]] || fail "reinstalar no repuso $ENV_FILE"
+  grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "con el archivo de entorno repuesto, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https:// (arrancó sin cifrar)"
+  [[ ! -e $PENDIENTE ]] || fail "con el archivo de entorno repuesto y HTTPS configurado, el marcador $PENDIENTE sigue ahí"
+  need_active
+  wait_ready
+  ok "archivo de entorno repuesto: HTTPS reconfigurado, sin marcador y servicio activo"
   pkg_purge
   [[ ! -e /etc/krakenos ]] || fail "/etc/krakenos sigue existiendo tras purgar"
   ok "purgado antes del ciclo principal"
