@@ -273,6 +273,73 @@ jobs:
           path: out/krakenos-*-${{ matrix.target }}
           retention-days: 7
 
+  # Ventana de escritorio de Windows (Tauri 2, apps/window). Compila el crate, corre `cargo test`
+  # y clippy estricto y construye el .exe sin instalador. Rust va fijado a la versión exacta de
+  # apps/window/src-tauri/rust-toolchain.toml (si divergen, el gate ventana-sin-ipc.test.ts falla).
+  # `continue-on-error` hasta llevar 5 pasadas verdes seguidas en main (como el job de Windows de los
+  # tests); en cuanto las lleve, se quita.
+  ventana:
+    name: ventana (windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # rustup viene en el runner; se fija la versión exacta y no se usa ninguna acción de terceros.
+      - name: Rust 1.99.1 (rustup)
+        run: |
+          rustup set auto-self-update disable
+          rustup toolchain install 1.99.1 --profile minimal --component clippy --component rustfmt
+          rustup default 1.99.1
+          rustc --version
+
+      - name: Caché de cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/window/src-tauri/target
+          key: ventana-${{ runner.os }}-rust-1.99.1-${{ hashFiles('apps/window/src-tauri/Cargo.lock') }}
+
+      - name: Formato (cargo fmt)
+        working-directory: apps/window/src-tauri
+        run: cargo fmt --check
+
+      - name: Test (cargo test)
+        working-directory: apps/window/src-tauri
+        run: cargo test --locked
+
+      - name: Clippy
+        working-directory: apps/window/src-tauri
+        run: cargo clippy --locked -- -D warnings
+
+      # `--no-bundle`: solo el .exe; el instalador NSIS es otra historia.
+      - name: Compilar la ventana (tauri build --no-bundle)
+        run: pnpm --filter @krakenos/window tauri build --no-bundle -- --locked
+
+      - name: Subir el .exe
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-window-win-x64
+          path: apps/window/src-tauri/target/release/krakenos-window.exe
+          retention-days: 7
+
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
   e2e:

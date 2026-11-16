@@ -119,3 +119,38 @@ describe('ventana de Windows: la web del agente no tiene IPC de Tauri', () => {
     }
   });
 });
+
+/**
+ * El job `ventana` de la CI es lo único que compila la ventana fuera del Windows del dueño:
+ * si pierde `cargo test`, el clippy estricto o la versión exacta de Rust, nadie lo nota.
+ */
+describe('ci.yml compila la ventana y corre cargo test', () => {
+  const ci = leer(resolve(ROOT, '.github/workflows/ci.yml'));
+  const m = /^ {2}ventana:\n([\s\S]*?)(?=^ {2}[a-z][\w-]*:\n|(?![\s\S]))/m.exec(ci);
+  const job = m?.[1] ?? '';
+  const version = /channel\s*=\s*"([^"]+)"/.exec(leer(resolve(TAURI, 'rust-toolchain.toml')))?.[1];
+
+  it('ci.yml compila la ventana y corre cargo test', () => {
+    expect(job, 'falta el job `ventana`').not.toBe('');
+    expect(job).toMatch(/runs-on:\s*windows-latest/);
+    expect(version).toMatch(/^\d+\.\d+\.\d+$/);
+    // la misma versión exacta que fija rust-toolchain.toml
+    expect(job).toContain(`rustup toolchain install ${version}`);
+    expect(job).toMatch(/cargo fmt --check/);
+    expect(job).toMatch(/cargo test --locked/);
+    expect(job).toMatch(/cargo clippy --locked -- -D warnings/);
+    expect(job).toMatch(/tauri build --no-bundle/);
+    expect(job).toMatch(/hashFiles\('apps\/window\/src-tauri\/Cargo\.lock'\)/);
+    expect(job).toMatch(/upload-artifact@v\d+[\s\S]*retention-days:\s*7/);
+    // aún no bloquea (como el job de Windows de los tests antes de sus 5 verdes)
+    expect(job).toMatch(/continue-on-error:\s*true/);
+  });
+
+  it('el job solo usa las acciones que ya usa el resto del workflow, a un tag mayor', () => {
+    expect(job).not.toBe('');
+    const fuera = [...job.matchAll(/uses:\s*(\S+)/g)]
+      .map((x) => x[1] as string)
+      .filter((u) => !/^(actions|pnpm)\/[\w-]+@v\d+$/.test(u));
+    expect(fuera).toEqual([]);
+  });
+});
