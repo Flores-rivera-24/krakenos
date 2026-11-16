@@ -241,7 +241,9 @@ jobs:
           new="$(node scripts/package-deb.mjs "$dir")"
           echo "viejo: $old"
           echo "nuevo: $new"
-          lintian --fail-on error "$old" "$new"
+          # `alien-tag`: un override de una etiqueta que ESTA versión de lintian no conoce (cambian de nombre
+          # entre versiones, y el runner y Debian estable no llevan la misma) no es un defecto del paquete.
+          lintian --fail-on error --suppress-tags alien-tag "$old" "$new"
           sudo scripts/package/linux-lifecycle.sh deb "$old" "$new"
 
       # Negativo de la firma: con una SHASUMS256.txt alterada, la verificación de Node TIENE que
