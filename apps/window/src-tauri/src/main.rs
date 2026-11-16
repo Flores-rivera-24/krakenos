@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use krakenos_window::autoarranque::{construir, ARG_AUTOARRANQUE, NOMBRE};
 use krakenos_window::config::{
     destino_segunda_ejecucion, resolver_config, ruta_config, url_de_setup, Config, ConfigError,
     Destino as DestinoSegunda,
@@ -14,12 +15,10 @@ use std::time::Duration;
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
-use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 use url::Url;
 
 /// Estado neutro de la página local (solo la marca): lo que se ve antes de medir.
 const ESTADO_INICIAL: &str = "inicial";
-const ARG_AUTOARRANQUE: &str = "--autostarted";
 
 /// Enlace de `/setup` con su token, a entregar una sola vez con el agente activo.
 struct SetupPendiente(Mutex<Option<Url>>);
@@ -113,7 +112,11 @@ fn autoarranque_primera_vez(app: &AppHandle) {
         eprintln!("no se pudo escribir la marca de primera ejecución: sin autoarranque");
         return;
     }
-    if let Err(e) = app.autolaunch().enable() {
+    let activado = std::env::current_exe()
+        .map_err(|e| e.to_string())
+        .and_then(|exe| construir(NOMBRE, &exe.display().to_string()).map_err(|e| e.to_string()))
+        .and_then(|al| al.enable().map_err(|e| e.to_string()));
+    if let Err(e) = activado {
         eprintln!("no se pudo activar el autoarranque: {e}");
         let _ = std::fs::remove_file(&marca);
     }
@@ -155,10 +158,6 @@ fn main() {
                 *app.state::<SetupPendiente>().0.lock().unwrap() = Some(url);
             }
         }))
-        .plugin(tauri_plugin_autostart::init(
-            MacosLauncher::LaunchAgent,
-            Some(vec![ARG_AUTOARRANQUE]),
-        ))
         .manage(SetupPendiente(Mutex::new(setup_inicial)))
         .manage(config)
         .on_window_event(|w, e| {
