@@ -1,4 +1,4 @@
-import { mkdtempSync } from 'node:fs';
+import { existsSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { FastifyInstance } from 'fastify';
@@ -96,5 +96,23 @@ describe('paridad de rutas server real ↔ test-app (AUD-21)', () => {
     } finally {
       await arrancado.close();
     }
+  });
+
+  it('cerrar el servidor sin usuarios borra el archivo del token de setup', async () => {
+    // Si quedara, tras reiniciar el paquete `setup-url` leería el token del proceso anterior (caducado).
+    const seeder = await buildTestApp({});
+    try {
+      await seeder.prisma.user.deleteMany();
+    } finally {
+      await seeder.close();
+    }
+    const archivo = tokenTemporal();
+    const arrancado = await buildServer({ setupTokenFile: archivo });
+    try {
+      expect(existsSync(archivo)).toBe(true);
+    } finally {
+      await arrancado.close();
+    }
+    expect(existsSync(archivo)).toBe(false);
   });
 });

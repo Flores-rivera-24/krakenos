@@ -74,7 +74,7 @@ describe('scripts de mantenimiento', () => {
   it('postinst no falla si setup-url no encuentra el token', () => {
     const l = leer('postinst')
       .split('\n')
-      .filter((x) => x.includes('setup-url'));
+      .filter((x) => x.includes('"$SETUP" setup-url'));
     expect(l.length).toBeGreaterThan(0);
     for (const x of l) expect(x).toMatch(/\|\| true\s*$/);
   });
@@ -83,7 +83,7 @@ describe('scripts de mantenimiento', () => {
     const t = leer('postinst');
     // Instalación nueva O marcador de un intento fallido anterior: una actualización no arranca sin HTTPS.
     expect(t).toMatch(
-      /if \[ -z "\$2" \] \|\| \[ -f "\$PENDIENTE" \]; then\s*\n\s*if ! "\$SETUP" tls auto; then[\s\S]*?exit 0\s*\n\s*fi\s*\n\s*fi[\s\S]*systemctl restart[\s\S]*setup-url/,
+      /if \[ -z "\$2" \] \|\| \[ -f "\$PENDIENTE" \]; then\s*\n\s*if ! "\$SETUP" tls auto; then[\s\S]*?exit 0\s*\n\s*fi\s*\n\s*mostrar_url=1\s*\n\s*fi[\s\S]*systemctl restart[\s\S]*setup-url/,
     );
     expect(t).toContain('PENDIENTE=/etc/krakenos/.https-pendiente');
     // El marcador se crea ANTES del exit 0 del fallo.
@@ -91,6 +91,17 @@ describe('scripts de mantenimiento', () => {
     expect(t).toContain('sudo krakenos-setup tls auto');
     expect(t).toContain('sudo systemctl enable --now krakenos');
     expect(t).toContain('sudo krakenos-setup tls none');
+  });
+
+  it('postinst: solo espera el enlace de setup en instalación nueva o tras un HTTPS pendiente', () => {
+    const t = leer('postinst');
+    expect(t).toMatch(/mostrar_url=0/);
+    expect(t).toMatch(
+      /if \[ "\$mostrar_url" -eq 1 \]; then\s*\n\s*"\$SETUP" setup-url --wait 30 \|\| true/,
+    );
+    // En una actualización normal: una línea, sin espera ni token posiblemente caducado.
+    expect(t).toContain('Si aún no creaste el administrador: sudo krakenos-setup setup-url');
+    expect(t.match(/setup-url --wait/g)).toHaveLength(1);
   });
 
   it('postinst: un systemctl que falla lo dice por stderr antes de salir con error', () => {

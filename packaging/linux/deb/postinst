@@ -22,6 +22,7 @@ case "$1" in
       # Instalación nueva, o un intento anterior que dejó HTTPS pendiente: HTTPS por defecto, como install.sh.
       # Si falla, NO se arranca: serviría HTTP plano y el enlace de configuración llevaría el token sin cifrar.
       # El marcador evita que la siguiente actualización (con $2 no vacío) arranque sin cifrar.
+      mostrar_url=0
       if [ -z "$2" ] || [ -f "$PENDIENTE" ]; then
         if ! "$SETUP" tls auto; then
           touch "$PENDIENTE"
@@ -34,6 +35,7 @@ Si de verdad quieres HTTP sin cifrar:
 MSG
           exit 0
         fi
+        mostrar_url=1
       fi
       systemctl daemon-reload || { echo "ERROR: systemctl daemon-reload falló." >&2; exit 1; }
       # Estado previo del servicio: tras `remove`, prerm lo deshabilitó todo; en una actualización sigue habilitado.
@@ -48,7 +50,13 @@ MSG
           systemctl enable --now "$t" || echo "AVISO: no se pudo habilitar $t." >&2
         fi
       done
-      "$SETUP" setup-url --wait 30 || true
+      # Solo en una instalación nueva el agente acaba de crear (o va a crear) el token de setup; en una
+      # actualización normal ya hay administrador y esperar 30 s no llevaría a nada.
+      if [ "$mostrar_url" -eq 1 ]; then
+        "$SETUP" setup-url --wait 30 || true
+      else
+        echo "Si aún no creaste el administrador: sudo krakenos-setup setup-url"
+      fi
     else
       echo "KrakenOS: systemd no está en marcha; el servicio no se arranca. Inícialo con 'systemctl start krakenos'." >&2
     fi

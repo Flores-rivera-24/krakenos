@@ -766,6 +766,13 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
     await writeSetupTokenFile(setupTokenFile, token).catch((err: unknown) =>
       app.log.warn({ err }, 'No se pudo escribir el fichero del token de setup'),
     );
+    // Al parar, el archivo se va con el token en memoria: si quedara, tras un reinicio
+    // `krakenos-setup setup-url` leería el token del proceso anterior (ya caducado).
+    app.addHook('onClose', async () => {
+      await removeSetupTokenFile(setupTokenFile).catch((err: unknown) =>
+        app.log.warn({ err }, 'No se pudo borrar el fichero del token de setup al cerrar'),
+      );
+    });
     // El origen solo cuenta si `WEB_ORIGIN` está fijado de verdad (env.webOrigin
     // trae un valor por defecto de dev que no distingue «fijado» de «ausente»).
     const setupUrl = resolveSetupUrl({
