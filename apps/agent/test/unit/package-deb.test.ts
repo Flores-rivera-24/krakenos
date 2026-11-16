@@ -65,9 +65,10 @@ describe('scripts de mantenimiento', () => {
     // Si lo fuera, `tls auto` lo modifica en toda instalación y dpkg preguntaría en cada versión.
     expect(existsSync(DEB + 'conffiles')).toBe(false);
     const t = leer('postinst');
-    const cfg = t.slice(t.indexOf('configure)'));
+    // Sin las líneas de comentario: saltarlas dentro de la regex la hacía de retroceso exponencial.
+    const cfg = t.slice(t.indexOf('configure)')).replace(/^[ \t]*#.*\n/gm, '');
     expect(cfg).toMatch(
-      /configure\)(\s*\n\s*#.*)*\s*\n\s*install -d -m 0755 \/etc\/krakenos\s*\n\s*if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600 -o root -g root \/usr\/share\/krakenos\/krakenos\.env \/etc\/krakenos\/krakenos\.env\s*\n\s*touch "\$PENDIENTE"\s*\n\s*fi\s*\n\s*systemd-sysusers/,
+      /configure\)\s*\n\s*install -d -m 0755 \/etc\/krakenos\s*\n\s*if \[ ! -e \/etc\/krakenos\/krakenos\.env \]; then\s*\n\s*install -m 0600 -o root -g root \/usr\/share\/krakenos\/krakenos\.env \/etc\/krakenos\/krakenos\.env\s*\n\s*touch "\$PENDIENTE"\s*\n\s*fi\s*\n\s*systemd-sysusers/,
     );
   });
 
