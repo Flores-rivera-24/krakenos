@@ -290,7 +290,6 @@ const mqttDiscovery: IntegrationGuide = {
   prerequisites: [
     'Un broker MQTT en tu red (Mosquitto es el habitual): el "cartero" por el que pasan los mensajes. Sirve el mismo que ya uses para zigbee2mqtt.',
     'Tus aparatos configurados para publicar en él, con el anuncio automático activado.',
-    'El paquete "mqtt" instalado en el servidor de KrakenOS (o haber instalado con la opción de dependencias extra).',
   ],
   steps: [
     {

@@ -26,14 +26,7 @@ Publican en ese formato, entre otros:
   zigbee2mqtt o Meross — son namespaces distintos y conviven).
 - Tus aparatos configurados para **publicar su discovery** en ese broker (en ESPHome y Tasmota es
   una casilla; abajo está el detalle).
-- El paquete `mqtt` en el servidor:
-
-  ```bash
-  cd /opt/krakenos && pnpm add mqtt
-  ```
-
-  Si instalaste con `install.sh --with-deps` o `--with-all`, ya está puesto **y sobrevive a las
-  actualizaciones** (`data/extra-deps.json`).
+- El paquete `mqtt` ya viene con el agente (y con los paquetes): no hay que instalar nada.
 
 ## Configurarlo
 

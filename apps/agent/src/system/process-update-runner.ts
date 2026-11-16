@@ -183,7 +183,17 @@ export class ProcessUpdateRunner implements UpdateRunner {
     try {
       deps = parseExtraDeps(await readFile(this.extraDepsFile, 'utf8'));
     } catch {
-      return; // sin manifiesto (instalación sin --with-deps): nada que hacer
+      return; // sin manifiesto: nada que hacer
+    }
+    // Las que el agente ya declara las trae el install congelado, a su versión fijada:
+    // un `pnpm add` sin versión (manifiesto de un `--with-deps` antiguo) las subiría.
+    try {
+      const pkg = JSON.parse(await readFile(join(this.agentDir, 'package.json'), 'utf8')) as {
+        dependencies?: Record<string, string>;
+      };
+      deps = deps.filter((d) => !(d in (pkg.dependencies ?? {})));
+    } catch {
+      // sin package.json legible no se filtra: se conserva el comportamiento anterior
     }
     if (deps.length === 0) return;
     try {

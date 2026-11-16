@@ -23,8 +23,9 @@
 # Extras (OPT-IN explícito; sin bandera no se instalan y se avisa al final):
 #   --with-helper    helper privilegiado + sudoers → VPN WireGuard, firewall, QoS
 #   --with-ffmpeg    ffmpeg → cámaras RTSP (vídeo en vivo, movimiento, grabación)
-#   --with-deps      deps opcionales de integraciones (node-ssh, mqtt, net-snmp, ws)
-#   --with-all       las tres anteriores
+#   --with-deps      (sin efecto) node-ssh, mqtt, net-snmp y ws ya vienen con
+#                    `pnpm install --frozen-lockfile`; se acepta por compatibilidad
+#   --with-all       helper + ffmpeg
 #
 # TLS (US-241) — sin HTTPS el navegador no da «contexto seguro» y se caen la app
 # instalable (PWA), los avisos push y las passkeys. Por eso HTTPS es el DEFECTO:
@@ -84,7 +85,6 @@ FROM_LOCAL=""
 BRANCH=""
 WITH_HELPER=0
 WITH_FFMPEG=0
-WITH_DEPS=0
 TLS_MODE=auto
 # Resumen final: lo que quedó desactivado se dice en voz alta, no en silencio.
 SUMMARY=()
@@ -217,11 +217,10 @@ parse_args() {
         ;;
       --with-helper) WITH_HELPER=1 ;;
       --with-ffmpeg) WITH_FFMPEG=1 ;;
-      --with-deps) WITH_DEPS=1 ;;
+      --with-deps) ;; # compatibilidad: las deps ya vienen en el lockfile
       --with-all)
         WITH_HELPER=1
         WITH_FFMPEG=1
-        WITH_DEPS=1
         ;;
       --update) MODE=update ;;
       --uninstall) MODE=uninstall ;;
@@ -681,12 +680,6 @@ refresh_tls_after_update() {
 }
 
 # ---------------------------------------------------------------- extras opt-in
-# Deps opcionales de integraciones: no están en package.json (CI con lockfile
-# congelado) y se cargan con import perezoso. Se anotan en data/extra-deps.json
-# para que el actualizador las reinstale (US-232): `pnpm install --frozen-lockfile`
-# las poda en cada update y el usuario perdía su hardware sin ningún aviso (AUD3-22).
-EXTRA_DEPS=(node-ssh mqtt net-snmp ws)
-
 install_extras() {
   log "Extras (opt-in por bandera)…"
   if [[ $WITH_HELPER -eq 1 ]]; then
@@ -704,29 +697,6 @@ install_extras() {
   else
     SUMMARY+=("sin ffmpeg → las cámaras RTSP (vídeo en vivo, movimiento, grabación) NO funcionan (--with-ffmpeg)")
   fi
-
-  if [[ $WITH_DEPS -eq 1 ]]; then
-    run bash -c "cd '$INSTALL_DIR/apps/agent' && pnpm add ${EXTRA_DEPS[*]}"
-    write_extra_deps_manifest
-    log "    deps de integraciones instaladas (${EXTRA_DEPS[*]})"
-  else
-    SUMMARY+=("sin deps de integraciones → routers por SSH, MQTT/zigbee2mqtt, SNMP y Matter NO conectarán (--with-deps)")
-  fi
-}
-
-# Manifiesto que sobrevive al `git checkout` del actualizador (va en data/, que es
-# untracked y se conserva entre updates).
-write_extra_deps_manifest() {
-  local manifest="$INSTALL_DIR/apps/agent/data/extra-deps.json"
-  local json
-  json="$(printf '"%s",' "${EXTRA_DEPS[@]}")"
-  json="[${json%,}]"
-  if [[ $DRY_RUN -eq 1 ]]; then
-    printf 'dry-run$ escribir %s con %s\n' "$manifest" "$json"
-    return 0
-  fi
-  mkdir -p "$(dirname "$manifest")"
-  printf '%s\n' "$json" > "$manifest"
 }
 
 # Lo que quedó desactivado se dice EN VOZ ALTA al final: antes se omitía en

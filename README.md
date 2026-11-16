@@ -213,8 +213,8 @@ curl -fsSL https://raw.githubusercontent.com/Flores-rivera-24/krakenos/main/scri
 | --------------- | --------------------------------------------------------------------------------------------------------- |
 | `--with-helper` | helper privilegiado + sudoers → **VPN WireGuard, firewall, QoS**                                          |
 | `--with-ffmpeg` | `ffmpeg` → **cámaras RTSP** (vídeo en vivo, movimiento, grabación)                                        |
-| `--with-deps`   | deps de integraciones (`node-ssh`, `mqtt`, `net-snmp`, `ws`) → routers por SSH, zigbee2mqtt, SNMP, Matter |
-| `--with-all`    | las tres                                                                                                  |
+| `--with-deps`   | sin efecto (se acepta por compatibilidad): `node-ssh`, `mqtt`, `net-snmp` y `ws` ya vienen con el agente |
+| `--with-all`    | helper + ffmpeg                                                                                           |
 
 Sin banderas, KrakenOS se instala y funciona, pero esas funciones concretas no operan
 hasta que las añadas (re-ejecuta el instalador con la bandera que falte). Después:
@@ -316,9 +316,9 @@ selecciona con una variable `*_KIND` (por defecto `mock`); cámbiala por la inte
 añade sus variables en `apps/agent/.env`. Hay una **guía por integración en `docs/`** (las
 mismas guías están internalizadas en la app).
 
-> **Dependencias nativas.** Algunas integraciones necesitan una dep opcional que **no está
-> en `package.json`** (CI con lockfile congelado) y se instala solo en el servidor:
-> `node-ssh`, `mqtt`, `net-snmp`, `ws` o `tuyapi`. Se cargan con import perezoso.
+> **Dependencias de integraciones.** `node-ssh`, `mqtt`, `net-snmp` y `ws` vienen con el agente
+> (se cargan con import perezoso, solo si se usan). Tuya necesita `tuyapi`, que **no está en
+> `package.json`** y se instala solo en el servidor.
 
 ### Drivers de red (`DRIVER_KIND`)
 

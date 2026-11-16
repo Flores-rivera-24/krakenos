@@ -50,6 +50,12 @@ export async function pruneNodeModules(root) {
   if (await existe(join(root, 'prisma'))) await quitar(join(root, 'prisma'));
   for (const d of dirsPnpm) if (/^prisma@/.test(d)) await quitar(join(pnpm, d));
 
+  // ssh2 (de node-ssh) publica sus tests con una clave privada de prueba: el guardián la
+  // vería como un secreto y, de todos modos, no hace falta en runtime.
+  for (const d of dirsPnpm) {
+    if (/^ssh2@/.test(d)) await quitar(join(pnpm, d, 'node_modules', 'ssh2', 'test'));
+  }
+
   let sqlite = false;
   for (const d of dirsPnpm) {
     if (!d.startsWith('@prisma+client@')) continue;
