@@ -272,3 +272,39 @@ describe('saltos por plataforma (US-281)', () => {
     }).toEqual(TOTAL_MEDIDO);
   });
 });
+
+/**
+ * Reintentos solo en Windows. Un `retry` esconde un fallo real si se reparte a la ligera, así
+ * que es una lista cerrada y razonada, como los saltos: los tres tests de disco que un pico
+ * de TODO el runner de Windows tumbó (15 runs, 2026-11-17; en su peor pasada db-client entero
+ * tardó 32,8 s frente a una mediana de 6,9 s). Subir sus topes no era la salida.
+ */
+const REINTENTOS: Record<string, number> = {
+  'unit/db-client.test.ts': 1,
+  'unit/json-store.test.ts': 1,
+  'unit/restore-wal.test.ts': 1,
+};
+const RETRY = /\bretry\s*:/g;
+
+describe('reintentos por plataforma', () => {
+  it('el detector reconoce un retry (control positivo)', () => {
+    expect("it('x', { retry: 2 }, () => {})".match(RETRY)?.length).toBe(1);
+    expect(
+      "it('x', { retry: process.platform === 'win32' ? 1 : 0 }, () => {})".match(RETRY)?.length,
+    ).toBe(1);
+    expect("it('x', () => {})".match(RETRY)).toBeNull();
+  });
+
+  it('los reintentos que hay son exactamente los de la lista cerrada y solo valen en Windows', () => {
+    const reales: Record<string, number> = {};
+    for (const f of ficheros(TEST_DIR)) {
+      if (f === fileURLToPath(import.meta.url)) continue;
+      const t = readFileSync(f, 'utf8');
+      const n = t.match(RETRY)?.length ?? 0;
+      if (n > 0) reales[relative(TEST_DIR, f).replaceAll('\\', '/')] = n;
+      // Todo retry condicionado a win32: en Linux/macOS un fallo no se reintenta.
+      expect(t.match(/\bretry\s*:(?!\s*process\s*\.platform)/g), f).toBeNull();
+    }
+    expect(reales).toEqual(REINTENTOS);
+  });
+});

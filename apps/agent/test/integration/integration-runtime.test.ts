@@ -107,7 +107,7 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
   });
 
   it('stopAll no se cuelga si un transporte muerto nunca devuelve el cierre', async () => {
-    const rt = await buildIntegrationRuntime(app, store);
+    const rt = await buildIntegrationRuntime(app, store, 100);
     // Un `stop()` que no resuelve jamás (socket SSH a un router que ya no está).
     rt.vpn.swap({ stop: () => new Promise<void>(() => undefined) } as never);
 
@@ -115,8 +115,8 @@ describe('IntegrationRuntime — hidratación DB/env + recarga en caliente (US-1
     await expect(
       Promise.race([
         rt.stopAll().then(() => 'apagado'),
-        new Promise((resolve) => setTimeout(() => resolve('colgado'), 8_000)),
+        new Promise((resolve) => setTimeout(() => resolve('colgado'), 2_000)),
       ]),
     ).resolves.toBe('apagado');
-  }, 15_000);
+  }, 5_000);
 });
