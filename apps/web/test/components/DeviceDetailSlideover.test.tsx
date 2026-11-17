@@ -97,7 +97,9 @@ describe('DeviceDetailSlideover', () => {
       render(<DeviceDetailSlideover device={device()} onClose={() => {}} />);
       await userEvent.click(await screen.findByRole('button', { name: 'Save changes' }));
       await waitFor(() =>
-        expect(screen.getByRole('alert')).toHaveTextContent('Check the details and try again.'),
+        expect(screen.getByRole('alert')).toHaveTextContent(
+          'Some details are not valid. Check the form.',
+        ),
       );
     } finally {
       setLocale('es', { persist: false });

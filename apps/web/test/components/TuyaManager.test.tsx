@@ -70,7 +70,9 @@ describe('TuyaManager', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }));
     await user.click(screen.getByRole('button', { name: 'Confirm' }));
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Check the details and try again.'),
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Some details are not valid. Check the form.',
+      ),
     );
   });
 

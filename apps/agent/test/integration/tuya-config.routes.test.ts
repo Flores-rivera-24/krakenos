@@ -37,6 +37,24 @@ describe('rutas de config Tuya', () => {
     expect(await store.get('dev-1')).toMatchObject({ id: 'dev-1', localKey: 'abcdef0123456789' });
   });
 
+  it('POST con el nombre vacío: 400 con código y campo, sin texto técnico de Ajv', async () => {
+    const admin = await seedUser(app, { role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/iot/tuya/devices',
+      headers: authHeader(signAccess(app, admin)),
+      payload: { ...DEVICE, name: '' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({
+      statusCode: 400,
+      code: 'VALIDATION',
+      error: 'Bad Request',
+      message: 'Algunos datos no son válidos. Revisa el formulario.',
+      details: { field: 'name', rule: 'minLength', limit: 1 },
+    });
+  });
+
   it('GET /api/iot/tuya/devices lista sin exponer la localKey', async () => {
     const admin = await seedUser(app, { role: 'admin' });
     await store.upsert({ ...DEVICE, id: DEVICE.deviceId });

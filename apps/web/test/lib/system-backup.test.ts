@@ -77,12 +77,12 @@ describe('cliente de copia de seguridad', () => {
     expect(err).toBeInstanceOf(ApiRequestError);
     expect(err.status).toBe(400);
     expect(err.body.code).toBe('VALIDATION');
-    // En español sale el mensaje del agente; en inglés, el del catálogo para ese code.
+    // Ahora VALIDATION se traduce por catálogo también en español (con details por regla).
     expect(describeError(err, 'No se pudo restaurar la copia de seguridad')).toBe(
-      'Revisa los datos e inténtalo de nuevo.',
+      'Algunos datos no son válidos. Revisa el formulario.',
     );
     await changeLocale('en', { persist: false });
-    expect(describeError(err, 'x')).toBe('Check the details and try again.');
+    expect(describeError(err, 'x')).toBe('Some details are not valid. Check the form.');
   });
 
   it('sin cuerpo JSON el error no inventa texto: describeError usa el fallback del idioma', async () => {

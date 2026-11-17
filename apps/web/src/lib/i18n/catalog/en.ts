@@ -76,7 +76,10 @@ export const en: Record<TranslationKey, string> = {
   'errors.network': 'Could not reach the server. Check your connection.',
   'errors.code.AUTH_INVALID_CREDENTIALS': 'Incorrect credentials.',
   'errors.code.RATE_LIMITED': 'Too many attempts. Wait a moment and try again.',
-  'errors.code.VALIDATION': 'Check the details and try again.',
+  'errors.code.VALIDATION': 'Some details are not valid. Check the form.',
+  'errors.validation.required': 'A required field is missing. Check that no field is empty.',
+  'errors.validation.tooShort': 'A field is too short: it needs at least {limit} characters.',
+  'errors.validation.tooLong': 'A field is too long: it allows at most {limit} characters.',
   'errors.code.CAMERAS_CONFIG_CORRUPT':
     'The cameras file is damaged. Restore it from a backup or check it by hand; it has not been modified.',
   'errors.code.BACKUP_FROM_NEWER_VERSION':

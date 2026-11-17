@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { registerErrorHandler } from '../../src/plugins/error-handler.js';
 import Fastify from 'fastify';
+import { errorResponse } from '../../src/modules/common.schemas.js';
 
 /** Los 5xx no filtran el mensaje interno; los 4xx conservan su contrato. */
 describe('manejador de errores global', () => {
@@ -40,6 +41,20 @@ describe('manejador de errores global', () => {
       {
         schema: {
           body: { type: 'object', required: ['a'], properties: { a: { type: 'string' } } },
+        },
+      },
+      async () => 'ok',
+    );
+    app.post(
+      '/valida-con-400',
+      {
+        schema: {
+          body: {
+            type: 'object',
+            required: ['a'],
+            properties: { a: { type: 'string', minLength: 1, maxLength: 5 } },
+          },
+          response: { 400: errorResponse },
         },
       },
       async () => 'ok',
@@ -95,11 +110,37 @@ describe('manejador de errores global', () => {
     });
   });
 
-  it('la validación de Fastify (400) conserva su mensaje', async () => {
+  it('la validación (400) responde con código estable y detalle por campo, sin el texto de Ajv', async () => {
     const res = await app.inject({ method: 'POST', url: '/valida', payload: {} });
     expect(res.statusCode).toBe(400);
-    expect(res.json().message).toContain("must have required property 'a'");
-    expect(res.json().code).toBe('FST_ERR_VALIDATION');
+    expect(res.json()).toEqual({
+      statusCode: 400,
+      code: 'VALIDATION',
+      error: 'Bad Request',
+      message: 'Algunos datos no son válidos. Revisa el formulario.',
+      details: { field: 'a', rule: 'required' },
+    });
+    expect(res.body).not.toMatch(/must |body\//);
+  });
+
+  it('la validación lleva el límite cuando la regla lo tiene', async () => {
+    const vacio = await app.inject({ method: 'POST', url: '/valida-con-400', payload: { a: '' } });
+    expect(vacio.json().details).toEqual({ field: 'a', rule: 'minLength', limit: 1 });
+    const largo = await app.inject({
+      method: 'POST',
+      url: '/valida-con-400',
+      payload: { a: 'abcdefg' },
+    });
+    expect(largo.json().details).toEqual({ field: 'a', rule: 'maxLength', limit: 5 });
+  });
+
+  it('el schema de respuesta errorResponse conserva el detalle (details)', async () => {
+    const res = await app.inject({ method: 'POST', url: '/valida-con-400', payload: {} });
+    expect(res.json()).toEqual({
+      code: 'VALIDATION',
+      message: 'Algunos datos no son válidos. Revisa el formulario.',
+      details: { field: 'a', rule: 'required' },
+    });
   });
 
   it('una ruta inexistente sigue siendo 404', async () => {

@@ -17,6 +17,8 @@ export const errorResponse = {
   properties: {
     code: { type: 'string' },
     message: { type: 'string' },
+    // Errores de validación: `{ field, rule, limit? }`. Sin esto el schema lo poda.
+    details: { type: 'object', additionalProperties: true },
   },
   required: ['code', 'message'],
 } as const;

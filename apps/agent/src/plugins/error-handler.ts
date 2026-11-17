@@ -8,7 +8,9 @@ import { PRIVILEGED_COMMAND_FAILED_MESSAGE, PrivilegedCommandError } from '../pr
  * El de Fastify por defecto manda `error.message` también en los 5xx, así que un fallo
  * de Prisma o de un driver llegaba al cliente con rutas, SQL y detalles internos. Aquí:
  *
- * - **4xx**: idéntico al de Fastify (respeta `statusCode`, `code` y `message`, también
+ * - **400 de validación** (`error.validation`): `code: 'VALIDATION'` + `details {field, rule, limit?}`
+ *   y un mensaje nuestro; nunca el texto de Ajv.
+ * - **otros 4xx**: idéntico al de Fastify (respeta `statusCode`, `code` y `message`, también
  *   los errores de validación). El contrato 4xx no cambia.
  * - **`PrivilegedCommandError`** (el helper de WireGuard/iptables/tc salió con error): **503**
  *   `PRIVILEGED_COMMAND_FAILED` con copy nuestro. Antes caía como 500 «Error interno» sin
@@ -18,6 +20,9 @@ import { PRIVILEGED_COMMAND_FAILED_MESSAGE, PrivilegedCommandError } from '../pr
  * - **5xx**: el error completo va al log; el cliente recibe un mensaje genérico salvo en los
  *   5xx deliberados con `code` propio (p. ej. `DRIVER_UNAVAILABLE`), cuyo copy es nuestro.
  */
+/** Copy es-ES genérico del 400 de validación; la web lo traduce por `code` + `details`. */
+const VALIDATION_MESSAGE = 'Algunos datos no son válidos. Revisa el formulario.';
+
 export function registerErrorHandler(app: FastifyInstance): void {
   app.setErrorHandler((error: FastifyError, req: FastifyRequest, reply: FastifyReply) => {
     if (error instanceof PrivilegedCommandError) {
@@ -31,6 +36,28 @@ export function registerErrorHandler(app: FastifyInstance): void {
       });
     }
     const status = error.statusCode ?? 500;
+    if (error.validation && status === 400) {
+      // El texto de Ajv («body/name must NOT have fewer than 1 characters») es técnico y en inglés:
+      // al log; el cliente recibe un código estable y el detalle por campo para traducirlo.
+      req.log.info({ validation: error.validation, message: error.message }, 'validación fallida');
+      const v = error.validation[0];
+      const params = (v?.params ?? {}) as Record<string, unknown>;
+      const campo = v?.instancePath
+        ? v.instancePath.slice(1).replaceAll('/', '.')
+        : String(params.missingProperty ?? params.additionalProperty ?? '');
+      const limit = typeof params.limit === 'number' ? params.limit : undefined;
+      return reply.status(400).send({
+        statusCode: 400,
+        code: 'VALIDATION',
+        error: statusErrorName(400),
+        message: VALIDATION_MESSAGE,
+        details: {
+          field: campo,
+          rule: v?.keyword ?? 'unknown',
+          ...(limit === undefined ? {} : { limit }),
+        },
+      });
+    }
     if (status < 500) {
       // Mismo cuerpo que el handler por defecto de Fastify.
       return reply.status(status).send({
