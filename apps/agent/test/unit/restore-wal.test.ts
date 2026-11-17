@@ -142,35 +142,40 @@ describe('restore y WAL huérfano (US-274)', () => {
     expect(existsSync(`${vivo}-shm`)).toBe(false);
   });
 
-  it('si un fichero posterior falla, la base vieja vuelve CON su WAL (no se pierde lo no checkpointed)', async () => {
-    const vivo = await baseConCierreSucio(join(tmp, 'vivo'));
-    const staging = join(tmp, 'staging');
-    await copiaB(staging);
-    // Un destino imposible: `data` existe como FICHERO, así que crear `data/x.json` falla.
-    mkdirSync(join(staging, 'data'));
-    writeFileSync(join(staging, 'data', 'x.json'), '[]');
-    writeFileSync(join(tmp, 'data'), 'no soy un directorio');
+  // Reintento solo en Windows: picos del runner (máx. medido 0,51 s de un tope de 5 s; el pico mató db-client entero, 32,8 s vs 6,9 s).
+  it(
+    'si un fichero posterior falla, la base vieja vuelve CON su WAL (no se pierde lo no checkpointed)',
+    { retry: process.platform === 'win32' ? 1 : 0 },
+    async () => {
+      const vivo = await baseConCierreSucio(join(tmp, 'vivo'));
+      const staging = join(tmp, 'staging');
+      await copiaB(staging);
+      // Un destino imposible: `data` existe como FICHERO, así que crear `data/x.json` falla.
+      mkdirSync(join(staging, 'data'));
+      writeFileSync(join(staging, 'data', 'x.json'), '[]');
+      writeFileSync(join(tmp, 'data'), 'no soy un directorio');
 
-    expect(() =>
-      applyStagedRestore(
-        staging,
-        {
-          dbFile: vivo,
-          keysDir: join(tmp, 'keys'),
-          keyFiles: clavesEn(join(tmp, 'keys')),
-          dataDir: join(tmp, 'data'),
-        },
-        join(tmp, 'pre-restore'),
-      ),
-    ).toThrow();
+      expect(() =>
+        applyStagedRestore(
+          staging,
+          {
+            dbFile: vivo,
+            keysDir: join(tmp, 'keys'),
+            keyFiles: clavesEn(join(tmp, 'keys')),
+            dataDir: join(tmp, 'data'),
+          },
+          join(tmp, 'pre-restore'),
+        ),
+      ).toThrow();
 
-    expect(existsSync(`${vivo}-wal`)).toBe(true);
-    const { integridad, filas } = await leer(vivo);
-    expect(integridad).toBe('ok');
-    // 400 filas de A: la fila 1 checkpointed y las 399 que solo vivían en el WAL.
-    expect(filas).toHaveLength(400);
-    expect(filas[399]?.[1]).toMatch(/^a-wal-400-/);
-  });
+      expect(existsSync(`${vivo}-wal`)).toBe(true);
+      const { integridad, filas } = await leer(vivo);
+      expect(integridad).toBe('ok');
+      // 400 filas de A: la fila 1 checkpointed y las 399 que solo vivían en el WAL.
+      expect(filas).toHaveLength(400);
+      expect(filas[399]?.[1]).toMatch(/^a-wal-400-/);
+    },
+  );
 
   it('sin WAL previo (caso normal) sigue restaurando, y tolera la ausencia de -wal/-shm', async () => {
     const vivoDir = join(tmp, 'vivo');

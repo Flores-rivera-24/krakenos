@@ -113,6 +113,8 @@ export interface IntegrationRuntime {
 export async function buildIntegrationRuntime(
   app: Pick<FastifyInstance, 'log'>,
   store: IntegrationConfigStore,
+  /** Inyectable para que el test no espere 5 s reales. */
+  stopTimeoutMs: number = STOP_TIMEOUT_MS,
 ): Promise<IntegrationRuntime> {
   /** Config efectiva de un dominio: registro DB activo, o `null` (→ fallback a `.env`). */
   const effective = async (domain: IntegrationDomain): Promise<DomainRecord | null> => {
@@ -286,7 +288,7 @@ export async function buildIntegrationRuntime(
       [driver, vpn, iot, cameras, firewall, vlan, qos, dns].map(async (h) => {
         let timer: NodeJS.Timeout | undefined;
         const deadline = new Promise<void>((resolve) => {
-          timer = setTimeout(resolve, STOP_TIMEOUT_MS);
+          timer = setTimeout(resolve, stopTimeoutMs);
           timer.unref();
         });
         await Promise.race([stopManager(h.current), deadline]);
