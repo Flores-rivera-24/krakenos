@@ -15,6 +15,9 @@ Type=simple
 User=krakenos
 Group=krakenos
 EnvironmentFile=/etc/krakenos/krakenos.env
+# Las claves que fija el paquete (datos, modo, helper) van DESPUÉS: en systemd gana el último archivo, y
+# `Environment=` no sirve porque `EnvironmentFile=` lo pisa. Así editar o borrar krakenos.env no las rompe.
+EnvironmentFile=/usr/lib/krakenos/package.env
 # El .env del paquete ya está cargado: first-run.mjs no crea un segundo .env en los datos.
 Environment=KRAKENOS_ENV_FROM_SYSTEM=1
 WorkingDirectory=/var/lib/krakenos

@@ -471,6 +471,25 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     }
   });
 
+  it('local_hostname sin el binario hostname (Arch sin inetutils) usa uname -n, no «krakenos»', () => {
+    const lib = fileURLToPath(
+      new URL('../../../../scripts/lib/krakenos-system.sh', import.meta.url),
+    );
+    const bin = mkdtempSync(join(tmpdir(), 'kraken-host-'));
+    // PATH controlado: solo `tr` (real) y un `uname` falso; no hay `hostname` ni cat.
+    symlinkSync(
+      execFileSync('bash', ['-c', 'command -v tr'], { encoding: 'utf8' }).trim(),
+      join(bin, 'tr'),
+    );
+    writeFileSync(join(bin, 'uname'), '#!/bin/sh\necho Mi-Equipo.casa.lan\n', { mode: 0o755 });
+    const bash = execFileSync('bash', ['-c', 'command -v bash'], { encoding: 'utf8' }).trim();
+    const out = execFileSync(bash, ['-c', `source "${lib}"; local_hostname`], {
+      encoding: 'utf8',
+      env: { PATH: bin },
+    });
+    expect(out).toBe('mi-equipo');
+  });
+
   it('install.sh por stdin (curl | bash) no falla al cargar la biblioteca', async () => {
     // Con el script en stdin `$0` es `bash`: no hay lib/ al lado y la biblioteca se carga
     // tras fetch_source (en dry-run, de la copia local que --from-local indica).

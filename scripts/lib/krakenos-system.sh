@@ -190,7 +190,10 @@ UNIT
 # KRAKENOS_HOSTNAME para que ambos usen exactamente el mismo).
 local_hostname() {
   local h
-  h="$(hostname -s 2> /dev/null | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-' || true)"
+  # `hostname` no está en Arch (viene con inetutils): se cae a `uname -n` y a /proc; todos dan el
+  # nombre completo, así que se recorta al primer punto como haría `hostname -s`.
+  h="$(hostname -s 2> /dev/null || uname -n 2> /dev/null || cat /proc/sys/kernel/hostname 2> /dev/null || true)"
+  h="$(printf '%s' "${h%%.*}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-' || true)"
   printf '%s' "${h:-krakenos}"
 }
 

@@ -1,7 +1,10 @@
-# Instalar KrakenOS con el paquete `.deb`
+# Instalar KrakenOS con el paquete `.deb` o el de Arch
 
-El paquete `.deb` instala KrakenOS en Debian, Ubuntu y derivados con **su propio Node.js**: no hace
-falta instalar Node, pnpm ni clonar el repositorio. Es la alternativa a `scripts/install.sh`.
+El paquete `.deb` instala KrakenOS en Debian, Ubuntu y derivados, y el paquete de Arch (`.pkg.tar.zst`)
+en Arch Linux y CachyOS, los dos con **su propio Node.js**: no hace falta instalar Node, pnpm ni clonar
+el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escrita con los comandos de
+`apt`; lo que cambia con `pacman` está en [Paquete de Arch](#paquete-de-arch-pacman). Todo lo demás
+(dónde vive cada cosa, `/setup`, HTTPS, el helper) vale para los dos.
 
 - Arquitecturas: **amd64** y **arm64**. El archivo se llama `krakenos_<versión>_<arquitectura>.deb`.
 - Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
@@ -65,16 +68,17 @@ mientras no haya administrador): imprime una línea que recuerda este comando.
 
 ## Dónde vive cada cosa
 
-| Qué                                                              | Dónde                        |
-| ---------------------------------------------------------------- | ---------------------------- |
-| Código y Node.js incluido (de root; el servicio no los modifica) | `/usr/lib/krakenos/`         |
-| Configuración (variables de entorno)                             | `/etc/krakenos/krakenos.env` |
-| Certificado y clave HTTPS                                        | `/etc/krakenos/tls/`         |
-| Clave de la CA propia (solo si usas HTTPS `local`; solo root)    | `/etc/krakenos/ca/`          |
-| Estado: base de datos, claves de firma, datos de integraciones   | `/var/lib/krakenos/`         |
-| Unidad de systemd                                                | `krakenos.service`           |
-| Usuario de servicio                                              | `krakenos` (sin shell)       |
-| Herramienta de administración                                    | `krakenos-setup`             |
+| Qué                                                              | Dónde                           |
+| ---------------------------------------------------------------- | ------------------------------- |
+| Código y Node.js incluido (de root; el servicio no los modifica) | `/usr/lib/krakenos/`            |
+| Configuración (variables de entorno)                             | `/etc/krakenos/krakenos.env`    |
+| Rutas y modo que fija el paquete (no se editan)                  | `/usr/lib/krakenos/package.env` |
+| Certificado y clave HTTPS                                        | `/etc/krakenos/tls/`            |
+| Clave de la CA propia (solo si usas HTTPS `local`; solo root)    | `/etc/krakenos/ca/`             |
+| Estado: base de datos, claves de firma, datos de integraciones   | `/var/lib/krakenos/`            |
+| Unidad de systemd                                                | `krakenos.service`              |
+| Usuario de servicio                                              | `krakenos` (sin shell)          |
+| Herramienta de administración                                    | `krakenos-setup`                |
 
 `krakenos.env` lo lee systemd como root: el servicio no necesita poder leerlo, y el archivo no es
 legible por otros usuarios. La instalación lo crea una sola vez desde la plantilla de referencia
@@ -84,6 +88,12 @@ legible por otros usuarios. La instalación lo crea una sola vez desde la planti
 sudo nano /etc/krakenos/krakenos.env
 sudo systemctl restart krakenos
 ```
+
+Las rutas del directorio de datos y del helper y el modo de despliegue (`KRAKENOS_DATA_DIR`,
+`KRAKENOS_DEPLOY_MODE`, `WG_HELPER_PATH`, `FW_HELPER_PATH`, `TC_HELPER_PATH`) **no** viven ahí: las
+fija el paquete en `/usr/lib/krakenos/package.env`, que el servicio carga después de `krakenos.env` y
+por eso gana. Aunque las pongas o borres en tu archivo, el servicio sigue usando las del paquete.
+`HOST` y `PORT` sí son tuyos.
 
 El archivo no admite comentarios al final de una línea con valor (`PORT=3001  # nota`): systemd los
 tomaría como parte del valor. Los comentarios van en su propia línea.
@@ -195,6 +205,66 @@ Tras `remove`, volver a instalar el paquete recupera la instalación como estaba
 puede deshacer**: antes, exporta una copia cifrada desde **Ajustes → Sistema → Copia de seguridad**
 y guárdala fuera del servidor (ver [Recuperación](recovery.md)).
 
+## Paquete de Arch (`pacman`)
+
+Para Arch Linux y CachyOS, **x86_64**. No hay repositorio ni AUR, y aún no se adjunta a las versiones
+publicadas: se construye desde el repositorio y se instala desde el archivo. El paquete hace lo mismo
+que el `.deb` (usuario `krakenos`, HTTPS por defecto, servicio habilitado, enlace de `/setup`, la
+misma carpeta de código, datos y configuración) y requiere **systemd**; sin él se instala, deja HTTPS
+pendiente y el mensaje dice qué ejecutar.
+
+**Construir.** Hace falta el repositorio clonado, Node 24.21.0, pnpm 9, `base-devel` y acceso a internet.
+`makepkg` **no corre como root**:
+
+```bash
+pnpm package                                   # deja out/krakenos-<versión>-linux-x64/
+pnpm package:arch out/krakenos-<versión>-linux-x64
+cd out/krakenos-<versión>-arch
+makepkg                                        # deja krakenos-<versión>-1-x86_64.pkg.tar.zst
+```
+
+(Una versión de prueba como `0.1.0-rc.1` queda como `0.1.0rc1`: pacman no admite `-` en la versión.)
+
+**Instalar y actualizar** (el mismo comando; el paquete nuevo se instala encima):
+
+```bash
+sudo pacman -U krakenos-<versión>-1-x86_64.pkg.tar.zst
+```
+
+`pacman -U` resuelve las dependencias (`systemd`, `glibc`, `gcc-libs`, `ca-certificates`) pero **no
+instala las opcionales**: `ffmpeg` (cámaras), `nss-mdns` y `avahi` (que `<equipo>.local` resuelva),
+`wireguard-tools`, `sudo`, `iptables` e `iproute2` (el helper). Instálalas con `sudo pacman -S …` si las
+necesitas. Como en el `.deb`, tu `/etc/krakenos/krakenos.env` no se toca al actualizar: el paquete no lo
+trae (lo crea la instalación desde la plantilla), así que pacman no deja `.pacnew`.
+
+**Para que `<equipo>.local` resuelva en Arch** no basta con instalar `avahi` y `nss-mdns`: hay que activar el
+demonio y decirle a glibc que consulte mDNS.
+
+```bash
+sudo systemctl enable --now avahi-daemon
+```
+
+Y en `/etc/nsswitch.conf`, en la línea `hosts:`, añade `mdns_minimal [NOTFOUND=return]` **antes** de `resolve`
+y de `dns`, por ejemplo: `hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns`.
+
+**Quitar.** pacman no tiene «purge»:
+
+```bash
+sudo pacman -R krakenos      # para el servicio; conserva datos, configuración, usuario y regla de sudo
+```
+
+Para borrar **todo** (no se puede deshacer; antes exporta una copia cifrada, ver
+[Recuperación](recovery.md)):
+
+```bash
+sudo pacman -Rns krakenos
+sudo rm -rf /var/lib/krakenos /etc/krakenos
+sudo rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
+sudo userdel krakenos
+sudo groupdel krakenos   # si userdel no lo quitó ya
+sudo systemctl daemon-reload
+```
+
 ## Pasar de `install.sh` al paquete
 
 > **Paso manual.** No está automatizado ni se prueba en la integración continua. Hazlo con calma y
@@ -247,7 +317,7 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
    se copia `var/` (copias previas a migraciones y resultado de actualizaciones del árbol viejo).
    Si la copia de la base falla y sigues, el paquete arranca con una base vacía y pide `/setup`.
 
-3. **Instala el paquete** (ver «Instalar»). Si ya tenías HTTPS por `install.sh`, el certificado está
+3. **Instala el paquete** (ver «Instalar», o «Paquete de Arch»). Si ya tenías HTTPS por `install.sh`, el certificado está
    en la misma ruta, `/etc/krakenos/tls`, y no se reemplaza si ya era de CA propia (si era por
    Tailscale, mira el aviso de la sección de HTTPS). Si tenías `tls none`, el paquete activa HTTPS
    local y cambia `WEB_ORIGIN`: las passkeys registradas con otro origen dejan de servir. Al final,
@@ -257,7 +327,7 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
 4. **Traslada tu configuración.** El `krakenos.env` del paquete es nuevo; el viejo no se copia solo.
    Revisa `/opt/krakenos/apps/agent/.env` y pasa a `/etc/krakenos/krakenos.env` lo que hubieras
    cambiado (`PORT`, `WEB_ORIGIN`, ajustes de TLS, `UPDATE_CHECK_REPO`…). No copies las líneas de
-   rutas ni `KRAKENOS_DEPLOY_MODE`: el paquete las fija. Si usabas el helper, actívalo ahora: la
+   rutas ni `KRAKENOS_DEPLOY_MODE`: el paquete las fija (aunque las copiaras, no tendrían efecto). Si usabas el helper, actívalo ahora: la
    regla de sudo vieja autoriza `/usr/local/bin/krakenos-helper`, y el paquete usa otra ruta, así que
    hasta entonces la VPN, el firewall y la QoS fallan.
 
@@ -269,8 +339,8 @@ atrás. Supone la instalación por defecto (`/opt/krakenos`, servicio y usuario 
 
 5. **Comprueba.** El servicio activo (`systemctl is-active krakenos`), entra con tu usuario de
    siempre, y verifica que tus dispositivos, integraciones y copias siguen ahí. Revisa en especial las
-   que usaban SSH, MQTT, SNMP o WebSocket: el paquete no trae esas librerías (ver «Integraciones que
-   necesitan paquetes extra»).
+   que usaban SSH, MQTT, SNMP o WebSocket: el paquete incluye esas librerías (ver «Integraciones y
+   librerías»).
 
 6. **Retira lo viejo** cuando estés seguro: el árbol `/opt/krakenos`, `/usr/local/lib/krakenos` (la
    copia de root de la renovación del certificado local, si existe) y, si usabas el helper,

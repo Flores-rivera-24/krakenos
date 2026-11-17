@@ -51,7 +51,7 @@ equipo; la **ventana** es solo una forma de abrir la interfaz y cerrarla no para
 
 | | Windows | Linux |
 |---|---|---|
-| **Lo que descarga el usuario** | `KrakenOS-Setup.exe` (instalador NSIS) | `.deb` (Debian, Ubuntu, Raspberry Pi OS; x64 y arm64) |
+| **Lo que descarga el usuario** | `KrakenOS-Setup.exe` (instalador NSIS) | `.deb` (Debian, Ubuntu, Raspberry Pi OS; x64 y arm64) y paquete de Arch (Arch, CachyOS; x64) |
 | **Agente** | Node 24 oficial + build del agente + dependencias de producción en la carpeta de instalación | Igual |
 | **Servicio** | Servicio de Windows con reinicio automático (envoltorio WinSW) | Unidad systemd (la actual) |
 | **Datos** | `%ProgramData%\KrakenOS`, con ACL solo para el servicio y Administradores | `/var/lib/krakenos` |
@@ -106,7 +106,7 @@ funciona: copia de la base antes de migrar, comprobación de salud y vuelta atr�
    la guía de instalación explica cómo continuar. Se revisa cuando haya usuarios fuera del círculo cercano.
 2. **Energía:** el instalador de Windows **solo avisa** de que un equipo que se suspende deja de vigilar.
    No cambia el plan de energía.
-3. **Paquetes de Linux:** solo `.deb`. Sin `.rpm`.
+3. **Paquetes de Linux:** `.deb` **y paquete de Arch** (cambiado el 2026-11-10: el dueño usa CachyOS; antes era solo `.deb`). Sin `.rpm`.
 4. **Funciones de puerta de enlace en Windows:** se acepta que en Windows no hay servidor VPN, cortafuegos
    ni QoS propios. El acceso remoto va por Tailscale o por el WireGuard del router.
 

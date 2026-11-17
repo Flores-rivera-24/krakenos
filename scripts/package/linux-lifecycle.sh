@@ -28,6 +28,7 @@ NEW="$(readlink -f -- "$NEW")"
 
 ENV_FILE=/etc/krakenos/krakenos.env
 SETUP=/usr/lib/krakenos/libexec/krakenos-setup
+SETUP_HELPER=/usr/lib/krakenos/libexec/krakenos-helper
 CERT=/etc/krakenos/tls/agent-cert.pem
 WORK="$(mktemp -d)"
 [[ -n $WORK && -d $WORK ]] || { echo "ERROR: mktemp falló" >&2; exit 2; }
@@ -72,6 +73,14 @@ pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de
   tail -n 6 "$WORK/pkg.log" | redact | sed 's/^/  | /'
   [[ $rc -eq 0 ]] || fail "la instalación de $(basename -- "$1") salió con $rc"
 }
+# Reinstala el MISMO fichero por encima: apt-get no hace nada, dpkg -i sí corre el postinst (con $2 no
+# vacío) y pacman -U sí corre post_upgrade. Es lo que hace falta para ejercitar el reintento de HTTPS.
+pkg_reinstall() { # $1 = fichero
+  case "$KIND" in
+    deb) DEBIAN_FRONTEND=noninteractive dpkg -i "$1" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+  esac
+}
 pkg_remove() {
   case "$KIND" in
     deb) DEBIAN_FRONTEND=noninteractive apt-get remove -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
@@ -82,9 +91,15 @@ pkg_purge() {
   case "$KIND" in
     deb) DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch)
-      # pacman no purga: la documentación del paquete manda borrar los datos y la configuración a mano.
+      # pacman no purga: la guía (docs/install-linux-package.md, «Quitar») manda borrar a mano los datos,
+      # la configuración, las unidades de renovación del certificado, la regla de sudo y el usuario que
+      # creó sysusers. Mantener estos comandos iguales a los de la guía (lo ata package-arch.test.ts).
       pacman -Rns --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
       rm -rf /var/lib/krakenos /etc/krakenos
+      rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
+      userdel krakenos
+      groupdel krakenos 2> /dev/null || true
+      systemctl daemon-reload
       ;;
   esac
 }
@@ -112,6 +127,18 @@ wait_ready() { # hasta 60 s, sin dormir a ciegas
 }
 active() { systemctl is-active --quiet krakenos; }
 need_active() { active || fail "systemctl is-active krakenos = $(systemctl is-active krakenos || true)"; }
+# Lo que ve de verdad el proceso del servicio (no lo que dice el archivo): /proc/<pid>/environ.
+env_del_servicio() { # $1 = clave
+  local pid
+  pid="$(systemctl show -p MainPID --value krakenos)"
+  [[ $pid =~ ^[1-9][0-9]*$ ]] || fail "krakenos no tiene MainPID (¿no está activo?)"
+  tr '\0' '\n' < "/proc/$pid/environ" | sed -n "s/^$1=//p" | tail -n 1
+}
+claves_del_paquete_intactas() { # $1 = en qué momento se comprueba
+  [[ "$(env_del_servicio KRAKENOS_DEPLOY_MODE)" == package ]] || fail "$1: KRAKENOS_DEPLOY_MODE del servicio es '$(env_del_servicio KRAKENOS_DEPLOY_MODE)' (lo pisó krakenos.env)"
+  [[ "$(env_del_servicio KRAKENOS_DATA_DIR)" == /var/lib/krakenos ]] || fail "$1: KRAKENOS_DATA_DIR del servicio es '$(env_del_servicio KRAKENOS_DATA_DIR)' (lo pisó krakenos.env)"
+  [[ "$(env_del_servicio WG_HELPER_PATH)" == "$SETUP_HELPER" ]] || fail "$1: WG_HELPER_PATH del servicio es '$(env_del_servicio WG_HELPER_PATH)' (lo pisó krakenos.env)"
+}
 sha() { sha256sum -- "$1" | cut -d' ' -f1; }
 
 # El administrador de prueba: la contraseña vive solo en estos ficheros 0600.
@@ -134,45 +161,42 @@ case "$KIND" in
 esac
 
 # =================================================================================================
-if [[ $KIND == deb ]]; then
-  paso 0 "HTTPS que falla: ni instalar ni actualizar arrancan el servicio, y al arreglarlo sí"
-  PENDIENTE=/etc/krakenos/.https-pendiente
-  sin_arrancar() { # $1 = en qué momento se comprueba
-    [[ -f $PENDIENTE ]] || fail "$1: falta el marcador $PENDIENTE tras un tls auto fallido"
-    ! active || fail "$1: krakenos está activo aunque HTTPS no se pudo configurar"
-    ! systemctl is-enabled --quiet krakenos 2> /dev/null || fail "$1: krakenos quedó habilitado aunque HTTPS no se pudo configurar"
-  }
-  # Un archivo normal donde `tls auto` necesita el directorio /etc/krakenos/tls lo hace fallar sin
-  # tocar openssl ni PATH, y se revierte con rm.
-  install -d -m 0755 /etc/krakenos
-  : > /etc/krakenos/tls
-  pkg_install "$OLD"
-  sin_arrancar "instalación nueva"
-  ok "instalación nueva con HTTPS roto: marcador presente y servicio parado y sin habilitar"
-  pkg_install "$NEW"
-  sin_arrancar "actualización"
-  ok "actualización con HTTPS roto: sigue sin arrancar (reintentó tls auto por el marcador)"
-  rm -f /etc/krakenos/tls
-  # Misma versión por encima: apt-get no hace nada, dpkg -i sí corre el postinst (con $2 no vacío).
-  DEBIAN_FRONTEND=noninteractive dpkg -i "$NEW" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
-  [[ ! -e $PENDIENTE ]] || fail "con HTTPS arreglado el marcador $PENDIENTE sigue ahí"
-  need_active
-  grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "tras arreglar HTTPS, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
-  wait_ready
-  ok "HTTPS arreglado y reinstalado: marcador borrado, servicio activo y WEB_ORIGIN https"
-  # El usuario borra el archivo de entorno: reinstalar lo repone con HTTP, y debe quedar HTTPS otra vez.
-  rm -f "$ENV_FILE"
-  DEBIAN_FRONTEND=noninteractive dpkg -i "$NEW" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i tras borrar $ENV_FILE falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
-  [[ -f $ENV_FILE ]] || fail "reinstalar no repuso $ENV_FILE"
-  grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "con el archivo de entorno repuesto, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https:// (arrancó sin cifrar)"
-  [[ ! -e $PENDIENTE ]] || fail "con el archivo de entorno repuesto y HTTPS configurado, el marcador $PENDIENTE sigue ahí"
-  need_active
-  wait_ready
-  ok "archivo de entorno repuesto: HTTPS reconfigurado, sin marcador y servicio activo"
-  pkg_purge
-  [[ ! -e /etc/krakenos ]] || fail "/etc/krakenos sigue existiendo tras purgar"
-  ok "purgado antes del ciclo principal"
-fi
+paso 0 "HTTPS que falla: ni instalar ni actualizar arrancan el servicio, y al arreglarlo sí"
+PENDIENTE=/etc/krakenos/.https-pendiente
+sin_arrancar() { # $1 = en qué momento se comprueba
+  [[ -f $PENDIENTE ]] || fail "$1: falta el marcador $PENDIENTE tras un tls auto fallido"
+  ! active || fail "$1: krakenos está activo aunque HTTPS no se pudo configurar"
+  ! systemctl is-enabled --quiet krakenos 2> /dev/null || fail "$1: krakenos quedó habilitado aunque HTTPS no se pudo configurar"
+}
+# Un archivo normal donde `tls auto` necesita el directorio /etc/krakenos/tls lo hace fallar sin
+# tocar openssl ni PATH, y se revierte con rm.
+install -d -m 0755 /etc/krakenos
+: > /etc/krakenos/tls
+pkg_install "$OLD"
+sin_arrancar "instalación nueva"
+ok "instalación nueva con HTTPS roto: marcador presente y servicio parado y sin habilitar"
+pkg_install "$NEW"
+sin_arrancar "actualización"
+ok "actualización con HTTPS roto: sigue sin arrancar (reintentó tls auto por el marcador)"
+rm -f /etc/krakenos/tls
+pkg_reinstall "$NEW"
+[[ ! -e $PENDIENTE ]] || fail "con HTTPS arreglado el marcador $PENDIENTE sigue ahí"
+need_active
+grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "tras arreglar HTTPS, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
+wait_ready
+ok "HTTPS arreglado y reinstalado: marcador borrado, servicio activo y WEB_ORIGIN https"
+# El usuario borra el archivo de entorno: reinstalar lo repone con HTTP, y debe quedar HTTPS otra vez.
+rm -f "$ENV_FILE"
+pkg_reinstall "$NEW"
+[[ -f $ENV_FILE ]] || fail "reinstalar no repuso $ENV_FILE"
+grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "con el archivo de entorno repuesto, WEB_ORIGIN es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https:// (arrancó sin cifrar)"
+[[ ! -e $PENDIENTE ]] || fail "con el archivo de entorno repuesto y HTTPS configurado, el marcador $PENDIENTE sigue ahí"
+need_active
+wait_ready
+ok "archivo de entorno repuesto: HTTPS reconfigurado, sin marcador y servicio activo"
+pkg_purge
+[[ ! -e /etc/krakenos ]] || fail "/etc/krakenos sigue existiendo tras purgar"
+ok "purgado antes del ciclo principal"
 
 # =================================================================================================
 paso 1 "instalar el paquete viejo ($(basename -- "$OLD"))"
@@ -232,11 +256,15 @@ NEW_PORT=3107
 [[ $OLD_PORT != "$NEW_PORT" ]] || NEW_PORT=3108
 sed -i "s/^PORT=.*/PORT=$NEW_PORT/" "$ENV_FILE"
 printf '# editado por linux-lifecycle\n' >> "$ENV_FILE"
+# El usuario cambia a mano las claves que fija el paquete: no deben llegar al servicio (package.env gana).
+printf 'KRAKENOS_DEPLOY_MODE=git\nKRAKENOS_DATA_DIR=/tmp/otro-sitio\nWG_HELPER_PATH=/tmp/otro-helper\n' >> "$ENV_FILE"
 [[ "$(agent_port)" == "$NEW_PORT" ]] || fail "no se pudo editar PORT en $ENV_FILE"
 systemctl restart krakenos || fail "systemctl restart krakenos falló"
 need_active
 wait_ready
 ok "el servicio responde en el puerto $NEW_PORT (antes $OLD_PORT)"
+claves_del_paquete_intactas "tras editar krakenos.env"
+ok "las claves que fija el paquete no cambian aunque krakenos.env diga otra cosa"
 login
 ok "login = 200 en $NEW_PORT"
 
@@ -257,6 +285,7 @@ grep -q '^# editado por linux-lifecycle$' "$ENV_FILE" || fail "krakenos.env perd
 ok "krakenos.env conserva la edición del usuario (PORT=$NEW_PORT)"
 wait_ready
 ok "el servicio responde en $NEW_PORT tras actualizar"
+claves_del_paquete_intactas "tras actualizar"
 login
 ok "login = 200 tras actualizar (los datos sobreviven)"
 [[ "$(sha "$CERT")" == "$CERT_SHA_1" ]] || fail "actualizar regeneró el certificado TLS"

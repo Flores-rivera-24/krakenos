@@ -1,0 +1,33 @@
+# Maintainer: José Luis Flores Rivera <31547366+Flores-rivera-24@users.noreply.github.com>
+#
+# Lo arma scripts/package-arch.mjs: junto a este archivo deja `root.tar`, el árbol ya compuesto
+# (el mismo que usa el .deb, con el Node.js incluido; makepkg lo extrae en $srcdir) y package() solo
+# lo copia. No compila nada ni baja nada: por eso `!strip` (los binarios de Node se quedan como vienen).
+pkgname=krakenos
+pkgver=@VERSION@
+pkgrel=@PKGREL@
+pkgdesc='Gestión de red doméstica e IoT, en tu propio servidor'
+arch=('x86_64')
+url='https://github.com/Flores-rivera-24/krakenos'
+license=('AGPL-3.0-or-later')
+# glibc y gcc-libs: el binario de Node los enlaza (Ruling 15 del .deb: una dependencia, no un override).
+depends=('systemd' 'glibc' 'gcc-libs' 'ca-certificates')
+optdepends=(
+  'ffmpeg: cámaras'
+  'nss-mdns: nombre .local'
+  'avahi: nombre .local'
+  'wireguard-tools: VPN'
+  'sudo: puerta de enlace (helper de VPN, cortafuegos y QoS)'
+  'iptables: puerta de enlace (cortafuegos)'
+  'iproute2: puerta de enlace (QoS)'
+)
+# Sin `backup=`: krakenos.env no viene en el paquete. post_install lo crea desde
+# /usr/share/krakenos/krakenos.env solo si no existe, y `tls auto` lo reescribe: pacman nunca lo pisa.
+options=('!strip' '!debug')
+install=krakenos.install
+source=('root.tar')
+sha256sums=('@SHA256@')
+
+package() {
+  cp -a "$srcdir/usr" "$pkgdir/"
+}

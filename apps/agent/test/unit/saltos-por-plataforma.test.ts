@@ -95,6 +95,11 @@ const LISTA: Record<string, Entrada> = {
     saltos: 3,
     motivo: `${MODOS}; y los grupos (id -gn, chmod) y el umask no existen.`,
   },
+  'unit/package-arch.test.ts': {
+    saltos: 1,
+    motivo:
+      'Un solo alias (WIN) gobierna tres tests. El paquete de Arch se arma con bash y tar y comprueba modos y enlaces POSIX (krakenos.install con `bash -n`, package-arch.mjs y su root.tar): no existen en Windows. Las partes puras (archVersion, PKGBUILD, la lista de comandos y el job de CI) sí corren.',
+  },
   'unit/package-launcher.test.ts': {
     saltos: 1,
     motivo:
@@ -129,7 +134,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 16, saltos: 25, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 17, saltos: 26, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;
