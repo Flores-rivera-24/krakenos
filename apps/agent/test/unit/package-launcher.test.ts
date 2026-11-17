@@ -123,7 +123,9 @@ beforeEach(() => {
   mkdirSync(pkg, { recursive: true });
   montarPaquete();
 });
-afterEach(() => rmSync(raiz, { recursive: true, force: true }));
+// En Windows el antivirus o el indexador pueden retener la carpeta unos ms tras salir el hijo
+// (spawnSync ya espera a cmd.exe): EPERM en `rm` en el run 44184996189. Se reintenta el borrado.
+afterEach(() => rmSync(raiz, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }));
 
 describe('first-run.mjs (puro)', () => {
   it('pone los ocho *_KIND a none y conserva el resto', () => {
