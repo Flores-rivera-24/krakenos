@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from '../../../../scripts/package/prune.mjs';
+import { assertNoSecrets, pruneNodeModules, pruneUnreachable, retirarEnlaceDelAgente, assertSinColgantes } from '../../../../scripts/package/prune.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro.
 import { renombrarConReintento } from '../../../../scripts/package/rename-retry.mjs';
@@ -592,4 +592,48 @@ describe('size-budget.json', () => {
       expect(b!.maxMb).toBeLessThanOrEqual(b!.measuredMb * 1.05 + 1);
     },
   );
+});
+
+describe('enlaces colgantes del paquete', () => {
+  let base = '';
+  afterEach(() => rmSync(base, { recursive: true, force: true }));
+
+  function arbol() {
+    base = mkdtempSync(join(tmpdir(), 'pkg-colgantes-'));
+    const nm = join(base, 'node_modules');
+    mkdirSync(join(nm, '.pnpm', 'a@1', 'node_modules', 'a'), { recursive: true });
+    mkdirSync(join(nm, '.pnpm', 'node_modules', '@krakenos'), { recursive: true });
+    symlinkSync('.pnpm/a@1/node_modules/a', join(nm, 'a'));
+    return nm;
+  }
+
+  it('retira el enlace del propio agente (hoist de pnpm) y conserva los válidos', async () => {
+    const nm = arbol();
+    const agente = join(nm, '.pnpm', 'node_modules', '@krakenos', 'agent');
+    symlinkSync('../../../../../../apps/agent', agente);
+    expect(await retirarEnlaceDelAgente(nm)).toBe(true);
+    expect(() => lstatSync(agente)).toThrow();
+    expect(lstatSync(join(nm, 'a')).isSymbolicLink()).toBe(true);
+    await expect(assertSinColgantes(nm)).resolves.toBeUndefined();
+  });
+
+  it('sin enlace del agente no hace nada', async () => {
+    expect(await retirarEnlaceDelAgente(arbol())).toBe(false);
+  });
+
+  it('falla nombrando la ruta si hay OTRO enlace colgante', async () => {
+    const nm = arbol();
+    const roto = join(nm, '.pnpm', 'a@1', 'node_modules', 'roto');
+    symlinkSync('../../no-existe', roto);
+    await expect(assertSinColgantes(nm)).rejects.toThrow(roto);
+  });
+
+  it('el enlace del agente, si no se retiró, también cuenta como colgante', async () => {
+    const nm = arbol();
+    symlinkSync(
+      '../../../../../../apps/agent',
+      join(nm, '.pnpm', 'node_modules', '@krakenos', 'agent'),
+    );
+    await expect(assertSinColgantes(nm)).rejects.toThrow('@krakenos');
+  });
 });

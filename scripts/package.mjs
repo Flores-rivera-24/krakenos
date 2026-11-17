@@ -17,7 +17,13 @@ import {
   expectedSha256,
   verifySignature,
 } from './package/node-runtime.mjs';
-import { assertNoSecrets, pruneNodeModules, pruneUnreachable } from './package/prune.mjs';
+import {
+  assertNoSecrets,
+  assertSinColgantes,
+  pruneNodeModules,
+  pruneUnreachable,
+  retirarEnlaceDelAgente,
+} from './package/prune.mjs';
 import { collectThirdPartyLicenses } from './package/licenses.mjs';
 import { renombrarConReintento } from './package/rename-retry.mjs';
 import { relinkPnpmJunctions } from './package/relink.mjs';
@@ -172,6 +178,7 @@ async function main() {
   await renombrarConReintento(join(tmpDeploy, 'node_modules'), join(agente, 'node_modules'));
   await rm(tmpDeploy, { recursive: true, force: true });
   // En Windows los enlaces de pnpm son absolutos hacia el deploy temporal: hay que rehacerlos.
+  await retirarEnlaceDelAgente(join(agente, 'node_modules'));
   const rl = await relinkPnpmJunctions(join(agente, 'node_modules'));
   console.log(
     `    enlaces de pnpm rehechos: ${rl.relinked.length}; sin resolver: ${rl.unresolved.length}`,
@@ -219,6 +226,7 @@ async function main() {
   const nm = join(agente, 'node_modules');
   const a = await pruneNodeModules(nm);
   const b = await pruneUnreachable(nm);
+  await assertSinColgantes(nm);
   console.log(
     `    WASM y CLI: ${a.removed.length} entradas, ${(a.freedBytes / 1048576).toFixed(1)} MB; huérfanos de .pnpm: ${b.removed.length}`,
   );

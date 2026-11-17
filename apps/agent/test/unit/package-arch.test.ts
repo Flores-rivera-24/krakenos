@@ -173,9 +173,8 @@ describe('el árbol de código fuente que arma package-arch.mjs', () => {
       mkdirSync(join(pkg, d), { recursive: true });
     writeFileSync(join(pkg, 'bin', 'krakenos'), '#!/bin/sh\n', { mode: 0o755 });
     writeFileSync(join(pkg, 'app', 'agent', '.env.example'), 'PORT=3001\n');
-    // Uno válido y uno colgante (como el `@krakenos/agent` de pnpm, que apunta a `apps/agent`).
+    // Un enlace válido; los colgantes ya no llegan aquí (los retira o rechaza `package.mjs`).
     symlinkSync('krakenos', join(pkg, 'bin', 'alias'));
-    symlinkSync('../../../apps/agent', join(pkg, 'app', 'agent', 'dist', 'colgante'));
     return pkg;
   }
 
@@ -193,7 +192,6 @@ describe('el árbol de código fuente que arma package-arch.mjs', () => {
       ],
       { encoding: 'utf8' },
     );
-    expect(r.stderr.trim()).toMatch(/^aviso: enlace colgante retirado: \S+colgante$/);
     expect(r.status).toBe(0);
     const dir = r.stdout.trim();
     expect(dir.startsWith(out)).toBe(true);
@@ -212,9 +210,8 @@ describe('el árbol de código fuente que arma package-arch.mjs', () => {
     expect(ls).toContain('usr/share/licenses/krakenos/LICENSE');
     // Sin /etc: la configuración la crea el scriptlet, no el paquete.
     expect(ls).not.toMatch(/(^| )etc\//m);
-    // El enlace válido se conserva; el colgante (namcap lo marca E) se retira.
+    // El enlace válido se conserva.
     expect(ls).toContain('usr/lib/krakenos/bin/alias -> krakenos');
-    expect(ls).not.toContain('colgante');
   });
 
   it.skipIf(WIN)('rechaza una plataforma que no sea linux-x64', () => {

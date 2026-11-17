@@ -5,7 +5,7 @@
  * quitar lo que Prisma trae y SQLite no usa, quitar de `.pnpm/` lo que nadie enlaza, y
  * comprobar al final que no viajó nada que no deba salir de esta máquina.
  */
-import { lstat, readdir, realpath, rm } from 'node:fs/promises';
+import { lstat, readdir, realpath, rm, stat } from 'node:fs/promises';
 import { join, relative, sep } from 'node:path';
 
 const OTRAS_BASES = /postgresql|mysql|sqlserver|cockroachdb/;
@@ -135,6 +135,44 @@ export async function pruneUnreachable(nodeModulesRoot) {
     removed.push(d);
   }
   return { removed };
+}
+
+/**
+ * Retira el enlace del propio agente en el hoist de pnpm (`.pnpm/node_modules/@krakenos/agent`,
+ * apunta a `apps/agent`, que el paquete no lleva: nadie lo necesita). Va ANTES de rehacer los
+ * enlaces, para que no cuente como «sin resolver».
+ * @param {string} nodeModulesRoot
+ * @returns {Promise<boolean>} si lo había
+ */
+export async function retirarEnlaceDelAgente(nodeModulesRoot) {
+  const agente = join(nodeModulesRoot, '.pnpm', 'node_modules', '@krakenos', 'agent');
+  if (!(await lstat(agente).catch(() => null))?.isSymbolicLink()) return false;
+  await rm(agente);
+  return true;
+}
+
+/**
+ * Falla cerrado, nombrando las rutas, si queda un enlace que no apunta a nada.
+ * @param {string} nodeModulesRoot
+ * @returns {Promise<void>}
+ */
+export async function assertSinColgantes(nodeModulesRoot) {
+  const colgantes = [];
+  const pila = [nodeModulesRoot];
+  while (pila.length > 0) {
+    const dir = /** @type {string} */ (pila.pop());
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      const ruta = join(dir, e.name);
+      if (e.isSymbolicLink()) {
+        if (!(await stat(ruta).catch(() => null))) colgantes.push(ruta);
+      } else if (e.isDirectory()) pila.push(ruta);
+    }
+  }
+  if (colgantes.length > 0) {
+    throw new Error(
+      `El paquete lleva enlaces que no apuntan a nada: ${colgantes.sort().join(', ')}`,
+    );
+  }
 }
 
 /**
