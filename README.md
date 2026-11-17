@@ -92,8 +92,8 @@ Más en [`docs/updates.md`](docs/updates.md) y [`docs/recovery.md`](docs/recover
 ### Paquetes `.deb` y Arch
 
 Paquetes con su propio Node, sin `git` ni pnpm en el servidor: `.deb` para Debian y Ubuntu (amd64 y
-arm64) y paquete de pacman para Arch y CachyOS (x86_64). Todavía no se publican en las versiones; se
-construyen desde este repositorio. Guía en [`docs/install-linux-package.md`](docs/install-linux-package.md).
+arm64) y paquete de pacman para Arch y CachyOS (x86_64). A partir de la próxima versión se adjuntan a la página de
+versiones, con `SHA256SUMS`; mientras tanto, se construyen desde este repositorio. Guía en [`docs/install-linux-package.md`](docs/install-linux-package.md).
 
 ### Docker (evaluación)
 
