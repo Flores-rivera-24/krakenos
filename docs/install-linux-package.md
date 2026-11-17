@@ -9,9 +9,25 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
 - Arquitecturas: **amd64** y **arm64**. El archivo se llama `krakenos_<versión>_<arquitectura>.deb`.
 - Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
   deja HTTPS pendiente y el mensaje de la instalación dice qué ejecutar cuando haya systemd.
-- Todavía no hay repositorio apt ni firma del paquete, y el `.deb` aún no se adjunta a las versiones
-  publicadas: por ahora se construye desde el repositorio (siguiente apartado) y se instala desde el
-  archivo.
+- No hay repositorio apt ni firma del paquete. A partir de la próxima versión, el `.deb` se adjunta a
+  la página de versiones del repositorio (ver [Descargar y verificar](#descargar-y-verificar)); mientras
+  una versión no lo traiga, se construye desde el repositorio (siguiente apartado) y se instala desde
+  el archivo.
+
+## Descargar y verificar
+
+A partir de la próxima versión, cada versión publicada en la página de versiones (*Releases*) del
+repositorio trae los dos `.deb` (amd64 y arm64), el paquete de Arch (x86_64) y un archivo `SHA256SUMS`.
+Descarga el paquete de tu arquitectura junto con `SHA256SUMS` en la misma carpeta y verifica:
+
+```bash
+sha256sum -c --ignore-missing SHA256SUMS
+```
+
+Debe decir `OK` para los archivos que descargaste. Es una comprobación de integridad de la descarga,
+no una firma: quien controle la página de versiones controla también los dos archivos. Los paquetes
+se adjuntan desde la integración continua; la versión se crea como borrador y se publica a mano
+después de revisarla.
 
 ## Construir el `.deb`
 
@@ -207,8 +223,9 @@ y guárdala fuera del servidor (ver [Recuperación](recovery.md)).
 
 ## Paquete de Arch (`pacman`)
 
-Para Arch Linux y CachyOS, **x86_64**. No hay repositorio ni AUR, y aún no se adjunta a las versiones
-publicadas: se construye desde el repositorio y se instala desde el archivo. El paquete hace lo mismo
+Para Arch Linux y CachyOS, **x86_64**. No hay repositorio ni AUR. A partir de la próxima versión se adjunta a
+la página de versiones (ver [Descargar y verificar](#descargar-y-verificar)); mientras una versión no
+lo traiga, se construye desde el repositorio y se instala desde el archivo. El paquete hace lo mismo
 que el `.deb` (usuario `krakenos`, HTTPS por defecto, servicio habilitado, enlace de `/setup`, la
 misma carpeta de código, datos y configuración) y requiere **systemd**; sin él se instala, deja HTTPS
 pendiente y el mensaje dice qué ejecutar.

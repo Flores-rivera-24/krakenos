@@ -3,11 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+    # Un tag de versión corre la CI entera y, si todo pasa, el job `release` deja la release en borrador.
+    tags: ['v*']
   pull_request:
   # Semanal aunque nadie empuje: un test con fecha que caduca o un aviso OSV nuevo
   # no deben pasar meses sin verse (main estuvo rojo dos meses sin que nadie lo viera).
-  # Ningún job de este workflow publica nada; la publicación a GHCR vive en docker.yml
-  # y va condicionada a `push`.
+  # Solo el job `release` escribe (y solo en tags v*): adjunta los paquetes de Linux a una release
+  # en BORRADOR. La publicación a GHCR vive en docker.yml y va condicionada a `push`.
   schedule:
     - cron: '0 6 * * 1' # lunes 06:00 UTC
 
@@ -16,8 +18,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# Token de solo lectura: ningún job de este workflow escribe en el repo ni en PRs (checkout,
-# setup, upload-artifact y herramientas descargadas; upload-artifact no necesita `contents: write`).
+# Token de solo lectura: ningún job escribe en el repo ni en PRs salvo `release`, que declara su propio
+# `contents: write` (checkout, setup, upload-artifact y herramientas descargadas no lo necesitan).
 permissions:
   contents: read
 
@@ -245,6 +247,17 @@ jobs:
           # entre versiones, y el runner y Debian estable no llevan la misma) no es un defecto del paquete.
           lintian --fail-on error --suppress-tags alien-tag "$old" "$new"
           sudo scripts/package/linux-lifecycle.sh deb "$old" "$new"
+          # Solo el real: el viejo (`0.0.0~ci1`) existe para la prueba de actualización.
+          echo "DEB_NUEVO=$new" >> "$GITHUB_ENV"
+
+      # Lo que adjunta el job `release` (con la versión y la arquitectura en el nombre del archivo).
+      - name: Subir el .deb
+        if: ${{ startsWith(matrix.target, 'linux-') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-deb-${{ matrix.target }}
+          path: ${{ env.DEB_NUEVO }}
+          retention-days: 7
 
       # Negativo de la firma: con una SHASUMS256.txt alterada, la verificación de Node TIENE que
       # fallar (y por la firma, no por otra cosa). Si pasara, la verificación sería decorativa.
@@ -371,6 +384,14 @@ jobs:
           old="$(docker exec arch-systemd sh -c "ls /work/$OLD_DIR/*.pkg.tar.zst")"
           new="$(docker exec arch-systemd sh -c "ls /work/$NEW_DIR/*.pkg.tar.zst")"
           docker exec -e GITHUB_ACTIONS arch-systemd bash /usr/local/bin/linux-lifecycle.sh arch "$old" "$new"
+
+      # Lo que adjunta el job `release`: solo el paquete real (el viejo es para la prueba de actualización).
+      - name: Subir el paquete de Arch
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-arch
+          path: ${{ runner.temp }}/arch/${{ env.NEW_DIR }}/*.pkg.tar.zst
+          retention-days: 7
 
   # Ventana de escritorio de Windows (Tauri 2, apps/window). Compila el crate, corre `cargo test`
   # y clippy estricto y construye el .exe sin instalador. Rust va fijado a la versión exacta de
@@ -748,3 +769,65 @@ jobs:
             scripts/package/launchers/krakenos \
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh
+
+  # Release (solo en tags v*): adjunta los paquetes de Linux (.deb amd64 y arm64, y el de Arch) con su
+  # SHA256SUMS a la release de GitHub, creada como BORRADOR para que el dueño la revise y la publique
+  # a mano. Espera a todo job bloqueante; `ventana` es experimental y no entra. ⚠️ El arm64 de `package`
+  # es `continue-on-error` (su fallo no pone rojo el run): por eso el job comprueba que cada archivo
+  # esperado exista en vez de fiarse de `needs`. Portables y `.exe` de la ventana quedan fuera.
+  release:
+    name: Release (borrador con los paquetes de Linux)
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    needs: [build-test, windows, package, package-arch, e2e, installer-smoke, security]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # El tag tiene que ser `v` + la versión de package.json: de ahí salen las versiones de los
+      # .deb y del paquete de Arch (apps/* y packages/* no llevan una versión propia que importe).
+      - name: Comprobar que el tag coincide con la versión
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::el tag $GITHUB_REF_NAME no es v$version (package.json)"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Bajar los .deb y el paquete de Arch
+        uses: actions/download-artifact@v8
+        with:
+          pattern: krakenos-{deb-*,arch}
+          path: ${{ runner.temp }}/dl
+          merge-multiple: true
+
+      - name: Reunir los archivos y generar SHA256SUMS
+        run: |
+          mkdir release
+          cd "$RUNNER_TEMP/dl"
+          ls -l
+          # Exactamente tres: si falta uno (p. ej. el arm64 experimental falló), no se publica a medias.
+          cp "krakenos_${VERSION}_amd64.deb" "krakenos_${VERSION}_arm64.deb" "$GITHUB_WORKSPACE/release/"
+          test "$(ls ./*.pkg.tar.zst | wc -l)" = 1
+          cp ./*.pkg.tar.zst "$GITHUB_WORKSPACE/release/"
+          cd "$GITHUB_WORKSPACE/release"
+          sha256sum -- * > SHA256SUMS
+          cat SHA256SUMS
+
+      # Borrador: no es pública hasta que el dueño la publica a mano. Si la release ya existe (creada a
+      # mano antes), solo se suben los archivos; --clobber permite repetir el job.
+      - name: Adjuntar a la release (borrador)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --verify-tag --draft --title "$TAG" \
+              --notes "Paquetes de Linux (.deb para amd64 y arm64, y paquete de Arch para x86_64). Verifica con: sha256sum -c SHA256SUMS"
+          fi
+          gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/SHA256SUMS --clobber
