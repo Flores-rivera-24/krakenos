@@ -6,7 +6,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { chmod, cp, mkdir, readdir, readFile, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { chmod, cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { archVersion, renderPkgbuild } from './package/arch.mjs';
@@ -27,21 +27,6 @@ function args(argv) {
   return o;
 }
 
-/**
- * Quita los enlaces relativos que no apuntan a nada (namcap los marca como error). Hoy: el
- * `@krakenos/agent` del almacén de pnpm, que apunta a `apps/agent`, que el paquete no lleva.
- */
-async function quitarEnlacesColgantes(dir) {
-  for (const e of await readdir(dir, { withFileTypes: true })) {
-    const p = join(dir, e.name);
-    if (e.isDirectory()) await quitarEnlacesColgantes(p);
-    else if (e.isSymbolicLink() && !(await stat(p).catch(() => null))) {
-      await unlink(p);
-      console.error(`aviso: enlace colgante retirado: ${p}`);
-    }
-  }
-}
-
 async function main() {
   const { dir, version, out } = args(process.argv.slice(2));
   const target = /-(linux-x64|linux-arm64|win-x64)$/.exec(basename(dir))?.[1];
@@ -57,7 +42,6 @@ async function main() {
   const raiz = join(src, 'root');
   await mkdir(raiz, { recursive: true });
   await stageCommonTree(dir, raiz);
-  await quitarEnlacesColgantes(join(raiz, 'usr', 'lib', 'krakenos'));
 
   const lic = join(raiz, 'usr', 'share', 'licenses', 'krakenos');
   await mkdir(lic, { recursive: true });
