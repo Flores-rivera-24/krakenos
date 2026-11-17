@@ -19,6 +19,7 @@ import { getLocale, t, type TranslationKey } from '@/lib/i18n';
  */
 export function describeError(err: unknown, fallback: string): string {
   if (err instanceof ApiRequestError) {
+    if (err.body?.code === 'VALIDATION') return describeValidation(err.body.details);
     // Traducción por código (solo si el idioma activo no es español).
     if (getLocale() !== 'es' && err.body?.code) {
       const key = `errors.code.${err.body.code}` as TranslationKey;
@@ -31,4 +32,17 @@ export function describeError(err: unknown, fallback: string): string {
     return message ? message : `${fallback.replace(/\.$/, '')} (error ${err.status}).`;
   }
   return t('errors.network');
+}
+
+/** 400 de validación (`details {field, rule, limit?}`): el copy por regla, sin nombrar el campo técnico. */
+function describeValidation(details: Record<string, unknown> | undefined): string {
+  const rule = details?.rule;
+  const limit = typeof details?.limit === 'number' ? details.limit : undefined;
+  if (rule === 'required' || (rule === 'minLength' && limit === 1)) {
+    return t('errors.validation.required');
+  }
+  if (rule === 'minLength' && limit !== undefined)
+    return t('errors.validation.tooShort', { limit });
+  if (rule === 'maxLength' && limit !== undefined) return t('errors.validation.tooLong', { limit });
+  return t('errors.code.VALIDATION');
 }
