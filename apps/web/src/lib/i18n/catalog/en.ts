@@ -2052,6 +2052,8 @@ export const en: Record<TranslationKey, string> = {
   // Notifications card
   'settings.notifications.title': 'Notifications',
   'settings.notifications.unsupported': 'Your browser does not support push notifications.',
+  'settings.notifications.desktopWindow':
+    'Push notifications are not available inside the Windows desktop app. To receive them, open KrakenOS in your browser or install it as an app from Edge or Chrome.',
   'settings.notifications.push': 'Push notifications',
   'settings.notifications.on': 'Enabled',
   'settings.notifications.off': 'Disabled',

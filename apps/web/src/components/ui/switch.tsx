@@ -8,6 +8,7 @@ interface SwitchProps {
   /** Etiqueta accesible cuando el switch no va acompañado de un `<label htmlFor>`. */
   'aria-label'?: string;
   'aria-labelledby'?: string;
+  'aria-describedby'?: string;
 }
 
 export function Switch({
@@ -17,6 +18,7 @@ export function Switch({
   id,
   'aria-label': ariaLabel,
   'aria-labelledby': ariaLabelledby,
+  'aria-describedby': ariaDescribedby,
 }: SwitchProps) {
   return (
     <button
@@ -26,6 +28,7 @@ export function Switch({
       aria-checked={checked}
       aria-label={ariaLabel}
       aria-labelledby={ariaLabelledby}
+      aria-describedby={ariaDescribedby}
       disabled={disabled}
       onClick={() => onCheckedChange(!checked)}
       className={cn(

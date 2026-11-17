@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use krakenos_window::agente_web::script_user_agent;
 use krakenos_window::autoarranque::{construir, ARG_AUTOARRANQUE, NOMBRE};
 use krakenos_window::config::{
     destino_segunda_ejecucion, resolver_config, ruta_config, url_de_setup, Config, ConfigError,
@@ -176,6 +177,8 @@ fn main() {
                 WebviewUrl::App(format!("index.html?estado={estado_inicial}").into()),
             )
             .title("KrakenOS")
+            // Sin IPC: la web sabe que es la ventana por el sufijo del user agent (`agente_web`).
+            .initialization_script(script_user_agent(env!("CARGO_PKG_VERSION")))
             // Nunca una ventana dentro de la app: lo web va al navegador del sistema; el resto, a nada.
             .on_new_window(|url, _| {
                 if es_web_externa(&url) {
