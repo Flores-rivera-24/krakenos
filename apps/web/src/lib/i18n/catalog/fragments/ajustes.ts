@@ -528,6 +528,8 @@ export const esAjustes = {
   // Tarjeta Notificaciones
   'settings.notifications.title': 'Notificaciones',
   'settings.notifications.unsupported': 'Tu navegador no admite notificaciones push.',
+  'settings.notifications.desktopWindow':
+    'Dentro de la app de escritorio de Windows no hay notificaciones push. Para recibirlas, abre KrakenOS en el navegador o instálala como app desde Edge o Chrome.',
   'settings.notifications.push': 'Notificaciones push',
   'settings.notifications.on': 'Activadas',
   'settings.notifications.off': 'Desactivadas',

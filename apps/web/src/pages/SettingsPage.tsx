@@ -43,6 +43,7 @@ import { useLectura } from '@/lib/use-lectura';
 import { etiquetaDeAccion } from '@/lib/audit-actions';
 import { timeAgo } from '@/lib/format';
 import { plural, useT, type TranslationKey } from '@/lib/i18n';
+import { isDesktopWindow } from '@/lib/desktop-window';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush } from '@/lib/push';
 import { etiquetaDeRol } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
@@ -134,6 +135,7 @@ export function SettingsPage() {
   const appliedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Notificaciones push (US-45): estado reflejado desde localStorage.
+  const desktopWindow = isDesktopWindow();
   const pushSupported = isPushSupported();
   const [pushEnabled, setPushEnabled] = useState(() => {
     try {
@@ -477,7 +479,7 @@ export function SettingsPage() {
                   <CardTitle>{t('settings.notifications.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {!pushSupported ? (
+                  {!pushSupported && !desktopWindow ? (
                     <p className="text-kr-sm text-kr-muted">
                       {t('settings.notifications.unsupported')}
                     </p>
@@ -486,9 +488,10 @@ export function SettingsPage() {
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={pushEnabled}
-                          disabled={pushBusy}
+                          disabled={pushBusy || desktopWindow}
                           onCheckedChange={(v) => void togglePush(v)}
                           aria-label={t('settings.notifications.push')}
+                          aria-describedby={desktopWindow ? 'push-desktop-window' : undefined}
                         />
                         <span
                           className={
@@ -501,6 +504,11 @@ export function SettingsPage() {
                         </span>
                       </div>
                     </Setting>
+                  )}
+                  {desktopWindow && (
+                    <p id="push-desktop-window" className="text-kr-sm text-kr-muted">
+                      {t('settings.notifications.desktopWindow')}
+                    </p>
                   )}
                   {!ajustesCaidos && (
                     <Setting label={t('settings.notifications.digest')}>

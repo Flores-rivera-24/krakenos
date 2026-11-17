@@ -2,7 +2,7 @@ import type { SystemSettingsResponse } from '@krakenos/types';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
   // `getList` delega en `get` para que los mocks por ruta que ya existen
@@ -600,5 +600,31 @@ describe('SettingsPage: auditoría y carga de ajustes', () => {
     expect(
       screen.queryByRole('button', { name: 'Guardar: Nombre del hogar' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('SettingsPage: dentro de la ventana de escritorio', () => {
+  const uaOriginal = navigator.userAgent;
+  afterEach(() => {
+    Object.defineProperty(navigator, 'userAgent', { value: uaOriginal, configurable: true });
+  });
+
+  it('las notificaciones push se ven deshabilitadas y dicen por qué y qué hacer', () => {
+    Object.defineProperty(navigator, 'userAgent', {
+      value: `${uaOriginal} KrakenOSWindow/0.1.0`,
+      configurable: true,
+    });
+    setUser('admin');
+    render(
+      <MemoryRouter>
+        <SettingsPage />
+      </MemoryRouter>,
+    );
+    const sw = screen.getByRole('switch', { name: 'Notificaciones push' });
+    expect(sw).toBeDisabled();
+    const motivo =
+      'Dentro de la app de escritorio de Windows no hay notificaciones push. Para recibirlas, abre KrakenOS en el navegador o instálala como app desde Edge o Chrome.';
+    expect(sw).toHaveAccessibleDescription(motivo);
+    expect(screen.getByText(motivo)).toBeInTheDocument();
   });
 });
