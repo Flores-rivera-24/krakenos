@@ -44,3 +44,19 @@ updates:
     commit-message:
       prefix: 'build'
     labels: [dependencies]
+
+  - package-ecosystem: cargo
+    directory: /apps/window/src-tauri
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    cooldown:
+      default-days: 14
+    commit-message:
+      prefix: 'build'
+    labels: [dependencies]
+    groups:
+      # Menores y parches juntos en un solo PR; las mayores van sueltas.
+      menores-y-parches:
+        update-types: [minor, patch]
