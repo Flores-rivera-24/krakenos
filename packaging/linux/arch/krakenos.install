@@ -75,7 +75,14 @@ MSG
 }
 
 post_install() {
-  _krakenos_configurar nueva
+  # `pacman -R` conserva /var/lib/krakenos: con la base de datos ya creada, reinstalar es una
+  # actualización (sin esperar el enlace de setup ni avisos falsos). El marcador de HTTPS pendiente
+  # y un krakenos.env recién repuesto siguen reintentando HTTPS dentro de _krakenos_configurar.
+  if [ -e /var/lib/krakenos/prisma/dev.db ]; then
+    _krakenos_configurar actualizacion
+  else
+    _krakenos_configurar nueva
+  fi
 }
 
 post_upgrade() {

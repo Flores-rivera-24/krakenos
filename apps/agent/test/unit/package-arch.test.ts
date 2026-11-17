@@ -117,7 +117,10 @@ describe('krakenos.install (scriptlets de pacman)', () => {
   });
 
   it('el aviso por stderr y sin arrancar cuando no hay systemd; HTTPS pendiente en instalación nueva', () => {
-    const sin = t.slice(t.lastIndexOf('\n  else\n'));
+    const sin = t.slice(
+      t.lastIndexOf('\n  else\n', t.indexOf('post_install()')),
+      t.indexOf('post_install()'),
+    );
     expect(sin).toMatch(/\[ "\$1" = nueva \][\s\S]*touch "\$PENDIENTE"/);
     expect(sin).toContain('systemd no está en marcha');
     expect(sin).not.toMatch(/systemctl (start|restart|enable)\b(?! --now krakenos)/);
@@ -126,6 +129,14 @@ describe('krakenos.install (scriptlets de pacman)', () => {
   it('solo espera el enlace de setup en instalación nueva o tras un HTTPS pendiente', () => {
     expect(t.match(/setup-url --wait/g)).toHaveLength(1);
     expect(t).toMatch(/mostrar_url=0/);
+  });
+
+  it('post_install trata como actualización una reinstalación con datos previos (pacman -R conserva /var/lib)', () => {
+    // Solo se puede atar el texto aquí; el comportamiento (sin la espera de 30 s) lo mide el paso 5 del ciclo de vida.
+    const i = t.slice(t.indexOf('post_install()'), t.indexOf('post_upgrade()'));
+    expect(i).toMatch(
+      /if \[ -e \/var\/lib\/krakenos\/prisma\/dev\.db \]; then\s*\n\s*_krakenos_configurar actualizacion\s*\n\s*else\s*\n\s*_krakenos_configurar nueva\s*\n\s*fi/,
+    );
   });
 
   it('reactiva los timers de TLS solo si el servicio NO estaba habilitado (remove + install)', () => {
@@ -227,6 +238,14 @@ describe('linux-lifecycle.sh (rama arch)', () => {
     expect(s).toMatch(/userdel krakenos/);
     expect(s).toMatch(/rm -rf \/var\/lib\/krakenos \/etc\/krakenos/);
     expect(s).toContain('/etc/sudoers.d/krakenos');
+  });
+  it('el paso 0 (HTTPS pendiente) corre también en Arch y reinstala con pacman -U', () => {
+    const ini = s.indexOf('paso 0 "HTTPS que falla');
+    expect(ini).toBeGreaterThan(0);
+    // Ningún `if [[ $KIND == … ]]` envuelve el paso 0: antes solo corría con el .deb.
+    expect(s.slice(s.lastIndexOf('# ====', ini), ini)).not.toMatch(/\$KIND ==/);
+    expect(s).toMatch(/pkg_reinstall\(\)[\s\S]*arch\) pacman -U --noconfirm "\$1"/);
+    expect(s.slice(ini, s.indexOf('paso 1 "'))).not.toContain('dpkg -i');
   });
   it('las órdenes de purga de la guía son las mismas', () => {
     const g = leer('docs', 'install-linux-package.md');

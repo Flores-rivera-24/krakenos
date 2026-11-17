@@ -237,6 +237,16 @@ instala las opcionales**: `ffmpeg` (cámaras), `nss-mdns` y `avahi` (que `<equip
 necesitas. Como en el `.deb`, tu `/etc/krakenos/krakenos.env` no se toca al actualizar: el paquete no lo
 trae (lo crea la instalación desde la plantilla), así que pacman no deja `.pacnew`.
 
+**Para que `<equipo>.local` resuelva en Arch** no basta con instalar `avahi` y `nss-mdns`: hay que activar el
+demonio y decirle a glibc que consulte mDNS.
+
+```bash
+sudo systemctl enable --now avahi-daemon
+```
+
+Y en `/etc/nsswitch.conf`, en la línea `hosts:`, añade `mdns_minimal [NOTFOUND=return]` **antes** de `resolve`
+y de `dns`, por ejemplo: `hosts: mymachines mdns_minimal [NOTFOUND=return] resolve [!UNAVAIL=return] files myhostname dns`.
+
 **Quitar.** pacman no tiene «purge»:
 
 ```bash
