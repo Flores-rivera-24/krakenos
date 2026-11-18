@@ -627,4 +627,27 @@ describe('SettingsPage: dentro de la ventana de escritorio', () => {
     expect(sw).toHaveAccessibleDescription(motivo);
     expect(screen.getByText(motivo)).toBeInTheDocument();
   });
+
+  it('en un navegador con push el interruptor está habilitado y sin descripción', () => {
+    Object.defineProperty(navigator, 'serviceWorker', { value: {}, configurable: true });
+    Object.defineProperty(window, 'PushManager', { value: class {}, configurable: true });
+    try {
+      setUser('admin');
+      render(
+        <MemoryRouter>
+          <SettingsPage />
+        </MemoryRouter>,
+      );
+      const sw = screen.getByRole('switch', { name: 'Notificaciones push' });
+      expect(sw).toBeEnabled();
+      expect(sw).not.toHaveAttribute('aria-describedby');
+      expect(
+        screen.queryByText(/Dentro de la app de escritorio de Windows/),
+      ).not.toBeInTheDocument();
+    } finally {
+      // `in` mira la propiedad: hay que borrarla, no ponerla a undefined
+      Reflect.deleteProperty(navigator, 'serviceWorker');
+      Reflect.deleteProperty(window, 'PushManager');
+    }
+  });
 });
