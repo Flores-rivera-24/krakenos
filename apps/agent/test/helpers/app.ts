@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
+import { RATE_LIMIT_OPTIONS } from '../../src/plugins/rate-limit-store.js';
 import type {
   CameraManager,
   DnsManager,
@@ -203,7 +204,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
   (app as unknown as { collectedRoutes: typeof collectedRoutes }).collectedRoutes = collectedRoutes;
 
   if (opts.rateLimit) {
-    await app.register(rateLimit, { global: false });
+    await app.register(rateLimit, RATE_LIMIT_OPTIONS);
   }
   await app.register(cookie); // refresh token en cookie httpOnly (US-91)
   await app.register(prismaPlugin);

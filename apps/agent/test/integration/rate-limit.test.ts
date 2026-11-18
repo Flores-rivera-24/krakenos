@@ -44,5 +44,21 @@ describe('rate-limit en /api/auth/login', () => {
 
     const blocked = await attempt(10);
     expect(blocked.statusCode).toBe(429);
+    // Formato de error del proyecto y en español, no el cuerpo en inglés del plugin.
+    const body = blocked.json();
+    expect(body).toEqual({
+      statusCode: 429,
+      code: 'RATE_LIMITED',
+      error: 'Too Many Requests',
+      message: expect.stringMatching(
+        /^Demasiados intentos\. Espera \d+ s y vuelve a intentarlo\.$/,
+      ),
+    });
+    expect(blocked.body).not.toContain('Rate limit exceeded');
+    // Las cabeceras del limitador se conservan.
+    expect(blocked.headers['retry-after']).toMatch(/^\d+$/);
+    expect(blocked.headers['x-ratelimit-limit']).toBe('10');
+    expect(blocked.headers['x-ratelimit-remaining']).toBe('0');
+    expect(blocked.headers['x-ratelimit-reset']).toMatch(/^\d+$/);
   });
 });

@@ -35,3 +35,18 @@ export const rateLimitStore = {
     current = DEFAULT_LOGIN_RATE_LIMIT;
   },
 };
+
+/**
+ * Opciones de registro de `@fastify/rate-limit` (server y tests). El 429 por IP sale con la
+ * forma de error del proyecto y copy es-ES; la web lo traduce por `code` (`errors.code.RATE_LIMITED`).
+ * Si no, el plugin mandaba «Rate limit exceeded, retry in N seconds» sin `code`.
+ */
+export const RATE_LIMIT_OPTIONS = {
+  global: false,
+  errorResponseBuilder: (_req: unknown, ctx: { statusCode: number; ttl: number }) => ({
+    statusCode: ctx.statusCode,
+    code: 'RATE_LIMITED',
+    error: 'Too Many Requests',
+    message: `Demasiados intentos. Espera ${Math.max(1, Math.ceil(ctx.ttl / 1000))} s y vuelve a intentarlo.`,
+  }),
+};
