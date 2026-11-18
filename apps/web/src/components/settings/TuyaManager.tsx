@@ -167,11 +167,11 @@ export function TuyaManager({ reachable }: Props) {
         <table className="w-full text-kr-sm">
           <thead className="bg-kr-elevated text-kr-secondary">
             <tr>
-              <th className="px-3 py-2 text-left">{t('tuya.col.status')}</th>
-              <th className="px-3 py-2 text-left">{t('tuya.name')}</th>
-              <th className="px-3 py-2 text-left">IP</th>
-              <th className="px-3 py-2 text-left">Device ID</th>
-              <th className="px-3 py-2 text-right">{t('users.col.actions')}</th>
+              <th className="px-2 py-2 text-left sm:px-3">{t('tuya.col.status')}</th>
+              <th className="px-2 py-2 text-left sm:px-3">{t('tuya.name')}</th>
+              <th className="hidden px-3 py-2 text-left sm:table-cell">IP</th>
+              <th className="hidden px-3 py-2 text-left sm:table-cell">Device ID</th>
+              <th className="px-2 py-2 text-right sm:px-3">{t('users.col.actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -206,16 +206,21 @@ export function TuyaManager({ reachable }: Props) {
                   </td>
                 ) : (
                   <>
-                    <td className="px-3 py-2">
+                    <td className="px-2 py-2 sm:px-3">
                       <StatusDot status={reachable.has(d.deviceId) ? 'online' : 'offline'} />
                     </td>
-                    <td className="px-3 py-2 text-kr-primary">{d.name}</td>
-                    <td className="px-3 py-2 font-mono text-kr-xs">{d.ip}</td>
-                    <td className="px-3 py-2 font-mono text-kr-xs text-kr-muted">
+                    <td className="px-2 py-2 text-kr-primary sm:px-3">
+                      {d.name}
+                      <span className="block font-mono text-kr-xs text-kr-muted sm:hidden">
+                        {d.ip}
+                      </span>
+                    </td>
+                    <td className="hidden px-3 py-2 font-mono text-kr-xs sm:table-cell">{d.ip}</td>
+                    <td className="hidden px-3 py-2 font-mono text-kr-xs text-kr-muted sm:table-cell">
                       {d.deviceId.slice(0, 8)}…
                     </td>
-                    <td className="px-3 py-2 text-right">
-                      <span className="inline-flex gap-1">
+                    <td className="px-2 py-2 text-right sm:px-3">
+                      <span className="inline-flex flex-col items-end gap-1 sm:flex-row">
                         <Button variant="ghost" size="sm" onClick={() => setEditingId(d.deviceId)}>
                           {t('common.edit')}
                         </Button>
