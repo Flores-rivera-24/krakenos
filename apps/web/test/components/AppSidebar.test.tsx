@@ -56,10 +56,10 @@ function device(over: Partial<Device>): Device {
   };
 }
 
-function renderSidebar(props: { collapsed: boolean; stats?: SidebarStats }) {
+function renderSidebar(props: { collapsed: boolean; stats?: SidebarStats; ruta?: string }) {
   statsMock.current = props.stats ?? STATS;
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[props.ruta ?? '/']}>
       <AppSidebar collapsed={props.collapsed} onToggle={vi.fn()} />
     </MemoryRouter>,
   );
@@ -243,5 +243,16 @@ describe('AppSidebar', () => {
     const activo = screen.getByRole('link', { name: /Dashboard/ });
     expect(activo.className).toContain('bg-kr-elevated');
     expect(activo.className).not.toContain('shadow-kr-glow');
+  });
+
+  it('trae a la vista el enlace activo: en una ventana baja la lista lo recortaba a una franja', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderSidebar({ collapsed: false, ruta: '/cameras' });
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    const activo = screen.getByRole('link', { name: /Cámaras/ });
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(activo);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 });

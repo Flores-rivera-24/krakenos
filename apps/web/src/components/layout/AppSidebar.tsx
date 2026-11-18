@@ -1,6 +1,7 @@
 import type { Device, DomainState } from '@krakenos/types';
 import { ChevronLeft, LogOut } from 'lucide-react';
-import { NavLink } from 'react-router';
+import { useEffect, useRef } from 'react';
+import { NavLink, useLocation } from 'react-router';
 import { LogoMark } from '@/components/ui/logo';
 import { StatusDot } from '@/components/ui/status-dot';
 import { ConnectionStatus } from '@/components/layout/ConnectionStatus';
@@ -150,6 +151,24 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   const devices = useInventoryStore((s) => s.devices);
   const devicesBadge = unknownOrBlockedCount(devices);
 
+  // En una ventana baja la lista hace scroll y el ítem activo quedaba recortado a una franja
+  // de fondo con la barra de acento y sin rótulo: se trae a la vista al cambiar de ruta y
+  // cuando la lista cambia de alto (la zona inferior crece al llegar el estado del driver y el
+  // primer cálculo se queda corto). `?.`: jsdom no implementa `scrollIntoView`, `ResizeObserver`.
+  const { pathname } = useLocation();
+  const listaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const traer = () =>
+      listaRef.current
+        ?.querySelector<HTMLElement>('[aria-current="page"]')
+        ?.scrollIntoView?.({ block: 'nearest' });
+    traer();
+    if (typeof ResizeObserver === 'undefined' || !listaRef.current) return;
+    const ro = new ResizeObserver(traer);
+    ro.observe(listaRef.current);
+    return () => ro.disconnect();
+  }, [pathname, collapsed]);
+
   // «Sistema» se fija bajo la lista; el resto de grupos se desplaza.
   const pinnedGroup = navGroups.find((g) => g.label === 'Sistema');
   const scrollGroups = navGroups.filter((g) => g !== pinnedGroup);
@@ -229,6 +248,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         )}
       >
         <div
+          ref={listaRef}
           className={cn(
             'min-h-0 flex-1 space-y-3 overflow-y-auto bajo:flex-none bajo:overflow-visible',
             collapsed ? 'scroll-sombra [scrollbar-width:none]' : '[scrollbar-width:thin]',
