@@ -44,8 +44,7 @@ export function parseEnginesNode(range: string): NodeVersionParts | null {
 }
 
 export type NodeRequirementCheck =
-  | { ok: true }
-  | { ok: false; required: string; current: string; message: string };
+  { ok: true } | { ok: false; required: string; current: string; message: string };
 
 /** ¿Cumple `current` (p. ej. `process.version`) el `engines.node` de la versión destino? */
 export function checkNodeRequirement(

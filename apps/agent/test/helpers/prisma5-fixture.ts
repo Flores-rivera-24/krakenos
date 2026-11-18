@@ -18,13 +18,7 @@ export const PRISMA5_DB = join(PRISMA5_DIR, 'prisma5.db');
 
 /** Un valor serializado en el oráculo: fecha, bytes y bigint llevan marca. */
 export type ValorOraculo =
-  | string
-  | number
-  | boolean
-  | null
-  | { $date: string }
-  | { $bytes: string }
-  | { $bigint: string };
+  string | number | boolean | null | { $date: string } | { $bytes: string } | { $bigint: string };
 
 export type FilaOraculo = Record<string, ValorOraculo>;
 

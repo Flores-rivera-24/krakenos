@@ -2,14 +2,7 @@ import type { Id, IsoDateTime } from './common.js';
 
 /** Categoría inferida del dispositivo. */
 export type DeviceType =
-  | 'router'
-  | 'computer'
-  | 'phone'
-  | 'tablet'
-  | 'iot'
-  | 'tv'
-  | 'printer'
-  | 'unknown';
+  'router' | 'computer' | 'phone' | 'tablet' | 'iot' | 'tv' | 'printer' | 'unknown';
 
 /** Cómo se descubrió o actualizó el dispositivo. */
 export type DiscoverySource = 'arp' | 'mdns' | 'manual';

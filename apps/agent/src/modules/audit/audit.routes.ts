@@ -22,16 +22,14 @@ export const auditRoutes: FastifyPluginAsync = async (app) => {
         take: req.query.limit ?? 50,
       })) as AuditRow[];
 
-      return rows.map(
-        (r): AuditLogEntry => ({
-          id: r.id,
-          action: r.action,
-          userId: r.userId,
-          detail: r.detail,
-          ip: r.ip,
-          createdAt: r.createdAt.toISOString(),
-        }),
-      );
+      return rows.map((r): AuditLogEntry => ({
+        id: r.id,
+        action: r.action,
+        userId: r.userId,
+        detail: r.detail,
+        ip: r.ip,
+        createdAt: r.createdAt.toISOString(),
+      }));
     },
   );
 };

@@ -23,10 +23,7 @@ type SignablePayload =
 
 /** Claims de cualquiera de los tokens que emite el agente. */
 type AnyTokenClaims =
-  | AccessTokenClaims
-  | RefreshTokenClaims
-  | MfaPendingTokenClaims
-  | StreamTokenClaims;
+  AccessTokenClaims | RefreshTokenClaims | MfaPendingTokenClaims | StreamTokenClaims;
 
 declare module '@fastify/jwt' {
   interface FastifyJWT {

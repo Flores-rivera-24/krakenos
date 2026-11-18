@@ -174,9 +174,7 @@ export function parseDiscoveryTopic(topic: string, prefix: string): TopicDeConfi
  * proyecto no abre (`adr-ingesta-mqtt.md` §«La plantilla que no se ejecuta»).
  */
 export type PlantillaValor =
-  | { tipo: 'directa' }
-  | { tipo: 'ruta'; ruta: string[] }
-  | { tipo: 'no-soportada'; fuente: string };
+  { tipo: 'directa' } | { tipo: 'ruta'; ruta: string[] } | { tipo: 'no-soportada'; fuente: string };
 
 /** Formas de plantilla que sí se entienden: `{{ value }}` y `{{ value_json.a['b'] }}`. */
 const RE_VALUE = /^\{\{\s*value\s*\}\}$/;

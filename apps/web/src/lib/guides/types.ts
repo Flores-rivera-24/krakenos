@@ -27,14 +27,7 @@ export type GuideCategory =
 
 /** Tipo de dato de un campo del formulario del asistente. */
 export type GuideFieldType =
-  | 'text'
-  | 'password'
-  | 'number'
-  | 'select'
-  | 'boolean'
-  | 'url'
-  | 'host'
-  | 'ip';
+  'text' | 'password' | 'number' | 'select' | 'boolean' | 'url' | 'host' | 'ip';
 
 /** Un campo de configuración que el asistente pide a la persona. */
 export interface GuideField {

@@ -66,8 +66,7 @@ function fragmentos(): Fragmento[] {
   return Object.entries(fragmentosPorModulo).map(([id, mod]) => {
     const nombre = id.replace(/^.*\//, '').replace(/\.ts$/, '');
     const datos = Object.values(mod).find((v) => typeof v === 'object' && v !== null) as
-      | Record<string, string>
-      | undefined;
+      Record<string, string> | undefined;
     return { nombre, ruta: join(DIR_FRAGMENTOS, `${nombre}.ts`), claves: Object.keys(datos ?? {}) };
   });
 }

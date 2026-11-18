@@ -139,15 +139,13 @@ function shellyDevices(): ShellyDeviceConfig[] {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === 'object')
-      .map(
-        (d): ShellyDeviceConfig => ({
-          ip: String(d.ip ?? ''),
-          name: typeof d.name === 'string' ? d.name : undefined,
-          gen: d.gen === 2 ? 2 : 1,
-          channels: typeof d.channels === 'number' ? d.channels : undefined,
-          type: d.type === 'light' ? 'light' : 'relay',
-        }),
-      )
+      .map((d): ShellyDeviceConfig => ({
+        ip: String(d.ip ?? ''),
+        name: typeof d.name === 'string' ? d.name : undefined,
+        gen: d.gen === 2 ? 2 : 1,
+        channels: typeof d.channels === 'number' ? d.channels : undefined,
+        type: d.type === 'light' ? 'light' : 'relay',
+      }))
       .filter((d) => d.ip.length > 0);
   } catch {
     return [];
@@ -167,14 +165,12 @@ function merossDevices(): MerossDeviceConfig[] {
     if (!Array.isArray(parsed)) return [];
     return parsed
       .filter((d): d is Record<string, unknown> => Boolean(d) && typeof d === 'object')
-      .map(
-        (d): MerossDeviceConfig => ({
-          uuid: String(d.uuid ?? ''),
-          name: typeof d.name === 'string' ? d.name : undefined,
-          channels: typeof d.channels === 'number' ? d.channels : undefined,
-          key: String(d.key ?? ''),
-        }),
-      )
+      .map((d): MerossDeviceConfig => ({
+        uuid: String(d.uuid ?? ''),
+        name: typeof d.name === 'string' ? d.name : undefined,
+        channels: typeof d.channels === 'number' ? d.channels : undefined,
+        key: String(d.key ?? ''),
+      }))
       .filter((d) => d.uuid.length > 0 && d.key.length > 0);
   } catch {
     return [];
