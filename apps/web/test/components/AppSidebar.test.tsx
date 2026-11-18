@@ -255,4 +255,35 @@ describe('AppSidebar', () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(activo);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
+
+  it('vuelve a traer el enlace activo cuando la lista cambia de alto y desconecta el observador', () => {
+    const original = globalThis.ResizeObserver;
+    let aviso: () => void = () => {};
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    class Espia {
+      constructor(cb: () => void) {
+        aviso = cb;
+      }
+      observe = observe;
+      unobserve(): void {}
+      disconnect = disconnect;
+    }
+    globalThis.ResizeObserver = Espia as unknown as typeof ResizeObserver;
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      const { unmount } = renderSidebar({ collapsed: false, ruta: '/cameras' });
+      expect(observe).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      aviso();
+      expect(scrollIntoView).toHaveBeenCalledTimes(2);
+      expect(scrollIntoView.mock.contexts[1]).toBe(screen.getByRole('link', { name: /Cámaras/ }));
+      unmount();
+      expect(disconnect).toHaveBeenCalled();
+    } finally {
+      globalThis.ResizeObserver = original;
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    }
+  });
 });

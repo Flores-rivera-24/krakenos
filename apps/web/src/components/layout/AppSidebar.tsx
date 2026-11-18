@@ -154,7 +154,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   // En una ventana baja la lista hace scroll y el ítem activo quedaba recortado a una franja
   // de fondo con la barra de acento y sin rótulo: se trae a la vista al cambiar de ruta y
   // cuando la lista cambia de alto (la zona inferior crece al llegar el estado del driver y el
-  // primer cálculo se queda corto). `?.`: jsdom no implementa `scrollIntoView`, `ResizeObserver`.
+  // primer cálculo se queda corto). `?.`: jsdom no implementa `scrollIntoView`.
   const { pathname } = useLocation();
   const listaRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -163,7 +163,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
         ?.querySelector<HTMLElement>('[aria-current="page"]')
         ?.scrollIntoView?.({ block: 'nearest' });
     traer();
-    if (typeof ResizeObserver === 'undefined' || !listaRef.current) return;
+    if (!listaRef.current) return;
     const ro = new ResizeObserver(traer);
     ro.observe(listaRef.current);
     return () => ro.disconnect();

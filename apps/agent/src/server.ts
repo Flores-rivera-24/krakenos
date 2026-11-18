@@ -141,7 +141,7 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   };
 
   // TLS opcional: si hay cert/clave, el agente sirve HTTPS.
-  // El tipo unión de `integrations.schemas.ts` es a propósito (anyOf coacciona números).
+  // El tipo unión de `integrations.schemas.ts` es a propósito: con `coerceTypes`, `anyOf` convertiría el número en string.
   const ajv = { customOptions: { allowUnionTypes: true } };
   const app: FastifyInstance = env.https
     ? (Fastify({

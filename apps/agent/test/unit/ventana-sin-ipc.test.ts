@@ -161,7 +161,9 @@ describe('ventana de Windows: el sufijo del user agent', () => {
     const web = leer(resolve(ROOT, 'apps/web/src/lib/desktop-window.ts')).match(/\/\\b(\w+)\\\/\//);
     expect(rust, 'literal del sufijo en agente_web.rs').not.toBeNull();
     expect(web, 'regex del sufijo en desktop-window.ts').not.toBeNull();
-    expect(rust?.[1]).toBe('KrakenOSWindow');
-    expect(web?.[1]).toBe(rust?.[1]);
+    expect(rust?.[1], 'sufijo en agente_web.rs').toBe('KrakenOSWindow');
+    expect(web?.[1], 'sufijo en desktop-window.ts (debe coincidir con agente_web.rs)').toBe(
+      rust?.[1],
+    );
   });
 });
