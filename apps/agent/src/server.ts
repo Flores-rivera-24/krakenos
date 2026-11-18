@@ -141,13 +141,16 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   };
 
   // TLS opcional: si hay cert/clave, el agente sirve HTTPS.
+  // El tipo unión de `integrations.schemas.ts` es a propósito (anyOf coacciona números).
+  const ajv = { customOptions: { allowUnionTypes: true } };
   const app: FastifyInstance = env.https
     ? (Fastify({
         logger,
         https: env.https,
         trustProxy: env.trustProxy,
+        ajv,
       }) as unknown as FastifyInstance)
-    : Fastify({ logger, trustProxy: env.trustProxy });
+    : Fastify({ logger, trustProxy: env.trustProxy, ajv });
 
   // Los 5xx no devuelven el mensaje interno (Prisma, drivers…); los 4xx quedan igual.
   registerErrorHandler(app);

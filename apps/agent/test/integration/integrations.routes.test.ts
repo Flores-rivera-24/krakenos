@@ -71,6 +71,7 @@ describe('/api/integrations — API de configuración (US-142)', () => {
     const info = res.json() as DomainView['current'];
     expect(info!.kind).toBe('openwrt');
     expect(info!.config.host).toBe('192.168.1.1');
+    expect(info!.config.sshPort).toBe(22); // número, no '22': el tipo unión no coacciona
     expect(info!.config.password).toBeUndefined(); // secreto no expuesto
     expect(info!.secretsSet).toContain('password');
 
