@@ -9,25 +9,11 @@
 
 /** Dominios de integración configurables. Uno activo por dominio. */
 export type IntegrationDomain =
-  | 'driver'
-  | 'vpn'
-  | 'iot'
-  | 'cameras'
-  | 'firewall'
-  | 'vlan'
-  | 'qos'
-  | 'dns';
+  'driver' | 'vpn' | 'iot' | 'cameras' | 'firewall' | 'vlan' | 'qos' | 'dns';
 
 /** Tipo de un campo de configuración (guía el render del formulario + validación). */
 export type IntegrationFieldType =
-  | 'text'
-  | 'password'
-  | 'number'
-  | 'boolean'
-  | 'select'
-  | 'url'
-  | 'host'
-  | 'ip';
+  'text' | 'password' | 'number' | 'boolean' | 'select' | 'url' | 'host' | 'ip';
 
 /** Definición técnica de un campo de configuración de una integración. */
 export interface IntegrationField {

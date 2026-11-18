@@ -144,8 +144,7 @@ export function extractChannelStates(payload: Record<string, unknown>): Map<numb
   }
   // Dispositivos antiguos de un solo canal: `control.toggle`.
   const toggle = ((all.control ?? {}) as Record<string, unknown>).toggle as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (toggle && !out.has(0)) {
     out.set(0, { on: toggle.onoff === 1, brightness: null, color: null, isLight: false });
   }

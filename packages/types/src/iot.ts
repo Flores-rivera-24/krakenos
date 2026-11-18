@@ -85,16 +85,7 @@ export const CLIMATE_TARGET_STEP_C = 0.5;
  * zigbee2mqtt) sin escribir un backend nuevo.
  */
 export type IotKind =
-  | 'mock'
-  | 'mqtt'
-  | 'zigbee'
-  | 'matter'
-  | 'hue'
-  | 'govee'
-  | 'tuya'
-  | 'kasa'
-  | 'shelly'
-  | 'meross';
+  'mock' | 'mqtt' | 'zigbee' | 'matter' | 'hue' | 'govee' | 'tuya' | 'kasa' | 'shelly' | 'meross';
 
 /**
  * Magnitudes que puede reportar un dispositivo (US-244). Unión **cerrada**, y ese
@@ -281,10 +272,7 @@ export interface MatterCommissionResult {
  * = fallo genérico.
  */
 export type MatterCommissionErrorCode =
-  | 'invalid-code'
-  | 'not-found'
-  | 'thread-no-border'
-  | 'failed';
+  'invalid-code' | 'not-found' | 'thread-no-border' | 'failed';
 
 /** Versiones del protocolo local Tuya soportadas. */
 export type TuyaProtocolVersion = '3.1' | '3.3' | '3.4' | '3.5';

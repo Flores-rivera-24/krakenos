@@ -32,12 +32,7 @@ export interface VentanaInstalable {
 }
 
 export type EstadoDeInstalacion =
-  | 'running'
-  | 'installed'
-  | 'installable'
-  | 'ios'
-  | 'insecure'
-  | 'unsupported';
+  'running' | 'installed' | 'installable' | 'ios' | 'insecure' | 'unsupported';
 
 /** ¿Ya corre como app (ventana propia) y no en una pestaña? */
 export function correComoApp(win: VentanaInstalable | undefined = ventanaActual()): boolean {

@@ -58,13 +58,7 @@ function failingTransport(behavior: Behavior): never {
 
 /** Tipo de valor que una operación puede devolver SI resuelve (si no, lanza). */
 type Shape =
-  | 'boolean'
-  | 'array'
-  | 'object'
-  | 'traffic'
-  | 'void'
-  | 'nullableObject'
-  | 'nullableArray';
+  'boolean' | 'array' | 'object' | 'traffic' | 'void' | 'nullableObject' | 'nullableArray';
 
 interface Op {
   name: string;

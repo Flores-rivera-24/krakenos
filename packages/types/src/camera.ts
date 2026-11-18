@@ -137,9 +137,7 @@ export interface MotionArmWindow {
  * `schedule` con `windows` vacío ≡ nunca armada.
  */
 export type MotionArming =
-  | { mode: 'always' }
-  | { mode: 'never' }
-  | { mode: 'schedule'; windows: MotionArmWindow[] };
+  { mode: 'always' } | { mode: 'never' } | { mode: 'schedule'; windows: MotionArmWindow[] };
 
 /** Configuración de detección de movimiento por cámara (US-186). */
 export interface MotionConfig {

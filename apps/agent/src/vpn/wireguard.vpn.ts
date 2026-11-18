@@ -93,16 +93,14 @@ export class WireguardVpnManager implements VpnManager {
   async listPeers(): Promise<VpnPeer[]> {
     const [stored, handshakes] = await Promise.all([this.opts.store.list(), this.liveHandshakes()]);
     return stored
-      .map(
-        (p): VpnPeer => ({
-          id: p.id,
-          name: p.name,
-          publicKey: p.publicKey,
-          allowedIps: p.allowedIps,
-          lastHandshake: handshakeToIso(handshakes.get(p.publicKey)),
-          createdAt: p.createdAt,
-        }),
-      )
+      .map((p): VpnPeer => ({
+        id: p.id,
+        name: p.name,
+        publicKey: p.publicKey,
+        allowedIps: p.allowedIps,
+        lastHandshake: handshakeToIso(handshakes.get(p.publicKey)),
+        createdAt: p.createdAt,
+      }))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   }
 

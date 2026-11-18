@@ -20,14 +20,7 @@ import type {
  * un Catalyst es un caso que este proyecto no puede sostener ni comprobar.
  */
 export type DriverKind =
-  | 'none'
-  | 'mock'
-  | 'openwrt'
-  | 'pfsense'
-  | 'unifi'
-  | 'mikrotik'
-  | 'omada'
-  | 'asus';
+  'none' | 'mock' | 'openwrt' | 'pfsense' | 'unifi' | 'mikrotik' | 'omada' | 'asus';
 
 /** Configuración para instanciar un driver. */
 export interface DriverConfig {
