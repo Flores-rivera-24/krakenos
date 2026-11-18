@@ -89,9 +89,11 @@ siguiente.
 - **Fase 1 — PWA.** Coste casi cero: falta un botón de «Instalar app» (`beforeinstallprompt`), el
   campo `id` del manifiesto y comprobar la instalación en un navegador real.
 - **Fase 2 (opcional) — envoltorio Tauri mínimo**, solo si se necesita lo que una PWA no da: **icono en
-  la bandeja** con el estado del agente, «Salir» explícito y notificaciones nativas aunque el navegador
-  esté cerrado. Cargaría `http://localhost:3001` como origen remoto, **sin IPC y sin empaquetar el
-  agente** (el servicio sigue siendo el de WSL2 o el del servidor). Implica firma de código (sin ella,
+  la bandeja** con el estado del agente y «Salir» explícito. *Actualización 2026-11-17: la ventana de
+  Windows (Tauri 2 + WebView2) no tiene notificaciones push, porque WebView2 no ofrece Web Push. Para
+  recibirlas, abre KrakenOS en el navegador o instálala como app desde Edge o Chrome (PWA); esta razón
+  no se cumple en la ventana tal como está hoy.* Cargaría `http://localhost:3001` como origen remoto,
+  **sin IPC y sin empaquetar el agente** (el servicio sigue siendo el de WSL2 o el del servidor). Implica firma de código (sin ella,
   SmartScreen avisa) y un actualizador.
 - **Electron, descartado:** el mismo resultado que la PWA con más de 100 MB de Chromium que mantener.
 - **Cargar la interfaz desde un origen propio de la app (`tauri://`, `file://`), descartado:** rompe la
