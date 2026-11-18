@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import { RATE_LIMIT_OPTIONS } from './plugins/rate-limit-store.js';
 import Fastify from 'fastify';
 import QRCode from 'qrcode';
 import type { FastifyInstance } from 'fastify';
@@ -201,7 +202,7 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   await app.register(securityHeadersPlugin, { csp: env.security.csp, hsts: env.security.hsts });
   await app.register(cors, { origin: env.webOrigin, credentials: true });
   await app.register(cookie);
-  await app.register(rateLimit, { global: false });
+  await app.register(rateLimit, RATE_LIMIT_OPTIONS);
   await app.register(prismaPlugin);
   await app.register(auditPlugin);
   await app.register(metricsPlugin);
