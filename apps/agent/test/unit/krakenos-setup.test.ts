@@ -5,7 +5,9 @@ import {
   linkSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -162,6 +164,50 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     const r = correr(['--dry-run', 'auto', 'tls']);
     expect(r.status).toBe(2);
     expect(r.stdout).not.toContain('--tls auto');
+  });
+
+  describe('origin', () => {
+    const env = () => join(raiz, 'root', 'etc', 'krakenos', 'krakenos.env');
+    const archivo = () => join(raiz, 'root', 'etc', 'krakenos', 'origin');
+
+    it('escribe el origen https del env, una línea y 0644', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001\n');
+      const r = correr(['origin']);
+      expect(r.status, r.stderr).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+      expect(statSync(archivo()).mode & 0o777).toBe(0o644);
+    });
+
+    it('con el WEB_ORIGIN http de la plantilla usa localhost y el PORT del env', () => {
+      writeFileSync(env(), 'PORT=3443\nWEB_ORIGIN=http://localhost:5173\n');
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3443\n');
+    });
+
+    it('sin env usa http://localhost:3001', () => {
+      rmSync(env());
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3001\n');
+    });
+
+    it.each(['https://a b', 'https://a.local;rm', 'https://a.local"x', 'https://a.local/x y'])(
+      'un WEB_ORIGIN con basura (%s) no se escribe y falla con aviso',
+      (malo) => {
+        writeFileSync(env(), `WEB_ORIGIN=${malo}\n`);
+        const r = correr(['origin']);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain('no es válido');
+        expect(existsSync(archivo())).toBe(false);
+      },
+    );
+
+    it('tls none deja el archivo escrito; --dry-run no escribe', () => {
+      const seco = correr(['--dry-run', 'origin']);
+      expect(seco.status, seco.stderr).toBe(0);
+      expect(existsSync(archivo())).toBe(false);
+      expect(correr(['tls', 'none']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3001\n');
+    });
   });
 
   it('setup-url imprime la URL con el token', () => {
