@@ -74,12 +74,14 @@ pkg_run() {
   fi
   return "$rc"
 }
+# NEEDRESTART_SUSPEND=1 (en las llamadas de apt/dpkg): needrestart corre tras cada apt en los runners de
+# Ubuntu y, si encuentra servicios que reiniciar, puede esperar una respuesta interactiva que nadie da.
 pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de /setup con el token)
   local rc=0
   case "$KIND" in
     # Sin --force-conf*: krakenos.env no es conffile, así que dpkg no debe preguntar nada; si algún
     # día pregunta, sin terminal falla y la CI lo ve.
-    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get install -y "$1" || rc=$? ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get install -y "$1" || rc=$? ;;
     arch) pkg_run pacman -U --noconfirm "$1" || rc=$? ;;
   esac
   tail -n 6 "$WORK/pkg.log" | redact | sed 's/^/  | /'
@@ -89,19 +91,19 @@ pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de
 # vacío) y pacman -U sí corre post_upgrade. Es lo que hace falta para ejercitar el reintento de HTTPS.
 pkg_reinstall() { # $1 = fichero
   case "$KIND" in
-    deb) pkg_run env DEBIAN_FRONTEND=noninteractive dpkg -i "$1" || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 dpkg -i "$1" || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch) pkg_run pacman -U --noconfirm "$1" || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_remove() {
   case "$KIND" in
-    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get remove -y krakenos || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get remove -y krakenos || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch) pkg_run pacman -R --noconfirm krakenos || fail "pacman -R falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_purge() {
   case "$KIND" in
-    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get purge -y krakenos || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch)
       # pacman no purga: la guía (docs/install-linux-package.md, «Quitar») manda borrar a mano los datos,
       # la configuración, las unidades de renovación del certificado, la regla de sudo y el usuario que

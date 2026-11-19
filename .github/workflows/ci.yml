@@ -237,7 +237,8 @@ jobs:
         if: ${{ startsWith(matrix.target, 'linux-') }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y lintian
+          # needrestart (runners de Ubuntu) puede esperar una respuesta interactiva tras apt.
+          sudo env NEEDRESTART_SUSPEND=1 apt-get install -y lintian
           dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
           old="$(node scripts/package-deb.mjs "$dir" --version 0.0.0~ci1)"
           new="$(node scripts/package-deb.mjs "$dir")"
