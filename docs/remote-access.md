@@ -54,6 +54,10 @@ omite. En el paquete (`.deb` y Arch) esas tres claves se fijan siempre al config
 quedó sin puerto, corrígelo con `sudo krakenos-setup tls tailscale` (paquete) o
 `sudo /opt/krakenos/scripts/install.sh --tls tailscale`, y reinicia el servicio.
 
+Pasar de HTTPS local a Tailscale (o al revés) cambia `WEBAUTHN_RP_ID` de `<equipo>.local` al nombre
+`*.ts.net`: las passkeys registradas con el nombre anterior dejan de servir. Para entrar usa un código
+de respaldo y vuelve a registrar la passkey en **Ajustes → Seguridad → Passkeys**.
+
 Tres cosas que conviene saber antes:
 
 - **Hay que activarlo en el tailnet.** En la consola de Tailscale: *DNS → MagicDNS* y

@@ -22,8 +22,11 @@
 #     SUMMARY                   array donde se acumula el resumen final
 #     ROOT_NODE                 node con el que root ejecuta local-ca.js
 #                               (lo fija el que carga, p. ej. install_root_script)
-#     ENV_EXAMPLE               ruta de la plantilla .env.example (setup_tls_local
-#                               solo fija WEBAUTHN_* si la plantilla los contempla)
+#     ENV_EXAMPLE               ruta de la plantilla .env.example (set_webauthn_env,
+#                               en los dos modos, solo fija WEBAUTHN_* si la plantilla
+#                               los contempla)
+#     WEBAUTHN_FORCE            0/1, opcional: 1 = fija WEBAUTHN_* aunque la plantilla
+#                               no los traiga (lo pone krakenos-setup)
 #     INSTALL_DIR               solo ensure_service_user: home del usuario del servicio
 #
 # Sin `set -e`/`umask`: eso lo decide el script que la carga.
