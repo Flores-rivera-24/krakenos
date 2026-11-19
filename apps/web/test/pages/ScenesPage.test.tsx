@@ -176,6 +176,28 @@ describe('ScenesPage (US-166)', () => {
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/scenes/s1/run'));
   });
 
+  it.each([
+    [1, '1 aplicado, 1 sin responder'],
+    [2, '2 aplicados, 1 sin responder'],
+  ])('resultado parcial con %i aplicado(s): el plural concuerda', async (applied, texto) => {
+    apiMock.get.mockImplementation((path: string) => {
+      if (path === '/scenes') return Promise.resolve([scene()]);
+      if (path === '/iot/devices') return Promise.resolve([LIGHT]);
+      return Promise.resolve([]);
+    });
+    apiMock.post.mockResolvedValue({
+      applied,
+      failed: [{ deviceId: 'd1', error: 'sin respuesta' }],
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Activar' }));
+    await waitFor(() =>
+      expect(useToastStore.getState().toasts.map((t) => t.message)).toContain(texto),
+    );
+  });
+
   it('un viewer no ve el botón de crear', async () => {
     asRole('viewer');
     renderPage();

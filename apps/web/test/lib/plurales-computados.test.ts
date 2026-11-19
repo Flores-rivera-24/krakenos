@@ -7,15 +7,11 @@ import { es } from '@/lib/i18n/catalog/es';
  * (`docs/copy-style.md` → Accesibilidad). Una cifra que acompaña a un sustantivo
  * lleva dos claves (`.one`/`.other`) elegidas con `plural()`.
  *
- * Solo se tolera el patrón `palabra(s)` en los toasts de resultado parcial ya
- * establecidos; la lista es cerrada, lleva el porqué y falla si queda obsoleta.
+ * La lista de excepciones `palabra(s)` es cerrada, lleva el porqué y falla si queda obsoleta;
+ * hoy está vacía (los toasts de resultado parcial ya usan `.one`/`.other`).
  */
 
-const TOLERADAS: Record<string, string> = {
-  'rooms.actionPartial': 'toast de resultado parcial («N aplicado(s), M sin responder»)',
-  'scenes.actionPartial': 'toast de resultado parcial («N aplicado(s), M sin responder»)',
-  'scenes.partial': 'toast de resultado parcial («N aplicado(s), M sin responder»)',
-};
+const TOLERADAS: Record<string, string> = {};
 
 // «dispositivo(s)», «encendido(s)», «punto(s)», «device(s)». No casa «Intervalo (s)»,
 // que es una unidad (segundos) con espacio delante.
@@ -28,7 +24,7 @@ function ofensores(catalogo: Record<string, string>): string[] {
 }
 
 describe('plurales computados en el catálogo', () => {
-  it('ningún «(s)» fuera de los toasts parciales, en es ni en en', () => {
+  it('ningún «(s)» sin excepción documentada, en es ni en en', () => {
     expect(ofensores(es)).toEqual([]);
     expect(ofensores(en)).toEqual([]);
   });
@@ -47,7 +43,7 @@ describe('plurales computados en el catálogo', () => {
     expect(ofensores({ x: '{n} device(s)' })).toHaveLength(1);
     expect(ofensores({ x: 'con {aps} punto(s) de acceso' })).toHaveLength(1);
     expect(ofensores({ x: 'Intervalo (s)' })).toEqual([]);
-    expect(ofensores({ 'rooms.actionPartial': '{n} aplicado(s)' })).toEqual([]);
+    expect(ofensores({ 'rooms.actionPartial': '{n} aplicado(s)' })).toHaveLength(1);
   });
 
   it('cada par .one/.other existe en los dos idiomas y son distintos en es', () => {
@@ -57,6 +53,9 @@ describe('plurales computados en el catálogo', () => {
       'scenes.deviceCount',
       'wellbeing.devices',
       'coverage.plan.aria',
+      'rooms.actionPartial',
+      'scenes.actionPartial',
+      'scenes.partial',
     ];
     for (const base of bases) {
       for (const cat of [es, en] as Record<string, string>[]) {

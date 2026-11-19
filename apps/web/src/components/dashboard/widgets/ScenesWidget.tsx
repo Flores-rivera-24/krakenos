@@ -9,7 +9,7 @@ import { runScene, sceneIcon } from '@/lib/scenes';
 import { canControlHome } from '@/lib/roles';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
-import { useT } from '@/lib/i18n';
+import { plural, useT } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/escenas';
 import '@/lib/i18n/catalog/fragments/panel';
 
@@ -26,7 +26,15 @@ export function ScenesWidget() {
     try {
       const result = await runScene(scene.id);
       if (result.failed.length > 0) {
-        toast.error(t('scenes.partial', { applied: result.applied, failed: result.failed.length }));
+        toast.error(
+          plural(result.applied, {
+            one: t('scenes.partial.one', { applied: result.applied, failed: result.failed.length }),
+            other: t('scenes.partial.other', {
+              applied: result.applied,
+              failed: result.failed.length,
+            }),
+          }),
+        );
       } else {
         toast.success(t('scenes.ran', { name: scene.name }));
       }

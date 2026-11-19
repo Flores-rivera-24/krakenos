@@ -225,6 +225,7 @@ export function TuyaManager({ reachable }: Props) {
                           {t('common.edit')}
                         </Button>
                         <DeleteButton
+                          armedClassName="flex-col items-end sm:flex-row sm:items-center"
                           onDelete={() =>
                             handle(async () => {
                               await trasEscribir(

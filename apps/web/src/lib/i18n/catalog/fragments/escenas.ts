@@ -16,7 +16,8 @@ export const esEscenas = {
   'scenes.scheduleMovedLink': 'Ir a Rutinas',
   'scenes.loadError': 'No se pudieron cargar las escenas',
   'scenes.devicesLoadError': 'No se pudieron cargar los dispositivos IoT',
-  'scenes.actionPartial': '{applied} aplicado(s), {failed} sin responder',
+  'scenes.actionPartial.one': '{applied} aplicado, {failed} sin responder',
+  'scenes.actionPartial.other': '{applied} aplicados, {failed} sin responder',
   'scenes.activated': 'Escena «{name}» activada',
   'scenes.activateError': 'No se pudo activar la escena',
   'scenes.deviceCount.one': '{count} dispositivo',
@@ -64,7 +65,8 @@ export const esEscenas = {
   'scenes.empty.cta': 'Crear escena',
 
   // --- Conectar (US-139) ---
-  'scenes.partial': '{applied} aplicado(s), {failed} sin responder',
+  'scenes.partial.one': '{applied} aplicado, {failed} sin responder',
+  'scenes.partial.other': '{applied} aplicados, {failed} sin responder',
   'scenes.ran': 'Escena «{name}» activada',
 } as const;
 

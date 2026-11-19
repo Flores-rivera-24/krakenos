@@ -256,6 +256,16 @@ describe('AppSidebar', () => {
     expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
   });
 
+  it('«Ajustes», del grupo fijo bajo la lista, también se trae a la vista', () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    renderSidebar({ collapsed: false, ruta: '/settings' });
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('link', { name: /Ajustes/ }));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+  });
+
   it('vuelve a traer el enlace activo cuando la lista cambia de alto y desconecta el observador', () => {
     const original = globalThis.ResizeObserver;
     let aviso: () => void = () => {};

@@ -16,6 +16,7 @@ import { ROLE_LABEL_KEYS } from '@/lib/roles';
 import { createUser, deleteUser, listUsers, resetUserPassword, updateUser } from '@/lib/users';
 import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
+import { useIsMobile } from '@/lib/use-is-mobile';
 import { plural, useT } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/usuarios';
 
@@ -34,6 +35,7 @@ const EMPTY_FORM = {
  */
 export function UsersSection() {
   const t = useT();
+  const mobile = useIsMobile();
   const currentId = useAuthStore((s) => s.user?.id);
   const [users, setUsers] = useState<UserSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -208,27 +210,72 @@ export function UsersSection() {
           <table className="w-full text-kr-sm">
             <thead className="bg-kr-elevated text-kr-secondary">
               <tr>
-                <th className="px-3 py-2 text-left">{t('users.col.user')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.role')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.status')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.lastLogin')}</th>
-                <th className="px-3 py-2 text-right">{t('users.col.actions')}</th>
+                <th className="px-1.5 py-2 md:px-3 text-left">{t('users.col.user')}</th>
+                {!mobile && <th className="px-3 py-2 text-left">{t('users.col.role')}</th>}
+                <th className="hidden px-3 py-2 text-left md:table-cell">
+                  {t('users.col.status')}
+                </th>
+                <th className="hidden px-3 py-2 text-left md:table-cell">
+                  {t('users.col.lastLogin')}
+                </th>
+                <th className="px-1.5 py-2 md:px-3 text-right">{t('users.col.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => {
                 const isSelf = u.id === currentId;
                 const busy = busyId === u.id;
+                const estado =
+                  u.status === 'active' ? (
+                    <Badge variant="online">{t('users.active')}</Badge>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-kr-secondary">
+                      <StatusDot status="offline" /> {t('users.disabled')}
+                    </span>
+                  );
+                const ultimoAcceso = u.lastLoginAt
+                  ? timeAgo(u.lastLoginAt)
+                  : t('users.neverLoggedIn');
+                const rolControl = (
+                  <>
+                    <Select
+                      aria-label={t('users.roleOf', { email: u.email })}
+                      value={u.role}
+                      disabled={busy}
+                      onChange={(e) =>
+                        void patch(
+                          u.id,
+                          { role: e.target.value as UserRole },
+                          t('users.roleUpdated'),
+                        )
+                      }
+                      className={mobile ? 'w-full' : 'w-auto'}
+                    >
+                      {USER_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {t(ROLE_LABEL_KEYS[role])}
+                        </option>
+                      ))}
+                    </Select>
+                    {u.expiresAt && (
+                      <div className="mt-1 text-kr-xs text-kr-muted">
+                        {t('users.expiresAt', { date: formatDateTime(u.expiresAt) })}
+                      </div>
+                    )}
+                  </>
+                );
                 return (
                   <tr key={u.id} className="border-t border-kr align-top">
-                    <td className="px-3 py-2.5">
+                    <td className="px-1.5 py-2.5 md:px-3">
                       <div className="font-medium text-kr-primary">
                         {u.displayName}
                         {isSelf && (
                           <span className="ml-1 text-kr-xs text-kr-muted">{t('users.you')}</span>
                         )}
                       </div>
-                      <div className="text-kr-xs text-kr-muted">{u.email}</div>
+                      <div className="break-all text-kr-xs text-kr-muted md:break-normal">
+                        {u.email}
+                      </div>
                       {/* Credenciales de automatización vivas (US-227): un admin debe
                           poder verlas. Deshabilitar la cuenta o cambiarle el rol las
                           revoca en cascada. */}
@@ -243,47 +290,20 @@ export function UsersSection() {
                           })}
                         </div>
                       )}
+                      {/* Bajo `md` estado y último acceso viven aquí: dos columnas menos ensanchaban la tabla. */}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-kr-xs text-kr-muted md:hidden">
+                        {estado}
+                        <span>{ultimoAcceso}</span>
+                      </div>
+                      {mobile && <div className="mt-2">{rolControl}</div>}
                     </td>
-                    <td className="px-3 py-2.5">
-                      <Select
-                        aria-label={t('users.roleOf', { email: u.email })}
-                        value={u.role}
-                        disabled={busy}
-                        onChange={(e) =>
-                          void patch(
-                            u.id,
-                            { role: e.target.value as UserRole },
-                            t('users.roleUpdated'),
-                          )
-                        }
-                        className="w-auto"
-                      >
-                        {USER_ROLES.map((role) => (
-                          <option key={role} value={role}>
-                            {t(ROLE_LABEL_KEYS[role])}
-                          </option>
-                        ))}
-                      </Select>
-                      {u.expiresAt && (
-                        <div className="mt-1 text-kr-xs text-kr-muted">
-                          {t('users.expiresAt', { date: formatDateTime(u.expiresAt) })}
-                        </div>
-                      )}
+                    {!mobile && <td className="px-3 py-2.5">{rolControl}</td>}
+                    <td className="hidden px-3 py-2.5 md:table-cell">{estado}</td>
+                    <td className="hidden px-3 py-2.5 text-kr-xs text-kr-muted md:table-cell">
+                      {ultimoAcceso}
                     </td>
-                    <td className="px-3 py-2.5">
-                      {u.status === 'active' ? (
-                        <Badge variant="online">{t('users.active')}</Badge>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-kr-secondary">
-                          <StatusDot status="offline" /> {t('users.disabled')}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 text-kr-xs text-kr-muted">
-                      {u.lastLoginAt ? timeAgo(u.lastLoginAt) : t('users.neverLoggedIn')}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap justify-end gap-2">
+                    <td className="px-1.5 py-2.5 md:px-3">
+                      <div className="flex flex-col items-end gap-2 md:flex-row md:flex-wrap md:items-stretch md:justify-end">
                         <Button
                           size="sm"
                           variant="outline"
@@ -322,6 +342,7 @@ export function UsersSection() {
                           </Button>
                         ) : (
                           <DeleteButton
+                            armedClassName="flex-col items-end md:flex-row md:items-center"
                             variant="destructive"
                             disabled={busy}
                             aria-label={t('users.deleteAria', { email: u.email })}
@@ -332,7 +353,7 @@ export function UsersSection() {
                         )}
                       </div>
                       {resetFor === u.id && (
-                        <div className="mt-2 flex justify-end gap-2">
+                        <div className="mt-2 flex flex-wrap justify-end gap-2">
                           <Input
                             type="password"
                             autoComplete="new-password"
