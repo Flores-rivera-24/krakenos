@@ -53,7 +53,16 @@ function SceneTile({
       const result = await runScene(scene.id);
       if (result.failed.length > 0) {
         toast.error(
-          t('scenes.actionPartial', { applied: result.applied, failed: result.failed.length }),
+          plural(result.applied, {
+            one: t('scenes.actionPartial.one', {
+              applied: result.applied,
+              failed: result.failed.length,
+            }),
+            other: t('scenes.actionPartial.other', {
+              applied: result.applied,
+              failed: result.failed.length,
+            }),
+          }),
         );
       } else {
         toast.success(t('scenes.activated', { name: scene.name }));

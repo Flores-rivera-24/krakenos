@@ -55,7 +55,16 @@ function RoomTile({
       const result = await runRoomAction(room.id, { on });
       if (result.failed.length > 0) {
         toast.error(
-          t('rooms.actionPartial', { applied: result.applied, failed: result.failed.length }),
+          plural(result.applied, {
+            one: t('rooms.actionPartial.one', {
+              applied: result.applied,
+              failed: result.failed.length,
+            }),
+            other: t('rooms.actionPartial.other', {
+              applied: result.applied,
+              failed: result.failed.length,
+            }),
+          }),
         );
       } else {
         toast.success(on ? t('rooms.turnedOn') : t('rooms.turnedOff'));
