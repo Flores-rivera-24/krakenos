@@ -354,7 +354,7 @@ jobs:
           docker run --rm -v "$RUNNER_TEMP/arch:/work" "$ARCH_BASE_DEVEL" bash -euo pipefail -c '
             # La imagen fijada envejece: sin un keyring al día, `pacman -Su` puede rechazar firmas nuevas.
             pacman -Sy --noconfirm archlinux-keyring
-            pacman -Su --noconfirm namcap
+            pacman -Su --noconfirm namcap hicolor-icon-theme
             useradd -m -u '"$(id -u)"' builder
             chown -R builder /work
             for d in /work/krakenos-*-arch; do
@@ -382,6 +382,8 @@ jobs:
           done
           echo "systemd: $st"
           case "$st" in running|degraded) ;; *) docker logs arch-systemd | tail -n 30; exit 1 ;; esac
+          # `pacman -U` resuelve las dependencias con la base sincronizada: el script no hace -Sy y la base ni trae hicolor-icon-theme.
+          docker exec arch-systemd pacman -Sy --noconfirm archlinux-keyring hicolor-icon-theme
           old="$(docker exec arch-systemd sh -c "ls /work/$OLD_DIR/*.pkg.tar.zst")"
           new="$(docker exec arch-systemd sh -c "ls /work/$NEW_DIR/*.pkg.tar.zst")"
           docker exec -e GITHUB_ACTIONS arch-systemd bash /usr/local/bin/linux-lifecycle.sh arch "$old" "$new"
