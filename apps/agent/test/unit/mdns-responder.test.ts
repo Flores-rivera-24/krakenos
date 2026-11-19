@@ -4,6 +4,7 @@ import {
   MdnsResponder,
   addressesFromInterfaces,
   answerFor,
+  sourceOnLink,
   type ResponderSocket,
 } from '../../src/discovery/mdns-responder.js';
 import { parseMdnsResponse } from '../../src/discovery/dns.js';
@@ -180,6 +181,30 @@ describe('unicast legada y subred receptora', () => {
   });
 });
 
+describe('sourceOnLink (subredes)', () => {
+  const v4 = (address: string, netmask: string, prefix: number) => ({
+    eth0: [{ ...nic(address, 'IPv4'), netmask, cidr: `${address}/${prefix}` }],
+  });
+
+  it('respeta máscaras distintas de /24', () => {
+    const c25 = v4('192.168.1.10', '255.255.255.128', 25);
+    expect(sourceOnLink(c25, '192.168.1.127')).toBe(true);
+    expect(sourceOnLink(c25, '192.168.1.128')).toBe(false);
+    const c16 = v4('172.20.5.1', '255.255.0.0', 16);
+    expect(sourceOnLink(c16, '172.20.200.9')).toBe(true);
+    expect(sourceOnLink(c16, '172.21.0.1')).toBe(false);
+  });
+
+  it('IPv6: ULA dentro y fuera del prefijo; fe80 siempre on-link; ignora interfaces internas', () => {
+    const ula = { eth0: [nic('fd12:3456:789a::1', 'IPv6')] };
+    expect(sourceOnLink(ula, 'fd12:3456:789a::77')).toBe(true);
+    expect(sourceOnLink(ula, 'fd12:3456:789b::77')).toBe(false);
+    expect(sourceOnLink(ula, '192.168.1.5')).toBe(false);
+    expect(sourceOnLink({}, 'fe80::abcd')).toBe(true);
+    expect(sourceOnLink({ lo: [nic('127.0.0.1', 'IPv4', true)] }, '127.0.0.9')).toBe(false);
+  });
+});
+
 function fakeSocket() {
   let onMsg: (m: Buffer, from: { address: string; port: number }) => void = () => {};
   const sent: { data: Buffer; address: string; port: number }[] = [];
@@ -197,14 +222,20 @@ function fakeSocket() {
   };
 }
 
-function make(overrides: Partial<{ socket: ResponderSocket; now: () => number }> = {}) {
+function make(
+  overrides: Partial<{
+    socket: ResponderSocket;
+    now: () => number;
+    ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>;
+  }> = {},
+) {
   const f = fakeSocket();
   let t = 1000;
   const log = { warn: vi.fn() };
   const r = new MdnsResponder({
     socket: overrides.socket ?? f.socket,
     nombre: 'mipc',
-    interfaces: () => ({ eth0: [nic('192.168.1.10', 'IPv4')] }),
+    interfaces: () => overrides.ifaces ?? { eth0: [nic('192.168.1.10', 'IPv4')] },
     now: overrides.now ?? (() => t),
     log,
   });
@@ -236,10 +267,14 @@ describe('MdnsResponder', () => {
   });
 
   it('la memoria del limitador no crece con orígenes inventados', async () => {
-    const { f, r } = make();
+    const wide = {
+      eth0: [{ ...nic('10.0.0.1', 'IPv4'), netmask: '255.0.0.0', cidr: '10.0.0.1/8' }],
+    };
+    const { f, r } = make({ ifaces: wide });
     await r.start();
     for (let i = 0; i < 5000; i++)
       f.emit(query('mipc.local', 1, 0x8001), 5353, `10.${i >> 8}.${i & 255}.1`);
+    expect(f.sent.length).toBeGreaterThan(0);
     expect(f.sent.length).toBeLessThanOrEqual(256);
   });
 
