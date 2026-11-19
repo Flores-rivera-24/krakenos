@@ -1,4 +1,39 @@
-import { coverageConfigDefaults, defineConfig } from 'vitest/config';
+import { configDefaults, coverageConfigDefaults, defineConfig } from 'vitest/config';
+
+// Tests de disco/SQLite: en Windows se reintentan como GRUPO (un pico del runner, no un test, los tumba:
+// db-client entero 32,8 s vs mediana 6,9 s; 15 runs, 2026-11-17). Lista cerrada; la ata saltos-por-plataforma.
+export const ARCHIVOS_DISCO: readonly string[] = [
+  'backup-claves',
+  'backup-stream',
+  'backup',
+  'db-client',
+  'json-store',
+  'migrate',
+  'restore-newer',
+  'restore-poda',
+  'restore-stream',
+  'restore-wal',
+  'restore',
+].map((n) => `test/unit/${n}.test.ts`);
+
+// Los projects NO usan `extends: true`: heredarían `globalSetup` y lo ejecutarían una vez por project
+// (medido: 3 llamadas) sobre la misma `test.db`. Lo común va aquí y `globalSetup` queda solo en la raíz.
+const comun = {
+  environment: 'node' as const,
+  // Una sola base SQLite compartida: los archivos de test no corren en paralelo
+  // para evitar carreras al limpiar tablas entre suites.
+  fileParallelism: false,
+  env: {
+    NODE_ENV: 'test',
+    DATABASE_URL: 'file:./test.db',
+    JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
+    JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',
+    DRIVER_KIND: 'mock',
+    WEB_ORIGIN: 'http://localhost:5173',
+    ACCESS_TOKEN_TTL: '900',
+    REFRESH_TOKEN_TTL: '2592000',
+  },
+};
 
 /**
  * Config de Vitest para el agente.
@@ -10,22 +45,25 @@ import { coverageConfigDefaults, defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
-    environment: 'node',
+    projects: [
+      {
+        test: {
+          ...comun,
+          name: 'disco',
+          include: [...ARCHIVOS_DISCO],
+          retry: process.platform === 'win32' ? 1 : 0,
+        },
+      },
+      {
+        test: {
+          ...comun,
+          name: 'general',
+          include: ['test/**/*.test.ts'],
+          exclude: [...configDefaults.exclude, ...ARCHIVOS_DISCO],
+        },
+      },
+    ],
     globalSetup: ['./test/globalSetup.ts'],
-    // Una sola base SQLite compartida: los archivos de test no corren en paralelo
-    // para evitar carreras al limpiar tablas entre suites.
-    fileParallelism: false,
-    env: {
-      NODE_ENV: 'test',
-      DATABASE_URL: 'file:./test.db',
-      JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
-      JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',
-      DRIVER_KIND: 'mock',
-      WEB_ORIGIN: 'http://localhost:5173',
-      ACCESS_TOKEN_TTL: '900',
-      REFRESH_TOKEN_TTL: '2592000',
-    },
     // Coverage honesto (US-219). `all: true` mide **todo** `src/**`, no solo lo
     // que los tests importan: el número refleja la realidad del árbol (incluidos
     // los transports de hardware SSH/SNMP/HTTP que solo se verifican con equipo

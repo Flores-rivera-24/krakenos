@@ -1,7 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+
+import config, { ARCHIVOS_DISCO } from '../../vitest.config.js';
 
 /**
  * Gate de los saltos por plataforma (US-281, Fase 11).
@@ -274,16 +276,22 @@ describe('saltos por plataforma (US-281)', () => {
 });
 
 /**
- * Reintentos solo en Windows. Un `retry` esconde un fallo real si se reparte a la ligera, así
- * que es una lista cerrada y razonada, como los saltos: los tres tests de disco que un pico
- * de TODO el runner de Windows tumbó (15 runs, 2026-11-17; en su peor pasada db-client entero
- * tardó 32,8 s frente a una mediana de 6,9 s). Subir sus topes no era la salida.
+ * Reintentos solo en Windows: viven en el project «disco» de `vitest.config.ts` (un grupo cerrado
+ * de 11 archivos de disco/SQLite), no en cada test. Un `retry` suelto esconde un fallo real.
  */
-const REINTENTOS: Record<string, number> = {
-  'unit/db-client.test.ts': 1,
-  'unit/json-store.test.ts': 1,
-  'unit/restore-wal.test.ts': 1,
-};
+const DISCO_ESPERADO = [
+  'backup-claves',
+  'backup-stream',
+  'backup',
+  'db-client',
+  'json-store',
+  'migrate',
+  'restore-newer',
+  'restore-poda',
+  'restore-stream',
+  'restore-wal',
+  'restore',
+].map((n) => `test/unit/${n}.test.ts`);
 const RETRY = /\bretry\s*:/g;
 
 describe('reintentos por plataforma', () => {
@@ -295,16 +303,34 @@ describe('reintentos por plataforma', () => {
     expect("it('x', () => {})".match(RETRY)).toBeNull();
   });
 
-  it('los reintentos que hay son exactamente los de la lista cerrada y solo valen en Windows', () => {
-    const reales: Record<string, number> = {};
+  it('ningún test declara retry: el reintento vive en el project «disco»', () => {
+    const conRetry: string[] = [];
     for (const f of ficheros(TEST_DIR)) {
       if (f === fileURLToPath(import.meta.url)) continue;
-      const t = readFileSync(f, 'utf8');
-      const n = t.match(RETRY)?.length ?? 0;
-      if (n > 0) reales[relative(TEST_DIR, f).replaceAll('\\', '/')] = n;
-      // Todo retry condicionado a win32: en Linux/macOS un fallo no se reintenta.
-      expect(t.match(/\bretry\s*:(?!\s*process\s*\.platform)/g), f).toBeNull();
+      if (RETRY.test(readFileSync(f, 'utf8'))) conRetry.push(relative(TEST_DIR, f));
+      RETRY.lastIndex = 0;
     }
-    expect(reales).toEqual(REINTENTOS);
+    expect(conRetry).toEqual([]);
+  });
+
+  it('el grupo «disco» es la lista cerrada y existe en disco', () => {
+    expect([...ARCHIVOS_DISCO]).toEqual(DISCO_ESPERADO);
+    for (const f of ARCHIVOS_DISCO) expect(existsSync(join(TEST_DIR, '..', f)), f).toBe(true);
+  });
+
+  it('el reintento es solo del project «disco» y solo en Windows', () => {
+    const projects = (config.test?.projects ?? []) as { test: { name: string; retry?: number } }[];
+    const por = (n: string) => projects.find((p) => p.test.name === n)?.test;
+    expect(por('disco')?.retry).toBe(process.platform === 'win32' ? 1 : 0);
+    expect(por('general')?.retry ?? 0).toBe(0);
+    expect(config.test?.retry ?? 0).toBe(0);
+    // En Linux un `retry: 1` fijo resolvería igual que la condición: se ata también el texto.
+    const texto = readFileSync(
+      fileURLToPath(new URL('../../vitest.config.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(texto.match(/\bretry\s*:[^\n]*/g)).toEqual([
+      "retry: process.platform === 'win32' ? 1 : 0,",
+    ]);
   });
 });
