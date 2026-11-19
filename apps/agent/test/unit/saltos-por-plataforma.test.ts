@@ -3,7 +3,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-import { ARCHIVOS_DISCO } from '../../vitest.config.js';
+import config, { ARCHIVOS_DISCO } from '../../vitest.config.js';
 
 /**
  * Gate de los saltos por plataforma (US-281, Fase 11).
@@ -316,5 +316,21 @@ describe('reintentos por plataforma', () => {
   it('el grupo «disco» es la lista cerrada y existe en disco', () => {
     expect([...ARCHIVOS_DISCO]).toEqual(DISCO_ESPERADO);
     for (const f of ARCHIVOS_DISCO) expect(existsSync(join(TEST_DIR, '..', f)), f).toBe(true);
+  });
+
+  it('el reintento es solo del project «disco» y solo en Windows', () => {
+    const projects = (config.test?.projects ?? []) as { test: { name: string; retry?: number } }[];
+    const por = (n: string) => projects.find((p) => p.test.name === n)?.test;
+    expect(por('disco')?.retry).toBe(process.platform === 'win32' ? 1 : 0);
+    expect(por('general')?.retry ?? 0).toBe(0);
+    expect(config.test?.retry ?? 0).toBe(0);
+    // En Linux un `retry: 1` fijo resolvería igual que la condición: se ata también el texto.
+    const texto = readFileSync(
+      fileURLToPath(new URL('../../vitest.config.ts', import.meta.url)),
+      'utf8',
+    );
+    expect(texto.match(/\bretry\s*:[^\n]*/g)).toEqual([
+      "retry: process.platform === 'win32' ? 1 : 0,",
+    ]);
   });
 });
