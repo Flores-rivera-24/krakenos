@@ -762,6 +762,7 @@ jobs:
             scripts/lib/krakenos-system.sh \
             scripts/package/linux-lifecycle.sh \
             packaging/linux/common/krakenos-setup \
+            packaging/linux/common/krakenos-open \
             packaging/linux/deb/postinst \
             packaging/linux/deb/prerm \
             packaging/linux/deb/postrm \

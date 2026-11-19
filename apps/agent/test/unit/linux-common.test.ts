@@ -188,6 +188,11 @@ describe('stageCommonTree', () => {
     expect(modo('usr/share/krakenos/krakenos.env')).toBe(0o644);
     expect(existsSync(join(root, 'etc'))).toBe(false);
     expect(lstatSync(join(root, 'usr/bin/krakenos-setup')).isSymbolicLink()).toBe(true);
+    // Entrada de menú: lanzador de root 0755 con enlace en /usr/bin, .desktop e icono 0644.
+    expect(modo(`${lib}/krakenos-open`)).toBe(0o755);
+    expect(lstatSync(join(root, 'usr/bin/krakenos-open')).isSymbolicLink()).toBe(true);
+    expect(modo('usr/share/applications/krakenos.desktop')).toBe(0o644);
+    expect(modo('usr/share/icons/hicolor/512x512/apps/krakenos.png')).toBe(0o644);
     for (const f of [
       'usr/lib/systemd/system/krakenos.service',
       'usr/lib/sysusers.d/krakenos.conf',

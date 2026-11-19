@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=KrakenOS
+Comment=Abre el panel de KrakenOS en el navegador
+Exec=krakenos-open
+Icon=krakenos
+Terminal=false
+Categories=Network;

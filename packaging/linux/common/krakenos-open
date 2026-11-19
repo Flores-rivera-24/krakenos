@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# krakenos-open — abre KrakenOS en el navegador (lo lanza la entrada de menú; corre SIN privilegios).
+#
+#   krakenos-open [--print] [--root DIR]
+#
+# --print imprime el origen en vez de abrirlo; --root DIR (SOLO para pruebas) prefija /etc.
+# El origen lo escribe `krakenos-setup origin` en /etc/krakenos/origin. No es de confianza ciega:
+# se valida y NUNCA se evalúa, se hace `source` ni se pasa a un shell.
+set -u
+
+ROOT=""
+PRINT=0
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --print) PRINT=1 ;;
+    --root) ROOT="${2:?--root necesita un directorio}"; shift ;;
+    *) echo "uso: krakenos-open [--print] [--root DIR]" >&2; exit 2 ;;
+  esac
+  shift
+done
+
+DEFECTO=http://localhost:3001
+origin=$DEFECTO
+# Misma regla que `write_origin` de krakenos-setup: una sola línea esquema://host[:puerto].
+contenido=""
+IFS= read -r -N 512 contenido < "$ROOT/etc/krakenos/origin" 2> /dev/null || true
+contenido="${contenido%$'\n'}"
+if [[ $contenido =~ ^https?://[][A-Za-z0-9._:-]+$ ]]; then
+  origin=$contenido
+else
+  echo "AVISO: /etc/krakenos/origin falta o no es válido; se usa $DEFECTO" >&2
+fi
+
+if [[ $PRINT -eq 1 ]]; then
+  printf '%s\n' "$origin"
+  exit 0
+fi
+if ! command -v xdg-open > /dev/null; then
+  echo "No se encontró xdg-open (o no hay entorno gráfico). Abre esta dirección en el navegador: $origin" >&2
+  exit 1
+fi
+exec xdg-open "$origin"
