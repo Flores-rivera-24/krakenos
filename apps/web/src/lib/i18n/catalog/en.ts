@@ -879,6 +879,11 @@ export const en: Record<TranslationKey, string> = {
   'scenes.icon.scene': 'Scene',
   'scenes.devices': 'Devices',
   'scenes.capture': 'Capture current state',
+  'scenes.unavailable.title': 'Device unavailable',
+  'scenes.unavailable.desc':
+    'It was deleted or no longer appears among your devices. While it stays in the scene, activating it will fail.',
+  'scenes.unavailable.remove': 'Remove',
+  'scenes.unavailable.removeLabel': 'Remove the unavailable device from the scene',
   'scenes.noControllable': 'No lights or plugs to control yet.',
   'scenes.includeLabel': 'Include {name}',
   'scenes.stateLabel': 'State of {name} in the scene',

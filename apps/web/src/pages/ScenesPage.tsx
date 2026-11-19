@@ -1,4 +1,5 @@
 import type { IotDevice, Scene, SceneAction, SceneIcon } from '@krakenos/types';
+import { TriangleAlert } from 'lucide-react';
 import { createElement, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/components/ui/button';
@@ -124,12 +125,15 @@ function initialDraft(devices: IotDevice[], actions: SceneAction[]): Record<stri
 function SceneEditor({
   scene,
   devices,
+  devicesLoaded,
   template,
   onClose,
   onSaved,
 }: {
   scene: Scene | null;
   devices: IotDevice[];
+  /** true solo si la lista de aparatos llegó sin error: antes, «no está» no quiere decir «se borró». */
+  devicesLoaded: boolean;
   template: SceneTemplate | null;
   onClose: () => void;
   onSaved: () => void;
@@ -156,6 +160,7 @@ function SceneEditor({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quitadas, setQuitadas] = useState<Set<string>>(() => new Set());
 
   /**
    * Fila efectiva de un dispositivo: si llegó DESPUÉS de sembrar el draft (carga
@@ -192,7 +197,9 @@ function SceneEditor({
         return action;
       }),
     // Lo que no vino en la lista (carga fallida, aparato desaparecido) no se borra al guardar.
-    ...(scene?.actions ?? []).filter((a) => !devices.some((d) => d.id === a.deviceId)),
+    ...(scene?.actions ?? []).filter(
+      (a) => !devices.some((d) => d.id === a.deviceId) && !quitadas.has(a.deviceId),
+    ),
   ];
 
   const save = async () => {
@@ -234,6 +241,11 @@ function SceneEditor({
   };
 
   const controllable = devices.filter((d) => d.on !== null);
+  const noDisponibles = devicesLoaded
+    ? (scene?.actions ?? []).filter(
+        (a) => !devices.some((d) => d.id === a.deviceId) && !quitadas.has(a.deviceId),
+      )
+    : [];
 
   return (
     <Slideover
@@ -344,6 +356,32 @@ function SceneEditor({
             })}
           </ul>
         )}
+
+        {noDisponibles.length > 0 && (
+          <ul className="space-y-2">
+            {noDisponibles.map((a) => (
+              <li
+                key={a.deviceId}
+                className="flex items-start gap-2 rounded-lg border border-kr bg-kr-elevated p-3"
+              >
+                <TriangleAlert aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                <div className="flex-1 space-y-1">
+                  <p className="text-kr-sm text-kr-primary">{t('scenes.unavailable.title')}</p>
+                  <p className="text-kr-xs text-kr-muted">{t('scenes.unavailable.desc')}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  aria-label={t('scenes.unavailable.removeLabel')}
+                  onClick={() => setQuitadas((prev) => new Set(prev).add(a.deviceId))}
+                >
+                  {t('scenes.unavailable.remove')}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </Slideover>
   );
@@ -356,6 +394,7 @@ function ScenesPageBody() {
   const [devices, setDevices] = useState<IotDevice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [devicesError, setDevicesError] = useState<string | null>(null);
+  const [devicesLoaded, setDevicesLoaded] = useState(false);
   const [editing, setEditing] = useState<Scene | null>(null);
   const [template, setTemplate] = useState<SceneTemplate | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
@@ -380,10 +419,12 @@ function ScenesPageBody() {
       .then((list) => {
         setDevices(list);
         setDevicesError(null);
+        setDevicesLoaded(true);
       })
       .catch((err) => {
         // El editor afirmaba "no hay luces" cuando en realidad falló la carga (AUD-12).
         setDevices([]);
+        setDevicesLoaded(false);
         setDevicesError(describeError(err, t('scenes.devicesLoadError')));
       });
     void useFavoritesStore.getState().load();
@@ -471,6 +512,7 @@ function ScenesPageBody() {
         <SceneEditor
           scene={editing}
           devices={devices}
+          devicesLoaded={devicesLoaded}
           template={template}
           onClose={() => setEditorOpen(false)}
           onSaved={reload}
