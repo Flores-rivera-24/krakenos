@@ -11,7 +11,7 @@ arch=('x86_64')
 url='https://github.com/Flores-rivera-24/krakenos'
 license=('AGPL-3.0-or-later')
 # glibc y gcc-libs: el binario de Node los enlaza (Ruling 15 del .deb: una dependencia, no un override).
-depends=('systemd' 'glibc' 'gcc-libs' 'ca-certificates')
+depends=('systemd' 'glibc' 'gcc-libs' 'ca-certificates' 'hicolor-icon-theme')
 optdepends=(
   'ffmpeg: cámaras'
   'nss-mdns: nombre .local'

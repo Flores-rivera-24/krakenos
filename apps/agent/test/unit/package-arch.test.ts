@@ -47,7 +47,7 @@ describe('renderPkgbuild', () => {
   });
   it('depende de lo que el binario de Node enlaza y de systemd, y recomienda lo opcional', () => {
     const deps = /^depends=\((.*)\)$/m.exec(p)?.[1] ?? '';
-    for (const d of ['systemd', 'glibc', 'gcc-libs', 'ca-certificates'])
+    for (const d of ['systemd', 'glibc', 'gcc-libs', 'ca-certificates', 'hicolor-icon-theme'])
       expect(deps).toContain(`'${d}'`);
     const opt = /^optdepends=\(([\s\S]*?)\)$/m.exec(p)?.[1] ?? '';
     for (const d of ['ffmpeg', 'nss-mdns', 'avahi', 'wireguard-tools', 'sudo', 'xdg-utils'])
