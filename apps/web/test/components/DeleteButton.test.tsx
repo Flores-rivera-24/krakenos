@@ -46,6 +46,22 @@ describe('DeleteButton', () => {
       await waitFor(() => expect(onDelete).toHaveBeenCalledTimes(1));
     });
 
+    it('el grupo armado lleva items-center por defecto y acepta armedClassName', () => {
+      const { unmount } = render(
+        <DeleteButton onDelete={() => Promise.resolve()}>Eliminar</DeleteButton>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+      expect(screen.getByRole('group').className).toBe('inline-flex gap-1 items-center');
+      unmount();
+      render(
+        <DeleteButton armedClassName="flex-col" onDelete={() => Promise.resolve()}>
+          Eliminar
+        </DeleteButton>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Eliminar' }));
+      expect(screen.getByRole('group').className).toBe('inline-flex gap-1 flex-col');
+    });
+
     it('«Cancelar» vuelve atrás sin borrar', () => {
       const onDelete = vi.fn().mockResolvedValue(undefined);
       render(<DeleteButton onDelete={onDelete}>Eliminar</DeleteButton>);

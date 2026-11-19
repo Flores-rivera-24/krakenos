@@ -125,6 +125,16 @@ describe('TuyaManager', () => {
     expect(ips[1]?.tagName).toBe('INPUT');
   });
 
+  it('armado en celular, Confirmar y Cancelar se apilan para no ensanchar la fila', async () => {
+    const user = userEvent.setup();
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+
+    await user.click(screen.getByRole('button', { name: 'Eliminar' }));
+    const grupo = screen.getByRole('button', { name: 'Confirmar' }).parentElement;
+    expect(grupo).toHaveClass('flex-col', 'sm:flex-row');
+  });
+
   it('un clic en eliminar no borra; Confirmar sí', async () => {
     const user = userEvent.setup();
     render(<TuyaManager reachable={new Set()} />);

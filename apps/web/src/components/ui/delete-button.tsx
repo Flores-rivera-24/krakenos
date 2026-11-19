@@ -9,6 +9,8 @@ interface Props {
   children: ReactNode;
   variant?: ButtonProps['variant'];
   className?: string;
+  /** Clases del grupo armado (Confirmar/Cancelar); sustituyen a `items-center`. Por defecto, nada cambia. */
+  armedClassName?: string;
   'aria-label'?: string;
   /**
    * Desactiva la confirmación de dos pasos. Solo para borrados **triviales y
@@ -49,6 +51,7 @@ export function DeleteButton({
   children,
   variant = 'ghost',
   className,
+  armedClassName = 'items-center',
   skipConfirm,
   disabled,
   ...rest
@@ -104,7 +107,7 @@ export function DeleteButton({
         ref={grupoRef}
         role="group"
         aria-label={rest['aria-label']}
-        className="inline-flex items-center gap-1"
+        className={`inline-flex gap-1 ${armedClassName}`}
       >
         <Button
           ref={confirmarRef}
