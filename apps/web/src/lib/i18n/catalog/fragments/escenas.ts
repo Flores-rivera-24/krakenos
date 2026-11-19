@@ -46,6 +46,13 @@ export const esEscenas = {
   'scenes.icon.scene': 'Escena',
   'scenes.devices': 'Dispositivos',
   'scenes.capture': 'Capturar estado actual',
+  'scenes.unavailable.title': 'Dispositivo no disponible',
+  'scenes.unavailable.desc':
+    'No aparece entre tus dispositivos: puede que se haya eliminado o que su integración no responda ahora. Mientras siga en la escena, no responderá al activarla.',
+  'scenes.unavailable.remove': 'Quitar',
+  'scenes.unavailable.removeLabel': 'Quitar de la escena el dispositivo no disponible',
+  'scenes.unavailable.removeLabelFrom':
+    'Quitar de la escena el dispositivo no disponible ({integration})',
   'scenes.noControllable': 'No hay luces ni enchufes que controlar todavía.',
   'scenes.includeLabel': 'Incluir {name}',
   'scenes.stateLabel': 'Estado de {name} en la escena',
