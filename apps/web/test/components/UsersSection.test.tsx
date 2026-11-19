@@ -110,7 +110,43 @@ describe('UsersSection — roles del hogar (US-179)', () => {
   });
 });
 
+function mockViewport(mobile: boolean) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn().mockReturnValue({
+      matches: mobile,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  });
+}
+
 describe('UsersSection — tabla en celular', () => {
+  afterEach(() => {
+    // @ts-expect-error: volvemos al estado original (sin matchMedia) de jsdom.
+    delete window.matchMedia;
+  });
+
+  it('en móvil el selector de rol va una sola vez bajo el nombre y no hay columna Rol', async () => {
+    mockViewport(true);
+    render(<UsersSection />);
+    const celdaUsuario = (await screen.findByText('ana@krakenos.test')).closest('td')!;
+    const selects = screen.getAllByRole('combobox', { name: /Rol de ana@krakenos.test/ });
+    expect(selects).toHaveLength(1);
+    expect(celdaUsuario).toContainElement(selects[0]!);
+    expect(screen.queryByRole('columnheader', { name: 'Rol' })).toBeNull();
+  });
+
+  it('en escritorio el selector de rol está en su columna', async () => {
+    mockViewport(false);
+    render(<UsersSection />);
+    const celdaUsuario = (await screen.findByText('ana@krakenos.test')).closest('td')!;
+    const select = screen.getByRole('combobox', { name: /Rol de ana@krakenos.test/ });
+    expect(celdaUsuario).not.toContainElement(select);
+    expect(screen.getByRole('columnheader', { name: 'Rol' })).toBeInTheDocument();
+  });
+
   beforeEach(() => {
     apiMock.get.mockReset().mockResolvedValue([summary()]);
     useAuthStore.setState({
@@ -126,20 +162,20 @@ describe('UsersSection — tabla en celular', () => {
     });
   });
 
-  it('estado y último acceso pasan bajo el usuario y las acciones se apilan bajo sm', async () => {
+  it('estado y último acceso pasan bajo el usuario y las acciones se apilan bajo md', async () => {
     render(<UsersSection />);
     const celdaUsuario = (await screen.findByText('ana@krakenos.test')).closest('td')!;
-    const bajoElNombre = celdaUsuario.querySelector('.sm\\:hidden');
+    const bajoElNombre = celdaUsuario.querySelector('.md\\:hidden');
     expect(bajoElNombre).toHaveTextContent('Activo');
     expect(bajoElNombre).toHaveTextContent('Nunca');
     for (const col of ['Estado', 'Último acceso']) {
       expect(screen.getByRole('columnheader', { name: col })).toHaveClass(
         'hidden',
-        'sm:table-cell',
+        'md:table-cell',
       );
     }
     const acciones = screen.getByRole('button', { name: 'Deshabilitar' }).parentElement;
-    expect(acciones).toHaveClass('flex-col', 'sm:flex-row');
+    expect(acciones).toHaveClass('flex-col', 'md:flex-row');
   });
 });
 
