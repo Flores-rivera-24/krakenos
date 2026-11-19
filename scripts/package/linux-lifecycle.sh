@@ -62,13 +62,25 @@ fail() {
 }
 
 # --- gestor de paquetes -------------------------------------------------------------------------
+# Corre el gestor con tope de tiempo (una instalación que espera algo en silencio colgó la CI ~28 min
+# sin dejar rastro: la salida va a $WORK/pkg.log). Devuelve el código del gestor; si salió por tiempo
+# (124, o 137 si hubo que matarlo), muestra el final del log y falla.
+pkg_run() {
+  local rc=0
+  timeout --kill-after=30 900 "$@" > "$WORK/pkg.log" 2>&1 || rc=$?
+  if [[ $rc -eq 124 || $rc -eq 137 ]]; then
+    tail -n 60 "$WORK/pkg.log" | redact | sed 's/^/  | /'
+    fail "la instalación no terminó en 15 min ($1 ${2:-}): se cortó; el final del registro está arriba"
+  fi
+  return "$rc"
+}
 pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de /setup con el token)
   local rc=0
   case "$KIND" in
     # Sin --force-conf*: krakenos.env no es conffile, así que dpkg no debe preguntar nada; si algún
     # día pregunta, sin terminal falla y la CI lo ve.
-    deb) DEBIAN_FRONTEND=noninteractive apt-get install -y "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
-    arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get install -y "$1" || rc=$? ;;
+    arch) pkg_run pacman -U --noconfirm "$1" || rc=$? ;;
   esac
   tail -n 6 "$WORK/pkg.log" | redact | sed 's/^/  | /'
   [[ $rc -eq 0 ]] || fail "la instalación de $(basename -- "$1") salió con $rc"
@@ -77,24 +89,24 @@ pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de
 # vacío) y pacman -U sí corre post_upgrade. Es lo que hace falta para ejercitar el reintento de HTTPS.
 pkg_reinstall() { # $1 = fichero
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive dpkg -i "$1" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
-    arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive dpkg -i "$1" || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    arch) pkg_run pacman -U --noconfirm "$1" || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_remove() {
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive apt-get remove -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
-    arch) pacman -R --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -R falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get remove -y krakenos || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    arch) pkg_run pacman -R --noconfirm krakenos || fail "pacman -R falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_purge() {
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch)
       # pacman no purga: la guía (docs/install-linux-package.md, «Quitar») manda borrar a mano los datos,
       # la configuración, las unidades de renovación del certificado, la regla de sudo y el usuario que
       # creó sysusers. Mantener estos comandos iguales a los de la guía (lo ata package-arch.test.ts).
-      pacman -Rns --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
+      pkg_run pacman -Rns --noconfirm krakenos || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
       rm -rf /var/lib/krakenos /etc/krakenos
       rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
       userdel krakenos

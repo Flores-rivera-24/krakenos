@@ -241,7 +241,7 @@ describe('linux-lifecycle.sh (rama arch)', () => {
     expect(ini).toBeGreaterThan(0);
     // Ningún `if [[ $KIND == … ]]` envuelve el paso 0: antes solo corría con el .deb.
     expect(s.slice(s.lastIndexOf('# ====', ini), ini)).not.toMatch(/\$KIND ==/);
-    expect(s).toMatch(/pkg_reinstall\(\)[\s\S]*arch\) pacman -U --noconfirm "\$1"/);
+    expect(s).toMatch(/pkg_reinstall\(\)[\s\S]*arch\) pkg_run pacman -U --noconfirm "\$1"/);
     expect(s.slice(ini, s.indexOf('paso 1 "'))).not.toContain('dpkg -i');
   });
   it('las órdenes de purga de la guía son las mismas', () => {
