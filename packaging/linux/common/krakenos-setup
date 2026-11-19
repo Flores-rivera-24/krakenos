@@ -5,6 +5,7 @@
 #   krakenos-setup tls [auto|tailscale|local|none]   HTTPS (por defecto: auto)
 #   krakenos-setup --with-helper                     regla sudoers del helper (VPN/firewall/QoS)
 #   krakenos-setup setup-url [--wait SEGUNDOS]       URL de /setup con el token (por defecto 30 s)
+#   krakenos-setup origin                            escribe /etc/krakenos/origin (lo lee el lanzador de escritorio)
 #
 # Opciones: --dry-run (imprime los comandos sin ejecutarlos), --root DIR (SOLO para pruebas:
 # prefija todas las rutas y toma al usuario actual como usuario del servicio).
@@ -32,7 +33,7 @@ while ((i < ${#ARGS[@]})); do
     --root) i=$((i + 1)); ROOT="${ARGS[i]:?--root necesita un directorio}" ;;
     --wait) i=$((i + 1)); WAIT="${ARGS[i]:-}" ;;
     --with-helper) CMD=with-helper ;;
-    tls | setup-url) CMD="${ARGS[i]}" ;;
+    tls | setup-url | origin) CMD="${ARGS[i]}" ;;
     auto | tailscale | local | none) TLS_MODE="${ARGS[i]}"; [[ $CMD == tls ]] || { INVALID=1; BAD="${ARGS[i]}"; } ;;
     *) INVALID=1; BAD="${ARGS[i]}" ;;
   esac
@@ -40,7 +41,7 @@ while ((i < ${#ARGS[@]})); do
 done
 [[ $WAIT =~ ^[0-9]{1,4}$ ]] || { echo "ERROR: --wait necesita un número de segundos" >&2; exit 2; }
 [[ $INVALID -eq 0 && -n $CMD ]] || {
-  echo "uso: krakenos-setup tls [auto|tailscale|local|none] | --with-helper | setup-url [--wait N] [--dry-run]${BAD:+ (no entiendo «$BAD»)}" >&2
+  echo "uso: krakenos-setup tls [auto|tailscale|local|none] | --with-helper | setup-url [--wait N] | origin [--dry-run]${BAD:+ (no entiendo «$BAD»)}" >&2
   exit 2
 }
 
@@ -127,11 +128,37 @@ print_summary() {
   for s in "${SUMMARY[@]}"; do printf '  - %s\n' "$s"; done
 }
 
+# Origen público del agente: WEB_ORIGIN del env si es https; si no, http://localhost:<PORT>.
+# El valor de la plantilla (http://localhost:5173) es del modo desarrollo, no del paquete.
+public_origin() {
+  local origin
+  origin="$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" 2> /dev/null | tail -1)"
+  [[ $origin == https://* ]] || origin="http://localhost:$(agent_port)"
+  printf '%s' "${origin%/}"
+}
+
+# Deja el origen en un archivo 0644 para el lanzador de escritorio, que corre sin privilegios.
+# Root escribe lo que sale del env: se valida (solo esquema://host[:puerto]) antes de escribir.
+write_origin() {
+  local origin dst="$ROOT/etc/krakenos/origin"
+  origin="$(public_origin)"
+  [[ $origin =~ ^https?://[][A-Za-z0-9._:-]+$ ]] || {
+    warn "el origen «$origin» no es válido (WEB_ORIGIN en $ENV_FILE): no se escribe $dst"
+    return 1
+  }
+  write_file "$dst.nuevo" "$origin"
+  run chmod 0644 "$dst.nuevo"
+  run mv -f "$dst.nuevo" "$dst"
+}
+
+cmd_origin() { write_origin; }
+
 cmd_tls() {
   [[ $DRY_RUN -eq 1 || -f $ENV_FILE ]] || die "no existe $ENV_FILE: ¿está instalado el paquete?"
   setup_tls
   # Terminó bien (incluido `none`, decisión explícita): ya no hay HTTPS pendiente.
   [[ $DRY_RUN -eq 1 ]] || rm -f "$ROOT/etc/krakenos/.https-pendiente"
+  write_origin || warn "el lanzador de escritorio no sabrá el origen: arréglalo y ejecuta krakenos-setup origin"
   if [[ $TLS_MODE != none ]]; then
     # Tras un fallo de TLS en la instalación el servicio ni se habilitó: reiniciar no basta.
     if has_systemd && systemctl is-enabled --quiet krakenos 2> /dev/null; then
@@ -186,9 +213,7 @@ cmd_setup_url() {
     echo "No hay token de configuración todavía. Mira por qué: journalctl -u krakenos"
     return 0
   fi
-  origin="$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" 2> /dev/null | tail -1)"
-  # El valor de la plantilla (http://localhost:5173) es del modo desarrollo, no del paquete.
-  [[ $origin == https://* ]] || origin="http://localhost:$(agent_port)"
+  origin="$(public_origin)"
   echo "Abre para crear el administrador: ${origin}/setup?token=${token}"
 }
 
@@ -196,4 +221,5 @@ case "$CMD" in
   tls) cmd_tls ;;
   with-helper) cmd_helper ;;
   setup-url) cmd_setup_url ;;
+  origin) cmd_origin ;;
 esac

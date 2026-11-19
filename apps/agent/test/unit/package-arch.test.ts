@@ -47,10 +47,10 @@ describe('renderPkgbuild', () => {
   });
   it('depende de lo que el binario de Node enlaza y de systemd, y recomienda lo opcional', () => {
     const deps = /^depends=\((.*)\)$/m.exec(p)?.[1] ?? '';
-    for (const d of ['systemd', 'glibc', 'gcc-libs', 'ca-certificates'])
+    for (const d of ['systemd', 'glibc', 'gcc-libs', 'ca-certificates', 'hicolor-icon-theme'])
       expect(deps).toContain(`'${d}'`);
     const opt = /^optdepends=\(([\s\S]*?)\)$/m.exec(p)?.[1] ?? '';
-    for (const d of ['ffmpeg', 'nss-mdns', 'avahi', 'wireguard-tools', 'sudo'])
+    for (const d of ['ffmpeg', 'nss-mdns', 'avahi', 'wireguard-tools', 'sudo', 'xdg-utils'])
       expect(opt).toContain(`'${d}:`);
   });
   it('krakenos.env NO es backup: lo crea el scriptlet desde /usr/share y nunca se pisa', () => {
@@ -241,7 +241,7 @@ describe('linux-lifecycle.sh (rama arch)', () => {
     expect(ini).toBeGreaterThan(0);
     // Ningún `if [[ $KIND == … ]]` envuelve el paso 0: antes solo corría con el .deb.
     expect(s.slice(s.lastIndexOf('# ====', ini), ini)).not.toMatch(/\$KIND ==/);
-    expect(s).toMatch(/pkg_reinstall\(\)[\s\S]*arch\) pacman -U --noconfirm "\$1"/);
+    expect(s).toMatch(/pkg_reinstall\(\)[\s\S]*arch\) pkg_run pacman -U --noconfirm "\$1"/);
     expect(s.slice(ini, s.indexOf('paso 1 "'))).not.toContain('dpkg -i');
   });
   it('las órdenes de purga de la guía son las mismas', () => {

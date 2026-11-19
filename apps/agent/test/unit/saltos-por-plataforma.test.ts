@@ -78,6 +78,11 @@ const LISTA: Record<string, Entrada> = {
     soloPosix: 3,
     motivo: `${MODOS}; y no hay umask. El resto de cada test (par RS256, rotación, temporales) sí corre. El fallo al escribir los temporales SÍ aplica en Windows (la rotación importa más allí), pero chmod 500 no lo provoca: pendiente de reescribirlo con un fallo inyectado.`,
   },
+  'unit/krakenos-open.test.ts': {
+    saltos: 1,
+    motivo:
+      'krakenos-open es un script de bash del escritorio de Linux (xdg-open, PATH POSIX): el bloque entero no existe en Windows.',
+  },
   'unit/krakenos-setup.test.ts': {
     saltos: 1,
     motivo:
@@ -136,7 +141,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 17, saltos: 26, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 18, saltos: 27, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;
