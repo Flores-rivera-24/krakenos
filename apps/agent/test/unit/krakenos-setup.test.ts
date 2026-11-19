@@ -5,6 +5,7 @@ import {
   linkSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -80,6 +81,62 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(r.stdout).toMatch(/WEBAUTHN_RP_ID=.+\.local en /);
     expect(r.stdout).not.toContain('apt-get');
     expect(r.stdout).not.toContain('useradd');
+  });
+
+  describe('modo real: el krakenos.env queda con origen y WebAuthn', () => {
+    const envPath = () => join(raiz, 'root', 'etc', 'krakenos', 'krakenos.env');
+    const lineas = (clave: string) =>
+      readFileSync(envPath(), 'utf8')
+        .split('\n')
+        .filter((l) => l.startsWith(`${clave}=`));
+
+    /**
+     * PATH con un `tailscale` (status y cert) y, para correr sin ser root de verdad, un `id -u` que
+     * dice 0 y un `install`/`chgrp` que ignoran propietario y grupo.
+     */
+    function stubs(): string {
+      const bin = join(raiz, 'stubs');
+      mkdirSync(bin);
+      const f = (n: string, c: string) =>
+        writeFileSync(join(bin, n), `#!/bin/sh\n${c}\n`, { mode: 0o755 });
+      f(
+        'tailscale',
+        'if [ "$1" = cert ]; then\n  while [ $# -gt 0 ]; do\n    case "$1" in --cert-file|--key-file) : > "$2"; shift;; esac\n    shift\n  done\n  exit 0\nfi\necho \'{"Self":{"DNSName": "casa.tailnet-abc.ts.net."}}\'',
+      );
+      f('id', '[ "$1" = -u ] && { echo 0; exit 0; }\nexec /usr/bin/id "$@"');
+      f('chgrp', 'exit 0');
+      f(
+        'install',
+        'a=""\nwhile [ $# -gt 0 ]; do\n  case "$1" in -o|-g) shift;; *) a="$a \'$1\'";; esac\n  shift\ndone\neval exec /usr/bin/install $a',
+      );
+      return `${bin}:/usr/bin:/bin`;
+    }
+
+    it('tls tailscale, aunque el .env no traiga las claves de plantilla ni un origen con puerto', () => {
+      // Un krakenos.env editado: sin los comentarios de WebAuthn y con el origen viejo, sin puerto.
+      writeFileSync(envPath(), 'PORT=3001\nWEB_ORIGIN=https://x.ts.net\n');
+      const path = stubs();
+      const r = correr(['tls', 'tailscale'], { KRAKENOS_ASSUME_SYSTEMD: 'no', PATH: path });
+      expect(r.status, r.stderr).toBe(0);
+      const origen = 'https://casa.tailnet-abc.ts.net:3001';
+      expect(lineas('WEB_ORIGIN')).toEqual([`WEB_ORIGIN=${origen}`]);
+      expect(lineas('WEBAUTHN_RP_ID')).toEqual(['WEBAUTHN_RP_ID=casa.tailnet-abc.ts.net']);
+      expect(lineas('WEBAUTHN_ORIGIN')).toEqual([`WEBAUTHN_ORIGIN=${origen}`]);
+      // Reejecutar no duplica nada.
+      const otra = correr(['tls', 'tailscale'], { KRAKENOS_ASSUME_SYSTEMD: 'no', PATH: path });
+      expect(otra.status, otra.stderr).toBe(0);
+      expect(lineas('WEB_ORIGIN')).toHaveLength(1);
+      expect(lineas('WEBAUTHN_ORIGIN')).toHaveLength(1);
+    });
+
+    it('tls local fija WebAuthn aunque el .env no traiga la plantilla', () => {
+      // En seco (la CA real exige root y node de verdad): se comprueba lo que escribiría.
+      writeFileSync(envPath(), 'PORT=3001\n');
+      const r = correr(['--dry-run', 'tls', 'local']);
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/WEBAUTHN_RP_ID=[a-z0-9-]+\.local en /);
+      expect(r.stdout).toMatch(/WEBAUTHN_ORIGIN=https:\/\/[a-z0-9-]+\.local:3001 en /);
+    });
   });
 
   it('tls dice cómo arrancar el servicio cuando no está habilitado', () => {

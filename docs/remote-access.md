@@ -49,9 +49,10 @@ servicio ni cortar sesiones.
 
 El origen que queda en el `.env` lleva el puerto del agente: `https://tu-maquina.tailnet-abc.ts.net:3001`
 (`WEB_ORIGIN` y `WEBAUTHN_ORIGIN`; `WEBAUTHN_RP_ID` es solo el nombre). Con `PORT=443` el puerto se
-omite. Si ya instalaste con Tailscale y el origen quedó sin puerto, corrígelo con
-`sudo krakenos-setup tls tailscale` (paquete) o `sudo /opt/krakenos/scripts/install.sh --tls tailscale`,
-y reinicia el servicio.
+omite. En el paquete (`.deb` y Arch) esas tres claves se fijan siempre al configurar HTTPS; con
+`install.sh`, solo si la plantilla del `.env` las contempla. Si ya instalaste con Tailscale y el origen
+quedó sin puerto, corrígelo con `sudo krakenos-setup tls tailscale` (paquete) o
+`sudo /opt/krakenos/scripts/install.sh --tls tailscale`, y reinicia el servicio.
 
 Tres cosas que conviene saber antes:
 

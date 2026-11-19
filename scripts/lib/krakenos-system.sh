@@ -120,9 +120,16 @@ https_origin() {
 }
 
 # WebAuthn exige un NOMBRE (no una IP) y que el origen coincida con el del
-# navegador; solo se fija si la plantilla del .env los contempla.
+# navegador. Solo se fija si la plantilla del .env los contempla, salvo que quien
+# llama exporte WEBAUTHN_FORCE=1 (krakenos-setup, el paquete: allí la «plantilla» es
+# el krakenos.env que el usuario edita, y sin estas claves el agente cae a localhost).
 set_webauthn_env() {
   local host="$1" origin="$2"
+  if [[ "${WEBAUTHN_FORCE:-0}" == 1 ]]; then
+    set_env_var WEBAUTHN_RP_ID "$host"
+    set_env_var WEBAUTHN_ORIGIN "$origin"
+    return 0
+  fi
   if grep -qE '^#? *WEBAUTHN_RP_ID=' "$ENV_EXAMPLE" 2> /dev/null; then
     set_env_var WEBAUTHN_RP_ID "$host"
   fi

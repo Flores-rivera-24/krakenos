@@ -814,6 +814,7 @@ describe.skipIf(process.platform === 'win32')(
       expect(code).toBe(0);
       expect(stdout).toMatch(/WEB_ORIGIN=https:\/\/[a-z0-9-]+\.local en /);
       expect(stdout).toMatch(/WEBAUTHN_ORIGIN=https:\/\/[a-z0-9-]+\.local en /);
+      expect(stdout).not.toContain(':443');
     });
 
     it('auto elige tailscale si hay Tailscale con sesión, y lo dice', async () => {
