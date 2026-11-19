@@ -201,6 +201,20 @@ describe.skipIf(WIN)('krakenos-setup', () => {
       },
     );
 
+    it('un WEB_ORIGIN inválido deja intacto el origen anterior', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001\n');
+      expect(correr(['origin']).status).toBe(0);
+      writeFileSync(env(), 'WEB_ORIGIN=https://a b\n');
+      expect(correr(['origin']).status).not.toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+    });
+
+    it('un WEB_ORIGIN con barra final se escribe sin ella', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001/\n');
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+    });
+
     it('tls none deja el archivo escrito; --dry-run no escribe', () => {
       const seco = correr(['--dry-run', 'origin']);
       expect(seco.status, seco.stderr).toBe(0);

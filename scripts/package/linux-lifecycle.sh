@@ -211,6 +211,14 @@ fi
 ok "krakenos activo"
 grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "HTTPS por defecto: WEB_ORIGIN en $ENV_FILE es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
 ok "WEB_ORIGIN es https (HTTPS por defecto)"
+# El lanzador de escritorio (sin privilegios) lee de aquí qué abrir: debe existir, ser legible y coincidir.
+ORIGIN_FILE=/etc/krakenos/origin
+ORIGEN_ESPERADO="$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)"
+[[ -f $ORIGIN_FILE ]] || fail "no existe $ORIGIN_FILE tras instalar"
+[[ "$(stat -c %a "$ORIGIN_FILE")" == 644 ]] || fail "$ORIGIN_FILE tiene modo $(stat -c %a "$ORIGIN_FILE") (se esperaba 644)"
+[[ "$(cat "$ORIGIN_FILE")" == "${ORIGEN_ESPERADO%/}" ]] || fail "$ORIGIN_FILE contiene '$(cat "$ORIGIN_FILE")' y debería ser '${ORIGEN_ESPERADO%/}'"
+[[ -f /usr/share/applications/krakenos.desktop && -f /usr/share/icons/hicolor/512x512/apps/krakenos.png ]] || fail "faltan la entrada de menú o su icono tras instalar"
+ok "/etc/krakenos/origin (644) coincide con WEB_ORIGIN; entrada de menú e icono instalados"
 wait_ready
 ok "/health/ready = 200 en $(base_url)"
 getent passwd krakenos > /dev/null || fail "no existe el usuario krakenos"
@@ -290,6 +298,8 @@ login
 ok "login = 200 tras actualizar (los datos sobreviven)"
 [[ "$(sha "$CERT")" == "$CERT_SHA_1" ]] || fail "actualizar regeneró el certificado TLS"
 ok "el certificado no cambió al actualizar"
+[[ -f $ORIGIN_FILE ]] || fail "$ORIGIN_FILE desapareció tras actualizar"
+ok "/etc/krakenos/origin sigue existiendo tras actualizar"
 
 # =================================================================================================
 paso 5 "desinstalar (remove) y reinstalar sin purgar"
@@ -299,6 +309,9 @@ pkg_remove
 [[ ! -e /usr/lib/krakenos ]] || fail "/usr/lib/krakenos sigue existiendo tras desinstalar"
 [[ -f $ENV_FILE ]] || fail "desinstalar borró $ENV_FILE (lo crea el postinst y solo purge debe borrarlo)"
 ok "servicio parado; datos y configuración conservados; código retirado"
+[[ ! -e /usr/share/applications/krakenos.desktop ]] || fail "la entrada de menú sigue existiendo tras desinstalar"
+[[ ! -e /usr/share/icons/hicolor/512x512/apps/krakenos.png ]] || fail "el icono sigue existiendo tras desinstalar"
+ok "entrada de menú e icono retirados"
 # (c) los enlaces *.wants de la unidad y de los timers no quedan colgando.
 colgando="$(find /etc/systemd/system -xtype l -name 'krakenos*' 2> /dev/null || true)"
 [[ -z $colgando ]] || fail "enlaces de systemd colgando tras desinstalar: $colgando"
@@ -328,6 +341,7 @@ pkg_purge
 for d in /usr/lib/krakenos /var/lib/krakenos /etc/krakenos; do
   [[ ! -e $d ]] || fail "$d sigue existiendo tras purgar"
 done
+[[ ! -e $ORIGIN_FILE ]] || fail "$ORIGIN_FILE sigue existiendo tras purgar"
 ! systemctl cat krakenos.service > /dev/null 2>&1 || fail "la unidad krakenos.service sigue instalada tras purgar"
 [[ -z "$(getent passwd krakenos || true)" ]] || fail "el usuario krakenos sigue existiendo tras purgar"
 [[ -z "$(getent group krakenos || true)" ]] || fail "el grupo krakenos sigue existiendo tras purgar"

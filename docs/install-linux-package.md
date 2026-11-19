@@ -86,14 +86,13 @@ mientras no haya administrador): imprime una línea que recuerda este comando.
 
 El paquete añade la entrada **KrakenOS** al menú de aplicaciones. Al pulsarla se abre el navegador
 predeterminado del sistema en la dirección del agente, la misma que guarda `/etc/krakenos/origin`: la
-de HTTPS (`https://<equipo>.local:3001`, o el nombre `….ts.net` con Tailscale) si la configuraste, y
-`http://localhost:<puerto>` si no. Desde la terminal hace lo mismo `krakenos-open` (con `--print`
+de HTTPS (`https://<equipo>.local:<puerto>`) si la configuraste, y `http://localhost:<puerto>` si no. Desde la terminal hace lo mismo `krakenos-open` (con `--print`
 solo imprime la dirección). Necesita `xdg-utils`, que el paquete **recomienda**; sin él, o sin
 entorno gráfico (por ejemplo, por SSH), el comando termina con un error que muestra la dirección para
 que la abras a mano.
 
 No es una ventana propia a propósito: las passkeys dependen del navegador y del origen exacto de la
-página, y una ventana embebida no las ofrece de forma fiable.
+página, y el motor de ventanas web de Linux (WebKitGTK) no implementa WebAuthn.
 
 **Instalarlo como aplicación.** En Chrome, Edge o Chromium, abre KrakenOS y usa el menú del navegador →
 «Instalar KrakenOS» (o el icono de instalar que aparece en la barra de direcciones). Queda como una
@@ -109,7 +108,7 @@ cat /etc/krakenos/origin
 ```
 
 Si el valor de `WEB_ORIGIN` no es una dirección válida, el comando lo avisa y no escribe nada; el
-lanzador usa entonces `http://localhost:3001`.
+lanzador sigue usando la dirección anterior (o `http://localhost:3001` si nunca hubo una).
 
 ## Dónde vive cada cosa
 
