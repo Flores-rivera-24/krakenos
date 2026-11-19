@@ -47,6 +47,12 @@ móvil confía **sin instalar nada**—, lo apunta en el `.env` y programa un ti
 renueva. El agente **detecta el fichero renovado y lo aplica en caliente**, sin reiniciar el
 servicio ni cortar sesiones.
 
+El origen que queda en el `.env` lleva el puerto del agente: `https://tu-maquina.tailnet-abc.ts.net:3001`
+(`WEB_ORIGIN` y `WEBAUTHN_ORIGIN`; `WEBAUTHN_RP_ID` es solo el nombre). Con `PORT=443` el puerto se
+omite. Si ya instalaste con Tailscale y el origen quedó sin puerto, corrígelo con
+`sudo krakenos-setup tls tailscale` (paquete) o `sudo /opt/krakenos/scripts/install.sh --tls tailscale`,
+y reinicia el servicio.
+
 Tres cosas que conviene saber antes:
 
 - **Hay que activarlo en el tailnet.** En la consola de Tailscale: *DNS → MagicDNS* y

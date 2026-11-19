@@ -776,6 +776,46 @@ describe.skipIf(process.platform === 'win32')(
       expect(stdout).not.toMatch(/chown.*\/etc\/krakenos/);
     });
 
+    /** Un directorio de instalación con la plantilla del .env y, si se pide, un PORT. */
+    function instalacionConEnv(port?: string): string {
+      const dir = mkdtempSync(join(tmpdir(), 'kraken-env-'));
+      mkdirSync(join(dir, 'apps/agent'), { recursive: true });
+      writeFileSync(
+        join(dir, 'apps/agent/.env.example'),
+        '# WEBAUTHN_RP_ID=krakenos.local\n# WEBAUTHN_ORIGIN=https://krakenos.local:3001\n',
+      );
+      if (port) writeFileSync(join(dir, 'apps/agent/.env'), `PORT=${port}\n`);
+      return dir;
+    }
+
+    it.each([
+      ['el puerto por defecto', undefined, ':3001'],
+      ['un PORT propio', '8443', ':8443'],
+      ['PORT=443, sin sufijo', '443', ''],
+    ])('modo tailscale con %s: origen y WebAuthn', async (_n, port, sufijo) => {
+      const dir = instalacionConEnv(port);
+      const { code, stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--tls', 'tailscale', '--dir', dir],
+        { PATH: `${tailscaleFalso()}:/usr/bin:/bin` },
+      );
+      expect(code).toBe(0);
+      const origen = `https://casa.tailnet-abc.ts.net${sufijo}`;
+      expect(stdout).toMatch(new RegExp(`WEB_ORIGIN=${origen} en `));
+      expect(stdout).toMatch(/WEBAUTHN_RP_ID=casa\.tailnet-abc\.ts\.net en /);
+      expect(stdout).toMatch(new RegExp(`WEBAUTHN_ORIGIN=${origen} en `));
+    });
+
+    it('modo local con PORT=443: origen sin :443', async () => {
+      const dir = instalacionConEnv('443');
+      const { code, stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--tls', 'local', '--dir', dir],
+        { PATH: '/usr/bin:/bin' },
+      );
+      expect(code).toBe(0);
+      expect(stdout).toMatch(/WEB_ORIGIN=https:\/\/[a-z0-9-]+\.local en /);
+      expect(stdout).toMatch(/WEBAUTHN_ORIGIN=https:\/\/[a-z0-9-]+\.local en /);
+    });
+
     it('auto elige tailscale si hay Tailscale con sesión, y lo dice', async () => {
       const bin = tailscaleFalso();
       const { stdout } = await runInstaller(['--dry-run', '--yes', '--dir', INSTALL_DIR], {

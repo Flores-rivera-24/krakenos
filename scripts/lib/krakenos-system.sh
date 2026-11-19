@@ -114,9 +114,26 @@ set_tls_env_paths() {
   set_env_var TLS_KEY_PATH "$TLS_DIR/agent-key.pem"
 }
 
+# Origen https://<host>[:<puerto>]; el 443 es el de https y no se escribe.
+https_origin() {
+  if [[ "$2" == 443 ]]; then printf 'https://%s' "$1"; else printf 'https://%s:%s' "$1" "$2"; fi
+}
+
+# WebAuthn exige un NOMBRE (no una IP) y que el origen coincida con el del
+# navegador; solo se fija si la plantilla del .env los contempla.
+set_webauthn_env() {
+  local host="$1" origin="$2"
+  if grep -qE '^#? *WEBAUTHN_RP_ID=' "$ENV_EXAMPLE" 2> /dev/null; then
+    set_env_var WEBAUTHN_RP_ID "$host"
+  fi
+  if grep -qE '^#? *WEBAUTHN_ORIGIN=' "$ENV_EXAMPLE" 2> /dev/null; then
+    set_env_var WEBAUTHN_ORIGIN "$origin"
+  fi
+}
+
 # Certificado de Let's Encrypt vía Tailscale: el móvil confía sin instalar nada.
 setup_tls_tailscale() {
-  local fqdn
+  local fqdn origin
   command -v tailscale > /dev/null 2>&1 ||
     die "--tls tailscale necesita Tailscale instalado y con sesión iniciada (ver docs/remote-access.md)"
   fqdn="$(tailscale_fqdn || true)"
@@ -136,7 +153,9 @@ setup_tls_tailscale() {
   run chmod 0640 "$TLS_DIR/agent-key.pem"
 
   set_tls_env_paths
-  set_env_var WEB_ORIGIN "https://${fqdn}"
+  origin="$(https_origin "$fqdn" "$(agent_port)")"
+  set_env_var WEB_ORIGIN "$origin"
+  set_webauthn_env "$fqdn" "$origin"
   install_tls_renew_timer "$fqdn"
 
   # Certificate Transparency: el nombre queda publicado en un registro PÚBLICO y
@@ -232,7 +251,7 @@ install_avahi() {
 #   · /etc/krakenos/tls/                         root:<servicio> 0750; el agente lee
 #                                                cert y clave del servidor POR GRUPO
 setup_tls_local() {
-  local host port
+  local host port origin
   host="$(local_hostname)"
   port="$(agent_port)"
 
@@ -243,19 +262,13 @@ setup_tls_local() {
 
   set_tls_env_paths
   set_env_var TLS_CA_CERT_PATH "$TLS_DIR/krakenos-ca.pem"
-  set_env_var WEB_ORIGIN "https://${host}.local:${port}"
-  # WebAuthn exige un NOMBRE (no una IP) y que el origen coincida con el del
-  # navegador; solo se fija si la plantilla del .env los contempla.
-  if grep -qE '^#? *WEBAUTHN_RP_ID=' "$ENV_EXAMPLE" 2> /dev/null; then
-    set_env_var WEBAUTHN_RP_ID "${host}.local"
-  fi
-  if grep -qE '^#? *WEBAUTHN_ORIGIN=' "$ENV_EXAMPLE" 2> /dev/null; then
-    set_env_var WEBAUTHN_ORIGIN "https://${host}.local:${port}"
-  fi
+  origin="$(https_origin "${host}.local" "$port")"
+  set_env_var WEB_ORIGIN "$origin"
+  set_webauthn_env "${host}.local" "$origin"
   install_tls_local_timer "$host"
   install_avahi
 
-  SUMMARY+=("TLS con CA propia: cada dispositivo debe instalar UNA vez el certificado de la CA (descárgalo en https://${host}.local:${port}/api/system/ca-cert o en Ajustes → Conexión segura; en iPhone/iPad hay además que activarlo en Ajustes → General → Información → Confianza de certificados)")
+  SUMMARY+=("TLS con CA propia: cada dispositivo debe instalar UNA vez el certificado de la CA (descárgalo en ${origin}/api/system/ca-cert o en Ajustes → Conexión segura; en iPhone/iPad hay además que activarlo en Ajustes → General → Información → Confianza de certificados)")
   SUMMARY+=("la clave de la CA está en ${CA_DIR} (solo root); no la copies ni la compartas")
 }
 
