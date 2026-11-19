@@ -81,8 +81,8 @@ pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de
   case "$KIND" in
     # Sin --force-conf*: krakenos.env no es conffile, así que dpkg no debe preguntar nada; si algún
     # día pregunta, sin terminal falla y la CI lo ve.
-    # --no-install-recommends: el ciclo de vida prueba el paquete, no sus recomendados (ffmpeg arrastra
-    # cientos de MB y un espejo lento colgaba el job); los recomendados los ejercita installer-smoke.
+    # --no-install-recommends: se prueba el paquete, y bajar ffmpeg depende de la velocidad del espejo; avahi y
+    # libnss-mdns los instala `tls auto` por su cuenta. Ningún job instala el .deb con todos sus Recommends (ffmpeg, xdg-utils).
     deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends "$1" || rc=$? ;;
     arch) pkg_run pacman -U --noconfirm "$1" || rc=$? ;;
   esac
