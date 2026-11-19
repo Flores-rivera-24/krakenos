@@ -294,7 +294,7 @@ describe('ScenesPage (US-166)', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
       await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
       const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
-      expect(body.actions).toHaveLength(3);
+      expect(body.actions).toHaveLength(original.actions.length);
       expect(body.actions[2]).toEqual({ deviceId: 'c', on: true, brightness: 40 });
     });
 
@@ -356,6 +356,124 @@ describe('ScenesPage (US-166)', () => {
       await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
       const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
       expect(body.actions.map((x) => x.deviceId)).toEqual(['b', 'c']);
+    });
+
+    describe('aparato no disponible', () => {
+      const NO_DISPONIBLE = 'Dispositivo no disponible';
+
+      it('la acción de un aparato borrado se ve una vez, con su botón Quitar', async () => {
+        servir([dev('a'), dev('b')]);
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await within(dialog).findByText(NO_DISPONIBLE);
+        expect(within(dialog).getAllByText(NO_DISPONIBLE)).toHaveLength(1);
+        expect(
+          within(dialog).getByRole('button', {
+            name: 'Quitar de la escena el dispositivo no disponible',
+          }),
+        ).toBeInTheDocument();
+      });
+
+      it('quitar y guardar: la acción quitada no va en el PATCH y las demás sí', async () => {
+        servir([dev('a'), dev('b')]);
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await user.click(
+          await within(dialog).findByRole('button', {
+            name: 'Quitar de la escena el dispositivo no disponible',
+          }),
+        );
+        expect(within(dialog).queryByText(NO_DISPONIBLE)).toBeNull();
+        await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+        await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+        const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+        expect(body.actions.map((x) => x.deviceId)).toEqual(['a', 'b']);
+      });
+
+      it('guardar sin quitar: la acción sigue en el PATCH', async () => {
+        servir([dev('a'), dev('b')]);
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await within(dialog).findByText(NO_DISPONIBLE);
+        await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+        await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+        const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+        expect(body.actions.map((x) => x.deviceId)).toEqual(['a', 'b', 'c']);
+      });
+
+      it('con la carga de aparatos fallida no se ofrece quitar nada y el PATCH conserva todo', async () => {
+        servir(new Error('bridge caído'));
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await within(dialog).findByText(/No hay luces ni enchufes/);
+        expect(within(dialog).queryByText(NO_DISPONIBLE)).toBeNull();
+        await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+        await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
+        const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
+        expect(body.actions).toEqual(original.actions);
+      });
+
+      it('con la lista aún pendiente no hay filas no disponibles', async () => {
+        apiMock.get.mockImplementation((path: string) => {
+          if (path === '/scenes') return Promise.resolve([original]);
+          if (path === '/iot/devices') return new Promise(() => undefined);
+          return Promise.resolve([]);
+        });
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await within(dialog).findByText(/No hay luces ni enchufes/);
+        expect(within(dialog).queryByText(NO_DISPONIBLE)).toBeNull();
+      });
+
+      it('un aparato presente pero no controlable no es no disponible', async () => {
+        servir([dev('a'), dev('b'), { ...dev('c'), on: null }]);
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        await within(dialog).findByLabelText('Incluir Luz a');
+        expect(within(dialog).queryByText(NO_DISPONIBLE)).toBeNull();
+      });
+
+      it('sin aparatos controlables pero con la lista cargada, la huérfana se ve igual', async () => {
+        servir([{ ...dev('z'), on: null }]);
+        const user = userEvent.setup();
+        renderPage();
+        const dialog = await renombrarYGuardar(user);
+        expect(await within(dialog).findAllByText(NO_DISPONIBLE)).toHaveLength(
+          original.actions.length,
+        );
+      });
+
+      it('cada fila muestra el prefijo de integración y su botón lo nombra', async () => {
+        const mixta: Scene = scene({
+          actions: [
+            { deviceId: 'hue:abc', on: true },
+            { deviceId: 'mqtt:xyz', on: false },
+            { deviceId: 'suelto', on: true },
+          ],
+        });
+        apiMock.get.mockImplementation((path: string) => {
+          if (path === '/scenes') return Promise.resolve([mixta]);
+          if (path === '/iot/devices') return Promise.resolve([]);
+          return Promise.resolve([]);
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole('button', { name: /3 dispositivos/ }));
+        const dialog = await screen.findByRole('dialog');
+        await within(dialog).findAllByText(NO_DISPONIBLE);
+        expect(within(dialog).getByText('hue')).toBeInTheDocument();
+        expect(within(dialog).getByText('mqtt')).toBeInTheDocument();
+        const base = 'Quitar de la escena el dispositivo no disponible';
+        expect(within(dialog).getByRole('button', { name: `${base} (hue)` })).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: `${base} (mqtt)` })).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: base })).toBeInTheDocument();
+      });
     });
 
     it('una escena nueva con la lista vacía no inventa acciones', async () => {
