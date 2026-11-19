@@ -71,8 +71,9 @@ import { weatherRoutes } from './modules/weather/weather.routes.js';
 import { PresenceService } from './modules/presence/presence.service.js';
 import { presenceRoutes } from './modules/presence/presence.routes.js';
 import { DgramDiscoveryTransport } from './discovery/transport.js';
+import type { ResponderSocket } from './discovery/mdns-responder.js';
 import { DgramResponderSocket } from './discovery/mdns-socket.js';
-import { startMdnsResponder } from './discovery/mdns-service.js';
+import { startMdnsResponder, type MdnsMode } from './discovery/mdns-service.js';
 import { sanitizeHostname, shortHostname } from './crypto/local-ca.js';
 import { DiscoveryService } from './modules/discovery/discovery.service.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
@@ -130,6 +131,12 @@ import { serializarPeticion } from './observability/log-redact.js';
 export interface BuildServerOptions {
   /** Fichero del token de setup; por defecto el del estado real. Los tests inyectan un temporal. */
   setupTokenFile?: string;
+  /** Respondedor mDNS (US-283): los tests inyectan modo, socket falso e interfaces. */
+  mdns?: {
+    mode?: MdnsMode;
+    socket?: ResponderSocket;
+    interfaces?: () => ReturnType<typeof networkInterfaces>;
+  };
 }
 
 export async function buildServer(opts: BuildServerOptions = {}): Promise<FastifyInstance> {
@@ -403,11 +410,11 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   // Respondedor mDNS de <equipo>.local (US-283): en Windows no hay Avahi. Mismo nombre que la
   // CA local; si 5353 está ocupado queda `unavailable` (se declara en /api/system/tls).
   const mdns = await startMdnsResponder({
-    mode: env.mdnsResponder,
+    mode: opts.mdns?.mode ?? env.mdnsResponder,
     platform: process.platform,
-    socket: new DgramResponderSocket(),
+    socket: opts.mdns?.socket ?? new DgramResponderSocket(),
     nombre: [sanitizeHostname(process.env.KRAKENOS_HOSTNAME || shortHostname()), 'krakenos'],
-    interfaces: networkInterfaces,
+    interfaces: opts.mdns?.interfaces ?? networkInterfaces,
     now: Date.now,
     log: { warn: (m) => app.log.warn(m) },
   });
