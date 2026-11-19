@@ -31,36 +31,31 @@ describe('createPrismaClient (US-276)', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  // Reintento solo en Windows: un pico del runner tumbó el fichero entero (db-client: 32,8 s vs mediana 6,9 s; este test, mediana 1,3 s, máx. 3,2 s, tope 5 s).
-  it(
-    'una transacción con rollback NO se lleva por delante la escritura de otra petición',
-    { retry: process.platform === 'win32' ? 1 : 0 },
-    async () => {
-      // El adaptador de Prisma 7 abre una sola conexión: sin `serialized-adapter`, una
-      // consulta suelta lanzada con la transacción abierta se ejecuta DENTRO de ella y el
-      // ROLLBACK la deshace. Se reproduce de verdad. El código tiene 9 `$transaction` (4
-      // interactivas: absorb, push y users ×2) y Prisma envuelve en una los creates anidados;
-      // `transacciones-interactivas.test.ts` vigila que dentro solo se use `tx`.
-      let ajena: Promise<unknown> = Promise.resolve();
-      const orden: string[] = [];
-      await prisma
-        .$transaction(async (tx) => {
-          await tx.setting.create({ data: { key: 'en-tx', value: '1' } });
-          ajena = prisma.setting
-            .create({ data: { key: 'ajena', value: '1' } })
-            .then(() => orden.push('ajena terminada'));
-          await new Promise((r) => setTimeout(r, 30));
-          orden.push('tx hace rollback');
-          throw new Error('rollback a propósito');
-        })
-        .catch(() => undefined);
-      await ajena;
+  it('una transacción con rollback NO se lleva por delante la escritura de otra petición', async () => {
+    // El adaptador de Prisma 7 abre una sola conexión: sin `serialized-adapter`, una
+    // consulta suelta lanzada con la transacción abierta se ejecuta DENTRO de ella y el
+    // ROLLBACK la deshace. Se reproduce de verdad. El código tiene 9 `$transaction` (4
+    // interactivas: absorb, push y users ×2) y Prisma envuelve en una los creates anidados;
+    // `transacciones-interactivas.test.ts` vigila que dentro solo se use `tx`.
+    let ajena: Promise<unknown> = Promise.resolve();
+    const orden: string[] = [];
+    await prisma
+      .$transaction(async (tx) => {
+        await tx.setting.create({ data: { key: 'en-tx', value: '1' } });
+        ajena = prisma.setting
+          .create({ data: { key: 'ajena', value: '1' } })
+          .then(() => orden.push('ajena terminada'));
+        await new Promise((r) => setTimeout(r, 30));
+        orden.push('tx hace rollback');
+        throw new Error('rollback a propósito');
+      })
+      .catch(() => undefined);
+    await ajena;
 
-      const claves = (await prisma.setting.findMany({ orderBy: { key: 'asc' } })).map((s) => s.key);
-      expect(claves).toEqual(['ajena']); // la de la tx se deshizo; la ajena SOBREVIVE
-      expect(orden).toEqual(['tx hace rollback', 'ajena terminada']); // y esperó a que acabara
-    },
-  );
+    const claves = (await prisma.setting.findMany({ orderBy: { key: 'asc' } })).map((s) => s.key);
+    expect(claves).toEqual(['ajena']); // la de la tx se deshizo; la ajena SOBREVIVE
+    expect(orden).toEqual(['tx hace rollback', 'ajena terminada']); // y esperó a que acabara
+  });
 
   it('una transacción que confirma publica todo, y las siguientes consultas no esperan para siempre', async () => {
     await prisma.$transaction(async (tx) => {

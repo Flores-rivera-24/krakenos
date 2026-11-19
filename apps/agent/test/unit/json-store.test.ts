@@ -64,20 +64,13 @@ describe('FileJsonStore', () => {
     expect(await new FileJsonStore<Item>(path).list()).toEqual([]);
   });
 
-  // Reintento solo en Windows: picos del runner (máx. medido 0,85 s de un tope de 5 s; el pico mató db-client entero, 32,8 s vs 6,9 s).
-  it(
-    '50 upsert concurrentes conservan los 50 (serialización, US-52)',
-    { retry: process.platform === 'win32' ? 1 : 0 },
-    async () => {
-      const store = new FileJsonStore<Item>(path);
-      await Promise.all(
-        Array.from({ length: 50 }, (_, i) => store.upsert({ id: `id-${i}`, v: i })),
-      );
-      const all = await store.list();
-      expect(all).toHaveLength(50);
-      expect(new Set(all.map((i) => i.id)).size).toBe(50);
-    },
-  );
+  it('50 upsert concurrentes conservan los 50 (serialización, US-52)', async () => {
+    const store = new FileJsonStore<Item>(path);
+    await Promise.all(Array.from({ length: 50 }, (_, i) => store.upsert({ id: `id-${i}`, v: i })));
+    const all = await store.list();
+    expect(all).toHaveLength(50);
+    expect(new Set(all.map((i) => i.id)).size).toBe(50);
+  });
 
   it('JSON corrupto no se traga: lanza CorruptJsonStoreError y no sobrescribe (US-52)', async () => {
     const corrupt = '{ esto no es json válido';
