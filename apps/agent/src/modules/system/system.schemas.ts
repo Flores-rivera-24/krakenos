@@ -158,7 +158,7 @@ const updateResultSchema = {
           step: { type: 'string', enum: [...UPDATE_STEPS] },
           status: { type: 'string', enum: ['ok', 'failed', 'skipped'] },
           detail: { type: 'string' },
-          code: { type: 'string', enum: ['NODE_TOO_OLD'] },
+          code: { type: 'string', enum: ['NODE_TOO_OLD', 'NOT_AN_UPGRADE', 'NO_ARTIFACT'] },
         },
         required: ['step', 'status'],
       },
@@ -186,7 +186,10 @@ export const updatePlanSchema = {
         inProgressSince: { type: ['string', 'null'] },
         maintenanceWindow: { type: ['string', 'null'] },
         lastResult: updateResultSchema,
-        blockedReason: { type: ['string', 'null'], enum: ['NODE_TOO_OLD', null] },
+        blockedReason: {
+          type: ['string', 'null'],
+          enum: ['NODE_TOO_OLD', 'NOT_AN_UPGRADE', 'NO_ARTIFACT', null],
+        },
         requiredNode: { type: ['string', 'null'] },
       },
       required: [

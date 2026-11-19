@@ -156,7 +156,7 @@ export interface UpdateStepResult {
 }
 
 /** La versión de destino exige un Node más nuevo que el que corre el servicio. */
-export type UpdateBlockedCode = 'NODE_TOO_OLD';
+export type UpdateBlockedCode = 'NODE_TOO_OLD' | 'NOT_AN_UPGRADE' | 'NO_ARTIFACT';
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso

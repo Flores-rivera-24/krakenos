@@ -11,13 +11,15 @@
  * interpretar un rango sería peor que dejarla seguir hasta el healthcheck.
  */
 
+import type { UpdateBlockedCode } from '@krakenos/types';
+
 /** Código estable con el que el actualizador declara que se negó por el Node. */
 export const NODE_TOO_OLD = 'NODE_TOO_OLD' as const;
 
 /** Una actualización que se rechaza ANTES de tocar nada: no hay nada que revertir. */
 export class UpdateBlockedError extends Error {
   constructor(
-    readonly code: typeof NODE_TOO_OLD,
+    readonly code: UpdateBlockedCode,
     message: string,
   ) {
     super(message);
