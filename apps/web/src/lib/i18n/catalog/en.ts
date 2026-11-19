@@ -881,9 +881,11 @@ export const en: Record<TranslationKey, string> = {
   'scenes.capture': 'Capture current state',
   'scenes.unavailable.title': 'Device unavailable',
   'scenes.unavailable.desc':
-    'It was deleted or no longer appears among your devices. While it stays in the scene, activating it will fail.',
+    "It doesn't appear among your devices: it may have been deleted, or its integration isn't responding right now. While it stays in the scene, it won't respond when you activate it.",
   'scenes.unavailable.remove': 'Remove',
   'scenes.unavailable.removeLabel': 'Remove the unavailable device from the scene',
+  'scenes.unavailable.removeLabelFrom':
+    'Remove the unavailable device from the scene ({integration})',
   'scenes.noControllable': 'No lights or plugs to control yet.',
   'scenes.includeLabel': 'Include {name}',
   'scenes.stateLabel': 'State of {name} in the scene',

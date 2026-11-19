@@ -359,27 +359,36 @@ function SceneEditor({
 
         {noDisponibles.length > 0 && (
           <ul className="space-y-2">
-            {noDisponibles.map((a) => (
-              <li
-                key={a.deviceId}
-                className="flex items-start gap-2 rounded-lg border border-kr bg-kr-elevated p-3"
-              >
-                <TriangleAlert aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-kr-sm text-kr-primary">{t('scenes.unavailable.title')}</p>
-                  <p className="text-kr-xs text-kr-muted">{t('scenes.unavailable.desc')}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  aria-label={t('scenes.unavailable.removeLabel')}
-                  onClick={() => setQuitadas((prev) => new Set(prev).add(a.deviceId))}
+            {noDisponibles.map((a) => {
+              // Prefijo de integración del id (`hue:…`): distingue filas y avisa de quién no responde.
+              const integracion = a.deviceId.includes(':') ? a.deviceId.split(':')[0] : '';
+              return (
+                <li
+                  key={a.deviceId}
+                  className="flex items-start gap-2 rounded-lg border border-kr bg-kr-elevated p-3"
                 >
-                  {t('scenes.unavailable.remove')}
-                </Button>
-              </li>
-            ))}
+                  <TriangleAlert aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+                  <div className="flex-1 space-y-1">
+                    <p className="text-kr-sm text-kr-primary">{t('scenes.unavailable.title')}</p>
+                    <p className="text-kr-xs text-kr-muted">{t('scenes.unavailable.desc')}</p>
+                    {integracion && <p className="text-kr-xs text-kr-muted">{integracion}</p>}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    type="button"
+                    aria-label={
+                      integracion
+                        ? t('scenes.unavailable.removeLabelFrom', { integration: integracion })
+                        : t('scenes.unavailable.removeLabel')
+                    }
+                    onClick={() => setQuitadas((prev) => new Set(prev).add(a.deviceId))}
+                  >
+                    {t('scenes.unavailable.remove')}
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

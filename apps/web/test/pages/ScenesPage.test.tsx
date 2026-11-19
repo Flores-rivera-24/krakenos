@@ -294,7 +294,7 @@ describe('ScenesPage (US-166)', () => {
       await user.click(within(dialog).getByRole('button', { name: 'Guardar' }));
       await waitFor(() => expect(apiMock.patch).toHaveBeenCalled());
       const body = apiMock.patch.mock.calls[0]?.[1] as { actions: Scene['actions'] };
-      expect(body.actions).toHaveLength(3);
+      expect(body.actions).toHaveLength(original.actions.length);
       expect(body.actions[2]).toEqual({ deviceId: 'c', on: true, brightness: 40 });
     });
 
@@ -444,7 +444,35 @@ describe('ScenesPage (US-166)', () => {
         const user = userEvent.setup();
         renderPage();
         const dialog = await renombrarYGuardar(user);
-        expect(await within(dialog).findAllByText(NO_DISPONIBLE)).toHaveLength(3);
+        expect(await within(dialog).findAllByText(NO_DISPONIBLE)).toHaveLength(
+          original.actions.length,
+        );
+      });
+
+      it('cada fila muestra el prefijo de integración y su botón lo nombra', async () => {
+        const mixta: Scene = scene({
+          actions: [
+            { deviceId: 'hue:abc', on: true },
+            { deviceId: 'mqtt:xyz', on: false },
+            { deviceId: 'suelto', on: true },
+          ],
+        });
+        apiMock.get.mockImplementation((path: string) => {
+          if (path === '/scenes') return Promise.resolve([mixta]);
+          if (path === '/iot/devices') return Promise.resolve([]);
+          return Promise.resolve([]);
+        });
+        const user = userEvent.setup();
+        renderPage();
+        await user.click(await screen.findByRole('button', { name: /3 dispositivos/ }));
+        const dialog = await screen.findByRole('dialog');
+        await within(dialog).findAllByText(NO_DISPONIBLE);
+        expect(within(dialog).getByText('hue')).toBeInTheDocument();
+        expect(within(dialog).getByText('mqtt')).toBeInTheDocument();
+        const base = 'Quitar de la escena el dispositivo no disponible';
+        expect(within(dialog).getByRole('button', { name: `${base} (hue)` })).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: `${base} (mqtt)` })).toBeInTheDocument();
+        expect(within(dialog).getByRole('button', { name: base })).toBeInTheDocument();
       });
     });
 
