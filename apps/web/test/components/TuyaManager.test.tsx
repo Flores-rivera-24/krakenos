@@ -202,4 +202,28 @@ describe('TuyaManager', () => {
     expect(screen.getByText('Salón')).toBeInTheDocument();
     expect(screen.queryByText('Sin focos Tuya registrados.')).toBeNull();
   });
+
+  it('en pantallas estrechas oculta la columna Device ID', async () => {
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    // jsdom no mide: se ata la clase responsive, como hace el resto de la web.
+    expect(screen.getByRole('columnheader', { name: 'Device ID' })).toHaveClass(
+      'hidden',
+      'sm:table-cell',
+    );
+    expect(screen.getByText('abcdef12…').closest('td')).toHaveClass('hidden', 'sm:table-cell');
+  });
+
+  it('en pantallas estrechas la IP va bajo el nombre y su columna se oculta', async () => {
+    render(<TuyaManager reachable={new Set()} />);
+    await screen.findByText('Salón');
+    expect(screen.getByRole('columnheader', { name: 'IP' })).toHaveClass('hidden', 'sm:table-cell');
+    // jsdom no aplica CSS: la IP sale dos veces, la propia de la columna y la de bajo el nombre.
+    const ips = screen.getAllByText('192.168.1.50');
+    expect(ips).toHaveLength(2);
+    const [bajoNombre, columna] = ips as [HTMLElement, HTMLElement];
+    expect(bajoNombre).toHaveClass('sm:hidden');
+    expect(bajoNombre.closest('td')).toHaveTextContent('Salón');
+    expect(columna).toHaveClass('hidden', 'sm:table-cell');
+  });
 });
