@@ -82,7 +82,7 @@ describe('answerFor', () => {
       query('mipc.local').subarray(0, 15), // truncado dentro del nombre
       query('mipc.local').subarray(0, 24), // sin los 4 bytes de tipo/clase
       Buffer.concat([Buffer.from([0, 0, 0, 0, 0xff, 0xff]), Buffer.alloc(6)]), // QDCOUNT enorme
-      Buffer.concat([Buffer.alloc(12), Buffer.from([0xc0, 12])]), // puntero a sí mismo
+      Buffer.concat([Buffer.from([0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0]), Buffer.from([0xc0, 12])]), // puntero a sí mismo (QDCOUNT=1)
     ];
     for (const b of basura) expect(answerFor(b, 'mipc', IPS)).toBeNull();
   });
@@ -93,7 +93,13 @@ describe('answerFor', () => {
 });
 
 function nic(address: string, family: 'IPv4' | 'IPv6', internal = false): NetworkInterfaceInfo {
-  return { address, family, internal } as NetworkInterfaceInfo;
+  return {
+    address,
+    family,
+    internal,
+    netmask: family === 'IPv4' ? '255.255.255.0' : 'ffff:ffff:ffff:ffff::',
+    cidr: `${address}/${family === 'IPv4' ? 24 : 64}`,
+  } as NetworkInterfaceInfo;
 }
 
 describe('addressesFromInterfaces', () => {
@@ -117,6 +123,60 @@ describe('addressesFromInterfaces', () => {
     });
     expect(r.v4).toEqual(['192.168.1.10', '10.1.2.3', '172.20.0.5']);
     expect(r.v6).toEqual(['fd00::5', 'fc00::6']);
+  });
+});
+
+describe('unicast legada y subred receptora', () => {
+  it('legada: copia el ID, repite la pregunta, TTL <= 10 y sin flush', () => {
+    const q = query('mipc.local');
+    q.writeUInt16BE(0xbeef, 0);
+    const r = answerFor(q, 'mipc', IPS, { legacy: true })!;
+    expect(r.readUInt16BE(0)).toBe(0xbeef);
+    expect(r.readUInt16BE(4)).toBe(1);
+    expect(r.readUInt16BE(6)).toBe(1);
+    expect(r.subarray(12, q.length).equals(q.subarray(12))).toBe(true);
+    const off = q.length + 12; // tras la pregunta: nombre (12 bytes) y luego tipo
+    expect(r.readUInt16BE(off)).toBe(1);
+    expect(r.readUInt16BE(off + 2)).toBe(1);
+    expect(r.readUInt32BE(off + 4)).toBeLessThanOrEqual(10);
+  });
+
+  it('solo anuncia las IPs de la subred del preguntón; sin coincidencia, todas', () => {
+    const ifaces = {
+      eth0: [nic('192.168.1.10', 'IPv4')],
+      vEthernet: [nic('172.20.0.1', 'IPv4')],
+    };
+    expect(addressesFromInterfaces(ifaces, '172.20.0.7').v4).toEqual(['172.20.0.1']);
+    expect(addressesFromInterfaces(ifaces, '192.168.1.50').v4).toEqual(['192.168.1.10']);
+    expect(addressesFromInterfaces(ifaces, '10.9.9.9').v4).toEqual(['192.168.1.10', '172.20.0.1']);
+  });
+
+  it('el unicast a un origen fuera de nuestras subredes no se envía', async () => {
+    const { f, r } = make();
+    await r.start();
+    f.emit(query('mipc.local', 1, 0x8001), 5353, '8.8.4.4');
+    f.emit(query('mipc.local'), 40000, '8.8.4.4');
+    expect(f.sent).toHaveLength(0);
+  });
+
+  it('el respondedor da la IP de la red que pregunta y no pide interfaces si no es por él', async () => {
+    const f = fakeSocket();
+    const interfaces = vi.fn(() => ({
+      a: [nic('192.168.1.10', 'IPv4')],
+      b: [nic('172.20.0.1', 'IPv4')],
+    }));
+    const r = new MdnsResponder({
+      socket: f.socket,
+      nombre: 'mipc',
+      interfaces,
+      now: () => 0,
+      log: { warn: vi.fn() },
+    });
+    await r.start();
+    f.emit(query('otro.local'), 5353, '172.20.0.7');
+    expect(interfaces).not.toHaveBeenCalled();
+    f.emit(query('mipc.local'), 5353, '172.20.0.7');
+    expect([...f.sent[0]!.data.subarray(-4)]).toEqual([172, 20, 0, 1]);
   });
 });
 

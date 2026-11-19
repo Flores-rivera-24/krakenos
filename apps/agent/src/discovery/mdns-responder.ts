@@ -13,6 +13,7 @@ const TYPE_A = 1;
 const TYPE_AAAA = 28;
 const TYPE_ANY = 255;
 const TTL = 120;
+const LEGACY_TTL = 10; // RFC 6762 §6.7
 const MAX_QUESTIONS = 16;
 const MAX_DATAGRAM = 9000;
 const RATE_WINDOW_MS = 1000;
@@ -33,21 +34,55 @@ function privateV4(ip: string): boolean {
   return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
-/** Solo IPv4 privadas (RFC 1918) y IPv6 ULA (fc00::/7) de interfaces no internas. */
-export function addressesFromInterfaces(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>): Ips {
+function v4Int(ip: string): number {
+  return ip.split('.').reduce((n, o) => n * 256 + Number(o), 0);
+}
+
+/** ¿La subred de la interfaz contiene `ip`? (v4 por máscara, v6 por prefijo del `cidr`). */
+function subnetContains(i: NetworkInterfaceInfo, ip: string): boolean {
+  if (i.family === 'IPv4') {
+    if (!/^\d+\.\d+\.\d+\.\d+$/.test(ip)) return false;
+    const m = v4Int(i.netmask);
+    return ((v4Int(i.address) ^ v4Int(ip)) & m) >>> 0 === 0;
+  }
+  const prefix = Number(i.cidr?.split('/')[1]);
+  const a = v6Bytes(i.address);
+  const b = v6Bytes(ip.split('%')[0] ?? '');
+  if (!a || !b || !Number.isInteger(prefix)) return false;
+  for (let bit = 0; bit < prefix; bit += 8) {
+    const mask = prefix - bit >= 8 ? 0xff : (0xff << (8 - (prefix - bit))) & 0xff;
+    if (((a[bit / 8]! ^ b[bit / 8]!) & mask) !== 0) return false;
+  }
+  return true;
+}
+
+function externalNics(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>): NetworkInterfaceInfo[] {
+  return Object.values(ifaces).flatMap((l) => (l ?? []).filter((i) => !i.internal));
+}
+
+/** ¿`from` está en la subred de alguna interfaz (o es link-local v6, que siempre es on-link)? */
+export function sourceOnLink(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>, from: string): boolean {
+  if (/^fe80:/i.test(from)) return true;
+  return externalNics(ifaces).some((i) => subnetContains(i, from));
+}
+
+/**
+ * Solo IPv4 privadas (RFC 1918) y IPv6 ULA (fc00::/7) de interfaces no internas. Con `from`,
+ * solo las de la subred que contiene al preguntón (RFC 6762 §6.2); si ninguna encaja, todas.
+ */
+export function addressesFromInterfaces(
+  ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>,
+  from?: string,
+): Ips {
+  const valid = (i: NetworkInterfaceInfo) =>
+    (i.family === 'IPv4' && privateV4(i.address)) ||
+    (i.family === 'IPv6' && /^f[cd][0-9a-f]{2}:/i.test(i.address));
+  const all = externalNics(ifaces).filter(valid);
+  const near = from ? all.filter((i) => subnetContains(i, from)) : [];
   const out: Ips = { v4: [], v6: [] };
-  for (const list of Object.values(ifaces)) {
-    for (const i of list ?? []) {
-      if (i.internal) continue;
-      if (i.family === 'IPv4' && privateV4(i.address) && !out.v4.includes(i.address))
-        out.v4.push(i.address);
-      else if (
-        i.family === 'IPv6' &&
-        /^f[cd][0-9a-f]{2}:/i.test(i.address) &&
-        !out.v6.includes(i.address)
-      )
-        out.v6.push(i.address);
-    }
+  for (const i of near.length > 0 ? near : all) {
+    const list = i.family === 'IPv4' ? out.v4 : out.v6;
+    if (!list.includes(i.address)) list.push(i.address);
   }
   return out;
 }
@@ -64,11 +99,11 @@ function v6Bytes(ip: string): Buffer | null {
   return b;
 }
 
-function record(name: Buffer, type: number, rdata: Buffer): Buffer {
+function record(name: Buffer, type: number, rdata: Buffer, legacy: boolean): Buffer {
   const fixed = Buffer.alloc(10);
   fixed.writeUInt16BE(type, 0);
-  fixed.writeUInt16BE(0x8001, 2); // IN + cache-flush
-  fixed.writeUInt32BE(TTL, 4);
+  fixed.writeUInt16BE(legacy ? 1 : 0x8001, 2); // IN (+ cache-flush, salvo unicast legada §6.7)
+  fixed.writeUInt32BE(legacy ? LEGACY_TTL : TTL, 4);
   fixed.writeUInt16BE(rdata.length, 8);
   return Buffer.concat([name, fixed, rdata]);
 }
@@ -77,7 +112,8 @@ function record(name: Buffer, type: number, rdata: Buffer): Buffer {
 function decide(
   query: Buffer,
   nombre: string | string[],
-  ips: Ips,
+  ipsOf: Ips | (() => Ips),
+  legacy: boolean,
 ): { packet: Buffer; unicast: boolean } | null {
   try {
     if (query.length < 12 || query.length > MAX_DATAGRAM) return null;
@@ -87,6 +123,7 @@ function decide(
     const mine = new Set(
       (Array.isArray(nombre) ? nombre : [nombre]).map((n) => `${n}.local`.toLowerCase()),
     );
+    let ips: Ips | null = null; // perezoso: solo si preguntan por nosotros
     const answers: Buffer[] = [];
     const seen = new Set<string>();
     let unicast = false;
@@ -99,12 +136,13 @@ function decide(
       pos = next + 4;
       const key = name.toLowerCase();
       if (!mine.has(key) || (qclass & 0x7fff) !== 1) continue;
+      ips ??= typeof ipsOf === 'function' ? ipsOf() : ipsOf;
       const enc = encodeName(key);
       if (type === TYPE_A || type === TYPE_ANY) {
         if (!seen.has(`${key}/a`)) {
           seen.add(`${key}/a`);
           for (const ip of ips.v4)
-            answers.push(record(enc, TYPE_A, Buffer.from(ip.split('.').map(Number))));
+            answers.push(record(enc, TYPE_A, Buffer.from(ip.split('.').map(Number)), legacy));
         }
       }
       if (type === TYPE_AAAA || type === TYPE_ANY) {
@@ -112,7 +150,7 @@ function decide(
           seen.add(`${key}/aaaa`);
           for (const ip of ips.v6) {
             const b = v6Bytes(ip);
-            if (b) answers.push(record(enc, TYPE_AAAA, b));
+            if (b) answers.push(record(enc, TYPE_AAAA, b, legacy));
           }
         }
       }
@@ -122,6 +160,15 @@ function decide(
     const header = Buffer.alloc(12);
     header.writeUInt16BE(0x8400, 2); // QR + AA
     header.writeUInt16BE(answers.length, 6);
+    if (legacy) {
+      // §6.7: se copia el ID y se repite la sección de preguntas.
+      header.writeUInt16BE(query.readUInt16BE(0), 0);
+      header.writeUInt16BE(qd, 4);
+      return {
+        packet: Buffer.concat([header, query.subarray(12, pos), ...answers]),
+        unicast: true,
+      };
+    }
     return { packet: Buffer.concat([header, ...answers]), unicast };
   } catch {
     return null; // paquete malformado o truncado: se descarta
@@ -129,8 +176,13 @@ function decide(
 }
 
 /** Respuesta A/AAAA a una pregunta por nuestro nombre, o `null` si no toca contestar. */
-export function answerFor(query: Buffer, nombre: string | string[], ips: Ips): Buffer | null {
-  return decide(query, nombre, ips)?.packet ?? null;
+export function answerFor(
+  query: Buffer,
+  nombre: string | string[],
+  ips: Ips | (() => Ips),
+  opts: { legacy?: boolean } = {},
+): Buffer | null {
+  return decide(query, nombre, ips, opts.legacy ?? false)?.packet ?? null;
 }
 
 export interface MdnsResponderDeps {
@@ -166,11 +218,20 @@ export class MdnsResponder {
 
   private onMessage(msg: Buffer, from: { address: string; port: number }): void {
     try {
-      const d = decide(msg, this.deps.nombre, addressesFromInterfaces(this.deps.interfaces()));
+      let ifaces: NodeJS.Dict<NetworkInterfaceInfo[]> | null = null;
+      const nics = () => (ifaces ??= this.deps.interfaces());
+      // Puerto de origen distinto de 5353 = resolvedor «legacy» (§6.7): se le contesta directo.
+      const legacy = from.port !== MDNS_PORT;
+      const d = decide(
+        msg,
+        this.deps.nombre,
+        () => addressesFromInterfaces(nics(), from.address),
+        legacy,
+      );
       if (!d) return;
-      // Puerto de origen distinto de 5353 = resolvedor «legacy»: se le contesta directo.
-      const unicast = d.unicast || from.port !== MDNS_PORT;
-      const dest = unicast ? from : { address: MDNS_GROUP, port: MDNS_PORT };
+      // Unicast solo hacia un origen de nuestras subredes: no reflejamos tráfico hacia fuera.
+      if (d.unicast && !sourceOnLink(nics(), from.address)) return;
+      const dest = d.unicast ? from : { address: MDNS_GROUP, port: MDNS_PORT };
       if (!this.allow(`${dest.address}:${dest.port}`)) return;
       this.deps.socket.send(d.packet, dest.address, dest.port);
     } catch (err) {
