@@ -208,27 +208,44 @@ export function UsersSection() {
           <table className="w-full text-kr-sm">
             <thead className="bg-kr-elevated text-kr-secondary">
               <tr>
-                <th className="px-3 py-2 text-left">{t('users.col.user')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.role')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.status')}</th>
-                <th className="px-3 py-2 text-left">{t('users.col.lastLogin')}</th>
-                <th className="px-3 py-2 text-right">{t('users.col.actions')}</th>
+                <th className="px-1.5 py-2 sm:px-3 text-left">{t('users.col.user')}</th>
+                <th className="px-1.5 py-2 sm:px-3 text-left">{t('users.col.role')}</th>
+                <th className="hidden px-3 py-2 text-left sm:table-cell">
+                  {t('users.col.status')}
+                </th>
+                <th className="hidden px-3 py-2 text-left sm:table-cell">
+                  {t('users.col.lastLogin')}
+                </th>
+                <th className="px-1.5 py-2 sm:px-3 text-right">{t('users.col.actions')}</th>
               </tr>
             </thead>
             <tbody>
               {users.map((u) => {
                 const isSelf = u.id === currentId;
                 const busy = busyId === u.id;
+                const estado =
+                  u.status === 'active' ? (
+                    <Badge variant="online">{t('users.active')}</Badge>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-kr-secondary">
+                      <StatusDot status="offline" /> {t('users.disabled')}
+                    </span>
+                  );
+                const ultimoAcceso = u.lastLoginAt
+                  ? timeAgo(u.lastLoginAt)
+                  : t('users.neverLoggedIn');
                 return (
                   <tr key={u.id} className="border-t border-kr align-top">
-                    <td className="px-3 py-2.5">
+                    <td className="px-1.5 py-2.5 sm:px-3">
                       <div className="font-medium text-kr-primary">
                         {u.displayName}
                         {isSelf && (
                           <span className="ml-1 text-kr-xs text-kr-muted">{t('users.you')}</span>
                         )}
                       </div>
-                      <div className="text-kr-xs text-kr-muted">{u.email}</div>
+                      <div className="break-all text-kr-xs text-kr-muted sm:break-normal">
+                        {u.email}
+                      </div>
                       {/* Credenciales de automatización vivas (US-227): un admin debe
                           poder verlas. Deshabilitar la cuenta o cambiarle el rol las
                           revoca en cascada. */}
@@ -243,8 +260,13 @@ export function UsersSection() {
                           })}
                         </div>
                       )}
+                      {/* Bajo `sm` estado y último acceso viven aquí: dos columnas menos ensanchaban la tabla. */}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-kr-xs text-kr-muted sm:hidden">
+                        {estado}
+                        <span>{ultimoAcceso}</span>
+                      </div>
                     </td>
-                    <td className="px-3 py-2.5">
+                    <td className="px-1.5 py-2.5 sm:px-3">
                       <Select
                         aria-label={t('users.roleOf', { email: u.email })}
                         value={u.role}
@@ -256,7 +278,7 @@ export function UsersSection() {
                             t('users.roleUpdated'),
                           )
                         }
-                        className="w-auto"
+                        className="w-auto max-w-[5.5rem] sm:max-w-none"
                       >
                         {USER_ROLES.map((role) => (
                           <option key={role} value={role}>
@@ -270,20 +292,12 @@ export function UsersSection() {
                         </div>
                       )}
                     </td>
-                    <td className="px-3 py-2.5">
-                      {u.status === 'active' ? (
-                        <Badge variant="online">{t('users.active')}</Badge>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-kr-secondary">
-                          <StatusDot status="offline" /> {t('users.disabled')}
-                        </span>
-                      )}
+                    <td className="hidden px-3 py-2.5 sm:table-cell">{estado}</td>
+                    <td className="hidden px-3 py-2.5 text-kr-xs text-kr-muted sm:table-cell">
+                      {ultimoAcceso}
                     </td>
-                    <td className="px-3 py-2.5 text-kr-xs text-kr-muted">
-                      {u.lastLoginAt ? timeAgo(u.lastLoginAt) : t('users.neverLoggedIn')}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <div className="flex flex-wrap justify-end gap-2">
+                    <td className="px-1.5 py-2.5 sm:px-3">
+                      <div className="flex flex-col items-end gap-2 sm:flex-row sm:flex-wrap sm:items-stretch sm:justify-end">
                         <Button
                           size="sm"
                           variant="outline"
@@ -322,6 +336,7 @@ export function UsersSection() {
                           </Button>
                         ) : (
                           <DeleteButton
+                            armedClassName="flex-col items-end sm:flex-row sm:items-center"
                             variant="destructive"
                             disabled={busy}
                             aria-label={t('users.deleteAria', { email: u.email })}
@@ -332,7 +347,7 @@ export function UsersSection() {
                         )}
                       </div>
                       {resetFor === u.id && (
-                        <div className="mt-2 flex justify-end gap-2">
+                        <div className="mt-2 flex flex-wrap justify-end gap-2">
                           <Input
                             type="password"
                             autoComplete="new-password"

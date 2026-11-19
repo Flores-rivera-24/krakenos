@@ -110,6 +110,39 @@ describe('UsersSection — roles del hogar (US-179)', () => {
   });
 });
 
+describe('UsersSection — tabla en celular', () => {
+  beforeEach(() => {
+    apiMock.get.mockReset().mockResolvedValue([summary()]);
+    useAuthStore.setState({
+      user: {
+        id: 'admin-1',
+        email: 'a@b.c',
+        displayName: 'A',
+        role: 'admin',
+        createdAt: '',
+        updatedAt: '',
+      },
+      tokens: { accessToken: 't', expiresIn: 900 },
+    });
+  });
+
+  it('estado y último acceso pasan bajo el usuario y las acciones se apilan bajo sm', async () => {
+    render(<UsersSection />);
+    const celdaUsuario = (await screen.findByText('ana@krakenos.test')).closest('td')!;
+    const bajoElNombre = celdaUsuario.querySelector('.sm\\:hidden');
+    expect(bajoElNombre).toHaveTextContent('Activo');
+    expect(bajoElNombre).toHaveTextContent('Nunca');
+    for (const col of ['Estado', 'Último acceso']) {
+      expect(screen.getByRole('columnheader', { name: col })).toHaveClass(
+        'hidden',
+        'sm:table-cell',
+      );
+    }
+    const acciones = screen.getByRole('button', { name: 'Deshabilitar' }).parentElement;
+    expect(acciones).toHaveClass('flex-col', 'sm:flex-row');
+  });
+});
+
 describe('UsersSection en inglés: etiquetas de rol', () => {
   beforeEach(() => {
     apiMock.get.mockReset().mockResolvedValue([summary()]);
