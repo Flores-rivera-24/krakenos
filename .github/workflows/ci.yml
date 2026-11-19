@@ -819,6 +819,14 @@ jobs:
           sha256sum -- * > SHA256SUMS
           cat SHA256SUMS
 
+      # Manifiesto firmado (ed25519) que lee el actualizador del agente. Sin el secreto el paso FALLA a
+      # propósito: una release sin firma no se podría instalar desde la app. Va tras SHA256SUMS, así que
+      # este no lo incluye (no es un paquete).
+      - name: Firmar el manifiesto
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
       # Borrador: no es pública hasta que el dueño la publica a mano. Si la release ya existe (creada a
       # mano antes), solo se suben los archivos; --clobber permite repetir el job.
       - name: Adjuntar a la release (borrador)
@@ -830,4 +838,5 @@ jobs:
             gh release create "$TAG" --verify-tag --draft --title "$TAG" \
               --notes "Paquetes de Linux (.deb para amd64 y arm64, y paquete de Arch para x86_64). Verifica con: sha256sum -c SHA256SUMS"
           fi
-          gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/SHA256SUMS --clobber
+          gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/SHA256SUMS \
+            release/manifest.json release/manifest.json.sig --clobber
