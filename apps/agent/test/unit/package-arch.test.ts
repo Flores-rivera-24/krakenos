@@ -50,7 +50,7 @@ describe('renderPkgbuild', () => {
     for (const d of ['systemd', 'glibc', 'gcc-libs', 'ca-certificates'])
       expect(deps).toContain(`'${d}'`);
     const opt = /^optdepends=\(([\s\S]*?)\)$/m.exec(p)?.[1] ?? '';
-    for (const d of ['ffmpeg', 'nss-mdns', 'avahi', 'wireguard-tools', 'sudo'])
+    for (const d of ['ffmpeg', 'nss-mdns', 'avahi', 'wireguard-tools', 'sudo', 'xdg-utils'])
       expect(opt).toContain(`'${d}:`);
   });
   it('krakenos.env NO es backup: lo crea el scriptlet desde /usr/share y nunca se pisa', () => {

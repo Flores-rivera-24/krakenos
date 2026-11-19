@@ -5,7 +5,7 @@ Priority: optional
 Architecture: @ARCH@
 Installed-Size: @SIZE@
 Depends: adduser, systemd, ca-certificates, libc6, libstdc++6, libgcc-s1
-Recommends: ffmpeg, libnss-mdns, avahi-daemon
+Recommends: ffmpeg, libnss-mdns, avahi-daemon, xdg-utils
 Suggests: wireguard-tools, sudo
 Maintainer: José Luis Flores Rivera <31547366+Flores-rivera-24@users.noreply.github.com>
 Homepage: https://github.com/Flores-rivera-24/krakenos

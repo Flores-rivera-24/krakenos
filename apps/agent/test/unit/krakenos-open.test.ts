@@ -60,7 +60,7 @@ describe.skipIf(WIN)('krakenos-open', () => {
     origen('https://casa.local:3001\n');
     const vacio = join(raiz, 'vacio');
     mkdirSync(vacio);
-    // PATH sin xdg-open pero con lo básico: se enlaza solo lo que el script necesita.
+    // PATH vacío: sin xdg-open y sin ninguna otra utilidad (el script solo usa builtins de bash).
     const r = spawnSync('/bin/bash', [ABRIR, '--root', raiz], {
       encoding: 'utf8',
       timeout: 20000,
@@ -79,5 +79,17 @@ describe.skipIf(WIN)('krakenos-open', () => {
     const r = correr([], `${bin}:/usr/bin:/bin`);
     expect(r.status, r.stderr).toBe(0);
     expect(readFileSync(marca, 'utf8').trim()).toBe('https://casa.local:3001');
+  });
+
+  it('con xdg-open que falla (sin entorno gráfico) sale ≠ 0 y el mensaje trae la URL', () => {
+    origen('https://casa.local:3001\n');
+    const bin = join(raiz, 'bin');
+    mkdirSync(bin);
+    writeFileSync(join(bin, 'xdg-open'), '#!/bin/sh\necho "sin display" >&2\nexit 1\n', {
+      mode: 0o755,
+    });
+    const r = correr([], `${bin}:/usr/bin:/bin`);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('https://casa.local:3001');
   });
 });

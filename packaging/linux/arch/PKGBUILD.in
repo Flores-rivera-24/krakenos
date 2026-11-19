@@ -20,6 +20,7 @@ optdepends=(
   'sudo: puerta de enlace (helper de VPN, cortafuegos y QoS)'
   'iptables: puerta de enlace (cortafuegos)'
   'iproute2: puerta de enlace (QoS)'
+  'xdg-utils: entrada de menú de KrakenOS'
 )
 # Sin `backup=`: krakenos.env no viene en el paquete. post_install lo crea desde
 # /usr/share/krakenos/krakenos.env solo si no existe, y `tls auto` lo reescribe: pacman nunca lo pisa.

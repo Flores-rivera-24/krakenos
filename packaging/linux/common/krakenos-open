@@ -40,4 +40,9 @@ if ! command -v xdg-open > /dev/null; then
   echo "No se encontró xdg-open (o no hay entorno gráfico). Abre esta dirección en el navegador: $origin" >&2
   exit 1
 fi
-exec xdg-open "$origin"
+# Sin exec: si xdg-open existe pero no hay entorno gráfico (SSH, servidor), falla con su mensaje y
+# la dirección no aparece; aquí siempre se da para copiarla.
+xdg-open "$origin" || {
+  echo "No se pudo abrir el navegador. Abre esta dirección a mano: $origin" >&2
+  exit 1
+}
