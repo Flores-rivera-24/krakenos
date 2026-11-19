@@ -69,6 +69,8 @@ SERVICE_USER=krakenos
 ENV_FILE="$ROOT/etc/krakenos/krakenos.env"
 # shellcheck disable=SC2034 # la lee la biblioteca (plantilla del .env: en el paquete es el propio .env)
 ENV_EXAMPLE="$ENV_FILE"
+# En el paquete las claves de WebAuthn se fijan siempre (ver set_webauthn_env).
+WEBAUTHN_FORCE=1
 TLS_DIR="$ROOT/etc/krakenos/tls"
 CA_DIR="$ROOT/etc/krakenos/ca"
 LIB_DIR="$ROOT/usr/lib/krakenos/app/agent/dist"

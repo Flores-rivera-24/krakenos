@@ -143,11 +143,11 @@ por eso gana. Aunque las pongas o borres en tu archivo, el servicio sigue usando
 El archivo no admite comentarios al final de una línea con valor (`PORT=3001  # nota`): systemd los
 tomaría como parte del valor. Los comentarios van en su propia línea.
 
-**Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
+**Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local o por Tailscale, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
 anterior: las passkeys y el enlace de `/setup` dejarían de coincidir. Con HTTPS local, vuelve a
 correr `sudo krakenos-setup tls local` (los reescribe con el puerto nuevo y conserva el certificado y
-la CA) y luego reinicia el servicio. Con HTTPS por Tailscale esas variables no llevan puerto, y con
-`tls none` ajusta `WEB_ORIGIN` a mano.
+la CA) y luego reinicia el servicio. Con HTTPS por Tailscale haz lo mismo con
+`sudo krakenos-setup tls tailscale`, y con `tls none` ajusta `WEB_ORIGIN` a mano.
 
 El agente **nunca corre como root**. Los registros: `journalctl -u krakenos`.
 
