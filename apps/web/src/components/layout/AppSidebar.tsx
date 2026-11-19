@@ -157,9 +157,11 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
   // primer cálculo se queda corto). `?.`: jsdom no implementa `scrollIntoView`.
   const { pathname } = useLocation();
   const listaRef = useRef<HTMLDivElement>(null);
+  // El activo puede estar en la lista o en el grupo fijo «Sistema» (Ajustes): se busca en el <nav>.
+  const navRef = useRef<HTMLElement>(null);
   useEffect(() => {
     const traer = () =>
-      listaRef.current
+      navRef.current
         ?.querySelector<HTMLElement>('[aria-current="page"]')
         ?.scrollIntoView?.({ block: 'nearest' });
     traer();
@@ -242,6 +244,7 @@ export function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
           el grupo «Sistema» (Ajustes) va fijo debajo, para que no quede enterrado en una
           ventana baja. Es UN solo <nav>: dos landmarks iguales no se distinguirían. */}
       <nav
+        ref={navRef}
         className={cn(
           'flex min-h-0 flex-1 flex-col py-2 bajo:min-h-fit bajo:flex-none',
           collapsed ? 'px-2' : 'px-3',
