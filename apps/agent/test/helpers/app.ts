@@ -11,6 +11,7 @@ import type {
   FirewallManager,
   HardwareDriver,
   IotManager,
+  MdnsResponderStatus,
   QosManager,
   UserRole,
   VlanManager,
@@ -161,6 +162,8 @@ export interface BuildTestAppOptions {
   setupTokenFile?: string;
   /** Certificado público de la CA local (`GET /api/system/ca-cert`); por defecto el de `env`. */
   caCertPath?: string;
+  /** Estado del respondedor mDNS que expone `/api/system/tls` (US-283). */
+  mdnsStatus?: () => MdnsResponderStatus;
   /** Store inyectado en las rutas de config Tuya; por defecto uno en memoria nuevo. */
   tuyaStore?: JsonStore<TuyaDeviceRecord>;
   /** Store inyectado en la gestión de cámaras (US-148); por defecto uno en memoria. */
@@ -331,6 +334,7 @@ export async function buildTestApp(opts: BuildTestAppOptions = {}): Promise<Fast
       maxRestoreBytes: opts.maxRestoreBytes,
       autoBackupDir: opts.autoBackupDir,
       caCertPath: opts.caCertPath,
+      mdnsStatus: opts.mdnsStatus,
       restoreStagingDir:
         opts.restoreStagingDir ?? join(mkdtempSync(join(tmpdir(), 'krakenos-restore-')), 'staging'),
     });

@@ -1,3 +1,4 @@
+import { networkInterfaces } from 'node:os';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import cookie from '@fastify/cookie';
@@ -70,6 +71,9 @@ import { weatherRoutes } from './modules/weather/weather.routes.js';
 import { PresenceService } from './modules/presence/presence.service.js';
 import { presenceRoutes } from './modules/presence/presence.routes.js';
 import { DgramDiscoveryTransport } from './discovery/transport.js';
+import { DgramResponderSocket } from './discovery/mdns-socket.js';
+import { startMdnsResponder } from './discovery/mdns-service.js';
+import { sanitizeHostname, shortHostname } from './crypto/local-ca.js';
 import { DiscoveryService } from './modules/discovery/discovery.service.js';
 import { discoveryRoutes } from './modules/discovery/discovery.routes.js';
 import { pushRoutes } from './modules/push/push.routes.js';
@@ -396,7 +400,20 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
     keyPath: env.tlsKeyPath,
     behindProxy: env.behindProxy,
   });
+  // Respondedor mDNS de <equipo>.local (US-283): en Windows no hay Avahi. Mismo nombre que la
+  // CA local; si 5353 está ocupado queda `unavailable` (se declara en /api/system/tls).
+  const mdns = await startMdnsResponder({
+    mode: env.mdnsResponder,
+    platform: process.platform,
+    socket: new DgramResponderSocket(),
+    nombre: [sanitizeHostname(process.env.KRAKENOS_HOSTNAME || shortHostname()), 'krakenos'],
+    interfaces: networkInterfaces,
+    now: Date.now,
+    log: { warn: (m) => app.log.warn(m) },
+  });
+  app.addHook('onClose', async () => mdns.stop());
   await app.register(systemRoutes, {
+    mdnsStatus: mdns.status,
     prefix: '/api/system',
     driver,
     inventoryService,
