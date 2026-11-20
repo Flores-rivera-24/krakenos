@@ -174,7 +174,8 @@ cmd_tls() {
 
 cmd_helper() {
   install_sudoers "$ROOT/etc/sudoers.d/krakenos" "# KrakenOS — el servicio puede ejecutar SOLO el helper (allowlist propia por verbo y ámbito).
-krakenos ALL=(root) NOPASSWD: $HELPER_PATH"
+krakenos ALL=(root) NOPASSWD: $HELPER_PATH
+Defaults!$HELPER_PATH secure_path=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\""
   # La unidad lleva ReadWritePaths=-/etc/wireguard, que systemd IGNORA si la ruta no existía al arrancar:
   # se crea y se reinicia para que `wg-quick save` del helper pueda escribir ahí.
   run install -d -m 0700 -o root -g root "$ROOT/etc/wireguard"

@@ -210,6 +210,11 @@ permite al usuario `krakenos` ejecutar **solo** ese helper, con su propia lista 
 permitidas. También crea `/etc/wireguard` si falta y reinicia el servicio (si estaba en marcha), para
 que pueda guardar ahí los peers de la VPN. Sin el helper, esas tres funciones no están disponibles.
 
+La regla fija también la ruta de búsqueda de programas (`secure_path`) con la que corre el helper. Si
+activaste el helper con una versión anterior, vuelve a correr `sudo krakenos-setup --with-helper` tras
+actualizar para que la regla la incluya (con `install.sh`, `sudo /opt/krakenos/scripts/install.sh
+--with-helper`).
+
 ## Actualizar
 
 Construye (o consigue) el `.deb` nuevo e instálalo encima:
