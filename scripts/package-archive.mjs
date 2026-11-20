@@ -17,6 +17,7 @@ export function archivePlan(dir, { systemRoot = process.env.SystemRoot ?? 'C:\\W
   if (!id)
     throw new Error(`No reconozco la plataforma de ${nombre}; esperaba ${PLATAFORMAS.join(', ')}`);
   const padre = dirname(dir);
+  // La CI aún no lo usa: el zip de Windows queda fuera hasta que se resuelvan las junctions de pnpm.
   if (id === 'win-x64') {
     const dest = join(padre, 'portable', `${nombre}.zip`);
     // El bsdtar del sistema: un GNU tar de Git no escribe zip (igual que scripts/package.mjs).

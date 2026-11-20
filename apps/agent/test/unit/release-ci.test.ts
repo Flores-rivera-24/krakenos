@@ -104,22 +104,20 @@ describe('ci.yml (job package) · portables', () => {
     expect(smoke).toBeGreaterThan(archivo);
   });
 
-  it('exige el bit de ejecución y VERSION en el tar, y VERSION y el lanzador en el zip', () => {
+  it('exige el bit de ejecución y VERSION en el tar', () => {
     expect(pkg).toContain('tar -tvzf');
     expect(pkg).toContain('-rwxr-xr-x');
     expect(pkg).toMatch(/node\/bin\/node/);
     expect(pkg).toMatch(/bin\/krakenos/);
-    expect(pkg).toContain('tar.exe" -tf');
-    expect(pkg).toContain('krakenos.cmd');
   });
 
-  it('el zip de Windows se desempaqueta en otra ruta y pasa el smoke ahí, con el original apartado', () => {
-    const i = pkg.indexOf('name: Zip de Windows desempaquetado');
-    expect(i).toBeGreaterThan(-1);
-    const paso = pkg.slice(i, i + 900);
-    expect(paso).toContain('mv "$dir" out/original-apartado');
-    expect(paso).toContain('tar.exe" -xf');
-    expect(paso).toMatch(/package-smoke\.mjs "\$dest/);
+  it('solo Linux: el zip de Windows queda fuera hasta que los enlaces de pnpm se resuelvan', () => {
+    const paso = pkg.slice(
+      pkg.indexOf('name: Archivo portable'),
+      pkg.indexOf('name: Smoke del paquete'),
+    );
+    expect(paso).toContain("if: ${{ startsWith(matrix.target, 'linux-') }}");
+    expect(paso).not.toContain('tar.exe');
   });
 
   it('sube el portable como krakenos-portable-<target>', () => {
