@@ -142,3 +142,60 @@ describe('ci.yml (job package) · portables', () => {
     expect(pkg).toContain('path: out/portable/*');
   });
 });
+
+describe('ci.yml (job release-ensayo)', () => {
+  const ensayo = J['release-ensayo'] ?? '';
+  const cab = cabecera(ensayo);
+  const invocaciones = (j: string) =>
+    j.match(/^\s*(?:run: )?node scripts\/release\/\S+.*$/gm) ?? [];
+  const sinSangria = (l: string) => l.trim().replace(/^run: /, '');
+
+  it('existe y corre cuando NO es tag, sin bloquear nada', () => {
+    expect(ensayo).not.toBe('');
+    expect(cab).toMatch(
+      /if: \$\{\{ !cancelled\(\) && !startsWith\(github\.ref, 'refs\/tags\/v'\) \}\}/,
+    );
+    expect(cab).toMatch(/^ {4}continue-on-error: true\s*$/m);
+    const needs = /^ {4}needs: \[([^\]]*)\]/m.exec(cab)?.[1] ?? '';
+    expect(needs).toContain('package');
+    expect(needs).toContain('package-arch');
+  });
+
+  it('no puede publicar: solo lectura, sin gh release ni subidas', () => {
+    expect(cab).not.toMatch(/contents: write/);
+    expect(ensayo).not.toContain('gh release');
+    expect(ensayo).not.toContain('upload-artifact');
+  });
+
+  it('el único secreto es UPDATE_SIGNING_KEY, solo en push; la clave efímera, solo fuera de push', () => {
+    expect(ensayo.match(/secrets\.[A-Za-z_]+/g)).toEqual(['secrets.UPDATE_SIGNING_KEY']);
+    const pasos = ensayo.split(/^ {6}- name: /m).slice(1);
+    const conSecreto = pasos.filter((p) => p.includes('secrets.'));
+    expect(conSecreto).toHaveLength(1);
+    expect(conSecreto[0]).toContain("if: ${{ github.event_name == 'push' }}");
+    const efimera = pasos.filter((p) => p.includes('generateKeyPairSync'));
+    expect(efimera).toHaveLength(1);
+    expect(efimera[0]).toContain("if: ${{ github.event_name != 'push' }}");
+    expect(efimera[0]).toContain('::add-mask::');
+  });
+
+  it('usa los mismos scripts que release, con las mismas invocaciones', () => {
+    const nombres = (j: string) =>
+      new Set(invocaciones(j).map((l) => /release\/([\w-]+)\.mjs/.exec(l)?.[1]));
+    expect(nombres(ensayo)).toEqual(new Set(['assemble', 'sign-manifest', 'notes']));
+    const delEnsayo = invocaciones(ensayo).map(sinSangria);
+    const deRelease = invocaciones(release).map(sinSangria);
+    for (const l of deRelease.filter((x) => !x.includes('notes.mjs')))
+      expect(delEnsayo, l).toContain(l);
+    expect(ensayo).toContain('node scripts/release/notes.mjs HEAD "$VERSION" release');
+    expect(ensayo).toMatch(/pattern: krakenos-\{deb-\*,arch,portable-\*\}/);
+    expect(ensayo).toMatch(/fetch-depth: 0/);
+  });
+
+  it('comprueba los archivos y re-verifica la firma', () => {
+    for (const f of ['manifest.json', 'manifest.json.sig', 'SHA256SUMS', 'notes.md'])
+      expect(ensayo).toContain(f);
+    expect(ensayo).toContain('crypto.verify');
+    expect(ensayo).toContain('UPDATE_VERIFY_PUBLIC_KEY');
+  });
+});

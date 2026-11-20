@@ -873,3 +873,99 @@ jobs:
           # El zip de Windows (parte B) se suma aquí cuando exista.
           gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/*.tar.gz release/SHA256SUMS \
             release/manifest.json release/manifest.json.sig --clobber
+
+  # Ensayo del job `release` en cada PR y push a main: corre los mismos scripts (assemble, sign-manifest,
+  # notes) sobre los artefactos de este run y NO publica nada (solo lectura, sin gh release, sin subir
+  # artefactos). Así un hueco de la release (falta un archivo, las notas filtran un id interno, el
+  # manifiesto no firma) sale rojo en el PR y no el día del tag.
+  # Firma: en `push` a main usa el secreto real UPDATE_SIGNING_KEY SIN UPDATE_VERIFY_PUBLIC_KEY, así
+  # sign-manifest comprueba que el secreto casa con la pública embebida; en los PR (que no ven secretos, y
+  # menos los de un fork) usa un par ed25519 efímero enmascarado que no sale del job.
+  # Es `continue-on-error` hasta que los `package` de win-x64 y arm64 (experimentales) sean bloqueantes:
+  # mientras tanto un rojo avisa de que el tag real fallaría por lo mismo. NO cubre (en un PR) que el
+  # secreto real case con la pública embebida: lo comprueba el push a main y, antes de publicar nada, el
+  # tag (la release es borrador).
+  release-ensayo:
+    name: Ensayo de la release (sin publicar)
+    if: ${{ !cancelled() && !startsWith(github.ref, 'refs/tags/v') }}
+    needs: [package, package-arch]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # las notas leen los tags y commits anteriores
+
+      - name: Versión de package.json
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
+      - name: Bajar los .deb, el paquete de Arch y los portables de Linux
+        uses: actions/download-artifact@v8
+        with:
+          pattern: krakenos-{deb-*,arch,portable-*}
+          path: ${{ runner.temp }}/dl
+          merge-multiple: true
+
+      - name: Reunir los archivos y generar SHA256SUMS
+        run: |
+          ls -l "$RUNNER_TEMP/dl"
+          node scripts/release/assemble.mjs "$RUNNER_TEMP/dl" release "$VERSION"
+
+      # La privada se enmascara línea a línea y solo viaja por $GITHUB_ENV; nunca se imprime.
+      - name: Clave de firma efímera
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          node -e '
+            const { generateKeyPairSync } = require("node:crypto");
+            const { appendFileSync } = require("node:fs");
+            const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+            const priv = privateKey.export({ type: "pkcs8", format: "pem" });
+            const pub = publicKey.export({ type: "spki", format: "pem" });
+            for (const l of priv.split("\n").filter(Boolean)) console.log("::add-mask::" + l);
+            appendFileSync(process.env.GITHUB_ENV,
+              "UPDATE_SIGNING_KEY<<EOF_K\n" + priv + "EOF_K\nUPDATE_VERIFY_PUBLIC_KEY<<EOF_P\n" + pub + "EOF_P\n");
+          '
+
+      - name: Firmar el manifiesto (secreto real)
+        if: ${{ github.event_name == 'push' }}
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
+      - name: Firmar el manifiesto (clave efímera)
+        if: ${{ github.event_name != 'push' }}
+        run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
+      - name: Notas de la versión
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/release/notes.mjs HEAD "$VERSION" release > "$RUNNER_TEMP/notes.md"
+
+      # Lo que el job `release` daría por bueno: los archivos existen, SHA256SUMS tiene una línea por
+      # archivo de assemble.mjs y la firma verifica (con la efímera en PR, con la embebida en push).
+      - name: Comprobar el resultado
+        run: |
+          node --input-type=module -e '
+            import crypto from "node:crypto";
+            import { existsSync, readFileSync, statSync } from "node:fs";
+            import { expectedAssets } from "./scripts/release/assemble.mjs";
+            const fail = (m) => { console.error("::error::" + m); process.exit(1); };
+            const v = process.env.VERSION;
+            for (const f of ["release/manifest.json", "release/manifest.json.sig", "release/SHA256SUMS"])
+              if (!existsSync(f)) fail("falta " + f);
+            const notas = process.env.RUNNER_TEMP + "/notes.md";
+            if (!existsSync(notas) || statSync(notas).size === 0) fail("notes.md vacío");
+            const e = expectedAssets(v);
+            const n = e.deb.length + 1 + e.portables.length;
+            const lineas = readFileSync("release/SHA256SUMS", "utf8").trim().split("\n").length;
+            if (lineas !== n) fail("SHA256SUMS tiene " + lineas + " líneas y se esperaban " + n);
+            const emb = readFileSync("apps/agent/src/system/update-signing-key.ts", "utf8");
+            const pem = process.env.UPDATE_VERIFY_PUBLIC_KEY ?? /-----BEGIN PUBLIC KEY-----[^`]+?-----END PUBLIC KEY-----/.exec(emb)?.[0];
+            const ok = crypto.verify(null, readFileSync("release/manifest.json"), crypto.createPublicKey(pem),
+              Buffer.from(readFileSync("release/manifest.json.sig", "utf8").trim(), "base64"));
+            if (!ok) fail("la firma de manifest.json no verifica");
+            console.log("ensayo ok: " + lineas + " archivos en SHA256SUMS y firma verificada");
+          '
