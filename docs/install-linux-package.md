@@ -7,6 +7,13 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
 (dónde vive cada cosa, `/setup`, HTTPS, el helper) vale para los dos.
 
 - Arquitecturas: **amd64** y **arm64**. El archivo se llama `krakenos_<versión>_<arquitectura>.deb`.
+- Probado en la integración continua sobre Ubuntu (los ejecutores `ubuntu-latest`, para amd64, y
+  `ubuntu-24.04-arm`, para arm64, este último aún experimental): instalar, actualizar, quitar y
+  purgar, más `lintian`. Con Debian se prueba `scripts/install.sh` (Debian 12), no el `.deb`:
+  el `.deb` en Debian no se ha probado.
+- Para una Raspberry Pi, ver la [guía de Raspberry Pi](install-raspberry-pi.md) (sin verificar en hardware).
+- Si prefieres no instalar nada, hay un portable (`.tar.gz`) para Linux x64 y arm64: ver
+  [Paquete portable](../README.md#paquete-portable-carpeta).
 - Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
   deja HTTPS pendiente y el mensaje de la instalación dice qué ejecutar cuando haya systemd.
 - No hay repositorio apt ni firma del paquete. A partir de la próxima versión, el `.deb` se adjunta a
@@ -17,17 +24,26 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
 ## Descargar y verificar
 
 A partir de la próxima versión, cada versión publicada en la página de versiones (_Releases_) del
-repositorio trae los dos `.deb` (amd64 y arm64), el paquete de Arch (x86_64) y un archivo `SHA256SUMS`.
-Descarga el paquete de tu arquitectura junto con `SHA256SUMS` en la misma carpeta y verifica:
+repositorio trae cinco archivos (los dos `.deb`, amd64 y arm64; el paquete de Arch, x86_64; y los dos
+portables `.tar.gz` de Linux), más `SHA256SUMS` y el manifiesto que usa el actualizador de la app.
+Descarga el paquete de tu arquitectura junto con `SHA256SUMS` en la misma carpeta y verifica. Por
+ejemplo, para el `.deb` de amd64 (sustituye `<versión>`, p. ej. `0.3.0`, por la que quieras):
 
 ```bash
+curl -fLO https://github.com/Flores-rivera-24/krakenos/releases/download/v<versión>/krakenos_<versión>_amd64.deb
+curl -fLO https://github.com/Flores-rivera-24/krakenos/releases/download/v<versión>/SHA256SUMS
 sha256sum -c --ignore-missing SHA256SUMS
+sudo apt install ./krakenos_<versión>_amd64.deb
 ```
 
-Debe decir `OK` para los archivos que descargaste. Es una comprobación de integridad de la descarga,
-no una firma: quien controle la página de versiones controla también los dos archivos. Los paquetes
-se adjuntan desde la integración continua; la versión se crea como borrador y se publica a mano
-después de revisarla.
+`sha256sum` debe decir `OK` para los archivos que descargaste. `SHA256SUMS` detecta una descarga rota
+o incompleta; **no es una firma**: quien controle la página de versiones controla también los
+archivos y las sumas. La firma (ed25519) la comprueba el actualizador de la app sobre su manifiesto
+(ver [Actualizaciones](updates.md)); `apt` no comprueba ninguna.
+
+Los archivos se adjuntan desde la integración continua, y la versión se crea como **borrador**: no
+aparece en la página de versiones ni se puede descargar hasta que se publica a mano, después de
+revisarla.
 
 ## Construir el `.deb`
 
@@ -231,10 +247,16 @@ sin ellas rige su valor por defecto; la plantilla de referencia con todas queda 
 de renovación del certificado, salvo que HTTPS hubiera quedado pendiente de una instalación fallida:
 entonces se reintenta (ver «Si la instalación no pudo configurar HTTPS»).
 
-La actualización con un clic de **Ajustes → Sistema → Actualizaciones** **no está disponible** en
-una instalación por paquete (ver [Actualizaciones](updates.md)). El aviso de versión nueva es
-opcional: para activarlo, añade `UPDATE_CHECK_REPO=Flores-rivera-24/krakenos` a
-`/etc/krakenos/krakenos.env` y reinicia el servicio.
+La actualización con un clic de **Ajustes → Sistema → Actualizaciones** **sí está disponible** en
+una instalación por paquete, con dos condiciones: que `UPDATE_CHECK_REPO=Flores-rivera-24/krakenos`
+esté en `/etc/krakenos/krakenos.env` (reinicia el servicio tras añadirla) y que el helper de root esté
+activo (`sudo krakenos-setup --with-helper`, ver arriba); sin helper la tarjeta no ofrece el botón y
+muestra ese comando. La app solo instala paquetes de un manifiesto con firma ed25519 válida, con la
+suma y el tamaño que este declara, y solo hacia una versión más nueva; si algo falla, restaura la copia
+de la base y el paquete anterior. El detalle está en
+[Actualizaciones](updates.md#instalación-por-paquete-deb-y-arch--manifiesto-firmado). Sin el botón,
+se actualiza con `apt` como arriba. Sin `UPDATE_CHECK_REPO` no hay aviso de versión nueva ni
+actualización desde la app.
 
 ## Integraciones y librerías
 

@@ -15,6 +15,7 @@
     "prod": "bash scripts/prod.sh",
     "package": "node scripts/package.mjs",
     "package:deb": "node scripts/package-deb.mjs",
+    "package:archive": "node scripts/package-archive.mjs",
     "package:arch": "node scripts/package-arch.mjs",
     "dev": "pnpm -r --parallel dev",
     "dev:agent": "pnpm --filter @krakenos/agent dev",

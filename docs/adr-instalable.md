@@ -2,7 +2,7 @@
 
 **Estado:** aceptado (2026-10-13) · **Sustituye en parte a:** `adr-app-escritorio.md` (el descarte de
 «Windows nativo» y el Perfil B sobre WSL2) · **Ámbito:** distribución, servicio, instalador,
-actualizaciones y lo que cada plataforma puede hacer.
+actualizaciones y lo que cada plataforma puede hacer. · **Corregido el 2026-11-20:** descubrimiento y 5353.
 
 ## Contexto
 
@@ -23,7 +23,7 @@ lo clasifica así:
 | Clase | Qué incluye |
 |---|---|
 | **Portable** (habla con el router y los aparatos por red) | Los 7 drivers de router, los backends IoT, DNS (Pi-hole), VLAN por SNMP, cámaras Frigate y el resto de módulos de la aplicación (personas, rutinas, alarma, energía, cobertura, usuarios…) |
-| **Degradado** (funciona a medias) | Descubrimiento por multicast (UDP 5353/1900 compartidos con el sistema), cámaras RTSP (necesitan `ffmpeg`), detección de Tailscale (socket UNIX → *named pipe*), permisos `0600` (NTFS no los aplica), IP del QR de setup |
+| **Degradado** (funciona a medias) | Descubrimiento por multicast (sondea desde un puerto efímero: no compite por 5353/1900), cámaras RTSP (necesitan `ffmpeg`), detección de Tailscale (socket UNIX → *named pipe*), permisos `0600` (NTFS no los aplica), IP del QR de setup |
 | **Solo Linux** | Las tres funciones de **puerta de enlace** (servidor WireGuard, cortafuegos con `iptables`, QoS con `tc`, todas por el helper con `sudo`) y el **actualizador actual** (git + pnpm + `systemctl`) |
 
 Para empaquetarlo hay dos dependencias nativas: `bcrypt` (addon con *prebuilds*) y Prisma 5 (motores en
@@ -92,8 +92,8 @@ funciona: copia de la base antes de migrar, comprobación de salud y vuelta atr�
   red `mirrored` y sin la tarea que la mantenía viva.
 - **En Windows hay funciones que no existen**, y la interfaz lo dice en vez de esconderlo.
 - **`<equipo>.local` no está garantizado en Windows:** Windows resuelve nombres `.local` pero no anuncia
-  el suyo. El agente tendrá que responder por mDNS a su propio nombre, y mientras tanto Tailscale es la
-  vía de HTTPS recomendada en Windows.
+  el suyo. El agente responde por mDNS a su propio nombre (`MDNS_RESPONDER=auto|on|off`); fuera de casa, o si
+  el nombre `.local` no resuelve, Tailscale sigue siendo la vía de HTTPS con certificado válido en Windows.
 - **Un equipo que se suspende no vigila** (ya reconocido): el instalador lo advierte.
 - **Firma de código:** sin firma, Windows SmartScreen avisa al instalar. Firmar tiene coste o requisitos
   (ver «Decisiones abiertas»).
@@ -112,7 +112,8 @@ funciona: copia de la base antes de migrar, comprobación de salud y vuelta atr�
 
 ## Lo que hay que verificar con una máquina real
 
-Ninguno de estos puntos se puede dar por cierto leyendo documentación: el puerto UDP 5353 compartido con
-el cliente mDNS de Windows; el cierre ordenado del agente bajo el servicio de Windows (que manda Ctrl+C,
+Ninguno de estos puntos se puede dar por cierto leyendo documentación: el respondedor mDNS de
+`<equipo>.local` (no el descubrimiento) abre el UDP 5353 con `reuseAddr`, y hay que ver que convive con el
+servicio mDNS de Windows y que el móvil resuelve el nombre (si no, queda `unavailable` y Tailscale); el cierre ordenado del agente bajo el servicio de Windows (que manda Ctrl+C,
 no `SIGTERM`); WebAuthn dentro de WebView2 con un origen remoto; que el servicio arranque sin sesión
 iniciada; y que una librería X.509 en JS emita la extensión `nameConstraints` de la CA.

@@ -222,6 +222,32 @@ jobs:
           command -v gpgv
           pnpm package
 
+      # Se comprime justo tras `pnpm package` (que ya corre `assertNoSecrets`) y antes del smoke, que
+      # arranca el paquete y podría dejar estado (`.env`, claves, `*.db`) dentro de la carpeta.
+      # Solo Linux. El zip de Windows NO sale en esta parte: el paquete lleva junctions de pnpm con
+      # destino absoluto y, medido en CI, `tar.exe -a -cf` los guarda tal cual (el paquete
+      # desempaquetado en otra ruta no arranca) y con `-L` el archivado falla por un enlace roto
+      # (`app/agent/node_modules/bcrypt`). Lo resuelve el manifiesto de enlaces del instalador.
+      - name: Archivo portable
+        if: ${{ startsWith(matrix.target, 'linux-') }}
+        run: |
+          dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
+          archivo="$(node scripts/package-archive.mjs "$dir")"
+          echo "portable: $archivo"
+          raiz="$(basename "$dir")"
+          listado="$(tar -tvzf "$archivo")"
+          echo "$listado" | grep -E "^-rwxr-xr-x .* $raiz/node/bin/node$"
+          echo "$listado" | grep -E "^-rwxr-xr-x .* $raiz/bin/krakenos$"
+          echo "$listado" | grep -E " $raiz/VERSION$"
+
+      - name: Subir el portable
+        if: ${{ startsWith(matrix.target, 'linux-') }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-portable-${{ matrix.target }}
+          path: out/portable/*
+          retention-days: 7
+
       - name: Smoke del paquete
         run: |
           dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
@@ -774,13 +800,13 @@ jobs:
             apps/agent/scripts/krakenos-helper.sh \
             docker/entrypoint.sh
 
-  # Release (solo en tags v*): adjunta los paquetes de Linux (.deb amd64 y arm64, y el de Arch) con su
-  # SHA256SUMS a la release de GitHub, creada como BORRADOR para que el dueño la revise y la publique
+  # Release (solo en tags v*): adjunta los paquetes de Linux (.deb amd64 y arm64, el de Arch) y los
+  # portables .tar.gz (linux-x64/arm64) con su SHA256SUMS a la release de GitHub, creada como BORRADOR para que el dueño la revise y la publique
   # a mano. Espera a todo job bloqueante; `ventana` es experimental y no entra. ⚠️ El arm64 de `package`
   # es `continue-on-error` (su fallo no pone rojo el run): por eso el job comprueba que cada archivo
-  # esperado exista en vez de fiarse de `needs`. Portables y `.exe` de la ventana quedan fuera.
+  # esperado exista en vez de fiarse de `needs`. El zip de Windows y el `.exe` de la ventana quedan fuera (parte B).
   release:
-    name: Release (borrador con los paquetes de Linux)
+    name: Release (borrador con los paquetes y portables de Linux)
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
     needs: [build-test, windows, package, package-arch, e2e, installer-smoke, security]
     runs-on: ubuntu-latest
@@ -791,6 +817,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # las notas leen los tags y commits anteriores
 
       # El tag tiene que ser `v` + la versión de package.json: de ahí salen las versiones de los
       # .deb y del paquete de Arch (apps/* y packages/* no llevan una versión propia que importe).
@@ -803,25 +831,19 @@ jobs:
           fi
           echo "VERSION=$version" >> "$GITHUB_ENV"
 
-      - name: Bajar los .deb y el paquete de Arch
+      - name: Bajar los .deb, el paquete de Arch y los portables de Linux
         uses: actions/download-artifact@v8
         with:
-          pattern: krakenos-{deb-*,arch}
+          pattern: krakenos-{deb-*,arch,portable-*}
           path: ${{ runner.temp }}/dl
           merge-multiple: true
 
+      # Exactamente cinco archivos: si falta uno (p. ej. el arm64 experimental falló) o sobra un paquete
+      # de Arch, el script falla y no se publica a medias. Lo probado está en assemble-release.test.ts.
       - name: Reunir los archivos y generar SHA256SUMS
         run: |
-          mkdir release
-          cd "$RUNNER_TEMP/dl"
-          ls -l
-          # Exactamente tres: si falta uno (p. ej. el arm64 experimental falló), no se publica a medias.
-          cp "krakenos_${VERSION}_amd64.deb" "krakenos_${VERSION}_arm64.deb" "$GITHUB_WORKSPACE/release/"
-          test "$(ls ./*.pkg.tar.zst | wc -l)" = 1
-          cp ./*.pkg.tar.zst "$GITHUB_WORKSPACE/release/"
-          cd "$GITHUB_WORKSPACE/release"
-          sha256sum -- * > SHA256SUMS
-          cat SHA256SUMS
+          ls -l "$RUNNER_TEMP/dl"
+          node scripts/release/assemble.mjs "$RUNNER_TEMP/dl" release "$VERSION"
 
       # Manifiesto firmado (ed25519) que lee el actualizador del agente. Sin el secreto el paso FALLA a
       # propósito: una release sin firma no se podría instalar desde la app. Va tras SHA256SUMS, así que
@@ -830,6 +852,12 @@ jobs:
         env:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
+      # Notas de los commits entre este tag y el anterior (falla si no hay anterior).
+      - name: Notas de la versión
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/release/notes.mjs "$GITHUB_REF_NAME" "$VERSION" release > "$RUNNER_TEMP/notes.md"
 
       # Borrador: no es pública hasta que el dueño la publica a mano. Si la release ya existe (creada a
       # mano antes), solo se suben los archivos; --clobber permite repetir el job.
@@ -840,7 +868,104 @@ jobs:
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --verify-tag --draft --title "$TAG" \
-              --notes "Paquetes de Linux (.deb para amd64 y arm64, y paquete de Arch para x86_64). Verifica con: sha256sum -c SHA256SUMS"
+              --notes-file "$RUNNER_TEMP/notes.md"
           fi
-          gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/SHA256SUMS \
+          # El zip de Windows (parte B) se suma aquí cuando exista.
+          gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/*.tar.gz release/SHA256SUMS \
             release/manifest.json release/manifest.json.sig --clobber
+
+  # Ensayo del job `release` en cada PR y push a main: corre los mismos scripts (assemble, sign-manifest,
+  # notes) sobre los artefactos de este run y NO publica nada (solo lectura, sin gh release, sin subir
+  # artefactos). Así un hueco de la release (falta un archivo, las notas filtran un id interno, el
+  # manifiesto no firma) sale rojo en el PR y no el día del tag.
+  # Firma: en `push` a main usa el secreto real UPDATE_SIGNING_KEY SIN UPDATE_VERIFY_PUBLIC_KEY, así
+  # sign-manifest comprueba que el secreto casa con la pública embebida; en los PR (que no ven secretos, y
+  # menos los de un fork) usa un par ed25519 efímero enmascarado que no sale del job.
+  # Es `continue-on-error` hasta que los `package` de win-x64 y arm64 (experimentales) sean bloqueantes:
+  # mientras tanto un rojo avisa de que el tag real fallaría por lo mismo. NO cubre (en un PR) que el
+  # secreto real case con la pública embebida: lo comprueba el push a main y, antes de publicar nada, el
+  # tag (la release es borrador).
+  release-ensayo:
+    name: Ensayo de la release (sin publicar)
+    if: ${{ !cancelled() && !startsWith(github.ref, 'refs/tags/v') }}
+    needs: [package, package-arch]
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # las notas leen los tags y commits anteriores
+
+      - name: Versión de package.json
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> "$GITHUB_ENV"
+
+      - name: Bajar los .deb, el paquete de Arch y los portables de Linux
+        uses: actions/download-artifact@v8
+        with:
+          pattern: krakenos-{deb-*,arch,portable-*}
+          path: ${{ runner.temp }}/dl
+          merge-multiple: true
+
+      - name: Reunir los archivos y generar SHA256SUMS
+        run: |
+          ls -l "$RUNNER_TEMP/dl"
+          node scripts/release/assemble.mjs "$RUNNER_TEMP/dl" release "$VERSION"
+
+      # La privada se enmascara línea a línea y solo viaja por $GITHUB_ENV; nunca se imprime.
+      - name: Clave de firma efímera
+        if: ${{ github.event_name != 'push' }}
+        run: |
+          node -e '
+            const { generateKeyPairSync } = require("node:crypto");
+            const { appendFileSync } = require("node:fs");
+            const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+            const priv = privateKey.export({ type: "pkcs8", format: "pem" });
+            const pub = publicKey.export({ type: "spki", format: "pem" });
+            for (const l of priv.split("\n").filter(Boolean)) console.log("::add-mask::" + l);
+            appendFileSync(process.env.GITHUB_ENV,
+              "UPDATE_SIGNING_KEY<<EOF_K\n" + priv + "EOF_K\nUPDATE_VERIFY_PUBLIC_KEY<<EOF_P\n" + pub + "EOF_P\n");
+          '
+
+      - name: Firmar el manifiesto (secreto real)
+        if: ${{ github.event_name == 'push' }}
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
+      - name: Firmar el manifiesto (clave efímera)
+        if: ${{ github.event_name != 'push' }}
+        run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
+
+      - name: Notas de la versión
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/release/notes.mjs HEAD "$VERSION" release > "$RUNNER_TEMP/notes.md"
+
+      # Lo que el job `release` daría por bueno: los archivos existen, SHA256SUMS tiene una línea por
+      # archivo de assemble.mjs y la firma verifica (con la efímera en PR, con la embebida en push).
+      - name: Comprobar el resultado
+        run: |
+          node --input-type=module -e '
+            import crypto from "node:crypto";
+            import { existsSync, readFileSync, statSync } from "node:fs";
+            import { expectedAssets } from "./scripts/release/assemble.mjs";
+            const fail = (m) => { console.error("::error::" + m); process.exit(1); };
+            const v = process.env.VERSION;
+            for (const f of ["release/manifest.json", "release/manifest.json.sig", "release/SHA256SUMS"])
+              if (!existsSync(f)) fail("falta " + f);
+            const notas = process.env.RUNNER_TEMP + "/notes.md";
+            if (!existsSync(notas) || statSync(notas).size === 0) fail("notes.md vacío");
+            const e = expectedAssets(v);
+            const n = e.deb.length + 1 + e.portables.length;
+            const lineas = readFileSync("release/SHA256SUMS", "utf8").trim().split("\n").length;
+            if (lineas !== n) fail("SHA256SUMS tiene " + lineas + " líneas y se esperaban " + n);
+            const emb = readFileSync("apps/agent/src/system/update-signing-key.ts", "utf8");
+            const pem = process.env.UPDATE_VERIFY_PUBLIC_KEY ?? /-----BEGIN PUBLIC KEY-----[^`]+?-----END PUBLIC KEY-----/.exec(emb)?.[0];
+            const ok = crypto.verify(null, readFileSync("release/manifest.json"), crypto.createPublicKey(pem),
+              Buffer.from(readFileSync("release/manifest.json.sig", "utf8").trim(), "base64"));
+            if (!ok) fail("la firma de manifest.json no verifica");
+            console.log("ensayo ok: " + lineas + " archivos en SHA256SUMS y firma verificada");
+          '
