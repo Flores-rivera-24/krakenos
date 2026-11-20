@@ -28,10 +28,13 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-function run(args: string[], key?: string) {
+function run(args: string[], key?: string, publica?: string) {
   const env = { ...process.env };
   delete env.UPDATE_SIGNING_KEY;
+  delete env.UPDATE_VERIFY_PUBLIC_KEY;
   if (key) env.UPDATE_SIGNING_KEY = key;
+  // Solo pruebas: la clave pública real tiene su privada en el secreto de CI, que aquí no existe.
+  if (publica) env.UPDATE_VERIFY_PUBLIC_KEY = publica;
   return spawnSync(process.execPath, [SCRIPT, ...args], { env, encoding: 'utf8' });
 }
 
@@ -39,7 +42,11 @@ describe('sign-manifest.mjs', () => {
   it('escribe un manifiesto y una firma que el verificador del agente acepta', () => {
     const { publicKey, privateKey } = generateKeyPairSync('ed25519');
     const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }) as string;
-    const r = run([dir, '0.3.0', '0.2.0'], pem);
+    const r = run(
+      [dir, '0.3.0', '0.2.0'],
+      pem,
+      publicKey.export({ type: 'spki', format: 'pem' }) as string,
+    );
     expect(r.status, r.stderr).toBe(0);
 
     const bytes = readFileSync(join(dir, 'manifest.json'));
@@ -65,12 +72,36 @@ describe('sign-manifest.mjs', () => {
   });
 
   it('minFrom por defecto es 0.2.0', () => {
+    const par = generateKeyPairSync('ed25519');
+    const r = run(
+      [dir, '0.3.0'],
+      par.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
+      par.publicKey.export({ type: 'spki', format: 'pem' }) as string,
+    );
+    expect(r.status, r.stderr).toBe(0);
+    expect(parseManifest(readFileSync(join(dir, 'manifest.json'))).minFrom).toBe('0.2.0');
+  });
+
+  it('una privada que NO casa con la pública embebida falla y no deja manifiesto ni firma', () => {
     const pem = generateKeyPairSync('ed25519').privateKey.export({
       type: 'pkcs8',
       format: 'pem',
     }) as string;
-    expect(run([dir, '0.3.0'], pem).status).toBe(0);
-    expect(parseManifest(readFileSync(join(dir, 'manifest.json'))).minFrom).toBe('0.2.0');
+    const r = run([dir, '0.3.0', '0.2.0'], pem); // sin override: la clave pública REAL del agente
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/no corresponde a la clave pública embebida/);
+    expect(() => readFileSync(join(dir, 'manifest.json'))).toThrow();
+    expect(() => readFileSync(join(dir, 'manifest.json.sig'))).toThrow();
+  });
+
+  it('una clave que no es ed25519 se rechaza', () => {
+    const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
+      type: 'pkcs8',
+      format: 'pem',
+    }) as string;
+    const r = run([dir, '0.3.0', '0.2.0'], rsa);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toMatch(/ed25519/);
   });
 
   it('sin UPDATE_SIGNING_KEY falla con un error claro y no escribe nada', () => {

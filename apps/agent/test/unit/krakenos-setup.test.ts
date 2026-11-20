@@ -43,7 +43,7 @@ beforeEach(async () => {
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), '//');
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'), '//');
   if (WIN) return;
-  await stageCommonTree(pkg, join(raiz, 'root'));
+  await stageCommonTree(pkg, join(raiz, 'root'), 'deb-amd64');
   // Lo que hace el postinst: la plantilla de /usr/share pasa a /etc/krakenos (no es conffile).
   mkdirSync(join(raiz, 'root', 'etc', 'krakenos'), { recursive: true });
   copyFileSync(
