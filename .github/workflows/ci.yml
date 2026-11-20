@@ -222,6 +222,32 @@ jobs:
           command -v gpgv
           pnpm package
 
+      # Se comprime justo tras `pnpm package` (que ya corre `assertNoSecrets`) y antes del smoke, que
+      # arranca el paquete y podría dejar estado (`.env`, claves, `*.db`) dentro de la carpeta.
+      - name: Archivo portable
+        run: |
+          dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"
+          archivo="$(node scripts/package-archive.mjs "$dir")"
+          echo "portable: $archivo"
+          raiz="$(basename "$dir")"
+          if [ "${{ matrix.target }}" = win-x64 ]; then
+            listado="$("$SYSTEMROOT/System32/tar.exe" -tf "$archivo")"
+            echo "$listado" | grep -Fx "$raiz/VERSION"
+            echo "$listado" | grep -Fx "$raiz/krakenos.cmd"
+          else
+            listado="$(tar -tvzf "$archivo")"
+            echo "$listado" | grep -E "^-rwxr-xr-x .* $raiz/node/bin/node$"
+            echo "$listado" | grep -E "^-rwxr-xr-x .* $raiz/bin/krakenos$"
+            echo "$listado" | grep -E " $raiz/VERSION$"
+          fi
+
+      - name: Subir el portable
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-portable-${{ matrix.target }}
+          path: out/portable/*
+          retention-days: 7
+
       - name: Smoke del paquete
         run: |
           dir="$(ls -d out/krakenos-*-${{ matrix.target }} | head -n 1)"

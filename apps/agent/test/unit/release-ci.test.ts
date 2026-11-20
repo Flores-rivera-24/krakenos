@@ -91,3 +91,30 @@ describe('ci.yml (job release)', () => {
     expect(J['package-arch']).toMatch(/name: krakenos-arch/);
   });
 });
+
+describe('ci.yml (job package) · portables', () => {
+  const pkg = J['package'] ?? '';
+
+  it('comprime el portable tras empaquetar y ANTES del smoke (el smoke arranca el paquete y lo ensucia)', () => {
+    const empaquetar = pkg.indexOf('name: Empaquetar');
+    const archivo = pkg.indexOf('node scripts/package-archive.mjs');
+    const smoke = pkg.indexOf('name: Smoke del paquete');
+    expect(empaquetar).toBeGreaterThan(-1);
+    expect(archivo).toBeGreaterThan(empaquetar);
+    expect(smoke).toBeGreaterThan(archivo);
+  });
+
+  it('exige el bit de ejecución y VERSION en el tar, y VERSION y el lanzador en el zip', () => {
+    expect(pkg).toContain('tar -tvzf');
+    expect(pkg).toContain('-rwxr-xr-x');
+    expect(pkg).toMatch(/node\/bin\/node/);
+    expect(pkg).toMatch(/bin\/krakenos/);
+    expect(pkg).toContain('tar.exe" -tf');
+    expect(pkg).toContain('krakenos.cmd');
+  });
+
+  it('sube el portable como krakenos-portable-<target>', () => {
+    expect(pkg).toMatch(/name: krakenos-portable-\$\{\{ matrix\.target \}\}/);
+    expect(pkg).toContain('path: out/portable/*');
+  });
+});
