@@ -17,6 +17,18 @@ import { useAuthStore } from '@/store/auth.store';
 import { toast } from '@/store/toast.store';
 import '@/lib/i18n/catalog/fragments/ajustes';
 
+/** Comando que activa el helper de root, sin el cual el modo paquete no puede actualizarse desde la app. */
+const HELPER_COMMAND = 'sudo krakenos-setup --with-helper';
+
+/** Mensaje propio por código de rechazo: nunca se pinta el texto crudo del servidor. */
+const BLOCKED_COPY = {
+  NOT_AN_UPGRADE: 'settings.update.blocked.notAnUpgrade',
+  MIN_FROM: 'settings.update.blocked.minFrom',
+  BAD_SIGNATURE: 'settings.update.blocked.badSignature',
+  BAD_PACKAGE: 'settings.update.blocked.badPackage',
+  NO_ARTIFACT: 'settings.update.blocked.noArtifact',
+} as const;
+
 /**
  * Actualizaciones (US-116 comprobación + US-190 one-click con rollback). Muestra
  * la versión instalada y, si hay un repo configurado, si existe una release más
@@ -167,6 +179,20 @@ export function UpdateCard() {
                     {t('settings.update.nodeTooOld', { version: plan.requiredNode ?? '' })}
                   </RichText>
                 </Callout>
+              ) : plan.helperReady === false ? (
+                isAdmin && (
+                  <div className="space-y-2">
+                    <p className="text-kr-sm text-kr-secondary">
+                      {t('settings.update.helperMissing')}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <code className="min-w-0 flex-1 overflow-x-auto break-all rounded-md bg-kr-elevated px-2 py-1 font-mono text-kr-xs text-kr-primary">
+                        {HELPER_COMMAND}
+                      </code>
+                      <CopyButton value={HELPER_COMMAND} label={t('settings.update.copyCommand')} />
+                    </div>
+                  </div>
+                )
               ) : (
                 isAdmin && (
                   <Button onClick={() => void apply()} disabled={!canApply}>
@@ -186,8 +212,6 @@ export function UpdateCard() {
               </div>
             ) : plan.mode === 'windows-service' ? (
               <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualWindows')}</p>
-            ) : plan.mode === 'package' ? (
-              <p className="text-kr-sm text-kr-secondary">{t('settings.update.manualPackage')}</p>
             ) : null}
           </div>
         ) : (
@@ -204,7 +228,7 @@ export function UpdateCard() {
           </p>
         )}
 
-        {plan?.lastResult && !loading && <LastResult result={plan.lastResult} />}
+        {plan?.lastResult && !loading && <LastResult result={plan.lastResult} mode={plan.mode} />}
 
         {plan?.enabled && !loading && !plan.inProgress && (
           <div className="flex items-center gap-2 text-kr-xs text-kr-muted">
@@ -217,7 +241,13 @@ export function UpdateCard() {
 }
 
 /** Resumen de la última actualización aplicada (correcta / revertida / fallida). */
-function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> }) {
+function LastResult({
+  result,
+  mode,
+}: {
+  result: NonNullable<UpdatePlan['lastResult']>;
+  mode: UpdatePlan['mode'];
+}) {
   const t = useT();
   if (result.ok) {
     return (
@@ -232,6 +262,29 @@ function LastResult({ result }: { result: NonNullable<UpdatePlan['lastResult']> 
       <Callout variant="warning" standing>
         <RichText>{t('settings.update.lastNodeTooOld')}</RichText>
       </Callout>
+    );
+  }
+  const blocked = result.steps.find(
+    (s) => s.status === 'failed' && s.code && s.code in BLOCKED_COPY,
+  );
+  if (!result.rolledBack && blocked?.code && blocked.code !== 'NODE_TOO_OLD') {
+    return (
+      <Callout variant="warning" standing>
+        <RichText>{t(BLOCKED_COPY[blocked.code as keyof typeof BLOCKED_COPY])}</RichText>
+      </Callout>
+    );
+  }
+  if (result.rolledBack && mode === 'package') {
+    const noPrevious = result.steps.some(
+      (s) => s.step === 'rollback' && s.detail?.startsWith('NO_PREVIOUS_PACKAGE'),
+    );
+    return (
+      <p className="flex items-start gap-2 text-kr-xs text-warning">
+        <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        {noPrevious
+          ? t('settings.update.lastNoPreviousPackage')
+          : t('settings.update.lastRolledBackPackage', { from: result.fromVersion })}
+      </p>
     );
   }
   return (

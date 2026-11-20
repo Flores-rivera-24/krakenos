@@ -4,7 +4,7 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import type { CommandRunner } from '../../src/privileged/runner.js';
+import { PrivilegedCommandError, type CommandRunner } from '../../src/privileged/runner.js';
 import {
   defaultPackageTransport,
   PackageUpdateRunner,
@@ -262,6 +262,28 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
     await runner.fetch('0.3.0');
     await runner.rollback();
     expect(calls).toEqual([['pkg-rollback', join(dir, 'dev.db.pre-update'), '0.3.0']]);
+  });
+  it('rollback: el código 66 del helper (sin paquete anterior) llega con un marcador estable', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    const opts = (runner as unknown as { opts: { helper: CommandRunner } }).opts;
+    opts.helper = {
+      async run(argv) {
+        throw new PrivilegedCommandError(argv, { stdout: '', stderr: 'sin anterior', code: 66 });
+      },
+    };
+    await expect(runner.rollback()).rejects.toThrow(/^NO_PREVIOUS_PACKAGE/);
+  });
+  it('rollback: otro fallo del helper se propaga tal cual', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    const opts = (runner as unknown as { opts: { helper: CommandRunner } }).opts;
+    opts.helper = {
+      async run(argv) {
+        throw new PrivilegedCommandError(argv, { stdout: '', stderr: 'x', code: 1 });
+      },
+    };
+    await expect(runner.rollback()).rejects.toThrow(/code 1/);
   });
   it('rollback sin paquete preparado (falló el fetch) no llama al helper', async () => {
     const { runner } = build();

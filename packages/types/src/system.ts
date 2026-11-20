@@ -218,6 +218,11 @@ export interface UpdatePlan {
   blockedReason: UpdateBlockedCode | null;
   /** Node mínimo que exige la versión disponible (`"24"`), si `blockedReason` lo explica. */
   requiredNode: string | null;
+  /**
+   * ¿Puede el agente usar el helper de root que instala el paquete? Solo importa en modo `package`
+   * (la regla de sudoers se instala con `krakenos-setup --with-helper`); en los demás modos es `true`.
+   */
+  helperReady: boolean;
 }
 
 /** Latencia/errores de una operación con nombre (p. ej. un manager) (US-191). */

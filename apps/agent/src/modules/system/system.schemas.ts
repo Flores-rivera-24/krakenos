@@ -192,6 +192,7 @@ export const updatePlanSchema = {
           enum: [...UPDATE_BLOCKED_CODES, null],
         },
         requiredNode: { type: ['string', 'null'] },
+        helperReady: { type: 'boolean' },
       },
       required: [
         'enabled',
@@ -207,6 +208,7 @@ export const updatePlanSchema = {
         'lastResult',
         'blockedReason',
         'requiredNode',
+        'helperReady',
       ],
     },
   },

@@ -44,6 +44,8 @@ function make(opts: {
   isProcessAlive?: (pid: number) => boolean;
   /** PID que devuelve el spawner (se guarda en el lock, US-232). */
   spawnPid?: number;
+  /** ¿Puede el agente usar el helper de root? (solo importa en modo `package`). */
+  probeHelper?: () => Promise<boolean>;
 }) {
   const spawn = vi.fn(() => opts.spawnPid);
   const varDir = opts.varDir ?? tmpVar();
@@ -56,6 +58,7 @@ function make(opts: {
     varDir,
     now: opts.now,
     isProcessAlive: opts.isProcessAlive,
+    probeHelper: opts.probeHelper,
   });
   return { service, spawn, varDir };
 }
@@ -82,6 +85,36 @@ describe('UpdateService.getPlan', () => {
     expect(plan.latest).toBe('1.1.0');
     expect(plan.inProgress).toBe(false);
     expect(plan.lastResult).toBeNull();
+  });
+
+  it('helperReady: fuera del modo paquete es true sin sondear el helper', async () => {
+    const probeHelper = vi.fn(async () => false);
+    const { service } = make({ status: AVAILABLE, probeHelper });
+    expect((await service.getPlan()).helperReady).toBe(true);
+    expect(probeHelper).not.toHaveBeenCalled();
+  });
+
+  it.each([true, false])('helperReady en modo paquete refleja el sondeo (%s)', async (ready) => {
+    const { service } = make({
+      status: AVAILABLE,
+      mode: 'package',
+      probeHelper: async () => ready,
+    });
+    const plan = await service.getPlan();
+    expect(plan.canSelfUpdate).toBe(true);
+    expect(plan.helperReady).toBe(ready);
+  });
+
+  it('apply en modo paquete sin helper no lanza nada y lo dice', async () => {
+    const { service, spawn } = make({
+      status: AVAILABLE,
+      mode: 'package',
+      probeHelper: async () => false,
+    });
+    const res = await service.apply();
+    expect(res.started).toBe(false);
+    expect(res.message).toContain('krakenos-setup --with-helper');
+    expect(spawn).not.toHaveBeenCalled();
   });
 
   it('docker: no puede auto-actualizarse y ofrece el comando manual', async () => {
@@ -195,7 +228,11 @@ describe('UpdateService.apply', () => {
   );
 
   it('package: se auto-actualiza y lanza el actualizador (sin comando docker)', async () => {
-    const { service, spawn } = make({ status: AVAILABLE, mode: 'package' });
+    const { service, spawn } = make({
+      status: AVAILABLE,
+      mode: 'package',
+      probeHelper: async () => true,
+    });
     expect((await service.getPlan()).canSelfUpdate).toBe(true);
     const res = await service.apply(true);
     expect(res.started).toBe(true);

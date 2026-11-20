@@ -300,6 +300,8 @@ describe('rutas de sistema', () => {
     expect(body.inProgress).toBe(false);
     expect(body.inProgressSince).toBeNull();
     expect(body).toHaveProperty('lastResult');
+    // El schema PODA lo que no declara: el campo tiene que llegar al navegador.
+    expect(body.helperReady).toBe(true);
   });
 
   it('GET /api/system/update/plan exige autenticación (401 sin token)', async () => {

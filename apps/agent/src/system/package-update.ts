@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { safeFetch } from '../net/egress.js';
-import type { CommandRunner } from '../privileged/runner.js';
+import { PrivilegedCommandError, type CommandRunner } from '../privileged/runner.js';
 import { renameWithRetry } from './rename-retry.js';
 import { UpdateBlockedError } from './node-requirement.js';
 import {
@@ -221,10 +221,21 @@ export class PackageUpdateRunner implements UpdateRunner {
     if (!this.staged) return;
     // El agente no puede pararse a sí mismo para restaurar su base: lo hace el helper, desde la copia
     // que dejó el paso `backup`. Se le dice QUÉ versión falló: solo revierte si es la que él instaló.
-    await this.opts.helper.run([
-      'pkg-rollback',
-      `${this.opts.dbFile}.pre-update`,
-      this.staged.version,
-    ]);
+    try {
+      await this.opts.helper.run([
+        'pkg-rollback',
+        `${this.opts.dbFile}.pre-update`,
+        this.staged.version,
+      ]);
+    } catch (err) {
+      // 66 = `PKG_RC_NO_PREVIOUS` del helper: restauró la base pero no hay paquete anterior que reinstalar
+      // (primera actualización por paquete). La UI lo distingue por este prefijo estable.
+      if (err instanceof PrivilegedCommandError && err.result.code === 66) {
+        throw new Error(
+          'NO_PREVIOUS_PACKAGE: base restaurada, sin paquete anterior que reinstalar',
+        );
+      }
+      throw err;
+    }
   }
 }
