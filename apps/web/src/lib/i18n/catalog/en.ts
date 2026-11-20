@@ -265,6 +265,10 @@ export const en: Record<TranslationKey, string> = {
     'The last update was not installed: the published package does not match its signed manifest (checksum or size). Nothing was installed.',
   'settings.update.blocked.noArtifact':
     'The last update was not installed: the published version has no package for this system. Nothing was installed.',
+  'settings.update.blocked.installRefused':
+    'The last update was not installed: the system did not allow installing the package. Nothing was changed. The details are in the server log.',
+  'settings.update.lastStillInstalled':
+    'The last update failed before it was installed: nothing was reinstalled and version {from} is still installed.',
   'settings.update.lastRolledBackPackage':
     'The last update failed and was rolled back: the database was restored and the previous package ({from}) was reinstalled.',
   'settings.update.lastNoPreviousPackage':

@@ -89,6 +89,10 @@ export const esAjustes = {
     'La última actualización no se instaló: el paquete publicado no coincide con su manifiesto firmado (suma o tamaño). No se ha instalado nada.',
   'settings.update.blocked.noArtifact':
     'La última actualización no se instaló: la versión publicada no trae paquete para este sistema. No se ha instalado nada.',
+  'settings.update.blocked.installRefused':
+    'La última actualización no se instaló: el sistema no permitió instalar el paquete. No se ha cambiado nada. El detalle está en el registro del servidor.',
+  'settings.update.lastStillInstalled':
+    'La última actualización falló antes de instalarse: no se reinstaló nada y sigue instalada la versión {from}.',
   'settings.update.lastRolledBackPackage':
     'La última actualización falló y se revirtió: se restauró la base de datos y se reinstaló el paquete anterior ({from}).',
   'settings.update.lastNoPreviousPackage':

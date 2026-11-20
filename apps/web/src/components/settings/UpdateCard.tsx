@@ -27,7 +27,29 @@ const BLOCKED_COPY = {
   BAD_SIGNATURE: 'settings.update.blocked.badSignature',
   BAD_PACKAGE: 'settings.update.blocked.badPackage',
   NO_ARTIFACT: 'settings.update.blocked.noArtifact',
+  INSTALL_REFUSED: 'settings.update.blocked.installRefused',
 } as const;
+
+/** Rechazos que se repetirán igual con la MISMA versión destino: reintentar no sirve, el botón se oculta. */
+const SAME_VERSION_REJECTIONS = new Set([
+  'BAD_SIGNATURE',
+  'BAD_PACKAGE',
+  'MIN_FROM',
+  'NOT_AN_UPGRADE',
+  'INSTALL_REFUSED',
+]);
+
+/** ¿Tiene sentido ofrecer otro intento tras la última actualización? */
+function retryInvited(plan: UpdatePlan): boolean {
+  const r = plan.lastResult;
+  if (!r || r.ok) return true;
+  // La reversión falló: el sistema puede estar a medias y reintentar encima empeora las cosas.
+  if (r.steps.some((s) => s.step === 'rollback' && s.status === 'failed')) return false;
+  const rejected = r.steps.some(
+    (s) => s.status === 'failed' && s.code && SAME_VERSION_REJECTIONS.has(s.code),
+  );
+  return !(rejected && r.targetVersion === plan.latest);
+}
 
 /**
  * Actualizaciones (US-116 comprobación + US-190 one-click con rollback). Muestra
@@ -114,6 +136,8 @@ export function UpdateCard() {
     }
   };
 
+  const failedResult = plan?.lastResult && !plan.lastResult.ok ? plan.lastResult : null;
+
   const canApply =
     isAdmin && plan?.canSelfUpdate && plan.updateAvailable && !plan.inProgress && !applying;
 
@@ -128,6 +152,9 @@ export function UpdateCard() {
           <span className="text-kr-secondary">{t('settings.update.installed')}</span>
           <span className="font-mono text-kr-primary">{plan?.current ?? '—'}</span>
         </div>
+
+        {/* Tras un fallo, el aviso va PRIMERO: es lo que explica por qué no se ofrece (o se desaconseja) reintentar. */}
+        {failedResult && plan && !loading && <LastResult result={failedResult} mode={plan.mode} />}
 
         {loading ? (
           <p className="flex items-center gap-2 text-kr-sm text-kr-muted">
@@ -194,7 +221,8 @@ export function UpdateCard() {
                   </div>
                 )
               ) : (
-                isAdmin && (
+                isAdmin &&
+                retryInvited(plan) && (
                   <Button onClick={() => void apply()} disabled={!canApply}>
                     {applying ? t('settings.update.applying') : t('settings.update.applyNow')}
                   </Button>
@@ -228,7 +256,9 @@ export function UpdateCard() {
           </p>
         )}
 
-        {plan?.lastResult && !loading && <LastResult result={plan.lastResult} mode={plan.mode} />}
+        {plan?.lastResult && !failedResult && !loading && (
+          <LastResult result={plan.lastResult} mode={plan.mode} />
+        )}
 
         {plan?.enabled && !loading && !plan.inProgress && (
           <div className="flex items-center gap-2 text-kr-xs text-kr-muted">
@@ -286,6 +316,15 @@ function LastResult({
             : t('settings.update.lastRollbackFailed')}
         </RichText>
       </Callout>
+    );
+  }
+  // La nueva nunca se instaló (descarga caída, root no llegó a instalar): no hubo reversión, sigue la de antes.
+  if (result.steps.some((s) => s.step === 'rollback' && s.code === 'STILL_INSTALLED')) {
+    return (
+      <p className="flex items-start gap-2 text-kr-xs text-warning">
+        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        {t('settings.update.lastStillInstalled', { from: result.fromVersion })}
+      </p>
     );
   }
   if (result.rolledBack && mode === 'package') {

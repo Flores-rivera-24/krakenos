@@ -354,6 +354,7 @@ describe('UpdateCard: actualización por paquete', () => {
     ['BAD_SIGNATURE', /no pasa la comprobación de firma/],
     ['BAD_PACKAGE', /no coincide con su manifiesto firmado/],
     ['NO_ARTIFACT', /no trae paquete para este sistema/],
+    ['INSTALL_REFUSED', /el sistema no permitió instalar el paquete/],
   ] as const)(
     'el rechazo %s se explica con su propio mensaje, sin culpar al usuario',
     async (code, msg) => {
@@ -386,6 +387,77 @@ describe('UpdateCard: actualización por paquete', () => {
         /se restauró la base de datos y se reinstaló el paquete anterior \(1\.0\.0\)/,
       ),
     ).toBeInTheDocument();
+  });
+
+  it('la nueva nunca se instaló (STILL_INSTALLED): no dice que se reinstaló nada, dice qué sigue instalado', async () => {
+    apiMock.get.mockResolvedValue({
+      ...packagePlan,
+      updateAvailable: false,
+      lastResult: result({
+        steps: [{ step: 'rollback', status: 'ok', code: 'STILL_INSTALLED', detail: 'x' }],
+      }),
+    });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(
+        /falló antes de instalarse: no se reinstaló nada y sigue instalada la versión 1\.0\.0/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
+  });
+
+  describe('tras un fallo: el aviso va primero y no se invita a repetir lo que fallará igual', () => {
+    const fallo = (code: string, target = '1.2.0') =>
+      result({
+        targetVersion: target,
+        steps: [{ step: 'fetch', status: 'failed', code: code as never, detail: 'x' }],
+      });
+
+    it.each(['BAD_SIGNATURE', 'BAD_PACKAGE', 'MIN_FROM', 'NOT_AN_UPGRADE', 'INSTALL_REFUSED'])(
+      '%s con la misma versión destino: sin «Actualizar ahora» y con el aviso ANTES de la disponible',
+      async (code) => {
+        apiMock.get.mockResolvedValue({ ...packagePlan, lastResult: fallo(code) });
+        render(<UpdateCard />);
+        const aviso = (await screen.findByText(/La última actualización no se instaló/)).closest(
+          '[role="note"]',
+        )!;
+        const disponible = screen.getByText(/Actualización disponible/);
+        expect(
+          aviso.compareDocumentPosition(disponible) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+      },
+    );
+
+    it('si hay una versión más nueva que la rechazada, se vuelve a ofrecer', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: fallo('BAD_SIGNATURE', '1.1.0'),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByRole('button', { name: /Actualizar ahora/ })).toBeInTheDocument();
+    });
+
+    it('con la reversión fallida no se invita a reintentar', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: result({
+          steps: [{ step: 'rollback', status: 'failed', detail: 'x' }],
+        }),
+      });
+      render(<UpdateCard />);
+      await screen.findByText(/no se pudo revertir/);
+      expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+    });
+
+    it('un fallo cualquiera (apt) sí deja reintentar', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: result({ rolledBack: true, steps: [{ step: 'rollback', status: 'ok' }] }),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByRole('button', { name: /Actualizar ahora/ })).toBeInTheDocument();
+    });
   });
 
   it('primera actualización por paquete: sin paquete anterior lo dice y no finge una reversión completa', async () => {
