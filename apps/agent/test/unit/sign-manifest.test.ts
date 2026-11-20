@@ -18,6 +18,8 @@ const FILES = {
   'krakenos_0.3.0_amd64.deb': 'amd64',
   'krakenos_0.3.0_arm64.deb': 'arm64-bytes',
   'krakenos-0.3.0-1-x86_64.pkg.tar.zst': 'arch',
+  'krakenos-0.3.0-linux-x64.tar.gz': 'portable-x64',
+  'krakenos-0.3.0-linux-arm64.tar.gz': 'portable-arm64',
   SHA256SUMS: 'no-es-un-artefacto',
 };
 
@@ -69,6 +71,22 @@ describe('sign-manifest.mjs', () => {
     expect(verifyManifest(Buffer.from(bytes.toString().replace('0.3.0', '0.3.1')), sig, pub)).toBe(
       false,
     );
+  });
+
+  it('los portables de la carpeta de release no entran al manifiesto: el actualizador solo instala paquetes (.deb/Arch)', () => {
+    const par = generateKeyPairSync('ed25519');
+    const r = run(
+      [dir, '0.3.0'],
+      par.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
+      par.publicKey.export({ type: 'spki', format: 'pem' }) as string,
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const m = parseManifest(readFileSync(join(dir, 'manifest.json')));
+    expect(m.artifacts.map((a) => a.platform).sort()).toEqual([
+      'arch-x86_64',
+      'deb-amd64',
+      'deb-arm64',
+    ]);
   });
 
   it('minFrom por defecto es 0.2.0', () => {

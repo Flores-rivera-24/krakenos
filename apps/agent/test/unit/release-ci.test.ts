@@ -71,19 +71,23 @@ describe('ci.yml (job release)', () => {
     expect(primero).toMatch(/exit 1/);
   });
 
-  it('adjunta los dos .deb, el paquete de Arch y SHA256SUMS', () => {
-    expect(release).toMatch(/krakenos_\$\{?VERSION\}?_amd64\.deb/);
-    expect(release).toMatch(/krakenos_\$\{?VERSION\}?_arm64\.deb/);
-    expect(release).toContain('.pkg.tar.zst');
-    expect(release).toMatch(/sha256sum [^\n]*> SHA256SUMS/);
-    expect(release).toMatch(/gh release upload [^\n]*SHA256SUMS/);
+  it('ensambla con assemble.mjs y adjunta .deb, Arch, portables de Linux y SHA256SUMS', () => {
+    expect(release).toMatch(
+      /node scripts\/release\/assemble\.mjs "\$RUNNER_TEMP\/dl" release "\$VERSION"/,
+    );
+    expect(release).toMatch(/pattern: krakenos-\{deb-\*,arch,portable-\*\}/);
+    const subida = /gh release upload (?:[^\n]*\\\n)*[^\n]*/.exec(release)?.[0] ?? '';
+    for (const f of ['*.deb', '*.pkg.tar.zst', '*.tar.gz', 'SHA256SUMS', 'manifest.json.sig'])
+      expect(subida, f).toContain(f);
+    // El zip de Windows no sale en esta parte (parte B, con el manifiesto de enlaces del instalador).
+    expect(subida).not.toContain('.zip');
   });
 
-  it('crea la release como borrador y verifica el tag; no adjunta portables ni .exe', () => {
+  it('crea la release como borrador y verifica el tag; no adjunta el .exe', () => {
     expect(release).toMatch(/gh release create [^\n]*--draft/);
     expect(release).toContain('--verify-tag');
     expect(release).toContain('GH_TOKEN: ${{ github.token }}');
-    expect(release).not.toMatch(/\.zip|\.tar\.gz|\.exe/);
+    expect(release).not.toMatch(/\.exe/);
   });
 
   it('los paquetes se suben como artefacto en los jobs que los construyen', () => {
