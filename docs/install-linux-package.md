@@ -11,6 +11,7 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
   `ubuntu-24.04-arm`, para arm64, este último aún experimental): instalar, actualizar, quitar y
   purgar, más `lintian`. Con Debian se prueba `scripts/install.sh` (Debian 12), no el `.deb`:
   el `.deb` en Debian no se ha probado.
+- Para una Raspberry Pi, ver la [guía de Raspberry Pi](install-raspberry-pi.md) (sin verificar en hardware).
 - Requiere **systemd**. Sin systemd el paquete se instala, pero no configura HTTPS ni arranca el servicio:
   deja HTTPS pendiente y el mensaje de la instalación dice qué ejecutar cuando haya systemd.
 - No hay repositorio apt ni firma del paquete. A partir de la próxima versión, el `.deb` se adjunta a
