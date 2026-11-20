@@ -4,7 +4,7 @@
  */
 import { createPublicKey, verify } from 'node:crypto';
 import { UpdateBlockedError } from './node-requirement.js';
-import { isNewer } from './update-check.js';
+import { isNewer } from './version-compare.js';
 
 export const PLATFORMS = ['deb-amd64', 'deb-arm64', 'arch-x86_64'] as const;
 export type Platform = (typeof PLATFORMS)[number];

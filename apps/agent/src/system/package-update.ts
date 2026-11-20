@@ -187,8 +187,8 @@ export class PackageUpdateRunner implements UpdateRunner {
 
   async apply(): Promise<void> {
     if (!this.staged) throw new Error('No hay paquete verificado que instalar.');
-    // Contrato de `pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>`: lo implementa
-    // la Task 4 (root copia los tres a su directorio y verifica ahí con su clave).
+    // Contrato de `pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>`: root copia los
+    // tres a su directorio y vuelve a verificar SU copia con la clave embebida; solo instala desde ella.
     const { pkg, manifest, sig, version } = this.staged;
     await this.opts.helper.run(['pkg-update', pkg, manifest, sig, version]);
   }
@@ -216,6 +216,8 @@ export class PackageUpdateRunner implements UpdateRunner {
   }
 
   async rollback(): Promise<void> {
-    await this.opts.helper.run(['pkg-rollback']);
+    // El agente no puede pararse a sí mismo para restaurar su base: lo hace el helper, desde la copia
+    // que dejó el paso `backup` (`pkg-rollback <copia>`). También reinstala el paquete anterior si root lo guardó.
+    await this.opts.helper.run(['pkg-rollback', `${this.opts.dbFile}.pre-update`]);
   }
 }
