@@ -105,11 +105,12 @@ describe('prepareDataDir', () => {
     );
   });
 
-  it('deja la marca en HKLM al terminar y no antes de la ACL', async () => {
+  it('deja la marca en HKLM justo tras crear la carpeta, antes de la ACL (un fallo a medias es reintentable)', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
     const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
-    expect(marca).toBeGreaterThan(ev.findIndex((l) => l.includes('/grant:r')));
+    expect(marca).toBeGreaterThan(ev.indexOf(`mkdir ${DATOS}`));
+    expect(marca).toBeLessThan(ev.findIndex((l) => l.includes('/inheritance:r')));
     expect(ev[marca]).toContain('HKLM\\SOFTWARE\\KrakenOS');
     expect(ev[marca]).toContain(DATOS);
   });

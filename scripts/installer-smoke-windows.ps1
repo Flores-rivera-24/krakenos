@@ -46,6 +46,8 @@ function Phase-Install {
   if ($p.ExitCode -ne 0) {
     # En silencio no se ve la salida del hook: se repite a mano para tener el motivo en el log de CI.
     $d = Join-Path $env:ProgramFiles 'KrakenOS'
+    $e = Join-Path $d 'install-error.log'
+    if (Test-Path $e) { Write-Host '--- install-error.log'; Get-Content $e | Out-Host }
     Write-Host '--- post-install.mjs install, a mano'
     & (Join-Path $d 'node\node.exe') (Join-Path $d 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
     Write-Host ("  exit {0}" -f $LASTEXITCODE)

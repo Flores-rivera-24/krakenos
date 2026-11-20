@@ -4,6 +4,7 @@
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
 import { spawn } from 'node:child_process';
+import { appendFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { get as httpGet } from 'node:http';
 import { createServer } from 'node:net';
@@ -77,7 +78,17 @@ async function main() {
     else if (orden === 'uninstall') await uninstallService({ serviceExe, run });
     else throw new Error(`orden desconocida: ${orden}`);
   } catch (e) {
-    console.error(msg(lang, 'fallo', e.message));
+    const texto = msg(lang, 'fallo', e.message);
+    console.error(texto);
+    // En silencio nadie ve la consola del hook: queda también junto al instalador (solo admin escribe).
+    try {
+      appendFileSync(
+        join(INSTALL_DIR, 'install-error.log'),
+        `${new Date().toISOString()} ${texto}\n`,
+      );
+    } catch {
+      /* el mensaje ya salió por la consola */
+    }
     process.exit(1);
   }
 }

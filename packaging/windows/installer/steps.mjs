@@ -65,7 +65,22 @@ export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
     existe = false;
   }
   // Sin `recursive`: si alguien la recrea entre medias, mkdir falla en vez de adoptarla.
-  if (!existe) await fs.mkdir(dataDir);
+  if (!existe) {
+    await fs.mkdir(dataDir);
+    // La marca va ya: si algo falla entre la ACL y el final, el reintento reconoce la carpeta como
+    // suya (con la ACL a medias ni el administrador podría listarla para decidirlo).
+    await ok(run, 'reg.exe', [
+      'add',
+      MARCA_HKLM,
+      '/v',
+      'DataDir',
+      '/t',
+      'REG_SZ',
+      '/d',
+      dataDir,
+      '/f',
+    ]);
+  }
 
   const servicio = `*${serviceSid}`;
   await ok(run, 'icacls', [dataDir, '/inheritance:r']);
