@@ -163,7 +163,7 @@ function Phase-Service {
     if (Test-Path $r) {
       $a = (& icacls $r) -join "`n"
       Assert ($a -notmatch 'BUILTIN\\Users|Everyone|Authenticated Users') "$f no es legible por Users"
-    } else { Write-Host "(sin $f: no aplica)" }
+    } else { Write-Host "(sin ${f}: no aplica)" }
   }
 
   # Matar el node.exe del servicio: vuelve a Running en menos de 60 s.
