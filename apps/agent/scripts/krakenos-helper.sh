@@ -14,6 +14,15 @@
 #   sudo install -m 0755 krakenos-helper.sh /usr/local/bin/krakenos-helper
 #   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
 #
+# Root NUNCA confía en su entorno (no depende de lo que `sudo` limpie: un `env_keep` del administrador no lo
+# reabre): siendo root se descarta TODA variable `KRAKENOS_*` ANTES de leer ninguna (ámbito, rutas del paquete,
+# verificador, node…), de modo que el llamante no elige qué ejecuta ni sobre qué actúa root. Lo que no esté en
+# los defaults de abajo solo se cambia desde `/etc/krakenos/helper.conf` (root). Como no-root (tests) el
+# entorno sigue valiendo: no hay privilegio que escalar. `compgen` y `unset` son builtins: no usan PATH.
+if [ "$EUID" -eq 0 ]; then
+  for _v in $(compgen -v KRAKENOS_); do unset "$_v"; done
+fi
+
 # PATH fijo ANTES de cualquier comando externo: este script corre como root y no
 # debe heredar el PATH de quien lo invoca (con `sudo` sin `secure_path`, el
 # usuario del servicio podría anteponer un `wg`/`iptables` falso y ejecutarlo
@@ -34,15 +43,11 @@ set -euo pipefail
 # Estos valores limitan SOBRE QUÉ puede actuar root y deben coincidir con la
 # config del agente (FW_CHAIN / TC_INTERFACE / WG_INTERFACE). El agente, SIN
 # privilegios, NO puede ampliarlos: siendo root, el script IGNORA lo que llegue
-# por el entorno (`unset` de abajo; no depende de que `sudo` haga `env_reset`,
+# por el entorno (el `unset` general del principio; no depende de que `sudo` haga `env_reset`,
 # un `env_keep` del administrador no lo reabre) y el ámbito se toma de los
 # defaults o de un fichero root-owned opcional (`/etc/krakenos/helper.conf`).
 # Si despliegas con valores no-default, edita este script (root-owned) o crea ese
 # fichero con `KRAKENOS_FW_CHAIN=...`, `KRAKENOS_TC_IFACE=...`, `KRAKENOS_WG_IFACE=...`.
-# Como no-root (tests) el entorno sigue valiendo: no hay privilegio que escalar.
-if [ "$EUID" -eq 0 ]; then
-  unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE
-fi
 _conf="${KRAKENOS_HELPER_CONF:-/etc/krakenos/helper.conf}"
 # shellcheck source=/dev/null
 [ -r "$_conf" ] && . "$_conf"
@@ -129,7 +134,7 @@ check_tc_tokens() {
 # el servicio hasta el último instante, así que root NUNCA verifica ni instala desde ahí: copia a
 # un directorio suyo (root:root 0700), vuelve a verificar LA COPIA con el verificador instalado por
 # el paquete (clave embebida, nunca recibida) e instala solo desde esa copia. Root no descarga nada.
-# Estas rutas se pueden cambiar solo desde /etc/krakenos/helper.conf (root): `sudo` descarta el entorno.
+# Estas rutas se pueden cambiar solo desde /etc/krakenos/helper.conf (root): siendo root se descarta todo `KRAKENOS_*` del entorno.
 KRAKENOS_PKG_DATA_DIR="${KRAKENOS_PKG_DATA_DIR:-/var/lib/krakenos}"
 KRAKENOS_PKG_STAGING="${KRAKENOS_PKG_STAGING:-$KRAKENOS_PKG_DATA_DIR/updates}"
 KRAKENOS_PKG_ROOT_DIR="${KRAKENOS_PKG_ROOT_DIR:-/var/lib/krakenos-root/updates}"

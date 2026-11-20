@@ -204,6 +204,8 @@ function run(args: string[], env: NodeJS.ProcessEnv = {}) {
           PATH: `${join(base, 'bin')}:${process.env.PATH}`,
           STUB: stub,
           STUB_DB: join(data, 'prisma', 'krakenos.db'),
+          // Stubs delante en PATH: solo se conserva con KEEP_PATH=1 y siendo no-root (root descarta todo KRAKENOS_*).
+          KRAKENOS_HELPER_KEEP_PATH: '1',
           KRAKENOS_HELPER_CONF: '/dev/null/none',
           KRAKENOS_PKG_DATA_DIR: data,
           KRAKENOS_PKG_STAGING: staging,
