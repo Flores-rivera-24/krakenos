@@ -1,5 +1,5 @@
-import { execFile } from 'node:child_process';
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFile, spawnSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,12 +37,13 @@ function runHelper(
     execFile(
       'bash',
       [SCRIPT, ...args],
-      // PATH con los stubs delante para que `exec wg`/`tc`/`iptables` los use;
+      // Stubs delante en PATH + KRAKENOS_HELPER_KEEP_PATH=1 (solo se honra siendo no-root) para que `exec wg`/`tc`/`iptables` los use;
       // KRAKENOS_HELPER_CONF a un fichero inexistente para no leer config del host.
       {
         env: {
           ...process.env,
           PATH: `${binDir}:${process.env.PATH}`,
+          KRAKENOS_HELPER_KEEP_PATH: '1',
           KRAKENOS_HELPER_CONF: '/dev/null/none',
           ...env,
         },
@@ -334,5 +335,76 @@ describe('krakenos-helper lista cerrada de argumentos', () => {
     for (const argv of [...ipt, ...tc]) {
       expect((await runHelper(argv)).code, argv.join(' ')).toBe(0);
     }
+  });
+});
+
+// El helper corre como root: no puede heredar el PATH de quien lo invoca.
+describe('krakenos-helper: PATH de root', () => {
+  const SEGURO = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+
+  it('el shebang es /bin/bash (no `env`, que resolvería bash por PATH)', () => {
+    expect(readFileSync(SCRIPT, 'utf8').split('\n')[0]).toBe('#!/bin/bash');
+  });
+
+  it('fija PATH antes de la primera orden externa', () => {
+    const lineas = readFileSync(SCRIPT, 'utf8').split('\n');
+    const iPath = lineas.findIndex((l) => l.includes(`PATH="${SEGURO}"`));
+    const iSet = lineas.findIndex((l) => l.startsWith('set -euo pipefail'));
+    expect(iPath).toBeGreaterThan(0);
+    expect(iPath).toBeLessThan(iSet);
+    // La primera línea de código (tras shebang y comentarios) es la que fija PATH.
+    const primera = lineas.slice(1).find((l) => /^\s*[^#\s]/.test(l));
+    expect(primera).toMatch(/^if \[ "\$EUID" -ne 0 \]/);
+  });
+
+  // No se puede correr como root en el test: se verifica la estructura del script.
+  it('siendo root (`$EUID -eq 0`) hace unset de las cuatro variables ANTES de leer _conf', () => {
+    const txt = readFileSync(SCRIPT, 'utf8');
+    const iUnset = txt.indexOf(
+      'unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE',
+    );
+    expect(iUnset).toBeGreaterThan(0);
+    expect(iUnset).toBeLessThan(txt.indexOf('_conf="'));
+    expect(iUnset).toBeLessThan(txt.indexOf('. "$_conf"'));
+    // El unset va dentro de un `if [ "$EUID" -eq 0 ]` (el último `if` antes de él).
+    expect(
+      txt
+        .slice(0, iUnset)
+        .split('\n')
+        .filter((l) => /^if /.test(l))
+        .pop(),
+    ).toBe('if [ "$EUID" -eq 0 ]; then');
+  });
+
+  it('un `wg` falso al frente del PATH del llamante NO se ejecuta (sin la variable de pruebas)', async () => {
+    const marca = join(binDir, 'ejecutado');
+    const falso = mkdtempSync(join(tmpdir(), 'kraken-helper-falso-'));
+    const wg = join(falso, 'wg');
+    writeFileSync(wg, `#!/bin/sh\ntouch ${marca}\nexit 0\n`);
+    chmodSync(wg, 0o755);
+    await new Promise<void>((resolve) => {
+      execFile(
+        'bash',
+        [SCRIPT, 'wg', 'show', 'wg0'],
+        { env: { PATH: `${falso}:${process.env.PATH}`, KRAKENOS_HELPER_CONF: '/dev/null/none' } },
+        () => resolve(),
+      );
+    });
+    rmSync(falso, { recursive: true, force: true });
+    expect(existsSync(marca)).toBe(false);
+  });
+});
+
+describe('krakenos.sudoers.example', () => {
+  const EJEMPLO = fileURLToPath(new URL('../../scripts/krakenos.sudoers.example', import.meta.url));
+
+  it('fija secure_path para el helper y sigue siendo sudoers válido', () => {
+    const txt = readFileSync(EJEMPLO, 'utf8');
+    expect(txt).toContain(
+      'Defaults!/usr/local/bin/krakenos-helper secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"',
+    );
+    const v = spawnSync('visudo', ['-cf', EJEMPLO], { encoding: 'utf8' });
+    // Sin visudo en el equipo (p. ej. Windows) solo se comprueba el texto.
+    if (!v.error) expect(v.status, v.stdout + v.stderr).toBe(0);
   });
 });

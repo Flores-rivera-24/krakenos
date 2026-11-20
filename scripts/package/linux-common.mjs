@@ -99,6 +99,7 @@ export async function stageCommonTree(pkgDir, rootDir) {
   await sinEscrituraAjena(lib);
 
   await poner(join(comun, 'krakenos-setup'), join(libexec, 'krakenos-setup'), 0o755);
+  await poner(join(comun, 'krakenos-open'), join(libexec, 'krakenos-open'), 0o755);
   await poner(
     join(REPO, 'scripts', 'lib', 'krakenos-system.sh'),
     join(libexec, 'lib', 'krakenos-system.sh'),
@@ -121,6 +122,16 @@ export async function stageCommonTree(pkgDir, rootDir) {
   await chmod(libexec, 0o755);
   await chmod(join(libexec, 'lib'), 0o755);
 
+  await poner(
+    join(comun, 'krakenos.desktop'),
+    join(rootDir, 'usr', 'share', 'applications', 'krakenos.desktop'),
+    0o644,
+  );
+  await poner(
+    join(REPO, 'apps', 'web', 'public', 'icon-512.png'),
+    join(rootDir, 'usr', 'share', 'icons', 'hicolor', '512x512', 'apps', 'krakenos.png'),
+    0o644,
+  );
   await poner(
     join(comun, 'krakenos.service'),
     join(rootDir, 'usr', 'lib', 'systemd', 'system', 'krakenos.service'),
@@ -156,4 +167,5 @@ export async function stageCommonTree(pkgDir, rootDir) {
   const bin = join(rootDir, 'usr', 'bin');
   await mkdir(bin, { recursive: true });
   await symlink('../lib/krakenos/libexec/krakenos-setup', join(bin, 'krakenos-setup'));
+  await symlink('../lib/krakenos/libexec/krakenos-open', join(bin, 'krakenos-open'));
 }

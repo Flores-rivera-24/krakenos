@@ -47,6 +47,17 @@ móvil confía **sin instalar nada**—, lo apunta en el `.env` y programa un ti
 renueva. El agente **detecta el fichero renovado y lo aplica en caliente**, sin reiniciar el
 servicio ni cortar sesiones.
 
+El origen que queda en el `.env` lleva el puerto del agente: `https://tu-maquina.tailnet-abc.ts.net:3001`
+(`WEB_ORIGIN` y `WEBAUTHN_ORIGIN`; `WEBAUTHN_RP_ID` es solo el nombre). Con `PORT=443` el puerto se
+omite. En el paquete (`.deb` y Arch) esas tres claves se fijan siempre al configurar HTTPS; con
+`install.sh`, solo si la plantilla del `.env` las contempla. Si ya instalaste con Tailscale y el origen
+quedó sin puerto, corrígelo con `sudo krakenos-setup tls tailscale` (paquete) o
+`sudo /opt/krakenos/scripts/install.sh --tls tailscale`, y reinicia el servicio.
+
+Pasar de HTTPS local a Tailscale (o al revés) cambia `WEBAUTHN_RP_ID` de `<equipo>.local` al nombre
+`*.ts.net`: las passkeys registradas con el nombre anterior dejan de servir. Para entrar usa un código
+de respaldo y vuelve a registrar la passkey en **Ajustes → Seguridad → Passkeys**.
+
 Tres cosas que conviene saber antes:
 
 - **Hay que activarlo en el tailnet.** En la consola de Tailscale: *DNS → MagicDNS* y

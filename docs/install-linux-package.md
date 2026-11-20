@@ -16,7 +16,7 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
 
 ## Descargar y verificar
 
-A partir de la próxima versión, cada versión publicada en la página de versiones (*Releases*) del
+A partir de la próxima versión, cada versión publicada en la página de versiones (_Releases_) del
 repositorio trae los dos `.deb` (amd64 y arm64), el paquete de Arch (x86_64) y un archivo `SHA256SUMS`.
 Descarga el paquete de tu arquitectura junto con `SHA256SUMS` en la misma carpeta y verifica:
 
@@ -82,6 +82,34 @@ hay token, el comando lo dice y remite a `journalctl -u krakenos`. El enlace lle
 compartas. Una **actualización** del paquete no espera ni imprime ese enlace (el token solo existe
 mientras no haya administrador): imprime una línea que recuerda este comando.
 
+## Abrir KrakenOS desde el menú
+
+El paquete añade la entrada **KrakenOS** al menú de aplicaciones. Al pulsarla se abre el navegador
+predeterminado del sistema en la dirección del agente, la misma que guarda `/etc/krakenos/origin`: la
+de HTTPS (`https://<equipo>.local:<puerto>`) si la configuraste, y `http://localhost:<puerto>` si no. Desde la terminal hace lo mismo `krakenos-open` (con `--print`
+solo imprime la dirección). Necesita `xdg-utils`, que el paquete **recomienda**; sin él, o sin
+entorno gráfico (por ejemplo, por SSH), el comando termina con un error que muestra la dirección para
+que la abras a mano.
+
+No es una ventana propia a propósito: las passkeys dependen del navegador y del origen exacto de la
+página, y el motor de ventanas web de Linux (WebKitGTK) no implementa WebAuthn.
+
+**Instalarlo como aplicación.** En Chrome, Edge o Chromium, abre KrakenOS y usa el menú del navegador →
+«Instalar KrakenOS» (o el icono de instalar que aparece en la barra de direcciones). Queda como una
+ventana sin barra de pestañas, con su propio icono. Firefox no instala aplicaciones web en el
+escritorio.
+
+**Si abre la dirección equivocada**, por ejemplo después de cambiar `PORT` o `WEB_ORIGIN`, vuelve a
+escribirla y revisa el resultado:
+
+```bash
+sudo krakenos-setup origin
+cat /etc/krakenos/origin
+```
+
+Si el valor de `WEB_ORIGIN` no es una dirección válida, el comando lo avisa y no escribe nada; el
+lanzador sigue usando la dirección anterior (o `http://localhost:3001` si nunca hubo una).
+
 ## Dónde vive cada cosa
 
 | Qué                                                              | Dónde                           |
@@ -95,6 +123,7 @@ mientras no haya administrador): imprime una línea que recuerda este comando.
 | Unidad de systemd                                                | `krakenos.service`              |
 | Usuario de servicio                                              | `krakenos` (sin shell)          |
 | Herramienta de administración                                    | `krakenos-setup`                |
+| Dirección que abre la entrada del menú (legible por todos)       | `/etc/krakenos/origin`          |
 
 `krakenos.env` lo lee systemd como root: el servicio no necesita poder leerlo, y el archivo no es
 legible por otros usuarios. La instalación lo crea una sola vez desde la plantilla de referencia
@@ -114,11 +143,11 @@ por eso gana. Aunque las pongas o borres en tu archivo, el servicio sigue usando
 El archivo no admite comentarios al final de una línea con valor (`PORT=3001  # nota`): systemd los
 tomaría como parte del valor. Los comentarios van en su propia línea.
 
-**Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
+**Si cambias `PORT`**, `WEB_ORIGIN` (y, con HTTPS local o por Tailscale, `WEBAUTHN_ORIGIN`) siguen apuntando al puerto
 anterior: las passkeys y el enlace de `/setup` dejarían de coincidir. Con HTTPS local, vuelve a
 correr `sudo krakenos-setup tls local` (los reescribe con el puerto nuevo y conserva el certificado y
-la CA) y luego reinicia el servicio. Con HTTPS por Tailscale esas variables no llevan puerto, y con
-`tls none` ajusta `WEB_ORIGIN` a mano.
+la CA) y luego reinicia el servicio. Con HTTPS por Tailscale haz lo mismo con
+`sudo krakenos-setup tls tailscale`, y con `tls none` ajusta `WEB_ORIGIN` a mano.
 
 El agente **nunca corre como root**. Los registros: `journalctl -u krakenos`.
 
@@ -180,6 +209,11 @@ Esto instala `/etc/sudoers.d/krakenos` (se valida con `visudo` antes de ponerla 
 permite al usuario `krakenos` ejecutar **solo** ese helper, con su propia lista de operaciones
 permitidas. También crea `/etc/wireguard` si falta y reinicia el servicio (si estaba en marcha), para
 que pueda guardar ahí los peers de la VPN. Sin el helper, esas tres funciones no están disponibles.
+
+La regla fija también la ruta de búsqueda de programas (`secure_path`) con la que corre el helper. Si
+activaste el helper con una versión anterior, vuelve a correr `sudo krakenos-setup --with-helper` tras
+actualizar para que la regla la incluya (con `install.sh`, `sudo /opt/krakenos/scripts/install.sh
+--with-helper`).
 
 ## Actualizar
 

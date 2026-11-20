@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # krakenos-helper — helper privilegiado de KrakenOS.
 #
@@ -14,17 +14,35 @@
 #   sudo install -m 0755 krakenos-helper.sh /usr/local/bin/krakenos-helper
 #   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
 #
+# PATH fijo ANTES de cualquier comando externo: este script corre como root y no
+# debe heredar el PATH de quien lo invoca (con `sudo` sin `secure_path`, el
+# usuario del servicio podría anteponer un `wg`/`iptables` falso y ejecutarlo
+# como root). Por eso el shebang es `/bin/bash` y no `env bash`.
+# Solo los tests (no-root) pueden conservar el PATH del llamante (KRAKENOS_HELPER_KEEP_PATH=1): `$EUID` es un builtin y la
+# sustitución se ignora siendo root, sin depender de lo que `sudo` limpie.
+if [ "$EUID" -ne 0 ] && [ "${KRAKENOS_HELPER_KEEP_PATH:-}" = "1" ]; then
+  : # solo tests (no-root): se conserva el PATH de quien llama
+else
+  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+fi
+export PATH
+
 set -euo pipefail
 
 # --- Ámbito permitido (acota el OBJETIVO, no solo el verbo — US-74, F1) -------
 #
 # Estos valores limitan SOBRE QUÉ puede actuar root y deben coincidir con la
 # config del agente (FW_CHAIN / TC_INTERFACE / WG_INTERFACE). El agente, SIN
-# privilegios, NO puede ampliarlos: en producción `sudo` descarta el entorno
-# (`env_reset`, por defecto), así que el ámbito se toma de los defaults de abajo
-# o de un fichero root-owned opcional (`/etc/krakenos/helper.conf`). Si despliegas
-# con valores no-default, edita este script (root-owned) o crea ese fichero con
-# `KRAKENOS_FW_CHAIN=...`, `KRAKENOS_TC_IFACE=...`, `KRAKENOS_WG_IFACE=...`.
+# privilegios, NO puede ampliarlos: siendo root, el script IGNORA lo que llegue
+# por el entorno (`unset` de abajo; no depende de que `sudo` haga `env_reset`,
+# un `env_keep` del administrador no lo reabre) y el ámbito se toma de los
+# defaults o de un fichero root-owned opcional (`/etc/krakenos/helper.conf`).
+# Si despliegas con valores no-default, edita este script (root-owned) o crea ese
+# fichero con `KRAKENOS_FW_CHAIN=...`, `KRAKENOS_TC_IFACE=...`, `KRAKENOS_WG_IFACE=...`.
+# Como no-root (tests) el entorno sigue valiendo: no hay privilegio que escalar.
+if [ "$EUID" -eq 0 ]; then
+  unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE
+fi
 _conf="${KRAKENOS_HELPER_CONF:-/etc/krakenos/helper.conf}"
 # shellcheck source=/dev/null
 [ -r "$_conf" ] && . "$_conf"

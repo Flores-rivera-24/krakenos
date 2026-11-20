@@ -62,13 +62,29 @@ fail() {
 }
 
 # --- gestor de paquetes -------------------------------------------------------------------------
+# Corre el gestor con tope de tiempo (una instalación que espera algo en silencio colgó la CI ~28 min
+# sin dejar rastro: la salida va a $WORK/pkg.log). Devuelve el código del gestor; si salió por tiempo
+# (124, o 137 si hubo que matarlo), muestra el final del log y falla.
+pkg_run() {
+  local rc=0
+  timeout --kill-after=30 900 "$@" > "$WORK/pkg.log" 2>&1 || rc=$?
+  if [[ $rc -eq 124 || $rc -eq 137 ]]; then
+    tail -n 60 "$WORK/pkg.log" | redact | sed 's/^/  | /'
+    fail "la instalación no terminó en 15 min ($1 ${2:-}): se cortó; el final del registro está arriba"
+  fi
+  return "$rc"
+}
+# NEEDRESTART_SUSPEND=1 (en las llamadas de apt/dpkg): needrestart corre tras cada apt en los runners de
+# Ubuntu y, si encuentra servicios que reiniciar, puede esperar una respuesta interactiva que nadie da.
 pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de /setup con el token)
   local rc=0
   case "$KIND" in
     # Sin --force-conf*: krakenos.env no es conffile, así que dpkg no debe preguntar nada; si algún
     # día pregunta, sin terminal falla y la CI lo ve.
-    deb) DEBIAN_FRONTEND=noninteractive apt-get install -y "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
-    arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || rc=$? ;;
+    # --no-install-recommends: se prueba el paquete, y bajar ffmpeg depende de la velocidad del espejo; avahi y
+    # libnss-mdns los instala `tls auto` por su cuenta. Ningún job instala el .deb con todos sus Recommends (ffmpeg, xdg-utils).
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends "$1" || rc=$? ;;
+    arch) pkg_run pacman -U --noconfirm "$1" || rc=$? ;;
   esac
   tail -n 6 "$WORK/pkg.log" | redact | sed 's/^/  | /'
   [[ $rc -eq 0 ]] || fail "la instalación de $(basename -- "$1") salió con $rc"
@@ -77,24 +93,24 @@ pkg_install() { # $1 = fichero; la salida va a $WORK/pkg.log (lleva el enlace de
 # vacío) y pacman -U sí corre post_upgrade. Es lo que hace falta para ejercitar el reintento de HTTPS.
 pkg_reinstall() { # $1 = fichero
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive dpkg -i "$1" > "$WORK/pkg.log" 2>&1 || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
-    arch) pacman -U --noconfirm "$1" > "$WORK/pkg.log" 2>&1 || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 dpkg -i "$1" || fail "dpkg -i falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    arch) pkg_run pacman -U --noconfirm "$1" || fail "pacman -U falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_remove() {
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive apt-get remove -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
-    arch) pacman -R --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -R falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get remove -y krakenos || fail "apt-get remove falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    arch) pkg_run pacman -R --noconfirm krakenos || fail "pacman -R falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
   esac
 }
 pkg_purge() {
   case "$KIND" in
-    deb) DEBIAN_FRONTEND=noninteractive apt-get purge -y krakenos > "$WORK/pkg.log" 2>&1 || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
+    deb) pkg_run env DEBIAN_FRONTEND=noninteractive NEEDRESTART_SUSPEND=1 apt-get purge -y krakenos || fail "apt-get purge falló: $(tail -n 5 "$WORK/pkg.log" | redact)" ;;
     arch)
       # pacman no purga: la guía (docs/install-linux-package.md, «Quitar») manda borrar a mano los datos,
       # la configuración, las unidades de renovación del certificado, la regla de sudo y el usuario que
       # creó sysusers. Mantener estos comandos iguales a los de la guía (lo ata package-arch.test.ts).
-      pacman -Rns --noconfirm krakenos > "$WORK/pkg.log" 2>&1 || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
+      pkg_run pacman -Rns --noconfirm krakenos || fail "pacman -Rns falló: $(tail -n 5 "$WORK/pkg.log" | redact)"
       rm -rf /var/lib/krakenos /etc/krakenos
       rm -f /etc/sudoers.d/krakenos /etc/systemd/system/krakenos-cert.service /etc/systemd/system/krakenos-cert.timer /etc/systemd/system/krakenos-cert-local.service /etc/systemd/system/krakenos-cert-local.timer
       userdel krakenos
@@ -211,6 +227,14 @@ fi
 ok "krakenos activo"
 grep -q '^WEB_ORIGIN=https://' "$ENV_FILE" || fail "HTTPS por defecto: WEB_ORIGIN en $ENV_FILE es '$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)' y debería empezar por https://"
 ok "WEB_ORIGIN es https (HTTPS por defecto)"
+# El lanzador de escritorio (sin privilegios) lee de aquí qué abrir: debe existir, ser legible y coincidir.
+ORIGIN_FILE=/etc/krakenos/origin
+ORIGEN_ESPERADO="$(sed -n 's/^WEB_ORIGIN=//p' "$ENV_FILE" | tail -n 1)"
+[[ -f $ORIGIN_FILE ]] || fail "no existe $ORIGIN_FILE tras instalar"
+[[ "$(stat -c %a "$ORIGIN_FILE")" == 644 ]] || fail "$ORIGIN_FILE tiene modo $(stat -c %a "$ORIGIN_FILE") (se esperaba 644)"
+[[ "$(cat "$ORIGIN_FILE")" == "${ORIGEN_ESPERADO%/}" ]] || fail "$ORIGIN_FILE contiene '$(cat "$ORIGIN_FILE")' y debería ser '${ORIGEN_ESPERADO%/}'"
+[[ -f /usr/share/applications/krakenos.desktop && -f /usr/share/icons/hicolor/512x512/apps/krakenos.png ]] || fail "faltan la entrada de menú o su icono tras instalar"
+ok "/etc/krakenos/origin (644) coincide con WEB_ORIGIN; entrada de menú e icono instalados"
 wait_ready
 ok "/health/ready = 200 en $(base_url)"
 getent passwd krakenos > /dev/null || fail "no existe el usuario krakenos"
@@ -290,6 +314,8 @@ login
 ok "login = 200 tras actualizar (los datos sobreviven)"
 [[ "$(sha "$CERT")" == "$CERT_SHA_1" ]] || fail "actualizar regeneró el certificado TLS"
 ok "el certificado no cambió al actualizar"
+[[ -f $ORIGIN_FILE ]] || fail "$ORIGIN_FILE desapareció tras actualizar"
+ok "/etc/krakenos/origin sigue existiendo tras actualizar"
 
 # =================================================================================================
 paso 5 "desinstalar (remove) y reinstalar sin purgar"
@@ -299,6 +325,9 @@ pkg_remove
 [[ ! -e /usr/lib/krakenos ]] || fail "/usr/lib/krakenos sigue existiendo tras desinstalar"
 [[ -f $ENV_FILE ]] || fail "desinstalar borró $ENV_FILE (lo crea el postinst y solo purge debe borrarlo)"
 ok "servicio parado; datos y configuración conservados; código retirado"
+[[ ! -e /usr/share/applications/krakenos.desktop ]] || fail "la entrada de menú sigue existiendo tras desinstalar"
+[[ ! -e /usr/share/icons/hicolor/512x512/apps/krakenos.png ]] || fail "el icono sigue existiendo tras desinstalar"
+ok "entrada de menú e icono retirados"
 # (c) los enlaces *.wants de la unidad y de los timers no quedan colgando.
 colgando="$(find /etc/systemd/system -xtype l -name 'krakenos*' 2> /dev/null || true)"
 [[ -z $colgando ]] || fail "enlaces de systemd colgando tras desinstalar: $colgando"
@@ -328,6 +357,7 @@ pkg_purge
 for d in /usr/lib/krakenos /var/lib/krakenos /etc/krakenos; do
   [[ ! -e $d ]] || fail "$d sigue existiendo tras purgar"
 done
+[[ ! -e $ORIGIN_FILE ]] || fail "$ORIGIN_FILE sigue existiendo tras purgar"
 ! systemctl cat krakenos.service > /dev/null 2>&1 || fail "la unidad krakenos.service sigue instalada tras purgar"
 [[ -z "$(getent passwd krakenos || true)" ]] || fail "el usuario krakenos sigue existiendo tras purgar"
 [[ -z "$(getent group krakenos || true)" ]] || fail "el grupo krakenos sigue existiendo tras purgar"
