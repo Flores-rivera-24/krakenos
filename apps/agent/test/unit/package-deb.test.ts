@@ -39,7 +39,7 @@ describe('renderControl', () => {
     expect(c).toContain(
       'Depends: adduser, systemd, ca-certificates, libc6, libstdc++6, libgcc-s1\n',
     );
-    expect(c).toContain('Recommends: ffmpeg, libnss-mdns, avahi-daemon\n');
+    expect(c).toContain('Recommends: ffmpeg, libnss-mdns, avahi-daemon, xdg-utils\n');
     expect(c).toContain('Suggests: wireguard-tools, sudo\n');
     expect(c).toContain('Installed-Size: 1234\n');
     expect(c).toContain('Architecture: amd64\n');

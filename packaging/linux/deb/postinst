@@ -20,6 +20,8 @@ case "$1" in
     fi
     systemd-sysusers krakenos.conf
     systemd-tmpfiles --create krakenos.conf
+    # El lanzador de escritorio (sin privilegios) lee de aquí qué abrir; también en actualizaciones.
+    "$SETUP" origin || echo "AVISO: no se pudo escribir /etc/krakenos/origin; ejecuta: sudo krakenos-setup origin" >&2
 
     if [ -d /run/systemd/system ]; then
       # Instalación nueva, o un intento anterior que dejó HTTPS pendiente: HTTPS por defecto, como install.sh.

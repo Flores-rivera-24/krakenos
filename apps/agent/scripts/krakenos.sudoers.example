@@ -19,6 +19,10 @@
 # Sustituye `krakenos` por el usuario con el que corre el servicio del agente.
 
 krakenos ALL=(root) NOPASSWD: /usr/local/bin/krakenos-helper
+# PATH fijo para el helper: sin `secure_path`, sudo conserva el PATH de quien lo
+# llama (Arch/CachyOS lo traen comentado) y el servicio podría hacer que root
+# ejecute un `wg`/`iptables` suyo.
+Defaults!/usr/local/bin/krakenos-helper secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Actualización one-click con rollback (US-190/US-232): la actualización desde la UI
 # reinicia el servicio del agente, y el rollback lo para y lo arranca.

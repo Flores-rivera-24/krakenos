@@ -5,7 +5,9 @@ import {
   linkSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -80,6 +82,62 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     expect(r.stdout).toMatch(/WEBAUTHN_RP_ID=.+\.local en /);
     expect(r.stdout).not.toContain('apt-get');
     expect(r.stdout).not.toContain('useradd');
+  });
+
+  describe('modo real: el krakenos.env queda con origen y WebAuthn', () => {
+    const envPath = () => join(raiz, 'root', 'etc', 'krakenos', 'krakenos.env');
+    const lineas = (clave: string) =>
+      readFileSync(envPath(), 'utf8')
+        .split('\n')
+        .filter((l) => l.startsWith(`${clave}=`));
+
+    /**
+     * PATH con un `tailscale` (status y cert) y, para correr sin ser root de verdad, un `id -u` que
+     * dice 0 y un `install`/`chgrp` que ignoran propietario y grupo.
+     */
+    function stubs(): string {
+      const bin = join(raiz, 'stubs');
+      mkdirSync(bin);
+      const f = (n: string, c: string) =>
+        writeFileSync(join(bin, n), `#!/bin/sh\n${c}\n`, { mode: 0o755 });
+      f(
+        'tailscale',
+        'if [ "$1" = cert ]; then\n  while [ $# -gt 0 ]; do\n    case "$1" in --cert-file|--key-file) : > "$2"; shift;; esac\n    shift\n  done\n  exit 0\nfi\necho \'{"Self":{"DNSName": "casa.tailnet-abc.ts.net."}}\'',
+      );
+      f('id', '[ "$1" = -u ] && { echo 0; exit 0; }\nexec /usr/bin/id "$@"');
+      f('chgrp', 'exit 0');
+      f(
+        'install',
+        'a=""\nwhile [ $# -gt 0 ]; do\n  case "$1" in -o|-g) shift;; *) a="$a \'$1\'";; esac\n  shift\ndone\neval exec /usr/bin/install $a',
+      );
+      return `${bin}:/usr/bin:/bin`;
+    }
+
+    it('tls tailscale, aunque el .env no traiga las claves de plantilla ni un origen con puerto', () => {
+      // Un krakenos.env editado: sin los comentarios de WebAuthn y con el origen viejo, sin puerto.
+      writeFileSync(envPath(), 'PORT=3001\nWEB_ORIGIN=https://x.ts.net\n');
+      const path = stubs();
+      const r = correr(['tls', 'tailscale'], { KRAKENOS_ASSUME_SYSTEMD: 'no', PATH: path });
+      expect(r.status, r.stderr).toBe(0);
+      const origen = 'https://casa.tailnet-abc.ts.net:3001';
+      expect(lineas('WEB_ORIGIN')).toEqual([`WEB_ORIGIN=${origen}`]);
+      expect(lineas('WEBAUTHN_RP_ID')).toEqual(['WEBAUTHN_RP_ID=casa.tailnet-abc.ts.net']);
+      expect(lineas('WEBAUTHN_ORIGIN')).toEqual([`WEBAUTHN_ORIGIN=${origen}`]);
+      // Reejecutar no duplica nada.
+      const otra = correr(['tls', 'tailscale'], { KRAKENOS_ASSUME_SYSTEMD: 'no', PATH: path });
+      expect(otra.status, otra.stderr).toBe(0);
+      expect(lineas('WEB_ORIGIN')).toHaveLength(1);
+      expect(lineas('WEBAUTHN_ORIGIN')).toHaveLength(1);
+    });
+
+    it('tls local fija WebAuthn aunque el .env no traiga la plantilla', () => {
+      // En seco (la CA real exige root y node de verdad): se comprueba lo que escribiría.
+      writeFileSync(envPath(), 'PORT=3001\n');
+      const r = correr(['--dry-run', 'tls', 'local']);
+      expect(r.status, r.stderr).toBe(0);
+      expect(r.stdout).toMatch(/WEBAUTHN_RP_ID=[a-z0-9-]+\.local en /);
+      expect(r.stdout).toMatch(/WEBAUTHN_ORIGIN=https:\/\/[a-z0-9-]+\.local:3001 en /);
+    });
   });
 
   it('tls dice cómo arrancar el servicio cuando no está habilitado', () => {
@@ -162,6 +220,64 @@ describe.skipIf(WIN)('krakenos-setup', () => {
     const r = correr(['--dry-run', 'auto', 'tls']);
     expect(r.status).toBe(2);
     expect(r.stdout).not.toContain('--tls auto');
+  });
+
+  describe('origin', () => {
+    const env = () => join(raiz, 'root', 'etc', 'krakenos', 'krakenos.env');
+    const archivo = () => join(raiz, 'root', 'etc', 'krakenos', 'origin');
+
+    it('escribe el origen https del env, una línea y 0644', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001\n');
+      const r = correr(['origin']);
+      expect(r.status, r.stderr).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+      expect(statSync(archivo()).mode & 0o777).toBe(0o644);
+    });
+
+    it('con el WEB_ORIGIN http de la plantilla usa localhost y el PORT del env', () => {
+      writeFileSync(env(), 'PORT=3443\nWEB_ORIGIN=http://localhost:5173\n');
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3443\n');
+    });
+
+    it('sin env usa http://localhost:3001', () => {
+      rmSync(env());
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3001\n');
+    });
+
+    it.each(['https://a b', 'https://a.local;rm', 'https://a.local"x', 'https://a.local/x y'])(
+      'un WEB_ORIGIN con basura (%s) no se escribe y falla con aviso',
+      (malo) => {
+        writeFileSync(env(), `WEB_ORIGIN=${malo}\n`);
+        const r = correr(['origin']);
+        expect(r.status).not.toBe(0);
+        expect(r.stderr).toContain('no es válido');
+        expect(existsSync(archivo())).toBe(false);
+      },
+    );
+
+    it('un WEB_ORIGIN inválido deja intacto el origen anterior', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001\n');
+      expect(correr(['origin']).status).toBe(0);
+      writeFileSync(env(), 'WEB_ORIGIN=https://a b\n');
+      expect(correr(['origin']).status).not.toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+    });
+
+    it('un WEB_ORIGIN con barra final se escribe sin ella', () => {
+      writeFileSync(env(), 'WEB_ORIGIN=https://casa.local:3001/\n');
+      expect(correr(['origin']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('https://casa.local:3001\n');
+    });
+
+    it('tls none deja el archivo escrito; --dry-run no escribe', () => {
+      const seco = correr(['--dry-run', 'origin']);
+      expect(seco.status, seco.stderr).toBe(0);
+      expect(existsSync(archivo())).toBe(false);
+      expect(correr(['tls', 'none']).status).toBe(0);
+      expect(readFileSync(archivo(), 'utf8')).toBe('http://localhost:3001\n');
+    });
   });
 
   it('setup-url imprime la URL con el token', () => {

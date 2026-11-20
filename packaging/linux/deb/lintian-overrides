@@ -33,6 +33,9 @@ krakenos: no-changelog *
 # `krakenos-setup` es una herramienta de root del propio paquete; su uso está en `--help` y en la guía.
 krakenos: no-manual-page [usr/bin/krakenos-setup]
 
+# `krakenos-open` es el lanzador de la entrada de menú; no tiene opciones para el usuario final.
+krakenos: no-manual-page [usr/bin/krakenos-open]
+
 # Biblioteca de shell que `krakenos-setup` carga con `source`; no se ejecuta sola.
 krakenos: script-not-executable [usr/lib/krakenos/libexec/lib/krakenos-system.sh]
 
