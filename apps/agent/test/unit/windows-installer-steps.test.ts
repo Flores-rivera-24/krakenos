@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { installService, pickPort, prepareDataDir, runInstall, stopService, virtualAccountSid, waitHealthy, withXmlPort } from '../../../../packaging/windows/installer/steps.mjs';
+import { grantServiceAccess, installService, pickPort, prepareDataDir, runInstall, stopService, virtualAccountSid, waitHealthy, withXmlPort } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { msg } from '../../../../packaging/windows/installer/mensajes.mjs';
@@ -26,14 +26,17 @@ function fakeRun(
 ) {
   const ace = (n: number) =>
     Array.from({ length: n }, (_, i) => `  CUENTA${i}:(OI)(CI)(F)`).join('\n');
+  const conServicio = new Set<string>();
   return async (cmd: string, args: string[]) => {
     const linea = [cmd, ...args].join(' ');
     events.push(linea);
+    if (cmd === 'icacls' && args[1] === '/grant:r' && linea.includes('*S-1-5-80'))
+      conServicio.add(args[0] as string);
     const clave = Object.keys(codes).find((k) => linea.includes(k));
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
-    // Lectura de vuelta de la ACL (`icacls <dir>` a secas): tantas entradas como un despliegue bueno.
+    // Lectura de vuelta de la ACL (`icacls <dir>` a secas): SYSTEM y Administradores, y el servicio si ya se le dio.
     const lectura =
-      cmd === 'icacls' && args.length === 1 ? ace(/ca$/.test(args[0] as string) ? 2 : 3) : '';
+      cmd === 'icacls' && args.length === 1 ? ace(conServicio.has(args[0] as string) ? 3 : 2) : '';
     return {
       code: clave ? (codes[clave] as number) : 0,
       stdout: salida ? (stdouts[salida] as string) : lectura,
@@ -79,12 +82,12 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
 describe('prepareDataDir', () => {
   it('pone la ACL en la raíz (sin herencia, SIDs, sin /T) ANTES de crear keys\\', async () => {
     const ev: Ev[] = [];
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
+    await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const i = (s: string) => ev.findIndex((l) => l.includes(s));
     expect(ev[i('/inheritance:r')]).toBe(`icacls ${DATOS} /inheritance:r`);
     expect(i('/inheritance:r')).toBeLessThan(i('/grant:r'));
     expect(ev[i('/grant:r')]).toBe(
-      `icacls ${DATOS} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F *${SID}:(OI)(CI)M`,
+      `icacls ${DATOS} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F`,
     );
     expect(i('/grant:r')).toBeLessThan(ev.indexOf(`mkdir -p ${join(DATOS, 'keys')}`));
     expect(ev.filter((l) => l.startsWith('icacls')).every((l) => !/\/T\b/.test(l))).toBe(true);
@@ -93,7 +96,7 @@ describe('prepareDataDir', () => {
 
   it('ca\\ queda solo para SYSTEM y Administradores', async () => {
     const ev: Ev[] = [];
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
+    await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const ca = join(DATOS, 'ca');
     expect(ev).toContain(`icacls ${ca} /inheritance:r`);
     const grant = ev.find((l) => l.startsWith(`icacls ${ca} /grant:r`)) as string;
@@ -101,18 +104,27 @@ describe('prepareDataDir', () => {
     expect(grant).not.toContain(SID);
   });
 
-  it('tls\\ da al servicio solo lectura y ejecución', async () => {
+  it('la cuenta del servicio NO se concede en prepareDataDir (su SID aún no resuelve)', async () => {
     const ev: Ev[] = [];
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
+    await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
+    expect(ev.join('\n')).not.toContain('S-1-5-80');
+  });
+
+  it('grantServiceAccess da Modificar en los datos y solo lectura en tls\\, verificando', async () => {
+    const ev: Ev[] = [];
+    await grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev) });
     const tls = join(DATOS, 'tls');
-    expect(ev.find((l) => l.startsWith(`icacls ${tls} /grant:r`))).toBe(
-      `icacls ${tls} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F *${SID}:(OI)(CI)RX`,
-    );
+    expect(ev).toEqual([
+      `icacls ${DATOS} /grant:r *${SID}:(OI)(CI)M`,
+      `icacls ${DATOS}`,
+      `icacls ${tls} /grant:r *${SID}:(OI)(CI)RX`,
+      `icacls ${tls}`,
+    ]);
   });
 
   it('ACL restrictiva y verificada ANTES de la marca y de escribir nada dentro', async () => {
     const ev: Ev[] = [];
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
+    await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const lectura = ev.indexOf(`icacls ${DATOS}`);
     const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
     expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
@@ -135,9 +147,7 @@ describe('prepareDataDir', () => {
         [`icacls ${DATOS}`]: '  A:(OI)(CI)(F)\n  B:(OI)(CI)(F)\n  C:(OI)(CI)(M)\n  D:(OI)(CI)(RX)',
       },
     );
-    await expect(
-      prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs: fakeFs(ev) }),
-    ).rejects.toThrow(/ACL/);
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs: fakeFs(ev) })).rejects.toThrow(/ACL/);
     expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
     expect(ev.some((l) => l.startsWith('mkdir -p'))).toBe(false);
   });
@@ -146,9 +156,7 @@ describe('prepareDataDir', () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev);
     fs.readdir = async () => ['plantado'];
-    await expect(
-      prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs }),
-    ).rejects.toThrow(DATOS);
+    await expect(prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs })).rejects.toThrow(DATOS);
     expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
   });
 
@@ -159,9 +167,7 @@ describe('prepareDataDir', () => {
       [join(DATOS, 'logs')]: { kind: 'link' },
     });
     const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
-    await expect(prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs })).rejects.toThrow(
-      /enlace/,
-    );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(/enlace/);
     expect(ev.some((l) => l.includes('/grant:r'))).toBe(true);
     expect(ev.some((l) => l.startsWith('reg.exe add') || l.startsWith('mkdir'))).toBe(false);
   });
@@ -174,17 +180,15 @@ describe('prepareDataDir', () => {
       [join(DATOS, 'sub', 'prisma')]: { kind: 'link' },
     });
     const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
-    await expect(prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs })).rejects.toThrow(
-      /enlace/,
-    );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(/enlace/);
   });
 
   it('lanza si la carpeta es un enlace o junction, sin tocar nada', async () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev, { [DATOS]: { kind: 'link' } });
-    await expect(
-      prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs }),
-    ).rejects.toThrow(/enlace/);
+    await expect(prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs })).rejects.toThrow(
+      /enlace/,
+    );
     expect(ev).toEqual([]);
   });
 
@@ -193,9 +197,7 @@ describe('prepareDataDir', () => {
     const fs = fakeFs(ev, { [DATOS]: { kind: 'dir', entries: ['robado.txt'] } });
     // reg query devuelve 1: sin marca en HKLM.
     const run = fakeRun(ev, { 'reg.exe query': 1 });
-    await expect(prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs })).rejects.toThrow(
-      DATOS,
-    );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(DATOS);
     expect(ev.some((l) => l.startsWith('icacls'))).toBe(false);
   });
 
@@ -203,7 +205,7 @@ describe('prepareDataDir', () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev, { [DATOS]: { kind: 'dir', entries: [] } });
     const run = fakeRun(ev, { 'reg.exe query': 1 });
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs });
+    await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(ev.indexOf(`rmdir ${DATOS}`)).toBeLessThan(ev.indexOf(`mkdir ${DATOS}`));
     expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
       ev.findIndex((l) => l.includes('/inheritance:r')),
@@ -218,7 +220,7 @@ describe('prepareDataDir', () => {
       [join(DATOS, 'keys')]: { kind: 'dir', entries: [] },
     });
     const run = fakeRun(ev, {}, { 'reg.exe query': `    DataDir    REG_SZ    ${DATOS}\r\n` });
-    await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs });
+    await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(ev.some((l) => l.startsWith('rmdir'))).toBe(false);
     expect(ev).toContain(`icacls ${DATOS} /inheritance:r`);
   });
@@ -228,7 +230,6 @@ describe('prepareDataDir', () => {
     await expect(
       prepareDataDir({
         dataDir: DATOS,
-        serviceSid: SID,
         run: fakeRun(ev, { '/grant:r': 5 }),
         fs: fakeFs(ev),
       }),
@@ -285,6 +286,17 @@ describe('installService', () => {
       'sc.exe sidtype KrakenOS unrestricted',
       `${exe} start`,
     ]);
+  });
+
+  it('concede acceso a los datos tras configurar la cuenta y ANTES de arrancar', async () => {
+    const ev: Ev[] = [];
+    const run = fakeRun(ev, { 'sc.exe query': 1060 });
+    await installService({
+      serviceExe: exe,
+      run,
+      antesDeArrancar: async () => void ev.push('grant'),
+    });
+    expect(ev.slice(-3)).toEqual(['sc.exe sidtype KrakenOS unrestricted', 'grant', `${exe} start`]);
   });
 
   it('si el servicio ya existe (actualización) no lo reinstala pero lo arranca', async () => {
@@ -412,7 +424,8 @@ describe('runInstall', () => {
     expect(i('/inheritance:r')).toBeLessThan(i('ensureEnv'));
     expect(i('ensureEnv')).toBeLessThan(i('ensureKeys'));
     expect(i('ensureKeys')).toBeLessThan(i(' install'));
-    expect(i(' install')).toBeLessThan(i(' start'));
+    expect(i(' install')).toBeLessThan(i('/grant:r *S-1-5-80'));
+    expect(i('/grant:r *S-1-5-80')).toBeLessThan(i(' start'));
     expect(r.port).toBe(3001);
   });
 

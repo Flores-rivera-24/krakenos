@@ -45,7 +45,7 @@ async function hayMarca(run, dataDir) {
  * previo (marca en HKLM, solo escribible por admin) se rechaza si tiene contenido, y si está vacía se
  * rehace, porque quien la creó sería su dueño y podría devolverse permisos con WRITE_DAC.
  */
-export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
+export async function prepareDataDir({ dataDir, run, fs }) {
   let existe = true;
   try {
     const st = await fs.lstat(dataDir);
@@ -69,8 +69,9 @@ export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
 
   // Primero la ACL restrictiva y su comprobación; nada se escribe ni se marca antes. `%ProgramData%`
   // deja a cualquier usuario crear dentro de una carpeta recién hecha hasta que se le quita la herencia.
-  const servicio = `*${serviceSid}`;
-  await aplicarAcl(run, dataDir, [`${servicio}:(OI)(CI)M`], 3);
+  // El servicio aún no existe y icacls no puede mapear su SID: su permiso va en `grantServiceAccess`,
+  // tras instalarlo. En una actualización ya lo trae de antes (de ahí el 2 o 3 entradas).
+  await aplicarAcl(run, dataDir, [2, 3]);
 
   // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir e icacls, o en una
   // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
@@ -97,27 +98,37 @@ export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
   // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
   await fs.mkdir(join(dataDir, 'ca'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'ca'), [], 2);
+  await aplicarAcl(run, join(dataDir, 'ca'), [2]);
   await fs.mkdir(join(dataDir, 'tls'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'tls'), [`${servicio}:(OI)(CI)RX`], 3);
+  await aplicarAcl(run, join(dataDir, 'tls'), [2, 3]);
 }
 
-/** `inheritance:r` + `grant:r` y lectura de vuelta: tienen que quedar EXACTAMENTE `entradas` ACE. */
-async function aplicarAcl(run, dir, extra, entradas) {
+/** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
+export async function grantServiceAccess({ dataDir, serviceSid, run }) {
+  const servicio = `*${serviceSid}`;
+  for (const [dir, permiso] of [
+    [dataDir, 'M'],
+    [join(dataDir, 'tls'), 'RX'],
+  ]) {
+    await ok(run, 'icacls', [dir, '/grant:r', `${servicio}:(OI)(CI)${permiso}`]);
+    await verificarAcl(run, dir, [3]);
+  }
+}
+
+/** `inheritance:r` + `grant:r` de SYSTEM y Administradores, y lectura de vuelta. */
+async function aplicarAcl(run, dir, permitidas) {
   await ok(run, 'icacls', [dir, '/inheritance:r']);
-  await ok(run, 'icacls', [
-    dir,
-    '/grant:r',
-    `${SYSTEM}:(OI)(CI)F`,
-    `${ADMINS}:(OI)(CI)F`,
-    ...extra,
-  ]);
-  // Se cuenta, no se busca «Users» por nombre: los nombres de las cuentas van traducidos.
+  await ok(run, 'icacls', [dir, '/grant:r', `${SYSTEM}:(OI)(CI)F`, `${ADMINS}:(OI)(CI)F`]);
+  await verificarAcl(run, dir, permitidas);
+}
+
+/** Cuenta las ACE, no busca «Users» por nombre: los nombres de las cuentas van traducidos. */
+async function verificarAcl(run, dir, permitidas) {
   const { stdout } = await ok(run, 'icacls', [dir]);
   const ace = (stdout.match(/:\((?:[A-Z]+\))+/g) ?? []).length;
-  if (ace !== entradas)
+  if (!permitidas.includes(ace))
     throw new Error(
-      `la ACL de ${dir} no quedó como se esperaba (${ace} entradas en vez de ${entradas})`,
+      `la ACL de ${dir} no quedó como se esperaba (${ace} entradas en vez de ${permitidas.join(' o ')})`,
     );
 }
 
@@ -147,12 +158,13 @@ export function withXmlPort(xml, port) {
 }
 
 /** `install` → cuenta virtual → `sidtype` → `start`. Si el servicio ya existe (actualizar) no lo reinstala. */
-export async function installService({ serviceExe, run }) {
+export async function installService({ serviceExe, run, antesDeArrancar }) {
   const q = await run('sc.exe', ['query', SERVICE]);
   if (q.code === NO_EXISTE) await ok(run, serviceExe, ['install']);
   else if (q.code !== 0) throw new Error(`sc.exe query ${SERVICE} salió con ${q.code}`);
   await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
   await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
+  await antesDeArrancar?.();
   if (estado(q.stdout) !== 4) await ok(run, serviceExe, ['start']);
 }
 
@@ -204,7 +216,7 @@ export async function runInstall(d) {
   const xmlPath = join(installDir, 'service', 'KrakenOS-service.xml');
   const envPath = join(dataDir, '.env');
 
-  await prepareDataDir({ dataDir, serviceSid: virtualAccountSid(SERVICE), run, fs });
+  await prepareDataDir({ dataDir, run, fs });
 
   // Al actualizar se parte del puerto que ya tenía el .env, para no cambiarlo sin motivo.
   const previo = await fs.readFile(envPath, 'utf8').catch(() => '');
@@ -223,7 +235,12 @@ export async function runInstall(d) {
   await fs.writeFile(xmlPath, withXmlPort(await fs.readFile(xmlPath, 'utf8'), port));
 
   await d.ensureKeys(dataDir);
-  await installService({ serviceExe, run });
+  await installService({
+    serviceExe,
+    run,
+    antesDeArrancar: () =>
+      grantServiceAccess({ dataDir, serviceSid: virtualAccountSid(SERVICE), run }),
+  });
   await waitHealthy(port, d.healthTimeoutMs ?? 120000, get, { intervalMs: d.intervalMs });
   log(msg(lang, 'listo', port));
   return { port };
