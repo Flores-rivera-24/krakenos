@@ -88,8 +88,9 @@ llega en una versión próxima. Mientras tanto, el servicio corre en un equipo c
 app instalada desde Edge o Chrome (sección «Instalar la app»). El certificado de la CA local se instala
 como se explica arriba.
 
-Cuando exista el servicio en Windows, tendrá los mismos límites que cualquier equipo de uso diario: solo
-vigila con el equipo encendido y sin suspender.
+Cuando exista el servicio en Windows, no incluirá las funciones de puerta de enlace (servidor VPN,
+cortafuegos y QoS propios), que solo existen en Linux. Además, un equipo que se suspende no vigila:
+horarios, alarma y rutinas solo corren con el equipo encendido y sin suspender.
 
 ## Problemas frecuentes
 

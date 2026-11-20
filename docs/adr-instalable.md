@@ -92,8 +92,8 @@ funciona: copia de la base antes de migrar, comprobación de salud y vuelta atr�
   red `mirrored` y sin la tarea que la mantenía viva.
 - **En Windows hay funciones que no existen**, y la interfaz lo dice en vez de esconderlo.
 - **`<equipo>.local` no está garantizado en Windows:** Windows resuelve nombres `.local` pero no anuncia
-  el suyo. El agente responde por mDNS a su propio nombre (`MDNS_RESPONDER=auto|on|off`), y mientras tanto Tailscale es la
-  vía de HTTPS recomendada en Windows.
+  el suyo. El agente responde por mDNS a su propio nombre (`MDNS_RESPONDER=auto|on|off`); fuera de casa, o si
+  el nombre `.local` no resuelve, Tailscale sigue siendo la vía de HTTPS con certificado válido en Windows.
 - **Un equipo que se suspende no vigila** (ya reconocido): el instalador lo advierte.
 - **Firma de código:** sin firma, Windows SmartScreen avisa al instalar. Firmar tiene coste o requisitos
   (ver «Decisiones abiertas»).
