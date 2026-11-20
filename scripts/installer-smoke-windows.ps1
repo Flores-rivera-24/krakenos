@@ -174,6 +174,12 @@ function Phase-Service {
   & icacls (Join-Path $datos '.env') /grant '*S-1-5-32-545:R' | Out-Null
   Assert (((& icacls $datos) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users está en la raíz de datos'
   & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host '--- diagnóstico'
+    & icacls $datos | Out-Host
+    Get-ChildItem $datos -Force | ForEach-Object { Write-Host ("[{0}] {1}" -f $_.Name, $_.Attributes); & icacls $_.FullName | Out-Host }
+    & whoami /groups | Select-String 'Mandatory Label' | Out-Host
+  }
   Assert ($LASTEXITCODE -eq 0) 'repetir el paso de datos sobre una instalación existente sale con 0'
   foreach ($r in $datos, (Join-Path $datos 'tls'), (Join-Path $datos '.env')) {
     Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users') "Users ya no está en $r"
