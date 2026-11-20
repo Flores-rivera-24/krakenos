@@ -4,10 +4,12 @@
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
 import { spawn } from 'node:child_process';
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, readFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { get as httpGet } from 'node:http';
+import { get as httpsGet } from 'node:https';
 import { createServer } from 'node:net';
+import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { msg } from './mensajes.mjs';
@@ -16,9 +18,9 @@ import { runInstall, stopService, uninstallService } from './steps.mjs';
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const INSTALL_DIR = join(AQUI, '..');
 
-function run(cmd, args) {
+function run(cmd, args, opciones = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { windowsHide: true });
+    const p = spawn(cmd, args, { windowsHide: true, env: { ...process.env, ...opciones.env } });
     let stdout = '';
     p.stdout.on('data', (c) => (stdout += c));
     p.stderr.on('data', (c) => (stdout += c));
@@ -38,15 +40,20 @@ function isFree(port) {
   return probar('127.0.0.1').then((a) => (a ? probar('0.0.0.0') : false));
 }
 
-function get(url) {
-  return new Promise((resolve, reject) => {
-    const r = httpGet(url, { timeout: 3000 }, (res) => {
-      res.resume();
-      resolve(res.statusCode ?? 0);
+/** https verifica contra la CA local recién creada (el agente sirve solo https en el puerto elegido). */
+function makeGet(dataDir) {
+  return (url) =>
+    new Promise((resolve, reject) => {
+      const opciones = { timeout: 3000 };
+      if (url.startsWith('https'))
+        opciones.ca = readFileSync(join(dataDir, 'tls', 'krakenos-ca.pem'));
+      const r = (url.startsWith('https') ? httpsGet : httpGet)(url, opciones, (res) => {
+        res.resume();
+        resolve(res.statusCode ?? 0);
+      });
+      r.on('timeout', () => r.destroy(new Error('timeout')));
+      r.on('error', reject);
     });
-    r.on('timeout', () => r.destroy(new Error('timeout')));
-    r.on('error', reject);
-  });
 }
 
 async function main() {
@@ -68,7 +75,8 @@ async function main() {
         run,
         fs,
         isFree,
-        get,
+        get: makeGet(dataDir),
+        hostname: hostname(),
         setKey,
         ensureEnv: (d) => ensureEnv(d, join(INSTALL_DIR, 'app', 'agent', '.env.example')),
         ensureKeys: (d) => ensureKeys(d, join(INSTALL_DIR, 'app', 'agent', 'dist', 'keys.js')),

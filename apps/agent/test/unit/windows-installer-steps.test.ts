@@ -1,12 +1,18 @@
-import { readFileSync } from 'node:fs';
+import { X509Certificate } from 'node:crypto';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { grantServiceAccess, installService, pickPort, prepareDataDir, runInstall, stopService, virtualAccountSid, waitHealthy, withXmlPort } from '../../../../packaging/windows/installer/steps.mjs';
+import { grantServiceAccess, installService, localHostname, pickPort, prepareDataDir, registerRenewalTask, runInstall, setupTls, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+// prettier-ignore
+// @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
+import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { msg } from '../../../../packaging/windows/installer/mensajes.mjs';
@@ -18,6 +24,8 @@ const SID = 'S-1-5-80-1-2-3-4-5';
 const ADMINS = '*S-1-5-32-544';
 
 type Ev = string;
+/** Entorno con el que se lanzó cada comando que lo pidió (tercer argumento de `run`). */
+const ENVS: Record<string, string>[] = [];
 function fakeRun(
   events: Ev[],
   codes: Record<string, number> = {},
@@ -30,9 +38,10 @@ function fakeRun(
   const rehechas = new Set<string>();
   const conDueno = new Set<string>();
   const conServicio = new Map<string, string>();
-  return async (cmd: string, args: string[]) => {
+  return async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
     const linea = [cmd, ...args].join(' ');
     events.push(linea);
+    if (o?.env) ENVS.push(o.env);
     const sidServicio = /\*(S-1-5-80[-\d]+):/.exec(linea)?.[1];
     if (cmd === 'icacls' && args[1] === '/grant:r' && sidServicio)
       conServicio.set(args[0] as string, sidServicio);
@@ -84,7 +93,11 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
     mkdir: async (p: string, o?: { recursive?: boolean }) => {
       events.push(`mkdir${o?.recursive ? ' -p' : ''} ${p}`);
       if (!o?.recursive && nodos[p]) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
-      nodos[p] = { kind: 'dir', entries: [] };
+      if (!nodos[p]) nodos[p] = { kind: 'dir', entries: [] };
+    },
+    rm: async (p: string) => {
+      events.push(`rm ${p}`);
+      delete nodos[p];
     },
     rmdir: async (p: string) => {
       events.push(`rmdir ${p}`);
@@ -95,8 +108,8 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
       if (n?.kind !== 'file') throw enoent();
       return n.text as string;
     },
-    writeFile: async (p: string, t: string) => {
-      events.push(`write ${p}`);
+    writeFile: async (p: string, t: string, o?: { flag?: string }) => {
+      events.push(`write${o?.flag ? ` (${o.flag})` : ''} ${p}`);
       nodos[p] = { kind: 'file', text: t };
     },
   };
@@ -139,8 +152,8 @@ describe('prepareDataDir', () => {
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(cambioAcl(ev, DATOS)).toBe(-1);
     expect(ev.some((l) => l.startsWith(`icacls ${DATOS} `))).toBe(false);
-    // Los hijos sí se reponen a lo heredado, pero eso es debajo de una raíz ya restringida.
-    expect(ev).toContain(`icacls ${join(DATOS, '*')} /reset /T /L`);
+    // Los hijos sí se reponen a lo heredado (uno a uno), pero eso es debajo de una raíz ya restringida.
+    expect(ev).toContain(`icacls ${join(DATOS, '.env')} /reset /T /L`);
     expect(ev.some((l) => l.includes('/setowner') && l.includes('/T'))).toBe(false);
   });
 
@@ -159,7 +172,7 @@ describe('prepareDataDir', () => {
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(cambioAcl(ev, DATOS)).toBeGreaterThan(-1);
     expect(ev).toContain(`icacls ${DATOS} /setowner ${ADMINS}`);
-    expect(ev).toContain(`icacls ${join(DATOS, '*')} /setowner ${ADMINS} /T /L`);
+    expect(ev).toContain(`icacls ${join(DATOS, '.env')} /setowner ${ADMINS} /T /L`);
   });
 
   it('un dueño ajeno que no se deja corregir aborta sin marca', async () => {
@@ -340,10 +353,35 @@ describe('prepareDataDir', () => {
     expect(ev.some((l) => l.startsWith('rmdir'))).toBe(false);
     expect(cambioAcl(ev, DATOS)).toBeGreaterThan(-1);
     // El contenido previo (ya sin enlaces) vuelve a heredar de la raíz restringida.
-    expect(ev).toContain(`icacls ${join(DATOS, '*')} /reset /T /L`);
-    expect(ev.indexOf(`icacls ${join(DATOS, '*')} /reset /T /L`)).toBeGreaterThan(
+    expect(ev).toContain(`icacls ${join(DATOS, 'keys')} /reset /T /L`);
+    expect(ev.indexOf(`icacls ${join(DATOS, 'keys')} /reset /T /L`)).toBeGreaterThan(
       cambioAcl(ev, DATOS),
     );
+  });
+
+  it('ca\\ y tls\\ no entran en el reset de los hijos: ca\\ nunca hereda de la raíz (donde el servicio modifica)', async () => {
+    const ev: Ev[] = [];
+    const ca = join(DATOS, 'ca');
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['.env', 'ca', 'tls', 'keys'] },
+      [join(DATOS, '.env')]: { kind: 'file', text: '' },
+      [ca]: { kind: 'dir', entries: ['krakenos-ca-key.pem'] },
+      [join(ca, 'krakenos-ca-key.pem')]: { kind: 'file', text: 'x' },
+      [join(DATOS, 'tls')]: { kind: 'dir', entries: ['agent-key.pem'] },
+      [join(DATOS, 'tls', 'agent-key.pem')]: { kind: 'file', text: 'x' },
+      [join(DATOS, 'keys')]: { kind: 'dir', entries: [] },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
+    await prepareDataDir({ dataDir: DATOS, run, fs });
+    // Nada de `datos\*`: ese glob incluía a ca\ y la dejaba heredando hasta que se le aplicara su ACL.
+    expect(ev.some((l) => l.includes(`${join(DATOS, '*')} `))).toBe(false);
+    expect(ev).not.toContain(`icacls ${ca} /reset /T /L`);
+    expect(ev).not.toContain(`icacls ${join(DATOS, 'tls')} /reset /T /L`);
+    expect(ev).toContain(`icacls ${join(DATOS, '.env')} /reset /T /L`);
+    expect(ev).toContain(`icacls ${join(DATOS, 'keys')} /reset /T /L`);
+    // Su contenido hereda de ca\ solo después de que ca\ tenga su ACL cerrada.
+    expect(cambioAcl(ev, ca)).toBeGreaterThan(-1);
+    expect(ev.indexOf(`icacls ${join(ca, '*')} /reset /T /L`)).toBeGreaterThan(cambioAcl(ev, ca));
   });
 
   it('un icacls que falla aborta con el comando en el mensaje', async () => {
@@ -499,6 +537,261 @@ describe('waitHealthy', () => {
   });
 });
 
+describe('waitHealthy con HTTPS', () => {
+  it('con https consulta el mismo /health/ready por https en 127.0.0.1', async () => {
+    const urls: string[] = [];
+    await expect(
+      waitHealthy(3002, 20, async (u: string) => (urls.push(u), 503), {
+        intervalMs: 5,
+        https: true,
+      }),
+    ).rejects.toThrow(/3002/);
+    expect(urls[0]).toBe('https://127.0.0.1:3002/health/ready');
+  });
+});
+
+describe('localHostname', () => {
+  it('sanea como local_hostname de Linux: primer segmento, minúsculas, solo a-z0-9-, o krakenos', () => {
+    expect(localHostname('MI-PC.lan')).toBe('mi-pc');
+    expect(localHostname('Sala_de_Estar!')).toBe('saladeestar');
+    expect(localHostname('___')).toBe('krakenos');
+    expect(localHostname('')).toBe('krakenos');
+  });
+});
+
+describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
+  const INST = join('C:', 'Program Files', 'KrakenOS');
+  const CA = join(DATOS, 'ca');
+  const TLS = join(DATOS, 'tls');
+  const CA_PEM_TLS = join(TLS, 'krakenos-ca.pem');
+  const CA_PEM_CA = join(CA, 'krakenos-ca.pem');
+  let tmp: string;
+  let pem: string;
+  beforeAll(async () => {
+    tmp = mkdtempSync(join(tmpdir(), 'kr-ca-'));
+    await ensureLocalCa({
+      certsDir: join(tmp, 'tls'),
+      keysDir: join(tmp, 'ca'),
+      hostname: 'prueba',
+      lanIps: [],
+    });
+    pem = readFileSync(join(tmp, 'tls', 'krakenos-ca.pem'), 'utf8');
+  });
+  afterAll(() => rmSync(tmp, { recursive: true, force: true }));
+
+  /** `run` que, al lanzar local-ca.js, deja la CA pública en tls\ como hace de verdad. */
+  function montar(opts: { sinCa?: boolean; falla?: boolean; aclCa?: string } = {}) {
+    ENVS.length = 0;
+    const ev: Ev[] = [];
+    const nodos: Record<string, Nodo> = { [join(DATOS, '.env')]: { kind: 'file', text: 'X=1\n' } };
+    const fs = fakeFs(ev, nodos);
+    const base = fakeRun(
+      ev,
+      opts.falla ? { 'local-ca.js': 1 } : {},
+      opts.aclCa ? { [`GetAccessControl('${CA}')`]: opts.aclCa } : {},
+      { abierta: false },
+    );
+    const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
+      const r = await base(cmd, args, o);
+      if (args.some((a) => a.endsWith('local-ca.js')) && r.code === 0 && !opts.sinCa)
+        nodos[CA_PEM_TLS] = { kind: 'file', text: pem };
+      return r;
+    };
+    const deps = {
+      installDir: INST,
+      dataDir: DATOS,
+      hostname: 'prueba',
+      port: 3002,
+      run,
+      fs,
+      setKey,
+    };
+    return { ev, nodos, deps };
+  }
+
+  it('cierra y verifica ca\\ por SID ANTES de lanzar local-ca.js (que escribe la clave allí)', async () => {
+    const { ev, deps } = montar();
+    await setupTls(deps);
+    const verif = ev.findIndex((l) => l.includes(`GetAccessControl('${CA}')`));
+    const ca = ev.findIndex((l) => l.includes('local-ca.js'));
+    expect(verif).toBeGreaterThan(-1);
+    expect(verif).toBeLessThan(ca);
+  });
+
+  it('si ca\\ no está como debe (p. ej. el servicio la modifica) aborta SIN lanzar local-ca.js', async () => {
+    const aclCa = [
+      'OWNER:S-1-5-32-544',
+      'S-1-5-18|FullControl|Allow|False',
+      'S-1-5-32-544|FullControl|Allow|False',
+      `${virtualAccountSid('KrakenOS')}|Modify|Allow|True`,
+    ].join('\n');
+    const { ev, deps } = montar({ aclCa });
+    await expect(setupTls(deps)).rejects.toThrow(/ACL de .*ca/);
+    expect(ev.some((l) => l.includes('local-ca.js'))).toBe(false);
+  });
+
+  it('local-ca.js corre con el Node empaquetado y las variables del paquete (certs en tls, claves en ca)', async () => {
+    const { ev, deps } = montar();
+    await setupTls(deps);
+    const l = ev.find((x) => x.includes('local-ca.js')) as string;
+    expect(l.startsWith(join(INST, 'node', 'node.exe'))).toBe(true);
+    expect(l).toContain(join(INST, 'app', 'agent', 'dist', 'local-ca.js'));
+    expect(ENVS[0]).toMatchObject({
+      KRAKENOS_CERTS_DIR: TLS,
+      KRAKENOS_KEYS_DIR: CA,
+      KRAKENOS_HOSTNAME: 'prueba',
+    });
+  });
+
+  it('importa la CA con certutil -addstore -f Root desde ca\\ (no desde tls\\) y guarda el thumbprint SHA-1 en HKLM', async () => {
+    const { ev, deps } = montar();
+    const r = await setupTls(deps);
+    expect(ev).toContain(`certutil -addstore -f Root ${CA_PEM_CA}`);
+    expect(ev.some((x) => x.startsWith('certutil') && x.includes(TLS))).toBe(false);
+    const esperado = new X509Certificate(pem).fingerprint.replaceAll(':', '');
+    expect(r.thumbprint).toBe(esperado);
+    expect(esperado).toMatch(/^[0-9A-F]{40}$/);
+    expect(ev).toContain(
+      `reg.exe add HKLM\\SOFTWARE\\KrakenOS /v CaThumbprint /t REG_SZ /d ${esperado} /f`,
+    );
+    // El orden: se escribe la copia de ca\ antes de importarla y el thumbprint después.
+    expect(ev.indexOf(`write ${CA_PEM_CA}`)).toBeLessThan(
+      ev.findIndex((x) => x.startsWith('certutil')),
+    );
+  });
+
+  it('fija en el .env HTTPS, rutas, WEB_ORIGIN y WebAuthn con https://<host>.local:<puerto>', async () => {
+    const { nodos, deps } = montar();
+    const r = await setupTls(deps);
+    const env = nodos[join(DATOS, '.env')]?.text as string;
+    expect(r.origin).toBe('https://prueba.local:3002');
+    expect(env).toContain('X=1');
+    expect(env).toMatch(/^HTTPS_ENABLED=true$/m);
+    expect(env).toContain(`TLS_CERT_PATH=${join(TLS, 'agent-cert.pem')}`);
+    expect(env).toContain(`TLS_KEY_PATH=${join(TLS, 'agent-key.pem')}`);
+    expect(env).toContain(`TLS_CA_CERT_PATH=${CA_PEM_TLS}`);
+    expect(env).toMatch(/^WEB_ORIGIN=https:\/\/prueba\.local:3002$/m);
+    expect(env).toMatch(/^WEBAUTHN_RP_ID=prueba\.local$/m);
+    expect(env).toMatch(/^WEBAUTHN_ORIGIN=https:\/\/prueba\.local:3002$/m);
+  });
+
+  it('el origen no lleva :443', async () => {
+    const { deps } = montar();
+    expect((await setupTls({ ...deps, port: 443 })).origin).toBe('https://prueba.local');
+  });
+
+  it('guarda la configuración de la renovación en ca\\tls.json (solo SYSTEM+Admins), sin token ni claves', async () => {
+    const { nodos, deps } = montar();
+    await setupTls(deps);
+    const cfg = nodos[join(CA, 'tls.json')]?.text as string;
+    expect(JSON.parse(cfg)).toEqual({ hostname: 'prueba', certsDir: TLS, keysDir: CA });
+    expect(cfg).not.toMatch(/token|PRIVATE/i);
+  });
+
+  it('si local-ca.js falla, la instalación falla con mensaje y no importa nada ni toca el .env', async () => {
+    const { ev, nodos, deps } = montar({ falla: true });
+    await expect(setupTls(deps)).rejects.toThrow(/local-ca/);
+    expect(ev.some((x) => x.startsWith('certutil') || x.startsWith('reg.exe add'))).toBe(false);
+    expect(nodos[join(DATOS, '.env')]?.text).toBe('X=1\n');
+  });
+
+  it('si local-ca.js no dejó la CA, falla en vez de seguir en HTTP', async () => {
+    const { deps } = montar({ sinCa: true });
+    await expect(setupTls(deps)).rejects.toThrow(/krakenos-ca\.pem/);
+  });
+
+  it('window.json lleva solo el origen y es el ÚNICO fichero legible por Users, sin herencia', async () => {
+    const ev: Ev[] = [];
+    const nodos: Record<string, Nodo> = {};
+    const f = join(DATOS, 'window.json');
+    await writeWindowJson({
+      dataDir: DATOS,
+      origin: 'https://prueba.local:3002',
+      run: fakeRun(ev),
+      fs: fakeFs(ev, nodos),
+    });
+    expect(JSON.parse(nodos[f]?.text as string)).toEqual({ origin: 'https://prueba.local:3002' });
+    // Un enlace plantado por el servicio no se sigue: se borra y se crea con wx.
+    expect(ev.indexOf(`rm ${f}`)).toBeLessThan(ev.indexOf(`write (wx) ${f}`));
+    const icacls = ev.filter((l) => l.startsWith('icacls'));
+    expect(icacls).toEqual([
+      `icacls ${f} /grant:r *S-1-5-18:(F) ${ADMINS}:(F) *S-1-5-32-545:(R) /inheritance:r`,
+    ]);
+    expect(icacls.join('')).not.toContain(`icacls ${DATOS} `);
+  });
+
+  it('la tarea de renovación corre como SYSTEM y ejecuta SOLO código de Program Files', async () => {
+    const ev: Ev[] = [];
+    await registerRenewalTask({ installDir: INST, dataDir: DATOS, run: fakeRun(ev) });
+    const l = ev.find((x) => x.startsWith('schtasks')) as string;
+    expect(l).toContain('/Create');
+    expect(l).toContain('/TN \\KrakenOS\\RenovarTLS');
+    expect(l).toContain('/SC WEEKLY');
+    expect(l).toContain('/RU SYSTEM');
+    expect(l).toContain('/F');
+    const tr = /\/TR (.*?) \/F/.exec(l)?.[1] as string;
+    const rutas = [...tr.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+    expect(rutas[0]).toBe(join(INST, 'node', 'node.exe'));
+    expect(rutas[1]).toBe(join(INST, 'installer', 'renew-tls.mjs'));
+    expect(rutas[1]?.endsWith('.mjs')).toBe(true);
+    // Lo que se ejecuta nunca sale de la carpeta de datos (la datos solo viaja como argumento).
+    expect(rutas.slice(0, 2).some((r) => r?.startsWith(DATOS))).toBe(false);
+  });
+
+  it('renew-tls lee su configuración de ca\\tls.json, nunca del .env, y lanza local-ca.js de Program Files', async () => {
+    const leidos: string[] = [];
+    const lanzados: { cmd: string; args: string[]; env: Record<string, string> }[] = [];
+    await renew({
+      dataDir: DATOS,
+      localCa: join(INST, 'app', 'agent', 'dist', 'local-ca.js'),
+      node: join(INST, 'node', 'node.exe'),
+      readFile: (p: string) => {
+        leidos.push(p);
+        return JSON.stringify({ hostname: 'prueba', certsDir: TLS, keysDir: CA });
+      },
+      run: (cmd: string, args: string[], env: Record<string, string>) => {
+        lanzados.push({ cmd, args, env });
+        return 0;
+      },
+    });
+    expect(leidos).toEqual([join(CA, 'tls.json')]);
+    expect(lanzados).toHaveLength(1);
+    expect(lanzados[0]?.args).toEqual([join(INST, 'app', 'agent', 'dist', 'local-ca.js')]);
+    expect(lanzados[0]?.env).toMatchObject({
+      KRAKENOS_CERTS_DIR: TLS,
+      KRAKENOS_KEYS_DIR: CA,
+      KRAKENOS_HOSTNAME: 'prueba',
+    });
+  });
+
+  it('renew-tls falla si la configuración está incompleta o local-ca.js sale con error', async () => {
+    const base = { dataDir: DATOS, localCa: 'l.js', node: 'n.exe', run: () => 0 };
+    await expect(renew({ ...base, readFile: () => '{"hostname":"x"}' })).rejects.toThrow(
+      /tls\.json/,
+    );
+    await expect(
+      renew({
+        ...base,
+        readFile: () => JSON.stringify({ hostname: 'x', certsDir: 'a', keysDir: 'b' }),
+        run: () => 1,
+      }),
+    ).rejects.toThrow(/local-ca/);
+  });
+});
+
+let PEM_PRUEBA = '';
+beforeAll(async () => {
+  const t = mkdtempSync(join(tmpdir(), 'kr-ca2-'));
+  await ensureLocalCa({
+    certsDir: join(t, 'tls'),
+    keysDir: join(t, 'ca'),
+    hostname: 'x',
+    lanIps: [],
+  });
+  PEM_PRUEBA = readFileSync(join(t, 'tls', 'krakenos-ca.pem'), 'utf8');
+  rmSync(t, { recursive: true, force: true });
+});
+
 describe('runInstall', () => {
   const INST = join('C:', 'Program Files', 'KrakenOS');
   const xmlPath = join(INST, 'service', 'KrakenOS-service.xml');
@@ -513,14 +806,20 @@ describe('runInstall', () => {
       nodos[join(DATOS, '.env')] = { kind: 'file', text: opts.envPrevio };
     }
     const fs = fakeFs(ev, nodos);
-    const run = fakeRun(
+    const base = fakeRun(
       ev,
       { 'sc.exe query': 1060 },
       opts.envPrevio ? { 'reg.exe query': `DataDir REG_SZ ${DATOS}` } : {},
     );
+    const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
+      if (args.some((a) => a.endsWith('local-ca.js')))
+        nodos[join(DATOS, 'tls', 'krakenos-ca.pem')] = { kind: 'file', text: PEM_PRUEBA };
+      return base(cmd, args, o);
+    };
     const deps = {
       installDir: INST,
       dataDir: DATOS,
+      hostname: 'MI-PC.lan',
       run,
       fs,
       isFree: async (p: number) => !(opts.ocupados ?? []).includes(p),
@@ -561,12 +860,12 @@ describe('runInstall', () => {
     expect(nodos[xmlPath]?.text).toContain('name="PORT" value="3002"');
   });
 
-  it('al actualizar con HOST=127.0.0.1 y su puerto libre, el .env sale byte a byte igual', async () => {
+  it('al actualizar con HOST=127.0.0.1 y su puerto libre, lo que ya había en el .env queda byte a byte igual (solo se añade el HTTPS)', async () => {
     const previo = '# mío\nDRIVER_KIND=none\nHOST=127.0.0.1\nPORT=3005\n';
     const { ev, deps, nodos } = montar({ envPrevio: previo });
     await runInstall(deps);
-    expect(nodos[join(DATOS, '.env')]?.text).toBe(previo);
-    expect(ev.some((l) => l === `write ${join(DATOS, '.env')}`)).toBe(false);
+    expect(nodos[join(DATOS, '.env')]?.text?.startsWith(previo)).toBe(true);
+    expect(ev.filter((l) => l === `write ${join(DATOS, '.env')}`)).toHaveLength(1); // solo el de TLS
   });
 
   it('al actualizar con su puerto ocupado pasa al siguiente libre, lo dice y respeta HOST', async () => {
@@ -577,7 +876,9 @@ describe('runInstall', () => {
     });
     const r = await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
     expect(r.port).toBe(3006);
-    expect(nodos[join(DATOS, '.env')]?.text).toBe('HOST=127.0.0.1\nPORT=3006\n');
+    expect(nodos[join(DATOS, '.env')]?.text).toMatch(
+      /^HOST=127\.0\.0\.1\nPORT=3006\nHTTPS_ENABLED=true\n/,
+    );
     expect(lineas.join('\n')).toContain('3006');
   });
 
@@ -586,6 +887,22 @@ describe('runInstall', () => {
     const r = await runInstall(deps);
     expect(r.port).toBe(3005);
     expect(nodos[join(DATOS, '.env')]?.text).toMatch(/^PORT=3005$/m);
+  });
+
+  it('el HTTPS queda listo ANTES de arrancar el servicio y la salud se pide por https en el puerto elegido', async () => {
+    const urls: string[] = [];
+    const { ev, nodos, deps } = montar({ ocupados: [3001] });
+    await runInstall({ ...deps, get: async (u: string) => (urls.push(u), 200) });
+    const i = (s: string) => ev.findIndex((l) => l.includes(s));
+    expect(i('local-ca.js')).toBeGreaterThan(i('ensureKeys'));
+    expect(i('certutil')).toBeLessThan(i(' start'));
+    expect(i('schtasks')).toBeLessThan(i(' start'));
+    expect(urls[0]).toBe('https://127.0.0.1:3002/health/ready');
+    // El puerto sale del .env elegido (3002), nunca un 3001 fijo; el nombre, saneado.
+    expect(nodos[join(DATOS, '.env')]?.text).toMatch(/^WEB_ORIGIN=https:\/\/mi-pc\.local:3002$/m);
+    expect(JSON.parse(nodos[join(DATOS, 'window.json')]?.text as string)).toEqual({
+      origin: 'https://mi-pc.local:3002',
+    });
   });
 
   it('un paso que falla se propaga y no sigue con el servicio', async () => {

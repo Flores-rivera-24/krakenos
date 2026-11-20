@@ -198,7 +198,9 @@ function Phase-RejectPlantedDataDir {
 # tras morir y parada limpia (la aserción de Ctrl+C que midió el spike de la Task 2).
 function Wait-Health([int]$Port, [int]$Segundos) {
   for ($i = 0; $i -lt $Segundos; $i++) {
-    try { if ((Invoke-WebRequest -UseBasicParsing "http://127.0.0.1:$Port/health/ready").StatusCode -eq 200) { return $true } } catch { }
+    # El agente sirve solo https (el instalador deja HTTPS con la CA local, ya confiada por la máquina);
+    # 127.0.0.1 está en el SAN del certificado.
+    try { if ((Invoke-WebRequest -UseBasicParsing "https://127.0.0.1:$Port/health/ready").StatusCode -eq 200) { return $true } } catch { }
     Start-Sleep -Seconds 1
   }
   return $false
@@ -226,6 +228,12 @@ function Phase-Service {
   & icacls $datos /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
   & icacls (Join-Path $datos 'tls') /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
   & icacls (Join-Path $datos '.env') /grant '*S-1-5-32-545:R' | Out-Null
+  # ca\ ya guarda la clave de la CA (primera instalación): Users y el servicio plantados en ella y en la clave.
+  $ca0 = Join-Path $datos 'ca'
+  Assert (Test-Path (Join-Path $ca0 'krakenos-ca-key.pem')) 'precondición: la primera instalación dejó la clave de la CA en ca\'
+  & icacls $ca0 /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
+  & icacls $ca0 /grant ('*{0}:(OI)(CI)M' -f ((New-Object System.Security.Principal.NTAccount('NT SERVICE\KrakenOS')).Translate([System.Security.Principal.SecurityIdentifier]).Value)) | Out-Null
+  Assert (((& icacls (Join-Path $ca0 'krakenos-ca-key.pem')) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users llega a la clave de la CA'
   Assert (((& icacls $datos) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users está en la raíz de datos'
   & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
   if ($LASTEXITCODE -ne 0) {
@@ -237,6 +245,10 @@ function Phase-Service {
   Assert ($LASTEXITCODE -eq 0) 'repetir el paso de datos sobre una instalación existente sale con 0'
   foreach ($r in $datos, (Join-Path $datos 'tls'), (Join-Path $datos '.env')) {
     Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users') "Users ya no está en $r"
+  }
+  # ca\ y la clave de la CA: ni Users ni el servicio (lo plantado se cerró antes de volver a usar la clave).
+  foreach ($r in $ca0, (Join-Path $ca0 'krakenos-ca-key.pem')) {
+    Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users|KrakenOS:') "ni Users ni el servicio llegan a $r"
   }
 
   # Puerto: 3001 estaba ocupado al instalar, así que el .env y el XML dicen 3002.
@@ -274,6 +286,9 @@ function Phase-Service {
   $tls = (& icacls (Join-Path $datos 'tls')) -join "`n"
   Write-Host $tls
   Assert ($tls -match 'NT SERVICE\\KrakenOS:\(OI\)\(CI\)\(RX\)') 'tls\ da al servicio solo lectura y ejecución'
+  Assert ($tls -notmatch 'KrakenOS:[^\n]*\((M|F|W)\)') 'tls\ no deja al servicio escribir'
+  $claveCa = (& icacls (Join-Path $datos 'ca\krakenos-ca-key.pem')) -join "`n"
+  Assert ($claveCa -notmatch 'KrakenOS:|BUILTIN\\Users') 'la clave de la CA no es legible ni por el servicio ni por Users'
   foreach ($f in '.env', 'keys\jwt-private.pem', 'setup-token') {
     $r = Join-Path $datos $f
     if (Test-Path $r) {
@@ -317,9 +332,95 @@ function Phase-Service {
   Assert (Wait-Health $port 60) 'el servicio vuelve a arrancar tras la parada'
 }
 
+# Fase 3: HTTPS con la CA local. El oráculo (a) tiene que detectar la desconfianza: sin la CA en
+# `Cert:\LocalMachine\Root` curl (schannel, almacén de la máquina) rechaza el certificado; tras reinstalar
+# (misma CA, reimportada) da 200. Las dos pruebas usan el nombre `<equipo>.local` resuelto a 127.0.0.1.
+function Invoke-CurlHealth([string]$Hostname, [int]$Port) {
+  $out = & curl.exe -sS --max-time 15 --ssl-revoke-best-effort -o NUL -w '%{http_code}' "https://${Hostname}:${Port}/health/ready" --resolve "${Hostname}:${Port}:127.0.0.1" 2>&1
+  [pscustomobject]@{ Code = $LASTEXITCODE; Out = ($out -join ' ') }
+}
+
+function Phase-Tls {
+  Write-Host "== Phase-Tls"
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  $node = Join-Path $dir 'node\node.exe'
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  $envTxt = Get-Content (Join-Path $datos '.env') -Raw
+  $port = [int][regex]::Match($envTxt, '(?m)^PORT=(\d+)\s*$').Groups[1].Value
+  $origin = [regex]::Match($envTxt, '(?m)^WEB_ORIGIN=(\S+)\s*$').Groups[1].Value
+  $hostName = ([uri]$origin).Host
+  Assert ($port -eq 3002) "el puerto sale del .env (PORT=$port), no es un 3001 fijo"
+  Assert ($origin -eq "https://${hostName}:3002") "WEB_ORIGIN es https://<equipo>.local:<puerto> (sin :443): $origin"
+  Assert ($envTxt -match '(?m)^HTTPS_ENABLED=true\s*$') 'el .env activa HTTPS'
+  Assert ($envTxt -match [regex]::Escape("WEBAUTHN_ORIGIN=$origin")) 'WEBAUTHN_ORIGIN coincide con WEB_ORIGIN'
+
+  # La CA que se importó es la de ca\ (ver el thumbprint de HKLM); se la quita del almacén para el oráculo.
+  $thumb = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
+  Assert ($thumb -match '^[0-9A-F]{40}$') "el thumbprint SHA-1 está en HKLM\Software\KrakenOS ($thumb)"
+  $caPem = Join-Path $datos 'ca\krakenos-ca.pem'
+  $real = (New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($caPem)).Thumbprint
+  Assert ($real -eq $thumb) 'el thumbprint de HKLM es el de la CA de ca\'
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumb") 'la CA está en Cert:\LocalMachine\Root'
+
+  # (a) sin la CA confiada, el oráculo detecta: falla por el certificado (no por conexión ni tiempo).
+  & certutil -delstore Root $thumb | Out-Null
+  Assert (-not (Test-Path "Cert:\LocalMachine\Root\$thumb")) 'precondición: la CA ya no está en Root'
+  $sin = Invoke-CurlHealth $hostName $port
+  Write-Host ("  sin CA: curl exit {0} {1}" -f $sin.Code, $sin.Out)
+  Assert (($sin.Code -ne 0) -and ($sin.Code -notin 7, 28) -and ($sin.Out -ne '200')) 'sin la CA confiada, https falla por el certificado'
+
+  # Reinstalar (servicio parado como hace el hook): reimporta la MISMA CA.
+  Stop-Service KrakenOS
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  Assert ($LASTEXITCODE -eq 0) 'reinstalar sale con 0'
+  $thumb2 = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
+  Assert ($thumb2 -eq $thumb) 'reinstalar con datos conservados reimporta la misma CA (mismo thumbprint)'
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumb") 'la CA vuelve a estar en Cert:\LocalMachine\Root'
+
+  # (b) con la CA confiada, el mismo comando da 200.
+  Assert (Wait-Health $port 60) 'el agente responde por https tras reinstalar'
+  $con = Invoke-CurlHealth $hostName $port
+  Write-Host ("  con CA: curl exit {0} {1}" -f $con.Code, $con.Out)
+  Assert (($con.Code -eq 0) -and ($con.Out -eq '200')) 'con la CA confiada, curl (schannel) da 200 en https://<equipo>.local:<puerto>'
+
+  # window.json: solo ese fichero legible por Users, sin herencia, sin token ni claves.
+  $wj = Join-Path $datos 'window.json'
+  $acl = (& icacls $wj) -join "`n"
+  Write-Host $acl
+  Assert ($acl -match 'BUILTIN\\Users:\(R\)') 'Users lee window.json'
+  Assert ($acl -notmatch 'KrakenOS:|Everyone') 'el servicio no puede reescribir window.json'
+  Assert ((Get-Content $wj -Raw | ConvertFrom-Json).origin -eq $origin) 'window.json trae el origen'
+  Assert ((Get-Content $wj -Raw) -notmatch 'token|PRIVATE|key') 'window.json no lleva token ni claves'
+  Assert (((& icacls $datos) -join "`n") -notmatch 'BUILTIN\\Users') 'la carpeta de datos sigue sin listarse para Users'
+
+  # (d) la tarea de renovación: SYSTEM, y su acción es un .mjs de Program Files.
+  $xml = [xml]((& schtasks /Query /TN '\KrakenOS\RenovarTLS' /XML) -join "`n")
+  $accion = $xml.Task.Actions.Exec
+  Write-Host ("  tarea: {0} {1}" -f $accion.Command, $accion.Arguments)
+  Assert ($accion.Command.Trim('"') -eq $node) 'la tarea ejecuta el node.exe de Program Files'
+  Assert ($accion.Arguments -match [regex]::Escape((Join-Path $dir 'installer\renew-tls.mjs'))) 'la tarea ejecuta renew-tls.mjs de Program Files'
+  Assert ($xml.Task.Principals.Principal.UserId -eq 'S-1-5-18') 'la tarea corre como SYSTEM'
+  # Y funciona de verdad: se lanza y termina con 0.
+  Start-ScheduledTask -TaskPath '\KrakenOS\' -TaskName 'RenovarTLS'
+  $fin = $false
+  for ($i = 0; $i -lt 60 -and -not $fin; $i++) {
+    Start-Sleep -Seconds 1
+    $info = Get-ScheduledTaskInfo -TaskPath '\KrakenOS\' -TaskName 'RenovarTLS'
+    $fin = ((Get-ScheduledTask -TaskPath '\KrakenOS\' -TaskName 'RenovarTLS').State -eq 'Ready') -and ($info.LastRunTime -gt (Get-Date).AddMinutes(-2))
+  }
+  Assert ($fin -and $info.LastTaskResult -eq 0) "la tarea de renovación corre como SYSTEM y termina con 0 (resultado $($info.LastTaskResult))"
+
+  # (e) ACL de ca\ y tls\.
+  $ca = (& icacls (Join-Path $datos 'ca')) -join "`n"
+  Assert ($ca -notmatch 'KrakenOS:|BUILTIN\\Users') 'icacls ca no lista al servicio ni a Users'
+  $tls = (& icacls (Join-Path $datos 'tls')) -join "`n"
+  Assert (($tls -match 'KrakenOS:\(OI\)\(CI\)\(RX\)') -and ($tls -notmatch 'KrakenOS:[^\n]*\(M\)')) 'icacls tls lista al servicio con (RX), no (M)'
+}
+
 Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
 Phase-Install
 Phase-RejectPlantedDataDir
 Phase-Service
+Phase-Tls
 Write-Host 'Todas las fases en verde'

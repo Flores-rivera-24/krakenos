@@ -5,7 +5,7 @@
  * en Vitest las líneas de comando exactas; en `windows-latest` se ejecutan de verdad.
  * Nunca se lee ni se escribe el token de setup: lo crea el agente y no pasa por aquí.
  */
-import { createHash } from 'node:crypto';
+import { createHash, X509Certificate } from 'node:crypto';
 import { join } from 'node:path';
 import { msg } from './mensajes.mjs';
 
@@ -24,8 +24,8 @@ export function virtualAccountSid(nombre) {
 /** Código de estado de `sc query` (1 STOPPED, 4 RUNNING): el texto va traducido, el número no. */
 const estado = (stdout) => Number(/:\s*([1-7])\s+\S+/.exec(stdout)?.[1] ?? 0);
 
-async function ok(run, cmd, args) {
-  const r = await run(cmd, args);
+async function ok(run, cmd, args, opciones) {
+  const r = await run(cmd, args, opciones);
   if (r.code !== 0) {
     const cola = r.stdout.trim().slice(-300);
     throw new Error(`${cmd} ${args.join(' ')} salió con ${r.code}${cola ? `: ${cola}` : ''}`);
@@ -78,6 +78,7 @@ export async function prepareDataDir({ dataDir, run, fs }) {
 
   // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir y la ACL, o en una
   // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
+  let hijos = [];
   if (!existe) {
     if ((await fs.readdir(dataDir)).length > 0)
       throw new Error(
@@ -85,11 +86,14 @@ export async function prepareDataDir({ dataDir, run, fs }) {
       );
   } else {
     await sinEnlaces(fs, dataDir);
-    // Lo que ya hay dentro (sin enlaces: comprobado) vuelve a heredar de la raíz ya restringida; si la
-    // raíz hubo que rehacerla (otro la tocó o era ajena), también se le quita el dueño a lo de dentro.
-    if ((await fs.readdir(dataDir)).length > 0) {
-      await ok(run, 'icacls', [join(dataDir, '*'), '/reset', '/T', '/L']);
-      if (rehecha) await ok(run, 'icacls', [join(dataDir, '*'), '/setowner', ADMINS, '/T', '/L']);
+    // Lo que ya hay dentro (sin enlaces: comprobado) vuelve a heredar de la raíz ya restringida, UNO A
+    // UNO y sin `ca\` ni `tls\`: con un `datos\*` esas dos heredarían de la raíz (donde el servicio
+    // modifica) hasta que se les aplicara su propia ACL. Si la raíz hubo que rehacerla (otro la tocó o
+    // era ajena), también se le quita el dueño a lo de dentro.
+    hijos = await fs.readdir(dataDir);
+    for (const h of hijos.filter((n) => n !== 'ca' && n !== 'tls')) {
+      await ok(run, 'icacls', [join(dataDir, h), '/reset', '/T', '/L']);
+      if (rehecha) await ok(run, 'icacls', [join(dataDir, h), '/setowner', ADMINS, '/T', '/L']);
     }
   }
 
@@ -107,11 +111,21 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   ]);
 
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
-  // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
-  await fs.mkdir(join(dataDir, 'ca'), { recursive: true });
-  await asegurarAcl(run, join(dataDir, 'ca'), BASE);
-  await fs.mkdir(join(dataDir, 'tls'), { recursive: true });
-  await asegurarAcl(run, join(dataDir, 'tls'), BASE, { [sidServicio]: /ReadAndExecute/ });
+  // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe. Su ACL se fija de una vez
+  // (protegida) y SOLO después lo que tuvieran dentro hereda de ellas.
+  for (const [sub, opcionales] of [
+    ['ca', {}],
+    ['tls', { [sidServicio]: /ReadAndExecute/ }],
+  ]) {
+    const dir = join(dataDir, sub);
+    const tenia = hijos.includes(sub) && (await fs.readdir(dir)).length > 0;
+    await fs.mkdir(dir, { recursive: true });
+    const rehechaSub = await asegurarAcl(run, dir, BASE, opcionales);
+    if (tenia) {
+      await ok(run, 'icacls', [join(dir, '*'), '/reset', '/T', '/L']);
+      if (rehechaSub) await ok(run, 'icacls', [join(dir, '*'), '/setowner', ADMINS, '/T', '/L']);
+    }
+  }
 }
 
 /** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
@@ -262,8 +276,8 @@ export async function uninstallService({ serviceExe, run, sleep, timeoutMs }) {
 }
 
 /** Espera un 200 de `/health/ready`; un fallo de conexión cuenta como «todavía no». */
-export async function waitHealthy(port, timeoutMs, get, { intervalMs = 1000 } = {}) {
-  const url = `http://127.0.0.1:${port}/health/ready`;
+export async function waitHealthy(port, timeoutMs, get, { intervalMs = 1000, https = false } = {}) {
+  const url = `${https ? 'https' : 'http'}://127.0.0.1:${port}/health/ready`;
   const limite = Date.now() + timeoutMs;
   for (;;) {
     try {
@@ -277,6 +291,123 @@ export async function waitHealthy(port, timeoutMs, get, { intervalMs = 1000 } = 
       );
     await dormir(intervalMs);
   }
+}
+
+/** Nombre corto del equipo, saneado como `local_hostname` de Linux y `crypto/local-ca.ts`. */
+export function localHostname(raw) {
+  const h = String(raw ?? '')
+    .split('.')[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '');
+  return h || 'krakenos';
+}
+
+/** `https://<host>[:<puerto>]`; el 443 es el de https y no se escribe (como `https_origin` de Linux). */
+const httpsOrigin = (host, port) => (port === 443 ? `https://${host}` : `https://${host}:${port}`);
+
+/**
+ * HTTPS con la CA local, como `setup_tls_local` de Linux. Una CA que ya existe en `ca\` NO se recrea
+ * (`local-ca.js` la conserva): reinstalar con datos conservados reimporta la MISMA y los celulares que
+ * ya la confían siguen confiando. Si falla, la instalación falla: sin HTTPS no hay PWA, push ni passkeys.
+ * Antes de que `local-ca.js` escriba la clave de la CA, `ca\` se verifica por SID exacto (solo SYSTEM y
+ * Administradores): jamás una clave en una carpeta que el servicio pueda modificar.
+ */
+export async function setupTls({ installDir, dataDir, hostname, port, run, fs, setKey }) {
+  const ca = join(dataDir, 'ca');
+  const tls = join(dataDir, 'tls');
+  const envPath = join(dataDir, '.env');
+  await verificarAcl(run, ca, BASE);
+  await verificarAcl(run, tls, BASE, { [virtualAccountSid(SERVICE)]: /ReadAndExecute/ });
+
+  await ok(
+    run,
+    join(installDir, 'node', 'node.exe'),
+    [join(installDir, 'app', 'agent', 'dist', 'local-ca.js')],
+    {
+      env: { KRAKENOS_HOSTNAME: hostname, KRAKENOS_CERTS_DIR: tls, KRAKENOS_KEYS_DIR: ca },
+    },
+  );
+
+  // `local-ca.js` deja el certificado público en tls\; se importa una copia de ca\ (la carpeta más cerrada).
+  const caPem = join(tls, 'krakenos-ca.pem');
+  const pem = await fs.readFile(caPem, 'utf8').catch(() => {
+    throw new Error(`local-ca.js no dejó ${caPem}`);
+  });
+  const caCopia = join(ca, 'krakenos-ca.pem');
+  await fs.writeFile(caCopia, pem);
+  const thumbprint = new X509Certificate(pem).fingerprint.replaceAll(':', '');
+  await ok(run, 'certutil', ['-addstore', '-f', 'Root', caCopia]);
+  // En HKLM y no en un fichero de datos: el desinstalador, elevado, no debe fiarse de algo que escribe el servicio.
+  await ok(run, 'reg.exe', [
+    'add',
+    MARCA_HKLM,
+    '/v',
+    'CaThumbprint',
+    '/t',
+    'REG_SZ',
+    '/d',
+    thumbprint,
+    '/f',
+  ]);
+
+  // La renovación (SYSTEM) lee esto, no el `.env`.
+  await fs.writeFile(
+    join(ca, 'tls.json'),
+    `${JSON.stringify({ hostname, certsDir: tls, keysDir: ca })}\n`,
+  );
+
+  const origin = httpsOrigin(`${hostname}.local`, port);
+  let env = await fs.readFile(envPath, 'utf8').catch(() => '');
+  for (const [k, v] of [
+    ['HTTPS_ENABLED', 'true'],
+    ['TLS_CERT_PATH', join(tls, 'agent-cert.pem')],
+    ['TLS_KEY_PATH', join(tls, 'agent-key.pem')],
+    ['TLS_CA_CERT_PATH', caPem],
+    ['WEB_ORIGIN', origin],
+    ['WEBAUTHN_RP_ID', `${hostname}.local`],
+    ['WEBAUTHN_ORIGIN', origin],
+  ])
+    env = setKey(env, k, v);
+  await fs.writeFile(envPath, env);
+  return { origin, thumbprint };
+}
+
+/**
+ * `window.json` (`{ origin }`): lo único de los datos que lee `Users` (la ventana, sin elevar). Sin
+ * herencia, para que el servicio tampoco pueda reescribirlo y redirigir la ventana. Si el servicio plantó
+ * un enlace con ese nombre, se borra y se crea con `wx`: el instalador elevado no escribe a través de él.
+ */
+export async function writeWindowJson({ dataDir, origin, run, fs }) {
+  const f = join(dataDir, 'window.json');
+  await fs.rm(f, { force: true });
+  await fs.writeFile(f, `${JSON.stringify({ origin })}\n`, { flag: 'wx' });
+  await ok(run, 'icacls', [
+    f,
+    '/grant:r',
+    '*S-1-5-18:(F)',
+    `${ADMINS}:(F)`,
+    '*S-1-5-32-545:(R)',
+    '/inheritance:r',
+  ]);
+}
+
+/** Tarea semanal como SYSTEM: el `.mjs` sale de `Program Files`; la carpeta de datos solo viaja de argumento. */
+export async function registerRenewalTask({ installDir, dataDir, run }) {
+  const tr = `"${join(installDir, 'node', 'node.exe')}" "${join(installDir, 'installer', 'renew-tls.mjs')}" "${dataDir}"`;
+  await ok(run, 'schtasks', [
+    '/Create',
+    '/TN',
+    '\\KrakenOS\\RenovarTLS',
+    '/SC',
+    'WEEKLY',
+    '/ST',
+    '03:30',
+    '/RU',
+    'SYSTEM',
+    '/TR',
+    tr,
+    '/F',
+  ]);
 }
 
 /** Instalación completa. Cualquier fallo se propaga: el CLI sale con código distinto de 0. */
@@ -307,13 +438,29 @@ export async function runInstall(d) {
   await fs.writeFile(xmlPath, withXmlPort(await fs.readFile(xmlPath, 'utf8'), port));
 
   await d.ensureKeys(dataDir);
+  // HTTPS antes de arrancar: el agente lee el certificado al iniciar. El puerto es el ya elegido.
+  const { origin } = await setupTls({
+    installDir,
+    dataDir,
+    hostname: localHostname(d.hostname),
+    port,
+    run,
+    fs,
+    setKey,
+  });
+  await writeWindowJson({ dataDir, origin, run, fs });
+  await registerRenewalTask({ installDir, dataDir, run });
   await installService({
     serviceExe,
     run,
     antesDeArrancar: () =>
       grantServiceAccess({ dataDir, serviceSid: virtualAccountSid(SERVICE), run }),
   });
-  await waitHealthy(port, d.healthTimeoutMs ?? 120000, get, { intervalMs: d.intervalMs });
+  await waitHealthy(port, d.healthTimeoutMs ?? 120000, get, {
+    intervalMs: d.intervalMs,
+    https: true,
+  });
   log(msg(lang, 'listo', port));
+  log(msg(lang, 'tlsListo', origin));
   return { port };
 }
