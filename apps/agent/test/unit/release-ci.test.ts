@@ -173,6 +173,10 @@ describe('ci.yml (job release-ensayo)', () => {
     const conSecreto = pasos.filter((p) => p.includes('secrets.'));
     expect(conSecreto).toHaveLength(1);
     expect(conSecreto[0]).toContain("if: ${{ github.event_name == 'push' }}");
+    // Esa variable salta la comprobación contra la clave embebida: ni en `release` ni con el secreto real.
+    // (sin comentarios: el de antes de `release-ensayo` cae al final del trozo de `release`)
+    expect(release.replace(/^\s*#.*$/gm, '')).not.toContain('UPDATE_VERIFY_PUBLIC_KEY');
+    expect(conSecreto[0]).not.toContain('UPDATE_VERIFY_PUBLIC_KEY');
     const efimera = pasos.filter((p) => p.includes('generateKeyPairSync'));
     expect(efimera).toHaveLength(1);
     expect(efimera[0]).toContain("if: ${{ github.event_name != 'push' }}");
