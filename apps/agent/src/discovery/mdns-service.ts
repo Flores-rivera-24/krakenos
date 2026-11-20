@@ -13,17 +13,18 @@ export interface MdnsHandle {
 }
 
 export async function startMdnsResponder(
-  opts: { mode: MdnsMode; platform: NodeJS.Platform } & MdnsResponderDeps,
+  opts: { mode: MdnsMode; platform: NodeJS.Platform; port: number } & MdnsResponderDeps,
 ): Promise<MdnsHandle> {
-  const { mode, platform, ...deps } = opts;
+  const { mode, platform, port, ...deps } = opts;
   const active = mode === 'on' || (mode === 'auto' && platform === 'win32');
-  if (!active) return { status: () => ({ state: 'off', reason: null }), stop: async () => {} };
+  if (!active)
+    return { status: () => ({ state: 'off', reason: null, address: null }), stop: async () => {} };
   const responder = new MdnsResponder(deps);
   const result = await responder.start();
   const status: MdnsResponderStatus =
     result === 'running'
-      ? { state: 'running', reason: null }
-      : { state: 'unavailable', reason: result.unavailable };
+      ? { state: 'running', reason: null, address: `${deps.nombre[0]}.local:${port}` }
+      : { state: 'unavailable', reason: result.unavailable, address: null };
   return {
     status: () => status,
     stop: () => (status.state === 'running' ? responder.stop() : Promise.resolve()),

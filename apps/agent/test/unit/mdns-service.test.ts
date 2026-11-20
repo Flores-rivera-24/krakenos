@@ -15,6 +15,7 @@ function deps(socket: ResponderSocket, mode: 'auto' | 'on' | 'off', platform: No
   return {
     mode,
     platform,
+    port: 3001,
     socket,
     nombre: ['mipc', 'krakenos'],
     interfaces: () => ({}),
@@ -28,14 +29,14 @@ describe('startMdnsResponder', () => {
     const s = fakeSocket();
     const h = await startMdnsResponder(deps(s, 'auto', 'linux'));
     expect(s.start).not.toHaveBeenCalled();
-    expect(h.status()).toEqual({ state: 'off', reason: null });
+    expect(h.status()).toEqual({ state: 'off', reason: null, address: null });
   });
 
   it('auto en Windows: arranca y se detiene en el cierre', async () => {
     const s = fakeSocket();
     const h = await startMdnsResponder(deps(s, 'auto', 'win32'));
     expect(s.start).toHaveBeenCalledTimes(1);
-    expect(h.status()).toEqual({ state: 'running', reason: null });
+    expect(h.status()).toEqual({ state: 'running', reason: null, address: 'mipc.local:3001' });
     await h.stop();
     expect(s.close).toHaveBeenCalledTimes(1);
   });
@@ -60,7 +61,11 @@ describe('startMdnsResponder', () => {
     });
     const d = deps(s, 'on', 'win32');
     const h = await startMdnsResponder(d);
-    expect(h.status()).toEqual({ state: 'unavailable', reason: 'bind EADDRINUSE 0.0.0.0:5353' });
+    expect(h.status()).toEqual({
+      state: 'unavailable',
+      reason: 'bind EADDRINUSE 0.0.0.0:5353',
+      address: null,
+    });
     expect(d.log.warn).toHaveBeenCalledTimes(1);
     await h.stop(); // no cierra un socket que nunca abrió
     expect(s.close).not.toHaveBeenCalled();

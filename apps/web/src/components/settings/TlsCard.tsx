@@ -1,6 +1,7 @@
 import type { TlsDisabledFeature, TlsStatus } from '@krakenos/types';
 import { Download, Lock, LockOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { buttonVariants } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
@@ -180,6 +181,31 @@ export function TlsCard() {
             {t('settings.tls.expiringDesc', { n: status.daysLeft ?? 0 })}
           </Callout>
         ) : null}
+
+        {/* Respondedor mDNS (US-283). `off` (Linux con Avahi o apagado) no pinta nada: no hay
+            nada que el usuario deba saber ni hacer. `unavailable` SÍ se declara: la función no
+            puede funcionar y callarlo sería dejarlo creer que el nombre .local va. */}
+        {status.mdnsResponder.state === 'running' && status.mdnsResponder.address && (
+          <div>
+            <p className="text-kr-xs text-kr-muted">{t('settings.tls.mdns.label')}</p>
+            <p className="font-mono text-kr-primary">
+              {`${secure ? 'https' : 'http'}://${status.mdnsResponder.address}`}
+            </p>
+          </div>
+        )}
+        {status.mdnsResponder.state === 'unavailable' && (
+          <Callout variant="warning" standing title={t('settings.tls.mdns.unavailableTitle')}>
+            <p>{t('settings.tls.mdns.unavailableDesc')}</p>
+            {status.mdnsResponder.reason && (
+              <p className="pt-1 text-kr-xs text-kr-muted">
+                {t('settings.tls.mdns.reason', { reason: status.mdnsResponder.reason })}
+              </p>
+            )}
+            <Link to="/vpn" className="mt-1 inline-block text-kr-primary underline">
+              {t('settings.tls.mdns.tailscale')}
+            </Link>
+          </Callout>
+        )}
 
         {/* CA local: el cert del servidor solo lo avala quien instale la CA. Se
             descarga con un enlace directo, no con fetch+blob: la ruta es PÚBLICA y

@@ -1113,6 +1113,12 @@ export const en: Record<TranslationKey, string> = {
   'settings.tls.source.unknown': 'Unknown',
   'settings.tls.expiresLabel': 'Expires',
   'settings.tls.daysLeft': '({n} days left)',
+  'settings.tls.mdns.label': 'Reach it by the computer name',
+  'settings.tls.mdns.unavailableTitle': 'The .local name is not available',
+  'settings.tls.mdns.unavailableDesc':
+    'Port 5353 could not be opened on this computer, so devices at home cannot reach it by its .local name. To get in from outside or without remembering the IP, use Tailscale.',
+  'settings.tls.mdns.reason': 'Technical reason: {reason}',
+  'settings.tls.mdns.tailscale': 'Set up Tailscale',
   'settings.tls.expiringTitle': 'The certificate is about to expire',
   'settings.tls.expiringDesc':
     '{n} days left. If it renews on its own, KrakenOS will apply it without restarting; if not, reissue it before that date or nobody will be able to get in.',

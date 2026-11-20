@@ -412,6 +412,7 @@ export async function buildServer(opts: BuildServerOptions = {}): Promise<Fastif
   const mdns = await startMdnsResponder({
     mode: opts.mdns?.mode ?? env.mdnsResponder,
     platform: process.platform,
+    port: env.port,
     socket: opts.mdns?.socket ?? new DgramResponderSocket(),
     nombre: [sanitizeHostname(process.env.KRAKENOS_HOSTNAME || shortHostname()), 'krakenos'],
     interfaces: opts.mdns?.interfaces ?? networkInterfaces,

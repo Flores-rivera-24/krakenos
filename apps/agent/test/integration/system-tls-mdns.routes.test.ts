@@ -24,7 +24,11 @@ describe('GET /api/system/tls — mdnsResponder', () => {
     beforeAll(async () => {
       app = await buildTestApp({
         routes: true,
-        mdnsStatus: () => ({ state: 'unavailable', reason: 'bind EADDRINUSE 0.0.0.0:5353' }),
+        mdnsStatus: () => ({
+          state: 'unavailable',
+          reason: 'bind EADDRINUSE 0.0.0.0:5353',
+          address: null,
+        }),
       });
     });
     afterAll(async () => app.close());
@@ -35,6 +39,7 @@ describe('GET /api/system/tls — mdnsResponder', () => {
       expect(body.mdnsResponder).toEqual({
         state: 'unavailable',
         reason: 'bind EADDRINUSE 0.0.0.0:5353',
+        address: null,
       });
       expect(Object.keys(body).sort()).toEqual(
         [
@@ -61,7 +66,11 @@ describe('GET /api/system/tls — mdnsResponder', () => {
     beforeEach(async () => resetDb(app));
 
     it('sin respondedor, el estado es off', async () => {
-      expect((await leer(app)).mdnsResponder).toEqual({ state: 'off', reason: null });
+      expect((await leer(app)).mdnsResponder).toEqual({
+        state: 'off',
+        reason: null,
+        address: null,
+      });
     });
   });
 });

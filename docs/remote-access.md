@@ -66,6 +66,27 @@ confianza en Ajustes → General → Información → Confianza de certificados.
 nombres `.local`, `localhost` y rangos privados, así que no sirve para suplantar ningún sitio de
 internet. `--tls self` es ahora un alias obsoleto de `--tls local`.
 
+## Entrar por `<equipo>.local` (Windows)
+
+En Linux, Avahi responde al nombre `<equipo>.local` y no hay que hacer nada. Windows no trae un
+respondedor equivalente, así que en Windows el agente de KrakenOS responde él mismo a las
+consultas mDNS **de su propio nombre** (nada más: no anuncia servicios ni responde por otros
+equipos). Así el móvil o el portátil de casa llegan a `https://<equipo>.local:<puerto>` sin
+recordar la IP. Solo funciona **dentro de la red local**; desde fuera sigue haciendo falta la VPN.
+
+El interruptor es `MDNS_RESPONDER` en el `.env` del agente:
+
+| Valor | Qué hace |
+|---|---|
+| `auto` (por defecto) | Se activa solo en Windows. |
+| `on` | Se activa en cualquier sistema. |
+| `off` | Nunca se activa. |
+
+Si Windows no deja compartir el puerto UDP 5353 (otro programa lo tiene en exclusiva), el agente
+no se cae: **lo dice** en Ajustes → Sistema, con el motivo, y el nombre `.local` no estará
+disponible. El camino recomendado en ese caso es **Tailscale** (arriba): su nombre `*.ts.net`
+funciona dentro y fuera de casa y no depende de mDNS.
+
 ## Tu móvil en 3 pasos (cualquiera de las dos vías)
 
 1. **Instala la app (PWA).** Abre KrakenOS en el navegador del teléfono y añádela a la

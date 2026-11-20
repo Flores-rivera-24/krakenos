@@ -1,6 +1,7 @@
 import type { TlsStatus } from '@krakenos/types';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => {
@@ -29,6 +30,7 @@ function status(over: Partial<TlsStatus> = {}): TlsStatus {
     expiring: false,
     expired: false,
     disabledFeatures: [],
+    mdnsResponder: { state: 'off', reason: null, address: null },
     ...over,
   };
 }
@@ -147,5 +149,47 @@ describe('TlsCard: un fallo de carga no hace desaparecer la tarjeta', () => {
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
     expect(await screen.findByText('Tu instalación se sirve por HTTPS.')).toBeInTheDocument();
+  });
+
+  describe('nombre .local (US-283)', () => {
+    const conMdns = (mdnsResponder: TlsStatus['mdnsResponder'], over: Partial<TlsStatus> = {}) =>
+      apiMock.get.mockResolvedValue(status({ mdnsResponder, ...over }));
+    const pintar = () =>
+      render(
+        <MemoryRouter>
+          <TlsCard />
+        </MemoryRouter>,
+      );
+
+    it('activo: muestra la dirección completa con el esquema del TLS', async () => {
+      conMdns({ state: 'running', reason: null, address: 'mipc.local:3001' });
+      pintar();
+      expect(await screen.findByText('https://mipc.local:3001')).toBeInTheDocument();
+    });
+
+    it('activo sobre HTTP: la dirección va con http', async () => {
+      conMdns(
+        { state: 'running', reason: null, address: 'mipc.local:3001' },
+        { enabled: false, source: null, notAfter: null, daysLeft: null },
+      );
+      pintar();
+      expect(await screen.findByText('http://mipc.local:3001')).toBeInTheDocument();
+    });
+
+    it('no disponible: dice el motivo sin culpar y remite a Tailscale', async () => {
+      conMdns({ state: 'unavailable', reason: 'bind EADDRINUSE 0.0.0.0:5353', address: null });
+      pintar();
+      expect(await screen.findByText(/No se pudo abrir el puerto 5353/)).toBeInTheDocument();
+      expect(screen.getByText(/bind EADDRINUSE 0\.0\.0\.0:5353/)).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /Tailscale/ })).toHaveAttribute('href', '/vpn');
+    });
+
+    it('apagado o no aplicable: no pinta nada del nombre .local', async () => {
+      conMdns({ state: 'off', reason: null, address: null });
+      pintar();
+      await screen.findByText('Tu instalación se sirve por HTTPS.');
+      expect(screen.queryByText(/\.local/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Tailscale/ })).not.toBeInTheDocument();
+    });
   });
 });
