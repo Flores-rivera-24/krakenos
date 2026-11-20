@@ -110,6 +110,14 @@ export async function stageCommonTree(pkgDir, rootDir) {
     join(rootDir, HELPER_PATH),
     0o755,
   );
+  // El verificador que ejecuta ROOT (`pkg-update`): el bundle autocontenido del agente (clave pública
+  // embebida), copiado FUERA de `app/` para que root no dependa de nada que no sea suyo. Falta → el
+  // empaquetado falla en voz alta (un paquete sin verificador no podría actualizarse).
+  await poner(
+    join(pkgDir, 'app', 'agent', 'dist', 'verify-update.js'),
+    join(libexec, 'krakenos-verify-update.mjs'),
+    0o644,
+  );
   await chmod(libexec, 0o755);
   await chmod(join(libexec, 'lib'), 0o755);
 

@@ -31,14 +31,14 @@ export class PrivilegedCommandError extends Error {
 }
 
 /** Función de ejecución de bajo nivel; inyectable para tests. */
-export type ExecFn = (file: string, args: string[]) => Promise<CommandResult>;
+export type ExecFn = (file: string, args: string[], timeoutMs?: number) => Promise<CommandResult>;
 
-const defaultExec: ExecFn = (file, args) =>
+const defaultExec: ExecFn = (file, args, timeoutMs = 15_000) =>
   new Promise((resolve) => {
     execFile(
       file,
       args,
-      { timeout: 15_000, maxBuffer: 1024 * 1024, windowsHide: true },
+      { timeout: timeoutMs, maxBuffer: 1024 * 1024, windowsHide: true },
       (err, stdout, stderr) => {
         const code =
           err && typeof (err as { code?: unknown }).code === 'number'
@@ -58,6 +58,8 @@ export interface SudoHelperRunnerOptions {
   useSudo?: boolean;
   /** Ejecución de bajo nivel; inyectable para tests. */
   exec?: ExecFn;
+  /** Tope de cada comando (15 s por defecto). `apt-get`/`pacman` por el helper tardan mucho más. */
+  timeoutMs?: number;
 }
 
 /**
@@ -76,7 +78,10 @@ export class SudoHelperRunner implements CommandRunner {
     const useSudo = this.opts.useSudo ?? true;
     const file = useSudo ? 'sudo' : this.opts.helperPath;
     const args = useSudo ? ['-n', this.opts.helperPath, ...argv] : argv;
-    const result = await this.exec(file, args);
+    const result =
+      this.opts.timeoutMs === undefined
+        ? await this.exec(file, args)
+        : await this.exec(file, args, this.opts.timeoutMs);
     if (result.code !== 0) throw new PrivilegedCommandError(argv, result);
     return result;
   }

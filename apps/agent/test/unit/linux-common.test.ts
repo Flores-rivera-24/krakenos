@@ -48,6 +48,7 @@ function paqueteFalso(): string {
   writeFileSync(join(pkg, 'node', 'bin', 'node'), 'x', { mode: 0o755 });
   writeFileSync(join(pkg, 'app', 'agent', '.env.example'), PLANTILLA);
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), '//');
+  writeFileSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'), '// verificador');
   // Un paquete mal armado (umask laxa): lo escribible por otros debe quitarse al armar el árbol.
   chmodSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), 0o666);
   chmodSync(join(pkg, 'app', 'agent', 'dist'), 0o777);
@@ -164,6 +165,12 @@ describe('el helper privilegiado en el paquete', () => {
 });
 
 describe('stageCommonTree', () => {
+  it('sin el verificador en el paquete, falla en voz alta', async () => {
+    const pkg = paqueteFalso();
+    rmSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'));
+    await expect(stageCommonTree(pkg, join(raiz, 'root'))).rejects.toThrow(/verify-update/);
+  });
+
   it.skipIf(WIN)('no deja nada escribible por otros bajo usr/lib/krakenos', async () => {
     const root = join(raiz, 'root');
     await stageCommonTree(paqueteFalso(), root);
@@ -183,6 +190,11 @@ describe('stageCommonTree', () => {
     const lib = 'usr/lib/krakenos/libexec';
     expect(modo(`${lib}/krakenos-setup`)).toBe(0o755);
     expect(modo(`${lib}/krakenos-helper`)).toBe(0o755);
+    // Lo que ejecuta root al verificar una actualización: copia del bundle, de root y sin escritura ajena.
+    expect(modo(`${lib}/krakenos-verify-update.mjs`)).toBe(0o644);
+    expect(readFileSync(join(root, lib, 'krakenos-verify-update.mjs'), 'utf8')).toBe(
+      '// verificador',
+    );
     expect(modo(`${lib}/lib/krakenos-system.sh`) & 0o111).toBe(0);
     // Plantilla sin secretos (el postinst la copia a /etc/krakenos con 0600): nada de /etc en el paquete.
     expect(modo('usr/share/krakenos/krakenos.env')).toBe(0o644);

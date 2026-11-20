@@ -104,6 +104,236 @@ check_tc_tokens() {
   done
 }
 
+# --- Actualización por paquete (pkg-update / pkg-rollback) ---------------------
+#
+# Corre como ROOT e instala paquetes: ante la duda, se rechaza. El agente (sin privilegios) deja
+# paquete, manifiesto y firma en SU directorio de staging; todo lo que viva ahí lo puede cambiar
+# el servicio hasta el último instante, así que root NUNCA verifica ni instala desde ahí: copia a
+# un directorio suyo (root:root 0700), vuelve a verificar LA COPIA con el verificador instalado por
+# el paquete (clave embebida, nunca recibida) e instala solo desde esa copia. Root no descarga nada.
+# Estas rutas se pueden cambiar solo desde /etc/krakenos/helper.conf (root): `sudo` descarta el entorno.
+KRAKENOS_PKG_DATA_DIR="${KRAKENOS_PKG_DATA_DIR:-/var/lib/krakenos}"
+KRAKENOS_PKG_STAGING="${KRAKENOS_PKG_STAGING:-$KRAKENOS_PKG_DATA_DIR/updates}"
+KRAKENOS_PKG_ROOT_DIR="${KRAKENOS_PKG_ROOT_DIR:-/var/lib/krakenos-root/updates}"
+KRAKENOS_PKG_NODE="${KRAKENOS_PKG_NODE:-/usr/lib/krakenos/node/bin/node}"
+KRAKENOS_PKG_VERIFIER="${KRAKENOS_PKG_VERIFIER:-/usr/lib/krakenos/libexec/krakenos-verify-update.mjs}"
+KRAKENOS_PKG_USER="${KRAKENOS_PKG_USER:-krakenos}"
+KRAKENOS_PKG_RUN_AS="${KRAKENOS_PKG_RUN_AS:-runuser -u $KRAKENOS_PKG_USER --}"
+KRAKENOS_PKG_UNIT="${KRAKENOS_PKG_UNIT:-krakenos}"
+KRAKENOS_PKG_FORMAT="${KRAKENOS_PKG_FORMAT:-}" # deb | arch; vacío = el que haya (dpkg-query o pacman)
+KRAKENOS_PKG_MAX_BYTES="${KRAKENOS_PKG_MAX_BYTES:-1073741824}"
+KRAKENOS_PKG_ROLLBACK_WINDOW_MIN="${KRAKENOS_PKG_ROLLBACK_WINDOW_MIN:-60}"
+
+_semver='^[0-9]+\.[0-9]+\.[0-9]+$'
+PKG_RC_REJECTED=65 # la verificación de root rechazó el paquete
+PKG_RC_NO_PREVIOUS=66 # rollback sin paquete anterior que reinstalar
+
+pkg_state_file() { echo "$KRAKENOS_PKG_ROOT_DIR/.state"; }
+
+# Ejecuta un comando COMO el usuario del servicio: root no lee ni escribe en directorios del
+# servicio con sus privilegios (un enlace simbólico plantado allí lo desviaría).
+run_as() {
+  local -a pre
+  read -r -a pre <<< "$KRAKENOS_PKG_RUN_AS"
+  "${pre[@]}" "$@"
+}
+
+pkg_format() {
+  case "$KRAKENOS_PKG_FORMAT" in
+    deb|arch) echo "$KRAKENOS_PKG_FORMAT"; return ;;
+    "") ;;
+    *) deny "pkg: formato desconocido" ;;
+  esac
+  if command -v dpkg-query > /dev/null 2>&1; then echo deb
+  elif command -v pacman > /dev/null 2>&1; then echo arch
+  else deny "pkg: ni dpkg ni pacman"; fi
+}
+
+# Plataforma del manifiesto que corresponde a ESTE equipo (la decide root, no el agente).
+pkg_platform() {
+  local a
+  case "$1" in
+    deb)
+      a="$(dpkg --print-architecture)"
+      case "$a" in amd64) echo deb-amd64 ;; arm64) echo deb-arm64 ;; *) deny "pkg: arquitectura $a" ;; esac ;;
+    arch)
+      [ "$(uname -m)" = "x86_64" ] || deny "pkg: arquitectura $(uname -m)"
+      echo arch-x86_64 ;;
+  esac
+}
+
+# Versión instalada, leída del gestor de paquetes (nunca del agente), sin época ni revisión.
+pkg_installed() {
+  local v
+  # shellcheck disable=SC2016
+  local fmtver='${Version}'
+  case "$1" in
+    deb) v="$(dpkg-query -W -f="$fmtver" krakenos 2> /dev/null || true)"; v="${v#*:}" ;;
+    arch) v="$(pacman -Q krakenos 2> /dev/null | awk '{print $2}' || true)"; v="${v#*:}"; v="${v%-*}" ;;
+  esac
+  v="${v%%[~+-]*}"
+  [[ "$v" =~ $_semver ]] || deny "pkg: no se pudo leer la versión instalada"
+  echo "$v"
+}
+
+pkg_ext_ok() {
+  case "$1" in
+    deb) [[ "$2" =~ ^[A-Za-z0-9][A-Za-z0-9._+~-]*\.deb$ ]] ;;
+    arch) [[ "$2" =~ ^[A-Za-z0-9][A-Za-z0-9._+~-]*\.pkg\.tar\.zst$ ]] ;;
+  esac
+}
+
+# El directorio de root existe, es de root (de quien corre el helper), 0700 y no es un enlace.
+pkg_root_dir() {
+  local d="$KRAKENOS_PKG_ROOT_DIR" p
+  p="$(dirname "$d")"
+  for x in "$p" "$d"; do [ -e "$x" ] || [ -L "$x" ] || mkdir -m 0700 -- "$x"; done
+  for x in "$p" "$d"; do
+    { [ ! -L "$x" ] && [ -d "$x" ] && [ "$(stat -c '%u %a' -- "$x")" = "$(id -u) 700" ]; } \
+      || deny "pkg: $x no es un directorio de root 0700"
+  done
+  exec 9> "$d/.lock"
+  flock -n 9 || deny "pkg: ya hay una actualización en curso"
+}
+
+# Ruta de entrada: absoluta, sin enlaces, fichero normal y DIRECTAMENTE en el staging del servicio.
+pkg_check_input() {
+  local f="$1" st rp
+  st="$(realpath -e -- "$KRAKENOS_PKG_STAGING" 2> /dev/null || true)"
+  [ -n "$st" ] && [ "$st" = "$KRAKENOS_PKG_STAGING" ] || deny "pkg: el staging no es el esperado"
+  case "$f" in /*) ;; *) deny "pkg: ruta no absoluta" ;; esac
+  [ ! -L "$f" ] || deny "pkg: enlace simbólico: $f"
+  rp="$(realpath -e -- "$f" 2> /dev/null || true)"
+  [ -n "$rp" ] && [ "$rp" = "$f" ] && [ "$(dirname -- "$rp")" = "$st" ] || deny "pkg: fuera del staging: $f"
+  [ -f "$rp" ] || deny "pkg: no es un fichero normal: $f"
+}
+
+# Copia como el usuario del servicio (con tope) a un destino que abre root en SU directorio.
+pkg_copy_in() {
+  umask 077
+  run_as head -c "$KRAKENOS_PKG_MAX_BYTES" -- "$1" > "$2" || return 1
+  [ -f "$2" ] && [ ! -L "$2" ]
+}
+
+pkg_verify() { # <dir> <nombre-paquete> <plataforma> <versión> (--installed v | --rollback)
+  local d="$1" name="$2" plat="$3" ver="$4"; shift 4
+  "$KRAKENOS_PKG_NODE" "$KRAKENOS_PKG_VERIFIER" --manifest "$d/manifest.json" --sig "$d/manifest.json.sig" \
+    --package "$d/$name" --platform "$plat" --version "$ver" "$@"
+}
+
+pkg_install() { # <formato> <fichero> [rollback]
+  if [ "$1" = deb ]; then
+    local -a extra=()
+    [ "${3:-}" = rollback ] && extra=(--allow-downgrades)
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold "${extra[@]}" "$2"
+  else
+    pacman -U --noconfirm "$2"
+  fi
+}
+
+# El paquete (único *.deb / *.pkg.tar.zst) que root guardó para una versión.
+pkg_saved_name() {
+  local f
+  for f in "$KRAKENOS_PKG_ROOT_DIR/$1"/*; do
+    [ -f "$f" ] && [ ! -L "$f" ] && pkg_ext_ok "$2" "$(basename -- "$f")" && { basename -- "$f"; return 0; }
+  done
+  return 1
+}
+
+pkg_update() {
+  [ "$#" -eq 4 ] || deny "pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>"
+  local pkg="$1" man="$2" sig="$3" ver="$4" fmt plat installed name d prev=""
+  [[ "$ver" =~ $_semver ]] || deny "pkg-update: versión no válida"
+  fmt="$(pkg_format)"
+  name="$(basename -- "$pkg")"
+  pkg_ext_ok "$fmt" "$name" || deny "pkg-update: nombre de paquete no válido"
+  [ "$(basename -- "$man")" = manifest.json ] && [ "$(basename -- "$sig")" = manifest.json.sig ] \
+    || deny "pkg-update: manifiesto o firma con otro nombre"
+  for f in "$pkg" "$man" "$sig"; do pkg_check_input "$f"; done
+  plat="$(pkg_platform "$fmt")"
+  installed="$(pkg_installed "$fmt")"
+
+  pkg_root_dir
+  rm -f -- "$(pkg_state_file)" # sin estado no hay nada que revertir: un rollback antiguo no puede reinstalar nada
+  d="$KRAKENOS_PKG_ROOT_DIR/$ver"
+  rm -rf -- "$d"
+  mkdir -m 0700 -- "$d"
+  # Copia primero, verifica LA COPIA: lo que cambie el servicio a partir de aquí ya no cuenta.
+  pkg_copy_in "$man" "$d/manifest.json" && pkg_copy_in "$sig" "$d/manifest.json.sig" \
+    && pkg_copy_in "$pkg" "$d/$name" || { rm -rf -- "$d"; deny "pkg-update: no se pudo copiar"; }
+  if ! pkg_verify "$d" "$name" "$plat" "$ver" --installed "$installed"; then
+    rm -rf -- "$d"
+    echo "krakenos-helper: la verificación de root rechazó la actualización" >&2
+    exit "$PKG_RC_REJECTED"
+  fi
+
+  # Paquete anterior para el rollback: solo si root tiene su copia y sigue verificando.
+  if [ -d "$KRAKENOS_PKG_ROOT_DIR/$installed" ] && [ ! -L "$KRAKENOS_PKG_ROOT_DIR/$installed" ]; then
+    if pname="$(pkg_saved_name "$installed" "$fmt")" \
+      && pkg_verify "$KRAKENOS_PKG_ROOT_DIR/$installed" "$pname" "$plat" "$installed" --rollback > /dev/null 2>&1; then
+      prev="$installed"
+    fi
+  fi
+  printf 'prev=%s\n' "$prev" > "$(pkg_state_file)"
+  pkg_install "$fmt" "$d/$name" || exit "$?"
+  # Se conservan solo la nueva y la anterior.
+  for x in "$KRAKENOS_PKG_ROOT_DIR"/*/; do
+    x="$(basename -- "$x")"
+    [ "$x" = "$ver" ] || [ "$x" = "$prev" ] || rm -rf -- "${KRAKENOS_PKG_ROOT_DIR:?}/$x"
+  done
+}
+
+pkg_rollback() {
+  [ "$#" -eq 1 ] || deny "pkg-rollback <copia-de-la-base>"
+  local copy="$1" db rp prev="" line fmt plat pname rc=0
+  db="${copy%.pre-update}"
+  [ "$db" != "$copy" ] && [ -n "$(basename -- "$db")" ] || deny "pkg-rollback: la copia debe acabar en .pre-update"
+  case "$copy" in "$KRAKENOS_PKG_DATA_DIR"/*) ;; *) deny "pkg-rollback: copia fuera de los datos del servicio" ;; esac
+  [ ! -L "$copy" ] || deny "pkg-rollback: enlace simbólico"
+  rp="$(realpath -e -- "$copy" 2> /dev/null || true)"
+  [ "$rp" = "$copy" ] && [ -f "$rp" ] || deny "pkg-rollback: la copia no es un fichero normal bajo los datos del servicio"
+  [ ! -L "$db" ] || deny "pkg-rollback: la base es un enlace simbólico"
+  { [ ! -e "$db" ] || [ -f "$db" ]; } || deny "pkg-rollback: la base no es un fichero normal"
+
+  pkg_root_dir
+  # Solo se revierte lo que `pkg-update` empezó hace poco: sin estado, no se instaló nada.
+  if [ ! -f "$(pkg_state_file)" ] || [ -z "$(find "$(pkg_state_file)" -mmin "-$KRAKENOS_PKG_ROLLBACK_WINDOW_MIN" 2> /dev/null)" ]; then
+    echo "krakenos-helper: no hay una instalación reciente que revertir; no se toca nada" >&2
+    return 0
+  fi
+  read -r line < "$(pkg_state_file)" || true
+  [[ "$line" =~ ^prev=([0-9]+\.[0-9]+\.[0-9]+)?$ ]] || deny "pkg-rollback: estado ilegible"
+  prev="${BASH_REMATCH[1]}"
+
+  systemctl stop "$KRAKENOS_PKG_UNIT" || { echo "krakenos-helper: no se pudo parar el servicio" >&2; return 1; }
+  if [ -n "$prev" ]; then
+    fmt="$(pkg_format)"
+    plat="$(pkg_platform "$fmt")"
+    if pname="$(pkg_saved_name "$prev" "$fmt")" \
+      && pkg_verify "$KRAKENOS_PKG_ROOT_DIR/$prev" "$pname" "$plat" "$prev" --rollback \
+      && pkg_install "$fmt" "$KRAKENOS_PKG_ROOT_DIR/$prev/$pname" rollback; then
+      :
+    else
+      echo "krakenos-helper: no se pudo reinstalar la versión $prev" >&2
+      rc=1
+    fi
+  fi
+  # La base se restaura como el usuario del servicio, con el servicio parado.
+  if run_as cp -- "$copy" "$db.restore-tmp" && run_as mv -f -- "$db.restore-tmp" "$db" \
+    && run_as rm -f -- "$db-wal" "$db-shm"; then :; else
+    echo "krakenos-helper: no se pudo restaurar la base" >&2
+    rc=1
+  fi
+  systemctl start "$KRAKENOS_PKG_UNIT" || { echo "krakenos-helper: no se pudo arrancar el servicio" >&2; rc=1; }
+  if [ -z "$prev" ]; then
+    echo "krakenos-helper: no hay paquete anterior que reinstalar (es la primera actualización por paquete): se restauró la base y se arrancó el servicio, pero la versión instalada no vuelve atrás" >&2
+    rm -f -- "$(pkg_state_file)"
+    return "$PKG_RC_NO_PREVIOUS"
+  fi
+  [ "$rc" -eq 0 ] && rm -f -- "$(pkg_state_file)"
+  return "$rc"
+}
+
 cmd="${1:-}"
 shift || true
 
@@ -173,6 +403,12 @@ case "$cmd" in
     require_tc_dev "$KRAKENOS_TC_IFACE" "$@"
     check_tc_tokens "$@"
     exec tc "$@"
+    ;;
+  pkg-update)
+    pkg_update "$@"
+    ;;
+  pkg-rollback)
+    pkg_rollback "$@"
     ;;
   *)
     deny "$cmd"

@@ -33,3 +33,8 @@ krakenos ALL=(root) NOPASSWD: /usr/local/bin/krakenos-helper
 # krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl restart krakenos
 # krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl stop krakenos
 # krakenos ALL=(root) NOPASSWD: /usr/bin/systemctl start krakenos
+
+# Actualización por paquete (.deb / Arch): `pkg-update` y `pkg-rollback` son verbos del MISMO helper, así que
+# la regla de arriba ya los cubre y no hace falta ninguna más. El helper no se fía de lo que le pasa el agente:
+# copia a un directorio de root, vuelve a verificar firma, versión y suma con su propio verificador e instala
+# solo desde esa copia.

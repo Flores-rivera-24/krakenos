@@ -173,6 +173,7 @@ describe('el árbol de código fuente que arma package-arch.mjs', () => {
       mkdirSync(join(pkg, d), { recursive: true });
     writeFileSync(join(pkg, 'bin', 'krakenos'), '#!/bin/sh\n', { mode: 0o755 });
     writeFileSync(join(pkg, 'app', 'agent', '.env.example'), 'PORT=3001\n');
+    writeFileSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'), '//');
     // Un enlace válido; los colgantes ya no llegan aquí (los retira o rechaza `package.mjs`).
     symlinkSync('krakenos', join(pkg, 'bin', 'alias'));
     return pkg;

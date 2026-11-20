@@ -257,10 +257,10 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
     await expect(runner.apply()).rejects.toThrow();
     expect(calls).toEqual([]);
   });
-  it('rollback llama a pkg-rollback', async () => {
+  it('rollback llama a pkg-rollback con la copia de la base que hizo el backup', async () => {
     const { runner } = build();
     await runner.rollback();
-    expect(calls).toEqual([['pkg-rollback']]);
+    expect(calls).toEqual([['pkg-rollback', join(dir, 'dev.db.pre-update')]]);
   });
   it('healthcheck: true si responde, false si nunca', async () => {
     const { runner } = build();

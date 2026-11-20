@@ -72,6 +72,8 @@ async function main(): Promise<void> {
         healthUrl,
         helper: new SudoHelperRunner({
           helperPath: process.env.WG_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+          // `pkg-update` instala un paquete con apt/pacman: con los 15 s de siempre se mataría a mitad.
+          timeoutMs: 20 * 60_000,
         }),
         snapshot: createDefaultSnapshot((m) => process.stderr.write(`${m}\n`)),
       })
