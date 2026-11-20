@@ -11,7 +11,6 @@ import { msg } from './mensajes.mjs';
 
 export const SERVICE = 'KrakenOS';
 export const MARCA_HKLM = 'HKLM\\SOFTWARE\\KrakenOS';
-const SYSTEM = '*S-1-5-18';
 const ADMINS = '*S-1-5-32-544';
 const NO_EXISTE = 1060; // ERROR_SERVICE_DOES_NOT_EXIST
 
@@ -40,7 +39,7 @@ async function hayMarca(run, dataDir) {
 }
 
 /**
- * Crea (o revalida) la carpeta de datos con ACL por SID y sin `/T`, ANTES de crear claves.
+ * Crea (o revalida) la carpeta de datos con ACL por SID (raíz sin `/T`), ANTES de crear claves.
  * `C:\ProgramData` deja crear carpetas a cualquier usuario: una que ya exista sin ser de un despliegue
  * previo (marca en HKLM, solo escribible por admin) se rechaza si tiene contenido, y si está vacía se
  * rehace, porque quien la creó sería su dueño y podría devolverse permisos con WRITE_DAC.
@@ -64,17 +63,20 @@ export async function prepareDataDir({ dataDir, run, fs }) {
     await fs.rmdir(dataDir);
     existe = false;
   }
+  // Con la carpeta ya existente (servicio parado por PREINSTALL), los enlaces se buscan ANTES de tocar
+  // ninguna ACL: el servicio puede crear junctions y el cambio de la raíz se propaga hacia abajo.
+  if (existe) await sinEnlaces(fs, dataDir);
   // Sin `recursive`: si alguien la recrea entre medias, mkdir falla en vez de adoptarla.
   if (!existe) await fs.mkdir(dataDir);
 
   // Primero la ACL restrictiva y su comprobación; nada se escribe ni se marca antes. `%ProgramData%`
   // deja a cualquier usuario crear dentro de una carpeta recién hecha hasta que se le quita la herencia.
-  // El servicio aún no existe y icacls no puede mapear su SID: su permiso va en `grantServiceAccess`,
-  // tras instalarlo. `/reset` primero: `/inheritance:r` solo quita lo heredado y una ACE explícita de
-  // Users (o de quien sea) en una carpeta previa sobreviviría.
-  await aplicarAcl(run, dataDir, BASE);
+  // El servicio aún no existe en una instalación nueva y icacls no puede mapear su SID: su permiso va
+  // en `grantServiceAccess`, tras instalarlo (en una actualización ya lo tiene y se acepta).
+  const sidServicio = virtualAccountSid(SERVICE);
+  const rehecha = await asegurarAcl(run, dataDir, BASE, { [sidServicio]: /Modify/ });
 
-  // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir e icacls, o en una
+  // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir y la ACL, o en una
   // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
   if (!existe) {
     if ((await fs.readdir(dataDir)).length > 0)
@@ -83,9 +85,12 @@ export async function prepareDataDir({ dataDir, run, fs }) {
       );
   } else {
     await sinEnlaces(fs, dataDir);
-    // Lo que ya hay dentro (sin enlaces: comprobado) vuelve a heredar de la raíz ya restringida.
-    if ((await fs.readdir(dataDir)).length > 0)
+    // Lo que ya hay dentro (sin enlaces: comprobado) vuelve a heredar de la raíz ya restringida; si la
+    // raíz hubo que rehacerla (otro la tocó o era ajena), también se le quita el dueño a lo de dentro.
+    if ((await fs.readdir(dataDir)).length > 0) {
       await ok(run, 'icacls', [join(dataDir, '*'), '/reset', '/T', '/L']);
+      if (rehecha) await ok(run, 'icacls', [join(dataDir, '*'), '/setowner', ADMINS, '/T', '/L']);
+    }
   }
 
   // La marca solo tras la ACL verificada y la carpeta limpia: es lo que distingue «mía» de «ajena».
@@ -104,9 +109,9 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
   // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
   await fs.mkdir(join(dataDir, 'ca'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'ca'), BASE);
+  await asegurarAcl(run, join(dataDir, 'ca'), BASE);
   await fs.mkdir(join(dataDir, 'tls'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'tls'), BASE);
+  await asegurarAcl(run, join(dataDir, 'tls'), BASE, { [sidServicio]: /ReadAndExecute/ });
 }
 
 /** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
@@ -122,28 +127,49 @@ export async function grantServiceAccess({ dataDir, serviceSid, run }) {
 
 const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
+const DUENOS = ['S-1-5-18', 'S-1-5-32-544'];
+
 /**
- * `reset` (quita lo explícito) → `grant:r` SYSTEM y Administradores → `inheritance:r` (quita lo heredado)
- * → verificar. El grant va ANTES de quitar la herencia: con la DACL vacía en medio, Windows no puede
- * propagar a los hijos que creó el servicio (dueño: su cuenta) y se quedan sin ACL para los administradores.
+ * Deja `dir` como `esperadas` sin que la DACL pase NUNCA por un estado heredado o vacío: si ya está
+ * bien (por SID, incluido el dueño) no la toca; si no, la sustituye de una vez (`SetAccessRuleProtection`
+ * + SYSTEM y Administradores) y fija el dueño en Administradores. Un `/reset` abriría la raíz a lo que
+ * herede de `C:\ProgramData` (Users) hasta quitarle la herencia, y con la DACL vacía en medio Windows
+ * no propaga a los hijos que creó el servicio. `opcionales` (el servicio, en una actualización) puede
+ * estar o no, pero si está tiene que llevar esos derechos. Devuelve si hubo que rehacerla.
  */
-async function aplicarAcl(run, dir, esperadas) {
-  await ok(run, 'icacls', [dir, '/reset']);
-  await ok(run, 'icacls', [dir, '/grant:r', `${SYSTEM}:(OI)(CI)F`, `${ADMINS}:(OI)(CI)F`]);
-  await ok(run, 'icacls', [dir, '/inheritance:r']);
-  await verificarAcl(run, dir, esperadas);
+async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
+  if (!(await desviacion(run, dir, esperadas, opcionales))) return false;
+  const q = (v) => v.replaceAll("'", "''");
+  const regla = (sid) =>
+    `$s.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(` +
+    `(New-Object System.Security.Principal.SecurityIdentifier('${sid}')),'FullControl','ContainerInherit,ObjectInherit','None','Allow')); `;
+  const ps =
+    `$s = New-Object System.Security.AccessControl.DirectorySecurity; $s.SetAccessRuleProtection($true, $false); ` +
+    Object.keys(esperadas).map(regla).join('') +
+    `[System.IO.Directory]::SetAccessControl('${q(dir)}', $s)`;
+  await ok(run, 'powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', ps]);
+  await ok(run, 'icacls', [dir, '/setowner', ADMINS]);
+  await verificarAcl(run, dir, esperadas, opcionales);
+  return true;
+}
+
+async function verificarAcl(run, dir, esperadas, opcionales = {}) {
+  const motivo = await desviacion(run, dir, esperadas, opcionales);
+  if (motivo) throw new Error(`la ACL de ${dir} no quedó como se esperaba: ${motivo}`);
 }
 
 /**
- * Verifica por IDENTIDAD (SIDs, no nombres traducidos): el conjunto de ACE tiene que ser exactamente
- * `esperadas` (SID → derechos), todas Allow y ninguna heredada. Una tercera ACE, aunque sea una sola,
- * (Users, Everyone, un usuario cualquiera) aborta.
+ * Compara por IDENTIDAD (SIDs, no nombres traducidos): el dueño es SYSTEM o Administradores y el conjunto
+ * de ACE tiene que ser exactamente `esperadas` (SID → derechos) más, si están, `opcionales`; todas Allow
+ * y ninguna heredada. Una tercera ACE, aunque sea una sola, devuelve el motivo; '' si todo cuadra.
  */
-async function verificarAcl(run, dir, esperadas) {
+async function desviacion(run, dir, esperadas, opcionales) {
   // .NET directo, sin el módulo Get-Acl (no se autocarga bajo el hook) y con los SIDs ya como SID.
+  const d = dir.replaceAll("'", "''");
   const ps =
-    `[System.IO.Directory]::GetAccessControl('${dir.replaceAll("'", "''")}')` +
-    `.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object { ` +
+    `$a = [System.IO.Directory]::GetAccessControl('${d}'); ` +
+    `'OWNER:' + $a.GetOwner([System.Security.Principal.SecurityIdentifier]).Value; ` +
+    `$a.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object { ` +
     `$_.IdentityReference.Value + '|' + $_.FileSystemRights + '|' + $_.AccessControlType + '|' + $_.IsInherited }`;
   const { stdout } = await ok(run, 'powershell.exe', [
     '-NoProfile',
@@ -151,15 +177,17 @@ async function verificarAcl(run, dir, esperadas) {
     '-Command',
     ps,
   ]);
-  const filas = stdout
+  const lineas = stdout
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter(Boolean)
-    .map((l) => l.split('|'));
+    .filter(Boolean);
+  const dueno = lineas.find((l) => l.startsWith('OWNER:'))?.slice(6);
+  if (!dueno || !DUENOS.includes(dueno)) return `dueño inesperado «${dueno ?? 'ilegible'}»`;
+  const permitidas = { ...esperadas, ...opcionales };
   const vistos = new Set();
-  for (const f of filas) {
+  for (const f of lineas.filter((l) => !l.startsWith('OWNER:')).map((l) => l.split('|'))) {
     const [sid, derechos, tipo, heredada] = f;
-    const esperado = esperadas[sid];
+    const esperado = permitidas[sid];
     const motivo =
       f.length !== 4
         ? `salida ilegible «${f.join('|')}»`
@@ -168,12 +196,11 @@ async function verificarAcl(run, dir, esperadas) {
           : tipo !== 'Allow' || heredada !== 'False' || !esperado.test(derechos)
             ? `ACE de ${sid} distinta de la esperada (${derechos}, ${tipo}, heredada: ${heredada})`
             : '';
-    if (motivo) throw new Error(`la ACL de ${dir} no quedó como se esperaba: ${motivo}`);
+    if (motivo) return motivo;
     vistos.add(sid);
   }
   const falta = Object.keys(esperadas).filter((sid) => !vistos.has(sid));
-  if (falta.length > 0)
-    throw new Error(`la ACL de ${dir} no quedó como se esperaba: falta ${falta.join(', ')}`);
+  return falta.length > 0 ? `falta ${falta.join(', ')}` : '';
 }
 
 /** Recorre sin seguir enlaces y lanza ante cualquier enlace simbólico o junction. */
@@ -267,15 +294,16 @@ export async function runInstall(d) {
   const m = /^PORT=(\d{1,5})\s*$/m.exec(previo);
   const preferido = m ? Number(m[1]) : 3001;
 
-  await d.ensureEnv(dataDir);
+  // `HOST` y `PORT` son elección de quien instala: en una actualización el .env no se toca, salvo el
+  // puerto si el que tenía está ocupado (entonces se pasa al siguiente libre y se dice).
+  const creado = await d.ensureEnv(dataDir);
   const port = await pickPort(preferido, isFree);
   if (port !== preferido) log(msg(lang, 'puertoOcupado', preferido, port));
-  const env = setKey(
-    setKey(await fs.readFile(envPath, 'utf8'), 'HOST', '0.0.0.0'),
-    'PORT',
-    String(port),
-  );
-  await fs.writeFile(envPath, env);
+  if (creado || port !== preferido) {
+    let env = await fs.readFile(envPath, 'utf8');
+    if (creado) env = setKey(env, 'HOST', '0.0.0.0');
+    await fs.writeFile(envPath, setKey(env, 'PORT', String(port)));
+  }
   await fs.writeFile(xmlPath, withXmlPort(await fs.readFile(xmlPath, 'utf8'), port));
 
   await d.ensureKeys(dataDir);

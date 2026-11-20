@@ -15,7 +15,6 @@ import { msg } from '../../../../packaging/windows/installer/mensajes.mjs';
 
 const DATOS = join('C:', 'ProgramData', 'KrakenOS');
 const SID = 'S-1-5-80-1-2-3-4-5';
-const SYSTEM = '*S-1-5-18';
 const ADMINS = '*S-1-5-32-544';
 
 type Ev = string;
@@ -23,7 +22,13 @@ function fakeRun(
   events: Ev[],
   codes: Record<string, number> = {},
   stdouts: Record<string, string> = {},
+  // `abierta`: la raíz y las subcarpetas parten heredando Users (carpeta nueva de ProgramData) y solo se
+  // corrigen con el cambio atómico; `dueno`: dueño que lee antes de que se fije Administradores.
+  opt: { abierta?: boolean; dueno?: string } = {},
 ) {
+  const abierta = opt.abierta ?? true;
+  const rehechas = new Set<string>();
+  const conDueno = new Set<string>();
   const conServicio = new Map<string, string>();
   return async (cmd: string, args: string[]) => {
     const linea = [cmd, ...args].join(' ');
@@ -31,13 +36,21 @@ function fakeRun(
     const sidServicio = /\*(S-1-5-80[-\d]+):/.exec(linea)?.[1];
     if (cmd === 'icacls' && args[1] === '/grant:r' && sidServicio)
       conServicio.set(args[0] as string, sidServicio);
+    if (cmd === 'icacls' && args[1] === '/setowner') conDueno.add(args[0] as string);
+    const rehecha = /SetAccessControl\('([^']*)'/.exec(linea)?.[1];
+    if (rehecha) rehechas.add(rehecha);
     const clave = Object.keys(codes).find((k) => linea.includes(k));
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
     // Lectura de la ACL por SID: la de un despliegue bueno (SYSTEM y Administradores, y el servicio si ya se le dio).
     let lectura = '';
     if (cmd === 'powershell.exe') {
       const dir = /GetAccessControl\('([^']*)'\)/.exec(linea)?.[1] ?? '';
+      const ajeno = opt.dueno && !conDueno.has(dir) ? opt.dueno : 'S-1-5-32-544';
       lectura = [
+        `OWNER:${ajeno}`,
+        ...(abierta && !rehechas.has(dir)
+          ? ['S-1-5-32-545|ReadAndExecute, Synchronize|Allow|True']
+          : []),
         'S-1-5-18|FullControl|Allow|False',
         'S-1-5-32-544|FullControl|Allow|False',
         ...(conServicio.has(dir)
@@ -90,31 +103,97 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
 }
 
 describe('prepareDataDir', () => {
-  it('pone la ACL en la raíz (sin herencia, SIDs, sin /T) ANTES de crear keys\\', async () => {
+  /** Línea del cambio atómico de DACL de una carpeta (un solo SetAccessControl, sin herencia). */
+  const cambioAcl = (ev: Ev[], dir: string) =>
+    ev.findIndex((l) => l.startsWith('powershell.exe') && l.includes(`SetAccessControl('${dir}'`));
+
+  it('rehace la ACL de la raíz de una vez (sin /reset ni /inheritance:r), con dueño, ANTES de crear keys\\', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
-    const i = (s: string) => ev.findIndex((l) => l.includes(s));
-    expect(ev[i('/inheritance:r')]).toBe(`icacls ${DATOS} /inheritance:r`);
-    // reset -> grant -> inheritance:r: nunca una DACL vacía en medio (rompería la propagación a los
-    // hijos creados por el servicio, que los administradores ya no podrían leer).
-    expect(ev.indexOf(`icacls ${DATOS} /reset`)).toBeLessThan(i('/grant:r'));
-    expect(i('/grant:r')).toBeLessThan(i('/inheritance:r'));
-    expect(ev[i('/grant:r')]).toBe(
-      `icacls ${DATOS} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F`,
+    const k = cambioAcl(ev, DATOS);
+    expect(k).toBeGreaterThan(-1);
+    const cambio = ev[k] as string;
+    expect(cambio).toContain('SetAccessRuleProtection($true, $false)');
+    expect(cambio).toContain("SecurityIdentifier('S-1-5-18')");
+    expect(cambio).toContain("SecurityIdentifier('S-1-5-32-544')");
+    expect(cambio).not.toMatch(/545|S-1-1-0|Users|Everyone/);
+    // Nunca un estado heredado o vacío en medio: ni /reset ni /inheritance:r sobre la raíz.
+    expect(ev).not.toContain(`icacls ${DATOS} /reset`);
+    expect(ev.some((l) => l.startsWith(`icacls ${DATOS} `) && l.includes('/inheritance'))).toBe(
+      false,
     );
-    expect(i('/grant:r')).toBeLessThan(ev.indexOf(`mkdir -p ${join(DATOS, 'keys')}`));
+    expect(ev[k + 1]).toBe(`icacls ${DATOS} /setowner ${ADMINS}`);
+    expect(k).toBeLessThan(ev.indexOf(`mkdir -p ${join(DATOS, 'keys')}`));
     expect(ev.filter((l) => l.startsWith('icacls')).every((l) => !/\/T\b/.test(l))).toBe(true);
-    expect(ev.join('\n')).not.toMatch(/Users|S-1-5-32-545|Everyone|S-1-1-0/);
+  });
+
+  it('con marca y la ACL ya correcta (actualización) no toca la raíz: ni DACL, ni /reset, ni dueño', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['.env'] },
+      [join(DATOS, '.env')]: { kind: 'file', text: '' },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` }, { abierta: false });
+    await prepareDataDir({ dataDir: DATOS, run, fs });
+    expect(cambioAcl(ev, DATOS)).toBe(-1);
+    expect(ev.some((l) => l.startsWith(`icacls ${DATOS} `))).toBe(false);
+    // Los hijos sí se reponen a lo heredado, pero eso es debajo de una raíz ya restringida.
+    expect(ev).toContain(`icacls ${join(DATOS, '*')} /reset /T /L`);
+    expect(ev.some((l) => l.includes('/setowner') && l.includes('/T'))).toBe(false);
+  });
+
+  it('con la raíz de otro dueño la rehace, fija Administradores y se lo quita también a lo de dentro', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['.env'] },
+      [join(DATOS, '.env')]: { kind: 'file', text: '' },
+    });
+    const run = fakeRun(
+      ev,
+      {},
+      { 'reg.exe query': `DataDir REG_SZ ${DATOS}` },
+      { abierta: false, dueno: 'S-1-5-21-1-2-3-1001' },
+    );
+    await prepareDataDir({ dataDir: DATOS, run, fs });
+    expect(cambioAcl(ev, DATOS)).toBeGreaterThan(-1);
+    expect(ev).toContain(`icacls ${DATOS} /setowner ${ADMINS}`);
+    expect(ev).toContain(`icacls ${join(DATOS, '*')} /setowner ${ADMINS} /T /L`);
+  });
+
+  it('un dueño ajeno que no se deja corregir aborta sin marca', async () => {
+    const ev: Ev[] = [];
+    const run = fakeRun(
+      ev,
+      {},
+      {
+        [`GetAccessControl('${DATOS}')`]:
+          'OWNER:S-1-5-21-1-2-3-1001\nS-1-5-18|FullControl|Allow|False\nS-1-5-32-544|FullControl|Allow|False',
+      },
+    );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs: fakeFs(ev) })).rejects.toThrow(/dueño/);
+    expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
+  });
+
+  it('una carpeta previa con un enlace dentro aborta ANTES de tocar ninguna ACL', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['logs'] },
+      [join(DATOS, 'logs')]: { kind: 'link' },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(/enlace/);
+    expect(ev.some((l) => l.startsWith('icacls') || l.includes('SetAccessControl'))).toBe(false);
   });
 
   it('ca\\ queda solo para SYSTEM y Administradores', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const ca = join(DATOS, 'ca');
-    expect(ev).toContain(`icacls ${ca} /inheritance:r`);
-    const grant = ev.find((l) => l.startsWith(`icacls ${ca} /grant:r`)) as string;
-    expect(grant).toBe(`icacls ${ca} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F`);
-    expect(grant).not.toContain(SID);
+    const cambio = ev[cambioAcl(ev, ca)] as string;
+    expect(cambio).toContain('SetAccessRuleProtection($true, $false)');
+    expect(cambio).toContain("SecurityIdentifier('S-1-5-18')");
+    expect(cambio).toContain("SecurityIdentifier('S-1-5-32-544')");
+    expect(cambio).not.toContain('S-1-5-80');
   });
 
   it('la cuenta del servicio NO se concede en prepareDataDir (su SID aún no resuelve)', async () => {
@@ -125,7 +204,11 @@ describe('prepareDataDir', () => {
 
   it('grantServiceAccess da Modificar en los datos y solo lectura en tls\\, verificando', async () => {
     const ev: Ev[] = [];
-    await grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev) });
+    await grantServiceAccess({
+      dataDir: DATOS,
+      serviceSid: SID,
+      run: fakeRun(ev, {}, {}, { abierta: false }),
+    });
     const tls = join(DATOS, 'tls');
     expect(ev.filter((l) => !l.startsWith('powershell.exe'))).toEqual([
       `icacls ${DATOS} /grant:r *${SID}:(OI)(CI)M`,
@@ -136,19 +219,24 @@ describe('prepareDataDir', () => {
   it('ACL restrictiva y verificada ANTES de la marca y de escribir nada dentro', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
-    const lectura = ev.findIndex((l) => l.startsWith('powershell.exe') && l.includes(`'${DATOS}'`));
-    const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
-    expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
-      ev.findIndex((l) => l.includes('/inheritance:r')),
+    const lectura = ev.findIndex(
+      (l, i) =>
+        i > cambioAcl(ev, DATOS) &&
+        l.startsWith('powershell.exe') &&
+        l.includes(`GetAccessControl('${DATOS}'`),
     );
-    expect(lectura).toBeGreaterThan(ev.findIndex((l) => l.includes('/grant:r')));
+    const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
+    expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(cambioAcl(ev, DATOS));
+    expect(lectura).toBeGreaterThan(cambioAcl(ev, DATOS));
     expect(marca).toBeGreaterThan(lectura);
     expect(marca).toBeLessThan(ev.findIndex((l) => l.startsWith('mkdir -p')));
     expect(ev[marca]).toContain('HKLM\\SOFTWARE\\KrakenOS');
     expect(ev[marca]).toContain(DATOS);
   });
 
-  const acl = (...filas: string[]) => ({ [`GetAccessControl('${DATOS}')`]: filas.join('\n') });
+  const acl = (...filas: string[]) => ({
+    [`GetAccessControl('${DATOS}')`]: ['OWNER:S-1-5-32-544', ...filas].join('\n'),
+  });
   const bien = ['S-1-5-18|FullControl|Allow|False', 'S-1-5-32-544|FullControl|Allow|False'];
 
   it.each([
@@ -200,18 +288,6 @@ describe('prepareDataDir', () => {
     expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
   });
 
-  it('una carpeta de un despliegue previo con un enlace dentro aborta (tras la ACL, sin marca nueva)', async () => {
-    const ev: Ev[] = [];
-    const fs = fakeFs(ev, {
-      [DATOS]: { kind: 'dir', entries: ['logs'] },
-      [join(DATOS, 'logs')]: { kind: 'link' },
-    });
-    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
-    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(/enlace/);
-    expect(ev.some((l) => l.includes('/grant:r'))).toBe(true);
-    expect(ev.some((l) => l.startsWith('reg.exe add') || l.startsWith('mkdir'))).toBe(false);
-  });
-
   it('un enlace anidado también se rechaza', async () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev, {
@@ -247,12 +323,10 @@ describe('prepareDataDir', () => {
     const run = fakeRun(ev, { 'reg.exe query': 1 });
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(ev.indexOf(`rmdir ${DATOS}`)).toBeLessThan(ev.indexOf(`mkdir ${DATOS}`));
-    expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
-      ev.findIndex((l) => l.includes('/inheritance:r')),
-    );
+    expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(cambioAcl(ev, DATOS));
   });
 
-  it('si existe con contenido y la marca apunta a ella (actualización), conserva y rehace la ACL', async () => {
+  it('si existe con contenido y la marca apunta a ella pero la ACL está abierta, conserva y la rehace', async () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev, {
       [DATOS]: { kind: 'dir', entries: ['.env', 'keys'] },
@@ -262,11 +336,11 @@ describe('prepareDataDir', () => {
     const run = fakeRun(ev, {}, { 'reg.exe query': `    DataDir    REG_SZ    ${DATOS}\r\n` });
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(ev.some((l) => l.startsWith('rmdir'))).toBe(false);
-    expect(ev).toContain(`icacls ${DATOS} /inheritance:r`);
+    expect(cambioAcl(ev, DATOS)).toBeGreaterThan(-1);
     // El contenido previo (ya sin enlaces) vuelve a heredar de la raíz restringida.
     expect(ev).toContain(`icacls ${join(DATOS, '*')} /reset /T /L`);
     expect(ev.indexOf(`icacls ${join(DATOS, '*')} /reset /T /L`)).toBeGreaterThan(
-      ev.findIndex((l) => l.startsWith('powershell.exe')),
+      cambioAcl(ev, DATOS),
     );
   });
 
@@ -275,7 +349,7 @@ describe('prepareDataDir', () => {
     await expect(
       prepareDataDir({
         dataDir: DATOS,
-        run: fakeRun(ev, { '/grant:r': 5 }),
+        run: fakeRun(ev, { '/setowner': 5 }),
         fs: fakeFs(ev),
       }),
     ).rejects.toThrow(/icacls/);
@@ -452,8 +526,10 @@ describe('runInstall', () => {
       setKey,
       ensureEnv: (d: string) => {
         ev.push(`ensureEnv ${d}`);
-        nodos[join(d, '.env')] ??= { kind: 'file', text: 'DRIVER_KIND=none\n' };
         if (opts.falla === 'env') throw new Error('boom');
+        if (nodos[join(d, '.env')]) return false;
+        nodos[join(d, '.env')] = { kind: 'file', text: 'DRIVER_KIND=none\n' };
+        return true;
       },
       ensureKeys: () => ev.push('ensureKeys'),
       log: () => {},
@@ -466,7 +542,7 @@ describe('runInstall', () => {
     const { ev, deps } = montar();
     const r = await runInstall(deps);
     const i = (s: string) => ev.findIndex((l) => l.includes(s));
-    expect(i('/inheritance:r')).toBeLessThan(i('ensureEnv'));
+    expect(i('SetAccessControl')).toBeLessThan(i('ensureEnv'));
     expect(i('ensureEnv')).toBeLessThan(i('ensureKeys'));
     expect(i('ensureKeys')).toBeLessThan(i(' install'));
     expect(i(' install')).toBeLessThan(i('/grant:r *S-1-5-80'));
@@ -481,6 +557,26 @@ describe('runInstall', () => {
     expect(nodos[join(DATOS, '.env')]?.text).toMatch(/^PORT=3002$/m);
     expect(nodos[join(DATOS, '.env')]?.text).toMatch(/^HOST=0\.0\.0\.0$/m);
     expect(nodos[xmlPath]?.text).toContain('name="PORT" value="3002"');
+  });
+
+  it('al actualizar con HOST=127.0.0.1 y su puerto libre, el .env sale byte a byte igual', async () => {
+    const previo = '# mío\nDRIVER_KIND=none\nHOST=127.0.0.1\nPORT=3005\n';
+    const { ev, deps, nodos } = montar({ envPrevio: previo });
+    await runInstall(deps);
+    expect(nodos[join(DATOS, '.env')]?.text).toBe(previo);
+    expect(ev.some((l) => l === `write ${join(DATOS, '.env')}`)).toBe(false);
+  });
+
+  it('al actualizar con su puerto ocupado pasa al siguiente libre, lo dice y respeta HOST', async () => {
+    const lineas: string[] = [];
+    const { deps, nodos } = montar({
+      envPrevio: 'HOST=127.0.0.1\nPORT=3005\n',
+      ocupados: [3005],
+    });
+    const r = await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
+    expect(r.port).toBe(3006);
+    expect(nodos[join(DATOS, '.env')]?.text).toBe('HOST=127.0.0.1\nPORT=3006\n');
+    expect(lineas.join('\n')).toContain('3006');
   });
 
   it('al actualizar parte del PORT que ya tenía el .env, no de 3001', async () => {
