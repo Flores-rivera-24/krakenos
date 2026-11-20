@@ -8,6 +8,16 @@ function Assert([bool]$Cond, [string]$Msg) {
   Write-Host "ok: $Msg"
 }
 
+# El agente escribe la URL /setup?token=... y el QR (bloques ▀▄█, o mojibake si la consola no es UTF-8) en su salida: nada de eso llega al log de CI.
+function Show-SafeTail([string[]]$Paths, [int]$Tail) {
+  foreach ($f in $Paths) {
+    if (-not (Test-Path $f)) { continue }
+    Write-Host ("[{0}]" -f (Split-Path $f -Leaf))
+    Get-Content $f -Tail $Tail | Where-Object { $_ -notmatch '[\u2580-\u259F]|[^\x20-\x7E]{3,}|/setup' } |
+      ForEach-Object { $_ -replace 'token=[^\s&"''<>]+', 'token=<redactado>' } | Out-Host
+  }
+}
+
 function Get-DirMb([string]$Path) {
   [math]::Round((Get-ChildItem -LiteralPath $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum / 1MB, 1)
 }
@@ -49,7 +59,7 @@ function Phase-Install {
     $e = Join-Path $d 'install-error.log'
     if (Test-Path $e) { Write-Host '--- install-error.log'; Get-Content $e | Out-Host }
     $lg = Join-Path $env:ProgramData 'KrakenOS\logs'
-    if (Test-Path $lg) { Get-ChildItem $lg -File | ForEach-Object { Write-Host ("[{0}]" -f $_.Name); Get-Content $_.FullName -Tail 20 } }
+    if (Test-Path $lg) { Show-SafeTail @(Get-ChildItem $lg -File | ForEach-Object FullName) 20 }
   }
   Assert ($p.ExitCode -eq 0) 'el instalador /S sale con 0 (crea datos, servicio y lo arranca)'
 
@@ -100,7 +110,7 @@ function Phase-Install {
     Start-Sleep -Seconds 1
     try { $listo = (Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:3011/health/ready').StatusCode -eq 200 } catch { }
   }
-  if (-not $listo) { Get-Content (Join-Path $datos 'out.log'), (Join-Path $datos 'err.log') -Tail 40 }
+  if (-not $listo) { Show-SafeTail @((Join-Path $datos 'out.log'), (Join-Path $datos 'err.log')) 40 }
   Stop-Process -Id $agente.Id -Force -ErrorAction SilentlyContinue
   Assert $listo '/health/ready da 200 con el agente instalado (las junctions sobreviven)'
 }
@@ -239,7 +249,7 @@ function Phase-Service {
     $volvio = ((Get-Service KrakenOS).Status -eq 'Running') -and $n.Count -gt 0 -and $n[0].ProcessId -ne $viejo -and (Wait-Health $port 1)
   }
   Write-Host ("reinicio tras matar node.exe: {0:N1} s" -f $t.Elapsed.TotalSeconds)
-  if (-not $volvio) { (Get-ChildItem (Join-Path $datos 'logs') -File | ForEach-Object { Get-Content $_.FullName -Tail 15 }) }
+  if (-not $volvio) { Show-SafeTail @(Get-ChildItem (Join-Path $datos 'logs') -File | ForEach-Object FullName) 15 }
   Assert $volvio 'matado node.exe, el servicio vuelve a Running con /health/ready en menos de 60 s'
 
   Restart-Service KrakenOS
