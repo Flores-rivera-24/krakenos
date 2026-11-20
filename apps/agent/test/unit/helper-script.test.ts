@@ -37,12 +37,13 @@ function runHelper(
     execFile(
       'bash',
       [SCRIPT, ...args],
-      // KRAKENOS_HELPER_TEST_PATH (solo se honra siendo no-root) con los stubs delante para que `exec wg`/`tc`/`iptables` los use;
+      // Stubs delante en PATH + KRAKENOS_HELPER_KEEP_PATH=1 (solo se honra siendo no-root) para que `exec wg`/`tc`/`iptables` los use;
       // KRAKENOS_HELPER_CONF a un fichero inexistente para no leer config del host.
       {
         env: {
           ...process.env,
-          KRAKENOS_HELPER_TEST_PATH: `${binDir}:${process.env.PATH}`,
+          PATH: `${binDir}:${process.env.PATH}`,
+          KRAKENOS_HELPER_KEEP_PATH: '1',
           KRAKENOS_HELPER_CONF: '/dev/null/none',
           ...env,
         },

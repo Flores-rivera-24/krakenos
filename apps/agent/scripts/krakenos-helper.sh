@@ -18,10 +18,10 @@
 # debe heredar el PATH de quien lo invoca (con `sudo` sin `secure_path`, el
 # usuario del servicio podría anteponer un `wg`/`iptables` falso y ejecutarlo
 # como root). Por eso el shebang es `/bin/bash` y no `env bash`.
-# Solo los tests (no-root) pueden sustituirlo: `$EUID` es un builtin y la
+# Solo los tests (no-root) pueden conservar el PATH del llamante (KRAKENOS_HELPER_KEEP_PATH=1): `$EUID` es un builtin y la
 # sustitución se ignora siendo root, sin depender de lo que `sudo` limpie.
-if [ "$EUID" -ne 0 ] && [ -n "${KRAKENOS_HELPER_TEST_PATH:-}" ]; then
-  PATH="$KRAKENOS_HELPER_TEST_PATH"
+if [ "$EUID" -ne 0 ] && [ "${KRAKENOS_HELPER_KEEP_PATH:-}" = "1" ]; then
+  : # solo tests (no-root): se conserva el PATH de quien llama
 else
   PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 fi
