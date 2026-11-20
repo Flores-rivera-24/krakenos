@@ -24,8 +24,15 @@ type Ips = { v4: string[]; v6: string[] };
 
 /** Socket mínimo que necesita el respondedor (el real es de la Task 2). */
 export interface ResponderSocket {
-  start(onMessage: (msg: Buffer, from: { address: string; port: number }) => void): Promise<void>;
-  send(data: Buffer, address: string, port: number): void;
+  start(
+    onMessage: (msg: Buffer, from: { address: string; port: number }) => void,
+    /** Error del socket ya abierto (red caída, etc.): el respondedor deja de declararse activo. */
+    onError?: (err: Error) => void,
+  ): Promise<void>;
+  /** `via`: IPv4 de la interfaz por la que sale un envío al grupo multicast. */
+  send(data: Buffer, address: string, port: number, via?: string): void;
+  /** Vuelve a unirse al grupo por las interfaces actuales (la red cambió). */
+  refresh?(): void;
   close(): Promise<void>;
 }
 
@@ -65,6 +72,13 @@ function externalNics(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>): NetworkInter
 export function sourceOnLink(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>, from: string): boolean {
   if (/^fe80:/i.test(from)) return true;
   return externalNics(ifaces).some((i) => subnetContains(i, from));
+}
+
+/** IPv4 de la interfaz privada cuya subred contiene a `from`; `undefined` si ninguna. */
+function viaFor(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>, from: string): string | undefined {
+  return externalNics(ifaces).find(
+    (i) => i.family === 'IPv4' && privateV4(i.address) && subnetContains(i, from),
+  )?.address;
 }
 
 /**
@@ -115,7 +129,7 @@ function decide(
   nombre: string | string[],
   ipsOf: Ips | (() => Ips),
   legacy: boolean,
-): { packet: Buffer; unicast: boolean } | null {
+): { packet: Buffer; unicast: boolean; qkey: string } | null {
   try {
     if (query.length < 12 || query.length > MAX_DATAGRAM) return null;
     if ((query.readUInt16BE(2) & 0xf800) !== 0) return null; // solo QUERY (QR=0, opcode 0)
@@ -158,6 +172,7 @@ function decide(
       if (qclass & 0x8000) unicast = true;
     }
     if (answers.length === 0) return null;
+    const qkey = [...seen].sort().join(',');
     const header = Buffer.alloc(12);
     header.writeUInt16BE(0x8400, 2); // QR + AA
     header.writeUInt16BE(answers.length, 6);
@@ -168,9 +183,10 @@ function decide(
       return {
         packet: Buffer.concat([header, query.subarray(12, pos), ...answers]),
         unicast: true,
+        qkey,
       };
     }
-    return { packet: Buffer.concat([header, ...answers]), unicast };
+    return { packet: Buffer.concat([header, ...answers]), unicast, qkey };
   } catch {
     return null; // paquete malformado o truncado: se descarta
   }
@@ -200,6 +216,7 @@ export type MdnsUnavailableCode = NonNullable<MdnsResponderStatus['code']>;
 
 export class MdnsResponder {
   private readonly lastSent = new Map<string, number>();
+  private lastWarned: string | null = null;
   private unavailable: { unavailable: string; code: MdnsUnavailableCode } | null = null;
 
   constructor(private readonly deps: MdnsResponderDeps) {}
@@ -207,19 +224,45 @@ export class MdnsResponder {
   async start(): Promise<'running' | { unavailable: string; code: MdnsUnavailableCode }> {
     if (this.unavailable !== null) return this.unavailable;
     try {
-      await this.deps.socket.start((msg, from) => this.onMessage(msg, from));
+      await this.deps.socket.start(
+        (msg, from) => this.onMessage(msg, from),
+        (err) => this.fail(err),
+      );
+      this.lastWarned = null;
       return 'running';
     } catch (err) {
-      const nodeCode = (err as { code?: unknown } | null)?.code;
-      this.unavailable = {
-        unavailable: err instanceof Error ? err.message : String(err),
-        code: nodeCode === 'EADDRINUSE' || nodeCode === 'EACCES' ? nodeCode : 'other',
-      };
-      this.deps.log.warn(
-        `mDNS: no se pudo abrir el puerto ${MDNS_PORT} (${this.unavailable.unavailable})`,
-      );
-      return this.unavailable;
+      return this.fail(err);
     }
+  }
+
+  private fail(err: unknown): { unavailable: string; code: MdnsUnavailableCode } {
+    const nodeCode = (err as { code?: unknown } | null)?.code;
+    this.unavailable = {
+      unavailable: err instanceof Error ? err.message : String(err),
+      code: nodeCode === 'EADDRINUSE' || nodeCode === 'EACCES' ? nodeCode : 'other',
+    };
+    // Un reintento que falla igual no vuelve a avisar: el registro no se llena cada minuto.
+    if (this.lastWarned !== this.unavailable.unavailable) {
+      this.lastWarned = this.unavailable.unavailable;
+      this.deps.log.warn(`mDNS: no se pudo abrir el puerto ${MDNS_PORT} (${this.lastWarned})`);
+    }
+    return this.unavailable;
+  }
+
+  /** Estado vivo: `running` salvo que el arranque o el socket hayan fallado. */
+  current(): 'running' | { unavailable: string; code: MdnsUnavailableCode } {
+    return this.unavailable ?? 'running';
+  }
+
+  /** Cierra lo que quedara abierto y vuelve a intentar el arranque. */
+  async restart(): ReturnType<MdnsResponder['start']> {
+    await this.deps.socket.close();
+    this.unavailable = null;
+    return this.start();
+  }
+
+  refresh(): void {
+    this.deps.socket.refresh?.();
   }
 
   async stop(): Promise<void> {
@@ -242,8 +285,10 @@ export class MdnsResponder {
       // Unicast solo hacia un origen de nuestras subredes: no reflejamos tráfico hacia fuera.
       if (d.unicast && !sourceOnLink(nics(), from.address)) return;
       const dest = d.unicast ? from : { address: MDNS_GROUP, port: MDNS_PORT };
-      if (!this.allow(`${dest.address}:${dest.port}`)) return;
-      this.deps.socket.send(d.packet, dest.address, dest.port);
+      if (!this.allow(`${dest.address}:${dest.port}/${d.qkey}`)) return;
+      // Multicast: por la NIC de la subred de quien pregunta (con vEthernet/WSL el SO elegiría mal).
+      const via = d.unicast ? undefined : viaFor(nics(), from.address);
+      this.deps.socket.send(d.packet, dest.address, dest.port, via);
     } catch (err) {
       this.deps.log.warn(
         `mDNS: datagrama descartado (${err instanceof Error ? err.message : err})`,

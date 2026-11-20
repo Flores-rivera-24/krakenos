@@ -207,12 +207,12 @@ describe('sourceOnLink (subredes)', () => {
 
 function fakeSocket() {
   let onMsg: (m: Buffer, from: { address: string; port: number }) => void = () => {};
-  const sent: { data: Buffer; address: string; port: number }[] = [];
+  const sent: { data: Buffer; address: string; port: number; via?: string }[] = [];
   const socket: ResponderSocket = {
     start: vi.fn(async (cb) => {
       onMsg = cb;
     }),
-    send: vi.fn((data, address, port) => void sent.push({ data, address, port })),
+    send: vi.fn((data, address, port, via) => void sent.push({ data, address, port, via })),
     close: vi.fn(async () => {}),
   };
   return {
@@ -254,6 +254,41 @@ describe('MdnsResponder', () => {
     advance(1500);
     f.emit(query('mipc.local'), 40000);
     expect(f.sent[2]).toMatchObject({ address: '192.168.1.50', port: 40000 });
+  });
+
+  it('con varias NIC, el multicast sale por la que contiene a quien pregunta', async () => {
+    const dosNic = {
+      vEthernet: [{ ...nic('172.20.0.1', 'IPv4'), netmask: '255.240.0.0', cidr: '172.20.0.1/12' }],
+      wifi: [nic('192.168.1.10', 'IPv4')],
+    };
+    const { f, r, advance } = make({ ifaces: dosNic });
+    await r.start();
+    f.emit(query('mipc.local'), 5353, '192.168.1.50');
+    advance(1500);
+    f.emit(query('mipc.local'), 5353, '172.20.0.5');
+    advance(1500);
+    f.emit(query('mipc.local', 1, 0x8001), 5353, '192.168.1.50'); // unicast: sin interfaz
+    expect(f.sent.map((s) => [s.address, s.via])).toEqual([
+      ['224.0.0.251', '192.168.1.10'],
+      ['224.0.0.251', '172.20.0.1'],
+      ['192.168.1.50', undefined],
+    ]);
+  });
+
+  it('el limitador distingue nombres: preguntas distintas del mismo origen no se pisan', async () => {
+    const f = fakeSocket();
+    const r = new MdnsResponder({
+      socket: f.socket,
+      nombre: ['mipc', 'krakenos'],
+      interfaces: () => ({ eth0: [nic('192.168.1.10', 'IPv4')] }),
+      now: () => 1000,
+      log: { warn: vi.fn() },
+    });
+    await r.start();
+    f.emit(query('mipc.local'));
+    f.emit(query('krakenos.local'));
+    f.emit(query('mipc.local')); // repetida: esa sí se limita
+    expect(f.sent).toHaveLength(2);
   });
 
   it('limita a una respuesta por segundo y destino', async () => {

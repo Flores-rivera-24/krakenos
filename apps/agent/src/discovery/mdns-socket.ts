@@ -26,6 +26,7 @@ export class DgramResponderSocket implements ResponderSocket {
 
   async start(
     onMessage: (msg: Buffer, from: { address: string; port: number }) => void,
+    onError?: (err: Error) => void,
   ): Promise<void> {
     const dgram = await import('node:dgram');
     const sock = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -38,18 +39,9 @@ export class DgramResponderSocket implements ResponderSocket {
         });
       });
       const nics = privateV4Nics();
-      // Un join por interfaz: sin dirección, Windows solo une la de la ruta por defecto.
-      let joined = 0;
-      for (const ip of nics) {
-        try {
-          sock.addMembership(MDNS_GROUP, ip);
-          joined++;
-        } catch {
-          // interfaz sin multicast: se prueba con las demás
-        }
-      }
-      if (joined === 0) sock.addMembership(MDNS_GROUP); // lanza si no hay ninguna red válida
+      if (this.join(sock, nics) === 0) sock.addMembership(MDNS_GROUP); // lanza si no hay red válida
       sock.setMulticastTTL(1); // el paquete nunca cruza el router
+      sock.setTTL(1); // tampoco las respuestas unicast
       // Con una sola red la salida multicast es inequívoca; con varias manda la tabla del SO.
       if (nics.length === 1 && nics[0]) sock.setMulticastInterface(nics[0]);
     } catch (err) {
@@ -60,16 +52,43 @@ export class DgramResponderSocket implements ResponderSocket {
       }
       throw err;
     }
-    // shortcut: errores posteriores se ignoran (el respondedor no tiene canal de log aquí).
-    sock.on('error', () => {});
+    // Un error tras el bind lo gestiona el respondedor (estado + reintento del servicio).
+    sock.on('error', (err) => onError?.(err));
     sock.on('message', (msg, rinfo) =>
       onMessage(msg, { address: rinfo.address, port: rinfo.port }),
     );
     this.sock = sock;
   }
 
-  send(data: Buffer, address: string, port: number): void {
-    this.sock?.send(data, port, address, () => {});
+  /** Un join por interfaz: sin dirección, Windows solo une la de la ruta por defecto. */
+  private join(sock: Socket, nics: string[]): number {
+    let joined = 0;
+    for (const ip of nics) {
+      try {
+        sock.addMembership(MDNS_GROUP, ip);
+        joined++;
+      } catch {
+        // ya unida o sin multicast: se sigue con las demás
+      }
+    }
+    return joined;
+  }
+
+  refresh(): void {
+    if (this.sock) this.join(this.sock, privateV4Nics());
+  }
+
+  send(data: Buffer, address: string, port: number, via?: string): void {
+    const sock = this.sock;
+    if (!sock) return;
+    try {
+      // shortcut: setMulticastInterface + send no son atómicos; dos respuestas por NIC distintas
+      // en el mismo tick podrían cruzarse. Subir a un socket por NIC si el hardware lo muestra.
+      if (via && address === MDNS_GROUP) sock.setMulticastInterface(via);
+      sock.send(data, port, address, () => {});
+    } catch {
+      // interfaz que ya no existe: la respuesta se pierde, el siguiente ciclo reajusta
+    }
   }
 
   close(): Promise<void> {
