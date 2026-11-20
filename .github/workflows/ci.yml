@@ -514,9 +514,17 @@ jobs:
           command -v gpgv
           pnpm package
 
+      # makensis abre los ficheros sin el prefijo de ruta larga: bajo `D:\a\krakenos\krakenos\out\…`
+      # una ruta de pnpm pasa de 260 caracteres y falla («failed opening file»). Se mueve el paquete a
+      # una ruta corta y se rehacen las junctions (que son absolutas) con el relink del propio paquete.
       - name: Construir el instalador NSIS
         run: |
-          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          src="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          mkdir -p /c/kos
+          rm -rf "/c/kos/$(basename "$src")"
+          mv "$src" /c/kos/
+          dir="C:/kos/$(basename "$src")"
+          node -e "import('file:///$dir/app/relink.mjs').then(m => m.relinkPnpmJunctions('$dir/app/agent/node_modules')).then(r => console.log('relink', r.relinked.length, 'sin resolver', r.unresolved.length))"
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
 
       # Spike: lo que el bundler de esta versión de Tauri realmente ofrece (macros, modo de
@@ -525,11 +533,14 @@ jobs:
         if: always()
         run: |
           nsi="$(find apps/window/src-tauri/target -name installer.nsi | head -n 1)"
-          echo "installer.nsi: $nsi"
-          reg="$HOME/.cargo/registry/src"
-          ls -d "$reg"/*/tauri-bundler-* "$reg"/*/tauri-utils-* 2>/dev/null || true
-          [ -n "$nsi" ] && grep -n -E 'NSIS_HOOK|UpdateMode|DELETEAPPDATA|DeleteAppDataCheckbox|Page custom|RunAsUser|ExecShellAsUser|INSTDIR|SetCompressor|MUI_LANGUAGE|\$\{GetOptions\}' "$nsi" | head -120
-          ls "$reg"/*/tauri-bundler-*/src/bundle/windows/nsis/languages 2>/dev/null | tr '\n' ' ' || true
+          echo "installer.nsi: $nsi ($(wc -l < "$nsi") líneas)"
+          echo "File: $(grep -c -E '^\s*File ' "$nsi"), CreateDirectory: $(grep -c CreateDirectory "$nsi")"
+          grep -n -E 'node_modules.+\.pnpm' "$nsi" | grep -c . || true
+          echo "--- nsi sin las listas de ficheros"
+          grep -n -v -E '^\s*(CreateDirectory|File |Delete |RMDir|SetOutPath)' "$nsi" | sed -n '1,700p' || true
+          echo "--- idiomas de NSIS"
+          ls "$LOCALAPPDATA/tauri/NSIS/Contrib/Language files" 2>/dev/null | tr '\n' ' ' || true
+          ls apps/window/src-tauri/target/release/nsis/x64 || true
           ls -l apps/window/src-tauri/target/release/bundle/nsis/ || true
 
       - name: Probar el instalador (en silencio)
