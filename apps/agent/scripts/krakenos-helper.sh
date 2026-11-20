@@ -33,11 +33,16 @@ set -euo pipefail
 #
 # Estos valores limitan SOBRE QUÉ puede actuar root y deben coincidir con la
 # config del agente (FW_CHAIN / TC_INTERFACE / WG_INTERFACE). El agente, SIN
-# privilegios, NO puede ampliarlos: en producción `sudo` descarta el entorno
-# (`env_reset`, por defecto), así que el ámbito se toma de los defaults de abajo
-# o de un fichero root-owned opcional (`/etc/krakenos/helper.conf`). Si despliegas
-# con valores no-default, edita este script (root-owned) o crea ese fichero con
-# `KRAKENOS_FW_CHAIN=...`, `KRAKENOS_TC_IFACE=...`, `KRAKENOS_WG_IFACE=...`.
+# privilegios, NO puede ampliarlos: siendo root, el script IGNORA lo que llegue
+# por el entorno (`unset` de abajo; no depende de que `sudo` haga `env_reset`,
+# un `env_keep` del administrador no lo reabre) y el ámbito se toma de los
+# defaults o de un fichero root-owned opcional (`/etc/krakenos/helper.conf`).
+# Si despliegas con valores no-default, edita este script (root-owned) o crea ese
+# fichero con `KRAKENOS_FW_CHAIN=...`, `KRAKENOS_TC_IFACE=...`, `KRAKENOS_WG_IFACE=...`.
+# Como no-root (tests) el entorno sigue valiendo: no hay privilegio que escalar.
+if [ "$EUID" -eq 0 ]; then
+  unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE
+fi
 _conf="${KRAKENOS_HELPER_CONF:-/etc/krakenos/helper.conf}"
 # shellcheck source=/dev/null
 [ -r "$_conf" ] && . "$_conf"

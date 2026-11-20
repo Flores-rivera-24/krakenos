@@ -356,6 +356,25 @@ describe('krakenos-helper: PATH de root', () => {
     expect(primera).toMatch(/^if \[ "\$EUID" -ne 0 \]/);
   });
 
+  // No se puede correr como root en el test: se verifica la estructura del script.
+  it('siendo root (`$EUID -eq 0`) hace unset de las cuatro variables ANTES de leer _conf', () => {
+    const txt = readFileSync(SCRIPT, 'utf8');
+    const iUnset = txt.indexOf(
+      'unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE',
+    );
+    expect(iUnset).toBeGreaterThan(0);
+    expect(iUnset).toBeLessThan(txt.indexOf('_conf="'));
+    expect(iUnset).toBeLessThan(txt.indexOf('. "$_conf"'));
+    // El unset va dentro de un `if [ "$EUID" -eq 0 ]` (el último `if` antes de él).
+    expect(
+      txt
+        .slice(0, iUnset)
+        .split('\n')
+        .filter((l) => /^if /.test(l))
+        .pop(),
+    ).toBe('if [ "$EUID" -eq 0 ]; then');
+  });
+
   it('un `wg` falso al frente del PATH del llamante NO se ejecuta (sin la variable de pruebas)', async () => {
     const marca = join(binDir, 'ejecutado');
     const falso = mkdtempSync(join(tmpdir(), 'kraken-helper-falso-'));
