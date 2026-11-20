@@ -70,8 +70,9 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   // Primero la ACL restrictiva y su comprobación; nada se escribe ni se marca antes. `%ProgramData%`
   // deja a cualquier usuario crear dentro de una carpeta recién hecha hasta que se le quita la herencia.
   // El servicio aún no existe y icacls no puede mapear su SID: su permiso va en `grantServiceAccess`,
-  // tras instalarlo. En una actualización ya lo trae de antes (de ahí el 2 o 3 entradas).
-  await aplicarAcl(run, dataDir, [2, 3]);
+  // tras instalarlo. `/reset` primero: `/inheritance:r` solo quita lo heredado y una ACE explícita de
+  // Users (o de quien sea) en una carpeta previa sobreviviría.
+  await aplicarAcl(run, dataDir, BASE);
 
   // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir e icacls, o en una
   // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
@@ -80,7 +81,12 @@ export async function prepareDataDir({ dataDir, run, fs }) {
       throw new Error(
         `${dataDir} tiene contenido que no puso el instalador (alguien escribió en ella mientras se creaba): revísala, bórrala y vuelve a instalar.`,
       );
-  } else await sinEnlaces(fs, dataDir);
+  } else {
+    await sinEnlaces(fs, dataDir);
+    // Lo que ya hay dentro (sin enlaces: comprobado) vuelve a heredar de la raíz ya restringida.
+    if ((await fs.readdir(dataDir)).length > 0)
+      await ok(run, 'icacls', [join(dataDir, '*'), '/reset', '/T', '/L']);
+  }
 
   // La marca solo tras la ACL verificada y la carpeta limpia: es lo que distingue «mía» de «ajena».
   await ok(run, 'reg.exe', [
@@ -98,38 +104,71 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
   // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
   await fs.mkdir(join(dataDir, 'ca'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'ca'), [2]);
+  await aplicarAcl(run, join(dataDir, 'ca'), BASE);
   await fs.mkdir(join(dataDir, 'tls'), { recursive: true });
-  await aplicarAcl(run, join(dataDir, 'tls'), [2, 3]);
+  await aplicarAcl(run, join(dataDir, 'tls'), BASE);
 }
 
 /** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
 export async function grantServiceAccess({ dataDir, serviceSid, run }) {
-  const servicio = `*${serviceSid}`;
-  for (const [dir, permiso] of [
-    [dataDir, 'M'],
-    [join(dataDir, 'tls'), 'RX'],
+  for (const [dir, permiso, derechos] of [
+    [dataDir, 'M', /Modify/],
+    [join(dataDir, 'tls'), 'RX', /ReadAndExecute/],
   ]) {
-    await ok(run, 'icacls', [dir, '/grant:r', `${servicio}:(OI)(CI)${permiso}`]);
-    await verificarAcl(run, dir, [3]);
+    await ok(run, 'icacls', [dir, '/grant:r', `*${serviceSid}:(OI)(CI)${permiso}`]);
+    await verificarAcl(run, dir, { ...BASE, [serviceSid]: derechos });
   }
 }
 
-/** `inheritance:r` + `grant:r` de SYSTEM y Administradores, y lectura de vuelta. */
-async function aplicarAcl(run, dir, permitidas) {
+const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
+
+/** `reset` (quita lo explícito) → `inheritance:r` (quita lo heredado) → SYSTEM y Administradores → verificar. */
+async function aplicarAcl(run, dir, esperadas) {
+  await ok(run, 'icacls', [dir, '/reset']);
   await ok(run, 'icacls', [dir, '/inheritance:r']);
   await ok(run, 'icacls', [dir, '/grant:r', `${SYSTEM}:(OI)(CI)F`, `${ADMINS}:(OI)(CI)F`]);
-  await verificarAcl(run, dir, permitidas);
+  await verificarAcl(run, dir, esperadas);
 }
 
-/** Cuenta las ACE, no busca «Users» por nombre: los nombres de las cuentas van traducidos. */
-async function verificarAcl(run, dir, permitidas) {
-  const { stdout } = await ok(run, 'icacls', [dir]);
-  const ace = (stdout.match(/:\((?:[A-Z]+\))+/g) ?? []).length;
-  if (!permitidas.includes(ace))
-    throw new Error(
-      `la ACL de ${dir} no quedó como se esperaba (${ace} entradas en vez de ${permitidas.join(' o ')})`,
-    );
+/**
+ * Verifica por IDENTIDAD (SIDs, no nombres traducidos): el conjunto de ACE tiene que ser exactamente
+ * `esperadas` (SID → derechos), todas Allow y ninguna heredada. Una tercera ACE, aunque sea una sola,
+ * (Users, Everyone, un usuario cualquiera) aborta.
+ */
+async function verificarAcl(run, dir, esperadas) {
+  const ps =
+    `(Get-Acl -LiteralPath '${dir.replaceAll("'", "''")}').Access | ForEach-Object { ` +
+    `$_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value + '|' + ` +
+    `$_.FileSystemRights + '|' + $_.AccessControlType + '|' + $_.IsInherited }`;
+  const { stdout } = await ok(run, 'powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    ps,
+  ]);
+  const filas = stdout
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((l) => l.split('|'));
+  const vistos = new Set();
+  for (const f of filas) {
+    const [sid, derechos, tipo, heredada] = f;
+    const esperado = esperadas[sid];
+    const motivo =
+      f.length !== 4
+        ? `salida ilegible «${f.join('|')}»`
+        : !esperado || vistos.has(sid)
+          ? `ACE inesperada de ${sid}`
+          : tipo !== 'Allow' || heredada !== 'False' || !esperado.test(derechos)
+            ? `ACE de ${sid} distinta de la esperada (${derechos}, ${tipo}, heredada: ${heredada})`
+            : '';
+    if (motivo) throw new Error(`la ACL de ${dir} no quedó como se esperaba: ${motivo}`);
+    vistos.add(sid);
+  }
+  const falta = Object.keys(esperadas).filter((sid) => !vistos.has(sid));
+  if (falta.length > 0)
+    throw new Error(`la ACL de ${dir} no quedó como se esperaba: falta ${falta.join(', ')}`);
 }
 
 /** Recorre sin seguir enlaces y lanza ante cualquier enlace simbólico o junction. */

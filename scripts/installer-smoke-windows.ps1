@@ -166,6 +166,19 @@ function Phase-Service {
   $node = Join-Path $dir 'node\node.exe'
   $datos = Join-Path $env:ProgramData 'KrakenOS'
 
+  # Actualizar encima con ACE EXPLÍCITAS de Users plantadas (raíz, tls\ y un fichero): el paso de datos
+  # las quita (reset -> inheritance:r -> grant -> verificar por SID) y el servicio vuelve a arrancar.
+  Stop-Service KrakenOS
+  & icacls $datos /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
+  & icacls (Join-Path $datos 'tls') /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
+  & icacls (Join-Path $datos '.env') /grant '*S-1-5-32-545:R' | Out-Null
+  Assert (((& icacls $datos) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users está en la raíz de datos'
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  Assert ($LASTEXITCODE -eq 0) 'repetir el paso de datos sobre una instalación existente sale con 0'
+  foreach ($r in $datos, (Join-Path $datos 'tls'), (Join-Path $datos '.env')) {
+    Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users') "Users ya no está en $r"
+  }
+
   # Puerto: 3001 estaba ocupado al instalar, así que el .env y el XML dicen 3002.
   $port = [int](Select-String -Path (Join-Path $datos '.env') -Pattern '^PORT=(\d+)\s*$').Matches.Groups[1].Value
   Assert ($port -eq 3002) "con 3001 ocupado el instalador eligió el 3002 (.env: PORT=$port)"

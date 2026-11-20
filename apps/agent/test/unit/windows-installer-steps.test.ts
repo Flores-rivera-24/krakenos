@@ -24,19 +24,29 @@ function fakeRun(
   codes: Record<string, number> = {},
   stdouts: Record<string, string> = {},
 ) {
-  const ace = (n: number) =>
-    Array.from({ length: n }, (_, i) => `  CUENTA${i}:(OI)(CI)(F)`).join('\n');
-  const conServicio = new Set<string>();
+  const conServicio = new Map<string, string>();
   return async (cmd: string, args: string[]) => {
     const linea = [cmd, ...args].join(' ');
     events.push(linea);
-    if (cmd === 'icacls' && args[1] === '/grant:r' && linea.includes('*S-1-5-80'))
-      conServicio.add(args[0] as string);
+    const sidServicio = /\*(S-1-5-80[-\d]+):/.exec(linea)?.[1];
+    if (cmd === 'icacls' && args[1] === '/grant:r' && sidServicio)
+      conServicio.set(args[0] as string, sidServicio);
     const clave = Object.keys(codes).find((k) => linea.includes(k));
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
-    // Lectura de vuelta de la ACL (`icacls <dir>` a secas): SYSTEM y Administradores, y el servicio si ya se le dio.
-    const lectura =
-      cmd === 'icacls' && args.length === 1 ? ace(conServicio.has(args[0] as string) ? 3 : 2) : '';
+    // Lectura de la ACL por SID: la de un despliegue bueno (SYSTEM y Administradores, y el servicio si ya se le dio).
+    let lectura = '';
+    if (cmd === 'powershell.exe') {
+      const dir = /-LiteralPath '([^']*)'/.exec(linea)?.[1] ?? '';
+      lectura = [
+        'S-1-5-18|FullControl|Allow|False',
+        'S-1-5-32-544|FullControl|Allow|False',
+        ...(conServicio.has(dir)
+          ? [
+              `${conServicio.get(dir)}|${/tls$/.test(dir) ? 'ReadAndExecute, Synchronize' : 'Modify, Synchronize'}|Allow|False`,
+            ]
+          : []),
+      ].join('\r\n');
+    }
     return {
       code: clave ? (codes[clave] as number) : 0,
       stdout: salida ? (stdouts[salida] as string) : lectura,
@@ -85,6 +95,7 @@ describe('prepareDataDir', () => {
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const i = (s: string) => ev.findIndex((l) => l.includes(s));
     expect(ev[i('/inheritance:r')]).toBe(`icacls ${DATOS} /inheritance:r`);
+    expect(ev.indexOf(`icacls ${DATOS} /reset`)).toBeLessThan(i('/inheritance:r'));
     expect(i('/inheritance:r')).toBeLessThan(i('/grant:r'));
     expect(ev[i('/grant:r')]).toBe(
       `icacls ${DATOS} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F`,
@@ -114,18 +125,16 @@ describe('prepareDataDir', () => {
     const ev: Ev[] = [];
     await grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev) });
     const tls = join(DATOS, 'tls');
-    expect(ev).toEqual([
+    expect(ev.filter((l) => !l.startsWith('powershell.exe'))).toEqual([
       `icacls ${DATOS} /grant:r *${SID}:(OI)(CI)M`,
-      `icacls ${DATOS}`,
       `icacls ${tls} /grant:r *${SID}:(OI)(CI)RX`,
-      `icacls ${tls}`,
     ]);
   });
 
   it('ACL restrictiva y verificada ANTES de la marca y de escribir nada dentro', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
-    const lectura = ev.indexOf(`icacls ${DATOS}`);
+    const lectura = ev.findIndex((l) => l.startsWith('powershell.exe') && l.includes(`'${DATOS}'`));
     const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
     expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
       ev.findIndex((l) => l.includes('/inheritance:r')),
@@ -137,19 +146,48 @@ describe('prepareDataDir', () => {
     expect(ev[marca]).toContain(DATOS);
   });
 
-  it('una ACL que no verifica aborta sin marca y sin escribir dentro', async () => {
+  const acl = (...filas: string[]) => ({ [`-LiteralPath '${DATOS}'`]: filas.join('\n') });
+  const bien = ['S-1-5-18|FullControl|Allow|False', 'S-1-5-32-544|FullControl|Allow|False'];
+
+  it.each([
+    ['Users (S-1-5-32-545)', 'S-1-5-32-545|ReadAndExecute, Synchronize|Allow|False'],
+    ['Everyone (S-1-1-0)', 'S-1-1-0|Read|Allow|False'],
+    ['un usuario cualquiera', 'S-1-5-21-1-2-3-1001|Modify|Allow|False'],
+    ['el servicio, que aún no toca (el servicio va después)', `${SID}|Modify|Allow|False`],
+  ])('una tercera ACE de %s aborta sin marca y sin escribir dentro', async (_n, fila) => {
     const ev: Ev[] = [];
-    // Una entrada de más (p. ej. Users heredado) en la lectura de vuelta.
+    const run = fakeRun(ev, {}, acl(...bien, fila as string));
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs: fakeFs(ev) })).rejects.toThrow(
+      /ACL.*(inesperada|distinta)/,
+    );
+    expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
+    expect(ev.some((l) => l.startsWith('mkdir -p'))).toBe(false);
+  });
+
+  it('una ACE heredada, una Deny o derechos de menos abortan; una salida ilegible también', async () => {
+    for (const filas of [
+      [bien[0], 'S-1-5-32-544|FullControl|Allow|True'],
+      [bien[0], 'S-1-5-32-544|FullControl|Deny|False'],
+      [bien[0], 'S-1-5-32-544|Read|Allow|False'],
+      [bien[0]], // falta una
+      [bien[0], 'error de PowerShell'],
+    ]) {
+      const ev: Ev[] = [];
+      const run = fakeRun(ev, {}, acl(...(filas as string[])));
+      await expect(prepareDataDir({ dataDir: DATOS, run, fs: fakeFs(ev) })).rejects.toThrow(/ACL/);
+    }
+  });
+
+  it('grantServiceAccess aborta si en los datos aparece Users con el servicio', async () => {
+    const ev: Ev[] = [];
     const run = fakeRun(
       ev,
       {},
-      {
-        [`icacls ${DATOS}`]: '  A:(OI)(CI)(F)\n  B:(OI)(CI)(F)\n  C:(OI)(CI)(M)\n  D:(OI)(CI)(RX)',
-      },
+      acl(...bien, `${SID}|Modify, Synchronize|Allow|False`, 'S-1-5-32-545|Read|Allow|False'),
     );
-    await expect(prepareDataDir({ dataDir: DATOS, run, fs: fakeFs(ev) })).rejects.toThrow(/ACL/);
-    expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
-    expect(ev.some((l) => l.startsWith('mkdir -p'))).toBe(false);
+    await expect(grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run })).rejects.toThrow(
+      /S-1-5-32-545/,
+    );
   });
 
   it('algo plantado en la carpeta nueva entre mkdir e icacls aborta sin marca', async () => {
@@ -223,6 +261,11 @@ describe('prepareDataDir', () => {
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(ev.some((l) => l.startsWith('rmdir'))).toBe(false);
     expect(ev).toContain(`icacls ${DATOS} /inheritance:r`);
+    // El contenido previo (ya sin enlaces) vuelve a heredar de la raíz restringida.
+    expect(ev).toContain(`icacls ${join(DATOS, '*')} /reset /T /L`);
+    expect(ev.indexOf(`icacls ${join(DATOS, '*')} /reset /T /L`)).toBeGreaterThan(
+      ev.findIndex((l) => l.startsWith('powershell.exe')),
+    );
   });
 
   it('un icacls que falla aborta con el comando en el mensaje', async () => {
