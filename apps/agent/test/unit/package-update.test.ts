@@ -6,7 +6,7 @@ import { createServer as createHttpsServer } from 'node:https';
 import type { AddressInfo } from 'node:net';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { cerrarDispatcherLan, _resetCacheLan } from '../../src/net/lan-tls.js';
 import { PrivilegedCommandError, type CommandRunner } from '../../src/privileged/runner.js';
@@ -468,7 +468,10 @@ describe('defaultPackageTransport (servidor local, sin red externa)', () => {
 
 describe('valores de producción del actualizador (los que ata update-runner)', () => {
   it('el staging del agente es <datos>/data/updates', () => {
-    expect(packageStagingDir('/var/lib/krakenos/data')).toBe('/var/lib/krakenos/data/updates');
+    // resolve(): en Windows la ruta absoluta lleva unidad (D:\var\…); se compara con la misma regla.
+    expect(packageStagingDir('/var/lib/krakenos/data')).toBe(
+      resolve('/var/lib/krakenos/data', 'updates'),
+    );
   });
   it('localHealthUrl: HTTPS con HTTPS_ENABLED=true (lo que deja `tls auto`), HTTP sin él, y el override manda', () => {
     expect(localHealthUrl({ PORT: '3001', HTTPS_ENABLED: 'true' })).toBe(
