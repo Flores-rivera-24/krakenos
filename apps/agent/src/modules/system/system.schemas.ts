@@ -49,10 +49,11 @@ export const systemTlsSchema = {
         mdnsResponder: {
           type: 'object',
           additionalProperties: false,
-          required: ['state', 'reason', 'address'],
+          required: ['state', 'reason', 'code', 'address'],
           properties: {
             state: { type: 'string', enum: ['off', 'running', 'unavailable'] },
             reason: { type: ['string', 'null'] },
+            code: { type: ['string', 'null'], enum: ['EADDRINUSE', 'EACCES', 'other', null] },
             address: { type: ['string', 'null'] },
           },
         },

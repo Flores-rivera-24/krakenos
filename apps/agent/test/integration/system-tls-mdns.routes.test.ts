@@ -27,6 +27,7 @@ describe('GET /api/system/tls — mdnsResponder', () => {
         mdnsStatus: () => ({
           state: 'unavailable',
           reason: 'bind EADDRINUSE 0.0.0.0:5353',
+          code: 'EADDRINUSE',
           address: null,
         }),
       });
@@ -39,6 +40,7 @@ describe('GET /api/system/tls — mdnsResponder', () => {
       expect(body.mdnsResponder).toEqual({
         state: 'unavailable',
         reason: 'bind EADDRINUSE 0.0.0.0:5353',
+        code: 'EADDRINUSE',
         address: null,
       });
       expect(Object.keys(body).sort()).toEqual(
@@ -69,6 +71,7 @@ describe('GET /api/system/tls — mdnsResponder', () => {
       expect((await leer(app)).mdnsResponder).toEqual({
         state: 'off',
         reason: null,
+        code: null,
         address: null,
       });
     });

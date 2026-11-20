@@ -5,6 +5,7 @@
  * IPs privadas (nunca públicas ni link-local). Cualquiera en la LAN puede mandar
  * basura: el parser descarta sin lanzar y el limitador no crece sin tope.
  */
+import type { MdnsResponderStatus } from '@krakenos/types';
 import type { NetworkInterfaceInfo } from 'node:os';
 import { encodeName, readName } from './dns.js';
 import { MDNS_GROUP, MDNS_PORT } from './transport.js';
@@ -194,21 +195,30 @@ export interface MdnsResponderDeps {
   log: { warn(msg: string): void };
 }
 
+/** Causa estable del fallo de `bind` (la UI elige el texto con ella). */
+export type MdnsUnavailableCode = NonNullable<MdnsResponderStatus['code']>;
+
 export class MdnsResponder {
   private readonly lastSent = new Map<string, number>();
-  private unavailable: string | null = null;
+  private unavailable: { unavailable: string; code: MdnsUnavailableCode } | null = null;
 
   constructor(private readonly deps: MdnsResponderDeps) {}
 
-  async start(): Promise<'running' | { unavailable: string }> {
-    if (this.unavailable !== null) return { unavailable: this.unavailable };
+  async start(): Promise<'running' | { unavailable: string; code: MdnsUnavailableCode }> {
+    if (this.unavailable !== null) return this.unavailable;
     try {
       await this.deps.socket.start((msg, from) => this.onMessage(msg, from));
       return 'running';
     } catch (err) {
-      this.unavailable = err instanceof Error ? err.message : String(err);
-      this.deps.log.warn(`mDNS: no se pudo abrir el puerto ${MDNS_PORT} (${this.unavailable})`);
-      return { unavailable: this.unavailable };
+      const nodeCode = (err as { code?: unknown } | null)?.code;
+      this.unavailable = {
+        unavailable: err instanceof Error ? err.message : String(err),
+        code: nodeCode === 'EADDRINUSE' || nodeCode === 'EACCES' ? nodeCode : 'other',
+      };
+      this.deps.log.warn(
+        `mDNS: no se pudo abrir el puerto ${MDNS_PORT} (${this.unavailable.unavailable})`,
+      );
+      return this.unavailable;
     }
   }
 

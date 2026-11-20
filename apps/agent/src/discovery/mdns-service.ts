@@ -18,13 +18,16 @@ export async function startMdnsResponder(
   const { mode, platform, port, ...deps } = opts;
   const active = mode === 'on' || (mode === 'auto' && platform === 'win32');
   if (!active)
-    return { status: () => ({ state: 'off', reason: null, address: null }), stop: async () => {} };
+    return {
+      status: () => ({ state: 'off', reason: null, code: null, address: null }),
+      stop: async () => {},
+    };
   const responder = new MdnsResponder(deps);
   const result = await responder.start();
   const status: MdnsResponderStatus =
     result === 'running'
-      ? { state: 'running', reason: null, address: `${deps.nombre[0]}.local:${port}` }
-      : { state: 'unavailable', reason: result.unavailable, address: null };
+      ? { state: 'running', reason: null, code: null, address: `${deps.nombre[0]}.local:${port}` }
+      : { state: 'unavailable', reason: result.unavailable, code: result.code, address: null };
   return {
     status: () => status,
     stop: () => (status.state === 'running' ? responder.stop() : Promise.resolve()),

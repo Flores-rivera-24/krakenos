@@ -29,14 +29,19 @@ describe('startMdnsResponder', () => {
     const s = fakeSocket();
     const h = await startMdnsResponder(deps(s, 'auto', 'linux'));
     expect(s.start).not.toHaveBeenCalled();
-    expect(h.status()).toEqual({ state: 'off', reason: null, address: null });
+    expect(h.status()).toEqual({ state: 'off', reason: null, code: null, address: null });
   });
 
   it('auto en Windows: arranca y se detiene en el cierre', async () => {
     const s = fakeSocket();
     const h = await startMdnsResponder(deps(s, 'auto', 'win32'));
     expect(s.start).toHaveBeenCalledTimes(1);
-    expect(h.status()).toEqual({ state: 'running', reason: null, address: 'mipc.local:3001' });
+    expect(h.status()).toEqual({
+      state: 'running',
+      reason: null,
+      code: null,
+      address: 'mipc.local:3001',
+    });
     await h.stop();
     expect(s.close).toHaveBeenCalledTimes(1);
   });
@@ -64,6 +69,7 @@ describe('startMdnsResponder', () => {
     expect(h.status()).toEqual({
       state: 'unavailable',
       reason: 'bind EADDRINUSE 0.0.0.0:5353',
+      code: 'EADDRINUSE',
       address: null,
     });
     expect(d.log.warn).toHaveBeenCalledTimes(1);

@@ -56,6 +56,13 @@ const CA_STEPS: { os: 'windows' | 'macos' | 'android' | 'ios'; steps: Translatio
   },
 ];
 
+/** Causa del fallo del respondedor mDNS → texto. El `reason` crudo (inglés, del SO) no se pinta. */
+const MDNS_UNAVAILABLE_KEY: Record<'EADDRINUSE' | 'EACCES' | 'other', TranslationKey> = {
+  EADDRINUSE: 'settings.tls.mdns.unavailable.inUse',
+  EACCES: 'settings.tls.mdns.unavailable.denied',
+  other: 'settings.tls.mdns.unavailable.other',
+};
+
 const CA_OS_KEY: Record<'windows' | 'macos' | 'android' | 'ios', TranslationKey> = {
   windows: 'settings.tls.ca.os.windows',
   macos: 'settings.tls.ca.os.macos',
@@ -195,12 +202,7 @@ export function TlsCard() {
         )}
         {status.mdnsResponder.state === 'unavailable' && (
           <Callout variant="warning" standing title={t('settings.tls.mdns.unavailableTitle')}>
-            <p>{t('settings.tls.mdns.unavailableDesc')}</p>
-            {status.mdnsResponder.reason && (
-              <p className="pt-1 text-kr-xs text-kr-muted">
-                {t('settings.tls.mdns.reason', { reason: status.mdnsResponder.reason })}
-              </p>
-            )}
+            <p>{t(MDNS_UNAVAILABLE_KEY[status.mdnsResponder.code ?? 'other'])}</p>
             <Link to="/vpn" className="mt-1 inline-block text-kr-primary underline">
               {t('settings.tls.mdns.tailscale')}
             </Link>

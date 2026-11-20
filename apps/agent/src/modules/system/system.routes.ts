@@ -293,6 +293,7 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
     const mdnsResponder = opts.mdnsStatus?.() ?? {
       state: 'off' as const,
       reason: null,
+      code: null,
       address: null,
     };
     return opts.tlsService

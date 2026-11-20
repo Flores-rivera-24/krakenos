@@ -294,9 +294,26 @@ describe('MdnsResponder', () => {
       close: vi.fn(async () => {}),
     };
     const { r, log } = make({ socket });
-    expect(await r.start()).toEqual({ unavailable: 'EADDRINUSE' });
-    expect(await r.start()).toEqual({ unavailable: 'EADDRINUSE' });
+    // Sin `code` en el error de Node, el código estable es `other`.
+    expect(await r.start()).toEqual({ unavailable: 'EADDRINUSE', code: 'other' });
+    expect(await r.start()).toEqual({ unavailable: 'EADDRINUSE', code: 'other' });
     expect(log.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['EADDRINUSE', 'EADDRINUSE'],
+    ['EACCES', 'EACCES'],
+    ['ENETDOWN', 'other'],
+  ])('el code %s del error de Node se mapea a %s', async (nodeCode, esperado) => {
+    const socket: ResponderSocket = {
+      start: vi.fn(async () => {
+        throw Object.assign(new Error('bind falló'), { code: nodeCode });
+      }),
+      send: vi.fn(),
+      close: vi.fn(async () => {}),
+    };
+    const { r } = make({ socket });
+    expect(await r.start()).toEqual({ unavailable: 'bind falló', code: esperado });
   });
 
   it('sin IP privada no responde, y stop cierra el socket', async () => {
