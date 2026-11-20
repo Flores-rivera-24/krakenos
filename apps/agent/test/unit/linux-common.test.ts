@@ -154,6 +154,10 @@ describe('el helper privilegiado en el paquete', () => {
     );
     expect(setup).toContain(`HELPER_PATH=${HELPER_PATH}\n`);
     expect(setup).toMatch(/NOPASSWD: \$HELPER_PATH/);
+    // PATH fijo para el helper: sin `secure_path` sudo conserva el del llamante.
+    expect(setup).toContain(
+      'Defaults!$HELPER_PATH secure_path=\\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\\"',
+    );
   });
 
   it.skipIf(WIN)('stageCommonTree instala el helper en esa ruta', async () => {

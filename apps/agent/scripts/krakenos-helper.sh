@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # krakenos-helper — helper privilegiado de KrakenOS.
 #
@@ -14,6 +14,19 @@
 #   sudo install -m 0755 krakenos-helper.sh /usr/local/bin/krakenos-helper
 #   sudo install -m 0440 krakenos.sudoers.example /etc/sudoers.d/krakenos
 #
+# PATH fijo ANTES de cualquier comando externo: este script corre como root y no
+# debe heredar el PATH de quien lo invoca (con `sudo` sin `secure_path`, el
+# usuario del servicio podría anteponer un `wg`/`iptables` falso y ejecutarlo
+# como root). Por eso el shebang es `/bin/bash` y no `env bash`.
+# Solo los tests (no-root) pueden sustituirlo: `$EUID` es un builtin y la
+# sustitución se ignora siendo root, sin depender de lo que `sudo` limpie.
+if [ "$EUID" -ne 0 ] && [ -n "${KRAKENOS_HELPER_TEST_PATH:-}" ]; then
+  PATH="$KRAKENOS_HELPER_TEST_PATH"
+else
+  PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+fi
+export PATH
+
 set -euo pipefail
 
 # --- Ámbito permitido (acota el OBJETIVO, no solo el verbo — US-74, F1) -------
