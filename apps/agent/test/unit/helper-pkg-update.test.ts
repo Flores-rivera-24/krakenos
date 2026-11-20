@@ -65,6 +65,21 @@ beforeAll(() => {
   verifier = join(base, 'out', 'entry.js');
   const bin = join(base, 'bin');
   mkdirSync(bin);
+  // PATH sin `systemd-run` (el del equipo puede tenerlo): enlaces solo a lo que el helper necesita.
+  const sin = join(base, 'bin-sin-systemd-run');
+  mkdirSync(sin);
+  for (const c of 'bash env cat cp mv rm mkdir head stat realpath flock find dirname basename id awk cut sha256sum chmod uname sed tr'.split(
+    ' ',
+  )) {
+    try {
+      symlinkSync(
+        execFileSync('bash', ['-c', `command -v ${c}`], { encoding: 'utf8' }).trim(),
+        join(sin, c),
+      );
+    } catch {
+      // no existe en este equipo: el test que lo necesite lo dirá
+    }
+  }
   // Los stubs leen/escriben en $STUB (por test): versión instalada, registro de llamadas, fallos.
   const put = (n: string, body: string) => {
     writeFileSync(join(bin, n), `#!/usr/bin/env bash\n${body}\n`);
@@ -72,6 +87,11 @@ beforeAll(() => {
   };
   put('dpkg-query', 'cat "$STUB/installed"');
   put('dpkg', 'echo amd64');
+  // systemd-run: registra sus argumentos y ejecuta lo que va tras `--` (como lo haría PID 1).
+  put(
+    'systemd-run',
+    'echo "systemd-run $*" >> "$STUB/log"; [ -e "$STUB/no-systemd-run" ] && exit 127; while [ "$1" != -- ]; do shift; done; shift; exec "$@"',
+  );
   put(
     'systemctl',
     'echo "systemctl $*" >> "$STUB/log"; [ -e "$STUB/systemctl-fail" ] && exit 1; exit 0',
@@ -171,6 +191,10 @@ function run(args: string[], env: NodeJS.ProcessEnv = {}) {
 const update = (r: { pkg: string; man: string; sig: string }, v: string, env?: NodeJS.ProcessEnv) =>
   run(['pkg-update', r.pkg, r.man, r.sig, v], env);
 const log = () => (existsSync(join(stub, 'log')) ? readFileSync(join(stub, 'log'), 'utf8') : '');
+const runCalls = () =>
+  log()
+    .split('\n')
+    .filter((l) => l.startsWith('systemd-run'));
 const aptCalls = () =>
   log()
     .split('\n')
@@ -187,6 +211,10 @@ describe.skipIf(process.platform === 'win32')(
       expect(call).toContain(`${rootDir}/0.3.0/${pkgName('0.3.0')}`);
       expect(call).not.toContain(staging);
       expect(call).toContain('-y');
+      // apt-get va en una unidad transitoria (fuera de ProtectSystem=full del servicio), sobre la copia de root.
+      expect(runCalls()).toEqual([
+        `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold ${rootDir}/0.3.0/${pkgName('0.3.0')}`,
+      ]);
       expect(readFileSync(join(rootDir, '0.3.0', pkgName('0.3.0')), 'utf8')).toBe('paquete 0.3.0');
       expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('prev=\n');
       expect(log()).not.toContain('systemctl');
@@ -290,6 +318,30 @@ describe.skipIf(process.platform === 'win32')(
       expect(aptCalls()).toEqual([]);
     });
 
+    it('sin systemd-run aborta (69) y no instala nada desde el espacio del servicio', async () => {
+      for (const n of ['dpkg-query', 'dpkg', 'apt-get', 'systemctl'])
+        symlinkSync(join(base, 'bin', n), join(base, 'bin-sin-systemd-run', n));
+      const res = await update(release('0.3.0'), '0.3.0', {
+        PATH: join(base, 'bin-sin-systemd-run'),
+      });
+      expect(res.code).toBe(69);
+      expect(res.stderr).toMatch(/systemd-run/);
+      expect(aptCalls()).toEqual([]);
+    });
+
+    it('si systemd-run falla, la actualización falla y no se instala nada', async () => {
+      writeFileSync(join(stub, 'no-systemd-run'), '');
+      const res = await update(release('0.3.0'), '0.3.0');
+      expect(res.code).toBe(127);
+      expect(aptCalls()).toEqual([]);
+    });
+
+    it('una versión inválida no llega a systemd-run (ni como nombre de unidad)', async () => {
+      const r = release('0.3.0');
+      for (const v of ['0.3.0;reboot', '0.3', '../x']) await update(r, v);
+      expect(runCalls()).toEqual([]);
+    });
+
     it('un directorio de root que no es de root 0700 se rechaza (64)', async () => {
       mkdirSync(rootDir, { recursive: true, mode: 0o755 });
       chmodSync(rootDir, 0o755);
@@ -365,9 +417,11 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     expect(res.code, res.stderr).toBe(0);
     const l = log().trim().split('\n');
     expect(l[0]).toBe('systemctl stop krakenos');
-    expect(l[1]).toContain('--allow-downgrades');
-    expect(l[1]).toContain(`${rootDir}/0.2.0/${pkgName('0.2.0')}`);
-    expect(l[2]).toBe('systemctl start krakenos');
+    expect(l[1]).toBe(
+      `systemd-run --wait --collect --pipe --quiet --unit=krakenos-rollback-0.2.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold --allow-downgrades ${rootDir}/0.2.0/${pkgName('0.2.0')}`,
+    );
+    expect(l[2]).toContain('apt-get');
+    expect(l[3]).toBe('systemctl start krakenos');
     expect(readFileSync(db, 'utf8')).toBe('base de antes');
     expect(existsSync(`${db}-wal`)).toBe(false);
     expect(existsSync(`${db}-shm`)).toBe(false);
@@ -437,6 +491,13 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
       expect((await rollback(c)).code, c).toBe(64);
     }
     expect(log()).toBe('');
+  });
+
+  it('un estado con una versión rara no llega a ejecutar nada en una unidad', async () => {
+    await dosActualizaciones();
+    writeFileSync(join(rootDir, '.state'), 'prev=0.2.0;reboot\n');
+    expect((await rollback()).code).toBe(64);
+    expect(runCalls()).toEqual([]);
   });
 
   it('rechaza una base que es un enlace simbólico (root no la sobrescribiría a través del enlace)', async () => {

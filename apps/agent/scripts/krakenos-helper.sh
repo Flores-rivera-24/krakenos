@@ -221,13 +221,26 @@ pkg_verify() { # <dir> <nombre-paquete> <plataforma> <versión> (--installed v |
     --package "$d/$name" --platform "$plat" --version "$ver" "$@"
 }
 
-pkg_install() { # <formato> <fichero> [rollback]
+# apt-get/pacman escriben en /usr y /etc, y la unidad del servicio lleva `ProtectSystem=full`: lo que
+# lanza `sudo` desde el servicio HEREDA ese espacio de montaje (solo lectura) y la instalación fallaría
+# siempre. Se ejecuta en una unidad transitoria que arranca PID 1, fuera del espacio y del cgroup del
+# servicio (que el postinst reinicia). Sin `systemd-run` se ABORTA: nunca se instala desde el espacio
+# del servicio. El comando que recibe es siempre una ruta de la copia de root, ya verificada.
+pkg_isolated() { # <prefijo-unidad> <versión> <comando>...
+  local unit="$1" ver="$2"; shift 2
+  [[ "$ver" =~ $_semver ]] || deny "pkg: versión no válida para la unidad"
+  command -v systemd-run > /dev/null 2>&1 || { echo "krakenos-helper: falta systemd-run: no se instala desde el espacio del servicio" >&2; exit 69; }
+  systemd-run --wait --collect --pipe --quiet --unit="$unit-$ver" -- "$@"
+}
+
+pkg_install() { # <formato> <fichero> <versión> [rollback]
   if [ "$1" = deb ]; then
     local -a extra=()
-    [ "${3:-}" = rollback ] && extra=(--allow-downgrades)
-    DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold "${extra[@]}" "$2"
+    local unit=krakenos-update
+    [ "${4:-}" = rollback ] && { extra=(--allow-downgrades); unit=krakenos-rollback; }
+    pkg_isolated "$unit" "$3" env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold "${extra[@]}" "$2"
   else
-    pacman -U --noconfirm "$2"
+    pkg_isolated "$([ "${4:-}" = rollback ] && echo krakenos-rollback || echo krakenos-update)" "$3" pacman -U --noconfirm "$2"
   fi
 }
 
@@ -275,7 +288,7 @@ pkg_update() {
     fi
   fi
   printf 'prev=%s\n' "$prev" > "$(pkg_state_file)"
-  pkg_install "$fmt" "$d/$name" || exit "$?"
+  pkg_install "$fmt" "$d/$name" "$ver" || exit "$?"
   # Se conservan solo la nueva y la anterior.
   for x in "$KRAKENOS_PKG_ROOT_DIR"/*/; do
     x="$(basename -- "$x")"
@@ -305,13 +318,14 @@ pkg_rollback() {
   [[ "$line" =~ ^prev=([0-9]+\.[0-9]+\.[0-9]+)?$ ]] || deny "pkg-rollback: estado ilegible"
   prev="${BASH_REMATCH[1]}"
 
+  # stop/start solo hablan con PID 1 (no escriben /usr ni /etc): basta llamarlos desde el helper, sin unidad transitoria.
   systemctl stop "$KRAKENOS_PKG_UNIT" || { echo "krakenos-helper: no se pudo parar el servicio" >&2; return 1; }
   if [ -n "$prev" ]; then
     fmt="$(pkg_format)"
     plat="$(pkg_platform "$fmt")"
     if pname="$(pkg_saved_name "$prev" "$fmt")" \
       && pkg_verify "$KRAKENOS_PKG_ROOT_DIR/$prev" "$pname" "$plat" "$prev" --rollback \
-      && pkg_install "$fmt" "$KRAKENOS_PKG_ROOT_DIR/$prev/$pname" rollback; then
+      && pkg_install "$fmt" "$KRAKENOS_PKG_ROOT_DIR/$prev/$pname" "$prev" rollback; then
       :
     else
       echo "krakenos-helper: no se pudo reinstalar la versión $prev" >&2
