@@ -57,7 +57,7 @@ export default tseslint.config(
     rules: { '@typescript-eslint/no-floating-promises': 'error' },
   },
   {
-    files: ['**/scripts/**/*.{js,mjs,cjs}'],
+    files: ['**/scripts/**/*.{js,mjs,cjs}', 'packaging/**/*.{js,mjs,cjs}'],
     languageOptions: {
       globals: {
         console: 'readonly',

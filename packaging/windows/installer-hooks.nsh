@@ -21,6 +21,18 @@
   ${EndIf}
   Pop $2
   Pop $1
+
+  ; Actualizar encima: se para el servicio de la versión anterior (con SU node y SU script) antes de
+  ; copiar, o los ficheros en uso no se pisan. `stop` no hace nada si el servicio no existe.
+  ${If} ${FileExists} "$INSTDIR\installer\post-install.mjs"
+  ${AndIf} ${FileExists} "$INSTDIR\node\node.exe"
+    nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" stop --lang es'
+    Pop $0
+    ${If} $0 != 0
+      DetailPrint "No se pudo parar el servicio de KrakenOS (resultado: $0)"
+      Abort "No se pudo parar el servicio de KrakenOS (resultado: $0). Se cancela la instalación."
+    ${EndIf}
+  ${EndIf}
 !macroend
 
 ; El bundler copia ficheros pero no junctions: se rehacen con el Node empaquetado y el manifiesto.
@@ -33,6 +45,21 @@
   ${OrIf} $0 != 0
     DetailPrint "No se pudieron rehacer los enlaces de node_modules (resultado: $0)"
     Abort "No se pudieron rehacer los enlaces de node_modules (resultado: $0)."
+  ${EndIf}
+
+  ; Datos con ACL, primer arranque y servicio. Sale con código distinto de 0 ante cualquier fallo; en
+  ; ese caso se aborta (no queda una instalación a medias sin avisar). Nunca se imprime el token de setup.
+  ; $LANGUAGE: 1034 es español; el resto, inglés.
+  ${If} $LANGUAGE == 1034
+    StrCpy $R8 "es"
+  ${Else}
+    StrCpy $R8 "en"
+  ${EndIf}
+  nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" install --lang $R8'
+  Pop $0
+  ${If} $0 != 0
+    DetailPrint "El servicio de KrakenOS no quedó en marcha (resultado: $0)"
+    Abort "El servicio de KrakenOS no quedó en marcha (resultado: $0). Mira los mensajes anteriores y %ProgramData%\KrakenOS\logs."
   ${EndIf}
 !macroend
 

@@ -9,20 +9,12 @@
 import { chmod, cp, lstat, mkdir, readdir, readFile, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { withKindsNone } from './launchers/first-run.mjs';
+import { setKey, withKindsNone } from './launchers/first-run.mjs';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Dónde instala el paquete el helper privilegiado; el .env y la regla de sudoers apuntan aquí. */
 export const HELPER_PATH = '/usr/lib/krakenos/libexec/krakenos-helper';
-
-/** Fija `KEY=valor`: reemplaza las líneas existentes (dejando una sola) o la añade si falta. */
-function setKey(text, key, value) {
-  const re = new RegExp(`^${key}=.*$`, 'gm');
-  let seen = false;
-  const out = text.replace(re, () => (seen++ ? '\0' : `${key}=${value}`)).replace(/\0\n?/g, '');
-  return seen ? out : `${out}${out.endsWith('\n') || out === '' ? '' : '\n'}${key}=${value}\n`;
-}
 
 /**
  * Claves que son del PAQUETE y no del usuario: rutas que el paquete instala y modo de despliegue.

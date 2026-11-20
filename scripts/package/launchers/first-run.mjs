@@ -28,6 +28,14 @@ export function withKindsNone(template) {
   return out;
 }
 
+/** Fija `KEY=valor` (lo usan los paquetes de Linux y el instalador de Windows): reemplaza las líneas existentes (dejando una sola) o la añade si falta. */
+export function setKey(text, key, value) {
+  const re = new RegExp(`^${key}=.*$`, 'gm');
+  let seen = false;
+  const out = text.replace(re, () => (seen++ ? '\0' : `${key}=${value}`)).replace(/\0\n?/g, '');
+  return seen ? out : `${out}${out.endsWith('\n') || out === '' ? '' : '\n'}${key}=${value}\n`;
+}
+
 /** @returns {boolean} true si creó el `.env`; false si ya existía. */
 export function ensureEnv(dataDir, templatePath) {
   const target = join(dataDir, '.env');

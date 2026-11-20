@@ -4,7 +4,7 @@
  * como recursos, y escribe su ruta en stdout. `--version` existe para la prueba de actualización.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,11 @@ async function main() {
   // Antes de tocar nada más: un WinSW que no verifica aborta el build por la suma.
   // Puerto 3001 por defecto; el instalador (Task 3) elige el libre al instalar.
   await installWinsw(dir, process.env.KRAKENOS_WINSW_CACHE ?? join(RAIZ, '.cache', 'winsw'), 3001);
+
+  // Los pasos del instalador (ACL, primer arranque, servicio) corren con el Node empaquetado, desde Program Files.
+  await cp(join(RAIZ, 'packaging', 'windows', 'installer'), join(dir, 'installer'), {
+    recursive: true,
+  });
 
   const tmp = await mkdtemp(join(tmpdir(), 'krakenos-nsis-'));
   try {
