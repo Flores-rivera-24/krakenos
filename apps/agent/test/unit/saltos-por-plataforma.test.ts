@@ -65,9 +65,9 @@ const LISTA: Record<string, Entrada> = {
       'Solo la aserción del retorno de carro (devuelve 0 en el runner de Windows; causa NO investigada). El helper de sudoers es de Linux y no corre en Windows; la del tabulador sí corre.',
   },
   'unit/helper-pkg-update.test.ts': {
-    saltos: 2,
+    saltos: 3,
     motivo:
-      'pkg-update/pkg-rollback son del helper de root de Linux (realpath, flock, stat -c, modos 0700 de root): los dos bloques del fichero.',
+      'pkg-update/pkg-rollback son del helper de root de Linux (realpath, flock, stat -c, modos 0700 de root): los tres bloques del fichero.',
   },
   'unit/install-script.test.ts': {
     saltos: 3,
@@ -141,7 +141,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 18, saltos: 28, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 18, saltos: 29, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

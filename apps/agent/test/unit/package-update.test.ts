@@ -257,10 +257,16 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
     await expect(runner.apply()).rejects.toThrow();
     expect(calls).toEqual([]);
   });
-  it('rollback llama a pkg-rollback con la copia de la base que hizo el backup', async () => {
+  it('rollback llama a pkg-rollback con la copia de la base y la versión que se instaló', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    await runner.rollback();
+    expect(calls).toEqual([['pkg-rollback', join(dir, 'dev.db.pre-update'), '0.3.0']]);
+  });
+  it('rollback sin paquete preparado (falló el fetch) no llama al helper', async () => {
     const { runner } = build();
     await runner.rollback();
-    expect(calls).toEqual([['pkg-rollback', join(dir, 'dev.db.pre-update')]]);
+    expect(calls).toEqual([]);
   });
   it('healthcheck: true si responde, false si nunca', async () => {
     const { runner } = build();

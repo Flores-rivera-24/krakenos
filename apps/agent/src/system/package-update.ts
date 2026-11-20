@@ -216,8 +216,15 @@ export class PackageUpdateRunner implements UpdateRunner {
   }
 
   async rollback(): Promise<void> {
+    // Sin paquete preparado (falló el `fetch`) root no ha instalado nada: no hay nada que revertir y
+    // pedirlo solo expondría una actualización anterior a un fallo de red.
+    if (!this.staged) return;
     // El agente no puede pararse a sí mismo para restaurar su base: lo hace el helper, desde la copia
-    // que dejó el paso `backup` (`pkg-rollback <copia>`). También reinstala el paquete anterior si root lo guardó.
-    await this.opts.helper.run(['pkg-rollback', `${this.opts.dbFile}.pre-update`]);
+    // que dejó el paso `backup`. Se le dice QUÉ versión falló: solo revierte si es la que él instaló.
+    await this.opts.helper.run([
+      'pkg-rollback',
+      `${this.opts.dbFile}.pre-update`,
+      this.staged.version,
+    ]);
   }
 }

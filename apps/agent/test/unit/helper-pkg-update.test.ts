@@ -68,7 +68,7 @@ beforeAll(() => {
   // PATH sin `systemd-run` (el del equipo puede tenerlo): enlaces solo a lo que el helper necesita.
   const sin = join(base, 'bin-sin-systemd-run');
   mkdirSync(sin);
-  for (const c of 'bash env cat cp mv rm mkdir head stat realpath flock find dirname basename id awk cut sha256sum chmod uname sed tr'.split(
+  for (const c of 'bash env cat cp mv rm mkdir head stat realpath flock find dirname basename id awk cut sha256sum chmod sed tr grep'.split(
     ' ',
   )) {
     try {
@@ -85,8 +85,27 @@ beforeAll(() => {
     writeFileSync(join(bin, n), `#!/usr/bin/env bash\n${body}\n`);
     chmodSync(join(bin, n), 0o755);
   };
-  put('dpkg-query', 'cat "$STUB/installed"');
+  // dpkg-query: sin `installed` es un equipo donde dpkg existe pero krakenos NO está instalado con él (Arch).
+  put(
+    'dpkg-query',
+    '[ -e "$STUB/installed" ] || exit 1; case "$*" in *Status*) printf "install ok installed" ;; *) cat "$STUB/installed" ;; esac',
+  );
   put('dpkg', 'echo amd64');
+  put('uname', '[ "$1" = -m ] && echo x86_64 || exec /usr/bin/uname "$@"');
+  // pacman: `-Q` imprime «krakenos <época>:<versión>-<pkgrel>»; `-U` se comporta como apt-get.
+  put(
+    'pacman',
+    [
+      'if [ "$1" = -Q ]; then [ -e "$STUB/installed-pacman" ] || exit 1; echo "krakenos $(cat "$STUB/installed-pacman")"; exit 0; fi',
+      'f="${@: -1}"',
+      'echo "pacman $* sha=$(sha256sum "$f" | cut -d" " -f1)" >> "$STUB/log"',
+      '[ -e "$STUB/apt-fail" ] && exit 1',
+      'echo "1:$(basename "$(dirname "$f")")-1" > "$STUB/installed-pacman"',
+      'echo "postinst-restart db=$(cat "$STUB_DB" 2>/dev/null) wal=$([ -e "$STUB_DB-wal" ] && echo si || echo no)" >> "$STUB/log"',
+    ].join('\n'),
+  );
+  for (const n of ['dpkg-query', 'dpkg', 'apt-get', 'systemctl', 'pacman', 'uname'])
+    symlinkSync(join(bin, n), join(sin, n));
   // systemd-run: registra sus argumentos y ejecuta lo que va tras `--` (como lo haría PID 1).
   put(
     'systemd-run',
@@ -105,6 +124,9 @@ beforeAll(() => {
       '[ -e "$STUB/mutate" ] && echo malo > "$(cat "$STUB/mutate")"',
       'echo "apt-get $* sha=$(sha256sum "$f" | cut -d" " -f1)" >> "$STUB/log"',
       '[ -e "$STUB/apt-fail" ] && exit 100',
+      'basename "$(dirname "$f")" > "$STUB/installed"',
+      // El postinst del paquete reinicia el servicio: se anota con qué base lo encuentra.
+      'echo "postinst-restart db=$(cat "$STUB_DB" 2>/dev/null) wal=$([ -e "$STUB_DB-wal" ] && echo si || echo no)" >> "$STUB/log"',
       'exit 0',
     ].join('\n'),
   );
@@ -123,12 +145,19 @@ beforeEach(() => {
 afterEach(() => rmSync(w, { recursive: true, force: true }));
 
 const pkgName = (v: string) => `krakenos_${v}_amd64.deb`;
+const archName = (v: string) => `krakenos-${v}-1-x86_64.pkg.tar.zst`;
 
 /** Un release firmado en el staging del servicio (el agente ya lo verificó). */
 function release(
   v: string,
-  o: { key?: ReturnType<typeof generateKeyPairSync>; content?: string; minFrom?: string } = {},
+  o: {
+    key?: ReturnType<typeof generateKeyPairSync>;
+    content?: string;
+    minFrom?: string;
+    arch?: boolean;
+  } = {},
 ) {
+  const name = o.arch ? archName(v) : pkgName(v);
   const content = Buffer.from(o.content ?? `paquete ${v}`);
   const manifest = Buffer.from(
     JSON.stringify({
@@ -137,22 +166,22 @@ function release(
       minFrom: o.minFrom ?? '0.1.0',
       artifacts: [
         {
-          platform: 'deb-amd64',
-          name: pkgName(v),
+          platform: o.arch ? 'arch-x86_64' : 'deb-amd64',
+          name,
           sha256: createHash('sha256').update(content).digest('hex'),
           size: content.length,
         },
       ],
     }),
   );
-  writeFileSync(join(staging, pkgName(v)), content);
+  writeFileSync(join(staging, name), content);
   writeFileSync(join(staging, 'manifest.json'), manifest);
   writeFileSync(
     join(staging, 'manifest.json.sig'),
     sign(null, manifest, (o.key ?? good).privateKey).toString('base64'),
   );
   return {
-    pkg: join(staging, pkgName(v)),
+    pkg: join(staging, name),
     man: join(staging, 'manifest.json'),
     sig: join(staging, 'manifest.json.sig'),
     sha: createHash('sha256').update(content).digest('hex'),
@@ -169,6 +198,7 @@ function run(args: string[], env: NodeJS.ProcessEnv = {}) {
           ...process.env,
           PATH: `${join(base, 'bin')}:${process.env.PATH}`,
           STUB: stub,
+          STUB_DB: join(data, 'prisma', 'krakenos.db'),
           KRAKENOS_HELPER_CONF: '/dev/null/none',
           KRAKENOS_PKG_DATA_DIR: data,
           KRAKENOS_PKG_STAGING: staging,
@@ -216,7 +246,7 @@ describe.skipIf(process.platform === 'win32')(
         `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold ${rootDir}/0.3.0/${pkgName('0.3.0')}`,
       ]);
       expect(readFileSync(join(rootDir, '0.3.0', pkgName('0.3.0')), 'utf8')).toBe('paquete 0.3.0');
-      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('prev=\n');
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.3.0 prev=\n');
       expect(log()).not.toContain('systemctl');
     });
 
@@ -319,8 +349,6 @@ describe.skipIf(process.platform === 'win32')(
     });
 
     it('sin systemd-run aborta (69) y no instala nada desde el espacio del servicio', async () => {
-      for (const n of ['dpkg-query', 'dpkg', 'apt-get', 'systemctl'])
-        symlinkSync(join(base, 'bin', n), join(base, 'bin-sin-systemd-run', n));
       const res = await update(release('0.3.0'), '0.3.0', {
         PATH: join(base, 'bin-sin-systemd-run'),
       });
@@ -382,7 +410,7 @@ describe.skipIf(process.platform === 'win32')(
           .filter((n) => !n.startsWith('.'))
           .sort(),
       ).toEqual(['0.3.0', '0.4.0']);
-      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('prev=0.3.0\n');
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.4.0 prev=0.3.0\n');
     });
   },
 );
@@ -399,7 +427,8 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     writeFileSync(`${db}-shm`, 'shm');
     writeFileSync(copy, 'base de antes');
   });
-  const rollback = (c = copy) => run(['pkg-rollback', c]);
+  const rollback = (c = copy, v = '0.3.0', env?: NodeJS.ProcessEnv) =>
+    run(['pkg-rollback', c, v], env);
 
   /** Dos actualizaciones seguidas: la segunda guarda la primera como paquete anterior. */
   async function dosActualizaciones() {
@@ -421,7 +450,10 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
       `systemd-run --wait --collect --pipe --quiet --unit=krakenos-rollback-0.2.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold --allow-downgrades ${rootDir}/0.2.0/${pkgName('0.2.0')}`,
     );
     expect(l[2]).toContain('apt-get');
-    expect(l[3]).toBe('systemctl start krakenos');
+    // El postinst del paquete anterior reinicia el servicio: la base YA estaba restaurada (y sin -wal/-shm).
+    expect(l[3]).toBe('postinst-restart db=base de antes wal=no');
+    expect(l[4]).toBe('systemctl restart krakenos');
+    expect(l).toHaveLength(5);
     expect(readFileSync(db, 'utf8')).toBe('base de antes');
     expect(existsSync(`${db}-wal`)).toBe(false);
     expect(existsSync(`${db}-shm`)).toBe(false);
@@ -444,7 +476,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     expect(res.code).toBe(66);
     expect(res.stderr).toMatch(/no hay paquete anterior/);
     expect(aptCalls()).toEqual([]);
-    expect(log()).toBe('systemctl stop krakenos\nsystemctl start krakenos\n');
+    expect(log()).toBe('systemctl stop krakenos\nsystemctl restart krakenos\n');
     expect(readFileSync(db, 'utf8')).toBe('base de antes');
   });
 
@@ -473,6 +505,52 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     expect(aptCalls()).toEqual([]);
   });
 
+  it('un estado de una actualización anterior no convierte otro fallo en un downgrade', async () => {
+    await dosActualizaciones(); // estado: ver=0.3.0 prev=0.2.0; la siguiente (0.4.0) falla antes de instalar
+    const res = await rollback(copy, '0.4.0');
+    expect(res.code).toBe(0);
+    expect(res.stderr).toMatch(/0\.3\.0, no de la 0\.4\.0/);
+    expect(log()).toBe('');
+    expect(readFileSync(db, 'utf8')).toBe('base nueva');
+  });
+
+  it('si lo instalado no es la versión destino (apt no llegó a instalar) restaura la base pero no reinstala', async () => {
+    await dosActualizaciones();
+    writeFileSync(join(stub, 'installed'), '0.2.0');
+    const res = await rollback();
+    expect(res.code, res.stderr).toBe(0);
+    expect(aptCalls()).toEqual([]);
+    expect(log()).toBe('systemctl stop krakenos\nsystemctl restart krakenos\n');
+    expect(readFileSync(db, 'utf8')).toBe('base de antes');
+  });
+
+  it('una versión destino mal formada se rechaza (64) sin tocar nada', async () => {
+    await dosActualizaciones();
+    for (const v of ['', '0.3', '0.3.0;x', '../0.3.0'])
+      expect((await rollback(copy, v)).code, v).toBe(64);
+    expect((await run(['pkg-rollback', copy])).code).toBe(64);
+    expect(log()).toBe('');
+  });
+
+  it('un formato ilegible se rechaza ANTES de parar el servicio', async () => {
+    await dosActualizaciones();
+    const res = await rollback(copy, '0.3.0', { KRAKENOS_PKG_FORMAT: 'raro' });
+    expect(res.code).toBe(64);
+    expect(log()).toBe('');
+  });
+
+  it('sin systemd-run en el rollback: restaura la base y arranca el servicio igual, y el código dice que la reinstalación falló', async () => {
+    await dosActualizaciones();
+    const res = await rollback(copy, '0.3.0', { PATH: join(base, 'bin-sin-systemd-run') });
+    expect(res.code).toBe(1);
+    expect(res.stderr).toMatch(/systemd-run/);
+    expect(res.stderr).toMatch(/no se pudo reinstalar/);
+    expect(aptCalls()).toEqual([]);
+    expect(readFileSync(db, 'utf8')).toBe('base de antes');
+    expect(log().trim().split('\n').at(-1)).toBe('systemctl restart krakenos');
+    expect(existsSync(join(rootDir, '.state'))).toBe(true); // sigue pendiente: no se revirtió del todo
+  });
+
   it('rechaza copias fuera de los datos, enlaces, sin sufijo y rutas con ..', async () => {
     await dosActualizaciones();
     const fuera = join(w, 'fuera.db.pre-update');
@@ -495,7 +573,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
 
   it('un estado con una versión rara no llega a ejecutar nada en una unidad', async () => {
     await dosActualizaciones();
-    writeFileSync(join(rootDir, '.state'), 'prev=0.2.0;reboot\n');
+    writeFileSync(join(rootDir, '.state'), 'ver=0.3.0 prev=0.2.0;reboot\n');
     expect((await rollback()).code).toBe(64);
     expect(runCalls()).toEqual([]);
   });
@@ -508,3 +586,83 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     expect(log()).toBe('');
   });
 });
+
+describe.skipIf(process.platform === 'win32')(
+  'krakenos-helper: Arch (pacman) y autodetección',
+  () => {
+    const ARCH = { KRAKENOS_PKG_FORMAT: '' }; // sin formato fijado: se detecta por quién tiene instalado krakenos
+    const instalado = (v: string) => writeFileSync(join(stub, 'installed-pacman'), `1:${v}-1`);
+    const rel = (v: string) => release(v, { arch: true });
+    let db: string;
+    let copy: string;
+    beforeEach(() => {
+      rmSync(join(stub, 'installed')); // dpkg-query existe en el PATH pero krakenos no está en dpkg
+      instalado('0.2.0');
+      mkdirSync(join(data, 'prisma'), { recursive: true });
+      db = join(data, 'prisma', 'krakenos.db');
+      copy = `${db}.pre-update`;
+      writeFileSync(db, 'base nueva');
+      writeFileSync(`${db}-wal`, 'wal');
+      writeFileSync(copy, 'base de antes');
+    });
+
+    it('happy path: detecta Arch aunque dpkg esté instalado, lee «época:versión-pkgrel» e instala con pacman -U desde la copia de root', async () => {
+      const res = await update(rel('0.3.0'), '0.3.0', ARCH);
+      expect(res.code, res.stderr).toBe(0);
+      expect(runCalls()).toEqual([
+        `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- pacman -U --noconfirm ${rootDir}/0.3.0/${archName('0.3.0')}`,
+      ]);
+      expect(aptCalls()).toEqual([]);
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.3.0 prev=\n');
+    });
+
+    it('rechaza un downgrade o la misma versión (la instalada sale de pacman -Q)', async () => {
+      for (const inst of ['0.3.0', '0.4.0']) {
+        instalado(inst);
+        expect((await update(rel('0.3.0'), '0.3.0', ARCH)).code, inst).toBe(65);
+      }
+      expect(log()).not.toMatch(/pacman -U/);
+    });
+
+    it('un paquete cambiado tras la verificación del agente se rechaza (65)', async () => {
+      const r = rel('0.3.0');
+      writeFileSync(r.pkg, 'paquete 0.3.X');
+      expect((await update(r, '0.3.0', ARCH)).code).toBe(65);
+      expect(log()).not.toMatch(/pacman -U/);
+    });
+
+    it('un .deb en una máquina Arch se rechaza (nombre de paquete no válido)', async () => {
+      expect((await update(release('0.3.0'), '0.3.0', ARCH)).code).toBe(64);
+    });
+
+    it('rollback: base restaurada ANTES de reinstalar el anterior con pacman -U (sin downgrade especial) y reinicio', async () => {
+      instalado('0.1.0');
+      expect((await update(rel('0.2.0'), '0.2.0', ARCH)).code).toBe(0);
+      expect((await update(rel('0.3.0'), '0.3.0', ARCH)).code).toBe(0);
+      writeFileSync(join(stub, 'log'), '');
+      const res = await run(['pkg-rollback', copy, '0.3.0'], ARCH);
+      expect(res.code, res.stderr).toBe(0);
+      const l = log().trim().split('\n');
+      expect(l[0]).toBe('systemctl stop krakenos');
+      expect(l[1]).toBe(
+        `systemd-run --wait --collect --pipe --quiet --unit=krakenos-rollback-0.2.0 -- pacman -U --noconfirm ${rootDir}/0.2.0/${archName('0.2.0')}`,
+      );
+      expect(l[3]).toBe('postinst-restart db=base de antes wal=no');
+      expect(l[4]).toBe('systemctl restart krakenos');
+      expect(readFileSync(join(stub, 'installed-pacman'), 'utf8').trim()).toBe('1:0.2.0-1');
+    });
+
+    it('con deb instalado y sin formato fijado, detecta deb', async () => {
+      writeFileSync(join(stub, 'installed'), '0.2.0');
+      rmSync(join(stub, 'installed-pacman'));
+      const res = await update(release('0.3.0'), '0.3.0', ARCH);
+      expect(res.code, res.stderr).toBe(0);
+      expect(aptCalls()).toHaveLength(1);
+    });
+
+    it('si krakenos no consta instalado en ninguno, rechaza (64)', async () => {
+      rmSync(join(stub, 'installed-pacman'));
+      expect((await update(rel('0.3.0'), '0.3.0', ARCH)).code).toBe(64);
+    });
+  },
+);
