@@ -164,6 +164,15 @@ sudo krakenos-setup --with-helper
 
 Si prefieres no activarlo, actualiza con el gestor de paquetes del sistema como siempre.
 
+**Paquete portable (carpeta `.tar.gz`).** No se actualiza desde la app: se reemplaza la carpeta por la
+de la versión nueva y los datos, que viven fuera de ella, se conservan (ver
+[Paquete portable](../README.md#paquete-portable-carpeta)). El lanzador del portable arranca el agente
+en modo `package`, pero sin el helper de administrador la tarjeta **no ofrece** el botón «Actualizar
+ahora». Además, la comprobación de versiones está apagada hasta que definas `UPDATE_CHECK_REPO` en el
+`.env` de la carpeta de datos; si la activas, la tarjeta avisa de la versión nueva y, como el portable no
+trae `krakenos-setup`, el comando que sugiere para activar el helper no existe en él: ignóralo y
+reemplaza la carpeta.
+
 **Windows.** La actualización desde la app para el instalador de Windows llega más adelante; hoy
 en Windows se instala la versión nueva a mano.
 

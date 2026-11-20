@@ -89,11 +89,31 @@ sudo bash /opt/krakenos/scripts/install.sh --uninstall   # desinstalar (conserva
 
 Más en [`docs/updates.md`](docs/updates.md) y [`docs/recovery.md`](docs/recovery.md).
 
-### Paquetes `.deb` y Arch
+### Paquetes y portables de Linux
 
-Paquetes con su propio Node, sin `git` ni pnpm en el servidor: `.deb` para Debian y Ubuntu (amd64 y
-arm64) y paquete de pacman para Arch y CachyOS (x86_64). A partir de la próxima versión se adjuntan a la página de
-versiones, con `SHA256SUMS`; mientras tanto, se construyen desde este repositorio. Guía en [`docs/install-linux-package.md`](docs/install-linux-package.md).
+Paquetes con su propio Node, sin `git` ni pnpm en el servidor. A partir de la próxima versión se
+adjuntan a la página de versiones, con `SHA256SUMS`; mientras tanto, se construyen desde este
+repositorio.
+
+| Sistema                   | Arquitectura  | Archivo                                 | Guía                                                                    |
+| ------------------------- | ------------- | --------------------------------------- | ----------------------------------------------------------------------- |
+| Debian, Ubuntu            | amd64 y arm64 | `krakenos_<versión>_<arq>.deb`          | [`install-linux-package.md`](docs/install-linux-package.md)             |
+| Arch, CachyOS             | x86_64        | `krakenos-<versión>-*.pkg.tar.zst`      | [Paquete de Arch](docs/install-linux-package.md#paquete-de-arch-pacman) |
+| Cualquier Linux (carpeta) | x64 y arm64   | `krakenos-<versión>-linux-<arq>.tar.gz` | [Paquete portable](#paquete-portable-carpeta)                           |
+
+**Raspberry Pi:** guía en [`docs/install-raspberry-pi.md`](docs/install-raspberry-pi.md) (aún sin
+verificar en hardware real).
+
+### Paquete portable (carpeta)
+
+Para probar KrakenOS sin instalar nada como administrador (solo Linux, por ahora):
+
+1. Descomprime el `.tar.gz` de tu arquitectura y ejecuta `bin/krakenos`.
+2. Los datos (`.env`, claves y base de datos) van **fuera** de la carpeta: en `KRAKENOS_DATA_DIR`, por
+   defecto `~/.local/share/krakenos` (o `$XDG_DATA_HOME/krakenos` si lo tienes definido).
+3. Se actualiza **reemplazando la carpeta** por la de la versión nueva: los datos se conservan.
+4. No se actualiza desde la app: no tiene el helper de administrador ni gestor de paquetes.
+5. Su integridad se comprueba con `SHA256SUMS` (detecta descargas rotas; no es una firma).
 
 ### Docker (evaluación)
 
