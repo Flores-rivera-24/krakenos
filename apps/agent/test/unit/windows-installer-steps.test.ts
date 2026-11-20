@@ -95,6 +95,11 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
       if (!o?.recursive && nodos[p]) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
       if (!nodos[p]) nodos[p] = { kind: 'dir', entries: [] };
     },
+    rename: async (a: string, b: string) => {
+      events.push(`rename ${a} ${b}`);
+      nodos[b] = nodos[a] as Nodo;
+      delete nodos[a];
+    },
     rm: async (p: string) => {
       events.push(`rm ${p}`);
       delete nodos[p];
@@ -372,7 +377,9 @@ describe('prepareDataDir', () => {
       [join(DATOS, 'keys')]: { kind: 'dir', entries: [] },
     });
     const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
-    await prepareDataDir({ dataDir: DATOS, run, fs });
+    const r = await prepareDataDir({ dataDir: DATOS, run, fs });
+    // ca\\ tenía contenido y su ACL estaba abierta: la CA pudo leerse y no se adopta.
+    expect(r.caExpuesta).toBe(true);
     // Nada de `datos\*`: ese glob incluía a ca\ y la dejaba heredando hasta que se le aplicara su ACL.
     expect(ev.some((l) => l.includes(`${join(DATOS, '*')} `))).toBe(false);
     expect(ev).not.toContain(`icacls ${ca} /reset /T /L`);
@@ -382,6 +389,21 @@ describe('prepareDataDir', () => {
     // Su contenido hereda de ca\ solo después de que ca\ tenga su ACL cerrada.
     expect(cambioAcl(ev, ca)).toBeGreaterThan(-1);
     expect(ev.indexOf(`icacls ${join(ca, '*')} /reset /T /L`)).toBeGreaterThan(cambioAcl(ev, ca));
+  });
+
+  it('con ca\\ y tls\\ ya cerradas (o nuevas) la CA no se considera expuesta', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['ca', 'tls'] },
+      [join(DATOS, 'ca')]: { kind: 'dir', entries: ['krakenos-ca-key.pem'] },
+      [join(DATOS, 'ca', 'krakenos-ca-key.pem')]: { kind: 'file', text: 'x' },
+      [join(DATOS, 'tls')]: { kind: 'dir', entries: [] },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` }, { abierta: false });
+    expect((await prepareDataDir({ dataDir: DATOS, run, fs })).caExpuesta).toBe(false);
+    expect(
+      (await prepareDataDir({ dataDir: DATOS, run: fakeRun([]), fs: fakeFs([]) })).caExpuesta,
+    ).toBe(false);
   });
 
   it('un icacls que falla aborta con el comando en el mensaje', async () => {
@@ -565,8 +587,11 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
   const TLS = join(DATOS, 'tls');
   const CA_PEM_TLS = join(TLS, 'krakenos-ca.pem');
   const CA_PEM_CA = join(CA, 'krakenos-ca.pem');
+  const CA_KEY = join(CA, 'krakenos-ca-key.pem');
   let tmp: string;
   let pem: string;
+  let clave: string;
+  let claveAjena: string;
   beforeAll(async () => {
     tmp = mkdtempSync(join(tmpdir(), 'kr-ca-'));
     await ensureLocalCa({
@@ -576,11 +601,27 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
       lanIps: [],
     });
     pem = readFileSync(join(tmp, 'tls', 'krakenos-ca.pem'), 'utf8');
+    clave = readFileSync(join(tmp, 'ca', 'krakenos-ca-key.pem'), 'utf8');
+    await ensureLocalCa({
+      certsDir: join(tmp, 'tls2'),
+      keysDir: join(tmp, 'ca2'),
+      hostname: 'otra',
+      lanIps: [],
+    });
+    claveAjena = readFileSync(join(tmp, 'ca2', 'krakenos-ca-key.pem'), 'utf8');
   });
   afterAll(() => rmSync(tmp, { recursive: true, force: true }));
 
   /** `run` que, al lanzar local-ca.js, deja la CA pública en tls\ como hace de verdad. */
-  function montar(opts: { sinCa?: boolean; falla?: boolean; aclCa?: string } = {}) {
+  function montar(
+    opts: {
+      sinCa?: boolean;
+      falla?: boolean;
+      aclCa?: string;
+      claveAjena?: boolean;
+      hkml?: string;
+    } = {},
+  ) {
     ENVS.length = 0;
     const ev: Ev[] = [];
     const nodos: Record<string, Nodo> = { [join(DATOS, '.env')]: { kind: 'file', text: 'X=1\n' } };
@@ -588,13 +629,18 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     const base = fakeRun(
       ev,
       opts.falla ? { 'local-ca.js': 1 } : {},
-      opts.aclCa ? { [`GetAccessControl('${CA}')`]: opts.aclCa } : {},
+      {
+        ...(opts.aclCa ? { [`GetAccessControl('${CA}')`]: opts.aclCa } : {}),
+        ...(opts.hkml ? { 'reg.exe query': `    CaThumbprint    REG_SZ    ${opts.hkml}\r\n` } : {}),
+      },
       { abierta: false },
     );
     const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
       const r = await base(cmd, args, o);
-      if (args.some((a) => a.endsWith('local-ca.js')) && r.code === 0 && !opts.sinCa)
+      if (args.some((a) => a.endsWith('local-ca.js')) && r.code === 0 && !opts.sinCa) {
         nodos[CA_PEM_TLS] = { kind: 'file', text: pem };
+        nodos[CA_KEY] = { kind: 'file', text: opts.claveAjena ? claveAjena : clave };
+      }
       return r;
     };
     const deps = {
@@ -700,10 +746,38 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     await expect(setupTls(deps)).rejects.toThrow(/krakenos-ca\.pem/);
   });
 
-  it('window.json lleva solo el origen y es el ÚNICO fichero legible por Users, sin herencia', async () => {
+  it('el certificado importado tiene que ser el de la clave de ca\\: si no casan, falla cerrado sin importar', async () => {
+    const { ev, deps } = montar({ claveAjena: true });
+    await expect(setupTls(deps)).rejects.toThrow(/no corresponde a la clave/);
+    expect(ev.some((x) => x.startsWith('certutil') || x.startsWith('reg.exe add'))).toBe(false);
+  });
+
+  it('con la CA expuesta (ACL abierta rehecha) NO la adopta: borra la vieja de Root por su thumbprint de HKLM, la regenera y reimporta', async () => {
+    const viejo = 'A'.repeat(40);
+    const { ev, deps } = montar({ hkml: viejo });
+    const r = await setupTls({ ...deps, rotarCa: true });
+    const i = (t: string) => ev.findIndex((x) => x.includes(t));
+    expect(ev).toContain(`certutil -delstore Root ${viejo}`);
+    expect(i(`certutil -delstore Root ${viejo}`)).toBeLessThan(i('local-ca.js'));
+    for (const f of [CA_KEY, CA_PEM_TLS, join(TLS, 'agent-key.pem'), join(TLS, 'agent-cert.pem')])
+      expect(ev.indexOf(`rm ${f}`)).toBeGreaterThan(-1);
+    expect(ev.indexOf(`rm ${CA_KEY}`)).toBeLessThan(i('local-ca.js'));
+    expect(ev).toContain(`certutil -addstore -f Root ${CA_PEM_CA}`);
+    expect(r.rotada).toBe(true);
+  });
+
+  it('sin exposición no borra nada ni toca Root salvo importar (se conserva la misma CA)', async () => {
+    const { ev, deps } = montar({ hkml: 'B'.repeat(40) });
+    const r = await setupTls(deps);
+    expect(ev.some((x) => x.includes('-delstore') || x.startsWith('rm '))).toBe(false);
+    expect(r.rotada).toBe(false);
+  });
+
+  it('window.json se prepara en ca\\ (cerrada) con su ACL y se renombra a su sitio: nunca nace heredando del servicio', async () => {
     const ev: Ev[] = [];
     const nodos: Record<string, Nodo> = {};
     const f = join(DATOS, 'window.json');
+    const t = join(CA, 'window.json.tmp');
     await writeWindowJson({
       dataDir: DATOS,
       origin: 'https://prueba.local:3002',
@@ -711,13 +785,29 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
       fs: fakeFs(ev, nodos),
     });
     expect(JSON.parse(nodos[f]?.text as string)).toEqual({ origin: 'https://prueba.local:3002' });
-    // Un enlace plantado por el servicio no se sigue: se borra y se crea con wx.
-    expect(ev.indexOf(`rm ${f}`)).toBeLessThan(ev.indexOf(`write (wx) ${f}`));
-    const icacls = ev.filter((l) => l.startsWith('icacls'));
-    expect(icacls).toEqual([
-      `icacls ${f} /grant:r *S-1-5-18:(F) ${ADMINS}:(F) *S-1-5-32-545:(R) /inheritance:r`,
+    expect(nodos[t]).toBeUndefined();
+    const k = (x: string) => ev.findIndex((l) => l.includes(x));
+    expect(ev).toContain(`rm ${t}`);
+    expect(k(`write (wx) ${t}`)).toBeLessThan(k(`icacls ${t}`));
+    expect(k(`icacls ${t}`)).toBeLessThan(k(`rename ${t} ${f}`));
+    // icacls opera sobre el enlace (/L), y solo sobre el temporal: nunca sobre datos\window.json.
+    expect(ev.filter((l) => l.startsWith('icacls'))).toEqual([
+      `icacls ${t} /grant:r *S-1-5-18:(F) ${ADMINS}:(F) *S-1-5-32-545:(R) /inheritance:r /L`,
     ]);
-    expect(icacls.join('')).not.toContain(`icacls ${DATOS} `);
+  });
+
+  it('window.json: si tras renombrar lo que hay no es un fichero normal (enlace o carpeta), aborta', async () => {
+    const ev: Ev[] = [];
+    const nodos: Record<string, Nodo> = {};
+    const fs = fakeFs(ev, nodos);
+    const rename = fs.rename;
+    fs.rename = async (a: string, b: string) => {
+      await rename(a, b);
+      nodos[b] = { kind: 'link' };
+    };
+    await expect(
+      writeWindowJson({ dataDir: DATOS, origin: 'https://x', run: fakeRun(ev), fs }),
+    ).rejects.toThrow(/window\.json/);
   });
 
   it('la tarea de renovación corre como SYSTEM y ejecuta SOLO código de Program Files', async () => {
@@ -780,6 +870,7 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
 });
 
 let PEM_PRUEBA = '';
+let KEY_PRUEBA = '';
 beforeAll(async () => {
   const t = mkdtempSync(join(tmpdir(), 'kr-ca2-'));
   await ensureLocalCa({
@@ -789,6 +880,7 @@ beforeAll(async () => {
     lanIps: [],
   });
   PEM_PRUEBA = readFileSync(join(t, 'tls', 'krakenos-ca.pem'), 'utf8');
+  KEY_PRUEBA = readFileSync(join(t, 'ca', 'krakenos-ca-key.pem'), 'utf8');
   rmSync(t, { recursive: true, force: true });
 });
 
@@ -812,8 +904,10 @@ describe('runInstall', () => {
       opts.envPrevio ? { 'reg.exe query': `DataDir REG_SZ ${DATOS}` } : {},
     );
     const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
-      if (args.some((a) => a.endsWith('local-ca.js')))
+      if (args.some((a) => a.endsWith('local-ca.js'))) {
         nodos[join(DATOS, 'tls', 'krakenos-ca.pem')] = { kind: 'file', text: PEM_PRUEBA };
+        nodos[join(DATOS, 'ca', 'krakenos-ca-key.pem')] = { kind: 'file', text: KEY_PRUEBA };
+      }
       return base(cmd, args, o);
     };
     const deps = {
@@ -903,6 +997,18 @@ describe('runInstall', () => {
     expect(JSON.parse(nodos[join(DATOS, 'window.json')]?.text as string)).toEqual({
       origin: 'https://mi-pc.local:3002',
     });
+  });
+
+  it('una instalación sobre una ca\\ que estaba abierta rota la CA y lo dice', async () => {
+    const lineas: string[] = [];
+    const { ev, deps, nodos } = montar({ envPrevio: 'PORT=3005\n' });
+    const ca = join(DATOS, 'ca');
+    nodos[DATOS] = { kind: 'dir', entries: ['.env', 'ca'] };
+    nodos[ca] = { kind: 'dir', entries: ['krakenos-ca-key.pem'] };
+    nodos[join(ca, 'krakenos-ca-key.pem')] = { kind: 'file', text: 'vieja' };
+    await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
+    expect(ev.indexOf(`rm ${join(ca, 'krakenos-ca-key.pem')}`)).toBeGreaterThan(-1);
+    expect(lineas.join('\n')).toMatch(/CA nueva/);
   });
 
   it('un paso que falla se propaga y no sigue con el servicio', async () => {

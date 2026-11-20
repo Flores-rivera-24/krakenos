@@ -5,7 +5,7 @@
  * en Vitest las líneas de comando exactas; en `windows-latest` se ejecutan de verdad.
  * Nunca se lee ni se escribe el token de setup: lo crea el agente y no pasa por aquí.
  */
-import { createHash, X509Certificate } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, X509Certificate } from 'node:crypto';
 import { join } from 'node:path';
 import { msg } from './mensajes.mjs';
 
@@ -113,6 +113,7 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
   // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe. Su ACL se fija de una vez
   // (protegida) y SOLO después lo que tuvieran dentro hereda de ellas.
+  let caExpuesta = false;
   for (const [sub, opcionales] of [
     ['ca', {}],
     ['tls', { [sidServicio]: /ReadAndExecute/ }],
@@ -121,11 +122,14 @@ export async function prepareDataDir({ dataDir, run, fs }) {
     const tenia = hijos.includes(sub) && (await fs.readdir(dir)).length > 0;
     await fs.mkdir(dir, { recursive: true });
     const rehechaSub = await asegurarAcl(run, dir, BASE, opcionales);
+    // Con contenido y una ACL que estaba abierta, la clave de la CA pudo leerse (o el certificado cambiarse).
+    if (tenia && rehechaSub) caExpuesta = true;
     if (tenia) {
       await ok(run, 'icacls', [join(dir, '*'), '/reset', '/T', '/L']);
       if (rehechaSub) await ok(run, 'icacls', [join(dir, '*'), '/setowner', ADMINS, '/T', '/L']);
     }
   }
+  return { caExpuesta };
 }
 
 /** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
@@ -312,12 +316,37 @@ const httpsOrigin = (host, port) => (port === 443 ? `https://${host}` : `https:/
  * Antes de que `local-ca.js` escriba la clave de la CA, `ca\` se verifica por SID exacto (solo SYSTEM y
  * Administradores): jamás una clave en una carpeta que el servicio pueda modificar.
  */
-export async function setupTls({ installDir, dataDir, hostname, port, run, fs, setKey }) {
+export async function setupTls({
+  installDir,
+  dataDir,
+  hostname,
+  port,
+  run,
+  fs,
+  setKey,
+  rotarCa = false,
+}) {
   const ca = join(dataDir, 'ca');
   const tls = join(dataDir, 'tls');
   const envPath = join(dataDir, '.env');
   await verificarAcl(run, ca, BASE);
   await verificarAcl(run, tls, BASE, { [virtualAccountSid(SERVICE)]: /ReadAndExecute/ });
+
+  // Una CA cuya carpeta estaba abierta no se adopta: se quita de la confianza de la máquina (por el
+  // thumbprint de HKLM, que el servicio no escribe) y se borra para que `local-ca.js` genere otra.
+  if (rotarCa) {
+    const q = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'CaThumbprint']);
+    const viejo = /CaThumbprint\s+REG_SZ\s+([0-9A-Fa-f]{40})/.exec(q.stdout)?.[1];
+    if (viejo) await run('certutil', ['-delstore', 'Root', viejo]); // si ya no estaba, da igual
+    for (const f of [
+      join(ca, 'krakenos-ca-key.pem'),
+      join(ca, 'krakenos-ca.pem'),
+      join(tls, 'krakenos-ca.pem'),
+      join(tls, 'agent-key.pem'),
+      join(tls, 'agent-cert.pem'),
+    ])
+      await fs.rm(f, { force: true });
+  }
 
   await ok(
     run,
@@ -334,8 +363,23 @@ export async function setupTls({ installDir, dataDir, hostname, port, run, fs, s
     throw new Error(`local-ca.js no dejó ${caPem}`);
   });
   const caCopia = join(ca, 'krakenos-ca.pem');
+  // El certificado que se confía tiene que ser el de la clave guardada en ca\ (carpeta cerrada): lo que
+  // haya en tls\ por sí solo no prueba nada.
+  const cert = new X509Certificate(pem);
+  const claveCa = await fs.readFile(join(ca, 'krakenos-ca-key.pem'), 'utf8').catch(() => '');
+  const spki = (k) => k.export({ type: 'spki', format: 'der' });
+  let casan = false;
+  try {
+    casan = spki(cert.publicKey).equals(spki(createPublicKey(createPrivateKey(claveCa))));
+  } catch {
+    /* clave ilegible: no casa */
+  }
+  if (!casan)
+    throw new Error(
+      `${caPem} no corresponde a la clave de ${join(ca, 'krakenos-ca-key.pem')}: no se confía. Borra ambos para regenerar la CA.`,
+    );
   await fs.writeFile(caCopia, pem);
-  const thumbprint = new X509Certificate(pem).fingerprint.replaceAll(':', '');
+  const thumbprint = cert.fingerprint.replaceAll(':', '');
   await ok(run, 'certutil', ['-addstore', '-f', 'Root', caCopia]);
   // En HKLM y no en un fichero de datos: el desinstalador, elevado, no debe fiarse de algo que escribe el servicio.
   await ok(run, 'reg.exe', [
@@ -369,7 +413,7 @@ export async function setupTls({ installDir, dataDir, hostname, port, run, fs, s
   ])
     env = setKey(env, k, v);
   await fs.writeFile(envPath, env);
-  return { origin, thumbprint };
+  return { origin, thumbprint, rotada: rotarCa };
 }
 
 /**
@@ -379,16 +423,24 @@ export async function setupTls({ installDir, dataDir, hostname, port, run, fs, s
  */
 export async function writeWindowJson({ dataDir, origin, run, fs }) {
   const f = join(dataDir, 'window.json');
-  await fs.rm(f, { force: true });
-  await fs.writeFile(f, `${JSON.stringify({ origin })}\n`, { flag: 'wx' });
+  // Se prepara en ca\ (cerrada al servicio) con su ACL ya puesta y se renombra a su sitio: la entrada del
+  // servicio se sustituye sin escribir a través de ella y el fichero nunca hereda el Modificar de la raíz.
+  const t = join(dataDir, 'ca', 'window.json.tmp');
+  await fs.rm(t, { force: true });
+  await fs.writeFile(t, `${JSON.stringify({ origin })}\n`, { flag: 'wx' });
   await ok(run, 'icacls', [
-    f,
+    t,
     '/grant:r',
     '*S-1-5-18:(F)',
     `${ADMINS}:(F)`,
     '*S-1-5-32-545:(R)',
     '/inheritance:r',
+    '/L',
   ]);
+  await fs.rename(t, f);
+  const st = await fs.lstat(f);
+  if (st.isSymbolicLink() || st.isDirectory())
+    throw new Error(`${f} no es un fichero normal tras crearlo: se rechaza.`);
 }
 
 /** Tarea semanal como SYSTEM: el `.mjs` sale de `Program Files`; la carpeta de datos solo viaja de argumento. */
@@ -418,7 +470,7 @@ export async function runInstall(d) {
   const xmlPath = join(installDir, 'service', 'KrakenOS-service.xml');
   const envPath = join(dataDir, '.env');
 
-  await prepareDataDir({ dataDir, run, fs });
+  const { caExpuesta } = await prepareDataDir({ dataDir, run, fs });
 
   // Al actualizar se parte del puerto que ya tenía el .env, para no cambiarlo sin motivo.
   const previo = await fs.readFile(envPath, 'utf8').catch(() => '');
@@ -439,7 +491,8 @@ export async function runInstall(d) {
 
   await d.ensureKeys(dataDir);
   // HTTPS antes de arrancar: el agente lee el certificado al iniciar. El puerto es el ya elegido.
-  const { origin } = await setupTls({
+  const { origin, rotada } = await setupTls({
+    rotarCa: caExpuesta,
     installDir,
     dataDir,
     hostname: localHostname(d.hostname),
@@ -462,5 +515,6 @@ export async function runInstall(d) {
   });
   log(msg(lang, 'listo', port));
   log(msg(lang, 'tlsListo', origin));
+  if (rotada) log(msg(lang, 'caRotada'));
   return { port };
 }

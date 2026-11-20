@@ -231,6 +231,8 @@ function Phase-Service {
   # ca\ ya guarda la clave de la CA (primera instalación): Users y el servicio plantados en ella y en la clave.
   $ca0 = Join-Path $datos 'ca'
   Assert (Test-Path (Join-Path $ca0 'krakenos-ca-key.pem')) 'precondición: la primera instalación dejó la clave de la CA en ca\'
+  $thumbAntes = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumbAntes") 'precondición: la CA de la primera instalación está en Root'
   & icacls $ca0 /grant '*S-1-5-32-545:(OI)(CI)R' | Out-Null
   & icacls $ca0 /grant ('*{0}:(OI)(CI)M' -f ((New-Object System.Security.Principal.NTAccount('NT SERVICE\KrakenOS')).Translate([System.Security.Principal.SecurityIdentifier]).Value)) | Out-Null
   Assert (((& icacls (Join-Path $ca0 'krakenos-ca-key.pem')) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users llega a la clave de la CA'
@@ -246,6 +248,12 @@ function Phase-Service {
   foreach ($r in $datos, (Join-Path $datos 'tls'), (Join-Path $datos '.env')) {
     Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users') "Users ya no está en $r"
   }
+  # Esa CA pudo leerse: no se adopta. Se rota (CA nueva) y la anterior sale de la confianza de la máquina.
+  $thumbDespues = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
+  Assert ($thumbDespues -ne $thumbAntes) 'con ca\ plantada abierta la CA se rota (otro thumbprint en HKLM)'
+  Assert (-not (Test-Path "Cert:\LocalMachine\Root\$thumbAntes")) 'la CA expuesta ya no está en Cert:\LocalMachine\Root'
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumbDespues") 'la CA nueva está en Cert:\LocalMachine\Root'
+  Assert (-not (Test-Path (Join-Path $ca0 'window.json.tmp'))) 'no queda el temporal de window.json en ca\'
   # ca\ y la clave de la CA: ni Users ni el servicio (lo plantado se cerró antes de volver a usar la clave).
   foreach ($r in $ca0, (Join-Path $ca0 'krakenos-ca-key.pem')) {
     Assert (((& icacls $r) -join "`n") -notmatch 'BUILTIN\\Users|KrakenOS:') "ni Users ni el servicio llegan a $r"
