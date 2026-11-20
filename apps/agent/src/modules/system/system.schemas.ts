@@ -2,6 +2,7 @@ import {
   AUTO_BACKUP_FREQUENCIES,
   DEPLOY_MODES,
   SYSTEM_SETTING_KEYS,
+  UPDATE_BLOCKED_CODES,
   UPDATE_STEPS,
 } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
@@ -158,7 +159,7 @@ const updateResultSchema = {
           step: { type: 'string', enum: [...UPDATE_STEPS] },
           status: { type: 'string', enum: ['ok', 'failed', 'skipped'] },
           detail: { type: 'string' },
-          code: { type: 'string', enum: ['NODE_TOO_OLD', 'NOT_AN_UPGRADE', 'NO_ARTIFACT'] },
+          code: { type: 'string', enum: UPDATE_BLOCKED_CODES },
         },
         required: ['step', 'status'],
       },
@@ -188,7 +189,7 @@ export const updatePlanSchema = {
         lastResult: updateResultSchema,
         blockedReason: {
           type: ['string', 'null'],
-          enum: ['NODE_TOO_OLD', 'NOT_AN_UPGRADE', 'NO_ARTIFACT', null],
+          enum: [...UPDATE_BLOCKED_CODES, null],
         },
         requiredNode: { type: ['string', 'null'] },
       },

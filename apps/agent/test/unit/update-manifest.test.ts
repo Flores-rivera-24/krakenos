@@ -4,6 +4,7 @@ import {
   artifactFor,
   checkUpgrade,
   parseManifest,
+  verifyAndParse,
   verifyManifest,
   type Manifest,
 } from '../../src/system/update-manifest.js';
@@ -102,5 +103,84 @@ describe('artifactFor', () => {
   });
   it('lanza si no hay artefacto para la plataforma', () => {
     expect(() => artifactFor(manifest, 'deb-arm64')).toThrow(UpdateBlockedError);
+  });
+});
+
+describe('hallazgos de la revisión de la Task 1', () => {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const sigOf = (b: Buffer) => sign(null, b, privateKey).toString('base64');
+
+  it('verifyAndParse devuelve el manifiesto solo con firma válida', () => {
+    expect(verifyAndParse(bytes, sigOf(bytes), pem(publicKey))).toEqual(manifest);
+  });
+  it('verifyAndParse rechaza con BAD_SIGNATURE ANTES de parsear (JSON roto con firma mala)', () => {
+    const roto = Buffer.from('{no');
+    expect(() => verifyAndParse(roto, sigOf(bytes), pem(publicKey))).toThrow(
+      expect.objectContaining({ code: 'BAD_SIGNATURE' }),
+    );
+  });
+  it('verifyAndParse: firma válida de un JSON inválido sigue siendo inválido', () => {
+    const roto = Buffer.from('{no');
+    expect(() => verifyAndParse(roto, sigOf(roto), pem(publicKey))).toThrow(/manifiesto/i);
+  });
+
+  it.each(['01.2.3', '1.02.3', '1.2.03', '1234567890.0.0', '1.2.3-rc1'])(
+    'rechaza la versión %s',
+    (v) => {
+      expect(() => parseManifest(Buffer.from(JSON.stringify({ ...manifest, version: v })))).toThrow(
+        /manifiesto/i,
+      );
+    },
+  );
+  it('acepta 0.0.0 y 9 dígitos', () => {
+    expect(() =>
+      parseManifest(Buffer.from(JSON.stringify({ ...manifest, version: '999999999.0.0' }))),
+    ).not.toThrow();
+    expect(() =>
+      parseManifest(Buffer.from(JSON.stringify({ ...manifest, minFrom: '0.0.0' }))),
+    ).not.toThrow();
+  });
+
+  it('minFrom tiene su propio código y la igualdad exacta pasa', () => {
+    expect(() => checkUpgrade(manifest, '0.1.0')).toThrow(
+      expect.objectContaining({ code: 'MIN_FROM' }),
+    );
+    expect(() => checkUpgrade(manifest, '0.2.0')).not.toThrow();
+  });
+
+  const conNombre = (name: string) =>
+    Buffer.from(JSON.stringify({ ...manifest, artifacts: [{ ...manifest.artifacts[0], name }] }));
+  it.each([
+    ['sin extensión de paquete', 'krakenos_0.3.0_amd64.tar'],
+    ['con barra', 'sub/krakenos.deb'],
+    ['con dos puntos seguidos', 'krakenos..deb'],
+    ['demasiado largo', `${'a'.repeat(200)}.deb`],
+  ])('rechaza el nombre %s', (_n, name) => {
+    expect(() => parseManifest(conNombre(name))).toThrow(/manifiesto/i);
+  });
+  it('acepta .deb y .pkg.tar.zst', () => {
+    expect(() => parseManifest(conNombre('krakenos_0.3.0_amd64.deb'))).not.toThrow();
+    expect(() => parseManifest(conNombre('krakenos-0.3.0-1-x86_64.pkg.tar.zst'))).not.toThrow();
+  });
+
+  it('rechaza una clave RSA o EC (solo ed25519)', () => {
+    const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 });
+    const ec = generateKeyPairSync('ec', { namedCurve: 'P-256' });
+    const sig = sigOf(bytes);
+    expect(verifyManifest(bytes, sig, pem(rsa.publicKey))).toBe(false);
+    expect(verifyManifest(bytes, sig, pem(ec.publicKey))).toBe(false);
+  });
+
+  it('rechaza un size no entero', () => {
+    const m = { ...manifest, artifacts: [{ ...manifest.artifacts[0], size: 1.5 }] };
+    expect(() => parseManifest(Buffer.from(JSON.stringify(m)))).toThrow(/manifiesto/i);
+  });
+
+  it('una instalada con sufijo de prerelease se compara por su número (0.3.0-rc1 = 0.3.0)', () => {
+    // isNewer usa parseInt: '0-rc1' → 0, así que 0.3.0-rc1 cuenta como 0.3.0 y NO es upgrade.
+    expect(() => checkUpgrade(manifest, '0.3.0-rc1')).toThrow(
+      expect.objectContaining({ code: 'NOT_AN_UPGRADE' }),
+    );
+    expect(() => checkUpgrade(manifest, '0.2.5-rc1')).not.toThrow();
   });
 });

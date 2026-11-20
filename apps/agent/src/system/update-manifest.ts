@@ -22,8 +22,12 @@ export interface Manifest {
   artifacts: Artifact[];
 }
 
-const VERSION = /^\d+\.\d+\.\d+$/;
+// Sin ceros a la izquierda y ≤ 9 dígitos por parte: así `parseInt` (isNewer) no se desborda ni confunde 01 con 1.
+const PART = '(?:0|[1-9]\\d{0,8})';
+const VERSION = new RegExp(`^${PART}\\.${PART}\\.${PART}$`);
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._+~-]*$/;
+const NAME_MAX = 128;
+const NAME_EXT = /(\.deb|\.pkg\.tar\.zst)$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 
 function fail(why: string): never {
@@ -55,7 +59,13 @@ export function parseManifest(bytes: Buffer): Manifest {
     const x = a as Record<string, unknown>;
     onlyKeys(x, ['platform', 'name', 'sha256', 'size'], 'un artefacto');
     if (!PLATFORMS.includes(x.platform as Platform)) return fail('plataforma desconocida');
-    if (typeof x.name !== 'string' || !NAME.test(x.name))
+    if (
+      typeof x.name !== 'string' ||
+      x.name.length > NAME_MAX ||
+      x.name.includes('..') ||
+      !NAME.test(x.name) ||
+      !NAME_EXT.test(x.name)
+    )
       return fail('nombre de artefacto no válido');
     if (typeof x.sha256 !== 'string' || !SHA256.test(x.sha256)) return fail('sha256 no válido');
     if (!Number.isSafeInteger(x.size) || (x.size as number) <= 0) return fail('tamaño no válido');
@@ -77,7 +87,24 @@ export function verifyManifest(bytes: Buffer, sigB64: string, publicKeyPem: stri
   }
 }
 
-/** Anti-downgrade: versión estrictamente mayor y la instalada ≥ `minFrom`. */
+/**
+ * Punto único para leer un manifiesto: la firma se comprueba sobre los bytes crudos
+ * ANTES de interpretarlos (un JSON hostil no llega al parser).
+ */
+export function verifyAndParse(bytes: Buffer, sigB64: string, publicKeyPem: string): Manifest {
+  if (!verifyManifest(bytes, sigB64, publicKeyPem)) {
+    throw new UpdateBlockedError(
+      'BAD_SIGNATURE',
+      'El manifiesto de la versión no está firmado con la clave del proyecto; no se instala nada.',
+    );
+  }
+  return parseManifest(bytes);
+}
+
+/**
+ * Anti-downgrade: versión estrictamente mayor y la instalada ≥ `minFrom`.
+ * `isNewer` usa parseInt: una instalada `0.3.0-rc1` cuenta como `0.3.0` (no es upgrade a 0.3.0).
+ */
 export function checkUpgrade(m: Manifest, installed: string): void {
   if (!isNewer(m.version, installed)) {
     throw new UpdateBlockedError(
@@ -87,7 +114,7 @@ export function checkUpgrade(m: Manifest, installed: string): void {
   }
   if (isNewer(m.minFrom, installed)) {
     throw new UpdateBlockedError(
-      'NOT_AN_UPGRADE',
+      'MIN_FROM',
       `La versión ${m.version} exige partir de la ${m.minFrom} o más nueva; la instalada es la ${installed}.`,
     );
   }

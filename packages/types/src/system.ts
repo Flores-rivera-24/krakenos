@@ -156,7 +156,19 @@ export interface UpdateStepResult {
 }
 
 /** La versión de destino exige un Node más nuevo que el que corre el servicio. */
-export type UpdateBlockedCode = 'NODE_TOO_OLD' | 'NOT_AN_UPGRADE' | 'NO_ARTIFACT';
+export type UpdateBlockedCode =
+  'NODE_TOO_OLD' | 'NOT_AN_UPGRADE' | 'NO_ARTIFACT' | 'MIN_FROM' | 'BAD_SIGNATURE' | 'BAD_PACKAGE';
+
+// Record exhaustivo: añadir un código a la unión sin listarlo aquí no compila (y el schema lo toma de aquí).
+const UPDATE_BLOCKED_CODE_SET: Record<UpdateBlockedCode, true> = {
+  NODE_TOO_OLD: true,
+  NOT_AN_UPGRADE: true,
+  NO_ARTIFACT: true,
+  MIN_FROM: true,
+  BAD_SIGNATURE: true,
+  BAD_PACKAGE: true,
+};
+export const UPDATE_BLOCKED_CODES = Object.keys(UPDATE_BLOCKED_CODE_SET) as UpdateBlockedCode[];
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso
