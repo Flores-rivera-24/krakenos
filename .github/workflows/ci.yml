@@ -524,6 +524,30 @@ jobs:
           echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
           test "$max" -le 200
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
+          # El hook usa `${StrLoc}` (StrFunc.nsh) sin declararlo: lo declara la plantilla de Tauri. Si una
+          # versión nueva de Tauri lo quita, el .nsi no compilaría; esto lo dice con nombre antes.
+          nsi=apps/window/src-tauri/target/release/nsis/x64/installer.nsi
+          grep -Eq '^[[:space:]]*!include[[:space:]]+"?StrFunc\.nsh' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no incluye StrFunc.nsh (lo usa el hook)"; exit 1; }
+          grep -Eq '^[[:space:]]*\$\{StrLoc\}[[:space:]]*$' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no declara \${StrLoc} (lo usa el hook)"; exit 1; }
+
+      # Negativo de la suma de WinSW: con un byte alterado en la caché, `package-windows.mjs` TIENE que
+      # fallar por la suma (y no por otra cosa). Si pasara, la verificación sería decorativa.
+      - name: Negativo de la suma de WinSW (binario alterado)
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          cache="$RUNNER_TEMP/winsw-alterado"
+          rm -rf "$cache" && mkdir -p "$cache"
+          cp .cache/winsw/*.exe "$cache/"
+          f="$(ls "$cache"/*.exe | head -n 1)"
+          printf 'Z' | dd of="$f" bs=1 seek=100 conv=notrunc 2>/dev/null
+          if KRAKENOS_WINSW_CACHE="$cache" node scripts/package-windows.mjs "$dir" > "$RUNNER_TEMP/negativo-winsw.log" 2>&1; then
+            cat "$RUNNER_TEMP/negativo-winsw.log"
+            echo "::error::la verificación de WinSW aceptó un binario alterado"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/negativo-winsw.log"
+          grep -q "WinSW no verifica" "$RUNNER_TEMP/negativo-winsw.log" || { echo "::error::falló, pero no por la suma"; exit 1; }
+          echo "OK: la suma rechazó el WinSW alterado"
 
       - name: Probar el instalador (en silencio)
         shell: pwsh

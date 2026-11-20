@@ -17,6 +17,7 @@ apps/agent/setup-token
 # Salida y caché de `pnpm package`: no son fuente de la imagen.
 /out/
 /.cache/node/
+/.cache/winsw/
 
 # Docs internos gitignored y ruido.
 CLAUDE.md

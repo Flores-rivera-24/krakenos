@@ -5,6 +5,8 @@
 ; elegirla en la página de directorio y con `/D=`, y no permite quitar esa página: se valida aquí.
 ; Se compara con el separador final (no vale `C:\Program Files Evil\…`), sin distinguir mayúsculas
 ; (`StrCmp`) y sin aceptar `..`.
+; `${StrLoc}` (StrFunc.nsh) lo declara la plantilla de Tauri, no este fichero: el job de CI comprueba
+; en el installer.nsi generado que sigue haciéndolo.
 !macro NSIS_HOOK_PREINSTALL
   Push $1
   Push $2

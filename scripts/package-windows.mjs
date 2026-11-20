@@ -8,6 +8,7 @@ import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { installWinsw } from './package/winsw.mjs';
 import { buildTauriConfig, installerFileName } from './package/windows-installer.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +31,10 @@ async function main() {
   if (!/-win-x64$/.test(basename(dir)))
     throw new Error(`${basename(dir)} no es un paquete win-x64`);
   const v = version ?? JSON.parse(await readFile(join(RAIZ, 'package.json'), 'utf8')).version;
+
+  // Antes de tocar nada más: un WinSW que no verifica aborta el build por la suma.
+  // Puerto 3001 por defecto; el instalador (Task 3) elige el libre al instalar.
+  await installWinsw(dir, process.env.KRAKENOS_WINSW_CACHE ?? join(RAIZ, '.cache', 'winsw'), 3001);
 
   const tmp = await mkdtemp(join(tmpdir(), 'krakenos-nsis-'));
   try {
