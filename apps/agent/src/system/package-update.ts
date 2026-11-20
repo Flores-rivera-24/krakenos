@@ -12,7 +12,7 @@
 
 import { createHash } from 'node:crypto';
 import { createWriteStream } from 'node:fs';
-import { mkdir, readdir, rm } from 'node:fs/promises';
+import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -46,7 +46,7 @@ const DOWNLOAD_TIMEOUT_MS = 15 * 60 * 1000;
 const HEALTH_RETRIES = 10;
 const HEALTH_INTERVAL_MS = 3000;
 // `dueño/repo` con la forma de GitHub: nada de `..`, `?`, `#` ni dominios en medio.
-const REPO = /^[A-Za-z0-9][A-Za-z0-9-]*\/[A-Za-z0-9._-]+$/;
+const REPO = /^[A-Za-z0-9][A-Za-z0-9-]*\/(?!\.\.?$)[A-Za-z0-9._-]+$/;
 const TARGET = /^\d+\.\d+\.\d+$/;
 
 async function okResponse(url: string, timeoutMs: number): Promise<Response> {
@@ -120,7 +120,7 @@ export interface PackageUpdateRunnerOptions {
 }
 
 export class PackageUpdateRunner implements UpdateRunner {
-  private staged: { path: string; version: string } | null = null;
+  private staged: { pkg: string; manifest: string; sig: string; version: string } | null = null;
 
   constructor(private readonly opts: PackageUpdateRunnerOptions) {}
 
@@ -137,8 +137,12 @@ export class PackageUpdateRunner implements UpdateRunner {
 
     // Firma y upgrade se resuelven ANTES de pedir el paquete.
     const bytes = await transport.getBytes(`${base}/manifest.json`, MANIFEST_MAX);
-    const sig = (await transport.getBytes(`${base}/manifest.json.sig`, SIG_MAX)).toString('utf8');
-    const manifest = verifyAndParse(bytes, sig, this.opts.publicKeyPem ?? UPDATE_PUBLIC_KEY_PEM);
+    const sigBytes = await transport.getBytes(`${base}/manifest.json.sig`, SIG_MAX);
+    const manifest = verifyAndParse(
+      bytes,
+      sigBytes.toString('utf8'),
+      this.opts.publicKeyPem ?? UPDATE_PUBLIC_KEY_PEM,
+    );
     if (manifest.version !== targetVersion) {
       throw new UpdateBlockedError(
         'BAD_PACKAGE',
@@ -151,27 +155,42 @@ export class PackageUpdateRunner implements UpdateRunner {
     // Directorio limpio: nada de restos de un intento anterior que el helper pudiera recoger.
     await mkdir(stagingDir, { recursive: true, mode: 0o700 });
     for (const f of await readdir(stagingDir)) await rm(join(stagingDir, f), { force: true });
-    const part = join(stagingDir, `.${art.name}.part`);
-    const final = join(stagingDir, art.name);
+    // Root vuelve a verificar: se dejan los bytes EXACTOS que verificó el agente. Todo va
+    // a nombre temporal y solo se renombra cuando el paquete cuadra; si algo falla, no queda nada.
+    const names = ['manifest.json', 'manifest.json.sig', art.name];
+    const part = (n: string) => join(stagingDir, `.${n}.part`);
     try {
-      const got = await transport.download(`${base}/${art.name}`, part, art.size);
+      await writeFile(part(names[0]!), bytes, { mode: 0o600 });
+      await writeFile(part(names[1]!), sigBytes, { mode: 0o600 });
+      const got = await transport.download(`${base}/${art.name}`, part(art.name), art.size);
       if (got.size !== art.size || got.sha256 !== art.sha256) {
         throw new UpdateBlockedError(
           'BAD_PACKAGE',
           'El paquete descargado no coincide con el manifiesto firmado (suma o tamaño); no se instala.',
         );
       }
-      await renameWithRetry(part, final);
+      for (const n of names) await renameWithRetry(part(n), join(stagingDir, n));
     } catch (err) {
-      await rm(part, { force: true });
+      for (const n of names) {
+        await rm(part(n), { force: true });
+        await rm(join(stagingDir, n), { force: true });
+      }
       throw err;
     }
-    this.staged = { path: final, version: targetVersion };
+    this.staged = {
+      pkg: join(stagingDir, art.name),
+      manifest: join(stagingDir, names[0]!),
+      sig: join(stagingDir, names[1]!),
+      version: targetVersion,
+    };
   }
 
   async apply(): Promise<void> {
     if (!this.staged) throw new Error('No hay paquete verificado que instalar.');
-    await this.opts.helper.run(['pkg-update', this.staged.path, this.staged.version]);
+    // Contrato de `pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>`: lo implementa
+    // la Task 4 (root copia los tres a su directorio y verifica ahí con su clave).
+    const { pkg, manifest, sig, version } = this.staged;
+    await this.opts.helper.run(['pkg-update', pkg, manifest, sig, version]);
   }
 
   // El paquete migra al arrancar y su postinst reinicia el servicio: no hay paso propio.

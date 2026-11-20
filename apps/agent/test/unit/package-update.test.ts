@@ -166,11 +166,19 @@ describe('PackageUpdateRunner.fetch: nunca sale del repo configurado (Review Foc
     expect(urls.every((u) => u.startsWith(`${BASE}/`))).toBe(true);
     expect(urls.some((u) => u.endsWith('.deb'))).toBe(false);
   });
-  it('un repo mal formado se rechaza antes de pedir nada', async () => {
+  it.each([
+    'evil.example/../x?y',
+    'dueno/..',
+    'dueno/.',
+    '../krakenos',
+    './krakenos',
+    '../..',
+    'a/b/c',
+  ])('un repo mal formado (%s) se rechaza antes de pedir nada', async (repo) => {
     const { runner } = build();
     const bad = new PackageUpdateRunner({
       ...(runner as unknown as { opts: ConstructorParameters<typeof PackageUpdateRunner>[0] }).opts,
-      repo: 'evil.example/../x?y',
+      repo,
     });
     await expect(bad.fetch('0.3.0')).rejects.toThrow(/repositorio/i);
     expect(urls).toEqual([]);
@@ -211,8 +219,16 @@ describe('PackageUpdateRunner.fetch: el paquete descargado', () => {
   it('éxito: el paquete queda con su nombre y su contenido', async () => {
     const { runner } = build();
     await runner.fetch('0.3.0');
-    expect(await staged()).toEqual(['krakenos_0.3.0_amd64.deb']);
+    expect(await staged()).toEqual([
+      'krakenos_0.3.0_amd64.deb',
+      'manifest.json',
+      'manifest.json.sig',
+    ]);
     expect(await readFile(join(dir, 'updates', 'krakenos_0.3.0_amd64.deb'))).toEqual(PKG);
+    expect(await readFile(join(dir, 'updates', 'manifest.json'))).toEqual(manifestBytes());
+    expect((await readFile(join(dir, 'updates', 'manifest.json.sig'), 'utf8')).trim()).toBe(
+      sigOf(manifestBytes()),
+    );
   });
 });
 
@@ -227,7 +243,13 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
     await runner.fetch('0.3.0');
     await runner.apply();
     expect(calls).toEqual([
-      ['pkg-update', join(dir, 'updates', 'krakenos_0.3.0_amd64.deb'), '0.3.0'],
+      [
+        'pkg-update',
+        join(dir, 'updates', 'krakenos_0.3.0_amd64.deb'),
+        join(dir, 'updates', 'manifest.json'),
+        join(dir, 'updates', 'manifest.json.sig'),
+        '0.3.0',
+      ],
     ]);
   });
   it('apply sin fetch previo no llama al helper', async () => {
