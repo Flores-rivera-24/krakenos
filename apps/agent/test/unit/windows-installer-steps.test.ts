@@ -38,6 +38,7 @@ function fakeRun(
   const rehechas = new Set<string>();
   const conDueno = new Set<string>();
   const conServicio = new Map<string, string>();
+  let pendiente = false; // HKLM\\SOFTWARE\\KrakenOS\\CaPendienteRotar
   return async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
     const linea = [cmd, ...args].join(' ');
     events.push(linea);
@@ -48,6 +49,15 @@ function fakeRun(
     if (cmd === 'icacls' && args[1] === '/setowner') conDueno.add(args[0] as string);
     const rehecha = /SetAccessControl\('([^']*)'/.exec(linea)?.[1];
     if (rehecha) rehechas.add(rehecha);
+    if (linea.includes('CaPendienteRotar')) {
+      if (cmd === 'reg.exe' && args[0] === 'add') pendiente = true;
+      if (cmd === 'reg.exe' && args[0] === 'delete') pendiente = false;
+      if (cmd === 'reg.exe' && args[0] === 'query')
+        return pendiente
+          ? { code: 0, stdout: '    CaPendienteRotar    REG_SZ    1\r\n' }
+          : { code: 1, stdout: '' };
+      return { code: 0, stdout: '' };
+    }
     const clave = Object.keys(codes).find((k) => linea.includes(k));
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
     // Lectura de la ACL por SID: la de un despliegue bueno (SYSTEM y Administradores, y el servicio si ya se le dio).
@@ -766,6 +776,33 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(r.rotada).toBe(true);
   });
 
+  it('delstore: «no estaba» es ok, cualquier otro error falla', async () => {
+    const viejo = 'C'.repeat(40);
+    const a = montar({ hkml: viejo });
+    const base = a.deps.run;
+    const conCodigo =
+      (code: number, stdout: string) => async (c: string, args: string[], o?: never) =>
+        args.includes('-delstore') ? { code, stdout } : base(c, args, o);
+    await expect(
+      setupTls({
+        ...a.deps,
+        rotarCa: true,
+        run: conCodigo(-2146885628, 'CertUtil: -delstore: no se encontró (0x80092004)'),
+      }),
+    ).resolves.toBeTruthy();
+    const b = montar({ hkml: viejo });
+    const base2 = b.deps.run;
+    await expect(
+      setupTls({
+        ...b.deps,
+        rotarCa: true,
+        run: async (c: string, args: string[], o?: never) =>
+          args.includes('-delstore') ? { code: 5, stdout: 'Acceso denegado' } : base2(c, args, o),
+      }),
+    ).rejects.toThrow(/delstore/);
+    expect(b.ev.some((x) => x.includes('local-ca.js'))).toBe(false);
+  });
+
   it('sin exposición no borra nada ni toca Root salvo importar (se conserva la misma CA)', async () => {
     const { ev, deps } = montar({ hkml: 'B'.repeat(40) });
     const r = await setupTls(deps);
@@ -898,9 +935,10 @@ describe('runInstall', () => {
       nodos[join(DATOS, '.env')] = { kind: 'file', text: opts.envPrevio };
     }
     const fs = fakeFs(ev, nodos);
+    const codes: Record<string, number> = { 'sc.exe query': 1060 };
     const base = fakeRun(
       ev,
-      { 'sc.exe query': 1060 },
+      codes,
       opts.envPrevio ? { 'reg.exe query': `DataDir REG_SZ ${DATOS}` } : {},
     );
     const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
@@ -930,7 +968,7 @@ describe('runInstall', () => {
       log: () => {},
       sleep: async () => {},
     };
-    return { ev, nodos, deps };
+    return { ev, nodos, deps, codes };
   }
 
   it('hace los pasos en orden: datos, .env, claves, servicio, salud', async () => {
@@ -1009,6 +1047,35 @@ describe('runInstall', () => {
     await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
     expect(ev.indexOf(`rm ${join(ca, 'krakenos-ca-key.pem')}`)).toBeGreaterThan(-1);
     expect(lineas.join('\n')).toMatch(/CA nueva/);
+  });
+
+  it('si la instalación falla tras cerrar la ACL de ca\\, el reintento rota la CA igual (la marca vive en HKLM): no la adopta', async () => {
+    const { ev, deps, nodos, codes } = montar({ envPrevio: 'PORT=3005\n' });
+    const ca = join(DATOS, 'ca');
+    nodos[DATOS] = { kind: 'dir', entries: ['.env', 'ca'] };
+    nodos[ca] = { kind: 'dir', entries: ['krakenos-ca-key.pem'] };
+    nodos[join(ca, 'krakenos-ca-key.pem')] = { kind: 'file', text: 'vieja' };
+    const marca = (l: string) => l.includes('CaPendienteRotar');
+    codes['local-ca.js'] = 1; // falla justo después de cerrar la ACL y de borrar lo viejo
+    await expect(runInstall(deps)).rejects.toThrow(/local-ca/);
+    expect(ev.findIndex(marca)).toBeLessThan(
+      ev.findIndex((l) => l.includes("SetAccessControl('" + ca)),
+    );
+    expect(ev.some((l) => l.startsWith('reg.exe delete') && marca(l))).toBe(false);
+    delete codes['local-ca.js'];
+    const n = ev.length;
+    await runInstall(deps);
+    const segundo = ev.slice(n);
+    // La ACL ya estaba bien (no hay SetAccessControl sobre ca\), y aun así se rota.
+    expect(segundo.some((l) => l.includes("SetAccessControl('" + ca))).toBe(false);
+    expect(segundo.some((l) => l.startsWith(`rm ${join(ca, 'krakenos-ca-key.pem')}`))).toBe(true);
+    expect(segundo.some((l) => l.startsWith('reg.exe delete') && marca(l))).toBe(true);
+    // Terminada la rotación, un tercer intento ya no rota.
+    const m = ev.length;
+    await runInstall(deps);
+    expect(ev.slice(m).some((l) => l.startsWith(`rm ${join(ca, 'krakenos-ca-key.pem')}`))).toBe(
+      false,
+    );
   });
 
   it('un paso que falla se propaga y no sigue con el servicio', async () => {

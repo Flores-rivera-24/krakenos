@@ -253,6 +253,7 @@ function Phase-Service {
   Assert ($thumbDespues -ne $thumbAntes) 'con ca\ plantada abierta la CA se rota (otro thumbprint en HKLM)'
   Assert (-not (Test-Path "Cert:\LocalMachine\Root\$thumbAntes")) 'la CA expuesta ya no está en Cert:\LocalMachine\Root'
   Assert (Test-Path "Cert:\LocalMachine\Root\$thumbDespues") 'la CA nueva está en Cert:\LocalMachine\Root'
+  Assert ($null -eq (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaPendienteRotar) 'terminada la rotación no queda la marca CaPendienteRotar en HKLM'
   Assert (-not (Test-Path (Join-Path $ca0 'window.json.tmp'))) 'no queda el temporal de window.json en ca\'
   # ca\ y la clave de la CA: ni Users ni el servicio (lo plantado se cerró antes de volver a usar la clave).
   foreach ($r in $ca0, (Join-Path $ca0 'krakenos-ca-key.pem')) {

@@ -11,6 +11,9 @@ import { msg } from './mensajes.mjs';
 
 export const SERVICE = 'KrakenOS';
 export const MARCA_HKLM = 'HKLM\\SOFTWARE\\KrakenOS';
+// «CA pendiente de rotar»: en HKLM (el servicio no lo escribe), puesto ANTES de cerrar la ACL de ca\ y borrado
+// solo al terminar la rotación. Así un fallo a medias no hace que el siguiente intento adopte la CA expuesta.
+const PENDIENTE = 'CaPendienteRotar';
 const ADMINS = '*S-1-5-32-544';
 const NO_EXISTE = 1060; // ERROR_SERVICE_DOES_NOT_EXIST
 
@@ -113,7 +116,6 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
   // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe. Su ACL se fija de una vez
   // (protegida) y SOLO después lo que tuvieran dentro hereda de ellas.
-  let caExpuesta = false;
   for (const [sub, opcionales] of [
     ['ca', {}],
     ['tls', { [sidServicio]: /ReadAndExecute/ }],
@@ -121,14 +123,29 @@ export async function prepareDataDir({ dataDir, run, fs }) {
     const dir = join(dataDir, sub);
     const tenia = hijos.includes(sub) && (await fs.readdir(dir)).length > 0;
     await fs.mkdir(dir, { recursive: true });
+    // Con contenido y una ACL abierta, la clave de la CA pudo leerse (o el certificado cambiarse): se
+    // anota en HKLM ANTES de cerrarla; después de cerrada ya no habría forma de saberlo.
+    if (tenia && (await desviacion(run, dir, BASE, opcionales)))
+      await ok(run, 'reg.exe', [
+        'add',
+        MARCA_HKLM,
+        '/v',
+        PENDIENTE,
+        '/t',
+        'REG_SZ',
+        '/d',
+        '1',
+        '/f',
+      ]);
     const rehechaSub = await asegurarAcl(run, dir, BASE, opcionales);
-    // Con contenido y una ACL que estaba abierta, la clave de la CA pudo leerse (o el certificado cambiarse).
-    if (tenia && rehechaSub) caExpuesta = true;
     if (tenia) {
       await ok(run, 'icacls', [join(dir, '*'), '/reset', '/T', '/L']);
       if (rehechaSub) await ok(run, 'icacls', [join(dir, '*'), '/setowner', ADMINS, '/T', '/L']);
     }
   }
+  // También cuenta una marca de un intento anterior que no llegó a terminar la rotación.
+  const q = await run('reg.exe', ['query', MARCA_HKLM, '/v', PENDIENTE]);
+  const caExpuesta = q.code === 0 && new RegExp(`${PENDIENTE}\\s+REG_SZ`).test(q.stdout);
   return { caExpuesta };
 }
 
@@ -337,7 +354,19 @@ export async function setupTls({
   if (rotarCa) {
     const q = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'CaThumbprint']);
     const viejo = /CaThumbprint\s+REG_SZ\s+([0-9A-Fa-f]{40})/.exec(q.stdout)?.[1];
-    if (viejo) await run('certutil', ['-delstore', 'Root', viejo]); // si ya no estaba, da igual
+    if (viejo) {
+      const d = await run('certutil', ['-delstore', 'Root', viejo]);
+      // «No estaba» (CRYPT_E_NOT_FOUND, 0x80092004) es lo que se quería; cualquier otro error, no.
+      if (
+        d.code !== 0 &&
+        !/80092004|2146885628|not found|no se encuentra|no se encontr/i.test(
+          `${d.code} ${d.stdout}`,
+        )
+      )
+        throw new Error(
+          `certutil -delstore Root ${viejo} salió con ${d.code}: ${d.stdout.trim().slice(-200)}`,
+        );
+    }
     for (const f of [
       join(ca, 'krakenos-ca-key.pem'),
       join(ca, 'krakenos-ca.pem'),
@@ -413,6 +442,8 @@ export async function setupTls({
   ])
     env = setKey(env, k, v);
   await fs.writeFile(envPath, env);
+  // La rotación terminó (CA nueva importada, la vieja fuera de Root): ya no hay nada pendiente.
+  if (rotarCa) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, '/v', PENDIENTE, '/f']);
   return { origin, thumbprint, rotada: rotarCa };
 }
 
