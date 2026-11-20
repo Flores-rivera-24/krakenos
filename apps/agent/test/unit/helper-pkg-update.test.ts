@@ -88,9 +88,14 @@ beforeAll(() => {
   // dpkg-query: sin `installed` es un equipo donde dpkg existe pero krakenos NO está instalado con él (Arch).
   put(
     'dpkg-query',
-    '[ -e "$STUB/installed" ] || exit 1; case "$*" in *Status*) printf "install ok installed" ;; *) cat "$STUB/installed" ;; esac',
+    '[ -e "$STUB/installed" ] || exit 1; case "$*" in *Status*) printf "%s" "$(cat "$STUB/dpkg-status" 2>/dev/null || echo "install ok installed")" ;; *) cat "$STUB/installed" ;; esac',
   );
   put('dpkg', 'echo amd64');
+  // «Usuario del servicio» que deja constancia de cada comando y puede fallar en uno (`$STUB/runas-fail-<cmd>`).
+  put(
+    'run-as-log',
+    'echo "run_as $*" >> "$STUB/log"; [ -e "$STUB/runas-fail-$1" ] && exit 1; exec "$@"',
+  );
   put('uname', '[ "$1" = -m ] && echo x86_64 || exec /usr/bin/uname "$@"');
   // pacman: `-Q` imprime «krakenos <época>:<versión>-<pkgrel>»; `-U` se comporta como apt-get.
   put(
@@ -246,7 +251,7 @@ describe.skipIf(process.platform === 'win32')(
         `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold ${rootDir}/0.3.0/${pkgName('0.3.0')}`,
       ]);
       expect(readFileSync(join(rootDir, '0.3.0', pkgName('0.3.0')), 'utf8')).toBe('paquete 0.3.0');
-      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.3.0 prev=\n');
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('fmt=deb ver=0.3.0 prev=\n');
       expect(log()).not.toContain('systemctl');
     });
 
@@ -410,7 +415,7 @@ describe.skipIf(process.platform === 'win32')(
           .filter((n) => !n.startsWith('.'))
           .sort(),
       ).toEqual(['0.3.0', '0.4.0']);
-      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.4.0 prev=0.3.0\n');
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('fmt=deb ver=0.4.0 prev=0.3.0\n');
     });
   },
 );
@@ -532,11 +537,78 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     expect(log()).toBe('');
   });
 
-  it('un formato ilegible se rechaza ANTES de parar el servicio', async () => {
+  it('un estado con formato desconocido se rechaza (64) ANTES de parar el servicio', async () => {
     await dosActualizaciones();
-    const res = await rollback(copy, '0.3.0', { KRAKENOS_PKG_FORMAT: 'raro' });
-    expect(res.code).toBe(64);
+    writeFileSync(join(rootDir, '.state'), 'fmt=rpm ver=0.3.0 prev=0.2.0\n');
+    expect((await rollback()).code).toBe(64);
     expect(log()).toBe('');
+  });
+
+  it.each(['install ok half-configured', 'install ok half-installed', 'install ok unpacked'])(
+    'con dpkg a medias («%s») el rollback restaura la base, reinstala el anterior y reinicia (el formato sale del estado de root)',
+    async (estado) => {
+      await dosActualizaciones();
+      writeFileSync(join(stub, 'dpkg-status'), estado);
+      const res = await rollback(copy, '0.3.0', { KRAKENOS_PKG_FORMAT: '' });
+      expect(res.code, res.stderr).toBe(0);
+      const l = log().trim().split('\n');
+      expect(l[0]).toBe('systemctl stop krakenos');
+      expect(l[2]).toContain('apt-get');
+      expect(l[3]).toBe('postinst-restart db=base de antes wal=no');
+      expect(l.at(-1)).toBe('systemctl restart krakenos');
+      expect(readFileSync(db, 'utf8')).toBe('base de antes');
+    },
+  );
+
+  it('el formato del rollback sale del estado, no de dpkg: aunque la detección no reconozca el paquete, revierte', async () => {
+    await dosActualizaciones();
+    writeFileSync(join(stub, 'dpkg-status'), 'deinstall ok config-files'); // la autodetección diría «no instalado»
+    const res = await rollback(copy, '0.3.0', { KRAKENOS_PKG_FORMAT: '' });
+    expect(res.code, res.stderr).toBe(0);
+    expect(aptCalls()).toHaveLength(1);
+  });
+
+  it('la autodetección de pkg-update también acepta un dpkg a medias (pero no «no instalado»)', async () => {
+    writeFileSync(join(stub, 'dpkg-status'), 'install ok half-configured');
+    expect((await update(release('0.3.0'), '0.3.0', { KRAKENOS_PKG_FORMAT: '' })).code).toBe(0);
+    writeFileSync(join(stub, 'dpkg-status'), 'unknown ok not-installed');
+    expect((await update(release('0.4.0'), '0.4.0', { KRAKENOS_PKG_FORMAT: '' })).code).toBe(64);
+  });
+
+  it('el orden de la restauración: copia, borra -wal/-shm y SOLO después pone la base', async () => {
+    await dosActualizaciones();
+    await rollback(copy, '0.3.0', { KRAKENOS_PKG_RUN_AS: join(base, 'bin', 'run-as-log') });
+    const r = log()
+      .split('\n')
+      .filter((x) => x.startsWith('run_as'))
+      .map((x) => x.split(' ')[1]);
+    expect(r).toEqual(['cp', 'rm', 'mv']);
+  });
+
+  it('si no se pueden borrar -wal/-shm no se pone la base: no se reinstala y se reinicia (exit 1)', async () => {
+    await dosActualizaciones();
+    writeFileSync(join(stub, 'runas-fail-rm'), '');
+    const res = await rollback(copy, '0.3.0', {
+      KRAKENOS_PKG_RUN_AS: join(base, 'bin', 'run-as-log'),
+    });
+    expect(res.code).toBe(1);
+    expect(res.stderr).toMatch(/no se reinstala el paquete anterior porque la base no se restauró/);
+    expect(readFileSync(db, 'utf8')).toBe('base nueva');
+    expect(log()).not.toMatch(/run_as mv/);
+    expect(aptCalls()).toEqual([]);
+    expect(log().trim().split('\n').at(-1)).toBe('systemctl restart krakenos');
+    expect(existsSync(join(rootDir, '.state'))).toBe(true);
+  });
+
+  it('si falla la copia de la base tampoco se reinstala (el error no se disfraza de «primera actualización»)', async () => {
+    expect((await update(release('0.3.0'), '0.3.0')).code).toBe(0); // sin paquete anterior
+    writeFileSync(join(stub, 'log'), '');
+    writeFileSync(join(stub, 'runas-fail-cp'), '');
+    const res = await rollback(copy, '0.3.0', {
+      KRAKENOS_PKG_RUN_AS: join(base, 'bin', 'run-as-log'),
+    });
+    expect(res.code).toBe(1);
+    expect(aptCalls()).toEqual([]);
   });
 
   it('sin systemd-run en el rollback: restaura la base y arranca el servicio igual, y el código dice que la reinstalación falló', async () => {
@@ -573,7 +645,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
 
   it('un estado con una versión rara no llega a ejecutar nada en una unidad', async () => {
     await dosActualizaciones();
-    writeFileSync(join(rootDir, '.state'), 'ver=0.3.0 prev=0.2.0;reboot\n');
+    writeFileSync(join(rootDir, '.state'), 'fmt=deb ver=0.3.0 prev=0.2.0;reboot\n');
     expect((await rollback()).code).toBe(64);
     expect(runCalls()).toEqual([]);
   });
@@ -613,7 +685,7 @@ describe.skipIf(process.platform === 'win32')(
         `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- pacman -U --noconfirm ${rootDir}/0.3.0/${archName('0.3.0')}`,
       ]);
       expect(aptCalls()).toEqual([]);
-      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('ver=0.3.0 prev=\n');
+      expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('fmt=arch ver=0.3.0 prev=\n');
     });
 
     it('rechaza un downgrade o la misma versión (la instalada sale de pacman -Q)', async () => {

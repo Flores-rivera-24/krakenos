@@ -146,8 +146,8 @@ pkg_format() {
   esac
   # Por quién tiene instalado `krakenos`, no por qué gestor existe: Arch puede traer `dpkg` (en `extra`).
   # shellcheck disable=SC2016
-  local st='${Status}'
-  if command -v dpkg-query > /dev/null 2>&1 && dpkg-query -W -f="$st" krakenos 2> /dev/null | grep -q 'install ok installed'; then echo deb
+  local st='${Status}' # «install ok <estado>»: también half-configured/half-installed tras un fallo de dpkg
+  if command -v dpkg-query > /dev/null 2>&1 && dpkg-query -W -f="$st" krakenos 2> /dev/null | grep -q '^install ok '; then echo deb
   elif command -v pacman > /dev/null 2>&1 && pacman -Q krakenos > /dev/null 2>&1; then echo arch
   else deny "pkg: krakenos no consta instalado ni en dpkg ni en pacman"; fi
 }
@@ -290,7 +290,7 @@ pkg_update() {
       prev="$installed"
     fi
   fi
-  printf 'ver=%s prev=%s\n' "$ver" "$prev" > "$(pkg_state_file)"
+  printf 'fmt=%s ver=%s prev=%s\n' "$fmt" "$ver" "$prev" > "$(pkg_state_file)"
   pkg_install "$fmt" "$d/$name" "$ver" || exit "$?"
   # Se conservan solo la nueva y la anterior.
   for x in "$KRAKENOS_PKG_ROOT_DIR"/*/; do
@@ -301,7 +301,7 @@ pkg_update() {
 
 pkg_rollback() {
   [ "$#" -eq 2 ] || deny "pkg-rollback <copia-de-la-base> <versión-destino>"
-  local copy="$1" target="$2" db rp prev="" ver="" line fmt plat pname installed rc=0 reinstalled=0
+  local copy="$1" target="$2" db rp prev="" ver="" line fmt plat pname installed rc=0 reinstalled=0 restored=0
   [[ "$target" =~ $_semver ]] || deny "pkg-rollback: versión no válida"
   db="${copy%.pre-update}"
   [ "$db" != "$copy" ] && [ -n "$(basename -- "$db")" ] || deny "pkg-rollback: la copia debe acabar en .pre-update"
@@ -320,15 +320,17 @@ pkg_rollback() {
     return 0
   fi
   read -r line < "$(pkg_state_file)" || true
-  [[ "$line" =~ ^ver=([0-9]+\.[0-9]+\.[0-9]+)\ prev=([0-9]+\.[0-9]+\.[0-9]+)?$ ]] || deny "pkg-rollback: estado ilegible"
-  ver="${BASH_REMATCH[1]}"
-  prev="${BASH_REMATCH[2]}"
+  [[ "$line" =~ ^fmt=(deb|arch)\ ver=([0-9]+\.[0-9]+\.[0-9]+)\ prev=([0-9]+\.[0-9]+\.[0-9]+)?$ ]] || deny "pkg-rollback: estado ilegible"
+  # El formato sale del estado que escribió root, no de lo que diga ahora dpkg: tras un fallo a medias
+  # el paquete queda half-configured/half-installed y la detección fallaría justo cuando hace falta.
+  fmt="${BASH_REMATCH[1]}"
+  ver="${BASH_REMATCH[2]}"
+  prev="${BASH_REMATCH[3]}"
   if [ "$ver" != "$target" ]; then
     echo "krakenos-helper: el estado es de la versión $ver, no de la $target; no se toca nada" >&2
     return 0
   fi
   # Todo lo que puede abortar va ANTES de parar el servicio: parado, solo se sale tras restaurar y arrancar.
-  fmt="$(pkg_format)"
   plat="$(pkg_platform "$fmt")"
   installed="$(pkg_installed "$fmt")"
 
@@ -337,12 +339,19 @@ pkg_rollback() {
   # PRIMERO la base, con el servicio parado: el postinst del paquete reinicia el servicio al instalarse
   # y no puede arrancar sobre una base ya migrada ni encontrársela cambiada con el fichero abierto.
   # Se restaura como el usuario del servicio.
-  if run_as cp -- "$copy" "$db.restore-tmp" && run_as mv -f -- "$db.restore-tmp" "$db" \
-    && run_as rm -f -- "$db-wal" "$db-shm"; then :; else
+  # Los -wal/-shm se borran ANTES de poner la base: si el rm fallara después, SQLite aplicaría el WAL nuevo sobre la base vieja.
+  if run_as cp -- "$copy" "$db.restore-tmp" && run_as rm -f -- "$db-wal" "$db-shm" \
+    && run_as mv -f -- "$db.restore-tmp" "$db"; then
+    restored=1
+  else
     echo "krakenos-helper: no se pudo restaurar la base" >&2
+    run_as rm -f -- "$db.restore-tmp" || true
     rc=1
   fi
-  if [ "$installed" != "$ver" ]; then
+  if [ "$restored" -eq 0 ]; then
+    # El paquete anterior arrancaría sobre una base ya migrada por el nuevo: se deja como está.
+    echo "krakenos-helper: no se reinstala el paquete anterior porque la base no se restauró; se reinicia el servicio tal cual" >&2
+  elif [ "$installed" != "$ver" ]; then
     echo "krakenos-helper: la versión instalada ($installed) no es la destino ($ver): no se reinstala nada" >&2
   elif [ -n "$prev" ]; then
     if pname="$(pkg_saved_name "$prev" "$fmt")" \
@@ -355,7 +364,7 @@ pkg_rollback() {
     fi
   fi
   systemctl restart "$KRAKENOS_PKG_UNIT" || { echo "krakenos-helper: no se pudo arrancar el servicio" >&2; rc=1; }
-  if [ "$installed" = "$ver" ] && [ -z "$prev" ]; then
+  if [ "$installed" = "$ver" ] && [ -z "$prev" ] && [ "$rc" -eq 0 ]; then
     echo "krakenos-helper: no hay paquete anterior que reinstalar (es la primera actualización por paquete): se restauró la base y se arrancó el servicio, pero la versión instalada no vuelve atrás" >&2
     rm -f -- "$(pkg_state_file)"
     return "$PKG_RC_NO_PREVIOUS"
