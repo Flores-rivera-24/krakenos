@@ -11,8 +11,23 @@ function Assert([bool]$Cond, [string]$Msg) {
 # El agente escribe el token de setup de tres formas (`/setup?token=...`, el QR y `(token de configuración: ...)`):
 # nada de eso llega al log de CI. Esta función es pura para poder probarla sin un run rojo.
 function Select-SafeLines([string[]]$Lines, [string]$Secret) {
-  $Lines | Where-Object { $_ -notmatch '[\u2580-\u259F]|[^\x20-\x7E]{3,}|/setup' } |
-    ForEach-Object { $_ -replace 'token=[^\s&"''<>]+', 'token=<redactado>' }
+  $Lines | Where-Object { $_ -notmatch '[\u2580-\u259F]|[^\x20-\x7E]{3,}|/setup|token de config' } |
+    ForEach-Object {
+      $l = $_ -replace 'token=[^\s&"''<>]+', 'token=<redactado>'
+      if ($Secret) { $l = $l.Replace($Secret, '<redactado>') }
+      $l
+    }
+}
+
+# Lee el setup-token (el smoke corre elevado), lo enmascara en el log de CI y devuelve su valor para redactarlo.
+function Register-SetupToken([string[]]$Dirs) {
+  foreach ($d in $Dirs) {
+    $f = Join-Path $d 'setup-token'
+    if (-not (Test-Path $f)) { continue }
+    $v = (Get-Content $f -Raw -ErrorAction SilentlyContinue)
+    if ($v) { $v = $v.Trim(); if ($v) { Write-Host "::add-mask::$v"; return $v } }
+  }
+  return ''
 }
 
 # Prueba de la función con las tres formas y un valor suelto; falla si sale el valor.
@@ -30,15 +45,20 @@ function Test-SelectSafeLines {
   )
   $salida = (Select-SafeLines $muestra $v) -join "`n"
   Assert (-not $salida.Contains($v)) 'el filtro del diagnóstico no deja pasar el token en ninguna de sus formas'
+  # Sin el valor conocido (el diagnóstico corre antes de que exista el fichero) también tienen que caer las tres formas.
+  $sinValor = (Select-SafeLines ($muestra | Where-Object { $_ -notmatch 'suelto' }) '') -join "`n"
+  Assert (-not $sinValor.Contains($v)) 'el filtro quita las tres formas del token aunque no conozca su valor'
   Assert ($salida.Contains('linea inocente')) 'el filtro del diagnóstico conserva las líneas normales'
 }
 
 # Antes de volcar nada: si ya existe un setup-token, su valor se oculta en TODO el log de CI.
 function Show-SafeTail([string[]]$Paths, [int]$Tail) {
+  $dirs = @(Join-Path $env:ProgramData 'KrakenOS') + @($Paths | ForEach-Object { Split-Path $_ -Parent; Split-Path (Split-Path $_ -Parent) -Parent })
+  $secreto = Register-SetupToken $dirs
   foreach ($f in $Paths) {
     if (-not (Test-Path $f)) { continue }
     Write-Host ("[{0}]" -f (Split-Path $f -Leaf))
-    Select-SafeLines (Get-Content $f -Tail $Tail) '' | Out-Host
+    Select-SafeLines (Get-Content $f -Tail $Tail) $secreto | Out-Host
   }
 }
 
