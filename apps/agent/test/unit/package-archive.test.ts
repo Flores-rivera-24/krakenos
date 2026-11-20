@@ -1,3 +1,7 @@
+import { spawnSync } from 'node:child_process';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // @ts-expect-error -- script .mjs sin tipos, como los demás de scripts/
 import { archivePlan } from '../../../../scripts/package-archive.mjs';
@@ -33,5 +37,30 @@ describe('archivePlan', () => {
     expect(() => plan('out/krakenos-0.2.0-darwin-arm64')).toThrow(
       /win-x64.*linux-x64.*linux-arm64/s,
     );
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('archivePlan · archivo real (tar)', () => {
+  it('conserva modo y enlaces simbólicos, con dueño root', () => {
+    const base = mkdtempSync(join(tmpdir(), 'archive-'));
+    try {
+      const dir = join(base, 'out', 'krakenos-0.0.1-linux-x64');
+      mkdirSync(join(dir, 'bin'), { recursive: true });
+      writeFileSync(join(dir, 'bin', 'krakenos'), 'x', { mode: 0o755 });
+      chmodSync(join(dir, 'bin', 'krakenos'), 0o755);
+      symlinkSync('bin/krakenos', join(dir, 'enlace'));
+      const p = plan(dir);
+      mkdirSync(dirname(p.dest), { recursive: true });
+      expect(spawnSync(p.cmd, p.args).status).toBe(0);
+      const lista = spawnSync('tar', ['-tvzf', p.dest], { encoding: 'utf8' }).stdout;
+      expect(lista).toMatch(
+        /^-rwxr-xr-x root\/root .* krakenos-0\.0\.1-linux-x64\/bin\/krakenos$/m,
+      );
+      expect(lista).toMatch(
+        /^l\S+ root\/root .* krakenos-0\.0\.1-linux-x64\/enlace -> bin\/krakenos$/m,
+      );
+    } finally {
+      rmSync(base, { recursive: true, force: true });
+    }
   });
 });

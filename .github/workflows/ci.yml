@@ -254,6 +254,21 @@ jobs:
           echo "paquete: $dir"
           node scripts/package-smoke.mjs "$dir"
 
+      # El zip se desempaqueta en OTRA ruta y se prueba ahí. El original se aparta antes: los enlaces
+      # de pnpm (junctions) llevan destino absoluto y `relink.mjs` solo los rehace si ese destino ya
+      # no existe; con el original en su sitio el smoke pasaría sin demostrar nada.
+      - name: Zip de Windows desempaquetado en otra ruta
+        if: ${{ matrix.target == 'win-x64' }}
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          zip="$(ls out/portable/*.zip | head -n 1)"
+          mv "$dir" out/original-apartado
+          mkdir -p "$RUNNER_TEMP/otra ruta/mas/profunda"
+          dest="$RUNNER_TEMP/otra ruta/mas/profunda"
+          "$SYSTEMROOT/System32/tar.exe" -xf "$(cygpath -w "$zip")" -C "$(cygpath -w "$dest")"
+          trap 'mv out/original-apartado "$dir"' EXIT  # el paso de subida espera el paquete en su sitio
+          node scripts/package-smoke.mjs "$dest/$(basename "$dir")"
+
       # `.deb` (US-287): se construyen dos (uno viejo `0.0.0~ci1` y el real), `lintian` no admite
       # errores y el ciclo de vida completo (instalar, actualizar con `krakenos.env` editado,
       # desinstalar, reinstalar y purgar) corre como root con systemd real, en x64 y en arm64.

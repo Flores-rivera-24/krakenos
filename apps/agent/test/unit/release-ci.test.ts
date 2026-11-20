@@ -113,6 +113,15 @@ describe('ci.yml (job package) · portables', () => {
     expect(pkg).toContain('krakenos.cmd');
   });
 
+  it('el zip de Windows se desempaqueta en otra ruta y pasa el smoke ahí, con el original apartado', () => {
+    const i = pkg.indexOf('name: Zip de Windows desempaquetado');
+    expect(i).toBeGreaterThan(-1);
+    const paso = pkg.slice(i, i + 900);
+    expect(paso).toContain('mv "$dir" out/original-apartado');
+    expect(paso).toContain('tar.exe" -xf');
+    expect(paso).toMatch(/package-smoke\.mjs "\$dest/);
+  });
+
   it('sube el portable como krakenos-portable-<target>', () => {
     expect(pkg).toMatch(/name: krakenos-portable-\$\{\{ matrix\.target \}\}/);
     expect(pkg).toContain('path: out/portable/*');
