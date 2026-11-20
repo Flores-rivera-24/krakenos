@@ -539,7 +539,10 @@ jobs:
           echo "File: $(grep -c -E '^\s*File ' "$nsi"), CreateDirectory: $(grep -c CreateDirectory "$nsi")"
           grep -n -E 'node_modules.+\.pnpm' "$nsi" | grep -c . || true
           echo "--- nsi sin las listas de ficheros"
-          grep -n -v -E '^\s*(CreateDirectory|File |Delete |RMDir|SetOutPath)' "$nsi" | sed -n '1,700p' || true
+          # Las listas de ficheros ocupan 740..8900 (instalar) y el final (desinstalar): se filtran.
+          grep -n -v -E '^\s*(CreateDirectory|File |Delete |RMDir|SetOutPath)' "$nsi" > nsi-sin-listas.txt || true
+          wc -l nsi-sin-listas.txt
+          cat nsi-sin-listas.txt
           echo "--- idiomas de NSIS"
           ls "$LOCALAPPDATA/tauri/NSIS/Contrib/Language files" 2>/dev/null | tr '\n' ' ' || true
           ls apps/window/src-tauri/target/release/nsis/x64 || true

@@ -33,6 +33,10 @@ function Phase-Install {
   Write-Host ("enlaces (junction/symlink) en app\agent\node_modules: {0}" -f $enlaces.Count)
   $enlaces | Select-Object -First 3 | ForEach-Object { Write-Host ("  {0} -> {1} [{2}]" -f $_.FullName, ($_.Target -join ','), $_.LinkType) }
 
+  $nmTop = Get-ChildItem $nm -Force | ForEach-Object { $_.Name }
+  Write-Host ("node_modules de primer nivel instalado: {0}" -f ($nmTop -join ' '))
+  Assert (Test-Path (Join-Path $nm 'better-sqlite3')) 'node_modules\better-sqlite3 existe tras instalar (el bundler no pierde las junctions)'
+
   # Arranque a mano como krakenos.cmd (primer arranque y agente), con datos temporales.
   $datos = Join-Path $env:RUNNER_TEMP 'krakenos-datos'
   New-Item -ItemType Directory -Force $datos | Out-Null
