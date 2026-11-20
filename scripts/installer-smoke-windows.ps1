@@ -8,13 +8,37 @@ function Assert([bool]$Cond, [string]$Msg) {
   Write-Host "ok: $Msg"
 }
 
-# El agente escribe la URL /setup?token=... y el QR (bloques ▀▄█, o mojibake si la consola no es UTF-8) en su salida: nada de eso llega al log de CI.
+# El agente escribe el token de setup de tres formas (`/setup?token=...`, el QR y `(token de configuración: ...)`):
+# nada de eso llega al log de CI. Esta función es pura para poder probarla sin un run rojo.
+function Select-SafeLines([string[]]$Lines, [string]$Secret) {
+  $Lines | Where-Object { $_ -notmatch '[\u2580-\u259F]|[^\x20-\x7E]{3,}|/setup' } |
+    ForEach-Object { $_ -replace 'token=[^\s&"''<>]+', 'token=<redactado>' }
+}
+
+# Prueba de la función con las tres formas y un valor suelto; falla si sale el valor.
+function Test-SelectSafeLines {
+  $v = 'TOKENdePrueba0123456789abcdef'
+  $muestra = @(
+    "[setup] Abre http://192.168.1.5:3001/setup?token=$v",
+    "algo token=$v mas",
+    '[setup] O escanea: ',
+    "$([char]0x2588)$([char]0x2580)$([char]0x2584)$([char]0x2588)",
+    "[setup] (token de configuración: $v)",
+    "[setup] (token de configuraci$([char]0xC3)$([char]0xB3)n: $v)",
+    "valor suelto $v",
+    'linea inocente que debe sobrevivir'
+  )
+  $salida = (Select-SafeLines $muestra $v) -join "`n"
+  Assert (-not $salida.Contains($v)) 'el filtro del diagnóstico no deja pasar el token en ninguna de sus formas'
+  Assert ($salida.Contains('linea inocente')) 'el filtro del diagnóstico conserva las líneas normales'
+}
+
+# Antes de volcar nada: si ya existe un setup-token, su valor se oculta en TODO el log de CI.
 function Show-SafeTail([string[]]$Paths, [int]$Tail) {
   foreach ($f in $Paths) {
     if (-not (Test-Path $f)) { continue }
     Write-Host ("[{0}]" -f (Split-Path $f -Leaf))
-    Get-Content $f -Tail $Tail | Where-Object { $_ -notmatch '[\u2580-\u259F]|[^\x20-\x7E]{3,}|/setup' } |
-      ForEach-Object { $_ -replace 'token=[^\s&"''<>]+', 'token=<redactado>' } | Out-Host
+    Select-SafeLines (Get-Content $f -Tail $Tail) '' | Out-Host
   }
 }
 
@@ -273,6 +297,7 @@ function Phase-Service {
   Assert (Wait-Health $port 60) 'el servicio vuelve a arrancar tras la parada'
 }
 
+Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
 Phase-Install
 Phase-RejectPlantedDataDir
