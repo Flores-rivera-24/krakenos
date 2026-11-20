@@ -23,7 +23,7 @@ export interface MdnsServiceInstance {
   txt: Record<string, string>;
 }
 
-function encodeName(name: string): Buffer {
+export function encodeName(name: string): Buffer {
   const parts = name.split('.').filter((p) => p !== '');
   const chunks: Buffer[] = [];
   for (const part of parts) {
@@ -52,7 +52,7 @@ export function encodeMdnsQuery(services: string[]): Buffer {
 }
 
 /** Lee un nombre DNS (con compresión) y devuelve `[nombre, offsetSiguiente]`. */
-function readName(buf: Buffer, offset: number): [string, number] {
+export function readName(buf: Buffer, offset: number): [string, number] {
   const labels: string[] = [];
   let pos = offset;
   let next = -1; // offset tras el primer puntero (donde sigue el registro)

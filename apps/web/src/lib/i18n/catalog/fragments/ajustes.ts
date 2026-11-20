@@ -220,6 +220,16 @@ export const esAjustes = {
   'settings.tls.source.unknown': 'Desconocido',
   'settings.tls.expiresLabel': 'Caduca',
   'settings.tls.daysLeft': '(quedan {n} días)',
+  'settings.tls.mdns.label': 'Entrar por el nombre del equipo',
+  'settings.tls.mdns.unavailableTitle': 'El nombre .local no está disponible',
+  'settings.tls.mdns.unavailable.inUse':
+    'Otro programa de este equipo está usando el puerto 5353, así que los dispositivos de la casa no pueden entrar por su nombre .local. Para entrar sin recordar la IP, usa Tailscale.',
+  'settings.tls.mdns.unavailable.denied':
+    'El sistema no ha dejado abrir el puerto 5353, así que los dispositivos de la casa no pueden entrar por su nombre .local. Para entrar sin recordar la IP, usa Tailscale.',
+  'settings.tls.mdns.unavailable.other':
+    'No se pudo abrir el puerto 5353, así que los dispositivos de la casa no pueden entrar por su nombre .local. Para entrar sin recordar la IP, usa Tailscale.',
+  'settings.tls.mdns.copy': 'Copiar la dirección del nombre .local',
+  'settings.tls.mdns.tailscale': 'Configurar Tailscale',
   'settings.tls.expiringTitle': 'El certificado va a caducar',
   'settings.tls.expiringDesc':
     'Quedan {n} días. Si se renueva solo, KrakenOS lo aplicará sin reiniciar; si no, vuelve a emitirlo antes de esa fecha o nadie podrá entrar.',

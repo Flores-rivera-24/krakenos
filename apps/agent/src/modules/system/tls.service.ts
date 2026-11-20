@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import type { TlsStatus } from '@krakenos/types';
+import type { TlsStatus as TlsStatusApi } from '@krakenos/types';
 import type { FastifyInstance } from 'fastify';
 import { createTickLoop, type TickLoop } from '../../system/tick-loop.js';
 import {
@@ -9,6 +9,9 @@ import {
   disabledWithoutTls,
   readCertificateValidity,
 } from '../../system/tls.js';
+
+/** Lo que calcula el servicio de TLS; la ruta le añade `mdnsResponder` (US-283). */
+type TlsStatus = Omit<TlsStatusApi, 'mdnsResponder'>;
 
 /**
  * Vigilancia del certificado TLS (US-241).

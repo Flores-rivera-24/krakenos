@@ -522,6 +522,11 @@ export const env = {
   /** ¿Hay algún proxy de confianza configurado delante del agente? */
   behindProxy: parseTrustProxy(process.env.TRUST_PROXY) !== false,
 
+  /** Respondedor mDNS de `<equipo>.local` (US-283): `auto` = solo en Windows. */
+  mdnsResponder: (['on', 'off'].includes(process.env.MDNS_RESPONDER ?? '')
+    ? process.env.MDNS_RESPONDER
+    : 'auto') as 'auto' | 'on' | 'off',
+
   /** Cabeceras de seguridad servidas en todas las respuestas. */
   security: {
     /** CSP servida en cada respuesta; `CONTENT_SECURITY_POLICY` la sobreescribe entera. */

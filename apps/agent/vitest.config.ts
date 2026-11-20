@@ -25,6 +25,8 @@ const comun = {
   fileParallelism: false,
   env: {
     NODE_ENV: 'test',
+    // Ningún test abre el puerto 5353 real (en Windows el modo auto lo abriría).
+    MDNS_RESPONDER: 'off',
     DATABASE_URL: 'file:./test.db',
     JWT_PRIVATE_KEY_PATH: './keys/jwt-private.pem',
     JWT_PUBLIC_KEY_PATH: './keys/jwt-public.pem',

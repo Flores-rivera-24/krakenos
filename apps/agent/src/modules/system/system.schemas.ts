@@ -29,6 +29,7 @@ export const systemTlsSchema = {
         'expiring',
         'expired',
         'disabledFeatures',
+        'mdnsResponder',
       ],
       properties: {
         enabled: { type: 'boolean' },
@@ -44,6 +45,17 @@ export const systemTlsSchema = {
         disabledFeatures: {
           type: 'array',
           items: { type: 'string', enum: ['pwa', 'push', 'passkeys'] },
+        },
+        mdnsResponder: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['state', 'reason', 'code', 'address'],
+          properties: {
+            state: { type: 'string', enum: ['off', 'running', 'unavailable'] },
+            reason: { type: ['string', 'null'] },
+            code: { type: ['string', 'null'], enum: ['EADDRINUSE', 'EACCES', 'other', null] },
+            address: { type: ['string', 'null'] },
+          },
         },
       },
     },
