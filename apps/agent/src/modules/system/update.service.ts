@@ -205,7 +205,7 @@ export class UpdateService {
       };
     }
     if (!canAutoUpdate(mode)) {
-      // `windows-service` y `package` (US-280): aún no hay camino de actualización
+      // `windows-service` (US-280): aún no hay camino de actualización
       // propio (ni comando manual que dar), así que se dice tal cual en vez de fingir uno.
       return {
         started: false,

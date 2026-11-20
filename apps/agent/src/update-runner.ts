@@ -11,14 +11,19 @@
  */
 
 import 'dotenv/config';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { agentPaths } from './config/paths.js';
 import { fileURLToPath } from 'node:url';
 import type { UpdateResult } from '@krakenos/types';
-import { ProcessUpdateRunner } from './system/process-update-runner.js';
-import { orchestrateUpdate } from './system/update-orchestrator.js';
+import { SudoHelperRunner } from './privileged/runner.js';
+import { detectDeployMode } from './system/deploy-mode.js';
+import { PackageUpdateRunner } from './system/package-update.js';
+import { createDefaultSnapshot, ProcessUpdateRunner } from './system/process-update-runner.js';
+import type { Platform } from './system/update-manifest.js';
+import type { UpdateRunner } from './system/update-orchestrator.js';
+import { orchestrateUpdate, PACKAGE_STEPS } from './system/update-orchestrator.js';
 import { resolveDbFile } from './system/restore.js';
 
 function readAgentVersion(): string {
@@ -32,6 +37,12 @@ function readAgentVersion(): string {
     }
   }
   return '0.0.0';
+}
+
+/** Plataforma del paquete instalado: `.deb` (dpkg) o Arch (pacman). */
+function packagePlatform(): Platform {
+  if (existsSync('/usr/bin/pacman') && !existsSync('/usr/bin/dpkg')) return 'arch-x86_64';
+  return process.arch === 'arm64' ? 'deb-arm64' : 'deb-amd64';
 }
 
 async function main(): Promise<void> {
@@ -48,16 +59,33 @@ async function main(): Promise<void> {
   }
 
   const port = Number(process.env.PORT ?? 3001);
-  const runner = new ProcessUpdateRunner({
-    repoDir: agentPaths().repoDir,
-    serviceName: process.env.KRAKENOS_SERVICE_NAME ?? 'krakenos',
-    healthUrl: process.env.KRAKENOS_HEALTH_URL ?? `http://127.0.0.1:${port}/health/ready`,
-    dbFile: resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db'),
-  });
+  const healthUrl = process.env.KRAKENOS_HEALTH_URL ?? `http://127.0.0.1:${port}/health/ready`;
+  const dbFile = resolveDbFile(process.env.DATABASE_URL ?? 'file:./dev.db');
+  const packageMode = detectDeployMode() === 'package';
+  const runner: UpdateRunner = packageMode
+    ? new PackageUpdateRunner({
+        repo: process.env.UPDATE_CHECK_REPO ?? '',
+        installed: current,
+        platform: packagePlatform(),
+        stagingDir: resolve(agentPaths().dataDir, 'updates'),
+        dbFile,
+        healthUrl,
+        helper: new SudoHelperRunner({
+          helperPath: process.env.WG_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+        }),
+        snapshot: createDefaultSnapshot((m) => process.stderr.write(`${m}\n`)),
+      })
+    : new ProcessUpdateRunner({
+        repoDir: agentPaths().repoDir,
+        serviceName: process.env.KRAKENOS_SERVICE_NAME ?? 'krakenos',
+        healthUrl,
+        dbFile,
+      });
 
   let result: UpdateResult;
   try {
     result = await orchestrateUpdate(runner, current, targetVersion, {
+      ...(packageMode ? { steps: PACKAGE_STEPS } : {}),
       onStep: (s) =>
         process.stdout.write(
           `[update] ${s.step}: ${s.status}${s.detail ? ` — ${s.detail}` : ''}\n`,

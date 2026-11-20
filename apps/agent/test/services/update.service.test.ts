@@ -91,7 +91,7 @@ describe('UpdateService.getPlan', () => {
     expect(plan.dockerCommand).toContain('docker compose pull');
   });
 
-  it.each(['windows-service', 'package'] as const)(
+  it.each(['windows-service'] as const)(
     '%s: no se auto-actualiza y NO inventa un comando',
     async (mode) => {
       const { service } = make({ status: AVAILABLE, mode });
@@ -181,7 +181,7 @@ describe('UpdateService.apply', () => {
     expect(spawn).not.toHaveBeenCalled();
   });
 
-  it.each(['windows-service', 'package'] as const)(
+  it.each(['windows-service'] as const)(
     '%s: no lanza nada y lo dice (sin comando docker)',
     async (mode) => {
       const { service, spawn } = make({ status: AVAILABLE, mode });
@@ -193,6 +193,15 @@ describe('UpdateService.apply', () => {
       expect(spawn).not.toHaveBeenCalled();
     },
   );
+
+  it('package: se auto-actualiza y lanza el actualizador (sin comando docker)', async () => {
+    const { service, spawn } = make({ status: AVAILABLE, mode: 'package' });
+    expect((await service.getPlan()).canSelfUpdate).toBe(true);
+    const res = await service.apply(true);
+    expect(res.started).toBe(true);
+    expect(res.dockerCommand).toBeUndefined();
+    expect(spawn).toHaveBeenCalledTimes(1);
+  });
 
   it('sin actualización disponible: no lanza', async () => {
     const { service, spawn } = make({ status: UP_TO_DATE });
