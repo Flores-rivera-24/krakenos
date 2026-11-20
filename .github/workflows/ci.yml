@@ -514,17 +514,18 @@ jobs:
           command -v gpgv
           pnpm package
 
-      # makensis abre los ficheros sin el prefijo de ruta larga: bajo `D:\a\krakenos\krakenos\out\…`
+      # makensis abre los ficheros sin el prefijo de ruta larga: desde `D:\a\krakenos\krakenos\out\…`
       # una ruta de pnpm pasa de 260 caracteres y falla («failed opening file»). Se mueve el paquete a
-      # una ruta corta (en D:, la misma unidad que src-tauri: Tauri rompe la ruta de un resource en otra unidad) y se rehacen las junctions (que son absolutas) con el relink del propio paquete.
+      # una ruta corta, en D: (la misma unidad que src-tauri: en otra Tauri rompe la ruta del resource),
+      # y se rehacen las junctions (son absolutas) con el relink del propio paquete.
       - name: Construir el instalador NSIS
         run: |
           src="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
-          mkdir -p /d/kos
-          rm -rf "/d/kos/$(basename "$src")"
-          mv "$src" /d/kos/
-          dir="D:/kos/$(basename "$src")"
+          rm -rf /d/k && mkdir -p /d/k
+          mv "$src" /d/k/p-win-x64
+          dir="D:/k/p-win-x64"
           find "$dir/app/agent/node_modules" -maxdepth 1 -type l | head -3; ls -la "$dir/app/agent/node_modules" | head -8
+          echo "ruta relativa más larga del paquete: $(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }') caracteres"
           node -e "import('file:///$dir/app/relink.mjs').then(m => m.relinkPnpmJunctions('$dir/app/agent/node_modules')).then(r => console.log('relink', r.relinked.length, 'sin resolver', r.unresolved.length))"
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
 
