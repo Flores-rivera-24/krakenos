@@ -136,7 +136,8 @@ check_tc_tokens() {
 # el paquete (clave embebida, nunca recibida) e instala solo desde esa copia. Root no descarga nada.
 # Estas rutas se pueden cambiar solo desde /etc/krakenos/helper.conf (root): siendo root se descarta todo `KRAKENOS_*` del entorno.
 KRAKENOS_PKG_DATA_DIR="${KRAKENOS_PKG_DATA_DIR:-/var/lib/krakenos}"
-KRAKENOS_PKG_STAGING="${KRAKENOS_PKG_STAGING:-$KRAKENOS_PKG_DATA_DIR/updates}"
+# Donde el agente deja el paquete: `<KRAKENOS_DATA_DIR>/data/updates` (`agentPaths().dataDir` + `updates`); un test ata ambos lados.
+KRAKENOS_PKG_STAGING="${KRAKENOS_PKG_STAGING:-$KRAKENOS_PKG_DATA_DIR/data/updates}"
 KRAKENOS_PKG_ROOT_DIR="${KRAKENOS_PKG_ROOT_DIR:-/var/lib/krakenos-root/updates}"
 KRAKENOS_PKG_NODE="${KRAKENOS_PKG_NODE:-/usr/lib/krakenos/node/bin/node}"
 KRAKENOS_PKG_VERIFIER="${KRAKENOS_PKG_VERIFIER:-/usr/lib/krakenos/libexec/krakenos-verify-update.mjs}"
@@ -149,7 +150,9 @@ KRAKENOS_PKG_ROLLBACK_WINDOW_MIN="${KRAKENOS_PKG_ROLLBACK_WINDOW_MIN:-60}"
 
 _semver='^[0-9]+\.[0-9]+\.[0-9]+$'
 PKG_RC_REJECTED=65 # la verificación de root rechazó el paquete
-PKG_RC_NO_PREVIOUS=66 # rollback sin paquete anterior que reinstalar
+PKG_RC_NO_PREVIOUS=66 # rollback sin paquete anterior que reinstalar (la base sí se restauró)
+PKG_RC_NOTHING=67 # rollback sin nada que revertir: no se tocó NADA (ni base ni servicio)
+PKG_RC_STILL_INSTALLED=68 # rollback: base restaurada; la versión nueva nunca llegó a instalarse, sigue la de antes
 
 pkg_state_file() { echo "$KRAKENOS_PKG_ROOT_DIR/.state"; }
 
@@ -243,7 +246,8 @@ pkg_copy_in() {
 
 pkg_verify() { # <dir> <nombre-paquete> <plataforma> <versión> (--installed v | --rollback)
   local d="$1" name="$2" plat="$3" ver="$4"; shift 4
-  "$KRAKENOS_PKG_NODE" "$KRAKENOS_PKG_VERIFIER" --manifest "$d/manifest.json" --sig "$d/manifest.json.sig" \
+  # Entorno vacío: el Node de root no hereda NODE_OPTIONS/NODE_PATH/etc. que deje pasar sudo.
+  env -i PATH="$PATH" "$KRAKENOS_PKG_NODE" "$KRAKENOS_PKG_VERIFIER" --manifest "$d/manifest.json" --sig "$d/manifest.json.sig" \
     --package "$d/$name" --platform "$plat" --version "$ver" "$@"
 }
 
@@ -264,7 +268,7 @@ pkg_install() { # <formato> <fichero> <versión> [rollback]
     local -a extra=()
     local unit=krakenos-update
     [ "${4:-}" = rollback ] && { extra=(--allow-downgrades); unit=krakenos-rollback; }
-    pkg_isolated "$unit" "$3" env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold "${extra[@]}" "$2"
+    pkg_isolated "$unit" "$3" env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-remove -o Dpkg::Options::=--force-confold "${extra[@]}" "$2"
   else
     pkg_isolated "$([ "${4:-}" = rollback ] && echo krakenos-rollback || echo krakenos-update)" "$3" pacman -U --noconfirm "$2"
   fi
@@ -281,7 +285,7 @@ pkg_saved_name() {
 
 pkg_update() {
   [ "$#" -eq 4 ] || deny "pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>"
-  local pkg="$1" man="$2" sig="$3" ver="$4" fmt plat installed name d prev=""
+  local pkg="$1" man="$2" sig="$3" ver="$4" fmt plat installed name d tmp prev=""
   [[ "$ver" =~ $_semver ]] || deny "pkg-update: versión no válida"
   fmt="$(pkg_format)"
   name="$(basename -- "$pkg")"
@@ -295,16 +299,20 @@ pkg_update() {
   pkg_root_dir
   rm -f -- "$(pkg_state_file)" # sin estado no hay nada que revertir: un rollback antiguo no puede reinstalar nada
   d="$KRAKENOS_PKG_ROOT_DIR/$ver"
-  rm -rf -- "$d"
-  mkdir -m 0700 -- "$d"
-  # Copia primero, verifica LA COPIA: lo que cambie el servicio a partir de aquí ya no cuenta.
-  pkg_copy_in "$man" "$d/manifest.json" && pkg_copy_in "$sig" "$d/manifest.json.sig" \
-    && pkg_copy_in "$pkg" "$d/$name" || { rm -rf -- "$d"; deny "pkg-update: no se pudo copiar"; }
-  if ! pkg_verify "$d" "$name" "$plat" "$ver" --installed "$installed"; then
-    rm -rf -- "$d"
+  tmp="$KRAKENOS_PKG_ROOT_DIR/.new-$ver"
+  rm -rf -- "$tmp"
+  mkdir -m 0700 -- "$tmp"
+  # Copia primero, verifica LA COPIA: lo que cambie el servicio a partir de aquí ya no cuenta. Se copia a un
+  # temporal y solo se mueve a `<ver>` tras verificar: una entrada rechazada no borra la copia buena de esa versión.
+  pkg_copy_in "$man" "$tmp/manifest.json" && pkg_copy_in "$sig" "$tmp/manifest.json.sig" \
+    && pkg_copy_in "$pkg" "$tmp/$name" || { rm -rf -- "$tmp"; deny "pkg-update: no se pudo copiar"; }
+  if ! pkg_verify "$tmp" "$name" "$plat" "$ver" --installed "$installed"; then
+    rm -rf -- "$tmp"
     echo "krakenos-helper: la verificación de root rechazó la actualización" >&2
     exit "$PKG_RC_REJECTED"
   fi
+  rm -rf -- "$d"
+  mv -T -- "$tmp" "$d"
 
   # Paquete anterior para el rollback: solo si root tiene su copia y sigue verificando.
   if [ -d "$KRAKENOS_PKG_ROOT_DIR/$installed" ] && [ ! -L "$KRAKENOS_PKG_ROOT_DIR/$installed" ]; then
@@ -340,7 +348,7 @@ pkg_rollback() {
   # un estado de una actualización anterior no puede convertir otro fallo en un downgrade.
   if [ ! -f "$(pkg_state_file)" ] || [ -z "$(find "$(pkg_state_file)" -mmin "-$KRAKENOS_PKG_ROLLBACK_WINDOW_MIN" 2> /dev/null)" ]; then
     echo "krakenos-helper: no hay una instalación reciente que revertir; no se toca nada" >&2
-    return 0
+    return "$PKG_RC_NOTHING"
   fi
   read -r line < "$(pkg_state_file)" || true
   [[ "$line" =~ ^fmt=(deb|arch)\ ver=([0-9]+\.[0-9]+\.[0-9]+)\ prev=([0-9]+\.[0-9]+\.[0-9]+)?$ ]] || deny "pkg-rollback: estado ilegible"
@@ -351,7 +359,7 @@ pkg_rollback() {
   prev="${BASH_REMATCH[3]}"
   if [ "$ver" != "$target" ]; then
     echo "krakenos-helper: el estado es de la versión $ver, no de la $target; no se toca nada" >&2
-    return 0
+    return "$PKG_RC_NOTHING"
   fi
   # Todo lo que puede abortar va ANTES de parar el servicio: parado, solo se sale tras restaurar y arrancar.
   plat="$(pkg_platform "$fmt")"
@@ -392,8 +400,28 @@ pkg_rollback() {
     rm -f -- "$(pkg_state_file)"
     return "$PKG_RC_NO_PREVIOUS"
   fi
-  { [ "$rc" -eq 0 ] && { [ "$reinstalled" -eq 1 ] || [ "$installed" != "$ver" ]; }; } && rm -f -- "$(pkg_state_file)"
+  if [ "$rc" -eq 0 ] && [ "$installed" != "$ver" ]; then
+    # La versión nueva nunca se instaló: la base vuelve a ser la de antes y el paquete que sigue es el de antes.
+    rm -f -- "$(pkg_state_file)"
+    return "$PKG_RC_STILL_INSTALLED"
+  fi
+  [ "$rc" -eq 0 ] && [ "$reinstalled" -eq 1 ] && rm -f -- "$(pkg_state_file)"
   return "$rc"
+}
+
+# La actualización pasó el healthcheck: se cierra la ventana de reversión. Sin esto el estado viviría
+# `KRAKENOS_PKG_ROLLBACK_WINDOW_MIN` minutos y el servicio podría pedir `pkg-rollback` para forzar un downgrade
+# a la versión anterior firmada. Solo borra el estado de ESA versión; con otro (o ninguno) no hace nada.
+pkg_commit() {
+  [ "$#" -eq 1 ] || deny "pkg-commit <versión>"
+  local ver="$1" line
+  [[ "$ver" =~ $_semver ]] || deny "pkg-commit: versión no válida"
+  pkg_root_dir
+  [ -f "$(pkg_state_file)" ] || return 0
+  read -r line < "$(pkg_state_file)" || true
+  [[ "$line" =~ ^fmt=(deb|arch)\ ver=([0-9]+\.[0-9]+\.[0-9]+)\ prev= ]] || return 0
+  [ "${BASH_REMATCH[2]}" = "$ver" ] && rm -f -- "$(pkg_state_file)"
+  return 0
 }
 
 cmd="${1:-}"
@@ -471,6 +499,9 @@ case "$cmd" in
     ;;
   pkg-rollback)
     pkg_rollback "$@"
+    ;;
+  pkg-commit)
+    pkg_commit "$@"
     ;;
   *)
     deny "$cmd"

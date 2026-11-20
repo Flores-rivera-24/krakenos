@@ -160,7 +160,13 @@ export interface UpdateStepResult {
 
 /** La versión de destino exige un Node más nuevo que el que corre el servicio. */
 export type UpdateBlockedCode =
-  'NODE_TOO_OLD' | 'NOT_AN_UPGRADE' | 'NO_ARTIFACT' | 'MIN_FROM' | 'BAD_SIGNATURE' | 'BAD_PACKAGE';
+  | 'NODE_TOO_OLD'
+  | 'NOT_AN_UPGRADE'
+  | 'NO_ARTIFACT'
+  | 'MIN_FROM'
+  | 'BAD_SIGNATURE'
+  | 'BAD_PACKAGE'
+  | 'INSTALL_REFUSED';
 
 // Record exhaustivo: añadir un código a la unión sin listarlo aquí no compila (y el schema lo toma de aquí).
 const UPDATE_BLOCKED_CODE_SET: Record<UpdateBlockedCode, true> = {
@@ -170,15 +176,21 @@ const UPDATE_BLOCKED_CODE_SET: Record<UpdateBlockedCode, true> = {
   MIN_FROM: true,
   BAD_SIGNATURE: true,
   BAD_PACKAGE: true,
+  INSTALL_REFUSED: true,
 };
 export const UPDATE_BLOCKED_CODES = Object.keys(UPDATE_BLOCKED_CODE_SET) as UpdateBlockedCode[];
 
 /**
- * Códigos de un paso: los de bloqueo más `NO_PREVIOUS_PACKAGE` (paso `rollback`: se restauró la base y se
- * arrancó el servicio, pero no había paquete anterior que reinstalar, así que la versión no vuelve atrás).
+ * Códigos de un paso: los de bloqueo más dos del paso `rollback`: `NO_PREVIOUS_PACKAGE` (se restauró la base y
+ * se arrancó el servicio, pero no había paquete anterior que reinstalar, así que la versión no vuelve atrás) y
+ * `STILL_INSTALLED` (la versión nueva nunca llegó a instalarse: no se reinstaló nada y sigue la de antes).
  */
-export type UpdateStepCode = UpdateBlockedCode | 'NO_PREVIOUS_PACKAGE';
-export const UPDATE_STEP_CODES: UpdateStepCode[] = [...UPDATE_BLOCKED_CODES, 'NO_PREVIOUS_PACKAGE'];
+export type UpdateStepCode = UpdateBlockedCode | 'NO_PREVIOUS_PACKAGE' | 'STILL_INSTALLED';
+export const UPDATE_STEP_CODES: UpdateStepCode[] = [
+  ...UPDATE_BLOCKED_CODES,
+  'NO_PREVIOUS_PACKAGE',
+  'STILL_INSTALLED',
+];
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso

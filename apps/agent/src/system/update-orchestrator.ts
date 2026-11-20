@@ -20,7 +20,11 @@
  */
 
 import type { UpdateResult, UpdateStep, UpdateStepResult } from '@krakenos/types';
-import { NoPreviousPackageError, UpdateBlockedError } from './node-requirement.js';
+import {
+  NoPreviousPackageError,
+  StillInstalledError,
+  UpdateBlockedError,
+} from './node-requirement.js';
 
 /**
  * Ejecuta cada fase de la actualización. Implementaciones: `ProcessUpdateRunner`
@@ -152,6 +156,12 @@ export async function orchestrateUpdate(
         record({ step: 'rollback', status: 'ok' });
         return finish(false, true);
       } catch (rbErr) {
+        // La versión nueva nunca se instaló: no hay nada que «revertir», sigue la de antes. Decirlo como
+        // reversión sería mentir sobre lo que pasó (y la UI debe poder decir «sigue instalada la X»).
+        if (rbErr instanceof StillInstalledError) {
+          record({ step: 'rollback', status: 'ok', detail: rbErr.message, code: rbErr.code });
+          return finish(false, false);
+        }
         const detail = rbErr instanceof Error ? rbErr.message : 'error desconocido';
         record(
           rbErr instanceof NoPreviousPackageError

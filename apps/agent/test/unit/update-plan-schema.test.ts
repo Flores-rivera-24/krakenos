@@ -6,7 +6,11 @@ import { updatePlanSchema } from '../../src/modules/system/system.schemas.js';
 // `additionalProperties: false` / el schema de respuesta PODA en silencio lo que no declara:
 // compara lo SERVIDO, no lo que el servicio construye.
 describe('schema de GET /update/plan', () => {
-  it('el código NO_PREVIOUS_PACKAGE de un paso llega al cliente', async () => {
+  it.each([
+    ['rollback', 'ok', 'STILL_INSTALLED'],
+    ['apply', 'failed', 'INSTALL_REFUSED'],
+    ['rollback', 'failed', 'NO_PREVIOUS_PACKAGE'],
+  ] as const)('el código %s/%s %s de un paso llega al cliente', async (step, status, code) => {
     const plan: UpdatePlan = {
       enabled: true,
       current: '0.2.0',
@@ -26,7 +30,7 @@ describe('schema de GET /update/plan', () => {
         rolledBack: false,
         fromVersion: '0.2.0',
         targetVersion: '0.3.0',
-        steps: [{ step: 'rollback', status: 'failed', detail: 'x', code: 'NO_PREVIOUS_PACKAGE' }],
+        steps: [{ step, status, detail: 'x', code }],
         finishedAt: '2026-07-13T10:00:00.000Z',
       },
     };

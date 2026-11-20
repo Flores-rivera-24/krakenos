@@ -36,6 +36,15 @@ export class NoPreviousPackageError extends Error {
   }
 }
 
+/** El rollback no tenía nada que deshacer: la versión nueva nunca se instaló y sigue la de antes. */
+export class StillInstalledError extends Error {
+  readonly code = 'STILL_INSTALLED' as const;
+  constructor(message: string) {
+    super(message);
+    this.name = 'StillInstalledError';
+  }
+}
+
 export interface NodeVersionParts {
   major: number;
   minor: number;

@@ -11,23 +11,78 @@
  */
 
 import { createHash } from 'node:crypto';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, existsSync } from 'node:fs';
 import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { Readable, Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { safeFetch } from '../net/egress.js';
+import { initConTlsDeLan } from '../net/lan-tls.js';
 import { PrivilegedCommandError, type CommandRunner } from '../privileged/runner.js';
 import { renameWithRetry } from './rename-retry.js';
-import { NoPreviousPackageError, UpdateBlockedError } from './node-requirement.js';
+import {
+  NoPreviousPackageError,
+  StillInstalledError,
+  UpdateBlockedError,
+} from './node-requirement.js';
 import {
   artifactFor,
   checkUpgrade,
+  PLATFORMS,
   UPDATE_PUBLIC_KEY_PEM,
   verifyAndParse,
   type Platform,
 } from './update-manifest.js';
 import type { UpdateRunner } from './update-orchestrator.js';
+
+/**
+ * Dónde deja el agente el paquete: `<dataDir>/updates` (`dataDir` = `<KRAKENOS_DATA_DIR>/data`). El helper de
+ * root lo espera en `$KRAKENOS_PKG_DATA_DIR/data/updates`: lo ata `helper-pkg-update.test.ts` con ESTA función.
+ */
+export function packageStagingDir(dataDir: string): string {
+  return resolve(dataDir, 'updates');
+}
+
+/**
+ * Plataforma del paquete instalado. La fija el empaquetado en `/usr/lib/krakenos/package.env`
+ * (`KRAKENOS_PACKAGE_PLATFORM`); la heurística (pacman sin dpkg → Arch, si no `.deb` por arquitectura)
+ * queda solo de respaldo para un paquete anterior a esa clave.
+ */
+export function packagePlatform(
+  env: { KRAKENOS_PACKAGE_PLATFORM?: string | undefined },
+  exists: (p: string) => boolean = existsSync,
+  arch: string = process.arch,
+): Platform {
+  const fijada = env.KRAKENOS_PACKAGE_PLATFORM;
+  if (fijada && (PLATFORMS as readonly string[]).includes(fijada)) return fijada as Platform;
+  if (exists('/usr/bin/pacman') && !exists('/usr/bin/dpkg')) return 'arch-x86_64';
+  return arch === 'arm64' ? 'deb-arm64' : 'deb-amd64';
+}
+
+/**
+ * URL del healthcheck del agente local. Con `HTTPS_ENABLED=true` (lo que deja `krakenos-setup tls auto` en todo
+ * paquete) el servidor SOLO habla HTTPS en `PORT`: un sondeo HTTP fallaría siempre y revertiría una
+ * actualización sana. `KRAKENOS_HEALTH_URL` manda si el operador lo fija.
+ */
+export function localHealthUrl(env: {
+  PORT?: string | undefined;
+  HTTPS_ENABLED?: string | undefined;
+  KRAKENOS_HEALTH_URL?: string | undefined;
+}): string {
+  if (env.KRAKENOS_HEALTH_URL) return env.KRAKENOS_HEALTH_URL;
+  const scheme = env.HTTPS_ENABLED === 'true' ? 'https' : 'http';
+  return `${scheme}://127.0.0.1:${Number(env.PORT ?? 3001)}/health/ready`;
+}
+
+/**
+ * `safeFetch` al propio agente. El certificado del paquete es el de la CA local (o autofirmado) y no consta
+ * para el Node del actualizador: se salta la verificación SOLO si el destino es loopback/LAN (`initConTlsDeLan`,
+ * la excepción acotada de la LAN); hacia un host público la verificación sigue activa.
+ */
+async function healthFetch(url: string): Promise<{ ok: boolean }> {
+  const res = await safeFetch(url, await initConTlsDeLan(url, {}));
+  return { ok: res.ok };
+}
 
 export interface PackageTransport {
   /** Descarga un recurso pequeño en memoria; lanza si no es 200 o supera `maxBytes`. */
@@ -117,7 +172,18 @@ export interface PackageUpdateRunnerOptions {
   snapshot: (dbFile: string, destFile: string) => Promise<void>;
   fetchFn?: (url: string) => Promise<{ ok: boolean }>;
   sleep?: (ms: number) => Promise<void>;
+  /** Avisos que no tumban la actualización (p. ej. `pkg-commit` fallido). */
+  warn?: (message: string) => void;
 }
+
+// Códigos de salida de `pkg-update` (krakenos-helper.sh): deterministas, no se instaló nada.
+const RC_REJECTED = 65;
+const RC_DENIED = 64;
+const RC_NO_SYSTEMD_RUN = 69;
+// Códigos de `pkg-rollback`.
+const RC_NO_PREVIOUS = 66;
+const RC_NOTHING = 67;
+const RC_STILL_INSTALLED = 68;
 
 export class PackageUpdateRunner implements UpdateRunner {
   private staged: { pkg: string; manifest: string; sig: string; version: string } | null = null;
@@ -190,7 +256,28 @@ export class PackageUpdateRunner implements UpdateRunner {
     // Contrato de `pkg-update <paquete> <manifest.json> <manifest.json.sig> <versión>`: root copia los
     // tres a su directorio y vuelve a verificar SU copia con la clave embebida; solo instala desde ella.
     const { pkg, manifest, sig, version } = this.staged;
-    await this.opts.helper.run(['pkg-update', pkg, manifest, sig, version]);
+    try {
+      await this.opts.helper.run(['pkg-update', pkg, manifest, sig, version]);
+    } catch (err) {
+      // Root rechazó ANTES de instalar nada (verificación, ruta, falta de systemd-run): no hay nada que
+      // revertir, y un rollback aquí reinstalaría otra cosa o diría «revertido» sin haber tocado nada.
+      if (err instanceof PrivilegedCommandError) {
+        const code = err.result.code;
+        if (code === RC_REJECTED) {
+          throw new UpdateBlockedError(
+            'BAD_PACKAGE',
+            'Root rechazó el paquete al volver a verificarlo; no se instala.',
+          );
+        }
+        if (code === RC_DENIED || code === RC_NO_SYSTEMD_RUN) {
+          throw new UpdateBlockedError(
+            'INSTALL_REFUSED',
+            'El helper de root no permitió instalar el paquete; no se ha cambiado nada.',
+          );
+        }
+      }
+      throw err;
+    }
   }
 
   // El paquete migra al arrancar y su postinst reinicia el servicio: no hay paso propio.
@@ -202,11 +289,14 @@ export class PackageUpdateRunner implements UpdateRunner {
   }
 
   async healthcheck(): Promise<boolean> {
-    const fetchFn = this.opts.fetchFn ?? ((url) => safeFetch(url).then((r) => ({ ok: r.ok })));
+    const fetchFn = this.opts.fetchFn ?? healthFetch;
     const sleep = this.opts.sleep ?? ((ms) => new Promise<void>((r) => setTimeout(r, ms)));
     for (let i = 0; i < HEALTH_RETRIES; i++) {
       try {
-        if ((await fetchFn(this.opts.healthUrl)).ok) return true;
+        if ((await fetchFn(this.opts.healthUrl)).ok) {
+          await this.commit();
+          return true;
+        }
       } catch {
         // aún reiniciando
       }
@@ -215,10 +305,26 @@ export class PackageUpdateRunner implements UpdateRunner {
     return false;
   }
 
+  /**
+   * La versión nueva responde sana: se le dice a root que cierre la ventana de reversión (si no, el servicio
+   * podría pedir `pkg-rollback` durante una hora y forzar un downgrade a la versión anterior firmada). Su
+   * fallo no es fatal: la ventana caduca sola, así que se avisa y se sigue.
+   */
+  private async commit(): Promise<void> {
+    if (!this.staged) return;
+    try {
+      await this.opts.helper.run(['pkg-commit', this.staged.version]);
+    } catch (err) {
+      (this.opts.warn ?? ((m) => process.stderr.write(`${m}\n`)))(
+        `[update] pkg-commit falló; la ventana de reversión caduca sola: ${err instanceof Error ? err.message : 'error'}`,
+      );
+    }
+  }
+
   async rollback(): Promise<void> {
     // Sin paquete preparado (falló el `fetch`) root no ha instalado nada: no hay nada que revertir y
-    // pedirlo solo expondría una actualización anterior a un fallo de red.
-    if (!this.staged) return;
+    // pedirlo solo expondría una actualización anterior a un fallo de red. Tampoco es una «reversión».
+    if (!this.staged) throw new StillInstalledError('no llegó a prepararse ningún paquete');
     // El agente no puede pararse a sí mismo para restaurar su base: lo hace el helper, desde la copia
     // que dejó el paso `backup`. Se le dice QUÉ versión falló: solo revierte si es la que él instaló.
     try {
@@ -230,8 +336,18 @@ export class PackageUpdateRunner implements UpdateRunner {
     } catch (err) {
       // 66 = `PKG_RC_NO_PREVIOUS` del helper: restauró la base pero no hay paquete anterior que reinstalar
       // (primera actualización por paquete). El orquestador lo registra con el código tipado `NO_PREVIOUS_PACKAGE`.
-      if (err instanceof PrivilegedCommandError && err.result.code === 66) {
-        throw new NoPreviousPackageError('base restaurada, sin paquete anterior que reinstalar');
+      if (err instanceof PrivilegedCommandError) {
+        if (err.result.code === RC_NO_PREVIOUS) {
+          throw new NoPreviousPackageError('base restaurada, sin paquete anterior que reinstalar');
+        }
+        // 68: la nueva nunca se instaló (base restaurada, sigue la de antes). 67: root no tenía nada que revertir
+        // (estado caducado o de otra versión): NO se reportó revertido, y si el sistema quedó a medias no se oculta.
+        if (err.result.code === RC_STILL_INSTALLED) {
+          throw new StillInstalledError('base restaurada; la versión nueva no llegó a instalarse');
+        }
+        if (err.result.code === RC_NOTHING) {
+          throw new Error('root no tenía una instalación reciente que revertir; no se tocó nada');
+        }
       }
       throw err;
     }

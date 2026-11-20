@@ -18,6 +18,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { resolvePaths } from '../../src/config/paths.js';
+import { packageStagingDir } from '../../src/system/package-update.js';
 
 /**
  * `pkg-update` / `pkg-rollback` del helper (corre como ROOT e instala paquetes). Se ejecuta el
@@ -140,7 +142,11 @@ afterAll(() => rmSync(base, { recursive: true, force: true }));
 
 beforeEach(() => {
   w = realpathSync(mkdtempSync(join(tmpdir(), 'kraken-pkg-')));
-  staging = join((data = join(w, 'data')), 'updates');
+  // Valores de PRODUCCIÓN, no inventados: `data` es `KRAKENOS_DATA_DIR` (= KRAKENOS_PKG_DATA_DIR del helper) y el
+  // staging lo calcula el agente con `resolvePaths` + `packageStagingDir` (la misma función de `update-runner`).
+  // El helper corre SIN `KRAKENOS_PKG_STAGING`: si su default no coincide con el del agente, todo se rechaza (64).
+  data = join(w, 'krakenos');
+  staging = packageStagingDir(resolvePaths({ KRAKENOS_DATA_DIR: data }, '/').dataDir);
   mkdirSync(staging, { recursive: true });
   rootDir = join(w, 'rootvar', 'updates');
   stub = join(w, 'stub');
@@ -208,7 +214,6 @@ function run(args: string[], env: NodeJS.ProcessEnv = {}) {
           KRAKENOS_HELPER_KEEP_PATH: '1',
           KRAKENOS_HELPER_CONF: '/dev/null/none',
           KRAKENOS_PKG_DATA_DIR: data,
-          KRAKENOS_PKG_STAGING: staging,
           KRAKENOS_PKG_ROOT_DIR: rootDir,
           KRAKENOS_PKG_NODE: process.execPath,
           KRAKENOS_PKG_VERIFIER: verifier,
@@ -250,7 +255,7 @@ describe.skipIf(process.platform === 'win32')(
       expect(call).toContain('-y');
       // apt-get va en una unidad transitoria (fuera de ProtectSystem=full del servicio), sobre la copia de root.
       expect(runCalls()).toEqual([
-        `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold ${rootDir}/0.3.0/${pkgName('0.3.0')}`,
+        `systemd-run --wait --collect --pipe --quiet --unit=krakenos-update-0.3.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-remove -o Dpkg::Options::=--force-confold ${rootDir}/0.3.0/${pkgName('0.3.0')}`,
       ]);
       expect(readFileSync(join(rootDir, '0.3.0', pkgName('0.3.0')), 'utf8')).toBe('paquete 0.3.0');
       expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('fmt=deb ver=0.3.0 prev=\n');
@@ -403,6 +408,43 @@ describe.skipIf(process.platform === 'win32')(
       expect(existsSync(join(rootDir, '.state'))).toBe(false);
     });
 
+    it('el staging por defecto del helper es el que calcula el agente (<datos>/data/updates)', async () => {
+      // Sin KRAKENOS_PKG_STAGING (ver `run`): lo que deja el agente en `packageStagingDir` se acepta...
+      expect(staging).toBe(join(data, 'data', 'updates'));
+      expect((await update(release('0.3.0'), '0.3.0')).code).toBe(0);
+      // ...y el directorio que root NO espera (el de antes del arreglo, `<datos>/updates`) se rechaza.
+      const viejo = join(data, 'updates');
+      mkdirSync(viejo, { recursive: true });
+      for (const f of readdirSync(staging))
+        writeFileSync(join(viejo, f), readFileSync(join(staging, f)));
+      writeFileSync(join(stub, 'installed'), '0.2.0');
+      const res = await run([
+        'pkg-update',
+        join(viejo, pkgName('0.3.0')),
+        join(viejo, 'manifest.json'),
+        join(viejo, 'manifest.json.sig'),
+        '0.3.0',
+      ]);
+      expect(res.code).toBe(64);
+    });
+
+    it('el Node de root no hereda NODE_OPTIONS ni NODE_PATH del llamante (env -i)', async () => {
+      const res = await update(release('0.3.0'), '0.3.0', {
+        NODE_OPTIONS: `--require ${join(w, 'no-existe.cjs')}`,
+        NODE_PATH: join(w, 'no-existe'),
+      });
+      expect(res.code, res.stderr).toBe(0);
+    });
+
+    it('una entrada rechazada no borra la copia buena que root ya tenía de esa versión', async () => {
+      expect((await update(release('0.3.0'), '0.3.0')).code).toBe(0);
+      writeFileSync(join(stub, 'installed'), '0.2.0');
+      const mala = release('0.3.0', { key: generateKeyPairSync('ed25519') });
+      expect((await update(mala, '0.3.0')).code).toBe(65);
+      expect(readFileSync(join(rootDir, '0.3.0', pkgName('0.3.0')), 'utf8')).toBe('paquete 0.3.0');
+      expect(readdirSync(rootDir).filter((n) => n.startsWith('.new-'))).toEqual([]);
+    });
+
     it('conserva solo la versión nueva y la anterior', async () => {
       for (const [inst, v] of [
         ['0.1.0', '0.2.0'],
@@ -454,7 +496,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     const l = log().trim().split('\n');
     expect(l[0]).toBe('systemctl stop krakenos');
     expect(l[1]).toBe(
-      `systemd-run --wait --collect --pipe --quiet --unit=krakenos-rollback-0.2.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Options::=--force-confold --allow-downgrades ${rootDir}/0.2.0/${pkgName('0.2.0')}`,
+      `systemd-run --wait --collect --pipe --quiet --unit=krakenos-rollback-0.2.0 -- env DEBIAN_FRONTEND=noninteractive apt-get install -y --no-remove -o Dpkg::Options::=--force-confold --allow-downgrades ${rootDir}/0.2.0/${pkgName('0.2.0')}`,
     );
     expect(l[2]).toContain('apt-get');
     // El postinst del paquete anterior reinicia el servicio: la base YA estaba restaurada (y sin -wal/-shm).
@@ -489,7 +531,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
 
   it('sin una instalación en curso no toca nada (ni para el servicio ni restaura la base)', async () => {
     const res = await rollback();
-    expect(res.code).toBe(0);
+    expect(res.code).toBe(67);
     expect(log()).toBe('');
     expect(readFileSync(db, 'utf8')).toBe('base nueva');
   });
@@ -499,7 +541,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     const viejo = new Date(Date.now() - 3 * 3600_000);
     utimesSync(join(rootDir, '.state'), viejo, viejo);
     const res = await rollback();
-    expect(res.code).toBe(0);
+    expect(res.code).toBe(67);
     expect(log()).toBe('');
   });
 
@@ -515,7 +557,7 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
   it('un estado de una actualización anterior no convierte otro fallo en un downgrade', async () => {
     await dosActualizaciones(); // estado: ver=0.3.0 prev=0.2.0; la siguiente (0.4.0) falla antes de instalar
     const res = await rollback(copy, '0.4.0');
-    expect(res.code).toBe(0);
+    expect(res.code).toBe(67);
     expect(res.stderr).toMatch(/0\.3\.0, no de la 0\.4\.0/);
     expect(log()).toBe('');
     expect(readFileSync(db, 'utf8')).toBe('base nueva');
@@ -525,10 +567,11 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     await dosActualizaciones();
     writeFileSync(join(stub, 'installed'), '0.2.0');
     const res = await rollback();
-    expect(res.code, res.stderr).toBe(0);
+    expect(res.code, res.stderr).toBe(68); // base restaurada; la nueva nunca se instaló
     expect(aptCalls()).toEqual([]);
     expect(log()).toBe('systemctl stop krakenos\nsystemctl restart krakenos\n');
     expect(readFileSync(db, 'utf8')).toBe('base de antes');
+    expect(existsSync(join(rootDir, '.state'))).toBe(false);
   });
 
   it('una versión destino mal formada se rechaza (64) sin tocar nada', async () => {
@@ -658,6 +701,52 @@ describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-rollback', ()
     symlinkSync(join(w, 'secreto'), db);
     expect((await rollback()).code).toBe(64);
     expect(log()).toBe('');
+  });
+});
+
+describe.skipIf(process.platform === 'win32')('krakenos-helper pkg-commit', () => {
+  let db: string;
+  let copy: string;
+  beforeEach(() => {
+    mkdirSync(join(data, 'prisma'), { recursive: true });
+    db = join(data, 'prisma', 'krakenos.db');
+    copy = `${db}.pre-update`;
+    writeFileSync(db, 'base nueva');
+    writeFileSync(copy, 'base de antes');
+  });
+
+  async function dosActualizaciones() {
+    writeFileSync(join(stub, 'installed'), '0.1.0');
+    expect((await update(release('0.2.0'), '0.2.0')).code).toBe(0);
+    writeFileSync(join(stub, 'installed'), '0.2.0');
+    expect((await update(release('0.3.0'), '0.3.0')).code).toBe(0);
+    writeFileSync(join(stub, 'log'), '');
+  }
+
+  it('tras confirmar, el servicio ya no puede forzar un downgrade con pkg-rollback', async () => {
+    await dosActualizaciones();
+    expect((await run(['pkg-commit', '0.3.0'])).code).toBe(0);
+    expect(existsSync(join(rootDir, '.state'))).toBe(false);
+    writeFileSync(join(stub, 'installed'), '0.3.0');
+    const res = await run(['pkg-rollback', copy, '0.3.0']);
+    expect(res.code).toBe(67);
+    expect(log()).toBe(''); // ni se paró el servicio ni se reinstaló nada
+    expect(aptCalls()).toEqual([]);
+    expect(readFileSync(db, 'utf8')).toBe('base nueva');
+  });
+
+  it('confirmar OTRA versión no borra el estado de la que está en curso', async () => {
+    await dosActualizaciones();
+    expect((await run(['pkg-commit', '0.4.0'])).code).toBe(0);
+    expect(readFileSync(join(rootDir, '.state'), 'utf8')).toBe('fmt=deb ver=0.3.0 prev=0.2.0\n');
+  });
+
+  it('sin estado no hace nada (0) y versiones mal formadas o sobrantes se rechazan (64)', async () => {
+    expect((await run(['pkg-commit', '0.3.0'])).code).toBe(0);
+    for (const v of ['0.3', '0.3.0;x', '../0.3.0', 'v0.3.0', ''])
+      expect((await run(['pkg-commit', v])).code, v).toBe(64);
+    expect((await run(['pkg-commit'])).code).toBe(64);
+    expect((await run(['pkg-commit', '0.3.0', 'extra'])).code).toBe(64);
   });
 });
 

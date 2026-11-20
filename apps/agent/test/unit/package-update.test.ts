@@ -1,12 +1,20 @@
+import { execFileSync } from 'node:child_process';
 import { createHash, generateKeyPairSync, sign } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import type { Server } from 'node:http';
+import { createServer as createHttpsServer } from 'node:https';
+import type { AddressInfo } from 'node:net';
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { cerrarDispatcherLan, _resetCacheLan } from '../../src/net/lan-tls.js';
 import { PrivilegedCommandError, type CommandRunner } from '../../src/privileged/runner.js';
 import {
   defaultPackageTransport,
+  localHealthUrl,
+  packagePlatform,
+  packageStagingDir,
   PackageUpdateRunner,
   type PackageTransport,
 } from '../../src/system/package-update.js';
@@ -99,6 +107,13 @@ function build(s: Scenario = {}, installed = '0.2.0', helperFails = false) {
   });
   return { runner, snapshots };
 }
+const conCodigo = (runner: PackageUpdateRunner, code: number) => {
+  (runner as unknown as { opts: { helper: CommandRunner } }).opts.helper = {
+    async run(argv) {
+      throw new PrivilegedCommandError(argv, { stdout: '', stderr: 'x', code });
+    },
+  };
+};
 const staged = async () => readdir(join(dir, 'updates')).catch(() => [] as string[]);
 
 describe('PackageUpdateRunner.fetch: rechazos antes de descargar el paquete', () => {
@@ -285,10 +300,82 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
     };
     await expect(runner.rollback()).rejects.toThrow(/code 1/);
   });
-  it('rollback sin paquete preparado (falló el fetch) no llama al helper', async () => {
+  it('rollback sin paquete preparado (falló el fetch) no llama al helper y NO cuenta como reversión', async () => {
     const { runner } = build();
-    await runner.rollback();
+    await expect(runner.rollback()).rejects.toMatchObject({ code: 'STILL_INSTALLED' });
     expect(calls).toEqual([]);
+  });
+  it('rollback: 68 del helper (la nueva nunca se instaló) llega como STILL_INSTALLED', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    conCodigo(runner, 68);
+    await expect(runner.rollback()).rejects.toMatchObject({ code: 'STILL_INSTALLED' });
+  });
+  it('rollback: 67 del helper (nada que revertir) es un fallo, no una reversión', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    conCodigo(runner, 67);
+    const err = await runner.rollback().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err).not.toHaveProperty('code');
+    expect((err as Error).message).toMatch(/nada|no tenía/);
+  });
+  it.each([
+    [65, 'BAD_PACKAGE'],
+    [64, 'INSTALL_REFUSED'],
+    [69, 'INSTALL_REFUSED'],
+  ])(
+    'apply: el código %i del helper es un rechazo previo a instalar (%s)',
+    async (code, motivo) => {
+      const { runner } = build();
+      await runner.fetch('0.3.0');
+      conCodigo(runner, code);
+      await expect(runner.apply()).rejects.toMatchObject({ code: motivo });
+    },
+  );
+  it('apply: otros fallos del helper (p. ej. apt, 100) se propagan y SÍ piden rollback', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    conCodigo(runner, 100);
+    await expect(runner.apply()).rejects.toThrow(/code 100/);
+  });
+  it('healthcheck correcto confirma la versión con pkg-commit', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    expect(await runner.healthcheck()).toBe(true);
+    expect(calls).toEqual([['pkg-commit', '0.3.0']]);
+  });
+  it('healthcheck fallido NO confirma (el rollback sigue disponible)', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    const never = new PackageUpdateRunner({
+      ...(runner as unknown as { opts: ConstructorParameters<typeof PackageUpdateRunner>[0] }).opts,
+      fetchFn: async () => ({ ok: false }),
+    });
+    await never.fetch('0.3.0');
+    calls.length = 0;
+    expect(await never.healthcheck()).toBe(false);
+    expect(calls).toEqual([]);
+  });
+  it('si pkg-commit falla, la actualización sigue siendo correcta y se avisa', async () => {
+    const { runner } = build();
+    await runner.fetch('0.3.0');
+    const warns: string[] = [];
+    const o = (runner as unknown as { opts: ConstructorParameters<typeof PackageUpdateRunner>[0] })
+      .opts;
+    const r2 = new PackageUpdateRunner({
+      ...o,
+      warn: (m) => warns.push(m),
+      helper: {
+        async run(argv) {
+          throw new PrivilegedCommandError(argv, { stdout: '', stderr: 'x', code: 1 });
+        },
+      },
+    });
+    await r2.fetch('0.3.0');
+    expect(await r2.healthcheck()).toBe(true);
+    expect(warns).toHaveLength(1);
+    expect(warns[0]).toMatch(/pkg-commit/);
   });
   it('healthcheck: true si responde, false si nunca', async () => {
     const { runner } = build();
@@ -318,6 +405,25 @@ describe('orquestador en modo paquete', () => {
       status: 'failed',
       code: 'BAD_SIGNATURE',
     });
+  });
+  it('root rechaza al verificar (65): aborta sin rollback ni pkg-rollback y con motivo BAD_PACKAGE', async () => {
+    const { runner } = build();
+    conCodigo(runner, 65);
+    const r = await orchestrateUpdate(runner, '0.2.0', '0.3.0', { steps: PACKAGE_STEPS });
+    expect(r).toMatchObject({ ok: false, rolledBack: false });
+    expect(r.steps.find((s) => s.step === 'apply')).toMatchObject({ code: 'BAD_PACKAGE' });
+    expect(r.steps.map((s) => s.step)).not.toContain('rollback');
+  });
+  it('falla la descarga (red): no hay «reversión» ni rolledBack, sigue instalada la de antes', async () => {
+    const { runner } = build();
+    (runner as unknown as { opts: { transport: PackageTransport } }).opts.transport.getBytes =
+      async () => {
+        throw new Error('sin red');
+      };
+    const r = await orchestrateUpdate(runner, '0.2.0', '0.3.0', { steps: PACKAGE_STEPS });
+    expect(r.rolledBack).toBe(false);
+    expect(r.steps.find((s) => s.step === 'rollback')).toMatchObject({ code: 'STILL_INSTALLED' });
+    expect(calls).toEqual([]);
   });
   it('si apt falla: rollback con pkg-rollback', async () => {
     const { runner } = build({}, '0.2.0', true);
@@ -357,5 +463,102 @@ describe('defaultPackageTransport (servidor local, sin red externa)', () => {
   });
   it('un HTTP distinto de 200 lanza', async () => {
     await expect(defaultPackageTransport.getBytes(`${origin}/404`, 1000)).rejects.toThrow(/404/);
+  });
+});
+
+describe('valores de producción del actualizador (los que ata update-runner)', () => {
+  it('el staging del agente es <datos>/data/updates', () => {
+    expect(packageStagingDir('/var/lib/krakenos/data')).toBe('/var/lib/krakenos/data/updates');
+  });
+  it('localHealthUrl: HTTPS con HTTPS_ENABLED=true (lo que deja `tls auto`), HTTP sin él, y el override manda', () => {
+    expect(localHealthUrl({ PORT: '3001', HTTPS_ENABLED: 'true' })).toBe(
+      'https://127.0.0.1:3001/health/ready',
+    );
+    expect(localHealthUrl({ PORT: '8080' })).toBe('http://127.0.0.1:8080/health/ready');
+    expect(localHealthUrl({ HTTPS_ENABLED: 'false' })).toBe('http://127.0.0.1:3001/health/ready');
+    expect(localHealthUrl({ HTTPS_ENABLED: 'true', KRAKENOS_HEALTH_URL: 'http://x/y' })).toBe(
+      'http://x/y',
+    );
+  });
+  it('packagePlatform: manda lo que fija el paquete; la heurística solo es respaldo', () => {
+    const nada = () => false;
+    expect(packagePlatform({ KRAKENOS_PACKAGE_PLATFORM: 'arch-x86_64' }, () => true, 'arm64')).toBe(
+      'arch-x86_64',
+    );
+    expect(packagePlatform({ KRAKENOS_PACKAGE_PLATFORM: 'deb-arm64' }, nada, 'x64')).toBe(
+      'deb-arm64',
+    );
+    // valor desconocido: se ignora y se usa el respaldo
+    expect(packagePlatform({ KRAKENOS_PACKAGE_PLATFORM: 'rpm' }, nada, 'arm64')).toBe('deb-arm64');
+    expect(packagePlatform({}, (p) => p === '/usr/bin/pacman', 'x64')).toBe('arch-x86_64');
+    expect(packagePlatform({}, nada, 'x64')).toBe('deb-amd64');
+  });
+  it('update-runner usa esas mismas funciones (no valores propios)', () => {
+    const src = readFileSync(new URL('../../src/update-runner.ts', import.meta.url), 'utf8');
+    expect(src).toContain('packageStagingDir(agentPaths().dataDir)');
+    expect(src).toContain('localHealthUrl(process.env)');
+    expect(src).toContain('packagePlatform(process.env)');
+    expect(src).not.toMatch(/resolve\(agentPaths\(\)\.dataDir, 'updates'\)/);
+  });
+});
+
+describe('healthcheck contra el HTTPS del paquete (certificado que Node no conoce)', () => {
+  let tdir: string;
+  let server: ReturnType<typeof createHttpsServer>;
+  let port = 0;
+  beforeAll(async () => {
+    tdir = await mkdtemp(join(tmpdir(), 'pkgupd-tls-'));
+    const key = join(tdir, 'k.pem');
+    const cert = join(tdir, 'c.pem');
+    execFileSync(
+      'openssl',
+      [
+        'req',
+        '-x509',
+        '-newkey',
+        'rsa:2048',
+        '-keyout',
+        key,
+        '-out',
+        cert,
+        '-days',
+        '1',
+        '-nodes',
+        '-subj',
+        '/CN=localhost',
+      ],
+      { stdio: 'pipe' },
+    );
+    server = createHttpsServer({ key: readFileSync(key), cert: readFileSync(cert) }, (_q, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end('{"status":"ready"}');
+    });
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    port = (server.address() as AddressInfo).port;
+  });
+  afterAll(async () => {
+    await new Promise<void>((r) => server.close(() => r()));
+    await cerrarDispatcherLan();
+    _resetCacheLan();
+    await rm(tdir, { recursive: true, force: true });
+  });
+
+  /** Runner con el `fetchFn` por defecto (el real) y la URL que calcula producción. */
+  function conWiring(env: Parameters<typeof localHealthUrl>[0]) {
+    const { runner } = build();
+    const o = (runner as unknown as { opts: ConstructorParameters<typeof PackageUpdateRunner>[0] })
+      .opts;
+    const { fetchFn: _omit, ...resto } = o;
+    return new PackageUpdateRunner({
+      ...resto,
+      healthUrl: localHealthUrl({ ...env, PORT: String(port) }),
+    });
+  }
+
+  it('con HTTPS_ENABLED=true el healthcheck por defecto responde que sí (https en loopback, TLS saltado solo ahí)', async () => {
+    expect(await conWiring({ HTTPS_ENABLED: 'true' }).healthcheck()).toBe(true);
+  });
+  it('la URL http de antes habría fallado siempre contra ese servidor (la causa del rollback a los 30 s)', async () => {
+    expect(await conWiring({}).healthcheck()).toBe(false);
   });
 });
