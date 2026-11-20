@@ -65,50 +65,23 @@ export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
     existe = false;
   }
   // Sin `recursive`: si alguien la recrea entre medias, mkdir falla en vez de adoptarla.
-  if (!existe) {
-    await fs.mkdir(dataDir);
-    // La marca va ya: si algo falla entre la ACL y el final, el reintento reconoce la carpeta como
-    // suya (con la ACL a medias ni el administrador podría listarla para decidirlo).
-    await ok(run, 'reg.exe', [
-      'add',
-      MARCA_HKLM,
-      '/v',
-      'DataDir',
-      '/t',
-      'REG_SZ',
-      '/d',
-      dataDir,
-      '/f',
-    ]);
-  }
+  if (!existe) await fs.mkdir(dataDir);
 
+  // Primero la ACL restrictiva y su comprobación; nada se escribe ni se marca antes. `%ProgramData%`
+  // deja a cualquier usuario crear dentro de una carpeta recién hecha hasta que se le quita la herencia.
   const servicio = `*${serviceSid}`;
-  await ok(run, 'icacls', [dataDir, '/inheritance:r']);
-  await ok(run, 'icacls', [
-    dataDir,
-    '/grant:r',
-    `${SYSTEM}:(OI)(CI)F`,
-    `${ADMINS}:(OI)(CI)F`,
-    `${servicio}:(OI)(CI)M`,
-  ]);
-  for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
-  // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
-  const aparte = [
-    ['ca', []],
-    ['tls', [`${servicio}:(OI)(CI)RX`]],
-  ];
-  for (const [nombre, extra] of aparte) {
-    const dir = join(dataDir, nombre);
-    await fs.mkdir(dir, { recursive: true });
-    await ok(run, 'icacls', [dir, '/inheritance:r']);
-    await ok(run, 'icacls', [
-      dir,
-      '/grant:r',
-      `${SYSTEM}:(OI)(CI)F`,
-      `${ADMINS}:(OI)(CI)F`,
-      ...extra,
-    ]);
-  }
+  await aplicarAcl(run, dataDir, [`${servicio}:(OI)(CI)M`], 3);
+
+  // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir e icacls, o en una
+  // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
+  if (!existe) {
+    if ((await fs.readdir(dataDir)).length > 0)
+      throw new Error(
+        `${dataDir} tiene contenido que no puso el instalador (alguien escribió en ella mientras se creaba): revísala, bórrala y vuelve a instalar.`,
+      );
+  } else await sinEnlaces(fs, dataDir);
+
+  // La marca solo tras la ACL verificada y la carpeta limpia: es lo que distingue «mía» de «ajena».
   await ok(run, 'reg.exe', [
     'add',
     MARCA_HKLM,
@@ -120,6 +93,43 @@ export async function prepareDataDir({ dataDir, serviceSid, run, fs }) {
     dataDir,
     '/f',
   ]);
+
+  for (const sub of ['keys', 'logs']) await fs.mkdir(join(dataDir, sub), { recursive: true });
+  // ca\: solo SYSTEM y Administradores; tls\: el servicio lee pero no escribe.
+  await fs.mkdir(join(dataDir, 'ca'), { recursive: true });
+  await aplicarAcl(run, join(dataDir, 'ca'), [], 2);
+  await fs.mkdir(join(dataDir, 'tls'), { recursive: true });
+  await aplicarAcl(run, join(dataDir, 'tls'), [`${servicio}:(OI)(CI)RX`], 3);
+}
+
+/** `inheritance:r` + `grant:r` y lectura de vuelta: tienen que quedar EXACTAMENTE `entradas` ACE. */
+async function aplicarAcl(run, dir, extra, entradas) {
+  await ok(run, 'icacls', [dir, '/inheritance:r']);
+  await ok(run, 'icacls', [
+    dir,
+    '/grant:r',
+    `${SYSTEM}:(OI)(CI)F`,
+    `${ADMINS}:(OI)(CI)F`,
+    ...extra,
+  ]);
+  // Se cuenta, no se busca «Users» por nombre: los nombres de las cuentas van traducidos.
+  const { stdout } = await ok(run, 'icacls', [dir]);
+  const ace = (stdout.match(/:\((?:[A-Z]+\))+/g) ?? []).length;
+  if (ace !== entradas)
+    throw new Error(
+      `la ACL de ${dir} no quedó como se esperaba (${ace} entradas en vez de ${entradas})`,
+    );
+}
+
+/** Recorre sin seguir enlaces y lanza ante cualquier enlace simbólico o junction. */
+async function sinEnlaces(fs, dir) {
+  for (const nombre of await fs.readdir(dir)) {
+    const ruta = join(dir, nombre);
+    const st = await fs.lstat(ruta);
+    if (st.isSymbolicLink())
+      throw new Error(`${ruta} es un enlace o junction dentro de los datos: se rechaza.`);
+    if (st.isDirectory()) await sinEnlaces(fs, ruta);
+  }
 }
 
 /** El preferido si está libre; si no, el siguiente libre (hasta 50 más). */

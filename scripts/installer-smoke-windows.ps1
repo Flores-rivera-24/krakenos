@@ -48,9 +48,6 @@ function Phase-Install {
     $d = Join-Path $env:ProgramFiles 'KrakenOS'
     $e = Join-Path $d 'install-error.log'
     if (Test-Path $e) { Write-Host '--- install-error.log'; Get-Content $e | Out-Host }
-    Write-Host '--- post-install.mjs install, a mano'
-    & (Join-Path $d 'node\node.exe') (Join-Path $d 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
-    Write-Host ("  exit {0}" -f $LASTEXITCODE)
     $lg = Join-Path $env:ProgramData 'KrakenOS\logs'
     if (Test-Path $lg) { Get-ChildItem $lg -File | ForEach-Object { Write-Host ("[{0}]" -f $_.Name); Get-Content $_.FullName -Tail 20 } }
   }
@@ -106,6 +103,41 @@ function Phase-Install {
   if (-not $listo) { Get-Content (Join-Path $datos 'out.log'), (Join-Path $datos 'err.log') -Tail 40 }
   Stop-Process -Id $agente.Id -Force -ErrorAction SilentlyContinue
   Assert $listo '/health/ready da 200 con el agente instalado (las junctions sobreviven)'
+}
+
+# Fase 1b: una carpeta de datos con una junction (la crea cualquiera en ProgramData) la rechaza el paso
+# de datos del instalador y NO deja la marca de HKLM. Se prueba con el post-install instalado y un
+# ProgramData falso solo para ese proceso: el despliegue real de la fase anterior no se toca.
+function Phase-RejectPlantedDataDir {
+  Write-Host "== Phase-RejectPlantedDataDir"
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  $node = Join-Path $dir 'node\node.exe'
+  $script = Join-Path $dir 'installer\post-install.mjs'
+  $base = Join-Path $env:RUNNER_TEMP 'pd-falso'
+  $ajeno = Join-Path $env:RUNNER_TEMP 'destino-ajeno'
+  Remove-Item $base, $ajeno -Recurse -Force -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force (Join-Path $base 'KrakenOS'), $ajeno | Out-Null
+  $original = $env:ProgramData
+  $casos = @(
+    @{ Nombre = 'junction DENTRO de la carpeta'; Preparar = { New-Item -ItemType Junction -Path (Join-Path $base 'KrakenOS\logs') -Target $ajeno | Out-Null } },
+    @{ Nombre = 'la carpeta ES una junction'; Preparar = { Remove-Item (Join-Path $base 'KrakenOS') -Recurse -Force; New-Item -ItemType Junction -Path (Join-Path $base 'KrakenOS') -Target $ajeno | Out-Null } }
+  )
+  try {
+    $env:ProgramData = $base
+    foreach ($c in $casos) {
+      & $c.Preparar
+      $salida = (& $node $script install --lang es 2>&1) -join "`n"
+      $code = $LASTEXITCODE
+      Write-Host $salida
+      Assert ($code -ne 0) "el instalador aborta con $($c.Nombre)"
+      $marca = (& reg.exe query 'HKLM\SOFTWARE\KrakenOS' /v DataDir 2>&1) -join "`n"
+      Assert ($marca -notmatch [regex]::Escape($base)) "no queda la marca de HKLM para $($c.Nombre)"
+      Assert (@(Get-ChildItem $ajeno -Force).Count -eq 0) "no se escribió nada a través de la junction ($($c.Nombre))"
+    }
+  } finally {
+    $env:ProgramData = $original
+    foreach ($j in (Join-Path $base 'KrakenOS\logs'), (Join-Path $base 'KrakenOS')) { if (Test-Path $j) { & cmd.exe /c rmdir "$j" 2>$null | Out-Null } }
+  }
 }
 
 # Fase 2: el servicio que dejó el instalador (Task 3): datos con ACL, puerto elegido, arranque, reinicio
@@ -214,5 +246,6 @@ function Phase-Service {
 
 Phase-RejectOutsideProgramFiles
 Phase-Install
+Phase-RejectPlantedDataDir
 Phase-Service
 Write-Host 'Todas las fases en verde'

@@ -24,14 +24,19 @@ function fakeRun(
   codes: Record<string, number> = {},
   stdouts: Record<string, string> = {},
 ) {
+  const ace = (n: number) =>
+    Array.from({ length: n }, (_, i) => `  CUENTA${i}:(OI)(CI)(F)`).join('\n');
   return async (cmd: string, args: string[]) => {
     const linea = [cmd, ...args].join(' ');
     events.push(linea);
     const clave = Object.keys(codes).find((k) => linea.includes(k));
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
+    // Lectura de vuelta de la ACL (`icacls <dir>` a secas): tantas entradas como un despliegue bueno.
+    const lectura =
+      cmd === 'icacls' && args.length === 1 ? ace(/ca$/.test(args[0] as string) ? 2 : 3) : '';
     return {
       code: clave ? (codes[clave] as number) : 0,
-      stdout: salida ? (stdouts[salida] as string) : '',
+      stdout: salida ? (stdouts[salida] as string) : lectura,
     };
   };
 }
@@ -105,14 +110,73 @@ describe('prepareDataDir', () => {
     );
   });
 
-  it('deja la marca en HKLM justo tras crear la carpeta, antes de la ACL (un fallo a medias es reintentable)', async () => {
+  it('ACL restrictiva y verificada ANTES de la marca y de escribir nada dentro', async () => {
     const ev: Ev[] = [];
     await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs: fakeFs(ev) });
+    const lectura = ev.indexOf(`icacls ${DATOS}`);
     const marca = ev.findIndex((l) => l.startsWith('reg.exe add'));
-    expect(marca).toBeGreaterThan(ev.indexOf(`mkdir ${DATOS}`));
-    expect(marca).toBeLessThan(ev.findIndex((l) => l.includes('/inheritance:r')));
+    expect(ev.indexOf(`mkdir ${DATOS}`)).toBeLessThan(
+      ev.findIndex((l) => l.includes('/inheritance:r')),
+    );
+    expect(lectura).toBeGreaterThan(ev.findIndex((l) => l.includes('/grant:r')));
+    expect(marca).toBeGreaterThan(lectura);
+    expect(marca).toBeLessThan(ev.findIndex((l) => l.startsWith('mkdir -p')));
     expect(ev[marca]).toContain('HKLM\\SOFTWARE\\KrakenOS');
     expect(ev[marca]).toContain(DATOS);
+  });
+
+  it('una ACL que no verifica aborta sin marca y sin escribir dentro', async () => {
+    const ev: Ev[] = [];
+    // Una entrada de más (p. ej. Users heredado) en la lectura de vuelta.
+    const run = fakeRun(
+      ev,
+      {},
+      {
+        [`icacls ${DATOS}`]: '  A:(OI)(CI)(F)\n  B:(OI)(CI)(F)\n  C:(OI)(CI)(M)\n  D:(OI)(CI)(RX)',
+      },
+    );
+    await expect(
+      prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs: fakeFs(ev) }),
+    ).rejects.toThrow(/ACL/);
+    expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
+    expect(ev.some((l) => l.startsWith('mkdir -p'))).toBe(false);
+  });
+
+  it('algo plantado en la carpeta nueva entre mkdir e icacls aborta sin marca', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev);
+    fs.readdir = async () => ['plantado'];
+    await expect(
+      prepareDataDir({ dataDir: DATOS, serviceSid: SID, run: fakeRun(ev), fs }),
+    ).rejects.toThrow(DATOS);
+    expect(ev.some((l) => l.startsWith('reg.exe add'))).toBe(false);
+  });
+
+  it('una carpeta de un despliegue previo con un enlace dentro aborta (tras la ACL, sin marca nueva)', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['logs'] },
+      [join(DATOS, 'logs')]: { kind: 'link' },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
+    await expect(prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs })).rejects.toThrow(
+      /enlace/,
+    );
+    expect(ev.some((l) => l.includes('/grant:r'))).toBe(true);
+    expect(ev.some((l) => l.startsWith('reg.exe add') || l.startsWith('mkdir'))).toBe(false);
+  });
+
+  it('un enlace anidado también se rechaza', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['sub'] },
+      [join(DATOS, 'sub')]: { kind: 'dir', entries: ['prisma'] },
+      [join(DATOS, 'sub', 'prisma')]: { kind: 'link' },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `DataDir REG_SZ ${DATOS}` });
+    await expect(prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs })).rejects.toThrow(
+      /enlace/,
+    );
   });
 
   it('lanza si la carpeta es un enlace o junction, sin tocar nada', async () => {
@@ -148,7 +212,11 @@ describe('prepareDataDir', () => {
 
   it('si existe con contenido y la marca apunta a ella (actualización), conserva y rehace la ACL', async () => {
     const ev: Ev[] = [];
-    const fs = fakeFs(ev, { [DATOS]: { kind: 'dir', entries: ['.env', 'keys'] } });
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['.env', 'keys'] },
+      [join(DATOS, '.env')]: { kind: 'file', text: '' },
+      [join(DATOS, 'keys')]: { kind: 'dir', entries: [] },
+    });
     const run = fakeRun(ev, {}, { 'reg.exe query': `    DataDir    REG_SZ    ${DATOS}\r\n` });
     await prepareDataDir({ dataDir: DATOS, serviceSid: SID, run, fs });
     expect(ev.some((l) => l.startsWith('rmdir'))).toBe(false);
