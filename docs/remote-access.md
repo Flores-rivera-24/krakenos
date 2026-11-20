@@ -7,13 +7,13 @@ vías, y cuál te toca depende de una sola pregunta: **¿tu conexión tiene IP p
 > «cuál es mi IP» desde un navegador de casa, tienes IP pública. Si no coincide (o tu
 > operador es 5G/fibra compartida), estás tras **CGNAT** y no puedes abrir puertos.
 
-| | WireGuard propio (integrado) | Tailscale (detección) |
-|---|---|---|
-| Requiere IP pública | **Sí** (+ abrir el puerto UDP en el router) | No — atraviesa CGNAT |
-| Quién lo gestiona | KrakenOS (peers con QR desde `/vpn`) | Tú, con la cuenta de Tailscale (gratis hasta 3 usuarios) |
-| Dependencias de terceros | Ninguna (100% tuyo) | Coordinación de Tailscale (el tráfico va cifrado extremo a extremo; sus servidores solo coordinan) |
-| Si el servicio externo cae | Nada que caer | Los túneles ya establecidos suelen sobrevivir; no se levantan nuevos hasta que vuelva |
-| Estado en KrakenOS | Página `/vpn` completa | Card de estado (activo / falta sesión / sin responder / no detectado) + guía |
+|                            | WireGuard propio (integrado)                | Tailscale (detección)                                                                              |
+| -------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Requiere IP pública        | **Sí** (+ abrir el puerto UDP en el router) | No — atraviesa CGNAT                                                                               |
+| Quién lo gestiona          | KrakenOS (peers con QR desde `/vpn`)        | Tú, con la cuenta de Tailscale (gratis hasta 3 usuarios)                                           |
+| Dependencias de terceros   | Ninguna (100% tuyo)                         | Coordinación de Tailscale (el tráfico va cifrado extremo a extremo; sus servidores solo coordinan) |
+| Si el servicio externo cae | Nada que caer                               | Los túneles ya establecidos suelen sobrevivir; no se levantan nuevos hasta que vuelva              |
+| Estado en KrakenOS         | Página `/vpn` completa                      | Card de estado (activo / falta sesión / sin responder / no detectado) + guía                       |
 
 **Regla simple:** con IP pública, usa el WireGuard propio (cero terceros). Tras CGNAT, instala
 Tailscale en el servidor — KrakenOS lo detecta y te muestra el nombre MagicDNS listo para usar.
@@ -49,8 +49,8 @@ servicio ni cortar sesiones.
 
 Tres cosas que conviene saber antes:
 
-- **Hay que activarlo en el tailnet.** En la consola de Tailscale: *DNS → MagicDNS* y
-  *HTTPS Certificates*. Sin eso, `tailscale cert` no emite nada.
+- **Hay que activarlo en el tailnet.** En la consola de Tailscale: _DNS → MagicDNS_ y
+  _HTTPS Certificates_. Sin eso, `tailscale cert` no emite nada.
 - **El nombre queda público.** Todo certificado de Let's Encrypt se publica en los registros de
   **Certificate Transparency**, que son públicos y permanentes: cualquiera puede descubrir que
   existe `tu-maquina.tailnet-abc.ts.net`. No revela tu IP, ni tus datos, ni da acceso — pero es
@@ -76,16 +76,19 @@ recordar la IP. Solo funciona **dentro de la red local**; desde fuera sigue haci
 
 El interruptor es `MDNS_RESPONDER` en el `.env` del agente:
 
-| Valor | Qué hace |
-|---|---|
-| `auto` (por defecto) | Se activa solo en Windows. |
-| `on` | Se activa en cualquier sistema. |
-| `off` | Nunca se activa. |
+| Valor                | Qué hace                                                                                                                                                             |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auto` (por defecto) | Se activa solo en Windows.                                                                                                                                           |
+| `on`                 | Se activa en cualquier sistema. En Linux con Avahi ya hay un respondedor en el puerto 5353: dos respondiendo al mismo nombre se pisan, así que ahí déjalo en `auto`. |
+| `off`                | Nunca se activa.                                                                                                                                                     |
 
 Si Windows no deja compartir el puerto UDP 5353 (otro programa lo tiene en exclusiva), el agente
-no se cae: **lo dice** en Ajustes → Sistema, con el motivo, y el nombre `.local` no estará
+no se cae: **lo dice** en Ajustes → Sistema, con la causa (puerto ocupado, permiso denegado u otra), y el nombre `.local` no estará
 disponible. El camino recomendado en ese caso es **Tailscale** (arriba): su nombre `*.ts.net`
 funciona dentro y fuera de casa y no depende de mDNS.
+
+Si la red cambia mientras el agente corre (cambias de Wi-Fi, vuelve el DHCP, el equipo sale de
+suspensión), el agente lo detecta en un minuto y vuelve a unirse al grupo mDNS sin reiniciar.
 
 ## Tu móvil en 3 pasos (cualquiera de las dos vías)
 

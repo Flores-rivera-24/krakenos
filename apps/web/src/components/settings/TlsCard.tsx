@@ -1,4 +1,4 @@
-import type { TlsDisabledFeature, TlsStatus } from '@krakenos/types';
+import type { MdnsResponderStatus, TlsDisabledFeature, TlsStatus } from '@krakenos/types';
 import { Download, Lock, LockOpen } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
@@ -6,11 +6,13 @@ import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { buttonVariants } from '@/components/ui/button';
 import { Callout } from '@/components/ui/callout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CopyButton } from '@/components/ui/copy-button';
 import { WidgetError } from '@/components/ui/widget-error';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import { useT, type TranslationKey } from '@/lib/i18n';
 import '@/lib/i18n/catalog/fragments/ajustes';
+import { useAuthStore } from '@/store/auth.store';
 
 /**
  * Estado del TLS de la instalación (US-241).
@@ -57,7 +59,7 @@ const CA_STEPS: { os: 'windows' | 'macos' | 'android' | 'ios'; steps: Translatio
 ];
 
 /** Causa del fallo del respondedor mDNS → texto. El `reason` crudo (inglés, del SO) no se pinta. */
-const MDNS_UNAVAILABLE_KEY: Record<'EADDRINUSE' | 'EACCES' | 'other', TranslationKey> = {
+const MDNS_UNAVAILABLE_KEY: Record<NonNullable<MdnsResponderStatus['code']>, TranslationKey> = {
   EADDRINUSE: 'settings.tls.mdns.unavailable.inUse',
   EACCES: 'settings.tls.mdns.unavailable.denied',
   other: 'settings.tls.mdns.unavailable.other',
@@ -72,6 +74,7 @@ const CA_OS_KEY: Record<'windows' | 'macos' | 'android' | 'ios', TranslationKey>
 
 export function TlsCard() {
   const t = useT();
+  const isAdmin = useAuthStore((s) => s.user?.role === 'admin');
   const [status, setStatus] = useState<TlsStatus | null>(null);
   const [failed, setFailed] = useState(false);
   const [intento, setIntento] = useState(0);
@@ -195,17 +198,23 @@ export function TlsCard() {
         {status.mdnsResponder.state === 'running' && status.mdnsResponder.address && (
           <div>
             <p className="text-kr-xs text-kr-muted">{t('settings.tls.mdns.label')}</p>
-            <p className="font-mono text-kr-primary">
+            <p className="flex items-center gap-2 font-mono text-kr-primary">
               {`${secure ? 'https' : 'http'}://${status.mdnsResponder.address}`}
+              <CopyButton
+                value={`${secure ? 'https' : 'http'}://${status.mdnsResponder.address}`}
+                label={t('settings.tls.mdns.copy')}
+              />
             </p>
           </div>
         )}
         {status.mdnsResponder.state === 'unavailable' && (
           <Callout variant="warning" standing title={t('settings.tls.mdns.unavailableTitle')}>
             <p>{t(MDNS_UNAVAILABLE_KEY[status.mdnsResponder.code ?? 'other'])}</p>
-            <Link to="/vpn" className="mt-1 inline-block text-kr-primary underline">
-              {t('settings.tls.mdns.tailscale')}
-            </Link>
+            {isAdmin && (
+              <Link to="/vpn" className="mt-1 inline-block text-kr-primary underline">
+                {t('settings.tls.mdns.tailscale')}
+              </Link>
+            )}
           </Callout>
         )}
 

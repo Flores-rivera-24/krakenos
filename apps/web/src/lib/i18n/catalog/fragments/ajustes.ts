@@ -228,6 +228,7 @@ export const esAjustes = {
     'El sistema no ha dejado abrir el puerto 5353, así que los dispositivos de la casa no pueden entrar por su nombre .local. Para entrar sin recordar la IP, usa Tailscale.',
   'settings.tls.mdns.unavailable.other':
     'No se pudo abrir el puerto 5353, así que los dispositivos de la casa no pueden entrar por su nombre .local. Para entrar sin recordar la IP, usa Tailscale.',
+  'settings.tls.mdns.copy': 'Copiar la dirección del nombre .local',
   'settings.tls.mdns.tailscale': 'Configurar Tailscale',
   'settings.tls.expiringTitle': 'El certificado va a caducar',
   'settings.tls.expiringDesc':
