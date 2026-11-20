@@ -41,8 +41,9 @@ beforeEach(async () => {
     'PORT=3001\nHOST=127.0.0.1\nWEB_ORIGIN=http://localhost:5173\n# WEBAUTHN_RP_ID=krakenos.local\n# WEBAUTHN_ORIGIN=https://krakenos.local:3001\n',
   );
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), '//');
+  writeFileSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'), '//');
   if (WIN) return;
-  await stageCommonTree(pkg, join(raiz, 'root'));
+  await stageCommonTree(pkg, join(raiz, 'root'), 'deb-amd64');
   // Lo que hace el postinst: la plantilla de /usr/share pasa a /etc/krakenos (no es conffile).
   mkdirSync(join(raiz, 'root', 'etc', 'krakenos'), { recursive: true });
   copyFileSync(

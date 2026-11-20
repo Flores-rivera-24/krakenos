@@ -14,7 +14,7 @@
  *  3. Presencia de `/.dockerenv` (lo crea el runtime de Docker) → `docker`.
  *  4. Por defecto `systemd` (bare-metal / servicio del SO).
  *
- * Solo `systemd` se auto-actualiza (`canAutoUpdate`); los demás devuelven el camino manual
+ * Solo `systemd` y `package` se auto-actualizan (`canAutoUpdate`); los demás devuelven el camino manual
  * que tengan (Docker: `compose pull`) o, si todavía no hay ninguno, lo declaran.
  */
 
@@ -43,9 +43,9 @@ export function detectDeployMode(probe: DeployModeProbe = {}): DeployMode {
   return exists('/.dockerenv') ? 'docker' : 'systemd';
 }
 
-/** ¿Puede el agente lanzar su propia actualización? Solo en `systemd`. */
+/** ¿Puede el agente lanzar su propia actualización? En `systemd` (git) y `package` (manifiesto firmado). */
 export function canAutoUpdate(mode: DeployMode): boolean {
-  return mode === 'systemd';
+  return mode === 'systemd' || mode === 'package';
 }
 
 /** Comando manual sugerido para actualizar un despliegue Docker (US-190). */

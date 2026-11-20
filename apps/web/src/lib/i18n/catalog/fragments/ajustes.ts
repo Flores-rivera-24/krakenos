@@ -65,8 +65,6 @@ export const esAjustes = {
   'settings.update.cancelError': 'No se pudo cancelar la actualización',
   'settings.update.manualWindows':
     'En Windows, KrakenOS todavía no se actualiza solo desde aquí: instala la versión nueva a mano.',
-  'settings.update.manualPackage':
-    'Esta instalación viene de un paquete: actualiza con el gestor de paquetes del sistema.',
   'settings.update.dockerHint':
     'En Docker el contenedor no puede auto-actualizarse. Usa este comando:',
   'settings.update.copyCommand': 'Copiar comando',
@@ -79,6 +77,28 @@ export const esAjustes = {
   'settings.update.lastFailed': 'La última actualización falló.',
   'settings.update.nodeTooOld':
     'Esta versión necesita Node {version} o superior y el sistema tiene uno anterior. Actualiza con <c>sudo bash scripts/install.sh --update</c>, que instala el Node necesario.',
+  'settings.update.helperMissing':
+    'Para actualizar desde la app hace falta activar el helper de root en el servidor. Ejecuta este comando una vez:',
+  'settings.update.blocked.notAnUpgrade':
+    'La última actualización no se instaló: la versión publicada no es más nueva que la instalada. No se ha cambiado nada.',
+  'settings.update.blocked.minFrom':
+    'La última actualización no se instaló: la versión publicada exige partir de una versión intermedia más reciente que la instalada. No se ha cambiado nada.',
+  'settings.update.blocked.badSignature':
+    'La última actualización no se instaló: la versión publicada no pasa la comprobación de firma. No se ha instalado nada.',
+  'settings.update.blocked.badPackage':
+    'La última actualización no se instaló: el paquete publicado no coincide con su manifiesto firmado (suma o tamaño). No se ha instalado nada.',
+  'settings.update.blocked.noArtifact':
+    'La última actualización no se instaló: la versión publicada no trae paquete para este sistema. No se ha instalado nada.',
+  'settings.update.blocked.installRefused':
+    'La última actualización no se instaló: el sistema no permitió instalar el paquete. No se ha cambiado nada. El detalle está en el registro del servidor.',
+  'settings.update.lastStillInstalled':
+    'La última actualización falló antes de instalarse: no se reinstaló nada y sigue instalada la versión {from}.',
+  'settings.update.lastRolledBackPackage':
+    'La última actualización falló y se revirtió: se restauró la base de datos y se reinstaló el paquete anterior ({from}).',
+  'settings.update.lastNoPreviousPackage':
+    'La última actualización falló. Se restauró la base de datos y se arrancó el servicio, pero no había un paquete anterior que reinstalar (era la primera actualización por paquete), así que sigue instalada la versión nueva. Si no funciona bien, reinstala a mano el paquete que tenías.',
+  'settings.update.lastRollbackFailed':
+    'La última actualización falló y no se pudo revertir, así que el sistema puede haber quedado a medias. Revisa el servicio en el servidor con <c>systemctl status krakenos</c>; si no arranca, reinstala la versión que tenías.',
   'settings.update.lastNodeTooOld':
     'La última actualización no se aplicó: la nueva versión necesita un Node más reciente. Actualiza con <c>sudo bash scripts/install.sh --update</c>.',
 

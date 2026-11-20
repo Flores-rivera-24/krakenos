@@ -18,6 +18,7 @@
  * resultado, que sobrevive al reinicio para mostrarse al volver.
  */
 
+import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -54,6 +55,25 @@ export type UpdateSpawner = (
   targetVersion: string,
 ) => number | undefined | Promise<number | undefined>;
 
+/** Texto que se da al admin cuando el helper de root no está activo (modo paquete). */
+export const HELPER_MISSING_MESSAGE =
+  'Actualizar desde la app necesita el helper de root: ejecuta «sudo krakenos-setup --with-helper» en el servidor.';
+
+/**
+ * ¿Puede el agente ejecutar el helper con `sudo -n`? `sudo -n -l <ruta>` sale con 0 solo si la regla
+ * de sudoers lo permite, sin ejecutar nada (leer /etc/sudoers.d no es posible sin ser root).
+ */
+export function createHelperProbe(
+  helperPath = process.env.WG_HELPER_PATH ?? '/usr/local/bin/krakenos-helper',
+): () => Promise<boolean> {
+  return () =>
+    new Promise((resolve) => {
+      execFile('sudo', ['-n', '-l', helperPath], { timeout: 5000, windowsHide: true }, (err) =>
+        resolve(!err),
+      );
+    });
+}
+
 export interface UpdateServiceOptions {
   current: string;
   mode: DeployMode;
@@ -75,6 +95,8 @@ export interface UpdateServiceOptions {
   nodeVersion?: string;
   /** ¿Vive ese PID? Inyectable para tests; por defecto `kill(pid, 0)`. */
   isProcessAlive?: (pid: number) => boolean;
+  /** ¿Está activo el helper de root? Solo se consulta en modo `package`; inyectable para tests. */
+  probeHelper?: () => Promise<boolean>;
 }
 
 export class UpdateService {
@@ -122,6 +144,11 @@ export class UpdateService {
     if (!existsSync(this.lockFile)) return false;
     await rm(this.lockFile, { force: true });
     return true;
+  }
+
+  private async helperReady(): Promise<boolean> {
+    if (this.opts.mode !== 'package') return true;
+    return (this.opts.probeHelper ?? createHelperProbe())();
   }
 
   private get canSelfUpdate(): boolean {
@@ -185,6 +212,7 @@ export class UpdateService {
       lastResult: await this.readLastResult(),
       blockedReason: block?.reason ?? null,
       requiredNode: block?.required ?? null,
+      helperReady: await this.helperReady(),
     };
   }
 
@@ -205,13 +233,17 @@ export class UpdateService {
       };
     }
     if (!canAutoUpdate(mode)) {
-      // `windows-service` y `package` (US-280): aún no hay camino de actualización
+      // `windows-service` (US-280): aún no hay camino de actualización
       // propio (ni comando manual que dar), así que se dice tal cual en vez de fingir uno.
       return {
         started: false,
         mode,
         message: 'Este modo de instalación todavía no se actualiza desde aquí.',
       };
+    }
+
+    if (!(await this.helperReady())) {
+      return { started: false, mode, message: HELPER_MISSING_MESSAGE };
     }
 
     const status = await this.opts.checker.check();

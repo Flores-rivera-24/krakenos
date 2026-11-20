@@ -243,8 +243,6 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.cancelError': 'Could not cancel the update',
   'settings.update.manualWindows':
     'On Windows, KrakenOS can’t update itself from here yet: install the new version by hand.',
-  'settings.update.manualPackage':
-    'This install comes from a package: update it with the system package manager.',
   'settings.update.dockerHint': "In Docker the container can't update itself. Use this command:",
   'settings.update.copyCommand': 'Copy command',
   'settings.update.maintenanceWindow': 'Maintenance window: {window}',
@@ -255,6 +253,28 @@ export const en: Record<TranslationKey, string> = {
   'settings.update.lastFailed': 'The last update failed.',
   'settings.update.nodeTooOld':
     'This version needs Node {version} or later and the system has an older one. Update with <c>sudo bash scripts/install.sh --update</c>, which installs the Node it needs.',
+  'settings.update.helperMissing':
+    'Updating from the app needs the root helper to be enabled on the server. Run this command once:',
+  'settings.update.blocked.notAnUpgrade':
+    'The last update was not installed: the published version is not newer than the installed one. Nothing was changed.',
+  'settings.update.blocked.minFrom':
+    'The last update was not installed: the published version requires starting from a newer intermediate version than the installed one. Nothing was changed.',
+  'settings.update.blocked.badSignature':
+    'The last update was not installed: the published version does not pass the signature check. Nothing was installed.',
+  'settings.update.blocked.badPackage':
+    'The last update was not installed: the published package does not match its signed manifest (checksum or size). Nothing was installed.',
+  'settings.update.blocked.noArtifact':
+    'The last update was not installed: the published version has no package for this system. Nothing was installed.',
+  'settings.update.blocked.installRefused':
+    'The last update was not installed: the system did not allow installing the package. Nothing was changed. The details are in the server log.',
+  'settings.update.lastStillInstalled':
+    'The last update failed before it was installed: nothing was reinstalled and version {from} is still installed.',
+  'settings.update.lastRolledBackPackage':
+    'The last update failed and was rolled back: the database was restored and the previous package ({from}) was reinstalled.',
+  'settings.update.lastNoPreviousPackage':
+    'The last update failed. The database was restored and the service was started, but there was no previous package to reinstall (this was the first package update), so the new version is still installed. If it does not work properly, reinstall the package you had by hand.',
+  'settings.update.lastRollbackFailed':
+    'The last update failed and could not be rolled back, so the system may be left half-updated. Check the service on the server with <c>systemctl status krakenos</c>; if it does not start, reinstall the version you had.',
   'settings.update.lastNodeTooOld':
     'The last update was not applied: the new version needs a newer Node. Update with <c>sudo bash scripts/install.sh --update</c>.',
 

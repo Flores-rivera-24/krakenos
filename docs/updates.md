@@ -1,6 +1,6 @@
 # Actualizaciones (comprobación · one-click con rollback · cadena real)
 
-KrakenOS puede avisarte cuando hay una versión más nueva publicada como *release* en
+KrakenOS puede avisarte cuando hay una versión más nueva publicada como _release_ en
 GitHub. La comprobación es **opcional**: sin configuración, el agente **no hace
 ninguna llamada externa** (coherente con la postura "sin nube de terceros").
 
@@ -26,7 +26,7 @@ Con esa variable, **Ajustes → Sistema → Actualizaciones** muestra:
 ## Cómo funciona
 
 - El agente consulta `https://api.github.com/repos/<owner>/<repo>/releases/latest`
-  y compara el `tag_name` (p. ej. `v1.2.0`) con tu versión por *major/minor/patch*.
+  y compara el `tag_name` (p. ej. `v1.2.0`) con tu versión por _major/minor/patch_.
 - El resultado se **cachea 1 hora** para no golpear la API de GitHub en cada carga
   de la página (el límite sin autenticar es de 60 peticiones/hora por IP).
 - Cualquier fallo de red o respuesta inesperada **degrada en silencio** a "sin datos"
@@ -39,9 +39,9 @@ Con esa variable, **Ajustes → Sistema → Actualizaciones** muestra:
 Desde **Ajustes → Sistema → Actualizaciones**, un admin puede aplicar la actualización
 sin tocar la terminal. El comportamiento depende del **modo de despliegue** (se detecta
 solo: `KRAKENOS_DEPLOY_MODE` (`systemd`, `docker`, `windows-service` o `package`), luego
-Windows → `windows-service`, luego `/.dockerenv` → `docker`, si no → `systemd`). Solo `systemd`
-se actualiza sola desde la UI; en Docker se muestra el comando, y `windows-service` y `package`
-no tienen todavía actualización desde la UI.
+Windows → `windows-service`, luego `/.dockerenv` → `docker`, si no → `systemd`). `systemd` y `package`
+se actualizan desde la UI (cada una a su manera); en Docker se muestra el comando, y
+`windows-service` no tiene todavía actualización desde la UI.
 
 ### Bare-metal / systemd — actualización automática con rollback
 
@@ -90,6 +90,7 @@ ejecución real se verifica en despliegue.
   ```
 
   (`stop`/`start` los usa el rollback.) Sin esto, el paso `restart` falla y se revierte.
+
 - Ajusta `KRAKENOS_SERVICE_NAME` si tu unidad tiene otro nombre, y `KRAKENOS_REPO_DIR`
   si el repo no está dos niveles por encima de `apps/agent`.
 
@@ -121,6 +122,50 @@ proceso, así que si termina escribirá su resultado igualmente.
 En **Ajustes → Sistema** puedes fijar una franja `HH:MM-HH:MM` (hora local) en la que
 se permite actualizar (soporta el cruce de medianoche, p. ej. `02:00-06:00`). Fuera de
 ella, «Actualizar ahora» avisa y no lanza nada; un admin puede forzarlo igualmente.
+
+### Instalación por paquete (`.deb` y Arch) — manifiesto firmado
+
+En una instalación hecha con el `.deb` o el paquete de Arch, **Actualizar ahora** descarga la
+versión nueva de las releases de GitHub y la instala con el gestor de paquetes del sistema.
+Como instala software como root, **no se fía de nada que no pueda comprobar**:
+
+1. **Manifiesto firmado.** Cada release publica un `manifest.json` y su firma `manifest.json.sig`
+   (ed25519). La clave pública va dentro del agente; la privada solo existe en la CI de
+   publicación. Sin firma válida no se descarga el paquete.
+2. **Suma y tamaño.** El paquete descargado debe coincidir con el `sha256` y el tamaño que declara
+   el manifiesto firmado.
+3. **Solo hacia delante.** Se rechaza una versión igual o anterior a la instalada (aunque venga
+   con firma válida: un manifiesto viejo servido de nuevo no sirve para volver atrás), y una
+   versión que declare un `minFrom` mayor que la instalada (hay que pasar antes por una intermedia).
+4. **Solo desde el repositorio configurado** (`UPDATE_CHECK_REPO`), por la política de salida del
+   agente.
+5. **Root lo comprueba otra vez.** El agente corre sin privilegios y el paquete pasó por un
+   directorio suyo. El helper de root copia el paquete a un directorio que solo es de root y
+   vuelve a verificar firma, suma y versión sobre **su copia**, con su propio verificador;
+   solo entonces instala, en una unidad transitoria de systemd fuera del espacio de montaje del
+   servicio.
+
+Cada rechazo se muestra en la tarjeta con su motivo (firma, paquete que no coincide, versión no
+más nueva, versión intermedia necesaria, sin paquete para tu sistema) y **no se instala nada**.
+
+**Rollback.** Antes de empezar se guarda una copia consistente de la base. Si la instalación o el
+chequeo de salud posterior fallan, el helper restaura esa copia y reinstala el paquete anterior,
+y la tarjeta lo dice. La **primera** actualización por paquete no tiene un paquete anterior al que
+volver: en ese caso se restaura la base y se arranca el servicio, pero la versión instalada no
+retrocede, y la tarjeta lo indica para que reinstales a mano el paquete que tenías.
+
+**Requisito: el helper de root.** La instalación usa el mismo helper que la VPN, el cortafuegos y
+la QoS, cuya regla de sudoers **no se instala por defecto**. Si no está activo, la tarjeta no
+ofrece el botón y muestra el comando para activarlo (una vez, en el servidor):
+
+```bash
+sudo krakenos-setup --with-helper
+```
+
+Si prefieres no activarlo, actualiza con el gestor de paquetes del sistema como siempre.
+
+**Windows.** La actualización desde la app para el instalador de Windows llega más adelante; hoy
+en Windows se instala la versión nueva a mano.
 
 ### Docker — comando manual (honesto)
 

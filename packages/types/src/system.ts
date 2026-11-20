@@ -151,12 +151,46 @@ export interface UpdateStepResult {
   status: UpdateStepStatus;
   /** Mensaje breve (motivo del fallo, versión aplicada…). Sin secretos. */
   detail?: string;
-  /** Motivo estable cuando el actualizador SE NEGÓ antes de tocar nada. */
-  code?: UpdateBlockedCode;
+  /**
+   * Motivo estable: el actualizador SE NEGÓ antes de tocar nada (`UpdateBlockedCode`) o la reversión
+   * quedó incompleta (`NO_PREVIOUS_PACKAGE`). La UI decide por él, nunca por `detail`.
+   */
+  code?: UpdateStepCode;
 }
 
 /** La versión de destino exige un Node más nuevo que el que corre el servicio. */
-export type UpdateBlockedCode = 'NODE_TOO_OLD';
+export type UpdateBlockedCode =
+  | 'NODE_TOO_OLD'
+  | 'NOT_AN_UPGRADE'
+  | 'NO_ARTIFACT'
+  | 'MIN_FROM'
+  | 'BAD_SIGNATURE'
+  | 'BAD_PACKAGE'
+  | 'INSTALL_REFUSED';
+
+// Record exhaustivo: añadir un código a la unión sin listarlo aquí no compila (y el schema lo toma de aquí).
+const UPDATE_BLOCKED_CODE_SET: Record<UpdateBlockedCode, true> = {
+  NODE_TOO_OLD: true,
+  NOT_AN_UPGRADE: true,
+  NO_ARTIFACT: true,
+  MIN_FROM: true,
+  BAD_SIGNATURE: true,
+  BAD_PACKAGE: true,
+  INSTALL_REFUSED: true,
+};
+export const UPDATE_BLOCKED_CODES = Object.keys(UPDATE_BLOCKED_CODE_SET) as UpdateBlockedCode[];
+
+/**
+ * Códigos de un paso: los de bloqueo más dos del paso `rollback`: `NO_PREVIOUS_PACKAGE` (se restauró la base y
+ * se arrancó el servicio, pero no había paquete anterior que reinstalar, así que la versión no vuelve atrás) y
+ * `STILL_INSTALLED` (la versión nueva nunca llegó a instalarse: no se reinstaló nada y sigue la de antes).
+ */
+export type UpdateStepCode = UpdateBlockedCode | 'NO_PREVIOUS_PACKAGE' | 'STILL_INSTALLED';
+export const UPDATE_STEP_CODES: UpdateStepCode[] = [
+  ...UPDATE_BLOCKED_CODES,
+  'NO_PREVIOUS_PACKAGE',
+  'STILL_INSTALLED',
+];
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso
@@ -206,6 +240,11 @@ export interface UpdatePlan {
   blockedReason: UpdateBlockedCode | null;
   /** Node mínimo que exige la versión disponible (`"24"`), si `blockedReason` lo explica. */
   requiredNode: string | null;
+  /**
+   * ¿Puede el agente usar el helper de root que instala el paquete? Solo importa en modo `package`
+   * (la regla de sudoers se instala con `krakenos-setup --with-helper`); en los demás modos es `true`.
+   */
+  helperReady: boolean;
 }
 
 /** Latencia/errores de una operación con nombre (p. ej. un manager) (US-191). */

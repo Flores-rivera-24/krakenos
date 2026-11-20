@@ -70,9 +70,9 @@ describe('detectDeployMode', () => {
       expect(detectDeployMode({ platform: 'linux', fileExists: () => false })).toBe('systemd');
     });
 
-    it('solo systemd se auto-actualiza', () => {
+    it('solo systemd y package se auto-actualizan', () => {
       const auto = DEPLOY_MODES.filter((m) => canAutoUpdate(m));
-      expect(auto).toEqual(['systemd']);
+      expect(auto).toEqual(['systemd', 'package']);
     });
 
     it('los schemas de respuesta enumeran EXACTAMENTE los modos del contrato', () => {

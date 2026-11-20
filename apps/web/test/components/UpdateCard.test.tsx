@@ -41,6 +41,7 @@ const basePlan: UpdatePlan = {
   lastResult: null,
   blockedReason: null,
   requiredNode: null,
+  helperReady: true,
 };
 
 function setAdmin(role: 'admin' | 'viewer' = 'admin') {
@@ -104,10 +105,7 @@ describe('UpdateCard — actualización one-click (US-116 / US-190)', () => {
     expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
   });
 
-  it.each([
-    ['windows-service', /instala la versión nueva a mano/],
-    ['package', /gestor de paquetes del sistema/],
-  ] as const)(
+  it.each([['windows-service', /instala la versión nueva a mano/]] as const)(
     'en modo %s (sin camino de actualización) no inventa botón ni comando, avisa de la versión y dice por qué no hay botón',
     async (mode, porQue) => {
       apiMock.get.mockResolvedValue({
@@ -305,4 +303,206 @@ describe('UpdateCard: sin señales fijas', () => {
     await screen.findByText(/Comprobado contra/);
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
   });
+});
+
+describe('UpdateCard: actualización por paquete', () => {
+  const packagePlan: UpdatePlan = { ...basePlan, mode: 'package', canSelfUpdate: true };
+  const result = (over: Partial<NonNullable<UpdatePlan['lastResult']>>) => ({
+    ok: false,
+    rolledBack: false,
+    fromVersion: '1.0.0',
+    targetVersion: '1.2.0',
+    steps: [],
+    finishedAt: '2026-07-13T10:00:00.000Z',
+    ...over,
+  });
+
+  beforeEach(() => {
+    apiMock.get.mockReset();
+    apiMock.post.mockReset();
+    setAdmin('admin');
+  });
+
+  it('con el helper activo ofrece «Actualizar ahora» y lanza la actualización', async () => {
+    apiMock.get.mockResolvedValue(packagePlan);
+    apiMock.post.mockResolvedValue({ started: true, mode: 'package', message: 'x' });
+    render(<UpdateCard />);
+    fireEvent.click(await screen.findByRole('button', { name: /Actualizar ahora/ }));
+    await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/system/update/apply', {}));
+  });
+
+  it('sin el helper no hay botón: muestra el comando para activarlo, copiable', async () => {
+    apiMock.get.mockResolvedValue({ ...packagePlan, helperReady: false });
+    render(<UpdateCard />);
+    expect(await screen.findByText(/activar el helper de root/)).toBeInTheDocument();
+    expect(screen.getByText('sudo krakenos-setup --with-helper')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Copiar comando/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+  });
+
+  it('un viewer sin helper no ve el comando ni el botón (no puede hacer nada con él)', async () => {
+    setAdmin('viewer');
+    apiMock.get.mockResolvedValue({ ...packagePlan, helperReady: false });
+    render(<UpdateCard />);
+    await screen.findByText(/Actualización disponible/);
+    expect(screen.queryByText('sudo krakenos-setup --with-helper')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['NOT_AN_UPGRADE', /no es más nueva que la instalada/],
+    ['MIN_FROM', /versión intermedia/],
+    ['BAD_SIGNATURE', /no pasa la comprobación de firma/],
+    ['BAD_PACKAGE', /no coincide con su manifiesto firmado/],
+    ['NO_ARTIFACT', /no trae paquete para este sistema/],
+    ['INSTALL_REFUSED', /el sistema no permitió instalar el paquete/],
+  ] as const)(
+    'el rechazo %s se explica con su propio mensaje, sin culpar al usuario',
+    async (code, msg) => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        updateAvailable: false,
+        lastResult: result({
+          steps: [{ step: 'fetch', status: 'failed', code, detail: 'texto crudo del servidor' }],
+        }),
+      });
+      render(<UpdateCard />);
+      const aviso = (await screen.findByText(msg)).closest('[role="note"]');
+      expect(aviso).toHaveTextContent(/No se ha (instalado|cambiado) nada/);
+      expect(screen.queryByText(/texto crudo del servidor/)).not.toBeInTheDocument();
+    },
+  );
+
+  it('revertida: dice que se restauró la base y se reinstaló el paquete anterior', async () => {
+    apiMock.get.mockResolvedValue({
+      ...packagePlan,
+      updateAvailable: false,
+      lastResult: result({
+        rolledBack: true,
+        steps: [{ step: 'rollback', status: 'ok' }],
+      }),
+    });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(
+        /se restauró la base de datos y se reinstaló el paquete anterior \(1\.0\.0\)/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('la nueva nunca se instaló (STILL_INSTALLED): no dice que se reinstaló nada, dice qué sigue instalado', async () => {
+    apiMock.get.mockResolvedValue({
+      ...packagePlan,
+      updateAvailable: false,
+      lastResult: result({
+        steps: [{ step: 'rollback', status: 'ok', code: 'STILL_INSTALLED', detail: 'x' }],
+      }),
+    });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(
+        /falló antes de instalarse: no se reinstaló nada y sigue instalada la versión 1\.0\.0/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
+  });
+
+  describe('tras un fallo: el aviso va primero y no se invita a repetir lo que fallará igual', () => {
+    const fallo = (code: string, target = '1.2.0') =>
+      result({
+        targetVersion: target,
+        steps: [{ step: 'fetch', status: 'failed', code: code as never, detail: 'x' }],
+      });
+
+    it.each(['BAD_SIGNATURE', 'BAD_PACKAGE', 'MIN_FROM', 'NOT_AN_UPGRADE', 'INSTALL_REFUSED'])(
+      '%s con la misma versión destino: sin «Actualizar ahora» y con el aviso ANTES de la disponible',
+      async (code) => {
+        apiMock.get.mockResolvedValue({ ...packagePlan, lastResult: fallo(code) });
+        render(<UpdateCard />);
+        const aviso = (await screen.findByText(/La última actualización no se instaló/)).closest(
+          '[role="note"]',
+        )!;
+        const disponible = screen.getByText(/Actualización disponible/);
+        expect(
+          aviso.compareDocumentPosition(disponible) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+      },
+    );
+
+    it('si hay una versión más nueva que la rechazada, se vuelve a ofrecer', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: fallo('BAD_SIGNATURE', '1.1.0'),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByRole('button', { name: /Actualizar ahora/ })).toBeInTheDocument();
+    });
+
+    it('con la reversión fallida no se invita a reintentar', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: result({
+          steps: [{ step: 'rollback', status: 'failed', detail: 'x' }],
+        }),
+      });
+      render(<UpdateCard />);
+      await screen.findByText(/no se pudo revertir/);
+      expect(screen.queryByRole('button', { name: /Actualizar ahora/ })).not.toBeInTheDocument();
+    });
+
+    it('un fallo cualquiera (apt) sí deja reintentar', async () => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        lastResult: result({ rolledBack: true, steps: [{ step: 'rollback', status: 'ok' }] }),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByRole('button', { name: /Actualizar ahora/ })).toBeInTheDocument();
+    });
+  });
+
+  it('primera actualización por paquete: sin paquete anterior lo dice y no finge una reversión completa', async () => {
+    apiMock.get.mockResolvedValue({
+      ...packagePlan,
+      updateAvailable: false,
+      lastResult: result({
+        rolledBack: false,
+        steps: [
+          {
+            step: 'rollback',
+            status: 'failed',
+            code: 'NO_PREVIOUS_PACKAGE',
+            detail: 'texto libre',
+          },
+        ],
+      }),
+    });
+    render(<UpdateCard />);
+    expect(
+      await screen.findByText(/no había un paquete anterior que reinstalar/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
+  });
+
+  it.each(['package', 'systemd'] as const)(
+    'la reversión falló (%s): no dice que se revirtió y avisa de que el sistema puede estar a medias',
+    async (mode) => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        mode,
+        updateAvailable: false,
+        lastResult: result({
+          rolledBack: false,
+          steps: [
+            { step: 'rollback', status: 'failed', detail: 'dpkg roto: texto crudo del sistema' },
+          ],
+        }),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByText(/no se pudo revertir/)).toBeInTheDocument();
+      expect(screen.getByText(/a medias/)).toBeInTheDocument();
+      expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/revertida a/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/texto crudo del sistema/)).not.toBeInTheDocument();
+    },
+  );
 });

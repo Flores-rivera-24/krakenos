@@ -352,28 +352,32 @@ describe('krakenos-helper: PATH de root', () => {
     const iSet = lineas.findIndex((l) => l.startsWith('set -euo pipefail'));
     expect(iPath).toBeGreaterThan(0);
     expect(iPath).toBeLessThan(iSet);
-    // La primera línea de código (tras shebang y comentarios) es la que fija PATH.
-    const primera = lineas.slice(1).find((l) => /^\s*[^#\s]/.test(l));
-    expect(primera).toMatch(/^if \[ "\$EUID" -ne 0 \]/);
   });
 
   // No se puede correr como root en el test: se verifica la estructura del script.
-  it('siendo root (`$EUID -eq 0`) hace unset de las cuatro variables ANTES de leer _conf', () => {
-    const txt = readFileSync(SCRIPT, 'utf8');
-    const iUnset = txt.indexOf(
-      'unset KRAKENOS_HELPER_CONF KRAKENOS_FW_CHAIN KRAKENOS_TC_IFACE KRAKENOS_WG_IFACE',
-    );
-    expect(iUnset).toBeGreaterThan(0);
-    expect(iUnset).toBeLessThan(txt.indexOf('_conf="'));
-    expect(iUnset).toBeLessThan(txt.indexOf('. "$_conf"'));
-    // El unset va dentro de un `if [ "$EUID" -eq 0 ]` (el último `if` antes de él).
-    expect(
-      txt
-        .slice(0, iUnset)
+  describe('siendo root (`$EUID -eq 0`) descarta TODO el entorno KRAKENOS_*', () => {
+    const REGLA = 'for _v in $(compgen -v KRAKENOS_); do unset "$_v"; done';
+    const codigo = () =>
+      readFileSync(SCRIPT, 'utf8')
         .split('\n')
-        .filter((l) => /^if /.test(l))
-        .pop(),
-    ).toBe('if [ "$EUID" -eq 0 ]; then');
+        .map((texto, i) => ({ texto, n: i + 1 }))
+        .filter((l) => /^\s*[^#\s]/.test(l.texto));
+
+    it('hay una regla general (no una lista de nombres), dentro de `if [ "$EUID" -eq 0 ]`', () => {
+      const c = codigo();
+      const i = c.findIndex((l) => l.texto.trim() === REGLA);
+      expect(i).toBeGreaterThan(0);
+      expect(c[i - 1]?.texto).toBe('if [ "$EUID" -eq 0 ]; then');
+      expect(c[i + 1]?.texto).toBe('fi');
+    });
+
+    it('ninguna variable KRAKENOS_ se lee ANTES de esa regla (ni siquiera la de pruebas)', () => {
+      const c = codigo();
+      const i = c.findIndex((l) => l.texto.trim() === REGLA);
+      expect(i).toBeGreaterThan(0);
+      const antes = c.slice(0, i).filter((l) => l.texto.includes('KRAKENOS_'));
+      expect(antes).toEqual([]);
+    });
   });
 
   it('un `wg` falso al frente del PATH del llamante NO se ejecuta (sin la variable de pruebas)', async () => {
