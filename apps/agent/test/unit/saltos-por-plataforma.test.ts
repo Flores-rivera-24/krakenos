@@ -112,6 +112,11 @@ const LISTA: Record<string, Entrada> = {
     motivo:
       'Un solo alias (WIN) gobierna tres tests. El paquete de Arch se arma con bash y tar y comprueba modos y enlaces POSIX (krakenos.install con `bash -n`, package-arch.mjs y su root.tar): no existen en Windows. Las partes puras (archVersion, PKGBUILD, la lista de comandos y el job de CI) sí corren.',
   },
+  'unit/package-archive.test.ts': {
+    saltos: 1,
+    motivo:
+      'GNU tar y bits de modo POSIX; en Windows el portable no se archiva así (el zip de Windows no sale en esta parte). Las partes puras de archivePlan sí corren.',
+  },
   'unit/package-launcher.test.ts': {
     saltos: 1,
     motivo:
@@ -146,7 +151,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 19, saltos: 31, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 20, saltos: 32, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;
