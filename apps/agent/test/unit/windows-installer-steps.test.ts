@@ -36,7 +36,7 @@ function fakeRun(
     // Lectura de la ACL por SID: la de un despliegue bueno (SYSTEM y Administradores, y el servicio si ya se le dio).
     let lectura = '';
     if (cmd === 'powershell.exe') {
-      const dir = /-LiteralPath '([^']*)'/.exec(linea)?.[1] ?? '';
+      const dir = /GetAccessControl\('([^']*)'\)/.exec(linea)?.[1] ?? '';
       lectura = [
         'S-1-5-18|FullControl|Allow|False',
         'S-1-5-32-544|FullControl|Allow|False',
@@ -146,7 +146,7 @@ describe('prepareDataDir', () => {
     expect(ev[marca]).toContain(DATOS);
   });
 
-  const acl = (...filas: string[]) => ({ [`-LiteralPath '${DATOS}'`]: filas.join('\n') });
+  const acl = (...filas: string[]) => ({ [`GetAccessControl('${DATOS}')`]: filas.join('\n') });
   const bien = ['S-1-5-18|FullControl|Allow|False', 'S-1-5-32-544|FullControl|Allow|False'];
 
   it.each([

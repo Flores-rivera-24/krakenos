@@ -136,10 +136,11 @@ async function aplicarAcl(run, dir, esperadas) {
  * (Users, Everyone, un usuario cualquiera) aborta.
  */
 async function verificarAcl(run, dir, esperadas) {
+  // .NET directo, sin el módulo Get-Acl (no se autocarga bajo el hook) y con los SIDs ya como SID.
   const ps =
-    `(Get-Acl -LiteralPath '${dir.replaceAll("'", "''")}').Access | ForEach-Object { ` +
-    `$_.IdentityReference.Translate([System.Security.Principal.SecurityIdentifier]).Value + '|' + ` +
-    `$_.FileSystemRights + '|' + $_.AccessControlType + '|' + $_.IsInherited }`;
+    `[System.IO.Directory]::GetAccessControl('${dir.replaceAll("'", "''")}')` +
+    `.GetAccessRules($true, $true, [System.Security.Principal.SecurityIdentifier]) | ForEach-Object { ` +
+    `$_.IdentityReference.Value + '|' + $_.FileSystemRights + '|' + $_.AccessControlType + '|' + $_.IsInherited }`;
   const { stdout } = await ok(run, 'powershell.exe', [
     '-NoProfile',
     '-NonInteractive',
