@@ -41,6 +41,18 @@ describe('parseCommit', () => {
   it('quita ids sueltos a mitad de frase', () => {
     expect(parseCommit('fix: lo de US-77 y (#5, US-8) funciona')?.text).toBe('lo de y funciona');
   });
+  it.each([
+    ['feat: US-290: algo', 'algo'],
+    ['feat: x (US-1/US-2)', 'x'],
+    ['fix: arregla us-12', 'arregla'],
+    ['feat: x (US-12a)', 'x'],
+    ['feat: y US\u201112 z', 'y z'],
+    ['fix: arregla algo, Closes #4', 'arregla algo'],
+    ['fix: Fixes #4 y más', 'y más'],
+    ['fix: algo (#12, US-3)', 'algo'],
+  ])('limpia %j → %j sin puntuación huérfana', (entrada, salida) => {
+    expect(parseCommit(entrada)?.text).toBe(salida);
+  });
   it('feat! y fix(x)! son breaking', () => {
     expect(parseCommit('feat!: cambia el contrato')).toMatchObject({
       type: 'feat',
@@ -167,6 +179,21 @@ describe('CLI notes.mjs', () => {
     expect(r.stdout).toContain('krakenos_0.2.0_amd64.deb');
     expect(r.stdout).not.toMatch(/\bUS-\d+/);
   });
+
+  it.each(['feat: ver docs/internal/retomar.md', 'feat: algo con US\u2011x12 y docs/internal/x'])(
+    'la red de seguridad: %j que la limpieza no trata hace salir con 1 y nombra el commit',
+    (subject) => {
+      commit('feat: antiguo');
+      git('tag', 'v0.1.0');
+      commit(subject);
+      git('tag', 'v0.2.0');
+      const r = cli('v0.2.0');
+      expect(r.status).toBe(1);
+      expect(r.stdout).toBe('');
+      expect(r.stderr).toContain('identificador interno');
+      expect(r.stderr).toContain(subject);
+    },
+  );
 
   it('sin tag previo sale con 1 y lo dice', () => {
     commit('feat: algo');

@@ -11,18 +11,22 @@ import { execFileSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-const ID = /\bUS-\d+\b/g;
-const REF_PAREN = /\s*\(\s*(?:(?:US-\d+|#\d+)[\s,]*)+\)/g;
+// Cualquier guion (ASCII o tipográfico) cuenta: `US‑12` con guion no rompible también es un id interno.
+const HYPHEN = '[-‐-―−]';
+const ID = new RegExp(`\\bUS${HYPHEN}\\d+\\w*`, 'gi');
+const REF_ISSUE = /(?:\b(?:closes?|fixes?|resolves?|refs?)\s+)?#\d+\b/gi;
+const FUGA = new RegExp(`\\bUS${HYPHEN}\\d+|docs/internal`, 'i');
 
 /** @returns {{type: string, breaking: boolean, text: string} | null} null si no queda texto. */
 export function parseCommit(subject) {
   const m = /^([a-z]+)(?:\([^)]*\))?(!)?:\s*(.*)$/.exec(subject.trim());
   const [type, breaking, crudo] = m ? [m[1], Boolean(m[2]), m[3]] : ['otros', false, subject];
   const text = crudo
-    .replace(REF_PAREN, '')
     .replace(ID, '')
-    .replace(/\(\s*\)/g, '')
+    .replace(REF_ISSUE, '')
+    .replace(/\(\s*[/,;\s]*\)/g, '') // paréntesis que se quedaron sin nada
     .replace(/\s{2,}/g, ' ')
+    .replace(/^[:,;\s]+|[:,;\s]+$/g, '')
     .trim();
   return text ? { type, breaking, text } : null;
 }
@@ -95,9 +99,15 @@ function main([ref, version, carpeta]) {
     .split('\n')
     .filter(Boolean);
   const assets = readdirSync(carpeta).sort();
-  process.stdout.write(
-    buildNotes({ version, commits, assets, repo: process.env.GITHUB_REPOSITORY }),
-  );
+  const notas = buildNotes({ version, commits, assets, repo: process.env.GITHUB_REPOSITORY });
+  // Red de seguridad: la limpieza de parseCommit puede fallar con un formato raro; esto no deja publicar.
+  if (FUGA.test(notas)) {
+    const culpables = commits.filter((c) => FUGA.test(parseCommit(c)?.text ?? ''));
+    throw new Error(
+      `las notas llevarían un identificador interno; commits: ${culpables.map((c) => JSON.stringify(c)).join(', ') || '(ver la salida)'}`,
+    );
+  }
+  process.stdout.write(notas);
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
