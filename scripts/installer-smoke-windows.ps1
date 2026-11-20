@@ -43,6 +43,15 @@ function Phase-Install {
     $t = Measure-Command { $p = Start-Process -FilePath $Setup -ArgumentList '/S' -Wait -PassThru }
   } finally { $bloqueo.Stop() }
   Write-Host ("instalar /S: {0:N1} s, exit {1}" -f $t.TotalSeconds, $p.ExitCode)
+  if ($p.ExitCode -ne 0) {
+    # En silencio no se ve la salida del hook: se repite a mano para tener el motivo en el log de CI.
+    $d = Join-Path $env:ProgramFiles 'KrakenOS'
+    Write-Host '--- post-install.mjs install, a mano'
+    & (Join-Path $d 'node\node.exe') (Join-Path $d 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+    Write-Host ("  exit {0}" -f $LASTEXITCODE)
+    $lg = Join-Path $env:ProgramData 'KrakenOS\logs'
+    if (Test-Path $lg) { Get-ChildItem $lg -File | ForEach-Object { Write-Host ("[{0}]" -f $_.Name); Get-Content $_.FullName -Tail 20 } }
+  }
   Assert ($p.ExitCode -eq 0) 'el instalador /S sale con 0 (crea datos, servicio y lo arranca)'
 
   $dir = Join-Path $env:ProgramFiles 'KrakenOS'
