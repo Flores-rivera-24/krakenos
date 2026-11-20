@@ -521,8 +521,8 @@ jobs:
         run: |
           dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
           max="$(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }')"
-          echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
-          test "$max" -le 200
+          echo "ruta relativa más larga del paquete: $max caracteres (tope 100)"
+          test "$max" -le 100
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
 
       - name: Probar el instalador (en silencio)

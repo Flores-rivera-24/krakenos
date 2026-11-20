@@ -12,6 +12,26 @@ function Get-DirMb([string]$Path) {
   [math]::Round((Get-ChildItem -LiteralPath $Path -Recurse -Force -File | Measure-Object Length -Sum).Sum / 1MB, 1)
 }
 
+# Fase 0: el hook elevado ejecuta node.exe de $INSTDIR, así que fuera de Program Files el instalador
+# tiene que negarse (con `/D=` en silencio) y no dejar nada instalado.
+function Phase-RejectOutsideProgramFiles {
+  Write-Host "== Phase-RejectOutsideProgramFiles"
+  $malos = @(
+    'C:\KrakenOS-fuera\KrakenOS',
+    "$($env:ProgramFiles) Evil\KrakenOS",
+    "$($env:ProgramFiles)\..\KrakenOS-fuera2\KrakenOS"
+  )
+  foreach ($d in $malos) {
+    # `/D=` va el último y sin comillas (convención de NSIS); la ruta puede llevar espacios.
+    $p = Start-Process -FilePath $Setup -ArgumentList "/S /D=$d" -Wait -PassThru
+    Write-Host ("  /D={0} -> exit {1}" -f $d, $p.ExitCode)
+    Assert ($p.ExitCode -ne 0) "el instalador rechaza /D=$d"
+    Assert (-not (Test-Path (Join-Path $d 'node\node.exe'))) "no se instaló node.exe en $d"
+    Assert (-not (Test-Path (Join-Path $d 'krakenos-window.exe'))) "no se instaló la ventana en $d"
+  }
+  Assert (-not (Test-Path (Join-Path $env:ProgramFiles 'KrakenOS'))) 'Program Files\KrakenOS no existe tras los rechazos'
+}
+
 # Fase 1: instalar en silencio y comprobar que el paquete (con sus junctions de pnpm) sobrevive.
 function Phase-Install {
   Write-Host "== Phase-Install"
@@ -72,5 +92,6 @@ function Phase-Install {
   Assert $listo '/health/ready da 200 con el agente instalado (las junctions sobreviven)'
 }
 
+Phase-RejectOutsideProgramFiles
 Phase-Install
 Write-Host 'Todas las fases en verde'

@@ -58,3 +58,30 @@ describe('tauri.conf.json base', () => {
     expect(conf.app.withGlobalTauri).toBe(false);
   });
 });
+
+describe('installer-hooks.nsh', () => {
+  const nsh = readFileSync(resolve(ROOT, 'packaging/windows/installer-hooks.nsh'), 'utf8');
+  const macro = (n: string) => nsh.split(`!macro ${n}`)[1]?.split('!macroend')[0] ?? '';
+
+  it('las cuatro macros existen', () => {
+    for (const m of ['PREINSTALL', 'POSTINSTALL', 'PREUNINSTALL', 'POSTUNINSTALL'])
+      expect(macro(`NSIS_HOOK_${m}`), m).not.toBe('');
+  });
+
+  it('POSTINSTALL aborta con cualquier resultado que no sea un 0 numérico', () => {
+    const m = macro('NSIS_HOOK_POSTINSTALL');
+    expect(m).toContain('ClearErrors');
+    expect(m).toMatch(/\$\{If\} \$\{Errors\}/); // ExecWait que no se lanzó deja `error` en $0
+    expect(m).toMatch(/\$\{OrIf\} \$0 != 0/); // `!=` es texto; `<>` leería «error» como 0
+    expect(m).not.toContain('<>');
+    expect(m).toContain('Abort');
+  });
+
+  it('PREINSTALL exige Program Files con separador final y rechaza ..', () => {
+    const m = macro('NSIS_HOOK_PREINSTALL');
+    expect(m).toContain('StrCpy $1 "$PROGRAMFILES64\\"');
+    expect(m).toContain('".."');
+    expect(m).toContain('Abort');
+    expect(m).not.toMatch(/StrCmpS/); // sin distinguir mayúsculas
+  });
+});
