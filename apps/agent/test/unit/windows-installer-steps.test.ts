@@ -95,8 +95,10 @@ describe('prepareDataDir', () => {
     await prepareDataDir({ dataDir: DATOS, run: fakeRun(ev), fs: fakeFs(ev) });
     const i = (s: string) => ev.findIndex((l) => l.includes(s));
     expect(ev[i('/inheritance:r')]).toBe(`icacls ${DATOS} /inheritance:r`);
-    expect(ev.indexOf(`icacls ${DATOS} /reset`)).toBeLessThan(i('/inheritance:r'));
-    expect(i('/inheritance:r')).toBeLessThan(i('/grant:r'));
+    // reset -> grant -> inheritance:r: nunca una DACL vacía en medio (rompería la propagación a los
+    // hijos creados por el servicio, que los administradores ya no podrían leer).
+    expect(ev.indexOf(`icacls ${DATOS} /reset`)).toBeLessThan(i('/grant:r'));
+    expect(i('/grant:r')).toBeLessThan(i('/inheritance:r'));
     expect(ev[i('/grant:r')]).toBe(
       `icacls ${DATOS} /grant:r ${SYSTEM}:(OI)(CI)F ${ADMINS}:(OI)(CI)F`,
     );

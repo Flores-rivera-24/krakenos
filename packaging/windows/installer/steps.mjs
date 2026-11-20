@@ -122,11 +122,15 @@ export async function grantServiceAccess({ dataDir, serviceSid, run }) {
 
 const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
-/** `reset` (quita lo explícito) → `inheritance:r` (quita lo heredado) → SYSTEM y Administradores → verificar. */
+/**
+ * `reset` (quita lo explícito) → `grant:r` SYSTEM y Administradores → `inheritance:r` (quita lo heredado)
+ * → verificar. El grant va ANTES de quitar la herencia: con la DACL vacía en medio, Windows no puede
+ * propagar a los hijos que creó el servicio (dueño: su cuenta) y se quedan sin ACL para los administradores.
+ */
 async function aplicarAcl(run, dir, esperadas) {
   await ok(run, 'icacls', [dir, '/reset']);
-  await ok(run, 'icacls', [dir, '/inheritance:r']);
   await ok(run, 'icacls', [dir, '/grant:r', `${SYSTEM}:(OI)(CI)F`, `${ADMINS}:(OI)(CI)F`]);
+  await ok(run, 'icacls', [dir, '/inheritance:r']);
   await verificarAcl(run, dir, esperadas);
 }
 
