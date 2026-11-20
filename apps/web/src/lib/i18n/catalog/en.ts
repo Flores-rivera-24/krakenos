@@ -269,6 +269,8 @@ export const en: Record<TranslationKey, string> = {
     'The last update failed and was rolled back: the database was restored and the previous package ({from}) was reinstalled.',
   'settings.update.lastNoPreviousPackage':
     'The last update failed. The database was restored and the service was started, but there was no previous package to reinstall (this was the first package update), so the new version is still installed. If it does not work properly, reinstall the package you had by hand.',
+  'settings.update.lastRollbackFailed':
+    'The last update failed and could not be rolled back, so the system may be left half-updated. Check the service on the server with <c>systemctl status krakenos</c>; if it does not start, reinstall the version you had.',
   'settings.update.lastNodeTooOld':
     'The last update was not applied: the new version needs a newer Node. Update with <c>sudo bash scripts/install.sh --update</c>.',
 

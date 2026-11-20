@@ -3,6 +3,7 @@ import {
   DEPLOY_MODES,
   SYSTEM_SETTING_KEYS,
   UPDATE_BLOCKED_CODES,
+  UPDATE_STEP_CODES,
   UPDATE_STEPS,
 } from '@krakenos/types';
 import { errorResponse } from '../common.schemas.js';
@@ -159,7 +160,7 @@ const updateResultSchema = {
           step: { type: 'string', enum: [...UPDATE_STEPS] },
           status: { type: 'string', enum: ['ok', 'failed', 'skipped'] },
           detail: { type: 'string' },
-          code: { type: 'string', enum: UPDATE_BLOCKED_CODES },
+          code: { type: 'string', enum: UPDATE_STEP_CODES },
         },
         required: ['step', 'status'],
       },

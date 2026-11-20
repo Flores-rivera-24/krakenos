@@ -151,8 +151,11 @@ export interface UpdateStepResult {
   status: UpdateStepStatus;
   /** Mensaje breve (motivo del fallo, versión aplicada…). Sin secretos. */
   detail?: string;
-  /** Motivo estable cuando el actualizador SE NEGÓ antes de tocar nada. */
-  code?: UpdateBlockedCode;
+  /**
+   * Motivo estable: el actualizador SE NEGÓ antes de tocar nada (`UpdateBlockedCode`) o la reversión
+   * quedó incompleta (`NO_PREVIOUS_PACKAGE`). La UI decide por él, nunca por `detail`.
+   */
+  code?: UpdateStepCode;
 }
 
 /** La versión de destino exige un Node más nuevo que el que corre el servicio. */
@@ -169,6 +172,13 @@ const UPDATE_BLOCKED_CODE_SET: Record<UpdateBlockedCode, true> = {
   BAD_PACKAGE: true,
 };
 export const UPDATE_BLOCKED_CODES = Object.keys(UPDATE_BLOCKED_CODE_SET) as UpdateBlockedCode[];
+
+/**
+ * Códigos de un paso: los de bloqueo más `NO_PREVIOUS_PACKAGE` (paso `rollback`: se restauró la base y se
+ * arrancó el servicio, pero no había paquete anterior que reinstalar, así que la versión no vuelve atrás).
+ */
+export type UpdateStepCode = UpdateBlockedCode | 'NO_PREVIOUS_PACKAGE';
+export const UPDATE_STEP_CODES: UpdateStepCode[] = [...UPDATE_BLOCKED_CODES, 'NO_PREVIOUS_PACKAGE'];
 
 /**
  * Resultado de una orquestación de actualización (US-190). Lo escribe el proceso

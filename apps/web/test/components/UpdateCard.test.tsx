@@ -393,9 +393,14 @@ describe('UpdateCard: actualización por paquete', () => {
       ...packagePlan,
       updateAvailable: false,
       lastResult: result({
-        rolledBack: true,
+        rolledBack: false,
         steps: [
-          { step: 'rollback', status: 'failed', detail: 'NO_PREVIOUS_PACKAGE: base restaurada' },
+          {
+            step: 'rollback',
+            status: 'failed',
+            code: 'NO_PREVIOUS_PACKAGE',
+            detail: 'texto libre',
+          },
         ],
       }),
     });
@@ -405,4 +410,27 @@ describe('UpdateCard: actualización por paquete', () => {
     ).toBeInTheDocument();
     expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
   });
+
+  it.each(['package', 'systemd'] as const)(
+    'la reversión falló (%s): no dice que se revirtió y avisa de que el sistema puede estar a medias',
+    async (mode) => {
+      apiMock.get.mockResolvedValue({
+        ...packagePlan,
+        mode,
+        updateAvailable: false,
+        lastResult: result({
+          rolledBack: false,
+          steps: [
+            { step: 'rollback', status: 'failed', detail: 'dpkg roto: texto crudo del sistema' },
+          ],
+        }),
+      });
+      render(<UpdateCard />);
+      expect(await screen.findByText(/no se pudo revertir/)).toBeInTheDocument();
+      expect(screen.getByText(/a medias/)).toBeInTheDocument();
+      expect(screen.queryByText(/se reinstaló el paquete anterior/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/revertida a/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/texto crudo del sistema/)).not.toBeInTheDocument();
+    },
+  );
 });

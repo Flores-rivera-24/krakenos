@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { NoPreviousPackageError } from '../../src/system/node-requirement.js';
 import { orchestrateUpdate, type UpdateRunner } from '../../src/system/update-orchestrator.js';
 
 /** Runner de prueba: todos los pasos OK salvo los que se marquen para fallar. */
@@ -90,7 +91,7 @@ describe('orchestrateUpdate', () => {
     expect(result.steps.find((s) => s.step === 'healthcheck')?.status).toBe('failed');
   });
 
-  it('si el propio rollback falla, lo refleja pero sigue siendo rolledBack:true', async () => {
+  it('si el propio rollback falla, lo refleja y NO dice que revirtió (rolledBack:false)', async () => {
     const runner = makeRunner({
       restart: vi.fn(async () => {
         throw new Error('systemctl no responde');
@@ -102,10 +103,27 @@ describe('orchestrateUpdate', () => {
     const result = await orchestrateUpdate(runner, '1.0.0', '1.1.0');
 
     expect(result.ok).toBe(false);
-    expect(result.rolledBack).toBe(true);
+    expect(result.rolledBack).toBe(false);
     expect(result.steps.find((s) => s.step === 'rollback')).toMatchObject({
       status: 'failed',
       detail: 'rollback también falló',
+    });
+  });
+
+  it('un rollback sin paquete anterior queda con el código tipado y rolledBack:false', async () => {
+    const runner = makeRunner({
+      restart: vi.fn(async () => {
+        throw new Error('systemctl no responde');
+      }),
+      rollback: vi.fn(async () => {
+        throw new NoPreviousPackageError('sin anterior');
+      }),
+    });
+    const result = await orchestrateUpdate(runner, '1.0.0', '1.1.0');
+    expect(result.rolledBack).toBe(false);
+    expect(result.steps.find((s) => s.step === 'rollback')).toMatchObject({
+      status: 'failed',
+      code: 'NO_PREVIOUS_PACKAGE',
     });
   });
 

@@ -274,16 +274,25 @@ function LastResult({
       </Callout>
     );
   }
-  if (result.rolledBack && mode === 'package') {
-    const noPrevious = result.steps.some(
-      (s) => s.step === 'rollback' && s.detail?.startsWith('NO_PREVIOUS_PACKAGE'),
+  // Un paso `rollback` fallido manda sobre `rolledBack`: la reversión no terminó. Se decide por el
+  // `code` tipado, nunca por `detail` (texto libre del sistema).
+  const rollbackFailed = result.steps.find((s) => s.step === 'rollback' && s.status === 'failed');
+  if (rollbackFailed) {
+    return (
+      <Callout variant="warning" standing>
+        <RichText>
+          {rollbackFailed.code === 'NO_PREVIOUS_PACKAGE'
+            ? t('settings.update.lastNoPreviousPackage')
+            : t('settings.update.lastRollbackFailed')}
+        </RichText>
+      </Callout>
     );
+  }
+  if (result.rolledBack && mode === 'package') {
     return (
       <p className="flex items-start gap-2 text-kr-xs text-warning">
         <RotateCcw className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-        {noPrevious
-          ? t('settings.update.lastNoPreviousPackage')
-          : t('settings.update.lastRolledBackPackage', { from: result.fromVersion })}
+        {t('settings.update.lastRolledBackPackage', { from: result.fromVersion })}
       </p>
     );
   }

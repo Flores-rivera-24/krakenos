@@ -272,7 +272,7 @@ describe('PackageUpdateRunner: backup, apply, healthcheck, rollback', () => {
         throw new PrivilegedCommandError(argv, { stdout: '', stderr: 'sin anterior', code: 66 });
       },
     };
-    await expect(runner.rollback()).rejects.toThrow(/^NO_PREVIOUS_PACKAGE/);
+    await expect(runner.rollback()).rejects.toMatchObject({ code: 'NO_PREVIOUS_PACKAGE' });
   });
   it('rollback: otro fallo del helper se propaga tal cual', async () => {
     const { runner } = build();
@@ -323,7 +323,8 @@ describe('orquestador en modo paquete', () => {
     const { runner } = build({}, '0.2.0', true);
     const r = await orchestrateUpdate(runner, '0.2.0', '0.3.0', { steps: PACKAGE_STEPS });
     expect(r.ok).toBe(false);
-    expect(r.rolledBack).toBe(true);
+    // el helper falla también al revertir: no se puede afirmar que se revirtió
+    expect(r.rolledBack).toBe(false);
     expect(r.steps.map((s) => [s.step, s.status])).toContainEqual(['rollback', 'failed']);
   });
 });

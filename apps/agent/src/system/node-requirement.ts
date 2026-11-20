@@ -27,6 +27,15 @@ export class UpdateBlockedError extends Error {
   }
 }
 
+/** La reversión dejó la base restaurada pero no pudo devolver la versión (sin paquete anterior). */
+export class NoPreviousPackageError extends Error {
+  readonly code = 'NO_PREVIOUS_PACKAGE' as const;
+  constructor(message: string) {
+    super(message);
+    this.name = 'NoPreviousPackageError';
+  }
+}
+
 export interface NodeVersionParts {
   major: number;
   minor: number;

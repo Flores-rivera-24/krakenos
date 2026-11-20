@@ -93,6 +93,8 @@ export const esAjustes = {
     'La última actualización falló y se revirtió: se restauró la base de datos y se reinstaló el paquete anterior ({from}).',
   'settings.update.lastNoPreviousPackage':
     'La última actualización falló. Se restauró la base de datos y se arrancó el servicio, pero no había un paquete anterior que reinstalar (era la primera actualización por paquete), así que sigue instalada la versión nueva. Si no funciona bien, reinstala a mano el paquete que tenías.',
+  'settings.update.lastRollbackFailed':
+    'La última actualización falló y no se pudo revertir, así que el sistema puede haber quedado a medias. Revisa el servicio en el servidor con <c>systemctl status krakenos</c>; si no arranca, reinstala la versión que tenías.',
   'settings.update.lastNodeTooOld':
     'La última actualización no se aplicó: la nueva versión necesita un Node más reciente. Actualiza con <c>sudo bash scripts/install.sh --update</c>.',
 

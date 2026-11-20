@@ -20,7 +20,7 @@
  */
 
 import type { UpdateResult, UpdateStep, UpdateStepResult } from '@krakenos/types';
-import { UpdateBlockedError } from './node-requirement.js';
+import { NoPreviousPackageError, UpdateBlockedError } from './node-requirement.js';
 
 /**
  * Ejecuta cada fase de la actualización. Implementaciones: `ProcessUpdateRunner`
@@ -145,17 +145,21 @@ export async function orchestrateUpdate(
       }
 
       // Falló un paso tras el backup → revertir a la versión previa.
+      // `rolledBack` es verdad solo si el paso `rollback` terminó bien: si falló, el sistema puede haber
+      // quedado a medias y decir «revertido» sería mentir.
       try {
         await runner.rollback();
         record({ step: 'rollback', status: 'ok' });
+        return finish(false, true);
       } catch (rbErr) {
-        record({
-          step: 'rollback',
-          status: 'failed',
-          detail: rbErr instanceof Error ? rbErr.message : 'error desconocido',
-        });
+        const detail = rbErr instanceof Error ? rbErr.message : 'error desconocido';
+        record(
+          rbErr instanceof NoPreviousPackageError
+            ? { step: 'rollback', status: 'failed', detail, code: rbErr.code }
+            : { step: 'rollback', status: 'failed', detail },
+        );
+        return finish(false, false);
       }
-      return finish(false, true);
     }
   }
 
