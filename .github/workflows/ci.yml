@@ -514,39 +514,16 @@ jobs:
           command -v gpgv
           pnpm package
 
-      # makensis abre los ficheros sin el prefijo de ruta larga: desde `D:\a\krakenos\krakenos\out\…`
-      # una ruta de pnpm pasa de 260 caracteres y falla («failed opening file»). Se mueve el paquete a
-      # una ruta corta, en D: (la misma unidad que src-tauri: en otra Tauri rompe la ruta del resource),
-      # y se rehacen las junctions (son absolutas) con el relink del propio paquete.
+      # Tope de la ruta relativa más larga del paquete: makensis y la extracción de NSIS no usan el prefijo
+      # de rutas largas, así que `Program Files\KrakenOS\` (25) + la ruta tiene que quedar bajo 260.
+      # Medido: ver «Resultados del spike» (US-285/286); el tope deja margen sobre lo medido.
       - name: Construir el instalador NSIS
         run: |
-          src="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
-          rm -rf /d/k && mkdir -p /d/k
-          mv "$src" /d/k/p-win-x64
-          dir="D:/k/p-win-x64"
-          find "$dir/app/agent/node_modules" -maxdepth 1 -type l | head -3; ls -la "$dir/app/agent/node_modules" | head -8
-          echo "ruta relativa más larga del paquete: $(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }') caracteres"
-          node -e "import('file:///$dir/app/relink.mjs').then(m => m.relinkPnpmJunctions('$dir/app/agent/node_modules')).then(r => console.log('relink', r.relinked.length, 'sin resolver', r.unresolved.length))"
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          max="$(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }')"
+          echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
+          test "$max" -le 200
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
-
-      # Spike: lo que el bundler de esta versión de Tauri realmente ofrece (macros, modo de
-      # actualización, interruptor de borrar datos, idiomas, RunAsUser). Se mide, no se supone.
-      - name: Medir el bundler (spike)
-        if: always()
-        run: |
-          nsi="$(find apps/window/src-tauri/target -name installer.nsi | head -n 1)"
-          echo "installer.nsi: $nsi ($(wc -l < "$nsi") líneas)"
-          echo "File: $(grep -c -E '^\s*File ' "$nsi"), CreateDirectory: $(grep -c CreateDirectory "$nsi")"
-          grep -n -E 'node_modules.+\.pnpm' "$nsi" | grep -c . || true
-          echo "--- nsi sin las listas de ficheros"
-          # Las listas de ficheros ocupan 740..8900 (instalar) y el final (desinstalar): se filtran.
-          grep -n -v -E '^\s*(CreateDirectory|File |Delete |RMDir|SetOutPath)' "$nsi" > nsi-sin-listas.txt || true
-          wc -l nsi-sin-listas.txt
-          cat nsi-sin-listas.txt
-          echo "--- idiomas de NSIS"
-          ls "$LOCALAPPDATA/tauri/NSIS/Contrib/Language files" 2>/dev/null | tr '\n' ' ' || true
-          ls apps/window/src-tauri/target/release/nsis/x64 || true
-          ls -l apps/window/src-tauri/target/release/bundle/nsis/ || true
 
       - name: Probar el instalador (en silencio)
         shell: pwsh

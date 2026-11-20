@@ -35,7 +35,15 @@ function Phase-Install {
 
   $nmTop = Get-ChildItem $nm -Force | ForEach-Object { $_.Name }
   Write-Host ("node_modules de primer nivel instalado: {0}" -f ($nmTop -join ' '))
-  Assert (Test-Path (Join-Path $nm 'better-sqlite3')) 'node_modules\better-sqlite3 existe tras instalar (el bundler no pierde las junctions)'
+  Assert ($enlaces.Count -gt 0) 'el hook POSTINSTALL rehízo los enlaces de node_modules'
+  Assert (Test-Path (Join-Path $nm 'better-sqlite3')) 'node_modules\better-sqlite3 existe tras instalar'
+  $largo = (Get-ChildItem $dir -Recurse -Force -File | ForEach-Object { $_.FullName.Length } | Measure-Object -Maximum).Maximum
+  Write-Host ("ruta instalada más larga: {0} caracteres (límite 259)" -f $largo)
+  Assert ($largo -le 259) 'ninguna ruta instalada pasa de MAX_PATH'
+  Push-Location (Join-Path $dir 'app\agent')
+  try { & (Join-Path $dir 'node\node.exe') -e "require('better-sqlite3'); console.log('better-sqlite3 carga')" }
+  finally { Pop-Location }
+  Assert ($LASTEXITCODE -eq 0) "require('better-sqlite3') con el Node instalado"
 
   # Arranque a mano como krakenos.cmd (primer arranque y agente), con datos temporales.
   $datos = Join-Path $env:RUNNER_TEMP 'krakenos-datos'
