@@ -463,6 +463,88 @@ jobs:
           path: apps/window/src-tauri/target/release/krakenos-window.exe
           retention-days: 7
 
+  # Instalador de Windows (NSIS por el bundler de Tauri, con la carpeta de `pnpm package` dentro) y su
+  # prueba en silencio (scripts/installer-smoke-windows.ps1: una función por fase). El paquete se
+  # construye AQUÍ y no se baja de un artefacto: `upload-artifact` no conserva las junctions de pnpm.
+  # `continue-on-error` hasta 5 pasadas verdes seguidas en main (como `ventana`).
+  instalador-windows:
+    name: instalador (windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rust 1.99.1 (rustup)
+        run: |
+          rustup set auto-self-update disable
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+          rustc --version
+
+      - name: Caché de cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/window/src-tauri/target
+          key: ventana-${{ runner.os }}-rust-1.99.1-${{ hashFiles('apps/window/src-tauri/Cargo.lock') }}
+
+      - name: Empaquetar (pnpm package)
+        run: |
+          command -v gpgv >/dev/null || export PATH="$PATH:/c/Program Files/Git/usr/bin"
+          command -v gpgv
+          pnpm package
+
+      - name: Construir el instalador NSIS
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          node scripts/package-windows.mjs "$dir" | tee installer-path.txt
+
+      # Spike: lo que el bundler de esta versión de Tauri realmente ofrece (macros, modo de
+      # actualización, interruptor de borrar datos, idiomas, RunAsUser). Se mide, no se supone.
+      - name: Medir el bundler (spike)
+        if: always()
+        run: |
+          nsi="$(find apps/window/src-tauri/target -name installer.nsi | head -n 1)"
+          echo "installer.nsi: $nsi"
+          reg="$HOME/.cargo/registry/src"
+          ls -d "$reg"/*/tauri-bundler-* "$reg"/*/tauri-utils-* 2>/dev/null || true
+          [ -n "$nsi" ] && grep -n -E 'NSIS_HOOK|UpdateMode|DELETEAPPDATA|DeleteAppDataCheckbox|Page custom|RunAsUser|ExecShellAsUser|INSTDIR|SetCompressor|MUI_LANGUAGE|\$\{GetOptions\}' "$nsi" | head -120
+          ls "$reg"/*/tauri-bundler-*/src/bundle/windows/nsis/languages 2>/dev/null | tr '\n' ' ' || true
+          ls -l apps/window/src-tauri/target/release/bundle/nsis/ || true
+
+      - name: Probar el instalador (en silencio)
+        shell: pwsh
+        run: |
+          $setup = (Get-Content installer-path.txt | Select-Object -Last 1).Trim()
+          ./scripts/installer-smoke-windows.ps1 -Setup $setup
+
+      - name: Subir el instalador
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-setup-win-x64
+          path: out/KrakenOS-Setup-*-x64.exe
+          retention-days: 7
+
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
   e2e:
