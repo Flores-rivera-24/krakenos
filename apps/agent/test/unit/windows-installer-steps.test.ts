@@ -117,6 +117,8 @@ describe('prepareDataDir', () => {
     expect(cambio).toContain("SecurityIdentifier('S-1-5-18')");
     expect(cambio).toContain("SecurityIdentifier('S-1-5-32-544')");
     expect(cambio).not.toMatch(/545|S-1-1-0|Users|Everyone/);
+    // Sin PowerShell en Linux: al menos que los paréntesis del script cuadren (un `)` de menos rompió la CI).
+    expect(cambio.split('(').length).toBe(cambio.split(')').length);
     // Nunca un estado heredado o vacío en medio: ni /reset ni /inheritance:r sobre la raíz.
     expect(ev).not.toContain(`icacls ${DATOS} /reset`);
     expect(ev.some((l) => l.startsWith(`icacls ${DATOS} `) && l.includes('/inheritance'))).toBe(

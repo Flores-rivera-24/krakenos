@@ -142,7 +142,7 @@ async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
   const q = (v) => v.replaceAll("'", "''");
   const regla = (sid) =>
     `$s.AddAccessRule((New-Object System.Security.AccessControl.FileSystemAccessRule(` +
-    `(New-Object System.Security.Principal.SecurityIdentifier('${sid}')),'FullControl','ContainerInherit,ObjectInherit','None','Allow')); `;
+    `(New-Object System.Security.Principal.SecurityIdentifier('${sid}')),'FullControl','ContainerInherit,ObjectInherit','None','Allow'))); `;
   const ps =
     `$s = New-Object System.Security.AccessControl.DirectorySecurity; $s.SetAccessRuleProtection($true, $false); ` +
     Object.keys(esperadas).map(regla).join('') +
