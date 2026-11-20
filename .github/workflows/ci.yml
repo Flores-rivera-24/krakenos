@@ -817,6 +817,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # las notas leen los tags y commits anteriores
 
       # El tag tiene que ser `v` + la versión de package.json: de ahí salen las versiones de los
       # .deb y del paquete de Arch (apps/* y packages/* no llevan una versión propia que importe).
@@ -851,6 +853,12 @@ jobs:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: node scripts/release/sign-manifest.mjs "$GITHUB_WORKSPACE/release" "$VERSION" 0.2.0
 
+      # Notas de los commits entre este tag y el anterior (falla si no hay anterior).
+      - name: Notas de la versión
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/release/notes.mjs "$GITHUB_REF_NAME" "$VERSION" release > "$RUNNER_TEMP/notes.md"
+
       # Borrador: no es pública hasta que el dueño la publica a mano. Si la release ya existe (creada a
       # mano antes), solo se suben los archivos; --clobber permite repetir el job.
       - name: Adjuntar a la release (borrador)
@@ -860,7 +868,7 @@ jobs:
         run: |
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --verify-tag --draft --title "$TAG" \
-              --notes "Paquetes de Linux (.deb para amd64 y arm64, paquete de Arch para x86_64 y portables .tar.gz para x64 y arm64). Verifica con: sha256sum -c SHA256SUMS"
+              --notes-file "$RUNNER_TEMP/notes.md"
           fi
           # El zip de Windows (parte B) se suma aquí cuando exista.
           gh release upload "$TAG" release/*.deb release/*.pkg.tar.zst release/*.tar.gz release/SHA256SUMS \

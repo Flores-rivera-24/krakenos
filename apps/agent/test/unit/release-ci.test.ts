@@ -83,6 +83,19 @@ describe('ci.yml (job release)', () => {
     expect(subida).not.toContain('.zip');
   });
 
+  it('las notas salen de los commits: historial completo, notes.mjs y --notes-file solo al crear', () => {
+    expect(release).toMatch(/fetch-depth: 0/);
+    expect(release).toMatch(
+      /node scripts\/release\/notes\.mjs "\$GITHUB_REF_NAME" "\$VERSION" release > "\$RUNNER_TEMP\/notes\.md"/,
+    );
+    const crear = /gh release create (?:[^\n]*\\\n)*[^\n]*/.exec(release)?.[0] ?? '';
+    expect(crear).toContain('--notes-file "$RUNNER_TEMP/notes.md"');
+    expect(release).not.toContain('--notes "');
+    // Solo dentro del `if ! gh release view`: si ya existe no se le pisan las notas.
+    expect(release.slice(release.indexOf('if ! gh release view'))).toContain(crear);
+    expect(release.split('--notes-file').length).toBe(2);
+  });
+
   it('crea la release como borrador y verifica el tag; no adjunta el .exe', () => {
     expect(release).toMatch(/gh release create [^\n]*--draft/);
     expect(release).toContain('--verify-tag');
