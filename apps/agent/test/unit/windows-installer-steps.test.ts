@@ -1893,11 +1893,10 @@ describe('uninstallAll', () => {
       const m = maquina();
       m.nodos[DATOS] = { kind: 'dir', entries: ['junction-volumen'] };
       m.nodos[vol] = { kind: 'link', entries: [] };
-      let oculta = true;
       const fs = {
         ...m.fs,
         lstat: async (p: string) => {
-          if (p === vol && oculta) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+          if (p === vol) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
           return m.fs.lstat(p);
         },
         unlink: async () => {},
