@@ -94,8 +94,51 @@
   ${EndIf}
 !macroend
 
+; Desinstalar: ANTES de que NSIS borre nada se quita lo que el instalador creó fuera de los ficheros (servicio,
+; reglas del cortafuegos, CA de Root, tarea de renovación, claves de HKLM, enlaces), con el Node empaquetado: un
+; node.exe vivo bloquearía `Program Files\KrakenOS\node`. Al actualizar encima (`/UPDATE`) solo se para el
+; servicio. Los datos solo se borran con `/PURGEDATA` (silencioso) o con la casilla «borrar los datos» de Tauri,
+; que viene desmarcada. Un fallo se dice, pero no impide que la desinstalación termine.
+; (`/PURGEDATA` empieza por `/P`, así que Tauri lo toma también como `/P`: modo pasivo, sin pregunta; es lo que
+; se quiere con ese interruptor.)
 !macro NSIS_HOOK_PREUNINSTALL
+  ${If} $LANGUAGE == 1034
+    StrCpy $R8 "es"
+  ${Else}
+    StrCpy $R8 "en"
+  ${EndIf}
+  StrCpy $R7 ""
+  ${If} $UpdateMode = 1
+    StrCpy $R7 " --update"
+  ${Else}
+    ClearErrors
+    ${GetOptions} $CMDLINE "/PURGEDATA" $R0
+    ${IfNot} ${Errors}
+      StrCpy $R7 " --purge-data"
+    ${ElseIf} $DeleteAppDataCheckboxState = 1
+      StrCpy $R7 " --purge-data"
+    ${EndIf}
+  ${EndIf}
+  ${If} ${FileExists} "$INSTDIR\installer\post-install.mjs"
+  ${AndIf} ${FileExists} "$INSTDIR\node\node.exe"
+    nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" uninstall --lang $R8$R7'
+    Pop $0
+    ${If} $0 != 0
+      DetailPrint "La desinstalación de KrakenOS dejó restos (resultado: $0)"
+    ${EndIf}
+  ${EndIf}
 !macroend
 
+; Lo que NSIS no lista (el log del instalador, restos) se borra aquí, y solo bajo Program Files y fuera de una
+; actualización. Los enlaces de `node_modules` ya se quitaron antes sin seguirlos, así que ningún `RMDir /r`
+; tiene un enlace que seguir.
 !macro NSIS_HOOK_POSTUNINSTALL
+  ${If} $UpdateMode <> 1
+    StrCpy $R0 "$PROGRAMFILES64\"
+    StrLen $R1 $R0
+    StrCpy $R2 $INSTDIR $R1
+    ${If} $R2 == $R0
+      RMDir /r "$INSTDIR"
+    ${EndIf}
+  ${EndIf}
 !macroend

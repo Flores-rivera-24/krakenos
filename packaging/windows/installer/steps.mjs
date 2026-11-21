@@ -263,15 +263,30 @@ export function withXmlPort(xml, port) {
   return xml.replace(re, `$1${port}$2`);
 }
 
-/** `install` → cuenta virtual → `sidtype` → `start`. Si el servicio ya existe (actualizar) no lo reinstala. */
-export async function installService({ serviceExe, run, antesDeArrancar }) {
+/**
+ * `install` → cuenta virtual → `sidtype` → `start`. Un servicio que ya existe (actualizar) se da de baja y
+ * se vuelve a registrar: WinSW fija en `install` las acciones ante fallo y el arranque retrasado, y un XML
+ * nuevo no las cambiaría de otro modo. La cuenta y el permiso sobre los datos se reponen justo después.
+ */
+export async function installService({ serviceExe, run, antesDeArrancar, sleep = dormir }) {
   const q = await run('sc.exe', ['query', SERVICE]);
-  if (q.code === NO_EXISTE) await ok(run, serviceExe, ['install']);
-  else if (q.code !== 0) throw new Error(`sc.exe query ${SERVICE} salió con ${q.code}`);
+  if (q.code !== NO_EXISTE) {
+    if (q.code !== 0) throw new Error(`sc.exe query ${SERVICE} salió con ${q.code}`);
+    await uninstallService({ serviceExe, run, sleep });
+    // Windows puede dejarlo «marcado para borrarse» unos instantes; instalar encima daría 1072.
+    for (let i = 0; (await run('sc.exe', ['query', SERVICE])).code !== NO_EXISTE; i++) {
+      if (i >= 40)
+        throw new Error(
+          `el servicio ${SERVICE} sigue registrado (marcado para borrarse): reinicia el equipo y vuelve a instalar`,
+        );
+      await sleep(500);
+    }
+  }
+  await ok(run, serviceExe, ['install']);
   await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
   await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
   await antesDeArrancar?.();
-  if (estado(q.stdout) !== 4) await ok(run, serviceExe, ['start']);
+  await ok(run, serviceExe, ['start']);
 }
 
 const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -553,6 +568,8 @@ export async function registerRenewalTask({ installDir, dataDir, run }) {
 }
 
 const PS = ['-NoProfile', '-NonInteractive', '-Command'];
+// Sin reglas previas, `Remove-NetFirewallRule -Group` falla y `-Command` saldría con 1: se busca primero.
+const BORRAR_REGLAS = `$r = @(Get-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue); if ($r) { $r | Remove-NetFirewallRule }`;
 const psq = (v) => String(v).replaceAll("'", "''");
 
 /**
@@ -562,10 +579,7 @@ const psq = (v) => String(v).replaceAll("'", "''");
  */
 export async function openFirewall({ nodeExe, port, mdns, run }) {
   const ps = (cmd) => ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${cmd}`]);
-  // Sin reglas previas, `Remove-NetFirewallRule -Group` falla y `-Command` saldría con 1: se busca primero.
-  await ps(
-    `$r = @(Get-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue); if ($r) { $r | Remove-NetFirewallRule }`,
-  );
+  await ps(BORRAR_REGLAS);
   const regla = (nombre, proto, puerto) =>
     `New-NetFirewallRule -DisplayName '${nombre}' -Group KrakenOS -Direction Inbound -Action Allow ` +
     `-Profile Private -Protocol ${proto} -LocalPort ${puerto} -Program '${psq(nodeExe)}' | Out-Null`;
@@ -624,6 +638,75 @@ export async function showDialog({ run, title, text, yesNo }) {
     { env: { KR_TEXTO: text, KR_TITULO: title } },
   );
   return r.code === 0;
+}
+
+const TAREA_RENOVAR =
+  `$s = New-Object -ComObject Schedule.Service; $s.Connect(); ` +
+  `try { $f = $s.GetFolder('\\KrakenOS') } catch { exit 0 }; ` +
+  `foreach ($t in $f.GetTasks(1)) { $f.DeleteTask($t.Name, 0) }; $s.GetFolder('\\').DeleteFolder('KrakenOS', 0)`;
+
+/** Quita la clave de HKLM entera o un valor; lo que no existe no es un error, un fallo al borrar lo que existe, sí. */
+async function quitarMarca(run, valor) {
+  const args = valor ? ['/v', valor] : [];
+  const q = await run('reg.exe', ['query', MARCA_HKLM, ...args]);
+  if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
+}
+
+/**
+ * Desinstalación (la lanza PREUNINSTALL, elevada, antes de que NSIS borre ficheros: un `node.exe` vivo
+ * bloquearía `Program Files\KrakenOS\node`). Cada paso tolera «ya no existe», así que repetirla da 0, y un
+ * fallo no impide los demás: se reportan todos al final. Con `update` (actualizar encima) solo se para el
+ * servicio: ni servicio registrado, ni regla, ni CA, ni datos se tocan. El thumbprint de la CA sale de HKLM
+ * (lo escribe el instalador), nunca de la carpeta de datos, que el servicio puede modificar. Con datos
+ * conservados se queda en HKLM lo que los identifica como de KrakenOS (`DataDir`, y `CaPendienteRotar` si
+ * hay una rotación sin terminar): sin eso, reinstalar encima de ellos se rechazaría por «carpeta ajena».
+ */
+export async function uninstallAll({
+  run,
+  fs,
+  dataDir,
+  serviceExe,
+  purgeData = false,
+  update = false,
+  removeLinks,
+  log = () => {},
+  lang = 'es',
+  sleep,
+  timeoutMs,
+}) {
+  if (update) return stopService({ serviceExe, run, sleep, timeoutMs });
+  const fallos = [];
+  const paso = async (nombre, f) => {
+    try {
+      await f();
+      return true;
+    } catch (e) {
+      fallos.push(`${nombre}: ${e.message}`);
+      return false;
+    }
+  };
+  // Antes de quitar nada: la marca de HKLM es lo que dice que la carpeta es de KrakenOS.
+  const esMia = purgeData && (await hayMarca(run, dataDir));
+
+  await paso('servicio', () => uninstallService({ serviceExe, run, sleep, timeoutMs }));
+  await paso('cortafuegos', () =>
+    ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${BORRAR_REGLAS}`]),
+  );
+  const caOk = await paso('CA', async () => {
+    const thumbprint = await caThumbprintRegistrado(run);
+    if (thumbprint) await quitarDeRoot(run, thumbprint);
+  });
+  await paso('tarea', () =>
+    ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${TAREA_RENOVAR}`]),
+  );
+  await paso('enlaces', async () => void (await removeLinks?.()));
+  // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
+  if (caOk) await paso('registro', () => quitarMarca(run, purgeData ? undefined : 'CaThumbprint'));
+  if (purgeData) {
+    if (esMia) await paso('datos', () => fs.rm(dataDir, { recursive: true, force: true }));
+    else log(msg(lang, 'datosAjenos', dataDir));
+  } else log(msg(lang, 'datosConservados', dataDir));
+  if (fallos.length > 0) throw new Error(fallos.join('; '));
 }
 
 /** Instalación completa. Cualquier fallo se propaga: el CLI sale con código distinto de 0. */

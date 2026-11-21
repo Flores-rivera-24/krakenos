@@ -1,5 +1,5 @@
 /**
- * `node post-install.mjs install|stop|uninstall|setup-token [--lang es|en] [--interactive]`: lo ejecuta el instalador (elevado)
+ * `node post-install.mjs install|stop|uninstall|setup-token [--lang es|en] [--interactive] [--purge-data] [--update]`: lo ejecuta el instalador (elevado)
  * con el Node empaquetado, desde `Program Files\KrakenOS\installer`. Sale con código distinto de 0
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
@@ -13,7 +13,7 @@ import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { msg } from './mensajes.mjs';
-import { readSetupToken, runInstall, showDialog, stopService, uninstallService } from './steps.mjs';
+import { readSetupToken, runInstall, showDialog, stopService, uninstallAll } from './steps.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const INSTALL_DIR = join(AQUI, '..');
@@ -68,6 +68,20 @@ function registrar(texto) {
   }
 }
 
+/** Quita los enlaces de `node_modules` que rehízo el hook, con el manifiesto del paquete; sin manifiesto, nada. */
+async function quitarEnlaces() {
+  const manifiesto = join(INSTALL_DIR, 'app', 'links.json');
+  let links;
+  try {
+    links = JSON.parse(await fs.readFile(manifiesto, 'utf8'));
+  } catch (e) {
+    if (e.code === 'ENOENT') return;
+    throw e;
+  }
+  const { removeLinks } = await import('../app/links.mjs');
+  await removeLinks(join(INSTALL_DIR, 'app', 'agent', 'node_modules'), links);
+}
+
 async function main() {
   const [orden, ...resto] = process.argv.slice(2);
   const lang = resto[resto.indexOf('--lang') + 1] === 'en' ? 'en' : 'es';
@@ -109,10 +123,21 @@ async function main() {
       });
       if (token) process.stdout.write(token);
     } else if (orden === 'stop') await stopService({ serviceExe, run });
-    else if (orden === 'uninstall') await uninstallService({ serviceExe, run });
-    else throw new Error(`orden desconocida: ${orden}`);
+    else if (orden === 'uninstall') {
+      await uninstallAll({
+        run,
+        fs,
+        dataDir,
+        serviceExe,
+        lang,
+        purgeData: resto.includes('--purge-data'),
+        update: resto.includes('--update'),
+        log: (l) => console.log(l),
+        removeLinks: quitarEnlaces,
+      });
+    } else throw new Error(`orden desconocida: ${orden}`);
   } catch (e) {
-    const texto = msg(lang, 'fallo', e.message);
+    const texto = msg(lang, orden === 'uninstall' ? 'falloDesinstalar' : 'fallo', e.message);
     console.error(texto);
     registrar(texto);
     process.exit(1);

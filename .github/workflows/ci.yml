@@ -576,11 +576,19 @@ jobs:
           grep -q "WinSW no verifica" "$RUNNER_TEMP/negativo-winsw.log" || { echo "::error::falló, pero no por la suma"; exit 1; }
           echo "OK: la suma rechazó el WinSW alterado"
 
+      # El mismo paquete con otra versión: solo hace falta un instalador «viejo» para probar la actualización
+      # encima (datos, CA, servicio y reglas intactos). Reutiliza el paquete ya construido: solo repite el bundle.
+      - name: Construir el instalador 0.0.1 (prueba de actualización)
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          node scripts/package-windows.mjs "$dir" --version 0.0.1 | tee installer-old-path.txt
+
       - name: Probar el instalador (en silencio)
         shell: pwsh
         run: |
           $setup = (Get-Content installer-path.txt | Select-Object -Last 1).Trim()
-          ./scripts/installer-smoke-windows.ps1 -Setup $setup
+          $old = (Get-Content installer-old-path.txt | Select-Object -Last 1).Trim()
+          ./scripts/installer-smoke-windows.ps1 -Setup $setup -OldSetup $old
 
       - name: Subir el instalador
         uses: actions/upload-artifact@v7

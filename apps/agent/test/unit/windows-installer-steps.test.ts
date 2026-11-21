@@ -9,7 +9,7 @@ import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, uninstallAll, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
@@ -490,11 +490,47 @@ describe('installService', () => {
     expect(ev.slice(-3)).toEqual(['sc.exe sidtype KrakenOS unrestricted', 'grant', `${exe} start`]);
   });
 
-  it('si el servicio ya existe (actualización) no lo reinstala pero lo arranca', async () => {
+  it('si el servicio ya existe (actualización) lo reinstala con el XML nuevo y lo arranca, conservando la cuenta', async () => {
     const ev: Ev[] = [];
-    await installService({ serviceExe: exe, run: fakeRun(ev) });
-    expect(ev.some((l) => l.endsWith(' install'))).toBe(false);
-    expect(ev).toContain(`${exe} start`);
+    let existe = true;
+    const run = async (cmd: string, args: string[]) => {
+      ev.push([cmd, ...args].join(' '));
+      if (cmd === exe && args[0] === 'uninstall') existe = false;
+      if (cmd === exe && args[0] === 'install') existe = true;
+      if (cmd === 'sc.exe' && args[0] === 'query')
+        return existe ? { code: 0, stdout: 'ESTADO : 1  DETENIDO' } : { code: 1060, stdout: '' };
+      return { code: 0, stdout: '' };
+    };
+    await installService({ serviceExe: exe, run, sleep: async () => {} });
+    const i = (l: string) => ev.indexOf(l);
+    expect(i(`${exe} uninstall`)).toBeGreaterThan(-1);
+    expect(i(`${exe} install`)).toBeGreaterThan(i(`${exe} uninstall`));
+    expect(i('sc.exe config KrakenOS obj= NT SERVICE\\KrakenOS')).toBeGreaterThan(
+      i(`${exe} install`),
+    );
+    expect(i(`${exe} start`)).toBeGreaterThan(i('sc.exe sidtype KrakenOS unrestricted'));
+  });
+
+  it('si Windows tarda en dar de baja el servicio, espera antes de volver a instalarlo y no se queda esperando para siempre', async () => {
+    const ev: Ev[] = [];
+    let bajas = 0;
+    const run = async (cmd: string, args: string[]) => {
+      ev.push([cmd, ...args].join(' '));
+      if (cmd === 'sc.exe' && args[0] === 'query')
+        return ev.includes(`${exe} uninstall`) && bajas++ >= 2
+          ? { code: 1060, stdout: '' }
+          : { code: 0, stdout: 'ESTADO : 1  DETENIDO' };
+      return { code: 0, stdout: '' };
+    };
+    await installService({ serviceExe: exe, run, sleep: async () => {} });
+    expect(ev.indexOf(`${exe} install`)).toBeGreaterThan(-1);
+    const eterno = async (cmd: string, args: string[]) =>
+      cmd === 'sc.exe' && args[0] === 'query'
+        ? { code: 0, stdout: 'ESTADO : 1  DETENIDO' }
+        : { code: 0, stdout: '' };
+    await expect(
+      installService({ serviceExe: exe, run: eterno, sleep: async () => {} }),
+    ).rejects.toThrow(/marcado para borrarse|sigue registrado/);
   });
 
   it('un fallo de WinSW aborta con el comando en el mensaje', async () => {
@@ -1363,6 +1399,9 @@ describe('mensajes', () => {
       ['redPublicaSilencio', ['CASA']],
       ['redNoPrivada', []],
       ['energia', []],
+      ['datosConservados', ['C:\\ProgramData\\KrakenOS']],
+      ['datosAjenos', ['C:\\ProgramData\\KrakenOS']],
+      ['falloDesinstalar', ['boom']],
     ] as const) {
       const es = msg('es', clave, ...args);
       const en = msg('en', clave, ...args);
@@ -1561,5 +1600,211 @@ describe('entrega del token a la ventana (hook y subcomando)', () => {
     // Sus avisos no pueden ir a stdout ni stderr (ExecToStack mezcla ambos): van al log junto al instalador.
     const rama = subcmd.split("orden === 'setup-token'")[1]?.split('else if')[0] ?? '';
     expect(rama).not.toMatch(/console\./);
+  });
+});
+
+describe('uninstallAll', () => {
+  const EXE = join('C:', 'Program Files', 'KrakenOS', 'service', 'KrakenOS-service.exe');
+  const THUMB = 'A1B2C3D4E5F60718293A4B5C6D7E8F9012345678';
+  const regla = { code: 0, stdout: '' };
+
+  /** Máquina con todo instalado: lo que se borra deja de existir (así se prueba también la segunda vez). */
+  function maquina(opt: { thumb?: string | null; servicio?: boolean; datos?: boolean } = {}) {
+    const ev: Ev[] = [];
+    const st = {
+      servicio: opt.servicio ?? true,
+      thumb: opt.thumb === undefined ? THUMB : opt.thumb,
+      enRoot: opt.thumb !== null,
+    };
+    const nodos: Record<string, Nodo> =
+      opt.datos === false ? {} : { [DATOS]: { kind: 'dir', entries: ['.env'] } };
+    const run = async (cmd: string, args: string[]) => {
+      const l = [cmd, ...args].join(' ');
+      ev.push(l);
+      if (cmd === EXE && args[0] === 'uninstall') st.servicio = false;
+      if (cmd === 'sc.exe' && args[0] === 'query')
+        return st.servicio
+          ? { code: 0, stdout: 'ESTADO : 1  DETENIDO' }
+          : { code: 1060, stdout: '' };
+      if (cmd === 'reg.exe' && args[0] === 'query' && l.includes('CaThumbprint'))
+        return st.thumb
+          ? { code: 0, stdout: `    CaThumbprint    REG_SZ    ${st.thumb}\r\n` }
+          : { code: 1, stdout: '' };
+      if (cmd === 'reg.exe' && args[0] === 'delete' && l.includes('/v CaThumbprint'))
+        st.thumb = null;
+      if (cmd === 'reg.exe' && args[0] === 'query' && l.includes('/v DataDir'))
+        return { code: 0, stdout: `    DataDir    REG_SZ    ${DATOS}\r\n` };
+      if (cmd === 'certutil') {
+        const hay = st.enRoot;
+        st.enRoot = false;
+        return hay
+          ? regla
+          : { code: 1, stdout: 'CertUtil: -delstore: no se encuentra el certificado 0x80092004' };
+      }
+      return regla;
+    };
+    return { ev, run, fs: fakeFs(ev, nodos), nodos };
+  }
+  const base = (
+    m: ReturnType<typeof maquina>,
+    extra: Partial<Parameters<typeof uninstallAll>[0]> = {},
+  ) => ({
+    run: m.run,
+    fs: m.fs,
+    dataDir: DATOS,
+    serviceExe: EXE,
+    purgeData: false,
+    update: false,
+    removeLinks: async () => void m.ev.push('quitar-enlaces'),
+    log: () => {},
+    sleep: async () => {},
+    ...extra,
+  });
+
+  it('quita servicio, regla, CA (por el thumbprint de HKLM), tarea, enlaces y la marca de la CA, y conserva los datos', async () => {
+    const m = maquina();
+    await uninstallAll(base(m));
+    const lineas = m.ev;
+    expect(lineas).toContain(`${EXE} uninstall`);
+    expect(lineas.some((l) => l.includes('Remove-NetFirewallRule') && l.includes('KrakenOS'))).toBe(
+      true,
+    );
+    expect(lineas).toContain(`certutil -delstore Root ${THUMB}`);
+    expect(lineas.some((l) => l.includes('KrakenOS') && l.includes('DeleteTask'))).toBe(true);
+    expect(lineas).toContain('quitar-enlaces');
+    expect(lineas).toContain('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /v CaThumbprint /f');
+    // Con datos conservados, lo que identifica la carpeta como de KrakenOS se queda con ella.
+    expect(lineas.some((l) => l.startsWith('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f'))).toBe(
+      false,
+    );
+    expect(lineas.some((l) => l.startsWith('rm ') || l.startsWith('rmdir '))).toBe(false);
+  });
+
+  it('el thumbprint sale de HKLM: no se lee nada de la carpeta de datos', async () => {
+    const m = maquina();
+    await uninstallAll(base(m));
+    expect(m.ev.some((l) => l.includes('krakenos-ca'))).toBe(false);
+    expect(m.ev.some((l) => l.startsWith('write'))).toBe(false);
+    expect(m.ev.indexOf('reg.exe query HKLM\\SOFTWARE\\KrakenOS /v CaThumbprint')).toBeGreaterThan(
+      -1,
+    );
+  });
+
+  it('desinstalar dos veces seguidas termina bien y la segunda no falla por lo que ya no está', async () => {
+    const m = maquina();
+    await uninstallAll(base(m));
+    await expect(uninstallAll(base(m))).resolves.toBeUndefined();
+  });
+
+  it('tolera que el servicio, la CA, las reglas y la tarea ya no existan', async () => {
+    const m = maquina({ servicio: false, thumb: null });
+    await expect(uninstallAll(base(m))).resolves.toBeUndefined();
+    expect(m.ev.some((l) => l.startsWith('certutil'))).toBe(false);
+    expect(m.ev.some((l) => l.endsWith(' uninstall'))).toBe(false);
+  });
+
+  it('si la CA no se puede quitar, lo dice, no borra la marca que permite reintentarlo y sigue con lo demás', async () => {
+    const m = maquina();
+    const run = async (cmd: string, args: string[]) =>
+      cmd === 'certutil' ? { code: 5, stdout: 'Acceso denegado' } : m.run(cmd, args);
+    await expect(uninstallAll(base(m, { run }))).rejects.toThrow(/CA/);
+    expect(m.ev).toContain('quitar-enlaces');
+    expect(m.ev.some((l) => l.includes('DeleteTask'))).toBe(true);
+    expect(m.ev.some((l) => l.includes('/v CaThumbprint /f'))).toBe(false);
+  });
+
+  it('un fallo en un paso no impide los demás y se reporta al final con todos los nombres', async () => {
+    const m = maquina();
+    const run = async (cmd: string, args: string[]) =>
+      cmd === 'powershell.exe' ? { code: 1, stdout: 'boom' } : m.run(cmd, args);
+    await expect(uninstallAll(base(m, { run }))).rejects.toThrow(/cortafuegos[\s\S]*tarea/);
+    expect(m.ev).toContain(`certutil -delstore Root ${THUMB}`);
+  });
+
+  it('con update no emite ninguna orden de borrado: solo para el servicio', async () => {
+    const m = maquina();
+    await uninstallAll(base(m, { update: true, purgeData: true }));
+    const orden = m.ev.filter((l) => !l.startsWith('sc.exe query'));
+    expect(orden.every((l) => l === `${EXE} stop` || l.startsWith('sc.exe query'))).toBe(true);
+    expect(m.ev.some((l) => /uninstall|delete|Remove|certutil|schtasks|rm /i.test(l))).toBe(false);
+  });
+
+  it('sin purgeData nunca se borra la carpeta de datos', async () => {
+    const m = maquina();
+    await uninstallAll(base(m));
+    expect(m.ev.filter((l) => l.startsWith('rm ') || l.startsWith('rmdir '))).toEqual([]);
+    expect(m.nodos[DATOS]).toBeDefined();
+  });
+
+  it('con purgeData borra los datos y toda la clave de HKLM', async () => {
+    const m = maquina();
+    await uninstallAll(base(m, { purgeData: true }));
+    expect(m.ev).toContain(`rm ${DATOS}`);
+    expect(m.ev).toContain('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f');
+    expect(m.nodos[DATOS]).toBeUndefined();
+    // Los datos se borran DESPUÉS de parar y quitar el servicio (si no, los ficheros están en uso).
+    expect(m.ev.indexOf(`rm ${DATOS}`)).toBeGreaterThan(m.ev.indexOf(`${EXE} uninstall`));
+  });
+
+  it('con purgeData no borra una carpeta que no lleva la marca de KrakenOS en HKLM', async () => {
+    const m = maquina();
+    const run = async (cmd: string, args: string[]) =>
+      [cmd, ...args].join(' ').includes('/v DataDir') ? { code: 1, stdout: '' } : m.run(cmd, args);
+    const avisos: string[] = [];
+    await uninstallAll(base(m, { purgeData: true, run, log: (l: string) => avisos.push(l) }));
+    expect(m.ev.some((l) => l.startsWith('rm '))).toBe(false);
+    expect(avisos.join('\n')).toContain(DATOS);
+  });
+
+  it('dice dónde quedan los datos cuando se conservan', async () => {
+    const m = maquina();
+    const avisos: string[] = [];
+    await uninstallAll(base(m, { log: (l: string) => avisos.push(l) }));
+    expect(avisos.join('\n')).toContain(DATOS);
+  });
+});
+
+describe('installer-hooks.nsh (desinstalar)', () => {
+  const nsh = readFileSync(
+    resolve(__dirname, '../../../../packaging/windows/installer-hooks.nsh'),
+    'utf8',
+  );
+  const macro = (n: string) => nsh.split(`!macro ${n}`)[1]?.split('!macroend')[0] ?? '';
+
+  it('PREUNINSTALL lanza post-install.mjs uninstall ANTES de que NSIS borre nada, y en actualización solo para el servicio', () => {
+    const m = macro('NSIS_HOOK_PREUNINSTALL');
+    expect(m).toMatch(/post-install\.mjs" uninstall/);
+    expect(m).toMatch(/\$UpdateMode = 1/);
+    expect(m).toMatch(/--update/);
+  });
+
+  it('borrar los datos solo con /PURGEDATA o con la casilla de Tauri, y el interruptor no se pierde en silencio', () => {
+    const m = macro('NSIS_HOOK_PREUNINSTALL');
+    expect(m).toMatch(/GetOptions\} \$CMDLINE "\/PURGEDATA"/);
+    expect(m).toMatch(/\$DeleteAppDataCheckboxState = 1/);
+    expect(m).toMatch(/--purge-data/);
+  });
+
+  it('un fallo de la desinstalación se dice, pero no impide que NSIS termine', () => {
+    const m = macro('NSIS_HOOK_PREUNINSTALL');
+    expect(m).toMatch(/\$\{If\} \$0 != 0[\s\S]*DetailPrint/);
+    expect(m).not.toMatch(/Abort/);
+  });
+
+  it('POSTUNINSTALL borra lo que sobre de Program Files solo fuera de una actualización y solo bajo Program Files', () => {
+    const m = macro('NSIS_HOOK_POSTUNINSTALL');
+    expect(m).toMatch(/\$UpdateMode <> 1/);
+    expect(m).toMatch(/\$PROGRAMFILES64/);
+    expect(m).toMatch(/RMDir \/r "\$INSTDIR"/);
+  });
+
+  it('el subcomando uninstall lee --purge-data y --update y usa uninstallAll', () => {
+    const sub = readFileSync(
+      resolve(__dirname, '../../../../packaging/windows/installer/post-install.mjs'),
+      'utf8',
+    );
+    expect(sub).toMatch(/uninstallAll/);
+    expect(sub).toMatch(/--purge-data/);
+    expect(sub).toMatch(/--update/);
   });
 });

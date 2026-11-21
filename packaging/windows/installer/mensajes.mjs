@@ -23,6 +23,11 @@ const CATALOGO = {
     energia: () =>
       'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración → Sistema → Energía.',
     fallo: (detalle) => `La instalación de KrakenOS no terminó: ${detalle}`,
+    datosConservados: (dir) =>
+      `Tus datos se conservan en ${dir}. Para borrarlos, desinstala marcando «borrar los datos» o con /PURGEDATA.`,
+    datosAjenos: (dir) =>
+      `No se borró ${dir}: no figura como carpeta de datos de KrakenOS en este equipo. Revísala y bórrala a mano si quieres.`,
+    falloDesinstalar: (detalle) => `La desinstalación de KrakenOS dejó restos: ${detalle}`,
   },
   en: {
     puertoOcupado: (pref, usado) =>
@@ -47,6 +52,11 @@ const CATALOGO = {
     energia: () =>
       'If this PC goes to sleep, KrakenOS stops watching: schedules, the alarm and routines do not run while it sleeps. You can change this in Settings → System → Power.',
     fallo: (detalle) => `The KrakenOS installation did not finish: ${detalle}`,
+    datosConservados: (dir) =>
+      `Your data is kept in ${dir}. To delete it, uninstall with "delete the data" checked or with /PURGEDATA.`,
+    datosAjenos: (dir) =>
+      `${dir} was not deleted: it is not registered as a KrakenOS data folder on this PC. Check it and delete it by hand if you want.`,
+    falloDesinstalar: (detalle) => `The KrakenOS uninstall left some leftovers: ${detalle}`,
   },
 };
 

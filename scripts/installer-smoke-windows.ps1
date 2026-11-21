@@ -1,6 +1,6 @@
 # Prueba del instalador de Windows en `windows-latest`: una función por fase; cada tarea añade la suya.
-# Uso: pwsh scripts/installer-smoke-windows.ps1 -Setup <KrakenOS-Setup-x64.exe>
-param([Parameter(Mandatory)][string]$Setup)
+# Uso: pwsh scripts/installer-smoke-windows.ps1 -Setup <KrakenOS-Setup-x64.exe> [-OldSetup <el de 0.0.1>]
+param([Parameter(Mandatory)][string]$Setup, [string]$OldSetup = '')
 $ErrorActionPreference = 'Stop'
 
 function Assert([bool]$Cond, [string]$Msg) {
@@ -542,6 +542,214 @@ function Probar([scriptblock]`$b) { try { & `$b | Out-Null; 'OK' } catch { 'DENI
   Assert ($sub -ceq $real) 'el subcomando setup-token (elevado) entrega el token del fichero, y solo eso por stdout'
 }
 
+# Fases 7 y 8 (Task 7): desinstalar sin residuos y actualizar encima. Cada residuo se lista por nombre y la fase falla con la lista.
+$KrakenKey = 'HKLM:\SOFTWARE\KrakenOS'
+$UninstKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\KrakenOS'
+
+# Lo que el instalador crea y el desinstalador tiene que quitar. `-Conservar`: se conservan los datos (y con ellos
+# `DataDir`/`CaPendienteRotar` en HKLM, que los identifican como de KrakenOS); `-Permitir`: ficheros que pueden quedar
+# (uninstall.exe, que en modo `_?=` no puede borrarse a sí mismo).
+function Get-Residuos([string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir = @()) {
+  $r = [System.Collections.Generic.List[string]]::new()
+  if (Get-Service KrakenOS -ErrorAction SilentlyContinue) { $r.Add('servicio KrakenOS') }
+  foreach ($x in @(Get-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue)) { $r.Add("regla del cortafuegos $($x.DisplayName)") }
+  foreach ($t in $Thumbs) { if ($t -and (Test-Path "Cert:\LocalMachine\Root\$t")) { $r.Add("CA $t en Cert:\LocalMachine\Root") } }
+  foreach ($c in @(Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -match 'KrakenOS' })) { $r.Add("certificado '$($c.Subject)' en Root") }
+  $sch = New-Object -ComObject Schedule.Service; $sch.Connect()
+  try { $null = $sch.GetFolder('\KrakenOS'); $r.Add('carpeta \KrakenOS\ del programador de tareas') } catch { }
+  if (Test-Path $KrakenKey) {
+    $permitidos = if ($Conservar) { @('DataDir', 'CaPendienteRotar') } else { @() }
+    $valores = @((Get-Item $KrakenKey).Property | Where-Object { $_ -notin $permitidos })
+    if (-not $Conservar) { $r.Add('clave HKLM\SOFTWARE\KrakenOS') }
+    elseif ($valores.Count -gt 0) { $r.Add("valores en HKLM\SOFTWARE\KrakenOS: $($valores -join ', ')") }
+  }
+  if (Test-Path $UninstKey) { $r.Add('entrada de Agregar o quitar programas (HKLM\...\Uninstall\KrakenOS)') }
+  if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).KrakenOS) { $r.Add('HKCU\...\Run\KrakenOS') }
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  if (Test-Path $dir) {
+    foreach ($f in @(Get-ChildItem $dir -Force -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notin ($Permitir | ForEach-Object { Join-Path $dir $_ }) })) { $r.Add("fichero $($f.FullName)") }
+    if (-not $Permitir) { $r.Add("carpeta $dir") }
+  }
+  foreach ($base in $env:ProgramFiles, $env:ProgramData) {
+    foreach ($e in @(Get-ChildItem $base -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'kraken' -and $_.Name -notin $Script:Antes })) {
+      if (-not ($Conservar -and $e.FullName -eq (Join-Path $env:ProgramData 'KrakenOS'))) { $r.Add("entrada nueva $($e.FullName)") }
+    }
+  }
+  foreach ($lnk in (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\KrakenOS.lnk'), 'C:\Users\Public\Desktop\KrakenOS.lnk') {
+    if (Test-Path $lnk) { $r.Add("acceso directo $lnk") }
+  }
+  foreach ($p in @(Get-CimInstance Win32_Process -Filter "Name='node.exe' OR Name='krakenos-window.exe'" | Where-Object { $_.ExecutablePath -like "$dir\*" })) { $r.Add("proceso vivo $($p.ExecutablePath)") }
+  return ,$r.ToArray()
+}
+
+function Assert-SinResiduos([string]$Que, [string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir = @()) {
+  $r = Get-Residuos $Thumbs -Conservar:$Conservar -Permitir $Permitir
+  if ($r.Count -gt 0) { $r | ForEach-Object { Write-Host "  residuo: $_" } }
+  Assert ($r.Count -eq 0) "$Que: no queda ningún residuo (lista de residuos vacía)"
+}
+
+# Marcas de los datos de un usuario: la clave JWT, el .env (con una línea propia) y un fichero de data\.
+function Get-Marcas {
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  [ordered]@{
+    clave = (Get-FileHash (Join-Path $datos 'keys\jwt-private.pem') -Algorithm SHA256).Hash
+    env   = (Get-FileHash (Join-Path $datos '.env') -Algorithm SHA256).Hash
+    data  = (Get-FileHash (Join-Path $datos 'data\marca.txt') -Algorithm SHA256).Hash
+    ca    = (Get-FileHash (Join-Path $datos 'ca\krakenos-ca.pem') -Algorithm SHA256).Hash
+  }
+}
+
+function Set-Marcas {
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  Add-Content (Join-Path $datos '.env') '# marca-de-prueba: este .env lo editó el usuario'
+  New-Item -ItemType Directory -Force (Join-Path $datos 'data') | Out-Null
+  Set-Content (Join-Path $datos 'data\marca.txt') 'no me borres'
+}
+
+function Assert-MarcasIguales($Antes, [string]$Que) {
+  $ahora = Get-Marcas
+  foreach ($k in $Antes.Keys) { Assert ($ahora[$k] -eq $Antes[$k]) "$Que: la marca '$k' (suma SHA256) es idéntica" }
+  Assert ((Get-Content (Join-Path $env:ProgramData 'KrakenOS\.env')) -contains '# marca-de-prueba: este .env lo editó el usuario') "$Que: el .env conserva la línea propia"
+}
+
+function Get-PuertoDatos {
+  [int][regex]::Match((Get-Content (Join-Path $env:ProgramData 'KrakenOS\.env') -Raw), '(?m)^PORT=(\d+)\s*$').Groups[1].Value
+}
+
+function Get-RootKraken { @(Get-ChildItem Cert:\LocalMachine\Root | Where-Object { $_.Subject -match 'KrakenOS' }) }
+
+# Espera a que el desinstalador sin `_?=` (que se copia a %TEMP% y devuelve el control al instante) termine de verdad.
+function Wait-Desinstalador([string]$Dir, [int]$Segundos) {
+  for ($i = 0; $i -lt $Segundos; $i++) {
+    if (-not (Get-Process -Name 'Au_' -ErrorAction SilentlyContinue) -and -not (Test-Path $Dir)) { return $true }
+    Start-Sleep -Seconds 1
+  }
+  return $false
+}
+
+function Show-InstallErrorLog {
+  $e = Join-Path $env:ProgramFiles 'KrakenOS\install-error.log'
+  if (Test-Path $e) { Write-Host '--- install-error.log'; Get-Content $e -Tail 30 | Out-Host }
+}
+
+# Fase 7: desinstalar. Servicio parado y dos veces seguidas; una junction plantada hacia una carpeta de fuera no se
+# sigue (el RMDir /r de NSIS); los datos se conservan intactos; reinstalar encima vuelve a arrancar con la MISMA CA;
+# y `/S /PURGEDATA` (el desinstalador normal, que se copia a %TEMP%) borra también los datos.
+function Phase-Uninstall {
+  Write-Host "== Phase-Uninstall"
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  $un = Join-Path $dir 'uninstall.exe'
+  Assert (Test-Path $un) 'precondición: existe uninstall.exe'
+  Assert ($null -ne (Get-Service KrakenOS -ErrorAction SilentlyContinue)) 'precondición: el servicio está registrado'
+  Assert (@(Get-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue).Count -gt 0) 'precondición: hay reglas del cortafuegos'
+  $thumb = (Get-ItemProperty $KrakenKey).CaThumbprint
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumb") 'precondición: la CA está en Root'
+  $tarea = $null -ne (Get-ScheduledTask -TaskPath '\KrakenOS\' -TaskName 'RenovarTLS' -ErrorAction SilentlyContinue)
+  Assert $tarea 'precondición: existe la tarea \KrakenOS\RenovarTLS'
+  Set-Marcas
+  $marcas = Get-Marcas
+
+  # Plantados: una junction dentro de Program Files hacia una carpeta de fuera con un fichero (NSIS no debe seguirla)
+  # y el autoarranque de la ventana (HKCU del usuario que desinstala).
+  $canario = Join-Path ([IO.Path]::GetTempPath()) 'krakenos-canario'
+  New-Item -ItemType Directory -Force $canario | Out-Null
+  Set-Content (Join-Path $canario 'no-me-borres.txt') 'canario'
+  New-Item -ItemType Junction -Path (Join-Path $dir 'junction-plantada') -Target $canario | Out-Null
+  Set-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name KrakenOS -Value ('"{0}" --autostarted' -f (Join-Path $dir 'krakenos-window.exe'))
+
+  # Servicio ya parado. `_?=` (ruta sin comillas, la última): el desinstalador corre en sitio y devuelve su código.
+  Stop-Service KrakenOS
+  $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
+  if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
+  Assert ($p.ExitCode -eq 0) 'uninstall.exe /S (servicio parado) sale con 0'
+  $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
+  Assert ($p.ExitCode -eq 0) 'un segundo uninstall.exe /S (ya sin nada que quitar) sale con 0'
+  Assert (Test-Path (Join-Path $canario 'no-me-borres.txt')) 'la junction plantada en Program Files no se siguió: el fichero de fuera sigue ahí'
+  Remove-Item -LiteralPath (Join-Path $dir 'junction-plantada') -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $canario -Recurse -Force -ErrorAction SilentlyContinue
+  # En sitio el desinstalador no puede borrarse a sí mismo: ese es el único resto admitido; se retira como hace Tauri.
+  Assert-SinResiduos 'tras desinstalar con los datos conservados' @($thumb) -Conservar -Permitir @('uninstall.exe')
+  Remove-Item -LiteralPath $un -Force
+  Remove-Item -LiteralPath $dir -Force
+  Assert (Test-Path $datos) 'los datos (%ProgramData%\KrakenOS) se conservan'
+  Assert-MarcasIguales $marcas 'tras desinstalar'
+  Assert ((Get-ItemProperty $KrakenKey).DataDir -eq $datos) 'con los datos conservados queda en HKLM la marca DataDir que los reconoce como de KrakenOS'
+
+  # Reinstalar encima de los datos conservados: arranca y reimporta la MISMA CA.
+  $p = Start-Process -FilePath $Setup -ArgumentList '/S' -Wait -PassThru
+  if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
+  Assert ($p.ExitCode -eq 0) 'reinstalar sobre los datos conservados sale con 0'
+  Assert (Wait-Health (Get-PuertoDatos) 90) 'el agente arranca sobre los datos conservados'
+  Assert ((Get-ItemProperty $KrakenKey).CaThumbprint -eq $thumb) 'reinstalar reimporta la misma CA (mismo thumbprint en HKLM)'
+  Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'hay una sola CA de KrakenOS en Root y es la misma'
+  Assert-MarcasIguales $marcas 'tras reinstalar'
+
+  # El desinstalador normal (sin `_?=`): se copia a %TEMP% y el original sale al momento; se espera a la copia.
+  $p = Start-Process -FilePath $un -ArgumentList '/S /PURGEDATA' -Wait -PassThru
+  Assert ($p.ExitCode -eq 0) 'uninstall.exe /S /PURGEDATA sale con 0'
+  if (-not (Wait-Desinstalador $dir 180)) { Show-InstallErrorLog }
+  Assert (Wait-Desinstalador $dir 1) 'el desinstalador termina y Program Files\KrakenOS desaparece del todo'
+  Assert (-not (Test-Path $datos)) '/PURGEDATA borra también %ProgramData%\KrakenOS'
+  Assert-SinResiduos 'tras desinstalar con /PURGEDATA' @($thumb)
+}
+
+# Fase 8: actualizar encima. Se instala 0.0.1 (el mismo paquete con otra versión), se ponen marcas, se instala la
+# versión real encima con /S y todo sigue: marcas idénticas, servicio Running, la misma CA (una sola), una regla y una
+# tarea; y la misma versión otra vez no cambia nada. El servicio se reinstala con el XML nuevo (acciones ante fallo).
+function Phase-Upgrade {
+  Write-Host "== Phase-Upgrade"
+  if (-not $OldSetup) { Write-Host '  sin -OldSetup: se omite la actualización'; return }
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  Assert (-not (Test-Path $dir) -and -not (Test-Path $datos)) 'precondición: máquina limpia (Fase 7 purgó todo)'
+  $versionReal = [regex]::Match((Split-Path $Setup -Leaf), 'Setup-(.+)-x64').Groups[1].Value
+  $p = Start-Process -FilePath $OldSetup -ArgumentList '/S' -Wait -PassThru
+  if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
+  Assert ($p.ExitCode -eq 0) 'instalar 0.0.1 con /S sale con 0'
+  Assert ((Get-ItemProperty $UninstKey).DisplayVersion -eq '0.0.1') 'la versión instalada es 0.0.1'
+  Assert (Wait-Health (Get-PuertoDatos) 90) 'el agente 0.0.1 arranca'
+  Set-Marcas
+  $marcas = Get-Marcas
+  $thumb = (Get-ItemProperty $KrakenKey).CaThumbprint
+  $reglas = @(Get-NetFirewallRule -Group KrakenOS).Count
+  # Se borran las acciones ante fallo del servicio: si la actualización lo reinstala con el XML, vuelven.
+  & sc.exe failure KrakenOS reset= 0 actions= none/0/none/0/none/0 | Out-Null
+  Assert (((& sc.exe qfailure KrakenOS) -join "`n") -notmatch 'RESTART') 'precondición: el servicio ya no reinicia ante fallos'
+
+  $t = Measure-Command { $p = Start-Process -FilePath $Setup -ArgumentList '/S' -Wait -PassThru }
+  Write-Host ("actualizar encima /S: {0:N1} s, exit {1}" -f $t.TotalSeconds, $p.ExitCode)
+  if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
+  Assert ($p.ExitCode -eq 0) "instalar $versionReal encima de 0.0.1 con /S sale con 0"
+  Assert ((Get-ItemProperty $UninstKey).DisplayVersion -eq $versionReal) "la versión instalada ahora es $versionReal"
+  Assert-MarcasIguales $marcas 'tras actualizar'
+  Assert ((Get-Service KrakenOS).Status -eq 'Running') 'el servicio está Running tras actualizar'
+  Assert (Wait-Health (Get-PuertoDatos) 90) '/health/ready da 200 tras actualizar'
+  Assert ((Get-ItemProperty $KrakenKey).CaThumbprint -eq $thumb) 'la CA es la misma (mismo thumbprint en HKLM)'
+  Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'hay una sola CA de KrakenOS en Root'
+  Assert (@(Get-NetFirewallRule -Group KrakenOS).Count -eq $reglas) "las reglas del cortafuegos no se duplican ($reglas)"
+  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 1) 'hay una sola tarea programada'
+  Assert (((& sc.exe qfailure KrakenOS) -join "`n") -match 'RESTART') 'la actualización reinstaló el servicio: vuelven las acciones ante fallo del XML'
+  $nm = Join-Path $dir 'app\agent\node_modules'
+  $rotos = @(Get-ChildItem $nm -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue | Where-Object { $_.LinkType -and -not (Test-Path -LiteralPath $_.FullName) })
+  Write-Host ("enlaces rotos en app\agent\node_modules: {0}" -f $rotos.Count)
+  $rotos | ForEach-Object { Write-Host ("  roto: {0} -> {1}" -f $_.FullName, ($_.Target -join ',')) }
+
+  # La misma versión otra vez: sin cambios ni error.
+  $p = Start-Process -FilePath $Setup -ArgumentList '/S' -Wait -PassThru
+  if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
+  Assert ($p.ExitCode -eq 0) 'reinstalar la misma versión con /S sale con 0'
+  Assert-MarcasIguales $marcas 'tras reinstalar la misma versión'
+  Assert ((Get-Service KrakenOS).Status -eq 'Running') 'el servicio sigue Running tras reinstalar la misma versión'
+  Assert (Wait-Health (Get-PuertoDatos) 90) '/health/ready da 200 tras reinstalar la misma versión'
+  Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'sigue habiendo una sola CA, la misma'
+  Assert (@(Get-NetFirewallRule -Group KrakenOS).Count -eq $reglas) 'las reglas no se duplican al reinstalar la misma versión'
+  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 1) 'sigue habiendo una sola tarea programada'
+}
+
+# Lo que ya había en Program Files y ProgramData con «kraken» en el nombre (nada, en un runner limpio).
+$Script:Antes = @($env:ProgramFiles, $env:ProgramData | ForEach-Object { Get-ChildItem $_ -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'kraken' } | ForEach-Object Name })
+
 Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
 Set-ActiveNetworkPublic
@@ -551,4 +759,6 @@ Phase-Service
 Phase-Tls
 Phase-Firewall
 Phase-Token
+Phase-Uninstall
+Phase-Upgrade
 Write-Host 'Todas las fases en verde'
