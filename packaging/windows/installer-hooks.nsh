@@ -129,16 +129,16 @@
   ${EndIf}
 !macroend
 
-; Lo que NSIS no lista (el log del instalador, restos) se borra aquí, y solo bajo Program Files y fuera de una
-; actualización. Los enlaces de `node_modules` ya se quitaron antes sin seguirlos, así que ningún `RMDir /r`
-; tiene un enlace que seguir.
+; Solo el log del instalador y la carpeta si quedó vacía, bajo Program Files y fuera de una actualización. Nunca
+; `RMDir /r`: sigue junctions (en CI borró lo de fuera). El resto de restos los quitó `uninstall` sin seguir enlaces.
 !macro NSIS_HOOK_POSTUNINSTALL
   ${If} $UpdateMode <> 1
     StrCpy $R0 "$PROGRAMFILES64\"
     StrLen $R1 $R0
     StrCpy $R2 $INSTDIR $R1
     ${If} $R2 == $R0
-      RMDir /r "$INSTDIR"
+      Delete "$INSTDIR\install-error.log"
+      RMDir "$INSTDIR"
     ${EndIf}
   ${EndIf}
 !macroend

@@ -653,6 +653,40 @@ async function quitarMarca(run, valor) {
 }
 
 /**
+ * Borra `ruta` SIN seguir enlaces: un enlace simbólico o una junction se quita ella misma (`unlink`, o
+ * `rmdir` si el SO lo exige) y nunca se desciende por ella. Es lo que `RMDir /r` de NSIS y `rm -r` no
+ * garantizan. `conservar` son nombres de la raíz que se dejan (solo se aplica al primer nivel).
+ */
+async function removeTree(fs, ruta, conservar = [], raiz = true) {
+  const st = await fs.lstat(ruta).catch((e) => {
+    if (e.code === 'ENOENT') return null;
+    throw e;
+  });
+  if (!st) return;
+  if (st.isSymbolicLink() || !st.isDirectory()) {
+    await fs.unlink(ruta).catch(async (e) => {
+      if (!st.isSymbolicLink()) throw e;
+      await fs.rmdir(ruta); // junction/enlace de carpeta en un SO que no deja `unlink`
+    });
+    return;
+  }
+  for (const n of await fs.readdir(ruta)) {
+    if (raiz && conservar.includes(n)) continue;
+    await removeTree(fs, join(ruta, n), conservar, false);
+  }
+  if (!(raiz && conservar.length > 0)) await fs.rmdir(ruta);
+}
+
+// Lo que NSIS borra él (o no puede borrar aún: `node.exe` y `post-install.mjs` están en marcha).
+const LO_DE_NSIS = [
+  'node',
+  'installer',
+  'uninstall.exe',
+  'krakenos-window.exe',
+  'install-error.log',
+];
+
+/**
  * Desinstalación (la lanza PREUNINSTALL, elevada, antes de que NSIS borre ficheros: un `node.exe` vivo
  * bloquearía `Program Files\KrakenOS\node`). Cada paso tolera «ya no existe», así que repetirla da 0, y un
  * fallo no impide los demás: se reportan todos al final. Con `update` (actualizar encima) solo se para el
@@ -666,6 +700,7 @@ export async function uninstallAll({
   fs,
   dataDir,
   serviceExe,
+  installDir,
   purgeData = false,
   update = false,
   removeLinks,
@@ -700,10 +735,13 @@ export async function uninstallAll({
     ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${TAREA_RENOVAR}`]),
   );
   await paso('enlaces', async () => void (await removeLinks?.()));
+  // Lo que NSIS no lista (p. ej. una junction plantada) se quita sin seguirla; si algo falló antes, se deja para diagnosticar.
+  if (installDir && fallos.length === 0)
+    await paso('programa', () => removeTree(fs, installDir, LO_DE_NSIS));
   // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
   if (caOk) await paso('registro', () => quitarMarca(run, purgeData ? undefined : 'CaThumbprint'));
   if (purgeData) {
-    if (esMia) await paso('datos', () => fs.rm(dataDir, { recursive: true, force: true }));
+    if (esMia) await paso('datos', () => removeTree(fs, dataDir));
     else log(msg(lang, 'datosAjenos', dataDir));
   } else log(msg(lang, 'datosConservados', dataDir));
   if (fallos.length > 0) throw new Error(fallos.join('; '));

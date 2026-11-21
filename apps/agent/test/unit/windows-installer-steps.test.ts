@@ -114,6 +114,10 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
       events.push(`rm ${p}`);
       delete nodos[p];
     },
+    unlink: async (p: string) => {
+      events.push(`unlink ${p}`);
+      delete nodos[p];
+    },
     rmdir: async (p: string) => {
       events.push(`rmdir ${p}`);
       delete nodos[p];
@@ -1606,6 +1610,17 @@ describe('entrega del token a la ventana (hook y subcomando)', () => {
 describe('uninstallAll', () => {
   const EXE = join('C:', 'Program Files', 'KrakenOS', 'service', 'KrakenOS-service.exe');
   const THUMB = 'A1B2C3D4E5F60718293A4B5C6D7E8F9012345678';
+  const INST = join('C:', 'Program Files', 'KrakenOS');
+  const RAIZ_INST: Record<string, Nodo['kind']> = {
+    app: 'dir',
+    service: 'dir',
+    node: 'dir',
+    installer: 'dir',
+    'junction-plantada': 'link',
+    'krakenos-window.exe': 'file',
+    'uninstall.exe': 'file',
+    'install-error.log': 'file',
+  };
   const regla = { code: 0, stdout: '' };
 
   /** Máquina con todo instalado: lo que se borra deja de existir (así se prueba también la segunda vez). */
@@ -1616,8 +1631,19 @@ describe('uninstallAll', () => {
       thumb: opt.thumb === undefined ? THUMB : opt.thumb,
       enRoot: opt.thumb !== null,
     };
-    const nodos: Record<string, Nodo> =
-      opt.datos === false ? {} : { [DATOS]: { kind: 'dir', entries: ['.env'] } };
+    const nodos: Record<string, Nodo> = {
+      ...(opt.datos === false ? {} : { [DATOS]: { kind: 'dir', entries: ['.env'] } }),
+      [INST]: {
+        kind: 'dir',
+        entries: [...Object.keys(RAIZ_INST)],
+      },
+      ...Object.fromEntries(
+        Object.entries(RAIZ_INST).map(([n, k]) => [
+          join(INST, n),
+          { kind: k, entries: [] } as Nodo,
+        ]),
+      ),
+    };
     const run = async (cmd: string, args: string[]) => {
       const l = [cmd, ...args].join(' ');
       ev.push(l);
@@ -1653,6 +1679,7 @@ describe('uninstallAll', () => {
     fs: m.fs,
     dataDir: DATOS,
     serviceExe: EXE,
+    installDir: INST,
     purgeData: false,
     update: false,
     removeLinks: async () => void m.ev.push('quitar-enlaces'),
@@ -1677,7 +1704,7 @@ describe('uninstallAll', () => {
     expect(lineas.some((l) => l.startsWith('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f'))).toBe(
       false,
     );
-    expect(lineas.some((l) => l.startsWith('rm ') || l.startsWith('rmdir '))).toBe(false);
+    expect(lineas.some((l) => /^(rm|rmdir|unlink) /.test(l) && l.includes(DATOS))).toBe(false);
   });
 
   it('el thumbprint sale de HKLM: no se lee nada de la carpeta de datos', async () => {
@@ -1732,18 +1759,57 @@ describe('uninstallAll', () => {
   it('sin purgeData nunca se borra la carpeta de datos', async () => {
     const m = maquina();
     await uninstallAll(base(m));
-    expect(m.ev.filter((l) => l.startsWith('rm ') || l.startsWith('rmdir '))).toEqual([]);
+    expect(m.ev.filter((l) => /^(rm|rmdir|unlink) /.test(l) && l.includes(DATOS))).toEqual([]);
     expect(m.nodos[DATOS]).toBeDefined();
   });
 
   it('con purgeData borra los datos y toda la clave de HKLM', async () => {
     const m = maquina();
     await uninstallAll(base(m, { purgeData: true }));
-    expect(m.ev).toContain(`rm ${DATOS}`);
+    expect(m.ev).toContain(`rmdir ${DATOS}`);
     expect(m.ev).toContain('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f');
     expect(m.nodos[DATOS]).toBeUndefined();
     // Los datos se borran DESPUÉS de parar y quitar el servicio (si no, los ficheros están en uso).
-    expect(m.ev.indexOf(`rm ${DATOS}`)).toBeGreaterThan(m.ev.indexOf(`${EXE} uninstall`));
+    expect(m.ev.indexOf(`rmdir ${DATOS}`)).toBeGreaterThan(m.ev.indexOf(`${EXE} uninstall`));
+  });
+
+  it('al borrar los datos, un enlace o junction que haya dentro se quita SIN seguirlo', async () => {
+    const m = maquina();
+    const fuera = join('C:', 'Windows', 'System32');
+    m.nodos[DATOS] = { kind: 'dir', entries: ['trampa', 'a.txt'] };
+    m.nodos[join(DATOS, 'trampa')] = { kind: 'link', entries: [fuera] };
+    m.nodos[join(DATOS, 'a.txt')] = { kind: 'file' };
+    m.nodos[fuera] = { kind: 'dir', entries: ['x.dll'] };
+    m.nodos[join(fuera, 'x.dll')] = { kind: 'file' };
+    await uninstallAll(base(m, { purgeData: true }));
+    expect(m.ev).toContain(`unlink ${join(DATOS, 'trampa')}`);
+    expect(m.ev.some((l) => l.includes(fuera))).toBe(false);
+    expect(m.nodos[join(fuera, 'x.dll')]).toBeDefined();
+  });
+
+  it('quita de Program Files lo que NSIS no lista (sin seguir enlaces) y deja lo que NSIS borrará él', async () => {
+    const m = maquina();
+    await uninstallAll(base(m));
+    for (const n of ['app', 'service', 'junction-plantada'])
+      expect(m.nodos[join(INST, n)]).toBeUndefined();
+    expect(m.ev).toContain(`unlink ${join(INST, 'junction-plantada')}`);
+    // El Node en marcha, el desinstalador, el .exe que NSIS cierra antes de borrar y el log se quedan.
+    for (const n of [
+      'node',
+      'installer',
+      'uninstall.exe',
+      'krakenos-window.exe',
+      'install-error.log',
+    ])
+      expect(m.nodos[join(INST, n)]).toBeDefined();
+  });
+
+  it('no limpia Program Files si antes falló otro paso (queda para diagnosticar)', async () => {
+    const m = maquina();
+    const run = async (cmd: string, args: string[]) =>
+      cmd === 'certutil' ? { code: 5, stdout: 'Acceso denegado' } : m.run(cmd, args);
+    await expect(uninstallAll(base(m, { run }))).rejects.toThrow();
+    expect(m.nodos[join(INST, 'app')]).toBeDefined();
   });
 
   it('con purgeData no borra una carpeta que no lleva la marca de KrakenOS en HKLM', async () => {
@@ -1791,11 +1857,13 @@ describe('installer-hooks.nsh (desinstalar)', () => {
     expect(m).not.toMatch(/Abort/);
   });
 
-  it('POSTUNINSTALL borra lo que sobre de Program Files solo fuera de una actualización y solo bajo Program Files', () => {
+  it('POSTUNINSTALL no usa RMDir /r (en CI siguió una junction plantada y borró lo de fuera): solo el log y la carpeta vacía', () => {
     const m = macro('NSIS_HOOK_POSTUNINSTALL');
+    expect(m).not.toMatch(/RMDir \/r/);
     expect(m).toMatch(/\$UpdateMode <> 1/);
     expect(m).toMatch(/\$PROGRAMFILES64/);
-    expect(m).toMatch(/RMDir \/r "\$INSTDIR"/);
+    expect(m).toMatch(/Delete "\$INSTDIR\\install-error\.log"/);
+    expect(m).toMatch(/RMDir "\$INSTDIR"/);
   });
 
   it('el subcomando uninstall lee --purge-data y --update y usa uninstallAll', () => {

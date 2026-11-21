@@ -129,6 +129,7 @@ async function main() {
         fs,
         dataDir,
         serviceExe,
+        installDir: INSTALL_DIR,
         lang,
         purgeData: resto.includes('--purge-data'),
         update: resto.includes('--update'),

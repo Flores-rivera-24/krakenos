@@ -665,7 +665,7 @@ function Phase-Uninstall {
   Assert ($p.ExitCode -eq 0) 'uninstall.exe /S (servicio parado) sale con 0'
   $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
   Assert ($p.ExitCode -eq 0) 'un segundo uninstall.exe /S (ya sin nada que quitar) sale con 0'
-  Assert (Test-Path (Join-Path $canario 'no-me-borres.txt')) 'la junction plantada en Program Files no se siguió: el fichero de fuera sigue ahí'
+  Assert (Test-Path (Join-Path $canario 'no-me-borres.txt')) 'el fichero de fuera de Program Files sigue existiendo tras desinstalar (la junction plantada no se siguió)'
   Remove-Item -LiteralPath (Join-Path $dir 'junction-plantada') -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $canario -Recurse -Force -ErrorAction SilentlyContinue
   # En sitio el desinstalador no puede borrarse a sí mismo: ese es el único resto admitido; se retira como hace Tauri.
