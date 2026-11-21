@@ -699,7 +699,7 @@ async function removeTree(ctx, ruta, conservar = [], padreReal) {
 
 /**
  * Quita UNA entrada que es (o puede ser) un enlace, sin tocar su destino, y comprueba que se fue: `unlink`,
- * luego `rmdir` y, si Node no pudo (junction con destino por volumen), `cmd /c rmdir`, que quita la junction
+ * luego `rmdir` y, si Node no pudo (junction con destino por volumen), `Directory.Delete` no recursivo de PowerShell, que quita la junction
  * y no sigue el destino. Si aun así queda, falla nombrándola.
  */
 async function quitarPunto({ fs, run }, ruta, info, esCarpeta) {
@@ -709,7 +709,15 @@ async function quitarPunto({ fs, run }, ruta, info, esCarpeta) {
     await fs[op](ruta).catch(() => {});
     if (await hecho()) return;
   }
-  await run('cmd.exe', ['/c', 'rmdir', ruta]);
+  // La ruta la puede nombrar el servicio (Modificar en <datos>): va por el entorno del hijo, nunca en el texto del script.
+  await run(
+    'powershell.exe',
+    [
+      ...PS,
+      `$p = $env:KRAKENOS_RUTA; if ([System.IO.Directory]::Exists($p)) { [System.IO.Directory]::Delete($p, $false) } elseif ([System.IO.File]::Exists($p)) { [System.IO.File]::Delete($p) }`,
+    ],
+    { env: { KRAKENOS_RUTA: ruta } },
+  );
   if (!(await hecho())) throw new Error(`no se pudo quitar ${ruta} (${info})`);
 }
 

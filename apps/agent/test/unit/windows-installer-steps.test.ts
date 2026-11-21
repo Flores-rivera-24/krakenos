@@ -1841,11 +1841,12 @@ describe('uninstallAll', () => {
     expect(m.nodos[DATOS]).toBeUndefined();
   });
 
-  it('si Node no logra quitar un enlace, cmd /c rmdir lo quita (sin seguirlo) y, si tampoco, falla nombrándolo', async () => {
-    const trampa = join(DATOS, 'volumen');
-    const armar = (cmdQuita: boolean) => {
+  it('si Node no logra quitar un enlace, PowerShell lo quita (sin seguirlo, con la ruta por el entorno) y, si tampoco, falla nombrándolo', async () => {
+    const trampa = join(DATOS, 'a&calc.exe %PATH% ^ | !');
+    const armar = (psQuita: boolean) => {
       const m = maquina();
-      m.nodos[DATOS] = { kind: 'dir', entries: ['volumen'] };
+      const llamadas: { cmd: string; args: string[]; env?: Record<string, string> }[] = [];
+      m.nodos[DATOS] = { kind: 'dir', entries: ['a&calc.exe %PATH% ^ | !'] };
       m.nodos[trampa] = { kind: 'link', entries: [] };
       const fs = {
         ...m.fs,
@@ -1854,17 +1855,25 @@ describe('uninstallAll', () => {
           if (p !== trampa) await m.fs.rmdir(p);
         },
       };
-      const run = async (cmd: string, args: string[]) => {
-        if (cmd === 'cmd.exe' && cmdQuita) delete m.nodos[trampa];
+      const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
+        if (o?.env?.KRAKENOS_RUTA) {
+          llamadas.push({ cmd, args, env: o.env });
+          if (psQuita) delete m.nodos[trampa];
+        }
         return m.run(cmd, args);
       };
-      return { m, opts: base(m, { purgeData: true, fs, run }) };
+      return { m, llamadas, opts: base(m, { purgeData: true, fs, run }) };
     };
     const a = armar(true);
     await uninstallAll(a.opts);
-    expect(a.m.ev).toContain(`cmd.exe /c rmdir ${trampa}`);
+    expect(a.llamadas).toHaveLength(1);
+    expect(a.llamadas[0]?.cmd).toBe('powershell.exe');
+    expect(a.llamadas[0]?.env?.KRAKENOS_RUTA).toBe(trampa);
+    // la ruta (con &, %, ^, |, !) NO viaja en los argumentos: solo por el entorno del hijo
+    expect(a.llamadas[0]?.args.join(' ')).not.toContain('calc');
+    expect(a.m.ev.some((l) => l.startsWith('cmd.exe'))).toBe(false);
     const b = armar(false);
-    await expect(uninstallAll(b.opts)).rejects.toThrow(/no se pudo quitar.*volumen/);
+    await expect(uninstallAll(b.opts)).rejects.toThrow(/no se pudo quitar.*calc/);
   });
 
   it('si la propia carpeta de datos resuelve fuera (junction en la raíz), no se entra: se quita solo el punto', async () => {
