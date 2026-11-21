@@ -59,9 +59,6 @@ async function main() {
     join(dir, 'licenses', 'THIRD-PARTY-WINDOWS.txt'),
   );
 
-  // PRUEBA-ROJO-TEMPORAL
-  await writeFile(join(dir, 'licenses', 'relleno.bin'), (await import('node:crypto')).randomBytes(8 * 1048576));
-
   const tmp = await mkdtemp(join(tmpdir(), 'krakenos-nsis-'));
   try {
     const override = join(tmp, 'tauri.override.json');
