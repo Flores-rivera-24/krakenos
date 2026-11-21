@@ -27,6 +27,8 @@ const CATALOGO = {
       `Tus datos se conservan en ${dir}. Para borrarlos, desinstala marcando «borrar los datos» o con /PURGEDATA.`,
     datosAjenos: (dir) =>
       `No se borró ${dir}: no figura como carpeta de datos de KrakenOS en este equipo. Revísala y bórrala a mano si quieres.`,
+    programaAjeno: (dir) =>
+      `No se limpió ${dir}: no es la carpeta estándar de KrakenOS (Program Files\\KrakenOS) y solo se quitó lo que el desinstalador lista. Revísala a mano.`,
     falloDesinstalar: (detalle) => `La desinstalación de KrakenOS dejó restos: ${detalle}`,
   },
   en: {
@@ -56,6 +58,8 @@ const CATALOGO = {
       `Your data is kept in ${dir}. To delete it, uninstall with "delete the data" checked or with /PURGEDATA.`,
     datosAjenos: (dir) =>
       `${dir} was not deleted: it is not registered as a KrakenOS data folder on this PC. Check it and delete it by hand if you want.`,
+    programaAjeno: (dir) =>
+      `${dir} was not cleaned: it is not the standard KrakenOS folder (Program Files\\KrakenOS), so only what the uninstaller lists was removed. Check it by hand.`,
     falloDesinstalar: (detalle) => `The KrakenOS uninstall left some leftovers: ${detalle}`,
   },
 };

@@ -90,6 +90,8 @@ interface Nodo {
   kind: 'dir' | 'link' | 'file';
   entries?: string[];
   text?: string;
+  /** Ruta real que resuelve `realpath` (una junction que `lstat` no ve como enlace). */
+  real?: string;
 }
 function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
   const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
@@ -100,6 +102,7 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
       return { isSymbolicLink: () => n.kind === 'link', isDirectory: () => n.kind === 'dir' };
     },
     readdir: async (p: string) => nodos[p]?.entries ?? [],
+    realpath: async (p: string) => nodos[p]?.real ?? p,
     mkdir: async (p: string, o?: { recursive?: boolean }) => {
       events.push(`mkdir${o?.recursive ? ' -p' : ''} ${p}`);
       if (!o?.recursive && nodos[p]) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
@@ -1405,6 +1408,7 @@ describe('mensajes', () => {
       ['energia', []],
       ['datosConservados', ['C:\\ProgramData\\KrakenOS']],
       ['datosAjenos', ['C:\\ProgramData\\KrakenOS']],
+      ['programaAjeno', ['C:\\Program Files\\Common Files']],
       ['falloDesinstalar', ['boom']],
     ] as const) {
       const es = msg('es', clave, ...args);
@@ -1680,6 +1684,7 @@ describe('uninstallAll', () => {
     dataDir: DATOS,
     serviceExe: EXE,
     installDir: INST,
+    programFiles: join('C:', 'Program Files'),
     purgeData: false,
     update: false,
     removeLinks: async () => void m.ev.push('quitar-enlaces'),
@@ -1687,6 +1692,12 @@ describe('uninstallAll', () => {
     sleep: async () => {},
     ...extra,
   });
+
+  /** Órdenes de borrado del fs falso. */
+  const borrados = (ev: string[]) => ev.filter((l) => /^(rm|rmdir|unlink) /.test(l));
+  /** Borrados que no caen ni bajo la carpeta de instalación ni bajo los datos. */
+  const sueltos = (ev: string[]) =>
+    borrados(ev).filter((l) => !l.includes(INST) && !l.includes(DATOS));
 
   it('quita servicio, regla, CA (por el thumbprint de HKLM), tarea, enlaces y la marca de la CA, y conserva los datos', async () => {
     const m = maquina();
@@ -1704,7 +1715,8 @@ describe('uninstallAll', () => {
     expect(lineas.some((l) => l.startsWith('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f'))).toBe(
       false,
     );
-    expect(lineas.some((l) => /^(rm|rmdir|unlink) /.test(l) && l.includes(DATOS))).toBe(false);
+    expect(borrados(lineas).filter((l) => l.includes(DATOS))).toEqual([]);
+    expect(sueltos(lineas)).toEqual([]);
   });
 
   it('el thumbprint sale de HKLM: no se lee nada de la carpeta de datos', async () => {
@@ -1759,7 +1771,8 @@ describe('uninstallAll', () => {
   it('sin purgeData nunca se borra la carpeta de datos', async () => {
     const m = maquina();
     await uninstallAll(base(m));
-    expect(m.ev.filter((l) => /^(rm|rmdir|unlink) /.test(l) && l.includes(DATOS))).toEqual([]);
+    expect(borrados(m.ev).filter((l) => l.includes(DATOS))).toEqual([]);
+    expect(sueltos(m.ev)).toEqual([]);
     expect(m.nodos[DATOS]).toBeDefined();
   });
 
@@ -1812,13 +1825,63 @@ describe('uninstallAll', () => {
     expect(m.nodos[join(INST, 'app')]).toBeDefined();
   });
 
+  it('una junction que lstat ve como carpeta pero cuyo realpath cae fuera NO se recorre: se quita solo ella', async () => {
+    const m = maquina();
+    const fuera = join('C:', 'Windows', 'System32');
+    m.nodos[DATOS] = { kind: 'dir', entries: ['volumen', 'a.txt'] };
+    m.nodos[join(DATOS, 'volumen')] = { kind: 'dir', entries: ['x.dll'], real: fuera };
+    m.nodos[join(DATOS, 'volumen', 'x.dll')] = { kind: 'file' };
+    m.nodos[join(DATOS, 'a.txt')] = { kind: 'file' };
+    m.nodos[fuera] = { kind: 'dir', entries: ['x.dll'] };
+    m.nodos[join(fuera, 'x.dll')] = { kind: 'file' };
+    await uninstallAll(base(m, { purgeData: true }));
+    expect(m.ev).toContain(`rmdir ${join(DATOS, 'volumen')}`);
+    expect(m.ev.some((l) => l.includes('x.dll'))).toBe(false);
+    expect(m.nodos[join(fuera, 'x.dll')]).toBeDefined();
+    expect(m.nodos[DATOS]).toBeUndefined();
+  });
+
+  it('si la propia carpeta de datos resuelve fuera (junction en la raíz), no se entra: se quita solo el punto', async () => {
+    const m = maquina();
+    const fuera = join('C:', 'Users');
+    m.nodos[DATOS] = { kind: 'dir', entries: ['x.txt'], real: fuera };
+    m.nodos[join(DATOS, 'x.txt')] = { kind: 'file' };
+    await uninstallAll(base(m, { purgeData: true }));
+    expect(borrados(m.ev).filter((l) => l.includes(DATOS))).toEqual([`rmdir ${DATOS}`]);
+  });
+
+  it('la comparación de la ruta real no distingue mayúsculas ni separadores', async () => {
+    const m = maquina();
+    m.nodos[DATOS] = { kind: 'dir', entries: ['a.txt'], real: 'c:\\programdata\\krakenos' };
+    m.nodos[join(DATOS, 'a.txt')] = { kind: 'file' };
+    await uninstallAll(base(m, { purgeData: true }));
+    expect(m.ev).toContain(`unlink ${join(DATOS, 'a.txt')}`);
+  });
+
+  it('solo limpia Program Files si installDir es exactamente %ProgramFiles%\\KrakenOS (sin mayúsculas)', async () => {
+    const otra = join('C:', 'Program Files', 'Common Files');
+    const m = maquina();
+    m.nodos[otra] = { kind: 'dir', entries: ['dll'] };
+    m.nodos[join(otra, 'dll')] = { kind: 'file' };
+    const avisos: string[] = [];
+    await uninstallAll(base(m, { installDir: otra, log: (l: string) => avisos.push(l) }));
+    expect(borrados(m.ev).filter((l) => l.includes(otra))).toEqual([]);
+    expect(m.nodos[join(otra, 'dll')]).toBeDefined();
+    expect(avisos.join('\n')).toContain(otra);
+
+    const m2 = maquina();
+    await uninstallAll(base(m2, { programFiles: 'c:\\PROGRAM FILES\\' }));
+    expect(m2.nodos[join(INST, 'app')]).toBeUndefined();
+  });
+
   it('con purgeData no borra una carpeta que no lleva la marca de KrakenOS en HKLM', async () => {
     const m = maquina();
     const run = async (cmd: string, args: string[]) =>
       [cmd, ...args].join(' ').includes('/v DataDir') ? { code: 1, stdout: '' } : m.run(cmd, args);
     const avisos: string[] = [];
     await uninstallAll(base(m, { purgeData: true, run, log: (l: string) => avisos.push(l) }));
-    expect(m.ev.some((l) => l.startsWith('rm '))).toBe(false);
+    expect(borrados(m.ev).filter((l) => l.includes(DATOS))).toEqual([]);
+    expect(m.nodos[DATOS]).toBeDefined();
     expect(avisos.join('\n')).toContain(DATOS);
   });
 
@@ -1851,10 +1914,11 @@ describe('installer-hooks.nsh (desinstalar)', () => {
     expect(m).toMatch(/--purge-data/);
   });
 
-  it('un fallo de la desinstalación se dice, pero no impide que NSIS termine', () => {
+  it('un fallo de la desinstalación aborta ANTES de que NSIS borre nada y no se pierde el log', () => {
     const m = macro('NSIS_HOOK_PREUNINSTALL');
-    expect(m).toMatch(/\$\{If\} \$0 != 0[\s\S]*DetailPrint/);
-    expect(m).not.toMatch(/Abort/);
+    expect(m).toMatch(/\$\{If\} \$0 != 0[\s\S]*DetailPrint[\s\S]*Abort/);
+    // el log del instalador solo se borra en POSTUNINSTALL, que un Abort no alcanza
+    expect(m).not.toMatch(/install-error\.log/);
   });
 
   it('POSTUNINSTALL no usa RMDir /r (en CI siguió una junction plantada y borró lo de fuera): solo el log y la carpeta vacía', () => {

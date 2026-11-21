@@ -662,9 +662,22 @@ function Phase-Uninstall {
 
   # Servicio ya parado. `_?=` (ruta sin comillas, la última): el desinstalador corre en sitio y devuelve su código.
   Stop-Service KrakenOS
+  # Un fallo real de `uninstall` (manifiesto de enlaces ilegible) debe abortar con código != 0 y conservar el
+  # desinstalador, el Node y el log; reparado el motivo, repetir la desinstalación termina bien (es idempotente).
+  $links = Join-Path $dir 'app\links.json'
+  $copiaLinks = Join-Path ([IO.Path]::GetTempPath()) 'krakenos-links.json.bak'
+  Copy-Item -LiteralPath $links -Destination $copiaLinks -Force
+  Set-Content -LiteralPath $links '{esto no es json'
+  $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
+  Assert ($p.ExitCode -ne 0) "si la desinstalación falla, uninstall.exe /S sale con código distinto de 0 ($($p.ExitCode))"
+  Assert (Test-Path (Join-Path $dir 'install-error.log')) 'tras el fallo sigue install-error.log (el único rastro del motivo)'
+  Assert (Test-Path $un) 'tras el fallo sigue uninstall.exe, para poder reintentar'
+  Assert (Test-Path (Join-Path $dir 'node\node.exe')) 'tras el fallo sigue node.exe, para poder reintentar'
+  Copy-Item -LiteralPath $copiaLinks -Destination $links -Force
+  Remove-Item -LiteralPath $copiaLinks -Force
   $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
   if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
-  Assert ($p.ExitCode -eq 0) 'uninstall.exe /S (servicio parado) sale con 0'
+  Assert ($p.ExitCode -eq 0) 'uninstall.exe /S (servicio parado; reintento tras el fallo) sale con 0'
   $p = Start-Process -FilePath $un -ArgumentList "/S _?=$dir" -Wait -PassThru
   Assert ($p.ExitCode -eq 0) 'un segundo uninstall.exe /S (ya sin nada que quitar) sale con 0'
   Assert (Test-Path (Join-Path $canario 'no-me-borres.txt')) 'el fichero de fuera de Program Files sigue existiendo tras desinstalar (la junction plantada no se siguió)'
@@ -687,12 +700,29 @@ function Phase-Uninstall {
   Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'hay una sola CA de KrakenOS en Root y es la misma'
   Assert-MarcasIguales $marcas 'tras reinstalar'
 
+  # Canarios en <datos> (que el servicio puede escribir): una junction normal y otra con destino por volumen
+  # (`\\?\Volume{GUID}\…`), que Node puede no ver como enlace. `/PURGEDATA` no debe borrar lo de fuera.
+  $canDatos = Join-Path ([IO.Path]::GetTempPath()) 'krakenos-canario-datos'
+  $canVol = Join-Path ([IO.Path]::GetTempPath()) 'krakenos-canario-volumen'
+  foreach ($c in $canDatos, $canVol) { New-Item -ItemType Directory -Force $c | Out-Null; Set-Content (Join-Path $c 'no-me-borres.txt') 'canario' }
+  New-Item -ItemType Junction -Path (Join-Path $datos 'junction-plantada') -Target $canDatos | Out-Null
+  $volPlantada = $false
+  try {
+    $unico = (Get-Volume -DriveLetter $env:SystemDrive.TrimEnd(':') -ErrorAction Stop).UniqueId
+    New-Item -ItemType Junction -Path (Join-Path $datos 'junction-volumen') -Target ($unico + $canVol.Substring(3)) -ErrorAction Stop | Out-Null
+    $volPlantada = $true
+  } catch { Write-Host "::warning::no se pudo plantar la junction por volumen: $($_.Exception.Message)" }
+  Write-Host "junction por volumen plantada: $volPlantada"
+
   # El desinstalador normal (sin `_?=`): se copia a %TEMP% y el original sale al momento; se espera a la copia.
   $p = Start-Process -FilePath $un -ArgumentList '/S /PURGEDATA' -Wait -PassThru
   Assert ($p.ExitCode -eq 0) 'uninstall.exe /S /PURGEDATA sale con 0'
   if (-not (Wait-Desinstalador $dir 180)) { Show-InstallErrorLog }
   Assert (Wait-Desinstalador $dir 1) 'el desinstalador termina y Program Files\KrakenOS desaparece del todo'
   Assert (-not (Test-Path $datos)) '/PURGEDATA borra también %ProgramData%\KrakenOS'
+  Assert (Test-Path (Join-Path $canDatos 'no-me-borres.txt')) '/PURGEDATA no sigue una junction plantada en <datos>: el fichero de fuera sigue existiendo'
+  if ($volPlantada) { Assert (Test-Path (Join-Path $canVol 'no-me-borres.txt')) '/PURGEDATA no sigue una junction por volumen plantada en <datos>: el fichero de fuera sigue existiendo' }
+  Remove-Item -LiteralPath $canDatos, $canVol -Recurse -Force -ErrorAction SilentlyContinue
   Assert-SinResiduos 'tras desinstalar con /PURGEDATA' @($thumb)
 }
 

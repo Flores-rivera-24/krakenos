@@ -6,7 +6,7 @@
  * Nunca se lee ni se escribe el token de setup: lo crea el agente y no pasa por aquí.
  */
 import { createHash, createPrivateKey, createPublicKey, X509Certificate } from 'node:crypto';
-import { join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { msg } from './mensajes.mjs';
 
 export const SERVICE = 'KrakenOS';
@@ -652,12 +652,21 @@ async function quitarMarca(run, valor) {
   if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
 }
 
+const normRuta = (p) =>
+  String(p).replaceAll('\\', '/').replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
+
 /**
  * Borra `ruta` SIN seguir enlaces: un enlace simbólico o una junction se quita ella misma (`unlink`, o
  * `rmdir` si el SO lo exige) y nunca se desciende por ella. Es lo que `RMDir /r` de NSIS y `rm -r` no
- * garantizan. `conservar` son nombres de la raíz que se dejan (solo se aplica al primer nivel).
+ * garantizan. `lstat` no basta: Node no ve como enlace una junction cuyo destino es `\\??\\Volume{GUID}\\…`,
+ * así que antes de descender a una carpeta su `realpath` (que resuelve cualquier punto de reanálisis) debe
+ * ser `<realpath del padre>\<nombre>`; si no, se quita solo el punto (`rmdir`) y no se baja.
+ * `conservar` son nombres de la raíz que se dejan (solo se aplica al primer nivel).
+ * shortcut: queda una carrera entre el `realpath` y el `readdir` (cambiar una carpeta ya comprobada por una
+ * junction); el servicio ya está desinstalado cuando se purga, y solo la ganaría un proceso huérfano suyo.
  */
-async function removeTree(fs, ruta, conservar = [], raiz = true) {
+async function removeTree(fs, ruta, conservar = [], padreReal) {
+  const raiz = padreReal === undefined;
   const st = await fs.lstat(ruta).catch((e) => {
     if (e.code === 'ENOENT') return null;
     throw e;
@@ -670,9 +679,15 @@ async function removeTree(fs, ruta, conservar = [], raiz = true) {
     });
     return;
   }
+  const real = await fs.realpath(ruta);
+  const esperada = join(padreReal ?? (await fs.realpath(dirname(ruta))), basename(ruta));
+  if (normRuta(real) !== normRuta(esperada)) {
+    await fs.rmdir(ruta); // punto de reanálisis que Node no ve como enlace: solo él, sin bajar
+    return;
+  }
   for (const n of await fs.readdir(ruta)) {
     if (raiz && conservar.includes(n)) continue;
-    await removeTree(fs, join(ruta, n), conservar, false);
+    await removeTree(fs, join(ruta, n), conservar, real);
   }
   if (!(raiz && conservar.length > 0)) await fs.rmdir(ruta);
 }
@@ -701,6 +716,7 @@ export async function uninstallAll({
   dataDir,
   serviceExe,
   installDir,
+  programFiles,
   purgeData = false,
   update = false,
   removeLinks,
@@ -736,8 +752,12 @@ export async function uninstallAll({
   );
   await paso('enlaces', async () => void (await removeLinks?.()));
   // Lo que NSIS no lista (p. ej. una junction plantada) se quita sin seguirla; si algo falló antes, se deja para diagnosticar.
-  if (installDir && fallos.length === 0)
-    await paso('programa', () => removeTree(fs, installDir, LO_DE_NSIS));
+  // Solo en la carpeta propia (`/D=` deja elegir cualquier subcarpeta de Program Files: vaciar `Common Files` no).
+  if (installDir && fallos.length === 0) {
+    if (programFiles && normRuta(installDir) === normRuta(join(programFiles, 'KrakenOS')))
+      await paso('programa', () => removeTree(fs, installDir, LO_DE_NSIS));
+    else log(msg(lang, 'programaAjeno', installDir));
+  }
   // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
   if (caOk) await paso('registro', () => quitarMarca(run, purgeData ? undefined : 'CaThumbprint'));
   if (purgeData) {

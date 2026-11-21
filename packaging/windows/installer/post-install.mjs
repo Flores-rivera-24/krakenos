@@ -130,6 +130,7 @@ async function main() {
         dataDir,
         serviceExe,
         installDir: INSTALL_DIR,
+        programFiles: process.env.ProgramW6432 ?? process.env.ProgramFiles,
         lang,
         purgeData: resto.includes('--purge-data'),
         update: resto.includes('--update'),

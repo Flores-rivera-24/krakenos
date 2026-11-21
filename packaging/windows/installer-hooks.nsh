@@ -98,7 +98,7 @@
 ; reglas del cortafuegos, CA de Root, tarea de renovación, claves de HKLM, enlaces), con el Node empaquetado: un
 ; node.exe vivo bloquearía `Program Files\KrakenOS\node`. Al actualizar encima (`/UPDATE`) solo se para el
 ; servicio. Los datos solo se borran con `/PURGEDATA` (silencioso) o con la casilla «borrar los datos» de Tauri,
-; que viene desmarcada. Un fallo se dice, pero no impide que la desinstalación termine.
+; que viene desmarcada. Un fallo aborta la desinstalación con sus ficheros intactos, para poder repetirla.
 ; (`/PURGEDATA` empieza por `/P`, así que Tauri lo toma también como `/P`: modo pasivo, sin pregunta; es lo que
 ; se quiere con ese interruptor.)
 !macro NSIS_HOOK_PREUNINSTALL
@@ -125,6 +125,9 @@
     Pop $0
     ${If} $0 != 0
       DetailPrint "La desinstalación de KrakenOS dejó restos (resultado: $0)"
+      ; Abort ANTES de que NSIS borre nada: se conservan uninstall.exe, node y el log del instalador (el motivo) y volver
+      ; a desinstalar es seguro (cada paso tolera «ya no existe»). Con /S sale con código distinto de 0.
+      Abort "La desinstalación de KrakenOS no terminó (resultado: $0). Mira el registro de errores en la carpeta de instalación y vuelve a desinstalar."
     ${EndIf}
   ${EndIf}
 !macroend
