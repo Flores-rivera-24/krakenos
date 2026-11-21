@@ -585,7 +585,7 @@ function Get-Residuos([string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir
 function Assert-SinResiduos([string]$Que, [string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir = @()) {
   $r = Get-Residuos $Thumbs -Conservar:$Conservar -Permitir $Permitir
   if ($r.Count -gt 0) { $r | ForEach-Object { Write-Host "  residuo: $_" } }
-  Assert ($r.Count -eq 0) "$Que: no queda ningún residuo (lista de residuos vacía)"
+  Assert ($r.Count -eq 0) "${Que}: no queda ningún residuo (lista de residuos vacía)"
 }
 
 # Marcas de los datos de un usuario: la clave JWT, el .env (con una línea propia) y un fichero de data\.
@@ -608,8 +608,8 @@ function Set-Marcas {
 
 function Assert-MarcasIguales($Antes, [string]$Que) {
   $ahora = Get-Marcas
-  foreach ($k in $Antes.Keys) { Assert ($ahora[$k] -eq $Antes[$k]) "$Que: la marca '$k' (suma SHA256) es idéntica" }
-  Assert ((Get-Content (Join-Path $env:ProgramData 'KrakenOS\.env')) -contains '# marca-de-prueba: este .env lo editó el usuario') "$Que: el .env conserva la línea propia"
+  foreach ($k in $Antes.Keys) { Assert ($ahora[$k] -eq $Antes[$k]) "${Que}: la marca '$k' (suma SHA256) es idéntica" }
+  Assert ((Get-Content (Join-Path $env:ProgramData 'KrakenOS\.env')) -contains '# marca-de-prueba: este .env lo editó el usuario') "${Que}: el .env conserva la línea propia"
 }
 
 function Get-PuertoDatos {
