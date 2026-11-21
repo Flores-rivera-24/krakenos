@@ -486,6 +486,53 @@ export async function writeWindowJson({ dataDir, origin, run, fs }) {
     throw new Error(`${f} no es un fichero normal tras crearlo: se rechaza.`);
 }
 
+const TOKEN_MAX = 256;
+const TOKEN_RE = /^[A-Za-z0-9._~-]+$/;
+
+/**
+ * Lee `<datos>/setup-token` (lo escribe el servicio; el instalador va elevado). El fichero es del servicio:
+ * solo se lee si es normal (ni enlace ni junction: `lstat` no los sigue), de ≤256 bytes y con un solo
+ * enlace duro, y se abre por la ruta tras comprobarlo. Nunca lanza por el contenido: devuelve `null` y
+ * `warn` recibe solo la ruta, jamás el contenido.
+ */
+export async function readSetupToken({
+  file,
+  waitMs,
+  fs,
+  warn = () => {},
+  sleep = dormir,
+  intervalMs = 250,
+}) {
+  let st = null;
+  for (let t = 0; ; t += intervalMs) {
+    st = await fs.lstat(file).catch(() => null);
+    if (st || t >= waitMs) break;
+    await sleep(intervalMs);
+  }
+  if (!st) return null;
+  const rechazo = () => {
+    warn(`${file} no es un fichero normal de un token de setup: no se lee`);
+    return null;
+  };
+  if (st.isSymbolicLink() || !st.isFile() || st.size > TOKEN_MAX) return rechazo();
+  let h;
+  let texto;
+  try {
+    h = await fs.open(file, 'r');
+    const fst = await h.stat();
+    if (!fst.isFile() || fst.nlink > 1 || fst.size > TOKEN_MAX) return rechazo();
+    const buf = Buffer.alloc(TOKEN_MAX + 1);
+    const { bytesRead } = await h.read(buf, 0, TOKEN_MAX + 1, 0);
+    if (bytesRead > TOKEN_MAX) return rechazo();
+    texto = buf.toString('utf8', 0, bytesRead).trim();
+  } catch {
+    return rechazo();
+  } finally {
+    await h?.close().catch(() => {});
+  }
+  return TOKEN_RE.test(texto) ? texto : rechazo();
+}
+
 /** Tarea semanal como SYSTEM: el `.mjs` sale de `Program Files`; la carpeta de datos solo viaja de argumento. */
 export async function registerRenewalTask({ installDir, dataDir, run }) {
   const tr = `"${join(installDir, 'node', 'node.exe')}" "${join(installDir, 'installer', 'renew-tls.mjs')}" "${dataDir}"`;

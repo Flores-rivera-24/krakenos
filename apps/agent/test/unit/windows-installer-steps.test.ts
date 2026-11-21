@@ -9,7 +9,7 @@ import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, registerRenewalTask, runInstall, setupTls, showDialog, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
@@ -1402,5 +1402,164 @@ describe('installer-hooks.nsh (servicio)', () => {
 
   it('ningún hook escribe el token de setup en el log', () => {
     expect(nsh).not.toMatch(/DetailPrint[^\n]*(token|TOKEN)/);
+  });
+});
+
+describe('readSetupToken', () => {
+  const FILE = join(DATOS, 'setup-token');
+  const TOKEN = 'AbC123._~-tokenDePrueba';
+  /** `fs` falso: registra qué se abre; `lst` lo que ve lstat, `contenido` lo que lee el descriptor. */
+  function tokenFs(
+    lst: null | { link?: boolean; file?: boolean; size?: number },
+    contenido = TOKEN,
+    nlink = 1,
+  ) {
+    const llamadas: string[] = [];
+    return {
+      llamadas,
+      lstat: async (p: string) => {
+        llamadas.push(`lstat ${p}`);
+        if (!lst) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        return {
+          isSymbolicLink: () => !!lst.link,
+          isFile: () => lst.file ?? !lst.link,
+          size: lst.size ?? Buffer.byteLength(contenido),
+        };
+      },
+      open: async (p: string) => {
+        llamadas.push(`open ${p}`);
+        return {
+          stat: async () => ({ isFile: () => true, size: Buffer.byteLength(contenido), nlink }),
+          read: async (b: Buffer, o: number, n: number) => {
+            const w = Buffer.from(contenido).subarray(0, n);
+            w.copy(b, o);
+            return { bytesRead: w.length };
+          },
+          close: async () => {
+            llamadas.push('close');
+          },
+        };
+      },
+    };
+  }
+  const leer = (fs: ReturnType<typeof tokenFs>, warn: (m: string) => void = () => {}) =>
+    readSetupToken({ file: FILE, waitMs: 0, fs, warn, sleep: async () => {} });
+
+  it('devuelve el token de un fichero normal (sin espacios finales)', async () => {
+    expect(await leer(tokenFs({}, `${TOKEN}\r\n`))).toBe(TOKEN);
+  });
+
+  it('ausente tras waitMs (actualización: ya hay admin) devuelve null, tras reintentar', async () => {
+    const fs = tokenFs(null);
+    const r = await readSetupToken({
+      file: FILE,
+      waitMs: 1000,
+      fs,
+      sleep: async () => {},
+      intervalMs: 250,
+    });
+    expect(r).toBeNull();
+    expect(fs.llamadas.filter((l) => l.startsWith('lstat')).length).toBeGreaterThan(2);
+  });
+
+  it('si aparece mientras espera, lo lee', async () => {
+    const fs = tokenFs({});
+    let n = 0;
+    const lstat = fs.lstat;
+    fs.lstat = async (p: string) => (n++ < 2 ? Promise.reject(new Error('ENOENT')) : lstat(p));
+    const r = await readSetupToken({ file: FILE, waitMs: 5000, fs, sleep: async () => {} });
+    expect(r).toBe(TOKEN);
+  });
+
+  it('un enlace simbólico (o junction) da null y NO se abre el destino', async () => {
+    const fs = tokenFs({ link: true });
+    expect(await leer(fs)).toBeNull();
+    expect(fs.llamadas.some((l) => l.startsWith('open'))).toBe(false);
+  });
+
+  it('un directorio da null sin abrirlo', async () => {
+    const fs = tokenFs({ file: false });
+    expect(await leer(fs)).toBeNull();
+    expect(fs.llamadas.some((l) => l.startsWith('open'))).toBe(false);
+  });
+
+  it('1 MB de basura da null sin abrirlo', async () => {
+    const fs = tokenFs({ size: 1024 * 1024 }, 'x'.repeat(1024 * 1024));
+    expect(await leer(fs)).toBeNull();
+    expect(fs.llamadas.some((l) => l.startsWith('open'))).toBe(false);
+  });
+
+  it('si crece entre lstat y la lectura (>256 bytes leídos) da null y cierra el descriptor', async () => {
+    const fs = tokenFs({ size: 10 }, 'a'.repeat(300));
+    expect(await leer(fs)).toBeNull();
+    expect(fs.llamadas).toContain('close');
+  });
+
+  it('un fichero con más de un enlace duro da null', async () => {
+    expect(await leer(tokenFs({}, TOKEN, 2))).toBeNull();
+  });
+
+  it.each(['tok en con espacios', 'tok/../x', 'tok;calc', '', 'ñandú'])(
+    'caracteres fuera del alfabeto (%j) dan null',
+    async (c) => {
+      expect(await leer(tokenFs({}, c))).toBeNull();
+    },
+  );
+
+  it('nunca lanza por contenido raro y el warn recibe solo la ruta, no el contenido', async () => {
+    const avisos: string[] = [];
+    const secreto = 'sec ret;&';
+    expect(await leer(tokenFs({}, secreto), (m) => avisos.push(m))).toBeNull();
+    expect(avisos.length).toBeGreaterThan(0);
+    for (const a of avisos) {
+      expect(a).toContain(FILE);
+      expect(a).not.toContain(secreto);
+    }
+    const buenos: string[] = [];
+    await leer(tokenFs({}), (m) => buenos.push(m));
+    expect(buenos.join('')).not.toContain(TOKEN);
+  });
+
+  it('un error al abrir da null', async () => {
+    const fs = tokenFs({});
+    fs.open = async () => {
+      throw new Error('EPERM');
+    };
+    expect(await leer(fs)).toBeNull();
+  });
+});
+
+describe('entrega del token a la ventana (hook y subcomando)', () => {
+  const nsh = readFileSync(
+    resolve(__dirname, '../../../../packaging/windows/installer-hooks.nsh'),
+    'utf8',
+  );
+  const post = nsh.split('!macro NSIS_HOOK_POSTINSTALL')[1]?.split('!macroend')[0] ?? '';
+  const subcmd = readFileSync(
+    resolve(__dirname, '../../../../packaging/windows/installer/post-install.mjs'),
+    'utf8',
+  );
+
+  it('solo si el instalador no es silencioso captura el token y lanza la ventana sin elevar', () => {
+    expect(post).toMatch(/\$\{IfNot\} \$\{Silent\}[\s\S]*post-install\.mjs" setup-token/);
+    expect(post).toMatch(/nsExec::ExecToStack/);
+    expect(post).toMatch(
+      /nsis_tauri_utils::RunAsUser "\$INSTDIR\\krakenos-window\.exe" "--setup-token \$1"/,
+    );
+    // Sin token (o fallo del subcomando): la ventana se abre sin argumentos.
+    expect(post).toMatch(/RunAsUser "\$INSTDIR\\krakenos-window\.exe" ""/);
+  });
+
+  it('el token solo viaja a RunAsUser: ni DetailPrint, ni MessageBox, ni log; y se borra de la pila', () => {
+    expect(nsh).not.toMatch(/(DetailPrint|MessageBox|FileWrite)[^\n]*\$1/);
+    expect(post).toMatch(/StrCpy \$1 ""/);
+  });
+
+  it('el subcomando setup-token imprime solo el token por stdout y no falla la instalación', () => {
+    expect(subcmd).toMatch(/orden === 'setup-token'/);
+    expect(subcmd).toMatch(/process\.stdout\.write\(token\)/);
+    // Sus avisos no pueden ir a stdout ni stderr (ExecToStack mezcla ambos): van al log junto al instalador.
+    const rama = subcmd.split("orden === 'setup-token'")[1]?.split('else if')[0] ?? '';
+    expect(rama).not.toMatch(/console\./);
   });
 });

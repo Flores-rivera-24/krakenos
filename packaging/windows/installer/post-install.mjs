@@ -1,5 +1,5 @@
 /**
- * `node post-install.mjs install|stop|uninstall [--lang es|en] [--interactive]`: lo ejecuta el instalador (elevado)
+ * `node post-install.mjs install|stop|uninstall|setup-token [--lang es|en] [--interactive]`: lo ejecuta el instalador (elevado)
  * con el Node empaquetado, desde `Program Files\KrakenOS\installer`. Sale con código distinto de 0
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
@@ -13,7 +13,7 @@ import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { msg } from './mensajes.mjs';
-import { runInstall, showDialog, stopService, uninstallService } from './steps.mjs';
+import { readSetupToken, runInstall, showDialog, stopService, uninstallService } from './steps.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const INSTALL_DIR = join(AQUI, '..');
@@ -56,6 +56,18 @@ function makeGet(dataDir) {
     });
 }
 
+/** En silencio nadie ve la consola del hook: queda junto al instalador (solo admin escribe). */
+function registrar(texto) {
+  try {
+    appendFileSync(
+      join(INSTALL_DIR, 'install-error.log'),
+      `${new Date().toISOString()} ${texto}\n`,
+    );
+  } catch {
+    /* sin log, el aviso se pierde; nunca se escribe por la consola */
+  }
+}
+
 async function main() {
   const [orden, ...resto] = process.argv.slice(2);
   const lang = resto[resto.indexOf('--lang') + 1] === 'en' ? 'en' : 'es';
@@ -87,21 +99,22 @@ async function main() {
         ask: (text, title) => showDialog({ run, title, text, yesNo: true }),
         notify: (text, title) => showDialog({ run, title, text, yesNo: false }),
       });
+    } else if (orden === 'setup-token') {
+      // Solo el token por stdout (lo captura NSIS, que mezcla stdout y stderr): los avisos van al log.
+      const token = await readSetupToken({
+        file: join(dataDir, 'setup-token'),
+        waitMs: 5000,
+        fs,
+        warn: (m) => registrar(`setup-token: ${m}`),
+      });
+      if (token) process.stdout.write(token);
     } else if (orden === 'stop') await stopService({ serviceExe, run });
     else if (orden === 'uninstall') await uninstallService({ serviceExe, run });
     else throw new Error(`orden desconocida: ${orden}`);
   } catch (e) {
     const texto = msg(lang, 'fallo', e.message);
     console.error(texto);
-    // En silencio nadie ve la consola del hook: queda también junto al instalador (solo admin escribe).
-    try {
-      appendFileSync(
-        join(INSTALL_DIR, 'install-error.log'),
-        `${new Date().toISOString()} ${texto}\n`,
-      );
-    } catch {
-      /* el mensaje ya salió por la consola */
-    }
+    registrar(texto);
     process.exit(1);
   }
 }

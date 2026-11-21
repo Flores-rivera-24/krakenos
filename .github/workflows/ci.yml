@@ -555,6 +555,7 @@ jobs:
           nsi=apps/window/src-tauri/target/release/nsis/x64/installer.nsi
           grep -Eq '^[[:space:]]*!include[[:space:]]+"?StrFunc\.nsh' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no incluye StrFunc.nsh (lo usa el hook)"; exit 1; }
           grep -Eq '^[[:space:]]*\$\{StrLoc\}[[:space:]]*$' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no declara \${StrLoc} (lo usa el hook)"; exit 1; }
+          grep -q 'nsis_tauri_utils::RunAsUser' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no trae nsis_tauri_utils::RunAsUser (lo usa el hook para abrir la ventana sin elevar)"; exit 1; }
 
       # Negativo de la suma de WinSW: con un byte alterado en la caché, `package-windows.mjs` TIENE que
       # fallar por la suma (y no por otra cosa). Si pasara, la verificación sería decorativa.

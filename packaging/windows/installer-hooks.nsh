@@ -74,6 +74,24 @@
     DetailPrint "El servicio de KrakenOS no quedó en marcha (resultado: $0)"
     Abort "El servicio de KrakenOS no quedó en marcha (resultado: $0). Mira los mensajes anteriores y %ProgramData%\KrakenOS\logs."
   ${EndIf}
+
+  ; La ventana se abre SIN elevar (RunAsUser, el mismo plugin de la plantilla de Tauri) con el token de
+  ; setup, que solo el instalador elevado puede leer (el fichero sigue cerrado a Users). Va en $1 hasta
+  ; RunAsUser: nunca a DetailPrint, MessageBox ni log, y se borra después. En silencio no hay sesión que abrir.
+  ; Sin token (actualización, fichero raro, fallo del subcomando) la ventana se abre sin argumentos.
+  ${IfNot} ${Silent}
+    nsExec::ExecToStack '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" setup-token'
+    Pop $0
+    Pop $1
+    ${If} $0 == 0
+    ${AndIf} $1 != ""
+      nsis_tauri_utils::RunAsUser "$INSTDIR\krakenos-window.exe" "--setup-token $1"
+    ${Else}
+      nsis_tauri_utils::RunAsUser "$INSTDIR\krakenos-window.exe" ""
+    ${EndIf}
+    Pop $0
+    StrCpy $1 ""
+  ${EndIf}
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL

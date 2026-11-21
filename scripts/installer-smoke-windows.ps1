@@ -486,6 +486,62 @@ function Phase-Firewall {
   Assert ($p.NetworkCategory -eq 'Public') "tras instalar en silencio la red sigue Pública ($($p.NetworkCategory))"
 }
 
+# Fase 6 (Task 6): el token de setup sigue cerrado a Users (un usuario local sin privilegios no lo lee ni lista
+# los datos) y `window.json`, lo único que lee la ventana sin elevar, sí; y en /S no hay ventana. Nunca se
+# imprime el token: el proceso del usuario de prueba solo devuelve palabras (DENIED/OK).
+function Phase-Token {
+  Write-Host "== Phase-Token"
+  $datos = Join-Path $env:ProgramData 'KrakenOS'
+  $f = Join-Path $datos 'setup-token'
+  $null = Register-SetupToken @($datos)
+  Assert (Test-Path $f) 'con el agente recién arrancado existe <datos>\setup-token'
+  Assert (@(Get-Process -Name 'krakenos-window' -ErrorAction SilentlyContinue).Count -eq 0) 'en /S no queda ningún krakenos-window.exe (no hay sesión que abrir)'
+
+  $nombre = 'krsmoke'
+  $clave = [guid]::NewGuid().ToString('N') + 'aA1!'
+  $pw = ConvertTo-SecureString $clave -AsPlainText -Force
+  $salida = Join-Path $env:RUNNER_TEMP 'krsmoke-out'
+  Remove-LocalUser -Name $nombre -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $salida | Out-Null
+  try {
+    New-LocalUser -Name $nombre -Password $pw -PasswordNeverExpires | Out-Null
+    # Su carpeta de salida (el usuario no tiene otro sitio donde escribir).
+    & icacls $salida /grant "${nombre}:(OI)(CI)(M)" | Out-Null
+    $script = Join-Path $salida 'prueba.ps1'
+    @"
+`$ErrorActionPreference = 'Stop'
+function Probar([scriptblock]`$b) { try { & `$b | Out-Null; 'OK' } catch { 'DENIED' } }
+`$r = @(
+  'TOKEN:' + (Probar { Get-Content -LiteralPath '$f' -Raw }),
+  'LISTA:' + (Probar { Get-ChildItem -LiteralPath '$datos' -Force }),
+  'JSON:' + (Probar { Get-Content -LiteralPath '$(Join-Path $datos 'window.json')' -Raw })
+)
+`$r | Set-Content -LiteralPath '$(Join-Path $salida 'resultado.txt')'
+"@ | Set-Content -LiteralPath $script
+    & icacls $script /grant "${nombre}:(R)" | Out-Null
+    $cred = [pscredential]::new(".\$nombre", $pw)
+    $p = Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+      -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script `
+      -Credential $cred -WorkingDirectory "$env:SystemRoot\System32" -LoadUserProfile -Wait -PassThru -WindowStyle Hidden
+    Write-Host "proceso del usuario sin privilegios: exit $($p.ExitCode)"
+    $res = Join-Path $salida 'resultado.txt'
+    Assert (Test-Path $res) 'el proceso del usuario sin privilegios llegó a ejecutarse y dejó su resultado'
+    $txt = (Get-Content $res) -join ' '
+    Write-Host $txt
+    Assert ($txt -match 'TOKEN:DENIED') 'un usuario local sin privilegios NO puede leer setup-token (acceso denegado)'
+    Assert ($txt -match 'LISTA:DENIED') 'un usuario local sin privilegios NO puede listar la carpeta de datos'
+    Assert ($txt -match 'JSON:OK') 'un usuario local sin privilegios SÍ lee window.json'
+  } finally {
+    Remove-LocalUser -Name $nombre -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $salida -Recurse -Force -ErrorAction SilentlyContinue
+  }
+  # El subcomando que usa el instalador devuelve el token solo por stdout y es el valor real del fichero.
+  $node = Join-Path $env:ProgramFiles 'KrakenOS\node\node.exe'
+  $sub = (& $node (Join-Path $env:ProgramFiles 'KrakenOS\installer\post-install.mjs') setup-token) -join ''
+  $real = (Get-Content $f -Raw).Trim()
+  Assert ($sub -ceq $real) 'el subcomando setup-token (elevado) entrega el token del fichero, y solo eso por stdout'
+}
+
 Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
 Set-ActiveNetworkPublic
@@ -494,4 +550,5 @@ Phase-RejectPlantedDataDir
 Phase-Service
 Phase-Tls
 Phase-Firewall
+Phase-Token
 Write-Host 'Todas las fases en verde'
