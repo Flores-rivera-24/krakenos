@@ -21,8 +21,11 @@ mirando. Si quieres vigilancia continua, el servicio tiene que vivir en un equip
 
 ## Perfil recomendado
 
-KrakenOS en un equipo siempre encendido (una Raspberry Pi, un mini PC), instalado con el instalador, y
-la app instalada en cada ordenador, móvil o tablet desde el que quieras abrirlo.
+KrakenOS en un equipo Linux siempre encendido (una Raspberry Pi, un mini PC), instalado con el
+instalador o con el paquete `.deb` o de Arch ([guía](install-linux-package.md)), y la app instalada en
+cada ordenador, móvil o tablet desde el que quieras abrirlo. Con el paquete, el menú de aplicaciones del
+equipo trae además la entrada **KrakenOS** (y el comando `krakenos-open`), que abre el navegador en la
+dirección del agente ([detalle](install-linux-package.md#abrir-krakenos-desde-el-menú)).
 
 Desde esta versión, el instalador activa HTTPS por sí solo (`--tls auto`):
 
@@ -77,21 +80,17 @@ Los avisos push dependen de que el navegador siga activo en segundo plano; con l
 navegador del todo cerrado, pueden no llegar. Para lo crítico (alarma, humo, CO) configura **Telegram o
 correo** en Ajustes → Alertas: los manda el servicio y no dependen de ninguna ventana.
 
-## Alternativa: todo en tu propio Windows
+## Windows
 
-Existe un segundo perfil, para quien quiere todo en su ordenador Windows: el servicio corre dentro de
-WSL2 y la app se instala desde `http://localhost:3001`, que no necesita certificado. **Hoy no tiene
-instalador propio**: es un montaje manual y está por verificar en una máquina real. Sus límites:
+KrakenOS en Windows, con su propio servicio, **todavía no se puede instalar**: el instalador de Windows
+llega en una versión próxima. Mientras tanto, el servicio corre en un equipo con Linux (ver
+[la guía de instalación](install-linux-package.md)) y desde Windows lo abres con el navegador, o con la
+app instalada desde Edge o Chrome (sección «Instalar la app»). El certificado de la CA local se instala
+como se explica arriba.
 
-| Función | En este perfil |
-|---|---|
-| Vigilancia, alarma, movimiento, presencia, rutinas, avisos | Solo con el ordenador encendido y la sesión iniciada |
-| Horarios de control parental | Pueden no empezar o no terminar a su hora |
-| Servidor WireGuard, cortafuegos, QoS | No aplicables: actuarían sobre WSL, no sobre tu red |
-| Descubrimiento mDNS/SSDP, Govee, puente Matter | Dependen de la red `mirrored` de WSL; por verificar |
-| Actualización con un clic | Por verificar |
-
-El razonamiento completo está en [`adr-app-escritorio.md`](adr-app-escritorio.md).
+Cuando exista el servicio en Windows, no incluirá las funciones de puerta de enlace (servidor VPN,
+cortafuegos y QoS propios), que solo existen en Linux. Además, un equipo que se suspende no vigila:
+horarios, alarma y rutinas solo corren con el equipo encendido y sin suspender.
 
 ## Problemas frecuentes
 

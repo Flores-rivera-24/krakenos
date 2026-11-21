@@ -46,6 +46,18 @@ export interface TlsStatus {
    * mantener su propia lista y se le olvide una.
    */
   disabledFeatures: TlsDisabledFeature[];
+  /** Respondedor mDNS de `<equipo>.local` (US-283). Lo añade la ruta; siempre viaja en la API. */
+  mdnsResponder: MdnsResponderStatus;
+}
+
+/** `off` no aplica o está apagado; `unavailable` = no se pudo abrir el puerto 5353 (con motivo). */
+export interface MdnsResponderStatus {
+  state: 'off' | 'running' | 'unavailable';
+  reason: string | null;
+  /** Causa estable del fallo (de `error.code` de Node) para que la UI elija el texto; solo con `unavailable`. */
+  code: 'EADDRINUSE' | 'EACCES' | 'other' | null;
+  /** `<equipo>.local:<puerto>` (sin esquema, que lo decide el TLS); solo con `running`. */
+  address: string | null;
 }
 
 /** Funciones que exigen contexto seguro (US-234, US-45, US-50/51). */

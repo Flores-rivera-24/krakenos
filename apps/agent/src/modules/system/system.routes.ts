@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import type {
   ConnectivityTestResult,
   HardwareDriver,
+  MdnsResponderStatus,
   SystemPublicInfo,
   SystemSettingKey,
   SystemSettingsResponse,
@@ -89,6 +90,8 @@ interface SystemRoutesOpts {
   autoBackupDir?: string;
   /** Vigilancia del certificado TLS (US-241; `server.ts` la comparte). */
   tlsService?: TlsService;
+  /** Estado del respondedor mDNS (US-283); sin él, `off`. */
+  mdnsStatus?: () => MdnsResponderStatus;
   /** Ruta del certificado público de la CA local (tests); por defecto `env.tlsCaCertPath`. */
   caCertPath?: string;
   /**
@@ -286,10 +289,17 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
    * HTTPS») le hace falta a cualquiera que use la app, no solo a quien la
    * administra.
    */
-  app.get('/tls', { preHandler: app.authenticate, schema: systemTlsSchema }, async () =>
-    opts.tlsService
-      ? opts.tlsService.getStatus()
+  app.get('/tls', { preHandler: app.authenticate, schema: systemTlsSchema }, async () => {
+    const mdnsResponder = opts.mdnsStatus?.() ?? {
+      state: 'off' as const,
+      reason: null,
+      code: null,
+      address: null,
+    };
+    return opts.tlsService
+      ? { ...opts.tlsService.getStatus(), mdnsResponder }
       : {
+          mdnsResponder,
           enabled: env.https !== null,
           behindProxy: env.behindProxy,
           source: null,
@@ -298,8 +308,8 @@ export const systemRoutes: FastifyPluginAsync<SystemRoutesOpts> = async (app, op
           expiring: false,
           expired: false,
           disabledFeatures: disabledWithoutTls(env.https !== null || env.behindProxy),
-        },
-  );
+        };
+  });
 
   // Disco y tamaño de la base (US-233 / AUD3-21): el fallo más probable de un
   // aparato sobre SD es quedarse sin espacio, y no lo publicaba nada. Se cachea con

@@ -1,8 +1,9 @@
 import { defineConfig } from 'tsup';
 
 /**
- * Segundo bundle del agente: la CLI de la CA local (`dist/local-ca.js`) en UN solo
- * fichero, con todas sus dependencias dentro.
+ * Segundo bundle del agente: la CLI de la CA local (`dist/local-ca.js`) y el verificador de
+ * actualizaciones por paquete (`dist/verify-update.js`, lo ejecuta el helper como root), cada uno en UN
+ * solo fichero con todas sus dependencias dentro.
  *
  * El timer `krakenos-cert-local` la ejecuta como ROOT, y root nunca ejecuta nada que el
  * usuario del servicio pueda modificar. El resto de `dist/` importa de `node_modules/`,
@@ -13,7 +14,7 @@ import { defineConfig } from 'tsup';
  * `clean: true` y, en paralelo, borraría este resultado.
  */
 export default defineConfig({
-  entry: ['src/local-ca.ts'],
+  entry: ['src/local-ca.ts', 'src/verify-update.ts'],
   format: ['esm'],
   platform: 'node',
   target: 'node24',

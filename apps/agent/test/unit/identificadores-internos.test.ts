@@ -103,4 +103,24 @@ describe('identificadores internos fuera de las superficies públicas', () => {
         `(la trazabilidad vive en los docs internos):\n${ofensas.join('\n')}`,
     ).toEqual([]);
   });
+
+  it('las notas de versión generadas no nombran una historia ni un doc interno', async () => {
+    // Las notas se publican en la release: su fuente son los commits, que sí llevan ids.
+    const { buildNotes } = (await import(join(RAIZ, 'scripts/release/notes.mjs'))) as {
+      buildNotes: (i: { version: string; commits: string[]; assets: string[] }) => string;
+    };
+    const notas = buildNotes({
+      version: '0.3.0',
+      assets: ['SHA256SUMS'],
+      commits: [
+        'feat(web): vista nueva (US-290)',
+        'feat: US-290: algo',
+        'feat: x (US-1/US-2)',
+        'fix: arregla us-12 (#4)',
+        'fix: Closes #4 y más',
+      ],
+    });
+    expect(notas).not.toMatch(/\bUS[-\u2010-\u2015]\d+/i);
+    expect(notas).not.toMatch(/docs\/internal|#\d+/);
+  });
 });

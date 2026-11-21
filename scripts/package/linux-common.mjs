@@ -30,9 +30,20 @@ const CLAVES_DEL_PAQUETE = {
   TC_HELPER_PATH: HELPER_PATH,
 };
 
-/** `package.env`: root:root 0644, sin secretos, con SOLO las claves que fija el paquete. */
-export function renderPackageEnv() {
-  const lineas = Object.entries(CLAVES_DEL_PAQUETE).map(([k, v]) => `${k}=${v}`);
+/** Plataformas del manifiesto de las actualizaciones (`PLATFORMS` de `update-manifest.ts`). */
+const PLATAFORMAS_DEL_PAQUETE = ['deb-amd64', 'deb-arm64', 'arch-x86_64'];
+
+/**
+ * `package.env`: root:root 0644, sin secretos, con SOLO las claves que fija el paquete. `platform` es la del
+ * manifiesto de actualizaciones para ESTE paquete: el agente la lee de aquí y no la adivina.
+ */
+export function renderPackageEnv(platform) {
+  if (!PLATAFORMAS_DEL_PAQUETE.includes(platform)) {
+    throw new Error(`plataforma de paquete desconocida: ${platform}`);
+  }
+  const lineas = Object.entries({ ...CLAVES_DEL_PAQUETE, KRAKENOS_PACKAGE_PLATFORM: platform }).map(
+    ([k, v]) => `${k}=${v}`,
+  );
   return [
     '# Lo fija el paquete de KrakenOS y se vuelve a escribir en cada actualización: no lo edites.',
     '# La unidad lo carga DESPUÉS de /etc/krakenos/krakenos.env, así que estas claves ganan.',
@@ -45,7 +56,7 @@ export function renderPackageEnv() {
 export function renderEnvFile(envExample) {
   let out = withKindsNone(envExample);
   out = setKey(out, 'HOST', '0.0.0.0');
-  for (const k of Object.keys(CLAVES_DEL_PAQUETE))
+  for (const k of [...Object.keys(CLAVES_DEL_PAQUETE), 'KRAKENOS_PACKAGE_PLATFORM'])
     out = out.replace(new RegExp(`^${k}=.*\\n?`, 'gm'), '');
   return sinComentariosDeLinea(
     `# KRAKENOS_DATA_DIR, KRAKENOS_DEPLOY_MODE y WG_/FW_/TC_HELPER_PATH las fija el paquete en\n` +
@@ -80,8 +91,9 @@ async function poner(src, dst, mode) {
 /**
  * @param {string} pkgDir carpeta autocontenida de US-284 (`bin/`, `node/`, `app/`…)
  * @param {string} rootDir raíz del paquete (`<root>/usr/lib/krakenos`, `<root>/usr/share/krakenos`…)
+ * @param {string} platform plataforma del manifiesto de actualizaciones (`deb-amd64`, `deb-arm64`, `arch-x86_64`)
  */
-export async function stageCommonTree(pkgDir, rootDir) {
+export async function stageCommonTree(pkgDir, rootDir, platform) {
   const lib = join(rootDir, 'usr', 'lib', 'krakenos');
   const libexec = join(lib, 'libexec');
   const comun = join(REPO, 'packaging', 'linux', 'common');
@@ -102,6 +114,14 @@ export async function stageCommonTree(pkgDir, rootDir) {
     join(REPO, 'apps', 'agent', 'scripts', 'krakenos-helper.sh'),
     join(rootDir, HELPER_PATH),
     0o755,
+  );
+  // El verificador que ejecuta ROOT (`pkg-update`): el bundle autocontenido del agente (clave pública
+  // embebida), copiado FUERA de `app/` para que root no dependa de nada que no sea suyo. Falta → el
+  // empaquetado falla en voz alta (un paquete sin verificador no podría actualizarse).
+  await poner(
+    join(pkgDir, 'app', 'agent', 'dist', 'verify-update.js'),
+    join(libexec, 'krakenos-verify-update.mjs'),
+    0o644,
   );
   await chmod(libexec, 0o755);
   await chmod(join(libexec, 'lib'), 0o755);
@@ -145,7 +165,7 @@ export async function stageCommonTree(pkgDir, rootDir) {
   await chmod(dirname(env), 0o755);
 
   // Claves del paquete (root, 0644, sin secretos): la unidad lo carga después del `krakenos.env` del usuario.
-  await writeFile(join(lib, 'package.env'), renderPackageEnv());
+  await writeFile(join(lib, 'package.env'), renderPackageEnv(platform));
   await chmod(join(lib, 'package.env'), 0o644);
 
   const bin = join(rootDir, 'usr', 'bin');

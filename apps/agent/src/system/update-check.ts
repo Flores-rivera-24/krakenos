@@ -5,6 +5,9 @@
  */
 
 import { safeFetch } from '../net/egress.js';
+import { isNewer, parseVersion } from './version-compare.js';
+
+export { isNewer, parseVersion };
 
 export interface UpdateStatus {
   /** ¿Está activada la comprobación (hay repo configurado)? */
@@ -21,27 +24,6 @@ export interface FetchLike {
 export type UpdateFetch = (url: string) => Promise<FetchLike>;
 
 const CACHE_TTL_MS = 60 * 60 * 1000;
-
-/** Parsea "v1.2.3" o "1.2.3" a `[major, minor, patch]` (no numérico → 0). */
-export function parseVersion(v: string): [number, number, number] {
-  const parts = v.replace(/^v/i, '').split('.');
-  const num = (i: number) => {
-    const n = parseInt(parts[i] ?? '0', 10);
-    return Number.isFinite(n) ? n : 0;
-  };
-  return [num(0), num(1), num(2)];
-}
-
-/** ¿Es `a` una versión más nueva que `b`? */
-export function isNewer(a: string, b: string): boolean {
-  const x = parseVersion(a);
-  const y = parseVersion(b);
-  for (let i = 0; i < 3; i++) {
-    if (x[i]! > y[i]!) return true;
-    if (x[i]! < y[i]!) return false;
-  }
-  return false;
-}
 
 const defaultFetch: UpdateFetch = (url) =>
   // `safeFetch` valida la URL y **cada redirect** contra la política de egress:

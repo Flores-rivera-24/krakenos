@@ -41,7 +41,7 @@ async function main() {
   await rm(src, { recursive: true, force: true });
   const raiz = join(src, 'root');
   await mkdir(raiz, { recursive: true });
-  await stageCommonTree(dir, raiz);
+  await stageCommonTree(dir, raiz, 'arch-x86_64');
 
   const lic = join(raiz, 'usr', 'share', 'licenses', 'krakenos');
   await mkdir(lic, { recursive: true });

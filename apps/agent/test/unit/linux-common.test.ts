@@ -48,6 +48,7 @@ function paqueteFalso(): string {
   writeFileSync(join(pkg, 'node', 'bin', 'node'), 'x', { mode: 0o755 });
   writeFileSync(join(pkg, 'app', 'agent', '.env.example'), PLANTILLA);
   writeFileSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), '//');
+  writeFileSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'), '// verificador');
   // Un paquete mal armado (umask laxa): lo escribible por otros debe quitarse al armar el árbol.
   chmodSync(join(pkg, 'app', 'agent', 'dist', 'local-ca.js'), 0o666);
   chmodSync(join(pkg, 'app', 'agent', 'dist'), 0o777);
@@ -90,11 +91,12 @@ const PACKAGE_ENV_ESPERADO: Record<string, string> = {
   WG_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
   FW_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
   TC_HELPER_PATH: '/usr/lib/krakenos/libexec/krakenos-helper',
+  KRAKENOS_PACKAGE_PLATFORM: 'deb-amd64',
 };
 
 describe('renderPackageEnv: las claves que el usuario no debe poder romper', () => {
   it('lleva exactamente las claves del paquete, una vez cada una, y nada más', () => {
-    const out: string = renderPackageEnv();
+    const out: string = renderPackageEnv('deb-amd64');
     const activas = out.split('\n').filter((l) => /^[A-Za-z_][A-Za-z0-9_]*=/.test(l));
     expect(Object.fromEntries(activas.map((l) => l.split(/=(.*)/s).slice(0, 2)))).toEqual(
       PACKAGE_ENV_ESPERADO,
@@ -103,11 +105,24 @@ describe('renderPackageEnv: las claves que el usuario no debe poder romper', () 
   });
 
   it('no lleva HOST ni PORT (son del usuario), ni secretos, ni comentarios de fin de línea', () => {
-    const out: string = renderPackageEnv();
+    const out: string = renderPackageEnv('deb-amd64');
     expect(out).not.toMatch(/^(HOST|PORT)=/m);
     expect(out).not.toMatch(/SECRET|PASSWORD|TOKEN|KEY=/i);
     for (const l of out.split('\n').filter((x) => /^[A-Za-z_]/.test(x)))
       expect(l).not.toMatch(/\s#/);
+  });
+});
+
+describe('renderPackageEnv: la plataforma la fija el empaquetado', () => {
+  it.each(['deb-amd64', 'deb-arm64', 'arch-x86_64'])(
+    '%s queda escrita y es una de las del manifiesto',
+    (p) => {
+      expect(renderPackageEnv(p)).toContain(`KRAKENOS_PACKAGE_PLATFORM=${p}\n`);
+    },
+  );
+  it('una plataforma desconocida o ausente hace fallar el empaquetado', () => {
+    expect(() => renderPackageEnv('rpm-x86_64')).toThrow(/desconocida/);
+    expect(() => renderPackageEnv(undefined)).toThrow(/desconocida/);
   });
 });
 
@@ -137,7 +152,7 @@ describe('el helper privilegiado en el paquete', () => {
   const PLANTILLA_HELPER = `${PLANTILLA}WG_HELPER_PATH=/usr/local/bin/krakenos-helper\nFW_HELPER_PATH=/usr/local/bin/krakenos-helper\nTC_HELPER_PATH=/usr/local/bin/krakenos-helper\n`;
 
   it('el archivo del paquete apunta las tres variables al helper del paquete', () => {
-    const out: string = renderPackageEnv();
+    const out: string = renderPackageEnv('deb-amd64');
     expect(HELPER_PATH).toBe('/usr/lib/krakenos/libexec/krakenos-helper');
     for (const k of ['WG', 'FW', 'TC']) expect(out).toContain(`${k}_HELPER_PATH=${HELPER_PATH}\n`);
     expect(out).not.toContain('/usr/local/bin');
@@ -162,15 +177,23 @@ describe('el helper privilegiado en el paquete', () => {
 
   it.skipIf(WIN)('stageCommonTree instala el helper en esa ruta', async () => {
     const root = join(raiz, 'root');
-    await stageCommonTree(paqueteFalso(), root);
+    await stageCommonTree(paqueteFalso(), root, 'deb-amd64');
     expect(lstatSync(join(root, HELPER_PATH)).mode & 0o777).toBe(0o755);
   });
 });
 
 describe('stageCommonTree', () => {
+  it('sin el verificador en el paquete, falla en voz alta', async () => {
+    const pkg = paqueteFalso();
+    rmSync(join(pkg, 'app', 'agent', 'dist', 'verify-update.js'));
+    await expect(stageCommonTree(pkg, join(raiz, 'root'), 'deb-amd64')).rejects.toThrow(
+      /verify-update/,
+    );
+  });
+
   it.skipIf(WIN)('no deja nada escribible por otros bajo usr/lib/krakenos', async () => {
     const root = join(raiz, 'root');
-    await stageCommonTree(paqueteFalso(), root);
+    await stageCommonTree(paqueteFalso(), root, 'deb-amd64');
     const todo = recorrer(join(root, 'usr', 'lib', 'krakenos'));
     expect(todo.length).toBeGreaterThan(5);
     for (const p of todo) {
@@ -182,11 +205,16 @@ describe('stageCommonTree', () => {
 
   it.skipIf(WIN)('coloca cada pieza donde la espera el sistema', async () => {
     const root = join(raiz, 'root');
-    await stageCommonTree(paqueteFalso(), root);
+    await stageCommonTree(paqueteFalso(), root, 'deb-amd64');
     const modo = (p: string) => lstatSync(join(root, p)).mode & 0o777;
     const lib = 'usr/lib/krakenos/libexec';
     expect(modo(`${lib}/krakenos-setup`)).toBe(0o755);
     expect(modo(`${lib}/krakenos-helper`)).toBe(0o755);
+    // Lo que ejecuta root al verificar una actualización: copia del bundle, de root y sin escritura ajena.
+    expect(modo(`${lib}/krakenos-verify-update.mjs`)).toBe(0o644);
+    expect(readFileSync(join(root, lib, 'krakenos-verify-update.mjs'), 'utf8')).toBe(
+      '// verificador',
+    );
     expect(modo(`${lib}/lib/krakenos-system.sh`) & 0o111).toBe(0);
     // Plantilla sin secretos (el postinst la copia a /etc/krakenos con 0600): nada de /etc en el paquete.
     expect(modo('usr/share/krakenos/krakenos.env')).toBe(0o644);
@@ -207,7 +235,7 @@ describe('stageCommonTree', () => {
     // Las claves del paquete, aparte y de root: el usuario no las toca editando krakenos.env.
     expect(modo('usr/lib/krakenos/package.env')).toBe(0o644);
     expect(readFileSync(join(root, 'usr/lib/krakenos/package.env'), 'utf8')).toBe(
-      renderPackageEnv(),
+      renderPackageEnv('deb-amd64'),
     );
     const env = readFileSync(join(root, 'usr/share/krakenos/krakenos.env'), 'utf8');
     expect(env).not.toMatch(/^KRAKENOS_DEPLOY_MODE=/m);

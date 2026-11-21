@@ -51,7 +51,7 @@ export type DbSnapshot = (dbFile: string, destFile: string) => Promise<void>;
  * Si falla por cualquier motivo, degrada a copia del fichero avisando — un
  * snapshot imperfecto es mejor que quedarse sin red de seguridad.
  */
-function createDefaultSnapshot(warn: (message: string) => void): DbSnapshot {
+export function createDefaultSnapshot(warn: (message: string) => void): DbSnapshot {
   return async (dbFile, destFile) => {
     // `VACUUM INTO` exige que el destino NO exista.
     await rm(destFile, { force: true });

@@ -25,6 +25,14 @@ describe('SudoHelperRunner', () => {
     expect(exec).toHaveBeenCalledWith(HELPER, ['wg', 'set', 'wg0', 'peer', 'PK', 'remove']);
   });
 
+  it('pasa el tope de tiempo configurado (pkg-update tarda más que los 15 s de siempre)', async () => {
+    const exec = vi.fn<ExecFn>(async () => ({ stdout: '', stderr: '', code: 0 }));
+    await new SudoHelperRunner({ helperPath: HELPER, exec, timeoutMs: 1_200_000 }).run([
+      'pkg-update',
+    ]);
+    expect(exec).toHaveBeenCalledWith('sudo', ['-n', HELPER, 'pkg-update'], 1_200_000);
+  });
+
   it('lanza PrivilegedCommandError si el código de salida no es 0', async () => {
     const exec: ExecFn = async () => ({ stdout: '', stderr: 'denegado', code: 64 });
     const runner = new SudoHelperRunner({ helperPath: HELPER, exec });

@@ -64,6 +64,11 @@ const LISTA: Record<string, Entrada> = {
     motivo:
       'Solo la aserción del retorno de carro (devuelve 0 en el runner de Windows; causa NO investigada). El helper de sudoers es de Linux y no corre en Windows; la del tabulador sí corre.',
   },
+  'unit/helper-pkg-update.test.ts': {
+    saltos: 4,
+    motivo:
+      'pkg-update/pkg-rollback/pkg-commit son del helper de root de Linux (realpath, flock, stat -c, modos 0700 de root): los cuatro bloques del fichero.',
+  },
   'unit/install-script.test.ts': {
     saltos: 3,
     motivo:
@@ -107,6 +112,11 @@ const LISTA: Record<string, Entrada> = {
     motivo:
       'Un solo alias (WIN) gobierna tres tests. El paquete de Arch se arma con bash y tar y comprueba modos y enlaces POSIX (krakenos.install con `bash -n`, package-arch.mjs y su root.tar): no existen en Windows. Las partes puras (archVersion, PKGBUILD, la lista de comandos y el job de CI) sí corren.',
   },
+  'unit/package-archive.test.ts': {
+    saltos: 1,
+    motivo:
+      'GNU tar y bits de modo POSIX; en Windows el portable no se archiva así (el zip de Windows no sale en esta parte). Las partes puras de archivePlan sí corren.',
+  },
   'unit/package-launcher.test.ts': {
     saltos: 1,
     motivo:
@@ -141,7 +151,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 18, saltos: 27, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 20, saltos: 32, soloPosix: 6 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

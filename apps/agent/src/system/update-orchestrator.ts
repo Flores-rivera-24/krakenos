@@ -20,7 +20,11 @@
  */
 
 import type { UpdateResult, UpdateStep, UpdateStepResult } from '@krakenos/types';
-import { UpdateBlockedError } from './node-requirement.js';
+import {
+  NoPreviousPackageError,
+  StillInstalledError,
+  UpdateBlockedError,
+} from './node-requirement.js';
 
 /**
  * Ejecuta cada fase de la actualización. Implementaciones: `ProcessUpdateRunner`
@@ -53,10 +57,15 @@ export interface OrchestrateOptions {
   onStep?: (result: UpdateStepResult) => void;
   /** Reloj inyectable para el timestamp final (tests). */
   now?: () => Date;
+  /** Pasos de avance a ejecutar (por defecto todos; el modo paquete pasa `PACKAGE_STEPS`). */
+  steps?: readonly (typeof FORWARD_STEPS)[number][];
 }
 
 /** Pasos de avance en orden (el `rollback` es reactivo, no va en la lista). */
 const FORWARD_STEPS = ['backup', 'fetch', 'apply', 'migrate', 'restart', 'healthcheck'] as const;
+
+/** Modo paquete: el `.deb`/pacman migra y reinicia por su cuenta al instalarse. */
+export const PACKAGE_STEPS = ['backup', 'fetch', 'apply', 'healthcheck'] as const;
 
 /**
  * Orquesta una actualización a `targetVersion`. Nunca lanza: siempre devuelve un
@@ -70,6 +79,7 @@ export async function orchestrateUpdate(
 ): Promise<UpdateResult> {
   const now = opts.now ?? (() => new Date());
   const steps: UpdateStepResult[] = [];
+  const forward = opts.steps ?? FORWARD_STEPS;
 
   const record = (result: UpdateStepResult): void => {
     steps.push(result);
@@ -109,8 +119,8 @@ export async function orchestrateUpdate(
   // Fase de avance. El backup es el primer paso y la frontera del rollback: si el
   // backup falla no hay nada que revertir; si falla cualquier paso posterior, sí.
   let backedUp = false;
-  for (let i = 0; i < FORWARD_STEPS.length; i++) {
-    const step = FORWARD_STEPS[i]!;
+  for (let i = 0; i < forward.length; i++) {
+    const step = forward[i]!;
     try {
       await runForward(step);
       record({ step, status: 'ok' });
@@ -124,7 +134,7 @@ export async function orchestrateUpdate(
           : { step, status: 'failed', detail },
       );
       // Los pasos de avance restantes quedan omitidos.
-      for (const rest of FORWARD_STEPS.slice(i + 1)) {
+      for (const rest of forward.slice(i + 1)) {
         record({ step: rest as UpdateStep, status: 'skipped' });
       }
 
@@ -139,17 +149,27 @@ export async function orchestrateUpdate(
       }
 
       // Falló un paso tras el backup → revertir a la versión previa.
+      // `rolledBack` es verdad solo si el paso `rollback` terminó bien: si falló, el sistema puede haber
+      // quedado a medias y decir «revertido» sería mentir.
       try {
         await runner.rollback();
         record({ step: 'rollback', status: 'ok' });
+        return finish(false, true);
       } catch (rbErr) {
-        record({
-          step: 'rollback',
-          status: 'failed',
-          detail: rbErr instanceof Error ? rbErr.message : 'error desconocido',
-        });
+        // La versión nueva nunca se instaló: no hay nada que «revertir», sigue la de antes. Decirlo como
+        // reversión sería mentir sobre lo que pasó (y la UI debe poder decir «sigue instalada la X»).
+        if (rbErr instanceof StillInstalledError) {
+          record({ step: 'rollback', status: 'ok', detail: rbErr.message, code: rbErr.code });
+          return finish(false, false);
+        }
+        const detail = rbErr instanceof Error ? rbErr.message : 'error desconocido';
+        record(
+          rbErr instanceof NoPreviousPackageError
+            ? { step: 'rollback', status: 'failed', detail, code: rbErr.code }
+            : { step: 'rollback', status: 'failed', detail },
+        );
+        return finish(false, false);
       }
-      return finish(false, true);
     }
   }
 

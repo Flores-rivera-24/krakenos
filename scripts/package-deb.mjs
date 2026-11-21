@@ -45,7 +45,7 @@ async function main() {
   const raiz = await mkdtemp(join(tmpdir(), 'krakenos-deb-'));
   try {
     await chmod(raiz, 0o755); // mkdtemp la crea 0700
-    await stageCommonTree(dir, raiz);
+    await stageCommonTree(dir, raiz, `deb-${arch}`);
 
     const doc = join(raiz, 'usr', 'share', 'doc', 'krakenos');
     await mkdir(doc, { recursive: true });
