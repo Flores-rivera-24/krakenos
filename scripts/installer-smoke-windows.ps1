@@ -572,6 +572,8 @@ function Get-Residuos([string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir
   }
   foreach ($base in $env:ProgramFiles, $env:ProgramData) {
     foreach ($e in @(Get-ChildItem $base -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'kraken' -and $_.Name -notin $Script:Antes })) {
+      # Con -Permitir la carpeta de Program Files sigue existiendo (aloja uninstall.exe): sus ficheros ya se miraron arriba.
+      if ($Permitir -and $e.FullName -eq $dir) { continue }
       if (-not ($Conservar -and $e.FullName -eq (Join-Path $env:ProgramData 'KrakenOS'))) { $r.Add("entrada nueva $($e.FullName)") }
     }
   }
