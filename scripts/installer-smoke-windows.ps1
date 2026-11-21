@@ -392,6 +392,20 @@ function Phase-Tls {
   Write-Host ("  con CA: curl exit {0} {1}" -f $con.Code, $con.Out)
   Assert (($con.Code -eq 0) -and ($con.Out -eq '200')) 'con la CA confiada, curl (schannel) da 200 en https://<equipo>.local:<puerto>'
 
+  # (c) ca\ llegó vacía con la CA vieja aún en Root (la vació quien la tenía abierta): se genera otra y la
+  # vieja sale de Root por el thumbprint de HKLM, sin que nadie pida rotar.
+  Stop-Service KrakenOS
+  foreach ($f in 'ca\krakenos-ca-key.pem', 'ca\krakenos-ca.pem', 'tls\krakenos-ca.pem', 'tls\agent-key.pem', 'tls\agent-cert.pem') {
+    Remove-Item -LiteralPath (Join-Path $datos $f) -Force
+  }
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  Assert ($LASTEXITCODE -eq 0) 'reinstalar con ca\ vacía sale con 0'
+  $thumb3 = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
+  Assert ($thumb3 -ne $thumb) 'con ca\ vacía se genera otra CA (otro thumbprint en HKLM)'
+  Assert (-not (Test-Path "Cert:\LocalMachine\Root\$thumb")) 'la CA anterior ya no está en Cert:\LocalMachine\Root'
+  Assert (Test-Path "Cert:\LocalMachine\Root\$thumb3") 'la CA nueva está en Cert:\LocalMachine\Root'
+  Assert (Wait-Health $port 60) 'el agente responde por https con la CA nueva'
+
   # window.json: solo ese fichero legible por Users, sin herencia, sin token ni claves.
   $wj = Join-Path $datos 'window.json'
   $acl = (& icacls $wj) -join "`n"

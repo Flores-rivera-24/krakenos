@@ -326,6 +326,24 @@ export function localHostname(raw) {
 /** `https://<host>[:<puerto>]`; el 443 es el de https y no se escribe (como `https_origin` de Linux). */
 const httpsOrigin = (host, port) => (port === 443 ? `https://${host}` : `https://${host}:${port}`);
 
+/** Thumbprint de la CA anotado en HKLM (lo escribe el instalador; el servicio no puede). */
+async function caThumbprintRegistrado(run) {
+  const q = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'CaThumbprint']);
+  return /CaThumbprint\s+REG_SZ\s+([0-9A-Fa-f]{40})/.exec(q.stdout)?.[1];
+}
+
+/** Quita una CA de Root. «No estaba» (CRYPT_E_NOT_FOUND, 0x80092004) es lo que se quería; otro error, no. */
+async function quitarDeRoot(run, thumbprint) {
+  const d = await run('certutil', ['-delstore', 'Root', thumbprint]);
+  if (
+    d.code !== 0 &&
+    !/80092004|2146885628|not found|no se encuentra|no se encontr/i.test(`${d.code} ${d.stdout}`)
+  )
+    throw new Error(
+      `certutil -delstore Root ${thumbprint} salió con ${d.code}: ${d.stdout.trim().slice(-200)}`,
+    );
+}
+
 /**
  * HTTPS con la CA local, como `setup_tls_local` de Linux. Una CA que ya existe en `ca\` NO se recrea
  * (`local-ca.js` la conserva): reinstalar con datos conservados reimporta la MISMA y los celulares que
@@ -352,21 +370,8 @@ export async function setupTls({
   // Una CA cuya carpeta estaba abierta no se adopta: se quita de la confianza de la máquina (por el
   // thumbprint de HKLM, que el servicio no escribe) y se borra para que `local-ca.js` genere otra.
   if (rotarCa) {
-    const q = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'CaThumbprint']);
-    const viejo = /CaThumbprint\s+REG_SZ\s+([0-9A-Fa-f]{40})/.exec(q.stdout)?.[1];
-    if (viejo) {
-      const d = await run('certutil', ['-delstore', 'Root', viejo]);
-      // «No estaba» (CRYPT_E_NOT_FOUND, 0x80092004) es lo que se quería; cualquier otro error, no.
-      if (
-        d.code !== 0 &&
-        !/80092004|2146885628|not found|no se encuentra|no se encontr/i.test(
-          `${d.code} ${d.stdout}`,
-        )
-      )
-        throw new Error(
-          `certutil -delstore Root ${viejo} salió con ${d.code}: ${d.stdout.trim().slice(-200)}`,
-        );
-    }
+    const viejo = await caThumbprintRegistrado(run);
+    if (viejo) await quitarDeRoot(run, viejo);
     for (const f of [
       join(ca, 'krakenos-ca-key.pem'),
       join(ca, 'krakenos-ca.pem'),
@@ -410,6 +415,13 @@ export async function setupTls({
   await fs.writeFile(caCopia, pem);
   const thumbprint = cert.fingerprint.replaceAll(':', '');
   await ok(run, 'certutil', ['-addstore', '-f', 'Root', caCopia]);
+  // Si HKLM anotaba otra CA (la carpeta ca\\ se vació y se generó una nueva), la vieja se quita de Root
+  // ANTES de sobrescribir la anotación: si algo falla aquí, HKLM sigue señalándola y el reintento la quita.
+  if (!rotarCa) {
+    const previo = await caThumbprintRegistrado(run);
+    if (previo && previo.toUpperCase() !== thumbprint.toUpperCase())
+      await quitarDeRoot(run, previo);
+  }
   // En HKLM y no en un fichero de datos: el desinstalador, elevado, no debe fiarse de algo que escribe el servicio.
   await ok(run, 'reg.exe', [
     'add',

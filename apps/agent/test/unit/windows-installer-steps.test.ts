@@ -803,11 +803,38 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(b.ev.some((x) => x.includes('local-ca.js'))).toBe(false);
   });
 
-  it('sin exposición no borra nada ni toca Root salvo importar (se conserva la misma CA)', async () => {
-    const { ev, deps } = montar({ hkml: 'B'.repeat(40) });
+  it('sin exposición y con el mismo thumbprint en HKLM no borra nada ni toca Root salvo importar (se conserva la misma CA)', async () => {
+    const mismo = new X509Certificate(pem).fingerprint.replaceAll(':', '');
+    const { ev, deps } = montar({ hkml: mismo });
     const r = await setupTls(deps);
     expect(ev.some((x) => x.includes('-delstore') || x.startsWith('rm '))).toBe(false);
     expect(r.rotada).toBe(false);
+  });
+
+  it('si HKLM anotaba otra CA (ca\\ llegó vacía, sin rotarCa) quita la vieja de Root tras importar la nueva y antes de anotarla', async () => {
+    const viejo = 'D'.repeat(40);
+    const { ev, deps } = montar({ hkml: viejo });
+    const r = await setupTls(deps);
+    const i = (t: string) => ev.findIndex((x) => x.includes(t));
+    expect(i(`certutil -addstore -f Root ${CA_PEM_CA}`)).toBeGreaterThan(-1);
+    expect(i(`certutil -delstore Root ${viejo}`)).toBeGreaterThan(i('-addstore'));
+    expect(i(`certutil -delstore Root ${viejo}`)).toBeLessThan(i('reg.exe add'));
+    expect(ev).toContain(
+      `reg.exe add HKLM\\SOFTWARE\\KrakenOS /v CaThumbprint /t REG_SZ /d ${r.thumbprint} /f`,
+    );
+  });
+
+  it('si quitar la vieja falla (error distinto de «no estaba») la instalación falla y HKLM conserva el thumbprint viejo', async () => {
+    const { ev, deps } = montar({ hkml: 'E'.repeat(40) });
+    const base = deps.run;
+    await expect(
+      setupTls({
+        ...deps,
+        run: async (c: string, args: string[], o?: never) =>
+          args.includes('-delstore') ? { code: 5, stdout: 'Acceso denegado' } : base(c, args, o),
+      }),
+    ).rejects.toThrow(/delstore/);
+    expect(ev.some((x) => x.startsWith('reg.exe add'))).toBe(false);
   });
 
   it('window.json se prepara en ca\\ (cerrada) con su ACL y se renombra a su sitio: nunca nace heredando del servicio', async () => {
