@@ -9,7 +9,7 @@ import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { grantServiceAccess, installService, localHostname, pickPort, prepareDataDir, registerRenewalTask, runInstall, setupTls, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, registerRenewalTask, runInstall, setupTls, showDialog, stopService, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
@@ -1126,11 +1126,248 @@ describe('runInstall', () => {
   });
 });
 
+describe('cortafuegos y perfil de red', () => {
+  const NODE = join('C:', 'Program Files', 'KrakenOS', 'node', 'node.exe');
+  const nuevas = (ev: string[]) => ev.filter((l) => l.includes('New-NetFirewallRule'));
+
+  it('toda regla es de entrada, Allow, solo perfil Private y atada al node.exe', async () => {
+    for (const mdns of [false, true]) {
+      const ev: string[] = [];
+      await openFirewall({ nodeExe: NODE, port: 3002, mdns, run: fakeRun(ev) });
+      const reglas = nuevas(ev);
+      expect(reglas).toHaveLength(mdns ? 2 : 1);
+      for (const l of reglas) {
+        expect(l).toMatch(/-Profile Private(?![\w,])/);
+        expect(l).not.toMatch(/Public|Domain|-Profile Any/);
+        expect(l).toContain('-Direction Inbound -Action Allow');
+        expect(l).toContain('-Group KrakenOS');
+        expect(l).toContain(`-Program '${NODE}'`);
+      }
+      expect(reglas[0]).toContain('-Protocol TCP -LocalPort 3002');
+      if (mdns) expect(reglas[1]).toContain('-Protocol UDP -LocalPort 5353');
+    }
+  });
+
+  it('borra antes las reglas del grupo (reinstalar no las duplica) y falla si el cortafuegos falla', async () => {
+    const ev: string[] = [];
+    await openFirewall({ nodeExe: NODE, port: 3001, mdns: false, run: fakeRun(ev) });
+    expect(ev[0]).toContain('Remove-NetFirewallRule -Group KrakenOS');
+    await expect(
+      openFirewall({
+        nodeExe: NODE,
+        port: 3001,
+        mdns: false,
+        run: fakeRun([], { 'New-NetFirewallRule': 1 }),
+      }),
+    ).rejects.toThrow(/salió con 1/);
+  });
+
+  it('activeNetwork lee la red de la ruta por defecto y devuelve null si no hay ruta o no se entiende', async () => {
+    const json = '{"name":"CASA-5G","interfaceIndex":12,"category":"Public"}\r\n';
+    expect(await activeNetwork(fakeRun([], {}, { 'Get-NetRoute': json }))).toEqual({
+      name: 'CASA-5G',
+      interfaceIndex: 12,
+      category: 'Public',
+    });
+    expect(await activeNetwork(fakeRun([], {}, { 'Get-NetRoute': '' }))).toBeNull();
+    expect(
+      await activeNetwork(fakeRun([], {}, { 'Get-NetRoute': '{"category":"Otra"}' })),
+    ).toBeNull();
+    expect(await activeNetwork(fakeRun([], { 'Get-NetRoute': 1 }))).toBeNull();
+  });
+
+  describe('offerPrivateNetwork', () => {
+    const publica = { name: 'CASA', interfaceIndex: 7, category: 'Public' };
+    const montar = (respuesta: boolean) => {
+      const ev: string[] = [];
+      const preguntas: string[] = [];
+      const ask = async (n: { name: string }) => (preguntas.push(n.name), respuesta);
+      return { ev, preguntas, ask, run: fakeRun(ev) };
+    };
+
+    it('Pública y se acepta: la pasa a Privada solo en esa interfaz', async () => {
+      const { ev, ask, run, preguntas } = montar(true);
+      expect(await offerPrivateNetwork({ net: publica, silent: false, ask, run })).toBe('cambiada');
+      expect(preguntas).toEqual(['CASA']);
+      expect(ev).toHaveLength(1);
+      expect(ev[0]).toContain(
+        'Set-NetConnectionProfile -InterfaceIndex 7 -NetworkCategory Private',
+      );
+    });
+
+    it('Pública y se rechaza: no toca nada', async () => {
+      const { ev, ask, run } = montar(false);
+      expect(await offerPrivateNetwork({ net: publica, silent: false, ask, run })).toBe(
+        'rechazada',
+      );
+      expect(ev).toEqual([]);
+    });
+
+    it('en silencio nunca pregunta ni cambia nada, aunque sea Pública', async () => {
+      const { ev, ask, run, preguntas } = montar(true);
+      expect(await offerPrivateNetwork({ net: publica, silent: true, ask, run })).toBe('rechazada');
+      expect(preguntas).toEqual([]);
+      expect(ev).toEqual([]);
+    });
+
+    it.each([
+      ['dominio', { name: 'CORP', interfaceIndex: 3, category: 'DomainAuthenticated' }],
+      ['privada', { name: 'CASA', interfaceIndex: 3, category: 'Private' }],
+      ['sin red', null],
+    ])('%s: no aplica y no pregunta', async (_n, net) => {
+      const { ev, ask, run, preguntas } = montar(true);
+      expect(await offerPrivateNetwork({ net, silent: false, ask, run })).toBe('no-aplica');
+      expect(preguntas).toEqual([]);
+      expect(ev).toEqual([]);
+    });
+  });
+
+  it('showDialog manda el texto por el entorno, no por la línea de comandos, y lee el botón del código', async () => {
+    ENVS.length = 0;
+    const ev: string[] = [];
+    expect(await showDialog({ run: fakeRun(ev), title: 'T', text: "¿'x'?", yesNo: true })).toBe(
+      true,
+    );
+    expect(ev[0]).toContain("'YesNo'");
+    expect(ev[0]).not.toContain('¿');
+    expect(ENVS.at(-1)).toEqual({ KR_TEXTO: "¿'x'?", KR_TITULO: 'T' });
+    expect(
+      await showDialog({ run: fakeRun([], { Forms: 3 }), title: 'T', text: 'x', yesNo: true }),
+    ).toBe(false);
+  });
+});
+
+describe('runInstall: cortafuegos, red y energía', () => {
+  const INST = join('C:', 'Program Files', 'KrakenOS');
+  const RED_PUBLICA = '{"name":"CASA","interfaceIndex":7,"category":"Public"}';
+
+  async function instalar(
+    extra: Record<string, unknown> = {},
+    stdouts: Record<string, string> = {},
+    envPrevio = '',
+  ) {
+    const ev: Ev[] = [];
+    const lineas: string[] = [];
+    const nodos: Record<string, Nodo> = {
+      [join(INST, 'service', 'KrakenOS-service.xml')]: {
+        kind: 'file',
+        text: '<env name="PORT" value="3001"/>',
+      },
+      [join(DATOS, '.env')]: { kind: 'file', text: envPrevio },
+    };
+    const base = fakeRun(
+      ev,
+      { 'sc.exe query': 1060 },
+      { 'reg.exe query': `DataDir REG_SZ ${DATOS}`, ...stdouts },
+    );
+    const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
+      if (args.some((a) => a.endsWith('local-ca.js'))) {
+        nodos[join(DATOS, 'tls', 'krakenos-ca.pem')] = { kind: 'file', text: PEM_PRUEBA };
+        nodos[join(DATOS, 'ca', 'krakenos-ca-key.pem')] = { kind: 'file', text: KEY_PRUEBA };
+      }
+      return base(cmd, args, o);
+    };
+    nodos[DATOS] = { kind: 'dir', entries: ['.env'] };
+    const preguntas: string[] = [];
+    const avisos: string[] = [];
+    const r = await runInstall({
+      installDir: INST,
+      dataDir: DATOS,
+      hostname: 'MI-PC',
+      run,
+      fs: fakeFs(ev, nodos),
+      isFree: async () => true,
+      get: async () => 200,
+      setKey,
+      ensureEnv: () => false,
+      ensureKeys: () => {},
+      log: (l: string) => lineas.push(l),
+      lang: 'es',
+      ask: async (t: string) => (preguntas.push(t), true),
+      notify: async (t: string) => void avisos.push(t),
+      ...extra,
+    });
+    return { r, ev, lineas, preguntas, avisos };
+  }
+
+  it('abre el puerto elegido (no un 3001 fijo) y el UDP 5353 con mDNS por defecto', async () => {
+    const { ev } = await instalar({ isFree: async (p: number) => p !== 3001 });
+    const reglas = ev.filter((l) => l.includes('New-NetFirewallRule'));
+    expect(reglas).toHaveLength(2);
+    expect(reglas[0]).toContain('-Protocol TCP -LocalPort 3002');
+    expect(reglas[1]).toContain('-Protocol UDP -LocalPort 5353');
+  });
+
+  it('con MDNS_RESPONDER=off no abre el UDP 5353', async () => {
+    const { ev } = await instalar({}, {}, 'MDNS_RESPONDER=off\n');
+    expect(ev.filter((l) => l.includes('New-NetFirewallRule'))).toHaveLength(1);
+  });
+
+  it('en silencio y con red Pública: ni pregunta, ni cambia el perfil, ni diálogo; el resumen lo dice', async () => {
+    const { ev, lineas, preguntas, avisos } = await instalar({}, { 'Get-NetRoute': RED_PUBLICA });
+    expect(preguntas).toEqual([]);
+    expect(avisos).toEqual([]);
+    expect(ev.some((l) => l.includes('Set-NetConnectionProfile'))).toBe(false);
+    const todo = lineas.join('\n');
+    expect(todo).toContain('no cambia el perfil de red');
+    expect(todo).toContain('Si este equipo se suspende');
+  });
+
+  it('interactivo con red Pública: pregunta con el nombre de la red y, si se acepta, la pasa a Privada', async () => {
+    const { ev, lineas, preguntas, avisos } = await instalar(
+      { interactive: true },
+      { 'Get-NetRoute': RED_PUBLICA },
+    );
+    expect(preguntas).toHaveLength(1);
+    expect(preguntas[0]).toContain('«CASA»');
+    expect(
+      ev.some((l) =>
+        l.includes('Set-NetConnectionProfile -InterfaceIndex 7 -NetworkCategory Private'),
+      ),
+    ).toBe(true);
+    expect(lineas.join('\n')).toContain('ahora es privada');
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain('KrakenOS deja de vigilar');
+  });
+
+  it('interactivo y rechazado: no cambia nada y el resumen dice que el celular no llegará', async () => {
+    const { ev, lineas } = await instalar(
+      { interactive: true, ask: async () => false },
+      { 'Get-NetRoute': RED_PUBLICA },
+    );
+    expect(ev.some((l) => l.includes('Set-NetConnectionProfile'))).toBe(false);
+    expect(lineas.join('\n')).toContain('el celular no llegará');
+  });
+
+  it('nunca toca el plan de energía', async () => {
+    const { ev } = await instalar({ interactive: true });
+    expect(ev.join('\n')).not.toMatch(/powercfg|PowerPlan|Set-PowerPlan/i);
+  });
+});
+
 describe('mensajes', () => {
   it('hay las mismas claves en es y en en', () => {
     expect(msg('es', 'puertoOcupado', 3001, 3002)).toContain('3002');
     expect(msg('en', 'puertoOcupado', 3001, 3002)).toContain('3002');
     expect(msg('es', 'puertoOcupado', 3001, 3002)).not.toBe(msg('en', 'puertoOcupado', 3001, 3002));
+  });
+
+  it('los mensajes del cortafuegos, la red y la energía existen en es y en en, distintos y con sus datos', () => {
+    for (const [clave, args] of [
+      ['cortafuegosListo', [3002]],
+      ['tituloDialogo', []],
+      ['preguntaRedPrivada', ['CASA']],
+      ['redCambiada', ['CASA']],
+      ['redRechazada', ['CASA']],
+      ['redPublicaSilencio', ['CASA']],
+      ['redNoPrivada', []],
+      ['energia', []],
+    ] as const) {
+      const es = msg('es', clave, ...args);
+      const en = msg('en', clave, ...args);
+      if (clave !== 'tituloDialogo') expect(es).not.toBe(en);
+      if (args[0] !== undefined) expect(`${es}${en}`).toContain(String(args[0]));
+    }
   });
 });
 
@@ -1147,9 +1384,18 @@ describe('installer-hooks.nsh (servicio)', () => {
     expect(m.slice(m.indexOf('post-install.mjs'))).toMatch(/\$\{If\} \$0 != 0[\s\S]*Abort/);
   });
 
+  it('POSTINSTALL solo pasa --interactive si el instalador no es silencioso', () => {
+    const m = macro('NSIS_HOOK_POSTINSTALL');
+    expect(m).toMatch(
+      /\$\{If\} \$\{Silent\}\s+StrCpy \$R7 ""\s+\$\{Else\}\s+StrCpy \$R7 " --interactive"/,
+    );
+    expect(m).toMatch(/install --lang \$R8\$R7'/);
+  });
+
   it('PREINSTALL para el servicio previo y aborta si no puede', () => {
     const m = macro('NSIS_HOOK_PREINSTALL');
-    expect(m).toMatch(/post-install\.mjs" stop/);
+    expect(m).toMatch(/post-install\.mjs" stop --lang \$R8'/);
+    expect(m).not.toMatch(/--lang es/);
     expect(m.slice(m.indexOf('post-install.mjs'))).toMatch(/\$\{If\} \$0 != 0[\s\S]*Abort/);
   });
 

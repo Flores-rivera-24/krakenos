@@ -505,6 +505,77 @@ export async function registerRenewalTask({ installDir, dataDir, run }) {
   ]);
 }
 
+const PS = ['-NoProfile', '-NonInteractive', '-Command'];
+const psq = (v) => String(v).replaceAll("'", "''");
+
+/**
+ * Cortafuegos de entrada SOLO para el perfil Privado (nunca Público, Dominio ni Any) y SOLO para el
+ * `node.exe` de Program Files (`-Program`: no se abre el puerto a cualquier proceso). Con `mdns`, otra
+ * regla para el UDP 5353 del respondedor de `<equipo>.local`. Idempotente: parte de borrar el grupo.
+ */
+export async function openFirewall({ nodeExe, port, mdns, run }) {
+  const ps = (cmd) => ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${cmd}`]);
+  await ps(`Remove-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue`);
+  const regla = (nombre, proto, puerto) =>
+    `New-NetFirewallRule -DisplayName '${nombre}' -Group KrakenOS -Direction Inbound -Action Allow ` +
+    `-Profile Private -Protocol ${proto} -LocalPort ${puerto} -Program '${psq(nodeExe)}' | Out-Null`;
+  await ps(regla(`KrakenOS (TCP ${port})`, 'TCP', port));
+  if (mdns) await ps(regla('KrakenOS mDNS (UDP 5353)', 'UDP', 5353));
+}
+
+/** Red de la ruta por defecto IPv4 (la de menor métrica) y su perfil; `null` si no hay ruta o no se lee. */
+export async function activeNetwork(run) {
+  const script =
+    `[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; ` +
+    `$r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | ` +
+    `Sort-Object { $_.RouteMetric + (Get-NetIPInterface -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4).InterfaceMetric } | ` +
+    `Select-Object -First 1; ` +
+    `if ($r) { $c = Get-NetConnectionProfile -InterfaceIndex $r.InterfaceIndex; ` +
+    `@{ name = [string]$c.Name; interfaceIndex = [int]$r.InterfaceIndex; category = [string]$c.NetworkCategory } | ConvertTo-Json -Compress }`;
+  const r = await run('powershell.exe', [...PS, script]);
+  if (r.code !== 0) return null;
+  try {
+    const n = JSON.parse(r.stdout.trim());
+    const valida = ['Public', 'Private', 'DomainAuthenticated'].includes(n.category);
+    return valida && Number.isInteger(n.interfaceIndex) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Si la red activa es Pública, ofrece pasarla a Privada. En silencio NUNCA pregunta ni cambia nada.
+ * `'cambiada'` · `'rechazada'` (Pública y sigue Pública) · `'no-aplica'` (Privada, Dominio o sin red).
+ */
+export async function offerPrivateNetwork({ net, silent, ask, run }) {
+  if (net?.category !== 'Public') return 'no-aplica';
+  if (silent || !(await ask(net))) return 'rechazada';
+  const r = await run('powershell.exe', [
+    ...PS,
+    `Set-NetConnectionProfile -InterfaceIndex ${Number(net.interfaceIndex)} -NetworkCategory Private`,
+  ]);
+  return r.code === 0 ? 'cambiada' : 'rechazada';
+}
+
+/**
+ * Diálogo de Windows (WinForms, con un dueño TopMost para que no quede detrás del instalador). El texto
+ * viaja por el entorno, no por la línea de comandos. Devuelve si se pulsó «Sí» (o «Aceptar»).
+ */
+export async function showDialog({ run, title, text, yesNo }) {
+  const r = await run(
+    'powershell.exe',
+    [
+      ...PS,
+      `Add-Type -AssemblyName System.Windows.Forms; ` +
+        `$f = New-Object System.Windows.Forms.Form -Property @{ TopMost = $true }; ` +
+        `$b = [System.Windows.Forms.MessageBox]::Show($f, $env:KR_TEXTO, $env:KR_TITULO, '${yesNo ? 'YesNo' : 'OK'}', '${yesNo ? 'Question' : 'Information'}'); ` +
+        `if ($b -eq 'Yes' -or $b -eq 'OK') { exit 0 } else { exit 3 }`,
+    ],
+    { env: { KR_TEXTO: text, KR_TITULO: title } },
+  );
+  return r.code === 0;
+}
+
 /** Instalación completa. Cualquier fallo se propaga: el CLI sale con código distinto de 0. */
 export async function runInstall(d) {
   const { installDir, dataDir, run, fs, isFree, get, setKey, log } = d;
@@ -559,5 +630,27 @@ export async function runInstall(d) {
   log(msg(lang, 'listo', port));
   log(msg(lang, 'tlsListo', origin));
   if (rotada) log(msg(lang, 'caRotada'));
+
+  // Cortafuegos solo Privado; la red activa solo se cambia con el usuario delante (nunca en silencio).
+  // En Windows `MDNS_RESPONDER=auto` (o sin poner) es activo; solo `off` lo apaga.
+  const envFinal = await fs.readFile(envPath, 'utf8').catch(() => '');
+  await openFirewall({
+    nodeExe: join(installDir, 'node', 'node.exe'),
+    port,
+    mdns: !/^MDNS_RESPONDER=off\s*$/m.test(envFinal),
+    run,
+  });
+  log(msg(lang, 'cortafuegosListo', port));
+  const interactive = d.interactive ?? false;
+  const net = await activeNetwork(run);
+  const ask = (n) => d.ask(msg(lang, 'preguntaRedPrivada', n.name), msg(lang, 'tituloDialogo'));
+  const red = await offerPrivateNetwork({ net, silent: !interactive, ask, run });
+  if (red === 'cambiada') log(msg(lang, 'redCambiada', net?.name));
+  else if (red === 'rechazada')
+    log(msg(lang, interactive ? 'redRechazada' : 'redPublicaSilencio', net?.name));
+  else if (net?.category !== 'Private') log(msg(lang, 'redNoPrivada'));
+  // Solo se avisa: el plan de energía no se toca. En silencio queda la línea en el resumen, sin diálogo.
+  log(msg(lang, 'energia'));
+  if (interactive) await d.notify(msg(lang, 'energia'), msg(lang, 'tituloDialogo'));
   return { port };
 }

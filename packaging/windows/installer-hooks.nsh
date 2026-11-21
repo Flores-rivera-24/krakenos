@@ -24,9 +24,15 @@
 
   ; Actualizar encima: se para el servicio de la versión anterior (con SU node y SU script) antes de
   ; copiar, o los ficheros en uso no se pisan. `stop` no hace nada si el servicio no existe.
+  ; $LANGUAGE: 1034 es español; el resto, inglés.
+  ${If} $LANGUAGE == 1034
+    StrCpy $R8 "es"
+  ${Else}
+    StrCpy $R8 "en"
+  ${EndIf}
   ${If} ${FileExists} "$INSTDIR\installer\post-install.mjs"
   ${AndIf} ${FileExists} "$INSTDIR\node\node.exe"
-    nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" stop --lang es'
+    nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" stop --lang $R8'
     Pop $0
     ${If} $0 != 0
       DetailPrint "No se pudo parar el servicio de KrakenOS (resultado: $0)"
@@ -55,7 +61,14 @@
   ${Else}
     StrCpy $R8 "en"
   ${EndIf}
-  nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" install --lang $R8'
+  ; Con instalación interactiva el servicio pregunta por la red Pública y avisa de la energía; con `/S`
+  ; no hay diálogos y el perfil de red no se toca (sin `--interactive`).
+  ${If} ${Silent}
+    StrCpy $R7 ""
+  ${Else}
+    StrCpy $R7 " --interactive"
+  ${EndIf}
+  nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" install --lang $R8$R7'
   Pop $0
   ${If} $0 != 0
     DetailPrint "El servicio de KrakenOS no quedó en marcha (resultado: $0)"

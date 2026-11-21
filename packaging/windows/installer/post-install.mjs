@@ -1,5 +1,5 @@
 /**
- * `node post-install.mjs install|stop|uninstall [--lang es|en]`: lo ejecuta el instalador (elevado)
+ * `node post-install.mjs install|stop|uninstall [--lang es|en] [--interactive]`: lo ejecuta el instalador (elevado)
  * con el Node empaquetado, desde `Program Files\KrakenOS\installer`. Sale con código distinto de 0
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
@@ -13,7 +13,7 @@ import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { msg } from './mensajes.mjs';
-import { runInstall, stopService, uninstallService } from './steps.mjs';
+import { runInstall, showDialog, stopService, uninstallService } from './steps.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const INSTALL_DIR = join(AQUI, '..');
@@ -59,6 +59,8 @@ function makeGet(dataDir) {
 async function main() {
   const [orden, ...resto] = process.argv.slice(2);
   const lang = resto[resto.indexOf('--lang') + 1] === 'en' ? 'en' : 'es';
+  // Sin `--interactive` (silencioso, o llamada a mano) no hay diálogos ni se cambia el perfil de red.
+  const interactive = resto.includes('--interactive');
   const dataDir = process.env.ProgramData && join(process.env.ProgramData, 'KrakenOS');
   if (!dataDir) throw new Error('falta la variable ProgramData');
   const serviceExe = join(INSTALL_DIR, 'service', 'KrakenOS-service.exe');
@@ -81,6 +83,9 @@ async function main() {
         ensureEnv: (d) => ensureEnv(d, join(INSTALL_DIR, 'app', 'agent', '.env.example')),
         ensureKeys: (d) => ensureKeys(d, join(INSTALL_DIR, 'app', 'agent', 'dist', 'keys.js')),
         log: (l) => console.log(l),
+        interactive,
+        ask: (text, title) => showDialog({ run, title, text, yesNo: true }),
+        notify: (text, title) => showDialog({ run, title, text, yesNo: false }),
       });
     } else if (orden === 'stop') await stopService({ serviceExe, run });
     else if (orden === 'uninstall') await uninstallService({ serviceExe, run });

@@ -440,10 +440,58 @@ function Phase-Tls {
   Assert (($tls -match 'KrakenOS:\(OI\)\(CI\)\(RX\)') -and ($tls -notmatch 'KrakenOS:[^\n]*\(M\)')) 'icacls tls lista al servicio con (RX), no (M)'
 }
 
+# Red de la ruta por defecto (la que ve el instalador): el runner no es una casa, así que la prueba fija su categoría.
+function Get-ActiveProfile {
+  $r = Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue |
+    Sort-Object { $_.RouteMetric + (Get-NetIPInterface -InterfaceIndex $_.InterfaceIndex -AddressFamily IPv4).InterfaceMetric } |
+    Select-Object -First 1
+  Assert ($null -ne $r) 'hay una ruta por defecto IPv4'
+  Get-NetConnectionProfile -InterfaceIndex $r.InterfaceIndex
+}
+
+# Antes de instalar en silencio: la red activa en Pública. El silencio no puede cambiarla.
+function Set-ActiveNetworkPublic {
+  Write-Host "== Set-ActiveNetworkPublic"
+  $p = Get-ActiveProfile
+  Set-NetConnectionProfile -InterfaceIndex $p.InterfaceIndex -NetworkCategory Public
+  $p = Get-ActiveProfile
+  Write-Host ("  red activa: {0} ({1})" -f $p.Name, $p.NetworkCategory)
+  Assert ($p.NetworkCategory -eq 'Public') 'precondición: la red activa del runner está en Pública'
+}
+
+# Cortafuegos: solo perfil Privado, atado al node.exe de Program Files, y el perfil de red intacto tras el /S.
+function Phase-Firewall {
+  Write-Host "== Phase-Firewall"
+  $node = Join-Path $env:ProgramFiles 'KrakenOS\node\node.exe'
+  $envTxt = Get-Content (Join-Path $env:ProgramData 'KrakenOS\.env') -Raw
+  $port = [int][regex]::Match($envTxt, '(?m)^PORT=(\d+)\s*$').Groups[1].Value
+  $reglas = @(Get-NetFirewallRule -Group KrakenOS)
+  Write-Host ("  reglas del grupo KrakenOS: {0}" -f $reglas.Count)
+  Assert ($reglas.Count -eq 2) 'hay dos reglas (TCP del puerto y UDP 5353 del mDNS): sin duplicados tras reinstalar'
+  foreach ($r in $reglas) {
+    $pf = $r | Get-NetFirewallPortFilter
+    $ap = $r | Get-NetFirewallApplicationFilter
+    Write-Host ("  {0}: {1} {2} {3} perfil={4} programa={5}" -f $r.DisplayName, $r.Direction, $pf.Protocol, $pf.LocalPort, $r.Profile, $ap.Program)
+    Assert ($r.Enabled -eq 'True') "la regla $($r.DisplayName) está activa"
+    Assert ($r.Direction -eq 'Inbound' -and $r.Action -eq 'Allow') "la regla $($r.DisplayName) es de entrada y permite"
+    Assert ("$($r.Profile)" -eq 'Private') "la regla $($r.DisplayName) es SOLO del perfil Private (nunca Any ni Public): $($r.Profile)"
+    Assert ($ap.Program -eq $node) "la regla $($r.DisplayName) está atada al node.exe de Program Files"
+  }
+  $tcp = $reglas | Where-Object { ($_ | Get-NetFirewallPortFilter).Protocol -eq 'TCP' }
+  Assert (($tcp | Get-NetFirewallPortFilter).LocalPort -eq "$port") "la regla TCP es la del puerto del .env ($port)"
+  $udp = $reglas | Where-Object { ($_ | Get-NetFirewallPortFilter).Protocol -eq 'UDP' }
+  Assert (($udp | Get-NetFirewallPortFilter).LocalPort -eq '5353') 'la regla UDP es la del 5353 (mDNS)'
+  # El silencio no toca la red: sigue Pública, y el instalador lo dijo en su resumen.
+  $p = Get-ActiveProfile
+  Assert ($p.NetworkCategory -eq 'Public') "tras instalar en silencio la red sigue Pública ($($p.NetworkCategory))"
+}
+
 Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
+Set-ActiveNetworkPublic
 Phase-Install
 Phase-RejectPlantedDataDir
 Phase-Service
 Phase-Tls
+Phase-Firewall
 Write-Host 'Todas las fases en verde'
