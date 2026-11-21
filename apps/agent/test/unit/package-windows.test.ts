@@ -85,3 +85,47 @@ describe('installer-hooks.nsh', () => {
     expect(m).not.toMatch(/StrCmpS/); // sin distinguir mayúsculas
   });
 });
+
+describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
+  const leer = (r: string) => readFileSync(resolve(ROOT, r), 'utf8');
+
+  it('package-windows.mjs comprueba el instalador contra el presupuesto installer-win-x64', () => {
+    const src = leer('scripts/package-windows.mjs');
+    expect(src).toContain("'installer-win-x64'");
+    expect(src).toContain('checkSize(');
+  });
+
+  it('el aviso de terceros de Windows lleva WinSW (MIT), NSIS y Tauri con su texto literal', () => {
+    const t = leer('packaging/windows/THIRD-PARTY-WINDOWS.txt');
+    expect(t).toContain('Copyright (c) 2008-2020 Kohsuke Kawaguchi');
+    expect(t).toContain('ZLIB/LIBPNG LICENSE');
+    expect(t).toContain('Copyright (c) 2017 - Present Tauri Apps Contributors');
+    expect(t).toContain('Apache License');
+    expect(t).not.toMatch(/US-\d+/);
+  });
+
+  it('package-windows.mjs lo copia a licenses/ del paquete que instala NSIS', () => {
+    const src = leer('scripts/package-windows.mjs');
+    expect(src).toContain('THIRD-PARTY-WINDOWS.txt');
+    expect(src).toContain("'licenses'");
+  });
+
+  it('el smoke recorre la secuencia de la spec: instalar, servicio, reinicio, actualizar, desinstalar sin residuos', () => {
+    const src = leer('scripts/installer-smoke-windows.ps1');
+    const llamadas = src.slice(src.lastIndexOf('Test-SelectSafeLines\n')).split('\n');
+    const orden = llamadas.filter((l) => /^Phase-/.test(l));
+    expect(orden).toEqual([
+      'Phase-RejectOutsideProgramFiles',
+      'Phase-Install',
+      'Phase-RejectPlantedDataDir',
+      'Phase-Service',
+      'Phase-Tls',
+      'Phase-Firewall',
+      'Phase-Token',
+      'Phase-Uninstall',
+      'Phase-Upgrade',
+      'Phase-FinalUninstall',
+    ]);
+    expect(src).toContain('Restart-Service KrakenOS');
+  });
+});

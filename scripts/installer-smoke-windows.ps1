@@ -787,6 +787,20 @@ function Phase-Upgrade {
 # Lo que ya había en Program Files y ProgramData con «kraken» en el nombre (nada, en un runner limpio).
 $Script:Antes = @($env:ProgramFiles, $env:ProgramData | ForEach-Object { Get-ChildItem $_ -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -match 'kraken' } | ForEach-Object Name })
 
+# Fase final: la instalación que dejó la actualización se desinstala con /S /PURGEDATA y no queda nada.
+function Phase-FinalUninstall {
+  Write-Host "== Phase-FinalUninstall"
+  $dir = Join-Path $env:ProgramFiles 'KrakenOS'
+  if (-not (Test-Path $dir)) { Write-Host '  sin instalación que quitar (no hubo actualización)'; return }
+  $thumb = (Get-ItemProperty $KrakenKey).CaThumbprint
+  Assert ((Get-Service KrakenOS).Status -eq 'Running') 'precondición: el servicio actualizado sigue Running'
+  $p = Start-Process -FilePath (Join-Path $dir 'uninstall.exe') -ArgumentList '/S /PURGEDATA' -Wait -PassThru
+  Assert ($p.ExitCode -eq 0) 'uninstall.exe /S /PURGEDATA sobre la instalación actualizada sale con 0'
+  Assert (Wait-Desinstalador $dir 180) 'el desinstalador termina y Program Files\KrakenOS desaparece'
+  Assert (-not (Test-Path (Join-Path $env:ProgramData 'KrakenOS'))) '/PURGEDATA borra %ProgramData%\KrakenOS'
+  Assert-SinResiduos 'tras actualizar y desinstalar' @($thumb)
+}
+
 Test-SelectSafeLines
 Phase-RejectOutsideProgramFiles
 Set-ActiveNetworkPublic
@@ -798,4 +812,5 @@ Phase-Firewall
 Phase-Token
 Phase-Uninstall
 Phase-Upgrade
+Phase-FinalUninstall
 Write-Host 'Todas las fases en verde'

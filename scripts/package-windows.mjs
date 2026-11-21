@@ -4,11 +4,22 @@
  * como recursos, y escribe su ruta en stdout. `--version` existe para la prueba de actualización.
  */
 import { spawnSync } from 'node:child_process';
-import { copyFile, cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  cp,
+  mkdir,
+  mkdtemp,
+  readdir,
+  readFile,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installWinsw } from './package/winsw.mjs';
+import { checkSize } from './package/size-budget.mjs';
 import { buildTauriConfig, installerFileName } from './package/windows-installer.mjs';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -40,6 +51,13 @@ async function main() {
   await cp(join(RAIZ, 'packaging', 'windows', 'installer'), join(dir, 'installer'), {
     recursive: true,
   });
+
+  // Avisos de terceros del propio instalador (WinSW, NSIS, Tauri); NSIS los deja en `<instalación>\licenses`.
+  await mkdir(join(dir, 'licenses'), { recursive: true });
+  await copyFile(
+    join(RAIZ, 'packaging', 'windows', 'THIRD-PARTY-WINDOWS.txt'),
+    join(dir, 'licenses', 'THIRD-PARTY-WINDOWS.txt'),
+  );
 
   const tmp = await mkdtemp(join(tmpdir(), 'krakenos-nsis-'));
   try {
@@ -81,6 +99,14 @@ async function main() {
     await mkdir(out, { recursive: true });
     const destino = join(out, installerFileName(v));
     await copyFile(join(NSIS, exes[0]), destino);
+    // Presupuesto de tamaño del instalador (medido + 5 %, en size-budget.json).
+    const mb = (await stat(destino)).size / 1048576;
+    console.error(`instalador: ${mb.toFixed(1)} MB`);
+    const presupuesto = JSON.parse(
+      await readFile(join(RAIZ, 'scripts', 'package', 'size-budget.json'), 'utf8'),
+    )['installer-win-x64'];
+    if (!presupuesto) throw new Error('size-budget.json no tiene entrada para installer-win-x64');
+    checkSize(mb, presupuesto);
     process.stdout.write(`${destino}\n`);
   } finally {
     await rm(tmp, { recursive: true, force: true });

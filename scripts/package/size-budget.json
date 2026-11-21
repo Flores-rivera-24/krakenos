@@ -10,5 +10,9 @@
   "linux-arm64": {
     "measuredMb": 187.8,
     "maxMb": 198
+  },
+  "installer-win-x64": {
+    "measuredMb": 41.0,
+    "maxMb": 43.1
   }
 }

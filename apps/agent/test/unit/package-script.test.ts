@@ -583,7 +583,7 @@ describe('size-budget.json', () => {
     readFileSync(join(__dirname, '../../../../scripts/package/size-budget.json'), 'utf8'),
   ) as Record<string, { maxMb: number; measuredMb: number }>;
 
-  it.each(['win-x64', 'linux-x64', 'linux-arm64'])(
+  it.each(['win-x64', 'installer-win-x64', 'linux-x64', 'linux-arm64'])(
     '%s tiene tope razonable sobre lo medido',
     (id) => {
       const b = presupuesto[id];

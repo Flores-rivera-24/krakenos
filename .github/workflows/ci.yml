@@ -492,7 +492,15 @@ jobs:
   # Instalador de Windows (NSIS por el bundler de Tauri, con la carpeta de `pnpm package` dentro) y su
   # prueba en silencio (scripts/installer-smoke-windows.ps1: una función por fase). El paquete se
   # construye AQUÍ y no se baja de un artefacto: `upload-artifact` no conserva las junctions de pnpm.
-  # `continue-on-error` hasta 5 pasadas verdes seguidas en main (como `ventana`).
+  # `continue-on-error` hasta 5 pasadas verdes seguidas en main (como `ventana`); `release` NO lo espera
+  # (lo decide la publicación del instalador). Qué fase pondría rojo qué:
+  #   «Empaquetar» · el paquete no se construye o se pasa del presupuesto de la carpeta (win-x64)
+  #   «Construir el instalador NSIS» · ruta > 200, plantilla de Tauri cambiada, o el .exe se pasa de
+  #     `installer-win-x64` en size-budget.json (medido + 5 %)
+  #   «Negativo de la suma de WinSW» · la verificación de la suma dejó de rechazar un binario alterado
+  #   «Probar el instalador» · una fase del smoke (RejectOutside…, Install, Service, Tls, Firewall,
+  #     Token, Uninstall, Upgrade, FinalUninstall): el log dice cuál con `== Phase-…`
+  # Sube `krakenos-setup-win-x64` (el .exe) solo si todo lo anterior pasó.
   instalador-windows:
     name: instalador (windows)
     runs-on: windows-latest
@@ -851,7 +859,8 @@ jobs:
             --verbose
 
       # (2) SAST: semgrep con engine pin-eado (imagen Docker por versión exacta) y
-      # acotado al código fuente (src/), no a node_modules/tests/build. Reglas por
+      # acotado al código fuente (src/) y a `packaging/` (el código elevado del instalador
+      # de Windows), no a node_modules/tests/build. Reglas por
       # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
       # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
       # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
@@ -873,7 +882,7 @@ jobs:
               --error \
               --metrics off \
               --disable-version-check \
-              apps/agent/src apps/web/src packages/types/src
+              apps/agent/src apps/web/src packages/types/src packaging
 
       # (3) shellcheck sobre los scripts de shell (US-231/AUD3-32). `install.sh`
       # son 400+ líneas que se ejecutan **como root** por `curl | sudo bash`, y
