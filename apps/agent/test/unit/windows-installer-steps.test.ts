@@ -1,7 +1,7 @@
 import { X509Certificate } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 // prettier-ignore
@@ -93,6 +93,12 @@ interface Nodo {
   /** Ruta real que resuelve `realpath` (una junction que `lstat` no ve como enlace). */
   real?: string;
 }
+/** Como el disco real: lo borrado deja de figurar en `readdir` de su carpeta. */
+function quitarDeSuCarpeta(nodos: Record<string, Nodo>, p: string) {
+  const padre = nodos[dirname(p)];
+  if (padre?.entries) padre.entries = padre.entries.filter((n) => n !== basename(p));
+}
+
 function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
   const enoent = () => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   return {
@@ -120,10 +126,12 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
     unlink: async (p: string) => {
       events.push(`unlink ${p}`);
       delete nodos[p];
+      quitarDeSuCarpeta(nodos, p);
     },
     rmdir: async (p: string) => {
       events.push(`rmdir ${p}`);
       delete nodos[p];
+      quitarDeSuCarpeta(nodos, p);
     },
     readFile: async (p: string) => {
       const n = nodos[p];
@@ -1858,7 +1866,10 @@ describe('uninstallAll', () => {
       const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
         if (o?.env?.KRAKENOS_RUTA) {
           llamadas.push({ cmd, args, env: o.env });
-          if (psQuita) delete m.nodos[trampa];
+          if (psQuita) {
+            delete m.nodos[trampa];
+            quitarDeSuCarpeta(m.nodos, trampa);
+          }
         }
         return m.run(cmd, args);
       };
@@ -1874,6 +1885,37 @@ describe('uninstallAll', () => {
     expect(a.m.ev.some((l) => l.startsWith('cmd.exe'))).toBe(false);
     const b = armar(false);
     await expect(uninstallAll(b.opts)).rejects.toThrow(/no se pudo quitar.*calc/);
+  });
+
+  it('una entrada que readdir lista pero cuyo lstat da ENOENT (junction por volumen) se quita con PowerShell, y si sigue listada falla nombrándola', async () => {
+    const vol = join(DATOS, 'junction-volumen');
+    const armar = (psQuita: boolean) => {
+      const m = maquina();
+      m.nodos[DATOS] = { kind: 'dir', entries: ['junction-volumen'] };
+      m.nodos[vol] = { kind: 'link', entries: [] };
+      let oculta = true;
+      const fs = {
+        ...m.fs,
+        lstat: async (p: string) => {
+          if (p === vol && oculta) throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+          return m.fs.lstat(p);
+        },
+        unlink: async () => {},
+        rmdir: async (p: string) => {
+          if (p !== vol) await m.fs.rmdir(p);
+        },
+      };
+      const run = async (cmd: string, args: string[], o?: { env?: Record<string, string> }) => {
+        if (o?.env?.KRAKENOS_RUTA === vol && psQuita) {
+          delete m.nodos[vol];
+          (m.nodos[DATOS] as { entries: string[] }).entries = [];
+        }
+        return m.run(cmd, args);
+      };
+      return base(m, { purgeData: true, fs, run });
+    };
+    await uninstallAll(armar(true));
+    await expect(uninstallAll(armar(false))).rejects.toThrow(/no se pudo quitar.*junction-volumen/);
   });
 
   it('si la propia carpeta de datos resuelve fuera (junction en la raíz), no se entra: se quita solo el punto', async () => {

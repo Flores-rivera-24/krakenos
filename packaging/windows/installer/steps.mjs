@@ -672,7 +672,12 @@ async function removeTree(ctx, ruta, conservar = [], padreReal) {
     if (e.code === 'ENOENT') return null;
     throw e;
   });
-  if (!st) return;
+  if (!st) {
+    // Una entrada que `readdir` listó no puede «no existir»: Node da ENOENT en `lstat` para una junction por
+    // volumen que no logra seguir. Si aún figura en su carpeta, se quita como punto de reanálisis.
+    if (!raiz) await quitarPunto(ctx, ruta, 'lstat: ENOENT pero listada', false);
+    return;
+  }
   const enlace = st.isSymbolicLink();
   if (enlace || !st.isDirectory()) {
     await quitarPunto(ctx, ruta, `lstat: enlace=${enlace}, carpeta=${st.isDirectory()}`, false);
@@ -703,7 +708,11 @@ async function removeTree(ctx, ruta, conservar = [], padreReal) {
  * y no sigue el destino. Si aun así queda, falla nombrándola.
  */
 async function quitarPunto({ fs, run }, ruta, info, esCarpeta) {
-  const hecho = async () => (await fs.lstat(ruta).catch(() => null)) === null;
+  // `lstat` solo no basta (da ENOENT para esa junction): también debe dejar de figurar en su carpeta.
+  const hecho = async () =>
+    (await fs.lstat(ruta).catch(() => null)) === null &&
+    !(await fs.readdir(dirname(ruta)).catch(() => [])).includes(basename(ruta));
+  if (await hecho()) return;
   const intentos = esCarpeta ? ['rmdir', 'unlink'] : ['unlink', 'rmdir'];
   for (const op of intentos) {
     await fs[op](ruta).catch(() => {});
@@ -714,7 +723,7 @@ async function quitarPunto({ fs, run }, ruta, info, esCarpeta) {
     'powershell.exe',
     [
       ...PS,
-      `$p = $env:KRAKENOS_RUTA; if ([System.IO.Directory]::Exists($p)) { [System.IO.Directory]::Delete($p, $false) } elseif ([System.IO.File]::Exists($p)) { [System.IO.File]::Delete($p) }`,
+      `$p = $env:KRAKENOS_RUTA; try { [System.IO.Directory]::Delete($p, $false) } catch { [System.IO.File]::Delete($p) }`,
     ],
     { env: { KRAKENOS_RUTA: ruta } },
   );
