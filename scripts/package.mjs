@@ -26,6 +26,7 @@ import {
 } from './package/prune.mjs';
 import { collectThirdPartyLicenses } from './package/licenses.mjs';
 import { renombrarConReintento } from './package/rename-retry.mjs';
+import { collectLinks } from './package/links.mjs';
 import { relinkPnpmJunctions } from './package/relink.mjs';
 import { checkSize, dirSizeMb } from './package/size-budget.mjs';
 
@@ -151,9 +152,13 @@ async function main() {
   await ejecutar('pnpm', ['build'], { cwd: RAIZ });
 
   paso(3, 'pnpm deploy --prod (solo se toma node_modules)');
+  // En Windows, directorios de `.pnpm` de a lo sumo 60 caracteres: con el nombre largo (hash de
+  // peer-deps) la ruta más larga del paquete rozaba MAX_PATH al instalar en `Program Files`, y
+  // makensis no abre rutas de más de 260. Linux queda como estaba.
+  const vsMax = target.id === 'win-x64' ? ['--config.virtual-store-dir-max-length=60'] : [];
   await ejecutar(
     'pnpm',
-    ['--filter', '@krakenos/agent', 'deploy', '--prod', '--ignore-scripts', tmpDeploy],
+    [...vsMax, '--filter', '@krakenos/agent', 'deploy', '--prod', '--ignore-scripts', tmpDeploy],
     { cwd: RAIZ },
   );
 
@@ -230,6 +235,14 @@ async function main() {
   console.log(
     `    WASM y CLI: ${a.removed.length} entradas, ${(a.freedBytes / 1048576).toFixed(1)} MB; huérfanos de .pnpm: ${b.removed.length}`,
   );
+
+  // El bundler NSIS no copia junctions: el instalador las rehace desde este manifiesto (links.mjs).
+  if (target.id === 'win-x64') {
+    const links = await collectLinks(nm);
+    await writeFile(join(app, 'links.json'), `${JSON.stringify(links)}\n`);
+    await copyFile(join(RAIZ, 'scripts/package/links.mjs'), join(app, 'links.mjs'));
+    console.log(`    manifiesto de enlaces: ${links.length}`);
+  }
 
   paso(8, 'THIRD_PARTY_LICENSES.txt y VERSION');
   await writeFile(join(pkg, 'THIRD_PARTY_LICENSES.txt'), await collectThirdPartyLicenses(nm));

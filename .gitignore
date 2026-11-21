@@ -58,6 +58,7 @@ pnpm-debug.log*
 # Paquete autocontenido (pnpm package) y la caché de Node descargado.
 /out/
 /.cache/node/
+/.cache/winsw/
 
 # Editor / OS
 .DS_Store

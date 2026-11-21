@@ -1,0 +1,35 @@
+<service>
+  <id>KrakenOS</id>
+  <name>KrakenOS</name>
+  <description>Agente de KrakenOS: gestión de la red doméstica e IoT.</description>
+
+  <!-- %BASE% es la carpeta de este .exe (Program Files\KrakenOS\service). node.exe directo, sin
+       krakenos.cmd por medio: Ctrl+C (SIGINT) no atraviesa un cmd y el agente no cerraría limpio. -->
+  <executable>%BASE%\..\node\node.exe</executable>
+  <arguments>"%BASE%\..\app\agent\dist\index.js"</arguments>
+  <workingdirectory>%ProgramData%\KrakenOS</workingdirectory>
+
+  <!-- Sin KRAKENOS_DEPLOY_MODE: en win32 el agente detecta solo `windows-service`. -->
+  <env name="KRAKENOS_DATA_DIR" value="%ProgramData%\KrakenOS"/>
+  <env name="KRAKENOS_APP_DIR" value="%BASE%\..\app\agent"/>
+  <env name="NODE_ENV" value="production"/>
+  <env name="PORT" value="@PORT@"/>
+
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+
+  <!-- Windows repite la última acción en los fallos siguientes: el servicio nunca se rinde. -->
+  <onfailure action="restart" delay="10 sec"/>
+  <onfailure action="restart" delay="30 sec"/>
+  <onfailure action="restart" delay="60 sec"/>
+  <resetfailure>1 day</resetfailure>
+
+  <!-- El tope de cierre del agente son 10 s + 3 s del $disconnect de la base: 20 s da margen. -->
+  <stoptimeout>20 sec</stoptimeout>
+
+  <logpath>%ProgramData%\KrakenOS\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10240</sizeThreshold>
+    <keepFiles>4</keepFiles>
+  </log>
+</service>
