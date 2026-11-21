@@ -721,6 +721,7 @@ function Phase-Uninstall {
     Show-InstallErrorLog
     Write-Host '--- lo que queda en <datos>'
     Get-ChildItem -LiteralPath $datos -Force -ErrorAction SilentlyContinue | Format-List Name, Attributes, LinkType, Target | Out-Host
+    Write-Host "canario datos existe: $(Test-Path (Join-Path $canDatos 'no-me-borres.txt')); canario volumen existe: $(Test-Path (Join-Path $canVol 'no-me-borres.txt'))"
   }
   Assert (Wait-Desinstalador $dir 1) 'el desinstalador termina y Program Files\KrakenOS desaparece del todo'
   Assert (-not (Test-Path $datos)) '/PURGEDATA borra también %ProgramData%\KrakenOS'

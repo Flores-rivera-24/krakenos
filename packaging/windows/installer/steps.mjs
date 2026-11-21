@@ -665,29 +665,29 @@ const normRuta = (p) =>
  * shortcut: queda una carrera entre el `realpath` y el `readdir` (cambiar una carpeta ya comprobada por una
  * junction); el servicio ya está desinstalado cuando se purga, y solo la ganaría un proceso huérfano suyo.
  */
-async function removeTree(fs, ruta, conservar = [], padreReal) {
+async function removeTree(ctx, ruta, conservar = [], padreReal) {
+  const { fs } = ctx;
   const raiz = padreReal === undefined;
   const st = await fs.lstat(ruta).catch((e) => {
     if (e.code === 'ENOENT') return null;
     throw e;
   });
   if (!st) return;
-  if (st.isSymbolicLink() || !st.isDirectory()) {
-    await fs.unlink(ruta).catch(async (e) => {
-      if (!st.isSymbolicLink()) throw e;
-      await fs.rmdir(ruta); // junction/enlace de carpeta en un SO que no deja `unlink`
-    });
+  const enlace = st.isSymbolicLink();
+  if (enlace || !st.isDirectory()) {
+    await quitarPunto(ctx, ruta, `lstat: enlace=${enlace}, carpeta=${st.isDirectory()}`, false);
     return;
   }
   const real = await fs.realpath(ruta);
   const esperada = join(padreReal ?? (await fs.realpath(dirname(ruta))), basename(ruta));
   if (normRuta(real) !== normRuta(esperada)) {
-    await fs.rmdir(ruta); // punto de reanálisis que Node no ve como enlace: solo él, sin bajar
+    // Punto de reanálisis que Node no ve como enlace: solo él, sin bajar.
+    await quitarPunto(ctx, ruta, `realpath: ${real}`, true);
     return;
   }
   for (const n of await fs.readdir(ruta)) {
     if (raiz && conservar.includes(n)) continue;
-    await removeTree(fs, join(ruta, n), conservar, real);
+    await removeTree(ctx, join(ruta, n), conservar, real);
   }
   if (!(raiz && conservar.length > 0))
     await fs.rmdir(ruta).catch(async (e) => {
@@ -695,6 +695,22 @@ async function removeTree(fs, ruta, conservar = [], padreReal) {
       const quedan = await fs.readdir(ruta).catch(() => []);
       throw new Error(`${e.message} (quedan: ${quedan.join(', ') || 'nada'})`);
     });
+}
+
+/**
+ * Quita UNA entrada que es (o puede ser) un enlace, sin tocar su destino, y comprueba que se fue: `unlink`,
+ * luego `rmdir` y, si Node no pudo (junction con destino por volumen), `cmd /c rmdir`, que quita la junction
+ * y no sigue el destino. Si aun así queda, falla nombrándola.
+ */
+async function quitarPunto({ fs, run }, ruta, info, esCarpeta) {
+  const hecho = async () => (await fs.lstat(ruta).catch(() => null)) === null;
+  const intentos = esCarpeta ? ['rmdir', 'unlink'] : ['unlink', 'rmdir'];
+  for (const op of intentos) {
+    await fs[op](ruta).catch(() => {});
+    if (await hecho()) return;
+  }
+  await run('cmd.exe', ['/c', 'rmdir', ruta]);
+  if (!(await hecho())) throw new Error(`no se pudo quitar ${ruta} (${info})`);
 }
 
 // Lo que NSIS borra él (o no puede borrar aún: `node.exe` y `post-install.mjs` están en marcha).
@@ -760,13 +776,13 @@ export async function uninstallAll({
   // Solo en la carpeta propia (`/D=` deja elegir cualquier subcarpeta de Program Files: vaciar `Common Files` no).
   if (installDir && fallos.length === 0) {
     if (programFiles && normRuta(installDir) === normRuta(join(programFiles, 'KrakenOS')))
-      await paso('programa', () => removeTree(fs, installDir, LO_DE_NSIS));
+      await paso('programa', () => removeTree({ fs, run }, installDir, LO_DE_NSIS));
     else log(msg(lang, 'programaAjeno', installDir));
   }
   // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
   if (caOk) await paso('registro', () => quitarMarca(run, purgeData ? undefined : 'CaThumbprint'));
   if (purgeData) {
-    if (esMia) await paso('datos', () => removeTree(fs, dataDir));
+    if (esMia) await paso('datos', () => removeTree({ fs, run }, dataDir));
     else log(msg(lang, 'datosAjenos', dataDir));
   } else log(msg(lang, 'datosConservados', dataDir));
   if (fallos.length > 0) throw new Error(fallos.join('; '));
