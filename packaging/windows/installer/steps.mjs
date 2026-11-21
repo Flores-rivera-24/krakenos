@@ -346,7 +346,7 @@ async function quitarDeRoot(run, thumbprint) {
 
 /**
  * HTTPS con la CA local, como `setup_tls_local` de Linux. Una CA que ya existe en `ca\` NO se recrea
- * (`local-ca.js` la conserva): reinstalar con datos conservados reimporta la MISMA y los celulares que
+ * (`local-ca.js` la conserva): reinstalar con datos conservados reimporta la MISMA y los móviles que
  * ya la confían siguen confiando. Si falla, la instalación falla: sin HTTPS no hay PWA, push ni passkeys.
  * Antes de que `local-ca.js` escriba la clave de la CA, `ca\` se verifica por SID exacto (solo SYSTEM y
  * Administradores): jamás una clave en una carpeta que el servicio pueda modificar.

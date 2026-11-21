@@ -5,21 +5,21 @@ const CATALOGO = {
       `El puerto ${pref} está ocupado en este equipo: KrakenOS usará el ${usado}.`,
     listo: (puerto) => `El servicio de KrakenOS está en marcha en el puerto ${puerto}.`,
     tlsListo: (origen) =>
-      `HTTPS listo en ${origen}. Este PC ya confía en la CA local; cada celular debe instalarla una vez (se descarga en ${origen}/api/system/ca-cert).`,
+      `HTTPS listo en ${origen}. Este PC ya confía en la CA local; cada móvil debe instalarla una vez (se descarga en ${origen}/api/system/ca-cert).`,
     caRotada: () =>
-      'La carpeta de la CA estaba abierta a otros usuarios: se generó una CA nueva y se quitó la anterior de este PC. Los celulares que confiaban en la anterior deben instalar la nueva.',
+      'La carpeta de la CA estaba abierta a otros usuarios: se generó una CA nueva y se quitó la anterior de este PC. Los móviles que confiaban en la anterior deben instalar la nueva.',
     cortafuegosListo: (puerto) =>
       `Cortafuegos: KrakenOS acepta conexiones en el puerto ${puerto} solo en redes privadas.`,
     tituloDialogo: () => 'KrakenOS',
     preguntaRedPrivada: (red) =>
-      `La red «${red}» está marcada como pública y Windows bloquea en ella las conexiones entrantes: el celular no podría abrir KrakenOS. ¿Quieres pasarla a privada? Cambia el perfil de esa red y este equipo será visible para los demás de ella; hazlo solo si es tu red de casa.`,
+      `La red «${red}» está marcada como pública y Windows bloquea en ella las conexiones entrantes: el móvil no podría abrir KrakenOS. ¿Quieres pasarla a privada? Cambia el perfil de esa red y este equipo será visible para los demás de ella; hazlo solo si es tu red de casa.`,
     redCambiada: (red) => `La red «${red}» ahora es privada.`,
     redRechazada: (red) =>
-      `La red «${red}» sigue siendo pública: el celular no llegará a KrakenOS hasta que la pases a privada (Configuración → Red e Internet → propiedades de la red).`,
+      `La red «${red}» sigue siendo pública: el móvil no llegará a KrakenOS hasta que la pases a privada (Configuración → Red e Internet → propiedades de la red).`,
     redPublicaSilencio: (red) =>
-      `La red «${red}» es pública y la instalación silenciosa no cambia el perfil de red: el celular no llegará a KrakenOS hasta que la pases a privada (Configuración → Red e Internet → propiedades de la red).`,
+      `La red «${red}» es pública y la instalación silenciosa no cambia el perfil de red: el móvil no llegará a KrakenOS hasta que la pases a privada (Configuración → Red e Internet → propiedades de la red).`,
     redNoPrivada: () =>
-      'La red activa no es privada (es de dominio o no hay conexión): la regla del cortafuegos solo vale en redes privadas, así que el celular no llegará a KrakenOS desde ella.',
+      'La red activa no es privada (es de dominio o no hay conexión): la regla del cortafuegos solo vale en redes privadas, así que el móvil no llegará a KrakenOS desde ella.',
     energia: () =>
       'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración → Sistema → Energía.',
     fallo: (detalle) => `La instalación de KrakenOS no terminó: ${detalle}`,

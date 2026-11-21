@@ -1331,13 +1331,13 @@ describe('runInstall: cortafuegos, red y energía', () => {
     expect(avisos[0]).toContain('KrakenOS deja de vigilar');
   });
 
-  it('interactivo y rechazado: no cambia nada y el resumen dice que el celular no llegará', async () => {
+  it('interactivo y rechazado: no cambia nada y el resumen dice que el móvil no llegará', async () => {
     const { ev, lineas } = await instalar(
       { interactive: true, ask: async () => false },
       { 'Get-NetRoute': RED_PUBLICA },
     );
     expect(ev.some((l) => l.includes('Set-NetConnectionProfile'))).toBe(false);
-    expect(lineas.join('\n')).toContain('el celular no llegará');
+    expect(lineas.join('\n')).toContain('el móvil no llegará');
   });
 
   it('nunca toca el plan de energía', async () => {
