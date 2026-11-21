@@ -717,7 +717,11 @@ function Phase-Uninstall {
   # El desinstalador normal (sin `_?=`): se copia a %TEMP% y el original sale al momento; se espera a la copia.
   $p = Start-Process -FilePath $un -ArgumentList '/S /PURGEDATA' -Wait -PassThru
   Assert ($p.ExitCode -eq 0) 'uninstall.exe /S /PURGEDATA sale con 0'
-  if (-not (Wait-Desinstalador $dir 180)) { Show-InstallErrorLog }
+  if (-not (Wait-Desinstalador $dir 180)) {
+    Show-InstallErrorLog
+    Write-Host '--- lo que queda en <datos>'
+    Get-ChildItem -LiteralPath $datos -Force -ErrorAction SilentlyContinue | Format-List Name, Attributes, LinkType, Target | Out-Host
+  }
   Assert (Wait-Desinstalador $dir 1) 'el desinstalador termina y Program Files\KrakenOS desaparece del todo'
   Assert (-not (Test-Path $datos)) '/PURGEDATA borra también %ProgramData%\KrakenOS'
   Assert (Test-Path (Join-Path $canDatos 'no-me-borres.txt')) '/PURGEDATA no sigue una junction plantada en <datos>: el fichero de fuera sigue existiendo'

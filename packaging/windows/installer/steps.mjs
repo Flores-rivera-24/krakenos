@@ -689,7 +689,12 @@ async function removeTree(fs, ruta, conservar = [], padreReal) {
     if (raiz && conservar.includes(n)) continue;
     await removeTree(fs, join(ruta, n), conservar, real);
   }
-  if (!(raiz && conservar.length > 0)) await fs.rmdir(ruta);
+  if (!(raiz && conservar.length > 0))
+    await fs.rmdir(ruta).catch(async (e) => {
+      // Dice qué queda dentro: sin eso un ENOTEMPTY no deja saber qué entrada no se pudo quitar.
+      const quedan = await fs.readdir(ruta).catch(() => []);
+      throw new Error(`${e.message} (quedan: ${quedan.join(', ') || 'nada'})`);
+    });
 }
 
 // Lo que NSIS borra él (o no puede borrar aún: `node.exe` y `post-install.mjs` están en marcha).
