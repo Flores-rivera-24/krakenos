@@ -515,7 +515,10 @@ const psq = (v) => String(v).replaceAll("'", "''");
  */
 export async function openFirewall({ nodeExe, port, mdns, run }) {
   const ps = (cmd) => ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${cmd}`]);
-  await ps(`Remove-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue`);
+  // Sin reglas previas, `Remove-NetFirewallRule -Group` falla y `-Command` saldría con 1: se busca primero.
+  await ps(
+    `$r = @(Get-NetFirewallRule -Group KrakenOS -ErrorAction SilentlyContinue); if ($r) { $r | Remove-NetFirewallRule }`,
+  );
   const regla = (nombre, proto, puerto) =>
     `New-NetFirewallRule -DisplayName '${nombre}' -Group KrakenOS -Direction Inbound -Action Allow ` +
     `-Profile Private -Protocol ${proto} -LocalPort ${puerto} -Program '${psq(nodeExe)}' | Out-Null`;

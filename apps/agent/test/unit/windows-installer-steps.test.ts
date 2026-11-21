@@ -1151,7 +1151,8 @@ describe('cortafuegos y perfil de red', () => {
   it('borra antes las reglas del grupo (reinstalar no las duplica) y falla si el cortafuegos falla', async () => {
     const ev: string[] = [];
     await openFirewall({ nodeExe: NODE, port: 3001, mdns: false, run: fakeRun(ev) });
-    expect(ev[0]).toContain('Remove-NetFirewallRule -Group KrakenOS');
+    expect(ev[0]).toContain('Get-NetFirewallRule -Group KrakenOS');
+    expect(ev[0]).toContain('Remove-NetFirewallRule');
     await expect(
       openFirewall({
         nodeExe: NODE,
