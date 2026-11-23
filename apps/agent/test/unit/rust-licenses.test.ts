@@ -43,6 +43,20 @@ describe('licenciaPermitida', () => {
     'GPL-3.0-only OR MIT',
   ])('permite %s', (e) => expect(rl.licenciaPermitida(e, 'x')).toBe(true));
 
+  it.each([
+    'MIT Apache-2.0',
+    'MIT)',
+    '(MIT',
+    'MIT OR',
+    'MIT garbage OR GPL-3.0',
+    '',
+    'OR MIT',
+    'MIT AND AND MIT',
+    '()',
+  ])('la expresión mal formada «%s» lanza nombrando expresión y crate', (e) => {
+    expect(() => rl.licenciaPermitida(e, 'rota 1.0.0')).toThrow(/expresión.*rota 1\.0\.0/s);
+  });
+
   it('AND exige todas las ramas', () => {
     expect(rl.licenciaPermitida('MIT AND Raro-1.0', 'x')).toBe(false);
   });

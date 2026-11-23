@@ -73,17 +73,27 @@ export function licenciaPermitida(expr, nombre) {
   const t = tokens(expr);
   let i = 0;
   const copyleft = [];
+  // Una expresión mal formada nunca cuenta como permitida: lanza con la expresión y la crate.
+  const malFormada = (motivo) => {
+    throw new Error(`expresión de licencia mal formada «${expr}» en ${nombre}: ${motivo}`);
+  };
+  const OPERADOR = /^(AND|OR|WITH|\(|\))$/i;
+  const palabra = (que) => {
+    const w = t[i++];
+    if (w === undefined || OPERADOR.test(w)) malFormada(`falta ${que}`);
+    return w;
+  };
   const atomo = () => {
     if (t[i] === '(') {
       i++;
       const v = or();
-      i++; // ')'
+      if (t[i++] !== ')') malFormada('falta «)»');
       return v;
     }
-    let id = t[i++];
+    let id = palabra('una licencia');
     if (t[i]?.toUpperCase() === 'WITH') {
       i++;
-      id += ` WITH ${t[i++]}`;
+      id += ` WITH ${palabra('la excepción tras WITH')}`;
     }
     if (COPYLEFT.test(id)) copyleft.push(id);
     return PERMITIDAS.has(id);
@@ -105,6 +115,7 @@ export function licenciaPermitida(expr, nombre) {
     return v;
   };
   const ok = or();
+  if (i !== t.length) malFormada(`sobra «${t[i]}»`);
   if (!ok && copyleft.length)
     throw new Error(
       `licencia ${copyleft.join(', ')} (copyleft) en ${nombre}: es decisión del dueño, no se admite sola`,
