@@ -1,6 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { authHeader, buildTestApp, resetDb, seedUser, signAccess } from '../helpers/app.js';
+
+// Sin DNS real al validar el endpoint de push (ver helpers/dns.ts).
+vi.mock('node:dns/promises', () => import('../helpers/dns.js').then((m) => m.dnsPublicoFijo()));
 
 /**
  * Un token de API NUNCA toca credenciales ni sesiones: con él, un admin (o un

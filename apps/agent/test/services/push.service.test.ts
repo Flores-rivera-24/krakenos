@@ -12,6 +12,9 @@ const webpushMock = vi.hoisted(() => ({
 }));
 vi.mock('web-push', () => ({ default: webpushMock }));
 
+// Sin DNS real al validar el endpoint de push (ver helpers/dns.ts).
+vi.mock('node:dns/promises', () => import('../helpers/dns.js').then((m) => m.dnsPublicoFijo()));
+
 import { PushService } from '../../src/modules/push/push.service.js';
 
 describe('PushService (US-45)', () => {
