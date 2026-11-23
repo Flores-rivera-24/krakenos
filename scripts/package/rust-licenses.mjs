@@ -10,7 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const PERMITIDAS = new Set([
-  // 'MIT',
+  'MIT',
   'Apache-2.0',
   'Apache-2.0 WITH LLVM-exception',
   'BSD-2-Clause',
