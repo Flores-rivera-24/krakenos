@@ -457,7 +457,7 @@ export async function setupTls({
   );
 
   const origin = httpsOrigin(`${hostname}.local`, port);
-  let env = await fs.readFile(envPath, 'utf8').catch(() => '');
+  let env = await leerEnvOpcional(fs, envPath);
   for (const [k, v] of [
     ['HTTPS_ENABLED', 'true'],
     ['TLS_CERT_PATH', join(tls, 'agent-cert.pem')],
@@ -652,6 +652,13 @@ async function quitarMarca(run, valor) {
   if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
 }
 
+/** Solo «no existe» vale como `.env` vacío: cualquier otro fallo (EBUSY, EPERM…) no debe reescribirlo con menos claves. */
+const leerEnvOpcional = (fs, ruta) =>
+  fs.readFile(ruta, 'utf8').catch((e) => {
+    if (e?.code === 'ENOENT') return '';
+    throw e;
+  });
+
 const normRuta = (p) =>
   String(p).replaceAll('\\', '/').replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
 
@@ -796,12 +803,18 @@ export async function uninstallAll({
       await paso('programa', () => removeTree({ fs, run }, installDir, LO_DE_NSIS));
     else log(msg(lang, 'programaAjeno', installDir));
   }
-  // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
-  if (caOk) await paso('registro', () => quitarMarca(run, purgeData ? undefined : 'CaThumbprint'));
+  // Los datos van ANTES que la marca de HKLM: si el borrado falla a medias, la marca sigue y el reintento
+  // vuelve a purgar (sin ella saldría con 0 dejando los datos y la reinstalación los rechazaría como ajenos).
+  let datosOk = true;
   if (purgeData) {
-    if (esMia) await paso('datos', () => removeTree({ fs, run }, dataDir));
+    if (esMia) datosOk = await paso('datos', () => removeTree({ fs, run }, dataDir));
     else log(msg(lang, 'datosAjenos', dataDir));
   } else log(msg(lang, 'datosConservados', dataDir));
+  // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
+  if (caOk)
+    await paso('registro', () =>
+      quitarMarca(run, purgeData && datosOk ? undefined : 'CaThumbprint'),
+    );
   if (fallos.length > 0) throw new Error(fallos.join('; '));
 }
 
@@ -816,7 +829,7 @@ export async function runInstall(d) {
   const { caExpuesta } = await prepareDataDir({ dataDir, run, fs });
 
   // Al actualizar se parte del puerto que ya tenía el .env, para no cambiarlo sin motivo.
-  const previo = await fs.readFile(envPath, 'utf8').catch(() => '');
+  const previo = await leerEnvOpcional(fs, envPath);
   const m = /^PORT=(\d{1,5})\s*$/m.exec(previo);
   const preferido = m ? Number(m[1]) : 3001;
 

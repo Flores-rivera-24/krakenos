@@ -20,7 +20,12 @@ const INSTALL_DIR = join(AQUI, '..');
 
 function run(cmd, args, opciones = {}) {
   return new Promise((resolve, reject) => {
-    const p = spawn(cmd, args, { windowsHide: true, env: { ...process.env, ...opciones.env } });
+    // `cwd` fijo: nada se resuelve desde un directorio actual que no controlamos (el desinstalador corre desde %TEMP%).
+    const p = spawn(cmd, args, {
+      cwd: INSTALL_DIR,
+      windowsHide: true,
+      env: { ...process.env, ...opciones.env },
+    });
     let stdout = '';
     p.stdout.on('data', (c) => (stdout += c));
     p.stderr.on('data', (c) => (stdout += c));

@@ -29,14 +29,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ========================================================================
-NSIS 3.11 (motor del instalador)
+NSIS 3.13 (motor del instalador)
 Licencia: zlib/libpng, con módulos de compresión bajo bzip2 y CPL 1.0
-Fuente del texto: https://github.com/kichik/nsis/blob/v311/COPYING
+Fuente del texto: https://github.com/kichik/nsis/blob/v313/COPYING
 ========================================================================
 COPYRIGHT
 ---------
 
-Copyright (C) 1999-2025 Contributors
+Copyright (C) 1999-2026 Contributors
 
 More detailed copyright information can be found in the individual source code files.
 

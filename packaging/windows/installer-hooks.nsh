@@ -8,6 +8,11 @@
 ; `${StrLoc}` (StrFunc.nsh) lo declara la plantilla de Tauri, no este fichero: el job de CI comprueba
 ; en el installer.nsi generado que sigue haciéndolo.
 !macro NSIS_HOOK_PREINSTALL
+  ; Antes de nada: si la app está abierta, la plantilla de Tauri pregunta si cerrarla (con /S la cierra sin
+  ; preguntar). Su propia comprobación va DESPUÉS de este hook; si el usuario cancelara allí, el servicio ya
+  ; estaría parado (instalar) o desinstalado a medias.
+  !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+
   Push $1
   Push $2
   StrCpy $1 "$PROGRAMFILES64\"
@@ -72,7 +77,7 @@
   Pop $0
   ${If} $0 != 0
     DetailPrint "El servicio de KrakenOS no quedó en marcha (resultado: $0)"
-    Abort "El servicio de KrakenOS no quedó en marcha (resultado: $0). Mira los mensajes anteriores y %ProgramData%\KrakenOS\logs."
+    Abort "El servicio de KrakenOS no quedó en marcha (resultado: $0). Mira los mensajes anteriores y $INSTDIR\install-error.log (no hace falta abrir la carpeta de datos de KrakenOS)."
   ${EndIf}
 
   ; La ventana se abre SIN elevar (RunAsUser, el mismo plugin de la plantilla de Tauri) con el token de
@@ -97,11 +102,16 @@
 ; Desinstalar: ANTES de que NSIS borre nada se quita lo que el instalador creó fuera de los ficheros (servicio,
 ; reglas del cortafuegos, CA de Root, tarea de renovación, claves de HKLM, enlaces), con el Node empaquetado: un
 ; node.exe vivo bloquearía `Program Files\KrakenOS\node`. Al actualizar encima (`/UPDATE`) solo se para el
-; servicio. Los datos solo se borran con `/PURGEDATA` (silencioso) o con la casilla «borrar los datos» de Tauri,
+; servicio. Los datos solo se borran con `/PURGEDATA` (silencioso) o con la casilla «Eliminar los datos de aplicación» de Tauri,
 ; que viene desmarcada. Un fallo aborta la desinstalación con sus ficheros intactos, para poder repetirla.
 ; (`/PURGEDATA` empieza por `/P`, así que Tauri lo toma también como `/P`: modo pasivo, sin pregunta; es lo que
 ; se quiere con ese interruptor.)
 !macro NSIS_HOOK_PREUNINSTALL
+  ; Antes de nada: si la app está abierta, la plantilla de Tauri pregunta si cerrarla (con /S la cierra sin
+  ; preguntar). Su propia comprobación va DESPUÉS de este hook; si el usuario cancelara allí, el servicio ya
+  ; estaría parado (instalar) o desinstalado a medias.
+  !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+
   ${If} $LANGUAGE == 1034
     StrCpy $R8 "es"
   ${Else}

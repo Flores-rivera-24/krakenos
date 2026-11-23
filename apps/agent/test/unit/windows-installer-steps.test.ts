@@ -716,6 +716,26 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     return { ev, nodos, deps };
   }
 
+  it('setupTls: un .env ilegible (EBUSY) falla sin reescribirlo con solo las claves TLS', async () => {
+    const { ev, nodos, deps } = montar();
+    const envPath = join(DATOS, '.env');
+    const ocupado = Object.assign(new Error('EBUSY'), { code: 'EBUSY' });
+    await expect(
+      setupTls({
+        ...deps,
+        fs: {
+          ...deps.fs,
+          readFile: async (p: string, _e?: string) => {
+            if (p === envPath) throw ocupado;
+            return deps.fs.readFile(p);
+          },
+        },
+      }),
+    ).rejects.toThrow(/EBUSY/);
+    expect(ev.filter((l) => l.startsWith('write') && l.endsWith(envPath))).toEqual([]);
+    expect(nodos[envPath]?.text).toBe('X=1\n');
+  });
+
   it('cierra y verifica ca\\ por SID ANTES de lanzar local-ca.js (que escribe la clave allí)', async () => {
     const { ev, deps } = montar();
     await setupTls(deps);
@@ -943,16 +963,24 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(rutas.slice(0, 2).some((r) => r?.startsWith(DATOS))).toBe(false);
   });
 
-  it('renew-tls lee su configuración de ca\\tls.json, nunca del .env, y lanza local-ca.js de Program Files', async () => {
+  const real = (p: string) => p;
+  const AJENO = join('D:', 'plantada');
+
+  it('renew-tls solo usa el hostname de ca\\tls.json: las carpetas salen de <datos>, aunque el JSON traiga otras', async () => {
     const leidos: string[] = [];
     const lanzados: { cmd: string; args: string[]; env: Record<string, string> }[] = [];
     await renew({
       dataDir: DATOS,
       localCa: join(INST, 'app', 'agent', 'dist', 'local-ca.js'),
       node: join(INST, 'node', 'node.exe'),
+      realpath: real,
       readFile: (p: string) => {
         leidos.push(p);
-        return JSON.stringify({ hostname: 'prueba', certsDir: TLS, keysDir: CA });
+        return JSON.stringify({
+          hostname: 'prueba',
+          certsDir: join(AJENO, 'tls'),
+          keysDir: join(AJENO, 'ca'),
+        });
       },
       run: (cmd: string, args: string[], env: Record<string, string>) => {
         lanzados.push({ cmd, args, env });
@@ -962,24 +990,65 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(leidos).toEqual([join(CA, 'tls.json')]);
     expect(lanzados).toHaveLength(1);
     expect(lanzados[0]?.args).toEqual([join(INST, 'app', 'agent', 'dist', 'local-ca.js')]);
-    expect(lanzados[0]?.env).toMatchObject({
+    expect(lanzados[0]?.env).toEqual({
       KRAKENOS_CERTS_DIR: TLS,
       KRAKENOS_KEYS_DIR: CA,
       KRAKENOS_HOSTNAME: 'prueba',
     });
   });
 
-  it('renew-tls falla si la configuración está incompleta o local-ca.js sale con error', async () => {
-    const base = { dataDir: DATOS, localCa: 'l.js', node: 'n.exe', run: () => 0 };
-    await expect(renew({ ...base, readFile: () => '{"hostname":"x"}' })).rejects.toThrow(
-      /tls\.json/,
-    );
+  it('renew-tls aborta sin lanzar nada si la raíz, ca o tls resuelven a otra ruta (junction)', async () => {
+    for (const enlazada of [DATOS, CA, TLS]) {
+      const lanzados: string[] = [];
+      await expect(
+        renew({
+          dataDir: DATOS,
+          localCa: 'l.js',
+          node: 'n.exe',
+          readFile: () => JSON.stringify({ hostname: 'x' }),
+          realpath: (p: string) => (p === enlazada ? join(AJENO, basename(p)) : p),
+          run: () => {
+            lanzados.push('run');
+            return 0;
+          },
+        }),
+      ).rejects.toThrow(/no es una carpeta real/);
+      expect(lanzados).toEqual([]);
+    }
+    // una carpeta que falta (realpath lanza) también aborta, y la comparación no distingue mayúsculas
     await expect(
       renew({
-        ...base,
-        readFile: () => JSON.stringify({ hostname: 'x', certsDir: 'a', keysDir: 'b' }),
-        run: () => 1,
+        dataDir: DATOS,
+        localCa: 'l.js',
+        node: 'n.exe',
+        readFile: () => JSON.stringify({ hostname: 'x' }),
+        realpath: () => {
+          throw new Error('ENOENT');
+        },
+        run: () => 0,
       }),
+    ).rejects.toThrow(/no se puede comprobar/);
+    await expect(
+      renew({
+        dataDir: DATOS,
+        localCa: 'l.js',
+        node: 'n.exe',
+        readFile: () => JSON.stringify({ hostname: 'x' }),
+        realpath: (p: string) => p.toUpperCase(),
+        run: () => 0,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('renew-tls falla si el hostname no es válido o local-ca.js sale con error', async () => {
+    const base = { dataDir: DATOS, localCa: 'l.js', node: 'n.exe', realpath: real, run: () => 0 };
+    for (const h of ['', '../x', 'a b', 'x;y', 'a'.repeat(64)])
+      await expect(
+        renew({ ...base, readFile: () => JSON.stringify({ hostname: h }) }),
+      ).rejects.toThrow(/tls\.json/);
+    await expect(renew({ ...base, readFile: () => '{}' })).rejects.toThrow(/tls\.json/);
+    await expect(
+      renew({ ...base, readFile: () => JSON.stringify({ hostname: 'x' }), run: () => 1 }),
     ).rejects.toThrow(/local-ca/);
   });
 });
@@ -1059,6 +1128,27 @@ describe('runInstall', () => {
     expect(i(' install')).toBeLessThan(i('/grant:r *S-1-5-80'));
     expect(i('/grant:r *S-1-5-80')).toBeLessThan(i(' start'));
     expect(r.port).toBe(3001);
+  });
+
+  it('un .env que existe pero no se puede leer (EBUSY) hace fallar la instalación y no se reescribe; solo ENOENT cuenta como «no hay»', async () => {
+    const previo = '# mío\nDRIVER_KIND=none\nHOST=127.0.0.1\nPORT=3005\n';
+    const { ev, deps, nodos } = montar({ envPrevio: previo });
+    const envPath = join(DATOS, '.env');
+    const ocupado = Object.assign(new Error('EBUSY'), { code: 'EBUSY' });
+    await expect(
+      runInstall({
+        ...deps,
+        fs: {
+          ...deps.fs,
+          readFile: async (p: string, _e?: string) => {
+            if (p === envPath) throw ocupado;
+            return deps.fs.readFile(p);
+          },
+        },
+      }),
+    ).rejects.toThrow(/EBUSY/);
+    expect(ev.filter((l) => l.startsWith('write') && l.endsWith(envPath))).toEqual([]);
+    expect(nodos[envPath]?.text).toBe(previo);
   });
 
   it('con 3001 ocupado elige 3002 y lo escribe en .env y en el XML del servicio', async () => {
@@ -1427,6 +1517,21 @@ describe('mensajes', () => {
   });
 });
 
+describe('copy y spawn del instalador', () => {
+  it('datosConservados cita la casilla REAL de Tauri en cada idioma (languages/Spanish.nsh y English.nsh)', () => {
+    expect(msg('es', 'datosConservados', 'X')).toContain('«Eliminar los datos de aplicación»');
+    expect(msg('en', 'datosConservados', 'X')).toContain('"Delete the application data"');
+  });
+
+  it('el spawn de post-install.mjs fija cwd a la carpeta de instalación', () => {
+    const src = readFileSync(
+      resolve(__dirname, '../../../../packaging/windows/installer/post-install.mjs'),
+      'utf8',
+    );
+    expect(src).toMatch(/spawn\(cmd, args, \{\s+cwd: INSTALL_DIR,/);
+  });
+});
+
 describe('installer-hooks.nsh (servicio)', () => {
   const nsh = readFileSync(
     resolve(__dirname, '../../../../packaging/windows/installer-hooks.nsh'),
@@ -1453,6 +1558,28 @@ describe('installer-hooks.nsh (servicio)', () => {
     expect(m).toMatch(/post-install\.mjs" stop --lang \$R8'/);
     expect(m).not.toMatch(/--lang es/);
     expect(m.slice(m.indexOf('post-install.mjs'))).toMatch(/\$\{If\} \$0 != 0[\s\S]*Abort/);
+  });
+
+  it('PREINSTALL y PREUNINSTALL comprueban la app abierta (macro de la plantilla de Tauri) ANTES de parar el servicio o tocar nada', () => {
+    const llamada =
+      '!insertmacro CheckIfAppIsRunning "$INSTDIR\\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"';
+    for (const n of ['NSIS_HOOK_PREINSTALL', 'NSIS_HOOK_PREUNINSTALL']) {
+      const m = macro(n);
+      // antes de la llamada solo hay comentarios
+      const previo = m
+        .slice(0, m.indexOf(llamada))
+        .split('\n')
+        .filter((l) => l.trim() && !l.trim().startsWith(';'));
+      expect(m).toContain(llamada);
+      expect(previo).toEqual([]);
+      expect(m.indexOf(llamada)).toBeLessThan(m.indexOf('post-install.mjs'));
+    }
+  });
+
+  it('el Abort de POSTINSTALL remite al log de Program Files, que se lee sin elevar, no a la carpeta de datos', () => {
+    const m = macro('NSIS_HOOK_POSTINSTALL');
+    expect(m).toContain('install-error.log');
+    expect(m).not.toMatch(/ProgramData|\\logs/);
   });
 
   it('ningún hook escribe el token de setup en el log', () => {
@@ -1792,6 +1919,35 @@ describe('uninstallAll', () => {
     expect(m.nodos[DATOS]).toBeUndefined();
     // Los datos se borran DESPUÉS de parar y quitar el servicio (si no, los ficheros están en uso).
     expect(m.ev.indexOf(`rmdir ${DATOS}`)).toBeGreaterThan(m.ev.indexOf(`${EXE} uninstall`));
+  });
+
+  it('con purgeData, si el borrado de los datos falla a medias la marca de HKLM sigue y el reintento purga', async () => {
+    const m = maquina();
+    let marca = true;
+    let atasco = true;
+    const run = async (cmd: string, args: string[]) => {
+      const l = [cmd, ...args].join(' ');
+      if (l === 'reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f') marca = false;
+      if (cmd === 'reg.exe' && l.includes('/v DataDir'))
+        return marca
+          ? { code: 0, stdout: `    DataDir    REG_SZ    ${DATOS}\r\n` }
+          : { code: 1, stdout: '' };
+      return m.run(cmd, args);
+    };
+    const fs = {
+      ...m.fs,
+      rmdir: async (p: string) => {
+        if (p === DATOS && atasco) throw Object.assign(new Error('EBUSY'), { code: 'EBUSY' });
+        await m.fs.rmdir(p);
+      },
+    };
+    await expect(uninstallAll(base(m, { purgeData: true, run, fs }))).rejects.toThrow(/EBUSY/);
+    expect(marca).toBe(true);
+    expect(m.nodos[DATOS]).toBeDefined();
+    atasco = false;
+    await uninstallAll(base(m, { purgeData: true, run, fs }));
+    expect(m.nodos[DATOS]).toBeUndefined();
+    expect(marca).toBe(false);
   });
 
   it('al borrar los datos, un enlace o junction que haya dentro se quita SIN seguirlo', async () => {
