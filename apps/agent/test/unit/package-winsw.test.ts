@@ -36,7 +36,7 @@ describe('WINSW (winsw.json)', () => {
 
 describe('renderWinswXml', () => {
   const xml: string = renderWinswXml({ port: 3123 });
-  const sinComentarios = xml.replace(/<!--[\s\S]*?-->/g, '');
+  const sinComentarios = xml.split(/<!--[\s\S]*?-->/).join('');
 
   it('identifica el servicio y envuelve node.exe directo, sin krakenos.cmd', () => {
     expect(xml).toContain('<id>KrakenOS</id>');
