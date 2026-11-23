@@ -489,6 +489,123 @@ jobs:
           path: apps/window/src-tauri/target/release/krakenos-window.exe
           retention-days: 7
 
+  # Instalador de Windows (NSIS por el bundler de Tauri, con la carpeta de `pnpm package` dentro) y su
+  # prueba en silencio (scripts/installer-smoke-windows.ps1: una función por fase). El paquete se
+  # construye AQUÍ y no se baja de un artefacto: `upload-artifact` no conserva las junctions de pnpm.
+  # `continue-on-error` hasta 5 pasadas verdes seguidas en main (como `ventana`); `release` NO lo espera
+  # (lo decide la publicación del instalador). Qué fase pondría rojo qué:
+  #   «Empaquetar» · el paquete no se construye o se pasa del presupuesto de la carpeta (win-x64)
+  #   «Construir el instalador NSIS» · ruta > 200, plantilla de Tauri cambiada, o el .exe se pasa de
+  #     `installer-win-x64` en size-budget.json (medido + 5 %)
+  #   «Negativo de la suma de WinSW» · la verificación de la suma dejó de rechazar un binario alterado
+  #   «Probar el instalador» · una fase del smoke (RejectOutside…, Install, Service, Tls, Firewall,
+  #     Token, Uninstall, Upgrade, FinalUninstall): el log dice cuál con `== Phase-…`
+  # Sube `krakenos-setup-win-x64` (el .exe) solo si todo lo anterior pasó.
+  instalador-windows:
+    name: instalador (windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Rust 1.99.1 (rustup)
+        run: |
+          rustup set auto-self-update disable
+          rustup toolchain install 1.99.1 --profile minimal
+          rustup default 1.99.1
+          rustc --version
+
+      - name: Caché de cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/window/src-tauri/target
+          key: ventana-${{ runner.os }}-rust-1.99.1-${{ hashFiles('apps/window/src-tauri/Cargo.lock') }}
+
+      - name: Empaquetar (pnpm package)
+        run: |
+          command -v gpgv >/dev/null || export PATH="$PATH:/c/Program Files/Git/usr/bin"
+          command -v gpgv
+          pnpm package
+
+      # Tope de la ruta relativa más larga del paquete: makensis y la extracción de NSIS no usan el prefijo
+      # de rutas largas, así que `Program Files\KrakenOS\` (25) + la ruta tiene que quedar bajo 260.
+      # Medido: ver «Resultados del spike» (US-285/286); el tope deja margen sobre lo medido.
+      - name: Construir el instalador NSIS
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          max="$(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }')"
+          echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
+          test "$max" -le 200
+          node scripts/package-windows.mjs "$dir" | tee installer-path.txt
+          # El hook usa `${StrLoc}` (StrFunc.nsh) sin declararlo: lo declara la plantilla de Tauri. Si una
+          # versión nueva de Tauri lo quita, el .nsi no compilaría; esto lo dice con nombre antes.
+          nsi=apps/window/src-tauri/target/release/nsis/x64/installer.nsi
+          grep -Eq '^[[:space:]]*!include[[:space:]]+"?StrFunc\.nsh' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no incluye StrFunc.nsh (lo usa el hook)"; exit 1; }
+          grep -Eq '^[[:space:]]*\$\{StrLoc\}[[:space:]]*$' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no declara \${StrLoc} (lo usa el hook)"; exit 1; }
+          grep -q 'nsis_tauri_utils::RunAsUser' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no trae nsis_tauri_utils::RunAsUser (lo usa el hook para abrir la ventana sin elevar)"; exit 1; }
+          grep -q '!insertmacro CheckIfAppIsRunning' "$nsi" || { echo "::error::el installer.nsi de Tauri ya no usa CheckIfAppIsRunning (lo invocan PREINSTALL y PREUNINSTALL)"; exit 1; }
+
+      # Negativo de la suma de WinSW: con un byte alterado en la caché, `package-windows.mjs` TIENE que
+      # fallar por la suma (y no por otra cosa). Si pasara, la verificación sería decorativa.
+      - name: Negativo de la suma de WinSW (binario alterado)
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          cache="$RUNNER_TEMP/winsw-alterado"
+          rm -rf "$cache" && mkdir -p "$cache"
+          cp .cache/winsw/*.exe "$cache/"
+          f="$(ls "$cache"/*.exe | head -n 1)"
+          printf 'Z' | dd of="$f" bs=1 seek=100 conv=notrunc 2>/dev/null
+          if KRAKENOS_WINSW_CACHE="$cache" node scripts/package-windows.mjs "$dir" > "$RUNNER_TEMP/negativo-winsw.log" 2>&1; then
+            cat "$RUNNER_TEMP/negativo-winsw.log"
+            echo "::error::la verificación de WinSW aceptó un binario alterado"
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/negativo-winsw.log"
+          grep -q "WinSW no verifica" "$RUNNER_TEMP/negativo-winsw.log" || { echo "::error::falló, pero no por la suma"; exit 1; }
+          echo "OK: la suma rechazó el WinSW alterado"
+
+      # El mismo paquete con otra versión: solo hace falta un instalador «viejo» para probar la actualización
+      # encima (datos, CA, servicio y reglas intactos). Reutiliza el paquete ya construido: solo repite el bundle.
+      - name: Construir el instalador 0.0.1 (prueba de actualización)
+        run: |
+          dir="$(ls -d out/krakenos-*-win-x64 | head -n 1)"
+          node scripts/package-windows.mjs "$dir" --version 0.0.1 | tee installer-old-path.txt
+
+      - name: Probar el instalador (en silencio)
+        shell: pwsh
+        run: |
+          $setup = (Get-Content installer-path.txt | Select-Object -Last 1).Trim()
+          $old = (Get-Content installer-old-path.txt | Select-Object -Last 1).Trim()
+          ./scripts/installer-smoke-windows.ps1 -Setup $setup -OldSetup $old
+
+      - name: Subir el instalador
+        uses: actions/upload-artifact@v7
+        with:
+          name: krakenos-setup-win-x64
+          path: out/KrakenOS-Setup-*-x64.exe
+          retention-days: 7
+
   # Suite e2e de navegador (Playwright). US-189. Job aparte para no alargar
   # build-test; corre la app CONSTRUIDA con managers mock (ver docs/e2e.md).
   e2e:
@@ -743,7 +860,8 @@ jobs:
             --verbose
 
       # (2) SAST: semgrep con engine pin-eado (imagen Docker por versión exacta) y
-      # acotado al código fuente (src/), no a node_modules/tests/build. Reglas por
+      # acotado al código fuente (src/) y a `packaging/` (el código elevado del instalador
+      # de Windows), no a node_modules/tests/build. Reglas por
       # defecto + JS/TS. `--error` hace que cualquier hallazgo BLOQUEE el build.
       # Nota: los packs `p/*` se descargan del registro de semgrep en cada ejecución;
       # el engine está fijado, pero las reglas pueden evolucionar (ver reporte US-92).
@@ -765,7 +883,7 @@ jobs:
               --error \
               --metrics off \
               --disable-version-check \
-              apps/agent/src apps/web/src packages/types/src
+              apps/agent/src apps/web/src packages/types/src packaging
 
       # (3) shellcheck sobre los scripts de shell (US-231/AUD3-32). `install.sh`
       # son 400+ líneas que se ejecutan **como root** por `curl | sudo bash`, y

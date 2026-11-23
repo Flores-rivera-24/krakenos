@@ -17,6 +17,7 @@
     "package:deb": "node scripts/package-deb.mjs",
     "package:archive": "node scripts/package-archive.mjs",
     "package:arch": "node scripts/package-arch.mjs",
+    "package:windows": "node scripts/package-windows.mjs",
     "dev": "pnpm -r --parallel dev",
     "dev:agent": "pnpm --filter @krakenos/agent dev",
     "dev:web": "pnpm --filter @krakenos/web dev",
