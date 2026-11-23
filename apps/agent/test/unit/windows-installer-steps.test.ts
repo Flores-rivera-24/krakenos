@@ -74,7 +74,12 @@ function fakeRun(
         'S-1-5-32-544|FullControl|Allow|False',
         ...(conServicio.has(dir)
           ? [
-              `${conServicio.get(dir)}|${/tls$/.test(dir) ? 'ReadAndExecute, Synchronize' : 'Modify, Synchronize'}|Allow|False`,
+              ...(/tls$/.test(dir)
+                ? [`${conServicio.get(dir)}|ReadAndExecute, Synchronize|Allow|False`]
+                : [
+                    `${conServicio.get(dir)}|Modify, Synchronize|Allow|False`,
+                    `${conServicio.get(dir)}|ReadAndExecute, AppendData, Synchronize|Allow|False`,
+                  ]),
             ]
           : []),
       ].join('\r\n');
@@ -247,7 +252,7 @@ describe('prepareDataDir', () => {
     expect(ev.join('\n')).not.toContain('S-1-5-80');
   });
 
-  it('grantServiceAccess da Modificar en los datos y solo lectura en tls\\, verificando', async () => {
+  it('grantServiceAccess da Modificar solo a lo de dentro de los datos (la raíz, solo listar y crear) y lectura en tls\\, verificando', async () => {
     const ev: Ev[] = [];
     await grantServiceAccess({
       dataDir: DATOS,
@@ -256,7 +261,8 @@ describe('prepareDataDir', () => {
     });
     const tls = join(DATOS, 'tls');
     expect(ev.filter((l) => !l.startsWith('powershell.exe'))).toEqual([
-      `icacls ${DATOS} /grant:r *${SID}:(OI)(CI)M`,
+      `icacls ${DATOS} /grant:r *${SID}:(OI)(CI)(IO)M`,
+      `icacls ${DATOS} /grant *${SID}:(RX,WD,AD)`,
       `icacls ${tls} /grant:r *${SID}:(OI)(CI)RX`,
     ]);
   });
@@ -323,6 +329,27 @@ describe('prepareDataDir', () => {
     await expect(grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run })).rejects.toThrow(
       /S-1-5-32-545/,
     );
+  });
+
+  it('grantServiceAccess exige en la raíz las DOS ACE del servicio y rechaza cualquier otra que permita borrarla', async () => {
+    const solo = `${SID}|ReadAndExecute, AppendData, Synchronize|Allow|False`;
+    const mod = `${SID}|Modify, Synchronize|Allow|False`;
+    for (const [filas, motivo] of [
+      [[mod], /falta/], // sin la ACE de la propia carpeta
+      [[solo], /falta/], // sin la heredable a los hijos
+      [[mod, mod], /ACE de .*distinta|inesperada/], // un segundo Modify sin (IO) permitiría borrarla
+      [[mod, `${SID}|FullControl|Allow|False`], /distinta|inesperada/],
+      [[mod, `${SID}|ReadAndExecute, Delete, Synchronize|Allow|False`], /distinta|inesperada/],
+    ] as const) {
+      const run = fakeRun([], {}, acl(...bien, ...filas));
+      await expect(grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run })).rejects.toThrow(
+        motivo,
+      );
+    }
+    const run = fakeRun([], {}, acl(...bien, mod, solo));
+    await expect(grantServiceAccess({ dataDir: DATOS, serviceSid: SID, run })).rejects.toThrow(
+      /tls/,
+    ); // la raíz ya cuadra; el stub devuelve lo mismo para tls\
   });
 
   it('algo plantado en la carpeta nueva entre mkdir e icacls aborta sin marca', async () => {

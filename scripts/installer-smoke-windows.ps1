@@ -286,7 +286,9 @@ function Phase-Service {
   $raiz = (& icacls $datos) -join "`n"
   Write-Host $raiz
   Assert ($raiz -notmatch 'BUILTIN\\Users|Everyone|Authenticated Users') 'Users/Everyone sin acceso a la raíz de datos'
-  Assert ($raiz -match 'NT SERVICE\\KrakenOS:\(OI\)\(CI\)\(M\)') 'el servicio tiene Modificar en la raíz'
+  Assert ($raiz -match 'NT SERVICE\\KrakenOS:\(OI\)\(CI\)\(IO\)\(M\)') 'el servicio tiene Modificar sobre lo de dentro de la raíz (solo hijos)'
+  Assert ($raiz -match 'NT SERVICE\\KrakenOS:\(RX,WD,AD\)') 'el servicio solo lista y crea en la propia raíz'
+  Assert ($raiz -notmatch 'KrakenOS:[^\n]*\((F|DE|D|DC)\)') 'el servicio no puede borrar ni renombrar la raíz de datos'
   Assert ($raiz -match 'NT AUTHORITY\\SYSTEM:\(OI\)\(CI\)\(F\)') 'SYSTEM tiene Control total'
   Assert ($raiz -match 'BUILTIN\\Administrators:\(OI\)\(CI\)\(F\)') 'Administradores tienen Control total'
   $ca = (& icacls (Join-Path $datos 'ca')) -join "`n"

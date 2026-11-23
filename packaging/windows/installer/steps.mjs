@@ -77,7 +77,7 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   // El servicio aún no existe en una instalación nueva y icacls no puede mapear su SID: su permiso va
   // en `grantServiceAccess`, tras instalarlo (en una actualización ya lo tiene y se acepta).
   const sidServicio = virtualAccountSid(SERVICE);
-  const rehecha = await asegurarAcl(run, dataDir, BASE, { [sidServicio]: /Modify/ });
+  const rehecha = await asegurarAcl(run, dataDir, BASE, { [sidServicio]: SERVICIO_EN_RAIZ });
 
   // Lo que hubiera dentro NO es de fiar: algo plantado en la ventana entre mkdir y la ACL, o en una
   // carpeta previa. Una carpeta nueva tiene que estar vacía; una previa, sin enlaces ni junctions.
@@ -149,16 +149,23 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   return { caExpuesta };
 }
 
-/** Con el servicio ya instalado (su SID resuelve): Modificar en los datos y solo lectura en tls\. */
+/**
+ * Con el servicio ya instalado (su SID resuelve): Modificar en lo que hay DENTRO de los datos y solo lectura
+ * en tls\. Sobre la propia raíz, sin DELETE (listar y crear): con él podría renombrarla y plantar en su
+ * lugar una junction a una carpeta suya. Dos ACE: `(OI)(CI)(IO)M` (solo hijos) y `(RX,WD,AD)` (solo la raíz).
+ */
 export async function grantServiceAccess({ dataDir, serviceSid, run }) {
-  for (const [dir, permiso, derechos] of [
-    [dataDir, 'M', /Modify/],
-    [join(dataDir, 'tls'), 'RX', /ReadAndExecute/],
-  ]) {
-    await ok(run, 'icacls', [dir, '/grant:r', `*${serviceSid}:(OI)(CI)${permiso}`]);
-    await verificarAcl(run, dir, { ...BASE, [serviceSid]: derechos });
-  }
+  await ok(run, 'icacls', [dataDir, '/grant:r', `*${serviceSid}:(OI)(CI)(IO)M`]);
+  await ok(run, 'icacls', [dataDir, '/grant', `*${serviceSid}:(RX,WD,AD)`]);
+  await verificarAcl(run, dataDir, { ...BASE, [serviceSid]: SERVICIO_EN_RAIZ });
+  const tls = join(dataDir, 'tls');
+  await ok(run, 'icacls', [tls, '/grant:r', `*${serviceSid}:(OI)(CI)RX`]);
+  await verificarAcl(run, tls, { ...BASE, [serviceSid]: /ReadAndExecute/ });
 }
+
+// Las dos ACE del servicio en la raíz: Modificar heredable a los hijos y, solo para la carpeta, listar y crear
+// (jamás Modify, Delete ni FullControl: ni borrarla ni renombrarla).
+const SERVICIO_EN_RAIZ = [/Modify/, /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/];
 
 const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
@@ -219,22 +226,26 @@ async function desviacion(run, dir, esperadas, opcionales) {
   const dueno = lineas.find((l) => l.startsWith('OWNER:'))?.slice(6);
   if (!dueno || !DUENOS.includes(dueno)) return `dueño inesperado «${dueno ?? 'ilegible'}»`;
   const permitidas = { ...esperadas, ...opcionales };
+  // Un SID puede llevar varias ACE (la del servicio en la raíz son dos): cada una consume un patrón distinto.
+  const libres = Object.fromEntries(Object.entries(permitidas).map(([k, v]) => [k, [v].flat()]));
   const vistos = new Set();
   for (const f of lineas.filter((l) => !l.startsWith('OWNER:')).map((l) => l.split('|'))) {
     const [sid, derechos, tipo, heredada] = f;
-    const esperado = permitidas[sid];
+    const patrones = libres[sid];
+    const i = patrones?.findIndex((re) => re.test(derechos)) ?? -1;
     const motivo =
       f.length !== 4
         ? `salida ilegible «${f.join('|')}»`
-        : !esperado || vistos.has(sid)
+        : !patrones || patrones.length === 0
           ? `ACE inesperada de ${sid}`
-          : tipo !== 'Allow' || heredada !== 'False' || !esperado.test(derechos)
+          : tipo !== 'Allow' || heredada !== 'False' || i < 0
             ? `ACE de ${sid} distinta de la esperada (${derechos}, ${tipo}, heredada: ${heredada})`
             : '';
     if (motivo) return motivo;
+    patrones?.splice(i, 1);
     vistos.add(sid);
   }
-  const falta = Object.keys(esperadas).filter((sid) => !vistos.has(sid));
+  const falta = Object.keys(esperadas).filter((sid) => !vistos.has(sid) || libres[sid]?.length);
   return falta.length > 0 ? `falta ${falta.join(', ')}` : '';
 }
 
