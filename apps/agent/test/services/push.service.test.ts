@@ -12,12 +12,8 @@ const webpushMock = vi.hoisted(() => ({
 }));
 vi.mock('web-push', () => ({ default: webpushMock }));
 
-// `assertPushEndpointAllowed` resuelve el host del endpoint con DNS real. `push.example` no existe:
-// cada envío dependía de la red del runner, y un resolver lento (>5 s) agotaba el timeout del test y
-// dejaba suscripciones del test en vuelo que veía el siguiente. Se resuelve a una IP pública fija.
-vi.mock('node:dns/promises', () => ({
-  lookup: vi.fn(() => Promise.resolve([{ address: '93.184.216.34', family: 4 }])),
-}));
+// Sin DNS real al validar el endpoint de push (ver helpers/dns.ts).
+vi.mock('node:dns/promises', () => import('../helpers/dns.js').then((m) => m.dnsPublicoFijo()));
 
 import { PushService } from '../../src/modules/push/push.service.js';
 
