@@ -86,6 +86,14 @@ describe('assemble.mjs', () => {
     expect(r.stderr).toContain('pkg.tar.zst');
   });
 
+  it('un paquete de Arch que no es x86_64 no cuenta como el de Arch', () => {
+    rmSync(join(dl, `krakenos-${V}-1-x86_64.pkg.tar.zst`));
+    writeFileSync(join(dl, `krakenos-${V}-1-aarch64.pkg.tar.zst`), 'otro');
+    const r = run();
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain('pkg.tar.zst');
+  });
+
   it('dos paquetes de Arch: falla', () => {
     writeFileSync(join(dl, `krakenos-${V}-2-x86_64.pkg.tar.zst`), 'otro');
     const r = run();

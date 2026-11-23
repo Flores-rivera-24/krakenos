@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 export function expectedAssets(version) {
   return {
     deb: [`krakenos_${version}_amd64.deb`, `krakenos_${version}_arm64.deb`],
-    arch: /^krakenos-.+\.pkg\.tar\.zst$/,
+    arch: /^krakenos-.+-x86_64\.pkg\.tar\.zst$/,
     portables: [`krakenos-${version}-linux-x64.tar.gz`, `krakenos-${version}-linux-arm64.tar.gz`],
   };
 }
