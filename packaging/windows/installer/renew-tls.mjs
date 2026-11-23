@@ -57,7 +57,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
       node: process.execPath,
       localCa: join(instalado, 'app', 'agent', 'dist', 'local-ca.js'),
       readFile: (p) => readFileSync(p, 'utf8'),
-      realpath: (p) => realpathSync(p),
+      realpath: (p) => realpathSync.native(p),
       run: (cmd, args, env) =>
         spawnSync(cmd, args, { env: { ...process.env, ...env }, stdio: 'inherit' }).status ?? 1,
     });
