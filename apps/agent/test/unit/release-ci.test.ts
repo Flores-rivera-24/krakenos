@@ -199,7 +199,24 @@ describe('ci.yml (job release-ensayo)', () => {
   it('comprueba los archivos y re-verifica la firma', () => {
     for (const f of ['manifest.json', 'manifest.json.sig', 'SHA256SUMS', 'notes.md'])
       expect(ensayo).toContain(f);
-    expect(ensayo).toContain('crypto.verify');
-    expect(ensayo).toContain('UPDATE_VERIFY_PUBLIC_KEY');
+    // La verificación vive en el paso «Comprobar el resultado», contra la pública correcta.
+    const paso = ensayo.slice(ensayo.indexOf('- name: Comprobar el resultado'));
+    expect(paso).toContain('crypto.verify(null, readFileSync("release/manifest.json")');
+    expect(paso).toContain('crypto.createPublicKey(pem)');
+    expect(paso).toContain('process.env.UPDATE_VERIFY_PUBLIC_KEY ??'); // efímera en PR
+    expect(paso).toContain('update-signing-key.ts'); // embebida en push
+    expect(paso).toContain('if (!ok) fail(');
+  });
+
+  it('ningún `env:` a nivel de job define UPDATE_VERIFY_PUBLIC_KEY (saltaría la clave embebida)', () => {
+    for (const j of [cab, cabecera(release)])
+      expect(j.replace(/^\s*#.*$/gm, '')).not.toContain('UPDATE_VERIFY_PUBLIC_KEY');
+  });
+
+  it('la descarga de artefactos junta todo en una carpeta (merge-multiple) en release y en el ensayo', () => {
+    for (const j of [release, ensayo]) {
+      const paso = j.slice(j.indexOf('actions/download-artifact'));
+      expect(paso.slice(0, paso.indexOf('\n\n'))).toContain('merge-multiple: true');
+    }
   });
 });

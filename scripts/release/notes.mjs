@@ -14,18 +14,25 @@ import { fileURLToPath } from 'node:url';
 // Cualquier guion (ASCII o tipográfico) cuenta: `US‑12` con guion no rompible también es un id interno.
 const HYPHEN = '[-‐-―−]';
 const ID = new RegExp(`\\bUS${HYPHEN}\\d+\\w*`, 'gi');
-const REF_ISSUE = /(?:\b(?:closes?|fixes?|resolves?|refs?)\s+)?#\d+\b/gi;
+// Solo referencias: tras closes/fixes/…, o un #N pegado a `(`/`,`/`;`/inicio o seguido de `)`/`,`/`;`/fin.
+// Un `#12` a mitad de frase («el paso #12») no lo es y se conserva.
+const REF_ISSUE =
+  /\b(?:closes?|fixes?|resolves?|refs?)\s+#\d+\b|(?:(?<=^|[(,;]\s*)#\d+\b|#\d+\b(?=\s*(?:[),;]|$)))/gi;
+const BREAKING_BODY = /^BREAKING[ -]CHANGE:/m;
 const FUGA = new RegExp(`\\bUS${HYPHEN}\\d+|docs/internal`, 'i');
 
 /** @returns {{type: string, breaking: boolean, text: string} | null} null si no queda texto. */
-export function parseCommit(subject) {
+export function parseCommit(subject, body = '') {
   const m = /^([a-z]+)(?:\([^)]*\))?(!)?:\s*(.*)$/.exec(subject.trim());
-  const [type, breaking, crudo] = m ? [m[1], Boolean(m[2]), m[3]] : ['otros', false, subject];
+  const [type, bang, crudo] = m ? [m[1], Boolean(m[2]), m[3]] : ['otros', false, subject];
+  const breaking = bang || BREAKING_BODY.test(body);
   const text = crudo
     .replace(ID, '')
     .replace(REF_ISSUE, '')
     .replace(/\(\s*[/,;\s]*\)/g, '') // paréntesis que se quedaron sin nada
+    .replace(/,(\s*,)+/g, ',')
     .replace(/\s{2,}/g, ' ')
+    .replace(/\s+([:,;])/g, '$1') // `foo US-3: bar` → `foo : bar` → `foo: bar`
     .replace(/^[:,;\s]+|[:,;\s]+$/g, '')
     .trim();
   return text ? { type, breaking, text } : null;
@@ -45,12 +52,13 @@ const FILAS = [
 const lista = (titulo, items) =>
   items.length ? `**${titulo}**\n\n${items.map((t) => `- ${t}`).join('\n')}\n\n` : '';
 
-/** @param {{version: string, commits: string[], assets: string[], repo?: string}} input */
+/** @param {{version: string, commits: (string | {subject: string, body?: string})[], assets: string[], repo?: string}} input */
 export function buildNotes({ commits, assets, repo }) {
   const por = { atencion: [], feat: [], fix: [] };
   let internos = 0;
-  for (const subject of commits) {
-    const c = parseCommit(subject);
+  for (const commit of commits) {
+    const { subject, body } = typeof commit === 'string' ? { subject: commit } : commit;
+    const c = parseCommit(subject, body);
     if (!c) continue;
     if (c.breaking) por.atencion.push(c.text);
     else if (c.type === 'feat') por.feat.push(c.text);
@@ -91,18 +99,35 @@ function main([ref, version, carpeta]) {
     throw new Error('uso: notes.mjs <ref> <versión> <carpeta-release>');
   let prev;
   try {
-    prev = git('describe', '--tags', '--abbrev=0', '--match', 'v[0-9]*', `${ref}^`).trim();
+    prev = git(
+      'describe',
+      '--tags',
+      '--abbrev=0',
+      '--match',
+      'v[0-9]*.[0-9]*.[0-9]*',
+      '--exclude',
+      'v*-*',
+      `${ref}^`,
+    ).trim();
   } catch {
     throw new Error('no hay una versión anterior de la que partir');
   }
-  const commits = git('log', '--no-merges', '--format=%s', `${prev}..${ref}`)
-    .split('\n')
-    .filter(Boolean);
+  // %x1f separa asunto y cuerpo, %x1e cierra el commit: el cuerpo solo sirve para detectar BREAKING CHANGE.
+  const commits = git('log', '--no-merges', '--format=%s%x1f%b%x1e', `${prev}..${ref}`)
+    .split('\x1e')
+    .map((r) => r.replace(/^\n/, ''))
+    .filter(Boolean)
+    .map((r) => {
+      const [subject = '', body = ''] = r.split('\x1f');
+      return { subject, body };
+    });
   const assets = readdirSync(carpeta).sort();
   const notas = buildNotes({ version, commits, assets, repo: process.env.GITHUB_REPOSITORY });
   // Red de seguridad: la limpieza de parseCommit puede fallar con un formato raro; esto no deja publicar.
   if (FUGA.test(notas)) {
-    const culpables = commits.filter((c) => FUGA.test(parseCommit(c)?.text ?? ''));
+    const culpables = commits
+      .map((c) => c.subject)
+      .filter((c) => FUGA.test(parseCommit(c)?.text ?? ''));
     throw new Error(
       `las notas llevarían un identificador interno; commits: ${culpables.map((c) => JSON.stringify(c)).join(', ') || '(ver la salida)'}`,
     );

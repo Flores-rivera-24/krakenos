@@ -11,7 +11,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const SCRIPT = fileURLToPath(new URL('../../../../scripts/release/notes.mjs', import.meta.url));
 const { parseCommit, buildNotes } = (await import(SCRIPT)) as {
-  parseCommit: (s: string) => { type: string; breaking: boolean; text: string } | null;
+  parseCommit: (
+    s: string,
+    body?: string,
+  ) => { type: string; breaking: boolean; text: string } | null;
   buildNotes: (i: { version: string; commits: string[]; assets: string[] }) => string;
 };
 
@@ -50,8 +53,22 @@ describe('parseCommit', () => {
     ['fix: arregla algo, Closes #4', 'arregla algo'],
     ['fix: Fixes #4 y más', 'y más'],
     ['fix: algo (#12, US-3)', 'algo'],
+    ['fix: foo US-3: bar', 'foo: bar'],
+    ['fix: arregla algo, #12, y más', 'arregla algo, y más'],
+    ['fix: arregla algo #12', 'arregla algo'],
   ])('limpia %j → %j sin puntuación huérfana', (entrada, salida) => {
     expect(parseCommit(entrada)?.text).toBe(salida);
+  });
+  it('un #12 que no es referencia (a mitad de frase) se conserva', () => {
+    expect(parseCommit('fix: el paso #12 del asistente falla')?.text).toBe(
+      'el paso #12 del asistente falla',
+    );
+  });
+  it('BREAKING CHANGE: en el cuerpo marca breaking; sin él, no', () => {
+    expect(parseCommit('feat: x', 'detalle\n\nBREAKING CHANGE: cambia el contrato')?.breaking).toBe(
+      true,
+    );
+    expect(parseCommit('feat: x', 'detalle sin nada')?.breaking).toBe(false);
   });
   it('feat! y fix(x)! son breaking', () => {
     expect(parseCommit('feat!: cambia el contrato')).toMatchObject({
@@ -194,6 +211,32 @@ describe('CLI notes.mjs', () => {
       expect(r.stderr).toContain(subject);
     },
   );
+
+  it('un tag -rc no cuenta como versión anterior: parte del último estable', () => {
+    commit('feat: antiguo');
+    git('tag', 'v0.1.0');
+    commit('feat: entre estable y rc');
+    git('tag', 'v0.2.0-rc.1');
+    commit('feat: despues del rc');
+    git('tag', 'v0.2.0');
+    const r = cli('v0.2.0');
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('- entre estable y rc');
+    expect(r.stdout).toContain('- despues del rc');
+  });
+
+  it('BREAKING CHANGE: en el cuerpo de un commit sale en «Requiere atención» sin publicar el cuerpo', () => {
+    commit('feat: antiguo');
+    git('tag', 'v0.1.0');
+    commit('feat: cambia algo\n\nexplicación interna\n\nBREAKING CHANGE: ya no hay X');
+    git('tag', 'v0.2.0');
+    const r = cli('v0.2.0');
+    expect(r.status, r.stderr).toBe(0);
+    expect(r.stdout).toContain('**Requiere atención**');
+    expect(r.stdout).toContain('- cambia algo');
+    expect(r.stdout).not.toContain('explicación interna');
+    expect(r.stdout).not.toContain('ya no hay X');
+  });
 
   it('sin tag previo sale con 1 y lo dice', () => {
     commit('feat: algo');

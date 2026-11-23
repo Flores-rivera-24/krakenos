@@ -115,7 +115,7 @@ const LISTA: Record<string, Entrada> = {
   'unit/package-archive.test.ts': {
     saltos: 1,
     motivo:
-      'GNU tar y bits de modo POSIX; en Windows el portable no se archiva así (el zip de Windows no sale en esta parte). Las partes puras de archivePlan sí corren.',
+      'El tar.gz se arma con GNU tar (--owner/--group, que el tar.exe de Windows no tiene) y el test comprueba los bits de modo POSIX (0755) del archivo: en Windows no hay GNU tar ni esos modos. El zip de Windows no sale en esta parte. Las partes puras de archivePlan sí corren.',
   },
   'unit/package-launcher.test.ts': {
     saltos: 1,
