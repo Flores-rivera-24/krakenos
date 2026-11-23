@@ -110,6 +110,18 @@ describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
     expect(src).toContain("'licenses'");
   });
 
+  it('el aviso de las crates de la ventana se genera en el build y el smoke lo comprueba instalado', () => {
+    const ci = leer('.github/workflows/ci.yml');
+    expect(ci).toContain(
+      'scripts/package/rust-licenses.mjs apps/window/src-tauri "$dir/licenses/THIRD-PARTY-RUST.txt"',
+    );
+    const smoke = leer('scripts/installer-smoke-windows.ps1');
+    expect(smoke).toContain('licenses\\THIRD-PARTY-RUST.txt');
+    expect(smoke).toContain('nombra tauri');
+    expect(smoke).toContain('nombra wry');
+    expect(leer('packaging/windows/THIRD-PARTY-WINDOWS.txt')).toContain('nsis_tauri_utils');
+  });
+
   it('el smoke recorre la secuencia de la spec: instalar, servicio, reinicio, actualizar, desinstalar sin residuos', () => {
     const src = leer('scripts/installer-smoke-windows.ps1');
     const llamadas = src.slice(src.lastIndexOf('Test-SelectSafeLines\n')).split('\n');

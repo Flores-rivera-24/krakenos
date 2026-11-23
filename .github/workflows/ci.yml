@@ -557,6 +557,10 @@ jobs:
           max="$(cd "$dir" && find . -type f | awk '{ if (length($0) > m) m = length($0) } END { print m }')"
           echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
           test "$max" -le 200
+          # Aviso de licencias de las crates de la ventana, generado del Cargo.lock (falla si hay una licencia
+          # no permitida). `--informe` solo mientras se mide cuántas crates no traen fichero de licencia.
+          mkdir -p "$dir/licenses"
+          node scripts/package/rust-licenses.mjs apps/window/src-tauri "$dir/licenses/THIRD-PARTY-RUST.txt" --informe
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
           # El hook usa `${StrLoc}` (StrFunc.nsh) sin declararlo: lo declara la plantilla de Tauri. Si una
           # versión nueva de Tauri lo quita, el .nsi no compilaría; esto lo dice con nombre antes.
