@@ -102,3 +102,58 @@ describe('textosDeLicencia y avisoRust', () => {
     expect(out).toContain('otro');
   });
 });
+
+describe('crates MPL-2.0 y textos de la tabla', () => {
+  let dir = '';
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it('toda crate MPL-2.0 lleva «Código fuente» con repositorio, commit y crates.io; las demás no', () => {
+    const mk = (name: string, license: string, sha?: string) => ({
+      name,
+      version: '0.5.0',
+      license,
+      authors: [],
+      repository: `https://github.com/x/${name}`,
+      sha,
+      textos: [{ fichero: 'LICENSE', texto: `t ${name}` }],
+    });
+    const out = rl.avisoRust([
+      mk('mozilla', 'MPL-2.0', 'abc123'),
+      mk('sinsha', 'MPL-2.0'),
+      mk('otra', 'MIT'),
+    ]);
+    expect(out).toContain(
+      'Código fuente: https://github.com/x/mozilla@abc123 (también en crates.io: https://crates.io/crates/mozilla/0.5.0)',
+    );
+    expect(out).toContain(
+      'Código fuente: https://github.com/x/sinsha (también en crates.io: https://crates.io/crates/sinsha/0.5.0)',
+    );
+    expect(out.split('Código fuente:').length - 1).toBe(2);
+  });
+
+  it('textoExtra busca por nombre@versión exacta y devuelve null si no hay', async () => {
+    dir = mkdtempSync(join(tmpdir(), 'rust-extra-'));
+    writeFileSync(join(dir, 'pepe@1.0.0.txt'), 'Fuente: u\n\ntexto');
+    const t = await rl.textoExtra(dir, 'pepe', '1.0.0');
+    expect(t).toEqual([
+      { fichero: 'rust-licenses-extra/pepe@1.0.0.txt', texto: 'Fuente: u\n\ntexto' },
+    ]);
+    expect(await rl.textoExtra(dir, 'pepe', '1.0.1')).toBeNull();
+  });
+
+  it('la tabla commiteada cubre las 5 crates sin fichero propio, con su fuente en la primera línea', () => {
+    for (const n of [
+      'webview2-com@0.39.1',
+      'webview2-com-macros@0.8.1',
+      'webview2-com-sys@0.39.1',
+      'selectors@0.38.0',
+      'alloc-stdlib@0.3.0',
+    ]) {
+      const t = readFileSync(
+        resolve(__dirname, `../../../../scripts/package/rust-licenses-extra/${n}.txt`),
+        'utf8',
+      );
+      expect(t.split('\n')[0]).toMatch(/^Fuente: https:\/\//);
+    }
+  });
+});

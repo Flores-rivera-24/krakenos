@@ -558,10 +558,14 @@ jobs:
           echo "ruta relativa más larga del paquete: $max caracteres (tope 200)"
           test "$max" -le 200
           # Aviso de licencias de las crates de la ventana, generado del Cargo.lock (falla si hay una licencia
-          # no permitida). `--informe` solo mientras se mide cuántas crates no traen fichero de licencia.
+          # no permitida o una crate sin texto). Medido: 263 crates, 5 sin fichero propio cubiertas por la tabla.
           mkdir -p "$dir/licenses"
-          node scripts/package/rust-licenses.mjs apps/window/src-tauri "$dir/licenses/THIRD-PARTY-RUST.txt" --informe
+          node scripts/package/rust-licenses.mjs apps/window/src-tauri "$dir/licenses/THIRD-PARTY-RUST.txt"
           node scripts/package-windows.mjs "$dir" | tee installer-path.txt
+          # Diagnóstico: ¿entra WebView2Loader.dll en lo que se distribuye? (binario enlazado de forma estática o DLL suelta)
+          echo "WebView2Loader en target/release:"; find apps/window/src-tauri/target/release -maxdepth 2 -iname 'WebView2Loader*' | head
+          echo "WebView2Loader en el paquete:"; find "$dir" -iname 'WebView2Loader*' | head
+          echo "cadena WebView2Loader en krakenos-window.exe: $(grep -c 'WebView2Loader' apps/window/src-tauri/target/release/krakenos-window.exe || true)"
           # El hook usa `${StrLoc}` (StrFunc.nsh) sin declararlo: lo declara la plantilla de Tauri. Si una
           # versión nueva de Tauri lo quita, el .nsi no compilaría; esto lo dice con nombre antes.
           nsi=apps/window/src-tauri/target/release/nsis/x64/installer.nsi
