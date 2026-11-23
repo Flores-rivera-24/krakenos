@@ -120,6 +120,7 @@ describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
     expect(smoke).toContain('nombra tauri');
     expect(smoke).toContain('nombra wry');
     expect(leer('packaging/windows/THIRD-PARTY-WINDOWS.txt')).toContain('nsis_tauri_utils');
+    expect(leer('packaging/windows/THIRD-PARTY-WINDOWS.txt')).toContain('WebView2LoaderStatic');
   });
 
   it('el smoke recorre la secuencia de la spec: instalar, servicio, reinicio, actualizar, desinstalar sin residuos', () => {
