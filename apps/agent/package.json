@@ -29,7 +29,7 @@
     "@fastify/jwt": "^10.2.6",
     "@fastify/rate-limit": "^11.2.1",
     "@krakenos/types": "workspace:*",
-    "@peculiar/x509": "2.1.0",
+    "@peculiar/x509": "3.1.0",
     "@prisma/adapter-better-sqlite3": "7.10.1",
     "@prisma/client": "7.10.1",
     "@simplewebauthn/server": "^13.3.2",
