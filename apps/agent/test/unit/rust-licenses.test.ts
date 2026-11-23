@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 // @ts-expect-error módulo .mjs sin tipos
 import * as rl from '../../../../scripts/package/rust-licenses.mjs';
@@ -23,7 +23,7 @@ describe('crateDeEjecucion', () => {
       license: 'MIT OR Apache-2.0',
       repository: 'https://github.com/x/directa',
       authors: ['Ana <ana@x.test>'],
-      dir: resolve('/reg/directa-1.0.0'),
+      dir: dirname('/reg/directa-1.0.0/Cargo.toml'),
     });
   });
 
