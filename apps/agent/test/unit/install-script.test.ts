@@ -240,6 +240,47 @@ describe.skipIf(process.platform === 'win32')('install.sh --dry-run (US-216)', (
     expect(nodeStep).toBeLessThan(stdout.indexOf('node dist/update-runner.js'));
   });
 
+  // `git` sobre el árbol del servicio como root falla («dubious ownership») o ejecuta su
+  // `.git/config` con privilegios: con root y el árbol ya suyo, va como el usuario del servicio.
+  describe('git sobre el árbol del servicio, siendo root', () => {
+    const repo = fileURLToPath(new URL('../../../..', import.meta.url)).replace(/\/$/, '');
+    /** `id` de mentira: dice ser root y que el usuario del servicio existe. */
+    function conRootSimulado(): NodeJS.ProcessEnv {
+      const shimDir = mkdtempSync(join(tmpdir(), 'kraken-id-shim-'));
+      const shim = join(shimDir, 'id');
+      writeFileSync(shim, '#!/bin/sh\necho 0\n');
+      chmodSync(shim, 0o755);
+      // `runuser` de mentira: ejecuta lo que va tras `--` (las lecturas de git no pasan por `run`).
+      const runuser = join(shimDir, 'runuser');
+      writeFileSync(runuser, '#!/bin/sh\nshift 3\nexec "$@"\n');
+      chmodSync(runuser, 0o755);
+      return {
+        PATH: `${shimDir}:${process.env.PATH ?? ''}`,
+        // El árbol de este repo es del usuario que corre el test.
+        KRAKENOS_SERVICE_USER: userInfo().username,
+      };
+    }
+    const comoUsuario = `runuser -u ${userInfo().username} -- git -C ${repo}`;
+
+    it('reinstalar sobre un árbol del servicio corre git vía runuser, no como root', async () => {
+      const { stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--dir', repo],
+        conRootSimulado(),
+      );
+      expect(stdout).toContain(`dry-run$ ${comoUsuario} fetch --tags --prune origin`);
+      expect(stdout).not.toMatch(/dry-run\$ git -C/);
+    });
+
+    it('--update corre el fetch como el usuario del servicio', async () => {
+      const { stdout } = await runInstaller(
+        ['--dry-run', '--yes', '--update', '--dir', repo],
+        conRootSimulado(),
+      );
+      expect(stdout).toContain(`dry-run$ ${comoUsuario} fetch --tags --prune origin`);
+      expect(stdout).not.toMatch(/dry-run\$ git -C/);
+    });
+  });
+
   it('--update con el Node ya al día no reinstala nada', async () => {
     const { code, stdout } = await runInstaller([
       '--dry-run',
