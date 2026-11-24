@@ -61,10 +61,15 @@ export async function prepareDataDir({ dataDir, run, fs }) {
     if (e.code !== 'ENOENT') throw e;
     existe = false;
   }
-  if (existe && !(await hayMarca(run, dataDir))) {
+  // La marca no basta: si la carpeta la recreó otro usuario tras borrarla un admin, su dueño no es de fiar
+  // y lo que tenga dentro (claves, base) tampoco. Se mira ANTES de cambiar ninguna ACL.
+  const marca = existe && (await hayMarca(run, dataDir));
+  if (existe && (!marca || !DUENOS.includes(await duenoDe(run, dataDir)))) {
     if ((await fs.readdir(dataDir)).length > 0)
       throw new Error(
-        `${dataDir} ya existe, no es de un despliegue de KrakenOS y tiene contenido: muévela o bórrala y vuelve a instalar.`,
+        marca
+          ? `${dataDir} ya existe, su dueño no es Administradores ni SYSTEM y tiene contenido: no es de fiar. Muévela o bórrala y vuelve a instalar.`
+          : `${dataDir} ya existe, no es de un despliegue de KrakenOS y tiene contenido: muévela o bórrala y vuelve a instalar.`,
       );
     await fs.rmdir(dataDir);
     existe = false;
@@ -200,6 +205,18 @@ async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
   await ok(run, 'icacls', [dir, '/setowner', ADMINS]);
   await verificarAcl(run, dir, esperadas, opcionales);
   return true;
+}
+
+async function duenoDe(run, dir) {
+  const d = dir.replaceAll("'", "''");
+  const ps = `'OWNER:' + [System.IO.Directory]::GetAccessControl('${d}').GetOwner([System.Security.Principal.SecurityIdentifier]).Value`;
+  const { stdout } = await ok(run, 'powershell.exe', [
+    '-NoProfile',
+    '-NonInteractive',
+    '-Command',
+    ps,
+  ]);
+  return /OWNER:(\S+)/.exec(stdout)?.[1] ?? '';
 }
 
 async function verificarAcl(run, dir, esperadas, opcionales = {}) {
