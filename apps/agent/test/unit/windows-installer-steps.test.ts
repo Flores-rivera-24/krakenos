@@ -199,11 +199,11 @@ describe('prepareDataDir', () => {
     expect(ev.some((l) => l.includes('/setowner') && l.includes('/T'))).toBe(false);
   });
 
-  it('con la raíz de otro dueño la rehace, fija Administradores y se lo quita también a lo de dentro', async () => {
+  it('con marca pero la raíz de otro dueño y con contenido aborta ANTES de tocar ACL o marca', async () => {
     const ev: Ev[] = [];
     const fs = fakeFs(ev, {
-      [DATOS]: { kind: 'dir', entries: ['.env'] },
-      [join(DATOS, '.env')]: { kind: 'file', text: '' },
+      [DATOS]: { kind: 'dir', entries: ['keys'] },
+      [join(DATOS, 'keys')]: { kind: 'dir', entries: [] },
     });
     const run = fakeRun(
       ev,
@@ -211,10 +211,24 @@ describe('prepareDataDir', () => {
       { 'reg.exe query': `DataDir REG_SZ ${DATOS}` },
       { abierta: false, dueno: 'S-1-5-21-1-2-3-1001' },
     );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(
+      /dueño.*no es de fiar/,
+    );
+    expect(cambioAcl(ev, DATOS)).toBe(-1);
+    expect(ev.some((l) => l.startsWith('icacls') || l.startsWith('reg.exe add'))).toBe(false);
+  });
+
+  it('con marca y la raíz de otro dueño pero vacía se rehace como carpeta nueva', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, { [DATOS]: { kind: 'dir', entries: [] } });
+    const run = fakeRun(
+      ev,
+      {},
+      { 'reg.exe query': `DataDir REG_SZ ${DATOS}` },
+      { dueno: 'S-1-5-21-1-2-3-1001' },
+    );
     await prepareDataDir({ dataDir: DATOS, run, fs });
     expect(cambioAcl(ev, DATOS)).toBeGreaterThan(-1);
-    expect(ev).toContain(`icacls ${DATOS} /setowner ${ADMINS}`);
-    expect(ev).toContain(`icacls ${join(DATOS, '.env')} /setowner ${ADMINS} /T /L`);
   });
 
   it('un dueño ajeno que no se deja corregir aborta sin marca', async () => {
