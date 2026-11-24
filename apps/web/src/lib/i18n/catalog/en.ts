@@ -47,7 +47,7 @@ export const en: Record<TranslationKey, string> = {
   'layout.homeConnected': 'Home connected',
   'layout.noRouterConnection': 'No connection to the router',
   'layout.driver': 'Driver',
-  'layout.uptime': 'Uptime',
+  'layout.uptime': 'Host up',
   // --- Navegación, foco y nombres accesibles ---
   'layout.badge.devices.one': '{n} unknown or blocked device',
   'layout.badge.devices.other': '{n} unknown or blocked devices',

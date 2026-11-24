@@ -92,6 +92,11 @@ describe('AppSidebar', () => {
     expect(screen.getByText('Conectado')).toBeInTheDocument();
   });
 
+  it('el tiempo del pie es el del equipo, no el del agente, y lo dice', () => {
+    renderSidebar({ collapsed: false });
+    expect(screen.getByText('Equipo encendido 1h 0m')).toBeInTheDocument();
+  });
+
   it.each([
     ['configured', 'Conectado'],
     ['demo', 'Demostración'],
