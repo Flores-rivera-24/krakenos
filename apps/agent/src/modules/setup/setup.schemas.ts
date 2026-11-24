@@ -53,6 +53,7 @@ export const setupInitSchema = {
       // Token de configuración out-of-band, impreso en el log al primer arranque
       // (US-81). Opcional en el schema; el handler lo exige si hay token activo.
       setupToken: { type: 'string', maxLength: 128 },
+      locale: { type: 'string', enum: LOCALES },
     },
   },
   response: {

@@ -39,6 +39,21 @@ describe('rutas de setup', () => {
     setupToken.reset();
   });
 
+  it('init guarda el idioma con el que se hizo el setup', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/setup/init',
+      payload: initBody({ locale: 'en' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().user.locale).toBe('en');
+  });
+
+  it('init sin idioma deja el predeterminado', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.json().user.locale).toBe('es');
+  });
+
   it('init borra el fichero del token de setup', async () => {
     writeFileSync(tokenFile, 'x\n');
     const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
