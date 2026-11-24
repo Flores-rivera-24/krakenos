@@ -425,13 +425,11 @@ jobs:
   # Ventana de escritorio de Windows (Tauri 2, apps/window). Compila el crate, corre `cargo test`
   # y clippy estricto y construye el .exe sin instalador. Rust va fijado a la versión exacta de
   # apps/window/src-tauri/rust-toolchain.toml (si divergen, el gate ventana-sin-ipc.test.ts falla).
-  # `continue-on-error` hasta llevar 5 pasadas verdes seguidas en main (como el job de Windows de los
-  # tests); en cuanto las lleve, se quita.
+  # Bloqueante, y `release` lo espera: ya pasó las pasadas verdes en main.
   ventana:
     name: ventana (windows)
     runs-on: windows-latest
     timeout-minutes: 30
-    continue-on-error: true
 
     steps:
       - name: Checkout
@@ -492,8 +490,7 @@ jobs:
   # Instalador de Windows (NSIS por el bundler de Tauri, con la carpeta de `pnpm package` dentro) y su
   # prueba en silencio (scripts/installer-smoke-windows.ps1: una función por fase). El paquete se
   # construye AQUÍ y no se baja de un artefacto: `upload-artifact` no conserva las junctions de pnpm.
-  # `continue-on-error` hasta 5 pasadas verdes seguidas en main (como `ventana`); `release` NO lo espera
-  # (lo decide la publicación del instalador). Qué fase pondría rojo qué:
+  # Bloqueante, y `release` lo espera (si el aviso de licencias de Rust sale rojo, no se publica). Qué fase pondría rojo qué:
   #   «Empaquetar» · el paquete no se construye o se pasa del presupuesto de la carpeta (win-x64)
   #   «Construir el instalador NSIS» · ruta > 200, plantilla de Tauri cambiada, o el .exe se pasa de
   #     `installer-win-x64` en size-budget.json (medido + 5 %)
@@ -505,7 +502,6 @@ jobs:
     name: instalador (windows)
     runs-on: windows-latest
     timeout-minutes: 45
-    continue-on-error: true
     defaults:
       run:
         shell: bash
@@ -924,14 +920,14 @@ jobs:
 
   # Release (solo en tags v*): adjunta los paquetes de Linux (.deb amd64 y arm64, el de Arch) y los
   # portables .tar.gz (linux-x64/arm64) con su SHA256SUMS a la release de GitHub, creada como BORRADOR
-  # para que el dueño la revise y la publique a mano. Espera a todo job bloqueante; `ventana` es
-  # experimental y no entra. ⚠️ El arm64 de `package` es `continue-on-error` (su fallo no pone rojo el
+  # para que el dueño la revise y la publique a mano. Espera a todo job bloqueante, `ventana` e
+  # `instalador-windows` incluidos. ⚠️ El arm64 de `package` es `continue-on-error` (su fallo no pone rojo el
   # run): por eso el job comprueba que cada archivo esperado exista en vez de fiarse de `needs`. El zip
   # de Windows y el `.exe` de la ventana quedan fuera (parte B).
   release:
     name: Release (borrador con los paquetes y portables de Linux)
     if: ${{ startsWith(github.ref, 'refs/tags/v') }}
-    needs: [build-test, windows, package, package-arch, e2e, installer-smoke, security]
+    needs: [build-test, windows, package, package-arch, e2e, installer-smoke, security, ventana, instalador-windows]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
