@@ -5,18 +5,19 @@ instalación); aquí está el detalle.
 
 ## Instalación y operación
 
-| Documento                                            | Para qué                                                         |
-| ---------------------------------------------------- | ---------------------------------------------------------------- |
-| [install-linux-package.md](install-linux-package.md) | instalar el paquete `.deb` o de Arch, y activar el helper        |
-| [install-raspberry-pi.md](install-raspberry-pi.md)   | instalar en una Raspberry Pi                                     |
-| [updates.md](updates.md)                             | comprobación de versión, actualización one-click con rollback    |
-| [recovery.md](recovery.md)                           | recuperación ante desastres: copias, restauración, admin perdido |
-| [remote-access.md](remote-access.md)                 | WireGuard propio vs. Tailscale, y HTTPS de confianza             |
-| [webauthn-setup.md](webauthn-setup.md)               | passkeys como segundo factor                                     |
-| [jwt-key-rotation.md](jwt-key-rotation.md)           | rotación de las claves RS256                                     |
-| [docker-limitations.md](docker-limitations.md)       | qué no funciona dentro del contenedor                            |
-| [app-escritorio.md](app-escritorio.md)               | abrir KrakenOS como app de escritorio (PWA)                      |
-| [launch-checklist.md](launch-checklist.md)           | checklist antes de dárselo a primeros usuarios                   |
+| Documento                                            | Para qué                                                                 |
+| ---------------------------------------------------- | ------------------------------------------------------------------------ |
+| [install-linux-package.md](install-linux-package.md) | instalar el paquete `.deb` o de Arch, y activar el helper                |
+| [install-raspberry-pi.md](install-raspberry-pi.md)   | instalar en una Raspberry Pi                                             |
+| [install-windows.md](install-windows.md)             | instalar en Windows con el instalador `.exe` (y el aviso de SmartScreen) |
+| [updates.md](updates.md)                             | comprobación de versión, actualización one-click con rollback            |
+| [recovery.md](recovery.md)                           | recuperación ante desastres: copias, restauración, admin perdido         |
+| [remote-access.md](remote-access.md)                 | WireGuard propio vs. Tailscale, y HTTPS de confianza                     |
+| [webauthn-setup.md](webauthn-setup.md)               | passkeys como segundo factor                                             |
+| [jwt-key-rotation.md](jwt-key-rotation.md)           | rotación de las claves RS256                                             |
+| [docker-limitations.md](docker-limitations.md)       | qué no funciona dentro del contenedor                                    |
+| [app-escritorio.md](app-escritorio.md)               | abrir KrakenOS como app de escritorio (PWA)                              |
+| [launch-checklist.md](launch-checklist.md)           | checklist antes de dárselo a primeros usuarios                           |
 
 ## Drivers de red (`DRIVER_KIND`)
 

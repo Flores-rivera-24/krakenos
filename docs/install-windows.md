@@ -92,7 +92,7 @@ HTTPS siguen apuntando al puerto anterior: la forma segura es volver a ejecutar 
 
 **Sin actualización automática en Windows todavía:** la tarjeta de **Ajustes → Sistema →
 Actualizaciones** no ofrece el botón. Para actualizar, descarga y verifica el instalador de la versión
-nueva y ejecútalo **encima** de la instalación actual. El instalador para el servicio de la versión
+nueva y ejecútalo **encima** de la instalación actual. El instalador detiene el servicio de la versión
 anterior, copia los archivos y lo vuelve a registrar; **tus datos, claves y certificado se
 conservan**, y el `.env` no se toca (salvo el puerto, si el que tenías está ocupado).
 
