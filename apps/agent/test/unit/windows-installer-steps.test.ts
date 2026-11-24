@@ -1207,7 +1207,9 @@ describe('runInstall', () => {
     await runInstall(deps);
     const linea = 'reg.exe add HKLM\\SOFTWARE\\KrakenOS /v Version /t REG_SZ /d 1.2.3 /f';
     expect(ev).toContain(linea);
-    expect(ev.indexOf(linea)).toBeGreaterThan(ev.findIndex((l) => l.includes(' start')));
+    const idxStart = ev.findIndex((l) => l.includes(' start'));
+    expect(idxStart).toBeGreaterThanOrEqual(0);
+    expect(ev.indexOf(linea)).toBeGreaterThan(idxStart);
   });
 
   it('al actualizar encima la versión se sobrescribe con la nueva', async () => {
@@ -1366,10 +1368,11 @@ describe('runInstall', () => {
   });
 
   it('un servicio que no responde lanza al agotar la espera', async () => {
-    const { deps } = montar();
+    const { deps, ev } = montar();
     await expect(
       runInstall({ ...deps, get: async () => 503, healthTimeoutMs: 20, intervalMs: 5 }),
     ).rejects.toThrow(/3001/);
+    expect(ev.some((l) => l.includes('/v Version'))).toBe(false);
   });
 
   // runInstall no lee ni toca el token (lo lee post-install.mjs): vigila que no lo escriba ni lo loguee.

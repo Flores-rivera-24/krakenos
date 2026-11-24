@@ -21,7 +21,7 @@ export const CATALOGO = {
     redNoPrivada: () =>
       'La red activa no es privada (es de dominio o no hay conexión): la regla del cortafuegos solo vale en redes privadas, así que el móvil no llegará a KrakenOS desde ella.',
     energia: () =>
-      'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración, en las opciones de energía (busca "suspender").',
+      'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración, en las opciones de energía (busca «suspender»).',
     fallo: (detalle) => `La instalación de KrakenOS no terminó: ${detalle}`,
     datosConservados: (dir) =>
       `Tus datos se conservan en ${dir}. Para borrarlos, desinstala marcando «Eliminar los datos de aplicación» o con /PURGEDATA.`,
