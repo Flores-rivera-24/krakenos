@@ -1,5 +1,5 @@
 /** Mensajes del instalador de Windows (es/en). El idioma lo pasa NSIS con `--lang`. */
-const CATALOGO = {
+export const CATALOGO = {
   es: {
     puertoOcupado: (pref, usado) =>
       `El puerto ${pref} está ocupado en este equipo: KrakenOS usará el ${usado}.`,

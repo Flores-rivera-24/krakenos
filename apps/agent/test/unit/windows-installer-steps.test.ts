@@ -15,7 +15,7 @@ import { activeNetwork, grantServiceAccess, installService, localHostname, offer
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { msg } from '../../../../packaging/windows/installer/mensajes.mjs';
+import { CATALOGO, msg } from '../../../../packaging/windows/installer/mensajes.mjs';
 
 /** Pasos del instalador de Windows con `run`/`fs` inyectados: lo que manda cada comando, en orden. */
 
@@ -1288,9 +1288,16 @@ describe('runInstall', () => {
 
   it('no escribe el token de setup en ningún mensaje', async () => {
     const lineas: string[] = [];
-    const { deps } = montar();
+    const { deps, nodos, ev } = montar({ envPrevio: 'DRIVER_KIND=none\n' });
+    const TOKEN = 'TokenSecretoDePrueba123';
+    nodos[join(DATOS, 'setup-token')] = { kind: 'file', text: TOKEN };
     await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
     expect(lineas.join('\n')).not.toMatch(/setup-token|setup\?token/i);
+    expect(lineas.join('\n')).not.toContain(TOKEN);
+    // Ningún fichero escrito por el instalador (salvo el propio token, que no es suyo) lo contiene.
+    const ajenos = Object.entries(nodos).filter(([r, n]) => r !== join(DATOS, 'setup-token') && n.text?.includes(TOKEN));
+    expect(ajenos.map(([r]) => r)).toEqual([]);
+    expect(ev.filter((l) => l.includes('setup-token'))).toEqual([]);
   });
 });
 
@@ -1515,10 +1522,14 @@ describe('runInstall: cortafuegos, red y energía', () => {
 });
 
 describe('mensajes', () => {
-  it('hay las mismas claves en es y en en', () => {
-    expect(msg('es', 'puertoOcupado', 3001, 3002)).toContain('3002');
-    expect(msg('en', 'puertoOcupado', 3001, 3002)).toContain('3002');
-    expect(msg('es', 'puertoOcupado', 3001, 3002)).not.toBe(msg('en', 'puertoOcupado', 3001, 3002));
+  it('hay las mismas claves en es y en en, todas funciones que devuelven texto no vacío', () => {
+    expect(Object.keys(CATALOGO.en).sort()).toEqual(Object.keys(CATALOGO.es).sort());
+    for (const lang of ['es', 'en'] as const)
+      for (const [clave, fn] of Object.entries(CATALOGO[lang])) {
+        expect(typeof fn, `${lang}.${clave}`).toBe('function');
+        const texto = (fn as (...a: string[]) => string)('A', 'B');
+        expect(texto.trim().length, `${lang}.${clave} vacío`).toBeGreaterThan(0);
+      }
   });
 
   it('los mensajes del cortafuegos, la red y la energía existen en es y en en, distintos y con sus datos', () => {
