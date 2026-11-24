@@ -97,6 +97,8 @@ interface Nodo {
   text?: string;
   /** Ruta real que resuelve `realpath` (una junction que `lstat` no ve como enlace). */
   real?: string;
+  /** Enlaces duros del fichero (por defecto 1). */
+  nlink?: number;
 }
 /** Como el disco real: lo borrado deja de figurar en `readdir` de su carpeta. */
 function quitarDeSuCarpeta(nodos: Record<string, Nodo>, p: string) {
@@ -110,7 +112,12 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
     lstat: async (p: string) => {
       const n = nodos[p];
       if (!n) throw enoent();
-      return { isSymbolicLink: () => n.kind === 'link', isDirectory: () => n.kind === 'dir' };
+      return {
+        isSymbolicLink: () => n.kind === 'link',
+        isDirectory: () => n.kind === 'dir',
+        isFile: () => n.kind === 'file',
+        nlink: n.nlink ?? 1,
+      };
     },
     readdir: async (p: string) => nodos[p]?.entries ?? [],
     realpath: async (p: string) => nodos[p]?.real ?? p,
@@ -763,6 +770,17 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(nodos[envPath]?.text).toBe('X=1\n');
   });
 
+  it.each([
+    ['un enlace duro (nlink 2)', { kind: 'file', text: 'X=1\n', nlink: 2 }],
+    ['un enlace simbólico', { kind: 'link' }],
+  ] as const)('setupTls: un .env que es %s se rechaza sin escribir a través de él', async (_n, nodo) => {
+    const { ev, nodos, deps } = montar();
+    const envPath = join(DATOS, '.env');
+    nodos[envPath] = { ...nodo };
+    await expect(setupTls(deps)).rejects.toThrow(/\.env/);
+    expect(ev.filter((l) => l.startsWith('write') && l.endsWith(envPath))).toEqual([]);
+  });
+
   it('cierra y verifica ca\\ por SID ANTES de lanzar local-ca.js (que escribe la clave allí)', async () => {
     const { ev, deps } = montar();
     await setupTls(deps);
@@ -1277,6 +1295,13 @@ describe('runInstall', () => {
     const { ev, deps } = montar({ falla: 'env' });
     await expect(runInstall(deps)).rejects.toThrow('boom');
     expect(ev.some((l) => l.includes(' install'))).toBe(false);
+  });
+
+  it('un .env con enlace duro se rechaza antes de escribirle el puerto', async () => {
+    const { ev, nodos, deps } = montar({ envPrevio: 'DRIVER_KIND=none\n', ocupados: [3001] });
+    (nodos[join(DATOS, '.env')] as Nodo).nlink = 2;
+    await expect(runInstall(deps)).rejects.toThrow(/\.env/);
+    expect(ev.filter((l) => l.startsWith('write') && l.endsWith('.env'))).toEqual([]);
   });
 
   it('un servicio que no responde lanza al agotar la espera', async () => {

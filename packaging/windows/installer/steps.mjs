@@ -479,7 +479,7 @@ export async function setupTls({
     ['WEBAUTHN_ORIGIN', origin],
   ])
     env = setKey(env, k, v);
-  await fs.writeFile(envPath, env);
+  await escribirEnv(fs, envPath, env);
   // La rotación terminó (CA nueva importada, la vieja fuera de Root): ya no hay nada pendiente.
   if (rotarCa) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, '/v', PENDIENTE, '/f']);
   return { origin, thumbprint, rotada: rotarCa };
@@ -661,6 +661,20 @@ async function quitarMarca(run, valor) {
   const args = valor ? ['/v', valor] : [];
   const q = await run('reg.exe', ['query', MARCA_HKLM, ...args]);
   if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
+}
+
+/**
+ * Escribe el `.env` desde el proceso elevado: si ya existe y es un enlace (simbólico, junction) o tiene más de
+ * un enlace duro, se aborta, porque escribir a través de él sobrescribiría un fichero ajeno.
+ */
+async function escribirEnv(fs, ruta, texto) {
+  const st = await fs.lstat(ruta).catch((e) => {
+    if (e?.code === 'ENOENT') return null;
+    throw e;
+  });
+  if (st && (st.isSymbolicLink() || !st.isFile() || st.nlink > 1))
+    throw new Error(`${ruta} es un enlace o tiene enlaces duros: no se escribe a través de él.`);
+  await fs.writeFile(ruta, texto);
 }
 
 /** Solo «no existe» vale como `.env` vacío: cualquier otro fallo (EBUSY, EPERM…) no debe reescribirlo con menos claves. */
@@ -852,7 +866,7 @@ export async function runInstall(d) {
   if (creado || port !== preferido) {
     let env = await fs.readFile(envPath, 'utf8');
     if (creado) env = setKey(env, 'HOST', '0.0.0.0');
-    await fs.writeFile(envPath, setKey(env, 'PORT', String(port)));
+    await escribirEnv(fs, envPath, setKey(env, 'PORT', String(port)));
   }
   await fs.writeFile(xmlPath, withXmlPort(await fs.readFile(xmlPath, 'utf8'), port));
 
