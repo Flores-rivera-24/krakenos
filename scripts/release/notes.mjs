@@ -44,7 +44,10 @@ const FILAS = [
   [/\.pkg\.tar\.zst$/, 'Arch Linux y derivadas, x86_64'],
   [/-linux-x64\.tar\.gz$/, 'Portable de Linux, x64'],
   [/-linux-arm64\.tar\.gz$/, 'Portable de Linux, arm64'],
-  [/-x64\.exe$/, 'Instalador de Windows (64 bits): instala el servicio y la ventana de escritorio'],
+  [
+    /-x64\.exe$/,
+    'Instalador de Windows (64 bits): instala el servicio y la ventana de escritorio; sin firmar, ver la guía de Windows',
+  ],
   [/^SHA256SUMS$/, 'Sumas de verificación'],
   [/^manifest\.json$/, 'Manifiesto que lee el actualizador'],
   [/^manifest\.json\.sig$/, 'Firma del manifiesto'],
@@ -89,6 +92,8 @@ export function buildNotes({ commits, assets, repo }) {
   const doc = (f) => (repo ? `https://github.com/${repo}/blob/main/docs/${f}` : `docs/${f}`);
   md += `## Actualizar\n\n- Desde la app: [\`docs/updates.md\`](${doc('updates.md')}).\n`;
   md += `- Instalación y actualización de los paquetes de Linux: [\`docs/install-linux-package.md\`](${doc('install-linux-package.md')}).\n`;
+  if (assets.some((a) => /-x64\.exe$/.test(a)))
+    md += `- Windows: se actualiza a mano; guía en [\`docs/install-windows.md\`](${doc('install-windows.md')}).\n`;
   return md;
 }
 

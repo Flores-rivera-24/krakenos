@@ -20,12 +20,12 @@ disponibles. El resto (inventario, parental, IoT, cámaras, automatizaciones, al
 
 Además, **un equipo que se suspende no vigila**: con el equipo dormido el servicio está parado, así que
 los horarios, la alarma y las rutinas no se ejecutan, y los históricos tienen huecos. Para vigilancia
-continua, el equipo tiene que estar encendido y sin suspender (Configuración → Sistema → Energía). El
+continua, el equipo tiene que estar encendido y sin suspender (en Configuración, la sección de energía del sistema). El
 instalador solo avisa de esto; **no cambia tu plan de energía**.
 
 ## Descargar y verificar
 
-Cada versión publicada en la página de versiones (_Releases_) del repositorio trae el instalador
+A partir de la próxima versión, cada versión publicada en la página de versiones (_Releases_) del repositorio trae el instalador
 junto con `SHA256SUMS`. Descarga los dos a la misma carpeta y comprueba la suma en PowerShell:
 
 ```powershell

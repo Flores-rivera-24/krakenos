@@ -146,6 +146,9 @@ describe('buildNotes', () => {
   it('el instalador de Windows tiene su fila, sin prometer actualización automática', () => {
     const fila = md.split('\n').find((l) => l.includes(`KrakenOS-Setup-${V}-x64.exe`)) ?? '';
     expect(fila).toMatch(/Windows.*servicio/);
+    expect(fila).toMatch(/sin firmar/);
+    expect(md).toContain('docs/install-windows.md');
+    expect(md).toContain('Windows: se actualiza a mano');
     expect(md).not.toMatch(/actualizaci[oó]n autom[aá]tica/i);
   });
   it('lleva la verificación (la suma no es una firma) y las guías de actualización', () => {

@@ -106,7 +106,7 @@ verificar en hardware real).
 
 ### Windows
 
-Instalador `KrakenOS-Setup-<versión>-x64.exe` (Windows x64), sin firmar: instala el servicio y la ventana
+A partir de la próxima versión, instalador `KrakenOS-Setup-<versión>-x64.exe` (Windows x64), sin firmar: instala el servicio y la ventana
 de escritorio. Guía, con el aviso de SmartScreen: [`docs/install-windows.md`](docs/install-windows.md)
 (aún sin verificar en un equipo real). Sin servidor VPN, cortafuegos ni QoS propios, y sin
 actualización automática.
