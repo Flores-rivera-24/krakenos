@@ -182,7 +182,10 @@ function PersonCard({ person, canEdit, onReload, onEditBedtime }: PersonCardProp
                     size="sm"
                     variant="outline"
                     disabled={busy || person.devices.length === 0}
-                    aria-label={t('people.pauseAria', { name: person.name, minutes: m })}
+                    aria-label={t('people.pauseAria', {
+                      name: person.name,
+                      duration: pauseLabel(m),
+                    })}
                     onClick={() =>
                       void run(
                         () => pausePerson(person.userId!, m),

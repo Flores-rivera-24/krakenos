@@ -34,9 +34,9 @@ export const esPersonas = {
   'people.state.offline': 'Desconectado',
   // Pausa por persona
   'people.pause': 'Pausar internet',
-  'people.pauseAria': 'Pausar el internet de {name} {minutes} minutos',
+  'people.pauseAria': 'Pausar el internet de {name}: {duration}',
   'people.resume': 'Devolver internet',
-  'people.resumeAria': 'Devolver el internet a {name}',
+  'people.resumeAria': 'Devolver internet a {name}',
   'people.pausedUntil': 'Sin internet hasta las {time}',
   'people.paused': 'Internet pausado',
   'people.resumed': 'Internet devuelto',

@@ -153,7 +153,11 @@ describe('PeoplePage (US-240)', () => {
     renderPage();
     await screen.findByText('Marta');
 
-    await user.click(screen.getByRole('button', { name: /Pausar el internet de Marta 30/ }));
+    // WCAG 2.5.3: el nombre accesible contiene el texto visible («1 h», «2 h»).
+    expect(
+      screen.getByRole('button', { name: /Pausar el internet de Marta: 1 h/ }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Pausar el internet de Marta: 30 min/ }));
 
     await waitFor(() =>
       expect(apiMock.post).toHaveBeenCalledWith('/people/u-marta/pause', {
@@ -169,7 +173,7 @@ describe('PeoplePage (US-240)', () => {
     renderPage();
     await screen.findByText('Marta');
 
-    await user.click(screen.getByRole('button', { name: /Pausar el internet de Marta 30/ }));
+    await user.click(screen.getByRole('button', { name: /Pausar el internet de Marta: 30 min/ }));
 
     expect(
       await screen.findByText('2 de 3 dispositivos pausados. El resto se reintenta solo.'),
@@ -185,7 +189,7 @@ describe('PeoplePage (US-240)', () => {
     expect(await screen.findByText(/Sin internet hasta las/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Pausar el internet/ })).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Devolver el internet a Marta' }));
+    await user.click(screen.getByRole('button', { name: 'Devolver internet a Marta' }));
     await waitFor(() => expect(apiMock.post).toHaveBeenCalledWith('/people/u-marta/resume'));
   });
 

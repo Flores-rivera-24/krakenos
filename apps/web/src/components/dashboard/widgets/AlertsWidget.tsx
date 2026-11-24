@@ -55,19 +55,22 @@ export function AlertsWidget() {
 
   if (!puedeLeer) return null;
 
+  const unreadLabel = `${unread} ${plural(unread, {
+    one: t('widget.alerts.new.one'),
+    other: t('widget.alerts.new.other'),
+  })}`;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle>{t('widget.alerts.title')}</CardTitle>
         {unread > 0 && (
-          <button type="button" onClick={markSeen} aria-label={t('widget.alerts.markRead')}>
-            <Badge variant="warning">
-              {unread}{' '}
-              {plural(unread, {
-                one: t('widget.alerts.new.one'),
-                other: t('widget.alerts.new.other'),
-              })}
-            </Badge>
+          <button
+            type="button"
+            onClick={markSeen}
+            aria-label={`${unreadLabel}: ${t('widget.alerts.markRead')}`}
+          >
+            <Badge variant="warning">{unreadLabel}</Badge>
           </button>
         )}
       </CardHeader>
