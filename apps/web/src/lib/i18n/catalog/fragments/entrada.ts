@@ -24,6 +24,7 @@ export const esEntrada = {
   'setup.token': 'Token de configuración',
   'setup.tokenHint':
     'Lo imprimió el agente en su log al arrancar (busca «Token de configuración»).',
+  'setup.tokenPrefilled': 'Ya viene relleno: lo trajo el enlace de instalación.',
   'setup.submit': 'Crear administrador',
   'setup.submitting': 'Configurando…',
   'setup.error.mismatch': 'Las contraseñas no coinciden.',

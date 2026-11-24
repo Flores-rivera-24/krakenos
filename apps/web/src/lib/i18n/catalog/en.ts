@@ -47,7 +47,7 @@ export const en: Record<TranslationKey, string> = {
   'layout.homeConnected': 'Home connected',
   'layout.noRouterConnection': 'No connection to the router',
   'layout.driver': 'Driver',
-  'layout.uptime': 'Uptime',
+  'layout.uptime': 'Host up',
   // --- Navegación, foco y nombres accesibles ---
   'layout.badge.devices.one': '{n} unknown or blocked device',
   'layout.badge.devices.other': '{n} unknown or blocked devices',
@@ -113,6 +113,7 @@ export const en: Record<TranslationKey, string> = {
   'setup.confirm': 'Confirm password',
   'setup.token': 'Setup token',
   'setup.tokenHint': 'The agent printed it in its log at startup (look for “Setup token”).',
+  'setup.tokenPrefilled': 'Already filled in: it came with the install link.',
   'setup.submit': 'Create administrator',
   'setup.submitting': 'Setting up…',
   'setup.error.mismatch': 'The passwords do not match.',

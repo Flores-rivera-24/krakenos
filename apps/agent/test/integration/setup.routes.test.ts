@@ -39,6 +39,31 @@ describe('rutas de setup', () => {
     setupToken.reset();
   });
 
+  it('init guarda el idioma con el que se hizo el setup', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/setup/init',
+      payload: initBody({ locale: 'en' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().user.locale).toBe('en');
+  });
+
+  it('un idioma fuera de la lista se rechaza con 400 y no crea el admin', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/setup/init',
+      payload: initBody({ locale: 'fr' }),
+    });
+    expect(res.statusCode).toBe(400);
+    expect(await app.prisma.user.count()).toBe(0);
+  });
+
+  it('init sin idioma deja el predeterminado', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });
+    expect(res.json().user.locale).toBe('es');
+  });
+
   it('init borra el fichero del token de setup', async () => {
     writeFileSync(tokenFile, 'x\n');
     const res = await app.inject({ method: 'POST', url: '/api/setup/init', payload: initBody() });

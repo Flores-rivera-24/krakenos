@@ -74,7 +74,7 @@ export const setupRoutes: FastifyPluginAsync<SetupRoutesOptions> = async (app, o
       config: { rateLimit: { max: SETUP_INIT_RATE_LIMIT, timeWindow: '1 minute' } },
     },
     async (req, reply) => {
-      const { homeName, email, displayName, password } = req.body;
+      const { homeName, email, displayName, password, locale } = req.body;
 
       // Camino rápido: instalación ya configurada.
       if ((await app.prisma.user.count()) > 0) {
@@ -109,7 +109,15 @@ export const setupRoutes: FastifyPluginAsync<SetupRoutesOptions> = async (app, o
         // borrado de los usuarios y como candado dejaba la instalación imposible de
         // configurar para siempre (ver `SETUP_CLAIM_KEY`).
         await app.prisma.$transaction([
-          app.prisma.user.create({ data: { email, displayName, passwordHash, role: 'admin' } }),
+          app.prisma.user.create({
+            data: {
+              email,
+              displayName,
+              passwordHash,
+              role: 'admin',
+              ...(locale ? { locale } : {}),
+            },
+          }),
           app.prisma.setting.create({ data: { key: SETUP_CLAIM_KEY, value: 'true' } }),
           app.prisma.setting.upsert({
             where: { key: 'homeName' },

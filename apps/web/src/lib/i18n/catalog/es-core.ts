@@ -52,7 +52,7 @@ export const esCore = {
   'layout.homeConnected': 'Casa conectada',
   'layout.noRouterConnection': 'Sin conexión con el router',
   'layout.driver': 'Driver',
-  'layout.uptime': 'Uptime',
+  'layout.uptime': 'Equipo encendido',
 
   // --- Navegación, foco y nombres accesibles ---
   'layout.badge.devices.one': '{n} dispositivo desconocido o bloqueado',

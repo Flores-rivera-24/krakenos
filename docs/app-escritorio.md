@@ -55,7 +55,10 @@ Los nombres exactos de los menús varían según la versión del sistema; estos 
 - **macOS:** abre el archivo (se añade a «Llavero»), busca «KrakenOS» en el llavero «Sistema», abre su
   ficha y en «Confiar» elige «Confiar siempre».
 - **Android:** Ajustes → Seguridad → Cifrado y credenciales → Instalar un certificado → «Certificado
-  de CA», y elige el archivo.
+  de CA», y elige el archivo. El nombre de los menús cambia según el fabricante: en algunos móviles
+  es Ajustes → Seguridad y privacidad → Más seguridad y privacidad → «Almacenamiento de
+  credenciales» → Instalar un certificado → «Certificado de CA». Si no lo encuentras, busca
+  «certificado» en Ajustes.
 - **iPhone y iPad:** abre el archivo en Safari y permite descargar el perfil. Instálalo en Ajustes →
   «Perfil descargado». Después **activa la confianza**, que es un paso aparte: Ajustes → General →
   Información → Confianza de certificados → activa «KrakenOS». Sin este segundo paso el perfil está

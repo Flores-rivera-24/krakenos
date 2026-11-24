@@ -1,3 +1,5 @@
+import type { Locale } from './auth.js';
+
 /** Estado del primer arranque del sistema. */
 export interface SetupStatus {
   /** `true` si todavía no existe ningún usuario (hay que ejecutar el wizard). */
@@ -21,4 +23,6 @@ export interface SetupInitRequest {
    * al primer arranque sin admin. Requerido si el agente tiene un token activo.
    */
   setupToken?: string;
+  /** Idioma de la interfaz con el que se hizo el wizard; el admin lo hereda. */
+  locale?: Locale;
 }
