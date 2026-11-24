@@ -3,6 +3,7 @@ import {
   chmodSync,
   copyFileSync,
   existsSync,
+  linkSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -150,6 +151,34 @@ describe('first-run.mjs (puro)', () => {
     writeFileSync(join(raiz, 'plantilla'), ENV_EXAMPLE);
     expect(ensureEnv(raiz, join(raiz, 'plantilla'))).toBe(false);
     expect(readFileSync(join(raiz, '.env'), 'utf8')).toBe('PORT=4999\n');
+  });
+
+  it('un .env que es un symlink colgante se rechaza sin escribir a través de él', () => {
+    const destino = join(raiz, 'ajeno');
+    writeFileSync(join(raiz, 'plantilla'), ENV_EXAMPLE);
+    try {
+      symlinkSync(destino, join(raiz, '.env'));
+    } catch (e) {
+      // Windows sin privilegio de enlaces simbólicos (EPERM); Linux y el runner de CI sí los crean.
+      if ((e as NodeJS.ErrnoException).code === 'EPERM') return;
+      throw e;
+    }
+    expect(() => ensureEnv(raiz, join(raiz, 'plantilla'))).toThrow(/enlace simbólico/);
+    expect(existsSync(destino)).toBe(false);
+  });
+
+  it('un .env con enlace duro se rechaza', () => {
+    writeFileSync(join(raiz, 'ajeno'), 'X=1\n');
+    linkSync(join(raiz, 'ajeno'), join(raiz, '.env'));
+    writeFileSync(join(raiz, 'plantilla'), ENV_EXAMPLE);
+    expect(() => ensureEnv(raiz, join(raiz, 'plantilla'))).toThrow(/enlace duro/);
+    expect(readFileSync(join(raiz, 'ajeno'), 'utf8')).toBe('X=1\n');
+  });
+
+  it('sin .env lo crea (con 0600) y devuelve true', () => {
+    writeFileSync(join(raiz, 'plantilla'), ENV_EXAMPLE);
+    expect(ensureEnv(raiz, join(raiz, 'plantilla'))).toBe(true);
+    expect(readFileSync(join(raiz, '.env'), 'utf8')).toContain('PORT=3001');
   });
 });
 

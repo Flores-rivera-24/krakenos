@@ -15,7 +15,7 @@ import { activeNetwork, grantServiceAccess, installService, localHostname, offer
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { msg } from '../../../../packaging/windows/installer/mensajes.mjs';
+import { CATALOGO, msg } from '../../../../packaging/windows/installer/mensajes.mjs';
 
 /** Pasos del instalador de Windows con `run`/`fs` inyectados: lo que manda cada comando, en orden. */
 
@@ -97,6 +97,8 @@ interface Nodo {
   text?: string;
   /** Ruta real que resuelve `realpath` (una junction que `lstat` no ve como enlace). */
   real?: string;
+  /** Enlaces duros del fichero (por defecto 1). */
+  nlink?: number;
 }
 /** Como el disco real: lo borrado deja de figurar en `readdir` de su carpeta. */
 function quitarDeSuCarpeta(nodos: Record<string, Nodo>, p: string) {
@@ -110,7 +112,12 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
     lstat: async (p: string) => {
       const n = nodos[p];
       if (!n) throw enoent();
-      return { isSymbolicLink: () => n.kind === 'link', isDirectory: () => n.kind === 'dir' };
+      return {
+        isSymbolicLink: () => n.kind === 'link',
+        isDirectory: () => n.kind === 'dir',
+        isFile: () => n.kind === 'file',
+        nlink: n.nlink ?? 1,
+      };
     },
     readdir: async (p: string) => nodos[p]?.entries ?? [],
     realpath: async (p: string) => nodos[p]?.real ?? p,
@@ -337,6 +344,8 @@ describe('prepareDataDir', () => {
     for (const [filas, motivo] of [
       [[mod], /falta/], // sin la ACE de la propia carpeta
       [[solo], /falta/], // sin la heredable a los hijos
+      [[`${SID}|Modify, ChangePermissions, Synchronize|Allow|False`, solo], /distinta/], // Modify más un derecho extra
+      [[`${SID}|ModifyX|Allow|False`, solo], /distinta/], // texto que solo contiene «Modify»
       [[mod, mod], /ACE de .*distinta|inesperada/], // un segundo Modify sin (IO) permitiría borrarla
       [[mod, `${SID}|FullControl|Allow|False`], /distinta|inesperada/],
       [[mod, `${SID}|ReadAndExecute, Delete, Synchronize|Allow|False`], /distinta|inesperada/],
@@ -387,6 +396,39 @@ describe('prepareDataDir', () => {
     const run = fakeRun(ev, { 'reg.exe query': 1 });
     await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(DATOS);
     expect(ev.some((l) => l.startsWith('icacls'))).toBe(false);
+  });
+
+  it.each([
+    ['una carpeta que solo contiene la ruta como prefijo', `${DATOS}-otra`],
+    ['una ruta más larga que la contiene', `${DATOS}\\sub`],
+    ['otra clave que la menciona', `X:\\${DATOS}\\y`],
+  ])('la marca de HKLM se compara exacta: %s no vale como marca', async (_n, valor) => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['algo'] },
+      [join(DATOS, 'algo')]: { kind: 'file' },
+    });
+    const run = fakeRun(ev, {}, { 'reg.exe query': `    DataDir    REG_SZ    ${valor}\r\n` });
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).rejects.toThrow(
+      /no es de un despliegue/,
+    );
+  });
+
+  it('la marca exacta vale aunque cambien mayúsculas, espacios y salto de línea', async () => {
+    const ev: Ev[] = [];
+    const fs = fakeFs(ev, {
+      [DATOS]: { kind: 'dir', entries: ['algo'] },
+      [join(DATOS, 'algo')]: { kind: 'file' },
+    });
+    const run = fakeRun(
+      ev,
+      {},
+      {
+        'reg.exe query': `\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\KrakenOS\r\n    DataDir    REG_SZ    ${DATOS.toUpperCase()}  \r\n`,
+      },
+      { abierta: false },
+    );
+    await expect(prepareDataDir({ dataDir: DATOS, run, fs })).resolves.toBeDefined();
   });
 
   it('si existe vacía y sin marca, la rehace (la creó otro: sería su dueño) con mkdir sin recursión', async () => {
@@ -762,6 +804,20 @@ describe('TLS: setupTls, writeWindowJson, registerRenewalTask y renew', () => {
     expect(ev.filter((l) => l.startsWith('write') && l.endsWith(envPath))).toEqual([]);
     expect(nodos[envPath]?.text).toBe('X=1\n');
   });
+
+  it.each([
+    ['un enlace duro (nlink 2)', { kind: 'file', text: 'X=1\n', nlink: 2 }],
+    ['un enlace simbólico', { kind: 'link' }],
+  ] as const)(
+    'setupTls: un .env que es %s se rechaza sin escribir a través de él',
+    async (_n, nodo) => {
+      const { ev, nodos, deps } = montar();
+      const envPath = join(DATOS, '.env');
+      nodos[envPath] = { ...nodo };
+      await expect(setupTls(deps)).rejects.toThrow(/\.env/);
+      expect(ev.filter((l) => l.startsWith('write') && l.endsWith(envPath))).toEqual([]);
+    },
+  );
 
   it('cierra y verifica ca\\ por SID ANTES de lanzar local-ca.js (que escribe la clave allí)', async () => {
     const { ev, deps } = montar();
@@ -1279,6 +1335,13 @@ describe('runInstall', () => {
     expect(ev.some((l) => l.includes(' install'))).toBe(false);
   });
 
+  it('un .env con enlace duro se rechaza antes de escribirle el puerto', async () => {
+    const { ev, nodos, deps } = montar({ envPrevio: 'DRIVER_KIND=none\n', ocupados: [3001] });
+    (nodos[join(DATOS, '.env')] as Nodo).nlink = 2;
+    await expect(runInstall(deps)).rejects.toThrow(/\.env/);
+    expect(ev.filter((l) => l.startsWith('write') && l.endsWith('.env'))).toEqual([]);
+  });
+
   it('un servicio que no responde lanza al agotar la espera', async () => {
     const { deps } = montar();
     await expect(
@@ -1286,11 +1349,21 @@ describe('runInstall', () => {
     ).rejects.toThrow(/3001/);
   });
 
-  it('no escribe el token de setup en ningún mensaje', async () => {
+  // runInstall no lee ni toca el token (lo lee post-install.mjs): vigila que no lo escriba ni lo loguee.
+  it('runInstall no lee, escribe ni loguea el token de setup', async () => {
     const lineas: string[] = [];
-    const { deps } = montar();
+    const { deps, nodos, ev } = montar({ envPrevio: 'DRIVER_KIND=none\n' });
+    const TOKEN = 'TokenSecretoDePrueba123';
+    nodos[join(DATOS, 'setup-token')] = { kind: 'file', text: TOKEN };
     await runInstall({ ...deps, log: (l: string) => lineas.push(l) });
     expect(lineas.join('\n')).not.toMatch(/setup-token|setup\?token/i);
+    expect(lineas.join('\n')).not.toContain(TOKEN);
+    // Ningún fichero escrito por el instalador (salvo el propio token, que no es suyo) lo contiene.
+    const ajenos = Object.entries(nodos).filter(
+      ([r, n]) => r !== join(DATOS, 'setup-token') && n.text?.includes(TOKEN),
+    );
+    expect(ajenos.map(([r]) => r)).toEqual([]);
+    expect(ev.filter((l) => l.includes('setup-token'))).toEqual([]);
   });
 });
 
@@ -1515,10 +1588,14 @@ describe('runInstall: cortafuegos, red y energía', () => {
 });
 
 describe('mensajes', () => {
-  it('hay las mismas claves en es y en en', () => {
-    expect(msg('es', 'puertoOcupado', 3001, 3002)).toContain('3002');
-    expect(msg('en', 'puertoOcupado', 3001, 3002)).toContain('3002');
-    expect(msg('es', 'puertoOcupado', 3001, 3002)).not.toBe(msg('en', 'puertoOcupado', 3001, 3002));
+  it('hay las mismas claves en es y en en, todas funciones que devuelven texto no vacío', () => {
+    expect(Object.keys(CATALOGO.en).sort()).toEqual(Object.keys(CATALOGO.es).sort());
+    for (const lang of ['es', 'en'] as const)
+      for (const [clave, fn] of Object.entries(CATALOGO[lang])) {
+        expect(typeof fn, `${lang}.${clave}`).toBe('function');
+        const texto = (fn as (...a: string[]) => string)('A', 'B');
+        expect(texto.trim().length, `${lang}.${clave} vacío`).toBeGreaterThan(0);
+      }
   });
 
   it('los mensajes del cortafuegos, la red y la energía existen en es y en en, distintos y con sus datos', () => {

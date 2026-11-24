@@ -38,7 +38,10 @@ async function ok(run, cmd, args, opciones) {
 
 async function hayMarca(run, dataDir) {
   const r = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'DataDir']);
-  return r.code === 0 && r.stdout.toLowerCase().includes(dataDir.toLowerCase());
+  // Igualdad exacta del valor de `DataDir` (`reg query` lo imprime como `DataDir    REG_SZ    <ruta>`):
+  // una ruta que solo CONTIENE la nuestra no es la marca.
+  const valor = /^\s*DataDir\s+REG_SZ\s+(.*?)\s*$/im.exec(r.stdout)?.[1];
+  return r.code === 0 && valor !== undefined && normRuta(valor) === normRuta(dataDir);
 }
 
 /**
@@ -165,7 +168,11 @@ export async function grantServiceAccess({ dataDir, serviceSid, run }) {
 
 // Las dos ACE del servicio en la raíz: Modificar heredable a los hijos y, solo para la carpeta, listar y crear
 // (jamás Modify, Delete ni FullControl: ni borrarla ni renombrarla).
-const SERVICIO_EN_RAIZ = [/Modify/, /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/];
+// Derechos EXACTOS (.NET imprime `Modify, Synchronize`): «Modify» más otro derecho, o un texto que lo contenga, no valen.
+const SERVICIO_EN_RAIZ = [
+  /^Modify(, Synchronize)?$/,
+  /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/,
+];
 
 const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
@@ -479,7 +486,7 @@ export async function setupTls({
     ['WEBAUTHN_ORIGIN', origin],
   ])
     env = setKey(env, k, v);
-  await fs.writeFile(envPath, env);
+  await escribirEnv(fs, envPath, env);
   // La rotación terminó (CA nueva importada, la vieja fuera de Root): ya no hay nada pendiente.
   if (rotarCa) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, '/v', PENDIENTE, '/f']);
   return { origin, thumbprint, rotada: rotarCa };
@@ -661,6 +668,24 @@ async function quitarMarca(run, valor) {
   const args = valor ? ['/v', valor] : [];
   const q = await run('reg.exe', ['query', MARCA_HKLM, ...args]);
   if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
+}
+
+/**
+ * Escribe el `.env` desde el proceso elevado: si ya existe y es un enlace (simbólico, junction) o tiene más de
+ * un enlace duro, se aborta, porque escribir a través de él sobrescribiría un fichero ajeno.
+ */
+async function escribirEnv(fs, ruta, texto) {
+  const st = await fs.lstat(ruta).catch((e) => {
+    if (e?.code === 'ENOENT') return null;
+    throw e;
+  });
+  if (st?.isSymbolicLink())
+    throw new Error(`${ruta} es un enlace simbólico o junction: no se escribe a través de él.`);
+  if (st && (!st.isFile() || st.nlink > 1))
+    throw new Error(
+      `${ruta} no es un fichero normal o es un enlace duro: no se escribe a través de él.`,
+    );
+  await fs.writeFile(ruta, texto);
 }
 
 /** Solo «no existe» vale como `.env` vacío: cualquier otro fallo (EBUSY, EPERM…) no debe reescribirlo con menos claves. */
@@ -852,7 +877,7 @@ export async function runInstall(d) {
   if (creado || port !== preferido) {
     let env = await fs.readFile(envPath, 'utf8');
     if (creado) env = setKey(env, 'HOST', '0.0.0.0');
-    await fs.writeFile(envPath, setKey(env, 'PORT', String(port)));
+    await escribirEnv(fs, envPath, setKey(env, 'PORT', String(port)));
   }
   await fs.writeFile(xmlPath, withXmlPort(await fs.readFile(xmlPath, 'utf8'), port));
 
