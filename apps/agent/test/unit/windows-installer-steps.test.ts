@@ -1182,6 +1182,7 @@ describe('runInstall', () => {
       installDir: INST,
       dataDir: DATOS,
       hostname: 'MI-PC.lan',
+      version: '1.2.3',
       run,
       fs,
       isFree: async (p: number) => !(opts.ocupados ?? []).includes(p),
@@ -1200,6 +1201,30 @@ describe('runInstall', () => {
     };
     return { ev, nodos, deps, codes };
   }
+
+  it('anota la versión instalada en HKLM (REG_SZ) tras dejar el servicio sano', async () => {
+    const { ev, deps } = montar();
+    await runInstall(deps);
+    const linea = 'reg.exe add HKLM\\SOFTWARE\\KrakenOS /v Version /t REG_SZ /d 1.2.3 /f';
+    expect(ev).toContain(linea);
+    const idxStart = ev.findIndex((l) => l.includes(' start'));
+    expect(idxStart).toBeGreaterThanOrEqual(0);
+    expect(ev.indexOf(linea)).toBeGreaterThan(idxStart);
+  });
+
+  it('al actualizar encima la versión se sobrescribe con la nueva', async () => {
+    const { ev, deps } = montar({ envPrevio: 'PORT=3001\n' });
+    await runInstall({ ...deps, version: '2.0.0' });
+    expect(ev).toContain('reg.exe add HKLM\\SOFTWARE\\KrakenOS /v Version /t REG_SZ /d 2.0.0 /f');
+  });
+
+  it('rechaza una versión ausente o con caracteres raros antes de tocar nada', async () => {
+    for (const version of [undefined, '', '1.0 /v X', '1.0"&calc'] as const) {
+      const { ev, deps } = montar();
+      await expect(runInstall({ ...deps, version })).rejects.toThrow(/versión/);
+      expect(ev).toEqual([]);
+    }
+  });
 
   it('hace los pasos en orden: datos, .env, claves, servicio, salud', async () => {
     const { ev, deps } = montar();
@@ -1343,10 +1368,11 @@ describe('runInstall', () => {
   });
 
   it('un servicio que no responde lanza al agotar la espera', async () => {
-    const { deps } = montar();
+    const { deps, ev } = montar();
     await expect(
       runInstall({ ...deps, get: async () => 503, healthTimeoutMs: 20, intervalMs: 5 }),
     ).rejects.toThrow(/3001/);
+    expect(ev.some((l) => l.includes('/v Version'))).toBe(false);
   });
 
   // runInstall no lee ni toca el token (lo lee post-install.mjs): vigila que no lo escriba ni lo loguee.
@@ -1516,6 +1542,7 @@ describe('runInstall: cortafuegos, red y energía', () => {
       installDir: INST,
       dataDir: DATOS,
       hostname: 'MI-PC',
+      version: '1.2.3',
       run,
       fs: fakeFs(ev, nodos),
       isFree: async () => true,
@@ -1654,7 +1681,7 @@ describe('installer-hooks.nsh (servicio)', () => {
     expect(m).toMatch(
       /\$\{If\} \$\{Silent\}\s+StrCpy \$R7 ""\s+\$\{Else\}\s+StrCpy \$R7 " --interactive"/,
     );
-    expect(m).toMatch(/install --lang \$R8\$R7'/);
+    expect(m).toMatch(/install --lang \$R8 --version \${VERSION}\$R7'/);
   });
 
   it('PREINSTALL para el servicio previo y aborta si no puede', () => {
@@ -1950,6 +1977,7 @@ describe('uninstallAll', () => {
     expect(lineas.some((l) => l.includes('KrakenOS') && l.includes('DeleteTask'))).toBe(true);
     expect(lineas).toContain('quitar-enlaces');
     expect(lineas).toContain('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /v CaThumbprint /f');
+    expect(lineas).toContain('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /v Version /f');
     // Con datos conservados, lo que identifica la carpeta como de KrakenOS se queda con ella.
     expect(lineas.some((l) => l.startsWith('reg.exe delete HKLM\\SOFTWARE\\KrakenOS /f'))).toBe(
       false,
