@@ -21,7 +21,7 @@ export const CATALOGO = {
     redNoPrivada: () =>
       'La red activa no es privada (es de dominio o no hay conexión): la regla del cortafuegos solo vale en redes privadas, así que el móvil no llegará a KrakenOS desde ella.',
     energia: () =>
-      'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración → Sistema → Energía.',
+      'Si este equipo se suspende, KrakenOS deja de vigilar: horarios, alarma y rutinas no se ejecutan mientras duerme. Puedes cambiarlo en Configuración, en las opciones de energía (busca "suspender").',
     fallo: (detalle) => `La instalación de KrakenOS no terminó: ${detalle}`,
     datosConservados: (dir) =>
       `Tus datos se conservan en ${dir}. Para borrarlos, desinstala marcando «Eliminar los datos de aplicación» o con /PURGEDATA.`,
@@ -52,7 +52,7 @@ export const CATALOGO = {
     redNoPrivada: () =>
       'The active network is not private (it is a domain network or there is no connection): the firewall rule only applies on private networks, so your phone will not reach KrakenOS from it.',
     energia: () =>
-      'If this PC goes to sleep, KrakenOS stops watching: schedules, the alarm and routines do not run while it sleeps. You can change this in Settings → System → Power.',
+      'If this PC goes to sleep, KrakenOS stops watching: schedules, the alarm and routines do not run while it sleeps. You can change this in Settings, in the power options (search for "sleep").',
     fallo: (detalle) => `The KrakenOS installation did not finish: ${detalle}`,
     datosConservados: (dir) =>
       `Your data is kept in ${dir}. To delete it, uninstall with "Delete the application data" checked or with /PURGEDATA.`,

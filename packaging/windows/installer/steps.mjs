@@ -846,6 +846,8 @@ export async function uninstallAll({
     if (esMia) datosOk = await paso('datos', () => removeTree({ fs, run }, dataDir));
     else log(msg(lang, 'datosAjenos', dataDir));
   } else log(msg(lang, 'datosConservados', dataDir));
+  // La versión es solo informativa (anti-downgrade de la próxima instalación): no sobrevive a la desinstalación.
+  await paso('versión', () => quitarMarca(run, 'Version'));
   // Sin haber podido quitar la CA, su thumbprint se queda: es lo único que permite reintentarlo.
   if (caOk)
     await paso('registro', () =>
@@ -858,6 +860,9 @@ export async function uninstallAll({
 export async function runInstall(d) {
   const { installDir, dataDir, run, fs, isFree, get, setKey, log } = d;
   const lang = d.lang ?? 'es';
+  // Valida ANTES de tocar nada: va a `reg.exe` como argumento y NSIS la pasa por la línea de órdenes.
+  if (typeof d.version !== 'string' || !/^[0-9A-Za-z][0-9A-Za-z.+~-]{0,63}$/.test(d.version))
+    throw new Error(`versión del paquete ausente o no válida: ${JSON.stringify(d.version)}`);
   const serviceExe = join(installDir, 'service', 'KrakenOS-service.exe');
   const xmlPath = join(installDir, 'service', 'KrakenOS-service.xml');
   const envPath = join(dataDir, '.env');
@@ -905,6 +910,18 @@ export async function runInstall(d) {
     intervalMs: d.intervalMs,
     https: true,
   });
+  // Con el servicio ya sano: una instalación fallida no deja anotada una versión que no llegó a funcionar.
+  await ok(run, 'reg.exe', [
+    'add',
+    MARCA_HKLM,
+    '/v',
+    'Version',
+    '/t',
+    'REG_SZ',
+    '/d',
+    d.version,
+    '/f',
+  ]);
   log(msg(lang, 'listo', port));
   log(msg(lang, 'tlsListo', origin));
   if (rotada) log(msg(lang, 'caRotada'));

@@ -186,7 +186,7 @@ function Phase-RejectPlantedDataDir {
     $env:ProgramData = $base
     foreach ($c in $casos) {
       & $c.Preparar
-      $salida = (& $node $script install --lang es 2>&1) -join "`n"
+      $salida = (& $node $script install --lang es --version 0.0.0-smoke 2>&1) -join "`n"
       $code = $LASTEXITCODE
       Write-Host $salida
       Assert ($code -ne 0) "el instalador aborta con $($c.Nombre)"
@@ -243,7 +243,7 @@ function Phase-Service {
   & icacls $ca0 /grant ('*{0}:(OI)(CI)M' -f ((New-Object System.Security.Principal.NTAccount('NT SERVICE\KrakenOS')).Translate([System.Security.Principal.SecurityIdentifier]).Value)) | Out-Null
   Assert (((& icacls (Join-Path $ca0 'krakenos-ca-key.pem')) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users llega a la clave de la CA'
   Assert (((& icacls $datos) -join "`n") -match 'BUILTIN\\Users') 'precondición: Users está en la raíz de datos'
-  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es --version 0.0.0-smoke 2>&1 | Out-Host
   if ($LASTEXITCODE -ne 0) {
     Write-Host '--- diagnóstico'
     & icacls $datos | Out-Host
@@ -388,7 +388,7 @@ function Phase-Tls {
 
   # Reinstalar (servicio parado como hace el hook): reimporta la MISMA CA.
   Stop-Service KrakenOS
-  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es --version 0.0.0-smoke 2>&1 | Out-Host
   Assert ($LASTEXITCODE -eq 0) 'reinstalar sale con 0'
   $thumb2 = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
   Assert ($thumb2 -eq $thumb) 'reinstalar con datos conservados reimporta la misma CA (mismo thumbprint)'
@@ -406,7 +406,7 @@ function Phase-Tls {
   foreach ($f in 'ca\krakenos-ca-key.pem', 'ca\krakenos-ca.pem', 'tls\krakenos-ca.pem', 'tls\agent-key.pem', 'tls\agent-cert.pem') {
     Remove-Item -LiteralPath (Join-Path $datos $f) -Force
   }
-  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es 2>&1 | Out-Host
+  & $node (Join-Path $dir 'installer\post-install.mjs') install --lang es --version 0.0.0-smoke 2>&1 | Out-Host
   Assert ($LASTEXITCODE -eq 0) 'reinstalar con ca\ vacía sale con 0'
   $thumb3 = (Get-ItemProperty 'HKLM:\SOFTWARE\KrakenOS').CaThumbprint
   Assert ($thumb3 -ne $thumb) 'con ca\ vacía se genera otra CA (otro thumbprint en HKLM)'
@@ -753,6 +753,7 @@ function Phase-Upgrade {
   if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
   Assert ($p.ExitCode -eq 0) 'instalar 0.0.1 con /S sale con 0'
   Assert ((Get-ItemProperty $UninstKey).DisplayVersion -eq '0.0.1') 'la versión instalada es 0.0.1'
+  Assert ((Get-ItemProperty $KrakenKey).Version -eq '0.0.1') 'HKLM\SOFTWARE\KrakenOS\Version vale 0.0.1'
   Assert (Wait-Health (Get-PuertoDatos) 90) 'el agente 0.0.1 arranca'
   Set-Marcas
   $marcas = Get-Marcas
@@ -767,6 +768,7 @@ function Phase-Upgrade {
   if ($p.ExitCode -ne 0) { Show-InstallErrorLog }
   Assert ($p.ExitCode -eq 0) "instalar $versionReal encima de 0.0.1 con /S sale con 0"
   Assert ((Get-ItemProperty $UninstKey).DisplayVersion -eq $versionReal) "la versión instalada ahora es $versionReal"
+  Assert ((Get-ItemProperty $KrakenKey).Version -eq $versionReal) "HKLM\SOFTWARE\KrakenOS\Version vale $versionReal tras actualizar"
   Assert-MarcasIguales $marcas 'tras actualizar'
   Assert ((Get-Service KrakenOS).Status -eq 'Running') 'el servicio está Running tras actualizar'
   Assert (Wait-Health (Get-PuertoDatos) 90) '/health/ready da 200 tras actualizar'
