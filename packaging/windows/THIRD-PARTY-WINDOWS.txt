@@ -1,6 +1,8 @@
-Avisos de licencia de los componentes de terceros que lleva el instalador de KrakenOS para Windows.
-Los paquetes de Node (agente y ventana web) van en THIRD_PARTY_LICENSES.txt, en la carpeta de instalación.
-Las crates de Rust enlazadas en la ventana (krakenos-window.exe) van en licenses\THIRD-PARTY-RUST.txt, generado en el build.
+Avisos de licencia de los componentes de terceros que lleva el instalador de KrakenOS para Windows. Se reparten en tres ficheros:
+
+- Este fichero (licenses\THIRD-PARTY-WINDOWS.txt) cubre WinSW (envoltorio del servicio), NSIS (con el que se construye el instalador), Tauri, el plugin de NSIS nsis_tauri_utils y el cargador de WebView2 que se enlaza en la ventana.
+- licenses\THIRD-PARTY-RUST.txt, generado en el build, cubre las crates de Rust enlazadas en la ventana (krakenos-window.exe).
+- THIRD_PARTY_LICENSES.txt, en la carpeta de instalación, cubre los paquetes de Node del agente y de la ventana web.
 
 ========================================================================
 WinSW 2.12.0 (envoltorio del servicio de Windows)
@@ -387,9 +389,9 @@ SOFTWARE.
    END OF TERMS AND CONDITIONS
 
 ========================================================================
-nsis_tauri_utils (plugin de NSIS que Tauri incluye en el instalador)
+nsis_tauri_utils 0.5.3 (plugin de NSIS que Tauri incluye en el instalador)
 Licencia: MIT OR Apache-2.0
-Fuente del texto: https://github.com/tauri-apps/nsis-tauri-utils (LICENSE_MIT y LICENSE_APACHE-2.0, rama dev)
+Fuente del texto: https://github.com/tauri-apps/nsis-tauri-utils/tree/nsis_tauri_utils-v0.5.3 (LICENSE_MIT y LICENSE_APACHE-2.0)
 ========================================================================
 --- MIT ---
 MIT License
