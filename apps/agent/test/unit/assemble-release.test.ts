@@ -1,5 +1,5 @@
 /**
- * `scripts/release/assemble.mjs`: reúne los cinco archivos de la release (dos .deb, el paquete de Arch y
+ * `scripts/release/assemble.mjs`: reúne los seis archivos de la release (dos .deb, el paquete de Arch, el instalador de Windows y
  * los dos portables de Linux) y escribe SHA256SUMS. Si falta alguno no deja nada a medias.
  */
 import { spawnSync } from 'node:child_process';
@@ -21,12 +21,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 const SCRIPT = fileURLToPath(new URL('../../../../scripts/release/assemble.mjs', import.meta.url));
 const V = '0.3.0';
 // Bytes distintos por archivo: una suma cruzada entre nombres se vería.
-const CINCO: Record<string, string> = {
+const SEIS: Record<string, string> = {
   [`krakenos_${V}_amd64.deb`]: 'deb-amd64',
   [`krakenos_${V}_arm64.deb`]: 'deb-arm64-bytes',
   [`krakenos-${V}-1-x86_64.pkg.tar.zst`]: 'arch',
   [`krakenos-${V}-linux-x64.tar.gz`]: 'tar-x64',
   [`krakenos-${V}-linux-arm64.tar.gz`]: 'tar-arm64-xx',
+  [`KrakenOS-Setup-${V}-x64.exe`]: 'exe-win',
 };
 
 let raiz: string;
@@ -37,26 +38,26 @@ beforeEach(() => {
   dl = join(raiz, 'dl');
   out = join(raiz, 'release');
   mkdirSync(dl);
-  for (const [n, c] of Object.entries(CINCO)) writeFileSync(join(dl, n), c);
+  for (const [n, c] of Object.entries(SEIS)) writeFileSync(join(dl, n), c);
 });
 afterEach(() => rmSync(raiz, { recursive: true, force: true }));
 
 const run = () => spawnSync(process.execPath, [SCRIPT, dl, out, V], { encoding: 'utf8' });
 
 describe('assemble.mjs', () => {
-  it('caso feliz: copia los cinco archivos y SHA256SUMS lleva cinco sumas correctas, en orden alfabético', () => {
+  it('caso feliz: copia los seis archivos y SHA256SUMS lleva seis sumas correctas, en orden alfabético', () => {
     const r = run();
     expect(r.status, r.stderr).toBe(0);
-    expect(readdirSync(out).sort()).toEqual([...Object.keys(CINCO), 'SHA256SUMS'].sort());
+    expect(readdirSync(out).sort()).toEqual([...Object.keys(SEIS), 'SHA256SUMS'].sort());
     const lineas = readFileSync(join(out, 'SHA256SUMS'), 'utf8').trimEnd().split('\n');
-    expect(lineas).toHaveLength(5);
+    expect(lineas).toHaveLength(6);
     const nombres = lineas.map((l) => l.slice(66));
     expect(nombres).toEqual([...nombres].sort());
     for (const l of lineas) {
       const nombre = l.slice(66);
       expect(l.slice(0, 66)).toBe(
         `${createHash('sha256')
-          .update(CINCO[nombre] as string)
+          .update(SEIS[nombre] as string)
           .digest('hex')}  `,
       );
     }
@@ -77,6 +78,23 @@ describe('assemble.mjs', () => {
     expect(r.status).toBe(1);
     expect(r.stderr).toContain(`krakenos_${V}_amd64.deb`);
     expect(r.stderr).toContain(`krakenos-${V}-linux-x64.tar.gz`);
+  });
+
+  it('falta el instalador de Windows: falla nombrándolo y no hay SHA256SUMS', () => {
+    rmSync(join(dl, `KrakenOS-Setup-${V}-x64.exe`));
+    const r = run();
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain(`KrakenOS-Setup-${V}-x64.exe`);
+    expect(existsSync(join(out, 'SHA256SUMS'))).toBe(false);
+  });
+
+  it('un instalador de otra versión no cuenta: falla nombrando el esperado', () => {
+    rmSync(join(dl, `KrakenOS-Setup-${V}-x64.exe`));
+    writeFileSync(join(dl, 'KrakenOS-Setup-9.9.9-x64.exe'), 'otro');
+    const r = run();
+    expect(r.status).toBe(1);
+    expect(r.stderr).toContain(`KrakenOS-Setup-${V}-x64.exe`);
+    expect(existsSync(join(out, 'KrakenOS-Setup-9.9.9-x64.exe'))).toBe(false);
   });
 
   it('falta el paquete de Arch: falla', () => {
@@ -112,7 +130,7 @@ describe('assemble.mjs', () => {
       writeFileSync(join(dl, n), 'viejo');
     const r = run();
     expect(r.status, r.stderr).toBe(0);
-    expect(readdirSync(out).sort()).toEqual([...Object.keys(CINCO), 'SHA256SUMS'].sort());
+    expect(readdirSync(out).sort()).toEqual([...Object.keys(SEIS), 'SHA256SUMS'].sort());
     expect(readFileSync(join(out, 'SHA256SUMS'), 'utf8')).not.toContain('viejo');
     expect(readFileSync(join(out, 'SHA256SUMS'), 'utf8')).not.toContain('0.2.0');
   });

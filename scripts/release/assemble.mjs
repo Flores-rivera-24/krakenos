@@ -1,6 +1,6 @@
 /**
- * `node scripts/release/assemble.mjs <carpeta-descargas> <carpeta-release> <versión>`: reúne los cinco
- * archivos de la release (dos .deb, el paquete de Arch y los dos portables de Linux) y escribe
+ * `node scripts/release/assemble.mjs <carpeta-descargas> <carpeta-release> <versión>`: reúne los seis
+ * archivos de la release (dos .deb, el paquete de Arch, los dos portables de Linux y el instalador de Windows) y escribe
  * SHA256SUMS (`<hex>  <nombre>`, orden alfabético, compatible con `sha256sum -c`). Si falta alguno o
  * hay más de un paquete de Arch sale con 1 SIN dejar SHA256SUMS: no se publica a medias.
  * Del resto de la descarga (manifiesto, firma, sumas previas) no se copia nada.
@@ -10,26 +10,26 @@ import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } fro
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Parte B añadirá aquí el zip de Windows (`krakenos-<v>-win-x64.zip`) cuando sus enlaces se resuelvan. */
 export function expectedAssets(version) {
   return {
     deb: [`krakenos_${version}_amd64.deb`, `krakenos_${version}_arm64.deb`],
     arch: /^krakenos-.+-x86_64\.pkg\.tar\.zst$/,
     portables: [`krakenos-${version}-linux-x64.tar.gz`, `krakenos-${version}-linux-arm64.tar.gz`],
+    windows: [`KrakenOS-Setup-${version}-x64.exe`],
   };
 }
 
 function main([dl, out, version]) {
   if (!dl || !out || !version) throw new Error('uso: assemble.mjs <descargas> <release> <versión>');
-  const { deb, arch, portables } = expectedAssets(version);
+  const { deb, arch, portables, windows } = expectedAssets(version);
   const hay = readdirSync(dl);
   const archs = hay.filter((n) => arch.test(n));
   if (archs.length > 1) throw new Error(`más de un .pkg.tar.zst: ${archs.join(', ')}`);
-  const faltan = [...deb, ...portables].filter((n) => !hay.includes(n));
+  const faltan = [...deb, ...portables, ...windows].filter((n) => !hay.includes(n));
   if (archs.length === 0) faltan.push('*.pkg.tar.zst');
   if (faltan.length) throw new Error(`faltan archivos de la release: ${faltan.join(', ')}`);
 
-  const nombres = [...deb, ...archs, ...portables].sort();
+  const nombres = [...deb, ...archs, ...portables, ...windows].sort();
   mkdirSync(out, { recursive: true });
   const sumas = nombres.map((n) => {
     copyFileSync(join(dl, n), join(out, n));

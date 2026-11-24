@@ -44,6 +44,7 @@ const FILAS = [
   [/\.pkg\.tar\.zst$/, 'Arch Linux y derivadas, x86_64'],
   [/-linux-x64\.tar\.gz$/, 'Portable de Linux, x64'],
   [/-linux-arm64\.tar\.gz$/, 'Portable de Linux, arm64'],
+  [/-x64\.exe$/, 'Instalador de Windows (64 bits): instala el servicio y la ventana de escritorio'],
   [/^SHA256SUMS$/, 'Sumas de verificación'],
   [/^manifest\.json$/, 'Manifiesto que lee el actualizador'],
   [/^manifest\.json\.sig$/, 'Firma del manifiesto'],
@@ -82,6 +83,7 @@ export function buildNotes({ commits, assets, repo }) {
   }
 
   md += `\n## Verificar la descarga\n\n\`\`\`bash\nsha256sum -c --ignore-missing SHA256SUMS\n\`\`\`\n\n`;
+  md += `En PowerShell, calcula la suma del archivo y compárala con su línea de \`SHA256SUMS\`:\n\n\`\`\`powershell\nGet-FileHash .\\<archivo> -Algorithm SHA256\n\`\`\`\n\n`;
   md += `La suma comprueba que el archivo no se dañó al bajarlo; no es una firma y no prueba quién lo publicó.\n\n`;
 
   const doc = (f) => (repo ? `https://github.com/${repo}/blob/main/docs/${f}` : `docs/${f}`);

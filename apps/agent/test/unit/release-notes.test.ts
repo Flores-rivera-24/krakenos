@@ -25,6 +25,7 @@ const ASSETS = [
   `krakenos-${V}-1-x86_64.pkg.tar.zst`,
   `krakenos-${V}-linux-x64.tar.gz`,
   `krakenos-${V}-linux-arm64.tar.gz`,
+  `KrakenOS-Setup-${V}-x64.exe`,
   'SHA256SUMS',
   'manifest.json',
   'manifest.json.sig',
@@ -142,10 +143,16 @@ describe('buildNotes', () => {
     expect(md2).not.toMatch(/windows/i);
     for (const a of ASSETS) expect(md).toContain(a);
   });
+  it('el instalador de Windows tiene su fila, sin prometer actualización automática', () => {
+    const fila = md.split('\n').find((l) => l.includes(`KrakenOS-Setup-${V}-x64.exe`)) ?? '';
+    expect(fila).toMatch(/Windows.*servicio/);
+    expect(md).not.toMatch(/actualizaci[oó]n autom[aá]tica/i);
+  });
   it('lleva la verificación (la suma no es una firma) y las guías de actualización', () => {
     expect(md).toContain('## Verificar la descarga');
     expect(md).toContain('sha256sum -c --ignore-missing SHA256SUMS');
     expect(md).toMatch(/no es una firma/);
+    expect(md).toContain('Get-FileHash .\\<archivo> -Algorithm SHA256');
     expect(md).toContain('## Actualizar');
     expect(md).toContain('docs/updates.md');
   });
