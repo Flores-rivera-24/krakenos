@@ -10,7 +10,7 @@ import { NetworkCanvas } from '@/components/ui/network-canvas';
 import { Splash } from '@/components/ui/splash';
 import { ApiRequestError, api } from '@/lib/api';
 import { describeError } from '@/lib/errors';
-import { t as translate, useT } from '@/lib/i18n';
+import { getLocale, t as translate, useT } from '@/lib/i18n';
 import { useAuthStore } from '@/store/auth.store';
 import '@/lib/i18n/catalog/fragments/entrada';
 
@@ -26,9 +26,10 @@ export function SetupPage() {
   const [confirm, setConfirm] = useState('');
   // Prefill del token desde `?token=` (US-105): al escanear el QR de arranque, el
   // usuario llega con el token ya puesto y solo rellena nombre/email/contraseña.
-  const [token, setToken] = useState(
+  const [initialToken] = useState(
     () => new URLSearchParams(window.location.search).get('token') ?? '',
   );
+  const [token, setToken] = useState(initialToken);
   const [requiresToken, setRequiresToken] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Un 409 no es un error más: significa que aquí no hay nada que hacer y el sitio
@@ -79,6 +80,9 @@ export function SetupPage() {
       displayName,
       email,
       password,
+      // El idioma con el que se hizo el wizard: sin él, el admin nace en `es` y la
+      // app salta de idioma al entrar.
+      locale: getLocale(),
       ...(requiresToken ? { setupToken: token } : {}),
     };
     try {
@@ -177,7 +181,11 @@ export function SetupPage() {
               required
               autoComplete="off"
             />
-            <p className="text-xs text-kr-muted">{t('setup.tokenHint')}</p>
+            <p className="text-xs text-kr-muted">
+              {initialToken && token === initialToken
+                ? t('setup.tokenPrefilled')
+                : t('setup.tokenHint')}
+            </p>
           </div>
         )}
 

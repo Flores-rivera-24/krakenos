@@ -113,6 +113,7 @@ export const en: Record<TranslationKey, string> = {
   'setup.confirm': 'Confirm password',
   'setup.token': 'Setup token',
   'setup.tokenHint': 'The agent printed it in its log at startup (look for “Setup token”).',
+  'setup.tokenPrefilled': 'Already filled in: it came with the install link.',
   'setup.submit': 'Create administrator',
   'setup.submitting': 'Setting up…',
   'setup.error.mismatch': 'The passwords do not match.',

@@ -32,6 +32,7 @@ const ApiRequestErrorMock = vi.hoisted(
 );
 vi.mock('@/lib/api', () => ({ api: apiMock, ApiRequestError: ApiRequestErrorMock }));
 
+import { changeLocale, setLocale } from '@/lib/i18n';
 import { SetupPage } from '@/pages/SetupPage';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -121,6 +122,41 @@ describe('SetupPage', () => {
     expect(opts).toMatchObject({ anonymous: true });
     expect(setSession).toHaveBeenCalledWith(LOGIN_RESPONSE);
     expect(navigate).toHaveBeenCalledWith('/', { replace: true });
+  });
+
+  it('manda al servidor el idioma activo, para que el admin recién creado lo conserve', async () => {
+    await changeLocale('en', { persist: false });
+    try {
+      const user = userEvent.setup();
+      renderPage();
+      await user.type(await screen.findByLabelText('Your name'), 'Owner');
+      await user.type(screen.getByLabelText('Email'), 'o@k.test');
+      await user.type(screen.getByLabelText('Password'), 'password123');
+      await user.type(screen.getByLabelText('Confirm password'), 'password123');
+      await user.click(screen.getByRole('button', { name: 'Create administrator' }));
+      await waitFor(() => expect(apiMock.post).toHaveBeenCalled());
+      expect(apiMock.post.mock.calls[0]![1]).toMatchObject({ locale: 'en' });
+    } finally {
+      setLocale('es', { persist: false });
+    }
+  });
+
+  it('con el token en la URL, la ayuda dice que ya viene relleno', async () => {
+    apiMock.get.mockResolvedValue({ needsSetup: true, requiresToken: true });
+    window.history.pushState({}, '', '/setup?token=abc');
+    try {
+      renderPage();
+      expect(await screen.findByText(/Ya viene relleno/)).toBeInTheDocument();
+      expect(screen.queryByText(/Lo imprimió el agente/)).not.toBeInTheDocument();
+    } finally {
+      window.history.pushState({}, '', '/');
+    }
+  });
+
+  it('sin token en la URL, la ayuda explica dónde está', async () => {
+    apiMock.get.mockResolvedValue({ needsSetup: true, requiresToken: true });
+    renderPage();
+    expect(await screen.findByText(/Lo imprimió el agente/)).toBeInTheDocument();
   });
 
   it('no pinta el formulario mientras comprueba si hace falta configurar', () => {
