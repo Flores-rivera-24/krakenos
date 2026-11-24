@@ -13,7 +13,7 @@
  * - Sin `keys/jwt-private.pem`: ejecuta `app/agent/dist/keys.js gen`.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -39,8 +39,26 @@ export function setKey(text, key, value) {
 /** @returns {boolean} true si creó el `.env`; false si ya existía. */
 export function ensureEnv(dataDir, templatePath) {
   const target = join(dataDir, '.env');
-  if (existsSync(target)) return false;
-  writeFileSync(target, withKindsNone(readFileSync(templatePath, 'utf8')), { mode: 0o600 });
+  // `lstat` y no `existsSync`: este código corre ELEVADO en el instalador de Windows y `existsSync` sigue
+  // enlaces (un symlink colgante plantado daría false y se escribiría a través de él).
+  let st = null;
+  try {
+    st = lstatSync(target);
+  } catch (e) {
+    if (e?.code !== 'ENOENT') throw e;
+  }
+  if (st) {
+    if (st.isSymbolicLink())
+      throw new Error(`${target} es un enlace simbólico o junction: no se usa.`);
+    if (!st.isFile() || st.nlink > 1)
+      throw new Error(`${target} no es un fichero normal o es un enlace duro: no se usa.`);
+    return false;
+  }
+  // `wx`: si entre medias se planta un enlace, falla en vez de seguirlo.
+  writeFileSync(target, withKindsNone(readFileSync(templatePath, 'utf8')), {
+    mode: 0o600,
+    flag: 'wx',
+  });
   return true;
 }
 

@@ -679,8 +679,12 @@ async function escribirEnv(fs, ruta, texto) {
     if (e?.code === 'ENOENT') return null;
     throw e;
   });
-  if (st && (st.isSymbolicLink() || !st.isFile() || st.nlink > 1))
-    throw new Error(`${ruta} es un enlace o tiene enlaces duros: no se escribe a través de él.`);
+  if (st?.isSymbolicLink())
+    throw new Error(`${ruta} es un enlace simbólico o junction: no se escribe a través de él.`);
+  if (st && (!st.isFile() || st.nlink > 1))
+    throw new Error(
+      `${ruta} no es un fichero normal o es un enlace duro: no se escribe a través de él.`,
+    );
   await fs.writeFile(ruta, texto);
 }
 

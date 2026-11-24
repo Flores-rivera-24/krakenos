@@ -1349,7 +1349,8 @@ describe('runInstall', () => {
     ).rejects.toThrow(/3001/);
   });
 
-  it('no escribe el token de setup en ningún mensaje', async () => {
+  // runInstall no lee ni toca el token (lo lee post-install.mjs): vigila que no lo escriba ni lo loguee.
+  it('runInstall no lee, escribe ni loguea el token de setup', async () => {
     const lineas: string[] = [];
     const { deps, nodos, ev } = montar({ envPrevio: 'DRIVER_KIND=none\n' });
     const TOKEN = 'TokenSecretoDePrueba123';
