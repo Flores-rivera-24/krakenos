@@ -14,7 +14,7 @@
  * cifrado exportable de US-103.
  */
 
-import { copyFile, readFile, rm } from 'node:fs/promises';
+import { chmod, copyFile, readFile, rm } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { agentPaths } from '../config/paths.js';
@@ -71,6 +71,8 @@ export function createDefaultSnapshot(warn: (message: string) => void): DbSnapsh
       await rm(destFile, { force: true });
       await copyFile(dbFile, destFile);
     }
+    // La copia lleva toda la base: 0600 como pre-migrate (ni VACUUM ni copyFile fuerzan el modo).
+    await chmod(destFile, 0o600);
   };
 }
 

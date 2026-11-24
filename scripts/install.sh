@@ -165,7 +165,7 @@ run() {
 # dejaría pasar un `rev-parse` a secas. El `rev-parse` confirma que git lo
 # reconoce de verdad (un `.git` suelto y basura no cuela).
 is_git_checkout() {
-  [[ -e "$1/.git" ]] && git -C "$1" rev-parse --is-inside-work-tree > /dev/null 2>&1
+  [[ -e "$1/.git" ]] && git_in_tree -C "$1" rev-parse --is-inside-work-tree > /dev/null 2>&1
 }
 
 # Pregunta sí/no (por defecto NO). Solo se usa para confirmaciones DESTRUCTIVAS
@@ -337,6 +337,22 @@ ensure_pnpm() {
 }
 
 # ---------------------------------------------------------------- código fuente
+# `git` sobre el árbol de instalación. Tras el `chown -R` ese árbol es del usuario del
+# servicio: correr `git` como root sobre él falla («dubious ownership») o, con
+# `safe.directory=*`, ejecuta como root lo que diga su `.git/config` (`core.fsmonitor`…),
+# que controla el servicio. Con root y el árbol ya suyo, git va como el usuario del
+# servicio. El `git clone` inicial (árbol aún de root) NO pasa por aquí.
+tree_is_service_owned() {
+  [[ "$(id -u)" -eq 0 ]] && id -u "$SERVICE_USER" > /dev/null 2>&1 \
+    && [[ "$(stat -c %U "$INSTALL_DIR" 2> /dev/null)" == "$SERVICE_USER" ]]
+}
+git_in_tree() {
+  if tree_is_service_owned; then runuser -u "$SERVICE_USER" -- git "$@"; else git "$@"; fi
+}
+run_git_in_tree() {
+  if tree_is_service_owned; then run runuser -u "$SERVICE_USER" -- git "$@"; else run git "$@"; fi
+}
+
 resolve_ref() {
   # La última etiqueta v* del repo remoto; sin etiquetas → main. --branch la fija.
   if [[ -n "$BRANCH" ]]; then
@@ -344,7 +360,7 @@ resolve_ref() {
     return
   fi
   local tag=""
-  tag="$(git -C "$INSTALL_DIR" tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
+  tag="$(git_in_tree -C "$INSTALL_DIR" tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
   printf '%s' "${tag:-main}"
 }
 
@@ -361,12 +377,12 @@ fetch_source() {
   if is_git_checkout "$INSTALL_DIR"; then
     # Idempotente: repo ya clonado → traer y posicionarse; .env/keys/data son
     # untracked y git no los toca.
-    run git -C "$INSTALL_DIR" fetch --tags --prune origin
+    run_git_in_tree -C "$INSTALL_DIR" fetch --tags --prune origin
     local ref
     ref="$(resolve_ref)"
     log "    actualizando a $ref"
-    run git -C "$INSTALL_DIR" checkout --quiet "$ref"
-    if [[ "$ref" == "main" ]]; then run git -C "$INSTALL_DIR" pull --ff-only origin main; fi
+    run_git_in_tree -C "$INSTALL_DIR" checkout --quiet "$ref"
+    if [[ "$ref" == "main" ]]; then run_git_in_tree -C "$INSTALL_DIR" pull --ff-only origin main; fi
   else
     run git clone --quiet "https://github.com/${REPO}.git" "$INSTALL_DIR"
     local ref
@@ -725,9 +741,9 @@ do_update() {
     warn "sin systemd, el paso «restart» de la actualización no podrá reiniciar el servicio: reinicia el agente a mano al terminar"
   fi
   log "Buscando la última versión…"
-  run git -C "$INSTALL_DIR" fetch --tags --prune origin
+  run_git_in_tree -C "$INSTALL_DIR" fetch --tags --prune origin
   local tag
-  tag="$(git -C "$INSTALL_DIR" tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
+  tag="$(git_in_tree -C "$INSTALL_DIR" tag -l 'v*' --sort=-v:refname 2>/dev/null | head -1 || true)"
   [[ -n "$tag" || $DRY_RUN -eq 1 ]] || die "el repo no tiene etiquetas v*: nada que actualizar por releases"
   local version="${tag#v}"
   log "Actualizando a ${tag:-<última etiqueta>} vía el orquestador (US-190: backup → apply → migrate → restart → healthcheck, con rollback)…"
