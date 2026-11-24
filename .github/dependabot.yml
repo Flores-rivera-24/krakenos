@@ -14,6 +14,15 @@ updates:
     commit-message:
       prefix: 'build'
     labels: [dependencies]
+    ignore:
+      # Vitest se queda en 4.1 porque la 5 rompe Stryker; coverage-v8 5 exige vitest 5.
+      - dependency-name: '@vitest/coverage-v8'
+        update-types: ['version-update:semver-major']
+      # @peculiar/x509 y @simplewebauthn/server deben resolver la MISMA copia de @peculiar/asn1-*: con dos copias
+      # no comparten esquemas y la verificación de passkeys ECDSA falla («Cannot get schema for 'ECDSASigValue'»).
+      # x509 2.2.0 (asn1 2.11) y 3.x (asn1 3) ya lo rompen frente a simplewebauthn 13.3.3 (asn1 2.10). Se sube a
+      # mano, junto con simplewebauthn, cuando ambos compartan versión de asn1.
+      - dependency-name: '@peculiar/x509'
     groups:
       # Menores y parches juntos en un solo PR; las mayores van sueltas.
       menores-y-parches:
