@@ -6,7 +6,7 @@ use krakenos_window::config::{
     destino_segunda_ejecucion, resolver_config, ruta_config, url_de_setup, Config, ConfigError,
     Destino as DestinoSegunda,
 };
-use krakenos_window::enlaces::es_web_externa;
+use krakenos_window::enlaces::{es_web_externa, navegacion_permitida};
 use krakenos_window::estado::{
     aplicar_setup, decidir, destino_actual, estado_desde_sondeo, intervalo_segs, ruta_a_recordar,
     texto_bandeja, url_local, Destino,
@@ -95,6 +95,18 @@ fn mostrar(app: &AppHandle) {
     }
 }
 
+/// Entrega al navegador del sistema lo que es web de verdad; lo demás se descarta.
+fn abrir_fuera(url: Url) {
+    if es_web_externa(&url) {
+        // Sin shell: `open` pasa la URL por entorno a PowerShell; en segundo plano para no bloquear.
+        std::thread::spawn(move || {
+            if let Err(e) = open::that(url.as_str()) {
+                eprintln!("no se pudo abrir el enlace: {e}");
+            }
+        });
+    }
+}
+
 fn navegar(w: &WebviewWindow, url: url::Url) {
     if let Err(e) = w.navigate(url) {
         eprintln!("no se pudo navegar: {e}");
@@ -171,6 +183,7 @@ fn main() {
         })
         .setup(move |app| {
             autoarranque_primera_vez(app.handle());
+            let origen_nav = app.state::<Config>().origin.clone();
             WebviewWindowBuilder::new(
                 app,
                 "main",
@@ -181,15 +194,16 @@ fn main() {
             .initialization_script(script_user_agent(env!("CARGO_PKG_VERSION")))
             // Nunca una ventana dentro de la app: lo web va al navegador del sistema; el resto, a nada.
             .on_new_window(|url, _| {
-                if es_web_externa(&url) {
-                    // Sin shell: `open` pasa la URL por entorno a PowerShell; en segundo plano para no bloquear.
-                    std::thread::spawn(move || {
-                        if let Err(e) = open::that(url.as_str()) {
-                            eprintln!("no se pudo abrir el enlace: {e}");
-                        }
-                    });
-                }
+                abrir_fuera(url);
                 NewWindowResponse::Deny
+            })
+            // La propia ventana solo navega al agente o a la página local: lo demás se vería con el marco de KrakenOS.
+            .on_navigation(move |url| {
+                let ok = navegacion_permitida(url, origen_nav.as_ref());
+                if !ok {
+                    abrir_fuera(url.clone());
+                }
+                ok
             })
             .inner_size(1280.0, 800.0)
             .visible(!oculta)
