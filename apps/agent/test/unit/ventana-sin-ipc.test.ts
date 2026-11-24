@@ -142,8 +142,8 @@ describe('ci.yml compila la ventana y corre cargo test', () => {
     expect(job).toMatch(/tauri build --no-bundle/);
     expect(job).toMatch(/hashFiles\('apps\/window\/src-tauri\/Cargo\.lock'\)/);
     expect(job).toMatch(/upload-artifact@v\d+[\s\S]*retention-days:\s*7/);
-    // aún no bloquea (como el job de Windows de los tests antes de sus 5 verdes)
-    expect(job).toMatch(/continue-on-error:\s*true/);
+    // bloquea: ya pasó las pasadas verdes en main
+    expect(job).not.toMatch(/continue-on-error/);
   });
 
   it('el job solo usa las acciones que ya usa el resto del workflow, a un tag mayor', () => {
