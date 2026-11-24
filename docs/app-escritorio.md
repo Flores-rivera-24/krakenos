@@ -82,15 +82,17 @@ correo** en Ajustes → Alertas: los manda el servicio y no dependen de ninguna 
 
 ## Windows
 
-KrakenOS en Windows, con su propio servicio, **todavía no se puede instalar**: el instalador de Windows
-llega en una versión próxima. Mientras tanto, el servicio corre en un equipo con Linux (ver
-[la guía de instalación](install-linux-package.md)) y desde Windows lo abres con el navegador, o con la
-app instalada desde Edge o Chrome (sección «Instalar la app»). El certificado de la CA local se instala
-como se explica arriba.
+KrakenOS tiene instalador para Windows (x64): instala el servicio y la ventana de escritorio. Los pasos,
+el aviso de SmartScreen (el instalador no está firmado) y cómo actualizar y desinstalar están en la
+[guía de instalación en Windows](install-windows.md), que aún no se ha probado en un equipo real.
 
-Cuando exista el servicio en Windows, no incluirá las funciones de puerta de enlace (servidor VPN,
-cortafuegos y QoS propios), que solo existen en Linux. Además, un equipo que se suspende no vigila:
-horarios, alarma y rutinas solo corren con el equipo encendido y sin suspender.
+El servicio de Windows no incluye las funciones de puerta de enlace (servidor VPN, cortafuegos y QoS
+propios), que solo existen en Linux. Además, un equipo que se suspende no vigila: horarios, alarma y
+rutinas solo corren con el equipo encendido y sin suspender.
+
+También puedes tener el servicio en un equipo con Linux (ver [la guía de instalación](install-linux-package.md))
+y abrirlo desde Windows con el navegador, o con la app instalada desde Edge o Chrome (sección «Instalar
+la app»). El certificado de la CA local se instala como se explica arriba.
 
 ## Problemas frecuentes
 
