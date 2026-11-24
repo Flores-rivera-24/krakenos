@@ -38,7 +38,10 @@ async function ok(run, cmd, args, opciones) {
 
 async function hayMarca(run, dataDir) {
   const r = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'DataDir']);
-  return r.code === 0 && r.stdout.toLowerCase().includes(dataDir.toLowerCase());
+  // Igualdad exacta del valor de `DataDir` (`reg query` lo imprime como `DataDir    REG_SZ    <ruta>`):
+  // una ruta que solo CONTIENE la nuestra no es la marca.
+  const valor = /^\s*DataDir\s+REG_SZ\s+(.*?)\s*$/im.exec(r.stdout)?.[1];
+  return r.code === 0 && valor !== undefined && normRuta(valor) === normRuta(dataDir);
 }
 
 /**
@@ -165,7 +168,11 @@ export async function grantServiceAccess({ dataDir, serviceSid, run }) {
 
 // Las dos ACE del servicio en la raíz: Modificar heredable a los hijos y, solo para la carpeta, listar y crear
 // (jamás Modify, Delete ni FullControl: ni borrarla ni renombrarla).
-const SERVICIO_EN_RAIZ = [/Modify/, /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/];
+// Derechos EXACTOS (.NET imprime `Modify, Synchronize`): «Modify» más otro derecho, o un texto que lo contenga, no valen.
+const SERVICIO_EN_RAIZ = [
+  /^Modify(, Synchronize)?$/,
+  /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/,
+];
 
 const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
