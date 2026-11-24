@@ -1,0 +1,92 @@
+{
+  "packages": [
+    {
+      "id": "root 0.1.0",
+      "name": "krakenos-window",
+      "version": "0.1.0",
+      "license": "AGPL-3.0-only",
+      "license_file": null,
+      "authors": [],
+      "repository": null,
+      "manifest_path": "/w/src-tauri/Cargo.toml"
+    },
+    {
+      "id": "directa 1.0.0",
+      "name": "directa",
+      "version": "1.0.0",
+      "license": "MIT OR Apache-2.0",
+      "license_file": null,
+      "authors": ["Ana <ana@x.test>"],
+      "repository": "https://github.com/x/directa",
+      "manifest_path": "/reg/directa-1.0.0/Cargo.toml"
+    },
+    {
+      "id": "transitiva 2.1.0",
+      "name": "transitiva",
+      "version": "2.1.0",
+      "license": "(MIT OR Apache-2.0) AND Unicode-3.0",
+      "license_file": null,
+      "authors": [],
+      "repository": null,
+      "manifest_path": "/reg/transitiva-2.1.0/Cargo.toml"
+    },
+    {
+      "id": "solobuild 0.3.0",
+      "name": "solobuild",
+      "version": "0.3.0",
+      "license": "GPL-3.0-only",
+      "license_file": null,
+      "authors": [],
+      "repository": null,
+      "manifest_path": "/reg/solobuild-0.3.0/Cargo.toml"
+    },
+    {
+      "id": "solodev 0.4.0",
+      "name": "solodev",
+      "version": "0.4.0",
+      "license": "GPL-3.0-only",
+      "license_file": null,
+      "authors": [],
+      "repository": null,
+      "manifest_path": "/reg/solodev-0.4.0/Cargo.toml"
+    },
+    {
+      "id": "mozilla 0.5.0",
+      "name": "mozilla",
+      "version": "0.5.0",
+      "license": "MPL-2.0",
+      "license_file": null,
+      "authors": [],
+      "repository": null,
+      "manifest_path": "/reg/mozilla-0.5.0/Cargo.toml"
+    }
+  ],
+  "resolve": {
+    "root": "root 0.1.0",
+    "nodes": [
+      {
+        "id": "root 0.1.0",
+        "deps": [
+          { "pkg": "directa 1.0.0", "dep_kinds": [{ "kind": null, "target": null }] },
+          { "pkg": "solobuild 0.3.0", "dep_kinds": [{ "kind": "build", "target": null }] },
+          { "pkg": "solodev 0.4.0", "dep_kinds": [{ "kind": "dev", "target": null }] },
+          {
+            "pkg": "mozilla 0.5.0",
+            "dep_kinds": [
+              { "kind": "dev", "target": null },
+              { "kind": null, "target": null }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "directa 1.0.0",
+        "deps": [{ "pkg": "transitiva 2.1.0", "dep_kinds": [{ "kind": null, "target": null }] }]
+      },
+      { "id": "transitiva 2.1.0", "deps": [] },
+      { "id": "solobuild 0.3.0", "deps": [] },
+      { "id": "solodev 0.4.0", "deps": [] },
+      { "id": "mozilla 0.5.0", "deps": [] }
+    ]
+  }
+}

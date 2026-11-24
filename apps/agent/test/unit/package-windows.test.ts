@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { buildTauriConfig, installerFileName } from '../../../../scripts/package/windows-installer.mjs';
+import { buildTauriConfig, exigirAvisoRust, installerFileName } from '../../../../scripts/package/windows-installer.mjs';
 
 /** El instalador de Windows (NSIS por el bundler de Tauri): la parte pura. */
 
@@ -110,6 +111,19 @@ describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
     expect(src).toContain("'licenses'");
   });
 
+  it('el aviso de las crates de la ventana se genera en el build y el smoke lo comprueba instalado', () => {
+    const ci = leer('.github/workflows/ci.yml');
+    expect(ci).toContain(
+      'scripts/package/rust-licenses.mjs apps/window/src-tauri "$dir/licenses/THIRD-PARTY-RUST.txt"',
+    );
+    const smoke = leer('scripts/installer-smoke-windows.ps1');
+    expect(smoke).toContain('licenses\\THIRD-PARTY-RUST.txt');
+    expect(smoke).toContain('nombra tauri');
+    expect(smoke).toContain('nombra wry');
+    expect(leer('packaging/windows/THIRD-PARTY-WINDOWS.txt')).toContain('nsis_tauri_utils');
+    expect(leer('packaging/windows/THIRD-PARTY-WINDOWS.txt')).toContain('WebView2LoaderStatic');
+  });
+
   it('el smoke recorre la secuencia de la spec: instalar, servicio, reinicio, actualizar, desinstalar sin residuos', () => {
     const src = leer('scripts/installer-smoke-windows.ps1');
     const llamadas = src.slice(src.lastIndexOf('Test-SelectSafeLines\n')).split('\n');
@@ -127,5 +141,19 @@ describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
       'Phase-FinalUninstall',
     ]);
     expect(src).toContain('Restart-Service KrakenOS');
+  });
+});
+
+describe('exigirAvisoRust', () => {
+  it('falla nombrando el comando si falta licenses/THIRD-PARTY-RUST.txt y pasa si existe', () => {
+    const d = mkdtempSync(join(tmpdir(), 'kr-aviso-'));
+    try {
+      expect(() => exigirAvisoRust(d)).toThrow(/rust-licenses\.mjs apps\/window\/src-tauri/);
+      mkdirSync(join(d, 'licenses'));
+      writeFileSync(join(d, 'licenses', 'THIRD-PARTY-RUST.txt'), 'x');
+      expect(() => exigirAvisoRust(d)).not.toThrow();
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 });
