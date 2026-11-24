@@ -1,5 +1,6 @@
 import type { Device } from '@krakenos/types';
 import { useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { DeviceDetailSlideover } from '@/components/inventory/DeviceDetailSlideover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -27,7 +28,7 @@ function dotColor(d: Device): string {
  */
 export function NetworkTopologyWidget() {
   const t = useT();
-  const devices = useInventoryStore((s) => Object.values(s.devices));
+  const devices = useInventoryStore(useShallow((s) => Object.values(s.devices)));
   const [selected, setSelected] = useState<Device | null>(null);
 
   const { router, leaves } = useMemo(() => {

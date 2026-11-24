@@ -1,4 +1,5 @@
 import { Link } from 'react-router';
+import { useShallow } from 'zustand/react/shallow';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusDot } from '@/components/ui/status-dot';
 import { useInventoryStore } from '@/store/inventory.store';
@@ -26,7 +27,7 @@ function Stat({
 /** Contadores de dispositivos: online / total / desconocidos / bloqueados. */
 export function DeviceCountWidget() {
   const t = useT();
-  const devices = useInventoryStore((s) => Object.values(s.devices));
+  const devices = useInventoryStore(useShallow((s) => Object.values(s.devices)));
   const online = devices.filter((d) => d.online).length;
   const unknown = devices.filter((d) => d.type === 'unknown').length;
   const blocked = devices.filter((d) => d.isBlocked).length;

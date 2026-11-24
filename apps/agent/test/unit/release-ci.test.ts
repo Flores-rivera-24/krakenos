@@ -56,9 +56,11 @@ describe('ci.yml (job release)', () => {
     const needs = /^ {4}needs: \[([^\]]*)\]/m.exec(cabecera(release))?.[1] ?? '';
     const lista = needs.split(',').map((s) => s.trim());
     for (const n of bloqueantes) expect(lista, `release no espera a ${n}`).toContain(n);
-    // `ventana` es experimental (`continue-on-error: true`): no bloquea la release.
-    expect(lista).not.toContain('ventana');
-    expect(bloqueantes).not.toContain('ventana');
+    // `ventana` e `instalador-windows` ya no son experimentales: bloquean y la release los espera.
+    for (const n of ['ventana', 'instalador-windows']) {
+      expect(bloqueantes, `${n} no debe llevar continue-on-error`).toContain(n);
+      expect(lista, `release no espera a ${n}`).toContain(n);
+    }
   });
 
   it('falla si el tag no es `v` + la versión de package.json', () => {
