@@ -14,7 +14,7 @@ export const esVlan = {
   'vlan.tagHelp':
     'Número (1–4094) que identifica la VLAN. Cada VLAN tiene el suyo, único: así el equipo de red sabe a qué segmento pertenece cada aparato.',
   'vlan.isolatedHelp':
-    'Si la activas, los aparatos de esta VLAN no pueden comunicarse con los de otras. Útil para separar, por ejemplo, los aparatos inteligentes del resto de la casa.',
+    'Es una marca de lo que quieres: KrakenOS la guarda, pero todavía no aplica el aislamiento por sí mismo. Para que los aparatos de esta VLAN no vean los de otras, configúralo además en tu router o cortafuegos.',
   'vlan.loadError': 'No se pudieron cargar las VLANs',
   'vlan.created': 'VLAN creada',
   'vlan.createError': 'No se pudo crear la VLAN',
