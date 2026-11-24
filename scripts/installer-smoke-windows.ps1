@@ -113,6 +113,12 @@ function Phase-Install {
   Assert (Test-Path (Join-Path $dir 'krakenos-window.exe')) 'existe krakenos-window.exe'
   Assert (Test-Path (Join-Path $dir 'node\node.exe')) 'existe node\node.exe'
   Assert (Test-Path (Join-Path $dir 'app\agent\dist\index.js')) 'existe app\agent\dist\index.js'
+  $rust = Join-Path $dir 'licenses\THIRD-PARTY-RUST.txt'
+  Assert (Test-Path $rust) 'existe licenses\THIRD-PARTY-RUST.txt'
+  $rustTxt = Get-Content $rust -Raw
+  Assert ($rustTxt -match '(?m)^tauri \d') 'THIRD-PARTY-RUST.txt nombra tauri'
+  Assert ($rustTxt -match '(?m)^wry \d') 'THIRD-PARTY-RUST.txt nombra wry'
+  Write-Host ("THIRD-PARTY-RUST.txt instalado: {0} KB" -f [math]::Round((Get-Item $rust).Length / 1KB))
 
   # Medida: ¿qué son los enlaces de node_modules tras instalar? (junction que sigue vivo o copia)
   $nm = Join-Path $dir 'app\agent\node_modules'
