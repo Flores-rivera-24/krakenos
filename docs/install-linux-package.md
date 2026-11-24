@@ -24,8 +24,8 @@ el repositorio. Son la alternativa a `scripts/install.sh`. Esta guía está escr
 ## Descargar y verificar
 
 A partir de la próxima versión, cada versión publicada en la página de versiones (_Releases_) del
-repositorio trae cinco archivos (los dos `.deb`, amd64 y arm64; el paquete de Arch, x86_64; y los dos
-portables `.tar.gz` de Linux), más `SHA256SUMS` y el manifiesto que usa el actualizador de la app.
+repositorio trae, para Linux, cinco archivos (los dos `.deb`, amd64 y arm64; el paquete de Arch, x86_64; y los
+dos portables `.tar.gz`), además del instalador de Windows, más `SHA256SUMS` y el manifiesto que usa el actualizador de la app.
 Descarga el paquete de tu arquitectura junto con `SHA256SUMS` en la misma carpeta y verifica. Por
 ejemplo, para el `.deb` de amd64 (sustituye `<versión>`, p. ej. `0.3.0`, por la que quieras):
 

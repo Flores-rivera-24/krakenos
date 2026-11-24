@@ -174,7 +174,8 @@ trae `krakenos-setup`, el comando que sugiere para activar el helper no existe e
 reemplaza la carpeta.
 
 **Windows.** La actualización desde la app para el instalador de Windows llega más adelante; hoy
-en Windows se instala la versión nueva a mano.
+en Windows se instala la versión nueva a mano, ejecutando el instalador nuevo encima (ver
+[Instalar en Windows](install-windows.md#actualizar)).
 
 ### Docker — comando manual (honesto)
 

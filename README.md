@@ -104,6 +104,13 @@ repositorio.
 **Raspberry Pi:** guía en [`docs/install-raspberry-pi.md`](docs/install-raspberry-pi.md) (aún sin
 verificar en hardware real).
 
+### Windows
+
+A partir de la próxima versión, instalador `KrakenOS-Setup-<versión>-x64.exe` (Windows x64), sin firmar: instala el servicio y la ventana
+de escritorio. Guía, con el aviso de SmartScreen: [`docs/install-windows.md`](docs/install-windows.md)
+(aún sin verificar en un equipo real). Sin servidor VPN, cortafuegos ni QoS propios, y sin
+actualización automática.
+
 ### Paquete portable (carpeta)
 
 Para probar KrakenOS sin instalar nada como administrador (solo Linux, por ahora):
