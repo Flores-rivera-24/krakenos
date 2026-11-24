@@ -1065,7 +1065,7 @@ export const en: Record<TranslationKey, string> = {
 
   // Pause by person
   'people.pause': 'Pause internet',
-  'people.pauseAria': 'Pause internet for {name} for {minutes} minutes',
+  'people.pauseAria': 'Pause internet for {name}: {duration}',
   'people.resume': 'Give internet back',
   'people.resumeAria': 'Give internet back to {name}',
   'people.pausedUntil': 'No internet until {time}',

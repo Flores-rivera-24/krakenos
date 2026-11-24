@@ -210,6 +210,10 @@ describe('Dashboard widgets', () => {
     expect(screen.queryByText('auth.login')).not.toBeInTheDocument();
     // Dos son posteriores al `lastSeen`; la tercera no.
     expect(screen.getByText('2 nuevas')).toBeInTheDocument();
+    // WCAG 2.5.3: el nombre accesible del botón contiene su texto visible.
+    expect(
+      screen.getByRole('button', { name: /2 nuevas.*Marcar como leídas/ }),
+    ).toBeInTheDocument();
   });
 
   it('WifiStatusWidget: un fallo se dice, no se pinta como «Sin redes WiFi»', async () => {
