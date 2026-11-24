@@ -171,3 +171,27 @@ describe('crates MPL-2.0 y textos de la tabla', () => {
     }
   });
 });
+
+describe('revisarLicencia (decisión por crate)', () => {
+  const base = { name: 'x', version: '1.0.0', license: null, license_file: null };
+
+  it('una crate con solo license_file es error: hay que decidir a mano', () => {
+    expect(rl.revisarLicencia({ ...base, license_file: 'LICENSE-X' })).toMatch(
+      /x 1\.0\.0: solo license_file: revisar su licencia a mano y decidir/,
+    );
+  });
+
+  it('sin license ni license_file es error', () => {
+    expect(rl.revisarLicencia(base)).toMatch(/x 1\.0\.0: sin license ni license_file/);
+  });
+
+  it('licencia permitida no da error; no permitida, sí', () => {
+    expect(rl.revisarLicencia({ ...base, license: 'MIT' })).toBeNull();
+    expect(rl.revisarLicencia({ ...base, license: 'Foo-1.0' })).toMatch(/no permitida/);
+  });
+
+  it('copyleft y expresión mal formada se devuelven como error, no lanzan', () => {
+    expect(rl.revisarLicencia({ ...base, license: 'GPL-3.0-only' })).toMatch(/copyleft/);
+    expect(rl.revisarLicencia({ ...base, license: 'MIT OR' })).toMatch(/mal formada/);
+  });
+});

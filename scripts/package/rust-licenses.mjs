@@ -1,7 +1,7 @@
 /**
  * Aviso de licencias de las crates de Rust que lleva la ventana de escritorio (`apps/window/src-tauri`).
  * Hermano de `licenses.mjs` (npm): funciones puras + CLI que corre `cargo metadata` en el job de Windows.
- * Uso: node scripts/package/rust-licenses.mjs <dir del Cargo.toml> <salida> [--informe]
+ * Uso: node scripts/package/rust-licenses.mjs <dir del Cargo.toml> <salida>
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -123,6 +123,18 @@ export function licenciaPermitida(expr, nombre) {
   return ok;
 }
 
+/** Decisión por crate: mensaje de error, o null si su licencia declarada está permitida. */
+export function revisarLicencia(c) {
+  const id = `${c.name} ${c.version}`;
+  if (!c.license && !c.license_file) return `${id}: sin license ni license_file`;
+  if (!c.license) return `${id}: solo license_file: revisar su licencia a mano y decidir`;
+  try {
+    return licenciaPermitida(c.license, id) ? null : `${id}: licencia no permitida (${c.license})`;
+  } catch (e) {
+    return e.message;
+  }
+}
+
 /** Ficheros de licencia de una crate (literal) más el `license_file` declarado. */
 export async function textosDeLicencia(dir, licenseFile) {
   const nombres = new Set();
@@ -189,10 +201,8 @@ export function avisoRust(crates) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const informe = args.includes('--informe');
-  const [dir, salida] = args.filter((a) => a !== '--informe');
-  if (!dir || !salida)
-    throw new Error('uso: rust-licenses.mjs <dir del Cargo.toml> <salida> [--informe]');
+  const [dir, salida] = args;
+  if (!dir || !salida) throw new Error('uso: rust-licenses.mjs <dir del Cargo.toml> <salida>');
   const r = spawnSync(
     'cargo',
     [
@@ -205,27 +215,18 @@ async function main() {
     ],
     { cwd: dir, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 },
   );
-  if (r.status !== 0) throw new Error(`cargo metadata falló:\n${r.stderr}`);
+  if (r.status !== 0) throw new Error(`cargo metadata falló:\n${r.error ?? r.stderr}`);
   const crates = crateDeEjecucion(JSON.parse(r.stdout), 'krakenos-window');
   const errores = [];
   const porLicencia = new Map();
   const sinTexto = [];
   const conTabla = [];
   for (const c of crates) {
-    if (!c.license && !c.license_file) {
-      errores.push(`${c.name} ${c.version}: sin license ni license_file`);
-      continue;
-    }
+    const error = revisarLicencia(c);
+    if (error) errores.push(error);
+    if (!c.license && !c.license_file) continue;
     const lic = c.license ?? `(license_file: ${c.license_file})`;
     porLicencia.set(lic, (porLicencia.get(lic) ?? 0) + 1);
-    if (c.license) {
-      try {
-        if (!licenciaPermitida(c.license, `${c.name} ${c.version}`))
-          errores.push(`${c.name} ${c.version}: licencia no permitida (${c.license})`);
-      } catch (e) {
-        errores.push(e.message);
-      }
-    }
     c.textos = await textosDeLicencia(c.dir, c.license_file);
     c.sha = await readFile(join(c.dir, '.cargo_vcs_info.json'), 'utf8')
       .then((j) => JSON.parse(j).git?.sha1)
@@ -253,8 +254,15 @@ async function main() {
   for (const s of sinTexto) console.log(`  - ${s}`);
   // Medido en CI (2026-11-23): 263 crates, 5 sin fichero propio (cubiertas por la tabla). Una crate nueva o de
   // otra versión sin fichero ni entrada exacta sale ≠ 0: obliga a revisar su texto.
-  if (!informe && sinTexto.length)
-    errores.push(...sinTexto.map((s) => `${s}: sin ningún texto de licencia`));
+  errores.push(
+    ...sinTexto.map(
+      (s) =>
+        `${s}: sin ningún texto de licencia. Añade scripts/package/rust-licenses-extra/${s.replace(' ', '@')}.txt con el texto literal del repo de la crate en ese commit` +
+        (s.startsWith('webview2-com-sys ')
+          ? ' y revisa también la sección de WebView2 de packaging/windows/THIRD-PARTY-WINDOWS.txt'
+          : ''),
+    ),
+  );
   if (errores.length) throw new Error(errores.join('\n'));
   await writeFile(salida, avisoRust(crates));
   console.log(`ok: ${salida} (${crates.length} crates)`);

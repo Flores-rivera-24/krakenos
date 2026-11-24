@@ -1,8 +1,9 @@
-Avisos de licencia de los componentes de terceros que lleva el instalador de KrakenOS para Windows. Se reparten en tres ficheros:
+Avisos de licencia de los componentes de terceros que lleva el instalador de KrakenOS para Windows. Se reparten en cuatro ficheros, todos con ruta relativa a la carpeta de instalación:
 
-- Este fichero (licenses\THIRD-PARTY-WINDOWS.txt) cubre WinSW (envoltorio del servicio), NSIS (con el que se construye el instalador), Tauri, el plugin de NSIS nsis_tauri_utils y el cargador de WebView2 que se enlaza en la ventana.
+- licenses\THIRD-PARTY-WINDOWS.txt (este fichero) cubre WinSW (envoltorio del servicio), NSIS (con el que se construye el instalador), Tauri, el plugin de NSIS nsis_tauri_utils y el cargador de WebView2 que se enlaza en la ventana.
 - licenses\THIRD-PARTY-RUST.txt, generado en el build, cubre las crates de Rust enlazadas en la ventana (krakenos-window.exe).
-- THIRD_PARTY_LICENSES.txt, en la carpeta de instalación, cubre los paquetes de Node del agente y de la ventana web.
+- THIRD_PARTY_LICENSES.txt cubre los paquetes de Node del agente y de la ventana web.
+- node\LICENSE es la licencia del runtime de Node.js que se distribuye con el agente.
 
 ========================================================================
 WinSW 2.12.0 (envoltorio del servicio de Windows)

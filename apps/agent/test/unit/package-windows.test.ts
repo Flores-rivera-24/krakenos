@@ -1,9 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { buildTauriConfig, installerFileName } from '../../../../scripts/package/windows-installer.mjs';
+import { buildTauriConfig, exigirAvisoRust, installerFileName } from '../../../../scripts/package/windows-installer.mjs';
 
 /** El instalador de Windows (NSIS por el bundler de Tauri): la parte pura. */
 
@@ -140,5 +141,19 @@ describe('cierre del instalador: tamaño, licencias y orden del smoke', () => {
       'Phase-FinalUninstall',
     ]);
     expect(src).toContain('Restart-Service KrakenOS');
+  });
+});
+
+describe('exigirAvisoRust', () => {
+  it('falla nombrando el comando si falta licenses/THIRD-PARTY-RUST.txt y pasa si existe', () => {
+    const d = mkdtempSync(join(tmpdir(), 'kr-aviso-'));
+    try {
+      expect(() => exigirAvisoRust(d)).toThrow(/rust-licenses\.mjs apps\/window\/src-tauri/);
+      mkdirSync(join(d, 'licenses'));
+      writeFileSync(join(d, 'licenses', 'THIRD-PARTY-RUST.txt'), 'x');
+      expect(() => exigirAvisoRust(d)).not.toThrow();
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 });
