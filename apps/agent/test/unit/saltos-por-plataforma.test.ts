@@ -74,6 +74,11 @@ const LISTA: Record<string, Entrada> = {
     motivo:
       'install.sh es el instalador de Debian/Ubuntu (apt, systemd, sudo, root): los tres bloques del fichero, no solo lo que hoy falla.',
   },
+  'unit/process-update-runner.test.ts': {
+    saltos: 0,
+    soloPosix: 2,
+    motivo: `${MODOS}: el snapshot previo a la actualización es 0600 (el contenido sí se comprueba).`,
+  },
   'unit/json-store.test.ts': {
     saltos: 2,
     motivo: `${MODOS} (0600); y el de lectura: la propiedad (un error de E/S se propaga, no se lee como vacío) SÍ aplica en Windows, pero chmod 000 no la provoca allí. Pendiente: reescribirlo con un fallo inyectado.`,
@@ -151,7 +156,7 @@ const LISTA: Record<string, Entrada> = {
 };
 
 /** Valor medido al crear el gate; si cambia la lista, cambia esto a propósito. */
-const TOTAL_MEDIDO = { ficherosConSalto: 20, saltos: 32, soloPosix: 6 };
+const TOTAL_MEDIDO = { ficherosConSalto: 20, saltos: 32, soloPosix: 8 };
 
 const WIN = String.raw`['"]win32['"]`;
 const ARGS = String.raw`(?:[^()]|\([^()]*\))*?`;

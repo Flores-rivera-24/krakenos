@@ -1,8 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ProcessUpdateRunner, type UpdateExec } from '../../src/system/process-update-runner.js';
+import {
+  createDefaultSnapshot,
+  ProcessUpdateRunner,
+  type UpdateExec,
+} from '../../src/system/process-update-runner.js';
 
 function tmpDbFile(content = 'DB-ANTES'): string {
   const dir = mkdtempSync(join(tmpdir(), 'krakenos-upd-'));
@@ -250,5 +254,29 @@ describe('ProcessUpdateRunner — deps opcionales (US-232)', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('mqtt'));
     // El aviso dice qué hacer, no solo que falló.
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('pnpm add mqtt'));
+  });
+});
+
+// La copia previa a la actualización lleva credenciales (la base entera): 0600 como pre-migrate.
+describe('createDefaultSnapshot — modo del snapshot', () => {
+  it('VACUUM INTO deja el snapshot en 0600', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-snap-'));
+    const dbFile = join(dir, 'a.db');
+    const dest = join(dir, 'a.db.pre-update');
+    await createDefaultSnapshot(() => {})(dbFile, dest);
+    expect(existsSync(dest)).toBe(true);
+    if (process.platform !== 'win32') expect(statSync(dest).mode & 0o777).toBe(0o600);
+  });
+
+  it('la copia de respaldo (si VACUUM falla) también queda en 0600', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kraken-snap-'));
+    const dbFile = join(dir, 'a.db');
+    writeFileSync(dbFile, 'esto no es SQLite'); // VACUUM INTO falla → cae a copyFile
+    const dest = join(dir, 'a.db.pre-update');
+    const warn = vi.fn();
+    await createDefaultSnapshot(warn)(dbFile, dest);
+    expect(warn).toHaveBeenCalled();
+    expect(readFileSync(dest, 'utf8')).toBe('esto no es SQLite');
+    if (process.platform !== 'win32') expect(statSync(dest).mode & 0o777).toBe(0o600);
   });
 });
