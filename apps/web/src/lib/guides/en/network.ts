@@ -153,12 +153,12 @@ export const NETWORK_GUIDES_EN: GuideTranslations = {
       },
       {
         title: 'Create the VLAN',
-        body: 'From the VLAN screen, create a new zone with a clear name (for example “IoT”). Underneath, each VLAN carries an identifier number (a “tag”). You can decide whether the zone stays isolated from the rest, which is exactly what you want for smart devices.',
+        body: 'From the VLAN screen, create a new zone with a clear name (for example “IoT”). Underneath, each VLAN carries an identifier number (a “tag”). You can mark the zone as isolated from the rest, which is exactly what you want for smart devices; note that it is only a marker: KrakenOS does not enforce that isolation yet, so you need to set it up on your router or firewall.',
         note: 'The tag is simply the number that identifies the VLAN within the network equipment. It doesn’t have to mean anything special.',
       },
       {
         title: 'Assign devices and check',
-        body: 'Place each device in its zone. From then on, devices in an isolated VLAN will have internet but won’t see those in other VLANs. Check that everything that should work still works (for example, controlling your lights from your phone may require allowing that communication between zones).',
+        body: 'Place each device in its zone. If you have also set up the isolation on your router or firewall (KrakenOS does not enforce it for you yet), those devices will have internet but won’t see those in other VLANs. Check that everything that should work still works (for example, controlling your lights from your phone may require allowing that communication between zones).',
         warning:
           'Completely isolating smart devices can stop apps on your phone from “discovering” them. If something stops showing up, you may need to allow a small bridge between zones.',
       },

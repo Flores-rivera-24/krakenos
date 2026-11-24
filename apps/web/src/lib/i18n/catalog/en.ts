@@ -720,7 +720,7 @@ export const en: Record<TranslationKey, string> = {
   'vlan.tagHelp':
     'Number (1–4094) that identifies the VLAN. Each VLAN has its own, unique: this is how network gear knows which segment each device belongs to.',
   'vlan.isolatedHelp':
-    'If you enable it, the devices on this VLAN cannot communicate with those on others. Useful to separate, for example, your smart devices from the rest of the home.',
+    'It is a note of your intent: KrakenOS saves it, but does not enforce isolation by itself yet. For the devices on this VLAN not to see those on others, also set it up on your router or firewall.',
   'vlan.loadError': 'Could not load the VLANs',
   'vlan.created': 'VLAN created',
   'vlan.createError': 'Could not create the VLAN',

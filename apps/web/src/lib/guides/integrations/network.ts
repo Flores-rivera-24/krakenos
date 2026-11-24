@@ -197,12 +197,12 @@ const vlan: IntegrationGuide = {
     },
     {
       title: 'Crea la VLAN',
-      body: 'Desde la pantalla de VLAN, crea una nueva zona con un nombre claro (por ejemplo "IoT"). Por debajo, cada VLAN lleva un número identificador (una "etiqueta"). Puedes decidir si la zona queda aislada del resto, que es justo lo que interesa para los aparatos inteligentes.',
+      body: 'Desde la pantalla de VLAN, crea una nueva zona con un nombre claro (por ejemplo "IoT"). Por debajo, cada VLAN lleva un número identificador (una "etiqueta"). Puedes marcar la zona como aislada del resto, que es justo lo que interesa para los aparatos inteligentes; ojo, es solo una marca: KrakenOS todavía no aplica ese aislamiento, hay que configurarlo en tu router o cortafuegos.',
       note: 'La etiqueta es simplemente el número que identifica la VLAN dentro del equipo de red. No hace falta que signifique nada especial.',
     },
     {
       title: 'Asigna dispositivos y comprueba',
-      body: 'Coloca cada aparato en su zona. A partir de ahí, los aparatos de una VLAN aislada tendrán internet pero no verán los de otras VLAN. Comprueba que todo lo que debe funcionar sigue funcionando (por ejemplo, controlar tus luces desde tu móvil puede requerir permitir esa comunicación entre zonas).',
+      body: 'Coloca cada aparato en su zona. Si además has configurado el aislamiento en tu router o cortafuegos (KrakenOS todavía no lo aplica por ti), esos aparatos tendrán internet pero no verán los de otras VLAN. Comprueba que todo lo que debe funcionar sigue funcionando (por ejemplo, controlar tus luces desde tu móvil puede requerir permitir esa comunicación entre zonas).',
       warning:
         'Aislar por completo los aparatos inteligentes puede impedir que apps de tu móvil los "descubran". Si algo deja de aparecer, quizás haya que permitir un pequeño puente entre zonas.',
     },
