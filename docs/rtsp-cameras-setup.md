@@ -29,7 +29,7 @@ en el servidor; nada sale de la LAN.
 
 ## 2. Dar de alta las cámaras
 
-**Desde la app (recomendado):** Conectar → Cámaras → RTSP, y luego **Cámaras → Añadir cámara**. El alta
+**Desde la app (recomendado):** Conectar → Cámaras → Cámaras RTSP, y luego **Cámaras → Añadir cámara**. El alta
 se escribe en el fichero de config y se lee **en vivo**, sin reiniciar.
 
 **A mano:** `CAMERAS_CONFIG` (por defecto `data/cameras.json`):
