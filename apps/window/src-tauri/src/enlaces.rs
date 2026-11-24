@@ -59,7 +59,7 @@ mod tests {
         assert!(!nav("http://192.168.1.10:3002/", AG));
         assert!(!nav("http://192.168.1.11:3001/", AG));
         assert!(!nav("https://192.168.1.10:3001/", AG));
-        assert!(!nav("http://192.168.1.10:3001.evil.example/", AG));
+        assert!(!nav("http://192.168.1.10.evil.example:3001/", AG));
         assert!(!nav("https://evil.example/", AG));
         assert!(!nav("https://evil.example/", None));
         assert!(!nav("http://tauri.localhost.evil.example/", None));
