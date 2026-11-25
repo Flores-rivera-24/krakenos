@@ -42,7 +42,10 @@ export function CameraLivePlayer({ camera }: CameraLivePlayerProps) {
         void (async () => {
           try {
             const s = await startStream(camera.id);
-            if (cancelled) return;
+            if (cancelled) {
+              void Promise.resolve(stopStream(camera.id)).catch(() => {});
+              return;
+            }
             const url = streamPlaylistUrl(camera.id, s.token);
             if (hls) hls.loadSource(url);
             else if (videoRef.current) videoRef.current.src = url;
@@ -57,7 +60,11 @@ export function CameraLivePlayer({ camera }: CameraLivePlayerProps) {
     const run = async () => {
       try {
         const session = await startStream(camera.id);
-        if (cancelled) return;
+        if (cancelled) {
+          // Se cerró con el arranque en vuelo: el cleanup ya pasó sin `started`.
+          void Promise.resolve(stopStream(camera.id)).catch(() => {});
+          return;
+        }
         started = true;
         const url = streamPlaylistUrl(camera.id, session.token);
         const video = videoRef.current;
