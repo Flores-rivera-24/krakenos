@@ -57,12 +57,7 @@ describe('wireguard helpers', () => {
   });
 
   it('construye los argv de wg', () => {
-    expect(wgShowLatestHandshakesArgs('wg0')).toEqual([
-      'wg',
-      'show',
-      'wg0',
-      'latest-handshakes',
-    ]);
+    expect(wgShowLatestHandshakesArgs('wg0')).toEqual(['wg', 'show', 'wg0', 'latest-handshakes']);
     expect(wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.7')).toEqual([
       'wg',
       'set',
