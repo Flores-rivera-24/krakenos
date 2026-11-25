@@ -184,3 +184,23 @@ describe('hallazgos de la revisión de la Task 1', () => {
     expect(() => checkUpgrade(manifest, '0.2.5-rc1')).not.toThrow();
   });
 });
+
+describe('plataforma win-x64', () => {
+  const con = (name: string) =>
+    Buffer.from(
+      JSON.stringify({
+        ...manifest,
+        artifacts: [{ platform: 'win-x64', name, sha256: 'c'.repeat(64), size: 5 }],
+      }),
+    );
+  it('acepta un artefacto win-x64 con nombre .exe', () => {
+    const m = parseManifest(con('KrakenOS-Setup-0.3.0-x64.exe'));
+    expect(artifactFor(m, 'win-x64').name).toBe('KrakenOS-Setup-0.3.0-x64.exe');
+  });
+  it.each(['../KrakenOS-Setup-0.3.0-x64.exe', 'KrakenOS-Setup-0.3.0-x64.msi'])(
+    'sigue rechazando %s',
+    (n) => {
+      expect(() => parseManifest(con(n))).toThrow(/nombre de artefacto no válido/);
+    },
+  );
+});

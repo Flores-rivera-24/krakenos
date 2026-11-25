@@ -6,7 +6,7 @@ import { createPublicKey, verify } from 'node:crypto';
 import { UpdateBlockedError } from './node-requirement.js';
 import { isNewer } from './version-compare.js';
 
-export const PLATFORMS = ['deb-amd64', 'deb-arm64', 'arch-x86_64'] as const;
+export const PLATFORMS = ['deb-amd64', 'deb-arm64', 'arch-x86_64', 'win-x64'] as const;
 export type Platform = (typeof PLATFORMS)[number];
 
 export interface Artifact {
@@ -27,7 +27,7 @@ const PART = '(?:0|[1-9]\\d{0,8})';
 const VERSION = new RegExp(`^${PART}\\.${PART}\\.${PART}$`);
 const NAME = /^[A-Za-z0-9][A-Za-z0-9._+~-]*$/;
 const NAME_MAX = 128;
-const NAME_EXT = /(\.deb|\.pkg\.tar\.zst)$/;
+const NAME_EXT = /(\.deb|\.pkg\.tar\.zst|\.exe)$/;
 const SHA256 = /^[0-9a-f]{64}$/;
 
 function fail(why: string): never {

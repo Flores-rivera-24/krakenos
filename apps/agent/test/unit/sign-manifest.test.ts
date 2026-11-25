@@ -20,6 +20,7 @@ const FILES = {
   'krakenos-0.3.0-1-x86_64.pkg.tar.zst': 'arch',
   'krakenos-0.3.0-linux-x64.tar.gz': 'portable-x64',
   'krakenos-0.3.0-linux-arm64.tar.gz': 'portable-arm64',
+  'KrakenOS-Setup-0.3.0-x64.exe': 'exe-bytes',
   SHA256SUMS: 'no-es-un-artefacto',
 };
 
@@ -59,6 +60,7 @@ describe('sign-manifest.mjs', () => {
       ['arch-x86_64', 'krakenos-0.3.0-1-x86_64.pkg.tar.zst'],
       ['deb-amd64', 'krakenos_0.3.0_amd64.deb'],
       ['deb-arm64', 'krakenos_0.3.0_arm64.deb'],
+      ['win-x64', 'KrakenOS-Setup-0.3.0-x64.exe'],
     ]);
     const amd = m.artifacts.find((a) => a.platform === 'deb-amd64');
     expect(amd?.sha256).toBe(createHash('sha256').update('amd64').digest('hex'));
@@ -73,7 +75,7 @@ describe('sign-manifest.mjs', () => {
     );
   });
 
-  it('los portables de la carpeta de release no entran al manifiesto: el actualizador solo instala paquetes (.deb/Arch)', () => {
+  it('los portables de la carpeta de release no entran al manifiesto: el actualizador solo instala paquetes (.deb/Arch) y el instalador de Windows', () => {
     const par = generateKeyPairSync('ed25519');
     const r = run(
       [dir, '0.3.0'],
@@ -86,6 +88,7 @@ describe('sign-manifest.mjs', () => {
       'arch-x86_64',
       'deb-amd64',
       'deb-arm64',
+      'win-x64',
     ]);
   });
 
@@ -138,5 +141,44 @@ describe('sign-manifest.mjs', () => {
     const r = run([dir, '0.3.0', '0.2.0'], pem);
     expect(r.status).not.toBe(0);
     expect(r.stderr).toContain('deb-arm64');
+  });
+
+  it('exige el .exe: sin KrakenOS-Setup-*-x64.exe falla nombrando win-x64', () => {
+    rmSync(join(dir, 'KrakenOS-Setup-0.3.0-x64.exe'));
+    const pem = generateKeyPairSync('ed25519').privateKey.export({
+      type: 'pkcs8',
+      format: 'pem',
+    }) as string;
+    const r = run([dir, '0.3.0', '0.2.0'], pem);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('win-x64');
+  });
+
+  it('--plataformas win-x64 firma solo el .exe y el verificador lo acepta', () => {
+    const par = generateKeyPairSync('ed25519');
+    const pub = par.publicKey.export({ type: 'spki', format: 'pem' }) as string;
+    for (const f of Object.keys(FILES).filter((f) => f.startsWith('krakenos')))
+      rmSync(join(dir, f)); // el .exe es lo único que hay
+    const r = run(
+      [dir, '0.3.0', '0.2.0', '--plataformas', 'win-x64'],
+      par.privateKey.export({ type: 'pkcs8', format: 'pem' }) as string,
+      pub,
+    );
+    expect(r.status, r.stderr).toBe(0);
+    const bytes = readFileSync(join(dir, 'manifest.json'));
+    expect(parseManifest(bytes).artifacts.map((a) => a.platform)).toEqual(['win-x64']);
+    expect(verifyManifest(bytes, readFileSync(join(dir, 'manifest.json.sig'), 'utf8'), pub)).toBe(
+      true,
+    );
+  });
+
+  it('--plataformas con una plataforma desconocida falla nombrándola', () => {
+    const pem = generateKeyPairSync('ed25519').privateKey.export({
+      type: 'pkcs8',
+      format: 'pem',
+    }) as string;
+    const r = run([dir, '0.3.0', '0.2.0', '--plataformas', 'mac-arm64'], pem);
+    expect(r.status).not.toBe(0);
+    expect(r.stderr).toContain('mac-arm64');
   });
 });
