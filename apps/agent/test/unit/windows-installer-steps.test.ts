@@ -9,7 +9,7 @@ import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, uninstallAll, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+import { activeNetwork, entornoSeguro, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, uninstallAll, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
@@ -1741,6 +1741,15 @@ describe('installer-hooks.nsh (servicio)', () => {
     }
   });
 
+  it('PREINSTALL y PREUNINSTALL limpian NODE_OPTIONS ANTES de lanzar el primer node.exe elevado', () => {
+    expect(macro('KR_LIMPIAR_ENTORNO_NODE')).toMatch(/"NODE_OPTIONS", p 0/);
+    for (const n of ['NSIS_HOOK_PREINSTALL', 'NSIS_HOOK_PREUNINSTALL']) {
+      const m = macro(n);
+      expect(m).toContain('!insertmacro KR_LIMPIAR_ENTORNO_NODE');
+      expect(m.indexOf('KR_LIMPIAR_ENTORNO_NODE')).toBeLessThan(m.indexOf('node.exe'));
+    }
+  });
+
   it('el Abort de POSTINSTALL remite al log de Program Files, que se lee sin elevar, no a la carpeta de datos', () => {
     const m = macro('NSIS_HOOK_POSTINSTALL');
     expect(m).toContain('install-error.log');
@@ -2336,5 +2345,18 @@ describe('installer-hooks.nsh (desinstalar)', () => {
     expect(sub).toMatch(/uninstallAll/);
     expect(sub).toMatch(/--purge-data/);
     expect(sub).toMatch(/--update/);
+  });
+});
+
+describe('entornoSeguro', () => {
+  it('quita todo NODE_* (cargan código) sin distinguir mayúsculas y deja el resto', () => {
+    const e = entornoSeguro({
+      NODE_OPTIONS: '--require C:\\x.js',
+      Node_Path: 'C:\\x',
+      NODE_EXTRA_CA_CERTS: 'C:\\ca.pem',
+      ProgramData: 'C:\\ProgramData',
+      PATH: 'C:\\Windows',
+    });
+    expect(e).toEqual({ ProgramData: 'C:\\ProgramData', PATH: 'C:\\Windows' });
   });
 });

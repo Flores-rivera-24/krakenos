@@ -24,6 +24,15 @@ export function virtualAccountSid(nombre) {
   return `S-1-5-80-${partes.join('-')}`;
 }
 
+/**
+ * Entorno para los `node` hijos del proceso elevado: sin `NODE_*` (`NODE_OPTIONS=--require …`,
+ * `NODE_PATH`, `NODE_EXTRA_CA_CERTS`…), que vienen del usuario que aceptó el UAC y cargan código o
+ * confianza ajenos. Windows no distingue mayúsculas en los nombres.
+ */
+export function entornoSeguro(env) {
+  return Object.fromEntries(Object.entries(env).filter(([k]) => !/^NODE_/i.test(k)));
+}
+
 /** Código de estado de `sc query` (1 STOPPED, 4 RUNNING): el texto va traducido, el número no. */
 const estado = (stdout) => Number(/:\s*([1-7])\s+\S+/.exec(stdout)?.[1] ?? 0);
 

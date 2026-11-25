@@ -7,11 +7,25 @@
 ; (`StrCmp`) y sin aceptar `..`.
 ; `${StrLoc}` (StrFunc.nsh) lo declara la plantilla de Tauri, no este fichero: el job de CI comprueba
 ; en el installer.nsi generado que sigue haciéndolo.
+; Los `node.exe` que lanza el instalador corren ELEVADOS y heredarían el entorno del usuario que aceptó el
+; UAC: un `NODE_OPTIONS=--require C:\Users\…\x.js` puesto sin permisos se ejecutaría como administrador.
+; Se quitan de ESTE proceso (los hijos de nsExec/ExecWait heredan su entorno) antes de lanzar ningún node;
+; `post-install.mjs` además filtra `NODE_*` al lanzar los suyos. Un valor nulo borra la variable.
+!macro KR_LIMPIAR_ENTORNO_NODE
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_OPTIONS", p 0)'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_PATH", p 0)'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_EXTRA_CA_CERTS", p 0)'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_REPL_EXTERNAL_MODULE", p 0)'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_V8_COVERAGE", p 0)'
+  System::Call 'Kernel32::SetEnvironmentVariable(t "NODE_TLS_REJECT_UNAUTHORIZED", p 0)'
+!macroend
+
 !macro NSIS_HOOK_PREINSTALL
   ; Antes de nada: si la app está abierta, la plantilla de Tauri pregunta si cerrarla (con /S la cierra sin
   ; preguntar). Su propia comprobación va DESPUÉS de este hook; si el usuario cancelara allí, el servicio ya
   ; estaría parado (instalar) o desinstalado a medias.
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  !insertmacro KR_LIMPIAR_ENTORNO_NODE
 
   Push $1
   Push $2
@@ -111,6 +125,7 @@
   ; preguntar). Su propia comprobación va DESPUÉS de este hook; si el usuario cancelara allí, el servicio ya
   ; estaría parado (instalar) o desinstalado a medias.
   !insertmacro CheckIfAppIsRunning "$INSTDIR\${MAINBINARYNAME}.exe" "${PRODUCTNAME}"
+  !insertmacro KR_LIMPIAR_ENTORNO_NODE
 
   ${If} $LANGUAGE == 1034
     StrCpy $R8 "es"
