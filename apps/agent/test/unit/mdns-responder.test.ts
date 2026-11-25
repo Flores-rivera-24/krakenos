@@ -160,6 +160,16 @@ describe('unicast legada y subred receptora', () => {
     expect(f.sent).toHaveLength(0);
   });
 
+  it('una pregunta multicast de un origen fuera de las subredes se ignora y no toca el limitador', async () => {
+    const { f, r } = make();
+    await r.start();
+    f.emit(query('mipc.local'), 5353, '8.8.4.4');
+    expect(f.sent).toHaveLength(0);
+    // el limitador no se gastó con ese origen: uno on-link recibe su respuesta
+    f.emit(query('mipc.local'));
+    expect(f.sent).toHaveLength(1);
+  });
+
   it('el respondedor da la IP de la red que pregunta y no pide interfaces si no es por él', async () => {
     const f = fakeSocket();
     const interfaces = vi.fn(() => ({

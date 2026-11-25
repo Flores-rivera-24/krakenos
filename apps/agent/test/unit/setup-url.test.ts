@@ -1,10 +1,10 @@
+import { isPrivateIpv4 } from '../../src/net/private-ipv4.js';
 import type os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import {
   buildSetupUrl,
   firstLanIpv4,
   isLoopbackHost,
-  isPrivateIpv4,
   resolveSetupUrl,
 } from '../../src/modules/setup/setup-url.js';
 

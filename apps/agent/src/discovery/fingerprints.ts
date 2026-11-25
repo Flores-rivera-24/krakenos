@@ -1,4 +1,5 @@
 import type { DiscoverySuggestion } from '@krakenos/types';
+import { isPrivateIpv4 } from '../net/private-ipv4.js';
 
 /**
  * Huellas de integración **puras** (US-175): mapean lo visto en la LAN por
@@ -36,20 +37,6 @@ export type FingerprintMatch = Omit<DiscoverySuggestion, 'id' | 'lastSeen' | 'ad
 function instanceLabel(name: string): string | null {
   const first = name.split('.')[0]?.trim();
   return first ? first : null;
-}
-
-/**
- * ¿IPv4 privada (RFC 1918)? El registro A de un datagrama mDNS lo controla el
- * emisor: sin este filtro, un aparato hostil podría anunciar una IP pública y
- * colar «detectado en tu red» una sugerencia que apunta fuera de la LAN.
- */
-export function isPrivateIpv4(ip: string): boolean {
-  const parts = ip.split('.').map(Number);
-  if (parts.length !== 4 || parts.some((n) => !Number.isInteger(n) || n < 0 || n > 255)) {
-    return false;
-  }
-  const [a, b] = parts as [number, number, number, number];
-  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
 /**
