@@ -95,6 +95,27 @@ describe('useAuthStore', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('un refresh en vuelo que resuelve DESPUÉS del logout no resucita la sesión', async () => {
+    useAuthStore.setState({ user: USER, tokens: TOKENS });
+    let resolverRefresh: (r: Response) => void = () => {};
+    const fetchMock = vi.fn((url: string) =>
+      url === '/api/auth/refresh'
+        ? new Promise<Response>((res) => {
+            resolverRefresh = res;
+          })
+        : Promise.resolve(jsonResponse(204, null)),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const pendiente = useAuthStore.getState().refresh();
+    await useAuthStore.getState().logout();
+    resolverRefresh(jsonResponse(200, { accessToken: 'acc-tarde', expiresIn: 900 }));
+
+    expect(await pendiente).toBe(false);
+    expect(useAuthStore.getState().tokens).toBeNull();
+    expect(useAuthStore.getState().user).toBeNull();
+  });
+
   it('refresh fallido limpia la sesión', async () => {
     useAuthStore.setState({ user: USER, tokens: TOKENS });
     vi.stubGlobal(
