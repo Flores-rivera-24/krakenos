@@ -105,9 +105,11 @@ describe('krakenos-helper allowlist (verbo)', () => {
   });
 });
 
+const WGKEY = 'A'.repeat(43) + '=';
+
 describe('krakenos-helper anti-inyección (caracteres de control)', () => {
   it('rechaza un argumento con salto de línea aunque el verbo sea válido', async () => {
-    const { code, stderr } = await runHelper(['wg', 'show', 'wg0\nlisten-port 1', 'dump']);
+    const { code, stderr } = await runHelper(['wg', 'show', 'wg0\nlisten-port 1', 'public-key']);
     expect(code).toBe(64);
     expect(stderr).toMatch(/caracteres de control/);
   });
@@ -234,16 +236,41 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
 
   describe('wg / wg-quick — solo la interfaz WireGuard', () => {
     it('permite show/set y wg-quick save sobre wg0', async () => {
-      expect((await runHelper(['wg', 'show', 'wg0', 'dump'])).code).toBe(0);
+      expect((await runHelper(['wg', 'show', 'wg0', 'latest-handshakes'])).code).toBe(0);
       expect((await runHelper(['wg', 'show', 'wg0', 'public-key'])).code).toBe(0);
-      expect((await runHelper(['wg', 'set', 'wg0', 'peer', 'AAA=', 'remove'])).code).toBe(0);
+      expect((await runHelper(['wg', 'set', 'wg0', 'peer', WGKEY, 'remove'])).code).toBe(0);
+      expect(
+        (await runHelper(['wg', 'set', 'wg0', 'peer', WGKEY, 'allowed-ips', '10.8.0.7/32'])).code,
+      ).toBe(0);
       expect((await runHelper(['wg-quick', 'save', 'wg0'])).code).toBe(0);
     });
 
     it('rechaza otra interfaz', async () => {
-      expect((await runHelper(['wg', 'show', 'wg1', 'dump'])).code).toBe(64);
-      expect((await runHelper(['wg', 'set', 'eth0', 'peer', 'AAA=', 'remove'])).code).toBe(64);
+      expect((await runHelper(['wg', 'show', 'wg1', 'latest-handshakes'])).code).toBe(64);
+      expect((await runHelper(['wg', 'set', 'eth0', 'peer', WGKEY, 'remove'])).code).toBe(64);
       expect((await runHelper(['wg-quick', 'save', 'wg1'])).code).toBe(64);
+    });
+
+    it('cierra lo que filtraría claves o leería ficheros de root', async () => {
+      const malos = [
+        ['wg', 'show', 'wg0', 'dump'],
+        ['wg', 'show', 'wg0'],
+        ['wg', 'show', 'wg0', 'private-key'],
+        ['wg', 'show', 'wg0', 'preshared-keys'],
+        ['wg', 'show', 'wg0', 'public-key', 'extra'],
+        ['wg', 'show', 'all', 'dump'],
+        ['wg', 'set', 'wg0', 'private-key', '/etc/shadow'],
+        ['wg', 'set', 'wg0', 'peer', WGKEY, 'preshared-key', '/etc/shadow'],
+        ['wg', 'set', 'wg0', 'peer', WGKEY, 'allowed-ips', '0.0.0.0/0'],
+        ['wg', 'set', 'wg0', 'peer', WGKEY, 'allowed-ips', '10.8.0.7/32,10.0.0.0/8'],
+        ['wg', 'set', 'wg0', 'peer', WGKEY, 'endpoint', '1.2.3.4:5'],
+        ['wg', 'set', 'wg0', 'peer', 'AAA=', 'remove'],
+        ['wg', 'set', 'wg0', 'peer', WGKEY, 'remove', 'extra'],
+        ['wg', 'set', 'wg0', 'listen-port', '1'],
+      ];
+      for (const argv of malos) {
+        expect((await runHelper(argv)).code, argv.join(' ')).toBe(64);
+      }
     });
   });
 
@@ -260,12 +287,12 @@ describe('krakenos-helper allowlist por ámbito (US-74)', () => {
       expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'enp3s0', 'root'], scope)).code).toBe(
         0,
       );
-      expect((await runHelper(['wg', 'show', 'wg9', 'dump'], scope)).code).toBe(0);
+      expect((await runHelper(['wg', 'show', 'wg9', 'public-key'], scope)).code).toBe(0);
 
       // Con un ámbito a medida, los defaults dejan de estar permitidos.
       expect((await runHelper(['iptables', '-F', 'KRAKENOS'], scope)).code).toBe(64);
       expect((await runHelper(['tc', 'qdisc', 'del', 'dev', 'eth0', 'root'], scope)).code).toBe(64);
-      expect((await runHelper(['wg', 'show', 'wg0', 'dump'], scope)).code).toBe(64);
+      expect((await runHelper(['wg', 'show', 'wg0', 'public-key'], scope)).code).toBe(64);
     });
   });
 });
@@ -389,7 +416,7 @@ describe('krakenos-helper: PATH de root', () => {
     await new Promise<void>((resolve) => {
       execFile(
         'bash',
-        [SCRIPT, 'wg', 'show', 'wg0'],
+        [SCRIPT, 'wg', 'show', 'wg0', 'public-key'],
         { env: { PATH: `${falso}:${process.env.PATH}`, KRAKENOS_HELPER_CONF: '/dev/null/none' } },
         () => resolve(),
       );

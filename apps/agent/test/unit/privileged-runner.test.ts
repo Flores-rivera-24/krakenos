@@ -12,9 +12,9 @@ describe('SudoHelperRunner', () => {
     const exec = vi.fn<ExecFn>(async () => ({ stdout: 'ok', stderr: '', code: 0 }));
     const runner = new SudoHelperRunner({ helperPath: HELPER, exec });
 
-    const res = await runner.run(['wg', 'show', 'wg0', 'dump']);
+    const res = await runner.run(['wg', 'show', 'wg0', 'public-key']);
     expect(res.stdout).toBe('ok');
-    expect(exec).toHaveBeenCalledWith('sudo', ['-n', HELPER, 'wg', 'show', 'wg0', 'dump']);
+    expect(exec).toHaveBeenCalledWith('sudo', ['-n', HELPER, 'wg', 'show', 'wg0', 'public-key']);
   });
 
   it('invoca el helper directamente cuando useSudo es false', async () => {

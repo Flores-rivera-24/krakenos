@@ -65,13 +65,10 @@ describe('WireguardVpnManager', () => {
     expect(b.peer.allowedIps).toBe('10.8.0.3/32');
   });
 
-  it('lista peers fusionando el handshake en vivo de `wg show dump`', async () => {
+  it('lista peers fusionando el handshake en vivo de `wg show latest-handshakes`', async () => {
     const vpn = makeManager(runner);
     const { peer } = await vpn.createPeer({ name: 'Portátil' });
-    runner.responses['wg show wg0 dump'] = [
-      'priv\tSERVERPUB\t51820\toff',
-      `${peer.publicKey}\t(none)\t1.2.3.4:5\t10.8.0.2/32\t1700000000\t0\t0\toff`,
-    ].join('\n');
+    runner.responses['wg show wg0 latest-handshakes'] = `${peer.publicKey}\t1700000000\n`;
 
     const peers = await vpn.listPeers();
     expect(peers[0]!.lastHandshake).toBe(new Date(1700000000 * 1000).toISOString());

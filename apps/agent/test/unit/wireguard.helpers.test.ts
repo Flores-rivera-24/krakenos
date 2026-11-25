@@ -3,10 +3,10 @@ import { InvalidArgumentError } from '../../src/privileged/validators.js';
 import {
   buildClientConfig,
   nextAddress,
-  parseWgDump,
+  parseWgHandshakes,
   wgSetAddPeerArgs,
   wgSetRemovePeerArgs,
-  wgShowDumpArgs,
+  wgShowLatestHandshakesArgs,
   wireguardKeypair,
 } from '../../src/vpn/wireguard.helpers.js';
 
@@ -39,26 +39,15 @@ describe('wireguard helpers', () => {
     expect(cfg).toContain('AllowedIPs = 0.0.0.0/0');
   });
 
-  it('parsea la salida de `wg show <iface> dump`', () => {
-    const dump = [
-      'serverPriv\tserverPub\t51820\toff',
-      'peerPubA\t(none)\t1.2.3.4:5\t10.8.0.2/32\t1700000000\t128\t256\toff',
-      'peerPubB\t(none)\t(none)\t10.8.0.3/32\t0\t0\t0\toff',
-    ].join('\n');
-    const parsed = parseWgDump(dump);
-    expect(parsed.publicKey).toBe('serverPub');
-    expect(parsed.listenPort).toBe(51820);
-    expect(parsed.peers).toHaveLength(2);
-    expect(parsed.peers[0]).toEqual({
-      publicKey: 'peerPubA',
-      allowedIps: '10.8.0.2/32',
-      latestHandshake: 1700000000,
-    });
-    expect(parsed.peers[1]!.latestHandshake).toBe(0);
-  });
-
-  it('devuelve dump vacío para entrada vacía', () => {
-    expect(parseWgDump('')).toEqual({ publicKey: null, listenPort: null, peers: [] });
+  it('parsea `wg show <iface> latest-handshakes`', () => {
+    const out = 'peerPubA\t1700000000\npeerPubB\t0\n';
+    expect(parseWgHandshakes(out)).toEqual(
+      new Map([
+        ['peerPubA', 1700000000],
+        ['peerPubB', 0],
+      ]),
+    );
+    expect(parseWgHandshakes('').size).toBe(0);
   });
 
   it('asigna la siguiente IP libre saltando las usadas', () => {
@@ -68,7 +57,12 @@ describe('wireguard helpers', () => {
   });
 
   it('construye los argv de wg', () => {
-    expect(wgShowDumpArgs('wg0')).toEqual(['wg', 'show', 'wg0', 'dump']);
+    expect(wgShowLatestHandshakesArgs('wg0')).toEqual([
+      'wg',
+      'show',
+      'wg0',
+      'latest-handshakes',
+    ]);
     expect(wgSetAddPeerArgs('wg0', PUBKEY, '10.8.0.7')).toEqual([
       'wg',
       'set',
@@ -91,9 +85,9 @@ describe('wireguard helpers', () => {
   // --- Anti-inyección: cada argumento se valida antes de devolver el argv (US-73) ---
   describe('rechazo anti-inyección', () => {
     it('rechaza una interfaz con inyección de bandera o metacaracteres', () => {
-      expect(() => wgShowDumpArgs('-i')).toThrow(InvalidArgumentError);
-      expect(() => wgShowDumpArgs('wg0; rm -rf /')).toThrow(InvalidArgumentError);
-      expect(() => wgShowDumpArgs('wg0 --config')).toThrow(InvalidArgumentError);
+      expect(() => wgShowLatestHandshakesArgs('-i')).toThrow(InvalidArgumentError);
+      expect(() => wgShowLatestHandshakesArgs('wg0; rm -rf /')).toThrow(InvalidArgumentError);
+      expect(() => wgShowLatestHandshakesArgs('wg0 --config')).toThrow(InvalidArgumentError);
       expect(() => wgSetRemovePeerArgs('wg0\nlisten-port 1', PUBKEY)).toThrow(InvalidArgumentError);
     });
 

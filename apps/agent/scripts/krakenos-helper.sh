@@ -429,14 +429,29 @@ shift || true
 
 case "$cmd" in
   wg)
-    # Solo `wg show|set` y SIEMPRE sobre la interfaz WireGuard configurada.
+    # Lista cerrada (como iptables/tc), SIEMPRE sobre la interfaz WireGuard configurada. Nunca `show ... dump`
+    # (trae la clave privada y las precompartidas) ni rutas de fichero (`private-key <ruta>`): root las leería.
     sub="${1:-}"
     iface="${2:-}"
+    [ "$iface" = "$KRAKENOS_WG_IFACE" ] || deny "wg interfaz no permitida: ${iface:-<vacío>}"
+    key_re='^[A-Za-z0-9+/]{43}=$'
     case "$sub" in
-      show|set) ;;
+      show)
+        { [ "$#" -eq 3 ] && { [ "${3:-}" = "public-key" ] || [ "${3:-}" = "latest-handshakes" ]; }; } \
+          || deny "wg show: solo public-key y latest-handshakes"
+        ;;
+      set)
+        [ "${3:-}" = "peer" ] && [[ "${4:-}" =~ $key_re ]] || deny "wg set: solo peer <clave>"
+        if [ "${5:-}" = "remove" ] && [ "$#" -eq 5 ]; then
+          :
+        elif [ "${5:-}" = "allowed-ips" ] && [ "$#" -eq 6 ] && [[ "${6:-}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/32$ ]]; then
+          :
+        else
+          deny "wg set peer: solo remove y allowed-ips <ip>/32"
+        fi
+        ;;
       *) deny "wg $sub" ;;
     esac
-    [ "$iface" = "$KRAKENOS_WG_IFACE" ] || deny "wg interfaz no permitida: ${iface:-<vacío>}"
     exec wg "$@"
     ;;
   wg-quick)
