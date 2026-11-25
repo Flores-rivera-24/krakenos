@@ -1,3 +1,4 @@
+import { ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
@@ -17,8 +18,11 @@ export async function downloadSupportBundle(): Promise<Blob> {
     body: JSON.stringify({}),
   });
   if (!res.ok) {
-    const err = (await res.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(err?.message ?? 'No se pudo generar el paquete de soporte');
+    const err = (await res.json().catch(() => null)) as { code?: string; message?: string } | null;
+    throw new ApiRequestError(res.status, {
+      code: err?.code ?? 'UNKNOWN',
+      message: err?.message ?? '',
+    });
   }
   return res.blob();
 }

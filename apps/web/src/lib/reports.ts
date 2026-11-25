@@ -1,3 +1,4 @@
+import { ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
 
 /**
@@ -10,7 +11,7 @@ export async function downloadReport(path: string, filename: string): Promise<vo
     credentials: 'same-origin',
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
-  if (!res.ok) throw new Error('No se pudo generar el informe');
+  if (!res.ok) throw new ApiRequestError(res.status, { code: 'DOWNLOAD_FAILED', message: '' });
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
