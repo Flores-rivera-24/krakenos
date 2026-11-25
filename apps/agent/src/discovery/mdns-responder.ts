@@ -282,8 +282,9 @@ export class MdnsResponder {
         legacy,
       );
       if (!d) return;
-      // Unicast solo hacia un origen de nuestras subredes: no reflejamos tráfico hacia fuera.
-      if (d.unicast && !sourceOnLink(nics(), from.address)) return;
+      // §11: un origen fuera de nuestras subredes se ignora antes de tocar el limitador (ni
+      // reflejamos tráfico hacia fuera ni la tabla crece con orígenes falsificados).
+      if (!sourceOnLink(nics(), from.address)) return;
       const dest = d.unicast ? from : { address: MDNS_GROUP, port: MDNS_PORT };
       if (!this.allow(`${dest.address}:${dest.port}/${d.qkey}`)) return;
       // Multicast: por la NIC de la subred de quien pregunta (con vEthernet/WSL el SO elegiría mal).
