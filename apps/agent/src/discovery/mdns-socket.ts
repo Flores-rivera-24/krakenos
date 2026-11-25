@@ -1,6 +1,6 @@
 /**
  * Socket UDP real del respondedor mDNS (US-283). Único fichero del respondedor que toca
- * `node:dgram`: el resto se prueba con un socket falso. Solo habla con el grupo mDNS (TTL 1)
+ * `node:dgram`: el resto se prueba con un socket falso. Solo habla con el grupo mDNS (link-local, no se enruta)
  * y con quien pregunta; un fallo al abrir 5353 se propaga y el respondedor lo vuelve estado.
  */
 import { networkInterfaces } from 'node:os';
@@ -40,8 +40,10 @@ export class DgramResponderSocket implements ResponderSocket {
       });
       const nics = privateV4Nics();
       if (this.join(sock, nics) === 0) sock.addMembership(MDNS_GROUP); // lanza si no hay red válida
-      sock.setMulticastTTL(1); // el paquete nunca cruza el router
-      sock.setTTL(1); // tampoco las respuestas unicast
+      // RFC 6762 §11: IP TTL 255 (los receptores estrictos descartan lo demás). No cruza el router igual:
+      // 224.0.0.251 es link-local y no se enruta con ningún TTL; las unicast solo van a orígenes on-link.
+      sock.setMulticastTTL(255);
+      sock.setTTL(255);
       // Con una sola red la salida multicast es inequívoca; con varias manda la tabla del SO.
       if (nics.length === 1 && nics[0]) sock.setMulticastInterface(nics[0]);
     } catch (err) {
