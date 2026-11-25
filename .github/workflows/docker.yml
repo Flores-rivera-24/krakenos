@@ -21,6 +21,10 @@ on:
       - '.github/workflows/docker.yml'
   workflow_dispatch:
 
+# Token de solo lectura por defecto; `publish` declara su propio `packages: write`.
+permissions:
+  contents: read
+
 # Dos merges seguidos a main: el build viejo no debe pisar `latest` después del nuevo.
 concurrency:
   group: docker-${{ github.ref }}
