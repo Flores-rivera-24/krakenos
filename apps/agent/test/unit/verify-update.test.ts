@@ -111,6 +111,60 @@ describe('verifyUpdate (lo que ejecuta root sobre su copia)', () => {
   });
 });
 
+describe('verify-update con win-x64', () => {
+  const EXE = 'KrakenOS-Setup-0.3.0-x64.exe';
+  const BYTES = Buffer.from('instalador');
+  async function conExe(bytes: Buffer) {
+    const key = generateKeyPairSync('ed25519');
+    const manifest = Buffer.from(
+      JSON.stringify({
+        schema: 1,
+        version: '0.3.0',
+        minFrom: '0.2.0',
+        artifacts: [
+          {
+            platform: 'win-x64',
+            name: EXE,
+            sha256: createHash('sha256').update(BYTES).digest('hex'),
+            size: BYTES.length,
+          },
+        ],
+      }),
+    );
+    await writeFile(join(dir, 'manifest.json'), manifest);
+    await writeFile(
+      join(dir, 'manifest.json.sig'),
+      sign(null, manifest, key.privateKey).toString('base64'),
+    );
+    await writeFile(join(dir, EXE), bytes);
+    return (): Promise<number> =>
+      runVerifyCli(
+        [
+          '--manifest',
+          join(dir, 'manifest.json'),
+          '--sig',
+          join(dir, 'manifest.json.sig'),
+          '--package',
+          join(dir, EXE),
+          '--platform',
+          'win-x64',
+          '--version',
+          '0.3.0',
+          '--installed',
+          '0.2.0',
+        ],
+        pem(key.publicKey),
+        () => undefined,
+      );
+  }
+  it('verifica un .exe firmado (0) y rechaza uno con un byte cambiado (1)', async () => {
+    expect(await (await conExe(BYTES))()).toBe(0);
+    const malo = Buffer.from(BYTES);
+    malo[0] = malo[0]! ^ 1;
+    expect(await (await conExe(malo))()).toBe(1);
+  });
+});
+
 describe('runVerifyCli', () => {
   const key = generateKeyPairSync('ed25519');
   const run = (argv: string[]) => {

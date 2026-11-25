@@ -87,7 +87,7 @@
   ${Else}
     StrCpy $R7 " --interactive"
   ${EndIf}
-  nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" install --lang $R8 --version ${VERSION}$R7'
+  nsExec::ExecToLog '"$INSTDIR\node\node.exe" "$INSTDIR\installer\post-install.mjs" install --lang $R8 --version ${VERSION}$R7 --installer "$EXEPATH"'
   Pop $0
   ${If} $0 != 0
     DetailPrint "El servicio de KrakenOS no quedó en marcha (resultado: $0)"

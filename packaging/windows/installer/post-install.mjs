@@ -1,5 +1,5 @@
 /**
- * `node post-install.mjs install|stop|uninstall|setup-token [--lang es|en] [--version <v>] [--interactive] [--purge-data] [--update]`: lo ejecuta el instalador (elevado)
+ * `node post-install.mjs install|stop|uninstall|setup-token [--lang es|en] [--version <v>] [--installer <ruta .exe>] [--interactive] [--purge-data] [--update]`: lo ejecuta el instalador (elevado)
  * con el Node empaquetado, desde `Program Files\KrakenOS\installer`. Sale con código distinto de 0
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
@@ -109,8 +109,10 @@ async function main() {
       process.env.KRAKENOS_DATA_DIR = dataDir;
       process.env.KRAKENOS_APP_DIR = join(INSTALL_DIR, 'app', 'agent');
       const iv = resto.indexOf('--version');
+      const ii = resto.indexOf('--installer');
       await runInstall({
         version: iv >= 0 ? resto[iv + 1] : undefined,
+        installerPath: ii >= 0 ? resto[ii + 1] : undefined,
         installDir: INSTALL_DIR,
         dataDir,
         lang,

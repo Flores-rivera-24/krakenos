@@ -6,8 +6,16 @@
  * Nunca se lee ni se escribe el token de setup: lo crea el agente y no pasa por aquí.
  */
 import { createHash, createPrivateKey, createPublicKey, X509Certificate } from 'node:crypto';
-import { basename, dirname, join } from 'node:path';
+import { basename, dirname, join, win32 } from 'node:path';
 import { msg } from './mensajes.mjs';
+import {
+  adminDirOf,
+  grantStateAccess,
+  installTaskNode,
+  keepInstaller,
+  prepareAdminDir,
+  registerUpdateTasks,
+} from './update-setup.mjs';
 
 export const SERVICE = 'KrakenOS';
 export const MARCA_HKLM = 'HKLM\\SOFTWARE\\KrakenOS';
@@ -36,7 +44,7 @@ export function entornoSeguro(env) {
 /** Código de estado de `sc query` (1 STOPPED, 4 RUNNING): el texto va traducido, el número no. */
 const estado = (stdout) => Number(/:\s*([1-7])\s+\S+/.exec(stdout)?.[1] ?? 0);
 
-async function ok(run, cmd, args, opciones) {
+export async function ok(run, cmd, args, opciones) {
   const r = await run(cmd, args, opciones);
   if (r.code !== 0) {
     const cola = r.stdout.trim().slice(-300);
@@ -45,12 +53,12 @@ async function ok(run, cmd, args, opciones) {
   return r;
 }
 
-async function hayMarca(run, dataDir) {
-  const r = await run('reg.exe', ['query', MARCA_HKLM, '/v', 'DataDir']);
-  // Igualdad exacta del valor de `DataDir` (`reg query` lo imprime como `DataDir    REG_SZ    <ruta>`):
+export async function hayMarca(run, nombre, ruta) {
+  const r = await run('reg.exe', ['query', MARCA_HKLM, '/v', nombre]);
+  // Igualdad exacta del valor (`reg query` lo imprime como `DataDir    REG_SZ    <ruta>`):
   // una ruta que solo CONTIENE la nuestra no es la marca.
-  const valor = /^\s*DataDir\s+REG_SZ\s+(.*?)\s*$/im.exec(r.stdout)?.[1];
-  return r.code === 0 && valor !== undefined && normRuta(valor) === normRuta(dataDir);
+  const valor = new RegExp(`^\\s*${nombre}\\s+REG_SZ\\s+(.*?)\\s*$`, 'im').exec(r.stdout)?.[1];
+  return r.code === 0 && valor !== undefined && normRuta(valor) === normRuta(ruta);
 }
 
 /**
@@ -72,7 +80,7 @@ export async function prepareDataDir({ dataDir, run, fs }) {
   }
   // La marca no basta: si la carpeta la recreó otro usuario tras borrarla un admin, su dueño no es de fiar
   // y lo que tenga dentro (claves, base) tampoco. Se mira ANTES de cambiar ninguna ACL.
-  const marca = existe && (await hayMarca(run, dataDir));
+  const marca = existe && (await hayMarca(run, 'DataDir', dataDir));
   if (existe && (!marca || !DUENOS.includes(await duenoDe(run, dataDir)))) {
     if ((await fs.readdir(dataDir)).length > 0)
       throw new Error(
@@ -188,9 +196,9 @@ const SERVICIO_EN_RAIZ = [
   /^(?!.*(Modify|FullControl|Delete)).*ReadAndExecute/,
 ];
 
-const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
+export const BASE = { 'S-1-5-18': /FullControl/, 'S-1-5-32-544': /FullControl/ };
 
-const DUENOS = ['S-1-5-18', 'S-1-5-32-544'];
+export const DUENOS = ['S-1-5-18', 'S-1-5-32-544'];
 
 /**
  * Deja `dir` como `esperadas` sin que la DACL pase NUNCA por un estado heredado o vacío: si ya está
@@ -200,7 +208,7 @@ const DUENOS = ['S-1-5-18', 'S-1-5-32-544'];
  * no propaga a los hijos que creó el servicio. `opcionales` (el servicio, en una actualización) puede
  * estar o no, pero si está tiene que llevar esos derechos. Devuelve si hubo que rehacerla.
  */
-async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
+export async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
   if (!(await desviacion(run, dir, esperadas, opcionales))) return false;
   const q = (v) => v.replaceAll("'", "''");
   const regla = (sid) =>
@@ -216,7 +224,7 @@ async function asegurarAcl(run, dir, esperadas, opcionales = {}) {
   return true;
 }
 
-async function duenoDe(run, dir) {
+export async function duenoDe(run, dir) {
   const d = dir.replaceAll("'", "''");
   const ps = `'OWNER:' + [System.IO.Directory]::GetAccessControl('${d}').GetOwner([System.Security.Principal.SecurityIdentifier]).Value`;
   const { stdout } = await ok(run, 'powershell.exe', [
@@ -228,7 +236,7 @@ async function duenoDe(run, dir) {
   return /OWNER:(\S+)/.exec(stdout)?.[1] ?? '';
 }
 
-async function verificarAcl(run, dir, esperadas, opcionales = {}) {
+export async function verificarAcl(run, dir, esperadas, opcionales = {}) {
   const motivo = await desviacion(run, dir, esperadas, opcionales);
   if (motivo) throw new Error(`la ACL de ${dir} no quedó como se esperaba: ${motivo}`);
 }
@@ -283,7 +291,7 @@ async function desviacion(run, dir, esperadas, opcionales) {
 }
 
 /** Recorre sin seguir enlaces y lanza ante cualquier enlace simbólico o junction. */
-async function sinEnlaces(fs, dir) {
+export async function sinEnlaces(fs, dir) {
   for (const nombre of await fs.readdir(dir)) {
     const ruta = join(dir, nombre);
     const st = await fs.lstat(ruta);
@@ -697,7 +705,7 @@ const TAREA_RENOVAR =
   `foreach ($t in $f.GetTasks(1)) { $f.DeleteTask($t.Name, 0) }; $s.GetFolder('\\').DeleteFolder('KrakenOS', 0)`;
 
 /** Quita la clave de HKLM entera o un valor; lo que no existe no es un error, un fallo al borrar lo que existe, sí. */
-async function quitarMarca(run, valor) {
+export async function quitarMarca(run, valor) {
   const args = valor ? ['/v', valor] : [];
   const q = await run('reg.exe', ['query', MARCA_HKLM, ...args]);
   if (q.code === 0) await ok(run, 'reg.exe', ['delete', MARCA_HKLM, ...args, '/f']);
@@ -728,7 +736,7 @@ const leerEnvOpcional = (fs, ruta) =>
     throw e;
   });
 
-const normRuta = (p) =>
+export const normRuta = (p) =>
   String(p).replaceAll('\\', '/').replace(/\/+/g, '/').replace(/\/$/, '').toLowerCase();
 
 /**
@@ -741,7 +749,7 @@ const normRuta = (p) =>
  * shortcut: queda una carrera entre el `realpath` y el `readdir` (cambiar una carpeta ya comprobada por una
  * junction); el servicio ya está desinstalado cuando se purga, y solo la ganaría un proceso huérfano suyo.
  */
-async function removeTree(ctx, ruta, conservar = [], padreReal) {
+export async function removeTree(ctx, ruta, conservar = [], padreReal) {
   const { fs } = ctx;
   const raiz = padreReal === undefined;
   const st = await fs.lstat(ruta).catch((e) => {
@@ -838,6 +846,7 @@ export async function uninstallAll({
   lang = 'es',
   sleep,
   timeoutMs,
+  adminDir = adminDirOf(dirname(dataDir)),
 }) {
   if (update) return stopService({ serviceExe, run, sleep, timeoutMs });
   const fallos = [];
@@ -851,7 +860,7 @@ export async function uninstallAll({
     }
   };
   // Antes de quitar nada: la marca de HKLM es lo que dice que la carpeta es de KrakenOS.
-  const esMia = purgeData && (await hayMarca(run, dataDir));
+  const esMia = purgeData && (await hayMarca(run, 'DataDir', dataDir));
 
   await paso('servicio', () => uninstallService({ serviceExe, run, sleep, timeoutMs }));
   await paso('cortafuegos', () =>
@@ -864,6 +873,12 @@ export async function uninstallAll({
   await paso('tarea', () =>
     ok(run, 'powershell.exe', [...PS, `$ErrorActionPreference='Stop'; ${TAREA_RENOVAR}`]),
   );
+  // Las tareas ya cayeron con la carpeta `\KrakenOS`: nada ejecuta ya lo de `bin\`. Solo con la marca de HKLM.
+  await paso('administración', async () => {
+    if (!(await hayMarca(run, 'AdminDir', adminDir))) return;
+    await removeTree({ fs, run }, adminDir);
+    await quitarMarca(run, 'AdminDir');
+  });
   await paso('enlaces', async () => void (await removeLinks?.()));
   // Lo que NSIS no lista (p. ej. una junction plantada) se quita sin seguirla; si algo falló antes, se deja para diagnosticar.
   // Solo en la carpeta propia (`/D=` deja elegir cualquier subcarpeta de Program Files: vaciar `Common Files` no).
@@ -901,6 +916,9 @@ export async function runInstall(d) {
   const envPath = join(dataDir, '.env');
 
   const { caExpuesta } = await prepareDataDir({ dataDir, run, fs });
+  // Carpeta solo de administradores (nada que el servicio pueda modificar): lo que ejecuta SYSTEM al actualizar.
+  const adminDir = d.adminDir ?? adminDirOf(dirname(dataDir));
+  await prepareAdminDir({ adminDir, run, fs });
 
   // Al actualizar se parte del puerto que ya tenía el .env, para no cambiarlo sin motivo.
   const previo = await leerEnvOpcional(fs, envPath);
@@ -933,11 +951,17 @@ export async function runInstall(d) {
   });
   await writeWindowJson({ dataDir, origin, run, fs });
   await registerRenewalTask({ installDir, dataDir, run });
+  const nodeTarea = await installTaskNode({ installDir, adminDir, fs });
   await installService({
     serviceExe,
     run,
-    antesDeArrancar: () =>
-      grantServiceAccess({ dataDir, serviceSid: virtualAccountSid(SERVICE), run }),
+    // El SID del servicio solo resuelve con el servicio instalado y aún sin arrancar.
+    antesDeArrancar: async () => {
+      const serviceSid = virtualAccountSid(SERVICE);
+      await grantServiceAccess({ dataDir, serviceSid, run });
+      await grantStateAccess({ adminDir, serviceSid, run });
+      await registerUpdateTasks({ installDir, adminDir, nodeExe: nodeTarea, serviceSid, run });
+    },
   });
   await waitHealthy(port, d.healthTimeoutMs ?? 120000, get, {
     intervalMs: d.intervalMs,
@@ -955,6 +979,12 @@ export async function runInstall(d) {
     d.version,
     '/f',
   ]);
+  // El .exe que se acaba de ejecutar se guarda para la vuelta atrás: solo con una ruta absoluta a un .exe.
+  if (d.installerPath !== undefined) {
+    if (win32.isAbsolute(d.installerPath) && /\.exe$/i.test(d.installerPath))
+      await keepInstaller({ exePath: d.installerPath, version: d.version, adminDir, fs });
+    else log(`--installer ignorado (no es una ruta absoluta a un .exe): ${d.installerPath}`);
+  }
   log(msg(lang, 'listo', port));
   log(msg(lang, 'tlsListo', origin));
   if (rotada) log(msg(lang, 'caRotada'));

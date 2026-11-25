@@ -571,6 +571,9 @@ function Get-Residuos([string[]]$Thumbs, [switch]$Conservar, [string[]]$Permitir
     if (-not $Conservar) { $r.Add('clave HKLM\SOFTWARE\KrakenOS') }
     elseif ($valores.Count -gt 0) { $r.Add("valores en HKLM\SOFTWARE\KrakenOS: $($valores -join ', ')") }
   }
+  if (Test-Path (Join-Path $env:ProgramData 'KrakenOS-admin')) { $r.Add('carpeta KrakenOS-admin') }
+  if (Test-Path $KrakenKey) { if ((Get-Item $KrakenKey).Property -contains 'AdminDir') { $r.Add('valor AdminDir en HKLM\SOFTWARE\KrakenOS') } }
+  foreach ($n in 'RenovarTLS', 'Actualizar', 'Recuperar') { if (Get-ScheduledTask -TaskPath '\KrakenOS\' -TaskName $n -ErrorAction SilentlyContinue) { $r.Add("tarea \KrakenOS\$n") } }
   if (Test-Path $UninstKey) { $r.Add('entrada de Agregar o quitar programas (HKLM\...\Uninstall\KrakenOS)') }
   if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -ErrorAction SilentlyContinue).KrakenOS) { $r.Add('HKCU\...\Run\KrakenOS') }
   $dir = Join-Path $env:ProgramFiles 'KrakenOS'
@@ -775,7 +778,7 @@ function Phase-Upgrade {
   Assert ((Get-ItemProperty $KrakenKey).CaThumbprint -eq $thumb) 'la CA es la misma (mismo thumbprint en HKLM)'
   Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'hay una sola CA de KrakenOS en Root'
   Assert (@(Get-NetFirewallRule -Group KrakenOS).Count -eq $reglas) "las reglas del cortafuegos no se duplican ($reglas)"
-  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 1) 'hay una sola tarea programada'
+  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 3) 'hay tres tareas programadas (RenovarTLS, Actualizar y Recuperar)'
   Assert (((& sc.exe qfailure KrakenOS) -join "`n") -match 'RESTART') 'la actualización reinstaló el servicio: vuelven las acciones ante fallo del XML'
   $nm = Join-Path $dir 'app\agent\node_modules'
   $rotos = @(Get-ChildItem $nm -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue | Where-Object { $_.LinkType -and -not (Test-Path -LiteralPath $_.FullName) })
@@ -791,7 +794,7 @@ function Phase-Upgrade {
   Assert (Wait-Health (Get-PuertoDatos) 90) '/health/ready da 200 tras reinstalar la misma versión'
   Assert ((Get-RootKraken).Count -eq 1 -and (Get-RootKraken)[0].Thumbprint -eq $thumb) 'sigue habiendo una sola CA, la misma'
   Assert (@(Get-NetFirewallRule -Group KrakenOS).Count -eq $reglas) 'las reglas no se duplican al reinstalar la misma versión'
-  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 1) 'sigue habiendo una sola tarea programada'
+  Assert (@(Get-ScheduledTask -TaskPath '\KrakenOS\').Count -eq 3) 'siguen siendo tres las tareas programadas'
 }
 
 # Lo que ya había en Program Files y ProgramData con «kraken» en el nombre (nada, en un runner limpio).

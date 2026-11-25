@@ -62,19 +62,23 @@ function fakeRun(
     const salida = Object.keys(stdouts).find((k) => linea.includes(k));
     // Lectura de la ACL por SID: la de un despliegue bueno (SYSTEM y Administradores, y el servicio si ya se le dio).
     let lectura = '';
+    // El registro de las tareas de actualización lee de vuelta la DACL que se pidió: un registro perfecto.
+    if (cmd === 'powershell.exe' && linea.includes('RegisterTask'))
+      return { code: 0, stdout: `SDDL:${o?.env?.KR_SDDL}` };
     if (cmd === 'powershell.exe') {
       const dir = /GetAccessControl\('([^']*)'\)/.exec(linea)?.[1] ?? '';
       const ajeno = opt.dueno && !conDueno.has(dir) ? opt.dueno : 'S-1-5-32-544';
       lectura = [
         `OWNER:${ajeno}`,
-        ...(abierta && !rehechas.has(dir)
+        // Las subcarpetas de KrakenOS-admin heredan de su raíz, que ya es solo de administradores.
+        ...(abierta && !rehechas.has(dir) && !/KrakenOS-admin[\\/]/.test(dir)
           ? ['S-1-5-32-545|ReadAndExecute, Synchronize|Allow|True']
           : []),
         'S-1-5-18|FullControl|Allow|False',
         'S-1-5-32-544|FullControl|Allow|False',
         ...(conServicio.has(dir)
           ? [
-              ...(/tls$/.test(dir)
+              ...(/(tls|estado)$/.test(dir)
                 ? [`${conServicio.get(dir)}|ReadAndExecute, Synchronize|Allow|False`]
                 : [
                     `${conServicio.get(dir)}|Modify, Synchronize|Allow|False`,
@@ -125,6 +129,11 @@ function fakeFs(events: Ev[], nodos: Record<string, Nodo> = {}) {
       events.push(`mkdir${o?.recursive ? ' -p' : ''} ${p}`);
       if (!o?.recursive && nodos[p]) throw Object.assign(new Error('EEXIST'), { code: 'EEXIST' });
       if (!nodos[p]) nodos[p] = { kind: 'dir', entries: [] };
+    },
+    copyFile: async (a: string, b: string) => {
+      events.push(`copy ${a} ${b}`);
+      if (!nodos[a]) throw enoent();
+      nodos[b] = { ...(nodos[a] as Nodo) };
     },
     rename: async (a: string, b: string) => {
       events.push(`rename ${a} ${b}`);
@@ -1193,6 +1202,7 @@ describe('runInstall', () => {
     const ev: Ev[] = [];
     const nodos: Record<string, Nodo> = {
       [xmlPath]: { kind: 'file', text: '<env name="PORT" value="3001"/>' },
+      [join(INST, 'node', 'node.exe')]: { kind: 'file', text: 'NODO' },
     };
     if (opts.envPrevio) {
       nodos[DATOS] = { kind: 'dir', entries: ['.env'] };
@@ -1270,6 +1280,35 @@ describe('runInstall', () => {
     expect(i(' install')).toBeLessThan(i('/grant:r *S-1-5-80'));
     expect(i('/grant:r *S-1-5-80')).toBeLessThan(i(' start'));
     expect(r.port).toBe(3001);
+  });
+
+  it('actualización desde la app: KrakenOS-admin antes del .env; estado y tareas en antesDeArrancar, tras el SID; el .exe se guarda tras Version', async () => {
+    const { ev, deps, nodos } = montar();
+    const exe = join('C:', 'Users', 'x', 'KrakenOS-Setup-1.2.3-x64.exe');
+    nodos[exe] = { kind: 'file', text: 'EXE' };
+    await runInstall({ ...deps, installerPath: exe });
+    const i = (s: string) => ev.findIndex((l) => l.includes(s));
+    const admin = join('C:', 'ProgramData', 'KrakenOS-admin');
+    expect(i(`SetAccessControl('${admin}'`)).toBeLessThan(i('ensureEnv'));
+    expect(i(`/v AdminDir`)).toBeLessThan(i('ensureEnv'));
+    expect(i('node-')).toBeGreaterThan(i('schtasks'));
+    expect(i('node-')).toBeLessThan(i(' install'));
+    const grant = i('/grant:r *S-1-5-80');
+    expect(i(`${join(admin, 'estado')} /grant:r`)).toBeGreaterThan(grant);
+    expect(i("RegisterTask('Actualizar'")).toBeGreaterThan(i(`${join(admin, 'estado')} /grant:r`));
+    expect(i("RegisterTask('Recuperar'")).toBeGreaterThan(i("RegisterTask('Actualizar'"));
+    expect(i("RegisterTask('Recuperar'")).toBeLessThan(i(' start'));
+    expect(i(`copy ${exe}`)).toBeGreaterThan(i('/v Version'));
+  });
+
+  it('--installer que no es una ruta absoluta a un .exe se ignora con un aviso', async () => {
+    for (const installerPath of ['KrakenOS-Setup.exe', 'C:\\x\\setup.msi']) {
+      const { ev, deps } = montar();
+      const lineas: string[] = [];
+      await runInstall({ ...deps, installerPath, log: (l: string) => lineas.push(l) });
+      expect(ev.some((l) => l.startsWith('copy') && l.includes(installerPath))).toBe(false);
+      expect(lineas.some((l) => l.includes('--installer ignorado'))).toBe(true);
+    }
   });
 
   it('un .env que existe pero no se puede leer (EBUSY) hace fallar la instalación y no se reescribe; solo ENOENT cuenta como «no hay»', async () => {
@@ -1556,6 +1595,7 @@ describe('runInstall: cortafuegos, red y energía', () => {
         text: '<env name="PORT" value="3001"/>',
       },
       [join(DATOS, '.env')]: { kind: 'file', text: envPrevio },
+      [join(INST, 'node', 'node.exe')]: { kind: 'file', text: 'NODO' },
     };
     const base = fakeRun(
       ev,
@@ -1715,7 +1755,7 @@ describe('installer-hooks.nsh (servicio)', () => {
     expect(m).toMatch(
       /\$\{If\} \$\{Silent\}\s+StrCpy \$R7 ""\s+\$\{Else\}\s+StrCpy \$R7 " --interactive"/,
     );
-    expect(m).toMatch(/install --lang \$R8 --version \${VERSION}\$R7'/);
+    expect(m).toMatch(/install --lang \$R8 --version \${VERSION}\$R7 --installer "\$EXEPATH"'/);
   });
 
   it('PREINSTALL para el servicio previo y aborta si no puede', () => {
