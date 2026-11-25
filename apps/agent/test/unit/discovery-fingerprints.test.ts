@@ -1,9 +1,6 @@
+import { isPrivateIpv4 } from '../../src/net/private-ipv4.js';
 import { describe, expect, it } from 'vitest';
-import {
-  isPrivateIpv4,
-  matchFingerprints,
-  type DiscoveryProbeRecord,
-} from '../../src/discovery/fingerprints.js';
+import { matchFingerprints, type DiscoveryProbeRecord } from '../../src/discovery/fingerprints.js';
 
 const mdns = (
   over: Partial<Extract<DiscoveryProbeRecord, { type: 'mdns' }>> = {},

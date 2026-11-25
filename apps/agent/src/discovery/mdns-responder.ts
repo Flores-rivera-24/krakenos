@@ -7,6 +7,7 @@
  */
 import type { MdnsResponderStatus } from '@krakenos/types';
 import type { NetworkInterfaceInfo } from 'node:os';
+import { isPrivateIpv4 } from '../net/private-ipv4.js';
 import { encodeName, readName } from './dns.js';
 import { MDNS_GROUP, MDNS_PORT } from './transport.js';
 
@@ -34,12 +35,6 @@ export interface ResponderSocket {
   /** Vuelve a unirse al grupo por las interfaces actuales (la red cambió). */
   refresh?(): void;
   close(): Promise<void>;
-}
-
-function privateV4(ip: string): boolean {
-  const p = ip.split('.').map(Number);
-  const [a, b] = [p[0] ?? -1, p[1] ?? -1];
-  return a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
 function v4Int(ip: string): number {
@@ -77,7 +72,7 @@ export function sourceOnLink(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>, from: 
 /** IPv4 de la interfaz privada cuya subred contiene a `from`; `undefined` si ninguna. */
 function viaFor(ifaces: NodeJS.Dict<NetworkInterfaceInfo[]>, from: string): string | undefined {
   return externalNics(ifaces).find(
-    (i) => i.family === 'IPv4' && privateV4(i.address) && subnetContains(i, from),
+    (i) => i.family === 'IPv4' && isPrivateIpv4(i.address) && subnetContains(i, from),
   )?.address;
 }
 
@@ -90,7 +85,7 @@ export function addressesFromInterfaces(
   from?: string,
 ): Ips {
   const valid = (i: NetworkInterfaceInfo) =>
-    (i.family === 'IPv4' && privateV4(i.address)) ||
+    (i.family === 'IPv4' && isPrivateIpv4(i.address)) ||
     (i.family === 'IPv6' && /^f[cd][0-9a-f]{2}:/i.test(i.address));
   const all = externalNics(ifaces).filter(valid);
   const near = from ? all.filter((i) => subnetContains(i, from)) : [];

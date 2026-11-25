@@ -6,18 +6,14 @@
 import { networkInterfaces } from 'node:os';
 import type { Socket } from 'node:dgram';
 import type { ResponderSocket } from './mdns-responder.js';
+import { isPrivateIpv4 } from '../net/private-ipv4.js';
 import { MDNS_GROUP, MDNS_PORT } from './transport.js';
 
 /** IPv4 privadas de interfaces externas: por ahí nos unimos al grupo. */
 function privateV4Nics(): string[] {
   return Object.values(networkInterfaces())
     .flatMap((l) => l ?? [])
-    .filter(
-      (i) =>
-        !i.internal &&
-        i.family === 'IPv4' &&
-        /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(i.address),
-    )
+    .filter((i) => !i.internal && i.family === 'IPv4' && isPrivateIpv4(i.address))
     .map((i) => i.address);
 }
 
