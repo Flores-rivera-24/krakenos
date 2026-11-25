@@ -491,8 +491,9 @@ describe('rutas de sistema', () => {
     // La integración aparece pero solo con qué secretos hay puestos (no el valor).
     const dns = bundle.integrations.find((i: { domain: string }) => i.domain === 'dns');
     expect(dns.secretsSet).toContain('password');
-    expect(dns.config).not.toHaveProperty('password');
-    expect(dns.config.baseUrl).toBe('http://192.168.1.2'); // lo no secreto sí aparece
+    expect(dns).not.toHaveProperty('config');
+    expect(raw).not.toContain('192.168.1.2'); // ni lo no secreto: el bundle sale de casa
+    expect(dns.source).toBe('db');
     // Ajustes sin claves PII.
     expect(bundle.settings).not.toHaveProperty('homeName');
     expect(bundle.settings).not.toHaveProperty('homeLatitude');

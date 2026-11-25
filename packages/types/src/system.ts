@@ -324,12 +324,12 @@ export interface SupportBundle {
   driverKind: string;
   /** Ajustes editables SIN los de PII (nombre/ubicación del hogar omitidos). */
   settings: Record<string, string>;
-  /** Integraciones por dominio con secretos redactados (solo qué claves hay). */
+  /** Integraciones por dominio SIN valores de config (ni IP, usuario ni correo): sale de casa. */
   integrations: {
     domain: string;
     kind: string;
     enabled: boolean;
-    config: Record<string, string>;
+    source: 'db' | 'env' | 'default';
     secretsSet: string[];
   }[];
   metrics: MetricsSnapshot;

@@ -129,9 +129,9 @@ export class SupportService {
         domain: i.domain,
         kind: i.kind,
         enabled: i.enabled,
-        // `config` de `IntegrationConfigInfo` ya viene SIN secretos; `secretsSet`
-        // solo lista qué claves hay puestas (nunca su valor).
-        config: Object.fromEntries(Object.entries(i.config).map(([k, v]) => [k, String(v)])),
+        source: i.source,
+        // El bundle sale de casa (un issue público): ni IP, ni usuario, ni correo; solo qué
+        // claves secretas hay puestas (nunca su valor). Los valores no secretos también son datos.
         secretsSet: i.secretsSet,
       })),
       metrics: this.deps.metrics(),
