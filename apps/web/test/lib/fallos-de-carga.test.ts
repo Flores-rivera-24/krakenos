@@ -49,9 +49,9 @@ const EXCEPCIONES: Record<string, { cuantas: number; porque: string }> = {
     porque: 'si `/setup/status` falla, quedarse en el login es lo correcto; no hay nada que pintar',
   },
   'components/cameras/CameraLivePlayer.tsx': {
-    cuantas: 3,
+    cuantas: 5,
     porque:
-      '`video.play()` rechazado por la política de autoplay y `stopStream` de cortesía al desmontar; ninguno es una lectura',
+      '`video.play()` rechazado por la política de autoplay y `stopStream` de cortesía (al desmontar o al resolver un arranque ya cancelado); ninguno es una lectura',
   },
   'components/dashboard/GettingStarted.tsx': {
     cuantas: 1,

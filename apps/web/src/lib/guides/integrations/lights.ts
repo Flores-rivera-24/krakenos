@@ -30,14 +30,14 @@ const hue: IntegrationGuide = {
       external: true,
     },
     {
-      title: 'Autoriza a KrakenOS con el botón del bridge',
-      body: 'Para que KrakenOS controle tus luces, el bridge tiene que darle permiso una vez. En este paso, pulsa el botón redondo grande del bridge y luego confirma en la app: KrakenOS obtendrá una "clave de aplicación" que guarda para no tener que repetir el permiso.',
-      note: 'Tras pulsar el botón tienes unos 30 segundos para confirmar. Si se pasa el tiempo, vuelve a intentarlo.',
+      title: 'Consigue la clave de aplicación del bridge',
+      body: 'KrakenOS todavía no obtiene la clave por ti: la generas tú una vez. Pulsa el botón redondo grande del bridge y, en menos de 30 segundos, ejecuta desde un equipo de tu red: un POST a https://IP-DEL-BRIDGE/api con el cuerpo {"devicetype":"krakenos#casa"} (por ejemplo, con curl -k). La respuesta trae un campo "username": esa es la clave de aplicación. Pégala en el campo de abajo.',
+      note: 'Si la respuesta es un error de tipo 101, no pulsaste el botón a tiempo: vuelve a intentarlo.',
       external: true,
     },
     {
       title: 'Guarda y prueba',
-      body: 'Una vez autorizado, tus focos Hue aparecen en la pantalla de dispositivos. Prueba a encender, apagar, subir el brillo y cambiar el color. Si algo no responde, revisa que la dirección del bridge sea correcta.',
+      body: 'Con la clave guardada, tus focos Hue aparecen en la pantalla de dispositivos. Prueba a encender, apagar, subir el brillo y cambiar el color. Si algo no responde, revisa que la dirección del bridge sea correcta.',
     },
   ],
   fields: [
@@ -52,7 +52,7 @@ const hue: IntegrationGuide = {
     {
       key: 'appKey',
       label: 'Clave de aplicación',
-      help: 'La llave que genera el bridge al pulsar su botón. Si el asistente la obtiene por ti al autorizar, no tienes que escribir nada. Se guarda cifrada.',
+      help: 'La llave que genera el bridge cuando la pides con su botón pulsado (mira el paso anterior). Se guarda cifrada.',
       type: 'password',
       required: true,
       secret: true,
@@ -60,8 +60,8 @@ const hue: IntegrationGuide = {
   ],
   troubleshooting: [
     {
-      q: 'Al autorizar me dice que no pulsé el botón a tiempo.',
-      a: 'Pulsa el botón redondo del bridge e, inmediatamente después (menos de 30 segundos), confirma en la app. Si tardas, el bridge rechaza la petición y hay que repetir.',
+      q: 'Al pedir la clave me responde un error 101.',
+      a: 'Pulsa el botón redondo del bridge e, inmediatamente después (menos de 30 segundos), repite la petición. Si tardas, el bridge la rechaza y hay que repetir.',
     },
     {
       q: 'No aparecen mis bombillas.',

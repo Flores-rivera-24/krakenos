@@ -63,6 +63,8 @@ export class HttpError extends Error {
  * y se invaliden entre sí. Es a nivel de módulo (el store es singleton).
  */
 let refreshInFlight: Promise<boolean> | null = null;
+/** Sube con cada logout: un refresh que arrancó antes no puede escribir tokens después de salir. */
+let epocaSesion = 0;
 
 /**
  * Petición directa con fetch para evitar dependencia circular con `lib/api`.
@@ -125,13 +127,16 @@ export const useAuthStore = create<AuthState>()((set) => ({
   refresh: async () => {
     // Si ya hay un refresco en vuelo, reutiliza su promesa (single-flight, US-56).
     if (refreshInFlight) return refreshInFlight;
+    const epoca = epocaSesion;
     refreshInFlight = (async () => {
       try {
         // Sin cuerpo: el refresh token viaja en la cookie httpOnly (US-91).
         const tokens = await postJson<AuthTokens>('/auth/refresh');
+        if (epoca !== epocaSesion) return false;
         set({ tokens, lastRefreshFailure: null });
         return true;
       } catch (err) {
+        if (epoca !== epocaSesion) return false;
         const motivo = clasificarFalloDeRefresh(err);
         // US-234 (AUD3-25): SOLO se borra la sesión si el agente dijo que no vale.
         // Antes el `catch` era ciego y un `HttpError(0)` limpiaba el store igual
@@ -154,6 +159,7 @@ export const useAuthStore = create<AuthState>()((set) => ({
   },
 
   logout: async () => {
+    epocaSesion++;
     // El servidor revoca el refresh de la cookie y la borra.
     await postJson('/auth/logout').catch(() => undefined);
     set({ user: null, tokens: null, lastRefreshFailure: null });

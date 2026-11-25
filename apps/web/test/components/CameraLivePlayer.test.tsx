@@ -74,6 +74,22 @@ describe('CameraLivePlayer (US-185)', () => {
     await waitFor(() => expect(camerasMock.stopStream).toHaveBeenCalledWith('cam-1'));
   });
 
+  it('si se cierra con startStream en vuelo, detiene el stream cuando éste resuelve', async () => {
+    let resolver: (v: unknown) => void = () => {};
+    camerasMock.startStream.mockReturnValue(
+      new Promise((res) => {
+        resolver = res;
+      }),
+    );
+    const { unmount } = render(<CameraLivePlayer camera={CAM} />);
+    await waitFor(() => expect(camerasMock.startStream).toHaveBeenCalled());
+    unmount();
+    expect(camerasMock.stopStream).not.toHaveBeenCalled();
+
+    resolver({ cameraId: 'cam-1', startedAt: '', token: 'tok', expiresIn: 300 });
+    await waitFor(() => expect(camerasMock.stopStream).toHaveBeenCalledWith('cam-1'));
+  });
+
   it('muestra un mensaje claro cuando se alcanza el límite de streams (429)', async () => {
     camerasMock.startStream.mockRejectedValue(
       new FakeApiError(429, { code: 'STREAM_LIMIT_REACHED', message: 'x' }),
