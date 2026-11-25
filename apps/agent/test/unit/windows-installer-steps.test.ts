@@ -9,7 +9,7 @@ import { ensureLocalCa } from '../../src/crypto/local-ca.js';
 import { setKey } from '../../../../scripts/package/launchers/first-run.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
-import { activeNetwork, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, uninstallAll, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
+import { activeNetwork, entornoSeguro, grantServiceAccess, installService, localHostname, offerPrivateNetwork, openFirewall, pickPort, prepareDataDir, readSetupToken, registerRenewalTask, runInstall, setupTls, showDialog, stopService, uninstallAll, virtualAccountSid, waitHealthy, withXmlPort, writeWindowJson } from '../../../../packaging/windows/installer/steps.mjs';
 // prettier-ignore
 // @ts-expect-error — script de utilidad en JS puro (fuera del tsconfig del agente).
 import { renew } from '../../../../packaging/windows/installer/renew-tls.mjs';
@@ -629,6 +629,26 @@ describe('installService', () => {
     await expect(
       installService({ serviceExe: exe, run: eterno, sleep: async () => {} }),
     ).rejects.toThrow(/marcado para borrarse|sigue registrado/);
+  });
+
+  it.each([
+    ['config', 'sc.exe config'],
+    ['sidtype', 'sc.exe sidtype'],
+  ])(
+    'si falla `sc %s`, da de baja el servicio (nunca queda como LocalSystem) y no arranca',
+    async (_n, fallo) => {
+      const ev: Ev[] = [];
+      const run = fakeRun(ev, { 'sc.exe query': 1060, [fallo]: 5 });
+      await expect(installService({ serviceExe: exe, run })).rejects.toThrow(/sc\.exe/);
+      expect(ev.at(-1)).toBe(`${exe} uninstall`);
+      expect(ev.some((l) => l.endsWith(' start'))).toBe(false);
+    },
+  );
+
+  it('si la baja de limpieza también falla, el error que sale es el original', async () => {
+    const ev: Ev[] = [];
+    const run = fakeRun(ev, { 'sc.exe query': 1060, 'sc.exe config': 5, ' uninstall': 1 });
+    await expect(installService({ serviceExe: exe, run })).rejects.toThrow(/sc\.exe config/);
   });
 
   it('un fallo de WinSW aborta con el comando en el mensaje', async () => {
@@ -1721,6 +1741,15 @@ describe('installer-hooks.nsh (servicio)', () => {
     }
   });
 
+  it('PREINSTALL y PREUNINSTALL limpian NODE_OPTIONS ANTES de lanzar el primer node.exe elevado', () => {
+    expect(macro('KR_LIMPIAR_ENTORNO_NODE')).toMatch(/"NODE_OPTIONS", p 0/);
+    for (const n of ['NSIS_HOOK_PREINSTALL', 'NSIS_HOOK_PREUNINSTALL']) {
+      const m = macro(n);
+      expect(m).toContain('!insertmacro KR_LIMPIAR_ENTORNO_NODE');
+      expect(m.indexOf('KR_LIMPIAR_ENTORNO_NODE')).toBeLessThan(m.indexOf('node.exe'));
+    }
+  });
+
   it('el Abort de POSTINSTALL remite al log de Program Files, que se lee sin elevar, no a la carpeta de datos', () => {
     const m = macro('NSIS_HOOK_POSTINSTALL');
     expect(m).toContain('install-error.log');
@@ -2316,5 +2345,18 @@ describe('installer-hooks.nsh (desinstalar)', () => {
     expect(sub).toMatch(/uninstallAll/);
     expect(sub).toMatch(/--purge-data/);
     expect(sub).toMatch(/--update/);
+  });
+});
+
+describe('entornoSeguro', () => {
+  it('quita todo NODE_* (cargan código) sin distinguir mayúsculas y deja el resto', () => {
+    const e = entornoSeguro({
+      NODE_OPTIONS: '--require C:\\x.js',
+      Node_Path: 'C:\\x',
+      NODE_EXTRA_CA_CERTS: 'C:\\ca.pem',
+      ProgramData: 'C:\\ProgramData',
+      PATH: 'C:\\Windows',
+    });
+    expect(e).toEqual({ ProgramData: 'C:\\ProgramData', PATH: 'C:\\Windows' });
   });
 });

@@ -3,7 +3,7 @@
  * con el Node empaquetado, desde `Program Files\KrakenOS\installer`. Sale con código distinto de 0
  * y un mensaje ante cualquier fallo: nada de instalación a medias en silencio.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import { get as httpGet } from 'node:http';
@@ -13,7 +13,14 @@ import { hostname } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { msg } from './mensajes.mjs';
-import { readSetupToken, runInstall, showDialog, stopService, uninstallAll } from './steps.mjs';
+import {
+  entornoSeguro,
+  readSetupToken,
+  runInstall,
+  showDialog,
+  stopService,
+  uninstallAll,
+} from './steps.mjs';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const INSTALL_DIR = join(AQUI, '..');
@@ -24,7 +31,7 @@ function run(cmd, args, opciones = {}) {
     const p = spawn(cmd, args, {
       cwd: INSTALL_DIR,
       windowsHide: true,
-      env: { ...process.env, ...opciones.env },
+      env: { ...entornoSeguro(process.env), ...opciones.env },
     });
     let stdout = '';
     p.stdout.on('data', (c) => (stdout += c));
@@ -114,7 +121,20 @@ async function main() {
         hostname: hostname(),
         setKey,
         ensureEnv: (d) => ensureEnv(d, join(INSTALL_DIR, 'app', 'agent', '.env.example')),
-        ensureKeys: (d) => ensureKeys(d, join(INSTALL_DIR, 'app', 'agent', 'dist', 'keys.js')),
+        // `cwd` en el instalador (solo admin escribe) y no en la carpeta de datos, que el servicio puede modificar;
+        // keys.js saca la ruta de los datos de KRAKENOS_DATA_DIR, no del directorio actual.
+        ensureKeys: (d) =>
+          ensureKeys(
+            d,
+            join(INSTALL_DIR, 'app', 'agent', 'dist', 'keys.js'),
+            (cmd, args) =>
+              spawnSync(cmd, args, {
+                cwd: INSTALL_DIR,
+                env: entornoSeguro(process.env),
+                stdio: 'inherit',
+                windowsHide: true,
+              }).status ?? 1,
+          ),
         log: (l) => console.log(l),
         interactive,
         ask: (text, title) => showDialog({ run, title, text, yesNo: true }),

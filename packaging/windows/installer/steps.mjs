@@ -24,6 +24,15 @@ export function virtualAccountSid(nombre) {
   return `S-1-5-80-${partes.join('-')}`;
 }
 
+/**
+ * Entorno para los `node` hijos del proceso elevado: sin `NODE_*` (`NODE_OPTIONS=--require …`,
+ * `NODE_PATH`, `NODE_EXTRA_CA_CERTS`…), que vienen del usuario que aceptó el UAC y cargan código o
+ * confianza ajenos. Windows no distingue mayúsculas en los nombres.
+ */
+export function entornoSeguro(env) {
+  return Object.fromEntries(Object.entries(env).filter(([k]) => !/^NODE_/i.test(k)));
+}
+
 /** Código de estado de `sc query` (1 STOPPED, 4 RUNNING): el texto va traducido, el número no. */
 const estado = (stdout) => Number(/:\s*([1-7])\s+\S+/.exec(stdout)?.[1] ?? 0);
 
@@ -318,8 +327,15 @@ export async function installService({ serviceExe, run, antesDeArrancar, sleep =
     }
   }
   await ok(run, serviceExe, ['install']);
-  await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
-  await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
+  try {
+    await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
+    await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
+  } catch (e) {
+    // WinSW lo registra como LocalSystem y en automático: sin la cuenta virtual, el siguiente arranque
+    // correría el agente como SYSTEM. Se da de baja (aún no arrancó) y se relanza el error original.
+    await run(serviceExe, ['uninstall']).catch(() => {});
+    throw e;
+  }
   await antesDeArrancar?.();
   await ok(run, serviceExe, ['start']);
 }
