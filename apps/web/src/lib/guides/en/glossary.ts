@@ -194,6 +194,6 @@ export const GLOSSARY_EN: GlossaryTranslations = {
     term: 'Application key',
     short:
       'A key a device (like the Hue bridge) hands you the first time so an app can control it.',
-    long: 'For KrakenOS to control your Hue lights, the bridge has to grant it permission once. You press the physical button on the bridge, request the key with a call to its API (docs/hue-setup.md) and paste it into KrakenOS, which stores it encrypted.',
+    long: 'For KrakenOS to control your Hue lights, the bridge has to grant it permission once. You press the physical button on the bridge, request the key with a call to its API and paste it into KrakenOS, which stores it encrypted.',
   },
 };

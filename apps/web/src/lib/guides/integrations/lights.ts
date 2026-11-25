@@ -31,7 +31,7 @@ const hue: IntegrationGuide = {
     },
     {
       title: 'Consigue la clave de aplicación del bridge',
-      body: 'KrakenOS todavía no obtiene la clave por ti: la generas tú una vez. Pulsa el botón redondo grande del bridge y, en menos de 30 segundos, ejecuta desde un equipo de tu red la petición que explica docs/hue-setup.md (un POST a https://IP-DEL-BRIDGE/api). La respuesta trae un campo "username": esa es la clave de aplicación. Pégala en el campo de abajo.',
+      body: 'KrakenOS todavía no obtiene la clave por ti: la generas tú una vez. Pulsa el botón redondo grande del bridge y, en menos de 30 segundos, ejecuta desde un equipo de tu red: un POST a https://IP-DEL-BRIDGE/api con el cuerpo {"devicetype":"krakenos#casa"} (por ejemplo, con curl -k). La respuesta trae un campo "username": esa es la clave de aplicación. Pégala en el campo de abajo.',
       note: 'Si la respuesta es un error de tipo 101, no pulsaste el botón a tiempo: vuelve a intentarlo.',
       external: true,
     },

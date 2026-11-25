@@ -216,7 +216,7 @@ export const GLOSSARY: Record<string, GlossaryEntry> = {
     term: 'Application key (clave de aplicación)',
     short:
       'Una llave que un aparato (como el bridge de Hue) te entrega la primera vez para que una app pueda controlarlo.',
-    long: 'Para que KrakenOS controle tus luces Hue, el bridge tiene que darle permiso una vez. Pulsas el botón físico del bridge, pides la clave con una petición a su API (docs/hue-setup.md) y la pegas en KrakenOS, que la guarda cifrada.',
+    long: 'Para que KrakenOS controle tus luces Hue, el bridge tiene que darle permiso una vez. Pulsas el botón físico del bridge, pides la clave con una petición a su API y la pegas en KrakenOS, que la guarda cifrada.',
   },
 };
 

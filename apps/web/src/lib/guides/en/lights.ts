@@ -23,7 +23,7 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
       },
       {
         title: 'Get the bridge’s application key',
-        body: 'KrakenOS does not fetch the key for you yet: you generate it once. Press the large round button on the bridge and, within 30 seconds, run from a computer on your network the request described in docs/hue-setup.md (a POST to https://BRIDGE-IP/api). The response has a “username” field: that is the application key. Paste it in the field below.',
+        body: 'KrakenOS does not fetch the key for you yet: you generate it once. Press the large round button on the bridge and, within 30 seconds, run from a computer on your network: a POST to https://BRIDGE-IP/api with the body {"devicetype":"krakenos#home"} (for example, with curl -k). The response has a “username” field: that is the application key. Paste it in the field below.',
         note: 'If the response is a type 101 error, you did not press the button in time: try again.',
       },
       {
