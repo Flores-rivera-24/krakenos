@@ -138,3 +138,15 @@ describe('.dockerignore no puede tragarse código fuente (US-231 · AUD3-33)', (
     expect(sospechosas).toEqual([]);
   });
 });
+
+describe('docker.yml — permisos mínimos', () => {
+  const wf = readFileSync(`${ROOT}.github/workflows/docker.yml`, 'utf8');
+
+  it('declara un token de solo lectura a nivel de workflow', () => {
+    expect(wf).toMatch(/^permissions:\n {2}contents: read\n/m);
+  });
+
+  it('solo el job que publica en GHCR escribe paquetes', () => {
+    expect(wf.match(/^\s+packages: write$/gm)).toHaveLength(1);
+  });
+});

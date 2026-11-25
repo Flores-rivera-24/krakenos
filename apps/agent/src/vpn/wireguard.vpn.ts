@@ -13,11 +13,11 @@ import type { PeerStore, StoredPeer } from './peer-store.js';
 import {
   buildClientConfig,
   nextAddress,
-  parseWgDump,
+  parseWgHandshakes,
   wgQuickSaveArgs,
   wgSetAddPeerArgs,
   wgSetRemovePeerArgs,
-  wgShowDumpArgs,
+  wgShowLatestHandshakesArgs,
   wgShowPublicKeyArgs,
   wireguardKeypair,
 } from './wireguard.helpers.js';
@@ -64,8 +64,10 @@ export class WireguardVpnManager implements VpnManager {
   /** Handshakes en vivo por clave pública; vacío si la interfaz no responde. */
   private async liveHandshakes(): Promise<Map<string, number>> {
     try {
-      const { stdout } = await this.opts.runner.run(wgShowDumpArgs(this.opts.interface));
-      return new Map(parseWgDump(stdout).peers.map((p) => [p.publicKey, p.latestHandshake]));
+      const { stdout } = await this.opts.runner.run(
+        wgShowLatestHandshakesArgs(this.opts.interface),
+      );
+      return parseWgHandshakes(stdout);
     } catch {
       return new Map();
     }

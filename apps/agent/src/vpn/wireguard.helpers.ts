@@ -44,43 +44,14 @@ export function buildClientConfig(opts: ClientConfigOptions): string {
   ].join('\n');
 }
 
-/** Peer tal como aparece en `wg show <iface> dump`. */
-export interface WgPeerDump {
-  publicKey: string;
-  allowedIps: string;
-  /** Último handshake en segundos unix; `0` = nunca. */
-  latestHandshake: number;
-}
-
-export interface WgDump {
-  publicKey: string | null;
-  listenPort: number | null;
-  peers: WgPeerDump[];
-}
-
-/**
- * Parsea la salida de `wg show <iface> dump`. La primera línea describe la
- * interfaz (clave privada, pública, puerto, fwmark) y el resto son peers.
- */
-export function parseWgDump(text: string): WgDump {
-  const lines = text.split('\n').filter((l) => l.trim() !== '');
-  if (lines.length === 0) return { publicKey: null, listenPort: null, peers: [] };
-
-  const [, publicKey, listenPort] = lines[0]!.split('\t');
-  const peers: WgPeerDump[] = lines.slice(1).map((line) => {
-    const f = line.split('\t');
-    return {
-      publicKey: f[0] ?? '',
-      allowedIps: f[3] ?? '',
-      latestHandshake: Number(f[4] ?? 0) || 0,
-    };
-  });
-
-  return {
-    publicKey: publicKey || null,
-    listenPort: listenPort ? Number(listenPort) : null,
-    peers,
-  };
+/** Parsea `wg show <iface> latest-handshakes` (`clave\tsegundos unix`; `0` = nunca) a un mapa por clave pública. */
+export function parseWgHandshakes(text: string): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const line of text.split('\n')) {
+    const [key, ts] = line.split('\t');
+    if (key?.trim()) out.set(key, Number(ts ?? 0) || 0);
+  }
+  return out;
 }
 
 /**
@@ -106,11 +77,12 @@ export function nextAddress(subnetCidr: string, usedIps: string[]): string {
 // el servidor, así ningún valor sin verificar (p. ej. del peer-store en disco o de
 // una variable de entorno) puede llegar a `wg`/`wg-quick` con una bandera inyectada.
 
-export const wgShowDumpArgs = (iface: string): string[] => [
+// Nunca `dump`: incluye la clave PRIVADA del servidor y las precompartidas.
+export const wgShowLatestHandshakesArgs = (iface: string): string[] => [
   'wg',
   'show',
   assertInterfaceName(iface),
-  'dump',
+  'latest-handshakes',
 ];
 
 export const wgShowPublicKeyArgs = (iface: string): string[] => [
