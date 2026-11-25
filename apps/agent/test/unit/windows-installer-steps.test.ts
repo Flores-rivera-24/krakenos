@@ -631,6 +631,26 @@ describe('installService', () => {
     ).rejects.toThrow(/marcado para borrarse|sigue registrado/);
   });
 
+  it.each([
+    ['config', 'sc.exe config'],
+    ['sidtype', 'sc.exe sidtype'],
+  ])(
+    'si falla `sc %s`, da de baja el servicio (nunca queda como LocalSystem) y no arranca',
+    async (_n, fallo) => {
+      const ev: Ev[] = [];
+      const run = fakeRun(ev, { 'sc.exe query': 1060, [fallo]: 5 });
+      await expect(installService({ serviceExe: exe, run })).rejects.toThrow(/sc\.exe/);
+      expect(ev.at(-1)).toBe(`${exe} uninstall`);
+      expect(ev.some((l) => l.endsWith(' start'))).toBe(false);
+    },
+  );
+
+  it('si la baja de limpieza también falla, el error que sale es el original', async () => {
+    const ev: Ev[] = [];
+    const run = fakeRun(ev, { 'sc.exe query': 1060, 'sc.exe config': 5, ' uninstall': 1 });
+    await expect(installService({ serviceExe: exe, run })).rejects.toThrow(/sc\.exe config/);
+  });
+
   it('un fallo de WinSW aborta con el comando en el mensaje', async () => {
     const ev: Ev[] = [];
     const run = fakeRun(ev, { 'sc.exe query': 1060, ' install': 1 });

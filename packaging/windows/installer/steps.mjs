@@ -318,8 +318,15 @@ export async function installService({ serviceExe, run, antesDeArrancar, sleep =
     }
   }
   await ok(run, serviceExe, ['install']);
-  await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
-  await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
+  try {
+    await ok(run, 'sc.exe', ['config', SERVICE, 'obj=', `NT SERVICE\\${SERVICE}`]);
+    await ok(run, 'sc.exe', ['sidtype', SERVICE, 'unrestricted']);
+  } catch (e) {
+    // WinSW lo registra como LocalSystem y en automático: sin la cuenta virtual, el siguiente arranque
+    // correría el agente como SYSTEM. Se da de baja (aún no arrancó) y se relanza el error original.
+    await run(serviceExe, ['uninstall']).catch(() => {});
+    throw e;
+  }
   await antesDeArrancar?.();
   await ok(run, serviceExe, ['start']);
 }
