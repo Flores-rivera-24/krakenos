@@ -22,13 +22,13 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
         body: 'Look in the KrakenOS device list (or in your router) for the device whose manufacturer is “Philips” or “Signify”: that is your bridge’s address. You can also visit the Philips discovery page from your network, which returns the bridge’s internal IP.',
       },
       {
-        title: 'Authorize KrakenOS with the bridge button',
-        body: 'For KrakenOS to control your lights, the bridge has to grant it permission once. In this step, press the large round button on the bridge and then confirm in the app: KrakenOS will get an “application key” that it stores so it doesn’t have to ask for permission again.',
-        note: 'After pressing the button you have about 30 seconds to confirm. If the time runs out, try again.',
+        title: 'Get the bridge’s application key',
+        body: 'KrakenOS does not fetch the key for you yet: you generate it once. Press the large round button on the bridge and, within 30 seconds, run from a computer on your network the request described in docs/hue-setup.md (a POST to https://BRIDGE-IP/api). The response has a “username” field: that is the application key. Paste it in the field below.',
+        note: 'If the response is a type 101 error, you did not press the button in time: try again.',
       },
       {
         title: 'Save and test',
-        body: 'Once authorized, your Hue lights appear on the devices screen. Try turning them on and off, raising the brightness and changing the color. If something doesn’t respond, check that the bridge’s address is correct.',
+        body: 'With the key saved, your Hue lights appear on the devices screen. Try turning them on and off, raising the brightness and changing the color. If something doesn’t respond, check that the bridge’s address is correct.',
       },
     ],
     fields: {
@@ -39,13 +39,13 @@ export const LIGHTS_GUIDES_EN: GuideTranslations = {
       },
       appKey: {
         label: 'Application key',
-        help: 'The key the bridge generates when you press its button. If the assistant obtains it for you during authorization, you don’t have to type anything. It is stored encrypted.',
+        help: 'The key the bridge generates when you request it with its button pressed (see the previous step). It is stored encrypted.',
       },
     },
     troubleshooting: [
       {
-        q: 'When authorizing, it says I didn’t press the button in time.',
-        a: 'Press the round button on the bridge and, immediately after (less than 30 seconds), confirm in the app. If you take too long, the bridge rejects the request and you have to repeat it.',
+        q: 'When requesting the key, I get a 101 error.',
+        a: 'Press the round button on the bridge and, immediately after (less than 30 seconds), repeat the request. If you take too long, the bridge rejects it and you have to repeat it.',
       },
       {
         q: 'My bulbs don’t appear.',
